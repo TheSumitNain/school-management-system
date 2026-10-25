@@ -3,13 +3,7 @@
 
 ## Current Stage
 
-Initial planning and documentation.
-
-## In Progress
-
-- [ ] API documentation
-- [ ] Security documentation
-- [ ] Testing documentation
+Planning completed; implementation starting next.
 
 ## Completed
 
@@ -17,19 +11,25 @@ Initial planning and documentation.
 - [x] Project root directory created
 - [x] Initial `.gitignore` created
 - [x] Git repository initialized
-- [x] GitHub repository created and connected
+- [x] GitHub repository connected
 - [x] Initial documentation committed and pushed
 - [x] System architecture documented
 - [x] Initial product requirements documented
 - [x] Initial database design principles documented
+- [x] API conventions documented
+- [x] Security requirements documented
+- [x] Testing strategy documented
 
-## Not Started
+## Next Steps
 
-- [ ] Go/Gin application scaffold
-- [ ] PostgreSQL configuration and migrations
-- [ ] React + TypeScript application scaffold
-- [ ] Automated tests
-- [ ] Authentication and RBAC
+- [ ] Review Git working tree and repository status
+- [ ] Create Go module and Gin backend scaffold
+- [ ] Configure environment variables safely
+- [ ] Connect backend to PostgreSQL
+- [ ] Introduce database migrations
+- [ ] Create React + TypeScript frontend
+- [ ] Add automated tests
+- [ ] Implement authentication and RBAC
 
 ## Working Rules
 
@@ -37,3 +37,4 @@ Initial planning and documentation.
 - Test each implementation before marking it complete.
 - Update documentation and this file when progress changes.
 - Never commit secrets or real student data.
+- Enforce school-level authorization on the backend.
