@@ -1,0 +1,38 @@
+
+# Secrets and environment files
+.env
+.env.*
+!.env.example
+
+# Go
+/backend/bin/
+/backend/tmp/
+*.exe
+*.test
+coverage.out
+coverage.html
+
+# Node.js and React
+/frontend/node_modules/
+/frontend/dist/
+/frontend/.vite/
+
+# Logs
+*.log
+npm-debug.log*
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Test artifacts
+/test-results/
+/playwright-report/
+/coverage/
+
+# Local certificates and private keys
+*.pem
+*.key
