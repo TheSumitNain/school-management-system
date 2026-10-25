@@ -3,18 +3,10 @@
 
 ## Current Stage
 
-Initial project setup.
-
-## Completed
-
-- [x] Development tool versions checked
-- [x] Project root directory created
-- [x] Initial `.gitignore` created
+Initial planning and documentation.
 
 ## In Progress
 
-- [ ] Requirements documentation
-- [ ] Database design documentation
 - [ ] API documentation
 - [ ] Security documentation
 - [ ] Testing documentation
@@ -25,8 +17,11 @@ Initial project setup.
 - [x] Project root directory created
 - [x] Initial `.gitignore` created
 - [x] Git repository initialized
-- [x] Initial documentation committed and pushed to GitHub
+- [x] GitHub repository created and connected
+- [x] Initial documentation committed and pushed
 - [x] System architecture documented
+- [x] Initial product requirements documented
+- [x] Initial database design principles documented
 
 ## Not Started
 
