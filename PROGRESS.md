@@ -40,6 +40,7 @@ Backend foundation implemented and verified. The API has health and database rea
 - [x] Go module initialized
 - [x] Gin backend scaffold created
 - [x] Environment configuration implemented
+- [x] Database SSL mode configuration and production-mode validation implemented
 - [x] PostgreSQL connection pool configured using pgx
 - [x] Database connection and ping verified
 - [x] `GET /health` endpoint implemented
@@ -67,12 +68,16 @@ Backend foundation implemented and verified. The API has health and database rea
 - [x] `go test ./...` passes for all current Go packages
 - [x] API manually verified on port `8081`
 - [x] Graceful shutdown manually verified
+- [x] Database configuration validation tests added
+- [x] Full-suite Go tests passed without Windows temporary executable cleanup errors
+- [ ] PostgreSQL TLS connection and certificate verification tested
 
-**Testing note:** API behavior has basic automated test coverage. Configuration, database integration, migrations, authentication, authorization, tenant isolation, and frontend workflows still need dedicated tests.
+**Testing note:** Health and readiness endpoints have automated API coverage, and database configuration validation tests have been added. The latest full-suite Go test run and `go vet ./...` completed successfully. Database integration, migration testing, authentication, authorization, tenant isolation, and frontend workflows still require verification or implementation.
 
 ## Not Yet Implemented
 
-- [ ] Production configuration hardening, including database TLS
+- [ ] Verify PostgreSQL TLS connectivity and certificate validation in the target production environment
+- [ ] Complete production configuration hardening and database connection-pool tuning
 - [ ] Database connection-pool limits and operational tuning
 - [ ] More comprehensive automated unit and integration tests
 - [ ] Automated migration tests against a clean test database
@@ -89,7 +94,7 @@ Backend foundation implemented and verified. The API has health and database rea
 
 ## Next Steps
 
-1. Review and harden the existing backend configuration and HTTP server.
+1. Verify PostgreSQL TLS connectivity and certificate validation in the target environment.
 2. Improve shutdown error handling and production database configuration.
 3. Expand automated tests for configuration, database behavior, and API edge cases.
 4. Finalize the database model before adding more migrations.

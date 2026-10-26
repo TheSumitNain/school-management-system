@@ -16,14 +16,11 @@ import (
 )
 
 func main() {
+
 	cfg := config.Load()
 
-	if cfg.DBHost == "" ||
-		cfg.DBPort == "" ||
-		cfg.DBUser == "" ||
-		cfg.DBName == "" ||
-		cfg.DBPassword == "" {
-		log.Fatal("Database configuration is incomplete")
+	if err := cfg.ValidateDatabase(); err != nil {
+		log.Fatal(err)
 	}
 
 	dbURL := &url.URL{
@@ -34,7 +31,7 @@ func main() {
 	}
 
 	query := dbURL.Query()
-	query.Set("sslmode", "disable")
+	query.Set("sslmode", cfg.DBSSLMode)
 	dbURL.RawQuery = query.Encode()
 
 	migrationsPath, err := filepath.Abs("migrations")

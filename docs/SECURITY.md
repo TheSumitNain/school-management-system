@@ -1,4 +1,3 @@
-
 # Security Design
 
 ## 1. Purpose
@@ -121,6 +120,10 @@ Audit retention and access policies must be finalized before production.
 - Avoid unnecessary collection of personal information.
 - Do not use real student data in routine development or testing.
 - Use secure error handling that does not expose internal details.
+- Database TLS mode is configurable through `DB_SSLMODE`.
+- Local development defaults to `disable`; production defaults to `verify-full`.
+- Production configuration validation rejects database SSL modes other than `verify-full`.
+- Actual PostgreSQL TLS connectivity and certificate verification must be tested in the target deployment environment before production use.
 
 ## 12. Testing Requirements
 
@@ -165,6 +168,8 @@ Before production, test:
 - Basic API health and database readiness endpoints.
 - HTTP server timeouts and graceful shutdown handling.
 - Automated tests for API health and database readiness behavior.
+- Database SSL mode configuration and production-mode validation implemented; real TLS connection verification remains pending.
+- Automated configuration validation tests added.
 
 These foundation features do not implement authentication or authorization.
 

@@ -12,28 +12,19 @@ import (
 )
 
 func Connect(ctx context.Context, cfg config.Config) (*pgxpool.Pool, error) {
-	if cfg.DBHost == "" ||
-		cfg.DBPort == "" ||
-		cfg.DBUser == "" ||
-		cfg.DBName == "" ||
-		cfg.DBPassword == "" {
-		return nil, fmt.Errorf("database configuration is incomplete")
-	}
-
-	port := cfg.DBPort
-	if _, err := net.LookupPort("tcp", port); err != nil {
-		return nil, fmt.Errorf("invalid database port: %w", err)
+	if err := cfg.ValidateDatabase(); err != nil {
+		return nil, err
 	}
 
 	u := &url.URL{
 		Scheme: "postgres",
 		User:   url.UserPassword(cfg.DBUser, cfg.DBPassword),
-		Host:   net.JoinHostPort(cfg.DBHost, port),
+		Host:   net.JoinHostPort(cfg.DBHost, cfg.DBPort),
 		Path:   "/" + cfg.DBName,
 	}
 
 	query := u.Query()
-	query.Set("sslmode", "disable")
+	query.Set("sslmode", cfg.DBSSLMode)
 	u.RawQuery = query.Encode()
 
 	pool, err := pgxpool.New(ctx, u.String())

@@ -120,9 +120,11 @@ A feature is complete only when:
 
 ## 10. Current Status
 
-Testing strategy documented. Specific test tools and automated test coverage will be introduced incrementally during implementation.
+The testing strategy is documented. Automated API tests cover the health and readiness endpoints. Database configuration validation tests have also been added.
 
+The latest full-suite Go test run completed successfully without Windows temporary executable cleanup errors.
 
+Additional integration, security, frontend and end-to-end tests will be introduced incrementally.
 
 ## 11. Implemented Automated Tests
 
@@ -155,18 +157,18 @@ Run the following command from the `backend` directory:
 go test ./...
 ```
 
-**Current status:** All existing Go packages compile, and the implemented API tests pass.
+The configuration and API test packages have passed, and the latest full-suite test run completed successfully without Windows temporary executable cleanup errors.
+
+A successful test run does not replace dedicated integration testing for PostgreSQL connections, migrations, or TLS certificate verification.
 
 ### Remaining Test Coverage
 
 The following areas still require dedicated tests:
 
-- Environment configuration and invalid configuration values.
 - PostgreSQL connection failures and connection-pool behavior.
-- Database migrations and rollback behavior.
-- HTTP server shutdown behavior.
-- Request timeouts and API error handling.
+- Database migrations against a clean test database and rollback behavior.
+- HTTP server shutdown behavior and request timeouts.
+- API error handling and edge cases.
 - Authentication, authorization, and school-level tenant isolation when implemented.
 - Frontend components and end-to-end workflows when implemented.
-
-These are planned test areas, not completed test coverage.
+- Production TLS connectivity and certificate verification.
