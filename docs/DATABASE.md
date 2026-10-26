@@ -86,7 +86,22 @@ Student identity and academic enrollment should be modeled separately.
 
 ## 10. Current Status
 
-Initial database design principles documented. The final relational schema will be developed incrementally after the business rules are reviewed.
+### Implemented
+
+- PostgreSQL connection configured and verified.
+- Version-controlled migration tooling configured.
+- Initial `schools` table migration created and applied.
+- `schools` table columns, primary key, unique constraint and status CHECK constraint verified.
+- Migration version `1` verified with `dirty = false`.
+
+### Pending
+
+- Design and implement remaining business tables.
+- Finalize and implement school-level tenant isolation.
+- Add automated database integration tests.
+- Establish and test production backup and restoration procedures.
+
+The current database schema is an initial foundation. It does not yet represent the complete School Management System database.
 
 ## 11. Implemented Database Objects
 

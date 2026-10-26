@@ -122,4 +122,34 @@ The following details require further planning before the relevant modules are i
 
 ## 10. Current Status
 
-Initial product scope documented. Detailed requirements will be refined before each module is implemented.
+### Documented
+
+- Initial product scope and target users.
+- Technology stack and initial user roles.
+- Core school, student, academic, attendance and parent features.
+- Features excluded from the initial scope.
+- Core business rules and open planning decisions.
+
+### Implemented Foundation
+
+- Go + Gin backend scaffold.
+- PostgreSQL connectivity.
+- Initial `schools` table migration.
+- API health and database readiness endpoints.
+- HTTP server timeouts and graceful shutdown handling.
+- Automated tests for health and database readiness behavior.
+
+### Not Yet Implemented
+
+- Authentication and role-based authorization.
+- School-level tenant authorization and data isolation.
+- School and user management workflows.
+- Student admission and enrollment.
+- Academic, attendance and parent-facing modules.
+- Frontend dashboards and user workflows.
+
+### Capacity Note
+
+The initial target of 25–30 schools and approximately 10,000–15,000 students is a planning objective, not a tested capacity guarantee. Load testing and production validation will be required before making capacity commitments.
+
+Requirements will be refined before each major module is implemented.

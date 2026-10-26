@@ -130,4 +130,59 @@ Exact limits will be finalized during implementation and testing.
 
 ## 13. Current Status
 
-Initial API conventions documented. Detailed endpoint specifications will be added as each module is designed and implemented.
+### Implemented Endpoints
+
+#### `GET /health`
+
+Checks whether the API server can respond to HTTP requests.
+
+- **Success:** `200 OK`
+- **Content-Type:** `application/json; charset=utf-8`
+- **Response:**
+
+      {
+        "status": "success",
+        "message": "School Management System API is running"
+      }
+
+This endpoint does not check database availability.
+
+#### `GET /ready`
+
+Checks whether the API server can respond and the PostgreSQL database is reachable.
+
+- **Success:** `200 OK`
+- **Response:**
+
+      {
+        "status": "success",
+        "message": "API and database are ready"
+      }
+
+- **Database unavailable:** `503 Service Unavailable`
+- **Error response:**
+
+      {
+        "status": "error",
+        "message": "Database is not ready"
+      }
+
+The database ping uses a two-second timeout derived from the request context.
+
+### Implemented Reliability Measures
+
+- HTTP server read-header timeout: 5 seconds.
+- HTTP server read timeout: 15 seconds.
+- HTTP server write timeout: 30 seconds.
+- HTTP server idle timeout: 60 seconds.
+- Graceful shutdown with a 10-second timeout and a forced connection-close fallback.
+
+### Not Yet Implemented
+
+- `/api/v1` business endpoints.
+- Authentication and authorization.
+- Student, teacher, class, subject and attendance APIs.
+- Pagination, filtering and business-level validation.
+- Standardized error handling for future business APIs.
+
+The `/api/v1` prefix and the resource examples in this document describe the planned API conventions. They are not currently implemented routes.

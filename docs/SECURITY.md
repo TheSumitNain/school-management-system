@@ -149,4 +149,39 @@ Before production, test:
 
 ## 14. Current Status
 
-Security requirements documented. Implementation must be reviewed and tested before production use.
+### Documented
+
+- Authentication, password and token security requirements.
+- MFA, login protection and account recovery requirements.
+- Role-based authorization and school-level data isolation requirements.
+- Account lifecycle, audit logging and database security requirements.
+- Security testing requirements and open design decisions.
+
+### Implemented Foundation
+
+- Go + Gin backend scaffold.
+- PostgreSQL connection setup.
+- Initial `schools` table migration with school status constraints.
+- Basic API health and database readiness endpoints.
+- HTTP server timeouts and graceful shutdown handling.
+- Automated tests for API health and database readiness behavior.
+
+These foundation features do not implement authentication or authorization.
+
+### Not Yet Implemented
+
+- Authentication endpoints and secure password hashing.
+- Access and refresh token lifecycle and revocation.
+- MFA and login rate limiting.
+- RBAC and permission enforcement.
+- School-level tenant authorization and data isolation.
+- Account lockout, password reset and invitation workflows.
+- Security audit logging.
+- Automated security and cross-school authorization tests.
+- Production HTTPS and secrets management configuration.
+
+### Production Readiness
+
+The security requirements are documented, but the security implementation is incomplete. The application must not be considered production-ready for real school or student data until the required controls are implemented, reviewed and tested.
+
+Open decisions in Section 13 must be resolved at the appropriate implementation stage.

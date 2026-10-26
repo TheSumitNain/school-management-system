@@ -2,7 +2,7 @@
 
 ## Current Stage
 
-Backend foundation implemented. PostgreSQL connectivity and the first database migration have been verified. Production-readiness improvements, automated tests, authentication/RBAC, and frontend implementation remain pending.
+Backend foundation implemented and verified. The API has health and database readiness endpoints, HTTP server timeouts, graceful shutdown handling, and automated API tests. Production hardening, expanded test coverage, authentication/RBAC, tenant authorization, and frontend implementation remain pending.
 
 ## Project Overview
 
@@ -42,7 +42,11 @@ Backend foundation implemented. PostgreSQL connectivity and the first database m
 - [x] Environment configuration implemented
 - [x] PostgreSQL connection pool configured using pgx
 - [x] Database connection and ping verified
-- [x] Health endpoint implemented at `GET /health`
+- [x] `GET /health` endpoint implemented
+- [x] `GET /ready` endpoint implemented with a database readiness check
+- [x] HTTP server read, write, header, and idle timeouts configured
+- [x] Graceful shutdown handling implemented
+- [x] Gin trusted proxies explicitly configured
 - [x] API server configured to use port `8081` by default
 
 ### Database and Migrations
@@ -55,20 +59,23 @@ Backend foundation implemented. PostgreSQL connectivity and the first database m
 - [x] Migration version verified as `1`, with `dirty = false`
 - [x] Migration rollback file created
 
-### Verification
+### Automated Testing and Verification
 
-- [x] `go test ./...` runs successfully
-- [x] Git working tree verified clean after commit `6797c71`
-- [x] Latest handoff document committed and pushed to `main`
+- [x] Health endpoint tested for status code, content type, and response body
+- [x] Readiness endpoint tested when the database is available
+- [x] Readiness endpoint tested when the database reports an error
+- [x] `go test ./...` passes for all current Go packages
+- [x] API manually verified on port `8081`
+- [x] Graceful shutdown manually verified
 
-**Testing note:** The current Go test command confirms that packages compile, but automated behavioral test coverage has not yet been implemented.
+**Testing note:** API behavior has basic automated test coverage. Configuration, database integration, migrations, authentication, authorization, tenant isolation, and frontend workflows still need dedicated tests.
 
 ## Not Yet Implemented
 
-- [ ] Production-readiness improvements for the HTTP server
-- [ ] Database readiness endpoint and graceful shutdown
-- [ ] Database pool limits, timeouts, and production TLS configuration
-- [ ] Automated unit and integration tests
+- [ ] Production configuration hardening, including database TLS
+- [ ] Database connection-pool limits and operational tuning
+- [ ] More comprehensive automated unit and integration tests
+- [ ] Automated migration tests against a clean test database
 - [ ] Complete database schema and remaining migrations
 - [ ] Authentication and session management
 - [ ] Role-based access control (RBAC)
@@ -78,17 +85,18 @@ Backend foundation implemented. PostgreSQL connectivity and the first database m
 - [ ] Frontend/backend integration
 - [ ] CI pipeline and deployment configuration
 - [ ] Production monitoring, backups, and operational procedures
+- [ ] Production load and security testing
 
 ## Next Steps
 
 1. Review and harden the existing backend configuration and HTTP server.
-2. Add database readiness checks and graceful shutdown.
-3. Add automated tests for configuration, database connectivity, and API behavior.
+2. Improve shutdown error handling and production database configuration.
+3. Expand automated tests for configuration, database behavior, and API edge cases.
 4. Finalize the database model before adding more migrations.
 5. Implement authentication, then RBAC and tenant isolation.
 6. Build core school-management APIs incrementally.
 7. Build and integrate the React frontend.
-8. Add CI, deployment, monitoring, backup, and recovery procedures before production release.
+8. Add CI, deployment, monitoring, backup, recovery, and security procedures before production release.
 
 ## Working Rules
 

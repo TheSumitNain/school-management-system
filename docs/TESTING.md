@@ -121,3 +121,52 @@ A feature is complete only when:
 ## 10. Current Status
 
 Testing strategy documented. Specific test tools and automated test coverage will be introduced incrementally during implementation.
+
+
+
+## 11. Implemented Automated Tests
+
+The following API tests are currently implemented in `backend/cmd/api/main_test.go`:
+
+### Health Endpoint
+
+- Verify that `GET /health` returns HTTP `200 OK`.
+- Verify the JSON content type.
+- Verify the expected JSON response body.
+
+### Readiness Endpoint
+
+- Verify that `GET /ready` returns HTTP `200 OK` when the database ping succeeds.
+- Verify that `GET /ready` returns HTTP `503 Service Unavailable` when the database ping fails.
+- Verify the expected JSON response bodies for both scenarios.
+
+### Test Implementation
+
+- Tests use Go's standard `testing` package.
+- HTTP requests are tested using `net/http/httptest`.
+- A fake database implementation simulates successful and failed database pings.
+- API tests do not require a live PostgreSQL connection for these scenarios.
+
+### Current Verification
+
+Run the following command from the `backend` directory:
+
+```bash
+go test ./...
+```
+
+**Current status:** All existing Go packages compile, and the implemented API tests pass.
+
+### Remaining Test Coverage
+
+The following areas still require dedicated tests:
+
+- Environment configuration and invalid configuration values.
+- PostgreSQL connection failures and connection-pool behavior.
+- Database migrations and rollback behavior.
+- HTTP server shutdown behavior.
+- Request timeouts and API error handling.
+- Authentication, authorization, and school-level tenant isolation when implemented.
+- Frontend components and end-to-end workflows when implemented.
+
+These are planned test areas, not completed test coverage.

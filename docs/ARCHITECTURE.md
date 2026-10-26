@@ -116,4 +116,29 @@ Before production release, verify:
 
 ## 12. Current Status
 
-Architecture direction documented. Detailed module boundaries, dependencies, deployment topology and database schema will be finalized as the project develops.
+### Implemented Foundation
+
+- Go + Gin backend scaffold.
+- PostgreSQL connection setup.
+- Initial `schools` database migration.
+- `GET /health` and `GET /ready` endpoints.
+- HTTP server timeouts and graceful shutdown handling.
+- Automated tests for health and database readiness behavior.
+
+### Architecture Decisions
+
+- Modular monolith as the initial application architecture.
+- React + TypeScript + Vite frontend.
+- Go + Gin backend.
+- PostgreSQL as the database.
+- Shared database as the initial multi-tenant direction.
+
+### Still To Be Finalized or Implemented
+
+- Detailed module boundaries and dependencies.
+- School-level tenant authorization and isolation.
+- Authentication and role-based access control.
+- Business modules and their database relationships.
+- Production deployment topology, HTTPS, monitoring, backups and recovery procedures.
+
+The architecture remains a work in progress. Planned decisions must be validated before they are treated as implemented behavior.
