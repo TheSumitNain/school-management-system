@@ -17,6 +17,8 @@ These figures are initial planning targets, not verified system capacity limits.
 - Frontend: React, TypeScript and Vite
 - Backend: Go and Gin
 - Database: PostgreSQL
+- Database access: pgx / pgxpool
+- Database migrations: golang-migrate
 
 ## 4. Initial User Roles
 
@@ -27,6 +29,8 @@ These figures are initial planning targets, not verified system capacity limits.
 
 Student, Driver and additional Staff access may be introduced in later phases.
 
+These are planned product roles. Role storage, role-based access control and permission enforcement must be implemented and tested before these roles are treated as operational.
+
 ## 5. Initial Product Scope
 
 The system will be developed incrementally.
@@ -35,7 +39,7 @@ The system will be developed incrementally.
 
 - Application configuration
 - Database connectivity
-- Health-check endpoint
+- Health and readiness endpoints
 - Authentication
 - Role-based authorization
 - School-level data isolation
@@ -98,6 +102,8 @@ These may be considered in future releases.
 - Student and enrollment history must be retained according to approved retention rules.
 - Sensitive operations must be auditable.
 - The frontend must not be treated as a security boundary.
+- School and user status must be checked where required for authentication and authorization.
+- Cross-school access must be prevented by backend-enforced authorization and appropriate database queries.
 
 ## 8. Development Approach
 
@@ -107,6 +113,8 @@ These may be considered in future releases.
 - Write and run tests for implemented features.
 - Verify school-level isolation and authorization.
 - Update project documentation and progress after meaningful changes.
+- Distinguish implemented functionality from requirements that are still pending.
+- Do not claim production readiness based solely on passing unit tests.
 
 ## 9. Open Decisions
 
@@ -119,6 +127,9 @@ The following details require further planning before the relevant modules are i
 - Parent OTP provider
 - Attendance correction and retention policy
 - Deployment, backup and disaster recovery strategy
+- Final role-permission matrix
+- School onboarding and deactivation workflow
+- Audit-log retention and access policy
 
 ## 10. Current Status
 
@@ -133,23 +144,38 @@ The following details require further planning before the relevant modules are i
 ### Implemented Foundation
 
 - Go + Gin backend scaffold.
-- PostgreSQL connectivity.
+- Environment-based application configuration.
+- PostgreSQL connection pool.
 - Initial `schools` table migration.
-- API health and database readiness endpoints.
+- `users` and `refresh_sessions` database migration.
+- API health and database-readiness endpoints.
 - HTTP server timeouts and graceful shutdown handling.
-- Automated tests for health and database readiness behavior.
+- User and school repository operations.
+- bcrypt password hashing and verification.
+- Initial authentication service.
+- JWT access-token generation and validation.
+- Initial `POST /auth/login` endpoint.
+- Unit tests for implemented configuration, password, authentication, token and login-handler behavior.
 
-### Not Yet Implemented
+These implementations form an initial foundation; they do not mean that the complete authentication or authorization requirements have been met.
 
-- Authentication and role-based authorization.
-- School-level tenant authorization and data isolation.
-- School and user management workflows.
+### Not Yet Implemented or Fully Verified
+
+- Complete refresh-token issuance, rotation and session lifecycle.
+- HTTP logout endpoint and complete session-revocation workflow.
+- Authentication middleware and protected profile endpoint.
+- Public registration and production school onboarding.
+- Role storage, RBAC and permission enforcement.
+- School-level tenant authorization and automated cross-school isolation tests.
+- Complete school and user management workflows.
 - Student admission and enrollment.
 - Academic, attendance and parent-facing modules.
 - Frontend dashboards and user workflows.
+- PostgreSQL repository integration tests and migration tests.
+- Production deployment and operational safeguards.
 
 ### Capacity Note
 
-The initial target of 25–30 schools and approximately 10,000–15,000 students is a planning objective, not a tested capacity guarantee. Load testing and production validation will be required before making capacity commitments.
+The initial target of 25–30 schools and approximately 10,000–15,000 students is a planning objective, not a tested capacity guarantee. Load testing, security testing and production validation will be required before making capacity commitments.
 
-Requirements will be refined before each major module is implemented.
+Requirements will be refined before each major module is implemented. The implementation status should be updated only after the relevant code and tests have been reviewed.

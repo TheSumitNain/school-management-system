@@ -167,3 +167,72 @@ func TestLoadExplicitSSLMode(t *testing.T) {
 		)
 	}
 }
+
+func validJWTTestConfig() Config {
+	return Config{
+		JWTSecret:              "test-secret-with-at-least-32-characters",
+		JWTIssuer:              "school-management-system",
+		JWTAccessExpiryMinutes: 15,
+	}
+}
+
+func TestValidateJWT(t *testing.T) {
+	tests := []struct {
+		name    string
+		modify  func(*Config)
+		wantErr bool
+	}{
+		{
+			name:    "valid configuration",
+			wantErr: false,
+		},
+		{
+			name: "secret too short",
+			modify: func(cfg *Config) {
+				cfg.JWTSecret = "short"
+			},
+			wantErr: true,
+		},
+		{
+			name: "empty issuer",
+			modify: func(cfg *Config) {
+				cfg.JWTIssuer = ""
+			},
+			wantErr: true,
+		},
+		{
+			name: "expiry too low",
+			modify: func(cfg *Config) {
+				cfg.JWTAccessExpiryMinutes = 0
+			},
+			wantErr: true,
+		},
+		{
+			name: "expiry too high",
+			modify: func(cfg *Config) {
+				cfg.JWTAccessExpiryMinutes = 61
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := validJWTTestConfig()
+
+			if tt.modify != nil {
+				tt.modify(&cfg)
+			}
+
+			err := cfg.ValidateJWT()
+
+			if (err != nil) != tt.wantErr {
+				t.Fatalf(
+					"ValidateJWT() error = %v, wantErr %v",
+					err,
+					tt.wantErr,
+				)
+			}
+		})
+	}
+}

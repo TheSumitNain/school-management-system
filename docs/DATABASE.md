@@ -18,7 +18,7 @@ The initial migrations create the following tables:
 |---|---|---|
 | `schools` | Stores school records and their setup status | Implemented in migration v1 |
 | `users` | Stores user accounts associated with schools | Implemented in migration v2 |
-| `refresh_sessions` | Stores hashed refresh-token/session information for future authentication flows | Implemented in migration v2 |
+| `refresh_sessions` | Stores hashed refresh-token/session information | Schema implemented in migration v2; complete HTTP lifecycle pending |
 
 Other functional tables, including students, teachers, classes, subjects, attendance, and transport, must be added through future migrations when their requirements and relationships are finalized.
 
@@ -28,7 +28,7 @@ Migration files are stored in:
 
 `backend/migrations/`
 
-The migration command is located in:
+The migration command is located at:
 
 `backend/cmd/migrate/`
 
@@ -109,12 +109,16 @@ The current migration defines:
 
 ### Constraints and indexes
 
+The documented schema rules include:
+
 - `school_id` references `schools.id`.
 - Deleting a referenced school is restricted by the foreign key.
 - `username` must not be empty or whitespace-only.
 - `password_hash` must not be empty.
 - `status` is restricted to `active` or `disabled`.
 - A unique index on `(school_id, LOWER(username))` prevents duplicate usernames within a school regardless of letter case.
+
+Verify these rules against the actual migration SQL before changing the schema or relying on a specific constraint name.
 
 ### Tenant considerations
 
@@ -126,7 +130,7 @@ The current schema does not yet define a complete role and permission model.
 
 ## 6. Table: `refresh_sessions`
 
-The `refresh_sessions` table is intended to store refresh-session metadata.
+The `refresh_sessions` table stores refresh-session metadata.
 
 The current migration defines:
 
@@ -141,11 +145,15 @@ The current migration defines:
 
 ### Constraints and indexes
 
+The documented schema rules include:
+
 - `user_id` references `users.id`.
 - Deleting a user cascades to that user's refresh-session records.
 - `token_hash` is unique.
 - A check constraint requires `expires_at` to be later than `created_at`.
 - Indexes support lookup by user and expiry timestamp.
+
+The migration SQL is authoritative for the exact constraints and indexes.
 
 ### Important implementation note
 

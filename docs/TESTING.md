@@ -10,7 +10,15 @@ The project is in its initial development stage. Tests documented as future requ
 
 ## 2. Current Testing Status
 
-The initial backend has automated Go tests for selected packages.
+The backend has automated Go tests for selected packages and components.
+
+Current test areas include:
+
+- Password-service behavior.
+- Authentication-service behavior.
+- JWT access-token generation and validation.
+- Authentication login-handler behavior.
+- API server behavior and selected configuration validation.
 
 Previously verified commands:
 
@@ -19,9 +27,9 @@ go test -count=1 ./...
 go vet ./...
 ```
 
-The test suite passed at the time of the last recorded verification.
+The test suite passed at the time of the last recorded verification. These historical results do not establish that the latest code and documentation changes have been verified.
 
-The current test coverage is not a guarantee that all application behavior is tested. Authentication HTTP endpoints, RBAC, tenant isolation, and most school business modules are not yet implemented.
+The current test coverage is not a guarantee that all application behavior is tested. Refresh-token HTTP flows, authentication middleware, RBAC, tenant isolation, and most school business modules are not yet implemented.
 
 Run the commands again after code or dependency changes before treating the current code as verified.
 
@@ -35,6 +43,8 @@ Run the commands again after code or dependency changes before treating the curr
 - Test database constraints as well as application-level validation.
 - Do not claim production readiness based only on unit-test success.
 - Add regression tests when fixing a bug.
+- Distinguish automated tests from manual verification.
+- Record test results only after the commands have actually completed.
 
 ## 4. Test Categories
 
@@ -42,7 +52,7 @@ Run the commands again after code or dependency changes before treating the curr
 
 Unit tests verify individual functions and business rules without requiring a complete running application.
 
-Current examples include password-service tests and authentication-service tests using fake repositories.
+Current examples include password-service tests, authentication-service tests using fake repositories, JWT token-service tests, and login-handler tests.
 
 Future unit tests should cover:
 
@@ -71,15 +81,16 @@ Tests that require PostgreSQL should use a dedicated test database or isolated t
 
 A dedicated automated PostgreSQL integration-test setup remains future work unless separately verified.
 
-### 4.3 HTTP integration tests
+### 4.3 HTTP tests
 
-HTTP integration tests should exercise the Gin router and verify:
+HTTP tests should exercise the Gin router and verify:
 
 - HTTP status codes.
 - Response bodies and content types.
 - Request validation.
 - Error responses.
 - Health and readiness behavior.
+- Login-handler behavior.
 - Authentication and authorization when those routes are implemented.
 
 ### 4.4 Security tests
@@ -107,8 +118,8 @@ The target of 25–30 schools and approximately 10,000–15,000 students is a pl
 
 Run commands from the backend directory:
 
-```bash
-cd D:\school-management-system\backend
+```bat
+cd /d D:\school-management-system\backend
 ```
 
 Run all Go tests:
@@ -131,11 +142,9 @@ Format Go source files when necessary:
 gofmt -w cmd internal
 ```
 
-Review formatting changes before committing them.
+Review formatting changes before committing them. Run `gofmt` only on Go source directories and review the resulting diff before staging files.
 
 ## 6. Current Test Areas
-
-The initial foundation includes tests for selected service behavior.
 
 ### Password service
 
@@ -159,7 +168,34 @@ Verify:
 - Repository errors are handled safely.
 - Duplicate usernames are handled correctly by the repository/database boundary.
 
-The exact cases covered by the current test files should be checked against the actual source code.
+### JWT token service
+
+The token service has an initial automated test suite.
+
+Verify:
+
+- Valid access tokens can be generated and validated.
+- Invalid tokens are rejected.
+- Expired tokens are rejected.
+- Invalid signatures are rejected.
+- Issuer and required claims are validated.
+- Invalid token configuration is rejected where covered by the implementation.
+
+The exact cases covered must be checked against the actual test files.
+
+### Login handler
+
+The login handler has an initial automated test suite.
+
+Verify:
+
+- Valid requests return the expected success response.
+- Invalid credentials return an unauthorized response.
+- Malformed requests return an appropriate client error.
+- Internal token-generation failures do not expose sensitive internal details.
+- Password hashes and other sensitive fields are not included in responses.
+
+The exact cases covered must be checked against the actual test files.
 
 ## 7. Health and Readiness Tests
 
@@ -186,9 +222,9 @@ Re-run these tests whenever server initialization or database connection handlin
 
 ## 8. Future Authentication and Authorization Tests
 
-Once the HTTP authentication flow is implemented, test:
+Once the remaining HTTP authentication flow is implemented, test:
 
-- Registration validation.
+- Registration validation and secure provisioning.
 - Login with valid and invalid credentials.
 - Access-token signature and expiry validation.
 - Refresh-token rotation.
@@ -200,7 +236,7 @@ Once the HTTP authentication flow is implemented, test:
 - Concurrent refresh requests.
 - Rate limiting for repeated failed login attempts.
 
-Once RBAC is implemented, test that every role can perform only its authorized operations.
+Once authentication middleware and RBAC are implemented, test that unauthenticated requests are denied and every role can perform only its authorized operations.
 
 These are required future tests, not evidence that the corresponding functionality currently exists.
 
@@ -218,6 +254,8 @@ Create test data for at least two schools and verify:
 - Administrative operations enforce the intended scope.
 
 Repeat these checks for every school-owned module as it is introduced.
+
+Automated tenant-isolation tests remain future work until the corresponding protected endpoints and authorization mechanisms exist.
 
 ## 10. Database Migration Tests
 
@@ -241,6 +279,7 @@ Do not test destructive rollback procedures against production data.
 - Avoid tests that depend on execution order.
 - Use a dedicated database for tests that perform writes.
 - Ensure tests do not accidentally connect to production.
+- Avoid printing tokens, password hashes, or credentials in test output.
 
 ## 12. Before Committing Changes
 
@@ -261,6 +300,8 @@ git status --short
 Inspect the changed files and verify that no secrets, generated binaries, or unintended files are included.
 
 For changes involving database migrations, run the relevant migration and database tests as well.
+
+Documentation-only changes do not replace the need to verify the code changes already pending in the working tree.
 
 ## 13. Before Production Release
 

@@ -19,6 +19,10 @@ type Config struct {
 	DBName     string
 	DBPassword string
 	DBSSLMode  string
+
+	JWTSecret              string
+	JWTIssuer              string
+	JWTAccessExpiryMinutes int
 }
 
 func Load() Config {
@@ -42,15 +46,30 @@ func Load() Config {
 		}
 	}
 
+	jwtIssuer := strings.TrimSpace(os.Getenv("JWT_ISSUER"))
+	if jwtIssuer == "" {
+		jwtIssuer = "school-management-system"
+	}
+
+	jwtAccessExpiry := 15
+	if value := strings.TrimSpace(os.Getenv("JWT_ACCESS_EXPIRY_MINUTES")); value != "" {
+		if parsed, err := strconv.Atoi(value); err == nil {
+			jwtAccessExpiry = parsed
+		}
+	}
+
 	return Config{
-		AppEnv:     appEnv,
-		AppPort:    appPort,
-		DBHost:     os.Getenv("DB_HOST"),
-		DBPort:     os.Getenv("DB_PORT"),
-		DBUser:     os.Getenv("DB_USER"),
-		DBName:     os.Getenv("DB_NAME"),
-		DBPassword: os.Getenv("DB_PASSWORD"),
-		DBSSLMode:  dbSSLMode,
+		AppEnv:                 appEnv,
+		AppPort:                appPort,
+		DBHost:                 os.Getenv("DB_HOST"),
+		DBPort:                 os.Getenv("DB_PORT"),
+		DBUser:                 os.Getenv("DB_USER"),
+		DBName:                 os.Getenv("DB_NAME"),
+		DBPassword:             os.Getenv("DB_PASSWORD"),
+		DBSSLMode:              dbSSLMode,
+		JWTSecret:              os.Getenv("JWT_SECRET"),
+		JWTIssuer:              jwtIssuer,
+		JWTAccessExpiryMinutes: jwtAccessExpiry,
 	}
 }
 
@@ -80,6 +99,27 @@ func (cfg Config) ValidateDatabase() error {
 	if cfg.AppEnv == "production" && cfg.DBSSLMode != "verify-full" {
 		return fmt.Errorf(
 			"production requires DB_SSLMODE=verify-full",
+		)
+	}
+
+	return nil
+}
+
+func (cfg Config) ValidateJWT() error {
+	secret := strings.TrimSpace(cfg.JWTSecret)
+
+	if len(secret) < 32 {
+		return fmt.Errorf("JWT_SECRET must be at least 32 characters")
+	}
+
+	if strings.TrimSpace(cfg.JWTIssuer) == "" {
+		return fmt.Errorf("JWT_ISSUER is required")
+	}
+
+	if cfg.JWTAccessExpiryMinutes < 1 ||
+		cfg.JWTAccessExpiryMinutes > 60 {
+		return fmt.Errorf(
+			"JWT_ACCESS_EXPIRY_MINUTES must be between 1 and 60",
 		)
 	}
 

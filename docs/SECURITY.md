@@ -20,22 +20,29 @@ The application is intended to support multiple schools. Student, parent, teache
 - Password verification is implemented.
 - Authentication service logic checks whether the associated school is active.
 - Authentication service logic checks whether the user is active and whether the supplied credentials are valid.
+- JWT access-token generation and validation are implemented in the token service.
+- JWT configuration includes issuer, expiry settings, and secret validation.
+- `POST /auth/login` is implemented and has been manually tested.
+- Login responses return an access token and a limited user DTO rather than the password hash.
+- Invalid credentials return a generic unauthorized response.
 - Refresh-session storage has a database migration with token-hash, expiry, and revocation fields.
 - The API server has configured HTTP timeouts and graceful shutdown behavior.
+- Health and readiness endpoints are implemented.
 
 These controls form an initial foundation. They do not mean that production authentication or the entire application has been security-certified.
 
 ### Not yet implemented as a complete HTTP security flow
 
-- JWT access-token issuance and validation for this project.
-- Refresh-token issuance, rotation, and revocation workflows.
-- Login, logout, and registration HTTP handlers.
+- Refresh-token issuance, rotation, and revocation endpoints.
+- Logout endpoint and complete access-token revocation behavior.
+- Registration or administrative user-provisioning HTTP workflow.
 - Authentication middleware for protected routes.
+- Protected current-user endpoint such as `GET /auth/me`.
 - Role-based access control (RBAC).
 - Complete tenant-isolation enforcement across business queries.
 - Production TLS and deployment-specific security configuration.
 - Rate limiting and abuse protection for authentication endpoints.
-- Security audit logging and monitoring.
+- Complete security audit logging and monitoring.
 
 ## 3. Password Security
 
@@ -63,14 +70,22 @@ The proposed minimum of 12 characters is a production requirement to evaluate; i
 
 ## 4. Authentication and Token Security
 
-Authentication HTTP endpoints and JWT flows are not yet implemented in this project's current API.
+### Current implementation
 
-The following are requirements for the eventual implementation:
+- The authentication service verifies credentials and checks school and user status.
+- The token service generates and validates JWT access tokens.
+- JWT configuration validates the signing secret and access-token expiry settings.
+- The login handler returns an access token following successful authentication.
+- The login endpoint has been manually tested with valid and invalid credentials.
 
-- Use a cryptographically secure method to generate tokens and identifiers.
+The implemented login endpoint is an initial access-token flow. It is not a complete authentication-session lifecycle.
+
+### Remaining requirements
+
+- Use a cryptographically secure method to generate refresh tokens and identifiers.
 - Keep access tokens short-lived.
 - Use a separate, longer-lived refresh-session mechanism.
-- Validate token type, signature, expiry, and relevant claims.
+- Validate token type, signature, expiry, issuer, and relevant claims.
 - Store refresh-token hashes rather than raw refresh tokens.
 - Rotate refresh tokens safely and revoke the previous session token.
 - Revoke refresh sessions on logout.
@@ -80,7 +95,7 @@ The following are requirements for the eventual implementation:
 - Never log access tokens, refresh tokens, passwords, or secret values.
 - Return generic authentication errors where detailed responses could reveal sensitive information.
 
-The exact token lifetimes, signing algorithm, claims, and key-rotation strategy must be finalized before implementing the production flow.
+The refresh-token HTTP lifecycle, logout behavior, authentication middleware, and protected-route enforcement remain pending. The final token lifetimes, claims, and key-rotation strategy must be reviewed before production deployment.
 
 ## 5. Multi-Tenant Isolation
 
@@ -166,9 +181,25 @@ Before production release:
 - Ensure HTTP timeouts are appropriate for the deployment.
 - Review file uploads, exports, and any external integrations before exposing them.
 
-The existing server timeouts and trusted-proxy configuration are only part of the broader security requirements.
+The existing server timeouts and configuration validation are only part of the broader security requirements.
 
-## 10. Logging, Monitoring, and Auditing
+## 10. Development Seed Command
+
+Location: `backend/cmd/devseed/`
+
+The development seed command creates or prepares a test user for local development and is guarded by the development environment.
+
+Security requirements:
+
+- Do not use the command as a production user-provisioning mechanism.
+- Do not put real credentials in source code or documentation.
+- Keep seed credentials in environment variables.
+- Verify the environment guard and production deployment separation before release.
+- Ensure production workflows cannot accidentally create development test accounts.
+
+The command's existence does not replace a secure school-administration or user-provisioning workflow.
+
+## 11. Logging, Monitoring, and Auditing
 
 Production requirements:
 
@@ -182,14 +213,15 @@ Production requirements:
 
 A complete security audit and monitoring system is not yet implemented.
 
-## 11. Testing Requirements
+## 12. Testing Requirements
 
 Security testing must cover at least:
 
 - Password hashing and verification.
 - Invalid credentials and disabled users.
 - Inactive or suspended schools.
-- Token expiry, validation, refresh, and revocation once token flows exist.
+- JWT signature validation, expiry, issuer, and claims.
+- Refresh, rotation, and revocation once those flows exist.
 - Missing authentication on protected endpoints.
 - Insufficient role permissions.
 - Cross-school read and write attempts.
@@ -200,7 +232,7 @@ Security testing must cover at least:
 
 Tests should be automated where practical and run before changes are merged.
 
-## 12. Production Readiness Checklist
+## 13. Production Readiness Checklist
 
 Before serving real schools and student data, verify:
 
@@ -217,8 +249,9 @@ Before serving real schools and student data, verify:
 - [ ] Security tests and dependency checks run in the release workflow.
 - [ ] Backups and restoration procedures are tested.
 - [ ] Monitoring and incident-response procedures are documented.
+- [ ] The development seed command is excluded from production workflows.
 
-## 13. Maintenance
+## 14. Maintenance
 
 Whenever security behavior changes:
 

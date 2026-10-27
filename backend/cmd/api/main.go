@@ -15,6 +15,10 @@ import (
 	"school-management-system/internal/config"
 	"school-management-system/internal/database"
 
+	"school-management-system/internal/handlers"
+	"school-management-system/internal/repository"
+	"school-management-system/internal/services"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -22,11 +26,18 @@ type databasePinger interface {
 	Ping(ctx context.Context) error
 }
 
-func setupRouter(db databasePinger) (*gin.Engine, error) {
+func setupRouter(
+	db databasePinger,
+	authHandler *handlers.AuthHandler,
+) (*gin.Engine, error) {
 	router := gin.Default()
 
 	if err := router.SetTrustedProxies(nil); err != nil {
 		return nil, fmt.Errorf("configure trusted proxies: %w", err)
+	}
+
+	if authHandler != nil {
+		router.POST("/auth/login", authHandler.Login)
 	}
 
 	router.GET("/health", func(c *gin.Context) {
@@ -67,6 +78,14 @@ func main() {
 func run() error {
 	cfg := config.Load()
 
+	if err := cfg.ValidateDatabase(); err != nil {
+		return fmt.Errorf("invalid database configuration: %w", err)
+	}
+
+	if err := cfg.ValidateJWT(); err != nil {
+		return fmt.Errorf("invalid JWT configuration: %w", err)
+	}
+
 	if cfg.AppEnv == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -82,7 +101,27 @@ func run() error {
 
 	log.Println("PostgreSQL connected successfully")
 
-	router, err := setupRouter(db)
+	userRepo := repository.NewUserRepository(db)
+	schoolRepo := repository.NewSchoolRepository(db)
+
+	authService := services.NewAuthService(userRepo, schoolRepo)
+
+	tokenService, err := services.NewTokenService(
+		cfg.JWTSecret,
+		cfg.JWTIssuer,
+		cfg.JWTAccessExpiryMinutes,
+	)
+	if err != nil {
+		return fmt.Errorf("initialize token service: %w", err)
+	}
+
+	authHandler := handlers.NewAuthHandler(
+		authService,
+		tokenService,
+	)
+
+	router, err := setupRouter(db, authHandler)
+
 	if err != nil {
 		return fmt.Errorf("setup router: %w", err)
 	}

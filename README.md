@@ -1,15 +1,16 @@
 # School Management System
 
-A commercial, multi-tenant School Management System built incrementally with production-oriented architecture, security and testing practices.
+A commercial, multi-tenant School Management System built incrementally with production-oriented architecture, security practices and automated testing.
 
 ## Technology Stack
 
-- **Frontend:** React + TypeScript + Vite (planned)
+- **Frontend:** React + TypeScript + Vite (planned; not yet implemented)
 - **Backend:** Go + Gin
 - **Database:** PostgreSQL
 - **Database access:** pgx / pgxpool
 - **Migrations:** golang-migrate
 - **Password hashing:** bcrypt
+- **Authentication:** JWT access tokens (initial implementation)
 
 ## Initial Target
 
@@ -17,7 +18,7 @@ A commercial, multi-tenant School Management System built incrementally with pro
 - Approximately 400–500 students per school
 - Approximately 10,000–15,000 students in total
 
-These are planning targets, not verified capacity limits.
+These are planning targets, not verified capacity limits. Production capacity will require load testing and monitoring.
 
 ## Project Principles
 
@@ -27,59 +28,78 @@ These are planning targets, not verified capacity limits.
 - Test implemented behavior before moving to the next feature.
 - Document architecture, API behavior, database changes and security decisions.
 - Implement features incrementally and verify each milestone.
+- Keep implemented functionality clearly separated from planned functionality.
 
 ## Current Status
 
-**Stage:** Backend foundation and initial authentication foundation.
+**Stage:** Backend foundation and initial JWT authentication.
 
 ### Implemented
 
 - Go + Gin API server.
 - Environment-based application configuration.
-- PostgreSQL connection pool.
+- PostgreSQL connection pool using pgxpool.
 - Health and database-readiness endpoints.
 - HTTP server timeouts and graceful shutdown handling.
-- Initial `schools` database migration.
-- Initial `users` and `refresh_sessions` migration.
+- Versioned database migrations for `schools`, `users` and `refresh_sessions`.
 - User and school repository operations.
-- bcrypt password hashing and verification.
-- Initial authentication service operations.
-- Unit tests for password handling and authentication service behavior.
+- bcrypt password hashing and verification, including password-length validation.
+- Authentication service operations for user creation and credential verification.
+- JWT access-token generation and validation.
+- JWT issuer, expiry and required-claim validation.
+- `POST /auth/login` endpoint.
+- Generic unauthorized responses for invalid login credentials.
+- Login response DTO that excludes password hashes.
+- Development-only seed command with environment safeguards.
+- Unit tests for configuration, password handling, authentication services, token services and login handlers.
+
+### Existing Authentication Endpoint
+
+`POST /auth/login`
+
+The endpoint accepts a school ID, username and password. On successful authentication, it returns an access token and basic user information. Invalid credentials return an unauthorized response.
+
+See `docs/API.md` for the documented request and response contract.
 
 ### Verification
 
-The following commands completed successfully in the backend directory:
+The following commands have previously completed successfully in the backend directory:
 
 ```cmd
 go test -count=1 ./...
 go vet ./...
 ```
 
-The local database migrations through version 2 were applied and the relevant tables were verified.
+The local database migrations through version 2 were applied, and the relevant tables were verified.
+
+Run these checks again after subsequent code or documentation changes when appropriate. A previous successful test run does not guarantee the current working tree passes.
 
 ### Not Yet Implemented
 
-- JWT access and refresh token issuance and validation.
-- HTTP login, registration and logout endpoints.
-- Refresh-token rotation and session revocation workflows in this project.
-- Role-based access control (RBAC).
-- School-level tenant authorization and isolation tests.
+- Refresh-token issuance, rotation and complete session lifecycle endpoints.
+- Logout endpoint and complete HTTP-level session revocation workflow.
+- Authentication middleware for protected routes.
+- Protected `/auth/me` endpoint.
+- User roles and role-based access control (RBAC).
+- School-level tenant authorization middleware and isolation tests.
+- Public registration and production onboarding workflows.
 - Student, teacher, class, subject and attendance APIs.
-- React frontend and dashboards.
+- React frontend, dashboards and parent-facing interfaces.
 - Production deployment, monitoring, backup and recovery procedures.
+- Comprehensive integration, migration and load testing.
 
-Passing the current tests does not mean the application is production-ready.
+**Important:** This project is under active development and is not production-ready. Authentication components have been implemented incrementally; they have not yet been validated as a complete production authentication and authorization system.
 
 ## Documentation
 
 - `PROGRESS.md` — implementation progress and next steps.
 - `docs/REQUIREMENTS.md` — product requirements.
-- `docs/ARCHITECTURE.md` — architecture and boundaries.
+- `docs/ARCHITECTURE.md` — architecture and component boundaries.
 - `docs/DATABASE.md` — schema and migration decisions.
 - `docs/API.md` — API conventions and implemented endpoints.
 - `docs/SECURITY.md` — security requirements and implementation status.
 - `docs/TESTING.md` — testing strategy and verification.
-- `docs/HANDOFF.md` — source of truth for continuing work in a new chat.
+- `docs/HANDOFF.md` — handoff instructions and source of truth for continuing work in a new chat.
 - `CHANGELOG.md` — milestone history.
 
 ## Development
@@ -98,4 +118,8 @@ Run database migrations from the same directory:
 go run ./cmd/migrate
 ```
 
-Keep local environment files and credentials out of Git. Review migration changes carefully before applying them to any production database.
+Run the API server using the project's configured development workflow.
+
+Keep local environment files and credentials out of Git. Never share secrets in chat or commit them to the repository.
+
+Review migration changes carefully before applying them to any production database. Use a separate, backed-up database for production migration testing.

@@ -23,10 +23,14 @@ These figures are planning targets, not verified capacity or load-test results.
 | Database | PostgreSQL | Implemented locally |
 | Database connectivity | pgx connection pool | Implemented |
 | Database migrations | Go migration command and SQL migration files | Implemented |
-| Authentication | Password hashing and internal authentication service | Initial foundation implemented |
-| JWT authentication | Access-token and refresh-token HTTP flow | Pending |
+| Password security | bcrypt password hashing and verification | Implemented |
+| Authentication service | User creation and credential authentication | Implemented |
+| JWT access tokens | Access-token generation and validation service | Implemented and tested |
+| Login API | `POST /auth/login` | Implemented and manually tested |
+| Refresh-token HTTP flow | Refresh-token issuance, rotation, and revocation | Pending |
+| Authentication middleware | Protected-route authentication | Pending |
 | Authorization | Role-based access control (RBAC) | Pending |
-| Testing | Go tests and Go vet | Initial tests implemented |
+| Testing | Go unit tests and Go vet | Initial tests implemented |
 
 ## 3. High-Level Architecture
 
@@ -36,13 +40,17 @@ The planned system uses a React frontend, a Go/Gin API, and PostgreSQL.
 flowchart TD
     U[School Users] --> F[React Frontend]
     F --> A[Go API - Gin]
-    A --> S[Service Layer]
+    A --> H[Health and Readiness]
+    A --> M[Authentication Handler]
+    M --> S[Service Layer]
     S --> R[Repository Layer]
     R --> D[(PostgreSQL)]
-    A --> H[Health and Readiness]
+    A -. Future protected routes .-> MW[Authentication Middleware]
+    MW -. Future authorization checks .-> RBAC[RBAC and Tenant Isolation]
+    RBAC -.-> S
 ```
 
-This is a logical architecture diagram. It does not imply that all future layers and business modules are already implemented.
+This is a logical architecture diagram. It distinguishes implemented foundations from planned protected-route authorization. The complete frontend and all future business modules are not yet implemented.
 
 ## 4. Architectural Style
 
@@ -78,6 +86,7 @@ Responsibilities include:
 - Configuring HTTP server timeouts.
 - Handling graceful shutdown.
 - Exposing health and readiness checks.
+- Registering the implemented login endpoint.
 
 ### Configuration layer
 
@@ -85,7 +94,9 @@ Location: `backend/internal/config/`
 
 Responsibilities include loading and validating application configuration.
 
-Secrets and environment-specific values must not be hardcoded in source code.
+The current configuration includes the application environment and port, JWT issuer, JWT expiry settings, and JWT secret validation.
+
+Secrets and environment-specific values must not be hardcoded in source code. Local secrets must remain outside version control.
 
 ### Database layer
 
@@ -109,13 +120,23 @@ Responsibilities include database queries and persistence operations.
 
 Repositories should use parameterized SQL queries and return errors that the service layer can handle safely.
 
+### Handler layer
+
+Location: `backend/internal/handlers/`
+
+Responsibilities include HTTP request parsing, request validation, calling the appropriate service, and returning HTTP responses.
+
+The current authentication handler implements `POST /auth/login`. Successful responses return an access token and a limited user DTO rather than exposing the password hash.
+
 ### Service layer
 
 Location: `backend/internal/services/`
 
 Responsibilities include business rules and coordination between repositories.
 
-The initial authentication service contains user-creation and credential-authentication logic. It is not yet a complete HTTP authentication system.
+The authentication service contains user-creation and credential-authentication logic, including school and user status checks.
+
+The token service generates and validates JWT access tokens. These services provide an initial authentication foundation, not a complete production authentication and authorization system.
 
 ### Migrations
 
@@ -125,20 +146,42 @@ Responsibilities include versioned database schema changes.
 
 The migration command is located at `backend/cmd/migrate/`.
 
+Current migrations establish the initial schools, users, and refresh-session schema. Consult `DATABASE.md` for the exact schema and migration history.
+
+### Development seed command
+
+Location: `backend/cmd/devseed/`
+
+A development-only command creates or prepares a test school user for local development. It is guarded by the development environment and uses environment-provided credentials.
+
+It must not be treated as a production user-provisioning mechanism. Its environment guard and deployment separation must be reviewed before production deployment.
+
 ## 6. Request Flow
 
-The intended flow for a business request is:
+### Current login flow
 
-1. The client sends an HTTP request.
+1. The client sends `POST /auth/login` with `school_id`, `username`, and `password`.
+2. Gin routes the request to the authentication handler.
+3. The handler validates the request structure.
+4. The authentication service verifies the school, user status, and password.
+5. The token service generates an access token.
+6. The handler returns the token, token type, and limited user information.
+7. Invalid credentials return a generic unauthorized response; malformed requests return a client error.
+
+The current login endpoint and its supporting authentication and token services have been implemented and tested. This does not establish that every authentication-related security requirement has been completed.
+
+### Intended protected business-request flow
+
+1. The client sends an HTTP request with its access token.
 2. Gin matches the request to a route.
-3. Authentication middleware validates the user's identity when the route is protected.
+3. Authentication middleware validates the token and establishes the trusted identity context.
 4. Authorization checks whether the user may perform the requested operation.
-5. The service layer applies business rules.
-6. The repository executes the required database operations.
-7. The result returns through the service and HTTP layers.
+5. Tenant-isolation checks ensure that the operation is limited to the authorized school.
+6. The service layer applies business rules.
+7. The repository executes the required database operations.
 8. The API sends an appropriate status code and response.
 
-Steps involving authentication middleware, RBAC, and business endpoints are part of the planned architecture and are not all implemented yet.
+Authentication middleware, RBAC, tenant-isolation enforcement, and protected business endpoints remain pending implementation.
 
 ## 7. Multi-School Architecture
 
@@ -159,7 +202,7 @@ A `school_id` field or database foreign key alone does not guarantee tenant isol
 - Related records must be checked for school ownership.
 - Automated tests must verify that users cannot read or modify another school's data.
 
-Tenant-isolation enforcement remains a required future implementation task.
+Tenant-isolation enforcement remains a required future implementation task. The current login request includes a school identifier for credential authentication; that identifier must not be treated as sufficient authorization for subsequent school-owned operations.
 
 ### Separate database per school
 
@@ -193,19 +236,25 @@ The exact schema and migration history are documented in `DATABASE.md`.
 
 The current authentication foundation includes:
 
-- A `users` table associated with a school.
+- A `schools` table and a `users` table associated with a school.
 - Password hashing and verification using bcrypt.
 - Service-level checks for school and user status.
-- A `refresh_sessions` table for future refresh-session handling.
+- JWT access-token generation and validation.
+- Application configuration for JWT issuer, expiry, and secret validation.
+- An implemented `POST /auth/login` endpoint.
+- A `refresh_sessions` table intended for refresh-session management.
+- Unit tests for the token service and login handler.
 
 The following are not yet complete:
 
-- HTTP registration and login routes.
-- JWT issuance and validation.
-- Refresh-token rotation and revocation flows.
-- Authentication middleware.
-- RBAC enforcement.
+- A public or administrative user-registration HTTP workflow.
+- A complete refresh-token HTTP flow, including issuance, rotation, and revocation.
+- Logout and access-token revocation endpoints.
+- Authentication middleware for protected routes.
+- A protected current-user endpoint such as `GET /auth/me`.
+- RBAC and role enforcement.
 - Complete tenant-isolation enforcement.
+- Comprehensive security and integration testing.
 
 These features must be implemented and tested before the system can be considered ready for real school users.
 
@@ -230,7 +279,7 @@ Fee and payment functionality is outside the initial implementation scope unless
 
 ## 11. Reliability and Performance
 
-The application currently has an initial HTTP server and PostgreSQL connection foundation.
+The application currently has an initial HTTP server, PostgreSQL connection foundation, health and readiness endpoints, and initial authentication functionality.
 
 Future production work should include:
 
@@ -240,7 +289,8 @@ Future production work should include:
 - Request timeouts and graceful shutdown.
 - Monitoring of errors, latency, database connections, and resource usage.
 - Backup and restoration testing.
-- Integration tests and load tests using realistic school data.
+- Integration tests and migration tests.
+- Load tests using realistic school data and representative workloads.
 
 No fixed concurrency or performance capacity should be claimed without reproducible load-test results.
 
@@ -257,6 +307,8 @@ The intended production topology is:
 - Monitoring, backups, and an operational recovery procedure.
 
 The production deployment environment has not yet been finalized.
+
+The development seed command must be excluded from production workflows or otherwise made unavailable to production deployments.
 
 ## 13. Architecture Decision Principles
 

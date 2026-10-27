@@ -21,7 +21,7 @@ func (f fakeDatabase) Ping(ctx context.Context) error {
 func TestHealthEndpoint(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	router, err := setupRouter(fakeDatabase{})
+	router, err := setupRouter(fakeDatabase{}, nil)
 	if err != nil {
 		t.Fatalf("failed to setup router: %v", err)
 	}
@@ -55,7 +55,7 @@ func TestHealthEndpoint(t *testing.T) {
 func TestReadyEndpointWhenDatabaseIsAvailable(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	router, err := setupRouter(fakeDatabase{})
+	router, err := setupRouter(fakeDatabase{}, nil)
 	if err != nil {
 		t.Fatalf("failed to setup router: %v", err)
 	}
@@ -84,7 +84,8 @@ func TestReadyEndpointWhenDatabaseFails(t *testing.T) {
 
 	router, err := setupRouter(fakeDatabase{
 		err: errors.New("database unavailable"),
-	})
+	}, nil)
+
 	if err != nil {
 		t.Fatalf("failed to setup router: %v", err)
 	}
