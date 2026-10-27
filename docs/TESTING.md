@@ -1,174 +1,293 @@
-
-# Testing Strategy
+# Testing Documentation
 
 ## 1. Purpose
 
-Testing helps ensure the School Management System is correct, secure, reliable and maintainable.
+This document describes the testing strategy for the School Management System.
 
-Every feature must be tested before it is considered complete.
+Testing must verify application correctness, security, database behavior, and reliability as the system grows.
 
-## 2. Types of Testing
+The project is in its initial development stage. Tests documented as future requirements must not be treated as completed tests.
 
-### Unit Tests
+## 2. Current Testing Status
 
-- Test individual functions and business rules.
-- Cover validation, calculations and permission decisions.
-- Keep tests independent wherever practical.
+The initial backend has automated Go tests for selected packages.
 
-### Integration Tests
-
-- Test interactions between the API, PostgreSQL and other components.
-- Verify database constraints and transaction behavior.
-- Test migrations against a test database.
-
-### API Tests
-
-- Test successful requests and invalid requests.
-- Verify HTTP status codes and response formats.
-- Test missing, malformed, expired and revoked authentication tokens.
-- Verify validation and error handling.
-
-### Authorization Tests
-
-- Verify that each role can perform only permitted actions.
-- Test that users cannot access another school's records.
-- Test that teachers are restricted to assigned classes and subjects.
-- Test that parents can access only their verified linked children.
-- Test suspended-school access restrictions.
-
-### Frontend Tests
-
-- Test important React components and user interactions.
-- Verify loading, success, empty and error states.
-- Check form validation and protected navigation.
-- Never treat frontend restrictions as a substitute for backend authorization.
-
-### End-to-End Tests
-
-- Test important user workflows across the frontend, backend and database.
-- Add these tests incrementally as complete modules become available.
-
-## 3. Go Backend
-
-- Use Go's standard `testing` package.
-- Run `go test ./...` regularly.
-- Use table-driven tests where they improve clarity.
-- Keep tests repeatable and independent of production data.
-- Run tests after meaningful changes.
-
-## 4. PostgreSQL Testing
-
-- Use a separate test database.
-- Never run automated tests against production data.
-- Verify migrations on a clean database.
-- Test primary keys, foreign keys, unique constraints and required fields.
-- Test rollback behavior for failed transactions.
-- Clean up test data safely.
-
-## 5. React Frontend Testing
-
-- Use a suitable React testing library.
-- Test important components and form behavior.
-- Test API loading, success and failure states.
-- Check that users cannot access restricted pages through ordinary navigation.
-- Verify usability at common desktop and mobile screen sizes.
-
-## 6. Security Test Cases
-
-At minimum, verify:
-
-- Invalid credentials and login lockout.
-- MFA verification and recovery.
-- Access-token expiry and revocation.
-- Refresh-token rotation and reuse prevention.
-- Logout and session invalidation.
-- Role and permission enforcement.
-- Cross-school data isolation.
-- Parent-child relationship restrictions.
-- Invitation expiry and reuse prevention.
-- Suspended-school restrictions.
-- Input validation and rate limiting.
-
-## 7. Performance Testing
-
-- Establish realistic expected workloads before production.
-- Test concurrent requests and common database queries.
-- Measure response times, error rates and resource usage.
-- Test pagination and large list endpoints.
-- Investigate slow queries and missing indexes.
-- Increase load gradually and document the results.
-
-The initial target is approximately 25–30 schools with 400–500 students per school. Actual capacity must be verified through testing rather than assumed.
-
-## 8. Test Data and Secrets
-
-- Use synthetic student, parent and staff data.
-- Never commit passwords, tokens, database credentials or production secrets.
-- Keep local test configuration separate from production configuration.
-- Ensure test reports do not expose sensitive information.
-
-## 9. Definition of Done
-
-A feature is complete only when:
-
-- Its expected behavior is implemented.
-- Relevant validation and authorization are enforced on the backend.
-- Appropriate automated tests pass.
-- Database changes use version-controlled migrations.
-- Documentation is updated where necessary.
-- No secrets or real student data have been committed.
-
-## 10. Current Status
-
-The testing strategy is documented. Automated API tests cover the health and readiness endpoints. Database configuration validation tests have also been added.
-
-The latest full-suite Go test run completed successfully without Windows temporary executable cleanup errors.
-
-Additional integration, security, frontend and end-to-end tests will be introduced incrementally.
-
-## 11. Implemented Automated Tests
-
-The following API tests are currently implemented in `backend/cmd/api/main_test.go`:
-
-### Health Endpoint
-
-- Verify that `GET /health` returns HTTP `200 OK`.
-- Verify the JSON content type.
-- Verify the expected JSON response body.
-
-### Readiness Endpoint
-
-- Verify that `GET /ready` returns HTTP `200 OK` when the database ping succeeds.
-- Verify that `GET /ready` returns HTTP `503 Service Unavailable` when the database ping fails.
-- Verify the expected JSON response bodies for both scenarios.
-
-### Test Implementation
-
-- Tests use Go's standard `testing` package.
-- HTTP requests are tested using `net/http/httptest`.
-- A fake database implementation simulates successful and failed database pings.
-- API tests do not require a live PostgreSQL connection for these scenarios.
-
-### Current Verification
-
-Run the following command from the `backend` directory:
+Previously verified commands:
 
 ```bash
-go test ./...
+go test -count=1 ./...
+go vet ./...
 ```
 
-The configuration and API test packages have passed, and the latest full-suite test run completed successfully without Windows temporary executable cleanup errors.
+The test suite passed at the time of the last recorded verification.
 
-A successful test run does not replace dedicated integration testing for PostgreSQL connections, migrations, or TLS certificate verification.
+The current test coverage is not a guarantee that all application behavior is tested. Authentication HTTP endpoints, RBAC, tenant isolation, and most school business modules are not yet implemented.
 
-### Remaining Test Coverage
+Run the commands again after code or dependency changes before treating the current code as verified.
 
-The following areas still require dedicated tests:
+## 3. Testing Principles
 
-- PostgreSQL connection failures and connection-pool behavior.
-- Database migrations against a clean test database and rollback behavior.
-- HTTP server shutdown behavior and request timeouts.
-- API error handling and edge cases.
-- Authentication, authorization, and school-level tenant isolation when implemented.
-- Frontend components and end-to-end workflows when implemented.
-- Production TLS connectivity and certificate verification.
+- Test observable behavior rather than implementation details alone.
+- Cover successful operations and expected failures.
+- Test security boundaries explicitly.
+- Keep tests repeatable and independent where practical.
+- Use isolated test data and avoid depending on production data.
+- Test database constraints as well as application-level validation.
+- Do not claim production readiness based only on unit-test success.
+- Add regression tests when fixing a bug.
+
+## 4. Test Categories
+
+### 4.1 Unit tests
+
+Unit tests verify individual functions and business rules without requiring a complete running application.
+
+Current examples include password-service tests and authentication-service tests using fake repositories.
+
+Future unit tests should cover:
+
+- Input validation.
+- User and school status rules.
+- Authorization decisions.
+- Business rules for attendance and other modules.
+- Error handling.
+- Edge cases and boundary values.
+
+### 4.2 Repository and database integration tests
+
+Integration tests verify behavior against an actual PostgreSQL database.
+
+They should cover:
+
+- Successful inserts, reads, updates, and deletes.
+- Foreign-key constraints.
+- Unique constraints and duplicate records.
+- Transaction rollback.
+- Query filtering and pagination.
+- Database errors.
+- Migration behavior.
+
+Tests that require PostgreSQL should use a dedicated test database or isolated test schema. They must not modify production data.
+
+A dedicated automated PostgreSQL integration-test setup remains future work unless separately verified.
+
+### 4.3 HTTP integration tests
+
+HTTP integration tests should exercise the Gin router and verify:
+
+- HTTP status codes.
+- Response bodies and content types.
+- Request validation.
+- Error responses.
+- Health and readiness behavior.
+- Authentication and authorization when those routes are implemented.
+
+### 4.4 Security tests
+
+Security tests must verify that unauthorized access is denied and sensitive data is not exposed.
+
+The security test plan is detailed in `SECURITY.md`.
+
+### 4.5 Load and performance tests
+
+Load tests should use realistic request patterns and representative data volumes.
+
+Measure:
+
+- Request throughput.
+- Response latency, including p95 and p99.
+- Error rate.
+- CPU and memory usage.
+- PostgreSQL connection usage.
+- Slow queries and lock contention.
+
+The target of 25–30 schools and approximately 10,000–15,000 students is a planning target. No concurrency or capacity guarantee should be made without reproducible load-test results.
+
+## 5. Running Backend Tests
+
+Run commands from the backend directory:
+
+```bash
+cd D:\school-management-system\backend
+```
+
+Run all Go tests:
+
+```bash
+go test -count=1 ./...
+```
+
+The `-count=1` flag disables reuse of cached test results for this run.
+
+Run static analysis:
+
+```bash
+go vet ./...
+```
+
+Format Go source files when necessary:
+
+```bash
+gofmt -w cmd internal
+```
+
+Review formatting changes before committing them.
+
+## 6. Current Test Areas
+
+The initial foundation includes tests for selected service behavior.
+
+### Password service
+
+Verify:
+
+- Valid passwords can be hashed.
+- Password verification succeeds for the matching password.
+- An incorrect password fails verification.
+- Passwords outside the supported byte-length range are rejected.
+- Whitespace-only passwords are rejected.
+- Hashing does not expose the original password.
+
+### Authentication service
+
+Verify:
+
+- A user can be created when the required school and account conditions are satisfied.
+- Inactive or suspended schools cannot authenticate users.
+- Disabled users cannot authenticate.
+- Invalid credentials are rejected.
+- Repository errors are handled safely.
+- Duplicate usernames are handled correctly by the repository/database boundary.
+
+The exact cases covered by the current test files should be checked against the actual source code.
+
+## 7. Health and Readiness Tests
+
+### Health endpoint
+
+`GET /health`
+
+Verify:
+
+- A successful response is returned while the API is running.
+- The status code and response body match the implementation.
+
+### Readiness endpoint
+
+`GET /ready`
+
+Verify:
+
+- The endpoint succeeds when the database is available.
+- The endpoint returns the intended unavailable status when the database check fails.
+- Database failure information is not exposed inappropriately.
+
+Re-run these tests whenever server initialization or database connection handling changes.
+
+## 8. Future Authentication and Authorization Tests
+
+Once the HTTP authentication flow is implemented, test:
+
+- Registration validation.
+- Login with valid and invalid credentials.
+- Access-token signature and expiry validation.
+- Refresh-token rotation.
+- Reuse of an old refresh token.
+- Refresh-token revocation after logout.
+- Disabled-user behavior.
+- Missing or malformed authorization headers.
+- Invalid token type and claims.
+- Concurrent refresh requests.
+- Rate limiting for repeated failed login attempts.
+
+Once RBAC is implemented, test that every role can perform only its authorized operations.
+
+These are required future tests, not evidence that the corresponding functionality currently exists.
+
+## 9. Multi-Tenant Isolation Tests
+
+Cross-school data leakage is a critical risk for this product.
+
+Create test data for at least two schools and verify:
+
+- A user from School A cannot read School B's records.
+- A user from School A cannot update or delete School B's records.
+- List endpoints return only authorized school records.
+- Related-record lookups cannot bypass school restrictions.
+- Client-supplied school identifiers cannot override the authenticated school context.
+- Administrative operations enforce the intended scope.
+
+Repeat these checks for every school-owned module as it is introduced.
+
+## 10. Database Migration Tests
+
+For each migration:
+
+1. Apply it to a clean test database.
+2. Verify that the expected tables, constraints, and indexes exist.
+3. Verify that the application can use the resulting schema.
+4. Test rollback behavior where the down migration is safe and supported.
+5. Test the migration against a database with the expected previous schema.
+6. Check how failures are reported and recovered from.
+
+Do not test destructive rollback procedures against production data.
+
+## 11. Test Data and Environment
+
+- Keep test credentials separate from development and production credentials.
+- Never commit secrets to test configuration.
+- Use deterministic test fixtures where practical.
+- Clean up test data safely.
+- Avoid tests that depend on execution order.
+- Use a dedicated database for tests that perform writes.
+- Ensure tests do not accidentally connect to production.
+
+## 12. Before Committing Changes
+
+From the backend directory:
+
+```bash
+go test -count=1 ./...
+go vet ./...
+```
+
+From the repository root:
+
+```bash
+git diff --check
+git status --short
+```
+
+Inspect the changed files and verify that no secrets, generated binaries, or unintended files are included.
+
+For changes involving database migrations, run the relevant migration and database tests as well.
+
+## 13. Before Production Release
+
+The release checklist should include:
+
+- [ ] All Go tests pass.
+- [ ] Static analysis passes.
+- [ ] Relevant database integration tests pass.
+- [ ] HTTP integration tests pass.
+- [ ] Authentication and authorization tests pass.
+- [ ] Cross-school isolation tests pass.
+- [ ] Database migrations have been tested.
+- [ ] Dependency and vulnerability checks have been run.
+- [ ] Load tests have been run for the expected workload.
+- [ ] Backup restoration has been tested.
+- [ ] Monitoring and error reporting have been reviewed.
+
+A checked item must be supported by an actual verification result.
+
+## 14. Maintenance
+
+Whenever a bug is fixed or functionality changes:
+
+1. Add or update the relevant tests.
+2. Run the affected tests.
+3. Run the full backend test suite when appropriate.
+4. Update `PROGRESS.md` with verified results.
+5. Update this document if the testing process or test coverage changes.
+
+Keep testing evidence separate from planned work.

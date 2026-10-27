@@ -2,115 +2,118 @@
 
 ## Current Stage
 
-Backend foundation implemented and verified. The API has health and database readiness endpoints, HTTP server timeouts, graceful shutdown handling, and automated API tests. Production hardening, expanded test coverage, authentication/RBAC, tenant authorization, and frontend implementation remain pending.
+Backend foundation and initial authentication foundation implemented. The API includes health/readiness endpoints, PostgreSQL connectivity, HTTP server timeouts and graceful shutdown. Initial school and authentication-related database migrations have been applied locally.
+
+JWT authentication flows, HTTP auth endpoints, RBAC, tenant authorization, database integration tests and frontend implementation remain pending.
 
 ## Project Overview
 
-- Product: Commercial multi-tenant School Management System
-- Initial target: 25–30 schools, approximately 400–500 students per school
-- Frontend: React + TypeScript + Vite
-- Backend: Go + Gin
-- Database: PostgreSQL
-- Architecture: Modular monolith with a shared database and shared schema initially
-- Tenant isolation: School-level data isolation enforced by the backend
-- Repository: `https://github.com/TheSumitNain/school-management-system`
-- Main branch: `main`
+- **Product:** Commercial multi-tenant School Management System
+- **Initial target:** 25–30 schools, approximately 400–500 students per school
+- **Frontend:** React + TypeScript + Vite
+- **Backend:** Go + Gin
+- **Database:** PostgreSQL
+- **Architecture:** Modular monolith with a shared database and shared schema initially
+- **Repository:** https://github.com/TheSumitNain/school-management-system
+- **Branch:** `main`
 
 ## Completed
 
 ### Planning and Documentation
 
 - [x] Initial product requirements documented
-- [x] System architecture documented
-- [x] Database design principles documented
-- [x] API conventions documented
-- [x] Security requirements documented
-- [x] Testing strategy documented
-- [x] Project handoff document created at `docs/HANDOFF.md`
-
-### Development Environment and Git
-
-- [x] Go, Git, Node.js/npm, and PostgreSQL tools checked
-- [x] Project repository created and connected to GitHub
-- [x] `.gitignore` configured to exclude local environment secrets
-- [x] Initial documentation committed and pushed
+- [x] Architecture and database principles documented
+- [x] API and security requirements documented
+- [x] Testing strategy and handoff documentation created
 
 ### Backend Foundation
 
-- [x] Go module initialized
-- [x] Gin backend scaffold created
-- [x] Environment configuration implemented
-- [x] Database SSL mode configuration and production-mode validation implemented
-- [x] PostgreSQL connection pool configured using pgx
-- [x] Database connection and ping verified
-- [x] `GET /health` endpoint implemented
-- [x] `GET /ready` endpoint implemented with a database readiness check
-- [x] HTTP server read, write, header, and idle timeouts configured
-- [x] Graceful shutdown handling implemented
+- [x] Go module and Gin API scaffold
+- [x] Environment configuration
+- [x] PostgreSQL connection pool using pgx
+- [x] Database connectivity and readiness check
+- [x] `GET /health`
+- [x] `GET /ready`
+- [x] HTTP server timeouts
+- [x] Graceful shutdown handling
 - [x] Gin trusted proxies explicitly configured
-- [x] API server configured to use port `8081` by default
+- [x] Configurable application port, defaulting to `8081`
 
 ### Database and Migrations
 
-- [x] `school_management` PostgreSQL database created and connected
-- [x] `golang-migrate` migration tooling configured
-- [x] First migration created for the `schools` table
-- [x] Migration executed successfully
-- [x] `schools` table schema verified
-- [x] Migration version verified as `1`, with `dirty = false`
-- [x] Migration rollback file created
+- [x] `school_management` database created and connected locally
+- [x] Migration tooling configured
+- [x] Migration v1 creates the `schools` table
+- [x] Migration v2 creates `users` and `refresh_sessions`
+- [x] Migration runner executed successfully for migration v2
+- [x] Relevant database tables verified locally
 
-### Automated Testing and Verification
+**Migration safety:** The local migration state must be rechecked before deployment. Down migrations can delete data and must not be run casually in production.
 
-- [x] Health endpoint tested for status code, content type, and response body
-- [x] Readiness endpoint tested when the database is available
-- [x] Readiness endpoint tested when the database reports an error
-- [x] `go test ./...` passes for all current Go packages
-- [x] API manually verified on port `8081`
-- [x] Graceful shutdown manually verified
-- [x] Database configuration validation tests added
-- [x] Full-suite Go tests passed without Windows temporary executable cleanup errors
-- [ ] PostgreSQL TLS connection and certificate verification tested
+### Initial Authentication Foundation
 
-**Testing note:** Health and readiness endpoints have automated API coverage, and database configuration validation tests have been added. The latest full-suite Go test run and `go vet ./...` completed successfully. Database integration, migration testing, authentication, authorization, tenant isolation, and frontend workflows still require verification or implementation.
+- [x] User model created
+- [x] bcrypt password hashing and verification implemented
+- [x] Password service tests added
+- [x] User repository operations implemented
+- [x] School repository lookup implemented
+- [x] Initial authentication service implemented
+- [x] Authentication service unit tests added
 
-## Not Yet Implemented
+The current authentication service supports internal user creation for an active school and credential verification. These operations are not yet exposed through HTTP authentication endpoints.
 
-- [ ] Verify PostgreSQL TLS connectivity and certificate validation in the target production environment
-- [ ] Complete production configuration hardening and database connection-pool tuning
-- [ ] Database connection-pool limits and operational tuning
-- [ ] More comprehensive automated unit and integration tests
-- [ ] Automated migration tests against a clean test database
-- [ ] Complete database schema and remaining migrations
-- [ ] Authentication and session management
-- [ ] Role-based access control (RBAC)
-- [ ] School-level tenant authorization
-- [ ] School, user, student, class, subject, and teacher APIs
-- [ ] React + TypeScript frontend
-- [ ] Frontend/backend integration
-- [ ] CI pipeline and deployment configuration
-- [ ] Production monitoring, backups, and operational procedures
-- [ ] Production load and security testing
+### Verification
+
+- [x] API health/readiness tests
+- [x] Password service tests
+- [x] Authentication service tests
+- [x] `go test -count=1 ./...` completed successfully
+- [x] `go vet ./...` completed successfully
+- [x] `git diff --check` completed without reported issues during the current documentation workflow
+
+## In Progress
+
+- [ ] Synchronize all documentation with the actual implementation
+- [ ] Review all untracked files and changes before staging
+- [ ] Review security and production configuration gaps
+- [ ] Prepare a verified documentation and Auth-foundation commit
+
+## Not Yet Implemented or Verified
+
+- [ ] JWT access-token issuance and validation
+- [ ] Refresh-token issuance, rotation and revocation in this project
+- [ ] HTTP login, registration, refresh and logout endpoints
+- [ ] Authentication middleware
+- [ ] RBAC and permission enforcement
+- [ ] School-level tenant authorization and isolation tests
+- [ ] PostgreSQL repository integration tests
+- [ ] Migration tests against a dedicated clean test database
+- [ ] Production TLS/certificate verification
+- [ ] Production connection-pool tuning
+- [ ] Complete database schema
+- [ ] Student, teacher, class, subject and attendance APIs
+- [ ] React frontend and backend integration
+- [ ] CI/CD and deployment configuration
+- [ ] Production monitoring, backups, recovery and security/load testing
 
 ## Next Steps
 
-1. Verify PostgreSQL TLS connectivity and certificate validation in the target environment.
-2. Improve shutdown error handling and production database configuration.
-3. Expand automated tests for configuration, database behavior, and API edge cases.
-4. Finalize the database model before adding more migrations.
-5. Implement authentication, then RBAC and tenant isolation.
-6. Build core school-management APIs incrementally.
-7. Build and integrate the React frontend.
-8. Add CI, deployment, monitoring, backup, recovery, and security procedures before production release.
+1. Synchronize README, progress, architecture, database, API, security, testing and handoff documentation.
+2. Format and review the Go source files.
+3. Run `go test -count=1 ./...` and `go vet ./...`.
+4. Verify migrations, Git status, whitespace checks and secret exclusion.
+5. Stage and review the intended files before committing.
+6. Push the verified milestone to `origin/main`.
+7. Continue with JWT authentication flows, then RBAC and tenant authorization.
+8. Add database integration tests and production hardening before release.
 
 ## Working Rules
 
-- Complete one small task at a time.
-- Explain code step by step; do not skip important reasoning.
-- Test each implementation before marking it complete.
-- Update this file and relevant documentation when progress changes.
-- Never commit `.env` files, passwords, signing secrets, or real student data.
-- Enforce role permissions and school-level authorization on the backend.
-- Use database constraints and transactions where appropriate.
-- Never run destructive migrations against production without an approved backup and recovery plan.
-- Keep `docs/HANDOFF.md` updated with important implementation details and the exact next step for future sessions.
+- Work on one small task at a time.
+- Explain code in Hindi/Hinglish, step by step.
+- Do not mark a feature complete until its implementation and relevant tests have been verified.
+- Keep this file and `docs/HANDOFF.md` updated at meaningful milestones.
+- Never commit `.env` files, passwords, signing secrets or real student data.
+- Never trust client-provided identifiers for authorization.
+- Do not run destructive production migrations without an approved backup and recovery plan.
+- Do not claim production readiness until security, testing, deployment, monitoring and recovery requirements have been addressed.

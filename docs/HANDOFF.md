@@ -1,37 +1,38 @@
 # School Management System — Project Handoff
 
-> **Purpose:** This file is the source-of-truth handoff for continuing work in a new ChatGPT conversation. Update it at every meaningful milestone and keep it committed to the private GitHub repository.
+> **Purpose:** This is the source-of-truth handoff for continuing the project in a new ChatGPT conversation. Update it after meaningful milestones and keep it committed to the GitHub repository.
 
-## 1. Project at a glance
+## 1. Project Overview
 
-- **Product:** Commercial, multi-tenant School Management System.
+- **Product:** Commercial multi-tenant School Management System.
 - **Initial target:** 25–30 schools, approximately 400–500 students per school (roughly 10,000–15,000 students).
 - **Frontend:** React + TypeScript + Vite.
 - **Backend:** Go + Gin.
 - **Database:** PostgreSQL.
-- **Initial architecture:** Modular monolith; do not introduce microservices without a clear need.
+- **Initial architecture:** Modular monolith with a shared database and shared schema.
 - **Initial payment scope:** Fee/payment gateway excluded for now.
-- **Later/future scope:** Native parent app, live bus tracking, advanced AI/analytics and additional roles/features.
-- **User's working style:** Explain in Hindi/Hinglish, friendly tone, one small task at a time. Give exact commands/code, explain the reason, then wait for the user to run it and share the result before moving on. Avoid large multi-step instructions.
+- **Future scope:** Parent mobile app, live bus tracking, advanced AI/analytics and additional roles/features.
+- **Working style:** Explain in Hindi/Hinglish, use a friendly tone, work on one small task at a time, provide exact commands/code and wait for the user's result before proceeding.
 
-## 2. Repository and local environment
+These student and school counts are planning targets, not verified capacity limits.
+
+## 2. Repository and Local Environment
 
 - **Local project root:** `D:\school-management-system`
-- **GitHub repository:** `https://github.com/TheSumitNain/school-management-system`
+- **GitHub repository:** https://github.com/TheSumitNain/school-management-system
 - **Branch:** `main`
-- **Last known commit:** `33905bc` — `docs: document initial database migration` (current GitHub HEAD must be verified before the next commit).
-- **Current working tree:** Modified: `PROGRESS.md`, `README.md`, `backend/cmd/api/main.go`, `docs/API.md`, `docs/ARCHITECTURE.md`, `docs/DATABASE.md`, `docs/HANDOFF.md`, `docs/REQUIREMENTS.md`, `docs/SECURITY.md`, and `docs/TESTING.md`. Untracked: `backend/cmd/api/main_test.go`. Changes are not yet committed. Verify the latest test results and Git remote state before committing or pushing.
-- **Environment:** Windows CMD / VS Code.
-- **Known tools:** Go, Git, Node.js/npm, and PostgreSQL.
+- **Environment:** Windows CMD and VS Code.
 - **Backend directory:** `D:\school-management-system\backend`
-- **Backend server port:** `8081` by default; port `8080` was occupied.
+- **Default API port:** `8081`
 - **Health endpoint:** `http://localhost:8081/health`
 - **Readiness endpoint:** `http://localhost:8081/ready`
-- **Health and readiness:** Both endpoints have been manually verified. Automated tests cover their successful and database-failure behavior.
+- **Database:** `school_management`
 
-Never commit `.env` files, passwords, signing secrets, or real student data. Never ask the user to paste secret values into chat.
+The current Git status must be checked before committing. Do not assume the latest commit, remote state or working-tree state without verifying it.
 
-## 3. Current repository structure
+Never commit `.env` files, passwords, signing secrets or real student data. Never ask the user to paste secret values into chat.
+
+## 3. Current Repository Structure
 
 ```text
 D:\school-management-system
@@ -45,13 +46,25 @@ D:\school-management-system
 │   ├── internal
 │   │   ├── config
 │   │   │   └── config.go
-│   │   └── database
-│   │       └── connection.go
+│   │   ├── database
+│   │   │   └── connection.go
+│   │   ├── models
+│   │   │   └── user.go
+│   │   ├── repository
+│   │   │   ├── school_repository.go
+│   │   │   └── user_repository.go
+│   │   └── services
+│   │       ├── auth_service.go
+│   │       ├── auth_service_test.go
+│   │       ├── password.go
+│   │       └── password_test.go
 │   ├── migrations
 │   │   ├── 000001_create_schools_table.up.sql
-│   │   └── 000001_create_schools_table.down.sql
-│   ├── .env                 # local only; ignored by Git
-│   ├── .env.example         # tracked template; no real secrets
+│   │   ├── 000001_create_schools_table.down.sql
+│   │   ├── 000002_create_auth_tables.up.sql
+│   │   └── 000002_create_auth_tables.down.sql
+│   ├── .env
+│   ├── .env.example
 │   ├── go.mod
 │   └── go.sum
 ├── docs
@@ -64,381 +77,444 @@ D:\school-management-system
 │   └── TESTING.md
 ├── .gitignore
 ├── README.md
-└── PROGRESS.md
+├── PROGRESS.md
+└── CHANGELOG.md (to be created)
 ```
 
-`CHANGELOG.md` has not been created yet. Decide whether to add it when synchronizing the remaining documentation.
+This structure describes the expected files from the current implementation. Verify the actual filesystem before assuming every file is present.
 
+## 4. Backend Foundation
 
-A new `docs/HANDOFF.md` should be added from this handoff document and committed. Documentation sync is still a pending task.
+### 4.1 Configuration
 
-## 4. Current backend implementation
+File: `backend/internal/config/config.go`
 
-### `backend/internal/config/config.go`
+Previously implemented behavior:
 
-Previously verified behavior:
-
-- Loads `.env` using `godotenv.Load()` and allows environment variables to be supplied externally.
+- Loads `.env` using `godotenv.Load()` while allowing externally supplied environment variables.
 - Defaults `APP_ENV` to `development`.
 - Defaults `APP_PORT` to `8081`.
-- Loads `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_NAME`, and `DB_PASSWORD`.
+- Loads database host, port, username, database name and password.
 
-The `Config` struct contains:
-`AppEnv`, `AppPort`, `DBHost`, `DBPort`, `DBUser`, `DBName`, `DBPassword`.
+The current configuration implementation should be reviewed before making changes. Verify required values, production-specific settings and error handling.
 
-**Follow-up:** Recheck the current source before changing configuration behavior. Validate required values and production-specific settings, and ensure errors do not expose secrets.
+### 4.2 PostgreSQL Connection
 
-### `backend/internal/database/connection.go`
+File: `backend/internal/database/connection.go`
 
-Previously verified behavior:
+Implemented behavior includes:
 
-- Validates that the database host, port, user, name, and password are present.
-- Constructs a PostgreSQL connection URL using `url.UserPassword` and `net.JoinHostPort`.
-- Uses `sslmode=disable` for the local development setup.
-- Creates a `pgxpool.Pool`, pings PostgreSQL, and closes the pool if the initial ping fails.
-- Returns the pool after a successful connection.
+- Validates required database connection settings.
+- Builds a PostgreSQL connection URL safely.
+- Uses `pgxpool.Pool`.
+- Pings PostgreSQL during connection setup.
+- Closes the pool if the initial ping fails.
+- Uses `sslmode=disable` for the current local development setup.
 
-**Production follow-ups:**
+**Production warning:** `sslmode=disable` must not be treated as production-ready. Configure and verify TLS/certificate validation for the actual production environment. Connection-pool limits and operational timeouts also need review.
 
-- Configure TLS and an appropriate `sslmode`.
-- Validate the database port and other configuration values.
-- Configure connection-pool limits and suitable timeouts.
-- Verify production-specific configuration and error handling.
+### 4.3 API Server
 
-The current `sslmode=disable` setup must not be treated as production-ready.
+File: `backend/cmd/api/main.go`
 
-### `backend/cmd/api/main.go`
+Implemented behavior:
 
-Current implementation:
-
-- Loads configuration using `config.Load()`.
+- Loads configuration.
 - Enables Gin release mode when `APP_ENV == "production"`.
 - Connects to PostgreSQL with a 5-second context timeout.
-- Logs successful database connection.
-- Creates a Gin router using `gin.Default()`.
-- Calls `router.SetTrustedProxies(nil)` to avoid trusting forwarded client IP headers from arbitrary proxies.
-- Configures the HTTP server with:
-  - `ReadHeaderTimeout`: 5 seconds
-  - `ReadTimeout`: 15 seconds
-  - `WriteTimeout`: 30 seconds
-  - `IdleTimeout`: 60 seconds
+- Configures Gin trusted proxies explicitly.
+- Configures HTTP server timeouts:
+  - `ReadHeaderTimeout`: 5 seconds.
+  - `ReadTimeout`: 15 seconds.
+  - `WriteTimeout`: 30 seconds.
+  - `IdleTimeout`: 60 seconds.
 - Starts the API on the configured port, defaulting to `8081`.
+- Attempts graceful shutdown with a 10-second timeout.
 
 #### `GET /health`
 
-- Returns HTTP `200 OK` while the process can serve the request.
-- Returns JSON with status `success` and message `School Management System API is running`.
-- Does not check PostgreSQL availability.
+- Returns HTTP `200 OK` while the process can serve requests.
+- Returns JSON indicating API status.
+- Does not verify PostgreSQL availability.
 
 #### `GET /ready`
 
-- Creates a request-scoped context with a 2-second timeout.
-- Calls the database ping method.
-- Returns HTTP `200 OK` with status `success` when the database ping succeeds.
-- Returns HTTP `503 Service Unavailable` with status `error` when the database ping fails.
+- Pings the database using a request-scoped context with a 2-second timeout.
+- Returns HTTP `200 OK` when the database ping succeeds.
+- Returns HTTP `503 Service Unavailable` when the database ping fails.
 
-#### Shutdown behavior
+#### Remaining hardening
 
-- Listens for `os.Interrupt` and `SIGTERM`.
-- Attempts graceful HTTP server shutdown with a 10-second timeout.
-- Logs an error if graceful shutdown fails.
-- Closes the database pool through `defer` when `main` returns.
+- Explicitly handle graceful-shutdown timeout and force server closure if necessary.
+- Review startup/shutdown error handling and deferred resource cleanup.
+- Verify deployment-platform behavior before production release.
 
-**Remaining hardening:**
+### 4.4 API Tests
 
-- Handle shutdown timeout by explicitly forcing server closure if needed.
-- Avoid `log.Fatal` paths that bypass deferred cleanup when cleanup is required.
-- Review startup and shutdown behavior on supported deployment platforms.
-- Verify all configuration and database settings before production deployment.
+File: `backend/cmd/api/main_test.go`
 
-### `backend/cmd/api/main_test.go`
+Tests cover:
 
-Automated API tests currently cover:
+- `/health` status, content type and response body.
+- `/ready` when the database ping succeeds.
+- `/ready` when the database ping fails.
 
-- `/health`: HTTP status, JSON content type, and expected response body.
-- `/ready`: successful database ping and expected response.
-- `/ready`: failed database ping, HTTP `503`, and expected response.
+These tests use Go's testing package, `net/http/httptest` and a fake database pinger.
 
-The tests use Go's `testing` package, `net/http/httptest`, and a fake database pinger. These test cases do not require a live PostgreSQL connection.
+### 4.5 Migration Runner
 
-Run the tests from the `backend` directory:
+File: `backend/cmd/migrate/main.go`
 
-```cmd
-go test ./...
-```
+Previously implemented behavior:
 
-The latest reported run passed for all current Go packages. Configuration, database integration, migration, and shutdown behavior still need additional dedicated tests.
-
-### `backend/cmd/migrate/main.go`
-
-Previously verified behavior:
-
-- Loads the application configuration.
-- Builds a PostgreSQL connection URL.
-- Resolves the migration directory using `filepath.Abs("migrations")`.
-- Uses `golang-migrate` with a file source and PostgreSQL driver.
+- Loads application configuration.
+- Creates the PostgreSQL connection URL.
+- Uses `golang-migrate`.
 - Treats `migrate.ErrNoChange` as a successful outcome.
-- Logs `Database migrations completed successfully`.
+- Logs successful migration completion.
 
-Run the migration command from `D:\school-management-system\backend`:
-
-```cmd
-go run ./cmd/migrate
-```
-
-The migration directory is resolved relative to the current working directory. Running the command from another directory may fail to locate the migrations.
-
-**Follow-up:** Make path resolution independent of the current working directory and test migration behavior against a dedicated test database before relying on it in automated deployment.
-
-
-## 5. Database migration state
-
-PostgreSQL connection settings are stored locally in `backend/.env`. The database name is `school_management`; connection credentials must remain secret.
-
-Never ask the user to paste the database password into chat. Never put real credentials into `.env.example`, Git, documentation, shell commands, or commits.
-
-### Applied migration v1
-
-Files:
-
-- `backend/migrations/000001_create_schools_table.up.sql`
-- `backend/migrations/000001_create_schools_table.down.sql`
-
-The `up` migration creates the following table:
-
-```sql
-CREATE TABLE schools (
-    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    name VARCHAR(150) NOT NULL,
-    code VARCHAR(50) NOT NULL UNIQUE,
-    status VARCHAR(20) NOT NULL DEFAULT 'pending_setup'
-        CHECK (status IN ('pending_setup', 'active', 'suspended')),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-```
-
-The `down` migration is:
-
-```sql
-DROP TABLE IF EXISTS schools;
-```
-
-**Warning:** The down migration drops the table and its data. Do not casually run it in production.
-
-### Previously verified migration state
-
-The following was verified using `psql` against `school_management`:
-
-- `public.schools` and `public.schema_migrations` existed.
-- The `schools` table had the expected columns, primary key, unique `code` constraint, and status check constraint.
-- Migration version was `1`, with `dirty = false`.
-
-Recheck the database before relying on this state for future migrations or deployment.
-
-### `updated_at` behavior
-
-The column defaults to `NOW()` on insert. It does not automatically update when a row changes. Before implementing CRUD operations, decide whether application code or a database trigger will maintain it.
-
-### Migration safety
-
-- Use version-controlled migration files for schema changes.
-- Test migrations against a clean, dedicated test database.
-- Review destructive down migrations before execution.
-- Never run destructive migrations against production without an approved backup and recovery plan.
-
-## 6. Migration tooling and Go module notes
-
-Previously verified details:
-
-- The project uses `golang-migrate`.
-- The CLI tool is configured through Go tool directives in `go.mod`.
-- The tool block should contain the CLI entry rather than conflicting entries for both the root migration module and the CLI package.
-- An earlier duplicate tool configuration caused `go tool migrate` to report ambiguity; the tool block was corrected.
-- The CLI reported `dev` for its version in the earlier setup.
-
-The migration runner uses `filepath.Abs("migrations")` and converts the resulting path to slash separators before constructing a `file:` source URL. This Windows-specific approach was previously verified from the `backend` directory.
-
-Run migrations from:
+The migration directory is currently resolved relative to the working directory. Run the migration command from `D:\school-management-system\backend`:
 
 ```cmd
 cd /d D:\school-management-system\backend
 go run ./cmd/migrate
 ```
 
-The current runner expects the working directory to be `backend`. Making migration path resolution independent of the working directory remains a follow-up task.
+Making migration path resolution independent of the working directory and testing migrations against a dedicated database remain follow-up tasks.
 
-## 7. Tests and verification completed
+## 5. Initial Authentication Foundation
 
-### Automated API tests
+The initial authentication foundation has been added, but complete HTTP/JWT authentication has not been implemented.
 
-File: `backend/cmd/api/main_test.go`
+### 5.1 User Model
 
-Current test cases cover:
+File: `backend/internal/models/user.go`
 
-- `GET /health`: HTTP status, JSON content type, and expected response body.
-- `GET /ready`: successful database ping and expected response.
-- `GET /ready`: failed database ping, HTTP `503 Service Unavailable`, and expected response body.
+The `User` model contains:
 
-The tests use Go's standard `testing` package, `net/http/httptest`, and a fake database pinger.
+- `ID`
+- `SchoolID`
+- `Username`
+- `PasswordHash`
+- `Status`
+- `CreatedAt`
+- `UpdatedAt`
 
-### Latest reported test result
+The password hash uses `json:"-"` so it is excluded from JSON serialization.
 
-Command run from `D:\school-management-system\backend`:
+### 5.2 Password Service
 
-```cmd
-go test ./...
-```
+File: `backend/internal/services/password.go`
 
-Reported output:
+Implemented behavior:
 
-```text
-ok      school-management-system/cmd/api        (cached)
-?       school-management-system/cmd/migrate    [no test files]
-?       school-management-system/internal/config        [no test files]
-?       school-management-system/internal/database      [no test files]
-```
+- Uses bcrypt with cost 12.
+- Provides password hashing and password verification.
+- Rejects passwords shorter than 8 bytes or longer than 72 bytes.
+- Rejects whitespace-only passwords.
 
-This confirms that all current Go packages compile and the existing API tests pass. The API test result was served from Go's test cache, so this command did not necessarily rerun the tests.
+Tests are in `backend/internal/services/password_test.go`.
 
-To force test execution:
+**Security follow-up:** The current minimum is 8 bytes. Reconcile this with the stronger password policy in `docs/SECURITY.md` before exposing registration or password-change endpoints. Do not claim the stronger policy is implemented until the code and tests enforce it.
 
-```cmd
-go test -count=1 ./...
-```
+### 5.3 User Repository
 
-### Remaining verification
+File: `backend/internal/repository/user_repository.go`
 
-- Configuration validation tests.
-- Database connection and pool integration tests.
-- Migration tests against a dedicated test database.
-- HTTP shutdown and timeout tests.
-- Authentication, RBAC, and tenant-isolation tests when those features are implemented.
-- Frontend and end-to-end tests when the frontend is available.
+Implemented operations:
 
-Passing the current test suite does not mean the application is production-ready.
+- Find a user by school ID and case-insensitive username.
+- Create a user with a password hash.
+- Translate duplicate school/username conflicts into a repository error.
 
+Repository-level PostgreSQL integration tests have not yet been implemented.
 
-## 8. Architecture and product decisions already discussed
+### 5.4 School Repository
 
-### Tenant isolation
-- Initial scale: 25–30 schools × 400–500 students.
-- Start with a shared PostgreSQL database and shared schema, with `school_id` in appropriate school-owned tables and strict server-side tenant isolation.
-- Do not rely on client-provided school IDs for authorization.
-- Evaluate PostgreSQL Row-Level Security later as defense in depth, after clear authorization tests exist.
-- Separate database per school is not the initial plan.
+File: `backend/internal/repository/school_repository.go`
 
-### Initial roles
+Implements lookup of a school by ID and reports a not-found error when no matching school exists.
+
+### 5.5 Authentication Service
+
+File: `backend/internal/services/auth_service.go`
+
+Implemented internal operations:
+
+- Create a user for an existing active school.
+- Authenticate a user using school ID, username and password.
+- Reject inactive schools and disabled users.
+- Return a generic invalid-credentials error for unknown users and incorrect passwords.
+
+Service tests are in `backend/internal/services/auth_service_test.go`. They use fake repositories rather than a live PostgreSQL database.
+
+**Important:** These are internal service operations, not public HTTP endpoints.
+
+### 5.6 Not Yet Implemented
+
+- JWT access-token issuance and validation.
+- Refresh-token issuance and rotation.
+- HTTP registration/login/refresh/logout endpoints.
+- Authentication middleware.
+- Session revocation and revoked-access-token enforcement in this project.
+- RBAC and permission enforcement.
+- School-level tenant authorization.
+- PostgreSQL integration tests for authentication repositories.
+
+The existence of a `refresh_sessions` database table does not mean refresh-token flows have been implemented.
+
+## 6. Database and Migration State
+
+Connection settings are stored locally in `backend/.env`. Credentials must remain secret.
+
+### 6.1 Migration v1 — Schools
+
+Files:
+
+- `backend/migrations/000001_create_schools_table.up.sql`
+- `backend/migrations/000001_create_schools_table.down.sql`
+
+The `schools` table contains:
+
+- `id`: generated primary key.
+- `name`: school name.
+- `code`: unique school code.
+- `status`: `pending_setup`, `active` or `suspended`.
+- `created_at` and `updated_at`: timestamps.
+
+The down migration drops the `schools` table and its data. Do not run it casually in production.
+
+### 6.2 Migration v2 — Authentication Tables
+
+Files:
+
+- `backend/migrations/000002_create_auth_tables.up.sql`
+- `backend/migrations/000002_create_auth_tables.down.sql`
+
+The migration creates `users` and `refresh_sessions`.
+
+#### `users`
+
+- `id`: generated primary key.
+- `school_id`: foreign key to `schools(id)` with `ON DELETE RESTRICT`.
+- `username`: username scoped to a school.
+- `password_hash`: stored password hash.
+- `status`: `active` or `disabled`.
+- `created_at` and `updated_at`: timestamps.
+- A unique index on `(school_id, LOWER(username))` prevents case-insensitive duplicate usernames within one school.
+
+#### `refresh_sessions`
+
+- `id`: generated primary key.
+- `user_id`: foreign key to `users(id)` with `ON DELETE CASCADE`.
+- `token_hash`: unique hash of a refresh token.
+- `expires_at`: session expiry timestamp.
+- `revoked_at`: optional revocation timestamp.
+- `created_at`: creation timestamp.
+- Indexes support user lookup and expiration-time queries.
+
+#### Local migration verification
+
+The user reported that migration execution completed successfully in the local development database and that `schools`, `users` and `refresh_sessions` were verified to exist.
+
+Recheck the migration version and `dirty` state before relying on this database for later work or deployment.
+
+#### Migration safety
+
+- Version schema changes with migration files.
+- Test migrations against a clean, dedicated test database.
+- Review down migrations before execution.
+- Never run destructive migrations in production without an approved backup and recovery plan.
+
+### 6.3 `updated_at` Behavior
+
+The columns default to `NOW()` on insert. They do not automatically update when a row changes. Decide whether application code or a database trigger will maintain them before implementing broader CRUD operations.
+
+## 7. Architecture and Product Decisions
+
+### 7.1 Multi-Tenant Architecture
+
+- Start with a shared PostgreSQL database and shared schema.
+- Include `school_id` in appropriate school-owned tables.
+- Enforce tenant authorization on the server.
+- Never rely on client-provided school IDs as proof of authorization.
+- Consider PostgreSQL Row-Level Security later as defense in depth after application authorization tests exist.
+- Separate databases per school are not part of the initial plan.
+
+### 7.2 Roles
+
+Roles discussed for the product:
+
 - Platform Admin
 - School Admin
 - Teacher
 - Parent
-- Student, Driver and other staff roles can be added when requirements are finalized.
+- Student
+- Driver and other staff roles as requirements are finalized
 
-### Data model principles
+These roles and their permissions are product-planning decisions. Complete RBAC enforcement is not yet implemented.
+
+### 7.3 Data Model Principles
+
 - `schools` is the tenant root table.
-- A `users` table represents login identities.
-- A `school_memberships` relationship is a strong candidate for associating users with schools and roles. This supports the possibility of a person belonging to multiple schools without duplicating identity.
-- Do not finalize `users`/`school_memberships` schema until roles, invitation flow, authentication identifiers, and account lifecycle have been checked against requirements.
-- Student identity should be separated from school-year enrollment/class placement.
-- Parent-child links may be many-to-many and should be verified.
-- Subjects and teacher assignments should be normalized relational tables rather than storing multiple subjects in arbitrary JSON.
-- User finds many foreign keys/tables hard to follow; explain relationships gradually and show a small ER diagram before writing each migration.
+- Login identities and school memberships need a deliberate design.
+- Consider whether `users` and `school_memberships` should be separate before expanding the schema.
+- Student identity should be separate from school-year enrollment and class placement.
+- Parent-child relationships may be many-to-many and need explicit modeling.
+- Subjects and teacher assignments should use normalized relational tables rather than arbitrary JSON.
+- Explain foreign keys gradually and use a small ER diagram before introducing additional tables.
 
-### Scope not included in initial version
+### 7.4 Excluded From Initial Scope
+
 - Fee/payment gateway.
 - Native parent mobile app.
 - Live bus GPS tracking.
 - Advanced AI analytics.
-These can be planned later.
 
-## 9. Security decisions already finalized in previous planning
+These may be considered later.
 
-These requirements should be checked against `docs/SECURITY.md`; if the document does not contain them, update it.
+## 8. Security Requirements and Decisions
 
-- Platform Admin and School Admin authenticate using email/password and must perform MFA at every login; no trusted-device exemption.
-- Access token expiry: 15 minutes.
-- Refresh token expiry: 7 days, with rotation.
-- Logout revokes refresh token and blocks use of the associated access token.
-- Password changes and account deactivation invalidate sessions.
-- Admin inactivity timeout: 30 minutes.
-- Five consecutive failed logins cause a 15-minute temporary lock; account/IP rate limits; generic login errors; reset failed-attempt count on success; rate-limit and log MFA attempts.
-- Password minimum length 12; allow passphrases; block common/compromised passwords; no routine forced expiry; hash with Argon2id; require changes if compromised.
-- Admin password reset uses single-use link expiring in 30 minutes; revoke sessions; require MFA next login. If email is lost, use verified admin-assisted recovery.
-- MFA backup codes are single-use. Recovery revokes sessions and is audited. Platform Admin recovery needs additional verification.
-- No public Platform Admin registration. Platform Admin is created through secure setup; authorized Platform Admin creates others and invites School Admins; School Admin cannot self-elevate.
-- Teacher accounts are created/invited by School Admin/authorized staff; teacher sets their password.
-- School statuses: `pending_setup`, `active`, `suspended`. Pending/suspended schools cannot use normal access; preserve their data; only Platform Admin can reactivate.
-- Invitations are single-use, expire in 24 hours, new invite invalidates old, and only a token hash is stored.
-- Audit logs for permission changes, MFA reset, password resets, security events and suspension. Audit retention period still pending.
-- Every protected API request enforces role and record scope; never trust client IDs. Permission changes must take effect on the next request, including existing sessions.
-- Teacher access is limited to assigned classes/subjects; parents can access only verified linked children. Driver access later is limited to assigned routes.
-- Teacher reset is initiated by School Admin, teacher sets own password. Delivery method is unresolved if email/mobile are optional.
-- Passwords/secrets must not be committed.
+The following are previously discussed product security requirements. They are not all implemented in the current code.
 
-## 10. Current known issues / follow-ups
+- Platform Admin and School Admin should use email/password and MFA at every login, without trusted-device exemptions.
+- Planned access-token expiry: 15 minutes.
+- Planned refresh-token expiry: 7 days, with rotation.
+- Logout should revoke refresh tokens and block use of the associated access token.
+- Password changes and account deactivation should invalidate sessions.
+- Planned admin inactivity timeout: 30 minutes.
+- Implement rate limits, temporary lockouts, generic login errors and monitoring for failed login/MFA attempts.
+- Strong password policy: minimum 12 characters, passphrase support and compromised-password checks.
+- Evaluate Argon2id for password hashing against the current bcrypt implementation before finalizing the production password policy.
+- Password reset links should be single-use and expire after 30 minutes.
+- MFA backup codes should be single-use.
+- Platform Admin must not have public self-registration.
+- School Admin accounts must be created or invited by an authorized Platform Admin.
+- Teacher accounts should be created or invited by authorized school staff.
+- `pending_setup` and `suspended` schools must not have normal application access.
+- Invitations should be single-use, expire after 24 hours and store only token hashes.
+- Audit sensitive security and permission changes.
+- Enforce permissions and record scope on every protected API request.
+- Teacher access should be limited to assigned classes/subjects.
+- Parents should access only verified linked children.
+- Driver access, when implemented, should be limited to assigned routes.
+- Keep credentials and signing secrets out of source control.
 
-1. Synchronize the remaining documentation with the current implementation, especially `README.md`, `docs/API.md`, `docs/ARCHITECTURE.md`, `docs/DATABASE.md`, and `docs/SECURITY.md`.
-2. Review the complete Git diff and verify the current branch, remote status, and latest commit before committing documentation changes.
-3. Run `git diff --check` and `go test -count=1 ./...` before committing.
-4. Verify that `backend/.env` is ignored and not tracked. Never expose real credentials.
-5. Add configuration validation and tests for invalid or missing settings.
-6. Add PostgreSQL connection, pool, and migration integration tests using a dedicated test database.
-7. Make migration path resolution independent of the current working directory.
-8. Configure production database TLS; `sslmode=disable` is local-development-only.
-9. Configure appropriate database connection-pool limits and operational timeouts.
-10. Improve shutdown error handling, including forced closure if graceful shutdown times out.
-11. Decide how `updated_at` values will be maintained on updates.
-12. Finalize the database model and migration strategy before implementing school-owned CRUD APIs.
-13. Implement authentication, followed by RBAC and school-level tenant authorization.
-14. Decide audit-log retention and how invitations/password-reset links will be delivered if email or mobile is optional.
-15. Add CI, deployment configuration, monitoring, backups, recovery procedures, and security/load testing before production release.
+Before implementing endpoints, reconcile these requirements with the actual authentication design and document any deliberate decisions.
 
-## 11. Exact next steps
+## 9. Testing and Verification
 
-Continue one small task at a time. Give exact commands or code, explain the reason, and wait for the user to share the result before proceeding.
+### 9.1 Latest Reported Verification
 
-1. Review the remaining documentation against the actual code. Start with `README.md`, `docs/API.md`, `docs/ARCHITECTURE.md`, `docs/DATABASE.md`, and `docs/SECURITY.md`. Update only stale or inaccurate content.
-2. Review `git status --short` and `git diff` to understand every local change, including the API implementation, tests, and documentation.
-3. Run the following checks from the appropriate directories:
+The following commands completed successfully from `D:\school-management-system\backend`:
 
-   ```cmd
-   git diff --check
-   cd /d D:\school-management-system\backend
-   go test -count=1 ./...
-   ```
+```cmd
+go test -count=1 ./...
+go vet ./...
+```
 
-4. Confirm `backend/.env` is ignored and not tracked:
+The test suite included API, configuration and password/authentication service tests. The reported output showed all packages passing or having no test files.
 
-   ```cmd
-   cd /d D:\school-management-system
-   git check-ignore backend/.env
-   git ls-files backend/.env
-   ```
+`git diff --check` also completed without reporting whitespace errors in the latest reported check.
 
-   The first command should report the ignored path; the second should print nothing if the file is not tracked.
+### 9.2 Testing Gaps
 
-5. Review and commit the verified changes with a meaningful commit message, then push to `origin/main` only after confirming the intended files are included.
-6. Confirm the working tree is clean and the local branch is synchronized with the remote.
-7. Before adding more migrations, finalize the `users` and `school_memberships` design. Show a small relationship diagram, explain each foreign key gradually, and document the decisions before writing migration files.
-8. Continue with authentication, RBAC, tenant isolation, core APIs, frontend integration, and production hardening in manageable stages.
+- PostgreSQL repository integration tests.
+- Automated migration tests against a clean database.
+- Dedicated tests for database connection/pool behavior.
+- Shutdown and timeout edge cases.
+- JWT and HTTP authentication tests once implemented.
+- RBAC and tenant-isolation tests.
+- Frontend and end-to-end tests.
 
-## 12. New-chat continuation prompt
+Passing current tests does not establish production readiness.
 
-Copy and paste this prompt into a new ChatGPT conversation if needed:
+## 10. Documentation Checklist
 
-> Continue my commercial School Management System project from `docs/HANDOFF.md` in the GitHub repository `https://github.com/TheSumitNain/school-management-system`.
+Keep these documents synchronized with implementation:
+
+- `README.md`
+- `PROGRESS.md`
+- `docs/REQUIREMENTS.md`
+- `docs/ARCHITECTURE.md`
+- `docs/DATABASE.md`
+- `docs/API.md`
+- `docs/SECURITY.md`
+- `docs/TESTING.md`
+- `docs/HANDOFF.md`
+- `CHANGELOG.md`
+
+Do not document planned functionality as implemented.
+
+## 11. Current Git and Delivery Workflow
+
+Before committing:
+
+1. Check the current branch and working tree.
+2. Review tracked and untracked files.
+3. Inspect changes and ensure no credentials are included.
+4. Run `gofmt` on modified Go source files.
+5. Run `go test -count=1 ./...`.
+6. Run `go vet ./...`.
+7. Run `git diff --check`.
+8. Verify `backend/.env` is ignored and not tracked.
+9. Review the staged diff before committing.
+10. Commit with a meaningful message.
+11. Push only after verifying the intended files are included.
+12. Confirm the branch is synchronized with the remote and the working tree is clean.
+
+Useful commands from the project root:
+
+```cmd
+cd /d D:\school-management-system
+git status --short
+git status -sb
+git diff --check
+git check-ignore backend/.env
+git ls-files backend/.env
+```
+
+Useful backend verification commands:
+
+```cmd
+cd /d D:\school-management-system\backend
+go test -count=1 ./...
+go vet ./...
+```
+
+The `git ls-files backend/.env` command should print nothing if the file is not tracked. Never display or paste `.env` contents.
+
+## 12. Next Steps
+
+1. Synchronize `docs/API.md`, `docs/ARCHITECTURE.md`, `docs/DATABASE.md`, `docs/SECURITY.md` and `docs/TESTING.md` with the actual code.
+2. Create `CHANGELOG.md`.
+3. Review and format the Auth foundation source files.
+4. Re-run tests and vet.
+5. Check Git status, staged changes and secret exclusion.
+6. Commit and push the documentation plus Auth-foundation milestone.
+7. Verify a clean working tree and remote synchronization.
+8. Continue with authentication design and JWT flows in small steps.
+9. Add RBAC and tenant authorization after authentication is verified.
+10. Add PostgreSQL integration tests and production hardening before expanding the school-management APIs.
+
+Do not add more features until the current milestone has been reviewed, documented, tested and committed.
+
+## 13. New-Chat Continuation Prompt
+
+Copy and paste the following into a new ChatGPT conversation:
+
+> Continue my commercial School Management System project using `docs/HANDOFF.md` as the handoff reference in the GitHub repository `https://github.com/TheSumitNain/school-management-system`.
 >
-> My local project root is `D:\school-management-system`, using Windows CMD and VS Code. The stack is React + TypeScript + Vite, Go + Gin, and PostgreSQL. The initial target is 25–30 schools with approximately 400–500 students per school.
+> My local project root is `D:\school-management-system`. I use Windows CMD and VS Code. The stack is React + TypeScript + Vite, Go + Gin, and PostgreSQL. The initial planning target is 25–30 schools with around 400–500 students per school.
 >
-> Explain in Hindi/Hinglish, use a friendly tone, and work on one small task at a time. Give exact commands or code, explain why, and wait for my output before continuing. Do not assume that a command succeeded without seeing its result.
+> Explain in Hindi/Hinglish with a friendly tone. Work on one small task at a time. Give exact commands/code, explain why, and wait for my output before continuing. Do not assume a command succeeded without seeing the result.
 >
-> The backend has a PostgreSQL connection pool, a `schools` table migration (version 1 was previously verified with `dirty = false`), `GET /health`, and `GET /ready`. The API includes HTTP server timeouts and graceful shutdown handling. Automated API tests exist in `backend/cmd/api/main_test.go` for health and readiness behavior.
+> The backend has a PostgreSQL connection pool, health/readiness endpoints, HTTP timeouts, graceful shutdown handling and migrations for `schools`, `users` and `refresh_sessions`. The initial Auth foundation includes a user model, bcrypt password service, user/school repositories and an authentication service with unit tests.
 >
-> The latest reported test command was `go test ./...`; all packages compiled and the existing API tests passed, with the API result served from the Go test cache. Use `go test -count=1 ./...` when a fresh test run is required.
+> The latest reported `go test -count=1 ./...` and `go vet ./...` commands completed successfully. Migration v2 was applied and its relevant tables were verified in the local database.
 >
-> Documentation updates are in progress. Verify the current Git status, commit, and remote state instead of assuming they match this document. The latest previously known commit was `33905bc` (`docs: document initial database migration`), but the current GitHub HEAD has not been confirmed.
+> JWT access/refresh token flows, HTTP authentication endpoints, RBAC, tenant authorization and PostgreSQL repository integration tests are not yet implemented. Do not describe these as completed.
 >
-> The next step is to review the remaining documentation and inspect the actual Git diff before committing. After documentation is synchronized, design the `users` and `school_memberships` tables with a small relationship diagram before creating the next migration.
+> The immediate priority is to finish reviewing and synchronizing documentation, including `CHANGELOG.md`, then run final checks, review Git changes, commit and push the verified milestone. Verify the actual Git status and files rather than assuming this handoff reflects the latest state.
 >
-> Never ask me to paste real `.env` secrets. Do not claim that the system is production-ready until the outstanding security, testing, configuration, deployment, backup, and monitoring requirements have been addressed.
+> Never ask me to paste real `.env` secrets. Do not claim the system is production-ready until outstanding security, testing, deployment, backup and monitoring requirements have been addressed.

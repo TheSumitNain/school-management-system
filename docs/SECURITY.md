@@ -1,192 +1,229 @@
-# Security Design
+# Security Documentation
 
 ## 1. Purpose
 
-Security is a core requirement of the School Management System because it handles school, staff, parent and student information.
+This document describes the current security foundation, security decisions, known gaps, and production security requirements for the School Management System.
 
-Security controls must be enforced by the backend, not only by the frontend.
+The application is intended to support multiple schools. Student, parent, teacher, and school information must be protected against unauthorized access.
 
-## 2. Authentication
+**Important:** This document distinguishes implemented controls from planned controls. A documented requirement does not mean the corresponding feature has already been implemented.
 
-- Platform Admin and School Admin must log in using email and password.
-- Multi-factor authentication (MFA) is mandatory for every admin login.
-- There must be no public Platform Admin registration.
-- School Admin accounts must be created by an authorized Platform Admin.
-- Teacher accounts must be created or invited by authorized school staff.
-- Parent authentication will use mobile OTP in a later phase.
-- All authentication endpoints must be protected against abuse.
+## 2. Current Implementation Status
+
+### Implemented foundation
+
+- PostgreSQL database connection uses application configuration.
+- User records include a password-hash field rather than a plaintext-password field.
+- Password hashing uses Go's `bcrypt` implementation with cost 12.
+- Password hashing rejects passwords shorter than 8 bytes or longer than 72 bytes.
+- Whitespace-only passwords are rejected.
+- Password verification is implemented.
+- Authentication service logic checks whether the associated school is active.
+- Authentication service logic checks whether the user is active and whether the supplied credentials are valid.
+- Refresh-session storage has a database migration with token-hash, expiry, and revocation fields.
+- The API server has configured HTTP timeouts and graceful shutdown behavior.
+
+These controls form an initial foundation. They do not mean that production authentication or the entire application has been security-certified.
+
+### Not yet implemented as a complete HTTP security flow
+
+- JWT access-token issuance and validation for this project.
+- Refresh-token issuance, rotation, and revocation workflows.
+- Login, logout, and registration HTTP handlers.
+- Authentication middleware for protected routes.
+- Role-based access control (RBAC).
+- Complete tenant-isolation enforcement across business queries.
+- Production TLS and deployment-specific security configuration.
+- Rate limiting and abuse protection for authentication endpoints.
+- Security audit logging and monitoring.
 
 ## 3. Password Security
 
-- Minimum password length: 12 characters.
-- Passphrases must be allowed.
-- Do not require routine password changes without a security reason.
-- Block common and known-compromised passwords where practical.
-- Store passwords using a suitable password-hashing algorithm, such as Argon2id, with appropriate parameters.
+### Current implementation
+
+The password service uses bcrypt with a cost factor of 12.
+
+Passwords are hashed before storage. Password verification compares the supplied password with the stored hash.
+
+The current implementation enforces an 8–72-byte input range. Because bcrypt has a 72-byte input limit, future password-policy changes must preserve correct handling of that limit.
+
+### Production requirements
+
+Before public production deployment:
+
+- Establish and document a final password policy.
+- Consider a minimum password length of 12 characters, with clear Unicode and byte-length handling.
+- Consider breached-password checks and appropriate password-reset workflows.
+- Never log plaintext passwords or include them in error messages.
 - Never store plaintext passwords.
-- Password reset tokens must be single-use and expire after 30 minutes.
-- Password reset must revoke existing sessions and require MFA at the next admin login.
+- Review whether bcrypt remains appropriate or whether Argon2id is preferable for the deployment environment.
+- If the hashing algorithm or policy changes, provide a safe migration and rehash strategy.
 
-## 4. Token and Session Security
+The proposed minimum of 12 characters is a production requirement to evaluate; it is not the current implementation's minimum.
 
-- Access tokens must expire after 15 minutes.
-- Refresh tokens must expire after 7 days.
-- Refresh token rotation is required.
-- A refresh token must not be reusable after rotation or revocation.
-- Logout must revoke the relevant refresh session and prevent further use of the associated access token according to the token-revocation design.
-- Password changes and account deactivation must invalidate existing sessions.
-- Admin sessions must expire after 30 minutes of inactivity.
-- Token secrets must be supplied through secure configuration and never committed to Git.
+## 4. Authentication and Token Security
 
-## 5. Login Protection
+Authentication HTTP endpoints and JWT flows are not yet implemented in this project's current API.
 
-- Five consecutive failed login attempts must trigger a 15-minute temporary lock.
-- Apply rate limits to accounts and IP addresses.
-- Use generic authentication errors that do not reveal whether an account exists.
-- Reset the consecutive-failure counter after a successful login.
-- Apply rate limits and security logging to MFA verification and recovery.
+The following are requirements for the eventual implementation:
 
-## 6. MFA Recovery
+- Use a cryptographically secure method to generate tokens and identifiers.
+- Keep access tokens short-lived.
+- Use a separate, longer-lived refresh-session mechanism.
+- Validate token type, signature, expiry, and relevant claims.
+- Store refresh-token hashes rather than raw refresh tokens.
+- Rotate refresh tokens safely and revoke the previous session token.
+- Revoke refresh sessions on logout.
+- Define how access-token revocation or short token lifetimes will handle logout.
+- Prevent concurrent refresh requests from reusing the same refresh token.
+- Keep signing keys and secrets outside source control.
+- Never log access tokens, refresh tokens, passwords, or secret values.
+- Return generic authentication errors where detailed responses could reveal sensitive information.
 
-- Backup codes must be single-use.
-- MFA recovery must use an approved, verified recovery process.
-- Recovery must revoke existing sessions and create an audit event.
-- Platform Admin recovery requires additional verification.
-- MFA must not be bypassed through an ordinary password reset.
+The exact token lifetimes, signing algorithm, claims, and key-rotation strategy must be finalized before implementing the production flow.
 
-## 7. Authorization and Roles
+## 5. Multi-Tenant Isolation
 
-Initial roles:
+The application is designed for multiple schools.
 
-- Platform Admin
-- School Admin
-- Teacher
-- Parent
+Each school-owned record must be associated with the correct school, and users must only access data they are authorized to see.
 
-Additional roles, such as Student, Driver and other School Staff, may be introduced later.
+### Required controls
 
-Rules:
+- Derive the user's authorized school context from a trusted server-side authentication context.
+- Do not trust a request's `school_id` as authorization.
+- Scope every school-owned read, update, delete, and list query to the authorized school.
+- Verify school ownership when accessing related records.
+- Enforce appropriate database foreign keys and uniqueness constraints.
+- Add tests proving that a user from one school cannot access another school's records.
+- Review background jobs, exports, reports, and administrative operations for tenant leaks.
 
-- Check permissions on every protected API request.
-- Never rely on frontend route protection alone.
-- Never trust role, user ID or school ID supplied by the client without server-side verification.
-- Enforce the minimum permissions required for each role.
-- Role or permission changes must take effect on the next request, including for existing sessions.
+Tenant isolation must be enforced in backend services and repository queries, not just in the frontend.
 
-## 8. School Data Isolation
+**Status:** The overall tenant-isolation mechanism is still pending. The existence of a `school_id` field or a foreign key alone does not prove that tenant isolation is complete.
 
-- A user must only access school data they are authorized to access.
-- School-owned records must be scoped to the correct school.
-- A teacher may access only assigned classes and subjects.
-- A parent may access only their verified linked children.
-- A parent may have multiple linked children, and a child may have multiple verified guardians.
-- Driver access, when introduced, must be limited to assigned routes and permitted data.
-- Cross-school access must be covered by automated authorization tests.
-- Client-supplied identifiers must never be treated as proof of authorization.
+## 6. Authorization and Roles
 
-## 9. Account Lifecycle
+Role-based access control (RBAC) is planned but not yet implemented as a complete system.
 
-- School statuses: `pending_setup`, `active` and `suspended`.
-- Pending or suspended schools must not access normal school operations.
-- Suspending a school must preserve its data.
-- Only a Platform Admin may reactivate a suspended school.
-- Invitations must be single-use, expire after 24 hours and be stored as hashes.
-- Sending a new invitation must invalidate the previous invitation.
-- School Admins must not be able to elevate their own role.
+Before release, define:
 
-## 10. Audit Logging
+- Supported roles and their permitted actions.
+- Which roles can create, read, update, or delete each resource.
+- How school administrators are provisioned.
+- How users are assigned, changed, disabled, and removed.
+- How permissions are checked for every protected operation.
 
-Record security-sensitive events, including:
+The backend must enforce permissions independently of the frontend. Hiding a button or route in React is not an authorization control.
 
-- Permission and role changes.
-- MFA recovery or reset.
-- Password reset and account recovery.
-- School suspension and reactivation.
-- Relevant authentication failures and account lockouts.
-- Other sensitive administrative actions.
+## 7. Database Security
 
-Audit records must not contain passwords, raw tokens or other secrets.
+### Current foundation
 
-Audit retention and access policies must be finalized before production.
+- Database access is configured through application configuration.
+- The database connection is managed through a connection pool.
+- The schema includes foreign-key and data-integrity constraints.
+- The user schema stores password hashes, not plaintext passwords.
 
-## 11. Application and Database Security
+### Production requirements
 
-- Validate all incoming data on the backend.
-- Use parameterized SQL queries.
-- Keep secrets out of source control and logs.
-- Use HTTPS in production.
-- Apply least-privilege database permissions.
-- Protect backups and test restoration.
-- Avoid unnecessary collection of personal information.
-- Do not use real student data in routine development or testing.
-- Use secure error handling that does not expose internal details.
-- Database TLS mode is configurable through `DB_SSLMODE`.
-- Local development defaults to `disable`; production defaults to `verify-full`.
-- Production configuration validation rejects database SSL modes other than `verify-full`.
-- Actual PostgreSQL TLS connectivity and certificate verification must be tested in the target deployment environment before production use.
+- Use a dedicated database role with only the permissions the application requires.
+- Do not run the production application using a PostgreSQL superuser.
+- Keep database credentials outside source control.
+- Restrict database network access.
+- Configure encrypted database connections where required by the deployment environment.
+- Back up the database and periodically test restoration.
+- Protect backups and exported data.
+- Apply schema migrations through a controlled deployment process.
+- Avoid exposing raw database errors to API clients.
 
-## 12. Testing Requirements
+Local development configuration is not proof of production database security.
 
-Before production, test:
+## 8. Configuration and Secrets
 
-- Invalid, expired and revoked tokens.
-- Refresh token rotation and reuse.
-- Logout and session invalidation.
-- MFA verification and recovery.
-- Login lockout and rate limits.
-- Role-based access restrictions.
-- Cross-school data access attempts.
-- Parent-child relationship authorization.
-- Suspended school access.
-- Password reset and invitation token reuse.
+- Keep local environment files such as `.env` out of Git.
+- Provide safe example configuration without real credentials.
+- Use environment variables or an appropriate secret-management system for production secrets.
+- Validate required configuration at startup.
+- Do not commit database passwords, JWT signing keys, API keys, or private certificates.
+- Rotate any secret that is accidentally exposed.
+- Keep development and production credentials separate.
 
-## 13. Open Decisions
+Verify that the local environment file is ignored and is not tracked by Git before pushing project changes.
 
-- Final MFA delivery and authenticator method.
-- Secure initial Platform Admin setup procedure.
-- Recovery process if an admin loses access to their registered email.
-- Teacher account activation method if email and mobile are unavailable.
-- Audit retention period.
-- Final tenant-isolation enforcement, including whether PostgreSQL Row-Level Security will be used.
-- Production secrets management and deployment configuration.
+## 9. HTTP and API Security
 
-## 14. Current Status
+Before production release:
 
-### Documented
+- Use HTTPS for external application traffic.
+- Configure trusted proxies explicitly when operating behind a reverse proxy.
+- Validate and limit request sizes.
+- Validate input on the server.
+- Configure CORS for known frontend origins rather than allowing every origin by default.
+- Add appropriate rate limits, especially for authentication and OTP-related operations.
+- Avoid leaking stack traces or internal errors.
+- Use secure headers and appropriate cookie settings if cookies are used for tokens.
+- Ensure HTTP timeouts are appropriate for the deployment.
+- Review file uploads, exports, and any external integrations before exposing them.
 
-- Authentication, password and token security requirements.
-- MFA, login protection and account recovery requirements.
-- Role-based authorization and school-level data isolation requirements.
-- Account lifecycle, audit logging and database security requirements.
-- Security testing requirements and open design decisions.
+The existing server timeouts and trusted-proxy configuration are only part of the broader security requirements.
 
-### Implemented Foundation
+## 10. Logging, Monitoring, and Auditing
 
-- Go + Gin backend scaffold.
-- PostgreSQL connection setup.
-- Initial `schools` table migration with school status constraints.
-- Basic API health and database readiness endpoints.
-- HTTP server timeouts and graceful shutdown handling.
-- Automated tests for API health and database readiness behavior.
-- Database SSL mode configuration and production-mode validation implemented; real TLS connection verification remains pending.
-- Automated configuration validation tests added.
+Production requirements:
 
-These foundation features do not implement authentication or authorization.
+- Record security-relevant events such as login failures, account disabling, role changes, and administrative actions.
+- Never log passwords, raw tokens, signing keys, or database credentials.
+- Avoid unnecessarily logging student or parent personal information.
+- Define log retention and access policies.
+- Monitor repeated failed authentication attempts and suspicious activity.
+- Add audit records for sensitive administrative changes.
+- Ensure logs do not become a source of cross-school data leakage.
 
-### Not Yet Implemented
+A complete security audit and monitoring system is not yet implemented.
 
-- Authentication endpoints and secure password hashing.
-- Access and refresh token lifecycle and revocation.
-- MFA and login rate limiting.
-- RBAC and permission enforcement.
-- School-level tenant authorization and data isolation.
-- Account lockout, password reset and invitation workflows.
-- Security audit logging.
-- Automated security and cross-school authorization tests.
-- Production HTTPS and secrets management configuration.
+## 11. Testing Requirements
 
-### Production Readiness
+Security testing must cover at least:
 
-The security requirements are documented, but the security implementation is incomplete. The application must not be considered production-ready for real school or student data until the required controls are implemented, reviewed and tested.
+- Password hashing and verification.
+- Invalid credentials and disabled users.
+- Inactive or suspended schools.
+- Token expiry, validation, refresh, and revocation once token flows exist.
+- Missing authentication on protected endpoints.
+- Insufficient role permissions.
+- Cross-school read and write attempts.
+- SQL query parameterization.
+- Configuration and secret-handling failures.
+- Rate limiting and abuse protection.
+- Production database permissions and backup restoration.
 
-Open decisions in Section 13 must be resolved at the appropriate implementation stage.
+Tests should be automated where practical and run before changes are merged.
+
+## 12. Production Readiness Checklist
+
+Before serving real schools and student data, verify:
+
+- [ ] Authentication endpoints and middleware are implemented and tested.
+- [ ] Token lifecycle and logout behavior are implemented and tested.
+- [ ] RBAC permissions are defined and enforced server-side.
+- [ ] Tenant isolation is verified for all school-owned resources.
+- [ ] Password policy is finalized and documented.
+- [ ] Production TLS is configured and tested.
+- [ ] Production secrets are securely managed.
+- [ ] Database access follows least privilege.
+- [ ] Rate limiting and abuse protection are enabled.
+- [ ] Sensitive information is excluded from logs and API errors.
+- [ ] Security tests and dependency checks run in the release workflow.
+- [ ] Backups and restoration procedures are tested.
+- [ ] Monitoring and incident-response procedures are documented.
+
+## 13. Maintenance
+
+Whenever security behavior changes:
+
+1. Update this document to reflect actual implementation.
+2. Add or update automated tests.
+3. Update `PROGRESS.md` and `CHANGELOG.md` when appropriate.
+4. Record important architecture or security decisions in `ARCHITECTURE.md` or a dedicated decision record.
+5. Never mark a security requirement complete based only on documentation.

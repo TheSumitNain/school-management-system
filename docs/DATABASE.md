@@ -1,183 +1,293 @@
-# Database Design
+# Database Documentation
 
-## 1. Database Technology
+## 1. Overview
 
-- Database: PostgreSQL
-- Initial approach: Shared database for multiple schools
-- Schema changes must be managed through version-controlled migrations.
+The School Management System uses PostgreSQL as its relational database.
 
-## 2. Multi-School Data Isolation
+The initial architecture uses one shared database for multiple schools. School-owned records must be associated with the appropriate school, and backend authorization must enforce tenant isolation.
 
-The database must support multiple schools within the same application.
+**Database name in local development:** `school_management`
 
-- Each school will have a unique identifier.
-- School-owned records must be associated with the correct school wherever applicable.
-- Backend queries and authorization must prevent access to another school's data.
-- Client-provided school identifiers must not be trusted without authorization checks.
-- Platform-level records must be distinguishable from school-level records.
+The database name is environment-specific and may differ in other deployments.
 
-The final tenant-isolation strategy must be reviewed before business modules are implemented.
+## 2. Current Implementation Status
 
-## 3. Data Integrity
+The initial migrations create the following tables:
 
-- Use primary keys to identify records.
-- Use foreign keys to enforce valid relationships.
-- Use unique constraints where duplicate values are not allowed.
-- Use NOT NULL constraints for required fields.
-- Use transactions for operations that must succeed or fail together.
-- Use appropriate indexes based on actual query patterns.
-
-## 4. Relationship Design
-
-Relationships must represent real school business rules.
-
-Examples:
-- A school can have multiple users.
-- A school can have multiple classes and sections.
-- A student can have enrollment records across academic years.
-- Teachers can be assigned to specific classes and subjects.
-- A parent can be linked to multiple students.
-- A student can have multiple verified guardians.
-
-The exact cardinality, constraints and table structure will be documented before implementing each relevant module.
-
-## 5. Student and Enrollment History
-
-Student identity and academic enrollment should be modeled separately.
-
-- Student records represent the student.
-- Enrollment records represent the student's placement in a particular academic year, class and section.
-- Historical enrollment must not be overwritten when a student moves to another class or academic year.
-- The system must preserve historical data according to the approved retention policy.
-
-## 6. Subject and Teacher Assignments
-
-- Subjects may vary by class and academic year.
-- Teacher assignments must represent the classes and subjects a teacher is authorized to teach.
-- The design must support different subject combinations for different academic requirements.
-- Flexible JSON fields must not replace relational tables when data needs reliable relationships, constraints or querying.
-
-## 7. Migrations
-
-- Every schema change must be version-controlled.
-- Existing migrations must not be silently edited after they have been applied to shared environments.
-- Migrations must have a documented and tested application process.
-- Rollback behavior must be considered for each change.
-
-## 8. Security and Privacy
-
-- Never commit database passwords or production credentials.
-- Use parameterized queries.
-- Grant the application database account only the permissions it needs.
-- Avoid storing unnecessary personal information.
-- Do not use real student data in ordinary development or testing.
-- Backups must be protected and restoration must be tested before production use.
-
-## 9. Decisions Pending
-
-- Final table list and column definitions
-- Primary and foreign key strategy
-- Tenant-isolation enforcement details
-- Academic year and enrollment rules
-- Soft deletion versus permanent deletion
-- Audit history and retention periods
-- Backup and restore procedures
-- Whether PostgreSQL Row-Level Security will be used in addition to backend authorization
-
-## 10. Current Status
-
-### Implemented
-
-- PostgreSQL connection configured and verified.
-- Version-controlled migration tooling configured.
-- Initial `schools` table migration created and applied.
-- `schools` table columns, primary key, unique constraint and status CHECK constraint verified.
-- Migration version `1` verified with `dirty = false`.
-
-### Pending
-
-- Design and implement remaining business tables.
-- Finalize and implement school-level tenant isolation.
-- Add automated database integration tests.
-- Establish and test production backup and restoration procedures.
-
-The current database schema is an initial foundation. It does not yet represent the complete School Management System database.
-
-## 11. Implemented Database Objects
-
-### 11.1 Schools Table
-
-The first database migration creates the `schools` table.
-
-Migration files:
-
-- `backend/migrations/000001_create_schools_table.up.sql`
-- `backend/migrations/000001_create_schools_table.down.sql`
-
-Current columns:
-
-| Column | Type | Constraints / Default |
+| Table | Purpose | Status |
 |---|---|---|
-| `id` | BIGINT | Generated identity, primary key |
-| `name` | VARCHAR(150) | NOT NULL |
-| `code` | VARCHAR(50) | NOT NULL, UNIQUE |
-| `status` | VARCHAR(20) | NOT NULL, default `pending_setup` |
-| `created_at` | TIMESTAMPTZ | NOT NULL, default `NOW()` |
-| `updated_at` | TIMESTAMPTZ | NOT NULL, default `NOW()` |
+| `schools` | Stores school records and their setup status | Implemented in migration v1 |
+| `users` | Stores user accounts associated with schools | Implemented in migration v2 |
+| `refresh_sessions` | Stores hashed refresh-token/session information for future authentication flows | Implemented in migration v2 |
 
-Allowed status values:
+Other functional tables, including students, teachers, classes, subjects, attendance, and transport, must be added through future migrations when their requirements and relationships are finalized.
+
+## 3. Database Migrations
+
+Migration files are stored in:
+
+`backend/migrations/`
+
+The migration command is located in:
+
+`backend/cmd/migrate/`
+
+### Migration v1
+
+**Purpose:** Create the initial `schools` table.
+
+The migration defines school identity, name, code, status, and timestamps.
+
+### Migration v2
+
+**Purpose:** Create the initial authentication-related tables.
+
+Files:
+
+- `000002_create_auth_tables.up.sql`
+- `000002_create_auth_tables.down.sql`
+
+The migration creates `users` and `refresh_sessions`, including their initial constraints and indexes.
+
+### Running migrations
+
+From the backend directory:
+
+```bash
+go run ./cmd/migrate
+```
+
+The required environment configuration and PostgreSQL database must be available before running the command.
+
+Migrations should be applied through a controlled deployment process. Do not assume that a migration is safe to reverse after production data has been written.
+
+## 4. Table: `schools`
+
+The `schools` table represents schools registered in the platform.
+
+The initial migration defines the following fields:
+
+| Column | Purpose |
+|---|---|
+| `id` | Primary key |
+| `name` | School name |
+| `code` | School code |
+| `status` | School setup or operational status |
+| `created_at` | Record creation timestamp |
+| `updated_at` | Last update timestamp |
+
+The initial supported school statuses include:
 
 - `pending_setup`
 - `active`
 - `suspended`
 
-The database enforces these allowed values through a CHECK constraint.
+The exact column types, constraints, defaults, and indexes are defined by the migration SQL and are the authoritative schema definition.
 
-**Important:** The `updated_at` default sets the initial timestamp. It does not automatically update the value when a row changes. Automatic timestamp updates must be implemented explicitly in application code or through a database trigger.
+### Design considerations
 
-### 11.2 Migration Tracking
+- School records are referenced by school-owned entities.
+- Foreign keys should prevent invalid school references.
+- Suspended schools must not be treated as active during authentication or authorization.
+- School creation and activation workflows must be secured before public onboarding is enabled.
 
-Database migrations are managed using `golang-migrate`.
+## 5. Table: `users`
 
-The migration runner is located at:
+The `users` table stores accounts associated with a school.
 
-`backend/cmd/migrate/main.go`
+The current migration defines:
 
-Run it from the backend directory:
+| Column | Purpose |
+|---|---|
+| `id` | Primary key |
+| `school_id` | Foreign key referencing `schools.id` |
+| `username` | Username for the school-scoped account |
+| `password_hash` | Password hash; must never be returned to clients |
+| `status` | Account status |
+| `created_at` | Record creation timestamp |
+| `updated_at` | Last update timestamp |
 
-```cmd
-cd /d D:\school-management-system\backend
-go run ./cmd/migrate
+### Constraints and indexes
+
+- `school_id` references `schools.id`.
+- Deleting a referenced school is restricted by the foreign key.
+- `username` must not be empty or whitespace-only.
+- `password_hash` must not be empty.
+- `status` is restricted to `active` or `disabled`.
+- A unique index on `(school_id, LOWER(username))` prevents duplicate usernames within a school regardless of letter case.
+
+### Tenant considerations
+
+A user belongs to one school through `school_id`.
+
+This relationship does not, by itself, enforce tenant isolation for all API operations. Backend services and repository queries must ensure that users cannot access records belonging to another school.
+
+The current schema does not yet define a complete role and permission model.
+
+## 6. Table: `refresh_sessions`
+
+The `refresh_sessions` table is intended to store refresh-session metadata.
+
+The current migration defines:
+
+| Column | Purpose |
+|---|---|
+| `id` | Primary key |
+| `user_id` | Foreign key referencing `users.id` |
+| `token_hash` | Unique hash of the refresh token |
+| `expires_at` | Session expiry timestamp |
+| `revoked_at` | Timestamp indicating revocation; nullable |
+| `created_at` | Session creation timestamp |
+
+### Constraints and indexes
+
+- `user_id` references `users.id`.
+- Deleting a user cascades to that user's refresh-session records.
+- `token_hash` is unique.
+- A check constraint requires `expires_at` to be later than `created_at`.
+- Indexes support lookup by user and expiry timestamp.
+
+### Important implementation note
+
+The table exists, but a complete refresh-token lifecycle is not yet implemented in the current School Management System API.
+
+Future authentication work must implement secure token generation, hash comparison, rotation, expiry enforcement, revocation, and concurrency-safe handling of refresh requests.
+
+## 7. Relationships
+
+The current schema defines these relationships:
+
+```mermaid
+erDiagram
+    schools ||--o{ users : has
+    users ||--o{ refresh_sessions : has
 ```
 
-The migration tracking table is `schema_migrations`. The initial migration was verified at version `1` with `dirty = false`.
+This diagram represents the current foreign-key relationships. It does not show future relationships for students, teachers, classes, attendance, or other school modules.
 
-Do not run destructive rollback migrations against production without an approved backup and recovery plan.
+## 8. Database Design Principles
 
-## 12. Current Implementation Status
+New tables and migrations should follow these principles.
 
-- [x] PostgreSQL connection established and verified
-- [x] Migration tooling configured
-- [x] Initial `schools` table migration created and applied
-- [x] Table columns and constraints verified
-- [ ] Remaining business tables designed and implemented
-- [ ] Tenant-isolation strategy implemented and tested
-- [ ] Automated database integration tests
-- [ ] Production backup and restoration procedures tested
+### Primary keys
 
-The `schools` table is the initial database foundation, not the completed school-management schema.
+Use stable primary keys to identify records.
 
-## 13. Next Database Design Tasks
+### Foreign keys
 
-Before implementing student-related tables, define and review:
+Use foreign keys to preserve referential integrity and prevent invalid references.
 
-1. School users and role relationships
-2. Academic years
-3. Classes and sections
-4. Student identity and enrollment history
-5. Subjects and teacher assignments
-6. Parent/guardian-to-student relationships
-7. Required foreign keys, unique constraints and indexes
-8. School-level tenant isolation and authorization rules
+### Unique constraints
 
-Each new schema change must be added as a new version-controlled migration.
+Enforce uniqueness in the database when it represents a business rule. Application-level validation alone is insufficient for race-prone operations.
+
+### Check constraints
+
+Use database constraints for important allowed values and data-integrity rules where appropriate.
+
+### Indexes
+
+Add indexes based on query patterns and measured performance. Consider indexes on foreign keys and commonly filtered columns, but avoid unnecessary indexes that increase write and storage costs.
+
+### Transactions
+
+Use transactions when multiple database operations must succeed or fail together.
+
+### Parameterized queries
+
+Use parameterized SQL rather than concatenating untrusted input into SQL statements.
+
+### Timestamps
+
+Use timezone-aware timestamps for persisted event times where appropriate. Maintain consistent UTC handling in the application.
+
+## 9. Future Schema Areas
+
+The following areas are planned and must be modeled through reviewed migrations:
+
+- Student records.
+- Parent and guardian relationships.
+- Teacher records and assignments.
+- Classes and sections.
+- Subjects and class-subject assignments.
+- Attendance.
+- Timetables.
+- Transport and bus tracking.
+- Notifications and reporting.
+
+For senior classes where students can take different subjects, model the relevant relationships explicitly. Do not use a single JSON field as a substitute for relational entities when referential integrity and querying are required.
+
+Fee and payment tables are not part of the initial implementation scope unless requirements change.
+
+## 10. Multi-Tenant Data Isolation
+
+The shared-database strategy requires careful isolation between schools.
+
+Before adding school-owned tables:
+
+1. Identify whether the entity belongs to a school.
+2. Define its foreign keys and ownership rules.
+3. Decide how the authorized school context reaches repository queries.
+4. Ensure list, read, create, update, and delete operations enforce school ownership.
+5. Add tests that attempt cross-school access.
+6. Review joins and related-record lookups for tenant leaks.
+
+A `school_id` column is not sufficient unless every relevant operation enforces the correct ownership rules.
+
+## 11. Backups and Production Operations
+
+Before production deployment:
+
+- Define automated backup schedules.
+- Restrict access to backup files.
+- Encrypt backups where appropriate.
+- Document retention requirements.
+- Test database restoration periodically.
+- Monitor database availability, connections, disk capacity, and query performance.
+- Use a dedicated least-privilege database role for the application.
+- Secure database connections according to the production environment.
+- Define a safe process for applying schema migrations.
+
+Production backup and recovery procedures have not yet been finalized.
+
+## 12. Schema Verification
+
+Inspect the current public tables with PostgreSQL:
+
+```sql
+SELECT table_name
+FROM information_schema.tables
+WHERE table_schema = 'public'
+  AND table_type = 'BASE TABLE'
+ORDER BY table_name;
+```
+
+Inspect columns for a specific table:
+
+```sql
+SELECT
+    column_name,
+    data_type,
+    is_nullable,
+    column_default
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND table_name = 'users'
+ORDER BY ordinal_position;
+```
+
+The migration SQL files are the source of truth for the intended schema. A local database may differ if migrations have not been applied consistently.
+
+## 13. Maintenance
+
+When changing the database schema:
+
+1. Add a new versioned migration instead of silently modifying an already-applied migration.
+2. Include a down migration when appropriate and safe.
+3. Review foreign keys, constraints, indexes, and data migration requirements.
+4. Run the migration against a development database.
+5. Run relevant automated tests.
+6. Update this document and `PROGRESS.md`.
+7. Record important schema decisions in `ARCHITECTURE.md` when needed.
+
+Never document a planned table as implemented until its migration exists and has been verified.
