@@ -26,6 +26,11 @@ This project is under active development. Entries describe implementation comple
 - JWT issuer, expiry and required-claim validation.
 - Initial HTTP login handler and `POST /auth/login` endpoint.
 - Login response DTO that excludes password hashes.
+- JWT authentication middleware for protected routes.
+- Bearer access-token validation and authenticated identity extraction in middleware.
+- Protected `GET /auth/me` endpoint returning the authenticated user's ID and school ID.
+- Unit tests for authentication middleware, including missing, malformed and invalid authorization headers and invalid identity claims.
+- Router-level tests for successful and unsuccessful authentication on `/auth/me`.
 - Tests for configuration, authentication services, token services and login handlers.
 - Development-only seed command with environment safeguards.
 - Documentation covering requirements, architecture, database design, API conventions, security, testing, progress and handoff.
@@ -33,6 +38,9 @@ This project is under active development. Entries describe implementation comple
 ### Changed
 
 - Expanded configuration validation for JWT-related settings.
+- Updated API documentation to include the implemented `/auth/me` endpoint and distinguish implemented functionality from planned work.
+- Updated security documentation to describe the current middleware behavior and remaining security gaps.
+- Updated project progress documentation to reflect the middleware and protected identity endpoint.
 - Updated documentation to distinguish implemented functionality from planned work.
 - Documented the initial shared-database architecture for multiple schools.
 - Updated authentication documentation to reflect the access-token service and login endpoint.
@@ -43,17 +51,19 @@ This project is under active development. Entries describe implementation comple
 - Added initial JWT access-token generation and validation.
 - Added generic unauthorized responses for invalid login credentials.
 - Kept password hashes out of login responses.
+- Added authentication middleware that validates Bearer access tokens on the protected identity endpoint.
+- Rejects missing or malformed authorization headers, invalid tokens and invalid identity claims.
 - Added safeguards to the development seed command.
-- Documented remaining work for refresh-token lifecycle management, protected routes, RBAC, tenant isolation and production security hardening.
+- Documented remaining work for refresh-token lifecycle management, RBAC, tenant isolation and production security hardening.
 
 ### Pending
 
 - Refresh-token issuance, rotation, replay protection and complete session lifecycle.
 - HTTP logout endpoint and complete session-revocation workflow.
-- Authentication middleware and protected `GET /auth/me` endpoint.
+- Full user-profile retrieval from `GET /auth/me`.
 - Public registration and production school-onboarding workflows.
 - User roles, RBAC and permission enforcement.
-- School-level tenant authorization and automated isolation tests.
+- Complete school-level tenant authorization and automated isolation tests.
 - PostgreSQL repository integration tests and migration tests.
 - Student, teacher, class, subject and attendance APIs.
 - React frontend and dashboard implementation.
@@ -61,9 +71,11 @@ This project is under active development. Entries describe implementation comple
 
 ## Verification Notes
 
-- `go test -count=1 ./...` and `go vet ./...` passed in an earlier verification run.
+- `go test -count=1 ./...` passed after the authentication middleware and `/auth/me` changes.
+- `go vet ./...` passed after the authentication middleware and `/auth/me` changes.
 - Local migrations through version 2 were previously applied and relevant tables verified.
-- These checks must be rerun against the current working tree before the milestone is committed.
+- These checks must be rerun against the final working tree before the milestone is committed.
+- Documentation updates must also be reviewed for consistency.
 - The project is not yet production-ready.
 
 ## Changelog Guidelines

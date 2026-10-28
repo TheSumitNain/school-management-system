@@ -11,12 +11,13 @@ The backend is built using Go, Gin, and PostgreSQL.
 - Health check endpoint implemented.
 - Readiness endpoint implemented.
 - Login endpoint implemented.
-- JWT access token generation and validation services implemented.
+- JWT access-token generation and validation services implemented.
+- JWT authentication middleware implemented for the protected identity endpoint.
+- `GET /auth/me` endpoint implemented; it returns the authenticated user's ID and school ID, not the full user profile.
 - User creation is available internally through the service layer and a development-only seed command.
 - Public user registration endpoint is not implemented.
-- Refresh token and logout endpoints are not implemented.
-- Protected profile endpoint and authentication middleware are not implemented.
-- Role-Based Access Control (RBAC) and tenant-isolation middleware are pending.
+- Refresh-token issuance, rotation, and logout endpoints are not implemented.
+- Role-Based Access Control (RBAC) and complete tenant-isolation enforcement are pending.
 
 **Important:** Planned functionality described in this document must not be treated as implemented functionality.
 
@@ -165,7 +166,56 @@ Inactive users or schools are currently handled by the authentication service as
 - A successful login returns an access token.
 - The configured access-token expiration applies.
 - The current login endpoint does not return a refresh token.
-- A successful login does not imply that protected API routes or RBAC have been implemented.
+- A successful login does not imply that RBAC or complete tenant-isolation enforcement has been implemented.
+
+### 3.4 Authenticated Identity
+
+**Endpoint:** `GET /auth/me`
+
+**Purpose:** Validates the Bearer access token and returns the authenticated user's identity identifiers.
+
+This endpoint is protected by the JWT authentication middleware. It currently returns the user ID and school ID from the validated token claims; it does not retrieve the full user profile from the database.
+
+#### Request header
+
+```http
+Authorization: Bearer <access-token>
+```
+
+Replace `<access-token>` with the access token returned by a successful login.
+
+#### Successful response
+
+**HTTP status:** `200 OK`
+
+Example:
+
+```json
+{
+  "status": "success",
+  "user_id": 10,
+  "school_id": 2
+}
+```
+
+The IDs shown above are illustrative examples.
+
+#### Error responses
+
+| HTTP Status | Meaning |
+|---|---|
+| `401 Unauthorized` | Authorization header is missing or malformed, the access token is invalid or expired, or the token claims contain invalid identity identifiers. |
+| `500 Internal Server Error` | Authentication middleware is configured without a token validator, indicating an internal configuration problem. |
+
+#### Authentication notes
+
+- The endpoint requires the `Authorization: Bearer <access-token>` header.
+- The middleware validates the access token before the handler runs.
+- The middleware extracts the user ID from the token subject and the school ID from the token claims.
+- Invalid identity identifiers are rejected.
+- Requests without valid authentication are rejected before reaching the handler.
+- This endpoint does not yet implement role or permission checks.
+- This endpoint does not, by itself, establish complete tenant isolation for other API resources.
 
 ## 4. HTTP Status Codes
 
@@ -193,10 +243,13 @@ Not every status code listed above is currently returned by an implemented endpo
 Currently implemented:
 
 - `POST /auth/login`
+- `GET /auth/me`
 
 The backend also has internal services for user creation and access-token generation and validation.
 
 The development seed command is intended for local development and is not a public registration endpoint.
+
+The `/auth/me` endpoint is protected by JWT authentication middleware. RBAC and complete tenant-isolation enforcement are separate, pending capabilities.
 
 ### 5.2 Planned Endpoints
 
@@ -207,7 +260,6 @@ The following endpoints are planned but are **not implemented yet**.
 | `POST` | `/auth/register` | Controlled user provisioning or registration, depending on the final authorization rules. | Planned |
 | `POST` | `/auth/refresh` | Issue a new access token using a valid refresh session. | Planned |
 | `POST` | `/auth/logout` | Revoke the relevant refresh session and handle access-token revocation according to the final design. | Planned |
-| `GET` | `/auth/me` | Return the authenticated user's profile. | Planned |
 
 The exact registration policy must be finalized before exposing a public registration endpoint. School and user provisioning must be restricted to authorized workflows.
 
@@ -231,7 +283,9 @@ The access token is intended to be sent in the HTTP `Authorization` header:
 Authorization: Bearer <access-token>
 ```
 
-**Important:** The header format is documented for future protected endpoints. Authentication middleware and protected profile routes are not implemented yet.
+The authentication middleware validates Bearer access tokens on `GET /auth/me`.
+
+**Important:** Other endpoints are not automatically protected simply because the middleware exists. Each protected route must explicitly use the authentication middleware. Role-based authorization and complete tenant-isolation enforcement remain pending.
 
 ### 5.4 Refresh Token
 
@@ -241,12 +295,13 @@ The refresh-token workflow must be implemented and tested before refresh session
 
 ## 6. Authorization and Tenant Isolation
 
-Role-Based Access Control (RBAC) and tenant-isolation enforcement are pending.
+Role-Based Access Control (RBAC) and complete tenant-isolation enforcement are pending.
 
 The database currently associates users with schools through `school_id`. The current users schema does not yet contain a role column.
 
 Future authorization must define and enforce permissions for the supported roles, such as:
 
+- Platform administrator.
 - School administrator.
 - Teacher.
 - Parent.
@@ -265,7 +320,9 @@ The final role list and permission matrix must be documented before RBAC impleme
 - Database queries and service-layer operations must consistently enforce tenant boundaries.
 - Cross-school access attempts must be covered by automated tests.
 
-These are required design rules; they should not be interpreted as proof that complete tenant-isolation middleware already exists.
+These are required design rules; they should not be interpreted as proof that complete tenant-isolation enforcement already exists.
+
+The current `/auth/me` endpoint returns the school ID from the validated token claims. This does not replace server-side school-ownership checks on future school-specific resource endpoints.
 
 ## 7. API Versioning
 
@@ -274,12 +331,13 @@ The current implemented routes are:
 - `GET /health`
 - `GET /ready`
 - `POST /auth/login`
+- `GET /auth/me`
 
 These routes currently do not use an `/api/v1` prefix.
 
 For future public API expansion, versioned routes such as `/api/v1/...` may be introduced through an explicit routing and migration decision.
 
-Do not assume that `/api/v1/auth/login` is currently available.
+Do not assume that `/api/v1/auth/login` or `/api/v1/auth/me` is currently available.
 
 ## 8. Local Development
 
@@ -323,6 +381,22 @@ Use a valid development user's `school_id`, `username`, and `password`.
 
 Do not put real passwords or access tokens into source files, documentation, Git commits, or public issue reports.
 
+### 8.6 Test Authenticated Identity
+
+Send a `GET` request to:
+
+`http://localhost:8081/auth/me`
+
+Include this header:
+
+```http
+Authorization: Bearer <access-token>
+```
+
+Use an access token obtained from a successful login.
+
+A valid token should return the authenticated user's ID and school ID. A missing, malformed, or invalid token should return `401 Unauthorized`.
+
 ## 9. Testing
 
 The backend test suite can be run from the backend directory:
@@ -331,21 +405,27 @@ The backend test suite can be run from the backend directory:
 go test -count=1 ./...
 ```
 
-Tests should cover the following areas as the API grows:
+The current test suite includes coverage for:
 
 - Configuration validation.
 - Password hashing and verification.
 - Login success and failure.
 - JWT generation and validation.
+- Authentication middleware handling of valid and invalid authentication.
+- Missing and malformed authorization headers.
+- Invalid or missing token claims.
+- Authenticated identity endpoint success and authentication failures.
+- Health and readiness behavior.
+
+As the API grows, tests must also cover:
+
 - Token expiration and invalid-token handling.
 - Request validation.
 - Database error handling.
-- Authentication middleware.
 - RBAC and permission enforcement.
 - Tenant isolation and cross-school access prevention.
 - Refresh-token rotation and revocation.
 - Logout behavior.
-- Health and readiness behavior.
 
 Only functionality covered by implemented code and relevant tests should be marked complete in project documentation.
 
@@ -359,7 +439,8 @@ Only functionality covered by implemented code and relevant tests should be mark
 - Do not return password hashes or sensitive internal error details in API responses.
 - Keep development-only tools separate from production application entry points.
 - Do not expose unrestricted user registration.
-- Apply authentication and authorization middleware before exposing protected endpoints.
+- Apply authentication middleware to protected endpoints.
+- Implement authorization checks before exposing role-restricted functionality.
 - Enforce school-level tenant isolation on the server.
 - Validate request input and return appropriate HTTP status codes.
 - Review database permissions, connection settings, migrations, logging, and deployment configuration before production release.

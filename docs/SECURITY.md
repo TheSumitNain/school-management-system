@@ -25,24 +25,30 @@ The application is intended to support multiple schools. Student, parent, teache
 - `POST /auth/login` is implemented and has been manually tested.
 - Login responses return an access token and a limited user DTO rather than the password hash.
 - Invalid credentials return a generic unauthorized response.
+- JWT authentication middleware is implemented and tested.
+- The middleware validates Bearer access tokens and extracts the authenticated user's ID and school ID from validated token claims.
+- `GET /auth/me` is implemented as a protected endpoint and returns the authenticated user's ID and school ID.
+- Automated tests cover valid authentication, missing or malformed authorization headers, invalid tokens, invalid claims, and the protected identity endpoint.
 - Refresh-session storage has a database migration with token-hash, expiry, and revocation fields.
 - The API server has configured HTTP timeouts and graceful shutdown behavior.
 - Health and readiness endpoints are implemented.
 
 These controls form an initial foundation. They do not mean that production authentication or the entire application has been security-certified.
 
-### Not yet implemented as a complete HTTP security flow
+### Not yet implemented
 
 - Refresh-token issuance, rotation, and revocation endpoints.
 - Logout endpoint and complete access-token revocation behavior.
 - Registration or administrative user-provisioning HTTP workflow.
-- Authentication middleware for protected routes.
-- Protected current-user endpoint such as `GET /auth/me`.
+- Complete authentication-session lifecycle.
+- Full current-user profile retrieval from `GET /auth/me`.
 - Role-based access control (RBAC).
 - Complete tenant-isolation enforcement across business queries.
 - Production TLS and deployment-specific security configuration.
 - Rate limiting and abuse protection for authentication endpoints.
 - Complete security audit logging and monitoring.
+
+The authentication middleware currently protects `GET /auth/me`. Other protected routes must explicitly apply the middleware when implemented.
 
 ## 3. Password Security
 
@@ -77,8 +83,28 @@ The proposed minimum of 12 characters is a production requirement to evaluate; i
 - JWT configuration validates the signing secret and access-token expiry settings.
 - The login handler returns an access token following successful authentication.
 - The login endpoint has been manually tested with valid and invalid credentials.
+- Authentication middleware validates Bearer access tokens for `GET /auth/me`.
+- The middleware rejects missing or malformed authorization headers and invalid tokens.
+- The middleware rejects token claims containing an invalid user ID or non-positive school ID.
+- The protected identity endpoint returns the user ID and school ID from validated token claims.
 
-The implemented login endpoint is an initial access-token flow. It is not a complete authentication-session lifecycle.
+The implemented login and identity endpoints form an initial access-token flow. They are not a complete authentication-session lifecycle.
+
+### Authentication middleware behavior
+
+The middleware:
+
+1. Reads the `Authorization` header.
+2. Requires the Bearer authentication scheme and a token.
+3. Validates the token through the token-validation service.
+4. Extracts the user ID from the token subject and the school ID from the token claims.
+5. Rejects invalid identity identifiers.
+6. Stores the validated user and school identifiers in the Gin request context.
+7. Allows the request to continue only after successful authentication.
+
+Authentication failures return `401 Unauthorized`. If the middleware is configured without a token validator, it returns `500 Internal Server Error` to indicate an internal configuration problem.
+
+The middleware establishes the identity represented by a validated token. It does not independently implement role-based authorization, database-backed user-status rechecks on every request, or complete tenant isolation.
 
 ### Remaining requirements
 
@@ -94,8 +120,11 @@ The implemented login endpoint is an initial access-token flow. It is not a comp
 - Keep signing keys and secrets outside source control.
 - Never log access tokens, refresh tokens, passwords, or secret values.
 - Return generic authentication errors where detailed responses could reveal sensitive information.
+- Apply authentication middleware to every route that requires an authenticated user.
+- Implement server-side authorization checks for protected operations.
+- Decide how disabled users and revoked sessions should be handled during the lifetime of an access token.
 
-The refresh-token HTTP lifecycle, logout behavior, authentication middleware, and protected-route enforcement remain pending. The final token lifetimes, claims, and key-rotation strategy must be reviewed before production deployment.
+The refresh-token HTTP lifecycle, logout behavior, and complete protected-route enforcement remain pending. The final token lifetimes, claims, and key-rotation strategy must be reviewed before production deployment.
 
 ## 5. Multi-Tenant Isolation
 
@@ -105,7 +134,7 @@ Each school-owned record must be associated with the correct school, and users m
 
 ### Required controls
 
-- Derive the user's authorized school context from a trusted server-side authentication context.
+- Derive the user's authenticated identity and authorized school context from a trusted server-side authentication context.
 - Do not trust a request's `school_id` as authorization.
 - Scope every school-owned read, update, delete, and list query to the authorized school.
 - Verify school ownership when accessing related records.
@@ -115,7 +144,7 @@ Each school-owned record must be associated with the correct school, and users m
 
 Tenant isolation must be enforced in backend services and repository queries, not just in the frontend.
 
-**Status:** The overall tenant-isolation mechanism is still pending. The existence of a `school_id` field or a foreign key alone does not prove that tenant isolation is complete.
+**Status:** The authentication middleware extracts the school ID from validated token claims, but the overall tenant-isolation mechanism is still pending. The existence of a `school_id` field, a foreign key, or a validated token alone does not prove that tenant isolation is complete.
 
 ## 6. Authorization and Roles
 
@@ -128,8 +157,11 @@ Before release, define:
 - How school administrators are provisioned.
 - How users are assigned, changed, disabled, and removed.
 - How permissions are checked for every protected operation.
+- How permission changes take effect for users with existing access tokens.
 
 The backend must enforce permissions independently of the frontend. Hiding a button or route in React is not an authorization control.
+
+The current authentication middleware establishes identity only. It does not establish that the user is authorized to perform every operation or access every resource associated with the token's school.
 
 ## 7. Database Security
 
@@ -221,8 +253,11 @@ Security testing must cover at least:
 - Invalid credentials and disabled users.
 - Inactive or suspended schools.
 - JWT signature validation, expiry, issuer, and claims.
+- Authentication middleware behavior for valid and invalid tokens.
+- Missing and malformed authorization headers.
+- Invalid identity claims.
+- Protected identity endpoint success and authentication failures.
 - Refresh, rotation, and revocation once those flows exist.
-- Missing authentication on protected endpoints.
 - Insufficient role permissions.
 - Cross-school read and write attempts.
 - SQL query parameterization.
@@ -236,8 +271,9 @@ Tests should be automated where practical and run before changes are merged.
 
 Before serving real schools and student data, verify:
 
-- [ ] Authentication endpoints and middleware are implemented and tested.
-- [ ] Token lifecycle and logout behavior are implemented and tested.
+- [ ] Authentication endpoints and current authentication middleware behavior are tested.
+- [ ] Authentication middleware is applied to every route that requires authentication.
+- [ ] Full token lifecycle and logout behavior are implemented and tested.
 - [ ] RBAC permissions are defined and enforced server-side.
 - [ ] Tenant isolation is verified for all school-owned resources.
 - [ ] Password policy is finalized and documented.

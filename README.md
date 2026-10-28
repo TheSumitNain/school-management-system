@@ -10,7 +10,7 @@ A commercial, multi-tenant School Management System built incrementally with pro
 - **Database access:** pgx / pgxpool
 - **Migrations:** golang-migrate
 - **Password hashing:** bcrypt
-- **Authentication:** JWT access tokens (initial implementation)
+- **Authentication:** JWT access tokens with initial authentication middleware
 
 ## Initial Target
 
@@ -50,43 +50,60 @@ These are planning targets, not verified capacity limits. Production capacity wi
 - `POST /auth/login` endpoint.
 - Generic unauthorized responses for invalid login credentials.
 - Login response DTO that excludes password hashes.
+- Authentication middleware that validates Bearer access tokens and extracts authenticated user and school IDs.
+- Protected `GET /auth/me` endpoint returning the authenticated user's ID and school ID.
+- Unit tests for configuration, password handling, authentication services and token services.
+- Login-handler tests, authentication middleware tests and API route tests.
 - Development-only seed command with environment safeguards.
-- Unit tests for configuration, password handling, authentication services, token services and login handlers.
+- Documentation for requirements, architecture, database design, API behavior, security, testing, progress and handoff.
 
-### Existing Authentication Endpoint
+### Implemented Authentication Endpoints
 
-`POST /auth/login`
+#### `POST /auth/login`
 
-The endpoint accepts a school ID, username and password. On successful authentication, it returns an access token and basic user information. Invalid credentials return an unauthorized response.
+Accepts a school ID, username and password. On successful authentication, returns an access token and basic user information. Invalid credentials return an unauthorized response.
 
-See `docs/API.md` for the documented request and response contract.
+#### `GET /auth/me`
+
+Requires an `Authorization: Bearer <access-token>` header. The authentication middleware validates the token and the endpoint returns the authenticated user's ID and school ID.
+
+This endpoint currently returns identity IDs only; fetching the complete user profile remains pending.
+
+See `docs/API.md` for the documented request and response contracts.
 
 ### Verification
 
-The following commands have previously completed successfully in the backend directory:
+The following commands were previously reported successful from the backend directory after the authentication middleware and `/auth/me` changes:
 
 ```cmd
 go test -count=1 ./...
 go vet ./...
 ```
 
-The local database migrations through version 2 were applied, and the relevant tables were verified.
+The reported test run included API, configuration, handler, middleware and service packages. Some packages had no test files.
 
-Run these checks again after subsequent code or documentation changes when appropriate. A previous successful test run does not guarantee the current working tree passes.
+`git diff --check` was also previously reported successful.
+
+The local database migrations through version 2 were previously applied, and the relevant tables were verified.
+
+These are historical results. Re-run the checks against the current working tree before committing. A previous successful test run does not guarantee that subsequent changes pass.
 
 ### Not Yet Implemented
 
-- Refresh-token issuance, rotation and complete session lifecycle endpoints.
+- Refresh-token issuance, rotation, replay protection and complete session lifecycle endpoints.
 - Logout endpoint and complete HTTP-level session revocation workflow.
-- Authentication middleware for protected routes.
-- Protected `/auth/me` endpoint.
+- Full user-profile retrieval from `GET /auth/me`.
+- Access-token revocation enforcement.
 - User roles and role-based access control (RBAC).
-- School-level tenant authorization middleware and isolation tests.
-- Public registration and production onboarding workflows.
+- Complete school-level tenant authorization and cross-school isolation tests.
+- Public registration and production school-onboarding workflows.
+- MFA, password-reset and invitation workflows.
+- Login rate limiting, lockout enforcement and security-event monitoring.
 - Student, teacher, class, subject and attendance APIs.
 - React frontend, dashboards and parent-facing interfaces.
+- PostgreSQL repository integration tests and automated migration tests.
 - Production deployment, monitoring, backup and recovery procedures.
-- Comprehensive integration, migration and load testing.
+- Comprehensive security, end-to-end and load testing.
 
 **Important:** This project is under active development and is not production-ready. Authentication components have been implemented incrementally; they have not yet been validated as a complete production authentication and authorization system.
 

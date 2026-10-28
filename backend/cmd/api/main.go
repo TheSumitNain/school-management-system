@@ -16,6 +16,7 @@ import (
 	"school-management-system/internal/database"
 
 	"school-management-system/internal/handlers"
+	"school-management-system/internal/middleware"
 	"school-management-system/internal/repository"
 	"school-management-system/internal/services"
 
@@ -29,6 +30,7 @@ type databasePinger interface {
 func setupRouter(
 	db databasePinger,
 	authHandler *handlers.AuthHandler,
+	tokenService middleware.AccessTokenValidator,
 ) (*gin.Engine, error) {
 	router := gin.Default()
 
@@ -39,6 +41,17 @@ func setupRouter(
 	if authHandler != nil {
 		router.POST("/auth/login", authHandler.Login)
 	}
+
+	router.GET("/auth/me", middleware.AuthMiddleware(tokenService), func(c *gin.Context) {
+		userID, _ := c.Get(middleware.ContextUserIDKey)
+		schoolID, _ := c.Get(middleware.ContextSchoolIDKey)
+
+		c.JSON(http.StatusOK, gin.H{
+			"status":    "success",
+			"user_id":   userID,
+			"school_id": schoolID,
+		})
+	})
 
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
@@ -120,7 +133,7 @@ func run() error {
 		tokenService,
 	)
 
-	router, err := setupRouter(db, authHandler)
+	router, err := setupRouter(db, authHandler, tokenService)
 
 	if err != nil {
 		return fmt.Errorf("setup router: %w", err)

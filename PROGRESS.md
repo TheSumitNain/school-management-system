@@ -2,13 +2,13 @@
 
 ## Current Stage
 
-Backend foundation and initial JWT authentication implemented.
+Backend foundation and initial JWT authentication implemented, including authentication middleware and a protected identity endpoint.
 
-The API includes health/readiness endpoints, PostgreSQL connectivity, HTTP server timeouts, graceful shutdown, JWT access-token generation and validation, and the initial HTTP login endpoint.
+The API includes health and readiness endpoints, PostgreSQL connectivity, HTTP server timeouts, graceful shutdown, JWT access-token generation and validation, the initial HTTP login endpoint, and a protected `GET /auth/me` endpoint.
 
 Database migrations v1 and v2 have been applied and verified locally. Refresh-token session storage exists in the database, but the complete refresh-token HTTP workflow is not implemented yet.
 
-**Current status:** Authentication is partially implemented. The application is not production-ready.
+**Current status:** Authentication is partially implemented. RBAC, complete tenant-isolation enforcement, refresh-token lifecycle, and production hardening remain incomplete. The application is not production-ready.
 
 ## Project Overview
 
@@ -79,8 +79,21 @@ The initial school and student counts are planning targets, not verified capacit
 - [x] Invalid login credentials return an unauthorized response
 - [x] Login handler tests
 - [x] Development-only seed command with environment safeguards
+- [x] JWT authentication middleware for protected routes
+- [x] Bearer access-token validation in the middleware
+- [x] Validated user ID and school ID stored in Gin request context
+- [x] Invalid or missing authentication rejected by middleware
+- [x] Invalid token identity claims rejected
+- [x] Protected `GET /auth/me` endpoint
+- [x] `/auth/me` returns authenticated user ID and school ID
+- [x] Middleware unit tests
+- [x] `/auth/me` route-level authentication tests
 
 The login endpoint accepts a school ID, username and password. On successful authentication, it returns an access token and basic user information.
+
+The `GET /auth/me` endpoint validates the Bearer access token and returns the authenticated user's ID and school ID. It does not yet retrieve the full user profile from the database.
+
+The middleware establishes authenticated identity only. It does not replace RBAC checks or complete school-level tenant authorization.
 
 The development seed command is not a production onboarding mechanism and must remain restricted to development environments.
 
@@ -91,11 +104,13 @@ The development seed command is not a production onboarding mechanism and must r
 - [x] Authentication service tests
 - [x] JWT token service tests
 - [x] Login handler tests
-- [x] `go test -count=1 ./...` completed successfully in an earlier verification run
-- [x] `go vet ./...` completed successfully in an earlier verification run
+- [x] Authentication middleware tests
+- [x] Protected `/auth/me` endpoint tests
+- [x] `go test -count=1 ./...` passed after middleware and endpoint changes
+- [x] `go vet ./...` passed after middleware and endpoint changes
 - [x] Local database migrations through version 2 applied and verified
 
-**Verification note:** These checks must be run again against the current working tree before committing. Earlier passing results do not establish that subsequent changes still pass.
+**Verification note:** Run formatting, tests, vet and Git checks again against the final working tree before committing. Passing tests from an earlier run do not establish that subsequent documentation or code changes have been verified.
 
 ## In Progress
 
@@ -113,13 +128,13 @@ The development seed command is not a production onboarding mechanism and must r
 - [ ] Refresh-token issuance and complete refresh workflow
 - [ ] Refresh-token rotation and replay protection
 - [ ] HTTP logout endpoint and complete session-revocation workflow
-- [ ] Authentication middleware for protected routes
-- [ ] Protected `GET /auth/me` endpoint
+- [ ] Full user-profile retrieval from `GET /auth/me`
 - [ ] Public registration and production school onboarding
 - [ ] User roles and role-based access control (RBAC)
 - [ ] Permission enforcement
-- [ ] School-level tenant authorization middleware
+- [ ] School-level tenant authorization middleware and enforcement across business operations
 - [ ] Automated cross-school data-isolation tests
+- [ ] Complete session invalidation and access-token revocation strategy
 
 ### Database and Business Features
 
@@ -148,17 +163,17 @@ The development seed command is not a production onboarding mechanism and must r
 
 ## Next Steps
 
-1. Update `README.md` and this file to reflect the actual implementation.
+1. Update `README.md` to reflect the current backend and authentication implementation.
 2. Review and update `CHANGELOG.md` based on verified changes.
-3. Review the remaining requirements and handoff documentation for inconsistencies.
+3. Review `docs/ARCHITECTURE.md`, `docs/DATABASE.md`, `docs/TESTING.md`, and `docs/HANDOFF.md` for inconsistencies.
 4. Inspect the development seed command and all modified or untracked files.
-5. Run `gofmt` on the relevant Go files and inspect the resulting diff.
-6. Run `go test -count=1 ./...` and `go vet ./...`.
-7. Verify migrations, Git status, whitespace checks and secret exclusion.
-8. Review the exact files to be committed.
-9. Commit and push the verified milestone after reviewing the changes.
-10. Implement the remaining refresh-token lifecycle and logout workflow.
-11. Add authentication middleware and a protected profile endpoint.
+5. Run `gofmt` on relevant Go files and inspect the resulting diff.
+6. Run `go test -count=1 ./...` from the backend directory.
+7. Run `go vet ./...` from the backend directory.
+8. Verify migrations, Git status, whitespace checks and secret exclusion.
+9. Review the exact files to be committed.
+10. Commit and push the verified milestone after reviewing the changes.
+11. Implement the refresh-token lifecycle and logout workflow.
 12. Implement RBAC and school-level tenant authorization.
 13. Add integration tests and production hardening before release.
 
