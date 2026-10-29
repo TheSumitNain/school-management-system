@@ -23,6 +23,7 @@ type Config struct {
 	JWTSecret              string
 	JWTIssuer              string
 	JWTAccessExpiryMinutes int
+	RefreshTokenExpiryDays int
 }
 
 func Load() Config {
@@ -58,6 +59,13 @@ func Load() Config {
 		}
 	}
 
+	refreshExpiryDays := 7
+	if value := strings.TrimSpace(os.Getenv("REFRESH_TOKEN_EXPIRY_DAYS")); value != "" {
+		if parsed, err := strconv.Atoi(value); err == nil {
+			refreshExpiryDays = parsed
+		}
+	}
+
 	return Config{
 		AppEnv:                 appEnv,
 		AppPort:                appPort,
@@ -70,6 +78,7 @@ func Load() Config {
 		JWTSecret:              os.Getenv("JWT_SECRET"),
 		JWTIssuer:              jwtIssuer,
 		JWTAccessExpiryMinutes: jwtAccessExpiry,
+		RefreshTokenExpiryDays: refreshExpiryDays,
 	}
 }
 
@@ -121,6 +130,10 @@ func (cfg Config) ValidateJWT() error {
 		return fmt.Errorf(
 			"JWT_ACCESS_EXPIRY_MINUTES must be between 1 and 60",
 		)
+	}
+
+	if cfg.RefreshTokenExpiryDays < 1 || cfg.RefreshTokenExpiryDays > 30 {
+		return fmt.Errorf("REFRESH_TOKEN_EXPIRY_DAYS must be between 1 and 30")
 	}
 
 	return nil

@@ -29,7 +29,11 @@ The application is intended to support multiple schools. Student, parent, teache
 - The middleware validates Bearer access tokens and extracts the authenticated user's ID and school ID from validated token claims.
 - `GET /auth/me` is implemented as a protected endpoint and returns the authenticated user's ID and school ID.
 - Automated tests cover valid authentication, missing or malformed authorization headers, invalid tokens, invalid claims, and the protected identity endpoint.
-- Refresh-session storage has a database migration with token-hash, expiry, and revocation fields.
+- Refresh-session storage has database migrations for token hash, expiry, revocation, and rotation-family metadata.
+- Login issues an opaque refresh token and stores only its SHA-256 hash.
+- Refresh rotates the token atomically and checks user/school status.
+- Reuse of a revoked refresh token revokes active sessions in its token family.
+- Logout revokes the supplied refresh token; access JWTs are not immediately revoked.
 - The API server has configured HTTP timeouts and graceful shutdown behavior.
 - Health and readiness endpoints are implemented.
 
@@ -37,10 +41,9 @@ These controls form an initial foundation. They do not mean that production auth
 
 ### Not yet implemented
 
-- Refresh-token issuance, rotation, and revocation endpoints.
-- Logout endpoint and complete access-token revocation behavior.
+- Immediate access-token revocation; logout currently revokes refresh sessions, while issued stateless access tokens remain valid until expiry.
 - Registration or administrative user-provisioning HTTP workflow.
-- Complete authentication-session lifecycle.
+- Session invalidation after password changes, password resets, or other administrative security events.
 - Full current-user profile retrieval from `GET /auth/me`.
 - Role-based access control (RBAC).
 - Complete tenant-isolation enforcement across business queries.
@@ -89,6 +92,16 @@ The proposed minimum of 12 characters is a production requirement to evaluate; i
 - The protected identity endpoint returns the user ID and school ID from validated token claims.
 
 The implemented login and identity endpoints form an initial access-token flow. They are not a complete authentication-session lifecycle.
+
+### Refresh-token handling
+
+Refresh tokens are opaque cryptographically random values, separate from JWT access tokens. The database stores a SHA-256 hash rather than the raw refresh token. Refresh rotation revokes the presented session and creates its replacement in one database transaction. A previously revoked token triggers revocation of remaining active sessions in the same token family.
+
+The current HTTP contract returns refresh tokens in JSON. Clients must avoid exposing them to scripts or logs and should prefer a secure, appropriately protected storage mechanism. Production browser integration should review HttpOnly/Secure/SameSite cookie options together with CSRF protections before choosing a cookie-based transport.
+
+Logout invalidates the refresh token only. Already-issued stateless access JWTs remain valid until their short expiry; immediate access-token revocation is not implemented.
+
+PostgreSQL repository integration tests, concurrent rotation tests, and broader abuse/rate-limit testing remain required before production deployment.
 
 ### Authentication middleware behavior
 

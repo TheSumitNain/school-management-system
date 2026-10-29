@@ -28,6 +28,8 @@ The school and student counts are planning targets, not verified capacity limits
 - **Health endpoint:** `http://localhost:8081/health`
 - **Readiness endpoint:** `http://localhost:8081/ready`
 - **Login endpoint:** `POST http://localhost:8081/auth/login`
+- **Refresh endpoint:** `POST http://localhost:8081/auth/refresh`
+- **Logout endpoint:** `POST http://localhost:8081/auth/logout`
 - **Protected identity endpoint:** `GET http://localhost:8081/auth/me`
 - **Local database:** `school_management`
 
@@ -114,6 +116,7 @@ Previously implemented configuration includes:
 - Defaulting `APP_PORT` to `8081`.
 - Loading PostgreSQL connection settings.
 - Configuring the JWT issuer and access-token expiry.
+- Configuring refresh-token expiry with `REFRESH_TOKEN_EXPIRY_DAYS` (default 7, valid range 1–30).
 - Validating JWT signing-secret length and token-expiry settings.
 - Separating local development database TLS settings from production requirements.
 
@@ -146,7 +149,7 @@ Implemented foundation includes:
 - Configuring Gin and HTTP server timeouts.
 - Explicitly configuring trusted proxies.
 - Registering health and readiness endpoints.
-- Registering `POST /auth/login`.
+- Registering `POST /auth/login`, `POST /auth/refresh`, and `POST /auth/logout`.
 - Registering protected `GET /auth/me`.
 - Attempting graceful shutdown.
 
@@ -174,7 +177,8 @@ Verify these settings against the current source before changing or documenting 
 
 - Accepts `school_id`, `username`, and `password`.
 - Authenticates the user through the authentication service.
-- Returns an access token and sanitized user data on success.
+- Returns an access token, an opaque refresh token, and sanitized user data on success.
+- Stores only a SHA-256 hash of the refresh token.
 - Rejects invalid credentials.
 - Does not return the password hash.
 
@@ -405,11 +409,22 @@ It requires development environment configuration and development seed credentia
 
 Review its environment guard, school-ID behavior, command documentation, and deployment packaging before treating it as production-safe. It must not be exposed as a public API endpoint or run against a production database.
 
-### 5.11 Authentication Not Yet Implemented
+### 5.11 Refresh-Token Lifecycle
 
-- Refresh-token issuance, rotation, and refresh HTTP endpoint.
-- Refresh-token replay protection and complete session lifecycle.
-- Logout HTTP endpoint.
+Current review workspace additions (must be verified locally before commit):
+
+- `backend/internal/services/session_service.go` generates 32-byte cryptographically random opaque refresh tokens and persists only their SHA-256 hashes.
+- `backend/internal/repository/refresh_session_repository.go` stores, rotates, and revokes refresh sessions.
+- `POST /auth/refresh` rotates the presented token and returns a new access/refresh pair.
+- `POST /auth/logout` revokes the presented refresh token.
+- Migration v3 adds `family_id` to group a rotation chain. Reuse of a revoked token revokes active sessions in that family.
+- `REFRESH_TOKEN_EXPIRY_DAYS` defaults to 7 and accepts values from 1 through 30.
+- Unit and handler tests have been added, but their execution has not yet been verified in the user's Windows environment.
+
+Logout does not immediately revoke existing stateless access JWTs; those remain valid until access-token expiry.
+
+### 5.12 Authentication Not Yet Implemented
+
 - Complete session invalidation after password changes or account deactivation.
 - Full user-profile retrieval from `/auth/me`.
 - Access-token revocation enforcement.
@@ -453,6 +468,15 @@ Files:
 
 The migration creates `users` and `refresh_sessions`.
 
+### 6.3 Migration v3 — Refresh Token Families
+
+Files:
+
+- `backend/migrations/000003_add_refresh_token_families.up.sql`
+- `backend/migrations/000003_add_refresh_token_families.down.sql`
+
+The up migration adds `family_id UUID NOT NULL DEFAULT gen_random_uuid()` and an index. The migration has been added in the review workspace but has not yet been applied to the user's local database. Run the migration only after reviewing the diff and confirming the expected database target.
+
 #### `users`
 
 - `id`: generated primary key.
@@ -471,6 +495,7 @@ The migration creates `users` and `refresh_sessions`.
 - `expires_at`: session expiry timestamp.
 - `revoked_at`: optional revocation timestamp.
 - `created_at`: creation timestamp.
+- `family_id`: UUID grouping a refresh-token rotation chain, added by migration v3.
 - Indexes support user lookup and expiration-time queries.
 
 Refresh-session storage exists, but the HTTP refresh/logout flow is pending.
@@ -692,3 +717,34 @@ Copy and paste the following into a new ChatGPT conversation:
 > The immediate priority is to review and synchronize the documentation, inspect Git changes, format and test the code, verify secret exclusion, and commit/push the reviewed milestone.
 >
 > Never ask me to paste real `.env` secrets. Do not claim the system is production-ready until outstanding security, testing, deployment, backup, and monitoring requirements have been addressed.
+
+
+## 10. Current Review Workspace Checkpoint (2026-10-29)
+
+The user uploaded `school-management-review.zip`, generated from committed `HEAD` using `git archive`. This means the archive contains committed files only and excludes Git metadata and uncommitted local files. The latest reported local Git state before the archive was `main...origin/main` clean.
+
+Refresh-token changes have been prepared in a separate review workspace, not directly applied to the user's Windows repository. Files added or changed include:
+
+- `backend/internal/repository/refresh_session_repository.go`
+- `backend/internal/services/session_service.go`
+- `backend/internal/services/session_service_test.go`
+- `backend/migrations/000003_add_refresh_token_families.up.sql`
+- `backend/migrations/000003_add_refresh_token_families.down.sql`
+- `backend/internal/config/config.go` and its tests
+- `backend/internal/handlers/auth_handler.go` and its tests
+- `backend/cmd/api/main.go`
+- `backend/.env.example`
+- `README.md`, `PROGRESS.md`, `CHANGELOG.md`
+- `docs/API.md`, `docs/DATABASE.md`, `docs/SECURITY.md`, `docs/TESTING.md`, and this handoff file
+
+Verification has not yet been completed. Next steps must be done from `D:\school-management-system\backend` after applying the reviewed changes:
+
+1. Run `gofmt -w cmd internal`.
+2. Run `go test -count=1 ./...`.
+3. Run `go vet ./...`.
+4. Review `git diff --check` and the full diff.
+5. Confirm local PostgreSQL target and current migration version before running `go run ./cmd/migrate`.
+6. Verify refresh, rotation, replay, and logout against a development database.
+7. Commit and push only after tests and migration verification pass.
+
+Do not claim this feature is complete or production-ready until the above verification and PostgreSQL integration/concurrency tests are completed.

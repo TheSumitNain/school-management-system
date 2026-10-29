@@ -10,7 +10,7 @@ A commercial, multi-tenant School Management System built incrementally with pro
 - **Database access:** pgx / pgxpool
 - **Migrations:** golang-migrate
 - **Password hashing:** bcrypt
-- **Authentication:** JWT access tokens with initial authentication middleware
+- **Authentication:** JWT access tokens, opaque refresh tokens, rotation, and refresh-session revocation (implementation changes require final verification)
 
 ## Initial Target
 
@@ -32,7 +32,7 @@ These are planning targets, not verified capacity limits. Production capacity wi
 
 ## Current Status
 
-**Stage:** Backend foundation and initial JWT authentication.
+**Stage:** Backend foundation and initial JWT authentication; refresh-token changes are prepared in a review workspace and await local test/migration verification.
 
 ### Implemented
 
@@ -41,13 +41,15 @@ These are planning targets, not verified capacity limits. Production capacity wi
 - PostgreSQL connection pool using pgxpool.
 - Health and database-readiness endpoints.
 - HTTP server timeouts and graceful shutdown handling.
-- Versioned database migrations for `schools`, `users` and `refresh_sessions`.
+- Versioned database migrations for `schools`, `users` and `refresh_sessions`, including refresh-token family metadata.
 - User and school repository operations.
 - bcrypt password hashing and verification, including password-length validation.
 - Authentication service operations for user creation and credential verification.
 - JWT access-token generation and validation.
 - JWT issuer, expiry and required-claim validation.
-- `POST /auth/login` endpoint.
+- `POST /auth/login` endpoint that issues access and refresh tokens.
+- `POST /auth/refresh` endpoint for refresh-token rotation and replay detection.
+- `POST /auth/logout` endpoint to revoke a refresh session.
 - Generic unauthorized responses for invalid login credentials.
 - Login response DTO that excludes password hashes.
 - Authentication middleware that validates Bearer access tokens and extracts authenticated user and school IDs.
@@ -62,6 +64,10 @@ These are planning targets, not verified capacity limits. Production capacity wi
 #### `POST /auth/login`
 
 Accepts a school ID, username and password. On successful authentication, returns an access token and basic user information. Invalid credentials return an unauthorized response.
+
+#### `POST /auth/refresh` and `POST /auth/logout`
+
+`POST /auth/refresh` exchanges a refresh token for a new access token and replacement refresh token. A reused revoked token causes the active sessions in its token family to be revoked. `POST /auth/logout` revokes the supplied refresh token; already-issued access JWTs remain valid until expiry.
 
 #### `GET /auth/me`
 
@@ -90,8 +96,7 @@ These are historical results. Re-run the checks against the current working tree
 
 ### Not Yet Implemented
 
-- Refresh-token issuance, rotation, replay protection and complete session lifecycle endpoints.
-- Logout endpoint and complete HTTP-level session revocation workflow.
+- PostgreSQL repository integration tests and concurrent refresh-token rotation/replay tests.
 - Full user-profile retrieval from `GET /auth/me`.
 - Access-token revocation enforcement.
 - User roles and role-based access control (RBAC).

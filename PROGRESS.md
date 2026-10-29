@@ -4,11 +4,11 @@
 
 Backend foundation and initial JWT authentication implemented, including authentication middleware and a protected identity endpoint.
 
-The API includes health and readiness endpoints, PostgreSQL connectivity, HTTP server timeouts, graceful shutdown, JWT access-token generation and validation, the initial HTTP login endpoint, and a protected `GET /auth/me` endpoint.
+The API includes health and readiness endpoints, PostgreSQL connectivity, HTTP server timeouts, graceful shutdown, JWT access-token generation and validation, login, refresh-token rotation, logout, and a protected `GET /auth/me` endpoint.
 
-Database migrations v1 and v2 have been applied and verified locally. Refresh-token session storage exists in the database, but the complete refresh-token HTTP workflow is not implemented yet.
+The uploaded project snapshot showed migrations v1 and v2 as previously applied locally. This working change adds migration v3 for refresh-token family identifiers; it has not been applied to the user's local database or verified there yet.
 
-**Current status:** Authentication is partially implemented. RBAC, complete tenant-isolation enforcement, refresh-token lifecycle, and production hardening remain incomplete. The application is not production-ready.
+**Current status:** Refresh-token HTTP workflow has been implemented in this review workspace but must pass the user's Go tests and migration verification before being marked complete. RBAC, complete tenant-isolation enforcement, immediate access-token revocation, integration testing, and production hardening remain incomplete. The application is not production-ready.
 
 ## Project Overview
 
@@ -55,6 +55,7 @@ The initial school and student counts are planning targets, not verified capacit
 - [x] Migration tooling configured
 - [x] Migration v1 creates the `schools` table
 - [x] Migration v2 creates `users` and `refresh_sessions`
+- [ ] Migration v3 adds refresh-token family identifiers; migration file added, local application not yet verified
 - [x] Migration runner executed successfully for migration v2
 - [x] Relevant database tables verified locally
 - [x] User and school repository operations implemented
@@ -86,6 +87,12 @@ The initial school and student counts are planning targets, not verified capacit
 - [x] Invalid token identity claims rejected
 - [x] Protected `GET /auth/me` endpoint
 - [x] `/auth/me` returns authenticated user ID and school ID
+- [ ] Opaque refresh-token generation and SHA-256 hash storage added in the review workspace
+- [ ] Configurable refresh-token expiry added (`REFRESH_TOKEN_EXPIRY_DAYS`, default 7 days)
+- [ ] `POST /auth/refresh` endpoint added for token rotation
+- [ ] Replay detection added by grouping rotated sessions into token families
+- [ ] `POST /auth/logout` endpoint added to revoke a refresh session
+- [ ] Unit tests and handler tests added for refresh/logout behavior; final test execution is pending
 - [x] Middleware unit tests
 - [x] `/auth/me` route-level authentication tests
 
@@ -125,9 +132,9 @@ The development seed command is not a production onboarding mechanism and must r
 
 ### Authentication and Authorization
 
-- [ ] Refresh-token issuance and complete refresh workflow
-- [ ] Refresh-token rotation and replay protection
-- [ ] HTTP logout endpoint and complete session-revocation workflow
+- [ ] Verify refresh-token issuance and complete refresh workflow with tests and database migration
+- [ ] Verify refresh-token rotation and replay protection against PostgreSQL, including concurrent refresh requests
+- [ ] Verify HTTP logout endpoint and session-revocation workflow
 - [ ] Full user-profile retrieval from `GET /auth/me`
 - [ ] Public registration and production school onboarding
 - [ ] User roles and role-based access control (RBAC)
@@ -173,8 +180,9 @@ The development seed command is not a production onboarding mechanism and must r
 8. Verify migrations, Git status, whitespace checks and secret exclusion.
 9. Review the exact files to be committed.
 10. Commit and push the verified milestone after reviewing the changes.
-11. Implement the refresh-token lifecycle and logout workflow.
-12. Implement RBAC and school-level tenant authorization.
+11. Verify migration v3, run Go tests and vet, and review refresh-token behavior.
+12. Add PostgreSQL repository integration tests and concurrent-rotation tests.
+13. Implement RBAC and school-level tenant authorization.
 13. Add integration tests and production hardening before release.
 
 ## Working Rules

@@ -40,6 +40,8 @@ func setupRouter(
 
 	if authHandler != nil {
 		router.POST("/auth/login", authHandler.Login)
+		router.POST("/auth/refresh", authHandler.Refresh)
+		router.POST("/auth/logout", authHandler.Logout)
 	}
 
 	router.GET("/auth/me", middleware.AuthMiddleware(tokenService), func(c *gin.Context) {
@@ -118,6 +120,15 @@ func run() error {
 	schoolRepo := repository.NewSchoolRepository(db)
 
 	authService := services.NewAuthService(userRepo, schoolRepo)
+	refreshSessionRepo := repository.NewRefreshSessionRepository(db)
+
+	sessionService, err := services.NewSessionService(
+		refreshSessionRepo,
+		cfg.RefreshTokenExpiryDays,
+	)
+	if err != nil {
+		return fmt.Errorf("initialize refresh session service: %w", err)
+	}
 
 	tokenService, err := services.NewTokenService(
 		cfg.JWTSecret,
@@ -131,6 +142,7 @@ func run() error {
 	authHandler := handlers.NewAuthHandler(
 		authService,
 		tokenService,
+		sessionService,
 	)
 
 	router, err := setupRouter(db, authHandler, tokenService)

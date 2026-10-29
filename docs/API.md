@@ -16,7 +16,7 @@ The backend is built using Go, Gin, and PostgreSQL.
 - `GET /auth/me` endpoint implemented; it returns the authenticated user's ID and school ID, not the full user profile.
 - User creation is available internally through the service layer and a development-only seed command.
 - Public user registration endpoint is not implemented.
-- Refresh-token issuance, rotation, and logout endpoints are not implemented.
+- Opaque refresh-token issuance, rotation, replay detection, and logout endpoints are implemented in the current working changes; verify tests and database migration before treating them as released.
 - Role-Based Access Control (RBAC) and complete tenant-isolation enforcement are pending.
 
 **Important:** Planned functionality described in this document must not be treated as implemented functionality.
@@ -133,6 +133,7 @@ Example:
 {
   "status": "success",
   "access_token": "<access-token>",
+  "refresh_token": "<refresh-token>",
   "token_type": "Bearer",
   "user": {
     "id": 1,
@@ -163,12 +164,58 @@ Inactive users or schools are currently handled by the authentication service as
 - The authentication service checks that the school and user are eligible to authenticate.
 - Passwords are verified against stored password hashes.
 - Passwords are hashed using bcrypt when users are created.
-- A successful login returns an access token.
+- A successful login returns a short-lived access token and an opaque refresh token.
 - The configured access-token expiration applies.
-- The current login endpoint does not return a refresh token.
+- Refresh tokens are random opaque values; only their SHA-256 hashes are persisted in PostgreSQL.
+- Refresh-token lifetime is controlled by `REFRESH_TOKEN_EXPIRY_DAYS` (default: 7; allowed: 1–30 days).
 - A successful login does not imply that RBAC or complete tenant-isolation enforcement has been implemented.
 
-### 3.4 Authenticated Identity
+### 3.4 Refresh Session
+
+**Endpoint:** `POST /auth/refresh`
+
+**Purpose:** Exchanges a valid refresh token for a new access token and a replacement refresh token.
+
+**Request body:**
+
+```json
+{
+  "refresh_token": "<refresh-token>"
+}
+```
+
+**Successful response:** `200 OK`, with a new `access_token`, a new `refresh_token`, `token_type: "Bearer"`, and the basic user DTO. The submitted refresh token is revoked as part of the same database transaction that stores its replacement.
+
+**Error responses:**
+
+| HTTP Status | Meaning |
+|---|---|
+| `400 Bad Request` | The request is malformed or `refresh_token` is missing. |
+| `401 Unauthorized` | The refresh token is invalid, expired, revoked, or detected as a replay. |
+| `403 Forbidden` | The user or school is inactive. |
+| `500 Internal Server Error` | An unexpected internal error occurs. |
+
+Do not keep using the old refresh token after a successful response. If a previously rotated token is presented again, the server revokes active sessions in that token family. This is replay detection; it can require the user to authenticate again if duplicate refresh requests race.
+
+### 3.5 Logout
+
+**Endpoint:** `POST /auth/logout`
+
+**Purpose:** Revokes the supplied refresh token. Logout is safe to retry; an unknown token does not reveal whether a matching session exists.
+
+**Request body:**
+
+```json
+{
+  "refresh_token": "<refresh-token>"
+}
+```
+
+**Successful response:** `200 OK`.
+
+Logout revokes the refresh session, preventing further refreshes. Existing stateless JWT access tokens are not immediately invalidated by this endpoint and remain usable until their configured expiry. Immediate access-token revocation remains future work.
+
+### 3.6 Authenticated Identity
 
 **Endpoint:** `GET /auth/me`
 

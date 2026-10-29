@@ -1,0 +1,152 @@
+package services
+
+import (
+	"context"
+	"errors"
+	"testing"
+	"time"
+
+	"school-management-system/internal/models"
+	"school-management-system/internal/repository"
+)
+
+type fakeRefreshSessionRepository struct {
+	user         *models.User
+	createUserID int64
+	createHash   string
+	createExpiry time.Time
+	oldHash      string
+	newHash      string
+	newExpiry    time.Time
+	revokeHash   string
+	createErr    error
+	rotateErr    error
+	revokeErr    error
+}
+
+func (f *fakeRefreshSessionRepository) Create(
+	_ context.Context, userID int64, tokenHash string, expiresAt time.Time,
+) error {
+	f.createUserID, f.createHash, f.createExpiry = userID, tokenHash, expiresAt
+	return f.createErr
+}
+
+func (f *fakeRefreshSessionRepository) Rotate(
+	_ context.Context, oldHash, newHash string, expiresAt time.Time,
+) (*models.User, error) {
+	f.oldHash, f.newHash, f.newExpiry = oldHash, newHash, expiresAt
+	return f.user, f.rotateErr
+}
+
+func (f *fakeRefreshSessionRepository) Revoke(_ context.Context, tokenHash string) error {
+	f.revokeHash = tokenHash
+	return f.revokeErr
+}
+
+func TestNewSessionServiceValidatesExpiry(t *testing.T) {
+	repo := &fakeRefreshSessionRepository{}
+	for _, days := range []int{0, 31} {
+		if _, err := NewSessionService(repo, days); err == nil {
+			t.Errorf("expected expiry %d to be rejected", days)
+		}
+	}
+	if _, err := NewSessionService(repo, 7); err != nil {
+		t.Fatalf("expected valid expiry, got %v", err)
+	}
+}
+
+func TestIssueStoresOnlyTokenHash(t *testing.T) {
+	repo := &fakeRefreshSessionRepository{}
+	service, err := NewSessionService(repo, 7)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rawToken, err := service.Issue(context.Background(), 12)
+	if err != nil {
+		t.Fatalf("Issue() error: %v", err)
+	}
+	if rawToken == "" {
+		t.Fatal("expected a non-empty refresh token")
+	}
+	if repo.createUserID != 12 {
+		t.Fatalf("stored user ID = %d, want 12", repo.createUserID)
+	}
+	if repo.createHash != HashRefreshToken(rawToken) || repo.createHash == rawToken {
+		t.Fatal("repository must receive only the token hash")
+	}
+	if !repo.createExpiry.After(time.Now().Add(6 * 24 * time.Hour)) {
+		t.Fatal("refresh token expiry should be approximately seven days away")
+	}
+}
+
+func TestRotateHashesBothTokensAndReturnsReplacement(t *testing.T) {
+	repo := &fakeRefreshSessionRepository{
+		user: &models.User{ID: 12, SchoolID: 3, Username: "user", Status: "active"},
+	}
+	service, err := NewSessionService(repo, 7)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	user, replacement, err := service.Rotate(context.Background(), "old-token")
+	if err != nil {
+		t.Fatalf("Rotate() error: %v", err)
+	}
+	if user.ID != 12 || replacement == "" || replacement == "old-token" {
+		t.Fatal("expected user and a new refresh token")
+	}
+	if repo.oldHash != HashRefreshToken("old-token") {
+		t.Fatal("repository must receive the hash of the old token")
+	}
+	if repo.newHash != HashRefreshToken(replacement) || repo.newHash == replacement {
+		t.Fatal("repository must receive only the replacement token hash")
+	}
+}
+
+func TestRotateRejectsEmptyToken(t *testing.T) {
+	service, err := NewSessionService(&fakeRefreshSessionRepository{}, 7)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := service.Rotate(context.Background(), "  "); !errors.Is(err, ErrInvalidRefreshToken) {
+		t.Fatalf("expected invalid refresh token error, got %v", err)
+	}
+}
+
+func TestRotatePropagatesReuseDetection(t *testing.T) {
+	repo := &fakeRefreshSessionRepository{rotateErr: repository.ErrRefreshTokenReuse}
+	service, err := NewSessionService(repo, 7)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, err = service.Rotate(context.Background(), "replayed-token")
+	if !errors.Is(err, ErrRefreshTokenReuse) {
+		t.Fatalf("expected reuse error, got %v", err)
+	}
+}
+
+func TestRevokeStoresOnlyTokenHash(t *testing.T) {
+	repo := &fakeRefreshSessionRepository{}
+	service, err := NewSessionService(repo, 7)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := service.Revoke(context.Background(), "raw-token"); err != nil {
+		t.Fatal(err)
+	}
+	if repo.revokeHash != HashRefreshToken("raw-token") || repo.revokeHash == "raw-token" {
+		t.Fatal("repository must receive only the token hash")
+	}
+}
+
+func TestHashRefreshTokenIsStableSHA256Hex(t *testing.T) {
+	first := HashRefreshToken("example-token")
+	second := HashRefreshToken("example-token")
+	if first != second || len(first) != 64 {
+		t.Fatalf("expected stable 64-character hash, got %q and %q", first, second)
+	}
+	if HashRefreshToken("different-token") == first {
+		t.Fatal("different raw tokens must not have the same hash")
+	}
+}

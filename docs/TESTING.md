@@ -29,7 +29,7 @@ go vet ./...
 
 The test suite passed at the time of the last recorded verification. These historical results do not establish that the latest code and documentation changes have been verified.
 
-The current test coverage is not a guarantee that all application behavior is tested. Refresh-token HTTP flows, authentication middleware, RBAC, tenant isolation, and most school business modules are not yet implemented.
+The current test coverage is not a guarantee that all application behavior is tested. Refresh-token service and handler unit tests have been added in the current review workspace, but PostgreSQL repository integration tests, concurrent refresh rotation/replay tests, RBAC, tenant isolation, and most school business modules remain incomplete. Run the full suite before treating the new changes as verified.
 
 Run the commands again after code or dependency changes before treating the current code as verified.
 
@@ -167,6 +167,17 @@ Verify:
 - Invalid credentials are rejected.
 - Repository errors are handled safely.
 - Duplicate usernames are handled correctly by the repository/database boundary.
+
+### Refresh-token lifecycle
+
+The current working changes add unit and handler tests for:
+- Storing only a SHA-256 hash of a generated refresh token.
+- Configurable refresh expiry and expiry validation.
+- Refresh-token rotation and invalid-token responses.
+- Logout forwarding the token for revocation.
+- Refresh-token reuse error handling.
+
+Before production, add PostgreSQL integration tests for transaction atomicity, family revocation on replay, inactive-user/school revocation, and concurrent rotation. Use a dedicated test database and do not run integration tests against production data.
 
 ### JWT token service
 

@@ -18,7 +18,7 @@ The initial migrations create the following tables:
 |---|---|---|
 | `schools` | Stores school records and their setup status | Implemented in migration v1 |
 | `users` | Stores user accounts associated with schools | Implemented in migration v2 |
-| `refresh_sessions` | Stores hashed refresh-token/session information | Schema implemented in migration v2; complete HTTP lifecycle pending |
+| `refresh_sessions` | Stores hashed refresh-token/session information and token-family metadata | Base schema in migration v2; token-family field in migration v3 |
 
 Other functional tables, including students, teachers, classes, subjects, attendance, and transport, must be added through future migrations when their requirements and relationships are finalized.
 
@@ -48,6 +48,17 @@ Files:
 - `000002_create_auth_tables.down.sql`
 
 The migration creates `users` and `refresh_sessions`, including their initial constraints and indexes.
+
+### Migration v3
+
+**Purpose:** Add a `family_id` UUID to refresh sessions and index it.
+
+Files:
+
+- `000003_add_refresh_token_families.up.sql`
+- `000003_add_refresh_token_families.down.sql`
+
+The family identifier groups refresh tokens issued through rotation. If an already-revoked token is presented again, the API can revoke the remaining active sessions in that family. PostgreSQL's `gen_random_uuid()` supplies a default for existing and newly inserted rows.
 
 ### Running migrations
 
@@ -142,6 +153,7 @@ The current migration defines:
 | `expires_at` | Session expiry timestamp |
 | `revoked_at` | Timestamp indicating revocation; nullable |
 | `created_at` | Session creation timestamp |
+| `family_id` | UUID grouping a refresh-token rotation chain; added by migration v3 |
 
 ### Constraints and indexes
 

@@ -1,0 +1,27 @@
+School Management System — refresh-token implementation review changes
+
+These files were prepared from the uploaded committed snapshot. The ZIP contains only changed/new source, migration, test, and documentation files. It does not contain .git or backend/.env.
+
+Apply:
+1. Back up your current project folder if you want an extra recovery point.
+2. Extract this ZIP into D:\school-management-system and allow it to overwrite matching files.
+3. Do not commit yet.
+4. From CMD:
+   cd /d D:\school-management-system
+   git status -sb
+   git diff --check
+   cd /d D:\school-management-system\backend
+   gofmt -w cmd\api\main.go internal\config\config.go internal\config\config_test.go internal\handlers\auth_handler.go internal\handlers\auth_handler_test.go internal\services\auth_service.go internal\services\session_service.go internal\services\session_service_test.go internal\repository\refresh_session_repository.go
+   go test -count=1 ./...
+   go vet ./...
+
+5. Review the diff before applying the new migration. Confirm backend/.env points to your intended DEVELOPMENT database, then run:
+   go run ./cmd/migrate
+
+6. Verify migration v3 and test login -> refresh -> replay old refresh token -> logout in the development environment.
+7. Share command output, not any .env contents or secrets. Do not commit/push until tests and migration verification succeed.
+
+Important verification limitation:
+- The Go toolchain available in this review environment is Go 1.23.2, while the project go.mod uses Go 1.27.1 and a newer `tool` directive. Therefore, the full Go test suite and `go vet` could not be run here. The changed Go files were formatted, but local test execution is still required.
+- PostgreSQL repository integration tests and concurrent-rotation tests remain outstanding.
+- Logout revokes refresh tokens; existing stateless access JWTs remain valid until their configured expiry.

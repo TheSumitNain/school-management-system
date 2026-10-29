@@ -92,7 +92,6 @@ func (s *AuthService) CreateUser(
 }
 
 // Authenticate verifies the school, user status, and password.
-// JWT generation will be added in a later step.
 func (s *AuthService) Authenticate(
 	ctx context.Context,
 	schoolID int64,
