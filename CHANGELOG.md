@@ -2,7 +2,7 @@
 
 All notable changes to the School Management System are documented in this file.
 
-This project is under active development. Entries describe implementation completed so far; final verification of the current working tree is still required before committing or releasing.
+This project is under active development. Verification notes describe previously reported results and must be rechecked against the final working tree before committing or releasing.
 
 ## [Unreleased]
 
@@ -14,6 +14,7 @@ This project is under active development. Entries describe implementation comple
 - Database migration command and versioned SQL migration files.
 - Migration v1 for the `schools` table.
 - Migration v2 for `users` and `refresh_sessions`.
+- Migration v3 adding refresh-token family identifiers.
 - Health endpoint at `GET /health`.
 - Database-readiness endpoint at `GET /ready`.
 - HTTP server timeouts and graceful shutdown handling.
@@ -22,68 +23,68 @@ This project is under active development. Entries describe implementation comple
 - Password hashing and verification using bcrypt.
 - Password-length validation and password service tests.
 - Authentication service for user creation and credential verification.
-- JWT access-token generation and validation.
-- JWT issuer, expiry and required-claim validation.
-- Initial HTTP login handler and `POST /auth/login` endpoint.
-- Login response DTO that excludes password hashes.
+- JWT access-token generation and validation, including issuer, expiry and required-claim checks.
+- `POST /auth/login` endpoint and a response DTO that excludes password hashes.
 - JWT authentication middleware for protected routes.
 - Bearer access-token validation and authenticated identity extraction in middleware.
 - Protected `GET /auth/me` endpoint returning the authenticated user's ID and school ID.
-- Opaque refresh-token generation with SHA-256 hash persistence.
+- Opaque refresh-token generation, with SHA-256 hashes persisted instead of raw tokens.
 - Refresh-token expiry configuration using `REFRESH_TOKEN_EXPIRY_DAYS`.
 - `POST /auth/refresh` endpoint for refresh-token rotation.
 - Replay detection that revokes active sessions in a reused token family.
 - `POST /auth/logout` endpoint for refresh-session revocation.
-- Migration v3 adding refresh-token family identifiers.
-- Unit and handler tests for session-token and refresh/logout behavior (test execution pending).
-- Unit tests for authentication middleware, including missing, malformed and invalid authorization headers and invalid identity claims.
-- Router-level tests for successful and unsuccessful authentication on `/auth/me`.
-- Tests for configuration, authentication services, token services and login handlers.
+- Unit, handler, middleware and API route tests for implemented authentication behavior.
 - Development-only seed command with environment safeguards.
 - Documentation covering requirements, architecture, database design, API conventions, security, testing, progress and handoff.
 
 ### Changed
 
 - Expanded configuration validation for JWT-related settings.
-- Updated API documentation to include the implemented `/auth/me` endpoint and distinguish implemented functionality from planned work.
-- Updated security documentation to describe the current middleware behavior and remaining security gaps.
-- Updated project progress documentation to reflect the middleware and protected identity endpoint.
-- Updated documentation to distinguish implemented functionality from planned work.
-- Documented the initial shared-database architecture for multiple schools.
-- Updated authentication documentation to reflect the access-token service and login endpoint.
+- Updated API documentation to describe `/auth/me`, refresh-token rotation and logout behavior.
+- Updated security documentation to distinguish implemented authentication behavior from remaining security gaps.
+- Updated progress and handoff documentation to reflect the refresh-token implementation and latest reported verification.
+- Documented the shared-database architecture for multiple schools.
+- Updated authentication documentation to distinguish identity validation from full authorization.
 
 ### Security
 
 - Added bcrypt-based password handling.
-- Added initial JWT access-token generation and validation.
+- Added JWT access-token generation and validation.
 - Added generic unauthorized responses for invalid login credentials.
 - Kept password hashes out of login responses.
 - Added authentication middleware that validates Bearer access tokens on the protected identity endpoint.
 - Rejects missing or malformed authorization headers, invalid tokens and invalid identity claims.
+- Stores only refresh-token hashes in the database.
+- Rotates refresh tokens and revokes active sessions in a token family when a revoked token is replayed.
 - Added safeguards to the development seed command.
-- Documented remaining work for refresh-token lifecycle management, RBAC, tenant isolation and production security hardening.
+- Documented remaining work for RBAC, tenant isolation, MFA, rate limiting and production security hardening.
 
 ### Pending
 
 - PostgreSQL repository integration tests and concurrent refresh-token rotation/replay tests.
+- Independent logout verification using a fresh authentication session.
 - Immediate access-token revocation; access JWTs remain valid until expiry after logout.
 - Full user-profile retrieval from `GET /auth/me`.
-- Public registration and production school-onboarding workflows.
+- Production school-onboarding, invitation and account-activation workflows.
 - User roles, RBAC and permission enforcement.
-- Complete school-level tenant authorization and automated isolation tests.
-- PostgreSQL repository integration tests and migration tests.
+- Complete school-level tenant authorization and automated cross-school isolation tests.
+- Automated migration tests against a disposable test database.
 - Student, teacher, class, subject and attendance APIs.
 - React frontend and dashboard implementation.
+- Mandatory MFA for Platform Admin and School Admin.
+- Password-reset workflows, login rate limiting, lockout enforcement and security-event monitoring.
 - Production deployment, monitoring, backup, recovery, security testing and load testing.
 
 ## Verification Notes
 
-- `go test -count=1 ./...` passed after the authentication middleware and `/auth/me` changes.
-- `go vet ./...` passed after the authentication middleware and `/auth/me` changes.
-- Local migrations through version 2 were previously applied and relevant tables verified.
-- These checks must be rerun against the final working tree before the milestone is committed. The refresh-token changes in the review workspace have not yet been verified by running the Go test suite or applying migration v3.
-- Documentation updates must also be reviewed for consistency.
-- The project is not yet production-ready.
+- `go test -count=1 ./...` was reported successful after the refresh-token implementation.
+- `go vet ./...` was reported successful after the refresh-token implementation.
+- Manual checks reportedly covered login, refresh-token rotation, replay-triggered family revocation and refresh rejection after logout.
+- Migration v3 was reported applied to the local development database, with migration version 3 and `dirty=false`.
+- `git diff --check` has been run during the documentation updates; only Windows LF-to-CRLF warnings were reported, with no whitespace errors.
+- These are previously reported results. Re-run tests and inspect the actual migration state before committing.
+- PostgreSQL integration tests, concurrent replay tests and a clean-session logout test remain necessary.
+- The project is not production-ready.
 
 ## Changelog Guidelines
 

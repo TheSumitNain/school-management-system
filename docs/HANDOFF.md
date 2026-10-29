@@ -1,18 +1,23 @@
 # School Management System — Project Handoff
 
-> **Purpose:** This is the source-of-truth handoff for continuing the project in a new ChatGPT conversation. Update it after meaningful milestones and keep it committed to the GitHub repository.
+> **Purpose:** This document is the source of truth for continuing the existing School Management System project. Update it after meaningful milestones and keep it committed to GitHub.
+>
+> **Last documented milestone:** `fec3b8a` — `feat(auth): add refresh token rotation and revocation`
+>
+> **Important:** Verify the current Git status and source files before assuming that this document or the local repository reflects the latest state.
 
 ## 1. Project Overview
 
 - **Product:** Commercial multi-tenant School Management System.
-- **Initial planning target:** 25–30 schools, approximately 400–500 students per school (roughly 10,000–15,000 students).
+- **Planning target:** 25–30 schools, approximately 400–500 students per school.
 - **Frontend:** React + TypeScript + Vite.
 - **Backend:** Go + Gin.
 - **Database:** PostgreSQL.
-- **Initial architecture:** Modular monolith with a shared database and shared schema.
-- **Initial payment scope:** Fee/payment gateway excluded for now.
-- **Future scope:** Parent mobile app, live bus tracking, advanced AI/analytics and additional roles/features.
-- **Working style:** Explain in Hindi/Hinglish, use a friendly tone, work on one small task at a time, provide exact commands/code and wait for the user's result before proceeding.
+- **Architecture:** Modular monolith with a shared PostgreSQL database and shared schema.
+- **Tenant isolation:** Must be enforced by the backend on every applicable protected request.
+- **Initial scope:** Foundation, authentication, RBAC, school onboarding, and core school-management workflows.
+- **Excluded from initial scope:** Fee/payment gateway, native parent mobile app, live bus GPS tracking, and advanced AI analytics.
+- **Working style:** Explain in Hindi/Hinglish, use a friendly tone, work on one small task at a time, provide exact commands and complete replacement files when appropriate, and wait for the user's output before proceeding.
 
 The school and student counts are planning targets, not verified capacity limits.
 
@@ -21,68 +26,59 @@ The school and student counts are planning targets, not verified capacity limits
 - **Local project root:** `D:\school-management-system`
 - **GitHub repository:** https://github.com/TheSumitNain/school-management-system
 - **Branch:** `main`
-- **Environment:** Windows CMD and VS Code.
 - **Backend directory:** `D:\school-management-system\backend`
-- **Go module:** `school-management-system`, located in `backend\go.mod`.
+- **Go module:** `school-management-system`, located in `backend\go.mod`
+- **Environment:** Windows CMD and VS Code
 - **Default API port:** `8081`
-- **Health endpoint:** `http://localhost:8081/health`
-- **Readiness endpoint:** `http://localhost:8081/ready`
-- **Login endpoint:** `POST http://localhost:8081/auth/login`
-- **Refresh endpoint:** `POST http://localhost:8081/auth/refresh`
-- **Logout endpoint:** `POST http://localhost:8081/auth/logout`
-- **Protected identity endpoint:** `GET http://localhost:8081/auth/me`
 - **Local database:** `school_management`
 
-The last reported repository state was `main...origin/main` before the current authentication middleware and documentation updates were committed. The current Git state has not been verified in this handoff update.
+### Known endpoints
 
-Always verify the current Git status, latest commit, and remote synchronization before committing. Never assume the working tree is clean without checking.
+- `GET http://localhost:8081/health`
+- `GET http://localhost:8081/ready`
+- `POST http://localhost:8081/auth/login`
+- `POST http://localhost:8081/auth/refresh`
+- `POST http://localhost:8081/auth/logout`
+- `GET http://localhost:8081/auth/me`
 
-Never commit `.env` files, passwords, JWT signing secrets, or real student data. Never ask the user to paste secret values into chat.
+### Git checkpoint
 
-## 3. Current Repository Structure
+The last documented authentication milestone is:
 
-The following structure reflects the known project files. Verify the actual filesystem before assuming every file is present.
+`fec3b8a feat(auth): add refresh token rotation and revocation`
+
+This commit was reported pushed to `origin/main`. The last reported Git status after that push was clean and synchronized.
+
+Documentation edits may now create uncommitted changes. Always check the actual state before committing or pushing.
+
+Never commit `.env` files, passwords, JWT signing secrets, real student data, or other sensitive credentials. Never ask the user to paste real secret values into chat.
+
+## 3. Project Structure
+
+This is the known structure. Verify the actual filesystem before assuming that every listed file is present.
 
 ```text
 D:\school-management-system
 ├── backend
 │   ├── cmd
 │   │   ├── api
-│   │   │   ├── main.go
-│   │   │   └── main_test.go
 │   │   ├── devseed
-│   │   │   └── main.go
 │   │   └── migrate
-│   │       └── main.go
 │   ├── internal
 │   │   ├── config
-│   │   │   ├── config.go
-│   │   │   └── config_test.go
 │   │   ├── database
-│   │   │   └── connection.go
 │   │   ├── handlers
-│   │   │   ├── auth_handler.go
-│   │   │   └── auth_handler_test.go
 │   │   ├── middleware
-│   │   │   ├── auth.go
-│   │   │   └── auth_test.go
 │   │   ├── models
-│   │   │   └── user.go
 │   │   ├── repository
-│   │   │   ├── school_repository.go
-│   │   │   └── user_repository.go
 │   │   └── services
-│   │       ├── auth_service.go
-│   │       ├── auth_service_test.go
-│   │       ├── password.go
-│   │       ├── password_test.go
-│   │       ├── token_service.go
-│   │       └── token_service_test.go
 │   ├── migrations
 │   │   ├── 000001_create_schools_table.up.sql
 │   │   ├── 000001_create_schools_table.down.sql
 │   │   ├── 000002_create_auth_tables.up.sql
-│   │   └── 000002_create_auth_tables.down.sql
+│   │   ├── 000002_create_auth_tables.down.sql
+│   │   ├── 000003_add_refresh_token_families.up.sql
+│   │   └── 000003_add_refresh_token_families.down.sql
 │   ├── .env
 │   ├── .env.example
 │   ├── go.mod
@@ -95,13 +91,13 @@ D:\school-management-system
 │   ├── REQUIREMENTS.md
 │   ├── SECURITY.md
 │   └── TESTING.md
-├── .gitignore
 ├── README.md
 ├── PROGRESS.md
-└── CHANGELOG.md
+├── CHANGELOG.md
+└── .gitignore
 ```
 
-The local `backend\.env` file is shown only to document the expected development setup. It must remain untracked by Git.
+`backend\.env` is a local development configuration file and must remain untracked. Its presence in this illustrative structure does not mean it is committed to Git.
 
 ## 4. Backend Foundation
 
@@ -112,46 +108,41 @@ File: `backend/internal/config/config.go`
 Previously implemented configuration includes:
 
 - Loading `.env` for local development while allowing externally supplied environment variables.
-- Defaulting `APP_ENV` to `development`.
-- Defaulting `APP_PORT` to `8081`.
-- Loading PostgreSQL connection settings.
-- Configuring the JWT issuer and access-token expiry.
-- Configuring refresh-token expiry with `REFRESH_TOKEN_EXPIRY_DAYS` (default 7, valid range 1–30).
-- Validating JWT signing-secret length and token-expiry settings.
-- Separating local development database TLS settings from production requirements.
+- `APP_ENV`, defaulting to development.
+- `APP_PORT`, defaulting to `8081`.
+- PostgreSQL connection settings.
+- JWT issuer, signing-secret validation, and access-token expiry configuration.
+- `REFRESH_TOKEN_EXPIRY_DAYS`, defaulting to 7 and accepting values from 1 through 30.
+- Environment-specific database TLS settings.
 
-Review the actual configuration code before changing behavior. Production TLS, environment validation, error handling, and secret management still require deployment-specific verification.
+Review the actual source and tests before changing or making further claims about configuration behavior.
+
+Production secret management, TLS, certificate validation, and deployment-specific validation still require review.
 
 ### 4.2 PostgreSQL Connection
 
 File: `backend/internal/database/connection.go`
 
-Previously implemented behavior includes:
+The implemented foundation uses `pgxpool.Pool`, validates database configuration, establishes the connection, pings the database, and closes the pool if the initial ping fails.
 
-- Validating required database settings.
-- Building PostgreSQL connection configuration.
-- Using `pgxpool.Pool`.
-- Pinging PostgreSQL during connection setup.
-- Closing the pool if the initial ping fails.
+The local development configuration may use `sslmode=disable`. This is not a production security recommendation. Production deployment must configure and verify TLS and certificate validation.
 
-The local development configuration uses `sslmode=disable` by default. This is not a production security recommendation. Configure and verify TLS and certificate validation for production.
-
-Connection-pool limits, operational timeouts, and database availability behavior require further review.
+Database pool sizing, operational timeouts, recovery behavior, and integration tests remain areas for review.
 
 ### 4.3 API Server
 
 File: `backend/cmd/api/main.go`
 
-Implemented foundation includes:
+Implemented server foundation includes:
 
-- Loading application configuration.
+- Loading configuration.
 - Connecting to PostgreSQL.
 - Configuring Gin and HTTP server timeouts.
 - Explicitly configuring trusted proxies.
-- Registering health and readiness endpoints.
-- Registering `POST /auth/login`, `POST /auth/refresh`, and `POST /auth/logout`.
-- Registering protected `GET /auth/me`.
-- Attempting graceful shutdown.
+- Health and readiness endpoints.
+- Login, refresh, and logout routes.
+- A protected `/auth/me` route.
+- Graceful-shutdown handling.
 
 Previously documented HTTP timeouts:
 
@@ -160,67 +151,24 @@ Previously documented HTTP timeouts:
 - `WriteTimeout`: 30 seconds.
 - `IdleTimeout`: 60 seconds.
 
-Verify these settings against the current source before changing or documenting them as final production settings.
+Verify the current source before relying on these values as final production settings.
 
-#### `GET /health`
+### 4.4 Health and Readiness
+
+`GET /health`
 
 - Checks whether the API process is responding.
 - Does not independently establish database readiness.
 
-#### `GET /ready`
+`GET /ready`
 
 - Checks database readiness.
 - Returns success when the database ping succeeds.
 - Returns `503 Service Unavailable` when the readiness check fails.
 
-#### `POST /auth/login`
-
-- Accepts `school_id`, `username`, and `password`.
-- Authenticates the user through the authentication service.
-- Returns an access token, an opaque refresh token, and sanitized user data on success.
-- Stores only a SHA-256 hash of the refresh token.
-- Rejects invalid credentials.
-- Does not return the password hash.
-
-#### `GET /auth/me`
-
-- Requires an `Authorization: Bearer <access-token>` header.
-- Uses the authentication middleware to validate the access token.
-- Extracts the authenticated user's ID and school ID from validated claims.
-- Returns the authenticated identity IDs.
-- Does not yet fetch and return the complete user profile.
-- Does not itself enforce role-based permissions or complete tenant authorization.
-
-The middleware is currently applied to `/auth/me`; do not assume all future protected routes are automatically secured.
-
-#### Remaining server hardening
-
-- Verify graceful-shutdown timeout and force-close behavior.
-- Review startup/shutdown error handling and resource cleanup.
-- Verify trusted-proxy configuration for the deployment.
-- Add deployment-specific health and readiness checks.
-
-### 4.4 API and Middleware Tests
-
-Known files:
-
-- `backend/cmd/api/main_test.go`
-- `backend/internal/handlers/auth_handler_test.go`
-- `backend/internal/middleware/auth_test.go`
-
-Reported test coverage includes API health/readiness behavior, login-handler behavior, middleware authorization-header validation, and `/auth/me` route behavior.
-
-Middleware tests cover valid tokens, missing or malformed authorization headers, invalid tokens, invalid identity claims, nil claims, and a nil validator.
-
-Route tests cover valid, missing, and invalid access tokens on `/auth/me`.
-
-Review the current test files before claiming coverage beyond these cases.
-
 ### 4.5 Migration Runner
 
 File: `backend/cmd/migrate/main.go`
-
-The migration runner uses the PostgreSQL configuration and migration files. It handles the no-change migration result.
 
 Run migrations from the backend directory:
 
@@ -229,19 +177,23 @@ cd /d D:\school-management-system\backend
 go run ./cmd/migrate
 ```
 
-Making migration path resolution independent of the working directory and testing migrations against a dedicated database remain follow-up tasks.
+**Caution:** Running the migration command changes the target database schema. Confirm the database target and current migration state before executing it. Never run a down migration casually or against production.
 
-## 5. Authentication Foundation
+Making migration path resolution independent of the working directory and adding automated migration tests against a dedicated database remain follow-up tasks.
 
-The initial authentication implementation includes password hashing, user authentication, JWT access-token generation and validation, a login handler, authentication middleware, and a protected identity endpoint.
+## 5. Authentication Implementation
 
-This is **not yet a complete production authentication system**.
+The current backend includes password hashing, user and school repositories, an authentication service, JWT access-token generation and validation, login, authentication middleware, a protected identity endpoint, and a refresh-token lifecycle.
 
-### 5.1 User Model
+This is a meaningful authentication foundation, but it is **not a complete production authentication system**.
 
-File: `backend/internal/models/user.go`
+### 5.1 User Model and Database
 
-The model includes:
+Known model file:
+
+`backend/internal/models/user.go`
+
+The user model includes:
 
 - `ID`
 - `SchoolID`
@@ -253,7 +205,7 @@ The model includes:
 
 The password hash is excluded from JSON serialization.
 
-The current users schema does not yet contain a role column.
+The current user schema does not yet implement the complete role and permission model.
 
 ### 5.2 Password Service
 
@@ -262,13 +214,13 @@ File: `backend/internal/services/password.go`
 Implemented behavior includes:
 
 - bcrypt hashing with cost 12.
-- Password hash verification.
+- Password-hash verification.
 - Rejection of passwords shorter than 8 bytes or longer than 72 bytes.
 - Rejection of whitespace-only passwords.
 
 Tests: `backend/internal/services/password_test.go`.
 
-The current implementation must be reconciled with the stronger planned production password policy. Do not claim a 12-character minimum or compromised-password checks are implemented until the code and tests enforce them.
+The production policy still requires review. Do not claim that a minimum 12-character policy, compromised-password checks, or a finalized Argon2id policy is implemented unless the code and tests enforce it.
 
 ### 5.3 User Repository
 
@@ -280,30 +232,30 @@ Implemented operations include:
 - Creating a user with a password hash.
 - Handling duplicate school/username conflicts.
 
-PostgreSQL repository integration tests remain pending.
+PostgreSQL repository integration and concurrency tests remain pending.
 
 ### 5.4 School Repository
 
 File: `backend/internal/repository/school_repository.go`
 
-Implements school lookup by ID.
+Provides school lookup by ID.
 
-The authentication flow depends on checking the school's current status before authenticating its users.
+The authentication flow checks school status before authenticating the user. Full tenant authorization across future application endpoints is not yet implemented.
 
 ### 5.5 Authentication Service
 
 File: `backend/internal/services/auth_service.go`
 
-Implemented internal operations include:
+Implemented operations include:
 
 - Creating a user for an existing active school.
-- Authenticating a user using school ID, username, and password.
+- Authenticating by school ID, username, and password.
 - Rejecting inactive schools and disabled users.
 - Returning a generic invalid-credentials error for unknown users and incorrect passwords.
 
 Tests: `backend/internal/services/auth_service_test.go`.
 
-These are internal service-layer operations. User creation is not exposed as a public registration endpoint.
+User creation is an internal service operation, not a public self-registration endpoint.
 
 ### 5.6 JWT Access-Token Service
 
@@ -315,26 +267,19 @@ Implemented functionality includes:
 - Validating access tokens.
 - Signing with HS256.
 - Checking issuer and expiration.
-- Validating the token subject and school-related claims according to the service implementation.
-
-The service uses configuration for the signing secret, issuer, and access-token expiry.
+- Validating the subject and school-related identity claims according to the implementation.
 
 Tests: `backend/internal/services/token_service_test.go`.
 
-Review the actual implementation and tests before making claims about additional claims, clock-skew handling, or revocation behavior.
+Verify the actual code and tests before claiming additional properties such as immediate token revocation, clock-skew guarantees, or complete session invalidation.
 
-### 5.7 Login Handler
-
-Files:
-
-- `backend/internal/handlers/auth_handler.go`
-- `backend/internal/handlers/auth_handler_test.go`
-
-Implemented endpoint:
+### 5.7 Login Endpoint
 
 `POST /auth/login`
 
-Request example:
+The request uses `school_id`, `username`, and `password`.
+
+Example with placeholder values:
 
 ```json
 {
@@ -344,23 +289,9 @@ Request example:
 }
 ```
 
-These values are placeholders, not real credentials.
+Successful responses include an access token, a refresh token, Bearer token type, and sanitized user data. Password hashes must never be returned.
 
-Successful responses include:
-
-- A success status.
-- `access_token`.
-- `token_type` set to `Bearer`.
-- A sanitized user object containing user ID, school ID, username, and status.
-
-The response does not include the user's password hash.
-
-Previously reported manual verification:
-
-- Valid development credentials returned a successful response and an access token.
-- An invalid password returned HTTP `401 Unauthorized`.
-
-Inactive users and inactive schools are handled as invalid credentials by the current authentication service, generally resulting in `401` rather than a distinct `403`.
+Previously reported manual checks showed valid development credentials succeeding and an invalid password returning `401 Unauthorized`.
 
 ### 5.8 Authentication Middleware
 
@@ -369,168 +300,186 @@ File: `backend/internal/middleware/auth.go`
 Implemented behavior includes:
 
 - Requiring a Bearer authorization header.
-- Validating the access token through an injected token-validator interface.
+- Validating access tokens through an injected token-validator interface.
 - Rejecting missing, malformed, invalid, or unusable tokens.
-- Rejecting missing or invalid identity values, including a non-positive user ID or school ID.
-- Storing the authenticated user ID and school ID in Gin request context.
-- Returning a generic `401 Unauthorized` response for invalid authentication.
+- Rejecting invalid identity values, including non-positive user or school IDs.
+- Storing authenticated user ID and school ID in Gin request context.
+- Returning `401 Unauthorized` for invalid authentication.
 - Returning `500 Internal Server Error` if the token validator is unavailable due to server misconfiguration.
 
-Context keys:
+Known context keys:
 
 - `auth_user_id`
 - `auth_school_id`
 
 Tests: `backend/internal/middleware/auth_test.go`.
 
-The middleware establishes authenticated identity only. It does not implement RBAC, permission checks, account/session revocation, or complete tenant isolation.
+The middleware establishes identity. It does not implement RBAC, permission enforcement, immediate access-token revocation, or complete tenant isolation.
+
+Do not assume all future routes are protected automatically. Every protected route must be deliberately wired to the appropriate middleware and authorization checks.
 
 ### 5.9 Protected Identity Endpoint
 
-`GET /auth/me` is registered in `backend/cmd/api/main.go` and protected by the authentication middleware.
+`GET /auth/me`
 
-The current endpoint returns:
+- Requires a valid access token.
+- Uses the authentication middleware.
+- Returns authenticated identity information, including user and school IDs.
 
-- `status`
-- `user_id`
-- `school_id`
-
-A valid access token is required. Missing or invalid authentication is rejected.
-
-The endpoint currently returns identity IDs rather than a complete profile retrieved from PostgreSQL. Full profile lookup and additional account-state checks remain follow-up tasks.
+The endpoint currently returns identity data rather than a complete profile retrieved from PostgreSQL. Full profile lookup and additional account-state checks remain pending.
 
 ### 5.10 Development Seed Command
 
 File: `backend/cmd/devseed/main.go`
 
-A development-only command exists for creating a test user through the authentication service.
+A development command exists for creating a test user through the authentication service. The known implementation uses school ID `1`.
 
-It requires development environment configuration and development seed credentials. The current implementation uses school ID `1`.
+Review its environment guard, seed credentials, school-ID assumptions, and deployment packaging before treating it as production-safe. It must not become a public API endpoint or run against a production database.
 
-Review its environment guard, school-ID behavior, command documentation, and deployment packaging before treating it as production-safe. It must not be exposed as a public API endpoint or run against a production database.
+## 6. Refresh-Token Lifecycle
 
-### 5.11 Refresh-Token Lifecycle
+The refresh-token implementation was committed in:
 
-Current review workspace additions (must be verified locally before commit):
+`fec3b8a feat(auth): add refresh token rotation and revocation`
 
-- `backend/internal/services/session_service.go` generates 32-byte cryptographically random opaque refresh tokens and persists only their SHA-256 hashes.
-- `backend/internal/repository/refresh_session_repository.go` stores, rotates, and revokes refresh sessions.
-- `POST /auth/refresh` rotates the presented token and returns a new access/refresh pair.
-- `POST /auth/logout` revokes the presented refresh token.
-- Migration v3 adds `family_id` to group a rotation chain. Reuse of a revoked token revokes active sessions in that family.
-- `REFRESH_TOKEN_EXPIRY_DAYS` defaults to 7 and accepts values from 1 through 30.
-- Unit and handler tests have been added, but their execution has not yet been verified in the user's Windows environment.
+Known files include:
 
-Logout does not immediately revoke existing stateless access JWTs; those remain valid until access-token expiry.
+- `backend/internal/repository/refresh_session_repository.go`
+- `backend/internal/services/session_service.go`
+- `backend/internal/services/session_service_test.go`
+- `backend/internal/handlers/auth_handler.go`
+- `backend/internal/handlers/auth_handler_test.go`
+- `backend/migrations/000003_add_refresh_token_families.up.sql`
+- `backend/migrations/000003_add_refresh_token_families.down.sql`
 
-### 5.12 Authentication Not Yet Implemented
+Configuration, API wiring, and documentation were also updated.
 
-- Complete session invalidation after password changes or account deactivation.
-- Full user-profile retrieval from `/auth/me`.
-- Access-token revocation enforcement.
-- RBAC and permission enforcement.
-- Complete tenant authorization and cross-school authorization tests.
-- Login rate limiting, lockout enforcement, and security-event monitoring.
-- MFA and recovery workflows.
-- Password-reset and invitation workflows.
-- PostgreSQL repository integration tests.
-- Production authentication and deployment security review.
+### 6.1 Implemented Behavior
 
-The existence of a `refresh_sessions` table does not mean refresh-token flows are operational.
+- Refresh tokens are opaque, cryptographically random tokens generated using 32 random bytes.
+- Only SHA-256 hashes of refresh tokens are persisted.
+- Refresh-token expiry is configurable using `REFRESH_TOKEN_EXPIRY_DAYS`, defaulting to 7 days with a supported range of 1–30 days.
+- `POST /auth/refresh` rotates a presented refresh token and returns a new access/refresh token pair.
+- `POST /auth/logout` revokes the presented refresh session.
+- Migration v3 adds `family_id` to group refresh-token rotation chains.
+- Reuse of a revoked token is intended to revoke active sessions in the associated token family.
 
-## 6. Database and Migration State
+### 6.2 Reported Verification
 
-Connection settings are stored locally in `backend/.env`. Credentials must remain secret.
+The following checks were reported from the user's local development environment:
 
-### 6.1 Migration v1 — Schools
+- Login returned access and refresh tokens.
+- Refreshing the initial token returned a new token pair.
+- Replaying the old token was rejected.
+- The subsequently rotated token was also rejected after replay, consistent with family-wide revocation.
+- Logout returned success in a manual test, and a subsequent refresh attempt was rejected. That sequence may already have involved a revoked token family, so a separate clean-session logout test should be run for stronger confirmation.
+- Unit and handler tests passed as part of the backend test suite.
+
+These are reported checks, not proof of production-grade concurrency safety.
+
+### 6.3 Important Security Limitation
+
+Logout and refresh-token revocation do **not** automatically invalidate already issued stateless access JWTs.
+
+An access token may remain valid until its expiration unless the API implements an additional revocation mechanism or checks server-side session state. Do not claim immediate access-token revocation is implemented.
+
+### 6.4 Remaining Refresh-Token Work
+
+- Add PostgreSQL integration tests for rotation, expiry, logout, and replay detection.
+- Test concurrent refresh attempts against the same token.
+- Verify transaction and locking behavior to prevent inconsistent concurrent rotations.
+- Verify behavior for expired, unknown, revoked, and malformed refresh tokens.
+- Add immediate access-token revocation if required by the final security design.
+- Confirm that password changes and account deactivation invalidate the intended sessions.
+
+## 7. Database and Migration State
+
+Database connection settings are stored locally in `backend/.env`. Never expose its contents.
+
+### 7.1 Migration v1 — Schools
 
 Files:
 
 - `backend/migrations/000001_create_schools_table.up.sql`
 - `backend/migrations/000001_create_schools_table.down.sql`
 
-The `schools` table includes:
+The `schools` table includes a generated ID, school name, unique school code, status, and timestamps.
 
-- `id`: generated primary key.
-- `name`: school name.
-- `code`: unique school code.
-- `status`: `pending_setup`, `active`, or `suspended`.
-- `created_at` and `updated_at`: timestamps.
+Known status values include:
 
-The down migration drops the table and its data. Never run destructive migrations casually in production.
+- `pending_setup`
+- `active`
+- `suspended`
 
-### 6.2 Migration v2 — Authentication Tables
+The down migration drops the table and its data. Do not execute destructive migrations without reviewing their impact and having an appropriate recovery plan.
+
+### 7.2 Migration v2 — Authentication Tables
 
 Files:
 
 - `backend/migrations/000002_create_auth_tables.up.sql`
 - `backend/migrations/000002_create_auth_tables.down.sql`
 
-The migration creates `users` and `refresh_sessions`.
+This migration creates the `users` and `refresh_sessions` tables.
 
-### 6.3 Migration v3 — Refresh Token Families
+The users table associates a user with a school. Username uniqueness is enforced within a school, with case-insensitive duplicate prevention.
+
+### 7.3 Migration v3 — Refresh Token Families
 
 Files:
 
 - `backend/migrations/000003_add_refresh_token_families.up.sql`
 - `backend/migrations/000003_add_refresh_token_families.down.sql`
 
-The up migration adds `family_id UUID NOT NULL DEFAULT gen_random_uuid()` and an index. The migration has been added in the review workspace but has not yet been applied to the user's local database. Run the migration only after reviewing the diff and confirming the expected database target.
+The up migration adds a `family_id` UUID with a generated default and an index to group refresh-token rotations.
 
-#### `users`
+**Last reported local database state:** Migration version `3`, `dirty=false`. The migration was reported successfully applied to the user's local development database.
 
-- `id`: generated primary key.
-- `school_id`: foreign key to `schools(id)` with `ON DELETE RESTRICT`.
-- `username`: username scoped to a school.
-- `password_hash`: stored password hash.
-- `status`: `active` or `disabled`.
-- `created_at` and `updated_at`: timestamps.
-- A unique index on `(school_id, LOWER(username))` prevents case-insensitive duplicate usernames within a school.
+Verify the current migration state before future database changes or deployment. Do not rerun migrations merely because this handoff mentions them.
 
-#### `refresh_sessions`
+### 7.4 Known Table Responsibilities
 
-- `id`: generated primary key.
-- `user_id`: foreign key to `users(id)` with `ON DELETE CASCADE`.
-- `token_hash`: unique hash of a refresh token.
-- `expires_at`: session expiry timestamp.
-- `revoked_at`: optional revocation timestamp.
-- `created_at`: creation timestamp.
-- `family_id`: UUID grouping a refresh-token rotation chain, added by migration v3.
-- Indexes support user lookup and expiration-time queries.
+`users`:
 
-Refresh-session storage exists, but the HTTP refresh/logout flow is pending.
+- Stores school-associated login identities.
+- Stores password hashes, never plaintext passwords.
+- Tracks account status and timestamps.
 
-#### Local migration verification
+`refresh_sessions`:
 
-The user previously reported successful migration execution and verified the presence of `schools`, `users`, and `refresh_sessions` in the local database.
+- Stores the user association.
+- Stores the unique refresh-token hash.
+- Tracks expiry and revocation timestamps.
+- Stores a family ID for refresh-token rotation chains.
 
-Recheck the migration version and dirty state before relying on this database for further work or deployment.
+Verify the actual SQL migrations before changing constraints, indexes, or field definitions.
 
-### 6.3 `updated_at` Behavior
+### 7.5 Database Work Remaining
 
-The columns default to `NOW()` on insert. They do not automatically update when a row changes. Decide whether application code or a database trigger will maintain them before implementing broader CRUD operations.
+- PostgreSQL repository integration tests.
+- Automated up-migration tests against a clean, dedicated test database.
+- Migration rollback testing in a disposable environment.
+- Database connection-pool tests.
+- Refresh-session concurrency tests.
+- A decision about whether application code or database triggers maintain `updated_at`.
+- Additional indexes and query-performance review as the schema expands.
 
-### 6.4 Migration Safety
+Never run destructive migration tests against the development database containing data the user needs, and never do so against production.
 
-- Version schema changes using migration files.
-- Test migrations against a clean, dedicated test database.
-- Review down migrations before execution.
-- Never run destructive migrations in production without an approved backup and recovery plan.
+## 8. Architecture and Product Decisions
 
-## 7. Architecture and Product Decisions
-
-### 7.1 Multi-Tenant Architecture
+### 8.1 Multi-Tenant Architecture
 
 - Start with a shared PostgreSQL database and shared schema.
 - Include `school_id` in appropriate school-owned tables.
-- Enforce tenant authorization on the server.
-- Never rely on client-provided school IDs as proof of authorization.
-- Consider PostgreSQL Row-Level Security later as defense in depth after application authorization tests exist.
+- Enforce tenant authorization on the server for every applicable protected request.
+- Never treat a client-supplied school ID as proof of authorization.
+- Consider PostgreSQL Row-Level Security later as defense in depth.
 - Separate databases per school are not part of the initial plan.
 
 These are architecture decisions and requirements. Complete tenant-isolation enforcement remains pending.
 
-### 7.2 Roles
+### 8.2 Roles and Permissions
 
 Roles discussed for the product include:
 
@@ -539,21 +488,62 @@ Roles discussed for the product include:
 - Teacher.
 - Parent.
 - Student.
-- Driver and other staff roles as requirements are finalized.
+- Future roles such as Driver, Librarian, Gatekeeper, Helper, Bus Conductor, and Clerk/Manager.
 
-The final role list and permission matrix must be documented before RBAC implementation.
+The final role list, scope, and permission matrix must be documented before implementing RBAC.
 
-### 7.3 Data Model Principles
+The product should support role-based defaults and configurable individual permissions by authorized administrators. Permission changes should apply on subsequent protected API requests, including for existing sessions.
 
-- `schools` is the tenant root table.
-- Login identities and school memberships need a deliberate design.
-- Consider whether `users` and `school_memberships` should be separate before expanding the schema.
+### 8.3 Account and Login Decisions
+
+- Platform Admin creates or approves schools.
+- School Admin accounts are created or invited by an authorized Platform Admin.
+- A School Admin can activate the account and set a password through a secure invitation workflow.
+- Platform Admin may create a School Admin account for a school that requests a complete setup.
+- Teacher accounts are created by authorized school staff.
+- Teacher email is optional and is not the intended login identifier.
+- Teacher login should use a generated username or school-specific ID.
+- Parent login is planned around mobile OTP.
+- One parent account may access multiple officially linked children.
+
+Invitation and parent OTP workflows are planned, not yet implemented.
+
+### 8.4 Parent Features — Initial Scope
+
+Planned parent features include:
+
+- Daily attendance.
+- Timetable.
+- Homework and assignments.
+- Exam results and report cards.
+- Notices and announcements.
+- Student profile and basic details.
+
+Parent-child authorization must be enforced by the backend before these features expose student data.
+
+### 8.5 Academic Data Model Principles
+
+- `schools` is the tenant root.
 - Student identity should be separate from school-year enrollment and class placement.
-- Parent-child relationships may be many-to-many and need explicit modeling.
-- Subjects and teacher assignments should use normalized relational tables rather than arbitrary JSON.
-- Explain foreign keys gradually and use a small ER diagram before introducing additional tables.
+- Parent-child relationships may be many-to-many.
+- Subjects and teacher assignments should use normalized relational tables.
+- The default academic structure is Classes 1–12, customizable by each school.
+- Consider whether login identities and school memberships need separate tables before expanding the schema.
+- Explain foreign keys gradually and use a small ER diagram before adding many tables.
 
-### 7.4 Excluded From Initial Scope
+### 8.6 Attendance — Initial Scope
+
+Planned Phase 1 attendance includes:
+
+- Daily class/section-wise attendance.
+- Assigned teachers and School Admins can mark same-day attendance.
+- Same-day cutoff is configurable by each school.
+- Only School Admin can modify past attendance.
+- Statuses: Present, Absent, Late, Leave.
+
+The authorization, cutoff, and audit rules must be enforced by the backend when attendance endpoints are implemented.
+
+### 8.7 Excluded From Initial Scope
 
 - Fee/payment gateway.
 - Native parent mobile app.
@@ -562,70 +552,130 @@ The final role list and permission matrix must be documented before RBAC impleme
 
 These may be considered later.
 
-## 8. Security Requirements and Decisions
+## 9. Security Requirements
 
-The following are planned requirements, not proof of completed implementation:
+The following are product requirements, not proof of completed implementation.
 
-- Platform Admin and School Admin should use email/password and MFA at every login, without trusted-device exemptions.
-- Planned access-token expiry: 15 minutes, subject to current configuration.
-- Planned refresh-token expiry: 7 days, subject to implementation and review.
-- Refresh-token rotation and revocation must be implemented and tested.
-- Logout must revoke the relevant refresh session and enforce the final access-token revocation design.
-- Password changes and account deactivation should invalidate sessions.
-- Planned admin inactivity timeout: 30 minutes.
-- Implement rate limits, temporary lockouts, generic login errors, and monitoring for failed login/MFA attempts.
-- Strong password policy: minimum 12 characters, passphrase support, and compromised-password checks.
-- Evaluate Argon2id against the current bcrypt implementation before finalizing the production password policy.
-- Password reset links should be single-use and expire after 30 minutes.
-- MFA backup codes should be single-use.
+### 9.1 Administrative Authentication
+
+- Platform Admin and School Admin must use MFA at every login.
+- No trusted-device exemption is planned for these administrative roles.
+- Admin idle timeout target: 30 minutes.
 - Platform Admin must not have public self-registration.
 - School Admin accounts must be created or invited by an authorized Platform Admin.
-- Teacher accounts should be created or invited by authorized school staff.
-- `pending_setup` and `suspended` schools must not have normal application access.
-- Invitations should be single-use, expire after 24 hours, and store only token hashes.
-- Audit sensitive security and permission changes.
-- Enforce permissions and record scope on every protected API request.
-- Teacher access should be limited to assigned classes and subjects.
+
+MFA and idle-session enforcement remain pending.
+
+### 9.2 Passwords and Sessions
+
+- Planned minimum admin password length: 12 characters.
+- Passphrases should be supported.
+- Common and compromised passwords should be blocked.
+- Forced periodic password expiry is not planned.
+- Evaluate Argon2id against the existing bcrypt implementation before finalizing production password storage.
+- Password-reset tokens should be single-use and expire after 30 minutes.
+- Password changes and account deactivation should invalidate the intended sessions.
+- MFA backup codes should be single-use.
+
+These controls must not be described as implemented until the code and tests enforce them.
+
+### 9.3 Login Abuse Protection
+
+Planned controls:
+
+- Five failed login attempts trigger a 15-minute lockout.
+- Rate limiting.
+- Generic authentication errors.
+- Security-event logging and monitoring.
+- MFA attempt protection.
+
+These controls remain pending unless separately verified in the current code.
+
+### 9.4 Authorization and Tenant Isolation
+
+- Enforce permissions on every protected API request.
+- Enforce school and record scope in the backend.
+- Teachers should access only assigned classes and subjects.
 - Parents should access only verified linked children.
-- Driver access, when implemented, should be limited to assigned routes.
-- Keep credentials and signing secrets out of source control.
+- Drivers, when implemented, should access only assigned routes.
+- `pending_setup` and `suspended` schools must not have normal application access.
+- Audit sensitive permission and security changes.
 
-The current middleware validates token identity for `/auth/me`; it does not fulfill the complete security requirements above.
+The current authentication middleware establishes identity; it does not fulfill these complete authorization requirements.
 
-## 9. Testing and Verification
+### 9.5 Invitation Security
 
-### 9.1 Latest Reported Verification
+Planned invitation behavior:
 
-After adding authentication middleware and `/auth/me`, the following commands were reported successful from `D:\school-management-system\backend`:
+- Single-use tokens.
+- Expiry after 24 hours.
+- Only token hashes stored server-side.
+- Authorized account creation.
+- Audit events for sensitive actions.
+
+The invitation workflow remains pending.
+
+### 9.6 Deployment Security
+
+Before production deployment:
+
+- Verify secret management.
+- Enforce database TLS and certificate validation.
+- Review CORS, trusted proxies, HTTPS, and secure transport.
+- Review logging and avoid recording passwords, tokens, or sensitive personal data.
+- Establish backups, restoration procedures, monitoring, and incident response.
+- Conduct a security review and verify dependency updates.
+
+Do not describe the system as production-ready while these controls remain incomplete.
+
+## 10. Testing and Verification
+
+### 10.1 Last Reported Backend Verification
+
+After the refresh-token changes, these commands were reported successful from `D:\school-management-system\backend`:
 
 ```cmd
 go test -count=1 ./...
 go vet ./...
 ```
 
-The reported test run showed the API, configuration, handlers, middleware, and services packages passing; some packages had no test files.
+The reported test run included passing API, configuration, handler, middleware, and service packages. Some packages had no test files, including repository and database packages.
 
-`git diff --check` was also reported to complete without whitespace errors. Git emitted line-ending warnings indicating that LF may be replaced by CRLF on Windows.
+`git diff --check` was also reported without whitespace errors. Windows emitted a line-ending warning that LF may be replaced by CRLF. This warning alone is not a code failure.
 
-These are historical results. Re-run the checks against the final working tree before committing.
+These are historical results. Rerun the commands against the current working tree before committing new code or documentation.
 
-### 9.2 Testing Gaps
+### 10.2 Manual Authentication Checks Reported
+
+- `/health` returned success.
+- `/ready` confirmed API and database readiness.
+- Login returned an access token and refresh token.
+- Refresh rotated the refresh token.
+- Reuse of an old refresh token was rejected.
+- Family-wide revocation behavior was observed after replay.
+- Logout returned success in a manual test; perform a separate clean-session logout test for stronger independent confirmation.
+
+Do not claim untested behavior merely because a related endpoint exists.
+
+### 10.3 Testing Gaps
 
 - PostgreSQL repository integration tests.
+- Refresh-token rotation and replay concurrency tests.
 - Automated migration tests against a clean database.
-- Dedicated database connection/pool tests.
+- Database connection and pool behavior tests.
 - Shutdown and timeout edge cases.
-- Further JWT and HTTP authentication tests.
+- Additional JWT and HTTP authentication tests.
 - RBAC and tenant-isolation tests.
-- Refresh-token rotation, logout, and revocation tests.
+- Cross-school access-denial tests.
+- Password reset, invitations, MFA, lockout, and rate-limit tests.
 - Frontend and end-to-end tests.
 - Security and deployment verification.
 
 Passing the current tests does not establish production readiness.
 
-## 10. Documentation Checklist
+## 11. Documentation Maintenance
 
-Keep these documents synchronized with the implementation:
+Keep the following documents synchronized:
 
 - `README.md`
 - `PROGRESS.md`
@@ -638,39 +688,48 @@ Keep these documents synchronized with the implementation:
 - `docs/TESTING.md`
 - `docs/HANDOFF.md`
 
-Do not document planned functionality as implemented.
+Rules:
 
-## 11. Current Git and Delivery Workflow
+1. Separate implemented features from planned requirements.
+2. Update `PROGRESS.md` after a meaningful milestone.
+3. Update `CHANGELOG.md` when a feature or significant documentation change is completed.
+4. Keep API request/response documentation aligned with the actual handlers.
+5. Keep database documentation aligned with the migration files.
+6. Record known limitations and unverified behavior.
+7. Never claim that tests passed unless their output was observed.
+8. Keep the handoff current so a new conversation does not restart completed work.
+
+## 12. Git and Delivery Workflow
 
 Before committing:
 
 1. Check the current branch and working tree.
 2. Review tracked and untracked files.
-3. Inspect changes and ensure no credentials are included.
-4. Run `gofmt` on modified Go source files.
-5. Run `go test -count=1 ./...`.
-6. Run `go vet ./...`.
+3. Inspect the full diff and ensure no credentials are included.
+4. Run `gofmt` only on modified Go files.
+5. Run backend tests.
+6. Run `go vet`.
 7. Run `git diff --check`.
-8. Verify `backend/.env` is ignored and not tracked.
-9. Review the staged diff before committing.
+8. Verify that `.env` files are ignored and not tracked.
+9. Review the staged diff.
 10. Commit with a meaningful message.
 11. Push only after verifying the intended files are included.
-12. Confirm the branch is synchronized with the remote and the working tree is clean.
+12. Confirm remote synchronization and a clean working tree.
 
 Useful commands from the project root:
 
 ```cmd
 cd /d D:\school-management-system
-git status --short
 git status -sb
+git log -1 --oneline
 git diff --check
 git check-ignore backend/.env
 git ls-files backend/.env
 ```
 
-The `git ls-files backend/.env` command should print nothing if the file is not tracked. Never display or paste `.env` contents.
+`git ls-files backend/.env` should print nothing if that file is not tracked. Never display or paste `.env` contents.
 
-Useful backend verification commands:
+Backend verification:
 
 ```cmd
 cd /d D:\school-management-system\backend
@@ -678,73 +737,70 @@ go test -count=1 ./...
 go vet ./...
 ```
 
-Run `gofmt` only on the relevant Go source files. Review the resulting diff afterward to make sure formatting did not introduce unrelated changes.
+After running `gofmt`, inspect the resulting diff to ensure formatting did not introduce unrelated changes.
 
-## 12. Next Steps
+## 13. Current Status and Next Steps
 
-1. Save this updated handoff file.
-2. Review `README.md` and synchronize it with the implemented authentication middleware and `/auth/me` endpoint.
-3. Review `docs/ARCHITECTURE.md`, `docs/DATABASE.md`, and `docs/TESTING.md` for consistency with the current implementation.
-4. Confirm that `docs/API.md`, `docs/SECURITY.md`, `PROGRESS.md`, and `CHANGELOG.md` accurately distinguish implemented features from pending work.
-5. Inspect the current Git status and review all modified and untracked files.
-6. Format modified Go source files.
-7. Run `go test -count=1 ./...`, `go vet ./...`, and `git diff --check`.
-8. Verify that `.env` files and other secrets are not tracked or staged.
-9. Review the staged diff and commit the verified authentication milestone and documentation.
-10. Push the commit and verify remote synchronization and a clean working tree.
-11. Design and implement the refresh-token lifecycle in small, tested steps.
-12. Implement RBAC and tenant authorization before adding sensitive school-management endpoints.
-13. Add PostgreSQL integration tests and production hardening before expanding the application.
+### 13.1 Completed Foundation
 
-Do not add more features until the current milestone has been reviewed, documented, tested, and committed.
+- PostgreSQL connection foundation.
+- Health and readiness endpoints.
+- Migrations for schools and authentication tables.
+- Password hashing and user authentication service.
+- JWT access-token generation and validation.
+- Login endpoint.
+- Authentication middleware.
+- Protected `/auth/me` endpoint.
+- Refresh-token storage and rotation.
+- Refresh-token logout/revocation flow.
+- Migration v3 for refresh-token families.
+- Unit and handler tests for the implemented authentication foundation.
+- Reported backend test and vet success for the refresh-token milestone.
 
-## 13. New-Chat Continuation Prompt
+### 13.2 Immediate Documentation Task
 
-Copy and paste the following into a new ChatGPT conversation:
+1. Replace the stale contents of this file with this corrected version.
+2. Review `PROGRESS.md` and confirm it reflects commit `fec3b8a` and the implemented refresh-token lifecycle.
+3. Review `README.md`, `CHANGELOG.md`, `docs/API.md`, `docs/DATABASE.md`, `docs/SECURITY.md`, and `docs/TESTING.md` for contradictions.
+4. Review `docs/ARCHITECTURE.md` and `docs/REQUIREMENTS.md` for consistency with current decisions.
+5. Inspect the complete Git diff.
+6. Rerun verification before committing documentation changes.
+7. Commit and push only after the reviewed documentation and tests are satisfactory.
 
-> Continue my commercial School Management System project using `docs/HANDOFF.md` as the handoff reference in the GitHub repository `https://github.com/TheSumitNain/school-management-system`.
+### 13.3 Recommended Engineering Priorities
+
+After the documentation audit:
+
+1. Review the current authentication code and refresh-token repository for correctness and transaction/concurrency behavior.
+2. Add PostgreSQL integration tests for refresh-token rotation, replay, expiry, and logout.
+3. Design and implement RBAC and a documented permission matrix.
+4. Implement server-side tenant authorization and cross-school denial tests.
+5. Complete user-profile retrieval and account/session-state checks.
+6. Implement admin MFA, login rate limiting, temporary lockouts, and security-event monitoring.
+7. Implement secure school onboarding, invitations, and password-reset workflows.
+8. Build academic, student, attendance, and parent features only after their authorization model is established.
+9. Perform production deployment, monitoring, backup, recovery, and security reviews.
+
+Do not reimplement refresh-token rotation from scratch. Inspect the existing code and extend it only where verification identifies a real gap.
+
+## 14. New-Chat Continuation Prompt
+
+Copy the following into a new ChatGPT conversation when needed:
+
+> Continue my existing commercial School Management System project using `docs/HANDOFF.md` as the primary handoff reference in `https://github.com/TheSumitNain/school-management-system`.
 >
-> My local project root is `D:\school-management-system`. I use Windows CMD and VS Code. The stack is React + TypeScript + Vite, Go + Gin, and PostgreSQL. The initial planning target is 25–30 schools with around 400–500 students per school.
+> Local project root: `D:\school-management-system`. I use Windows CMD and VS Code. The stack is React + TypeScript + Vite, Go + Gin, and PostgreSQL. The planning target is 25–30 schools with approximately 400–500 students per school.
 >
-> Explain in Hindi/Hinglish with a friendly tone. Work on one small task at a time. Give exact commands/code, explain why, and wait for my output before continuing. Do not assume a command succeeded without seeing the result.
+> Explain in Hindi/Hinglish with a friendly tone. Work on one small task at a time. Provide exact commands and complete replacement code when appropriate. Explain why each step is needed and wait for my output before proceeding. Do not assume a command succeeded without seeing the result.
 >
-> The backend includes PostgreSQL connectivity, health/readiness endpoints, migrations for `schools`, `users`, and `refresh_sessions`, password hashing, user/school repositories, an authentication service, JWT access-token generation/validation, `POST /auth/login`, authentication middleware, and a protected `GET /auth/me` endpoint. Tests exist for the login handler, token service, middleware, and API routes.
+> The last documented milestone is commit `fec3b8a`, `feat(auth): add refresh token rotation and revocation`. The refresh-token implementation includes opaque random tokens, SHA-256 hash storage, rotation, logout, and token-family replay handling. Migration v3 was reported applied locally with migration version 3 and `dirty=false`. Backend `go test -count=1 ./...` and `go vet ./...` were reported successful after this milestone. Verify the current local state before relying on those results.
 >
-> Previous `go test -count=1 ./...`, `go vet ./...`, and `git diff --check` runs were reported successful after the middleware and `/auth/me` changes. Rerun them against the current working tree before committing.
+> The backend has PostgreSQL connectivity, health/readiness endpoints, migrations for `schools`, `users`, and `refresh_sessions`, password hashing, user/school repositories, an authentication service, JWT access-token generation/validation, `POST /auth/login`, authentication middleware, `GET /auth/me`, `POST /auth/refresh`, and `POST /auth/logout`.
 >
-> Refresh-token HTTP flows, logout, full profile lookup, access-token revocation, RBAC, complete tenant authorization, MFA, rate limiting, and PostgreSQL repository integration tests remain pending. Do not describe these as completed.
+> Do not reimplement completed work from scratch. Inspect the current source and documentation, identify genuine gaps, and continue from the existing repository.
 >
-> The immediate priority is to review and synchronize the documentation, inspect Git changes, format and test the code, verify secret exclusion, and commit/push the reviewed milestone.
+> Remaining work includes PostgreSQL integration and concurrency tests, full profile lookup, access-token revocation design, RBAC, complete tenant authorization, admin MFA, rate limiting, lockouts, invitations, password reset, and production hardening. Do not claim these are completed.
+>
+> First review the current Git status and documentation. Keep `README.md`, `PROGRESS.md`, `CHANGELOG.md`, and all `docs/*.md` files synchronized. Then verify tests, `go vet`, `git diff --check`, and secret exclusion before committing.
 >
 > Never ask me to paste real `.env` secrets. Do not claim the system is production-ready until outstanding security, testing, deployment, backup, and monitoring requirements have been addressed.
-
-
-## 10. Current Review Workspace Checkpoint (2026-10-29)
-
-The user uploaded `school-management-review.zip`, generated from committed `HEAD` using `git archive`. This means the archive contains committed files only and excludes Git metadata and uncommitted local files. The latest reported local Git state before the archive was `main...origin/main` clean.
-
-Refresh-token changes have been prepared in a separate review workspace, not directly applied to the user's Windows repository. Files added or changed include:
-
-- `backend/internal/repository/refresh_session_repository.go`
-- `backend/internal/services/session_service.go`
-- `backend/internal/services/session_service_test.go`
-- `backend/migrations/000003_add_refresh_token_families.up.sql`
-- `backend/migrations/000003_add_refresh_token_families.down.sql`
-- `backend/internal/config/config.go` and its tests
-- `backend/internal/handlers/auth_handler.go` and its tests
-- `backend/cmd/api/main.go`
-- `backend/.env.example`
-- `README.md`, `PROGRESS.md`, `CHANGELOG.md`
-- `docs/API.md`, `docs/DATABASE.md`, `docs/SECURITY.md`, `docs/TESTING.md`, and this handoff file
-
-Verification has not yet been completed. Next steps must be done from `D:\school-management-system\backend` after applying the reviewed changes:
-
-1. Run `gofmt -w cmd internal`.
-2. Run `go test -count=1 ./...`.
-3. Run `go vet ./...`.
-4. Review `git diff --check` and the full diff.
-5. Confirm local PostgreSQL target and current migration version before running `go run ./cmd/migrate`.
-6. Verify refresh, rotation, replay, and logout against a development database.
-7. Commit and push only after tests and migration verification pass.
-
-Do not claim this feature is complete or production-ready until the above verification and PostgreSQL integration/concurrency tests are completed.

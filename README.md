@@ -1,6 +1,6 @@
 # School Management System
 
-A commercial, multi-tenant School Management System built incrementally with production-oriented architecture, security practices and automated testing.
+A commercial, multi-tenant School Management System built incrementally with production-oriented architecture, security practices, and automated testing.
 
 ## Technology Stack
 
@@ -10,7 +10,7 @@ A commercial, multi-tenant School Management System built incrementally with pro
 - **Database access:** pgx / pgxpool
 - **Migrations:** golang-migrate
 - **Password hashing:** bcrypt
-- **Authentication:** JWT access tokens, opaque refresh tokens, rotation, and refresh-session revocation (implementation changes require final verification)
+- **Authentication:** JWT access tokens and opaque refresh tokens with rotation and refresh-session revocation
 
 ## Initial Target
 
@@ -24,15 +24,15 @@ These are planning targets, not verified capacity limits. Production capacity wi
 
 - Enforce school-level data isolation on the backend.
 - Use version-controlled database migrations.
-- Never commit secrets, credentials or real student data.
+- Never commit secrets, credentials, or real student data.
 - Test implemented behavior before moving to the next feature.
-- Document architecture, API behavior, database changes and security decisions.
+- Document architecture, API behavior, database changes, and security decisions.
 - Implement features incrementally and verify each milestone.
 - Keep implemented functionality clearly separated from planned functionality.
 
 ## Current Status
 
-**Stage:** Backend foundation and initial JWT authentication; refresh-token changes are prepared in a review workspace and await local test/migration verification.
+**Stage:** Backend foundation and initial authentication, including JWT access tokens and refresh-token rotation/revocation. RBAC and complete tenant authorization remain pending.
 
 ### Implemented
 
@@ -41,12 +41,11 @@ These are planning targets, not verified capacity limits. Production capacity wi
 - PostgreSQL connection pool using pgxpool.
 - Health and database-readiness endpoints.
 - HTTP server timeouts and graceful shutdown handling.
-- Versioned database migrations for `schools`, `users` and `refresh_sessions`, including refresh-token family metadata.
+- Versioned migrations for `schools`, `users`, and `refresh_sessions`, including refresh-token family metadata.
 - User and school repository operations.
 - bcrypt password hashing and verification, including password-length validation.
 - Authentication service operations for user creation and credential verification.
-- JWT access-token generation and validation.
-- JWT issuer, expiry and required-claim validation.
+- JWT access-token generation and validation, including issuer, expiry, and required-claim checks.
 - `POST /auth/login` endpoint that issues access and refresh tokens.
 - `POST /auth/refresh` endpoint for refresh-token rotation and replay detection.
 - `POST /auth/logout` endpoint to revoke a refresh session.
@@ -54,63 +53,77 @@ These are planning targets, not verified capacity limits. Production capacity wi
 - Login response DTO that excludes password hashes.
 - Authentication middleware that validates Bearer access tokens and extracts authenticated user and school IDs.
 - Protected `GET /auth/me` endpoint returning the authenticated user's ID and school ID.
-- Unit tests for configuration, password handling, authentication services and token services.
-- Login-handler tests, authentication middleware tests and API route tests.
+- Unit and handler tests for implemented authentication behavior.
+- Authentication middleware and API route tests.
 - Development-only seed command with environment safeguards.
-- Documentation for requirements, architecture, database design, API behavior, security, testing, progress and handoff.
+- Documentation for requirements, architecture, database design, API behavior, security, testing, progress, and handoff.
 
-### Implemented Authentication Endpoints
+### Authentication Endpoints
 
 #### `POST /auth/login`
 
-Accepts a school ID, username and password. On successful authentication, returns an access token and basic user information. Invalid credentials return an unauthorized response.
+Accepts a school ID, username, and password. Successful authentication returns an access token, a refresh token, and basic user information. Invalid credentials return an unauthorized response.
 
-#### `POST /auth/refresh` and `POST /auth/logout`
+#### `POST /auth/refresh`
 
-`POST /auth/refresh` exchanges a refresh token for a new access token and replacement refresh token. A reused revoked token causes the active sessions in its token family to be revoked. `POST /auth/logout` revokes the supplied refresh token; already-issued access JWTs remain valid until expiry.
+Exchanges a refresh token for a new access token and replacement refresh token. Refresh tokens are opaque, cryptographically random values; only their SHA-256 hashes are persisted.
+
+A reused revoked refresh token triggers revocation of active sessions in its token family. Automated PostgreSQL integration and concurrent replay tests are still needed to validate database-level behavior.
+
+#### `POST /auth/logout`
+
+Revokes the supplied refresh session. Already-issued access JWTs remain valid until expiry because access-token revocation enforcement has not been implemented.
 
 #### `GET /auth/me`
 
-Requires an `Authorization: Bearer <access-token>` header. The authentication middleware validates the token and the endpoint returns the authenticated user's ID and school ID.
+Requires an `Authorization: Bearer <access-token>` header. The middleware validates the token, and the endpoint returns the authenticated user's ID and school ID.
 
-This endpoint currently returns identity IDs only; fetching the complete user profile remains pending.
+This endpoint currently returns identity IDs only; complete user-profile retrieval remains pending.
 
-See `docs/API.md` for the documented request and response contracts.
+See `docs/API.md` for request and response contracts.
 
-### Verification
+## Database Migrations
 
-The following commands were previously reported successful from the backend directory after the authentication middleware and `/auth/me` changes:
+The repository includes versioned migrations for:
+
+- **Version 1:** Schools.
+- **Version 2:** Users and refresh sessions.
+- **Version 3:** Refresh-token family metadata.
+
+According to the latest development verification, migration version 3 has been applied to the local development database, with the migration state reported as `dirty=false`. Verify the actual database state before running migrations or making further schema changes.
+
+## Verification
+
+After the refresh-token implementation, the following commands were reported successful from the backend directory:
 
 ```cmd
 go test -count=1 ./...
 go vet ./...
 ```
 
-The reported test run included API, configuration, handler, middleware and service packages. Some packages had no test files.
+The reported test run covered the API, configuration, handlers, middleware, and services. Some packages had no test files.
 
-`git diff --check` was also previously reported successful.
+Manual checks also reportedly verified login, refresh-token rotation, replay-triggered family revocation, and rejection of a refresh token after logout. The logout flow should be independently retested using a fresh session.
 
-The local database migrations through version 2 were previously applied, and the relevant tables were verified.
+These are previously reported results, not a guarantee that the current working tree has been reverified. Re-run the tests before committing.
 
-These are historical results. Re-run the checks against the current working tree before committing. A previous successful test run does not guarantee that subsequent changes pass.
-
-### Not Yet Implemented
+## Not Yet Implemented
 
 - PostgreSQL repository integration tests and concurrent refresh-token rotation/replay tests.
-- Full user-profile retrieval from `GET /auth/me`.
+- Automated migration tests against a disposable test database.
+- Complete user-profile retrieval from `GET /auth/me`.
 - Access-token revocation enforcement.
 - User roles and role-based access control (RBAC).
 - Complete school-level tenant authorization and cross-school isolation tests.
-- Public registration and production school-onboarding workflows.
-- MFA, password-reset and invitation workflows.
-- Login rate limiting, lockout enforcement and security-event monitoring.
-- Student, teacher, class, subject and attendance APIs.
-- React frontend, dashboards and parent-facing interfaces.
-- PostgreSQL repository integration tests and automated migration tests.
-- Production deployment, monitoring, backup and recovery procedures.
-- Comprehensive security, end-to-end and load testing.
+- Production school onboarding, invitations, and account activation workflows.
+- Mandatory MFA for Platform Admin and School Admin.
+- Password-reset workflows, login rate limiting, lockout enforcement, and security-event monitoring.
+- Student, teacher, class, subject, and attendance APIs.
+- React frontend, dashboards, and parent-facing interfaces.
+- Production deployment, monitoring, backup, and recovery procedures.
+- Comprehensive security, end-to-end, and load testing.
 
-**Important:** This project is under active development and is not production-ready. Authentication components have been implemented incrementally; they have not yet been validated as a complete production authentication and authorization system.
+**Important:** This project is under active development and is not production-ready. Authentication components have been implemented incrementally, but the complete authentication and authorization system has not yet been validated as production-ready.
 
 ## Documentation
 
@@ -118,10 +131,10 @@ These are historical results. Re-run the checks against the current working tree
 - `docs/REQUIREMENTS.md` — product requirements.
 - `docs/ARCHITECTURE.md` — architecture and component boundaries.
 - `docs/DATABASE.md` — schema and migration decisions.
-- `docs/API.md` — API conventions and implemented endpoints.
+- `docs/API.md` — API conventions and endpoint contracts.
 - `docs/SECURITY.md` — security requirements and implementation status.
 - `docs/TESTING.md` — testing strategy and verification.
-- `docs/HANDOFF.md` — handoff instructions and source of truth for continuing work in a new chat.
+- `docs/HANDOFF.md` — handoff instructions for continuing in a new chat.
 - `CHANGELOG.md` — milestone history.
 
 ## Development
@@ -140,8 +153,8 @@ Run database migrations from the same directory:
 go run ./cmd/migrate
 ```
 
-Run the API server using the project's configured development workflow.
+Use the project's configured development workflow to start the API server.
 
 Keep local environment files and credentials out of Git. Never share secrets in chat or commit them to the repository.
 
-Review migration changes carefully before applying them to any production database. Use a separate, backed-up database for production migration testing.
+Review migration changes carefully before applying them to any production database. Test production migration procedures against a separate, backed-up database.

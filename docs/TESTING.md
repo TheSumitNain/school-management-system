@@ -17,21 +17,22 @@ Current test areas include:
 - Password-service behavior.
 - Authentication-service behavior.
 - JWT access-token generation and validation.
-- Authentication login-handler behavior.
+- Authentication HTTP handler behavior.
 - API server behavior and selected configuration validation.
+- Refresh-token session-service behavior.
 
-Previously verified commands:
+The last recorded verification after the refresh-token implementation reported successful execution of:
 
 ```bash
 go test -count=1 ./...
 go vet ./...
 ```
 
-The test suite passed at the time of the last recorded verification. These historical results do not establish that the latest code and documentation changes have been verified.
+These are historical results. The latest documentation changes do not themselves verify the code, and the commands must be rerun before recording a new verification result.
 
-The current test coverage is not a guarantee that all application behavior is tested. Refresh-token service and handler unit tests have been added in the current review workspace, but PostgreSQL repository integration tests, concurrent refresh rotation/replay tests, RBAC, tenant isolation, and most school business modules remain incomplete. Run the full suite before treating the new changes as verified.
+The current test suite does not establish that every application behavior is tested or that the application is production-ready.
 
-Run the commands again after code or dependency changes before treating the current code as verified.
+Important remaining gaps include PostgreSQL repository integration tests, concurrent refresh rotation tests, independent end-to-end logout verification, RBAC, tenant isolation, authentication rate limiting, and tests for future school business modules.
 
 ## 3. Testing Principles
 
@@ -39,12 +40,13 @@ Run the commands again after code or dependency changes before treating the curr
 - Cover successful operations and expected failures.
 - Test security boundaries explicitly.
 - Keep tests repeatable and independent where practical.
-- Use isolated test data and avoid depending on production data.
+- Use isolated test data and avoid production data.
 - Test database constraints as well as application-level validation.
 - Do not claim production readiness based only on unit-test success.
 - Add regression tests when fixing a bug.
 - Distinguish automated tests from manual verification.
 - Record test results only after the commands have actually completed.
+- Never treat a planned test as completed evidence.
 
 ## 4. Test Categories
 
@@ -52,16 +54,16 @@ Run the commands again after code or dependency changes before treating the curr
 
 Unit tests verify individual functions and business rules without requiring a complete running application.
 
-Current examples include password-service tests, authentication-service tests using fake repositories, JWT token-service tests, and login-handler tests.
+Current examples include password-service tests, authentication-service tests using fake repositories, JWT token-service tests, HTTP handler tests, and refresh-token service tests.
 
 Future unit tests should cover:
 
-- Input validation.
+- Input validation and boundary conditions.
 - User and school status rules.
 - Authorization decisions.
-- Business rules for attendance and other modules.
-- Error handling.
-- Edge cases and boundary values.
+- Attendance and other business rules.
+- Error handling and unexpected failures.
+- Token expiry, replay, and session-state edge cases.
 
 ### 4.2 Repository and database integration tests
 
@@ -72,14 +74,16 @@ They should cover:
 - Successful inserts, reads, updates, and deletes.
 - Foreign-key constraints.
 - Unique constraints and duplicate records.
-- Transaction rollback.
+- Transaction commit and rollback.
 - Query filtering and pagination.
-- Database errors.
+- Database errors and connection failures.
 - Migration behavior.
+- Refresh-token rotation and revocation transactions.
+- Revocation of active sessions when a revoked refresh token is reused.
 
-Tests that require PostgreSQL should use a dedicated test database or isolated test schema. They must not modify production data.
+Tests requiring PostgreSQL must use a dedicated test database or isolated test schema. They must never modify production data.
 
-A dedicated automated PostgreSQL integration-test setup remains future work unless separately verified.
+PostgreSQL repository integration tests for the refresh-token lifecycle remain outstanding unless separately verified.
 
 ### 4.3 HTTP tests
 
@@ -90,8 +94,9 @@ HTTP tests should exercise the Gin router and verify:
 - Request validation.
 - Error responses.
 - Health and readiness behavior.
-- Login-handler behavior.
-- Authentication and authorization when those routes are implemented.
+- Login, refresh, and logout handler behavior.
+- Authentication middleware behavior.
+- Authorization behavior when RBAC-protected routes are implemented.
 
 ### 4.4 Security tests
 
@@ -112,7 +117,7 @@ Measure:
 - PostgreSQL connection usage.
 - Slow queries and lock contention.
 
-The target of 25–30 schools and approximately 10,000–15,000 students is a planning target. No concurrency or capacity guarantee should be made without reproducible load-test results.
+The planning target is approximately 25–30 schools and 400–500 students per school, or around 10,000–15,000 students overall. This is a planning target, not a verified capacity guarantee. Capacity claims require reproducible load-test results.
 
 ## 5. Running Backend Tests
 
@@ -142,11 +147,11 @@ Format Go source files when necessary:
 gofmt -w cmd internal
 ```
 
-Review formatting changes before committing them. Run `gofmt` only on Go source directories and review the resulting diff before staging files.
+Run formatting only when Go source files have changed. Review the resulting diff before committing.
 
 ## 6. Current Test Areas
 
-### Password service
+### 6.1 Password service
 
 Verify:
 
@@ -155,31 +160,23 @@ Verify:
 - An incorrect password fails verification.
 - Passwords outside the supported byte-length range are rejected.
 - Whitespace-only passwords are rejected.
-- Hashing does not expose the original password.
+- The original password is not stored as plaintext.
+- Password hashes are not exposed in API responses.
 
-### Authentication service
+The current password implementation uses bcrypt with cost 12 and an input range of 8–72 bytes. A separate 12-character administrator password policy and compromised-password checks remain outstanding.
+
+### 6.2 Authentication service
 
 Verify:
 
-- A user can be created when the required school and account conditions are satisfied.
+- Authentication succeeds for valid credentials when the account and school are active.
 - Inactive or suspended schools cannot authenticate users.
 - Disabled users cannot authenticate.
 - Invalid credentials are rejected.
 - Repository errors are handled safely.
-- Duplicate usernames are handled correctly by the repository/database boundary.
+- Duplicate usernames are handled correctly at the repository/database boundary.
 
-### Refresh-token lifecycle
-
-The current working changes add unit and handler tests for:
-- Storing only a SHA-256 hash of a generated refresh token.
-- Configurable refresh expiry and expiry validation.
-- Refresh-token rotation and invalid-token responses.
-- Logout forwarding the token for revocation.
-- Refresh-token reuse error handling.
-
-Before production, add PostgreSQL integration tests for transaction atomicity, family revocation on replay, inactive-user/school revocation, and concurrent rotation. Use a dedicated test database and do not run integration tests against production data.
-
-### JWT token service
+### 6.3 JWT token service
 
 The token service has an initial automated test suite.
 
@@ -192,9 +189,9 @@ Verify:
 - Issuer and required claims are validated.
 - Invalid token configuration is rejected where covered by the implementation.
 
-The exact cases covered must be checked against the actual test files.
+The exact cases covered must be confirmed against the actual test files.
 
-### Login handler
+### 6.4 Login handler
 
 The login handler has an initial automated test suite.
 
@@ -203,10 +200,53 @@ Verify:
 - Valid requests return the expected success response.
 - Invalid credentials return an unauthorized response.
 - Malformed requests return an appropriate client error.
-- Internal token-generation failures do not expose sensitive internal details.
+- Inactive accounts and schools are handled as specified.
+- Token-generation failures do not expose sensitive internal details.
 - Password hashes and other sensitive fields are not included in responses.
 
-The exact cases covered must be checked against the actual test files.
+The exact cases covered must be confirmed against the actual test files.
+
+### 6.5 Refresh-token lifecycle
+
+Refresh-token rotation, revocation, and replay handling have been implemented in the current backend foundation. Service-level tests have been added.
+
+The test plan includes:
+
+- Generated refresh tokens are opaque and cryptographically random.
+- Only the SHA-256 hash is persisted.
+- Refresh-token expiry configuration is validated.
+- Expired or invalid refresh tokens are rejected.
+- Successful refresh rotates the token.
+- Reuse of a revoked token triggers family revocation.
+- Logout forwards the supplied refresh token for revocation.
+- Inactive-user or inactive-school behavior is handled safely.
+- Refresh failures do not expose raw tokens or sensitive internals.
+
+**Remaining verification:**
+
+- Add PostgreSQL repository integration tests.
+- Verify transaction atomicity and family revocation against PostgreSQL.
+- Test simultaneous refresh requests using the same token.
+- Test replay behavior across the HTTP API.
+- Independently verify that logout succeeds and the revoked refresh token cannot be used again.
+- Test refresh attempts after expiry, logout, account disabling, and school deactivation.
+
+Service-level tests alone do not establish database transaction correctness or concurrency safety.
+
+### 6.6 Authentication middleware and protected identity endpoint
+
+Verify:
+
+- A valid Bearer access token is accepted.
+- Missing or malformed authorization headers are rejected.
+- Invalid, expired, or incorrectly signed tokens are rejected.
+- Invalid user or school identity claims are rejected.
+- The authenticated identity is extracted from validated claims.
+- `GET /auth/me` rejects unauthenticated requests.
+- The response does not expose password hashes, raw tokens, or unrelated sensitive fields.
+- Middleware configuration failures are handled without exposing internal details.
+
+The current middleware establishes token-based identity. It does not independently establish RBAC or complete tenant isolation.
 
 ## 7. Health and Readiness Tests
 
@@ -219,6 +259,15 @@ Verify:
 - A successful response is returned while the API is running.
 - The status code and response body match the implementation.
 
+Expected successful response:
+
+```json
+{
+  "status": "success",
+  "message": "School Management System API is running"
+}
+```
+
 ### Readiness endpoint
 
 `GET /ready`
@@ -229,27 +278,31 @@ Verify:
 - The endpoint returns the intended unavailable status when the database check fails.
 - Database failure information is not exposed inappropriately.
 
-Re-run these tests whenever server initialization or database connection handling changes.
+The current implementation uses a database readiness check and returns `503 Service Unavailable` when the database is not ready.
 
-## 8. Future Authentication and Authorization Tests
+Re-run relevant tests whenever server initialization or database connection handling changes.
 
-Once the remaining HTTP authentication flow is implemented, test:
+## 8. Authentication and Authorization Tests
 
-- Registration validation and secure provisioning.
+The login, refresh, logout, and protected identity HTTP endpoints are implemented. The complete authentication and authorization security suite is not yet finished.
+
+Test:
+
 - Login with valid and invalid credentials.
+- Malformed login, refresh, and logout requests.
 - Access-token signature and expiry validation.
 - Refresh-token rotation.
 - Reuse of an old refresh token.
 - Refresh-token revocation after logout.
-- Disabled-user behavior.
-- Missing or malformed authorization headers.
-- Invalid token type and claims.
 - Concurrent refresh requests.
+- Disabled-user and inactive-school behavior.
+- Missing or malformed authorization headers.
+- Invalid token claims.
 - Rate limiting for repeated failed login attempts.
 
-Once authentication middleware and RBAC are implemented, test that unauthenticated requests are denied and every role can perform only its authorized operations.
+Once RBAC is implemented, verify that unauthenticated requests are denied and each role can perform only its authorized operations.
 
-These are required future tests, not evidence that the corresponding functionality currently exists.
+Registration, secure user provisioning, MFA, password reset, and authentication rate limiting remain planned work and require their own tests when implemented.
 
 ## 9. Multi-Tenant Isolation Tests
 
@@ -259,14 +312,15 @@ Create test data for at least two schools and verify:
 
 - A user from School A cannot read School B's records.
 - A user from School A cannot update or delete School B's records.
-- List endpoints return only authorized school records.
+- List endpoints return only records authorized for the user's school.
 - Related-record lookups cannot bypass school restrictions.
 - Client-supplied school identifiers cannot override the authenticated school context.
 - Administrative operations enforce the intended scope.
+- Background jobs, exports, reports, and other data-processing workflows preserve tenant boundaries.
 
 Repeat these checks for every school-owned module as it is introduced.
 
-Automated tenant-isolation tests remain future work until the corresponding protected endpoints and authorization mechanisms exist.
+Automated tenant-isolation tests remain future work until the corresponding authorization mechanisms and business endpoints exist.
 
 ## 10. Database Migration Tests
 
@@ -279,6 +333,12 @@ For each migration:
 5. Test the migration against a database with the expected previous schema.
 6. Check how failures are reported and recovered from.
 
+The current migration history includes:
+
+- `000001_create_schools_table`
+- `000002_create_auth_tables`
+- `000003_add_refresh_token_families`
+
 Do not test destructive rollback procedures against production data.
 
 ## 11. Test Data and Environment
@@ -289,30 +349,31 @@ Do not test destructive rollback procedures against production data.
 - Clean up test data safely.
 - Avoid tests that depend on execution order.
 - Use a dedicated database for tests that perform writes.
-- Ensure tests do not accidentally connect to production.
+- Ensure tests cannot accidentally connect to production.
 - Avoid printing tokens, password hashes, or credentials in test output.
+- Make integration-test database configuration explicit and safe.
 
 ## 12. Before Committing Changes
 
-From the backend directory:
+From the backend directory, run:
 
 ```bash
 go test -count=1 ./...
 go vet ./...
 ```
 
-From the repository root:
+From the repository root, review:
 
 ```bash
 git diff --check
 git status --short
 ```
 
-Inspect the changed files and verify that no secrets, generated binaries, or unintended files are included.
+Inspect changed files and verify that no secrets, generated binaries, or unintended files are included.
 
-For changes involving database migrations, run the relevant migration and database tests as well.
+For changes involving database migrations, run relevant migration and database tests as well.
 
-Documentation-only changes do not replace the need to verify the code changes already pending in the working tree.
+Documentation-only changes do not replace the need to verify any pending code changes in the working tree. Do not report a new test result until the relevant command has actually completed.
 
 ## 13. Before Production Release
 
@@ -320,15 +381,17 @@ The release checklist should include:
 
 - [ ] All Go tests pass.
 - [ ] Static analysis passes.
-- [ ] Relevant database integration tests pass.
+- [ ] Relevant PostgreSQL integration tests pass.
 - [ ] HTTP integration tests pass.
+- [ ] Refresh rotation, replay, concurrency, and logout behavior are verified.
 - [ ] Authentication and authorization tests pass.
-- [ ] Cross-school isolation tests pass.
+- [ ] Cross-school isolation tests pass for all school-owned resources.
 - [ ] Database migrations have been tested.
 - [ ] Dependency and vulnerability checks have been run.
 - [ ] Load tests have been run for the expected workload.
 - [ ] Backup restoration has been tested.
 - [ ] Monitoring and error reporting have been reviewed.
+- [ ] Production configuration and secret handling have been reviewed.
 
 A checked item must be supported by an actual verification result.
 
@@ -340,6 +403,5 @@ Whenever a bug is fixed or functionality changes:
 2. Run the affected tests.
 3. Run the full backend test suite when appropriate.
 4. Update `PROGRESS.md` with verified results.
-5. Update this document if the testing process or test coverage changes.
-
-Keep testing evidence separate from planned work.
+5. Update this document if testing procedures or coverage change.
+6. Keep completed testing evidence separate from planned work.
