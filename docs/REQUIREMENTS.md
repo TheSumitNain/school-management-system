@@ -287,9 +287,9 @@ These implementations form an initial foundation; they do not mean that all auth
 - Student admission and enrollment
 - Academic, timetable, attendance and parent-facing modules
 - Frontend dashboards and user workflows
-- PostgreSQL repository integration tests
-- Concurrent refresh-token rotation and replay tests
-- Independent logout and session-revocation verification
+- Broader PostgreSQL repository integration tests beyond the existing refresh-session lifecycle suite
+- Additional concurrent refresh-token rotation and replay edge cases
+- Independent HTTP-level logout and session-revocation verification
 - Full migration and rollback verification
 - Production deployment, monitoring, backup and recovery safeguards
 - Load and performance testing

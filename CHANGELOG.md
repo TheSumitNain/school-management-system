@@ -89,11 +89,12 @@ This project is under active development. Verification results describe the late
 
 ## Latest Reported Git Checkpoint
 
-- Latest reported commit: `a705f9a` — `test(auth): add PostgreSQL refresh session integration tests`
+- Latest repository checkpoint: `e88e94e` — `docs: update authentication progress and handoff`
+- Previous code milestone: `a705f9a` — `test(auth): add PostgreSQL refresh session integration tests`
 - Branch: `main`
 - Remote: `origin`
-- Last reported Git status after that commit: clean and synchronized with `origin/main`.
-- Documentation updates made after this checkpoint must be reviewed, committed and pushed separately.
+- Last reported Git status: clean and synchronized with `origin/main`.
+- `e88e94e` updates documentation only; it does not change application code or constitute a new test run.
 
 ## Changelog Guidelines
 

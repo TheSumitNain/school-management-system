@@ -48,8 +48,8 @@ These features establish an initial authentication foundation. They do not mean 
 - Secure school and user provisioning workflows.
 - Comprehensive security audit logging and monitoring.
 - Production TLS and deployment-specific security configuration.
-- PostgreSQL repository integration tests for refresh-token lifecycle behavior.
-- Concurrent refresh-token rotation tests and broader race-condition testing.
+- Broader PostgreSQL repository integration tests beyond the existing refresh-session lifecycle coverage.
+- Additional concurrent refresh-token rotation edge cases and broader race-condition testing.
 - A clean, independent end-to-end logout and refresh-after-logout verification.
 - Full production security testing, deployment review, and incident-response procedures.
 
@@ -116,7 +116,7 @@ The refresh-token HTTP lifecycle is implemented with the following behavior:
 - Reuse of a revoked refresh token triggers revocation of the remaining active sessions in its token family.
 - Refresh processing checks user and school status.
 
-The implemented service behavior and automated tests provide a foundation for refresh-token rotation and replay protection. PostgreSQL repository integration tests, concurrent rotation tests, and clean independent end-to-end logout verification remain outstanding.
+The implemented service behavior and opt-in PostgreSQL repository integration tests provide a foundation for refresh-token rotation and replay protection. Existing integration tests cover selected refresh-session lifecycle scenarios, including concurrent refresh behavior. Broader race-condition coverage and independent end-to-end HTTP logout verification remain outstanding.
 
 ### Logout limitations
 
@@ -287,7 +287,7 @@ Security testing must cover at least:
 - Refresh-token creation, rotation, expiry, revocation, and replay.
 - Logout followed by refresh-token reuse.
 - Concurrent refresh attempts and transaction behavior.
-- PostgreSQL repository integration tests for session lifecycle behavior.
+- Broader PostgreSQL repository integration tests for session lifecycle failure modes and additional repository behavior.
 - Insufficient role permissions.
 - Cross-school read and write attempts.
 - SQL query parameterization.
@@ -303,7 +303,8 @@ Before serving real schools and student data, verify:
 
 - [ ] Authentication endpoints and middleware behavior are tested.
 - [ ] Authentication middleware is applied to every route requiring authentication.
-- [ ] Refresh-token rotation, replay handling, and logout behavior have passed integration and concurrency tests.
+- [x] Selected refresh-token rotation, replay handling, logout revocation, expiry, and concurrent-refresh scenarios are covered by opt-in PostgreSQL repository integration tests.
+- [ ] Broader concurrency/failure-mode and independent HTTP end-to-end verification is complete.
 - [ ] Access-token expiry and revocation strategy is documented and implemented as required.
 - [ ] RBAC permissions are defined and enforced server-side.
 - [ ] Tenant isolation is verified for all school-owned resources.

@@ -382,7 +382,7 @@ Refresh tokens are opaque random values rather than JWTs. The backend stores the
 
 The implemented workflow supports issuance, rotation, revocation, and replay detection through the authentication endpoints. The configured lifetime is controlled by `REFRESH_TOKEN_EXPIRY_DAYS`.
 
-Repository-level integration tests, concurrent rotation tests, and additional logout verification remain required before production readiness can be claimed.
+Opt-in PostgreSQL repository integration tests cover refresh-session persistence and lifecycle scenarios, including concurrent refresh behavior. Additional HTTP-level end-to-end logout verification and broader database failure/concurrency coverage remain required before production readiness can be claimed.
 
 ## 6. Authorization and Tenant Isolation
 
@@ -519,8 +519,8 @@ The exact coverage should be rechecked against the current tests before a releas
 
 Additional tests required include:
 
-- PostgreSQL-backed repository integration tests for refresh-session persistence and rotation.
-- Concurrent refresh requests and replay races.
+- PostgreSQL-backed repository integration tests for refresh-session persistence and rotation are implemented as opt-in tests; run them only against the dedicated test database.
+- Additional concurrent refresh/replay race interleavings and database-failure scenarios beyond the existing integration-test coverage.
 - Logout using an independent session and repeated logout behavior.
 - Token expiry and invalid-token handling.
 - Request validation and database error handling.

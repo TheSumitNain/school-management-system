@@ -226,12 +226,11 @@ When a previously rotated or revoked token is presented again, the application c
 
 The implementation should not be considered production-ready solely because the handlers and tables exist. Remaining verification includes:
 
-- PostgreSQL-backed repository integration tests.
-- Concurrent refresh and replay scenarios.
-- Verification of transaction behavior during rotation.
-- Logout using an independent session.
-- Repeated logout behavior.
-- Expiry and revocation edge cases.
+- Broader PostgreSQL-backed repository integration tests beyond the refresh-session lifecycle suite.
+- Additional concurrent refresh and replay edge cases.
+- More transaction-failure and database-error scenarios during rotation.
+- Independent HTTP-level logout and refresh-after-logout verification.
+- Migration and rollback tests against a disposable database.
 
 Existing stateless JWT access tokens are not immediately invalidated by refresh-session logout. They can remain usable until their configured expiry unless another access-token revocation mechanism is introduced.
 

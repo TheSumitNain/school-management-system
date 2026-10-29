@@ -32,7 +32,7 @@ These are historical results. The latest documentation changes do not themselves
 
 The current test suite does not establish that every application behavior is tested or that the application is production-ready.
 
-Important remaining gaps include PostgreSQL repository integration tests, concurrent refresh rotation tests, independent end-to-end logout verification, RBAC, tenant isolation, authentication rate limiting, and tests for future school business modules.
+Important remaining gaps include broader PostgreSQL repository integration coverage beyond the refresh-session lifecycle tests, additional concurrency/failure-mode testing, independent end-to-end logout verification, RBAC, tenant isolation, authentication rate limiting, migration/rollback testing, and tests for future school business modules.
 
 ## 3. Testing Principles
 
@@ -83,7 +83,7 @@ They should cover:
 
 Tests requiring PostgreSQL must use a dedicated test database or isolated test schema. They must never modify production data.
 
-PostgreSQL repository integration tests for the refresh-token lifecycle remain outstanding unless separately verified.
+The refresh-session repository has opt-in PostgreSQL integration tests in `backend/internal/repository/refresh_session_repository_integration_test.go`. They require `RUN_POSTGRES_INTEGRATION_TESTS=1` and must use the dedicated `school_management_test` database. Broader repository integration tests remain pending.
 
 ### 4.3 HTTP tests
 
@@ -208,7 +208,7 @@ The exact cases covered must be confirmed against the actual test files.
 
 ### 6.5 Refresh-token lifecycle
 
-Refresh-token rotation, revocation, and replay handling have been implemented in the current backend foundation. Service-level tests have been added.
+Refresh-token rotation, revocation, and replay handling have been implemented in the current backend foundation. Service-level tests and opt-in PostgreSQL repository integration tests cover selected lifecycle scenarios.
 
 The test plan includes:
 
@@ -224,9 +224,9 @@ The test plan includes:
 
 **Remaining verification:**
 
-- Add PostgreSQL repository integration tests.
-- Verify transaction atomicity and family revocation against PostgreSQL.
-- Test simultaneous refresh requests using the same token.
+- Expand PostgreSQL repository integration tests beyond the existing refresh-session lifecycle suite.
+- Add further transaction-failure and family-revocation edge cases against PostgreSQL.
+- Test additional simultaneous-refresh interleavings and database failure scenarios.
 - Test replay behavior across the HTTP API.
 - Independently verify that logout succeeds and the revoked refresh token cannot be used again.
 - Test refresh attempts after expiry, logout, account disabling, and school deactivation.

@@ -2,7 +2,9 @@
 
 > **Purpose:** This document is the primary handoff reference for continuing the existing School Management System project. Keep it synchronized with the source code, tests, database migrations, and other project documentation.
 >
-> **Last verified Git milestone:** `a705f9a` — `test(auth): add PostgreSQL refresh session integration tests`
+> **Latest repository checkpoint:** `e88e94e` — `docs: update authentication progress and handoff`
+>
+> **Previous code milestone:** `a705f9a` — `test(auth): add PostgreSQL refresh session integration tests`
 >
 > **Branch:** `main`
 >
@@ -53,13 +55,14 @@ Verify the actual route registration and request/response structures before chan
 
 ### Latest Git checkpoint
 
-- **Commit:** `a705f9a`
-- **Message:** `test(auth): add PostgreSQL refresh session integration tests`
+- **Latest repository commit:** `e88e94e`
+- **Message:** `docs: update authentication progress and handoff`
+- **Previous code milestone:** `a705f9a` — `test(auth): add PostgreSQL refresh session integration tests`
 - **Branch:** `main`
 - **Remote:** `origin/main`
 - **Last reported status:** `## main...origin/main`
 
-The commit added `backend/internal/repository/refresh_session_repository_integration_test.go` and was reported pushed successfully.
+The code milestone added `backend/internal/repository/refresh_session_repository_integration_test.go`; the later `e88e94e` commit updated documentation only. Verify the actual repository state before relying on this checkpoint.
 
 Never commit `.env` files, passwords, JWT signing secrets, real student data, or other sensitive credentials. Never ask the user to paste real secret values into chat.
 
@@ -871,18 +874,19 @@ After running `gofmt`, inspect the resulting diff to ensure formatting did not i
 - PostgreSQL refresh-session integration tests for rotation, replay, logout, expiry, and concurrency.
 - Reported full backend test-suite success.
 - Reported `go vet` success.
-- Latest code milestone committed and pushed as `a705f9a`.
+- Latest code milestone `a705f9a` and subsequent documentation checkpoint `e88e94e` were reported committed and pushed.
 
-### 13.2 Immediate Documentation Task
+### 13.2 Documentation Audit Follow-up
 
-1. Replace the stale contents of this file with the corrected version.
-2. Review `PROGRESS.md` and verify it matches the latest implementation and commit.
-3. Review `README.md`, `CHANGELOG.md`, `docs/API.md`, `docs/DATABASE.md`, `docs/SECURITY.md`, and `docs/TESTING.md` for contradictions.
-4. Review `docs/ARCHITECTURE.md` and `docs/REQUIREMENTS.md` against the current decisions.
-5. Inspect the complete Git diff.
-6. Verify `backend/.env` is ignored and not tracked.
-7. Rerun verification if any Go code changes are introduced.
-8. Commit and push the reviewed documentation changes.
+The documentation audit distinguishes the existing opt-in PostgreSQL refresh-session integration tests from still-pending broader repository, migration/rollback, end-to-end HTTP, authorization, and tenant-isolation tests. It also distinguishes the latest documentation checkpoint (`e88e94e`) from the previous code milestone (`a705f9a`).
+
+After applying a reviewed documentation update locally:
+
+1. Inspect `git diff --check` and `git diff --stat`.
+2. Verify `backend/.env` is ignored and not tracked; never include it in an archive or commit.
+3. Confirm no application source files changed as part of a documentation-only update.
+4. Do not report a new Go test result unless the command has actually been run.
+5. Commit and push only after reviewing the final diff and confirming the working tree contains only intended files.
 
 ### 13.3 Recommended Engineering Priorities
 
@@ -910,7 +914,7 @@ Copy the following into a new ChatGPT conversation when needed:
 >
 > Explain in Hindi/Hinglish with a friendly tone. Work on one small task at a time. Provide exact commands and complete replacement code when appropriate. Explain why each step is needed and wait for my output before proceeding. Do not assume a command succeeded without seeing the result.
 >
-> The latest reported Git milestone is `a705f9a`, `test(auth): add PostgreSQL refresh session integration tests`. The refresh-token implementation includes opaque random tokens, SHA-256 hash storage, rotation, logout, and token-family replay handling. PostgreSQL integration tests cover rotation, replay detection, logout revocation, expiry, and concurrent refresh requests. The user reported `go test -count=1 ./...` and `go vet ./...` passing after the integration tests were added. Verify the current local state before relying on those results.
+> The latest repository checkpoint recorded in this handoff is `e88e94e`, `docs: update authentication progress and handoff`; the previous code milestone is `a705f9a`, `test(auth): add PostgreSQL refresh session integration tests`. The refresh-token implementation includes opaque random tokens, SHA-256 hash storage, rotation, logout, and token-family replay handling. PostgreSQL integration tests cover rotation, replay detection, logout revocation, expiry, and concurrent refresh requests. The user reported `go test -count=1 ./...` and `go vet ./...` passing after the integration tests were added. Verify the current local state before relying on those results.
 >
 > The backend includes PostgreSQL connectivity, health/readiness endpoints, migrations for `schools`, `users`, and `refresh_sessions`, password hashing, user/school repositories, an authentication service, JWT access-token generation/validation, `POST /auth/login`, authentication middleware, `GET /auth/me`, `POST /auth/refresh`, and `POST /auth/logout`.
 >

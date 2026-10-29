@@ -68,7 +68,7 @@ Accepts a school ID, username, and password. Successful authentication returns a
 
 Exchanges a refresh token for a new access token and replacement refresh token. Refresh tokens are opaque, cryptographically random values; only their SHA-256 hashes are persisted.
 
-A reused revoked refresh token triggers revocation of active sessions in its token family. Automated PostgreSQL integration and concurrent replay tests are still needed to validate database-level behavior.
+A reused revoked refresh token triggers revocation of active sessions in its token family. Opt-in PostgreSQL repository integration tests cover refresh-session rotation, replay/family revocation, logout revocation/idempotency, expiry, and concurrent refresh behavior. These tests do not cover every possible database failure or concurrency interleaving.
 
 #### `POST /auth/logout`
 
@@ -101,15 +101,14 @@ go test -count=1 ./...
 go vet ./...
 ```
 
-The reported test run covered the API, configuration, handlers, middleware, and services. Some packages had no test files.
+The reported test run covered the API, configuration, handlers, middleware, services, and the opt-in PostgreSQL repository integration tests when explicitly enabled against the dedicated `school_management_test` database. Some packages have no test files.
 
-Manual checks also reportedly verified login, refresh-token rotation, replay-triggered family revocation, and rejection of a refresh token after logout. The logout flow should be independently retested using a fresh session.
+Manual checks also reportedly verified login, refresh-token rotation, replay-triggered family revocation, and rejection of a refresh token after logout. The automated repository integration tests separately cover refresh-session lifecycle behavior. Independent end-to-end HTTP verification should still be performed.
 
 These are previously reported results, not a guarantee that the current working tree has been reverified. Re-run the tests before committing.
 
 ## Not Yet Implemented
 
-- PostgreSQL repository integration tests and concurrent refresh-token rotation/replay tests.
 - Automated migration tests against a disposable test database.
 - Complete user-profile retrieval from `GET /auth/me`.
 - Access-token revocation enforcement.

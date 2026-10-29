@@ -254,7 +254,7 @@ Migration files are the authoritative source for the exact schema, column defini
 - Validate database readiness separately from basic API health.
 - Verify migrations and rollback behavior in an appropriate test environment.
 
-PostgreSQL repository integration tests and concurrency-focused session tests remain outstanding.
+Opt-in PostgreSQL repository integration tests and concurrency-focused refresh-session tests exist. Broader transaction-failure and concurrency interleaving coverage remains outstanding.
 
 ## 9. School Onboarding
 
@@ -355,8 +355,8 @@ The following controls are planned or still require completion and verification:
 - Secure password-reset and account-recovery workflows
 - Parent mobile OTP authentication
 - Immediate access-token invalidation strategy where required
-- PostgreSQL repository integration tests
-- Concurrent refresh-token rotation and replay tests
+- Broader PostgreSQL repository integration coverage beyond the existing refresh-session lifecycle tests
+- Additional concurrent refresh-token rotation and replay edge cases
 - Independent logout and session-revocation verification
 - Production secret management, monitoring, backup, and recovery procedures
 
@@ -368,7 +368,7 @@ Testing should cover multiple layers:
 
 - Unit tests for services and validation
 - Handler tests for HTTP status codes and response bodies
-- Repository integration tests against PostgreSQL
+- Repository integration tests against PostgreSQL for the refresh-session lifecycle (opt-in; broader repository coverage remains pending)
 - Migration and rollback verification
 - Authentication and refresh-session lifecycle tests
 - Concurrent token rotation and replay tests
@@ -380,7 +380,7 @@ Testing should cover multiple layers:
 
 Current test commands are documented in `docs/TESTING.md`.
 
-Previously reported successful backend checks include `go test -count=1 ./...` and `go vet ./...` after the refresh-token implementation. These results should not be interpreted as proof that the outstanding integration, concurrency, authorization, or end-to-end test suites have passed.
+Previously reported successful backend checks include `go test -count=1 ./...` and `go vet ./...` after the refresh-token implementation. The PostgreSQL repository integration tests require explicit opt-in and a dedicated test database; do not infer that they ran during an ordinary `go test ./...` invocation. These results do not prove that authorization, full tenant-isolation, end-to-end, or all concurrency scenarios have passed.
 
 ## 16. Development and Documentation Principles
 
