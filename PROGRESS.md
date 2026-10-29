@@ -2,18 +2,23 @@
 
 ## Current Stage
 
-Backend foundation and initial JWT authentication flows have been implemented, including login, authentication middleware, a protected identity endpoint, refresh-token rotation, replay detection and logout.
+**Current milestone:** Backend foundation, initial JWT authentication, refresh-token lifecycle, and PostgreSQL refresh-session integration tests.
 
-The latest confirmed Git milestone in the available project history is:
+The project has a working authentication foundation, including login, JWT authentication middleware, a protected identity endpoint, refresh-token rotation, replay detection, and logout revocation.
 
-- **Commit:** `fec3b8a`
-- **Commit message:** `feat(auth): add refresh token rotation and revocation`
+The latest confirmed Git milestone is:
+
+- **Commit:** `a705f9a`
+- **Commit message:** `test(auth): add PostgreSQL refresh session integration tests`
 - **Branch:** `main`
 - **Repository:** https://github.com/TheSumitNain/school-management-system
+- **Git status at last verification:** Clean; `main` matched `origin/main`
 
-The refresh-token implementation and related documentation were committed and pushed. The previously reported local Go test suite and `go vet` checks passed after these changes.
+The latest commit adds PostgreSQL integration tests for refresh-token rotation, replay detection, logout revocation, expired-token rejection, and concurrent refresh requests.
 
-**Important:** Passing unit and handler tests does not establish production readiness. PostgreSQL integration tests, concurrent refresh-token testing, complete authorization enforcement and production security hardening remain outstanding.
+The full backend test suite and `go vet` passed after these tests were added. A Windows temporary executable cleanup warning occurred during an earlier targeted test run, but the test itself passed, and the subsequent full test suite completed successfully.
+
+**Important:** Passing tests does not establish production readiness. RBAC, tenant authorization, account-security controls, deployment hardening, and other production requirements remain outstanding.
 
 ## Project Overview
 
@@ -28,6 +33,9 @@ The refresh-token implementation and related documentation were committed and pu
 - **Repository:** https://github.com/TheSumitNain/school-management-system
 - **Main branch:** `main`
 - **Default local API port:** `8081`
+- **Local repository:** `D:\school-management-system`
+- **Backend directory:** `D:\school-management-system\backend`
+- **Go module:** `school-management-system`
 
 The school and student counts are planning targets, not verified capacity limits.
 
@@ -67,10 +75,11 @@ The school and student counts are planning targets, not verified capacity limits
 - [x] Migration v1 for the `schools` table
 - [x] Migration v2 for `users` and `refresh_sessions`
 - [x] Migration v3 for refresh-token family identifiers
-- [x] Migration v3 previously applied locally and reported clean (`dirty = false`)
+- [x] Migration v3 applied to the development database and previously reported clean (`dirty = false`)
+- [x] Migration v3 applied to the dedicated `school_management_test` database and reported clean (`dirty = false`)
 - [x] User and school repository operations implemented
+- [x] Refresh-session repository integration tests against PostgreSQL
 - [ ] Automated migration tests against a dedicated clean test database
-- [ ] Automated repository integration tests against PostgreSQL
 - [ ] Production migration and recovery procedure fully validated
 
 **Migration safety:** Always verify the target database and migration state before deployment. Never run destructive down migrations against production without an approved backup and recovery plan.
@@ -109,38 +118,89 @@ The school and student counts are planning targets, not verified capacity limits
 - [x] Refresh-token family revocation on detected replay
 - [x] `POST /auth/logout`
 - [x] Session-service unit tests and authentication-handler tests
+- [x] PostgreSQL integration coverage for refresh-session lifecycle
+- [x] Concurrent refresh-token reuse detection tested against PostgreSQL
 
 **Known limitations:**
 
 - `/auth/me` returns the authenticated identity; it does not yet provide a complete user profile.
 - Authentication middleware establishes identity but does not itself enforce roles, permissions or complete tenant authorization.
-- Refresh-token concurrency behavior and database failure scenarios still need dedicated integration tests.
+- PostgreSQL integration tests cover the listed refresh-session scenarios, but they do not prove every possible database failure or concurrency scenario is safe.
 - Immediate revocation of already-issued access tokens requires a separately designed and implemented strategy.
 - Authentication endpoints do not mean that public registration or the full school-onboarding workflow exists.
 
-## Verification Previously Completed
+## Latest Verification Results
 
-The following checks were reported successful after the refresh-token milestone:
+The following checks were completed after the PostgreSQL integration test was added.
 
-- [x] `go test -count=1 ./...`
-- [x] `go vet ./...`
-- [x] Refresh-token login and rotation flow manually exercised
-- [x] Reuse of a rotated refresh token manually exercised; the old token was rejected and the token family was revoked
-- [x] Migration v3 reported applied with a clean migration state
-- [x] Git whitespace check completed without reported whitespace errors
-- [x] Changes committed and pushed to `origin/main`
+### Repository integration tests
+
+Command, run from `D:\school-management-system\backend`:
+
+```bat
+go test -count=1 -v ./internal/repository
+```
+
+**Result:** PASS.
+
+Verified scenarios:
+
+- [x] Refresh-token rotation revokes the old session
+- [x] Reuse of a rotated token is detected
+- [x] Replay detection revokes the replacement token in the same family
+- [x] Logout revocation is idempotent
+- [x] Expired refresh tokens are rejected
+- [x] Concurrent refresh requests produce one successful rotation and one reuse-detection result
+
+### Full backend tests
+
+Command:
+
+```bat
+go test -count=1 ./...
+```
+
+**Result:** PASS.
+
+Verified packages:
+
+- [x] `cmd/api`
+- [x] `internal/config`
+- [x] `internal/handlers`
+- [x] `internal/middleware`
+- [x] `internal/repository`
+- [x] `internal/services`
+
+The `cmd/devseed`, `cmd/migrate`, `internal/database`, and `internal/models` packages reported no test files.
+
+### Static analysis
+
+Command:
+
+```bat
+go vet ./...
+```
+
+**Result:** PASS, with no reported diagnostics.
+
+### Git verification
+
+- [x] Integration-test file staged and reviewed
+- [x] `git diff --cached --check` completed without whitespace errors
+- [x] Commit `a705f9a` created successfully
+- [x] Commit pushed successfully to `origin/main`
 - [x] Final Git status reported `## main...origin/main`
 
-These are historical verification results. Repeat the relevant checks after any new code changes. Do not treat them as proof that untested production scenarios are safe.
+These results describe the last verified state. Repeat relevant checks after future code changes.
 
 ## In Progress
 
 - [ ] Audit all project documentation against the latest implementation
 - [ ] Verify that the progress, API, database, security, testing and handoff documents agree
 - [ ] Review authentication security edge cases
-- [ ] Add PostgreSQL integration tests for refresh-session persistence and revocation
-- [ ] Test simultaneous refresh requests and token-replay scenarios
-- [ ] Confirm `.env` is ignored by Git and is not tracked
+- [ ] Review refresh-token integration-test isolation and cleanup
+- [ ] Add migration tests against a dedicated clean database
+- [ ] Verify that `backend/.env` is ignored by Git and is not tracked
 - [ ] Review all changes and run the full verification workflow after each implementation milestone
 
 ## Not Yet Implemented or Verified
@@ -152,10 +212,11 @@ These are historical verification results. Repeat the relevant checks after any 
 - [ ] Password-reset workflow and one-time reset tokens
 - [ ] Mandatory MFA for Platform Admin and School Admin
 - [ ] MFA recovery codes, recovery workflows and audit logging
-- [ ] Failed-login lockout and account/IP rate limiting
+- [ ] Failed-login lockout: 5 failed attempts followed by a 15-minute lock
+- [ ] Login and account/IP rate limiting
 - [ ] Security-event logging and audit trail
 - [ ] Account deactivation and complete session invalidation
-- [ ] Admin idle-session timeout
+- [ ] Admin idle-session timeout of 30 minutes
 - [ ] Verify all agreed password policy requirements
 - [ ] Complete access-token revocation strategy
 
@@ -163,7 +224,7 @@ These are historical verification results. Repeat the relevant checks after any 
 
 - [ ] Define and implement role-based access control (RBAC)
 - [ ] Implement permission checks on protected endpoints
-- [ ] Support authorized permission changes taking effect on subsequent requests
+- [ ] Support authorized permission changes taking effect on subsequent protected requests
 - [ ] Implement school-level tenant authorization
 - [ ] Ensure client-provided school IDs never independently grant access
 - [ ] Add cross-school authorization and data-isolation tests
@@ -174,8 +235,7 @@ These are historical verification results. Repeat the relevant checks after any 
 ### Database and School Features
 
 - [ ] Complete production database schema
-- [ ] PostgreSQL repository integration tests
-- [ ] Migration tests against a dedicated clean database
+- [ ] Add automated migration tests against a clean database
 - [ ] Student APIs
 - [ ] Teacher and staff APIs
 - [ ] Class and subject APIs
@@ -200,19 +260,20 @@ These are historical verification results. Repeat the relevant checks after any 
 
 ## Next Steps
 
-1. Finish the documentation audit, starting with this file and `docs/HANDOFF.md`.
+1. Finish the documentation audit, starting with `PROGRESS.md` and `docs/HANDOFF.md`.
 2. Review `README.md`, `CHANGELOG.md`, `docs/API.md`, `docs/DATABASE.md`, `docs/SECURITY.md`, `docs/TESTING.md` and `docs/ARCHITECTURE.md`.
 3. Confirm documented endpoint behavior and migration state against the actual code and local database.
-4. Run `gofmt` on any modified Go source files.
-5. Run `go test -count=1 ./...` from the backend directory.
-6. Run `go vet ./...` from the backend directory.
-7. Run `git diff --check` and inspect `git status`.
-8. Verify `backend/.env` is ignored and not tracked. Never paste secret contents into chat.
-9. Review the exact changes before committing and pushing.
-10. Add PostgreSQL integration tests, including concurrent refresh and replay scenarios.
-11. Implement RBAC and school-level tenant authorization with automated tests.
-12. Continue school-management APIs and frontend integration in small, verified milestones.
-13. Complete production security, deployment, monitoring and recovery checks before release.
+4. Review the PostgreSQL integration-test helper, database safety guard, and cleanup behavior.
+5. Verify `backend/.env` is ignored and not tracked. Never paste secret contents into chat.
+6. Run `gofmt` on any modified Go source files.
+7. Run `go test -count=1 ./...` from the backend directory.
+8. Run `go vet ./...` from the backend directory.
+9. Run `git diff --check` and inspect `git status`.
+10. Review the exact changes before committing and pushing.
+11. Implement login rate limiting and failed-login lockout with automated tests.
+12. Implement RBAC and school-level tenant authorization with automated cross-school tests.
+13. Continue school-management APIs and frontend integration in small, verified milestones.
+14. Complete production security, deployment, monitoring and recovery checks before release.
 
 ## Working Rules
 
