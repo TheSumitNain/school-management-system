@@ -71,11 +71,12 @@ func (r *RefreshSessionRepository) Rotate(
 	// discovers the immutable family ID; all security decisions use the fresh,
 	// row-locked lookup after the family lock is acquired.
 	var familyID string
+	var discoveredUserID int64
 	if err := tx.QueryRow(
 		ctx,
-		`SELECT family_id FROM refresh_sessions WHERE token_hash = $1`,
+		`SELECT family_id, user_id FROM refresh_sessions WHERE token_hash = $1`,
 		oldTokenHash,
-	).Scan(&familyID); errors.Is(err, pgx.ErrNoRows) {
+	).Scan(&familyID, &discoveredUserID); errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrRefreshTokenInvalid
 	} else if err != nil {
 		return nil, fmt.Errorf("find refresh-token family: %w", err)
@@ -87,6 +88,19 @@ func (r *RefreshSessionRepository) Rotate(
 		familyID,
 	); err != nil {
 		return nil, fmt.Errorf("lock refresh-token family: %w", err)
+	}
+
+	// Serialize rotations across every refresh-token family belonging to the
+	// same user. This lock must be acquired before the fresh status lookup so
+	// another family cannot insert a replacement after a user-wide revocation.
+	if _, err := tx.Exec(
+		ctx,
+		`SELECT pg_advisory_xact_lock(
+			hashtextextended('refresh-user:' || $1::bigint::text, 0)
+		)`,
+		discoveredUserID,
+	); err != nil {
+		return nil, fmt.Errorf("lock refresh-token user sessions: %w", err)
 	}
 
 	const lookup = `
@@ -125,6 +139,9 @@ func (r *RefreshSessionRepository) Rotate(
 
 	if currentFamilyID != familyID {
 		return nil, fmt.Errorf("refresh-token family changed unexpectedly")
+	}
+	if userID != discoveredUserID {
+		return nil, fmt.Errorf("refresh-token user changed unexpectedly")
 	}
 
 	if revoked {
@@ -194,8 +211,10 @@ func (r *RefreshSessionRepository) Rotate(
 	}, nil
 }
 
-// Revoke invalidates a refresh token. Unknown tokens are intentionally a no-op,
-// allowing logout to be safely retried without revealing token state.
+// Revoke invalidates every refresh token in the presented token's family.
+// Unknown tokens are intentionally a no-op, allowing logout to be safely
+// retried without revealing token state. The family lock serializes logout
+// with rotation so a concurrent refresh cannot leave a replacement token active.
 func (r *RefreshSessionRepository) Revoke(
 	ctx context.Context,
 	tokenHash string,
@@ -204,13 +223,44 @@ func (r *RefreshSessionRepository) Revoke(
 		return nil
 	}
 
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin refresh-session revocation: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	// Discover the immutable family ID, then acquire the same lock used by Rotate.
+	var familyID string
+	err = tx.QueryRow(
+		ctx,
+		`SELECT family_id FROM refresh_sessions WHERE token_hash = $1`,
+		tokenHash,
+	).Scan(&familyID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("find refresh-token family for revocation: %w", err)
+	}
+
+	if _, err := tx.Exec(
+		ctx,
+		`SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`,
+		familyID,
+	); err != nil {
+		return fmt.Errorf("lock refresh-token family for revocation: %w", err)
+	}
+
 	const query = `
 		UPDATE refresh_sessions
 		SET revoked_at = COALESCE(revoked_at, NOW())
-		WHERE token_hash = $1 AND revoked_at IS NULL
+		WHERE family_id = $1 AND revoked_at IS NULL
 	`
-	if _, err := r.db.Exec(ctx, query, tokenHash); err != nil {
-		return fmt.Errorf("revoke refresh session: %w", err)
+	if _, err := tx.Exec(ctx, query, familyID); err != nil {
+		return fmt.Errorf("revoke refresh-token family: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit refresh-token family revocation: %w", err)
 	}
 	return nil
 }

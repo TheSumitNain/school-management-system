@@ -2,15 +2,15 @@
 
 > **Purpose:** This document is the primary handoff reference for continuing the existing School Management System project. Keep it synchronized with the source code, tests, database migrations, and other project documentation.
 >
-> **Latest repository checkpoint:** `e88e94e` — `docs: update authentication progress and handoff`
+> **Last confirmed pushed repository checkpoint:** `d85e1ef` — `docs: reconcile authentication testing status`
 >
-> **Previous code milestone:** `a705f9a` — `test(auth): add PostgreSQL refresh session integration tests`
+> **Previous code/test milestone:** `a705f9a` — `test(auth): add PostgreSQL refresh session integration tests`
 >
 > **Branch:** `main`
 >
 > **Repository:** https://github.com/TheSumitNain/school-management-system
 >
-> **Last reported Git status:** Clean; `main` matched `origin/main`.
+> **Last reported Git status after that checkpoint:** local modifications existed in refresh-session repository/test and documentation files; run `git status -sb` before committing.
 >
 > **Important:** These details describe the last reported state. Check the actual repository before assuming that no newer changes exist.
 
@@ -55,14 +55,13 @@ Verify the actual route registration and request/response structures before chan
 
 ### Latest Git checkpoint
 
-- **Latest repository commit:** `e88e94e`
-- **Message:** `docs: update authentication progress and handoff`
-- **Previous code milestone:** `a705f9a` — `test(auth): add PostgreSQL refresh session integration tests`
+- **Last confirmed pushed repository commit:** `d85e1ef`
+- **Message:** `docs: reconcile authentication testing status`
 - **Branch:** `main`
 - **Remote:** `origin/main`
-- **Last reported status:** `## main...origin/main`
+- **Last reported status:** local modifications existed in refresh-session repository/test and documentation files; verify with `git status -sb`.
 
-The code milestone added `backend/internal/repository/refresh_session_repository_integration_test.go`; the later `e88e94e` commit updated documentation only. Verify the actual repository state before relying on this checkpoint.
+The code milestone added `backend/internal/repository/refresh_session_repository_integration_test.go`; the later `d85e1ef` commit updated documentation only. Verify the actual repository state before relying on this checkpoint.
 
 Never commit `.env` files, passwords, JWT signing secrets, real student data, or other sensitive credentials. Never ask the user to paste real secret values into chat.
 
@@ -388,9 +387,7 @@ Review its environment guard, seed credentials, school-ID assumptions, and deplo
 
 The refresh-token lifecycle implementation was previously committed in:
 
-`fec3b8a feat(auth): add refresh token rotation and revocation`
-
-The latest integration-test milestone is:
+Earlier authentication work was followed by the PostgreSQL integration-test milestone:
 
 `a705f9a test(auth): add PostgreSQL refresh session integration tests`
 
@@ -413,9 +410,10 @@ Verify exact file names and source code before making further implementation cha
 - Only SHA-256 hashes of refresh tokens are persisted.
 - Refresh-token expiry is configurable using `REFRESH_TOKEN_EXPIRY_DAYS`, defaulting to 7 days with a supported range of 1–30 days.
 - `POST /auth/refresh` rotates a presented refresh token and returns a new access/refresh token pair.
-- `POST /auth/logout` revokes the presented refresh session.
+- `POST /auth/logout` revokes every active refresh session in the supplied token family; repeated logout is idempotent and unknown tokens are a no-op.
 - Migration v3 adds `family_id` to group refresh-token rotation chains.
-- Reuse of a revoked token is intended to revoke active sessions in the associated token family.
+- Reuse of a revoked token revokes active sessions in the associated token family.
+- Refresh rotation and logout acquire the same transaction-scoped PostgreSQL advisory lock derived from the family ID. Rotation also acquires a per-user transaction advisory lock to serialize concurrent rotations across the same user's token families. It performs a fresh `FOR UPDATE` lookup after acquiring both locks.
 
 ### 6.2 PostgreSQL Integration Tests — Completed
 
@@ -439,11 +437,11 @@ The integration tests cover:
 - Refresh-token rotation.
 - Rejection of a replayed refresh token.
 - Revocation of the replacement token when replay is detected.
-- Idempotent logout revocation.
+- Family-wide logout revocation and idempotency.
 - Rejection of an expired refresh token.
 - Concurrent refresh attempts against the same token, expecting one successful rotation and one reuse-detection result.
 
-**Last reported result:** All four repository integration-test subtests passed.
+**Last reported result:** PostgreSQL repository integration tests passed. Reported coverage includes rotation, replay-triggered family revocation, family-wide logout, idempotency, expiry rejection, and concurrent refresh reuse detection.
 
 Command:
 
@@ -486,7 +484,8 @@ An access token may remain valid until expiration unless the API implements an a
 
 ### 6.5 Remaining Refresh-Token Work
 
-- Review transaction and locking behavior.
+- Add further tests for transaction failures and refresh/logout interleavings not covered by the current suite.
+- Verified concurrent rotations across separate token families for the same user: the per-user advisory lock prevents a later rotation from leaving a replacement session active after an inactive-user revocation.
 - Verify behavior for expired, unknown, revoked, and malformed refresh tokens.
 - Review database failure handling and cleanup behavior.
 - Add more tests for relevant edge cases identified during review.
@@ -874,13 +873,13 @@ After running `gofmt`, inspect the resulting diff to ensure formatting did not i
 - PostgreSQL refresh-session integration tests for rotation, replay, logout, expiry, and concurrency.
 - Reported full backend test-suite success.
 - Reported `go vet` success.
-- Latest code milestone `a705f9a` and subsequent documentation checkpoint `e88e94e` were reported committed and pushed.
+- Code/test milestone `a705f9a` and later documentation checkpoint `d85e1ef` were reported committed and pushed.
 
 ### 13.2 Documentation Audit Follow-up
 
-The documentation audit distinguishes the existing opt-in PostgreSQL refresh-session integration tests from still-pending broader repository, migration/rollback, end-to-end HTTP, authorization, and tenant-isolation tests. It also distinguishes the latest documentation checkpoint (`e88e94e`) from the previous code milestone (`a705f9a`).
+The documentation consistency pass has been completed across README, PROGRESS, CHANGELOG, REQUIREMENTS, ARCHITECTURE, DATABASE, API, SECURITY, TESTING, and HANDOFF. The docs now describe family-wide logout and the shared family-scoped advisory lock. Remaining engineering verification includes broader database failure/interleaving tests, migration/rollback tests, independent HTTP-level logout verification, RBAC, and tenant isolation. The last confirmed pushed checkpoint is `d85e1ef`; verify the current working tree before committing these documentation changes.
 
-After applying a reviewed documentation update locally:
+After applying the documentation bundle locally:
 
 1. Inspect `git diff --check` and `git diff --stat`.
 2. Verify `backend/.env` is ignored and not tracked; never include it in an archive or commit.
@@ -914,7 +913,7 @@ Copy the following into a new ChatGPT conversation when needed:
 >
 > Explain in Hindi/Hinglish with a friendly tone. Work on one small task at a time. Provide exact commands and complete replacement code when appropriate. Explain why each step is needed and wait for my output before proceeding. Do not assume a command succeeded without seeing the result.
 >
-> The latest repository checkpoint recorded in this handoff is `e88e94e`, `docs: update authentication progress and handoff`; the previous code milestone is `a705f9a`, `test(auth): add PostgreSQL refresh session integration tests`. The refresh-token implementation includes opaque random tokens, SHA-256 hash storage, rotation, logout, and token-family replay handling. PostgreSQL integration tests cover rotation, replay detection, logout revocation, expiry, and concurrent refresh requests. The user reported `go test -count=1 ./...` and `go vet ./...` passing after the integration tests were added. Verify the current local state before relying on those results.
+> The latest repository checkpoint recorded in this handoff is `d85e1ef`, `docs: reconcile authentication testing status`; the previous code/test milestone is `a705f9a`, `test(auth): add PostgreSQL refresh session integration tests`. The refresh-token implementation includes opaque random tokens, SHA-256 hash storage, rotation, logout, and token-family replay handling. PostgreSQL integration tests cover rotation, replay detection, logout revocation, expiry, and concurrent refresh requests. The user reported `go test -count=1 ./...` and `go vet ./...` passing after the integration tests were added. Verify the current local state before relying on those results.
 >
 > The backend includes PostgreSQL connectivity, health/readiness endpoints, migrations for `schools`, `users`, and `refresh_sessions`, password hashing, user/school repositories, an authentication service, JWT access-token generation/validation, `POST /auth/login`, authentication middleware, `GET /auth/me`, `POST /auth/refresh`, and `POST /auth/logout`.
 >

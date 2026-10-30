@@ -58,7 +58,7 @@ Files:
 - `000002_create_auth_tables.up.sql`
 - `000002_create_auth_tables.down.sql`
 
-The migration creates the `users` and `refresh_sessions` tables, including their initial relationships, constraints, and indexes.
+The migration creates the `users` and `refresh_sessions` tables, including their initial relationships, constraints, and indexes. The users table has a generated BIGINT identity key, a required school foreign key with `ON DELETE RESTRICT`, a non-empty username and password hash, and a status limited to `active` or `disabled`. A unique index on `(school_id, LOWER(username))` enforces case-insensitive username uniqueness within each school.
 
 ### 3.3 Migration v3 — Refresh-Token Families
 
@@ -69,9 +69,9 @@ Files:
 - `000003_add_refresh_token_families.up.sql`
 - `000003_add_refresh_token_families.down.sql`
 
-The family identifier supports refresh-token replay handling. When a previously rotated or revoked token is presented again, the application can revoke the remaining active sessions in the affected family.
+The migration adds `family_id UUID NOT NULL DEFAULT gen_random_uuid()` and an index on `family_id`. Existing rows receive a generated UUID when the column is added. The down migration drops the family index and then the column. The v2 down migration drops `refresh_sessions` before `users`; it is destructive and permanently removes those table records. Never run destructive rollback against production without an approved backup and recovery plan.
 
-The exact default expression, index definition, and rollback behavior are determined by the migration SQL.
+The family identifier supports refresh-token replay handling and family-wide logout. When a previously rotated or revoked token is presented again, the application revokes the remaining active sessions in that family. The repository uses a PostgreSQL transaction advisory lock derived from the family ID to serialize refresh rotation and logout operations for the same family. Rotation additionally acquires a per-user transaction advisory lock to serialize rotations across different families belonging to the same user. It performs a fresh `FOR UPDATE` lookup after acquiring both locks before making security decisions.
 
 ### 3.4 Running Migrations
 
@@ -108,7 +108,7 @@ The initial supported school statuses include:
 - `active`
 - `suspended`
 
-The exact column types, nullability, defaults, constraints, and indexes are defined in migration v1.
+Migration v1 defines `id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY`, `name VARCHAR(150) NOT NULL`, `code VARCHAR(50) NOT NULL UNIQUE`, and `status VARCHAR(20) NOT NULL DEFAULT 'pending_setup'` constrained to `pending_setup`, `active`, or `suspended`. Both timestamps are `TIMESTAMPTZ NOT NULL DEFAULT NOW()`. The `updated_at` default initializes the field but does not automatically update it on later UPDATE statements.
 
 ### Design considerations
 
@@ -145,7 +145,7 @@ The intended schema rules documented for the current migration include:
 - `status` is restricted to `active` or `disabled`.
 - A unique index on `(school_id, LOWER(username))` prevents duplicate usernames within a school regardless of letter case.
 
-The exact constraint names and definitions must be taken from the migration SQL. Review the actual migration before changing the schema or relying on a particular constraint name.
+The migration also uses `BIGINT GENERATED ALWAYS AS IDENTITY` for the primary key and `ON DELETE RESTRICT` for the school foreign key. The case-insensitive unique index is named `users_school_username_unique`. The `updated_at` default only initializes the timestamp; it does not automatically change on UPDATE unless application code or a trigger updates it.
 
 ### 5.2 Tenant Considerations
 
@@ -188,16 +188,17 @@ The exact data types, defaults, constraints, and indexes are defined by migratio
 
 ### 6.1 Constraints and Indexes
 
-The documented schema rules include:
+The migrations define these constraints and indexes:
 
-- `user_id` references `users.id`.
-- Deleting a user cascades to that user's refresh-session records.
-- `token_hash` is unique.
-- A check constraint requires `expires_at` to be later than `created_at`.
-- Indexes support relevant lookups, including user and expiry-related queries.
-- `family_id` groups refresh sessions that belong to the same token family.
+- `id` is a generated identity primary key.
+- `user_id` references `users(id)` with `ON DELETE CASCADE`.
+- `token_hash` is `CHAR(64) NOT NULL UNIQUE`; the application stores lowercase hexadecimal SHA-256 digests, not raw refresh tokens.
+- `expires_at` is required, and a check constraint requires it to be later than `created_at`.
+- `revoked_at` is nullable and records revocation.
+- Indexes support lookup by `user_id`, `expires_at`, and `family_id`.
+- Migration v3 adds `family_id UUID NOT NULL DEFAULT gen_random_uuid()`.
 
-Confirm the exact constraint and index definitions against the migration SQL before relying on their names or implementation details.
+`CHAR(64)` is fixed-width and PostgreSQL pads shorter values; application validation currently requires exactly 64 lowercase hexadecimal characters. Any future type change should be made through a new migration after compatibility review.
 
 ### 6.2 Refresh-Token Implementation Status
 
@@ -233,6 +234,10 @@ The implementation should not be considered production-ready solely because the 
 - Migration and rollback tests against a disposable database.
 
 Existing stateless JWT access tokens are not immediately invalidated by refresh-session logout. They can remain usable until their configured expiry unless another access-token revocation mechanism is introduced.
+
+### 6.4 Family-level transaction coordination
+
+`Rotate()` and `Revoke()` acquire the same PostgreSQL transaction advisory lock using `pg_advisory_xact_lock(hashtextextended(family_id, 0))`. This lock serializes operations for a token family. `Rotate()` additionally acquires a per-user transaction advisory lock, serializing concurrent rotations across that user's token families. It then reloads the session with `FOR UPDATE` before checking revocation and expiry. This coordinates refresh-vs-logout races within a family and the tested cross-family concurrent-rotation race. It does not itself coordinate external user or school status updates, and it does not revoke already-issued stateless access JWTs.
 
 ## 7. Current Relationships
 

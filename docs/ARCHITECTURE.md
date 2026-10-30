@@ -148,8 +148,9 @@ The initial authentication foundation is implemented in the Go backend.
 - Opaque refresh tokens generated using cryptographically secure randomness
 - Refresh-token hashes stored in the database rather than raw refresh tokens
 - Refresh-token rotation
-- Refresh-token revocation on logout
+- Family-wide refresh-token revocation on logout
 - Refresh-token family revocation when a revoked token is replayed
+- Shared PostgreSQL transaction advisory locking for refresh rotation and logout within a token family, plus per-user locking to serialize rotations across a user's token families
 - Configurable refresh-token expiry, with a default of seven days and a supported range of 1–30 days
 
 These features form the initial authentication foundation. They do not mean that all production security controls are complete.
@@ -180,9 +181,9 @@ Issue access token and refresh token
 
 Refresh tokens are opaque random values. The server stores a hash of each token and tracks its session family.
 
-When a valid refresh token is used, the server rotates it. Reuse of a revoked token triggers revocation of active sessions in the same family.
+When a valid refresh token is used, the server rotates it. Reuse of a revoked token triggers revocation of active sessions in the same family. Rotation and logout acquire the same transaction-scoped PostgreSQL advisory lock derived from the family ID. Rotation also acquires a per-user transaction advisory lock, serializing concurrent rotations across that user's token families. Rotation performs a fresh row-locked session lookup after acquiring both locks.
 
-Logout revokes the refresh token. Because access tokens are currently JWTs, revoking a refresh session does not automatically invalidate an already-issued access token. Immediate access-token revocation is a separate security requirement.
+Logout revokes all active refresh sessions in the supplied token family; an unknown token is a no-op and repeated logout is safe. Because access tokens are currently JWTs, revoking a refresh session does not automatically invalidate an already-issued access token. Immediate access-token revocation is a separate security requirement.
 
 ### Current authentication endpoints
 
@@ -192,10 +193,10 @@ Logout revokes the refresh token. Because access tokens are currently JWTs, revo
 | GET | `/ready` | API and database readiness check |
 | POST | `/auth/login` | Authenticate a user |
 | POST | `/auth/refresh` | Rotate a refresh token |
-| POST | `/auth/logout` | Revoke a refresh session |
+| POST | `/auth/logout` | Revoke all active refresh sessions in the supplied token family |
 | GET | `/auth/me` | Return authenticated user identifiers |
 
-The exact response schemas and error behavior are documented in `docs/API.md`.
+The exact response schemas and error behavior are documented in `docs/API.md`. In the current backend source, route registration is performed in `backend/cmd/api/main.go`; a separate routing package is not yet part of the implemented structure.
 
 ## 7. Authorization and RBAC
 
@@ -400,7 +401,7 @@ The project has an initial Go/Gin API foundation, PostgreSQL connectivity, initi
 
 The next major implementation stages are:
 
-1. Finish verification of refresh-session behavior, including independent logout and concurrency scenarios.
+1. Continue refresh-session verification for database failures and additional refresh/logout interleavings; independently verify the HTTP logout flow.
 2. Implement RBAC and enforce authorization on protected endpoints.
 3. Implement and test school-level tenant isolation.
 4. Complete secure school onboarding and administrator MFA.

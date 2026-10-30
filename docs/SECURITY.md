@@ -29,7 +29,7 @@ The application is designed to support multiple schools. Student, parent, teache
 - Login issues an opaque, cryptographically random refresh token and stores only its SHA-256 hash.
 - `POST /auth/refresh` rotates refresh tokens.
 - Reuse of a revoked refresh token triggers revocation of active sessions in its token family.
-- `POST /auth/logout` revokes the supplied refresh token.
+- `POST /auth/logout` revokes all active refresh sessions in the supplied token family; repeated logout is idempotent and unknown tokens are a no-op.
 - HTTP server timeouts, graceful shutdown, health checks, and readiness checks are implemented.
 - Automated tests cover the implemented authentication foundation and service-level token lifecycle behavior.
 
@@ -108,11 +108,12 @@ The refresh-token HTTP lifecycle is implemented with the following behavior:
 
 - `POST /auth/login` issues an access token and a refresh token.
 - `POST /auth/refresh` validates a refresh token and rotates it.
-- `POST /auth/logout` revokes the supplied refresh token.
+- `POST /auth/logout` revokes all active refresh sessions in the supplied token family; repeated logout is idempotent and unknown tokens are a no-op.
 - Refresh tokens are opaque, cryptographically random values separate from JWT access tokens.
 - Only a SHA-256 hash of a refresh token is stored in the database.
 - Refresh-token expiry is configurable through `REFRESH_TOKEN_EXPIRY_DAYS`, with a default of 7 days and an allowed range of 1–30 days.
 - Refresh rotation revokes the presented session and creates its replacement within a database transaction.
+- Refresh rotation and logout acquire the same transaction-scoped PostgreSQL advisory lock for the token family. Rotation additionally acquires a per-user transaction advisory lock to serialize concurrent rotations across that user's token families, then performs a fresh row-locked lookup.
 - Reuse of a revoked refresh token triggers revocation of the remaining active sessions in its token family.
 - Refresh processing checks user and school status.
 
@@ -120,7 +121,7 @@ The implemented service behavior and opt-in PostgreSQL repository integration te
 
 ### Logout limitations
 
-Logout revokes the supplied refresh token. It does **not** immediately invalidate access JWTs that have already been issued. Those tokens remain valid until they expire unless an additional revocation mechanism is introduced.
+Logout revokes every active refresh session in the supplied token family. Repeated logout is idempotent and unknown tokens are a no-op. It does **not** immediately invalidate access JWTs that have already been issued. Those tokens remain valid until they expire unless an additional revocation mechanism is introduced.
 
 Before production deployment, decide whether short access-token lifetimes are sufficient or whether immediate revocation is required. Also define session invalidation behavior after password changes, account disabling, and administrative security events.
 
@@ -139,7 +140,7 @@ If cookies are used, configure appropriate `HttpOnly`, `Secure`, and `SameSite` 
 - Keep signing keys and secrets outside source control.
 - Define a key-rotation strategy.
 - Apply authentication middleware to every route requiring authentication.
-- Test concurrent refresh requests and transaction behavior against PostgreSQL.
+- Continue testing concurrent refresh/logout ordering and transaction behavior against PostgreSQL, including database failure cases.
 - Test refresh-token replay and logout independently through the HTTP API.
 - Define how disabled users, inactive schools, and revoked sessions affect already-issued access tokens.
 - Return generic authentication errors where detailed responses could reveal sensitive information.

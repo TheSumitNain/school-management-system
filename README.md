@@ -48,7 +48,7 @@ These are planning targets, not verified capacity limits. Production capacity wi
 - JWT access-token generation and validation, including issuer, expiry, and required-claim checks.
 - `POST /auth/login` endpoint that issues access and refresh tokens.
 - `POST /auth/refresh` endpoint for refresh-token rotation and replay detection.
-- `POST /auth/logout` endpoint to revoke a refresh session.
+- `POST /auth/logout` endpoint to revoke every active refresh session in the supplied token family.
 - Generic unauthorized responses for invalid login credentials.
 - Login response DTO that excludes password hashes.
 - Authentication middleware that validates Bearer access tokens and extracts authenticated user and school IDs.
@@ -68,11 +68,11 @@ Accepts a school ID, username, and password. Successful authentication returns a
 
 Exchanges a refresh token for a new access token and replacement refresh token. Refresh tokens are opaque, cryptographically random values; only their SHA-256 hashes are persisted.
 
-A reused revoked refresh token triggers revocation of active sessions in its token family. Opt-in PostgreSQL repository integration tests cover refresh-session rotation, replay/family revocation, logout revocation/idempotency, expiry, and concurrent refresh behavior. These tests do not cover every possible database failure or concurrency interleaving.
+A reused revoked refresh token triggers revocation of active sessions in its token family. Refresh and logout operations serialize on a PostgreSQL transaction advisory lock scoped to the token family. Rotation additionally acquires a per-user transaction advisory lock to serialize rotations across that user's token families. Rotation performs a fresh row-locked lookup after acquiring the locks. Opt-in PostgreSQL repository integration tests cover refresh-session rotation, replay/family revocation, family-wide logout, idempotency, expiry, and concurrent refresh behavior. These tests do not cover every possible database failure or concurrency interleaving.
 
 #### `POST /auth/logout`
 
-Revokes the supplied refresh session. Already-issued access JWTs remain valid until expiry because access-token revocation enforcement has not been implemented.
+Revokes all active refresh sessions in the token family associated with the supplied refresh token. Repeating logout is safe; an unknown token is a no-op. Already-issued access JWTs remain valid until expiry because access-token revocation enforcement has not been implemented.
 
 #### `GET /auth/me`
 
@@ -101,7 +101,7 @@ go test -count=1 ./...
 go vet ./...
 ```
 
-The reported test run covered the API, configuration, handlers, middleware, services, and the opt-in PostgreSQL repository integration tests when explicitly enabled against the dedicated `school_management_test` database. Some packages have no test files.
+The reported test run covered the API, configuration, handlers, middleware, repositories, and services. The opt-in PostgreSQL repository integration tests must be enabled explicitly against the dedicated `school_management_test` database. Some packages have no test files.
 
 Manual checks also reportedly verified login, refresh-token rotation, replay-triggered family revocation, and rejection of a refresh token after logout. The automated repository integration tests separately cover refresh-session lifecycle behavior. Independent end-to-end HTTP verification should still be performed.
 

@@ -4,17 +4,16 @@
 
 **Current milestone:** Backend foundation, initial JWT authentication, refresh-token lifecycle, and PostgreSQL refresh-session integration tests.
 
-The project has a working authentication foundation, including login, JWT authentication middleware, a protected identity endpoint, refresh-token rotation, replay detection, and logout revocation.
+The project has a working authentication foundation, including login, JWT authentication middleware, a protected identity endpoint, refresh-token rotation, replay detection, family-wide logout revocation, family-scoped transaction advisory locking, and per-user serialization of concurrent rotations across token families.
 
-The latest repository checkpoint recorded during the documentation audit is:
+The latest confirmed pushed checkpoint recorded in the conversation is:
 
-- **Latest commit:** `e88e94e` — `docs: update authentication progress and handoff`
-- **Previous code milestone:** `a705f9a` — `test(auth): add PostgreSQL refresh session integration tests`
+- **Commit:** `d85e1ef` — `docs: reconcile authentication testing status`
 - **Branch:** `main`
 - **Repository:** https://github.com/TheSumitNain/school-management-system
-- **Git status at last verification:** Clean; `main` matched `origin/main`
+- **Last reported working-tree state:** documentation and refresh-session repository/test files had local modifications. Run `git status -sb` before committing; do not assume the current working tree is clean.
 
-The code milestone `a705f9a` added opt-in PostgreSQL integration tests for refresh-session rotation, replay/family revocation, logout revocation/idempotency, expiry, and concurrent refresh requests. The subsequent `e88e94e` commit updated documentation only.
+The refresh-session work includes opt-in PostgreSQL integration tests for rotation, replay/family revocation, family-wide logout, idempotency, expiry, and concurrent refresh requests.
 
 The full backend test suite and `go vet` passed after these tests were added. A Windows temporary executable cleanup warning occurred during an earlier targeted test run, but the test itself passed, and the subsequent full test suite completed successfully.
 
@@ -131,7 +130,7 @@ The school and student counts are planning targets, not verified capacity limits
 
 ## Latest Verification Results
 
-The following checks were completed after the PostgreSQL integration test was added.
+The following checks were reported after the PostgreSQL integration test work was completed. These are historical results; rerun them after any code changes.
 
 ### Repository integration tests
 
@@ -141,13 +140,14 @@ Command, run from `D:\school-management-system\backend`:
 go test -count=1 -v ./internal/repository
 ```
 
-**Result:** PASS.
+**Result:** PASS. A repeated run with `go test -count=20 ./internal/repository` was also reported successful.
 
 Verified scenarios:
 
 - [x] Refresh-token rotation revokes the old session
 - [x] Reuse of a rotated token is detected
 - [x] Replay detection revokes the replacement token in the same family
+- [x] Logout revokes the complete refresh-token family
 - [x] Logout revocation is idempotent
 - [x] Expired refresh tokens are rejected
 - [x] Concurrent refresh requests produce one successful rotation and one reuse-detection result
@@ -187,21 +187,20 @@ go vet ./...
 
 - [x] Integration-test file staged and reviewed
 - [x] `git diff --cached --check` completed without whitespace errors
-- [x] Code milestone `a705f9a` created successfully; later documentation checkpoint `e88e94e` recorded
-- [x] Commit pushed successfully to `origin/main`
-- [x] Final Git status reported `## main...origin/main`
+- [x] Last confirmed pushed documentation checkpoint: `d85e1ef`
+- [x] Earlier Git status was reported clean at that checkpoint; later local modifications were subsequently reported and must be checked before committing
 
 These results describe the last verified state. Repeat relevant checks after future code changes.
 
 ## In Progress
 
 - [x] Audit project documentation against the latest reported implementation and test coverage
-- [x] Cross-check progress, API, database, security, testing and handoff documentation for consistency
-- [ ] Review authentication security edge cases
+- [x] Cross-check README, progress, changelog, requirements, architecture, database, API, security, testing and handoff documentation for consistency
+- [ ] Review remaining authentication security edge cases against the current local working tree
 - [ ] Re-review refresh-token integration-test isolation and cleanup after any test changes
 - [ ] Add migration tests against a dedicated clean database
 - [x] Verify that `backend/.env` is ignored by Git and is not tracked
-- [ ] Review all changes and run the full verification workflow after each implementation milestone
+- [ ] Run the full verification workflow after each implementation milestone
 
 ## Not Yet Implemented or Verified
 
@@ -260,20 +259,17 @@ These results describe the last verified state. Repeat relevant checks after fut
 
 ## Next Steps
 
-1. Finish the documentation audit, starting with `PROGRESS.md` and `docs/HANDOFF.md`.
-2. Review `README.md`, `CHANGELOG.md`, `docs/API.md`, `docs/DATABASE.md`, `docs/SECURITY.md`, `docs/TESTING.md` and `docs/ARCHITECTURE.md`.
-3. Confirm documented endpoint behavior and migration state against the actual code and local database.
-4. Review the PostgreSQL integration-test helper, database safety guard, and cleanup behavior.
-5. Verify `backend/.env` is ignored and not tracked. Never paste secret contents into chat.
-6. Run `gofmt` on any modified Go source files.
-7. Run `go test -count=1 ./...` from the backend directory.
-8. Run `go vet ./...` from the backend directory.
-9. Run `git diff --check` and inspect `git status`.
-10. Review the exact changes before committing and pushing.
-11. Implement login rate limiting and failed-login lockout with automated tests.
-12. Implement RBAC and school-level tenant authorization with automated cross-school tests.
-13. Continue school-management APIs and frontend integration in small, verified milestones.
-14. Complete production security, deployment, monitoring and recovery checks before release.
+1. Apply the reviewed documentation bundle to the local repository and inspect the complete diff.
+2. Confirm the local refresh-session repository and integration-test files match the reviewed family-wide logout/advisory-lock implementation.
+3. Verify `backend/.env` is ignored and not tracked. Never paste secret contents into chat.
+4. Run `git diff --check` and inspect `git status -sb`.
+5. Re-run `go test -count=1 ./...` and `go vet ./...` from the backend directory after all pending code changes are present.
+6. Run the PostgreSQL integration tests against the dedicated `school_management_test` database.
+7. Review the exact staged diff, then commit and push only after verification.
+8. Implement login rate limiting and failed-login lockout with automated tests.
+9. Implement RBAC and school-level tenant authorization with automated cross-school tests.
+10. Continue school-management APIs and frontend integration in small, verified milestones.
+11. Complete production security, deployment, monitoring and recovery checks before release.
 
 ## Working Rules
 

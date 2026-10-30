@@ -221,14 +221,15 @@ A successful rotation replaces the previous refresh session with a new one. Do n
 - A refresh token is intended to be used once successfully.
 - Reusing a previously rotated token triggers token-family replay handling.
 - Replay handling revokes active sessions in the affected token family.
+- Refresh rotation and logout serialize on the same family-scoped PostgreSQL transaction advisory lock. Rotation also acquires a per-user advisory lock to serialize concurrent rotations across that user's token families.
 - Concurrent refresh requests may cause one request to be rejected and can require the user to log in again.
-- Database transaction and concurrency guarantees should be validated with repository-level integration tests before production release.
+- Selected transaction and concurrency behavior is covered by opt-in PostgreSQL repository integration tests. Broader database-failure and interleaving coverage remains required before production release.
 
 ### 3.5 Logout
 
 **Endpoint:** `POST /auth/logout`
 
-**Purpose:** Revokes the refresh session associated with the supplied refresh token.
+**Purpose:** Revokes all active refresh sessions in the token family associated with the supplied refresh token.
 
 Request body:
 
@@ -256,11 +257,11 @@ Request body:
 | `400 Bad Request` | Malformed request body or missing/blank `refresh_token`. |
 | `500 Internal Server Error` | Unexpected failure while revoking the session. |
 
-Logout revokes the refresh session, preventing further refreshes with that session. Existing stateless JWT access tokens are not immediately invalidated by logout and can remain usable until their configured expiry.
+Logout resolves the token family and revokes every active refresh session in that family. Repeated logout is idempotent. An unknown or malformed token hash is treated as a no-op by the repository, while the HTTP handler still validates that a nonblank token was supplied.
 
-Immediate access-token revocation is not implemented.
+Refresh rotation and logout use the same transaction-scoped PostgreSQL advisory lock for a family. Rotation additionally acquires a per-user transaction advisory lock, serializing concurrent rotations across different families for the same user. This ensures that when a rotation detects an inactive user and revokes all of that user's active refresh sessions, another concurrent rotation cannot leave a replacement active afterward. If refresh obtains the family lock first, logout waits and then revokes the replacement session; if logout obtains it first, the subsequent refresh sees the revoked token and is rejected. Tests cover these documented scenarios, but not every possible database failure or interleaving.
 
-Retest logout with an independent, valid session and verify repeated logout behavior against the implementation and tests before relying on those properties in production.
+Existing stateless JWT access tokens are not immediately invalidated by logout and can remain usable until their configured expiry. Immediate access-token revocation is not implemented.
 
 ### 3.6 Authenticated Identity
 
@@ -335,7 +336,7 @@ Not every status code listed above is currently returned by an implemented endpo
 |---|---|---|
 | `POST` | `/auth/login` | Authenticate a user and issue access and refresh tokens. |
 | `POST` | `/auth/refresh` | Rotate a refresh token and issue a new access token. |
-| `POST` | `/auth/logout` | Revoke a refresh session. |
+| `POST` | `/auth/logout` | Revoke all active refresh sessions in the supplied token family. |
 | `GET` | `/auth/me` | Return identity identifiers from a validated access token. |
 
 Internal user creation is available through the service layer and a development seed command. There is no public registration endpoint.

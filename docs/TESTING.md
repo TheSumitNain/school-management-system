@@ -32,7 +32,7 @@ These are historical results. The latest documentation changes do not themselves
 
 The current test suite does not establish that every application behavior is tested or that the application is production-ready.
 
-Important remaining gaps include broader PostgreSQL repository integration coverage beyond the refresh-session lifecycle tests, additional concurrency/failure-mode testing, independent end-to-end logout verification, RBAC, tenant isolation, authentication rate limiting, migration/rollback testing, and tests for future school business modules.
+Important remaining gaps include broader PostgreSQL repository integration coverage beyond the refresh-session lifecycle tests, additional concurrency/failure-mode testing, independent end-to-end HTTP verification, RBAC, tenant isolation, authentication rate limiting, migration/rollback testing, and tests for future school business modules.
 
 ## 3. Testing Principles
 
@@ -210,6 +210,8 @@ The exact cases covered must be confirmed against the actual test files.
 
 Refresh-token rotation, revocation, and replay handling have been implemented in the current backend foundation. Service-level tests and opt-in PostgreSQL repository integration tests cover selected lifecycle scenarios.
 
+The opt-in PostgreSQL integration suite uses `RUN_POSTGRES_INTEGRATION_TESTS=1` and refuses to run unless the configured database is `school_management_test`. The reported scenarios cover rotation, replay-triggered family revocation, family-wide logout and idempotency, expiry, and concurrent refresh requests.
+
 The test plan includes:
 
 - Generated refresh tokens are opaque and cryptographically random.
@@ -218,17 +220,19 @@ The test plan includes:
 - Expired or invalid refresh tokens are rejected.
 - Successful refresh rotates the token.
 - Reuse of a revoked token triggers family revocation.
-- Logout forwards the supplied refresh token for revocation.
+- Logout forwards the supplied refresh token for family-wide revocation; repeated logout is idempotent and unknown tokens are a no-op.
 - Inactive-user or inactive-school behavior is handled safely.
+- Cross-family inactive-user race: concurrent rotations in separate token families are serialized, and the replacement from the other family is revoked.
 - Refresh failures do not expose raw tokens or sensitive internals.
 
 **Remaining verification:**
 
 - Expand PostgreSQL repository integration tests beyond the existing refresh-session lifecycle suite.
 - Add further transaction-failure and family-revocation edge cases against PostgreSQL.
-- Test additional simultaneous-refresh interleavings and database failure scenarios.
+
+- Test additional simultaneous refresh/logout interleavings and database failure scenarios.
 - Test replay behavior across the HTTP API.
-- Independently verify that logout succeeds and the revoked refresh token cannot be used again.
+- Independently verify the HTTP logout flow, family-wide refresh-session revocation, and rejection of refresh tokens after logout.
 - Test refresh attempts after expiry, logout, account disabling, and school deactivation.
 
 Service-level tests alone do not establish database transaction correctness or concurrency safety.

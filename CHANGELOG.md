@@ -33,13 +33,18 @@ This project is under active development. Verification results describe the late
 - Refresh-token expiry configuration using `REFRESH_TOKEN_EXPIRY_DAYS`.
 - `POST /auth/refresh` endpoint for refresh-token rotation.
 - Refresh-token replay detection and revocation of active sessions belonging to a reused token family.
-- `POST /auth/logout` endpoint for refresh-session revocation.
+- Family-wide logout with idempotent revocation and unknown-token no-op behavior.
+- Shared transaction-scoped PostgreSQL advisory locking between refresh rotation and logout, plus per-user locking across concurrent rotations.
+- `POST /auth/logout` endpoint for family-wide refresh-session revocation.
 - Unit and handler tests for implemented authentication behavior.
-- PostgreSQL refresh-session repository integration tests covering rotation, replay detection, token-family revocation, logout revocation, expired-token rejection and concurrent refresh behavior.
+- PostgreSQL refresh-session repository integration tests covering rotation, replay detection, token-family revocation, family-wide logout, idempotency, expiry, concurrent refresh, and concurrent logout/refresh behavior.
 - Development-only seed command with environment safeguards.
 - Documentation covering requirements, architecture, database design, API conventions, security, testing, progress and handoff.
 
 ### Changed
+
+- Reconciled README and project documentation with the refresh-token family-wide logout and PostgreSQL advisory-lock implementation.
+- Clarified migration constraints, destructive rollback behavior, and the distinction between implemented authentication and pending authorization controls.
 
 - Expanded configuration validation for JWT-related settings.
 - Updated API documentation to describe `/auth/me`, refresh-token rotation and logout behavior.
@@ -59,6 +64,7 @@ This project is under active development. Verification results describe the late
 - Added authentication middleware that validates Bearer access tokens on the protected identity endpoint.
 - Rejects missing or malformed authorization headers, invalid tokens and invalid identity claims.
 - Stores only refresh-token hashes in the database.
+- Serializes refresh rotation and logout within a token family using a PostgreSQL transaction advisory lock; rotations for the same user are also serialized across token families using a per-user lock.
 - Rotates refresh tokens and revokes active sessions in a token family when a revoked token is replayed.
 - Added safeguards to the development seed command.
 - Documented remaining work for RBAC, tenant isolation, MFA, rate limiting and production security hardening.
@@ -68,7 +74,7 @@ This project is under active development. Verification results describe the late
 - Backend Go test suite reportedly passes with `go test -count=1 ./...`.
 - Backend static analysis reportedly passes with `go vet ./...`.
 - PostgreSQL refresh-session repository integration tests reportedly pass against the dedicated `school_management_test` database.
-- Integration tests cover refresh rotation and replay, token-family revocation, logout revocation, expired tokens and concurrent refresh behavior.
+- Integration tests cover refresh rotation and replay, token-family revocation, family-wide logout/idempotency, expired tokens and concurrent refresh behavior.
 - Integration tests are opt-in and must not be run against the development database.
 - `git diff --check` has been run during documentation updates; Windows LF-to-CRLF warnings were reported without whitespace errors.
 
@@ -89,12 +95,10 @@ This project is under active development. Verification results describe the late
 
 ## Latest Reported Git Checkpoint
 
-- Latest repository checkpoint: `e88e94e` — `docs: update authentication progress and handoff`
-- Previous code milestone: `a705f9a` — `test(auth): add PostgreSQL refresh session integration tests`
-- Branch: `main`
-- Remote: `origin`
-- Last reported Git status: clean and synchronized with `origin/main`.
-- `e88e94e` updates documentation only; it does not change application code or constitute a new test run.
+- Last confirmed pushed checkpoint: `d85e1ef` — `docs: reconcile authentication testing status`
+- Previous code/test milestone recorded in the handoff: `a705f9a` — `test(auth): add PostgreSQL refresh session integration tests`
+- Branch: `main`; remote: `origin`
+- Later local modifications were reported. Verify the current working tree before committing; this changelog does not assert that it is clean.
 
 ## Changelog Guidelines
 

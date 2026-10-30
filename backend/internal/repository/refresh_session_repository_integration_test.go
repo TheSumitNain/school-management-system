@@ -2,6 +2,8 @@ package repository
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net"
@@ -11,9 +13,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"crypto/sha256"
-	"encoding/hex"
 
 	"school-management-system/internal/config"
 
@@ -189,6 +188,41 @@ func TestRefreshSessionRepositoryPostgresIntegration(t *testing.T) {
 		}
 	})
 
+	t.Run("logout revokes entire rotated token family", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+
+		oldHash := integrationTokenHash("logout-family-old")
+		newHash := integrationTokenHash("logout-family-new")
+
+		if err := repo.Create(ctx, userID, oldHash, time.Now().Add(time.Hour)); err != nil {
+			t.Fatalf("create original session: %v", err)
+		}
+
+		if _, err := repo.Rotate(ctx, oldHash, newHash, time.Now().Add(time.Hour)); err != nil {
+			t.Fatalf("rotate refresh token: %v", err)
+		}
+
+		if err := repo.Revoke(ctx, newHash); err != nil {
+			t.Fatalf("logout using replacement token: %v", err)
+		}
+
+		var oldRevoked, newRevoked bool
+		err := pool.QueryRow(ctx, `
+			SELECT
+				(SELECT revoked_at IS NOT NULL FROM refresh_sessions WHERE token_hash = $1),
+				(SELECT revoked_at IS NOT NULL FROM refresh_sessions WHERE token_hash = $2)
+		`, oldHash, newHash).Scan(&oldRevoked, &newRevoked)
+		if err != nil {
+			t.Fatalf("check family revocation: %v", err)
+		}
+
+		if !oldRevoked || !newRevoked {
+			t.Fatalf("expected entire family revoked: old=%v replacement=%v",
+				oldRevoked, newRevoked)
+		}
+	})
+
 	t.Run("expired token is rejected", func(t *testing.T) {
 		ctx := context.Background()
 		hash := integrationTokenHash("expired-token")
@@ -199,9 +233,9 @@ func TestRefreshSessionRepositoryPostgresIntegration(t *testing.T) {
 
 		_, err := pool.Exec(ctx,
 			`UPDATE refresh_sessions
-             SET created_at = NOW() - INTERVAL '2 minutes',
-             expires_at = NOW() - INTERVAL '1 minute'
-             WHERE token_hash = $1`,
+			 SET created_at = NOW() - INTERVAL '2 minutes',
+			     expires_at = NOW() - INTERVAL '1 minute'
+			 WHERE token_hash = $1`,
 			hash,
 		)
 		if err != nil {
@@ -227,6 +261,7 @@ func TestRefreshSessionRepositoryPostgresIntegration(t *testing.T) {
 		type result struct {
 			err error
 		}
+
 		results := make(chan result, 2)
 		var start sync.WaitGroup
 		start.Add(1)
@@ -266,6 +301,80 @@ func TestRefreshSessionRepositoryPostgresIntegration(t *testing.T) {
 		if successes != 1 || reuses != 1 {
 			t.Fatalf("expected one success and one reuse detection; got successes=%d, reuses=%d",
 				successes, reuses)
+		}
+	})
+
+	t.Run("concurrent logout and refresh leave no active token in the family", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+
+		oldHash := integrationTokenHash("concurrent-logout-refresh-old")
+		newHash := integrationTokenHash("concurrent-logout-refresh-new")
+
+		if err := repo.Create(ctx, userID, oldHash, time.Now().Add(time.Hour)); err != nil {
+			t.Fatalf("create original session: %v", err)
+		}
+
+		type operationResult struct {
+			name string
+			err  error
+		}
+
+		start := make(chan struct{})
+		results := make(chan operationResult, 2)
+
+		go func() {
+			<-start
+			_, err := repo.Rotate(ctx, oldHash, newHash, time.Now().Add(time.Hour))
+			results <- operationResult{name: "refresh", err: err}
+		}()
+
+		go func() {
+			<-start
+			err := repo.Revoke(ctx, oldHash)
+			results <- operationResult{name: "logout", err: err}
+		}()
+
+		close(start)
+
+		for i := 0; i < 2; i++ {
+			select {
+			case result := <-results:
+				switch result.name {
+				case "logout":
+					if result.err != nil {
+						t.Fatalf("logout failed: %v", result.err)
+					}
+				case "refresh":
+					if result.err != nil && !errors.Is(result.err, ErrRefreshTokenReuse) {
+						t.Fatalf("unexpected refresh error: %v", result.err)
+					}
+				default:
+					t.Fatalf("unknown operation result: %q", result.name)
+				}
+			case <-ctx.Done():
+				t.Fatal("timed out waiting for concurrent logout and refresh")
+			}
+		}
+
+		var activeSessions int
+		err := pool.QueryRow(ctx, `
+			SELECT COUNT(*)
+			FROM refresh_sessions
+			WHERE family_id = (
+				SELECT family_id
+				FROM refresh_sessions
+				WHERE token_hash = $1
+			)
+			AND revoked_at IS NULL
+		`, oldHash).Scan(&activeSessions)
+		if err != nil {
+			t.Fatalf("count active sessions after concurrent operations: %v", err)
+		}
+
+		if activeSessions != 0 {
+			t.Fatalf("expected no active sessions after concurrent logout and refresh; got %d",
+				activeSessions)
 		}
 	})
 }
