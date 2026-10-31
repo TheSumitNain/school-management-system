@@ -409,3 +409,67 @@ Whenever a bug is fixed or functionality changes:
 4. Update `PROGRESS.md` with verified results.
 5. Update this document if testing procedures or coverage change.
 6. Keep completed testing evidence separate from planned work.
+
+
+## 15. Approved Phase 1 RBAC and Account-Security Test Plan (Not Yet Implemented)
+
+Use `docs/PHASE1-RBAC.md` as the source of truth for the permission catalogue and default role matrix. These are required future tests, not evidence of current coverage.
+
+### 15.1 Staff identity and global username uniqueness
+
+- Same username with different letter case is rejected even when attempted in different schools.
+- A username resolves exactly one staff account; staff login does not need a school ID to disambiguate.
+- A staff account from School A cannot authenticate into or access School B.
+- A person with separate School A and School B accounts has independent credentials, sessions, disablement, and password resets.
+- School Admin cannot create or modify another school's staff account.
+
+### 15.2 Password lifecycle
+
+- Initial temporary password requires change at first login.
+- Staff self-service password change fails with an incorrect current password and succeeds with the correct current password.
+- School Admin can reset a same-school staff password without the old password.
+- Admin reset revokes all refresh sessions and immediately invalidates access tokens; next login requires password change.
+- Cross-school admin password reset is denied.
+- Audit event records actor, target, time, and result but never stores the password.
+
+### 15.3 Teacher assignment and field-level tests
+
+- A subject teacher sees only name, roll number, class, and section for students in assigned class/section and only permitted teaching-related data for assigned subject/class.
+- Teaching assignment alone does not permit attendance read/mark/update.
+- A class-in-charge teacher can read/mark attendance and same-day correct attendance only for the exact class/section in charge and within cutoff.
+- Class-in-charge can read that class's basic student details, timetable, homework, and applicable notices.
+- Class-in-charge cannot access another class, including another section in the same grade.
+- Past attendance correction is denied to teachers and allowed only to authorized School Admins.
+- Neither assignment grants guardian contacts, home address, fee/financial details, medical details, or other sensitive fields by default.
+- Manipulating client-supplied school/class/section/subject/student IDs never bypasses backend checks.
+
+### 15.4 Custom roles and permission overrides
+
+- School Admin can create a custom role only within their own school.
+- School Admin cannot create/assign Platform Admin or School Admin roles or platform permissions.
+- Delegation ceiling prevents granting permissions the acting admin cannot delegate.
+- Multiple roles combine as specified within a single staff account/school.
+- Explicit user deny overrides role allow.
+- Explicit allow is accepted only when the assigning admin is authorized to delegate that permission.
+- Default deny applies when no effective permission exists.
+- Permission changes take effect on the next protected request using an already-issued session.
+- Overrides never bypass tenant, assignment, relationship, field-level, account, or school status checks.
+
+### 15.5 Parent and child-link tests
+
+- Parent account creation/linking occurs only after OTP verification and guardian matching.
+- One parent can see all currently verified linked children across schools.
+- Father and mother can use separate verified accounts to access the same child.
+- Selecting a child does not bypass server-side link verification.
+- Guessing another student's ID is denied.
+- Removing one child link does not affect other child links.
+- Parent can read only approved child profile, attendance, timetable, homework, published results, and applicable notices; write operations are denied in Phase 1.
+- No student login account or student password flow is exposed in Phase 1.
+
+### 15.6 Migration tests
+
+- Upgrade from the existing v3 schema preserves user IDs and refresh-session foreign-key relationships.
+- Global username migration detects cross-school case-insensitive duplicates and fails safely without silently renaming accounts.
+- Fresh database installation produces the same target schema as an upgrade path.
+- Rollback/forward-recovery procedures are reviewed and tested on disposable databases.
+- Existing refresh-token rotation, replay detection, family-wide logout, and cross-family concurrency tests continue to pass after identity changes.

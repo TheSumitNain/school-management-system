@@ -58,7 +58,7 @@ Files:
 - `000002_create_auth_tables.up.sql`
 - `000002_create_auth_tables.down.sql`
 
-The migration creates the `users` and `refresh_sessions` tables, including their initial relationships, constraints, and indexes. The users table has a generated BIGINT identity key, a required school foreign key with `ON DELETE RESTRICT`, a non-empty username and password hash, and a status limited to `active` or `disabled`. A unique index on `(school_id, LOWER(username))` enforces case-insensitive username uniqueness within each school.
+The migration creates the `users` and `refresh_sessions` tables, including their initial relationships, constraints, and indexes. The users table has a generated BIGINT identity key, a required school foreign key with `ON DELETE RESTRICT`, a non-empty username and password hash, and a status limited to `active` or `disabled`. A unique index on `(school_id, LOWER(username))` enforces case-insensitive username uniqueness within each school. This is the **current implemented schema**, not the approved target rule: Phase 1 requires globally unique, case-insensitive staff usernames. A new migration and coordinated repository/login changes are required; do not edit the already-applied v2 migration.
 
 ### 3.3 Migration v3 — Refresh-Token Families
 
@@ -143,15 +143,17 @@ The intended schema rules documented for the current migration include:
 - `username` must not be empty or whitespace-only.
 - `password_hash` must not be empty.
 - `status` is restricted to `active` or `disabled`.
-- A unique index on `(school_id, LOWER(username))` prevents duplicate usernames within a school regardless of letter case.
+- A unique index on `(school_id, LOWER(username))` currently prevents duplicates only within a school. Phase 1 target: globally unique, case-insensitive staff usernames across all schools. The migration strategy must safely detect and resolve any existing cross-school duplicates before creating the global constraint.
 
 The migration also uses `BIGINT GENERATED ALWAYS AS IDENTITY` for the primary key and `ON DELETE RESTRICT` for the school foreign key. The case-insensitive unique index is named `users_school_username_unique`. The `updated_at` default only initializes the timestamp; it does not automatically change on UPDATE unless application code or a trigger updates it.
 
 ### 5.2 Tenant Considerations
 
-A user belongs to one school through `school_id`.
+In the current schema, every user belongs to one school through required `school_id`. Phase 1 product rules retain a strict one-school account boundary for School Admin and staff: a staff account must never be granted access to multiple schools. A person working at multiple schools must have separate accounts.
 
-This relationship does not, by itself, enforce tenant isolation for all API operations. Backend services and repository queries must verify school ownership when accessing school-specific resources.
+The target identity model also needs global Platform Admin identity and parent identity capable of linking to children in multiple schools. This does not mean staff receive multi-school memberships. The exact relational split between central identity, school-scoped staff account, and parent-child links is a pending schema-design decision.
+
+The current relationship does not, by itself, enforce tenant isolation for all API operations. Backend services and repository queries must verify school ownership when accessing school-specific resources.
 
 The current schema does not yet define the complete role and permission model required for RBAC.
 
@@ -159,8 +161,11 @@ The current schema does not yet define the complete role and permission model re
 
 Future authentication and authorization work must consider:
 
-- Role and permission assignments.
-- Platform-level identities versus school-scoped identities.
+- Role and permission assignments, including school-scoped custom roles and bounded per-user allow/deny overrides.
+- Global Platform Admin identity, strictly one-school staff accounts, globally unique case-insensitive staff usernames, and parent identities linked to children across schools.
+- Staff temporary-password activation, forced first-login change, self-service current-password verification, and admin reset with session/access revocation.
+- Teacher teaching assignments separated from class-in-charge assignments, including field-level student data restrictions.
+- Parent-child links and per-request relationship authorization.
 - Account activation and deactivation.
 - Secure password reset and password change workflows.
 - MFA configuration and recovery.
@@ -447,3 +452,37 @@ When changing the database schema:
 9. Update `CHANGELOG.md` when a meaningful project milestone is completed.
 
 Never document a planned table or constraint as implemented until its migration exists and has been reviewed. Clearly distinguish the current schema from future design requirements.
+
+
+## 14. Approved Phase 1 Identity and RBAC Data Requirements (Target; Not Yet Migrated)
+
+The detailed role and permission catalogue is in `docs/PHASE1-RBAC.md`. The following logical requirements must guide future migrations. They are not current tables or implemented constraints.
+
+### 14.1 Staff identity and username uniqueness
+
+- School Admin and staff accounts must be scoped to exactly one school. No staff account may have multi-school membership. A person working at multiple schools receives separate accounts.
+- Staff usernames must be globally unique and case-insensitive. The current v2 index `users_school_username_unique` is only school-scoped and does not satisfy this target.
+- Before adding a global unique index, migration tooling must detect cross-school case-insensitive duplicates and stop safely with an actionable report; it must not silently rename accounts.
+- Current login requests require `school_id`; target staff login uses globally unique username + password. This API/repository/model change must be planned together with schema migration.
+
+### 14.2 Platform Admin and parent identities
+
+The target model must support a global Platform Admin identity without granting staff accounts multi-school access. It must also support one verified parent mobile identity linked to multiple students in different schools. Parent-child relationships remain school-verified and are checked on every child-data request.
+
+Do not assume a simple nullable `users.school_id` or a universal multi-school membership table is the final design. Evaluate central identity and typed/scope-specific account relationships while preserving existing user IDs and refresh-session foreign keys.
+
+### 14.3 Roles and permissions
+
+The target schema must support platform-defined permissions, global platform roles, school-scoped system/custom roles, role-permission mappings, user-role assignments, per-user allow/deny overrides, and audit events. Custom role creation and permission delegation must be bounded by the School Admin's authority. A staff account may have multiple roles only within its single school.
+
+### 14.4 Teacher and parent relationships
+
+Teaching class/subject assignments and class-in-charge assignments must be separate relationships. Class-in-charge attendance scope is limited to the exact class/section; subject teaching grants only basic student fields and assigned teaching data, not attendance automatically. Parent links must support multiple verified children across schools without creating student login accounts in Phase 1.
+
+### 14.5 Safe migration requirements
+
+- Preserve existing `users.id` values and `refresh_sessions.user_id` relationships where possible.
+- Do not modify already-applied migrations; add new versioned migrations.
+- Plan rollback and forward-recovery behavior before applying schema changes.
+- Preserve refresh-token family/replay/concurrency protections during the identity refactor.
+- Add clean-database migration tests and upgrade tests from the current v3 schema.

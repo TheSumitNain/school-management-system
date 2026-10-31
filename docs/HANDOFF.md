@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the primary handoff reference for continuing the existing School Management System project. Keep it synchronized with the source code, tests, database migrations, and other project documentation.
 >
-> **Last confirmed pushed repository checkpoint:** `d85e1ef` — `docs: reconcile authentication testing status`
+> **Last confirmed pushed repository checkpoint:** `fe4db1d` — `fix(auth): harden refresh session concurrency`
 >
 > **Previous code/test milestone:** `a705f9a` — `test(auth): add PostgreSQL refresh session integration tests`
 >
@@ -10,7 +10,7 @@
 >
 > **Repository:** https://github.com/TheSumitNain/school-management-system
 >
-> **Last reported Git status after that checkpoint:** local modifications existed in refresh-session repository/test and documentation files; run `git status -sb` before committing.
+> **Git status:** The supplied ZIP has no `.git` metadata, so its working-tree state cannot be determined. The latest prior local report included an untracked `APPLY-DOCS.txt`; inspect `git status -sb` in the actual local repository before committing.
 >
 > **Important:** These details describe the last reported state. Check the actual repository before assuming that no newer changes exist.
 
@@ -29,6 +29,22 @@
 - **Working style:** Explain in Hindi/Hinglish, use a friendly tone, work on one small task at a time, provide exact Windows CMD commands and complete replacement files when appropriate, and wait for the user's output before proceeding.
 
 The school and student counts are planning targets, not verified capacity limits.
+
+## 1.1 Approved Phase 1 Identity and RBAC Decisions (Important)
+
+The user has finalized the Phase 1 role and account rules. The authoritative detailed matrix is `docs/PHASE1-RBAC.md`.
+
+- Core roles: Platform Admin (global), School Admin (exactly one school), Teacher (exactly one school), Parent (verified linked children; links may span schools). Student login accounts are excluded from Phase 1.
+- Every staff account is single-school. A person employed by multiple schools must receive separate accounts, credentials, and sessions at each school. Staff usernames are globally unique and case-insensitive. Current code does not yet meet global uniqueness; it currently requires school ID at login and has school-scoped username uniqueness.
+- School Admin provisions staff with a temporary initial password. Staff must change it at first login and provide the current password for self-service changes. School Admin may reset same-school staff passwords without old password; reset revokes sessions/access, forces password change at next login, and is audited.
+- Platform Admin provisions School Admin accounts. School Admin cannot create another School Admin or Platform Admin.
+- School Admin may create school-scoped custom roles from platform-defined permissions, within an explicit delegation ceiling. Future roles (Clerk, Manager, Librarian, Gate Keeper, Helper, Bus Conductor, etc.) are not Phase 1 implementations.
+- Staff may hold multiple roles only within their one school. Role permissions combine with per-user allow/deny overrides; explicit deny beats role allow, explicit authorized allow can add a permission, and default is deny. Permission changes apply on the next protected request.
+- Teaching assignments and class-in-charge assignments are separate. Subject teachers see only student name, roll number, class, and section for assigned class/subject, plus permitted teaching data. Teaching assignment alone does not grant attendance access.
+- Class-in-charge teachers may access attendance, same-day correction within the configured cutoff, basic student details, timetable, homework, and applicable notices only for their exact class/section. Past attendance correction is School Admin-only.
+- Parent uses registered mobile + OTP; one verified account can access all officially linked children across schools. Parent selects a child, but every API request verifies the relationship. Parent access is read-only; no student login in Phase 1.
+
+These are approved requirements, not implemented functionality. Do not begin migrations by blindly dropping `users.school_id` or adding universal multi-school staff memberships. First design a safe model for global Platform Admin identity, strictly one-school staff accounts, globally unique usernames, and parent-child links across schools while preserving current user IDs and refresh sessions.
 
 ## 2. Repository and Local Environment
 
@@ -55,13 +71,13 @@ Verify the actual route registration and request/response structures before chan
 
 ### Latest Git checkpoint
 
-- **Last confirmed pushed repository commit:** `d85e1ef`
+- **Last confirmed pushed repository commit:** `fe4db1d`
 - **Message:** `docs: reconcile authentication testing status`
 - **Branch:** `main`
 - **Remote:** `origin/main`
 - **Last reported status:** local modifications existed in refresh-session repository/test and documentation files; verify with `git status -sb`.
 
-The code milestone added `backend/internal/repository/refresh_session_repository_integration_test.go`; the later `d85e1ef` commit updated documentation only. Verify the actual repository state before relying on this checkpoint.
+The supplied source ZIP root records full commit `fe4db1d6851399fc68cecb258d8d377587c8dd4a`. It includes the refresh-session cross-family concurrency implementation and regression test. The ZIP has no `.git` metadata; verify the actual local repository and remote before committing. The latest user-reported local status previously included an untracked `APPLY-DOCS.txt`; inspect it rather than deleting or confusing it with the archive `APPLY-CHANGES.txt`.
 
 Never commit `.env` files, passwords, JWT signing secrets, real student data, or other sensitive credentials. Never ask the user to paste real secret values into chat.
 
@@ -389,7 +405,7 @@ The refresh-token lifecycle implementation was previously committed in:
 
 Earlier authentication work was followed by the PostgreSQL integration-test milestone:
 
-`a705f9a test(auth): add PostgreSQL refresh session integration tests`
+`fe4db1d fix(auth): harden refresh session concurrency`
 
 Known files include:
 
@@ -577,7 +593,7 @@ Roles discussed for the product include:
 - Student.
 - Future roles such as Driver, Librarian, Gatekeeper, Helper, Bus Conductor, and Clerk/Manager.
 
-The final role list, scope, and permission matrix must be documented before implementing RBAC.
+The Phase 1 role list, scope, and permission matrix are approved and documented in `docs/PHASE1-RBAC.md`. RBAC tables, policy evaluation, and endpoint enforcement remain unimplemented.
 
 The product should support role-based defaults and configurable individual permissions by authorized administrators. Permission changes should apply on subsequent protected API requests, including for existing sessions.
 
@@ -873,11 +889,11 @@ After running `gofmt`, inspect the resulting diff to ensure formatting did not i
 - PostgreSQL refresh-session integration tests for rotation, replay, logout, expiry, and concurrency.
 - Reported full backend test-suite success.
 - Reported `go vet` success.
-- Code/test milestone `a705f9a` and later documentation checkpoint `d85e1ef` were reported committed and pushed.
+- Code/test milestone `a705f9a`, documentation checkpoint `d85e1ef`, and latest concurrency-hardening checkpoint `fe4db1d` were reported committed and pushed.
 
 ### 13.2 Documentation Audit Follow-up
 
-The documentation consistency pass has been completed across README, PROGRESS, CHANGELOG, REQUIREMENTS, ARCHITECTURE, DATABASE, API, SECURITY, TESTING, and HANDOFF. The docs now describe family-wide logout and the shared family-scoped advisory lock. Remaining engineering verification includes broader database failure/interleaving tests, migration/rollback tests, independent HTTP-level logout verification, RBAC, and tenant isolation. The last confirmed pushed checkpoint is `d85e1ef`; verify the current working tree before committing these documentation changes.
+The source ZIP supplied for checkpoint `fe4db1d` includes the cross-family inactive-user race regression implementation. The current documentation update records the approved Phase 1 RBAC/account decisions in README, PROGRESS, CHANGELOG, REQUIREMENTS, ARCHITECTURE, DATABASE, API, SECURITY, TESTING, and this handoff, with the detailed matrix in `docs/PHASE1-RBAC.md`. These documentation changes are not yet committed to the user's local repository. Remaining engineering work includes RBAC schema/implementation, global username migration, tenant/resource authorization, parent OTP, staff password lifecycle, access-token invalidation, broader migration and HTTP tests, and production controls.
 
 After applying the documentation bundle locally:
 
@@ -889,16 +905,16 @@ After applying the documentation bundle locally:
 
 ### 13.3 Recommended Engineering Priorities
 
-After the documentation audit:
+After applying and committing the documentation update:
 
-1. Review the authentication implementation and refresh-session repository for transaction, locking, and failure-handling correctness.
-2. Add further PostgreSQL tests for genuine edge cases identified during review.
-3. Design and implement RBAC and a documented permission matrix.
-4. Implement server-side tenant authorization and cross-school denial tests.
-5. Complete user-profile retrieval and account/session-state checks.
-6. Implement admin MFA, login rate limiting, temporary lockouts, and security-event monitoring.
+1. Verify the actual local Git state and confirm it matches the supplied `fe4db1d` source checkpoint.
+2. Design additive identity/RBAC migrations from current schema v3, preserving user IDs, refresh-session references, and refresh-token concurrency behavior.
+3. Resolve global case-insensitive staff username uniqueness and the target username + password login contract; detect cross-school duplicates before migration.
+4. Design distinct global Platform Admin, one-school staff, and cross-school parent identity/link models without multi-school staff membership.
+5. Implement RBAC, custom roles, bounded permission overrides, staff password lifecycle, teacher assignment scope, and parent-child authorization with automated tests.
+6. Complete user-profile retrieval, immediate access-token revocation, admin MFA, login rate limiting, lockout, and security-event monitoring.
 7. Implement secure school onboarding, invitations, and password-reset workflows.
-8. Build academic, student, attendance, and parent features after establishing their authorization model.
+8. Build academic, student, attendance, and parent features after their authorization model is enforced.
 9. Perform production deployment, monitoring, backup, recovery, and security reviews.
 
 Do not reimplement refresh-token rotation from scratch. Inspect the existing code and extend it only where verification identifies a real gap.
@@ -913,13 +929,13 @@ Copy the following into a new ChatGPT conversation when needed:
 >
 > Explain in Hindi/Hinglish with a friendly tone. Work on one small task at a time. Provide exact commands and complete replacement code when appropriate. Explain why each step is needed and wait for my output before proceeding. Do not assume a command succeeded without seeing the result.
 >
-> The latest repository checkpoint recorded in this handoff is `d85e1ef`, `docs: reconcile authentication testing status`; the previous code/test milestone is `a705f9a`, `test(auth): add PostgreSQL refresh session integration tests`. The refresh-token implementation includes opaque random tokens, SHA-256 hash storage, rotation, logout, and token-family replay handling. PostgreSQL integration tests cover rotation, replay detection, logout revocation, expiry, and concurrent refresh requests. The user reported `go test -count=1 ./...` and `go vet ./...` passing after the integration tests were added. Verify the current local state before relying on those results.
+> The latest user-reported repository checkpoint represented by the supplied ZIP is `fe4db1d`, `fix(auth): harden refresh session concurrency`; the previous code/test milestone was `a705f9a`, `test(auth): add PostgreSQL refresh session integration tests`. The ZIP root records full hash `fe4db1d6851399fc68cecb258d8d377587c8dd4a`. The refresh-token implementation includes opaque random tokens, SHA-256 hash storage, rotation, logout, token-family replay handling, family-wide advisory locking, and per-user cross-family serialization. The user reported `go test -count=1 ./...`, the opt-in PostgreSQL refresh-session integration suite (including the cross-family inactive-user race regression), and `go vet ./...` passing after the concurrency changes. Verify the current local state before relying on those results.
 >
 > The backend includes PostgreSQL connectivity, health/readiness endpoints, migrations for `schools`, `users`, and `refresh_sessions`, password hashing, user/school repositories, an authentication service, JWT access-token generation/validation, `POST /auth/login`, authentication middleware, `GET /auth/me`, `POST /auth/refresh`, and `POST /auth/logout`.
 >
 > Do not reimplement completed work from scratch. Inspect the current source and documentation, identify genuine gaps, and continue from the existing repository.
 >
-> Remaining work includes the documentation audit, additional security edge-case review, full profile lookup, access-token revocation design, RBAC, complete tenant authorization, admin MFA, rate limiting, lockouts, invitations, password reset, and production hardening. Do not claim these are completed.
+> Remaining work includes additive identity/RBAC schema design, global username migration, authorization enforcement, full profile lookup, immediate access-token revocation, parent OTP, staff provisioning/password lifecycle, admin MFA, rate limiting, lockouts, invitations, and production hardening. Do not claim these are completed.
 >
 > First check Git status and finish synchronizing the documentation. Then verify tests, `go vet`, `git diff --check`, and secret exclusion before committing.
 >

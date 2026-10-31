@@ -202,15 +202,11 @@ The exact response schemas and error behavior are documented in `docs/API.md`. I
 
 Authentication answers **who the user is**. Authorization answers **what that user may do**.
 
-Planned roles include:
+Approved Phase 1 roles are Platform Admin (global), School Admin (one school), Teacher (one school), and Parent (verified linked children; links may span schools). Detailed rules are in `docs/PHASE1-RBAC.md`.
 
-- Platform Admin
-- School Admin
-- Teacher
-- Parent
-- Future roles such as Clerk/Manager, Librarian, Gatekeeper, Helper, Bus Conductor, and others as requirements are finalized
+Future operational roles include Clerk/Manager, Librarian, Gate Keeper, Helper, Bus Conductor, and similar roles. They are not implemented in Phase 1, but the RBAC model must support them later.
 
-The system is intended to support role-based default permissions and configurable individual permissions managed by authorized administrators.
+School Admin may create school-scoped custom roles from the platform permission catalogue, within an explicit permission delegation ceiling. The system supports multiple roles per staff account within its one school and per-user allow/deny overrides. Explicit deny overrides role-derived allow; an explicit allow is valid only when the assigning admin is authorized to delegate that permission. Default is deny.
 
 ### Required authorization behavior
 
@@ -221,7 +217,7 @@ The system is intended to support role-based default permissions and configurabl
 - Permission changes must affect subsequent protected API requests, including requests made using an existing session.
 - Sensitive operations must be checked on the backend.
 
-**Status:** Full RBAC, permission management, and comprehensive authorization enforcement are pending. Authentication middleware alone is not a substitute for authorization.
+**Status:** Phase 1 role/permission requirements are approved and documented in `docs/PHASE1-RBAC.md`; full RBAC tables, policy evaluation, and endpoint enforcement are still pending. Authentication middleware alone is not a substitute for authorization.
 
 ## 8. Database and Migration Architecture
 
@@ -408,3 +404,35 @@ The next major implementation stages are:
 5. Continue into the academic and student-management modules.
 
 Refer to `PROGRESS.md`, `docs/HANDOFF.md`, and `docs/TESTING.md` for the latest recorded implementation status and continuation instructions.
+
+
+## 18. Approved Phase 1 Identity and Authorization Model
+
+This section records approved product decisions. It is a target architecture; it does not claim the current code or database already implements it.
+
+### 18.1 Identity boundaries
+
+- Platform Admin is a global platform identity.
+- Each School Admin and staff account is tied to exactly one school. The same staff account cannot be a member of multiple schools. A person employed by multiple schools must receive a separate account, username, password, and session set at each school.
+- Staff usernames are globally unique and case-insensitive. The target staff login identifies exactly one account using username + password; the current API still requires `school_id + username + password` and must be migrated deliberately.
+- School Admin provisions staff with a temporary initial password. Staff must change it on first login and provide the current password for later self-service changes. School Admin can reset a same-school staff password without the old password; reset revokes sessions/access, forces a password change at next login, and is audited.
+- Platform Admin provisions School Admin accounts. School Admin cannot create another School Admin or a Platform Admin.
+- Parent uses registered mobile + OTP and may access multiple officially linked children across schools. Student login accounts are excluded from Phase 1.
+
+### 18.2 Teacher authorization: assignments are separate
+
+A teaching assignment (class/section/subject) and a class-in-charge assignment are separate relationships and must be checked independently. A teacher who teaches a class does not automatically receive attendance privileges for that class.
+
+A subject teacher can read only the basic student fields (name, roll number, class, section) for the assigned class/section and permitted teaching-related data for the assigned subject/class. A class-in-charge teacher can access attendance, same-day corrections within the configured cutoff, basic student details, timetable, homework, and applicable notices only for the exact class/section in charge. Past attendance corrections are School Admin-only. Neither assignment grants access to other classes or sensitive student fields by default.
+
+### 18.3 Parent dashboard and authorization
+
+The parent dashboard lists all officially linked children. Parent selects one child to view the permitted profile, attendance, timetable, homework, published results/report cards, and applicable notices. Every child-data API request must verify the authenticated parent's current verified relationship to that child. Parent access is read-only in Phase 1. Father and mother may have separate verified mobile accounts linked to the same child; removing one child link must not affect other links.
+
+### 18.4 Dynamic RBAC
+
+School Admin may create school-scoped custom roles from a platform-defined permission catalogue, within an explicit delegation ceiling. Multiple roles per staff account are supported within its single school. Effective permissions are evaluated server-side on every protected request; changes take effect on the next request, including existing sessions. Per-user explicit deny overrides role allow. Explicit allow may add an otherwise absent permission only if the assigning administrator is authorized to delegate it. Permission overrides never bypass tenant, resource, assignment, field-level, account-status, or school-status checks.
+
+### 18.5 Migration constraint
+
+The current `users` table requires `school_id` and enforces case-insensitive username uniqueness only within a school. The current model, repository, login handler, and JWT middleware also assume a school ID. Do not simply remove `school_id` or rewrite authentication in place. Design an additive migration and compatibility plan that preserves refresh-session behavior while supporting global Platform Admin identity, strictly one-school staff accounts, global staff username uniqueness, and parent identity with child links across schools.

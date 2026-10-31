@@ -387,21 +387,11 @@ Opt-in PostgreSQL repository integration tests cover refresh-session persistence
 
 ## 6. Authorization and Tenant Isolation
 
-RBAC and complete tenant-isolation enforcement are pending.
+RBAC and complete tenant-isolation enforcement are pending. The Phase 1 role list and permission requirements are now approved and documented in `docs/PHASE1-RBAC.md`; implementation is not yet present in the API.
 
-The current user schema associates a user with a school through `school_id`; the current users schema does not yet provide the complete role and permission system.
+Approved Phase 1 roles are Platform Admin (global), School Admin (one school), Teacher (one school), and Parent (verified linked children). Student login and additional operational roles are not part of Phase 1.
 
-Future authorization must define and enforce permissions for supported roles, which may include:
-
-- Platform Admin.
-- School Admin.
-- Teacher.
-- Parent.
-- Student.
-- Driver.
-- Other approved school staff.
-
-The final role list and permission matrix must be documented before RBAC can be considered complete.
+Current API behavior must be distinguished from the target contract: `POST /auth/login` still requires `school_id`, `username`, and `password`, and the current database enforces username uniqueness only within a school. The approved target for staff is a globally unique, case-insensitive username plus password, with one account per school. This requires coordinated schema, repository, service, handler, token-claim, and API migration; do not document the target as implemented until that work is complete. Parent mobile/OTP login is a separate planned flow.
 
 ### Tenant-Isolation Requirements
 
@@ -565,3 +555,30 @@ Keep this document consistent with:
 - `docs/TESTING.md`
 
 Clearly distinguish implemented functionality from planned functionality. Do not mark a feature complete until its implementation and required tests have been reviewed.
+
+
+## 12. Approved Phase 1 Authorization and Account API Requirements (Planned)
+
+This section describes target API behavior only. Existing endpoints above remain the implemented contract until the migration is designed, coded, tested, and documented as implemented.
+
+### 12.1 Staff login target
+
+Staff accounts use globally unique, case-insensitive usernames. The target login identifies one staff account using username + password; it must not require a school ID to disambiguate duplicate usernames because duplicates are prohibited globally. Each staff account remains tied to exactly one school. Current `POST /auth/login` still requires `school_id`; changing that contract is pending.
+
+### 12.2 Staff password lifecycle target
+
+- School Admin creates a staff account with a temporary initial password.
+- Staff must change the temporary password at first login.
+- Self-service password change requires the current password.
+- School Admin can reset a same-school staff password without the old password.
+- Admin reset revokes all target sessions, invalidates outstanding access tokens, requires password change at next login, and is audited.
+
+### 12.3 Parent authentication and child selection target
+
+Parent authentication uses registered mobile number + OTP. After successful OTP verification and guardian matching, one parent account can access all officially linked children, including children across schools. A child-list endpoint and selected-child context may support the dashboard, but every child-data endpoint must independently verify the current parent-child relationship. Parent access is read-only in Phase 1; no student login API is planned.
+
+### 12.4 Permission and resource-scope enforcement
+
+Every protected operation must check the effective permission and resource scope. Teacher teaching assignments and class-in-charge assignments are distinct; teaching assignment alone does not grant attendance access. Subject teachers receive only basic student fields (name, roll number, class, section) for assigned class/subject. Class-in-charge teachers may access attendance, same-day corrections within cutoff, basic details, timetable, homework, and applicable notices only for their assigned class/section. Past attendance correction is School Admin-only. Parent endpoints verify child links on every request.
+
+School Admin may create school-scoped custom roles only from platform-defined permissions within an explicit delegation ceiling. Explicit user deny overrides role allow; explicit allow is valid only when the assigning admin can delegate that permission. Permission changes take effect on the next protected request, including existing sessions.

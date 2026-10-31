@@ -169,20 +169,22 @@ Tenant isolation must be enforced in backend services and repository queries, no
 
 ## 6. Authorization and Roles
 
-Complete role-based access control (RBAC) is not yet implemented.
+Complete role-based access control (RBAC) is not yet implemented. The Phase 1 requirements are approved and specified in `docs/PHASE1-RBAC.md`. Core roles are Platform Admin (global), School Admin (one school), Teacher (one school), and Parent (verified linked children). Operational roles such as Clerk/Manager, Librarian, Gate Keeper, Helper, and Bus Conductor are future scope.
 
-The intended role structure includes Platform Admin, School Admin, Teacher, and Parent, with additional operational roles planned for future phases.
+The implementation must enforce:
 
-Before release, define and implement:
+- One-school-only School Admin and staff accounts; separate accounts for a person employed by multiple schools.
+- Globally unique, case-insensitive staff usernames. The current schema/login does not yet meet this target.
+- School Admin staff provisioning with temporary password and forced first-login change; staff self-change requires current password.
+- Admin-initiated same-school staff password reset without old password, with session/access revocation, forced next-login change, and audit logging.
+- School Admin-created custom roles limited to the platform permission catalogue and an explicit delegation ceiling.
+- Multiple roles per staff account within its one school; per-user allow/deny overrides; explicit deny beats role allow; default deny.
+- Separate teacher teaching and class-in-charge assignments, field-level student data restrictions, and exact class/section scoping.
+- Parent OTP identity linked to verified children; parent can access multiple linked children across schools, with server-side link verification on every request.
+- Server-side permission evaluation on every protected request so changes apply to existing sessions on the next request.
+- Cross-school, cross-class, cross-subject, field-level, and parent-child access-denial tests.
 
-- Supported roles and their permitted actions.
-- Resource-level permissions for create, read, update, and delete operations.
-- Secure school-administrator provisioning and invitation workflows.
-- User role assignment, changes, disabling, and removal.
-- Server-side permission checks for every protected operation.
-- Immediate enforcement of permission changes on subsequent protected requests.
-- Tests for unauthorized actions and cross-school access.
-- Appropriate restrictions on platform-level administrative access.
+The backend must enforce permissions independently of the frontend. Hiding a button or route in React is not an authorization control.
 
 The backend must enforce permissions independently of the frontend. Hiding a button or route in React is not an authorization control.
 
@@ -333,3 +335,24 @@ Whenever security behavior changes:
 4. Record important architecture or security decisions in `ARCHITECTURE.md` or a dedicated decision record.
 5. Never mark a security requirement complete based only on documentation.
 6. Reassess this checklist before each production release.
+
+
+## 15. Approved Phase 1 Account Security Rules (Implementation Pending)
+
+### Staff account isolation
+
+Every School Admin/staff account is tied to exactly one school. A staff account cannot be reused across schools. If a person works at multiple schools, each school provisions a separate account with separate credentials and sessions. Staff usernames are globally unique and case-insensitive. The current schema's school-scoped username index and the current school-ID-based login do not satisfy this target yet.
+
+### Password change and reset
+
+Staff self-service password change must verify the current password. School Admin can reset a staff member's password without knowing the old password, but only for staff in the same school. Reset must revoke every refresh session for the target account and invalidate already-issued access tokens, require a password change at next login, and create an audit event. The password itself must never be logged or retrievable by administrators.
+
+### Teacher and parent data boundaries
+
+A subject-teaching assignment does not grant attendance access. Subject teachers see only name, roll number, class, and section for assigned classes/sections, plus permitted teaching-related data. Class-in-charge teachers may access attendance (same-day correction within configured cutoff), basic student details, timetable, homework, and applicable notices only for the exact class/section assigned. Past attendance correction is School Admin-only.
+
+Parent uses registered mobile + OTP and can access multiple officially linked children across schools. The parent dashboard's child selection is not an authorization grant; each API request verifies the relationship. Parent data access is read-only in Phase 1, and students have no separate login accounts.
+
+### Immediate enforcement
+
+Role/permission changes, staff password resets, account disabling, and school suspension must affect subsequent protected requests. The access-token revocation mechanism is not yet implemented; design it before claiming immediate invalidation. Do not rely on refresh-session revocation alone to invalidate an already-issued access JWT.

@@ -6,16 +6,18 @@
 
 The project has a working authentication foundation, including login, JWT authentication middleware, a protected identity endpoint, refresh-token rotation, replay detection, family-wide logout revocation, family-scoped transaction advisory locking, and per-user serialization of concurrent rotations across token families.
 
-The latest confirmed pushed checkpoint recorded in the conversation is:
+The latest user-reported pushed code checkpoint represented by the supplied source ZIP is:
 
-- **Commit:** `d85e1ef` — `docs: reconcile authentication testing status`
+- **Commit:** `fe4db1d` — `fix(auth): harden refresh session concurrency`
+- **Full commit hash in ZIP root:** `fe4db1d6851399fc68cecb258d8d377587c8dd4a`
 - **Branch:** `main`
 - **Repository:** https://github.com/TheSumitNain/school-management-system
-- **Last reported working-tree state:** documentation and refresh-session repository/test files had local modifications. Run `git status -sb` before committing; do not assume the current working tree is clean.
+- **Source snapshot:** supplied ZIP `school-management-system-fe4db1d.zip`; it contains source and docs but no `.git` directory.
+- **Local working-tree state:** not established by the ZIP. The user previously reported an untracked `APPLY-DOCS.txt`; inspect `git status -sb` in the actual local repository before committing. Do not assume the working tree is clean.
 
 The refresh-session work includes opt-in PostgreSQL integration tests for rotation, replay/family revocation, family-wide logout, idempotency, expiry, and concurrent refresh requests.
 
-The full backend test suite and `go vet` passed after these tests were added. A Windows temporary executable cleanup warning occurred during an earlier targeted test run, but the test itself passed, and the subsequent full test suite completed successfully.
+The user reported the full backend test suite and `go vet` passing after the concurrency changes. The dedicated PostgreSQL integration run included six refresh-session lifecycle subtests plus the cross-family inactive-user race regression test. `git diff --cached --check` passed and the `fe4db1d` commit was pushed. These are historical user-reported results; rerun them in the actual local repository before relying on them.
 
 **Important:** Passing tests does not establish production readiness. RBAC, tenant authorization, account-security controls, deployment hardening, and other production requirements remain outstanding.
 
@@ -50,7 +52,7 @@ The school and student counts are planning targets, not verified capacity limits
 - [x] Testing strategy documented
 - [x] Project handoff documentation created
 - [x] Progress and changelog files maintained
-- [ ] Complete consistency audit of all documentation against the current implementation
+- [x] Documentation consistency audit against supplied `fe4db1d` source snapshot; RBAC decisions documented separately as approved requirements
 
 ### Backend Foundation
 
@@ -119,6 +121,7 @@ The school and student counts are planning targets, not verified capacity limits
 - [x] Session-service unit tests and authentication-handler tests
 - [x] PostgreSQL integration coverage for refresh-session lifecycle
 - [x] Concurrent refresh-token reuse detection tested against PostgreSQL
+- [x] Cross-family inactive-user race regression test included: concurrent rotations across separate token families are serialized per user so an inactive-user revocation cannot be bypassed by a competing family rotation
 
 **Known limitations:**
 
@@ -151,6 +154,7 @@ Verified scenarios:
 - [x] Logout revocation is idempotent
 - [x] Expired refresh tokens are rejected
 - [x] Concurrent refresh requests produce one successful rotation and one reuse-detection result
+- [x] Cross-family inactive-user race regression is covered by a dedicated PostgreSQL-backed repository test
 
 ### Full backend tests
 
@@ -187,10 +191,27 @@ go vet ./...
 
 - [x] Integration-test file staged and reviewed
 - [x] `git diff --cached --check` completed without whitespace errors
-- [x] Last confirmed pushed documentation checkpoint: `d85e1ef`
-- [x] Earlier Git status was reported clean at that checkpoint; later local modifications were subsequently reported and must be checked before committing
+- [x] Latest user-reported pushed code checkpoint represented by supplied ZIP: `fe4db1d` (`fix(auth): harden refresh session concurrency`)
+- [ ] Verify actual local Git status and remote alignment before committing documentation; the ZIP has no `.git` metadata
 
 These results describe the last verified state. Repeat relevant checks after future code changes.
+
+## Approved Phase 1 Product and Authorization Decisions (Implementation Pending)
+
+The user has finalized the Phase 1 account and RBAC direction. The detailed authoritative matrix is `docs/PHASE1-RBAC.md`. Key decisions:
+
+- Core Phase 1 roles: Platform Admin (global), School Admin (one school), Teacher (one school), Parent (verified linked children).
+- Every staff account is school-specific. A person employed by multiple schools receives separate accounts, passwords, and sessions for each school. Staff usernames are globally unique and case-insensitive.
+- School Admin provisions staff with a temporary initial password; staff must change it at first login and must enter the current password for self-service changes. School Admin can reset same-school staff passwords without the old password; reset revokes sessions/access, requires a change at next login, and is audited.
+- Platform Admin provisions School Admin accounts. School Admin cannot create another School Admin or Platform Admin.
+- School Admin may create school-scoped custom roles from the platform permission catalogue, only within an explicit delegation ceiling. Operational roles (Clerk, Manager, Librarian, Gate Keeper, Helper, Bus Conductor, etc.) are future scope, not Phase 1 implementations.
+- Multiple roles per staff account are supported within that account's single school. Role permissions plus per-user allow/deny overrides are supported; explicit deny overrides role allow, explicit authorized allow can add a permission otherwise absent, and default is deny.
+- Teaching assignment and class-in-charge assignment are separate. Subject teachers see only basic student fields (name, roll number, class, section) for assigned class/subject and relevant permitted teaching data. A teaching assignment alone never grants attendance access.
+- A class-in-charge teacher can access attendance, same-day attendance correction within the configured cutoff, basic student details, timetable, homework, and applicable notices only for the specific class/section in charge. Past attendance correction is School Admin-only.
+- One verified parent mobile/OTP account can access all officially linked children, including across schools. Parent selects a child; every API request verifies the relationship. Parent access is read-only; no student login accounts in Phase 1.
+- Permissions are checked server-side on each protected request; permission changes apply to the next request. Tenant, assignment, field-level, account-status, and school-status checks cannot be bypassed by overrides.
+
+These are approved requirements, not implemented code. The current source still uses school-scoped username uniqueness and a `school_id + username + password` login contract. A safe schema and API migration must be designed before changing it.
 
 ## In Progress
 
@@ -259,17 +280,18 @@ These results describe the last verified state. Repeat relevant checks after fut
 
 ## Next Steps
 
-1. Apply the reviewed documentation bundle to the local repository and inspect the complete diff.
-2. Confirm the local refresh-session repository and integration-test files match the reviewed family-wide logout/advisory-lock implementation.
+1. Apply the updated documentation files to the local repository and inspect the complete diff; do not replace source files from this docs-only update.
+2. Confirm the local source still matches the supplied `fe4db1d` refresh-session implementation.
 3. Verify `backend/.env` is ignored and not tracked. Never paste secret contents into chat.
-4. Run `git diff --check` and inspect `git status -sb`.
-5. Re-run `go test -count=1 ./...` and `go vet ./...` from the backend directory after all pending code changes are present.
-6. Run the PostgreSQL integration tests against the dedicated `school_management_test` database.
-7. Review the exact staged diff, then commit and push only after verification.
-8. Implement login rate limiting and failed-login lockout with automated tests.
-9. Implement RBAC and school-level tenant authorization with automated cross-school tests.
-10. Continue school-management APIs and frontend integration in small, verified milestones.
-11. Complete production security, deployment, monitoring and recovery checks before release.
+4. Run `git diff --check` and inspect `git status -sb`, including the previously reported untracked `APPLY-DOCS.txt`.
+5. Re-run `go test -count=1 ./...` and `go vet ./...` from the backend directory after any code changes.
+6. Run the opt-in PostgreSQL integration tests against the dedicated `school_management_test` database, including the cross-family inactive-user race test.
+7. Review and commit the documentation diff only after checking the exact files; then push if the user approves the milestone.
+8. Design the additive identity/RBAC migrations while preserving existing refresh-session behavior. Resolve global staff username uniqueness and the new login contract as part of that design.
+9. Implement roles, permissions, custom roles, bounded overrides, staff password lifecycle, teacher assignment scopes, and parent-child authorization with automated tests.
+10. Implement login rate limiting and failed-login lockout with automated tests.
+11. Continue school-management APIs and frontend integration in small, verified milestones.
+12. Complete production security, deployment, monitoring and recovery checks before release.
 
 ## Working Rules
 

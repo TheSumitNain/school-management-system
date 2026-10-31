@@ -31,7 +31,7 @@ These figures are initial planning targets, not verified system capacity limits.
 - Teacher
 - Parent
 
-Student, Driver and additional Staff access may be introduced in later phases.
+Separate Student login and additional operational staff roles (such as Driver, Clerk, Manager, Librarian, Gate Keeper, Helper, and Bus Conductor) may be introduced in later phases. Teacher accounts are Phase 1 school staff accounts. No student login is included in Phase 1.
 
 These are planned product roles. Complete role storage, role-based access control (RBAC), permission management and authorization enforcement must be implemented and tested before the roles are treated as fully operational.
 
@@ -39,10 +39,14 @@ These are planned product roles. Complete role storage, role-based access contro
 
 - **Platform Admin:** Manage platform-level school onboarding and authorized platform operations.
 - **School Admin:** Manage their own school's settings, users and authorized school operations.
-- **Teacher:** Access assigned classes, academic responsibilities and permitted student information.
-- **Parent:** Access only the information of children officially linked to their account.
+- **Teacher:** One-school staff account. Access is restricted by separately managed teaching assignments and class-in-charge assignments, with field-level limits on student data.
+- **Parent:** One verified mobile/OTP account may access all officially linked children, including children in different schools; parent access is read-only in Phase 1.
 
-Additional roles, such as Clerk/Manager, Librarian, Gatekeeper, Helper and Bus Conductor, may be introduced after their permissions and requirements are defined.
+School Admin creates staff accounts and provides a temporary initial password. Staff usernames are globally unique and case-insensitive. A person working at multiple schools receives separate accounts at each school. School Admin provisions staff and may reset their passwords without the old password; staff self-service changes require the current password.
+
+School Admin may create school-scoped custom roles from the platform permission catalogue, within an explicit delegation ceiling. Clerk/Manager, Librarian, Gate Keeper, Helper, Bus Conductor and other operational roles are future scope, not Phase 1 implementations. Student login accounts are excluded from Phase 1.
+
+See `docs/PHASE1-RBAC.md` for the approved detailed role-permission matrix and authorization rules.
 
 ## 5. Initial Product Scope
 
@@ -155,7 +159,7 @@ These may be considered in future releases.
 
 The current backend includes:
 
-- Username/password login scoped to a school ID
+- Current implemented username/password login scoped to a school ID (target staff login will use globally unique username + password; migration pending)
 - bcrypt password hashing and verification
 - JWT access-token generation and validation
 - Bearer-token authentication middleware
@@ -227,7 +231,9 @@ The following details require further planning before the relevant modules are i
 - Parent OTP provider
 - Attendance correction and retention policy
 - Deployment, backup and disaster recovery strategy
-- Final role-permission matrix
+- Exact relational schema/migration strategy for the approved identity model (global Platform Admin, one-school staff accounts, cross-school parent identity)
+- Parent OTP provider, OTP expiry/attempt/resend limits, and guardian-match edge cases
+- Staff global-username migration and target login API contract
 - School onboarding and deactivation workflow
 - Audit-log retention and access policy
 - Immediate access-token revocation approach
@@ -315,3 +321,38 @@ A major module should not be marked complete until:
 - Known limitations are recorded in the project progress documentation.
 
 Requirements and implementation status must be updated after the relevant code and tests have been reviewed.
+
+
+## 14. Approved Phase 1 Identity, Roles and Permission Requirements
+
+The Phase 1 role and permission direction is approved. Detailed permission identifiers and the default role matrix are maintained in [`PHASE1-RBAC.md`](PHASE1-RBAC.md).
+
+### 14.1 Account boundaries
+
+- Platform Admin has global platform scope and provisions School Admin accounts.
+- Every School Admin and staff account belongs to exactly one school. No staff account can access multiple schools. A person working at multiple schools must have separate accounts, passwords, and sessions.
+- Staff usernames are globally unique and case-insensitive. Duplicate usernames are not permitted across different schools.
+- School Admin creates staff accounts and provides a temporary initial password. Staff must change it at first login. Self-service password change requires the current password.
+- School Admin can reset a same-school staff password without knowing the old password. Reset must revoke all target sessions/access, force password change at next login, and be audited.
+- School Admin cannot create another School Admin or a Platform Admin.
+- Parent signs in using registered mobile + OTP. One verified parent identity can access multiple officially linked children across schools. No student login accounts are included in Phase 1.
+
+### 14.2 Teacher assignment and data limits
+
+Teaching assignments and class-in-charge assignments are distinct. A subject teacher sees only student name, roll number, class, and section for assigned classes/sections, plus permitted teaching-related information for the assigned subject/class. A teaching assignment alone does not grant attendance access.
+
+A class-in-charge teacher may access attendance (including same-day correction within the school cutoff), basic student details, timetable, homework, and applicable notices only for the exact class/section assigned as in-charge. Past attendance correction is School Admin-only. Neither assignment grants access to other classes or sensitive student fields by default.
+
+### 14.3 Custom roles and permission behavior
+
+School Admin may create school-scoped custom roles from platform-defined permissions, but only within an explicit authorized delegation ceiling. Multiple roles per staff account are supported within its one school. Role permissions combine with per-user allow/deny overrides; explicit deny overrides role allow, authorized explicit allow can add a permission otherwise absent, and default is deny. Overrides never bypass tenant/resource/assignment/field-level checks.
+
+Permission evaluation is server-side on every protected request so changes take effect on the next request, including existing sessions.
+
+### 14.4 Parent dashboard
+
+After OTP verification and guardian matching, the parent sees the list of all officially linked children. Selecting a child shows that child's permitted profile, attendance, timetable, homework, published results/report cards, and applicable notices. The backend verifies the parent-child link on every request; a selected child ID from the client is not proof of authorization. Parent access is read-only in Phase 1.
+
+### 14.5 Implementation status
+
+These are approved product requirements, not implemented functionality. Current code still has school-scoped username uniqueness and school-ID + username + password login. The database and API migration must be designed additively and safely before these target account rules can be treated as implemented.

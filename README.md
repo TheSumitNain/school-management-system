@@ -32,7 +32,7 @@ These are planning targets, not verified capacity limits. Production capacity wi
 
 ## Current Status
 
-**Stage:** Backend foundation and initial authentication, including JWT access tokens and refresh-token rotation/revocation. RBAC and complete tenant authorization remain pending.
+**Stage:** Backend foundation and initial authentication, including JWT access tokens and refresh-token rotation/revocation. Phase 1 role, permission, staff-account, teacher-scope, and parent-access requirements are now approved and documented; RBAC implementation and complete tenant authorization remain pending.
 
 ### Implemented
 
@@ -112,8 +112,9 @@ These are previously reported results, not a guarantee that the current working 
 - Automated migration tests against a disposable test database.
 - Complete user-profile retrieval from `GET /auth/me`.
 - Access-token revocation enforcement.
-- User roles and role-based access control (RBAC).
-- Complete school-level tenant authorization and cross-school isolation tests.
+- RBAC tables, role assignments, custom roles, permission overrides, and server-side permission enforcement (requirements approved; implementation pending).
+- Global case-insensitive username uniqueness for staff accounts and the corresponding login-contract migration (current code remains school-ID scoped).
+- Complete school/class/subject/parent-child resource authorization and cross-school/cross-class isolation tests.
 - Production school onboarding, invitations, and account activation workflows.
 - Mandatory MFA for Platform Admin and School Admin.
 - Password-reset workflows, login rate limiting, lockout enforcement, and security-event monitoring.
@@ -134,6 +135,7 @@ These are previously reported results, not a guarantee that the current working 
 - `docs/SECURITY.md` — security requirements and implementation status.
 - `docs/TESTING.md` — testing strategy and verification.
 - `docs/HANDOFF.md` — handoff instructions for continuing in a new chat.
+- `docs/PHASE1-RBAC.md` — approved Phase 1 roles, permission catalogue, teacher scopes, staff account rules, and parent access model.
 - `CHANGELOG.md` — milestone history.
 
 ## Development
