@@ -65,3 +65,9 @@ Never paste `.env` values, JWT secrets, passwords, OTPs, MFA secrets, or real st
 - Routine staff role assignment requires an active same-school School Admin whose system-role bundle contains active `roles.assign`; an explicit DENY override for that permission blocks assignment.
 - The existing same-school and principal/role scope checks remain in force. Custom-role grants remain fail-closed until delegation linkage is implemented.
 - This is SQL source-level review only. PostgreSQL execution/integration tests have not been run, and migration v4 remains unapplied.
+### C5 — User permission override authorization
+
+- The override trigger now resolves the active school-scoped `permissions.override` permission and requires the grantor's active same-school School Admin system role to include that permission.
+- An explicit DENY override for `permissions.override` on the grantor blocks the operation.
+- Existing checks remain: grantor must be active staff in the target school; the permission being overridden must itself be active, school-scoped, and delegable; and an active `can_override_users` delegation ceiling must exist for that school/permission.
+- Custom-role grants remain fail-closed until delegation linkage is modeled. This is SQL source-level review only; PostgreSQL execution/integration tests have not been run, and migration v4 remains unapplied.
