@@ -955,7 +955,7 @@ Copy the following into a new ChatGPT conversation when needed:
 
 ## 15. Latest Repository Checkpoint — 2026-11-01 (V4 C1–C14)
 
-The latest GitHub main checkpoint is ecaf9af211289f52a46f79ebffa0f41f62b06d5a — docs(changelog): record permission catalogue delete guard.
+The V4 C14 source checkpoint is ecaf9af211289f52a46f79ebffa0f41f62b06d5a — fix(db): prevent permission catalogue deletion. Subsequent documentation commits record this checkpoint in the handoff and progress files.
 
 - V4 C1–C11: prior source-level corrective audit items are documented in docs/V4-IMPLEMENTATION-NOTES.md.
 - V4 C12: principal_roles assignment identity/provenance is immutable; rows cannot be deleted; new assignments must start active; revocation cannot be reversed. Re-grants require a new row.
