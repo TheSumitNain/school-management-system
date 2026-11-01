@@ -1088,5 +1088,12 @@ $$;
 CREATE TRIGGER trg_audit_events_immutable BEFORE UPDATE OR DELETE ON audit_events
 FOR EACH ROW EXECUTE FUNCTION reject_audit_event_mutation();
 
--- NOTE: database grants must also deny UPDATE/DELETE to the application role;
--- table ownership bypasses ordinary grants, so the application role must not own this table.
+-- TRUNCATE is a statement-level operation and does not fire row-level triggers.
+-- Block it explicitly so the append-only rule also covers bulk table truncation.
+CREATE TRIGGER trg_audit_events_no_truncate BEFORE TRUNCATE ON audit_events
+FOR EACH STATEMENT EXECUTE FUNCTION reject_audit_event_mutation();
+
+-- NOTE: deployment must grant the application role only the required INSERT/SELECT
+-- privileges, deny UPDATE/DELETE/TRUNCATE, and ensure it does not own this table.
+-- Keep ownership with a separate migration/administrative role; table owners can
+-- alter or disable triggers and therefore are outside this trigger's protection.
