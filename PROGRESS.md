@@ -213,7 +213,7 @@ The user has finalized the Phase 1 account and RBAC direction. The detailed auth
 - One verified parent mobile/OTP account can access all officially linked children, including across schools. Parent selects a child; every API request verifies the relationship. Parent access is read-only; no student login accounts in Phase 1.
 - Permissions are checked server-side on each protected request; permission changes apply to the next request. Tenant, assignment, field-level, account-status, and school-status checks cannot be bypassed by overrides.
 
-These are approved requirements, not implemented application behavior. A V4 SQL schema draft exists, but the current source still uses school-scoped username uniqueness and a `school_id + username + password` login contract. Principal-aware Go changes, authorization enforcement, and PostgreSQL migration tests remain pending.
+These are approved requirements, not proof of complete RBAC enforcement. The V4 SQL draft now contains source-level corrective audit items C1–C14, and the 2026-11-01 Go principal-auth cutover candidate is documented in `docs/CURRENT-BUILD-FIX-HANDOFF-20261101.md`. The migration remains unapplied and PostgreSQL-unverified; full Go tests/vet for the cutover candidate must be verified on the user's Windows Go 1.27.1 environment. Custom-role grants and ALLOW overrides remain intentionally fail-closed, and business-resource/tenant/teacher/parent authorization routes remain pending.
 
 ## In Progress
 
