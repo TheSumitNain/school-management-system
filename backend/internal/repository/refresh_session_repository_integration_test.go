@@ -87,28 +87,44 @@ func newPostgresIntegrationRepository(
 		t.Fatalf("create test school: %v", err)
 	}
 
-	var principalID int64
-	err = pool.QueryRow(ctx,
-		`INSERT INTO auth_principals (principal_type, status)
-		 VALUES ('staff', 'active') RETURNING id`,
-	).Scan(&principalID)
-	if err != nil {
+	var hasV4Schema bool
+	if err := pool.QueryRow(ctx,
+		`SELECT to_regclass('public.auth_principals') IS NOT NULL`,
+	).Scan(&hasV4Schema); err != nil {
 		_, _ = pool.Exec(ctx, `DELETE FROM schools WHERE id = $1`, schoolID)
-		t.Fatalf("create test principal: %v", err)
+		t.Fatalf("detect V4 schema: %v", err)
+	}
+
+	var principalID int64
+	if hasV4Schema {
+		err = pool.QueryRow(ctx,
+			`INSERT INTO auth_principals (principal_type, status)
+			 VALUES ('staff', 'active') RETURNING id`,
+		).Scan(&principalID)
+		if err != nil {
+			_, _ = pool.Exec(ctx, `DELETE FROM schools WHERE id = $1`, schoolID)
+			t.Fatalf("create test principal: %v", err)
+		}
 	}
 
 	var userID int64
-	err = pool.QueryRow(
-		ctx,
-		`INSERT INTO users (school_id, principal_id, username, password_hash, status)
-		 VALUES ($1, $2, $3, $4, 'active') RETURNING id`,
-		schoolID,
-		principalID,
-		"test-user-"+suffix,
-		"integration-test-password-hash",
-	).Scan(&userID)
+	if hasV4Schema {
+		err = pool.QueryRow(ctx,
+			`INSERT INTO users (school_id, principal_id, username, password_hash, status)
+			 VALUES ($1, $2, $3, $4, 'active') RETURNING id`,
+			schoolID, principalID, "test-user-"+suffix, "integration-test-password-hash",
+		).Scan(&userID)
+	} else {
+		err = pool.QueryRow(ctx,
+			`INSERT INTO users (school_id, username, password_hash, status)
+			 VALUES ($1, $2, $3, 'active') RETURNING id`,
+			schoolID, "test-user-"+suffix, "integration-test-password-hash",
+		).Scan(&userID)
+	}
 	if err != nil {
-		_, _ = pool.Exec(ctx, `DELETE FROM auth_principals WHERE id = $1`, principalID)
+		if hasV4Schema {
+			_, _ = pool.Exec(ctx, `DELETE FROM auth_principals WHERE id = $1`, principalID)
+		}
 		_, _ = pool.Exec(ctx, `DELETE FROM schools WHERE id = $1`, schoolID)
 		t.Fatalf("create test user: %v", err)
 	}
@@ -119,11 +135,18 @@ func newPostgresIntegrationRepository(
 		)
 		defer cleanupCancel()
 
-		_, _ = pool.Exec(cleanupCtx,
-			`DELETE FROM refresh_sessions WHERE principal_id = $1 OR user_id = $2`,
-			principalID, userID)
+		if hasV4Schema {
+			_, _ = pool.Exec(cleanupCtx,
+				`DELETE FROM refresh_sessions WHERE principal_id = $1 OR user_id = $2`,
+				principalID, userID)
+		} else {
+			_, _ = pool.Exec(cleanupCtx,
+				`DELETE FROM refresh_sessions WHERE user_id = $1`, userID)
+		}
 		_, _ = pool.Exec(cleanupCtx, `DELETE FROM users WHERE id = $1`, userID)
-		_, _ = pool.Exec(cleanupCtx, `DELETE FROM auth_principals WHERE id = $1`, principalID)
+		if hasV4Schema {
+			_, _ = pool.Exec(cleanupCtx, `DELETE FROM auth_principals WHERE id = $1`, principalID)
+		}
 		_, _ = pool.Exec(cleanupCtx, `DELETE FROM schools WHERE id = $1`, schoolID)
 	})
 	return NewRefreshSessionRepository(pool), pool, userID
@@ -134,6 +157,16 @@ func newPostgresIntegrationRepository(
 // principal-based session path against the real PostgreSQL triggers.
 func TestPrincipalRefreshSessionRepositoryPostgresIntegration(t *testing.T) {
 	_, pool, userID := newPostgresIntegrationRepository(t)
+	var hasV4Schema bool
+	if err := pool.QueryRow(context.Background(),
+		`SELECT to_regclass('public.auth_principals') IS NOT NULL`,
+	).Scan(&hasV4Schema); err != nil {
+		t.Fatalf("detect V4 schema: %v", err)
+	}
+	if !hasV4Schema {
+		t.Skip("apply V4 only to the dedicated school_management_test database to run principal-session integration tests")
+	}
+
 	repo := NewPrincipalRefreshSessionRepository(pool)
 	ctx := context.Background()
 
