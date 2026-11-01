@@ -489,31 +489,106 @@ JOIN permissions p
 WHERE r.role_key = 'school_admin'
   AND r.scope_type = 'school';
 
--- Fail migration if any School Admin role does not receive
--- exactly the 51 permissions approved for Phase 1.
-DO $$
+-- Fail migration unless every School Admin system role receives exactly the approved 51-key set.
+-- The count plus bidirectional EXCEPT checks catch missing, duplicate, and unexpected grants.
+DO $school_admin_assert$
 DECLARE
     v_role RECORD;
     v_permission_count INTEGER;
+    v_expected_permissions TEXT[] := ARRAY[
+        'school.settings.read',
+        'school.settings.update',
+        'school.audit.read',
+        'academic_years.read',
+        'academic_years.manage',
+        'classes.read',
+        'classes.manage',
+        'subjects.read',
+        'subjects.manage',
+        'teacher_assignments.read',
+        'teacher_assignments.manage',
+        'class_incharge_assignments.read',
+        'class_incharge_assignments.manage',
+        'students.read_basic',
+        'students.read_sensitive',
+        'students.create',
+        'students.update',
+        'students.archive',
+        'attendance.read',
+        'attendance.mark',
+        'attendance.update_same_day',
+        'attendance.correct_past',
+        'timetable.read',
+        'timetable.manage',
+        'homework.read',
+        'homework.create',
+        'homework.update',
+        'homework.delete',
+        'exams.read',
+        'exams.manage',
+        'results.read',
+        'results.enter',
+        'results.update',
+        'results.publish',
+        'notices.read',
+        'notices.create',
+        'notices.update',
+        'notices.publish',
+        'notices.delete',
+        'users.read',
+        'users.create',
+        'users.update',
+        'users.disable',
+        'users.password_reset',
+        'roles.read',
+        'roles.create_custom',
+        'roles.update_custom',
+        'roles.assign',
+        'permissions.read',
+        'permissions.assign',
+        'permissions.override'
+    ];
 BEGIN
     FOR v_role IN
-        SELECT id FROM roles
-        WHERE role_key = 'school_admin'
-          AND scope_type = 'school'
+        SELECT id
+          FROM roles
+         WHERE role_key = 'school_admin'
+           AND principal_type = 'staff'
+           AND scope_type = 'school'
+           AND school_id IS NOT NULL
+           AND is_system = TRUE
     LOOP
         SELECT COUNT(*)
           INTO v_permission_count
           FROM role_permissions
          WHERE role_id = v_role.id;
 
-        IF v_permission_count <> 51 THEN
+        IF v_permission_count <> 51
+           OR EXISTS (
+                SELECT permission_key
+                  FROM unnest(v_expected_permissions) AS expected(permission_key)
+                EXCEPT
+                SELECT p.permission_key
+                  FROM role_permissions rp
+                  JOIN permissions p ON p.id = rp.permission_id
+                 WHERE rp.role_id = v_role.id
+           )
+           OR EXISTS (
+                SELECT p.permission_key
+                  FROM role_permissions rp
+                  JOIN permissions p ON p.id = rp.permission_id
+                 WHERE rp.role_id = v_role.id
+                EXCEPT
+                SELECT permission_key
+                  FROM unnest(v_expected_permissions) AS expected(permission_key)
+           ) THEN
             RAISE EXCEPTION
-                'School Admin role % has % permissions; expected exactly 51',
-                v_role.id, v_permission_count;
+                'School Admin role % does not have exactly the 51 approved permissions',
+                v_role.id;
         END IF;
     END LOOP;
 END;
-$$;
+$school_admin_assert$;
 
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM roles r JOIN permissions p ON p.permission_key IN
