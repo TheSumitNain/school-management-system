@@ -953,7 +953,7 @@ Copy the following into a new ChatGPT conversation when needed:
 >
 > Never ask me to paste real `.env` secrets. Do not claim the system is production-ready until outstanding security, testing, deployment, backup, and monitoring requirements have been addressed.
 
-## 15. Latest Repository Checkpoint — 2026-11-01 (V4 C1–C14)
+## 15. Latest Repository Checkpoint — 2026-11-01 (V4 C1–C15)
 
 The V4 C14 source checkpoint is ecaf9af211289f52a46f79ebffa0f41f62b06d5a — fix(db): prevent permission catalogue deletion. Subsequent documentation commits record this checkpoint in the handoff and progress files.
 
@@ -961,6 +961,7 @@ The V4 C14 source checkpoint is ecaf9af211289f52a46f79ebffa0f41f62b06d5a — fix
 - V4 C12: principal_roles assignment identity/provenance is immutable; rows cannot be deleted; new assignments must start active; revocation cannot be reversed. Re-grants require a new row.
 - V4 C13: permission delegation identity, capabilities and grantor provenance are immutable; rows cannot be deleted; new delegations must start active. Combined with C6, revocation is irreversible and restoring authority requires a new row.
 - V4 C14: permission catalogue rows cannot be deleted, including unused keys. Obsolete permissions must be deactivated while retaining stable keys.
+- V4 C15: MFA recovery-code rows must start unused; principal/hash/creation provenance is immutable; rows cannot be deleted; a used code cannot be reactivated or rewritten. Replacements require new rows.
 - The SQL changes are in backend/migrations/000004_add_principal_rbac_foundation.up.sql; C12–C14 are also recorded in docs/V4-IMPLEMENTATION-NOTES.md and CHANGELOG.md.
 - All C1–C14 migration findings are source-level review/corrections only. PostgreSQL 18 migration execution and integration verification have NOT been completed. DO NOT apply V4 to the development database.
 - The 2026-11-01 Go principal-auth build-fix candidate is described in docs/CURRENT-BUILD-FIX-HANDOFF-20261101.md. Full Go tests and vet were not verified in that review environment; use the user's Windows Go 1.27.1 environment and inspect actual command output.
@@ -972,7 +973,7 @@ The V4 C14 source checkpoint is ecaf9af211289f52a46f79ebffa0f41f62b06d5a — fix
 
 1. User pulls the latest GitHub main without disturbing local modifications and confirms git status -sb.
 2. Review and verify the Go principal-auth build-fix candidate on Windows with Go 1.27.1; run go test -count=1 -p 1 ./... and go vet ./... from backend.
-3. Continue source audit from C15; inspect before deciding the next finding. Do not assume a C15 issue without evidence.
+3. Continue source audit from C16; inspect before deciding the next finding. Do not assume a C16 issue without evidence.
 4. Add disposable PostgreSQL 18 migration tests from a v3 snapshot, including upgrade, constraint/trigger behavior, and rollback/forward-recovery checks.
 5. Only after the Go cutover and migration tests pass, plan a backed-up, controlled V4 application. The user must explicitly approve applying V4 to the development database.
 
