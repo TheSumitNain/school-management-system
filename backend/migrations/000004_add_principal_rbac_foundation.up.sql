@@ -803,6 +803,41 @@ CREATE UNIQUE INDEX ux_principal_roles_active ON principal_roles (principal_id, 
 CREATE INDEX ix_principal_roles_principal_active ON principal_roles (principal_id) WHERE revoked_at IS NULL;
 CREATE INDEX ix_principal_roles_role_active ON principal_roles (role_id) WHERE revoked_at IS NULL;
 
+-- Preserve role-assignment history. Revocation is one-way; a later grant must
+-- create a new principal_roles row rather than reactivating historical data.
+CREATE OR REPLACE FUNCTION guard_principal_role_history() RETURNS trigger
+LANGUAGE plpgsql AS $
+BEGIN
+    IF TG_OP = 'DELETE' THEN
+        RAISE EXCEPTION 'principal role assignment history cannot be deleted';
+    END IF;
+
+    IF TG_OP = 'INSERT' THEN
+        IF NEW.revoked_at IS NOT NULL THEN
+            RAISE EXCEPTION 'new principal role assignments must start active';
+        END IF;
+        RETURN NEW;
+    END IF;
+
+    IF NEW.principal_id IS DISTINCT FROM OLD.principal_id OR
+       NEW.role_id IS DISTINCT FROM OLD.role_id OR
+       NEW.assigned_by IS DISTINCT FROM OLD.assigned_by OR
+       NEW.assigned_at IS DISTINCT FROM OLD.assigned_at THEN
+        RAISE EXCEPTION 'principal role assignment identity and provenance are immutable';
+    END IF;
+
+    IF OLD.revoked_at IS NOT NULL AND
+       NEW.revoked_at IS DISTINCT FROM OLD.revoked_at THEN
+        RAISE EXCEPTION 'principal role assignment revocation is irreversible';
+    END IF;
+
+    RETURN NEW;
+END;
+$;
+CREATE TRIGGER trg_guard_principal_role_history
+BEFORE INSERT OR UPDATE OR DELETE ON principal_roles
+FOR EACH ROW EXECUTE FUNCTION guard_principal_role_history();
+
 CREATE TABLE user_permission_overrides (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     principal_id BIGINT NOT NULL,
