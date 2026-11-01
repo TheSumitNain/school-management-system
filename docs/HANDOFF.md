@@ -1,4 +1,4 @@
-> **Newest handoff — 2026-11-01:** Read `docs/CURRENT-BUILD-FIX-HANDOFF-20261101.md` before following older handoff notes. The V4 principal-auth cutover candidate now updates `main.go`, staff authentication, live principal/permission loaders, and affected tests. Full Go tests are not verified in the review environment (Go 1.27.1 unavailable); run the exact commands in that handoff on Windows. V4 migration has not been run and must not be run. Do not commit/push.
+> **Newest handoff — 2026-11-01:** The V4 principal-auth Go cutover candidate has passed the user's Windows package tests (`go test -count=1 -p 1 ./...`) and `go vet ./...`. This does not verify PostgreSQL integration tests or Migration V4. Review `docs/CURRENT-BUILD-FIX-HANDOFF-20261101.md` for exact results and local Git status. Preserve all local modifications/untracked artifacts; Migration V4 has not been run and must not be run without explicit approval.
 
 # School Management System — Project Handoff
 
@@ -18,13 +18,46 @@
 
 ## 0.1 Latest V4 Work (Current)
 
-The supplied archive root records commit `cb6af3b5abc5249fba420e2699d16e87b1d14664` (`cb6af3b`, `docs: finalize phase 1 RBAC and account decisions`). The uploaded ZIP has been inspected and its commit hash matches the user's reported checkpoint.
+The V4 principal-auth Go cutover candidate is now wired into the API: principal-based staff login, principal refresh sessions, live principal loading, conservative effective-permission resolution, and principal-aware `/auth/me` context. The detailed file-level scope and known limitations are documented in `docs/CURRENT-BUILD-FIX-HANDOFF-20261101.md`.
 
-The user verified the development database: migration v3, `dirty = false`; 1 school; 1 user; 4 refresh sessions; 0 active and 0 expired. Username duplicate and canonical-format preflight checks returned no rows. Exact existing columns, indexes, and FK names were inspected.
+### Verified on the user's Windows environment (2026-11-01)
 
-A V4 SQL draft now exists at `backend/migrations/000004_add_principal_rbac_foundation.up.sql`. Read `docs/V4-IMPLEMENTATION-NOTES.md` before touching it. **Do not run V4 yet:** it has not been PostgreSQL-tested, and the Go code still uses user-ID JWT subjects and does not enforce RBAC or principal token versions. The existing staff account's role is unknown and must not be guessed.
+- `gofmt` completed on the listed cutover files.
+- `go test -count=1 -p 1 ./...` passed for all packages with tests.
+- `go vet ./...` completed without diagnostics.
+- The local Go diff reviewed so far contains formatting-only changes in two repository files.
 
-The verified current refresh-session code uses family advisory locks, per-user cross-family advisory locks, replay detection, and family-wide revocation. Preserve all of these during the principal-aware session refactor.
+These checks do not establish that opt-in PostgreSQL integration tests ran. No Migration V4 execution or PostgreSQL migration verification has been reported.
+
+### Current local Git state (user-reported)
+
+Modified:
+- `APPLY-CHANGES.txt`
+- `backend/internal/repository/principal_refresh_session_repository.go`
+- `backend/internal/repository/refresh_session_repository_integration_test.go`
+
+Untracked artifacts to preserve:
+- `APPLY-CURRENT-BUILD-FIX.txt`
+- `APPLY-DOCS.txt`
+- `GO-FILES-LIST.txt`
+- `GO-RBAC-AUDIT-BUNDLE.txt`
+- `MIGRATIONS-FULL-AUDIT.txt`
+- `NEXT-CHAT-PROMPT.txt`
+- `fix_v4_delegation.py`
+- `v4-corrective-patch/`
+
+Do not stage the whole working tree or delete/overwrite these artifacts. The two Go diffs reviewed contain only gofmt changes. `APPLY-CHANGES.txt` still contains stale test-verification wording and must be reconciled before it is considered for commit.
+
+### Migration and RBAC safety
+
+Migration `000004_add_principal_rbac_foundation.up.sql` remains unapplied and PostgreSQL-unverified. Do not run it without the user's explicit approval. The permission resolver intentionally excludes custom-role grants and ALLOW overrides until exact delegation linkage is implemented and checked. Explicit DENY overrides remain effective. Business-resource authorization, tenant/resource checks, teacher assignment enforcement, parent-child authorization/OTP, MFA, lockout, rate limiting, and complete audit writes remain outstanding.
+
+### Next steps
+
+1. Finish documentation reconciliation and safe Git delivery without disturbing local artifacts.
+2. Continue source-level migration audit from C17, based on actual evidence.
+3. Add disposable PostgreSQL migration/integration tests before planning any V4 application.
+4. Request explicit user approval before applying V4 to any database.
 
 ## 1. Project Overview
 
