@@ -951,6 +951,40 @@ CREATE TABLE principal_mfa_recovery_codes (
 );
 CREATE INDEX ix_mfa_recovery_unused ON principal_mfa_recovery_codes (principal_id) WHERE used_at IS NULL;
 
+-- Recovery codes are one-use credentials. Preserve their hashes and usage
+-- history; replace a code set by inserting new rows, never resetting old rows.
+CREATE OR REPLACE FUNCTION guard_mfa_recovery_code_history() RETURNS trigger
+LANGUAGE plpgsql AS $
+BEGIN
+    IF TG_OP = 'DELETE' THEN
+        RAISE EXCEPTION 'MFA recovery code history cannot be deleted';
+    END IF;
+
+    IF TG_OP = 'INSERT' THEN
+        IF NEW.used_at IS NOT NULL THEN
+            RAISE EXCEPTION 'new MFA recovery codes must start unused';
+        END IF;
+        RETURN NEW;
+    END IF;
+
+    IF NEW.id IS DISTINCT FROM OLD.id OR
+       NEW.principal_id IS DISTINCT FROM OLD.principal_id OR
+       NEW.code_hash IS DISTINCT FROM OLD.code_hash OR
+       NEW.created_at IS DISTINCT FROM OLD.created_at THEN
+        RAISE EXCEPTION 'MFA recovery code identity and provenance are immutable';
+    END IF;
+
+    IF OLD.used_at IS NOT NULL AND NEW.used_at IS DISTINCT FROM OLD.used_at THEN
+        RAISE EXCEPTION 'used MFA recovery codes cannot be reactivated or rewritten';
+    END IF;
+
+    RETURN NEW;
+END;
+$;
+CREATE TRIGGER trg_guard_mfa_recovery_code_history
+BEFORE INSERT OR UPDATE OR DELETE ON principal_mfa_recovery_codes
+FOR EACH ROW EXECUTE FUNCTION guard_mfa_recovery_code_history();
+
 CREATE TABLE parent_otp_challenges (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     principal_id BIGINT NOT NULL REFERENCES auth_principals(id) ON DELETE RESTRICT,
