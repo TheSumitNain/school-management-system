@@ -112,6 +112,14 @@ This project is under active development. Verification results describe the late
 - Password-reset workflows, login rate limiting, lockout enforcement and security-event monitoring.
 - Production deployment, monitoring, backup, recovery, security testing and load testing.
 
+### 2026-11-01 — Windows principal-auth verification
+
+- User ran the prescribed `gofmt` command on the principal-auth cutover files; it completed without errors.
+- User ran `go test -count=1 -p 1 ./...` from the backend directory. All packages with tests passed: `cmd/api`, `internal/config`, `internal/handlers`, `internal/middleware`, `internal/repository`, and `internal/services`. The remaining listed packages reported no test files.
+- User ran `go vet ./...`; it completed without diagnostics.
+- The reviewed local diff in the two Go repository files contained only formatting changes (import ordering and removal of extra blank lines).
+- These results do not establish that opt-in PostgreSQL integration tests ran, and they do not verify or authorize execution of Migration V4.
+
 ## Latest Reported Git Checkpoint
 
 - Latest user-reported pushed code checkpoint represented by supplied ZIP: `cb6af3b` — `docs: finalize phase 1 RBAC and account decisions`
