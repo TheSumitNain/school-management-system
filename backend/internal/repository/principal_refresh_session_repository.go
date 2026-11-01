@@ -10,6 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type PrincipalRefreshSessionRepository struct {
@@ -49,7 +50,7 @@ func (r *PrincipalRefreshSessionRepository) CreatePrincipal(
 
 	const lookup = `
 SELECT ap.principal_type, ap.status, ap.token_version,
-       COALESCE(u.school_id,0), COALESCE(u.username,''), COALESCE(s.status,''),
+       u.id, COALESCE(u.school_id,0), COALESCE(u.username,''), COALESCE(s.status,''),
        (pa.principal_id IS NOT NULL),
        COALESCE(parent.mobile_verified_at IS NOT NULL,FALSE)
 FROM auth_principals ap
@@ -65,6 +66,7 @@ FOR UPDATE OF ap`
 	var username string
 	var schoolStatus string
 	var tokenVersion int64
+	var userID pgtype.Int8
 	var schoolID int64
 	var hasPlatformAccount bool
 	var mobileVerified bool
@@ -73,6 +75,7 @@ FOR UPDATE OF ap`
 		&principalType,
 		&principalStatus,
 		&tokenVersion,
+		&userID,
 		&schoolID,
 		&username,
 		&schoolStatus,
@@ -110,10 +113,10 @@ FOR UPDATE OF ap`
 	}
 
 	const insert = `
-INSERT INTO refresh_sessions (principal_id, token_hash, expires_at)
-VALUES ($1, $2, $3)`
+INSERT INTO refresh_sessions (user_id, principal_id, token_hash, expires_at)
+VALUES ($1, $2, $3, $4)`
 
-	if _, err = tx.Exec(ctx, insert, principalID, tokenHash, expiresAt); err != nil {
+	if _, err = tx.Exec(ctx, insert, nullableInt64(userID), principalID, tokenHash, expiresAt); err != nil {
 		return fmt.Errorf("create refresh session: %w", err)
 	}
 
@@ -182,6 +185,7 @@ SELECT rs.id, rs.family_id, rs.principal_id,
        (rs.expires_at > NOW()),
        (rs.revoked_at IS NOT NULL),
        ap.principal_type, ap.status, ap.token_version,
+       u.id,
        COALESCE(u.school_id,0),
        COALESCE(u.username,''),
        COALESCE(s.status,''),
@@ -206,6 +210,7 @@ FOR UPDATE OF rs`
 	var username string
 	var schoolStatus string
 	var tokenVersion int64
+	var userID pgtype.Int8
 	var schoolID int64
 	var hasPlatformAccount bool
 	var mobileVerified bool
@@ -219,6 +224,7 @@ FOR UPDATE OF rs`
 		&principalType,
 		&principalStatus,
 		&tokenVersion,
+		&userID,
 		&schoolID,
 		&username,
 		&schoolStatus,
@@ -315,8 +321,9 @@ FOR UPDATE OF rs`
 	if _, err = tx.Exec(
 		ctx,
 		`INSERT INTO refresh_sessions
-		 (principal_id,token_hash,expires_at,family_id)
-		 VALUES ($1,$2,$3,$4)`,
+		 (user_id,principal_id,token_hash,expires_at,family_id)
+		 VALUES ($1,$2,$3,$4,$5)`,
+		nullableInt64(userID),
 		principalID,
 		newHash,
 		newExpiry,
@@ -393,4 +400,14 @@ func (r *PrincipalRefreshSessionRepository) RevokePrincipal(
 	}
 
 	return nil
+}
+
+
+// nullableInt64 returns SQL NULL for non-staff principals, which do not have
+// a corresponding row in users.
+func nullableInt64(value pgtype.Int8) any {
+	if !value.Valid {
+		return nil
+	}
+	return value.Int64
 }
