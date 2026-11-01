@@ -922,6 +922,7 @@ LANGUAGE plpgsql AS $$
 DECLARE
     v_permission_id BIGINT;
     v_grantor_school BIGINT;
+    v_authority_permission_id BIGINT;
 BEGIN
     SELECT id INTO v_permission_id FROM permissions
      WHERE id = NEW.permission_id AND scope_type = 'school' AND is_active AND is_delegable;
@@ -930,16 +931,33 @@ BEGIN
     END IF;
     SELECT school_id INTO v_grantor_school FROM users
      WHERE principal_id = NEW.granted_by;
+    SELECT id INTO v_authority_permission_id FROM permissions
+     WHERE permission_key = 'permissions.override'
+       AND scope_type = 'school' AND is_active = TRUE;
     IF v_grantor_school IS DISTINCT FROM NEW.school_id OR NOT EXISTS (
         SELECT 1 FROM auth_principals ap
          WHERE ap.id = NEW.granted_by AND ap.principal_type = 'staff' AND ap.status = 'active'
     ) OR NOT EXISTS (
-        SELECT 1 FROM principal_roles pr
-        JOIN roles r ON r.id = pr.role_id
-        WHERE pr.principal_id = NEW.granted_by AND pr.revoked_at IS NULL
-          AND r.school_id = NEW.school_id AND r.scope_type = 'school' AND r.role_key = 'school_admin'
+        SELECT 1
+          FROM principal_roles pr
+          JOIN roles r ON r.id = pr.role_id
+          JOIN role_permissions rp ON rp.role_id = r.id
+         WHERE pr.principal_id = NEW.granted_by
+           AND pr.revoked_at IS NULL
+           AND r.school_id = NEW.school_id
+           AND r.scope_type = 'school'
+           AND r.principal_type = 'staff'
+           AND r.role_key = 'school_admin'
+           AND rp.permission_id = v_authority_permission_id
+    ) OR v_authority_permission_id IS NULL OR EXISTS (
+        SELECT 1
+          FROM user_permission_overrides actor_override
+         WHERE actor_override.principal_id = NEW.granted_by
+           AND actor_override.school_id = NEW.school_id
+           AND actor_override.permission_id = v_authority_permission_id
+           AND actor_override.effect = 'deny'
     ) THEN
-        RAISE EXCEPTION 'override grantor must be an active School Admin in the same school';
+        RAISE EXCEPTION 'override grantor must be an active same-school School Admin with effective permissions.override permission';
     END IF;
     IF NOT EXISTS (
         SELECT 1 FROM role_permission_delegations d
