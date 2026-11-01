@@ -998,6 +998,46 @@ CREATE TABLE parent_otp_challenges (
 CREATE UNIQUE INDEX ux_parent_otp_unconsumed ON parent_otp_challenges (principal_id) WHERE consumed_at IS NULL;
 CREATE INDEX ix_parent_otp_recent ON parent_otp_challenges (principal_id, created_at DESC);
 
+-- OTP challenges are one-use and attempt-limited. Keep challenge identity and
+-- expiry immutable, attempts monotonic, and consumption irreversible.
+CREATE OR REPLACE FUNCTION guard_parent_otp_challenge_history() RETURNS trigger
+LANGUAGE plpgsql AS $
+BEGIN
+    IF TG_OP = 'DELETE' THEN
+        RAISE EXCEPTION 'parent OTP challenge history cannot be deleted';
+    END IF;
+
+    IF TG_OP = 'INSERT' THEN
+        IF NEW.consumed_at IS NOT NULL OR NEW.attempt_count <> 0 THEN
+            RAISE EXCEPTION 'new parent OTP challenges must be unconsumed with zero attempts';
+        END IF;
+        RETURN NEW;
+    END IF;
+
+    IF NEW.id IS DISTINCT FROM OLD.id OR
+       NEW.principal_id IS DISTINCT FROM OLD.principal_id OR
+       NEW.otp_hash IS DISTINCT FROM OLD.otp_hash OR
+       NEW.expires_at IS DISTINCT FROM OLD.expires_at OR
+       NEW.created_at IS DISTINCT FROM OLD.created_at THEN
+        RAISE EXCEPTION 'parent OTP challenge identity and expiry are immutable';
+    END IF;
+
+    IF NEW.attempt_count < OLD.attempt_count THEN
+        RAISE EXCEPTION 'parent OTP challenge attempt count cannot decrease';
+    END IF;
+
+    IF OLD.consumed_at IS NOT NULL AND
+       NEW.consumed_at IS DISTINCT FROM OLD.consumed_at THEN
+        RAISE EXCEPTION 'consumed parent OTP challenges cannot be reactivated or rewritten';
+    END IF;
+
+    RETURN NEW;
+END;
+$;
+CREATE TRIGGER trg_guard_parent_otp_challenge_history
+BEFORE INSERT OR UPDATE OR DELETE ON parent_otp_challenges
+FOR EACH ROW EXECUTE FUNCTION guard_parent_otp_challenge_history();
+
 CREATE TABLE audit_events (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     actor_principal_id BIGINT REFERENCES auth_principals(id) ON DELETE RESTRICT,
