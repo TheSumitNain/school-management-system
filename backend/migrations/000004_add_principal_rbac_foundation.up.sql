@@ -350,19 +350,21 @@ CREATE UNIQUE INDEX ux_roles_school_key ON roles (school_id, LOWER(role_key)) WH
 CREATE UNIQUE INDEX ux_roles_global_key ON roles (scope_type, principal_type, LOWER(role_key)) WHERE scope_type IN ('platform','global');
 
 CREATE OR REPLACE FUNCTION protect_role_identity_scope() RETURNS trigger
-LANGUAGE plpgsql AS $$
+LANGUAGE plpgsql AS $
 BEGIN
     IF NEW.school_id IS DISTINCT FROM OLD.school_id OR
        NEW.principal_type IS DISTINCT FROM OLD.principal_type OR
        NEW.scope_type IS DISTINCT FROM OLD.scope_type OR
-       NEW.role_key IS DISTINCT FROM OLD.role_key THEN
-        RAISE EXCEPTION 'role identity and scope fields are immutable';
+       NEW.role_key IS DISTINCT FROM OLD.role_key OR
+       NEW.is_system IS DISTINCT FROM OLD.is_system OR
+       NEW.created_by IS DISTINCT FROM OLD.created_by THEN
+        RAISE EXCEPTION 'role identity, scope, system classification, and creator are immutable';
     END IF;
     RETURN NEW;
 END;
-$$;
+$;
 CREATE TRIGGER trg_protect_role_identity_scope
-BEFORE UPDATE OF school_id, principal_type, scope_type, role_key ON roles
+BEFORE UPDATE OF school_id, principal_type, scope_type, role_key, is_system, created_by ON roles
 FOR EACH ROW EXECUTE FUNCTION protect_role_identity_scope();
 
 INSERT INTO roles (school_id, principal_type, scope_type, role_key, name, is_system)
@@ -372,6 +374,46 @@ INSERT INTO roles (school_id, principal_type, scope_type, role_key, name, is_sys
 SELECT id, 'staff', 'school', 'school_admin', 'School Admin', TRUE FROM schools;
 INSERT INTO roles (school_id, principal_type, scope_type, role_key, name, is_system)
 SELECT id, 'staff', 'school', 'teacher', 'Teacher', TRUE FROM schools;
+
+-- Only platform-controlled migration seeds may create system/platform/global roles.
+-- Runtime role creation is restricted to school-scoped staff custom roles.
+CREATE OR REPLACE FUNCTION guard_role_insert_and_system_classification() RETURNS trigger
+LANGUAGE plpgsql AS $
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        IF NEW.is_system THEN
+            RAISE EXCEPTION 'system roles may only be created by controlled migrations';
+        END IF;
+
+        IF NEW.scope_type <> 'school'
+           OR NEW.principal_type <> 'staff'
+           OR NEW.school_id IS NULL THEN
+            RAISE EXCEPTION 'runtime custom roles must be school-scoped staff roles';
+        END IF;
+
+        IF NEW.created_by IS NULL OR NOT EXISTS (
+            SELECT 1
+              FROM auth_principals ap
+              JOIN users u ON u.principal_id = ap.id
+             WHERE ap.id = NEW.created_by
+               AND ap.principal_type = 'staff'
+               AND ap.status = 'active'
+               AND u.school_id = NEW.school_id
+        ) THEN
+            RAISE EXCEPTION 'custom role creator must be an active staff principal in the same school';
+        END IF;
+    ELSE
+        IF NEW.is_system IS DISTINCT FROM OLD.is_system THEN
+            RAISE EXCEPTION 'role system classification is immutable';
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END;
+$;
+CREATE TRIGGER trg_guard_role_insert_and_system_classification
+BEFORE INSERT OR UPDATE ON roles
+FOR EACH ROW EXECUTE FUNCTION guard_role_insert_and_system_classification();
 
 CREATE TABLE role_permissions (
     role_id BIGINT NOT NULL REFERENCES roles(id) ON DELETE RESTRICT,
