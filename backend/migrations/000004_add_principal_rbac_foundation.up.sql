@@ -1337,6 +1337,40 @@ CREATE TRIGGER trg_prevent_delegation_reactivation
 BEFORE UPDATE OF revoked_at ON role_permission_delegations
 FOR EACH ROW EXECUTE FUNCTION prevent_delegation_reactivation();
 
+-- Preserve delegation provenance and capabilities as immutable history.
+-- Revoking a delegation is handled separately by the one-way guard above;
+-- restoring authority requires a new delegation row.
+CREATE OR REPLACE FUNCTION guard_role_permission_delegation_history() RETURNS trigger
+LANGUAGE plpgsql AS $
+BEGIN
+    IF TG_OP = 'DELETE' THEN
+        RAISE EXCEPTION 'permission delegation history cannot be deleted';
+    END IF;
+
+    IF TG_OP = 'INSERT' THEN
+        IF NEW.revoked_at IS NOT NULL THEN
+            RAISE EXCEPTION 'new permission delegations must start active';
+        END IF;
+        RETURN NEW;
+    END IF;
+
+    IF NEW.id IS DISTINCT FROM OLD.id OR
+       NEW.school_id IS DISTINCT FROM OLD.school_id OR
+       NEW.permission_id IS DISTINCT FROM OLD.permission_id OR
+       NEW.can_assign_to_roles IS DISTINCT FROM OLD.can_assign_to_roles OR
+       NEW.can_override_users IS DISTINCT FROM OLD.can_override_users OR
+       NEW.granted_by IS DISTINCT FROM OLD.granted_by OR
+       NEW.created_at IS DISTINCT FROM OLD.created_at THEN
+        RAISE EXCEPTION 'permission delegation identity, authority, and provenance are immutable';
+    END IF;
+
+    RETURN NEW;
+END;
+$;
+CREATE TRIGGER trg_guard_role_permission_delegation_history
+BEFORE INSERT OR UPDATE OR DELETE ON role_permission_delegations
+FOR EACH ROW EXECUTE FUNCTION guard_role_permission_delegation_history();
+
 CREATE OR REPLACE FUNCTION validate_refresh_session_principal() RETURNS trigger
 LANGUAGE plpgsql AS $$
 DECLARE v_type VARCHAR(30);
