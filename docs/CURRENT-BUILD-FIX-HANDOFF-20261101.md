@@ -36,22 +36,42 @@ This checkpoint addresses the V4 Go application cutover compile failures reporte
 - Platform Admin/School Admin MFA, parent OTP login, failed-login lockout, rate limiting, and full audit event writing are not implemented by this checkpoint.
 - Staff login queries V4 `auth_principals` and therefore requires the V4 identity migration to exist in a database. The migration is not applied here.
 
-## Verification status
-- All edited Go files were run through `gofmt`; no Go formatting/parser errors were reported.
-- A full `go test ./...` and `go vet ./...` could NOT be run in the review environment. The only installed compiler was Go 1.23.2, while this project requires Go 1.27.1; module dependencies were also not cached and network module lookup was unavailable.
-- Therefore this checkpoint is a compile-error correction candidate, NOT a claim that the full suite has passed. The user must run the commands below on the Windows development machine with Go 1.27.1.
+## Verification status — Windows Go 1.27.1 (2026-11-01)
 
-## Required Windows verification
-Run from CMD:
+The user ran the following commands from `D:\\school-management-system\\backend` and supplied their terminal output:
 
 ```cmd
-cd /d D:\school-management-system\backend
-gofmt -w cmd\api\main.go cmd\api\main_test.go internal\handlers\auth_handler.go internal\handlers\auth_handler_test.go internal\middleware\auth.go internal\middleware\auth_test.go internal\models\auth_principal.go internal\repository\user_repository.go internal\repository\principal_authorization_repository.go internal\services\auth_service.go internal\services\session_service_test.go
-go test -count=1 ./...
+gofmt -w cmd\\api\\main.go cmd\\api\\main_test.go internal\\handlers\\auth_handler.go internal\\handlers\\auth_handler_test.go internal\\middleware\\auth.go internal\\middleware\\auth_test.go internal\\models\\auth_principal.go internal\\repository\\user_repository.go internal\\repository\\principal_authorization_repository.go internal\\services\\auth_service.go internal\\services\\session_service_test.go
+go test -count=1 -p 1 ./...
 go vet ./...
 ```
 
-Do not run the migration. Do not commit or push until the test output and full Git diff are reviewed.
+**Observed result:**
+- `gofmt` completed without reporting errors.
+- `go test -count=1 -p 1 ./...` passed for `cmd/api`, `internal/config`, `internal/handlers`, `internal/middleware`, `internal/repository`, and `internal/services`.
+- `cmd/devseed`, `cmd/migrate`, `internal/database`, and `internal/models` reported no test files.
+- `go vet ./...` completed without diagnostics.
+
+This verifies the Go package test suite and static analysis on the user's Windows environment. It does **not** establish that opt-in PostgreSQL integration tests actually ran against PostgreSQL, nor does it verify Migration V4. No PostgreSQL migration or integration-test execution was reported in this checkpoint.
+
+## Git review status
+
+The user reported local status:
+- Modified: `APPLY-CHANGES.txt`, `backend/internal/repository/principal_refresh_session_repository.go`, `backend/internal/repository/refresh_session_repository_integration_test.go`.
+- Untracked: `APPLY-CURRENT-BUILD-FIX.txt`, `APPLY-DOCS.txt`, `GO-FILES-LIST.txt`, `GO-RBAC-AUDIT-BUNDLE.txt`, `MIGRATIONS-FULL-AUDIT.txt`, `NEXT-CHAT-PROMPT.txt`, `fix_v4_delegation.py`, and `v4-corrective-patch/`.
+
+The reviewed diff for the two Go files contains only gofmt import ordering and removal of extra blank lines; no functional code changes were observed. `APPLY-CHANGES.txt` contains stale verification instructions and says tests could not run, so it must not be committed unchanged. Preserve all untracked artifacts. Do not stage or commit the entire working tree.
+
+## Required remaining delivery checks
+
+1. Reconcile this handoff and project progress/changelog with the observed Windows test and vet results.
+2. Pull documentation updates from `origin/main` without disturbing local modifications.
+3. Review `git diff --check` and the exact staged diff.
+4. Commit only the intended Go formatting changes and any explicitly reconciled documentation. Do not include unrelated untracked artifacts.
+5. Confirm the push and remote synchronization.
+
+Do not run Migration V4. Do not claim PostgreSQL integration tests or migration tests passed unless their actual execution output is supplied.
 
 ## Next-chat instruction
-Continue from this checkpoint. Do not ask the user to upload individual files or recreate the ZIP. First inspect this handoff and the current build-fix package. The immediate next action is to review the user's `go test -count=1 ./...` output, correct any remaining compile/test errors, and only then prepare a separate final RBAC/migration correction pass.
+
+Continue from this verified checkpoint. The user's Windows Go package tests and `go vet` both passed. First finish the safe Git/documentation delivery review; preserve all modified and untracked local artifacts. Then continue the V4 source audit from C17, inspecting evidence before defining a finding. Migration V4 remains unapplied and must not be executed without the user's explicit approval.
