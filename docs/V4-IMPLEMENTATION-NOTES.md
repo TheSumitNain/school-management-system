@@ -33,6 +33,7 @@ The draft migration:
 7. Adds `principal_id` to refresh sessions, preserves `family_id` and token hashes, and replaces the staff-only FK with principal-aware constraints.
 8. Adds encrypted TOTP credential storage, one-use recovery-code storage, parent OTP challenge storage, and append-only audit-event storage.
 9. Adds database triggers for principal subtype consistency, role/permission scope, system-role protection, principal-role scope, overrides, delegation, refresh-session principal consistency, MFA/OTP principal type, and audit immutability.
+   - Runtime role inserts are restricted to non-system, school-scoped staff custom roles and require an active staff creator in the same school. Migration-seeded system roles are inserted before the guard is installed. Role system classification and `created_by` are immutable after insertion. The trigger does not replace API enforcement of `roles.create_custom`.
 10. Adds transitional insert triggers so the existing staff user/session creation SQL can populate `principal_id` while the Go service refactor is completed. These triggers do not constitute the final principal-aware application implementation.
 11. Freezes staff school identity and role/permission identity-scope fields, synchronizes legacy staff status in both directions, validates assigning actors for staff role assignments, and checks active delegation ceilings for custom role permissions and user overrides. Parent role assignment is permitted only after mobile verification.
 
