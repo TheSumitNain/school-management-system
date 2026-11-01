@@ -141,3 +141,10 @@ Never paste `.env` values, JWT secrets, passwords, OTPs, MFA secrets, or real st
 - A recovery code may transition from unused to used once. A used code's timestamp cannot be cleared or rewritten, and its hash cannot be changed to make the credential reusable.
 - Replacing a recovery-code set must insert new code rows; it must not reset or rewrite historical rows. The application must still consume a code atomically and audit recovery events.
 - Source-level review only. PostgreSQL execution/integration tests have not been run; migration v4 remains unapplied.
+
+### C16 — Parent OTP challenge history is one-use and monotonic
+
+- Added a guard requiring new OTP challenges to start unconsumed with zero attempts, preserving challenge identity/hash/expiry/creation fields, rejecting deletion, and preventing the attempt counter from decreasing.
+- Once consumed, a challenge cannot be reactivated or have its consumption timestamp rewritten. The existing database check still caps attempts at five; the application must increment attempts atomically and consume/expire challenges as part of the OTP verification workflow.
+- The partial unique index allows only one unconsumed challenge per parent. Because an expired row remains unconsumed until the application marks it consumed, the resend workflow must retire an expired challenge before inserting its replacement.
+- Source-level review only. PostgreSQL execution/integration tests have not been run; migration v4 remains unapplied.
