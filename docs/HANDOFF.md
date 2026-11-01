@@ -952,3 +952,27 @@ Copy the following into a new ChatGPT conversation when needed:
 > First check Git status and finish synchronizing the documentation. Then verify tests, `go vet`, `git diff --check`, and secret exclusion before committing.
 >
 > Never ask me to paste real `.env` secrets. Do not claim the system is production-ready until outstanding security, testing, deployment, backup, and monitoring requirements have been addressed.
+
+## 15. Latest Repository Checkpoint — 2026-11-01 (V4 C1–C14)
+
+The latest GitHub main checkpoint is ecaf9af211289f52a46f79ebffa0f41f62b06d5a — docs(changelog): record permission catalogue delete guard.
+
+- V4 C1–C11: prior source-level corrective audit items are documented in docs/V4-IMPLEMENTATION-NOTES.md.
+- V4 C12: principal_roles assignment identity/provenance is immutable; rows cannot be deleted; new assignments must start active; revocation cannot be reversed. Re-grants require a new row.
+- V4 C13: permission delegation identity, capabilities and grantor provenance are immutable; rows cannot be deleted; new delegations must start active. Combined with C6, revocation is irreversible and restoring authority requires a new row.
+- V4 C14: permission catalogue rows cannot be deleted, including unused keys. Obsolete permissions must be deactivated while retaining stable keys.
+- The SQL changes are in backend/migrations/000004_add_principal_rbac_foundation.up.sql; C12–C14 are also recorded in docs/V4-IMPLEMENTATION-NOTES.md and CHANGELOG.md.
+- All C1–C14 migration findings are source-level review/corrections only. PostgreSQL 18 migration execution and integration verification have NOT been completed. DO NOT apply V4 to the development database.
+- The 2026-11-01 Go principal-auth build-fix candidate is described in docs/CURRENT-BUILD-FIX-HANDOFF-20261101.md. Full Go tests and vet were not verified in that review environment; use the user's Windows Go 1.27.1 environment and inspect actual command output.
+- The effective-permission resolver intentionally excludes custom-role grants and ALLOW overrides until exact delegation-ID linkage is implemented and checked. Explicit DENY overrides remain fail-closed.
+- No Phase 1 business-resource routes currently establish full student, attendance, teacher-assignment, parent-child, or tenant/resource authorization. Do not call the RBAC system complete or production-ready.
+- The latest GitHub changes are not yet confirmed pulled into the user's local working tree. The last reported local status had modified and untracked files; preserve them. Do not clean, reset, overwrite, or commit those files. After checking local status, fast-forward pull from origin main if safe.
+
+### Next engineering sequence
+
+1. User pulls the latest GitHub main without disturbing local modifications and confirms git status -sb.
+2. Review and verify the Go principal-auth build-fix candidate on Windows with Go 1.27.1; run go test -count=1 -p 1 ./... and go vet ./... from backend.
+3. Continue source audit from C15; inspect before deciding the next finding. Do not assume a C15 issue without evidence.
+4. Add disposable PostgreSQL 18 migration tests from a v3 snapshot, including upgrade, constraint/trigger behavior, and rollback/forward-recovery checks.
+5. Only after the Go cutover and migration tests pass, plan a backed-up, controlled V4 application. The user must explicitly approve applying V4 to the development database.
+
