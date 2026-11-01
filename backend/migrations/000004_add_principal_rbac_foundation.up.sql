@@ -329,6 +329,18 @@ CREATE TRIGGER trg_protect_permission_identity_scope
 BEFORE UPDATE OF permission_key, scope_type, is_delegable ON permissions
 FOR EACH ROW EXECUTE FUNCTION protect_permission_identity_scope();
 
+-- Permission keys are platform-defined catalogue identities. Deactivate an
+-- obsolete permission with is_active instead of deleting its historical key.
+CREATE OR REPLACE FUNCTION prevent_permission_catalogue_delete() RETURNS trigger
+LANGUAGE plpgsql AS $
+BEGIN
+    RAISE EXCEPTION 'platform permission catalogue entries cannot be deleted; deactivate them instead';
+END;
+$;
+CREATE TRIGGER trg_permissions_no_delete
+BEFORE DELETE ON permissions
+FOR EACH ROW EXECUTE FUNCTION prevent_permission_catalogue_delete();
+
 CREATE TABLE roles (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     school_id BIGINT REFERENCES schools(id) ON DELETE RESTRICT,
