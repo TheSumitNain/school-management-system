@@ -591,10 +591,107 @@ END;
 $school_admin_assert$;
 
 INSERT INTO role_permissions (role_id, permission_id)
-SELECT r.id, p.id FROM roles r JOIN permissions p ON p.permission_key IN
- ('students.read_basic','attendance.read','attendance.mark','attendance.update_same_day',
-  'timetable.read','homework.read','notices.read')
-WHERE r.role_key = 'teacher' AND r.scope_type = 'school';
+SELECT r.id, p.id
+FROM roles r
+JOIN permissions p
+  ON p.scope_type = 'school'
+ AND p.permission_key IN (
+    'students.read_basic',
+    'attendance.read',
+    'attendance.mark',
+    'attendance.update_same_day',
+    'timetable.read',
+    'homework.read',
+    'notices.read'
+ )
+WHERE r.role_key = 'teacher'
+  AND r.principal_type = 'staff'
+  AND r.scope_type = 'school'
+  AND r.school_id IS NOT NULL
+  AND r.is_system = TRUE;
+
+-- Fail migration unless every school has exactly one Teacher system role
+-- and every such role has exactly the approved seven-key default bundle.
+DO $teacher_assert$
+DECLARE
+    v_school_count INTEGER;
+    v_teacher_role_count INTEGER;
+    v_role RECORD;
+    v_permission_count INTEGER;
+BEGIN
+    SELECT COUNT(*) INTO v_school_count FROM schools;
+
+    SELECT COUNT(*)
+      INTO v_teacher_role_count
+      FROM roles
+     WHERE role_key = 'teacher'
+       AND principal_type = 'staff'
+       AND scope_type = 'school'
+       AND school_id IS NOT NULL
+       AND is_system = TRUE;
+
+    IF v_teacher_role_count <> v_school_count THEN
+        RAISE EXCEPTION
+            'Expected one Teacher system role per school (%); found %',
+            v_school_count, v_teacher_role_count;
+    END IF;
+
+    FOR v_role IN
+        SELECT id
+          FROM roles
+         WHERE role_key = 'teacher'
+           AND principal_type = 'staff'
+           AND scope_type = 'school'
+           AND school_id IS NOT NULL
+           AND is_system = TRUE
+    LOOP
+        SELECT COUNT(*)
+          INTO v_permission_count
+          FROM role_permissions
+         WHERE role_id = v_role.id;
+
+        IF v_permission_count <> 7
+           OR EXISTS (
+                SELECT permission_key
+                  FROM (VALUES
+                    ('students.read_basic'),
+                    ('attendance.read'),
+                    ('attendance.mark'),
+                    ('attendance.update_same_day'),
+                    ('timetable.read'),
+                    ('homework.read'),
+                    ('notices.read')
+                  ) AS expected(permission_key)
+                EXCEPT
+                SELECT p.permission_key
+                  FROM role_permissions rp
+                  JOIN permissions p ON p.id = rp.permission_id
+                 WHERE rp.role_id = v_role.id
+           )
+           OR EXISTS (
+                SELECT p.permission_key
+                  FROM role_permissions rp
+                  JOIN permissions p ON p.id = rp.permission_id
+                 WHERE rp.role_id = v_role.id
+                EXCEPT
+                SELECT permission_key
+                  FROM (VALUES
+                    ('students.read_basic'),
+                    ('attendance.read'),
+                    ('attendance.mark'),
+                    ('attendance.update_same_day'),
+                    ('timetable.read'),
+                    ('homework.read'),
+                    ('notices.read')
+                  ) AS expected(permission_key)
+           ) THEN
+            RAISE EXCEPTION
+                'Teacher role % does not have exactly the seven approved permissions',
+                v_role.id;
+        END IF;
+    END LOOP;
+END;
+$teacher_assert$;
 -- Parent receives only the seven explicitly approved read-only child/dashboard permissions.
 -- Do not CROSS JOIN the global catalogue: future global permissions must not be inherited automatically.
 INSERT INTO role_permissions (role_id, permission_id)
