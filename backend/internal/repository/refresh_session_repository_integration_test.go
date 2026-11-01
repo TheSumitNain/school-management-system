@@ -87,16 +87,28 @@ func newPostgresIntegrationRepository(
 		t.Fatalf("create test school: %v", err)
 	}
 
+	var principalID int64
+	err = pool.QueryRow(ctx,
+		`INSERT INTO auth_principals (principal_type, status)
+		 VALUES ('staff', 'active') RETURNING id`,
+	).Scan(&principalID)
+	if err != nil {
+		_, _ = pool.Exec(ctx, `DELETE FROM schools WHERE id = $1`, schoolID)
+		t.Fatalf("create test principal: %v", err)
+	}
+
 	var userID int64
 	err = pool.QueryRow(
 		ctx,
-		`INSERT INTO users (school_id, username, password_hash, status)
-		 VALUES ($1, $2, $3, 'active') RETURNING id`,
+		`INSERT INTO users (school_id, principal_id, username, password_hash, status)
+		 VALUES ($1, $2, $3, $4, 'active') RETURNING id`,
 		schoolID,
+		principalID,
 		"test-user-"+suffix,
 		"integration-test-password-hash",
 	).Scan(&userID)
 	if err != nil {
+		_, _ = pool.Exec(ctx, `DELETE FROM auth_principals WHERE id = $1`, principalID)
 		_, _ = pool.Exec(ctx, `DELETE FROM schools WHERE id = $1`, schoolID)
 		t.Fatalf("create test user: %v", err)
 	}
@@ -107,11 +119,116 @@ func newPostgresIntegrationRepository(
 		)
 		defer cleanupCancel()
 
+		_, _ = pool.Exec(cleanupCtx,
+			`DELETE FROM refresh_sessions WHERE principal_id = $1 OR user_id = $2`,
+			principalID, userID)
 		_, _ = pool.Exec(cleanupCtx, `DELETE FROM users WHERE id = $1`, userID)
+		_, _ = pool.Exec(cleanupCtx, `DELETE FROM auth_principals WHERE id = $1`, principalID)
 		_, _ = pool.Exec(cleanupCtx, `DELETE FROM schools WHERE id = $1`, schoolID)
 	})
-
 	return NewRefreshSessionRepository(pool), pool, userID
+}
+
+
+// TestPrincipalRefreshSessionRepositoryPostgresIntegration verifies the V4
+// principal-based session path against the real PostgreSQL triggers.
+func TestPrincipalRefreshSessionRepositoryPostgresIntegration(t *testing.T) {
+	_, pool, userID := newPostgresIntegrationRepository(t)
+	repo := NewPrincipalRefreshSessionRepository(pool)
+	ctx := context.Background()
+
+	var principalID int64
+	if err := pool.QueryRow(ctx,
+		`SELECT principal_id FROM users WHERE id = $1`, userID,
+	).Scan(&principalID); err != nil {
+		t.Fatalf("load test principal: %v", err)
+	}
+
+	t.Run("create and rotate persist both staff identity columns", func(t *testing.T) {
+		oldHash := integrationTokenHash("principal-create-rotate-old")
+		newHash := integrationTokenHash("principal-create-rotate-new")
+		if err := repo.CreatePrincipal(ctx, principalID, oldHash, time.Now().Add(time.Hour)); err != nil {
+			t.Fatalf("create principal refresh session: %v", err)
+		}
+		assertStaffSessionIdentity(t, ctx, pool, oldHash, userID, principalID)
+
+		principal, err := repo.RotatePrincipal(ctx, oldHash, newHash, time.Now().Add(time.Hour))
+		if err != nil {
+			t.Fatalf("rotate principal refresh session: %v", err)
+		}
+		if principal.ID != principalID || principal.Type != "staff" {
+			t.Fatalf("unexpected principal returned from rotation: %+v", principal)
+		}
+		assertStaffSessionIdentity(t, ctx, pool, newHash, userID, principalID)
+	})
+
+	t.Run("replay revokes the rotated family", func(t *testing.T) {
+		oldHash := integrationTokenHash("principal-replay-old")
+		newHash := integrationTokenHash("principal-replay-new")
+		if err := repo.CreatePrincipal(ctx, principalID, oldHash, time.Now().Add(time.Hour)); err != nil {
+			t.Fatalf("create replay test session: %v", err)
+		}
+		if _, err := repo.RotatePrincipal(ctx, oldHash, newHash, time.Now().Add(time.Hour)); err != nil {
+			t.Fatalf("rotate replay test session: %v", err)
+		}
+		if _, err := repo.RotatePrincipal(ctx, oldHash, integrationTokenHash("principal-replay-third"), time.Now().Add(time.Hour)); !errors.Is(err, ErrRefreshTokenReuse) {
+			t.Fatalf("expected replay error, got %v", err)
+		}
+		var revoked bool
+		if err := pool.QueryRow(ctx,
+			`SELECT revoked_at IS NOT NULL FROM refresh_sessions WHERE token_hash = $1`, newHash,
+		).Scan(&revoked); err != nil {
+			t.Fatalf("check replacement revocation: %v", err)
+		}
+		if !revoked {
+			t.Fatal("expected replay detection to revoke the replacement session")
+		}
+	})
+
+	t.Run("inactive principal cannot rotate and all sessions are revoked", func(t *testing.T) {
+		oldHash := integrationTokenHash("principal-inactive-old")
+		if err := repo.CreatePrincipal(ctx, principalID, oldHash, time.Now().Add(time.Hour)); err != nil {
+			t.Fatalf("create inactive-principal test session: %v", err)
+		}
+		if _, err := pool.Exec(ctx,
+			`UPDATE auth_principals SET status = 'disabled' WHERE id = $1`, principalID,
+		); err != nil {
+			t.Fatalf("disable test principal: %v", err)
+		}
+		if _, err := repo.RotatePrincipal(ctx, oldHash, integrationTokenHash("principal-inactive-new"), time.Now().Add(time.Hour)); !errors.Is(err, ErrRefreshSessionInactive) {
+			t.Fatalf("expected inactive-principal error, got %v", err)
+		}
+		var activeSessions int
+		if err := pool.QueryRow(ctx,
+			`SELECT COUNT(*) FROM refresh_sessions WHERE principal_id = $1 AND revoked_at IS NULL`, principalID,
+		).Scan(&activeSessions); err != nil {
+			t.Fatalf("count active sessions: %v", err)
+		}
+		if activeSessions != 0 {
+			t.Fatalf("expected all sessions revoked for inactive principal, got %d active", activeSessions)
+		}
+	})
+}
+
+func assertStaffSessionIdentity(
+	t *testing.T,
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	tokenHash string,
+	userID int64,
+	principalID int64,
+) {
+	t.Helper()
+	var actualUserID, actualPrincipalID int64
+	if err := pool.QueryRow(ctx,
+		`SELECT user_id, principal_id FROM refresh_sessions WHERE token_hash = $1`, tokenHash,
+	).Scan(&actualUserID, &actualPrincipalID); err != nil {
+		t.Fatalf("load stored staff session identity: %v", err)
+	}
+	if actualUserID != userID || actualPrincipalID != principalID {
+		t.Fatalf("stored session identity mismatch: user_id=%d principal_id=%d; want user_id=%d principal_id=%d",
+			actualUserID, actualPrincipalID, userID, principalID)
+	}
 }
 
 func TestRefreshSessionRepositoryPostgresIntegration(t *testing.T) {
