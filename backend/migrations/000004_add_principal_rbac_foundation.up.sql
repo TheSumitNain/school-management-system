@@ -350,7 +350,7 @@ CREATE UNIQUE INDEX ux_roles_school_key ON roles (school_id, LOWER(role_key)) WH
 CREATE UNIQUE INDEX ux_roles_global_key ON roles (scope_type, principal_type, LOWER(role_key)) WHERE scope_type IN ('platform','global');
 
 CREATE OR REPLACE FUNCTION protect_role_identity_scope() RETURNS trigger
-LANGUAGE plpgsql AS $
+LANGUAGE plpgsql AS $$
 BEGIN
     IF NEW.school_id IS DISTINCT FROM OLD.school_id OR
        NEW.principal_type IS DISTINCT FROM OLD.principal_type OR
@@ -362,7 +362,7 @@ BEGIN
     END IF;
     RETURN NEW;
 END;
-$;
+$$;
 CREATE TRIGGER trg_protect_role_identity_scope
 BEFORE UPDATE OF school_id, principal_type, scope_type, role_key, is_system, created_by ON roles
 FOR EACH ROW EXECUTE FUNCTION protect_role_identity_scope();
@@ -378,7 +378,7 @@ SELECT id, 'staff', 'school', 'teacher', 'Teacher', TRUE FROM schools;
 -- Only platform-controlled migration seeds may create system/platform/global roles.
 -- Runtime role creation is restricted to school-scoped staff custom roles.
 CREATE OR REPLACE FUNCTION guard_role_insert_and_system_classification() RETURNS trigger
-LANGUAGE plpgsql AS $
+LANGUAGE plpgsql AS $$
 BEGIN
     IF TG_OP = 'INSERT' THEN
         IF NEW.is_system THEN
@@ -410,7 +410,7 @@ BEGIN
 
     RETURN NEW;
 END;
-$;
+$$;
 CREATE TRIGGER trg_guard_role_insert_and_system_classification
 BEFORE INSERT OR UPDATE ON roles
 FOR EACH ROW EXECUTE FUNCTION guard_role_insert_and_system_classification();
