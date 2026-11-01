@@ -92,3 +92,10 @@ Never paste `.env` values, JWT secrets, passwords, OTPs, MFA secrets, or real st
 - This does not make the table tamper-proof against its owner or a superuser. Before deployment, keep `audit_events` owned by a separate migration/administrative role; the application role must not own the table and should receive only the required `INSERT` and `SELECT` privileges, with `UPDATE`, `DELETE`, and `TRUNCATE` denied.
 - Do not grant application role membership or ownership paths that let it assume the owner role. Review actual role inheritance and deployment grants once the production role names are defined.
 - Source-level review only. PostgreSQL execution/integration tests have not been run; migration v4 remains unapplied.
+
+### C9 — Parent permission allowlist
+
+- Replaced the Parent role's global-permission `CROSS JOIN` seed with an explicit allowlist of the seven approved read-only permissions: `children.list`, `children.profile.read`, `children.attendance.read`, `children.timetable.read`, `children.homework.read`, `children.results.read`, and `children.notices.read`.
+- Added a migration assertion requiring exactly one global Parent system role and exactly those seven grants. Bidirectional `EXCEPT` checks detect both missing permissions and unexpected additional grants; the count check alone is not relied on for set equality.
+- This prevents future additions to the global permission catalogue from being granted to Parent automatically. Parent-child link verification and resource-level authorization remain mandatory in the API.
+- Source-level review only. PostgreSQL execution/integration tests have not been run; migration v4 remains unapplied.
