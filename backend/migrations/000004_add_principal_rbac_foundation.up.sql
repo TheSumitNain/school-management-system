@@ -1020,6 +1020,21 @@ $$;
 CREATE TRIGGER trg_validate_permission_delegation BEFORE INSERT OR UPDATE OF school_id, permission_id, can_assign_to_roles, can_override_users, granted_by ON role_permission_delegations
 FOR EACH ROW EXECUTE FUNCTION validate_permission_delegation();
 
+-- Revocation is one-way: once revoked, a delegation cannot be reactivated
+-- or have its historical revocation timestamp rewritten.
+CREATE OR REPLACE FUNCTION prevent_delegation_reactivation() RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+    IF OLD.revoked_at IS NOT NULL AND NEW.revoked_at IS DISTINCT FROM OLD.revoked_at THEN
+        RAISE EXCEPTION 'delegation revocation is immutable and cannot be cleared or rewritten';
+    END IF;
+    RETURN NEW;
+END;
+$$;
+CREATE TRIGGER trg_prevent_delegation_reactivation
+BEFORE UPDATE OF revoked_at ON role_permission_delegations
+FOR EACH ROW EXECUTE FUNCTION prevent_delegation_reactivation();
+
 CREATE OR REPLACE FUNCTION validate_refresh_session_principal() RETURNS trigger
 LANGUAGE plpgsql AS $$
 DECLARE v_type VARCHAR(30);
