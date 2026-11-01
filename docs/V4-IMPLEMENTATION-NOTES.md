@@ -120,3 +120,10 @@ Never paste `.env` values, JWT secrets, passwords, OTPs, MFA secrets, or real st
 - Revocation is one-way: an active assignment may transition from `revoked_at IS NULL` to a non-NULL timestamp, but a revoked assignment cannot be reactivated or have its revocation timestamp rewritten. Re-granting a role requires a new assignment row, preserving the historical record.
 - This guard protects history, not the authority to revoke: the application must still authorize the revoking actor and write an audit event. Deployment database privileges must also prevent untrusted direct writes.
 - Source-level review only. PostgreSQL execution/integration tests have not been run; migration v4 remains unapplied.
+
+### C13 — Permission delegation history is immutable
+
+- Added a guard requiring new delegation rows to start active, preserving the delegation ID, school, permission, capability flags, grantor, and creation timestamp after insertion, and rejecting deletion.
+- The existing C6 guard continues to make revocation one-way. A revoked delegation cannot be reactivated or have its revocation timestamp rewritten; restoring authority requires a new delegation row with new provenance.
+- This prevents a revoked delegation's historical school/permission/capability/grantor details from being rewritten or erased. The application must still authorize the revocation actor and write an audit event.
+- Source-level review only. PostgreSQL execution/integration tests have not been run; migration v4 remains unapplied.
