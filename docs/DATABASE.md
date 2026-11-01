@@ -486,3 +486,14 @@ Teaching class/subject assignments and class-in-charge assignments must be separ
 - Plan rollback and forward-recovery behavior before applying schema changes.
 - Preserve refresh-token family/replay/concurrency protections during the identity refactor.
 - Add clean-database migration tests and upgrade tests from the current v3 schema.
+
+
+## 15. V4 Identity and RBAC Migration Draft (Not Applied)
+
+The user approved the V4 identity/RBAC schema direction. A draft migration is present at `backend/migrations/000004_add_principal_rbac_foundation.up.sql`, with an intentionally forward-only down migration. Its design and blockers are documented in `docs/V4-IMPLEMENTATION-NOTES.md`.
+
+The observed development database was at migration v3 with `dirty = false`: 1 school, 1 user, 4 refresh sessions, 0 active sessions, and 0 expired sessions. The user ran duplicate and canonical-username preflight checks; both returned no violations. The existing username index was `users_school_username_unique`; the refresh-session FK was `refresh_sessions_user_id_fkey` with `ON DELETE CASCADE`.
+
+The V4 draft adds shared principals, global username uniqueness, Platform Admin and Parent subtype tables, the permission catalogue, system roles, role permissions, principal-role assignments, per-user overrides, permission delegations, principal-bound refresh sessions, MFA/OTP storage, and append-only audit events. It preserves existing `users.id`, refresh-token hashes, and token families.
+
+**Important:** This migration has not been executed against PostgreSQL and must not yet be applied to the user's development database. The current Go code still issues user-ID JWT subjects and does not perform principal/token-version checks or RBAC evaluation. Complete and test the Go cutover plus migration tests against a disposable PostgreSQL 18 database first. The existing staff account's role must be explicitly confirmed; do not infer it from there being one user.

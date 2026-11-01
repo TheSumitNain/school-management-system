@@ -12,22 +12,19 @@ import (
 	"school-management-system/internal/services"
 )
 
+// AuthService authenticates a globally unique staff username. School
+// selection is deliberately absent from the V4 login request.
 type AuthService interface {
-	Authenticate(
-		ctx context.Context,
-		schoolID int64,
-		username string,
-		password string,
-	) (*models.User, error)
+	AuthenticateStaff(ctx context.Context, username, password string) (*models.AuthPrincipal, error)
 }
 
 type TokenService interface {
-	GenerateAccessToken(userID, schoolID int64) (string, error)
+	GenerateAccessToken(principalID, tokenVersion int64, principalType string) (string, error)
 }
 
 type SessionService interface {
-	Issue(ctx context.Context, userID int64) (string, error)
-	Rotate(ctx context.Context, refreshToken string) (*models.User, string, error)
+	Issue(ctx context.Context, principalID int64) (string, error)
+	Rotate(ctx context.Context, refreshToken string) (*models.AuthPrincipal, string, error)
 	Revoke(ctx context.Context, refreshToken string) error
 }
 
@@ -37,20 +34,11 @@ type AuthHandler struct {
 	sessionService SessionService
 }
 
-func NewAuthHandler(
-	authService AuthService,
-	tokenService TokenService,
-	sessionService SessionService,
-) *AuthHandler {
-	return &AuthHandler{
-		authService:    authService,
-		tokenService:   tokenService,
-		sessionService: sessionService,
-	}
+func NewAuthHandler(authService AuthService, tokenService TokenService, sessionService SessionService) *AuthHandler {
+	return &AuthHandler{authService: authService, tokenService: tokenService, sessionService: sessionService}
 }
 
 type loginRequest struct {
-	SchoolID int64  `json:"school_id"`
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
@@ -59,183 +47,148 @@ type refreshRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
-type loginUserResponse struct {
-	ID       int64  `json:"id"`
-	SchoolID int64  `json:"school_id"`
-	Username string `json:"username"`
+type principalResponse struct {
+	ID       int64  `json:"principal_id"`
+	Type     string `json:"principal_type"`
 	Status   string `json:"status"`
+	SchoolID int64  `json:"school_id,omitempty"`
+	Username string `json:"username,omitempty"`
 }
 
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req loginRequest
-
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status":  "error",
-			"message": "Invalid request body",
-		})
+		writeAuthError(c, http.StatusBadRequest, "Invalid request body")
 		return
 	}
-
 	req.Username = strings.TrimSpace(req.Username)
-
-	if req.SchoolID <= 0 ||
-		req.Username == "" ||
-		req.Password == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status":  "error",
-			"message": "school_id, username and password are required",
-		})
+	if req.Username == "" || req.Password == "" {
+		writeAuthError(c, http.StatusBadRequest, "username and password are required")
+		return
+	}
+	if h.authService == nil || h.tokenService == nil || h.sessionService == nil {
+		writeAuthError(c, http.StatusInternalServerError, "Authentication service unavailable")
 		return
 	}
 
-	user, err := h.authService.Authenticate(
-		c.Request.Context(),
-		req.SchoolID,
-		req.Username,
-		req.Password,
-	)
+	principal, err := h.authService.AuthenticateStaff(c.Request.Context(), req.Username, req.Password)
 	if err != nil {
 		if errors.Is(err, services.ErrInvalidCredentials) {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"status":  "error",
-				"message": "Invalid username or password",
-			})
+			writeAuthError(c, http.StatusUnauthorized, "Invalid username or password")
 			return
 		}
-
-		if errors.Is(err, services.ErrUserInactive) ||
-			errors.Is(err, services.ErrSchoolInactive) {
-			c.JSON(http.StatusForbidden, gin.H{
-				"status":  "error",
-				"message": "Account or school is inactive",
-			})
+		if errors.Is(err, services.ErrUserInactive) || errors.Is(err, services.ErrSchoolInactive) {
+			writeAuthError(c, http.StatusForbidden, "Account or school is inactive")
 			return
 		}
-
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status":  "error",
-			"message": "Unable to log in",
-		})
+		writeAuthError(c, http.StatusInternalServerError, "Unable to log in")
+		return
+	}
+	if !validStaffPrincipal(principal) {
+		writeAuthError(c, http.StatusInternalServerError, "Unable to log in")
 		return
 	}
 
-	accessToken, err := h.tokenService.GenerateAccessToken(
-		user.ID,
-		user.SchoolID,
-	)
+	accessToken, err := h.tokenService.GenerateAccessToken(principal.ID, principal.TokenVersion, principal.Type)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status":  "error",
-			"message": "Unable to log in",
-		})
+		writeAuthError(c, http.StatusInternalServerError, "Unable to log in")
 		return
 	}
-
-	refreshToken, err := h.sessionService.Issue(c.Request.Context(), user.ID)
+	refreshToken, err := h.sessionService.Issue(c.Request.Context(), principal.ID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status":  "error",
-			"message": "Unable to log in",
-		})
+		writeAuthError(c, http.StatusInternalServerError, "Unable to log in")
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"status":        "success",
-		"access_token":  accessToken,
-		"refresh_token": refreshToken,
-		"token_type":    "Bearer",
-		"user": loginUserResponse{
-			ID:       user.ID,
-			SchoolID: user.SchoolID,
-			Username: user.Username,
-			Status:   user.Status,
-		},
+		"status": "success", "access_token": accessToken, "refresh_token": refreshToken,
+		"token_type": "Bearer", "principal": toPrincipalResponse(principal),
 	})
 }
 
-// Refresh exchanges a valid refresh token for a new access token and one-time refresh token.
+// Refresh rotates the opaque refresh token and issues a principal-subject JWT.
 func (h *AuthHandler) Refresh(c *gin.Context) {
 	var req refreshRequest
 	if err := c.ShouldBindJSON(&req); err != nil || strings.TrimSpace(req.RefreshToken) == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status":  "error",
-			"message": "refresh_token is required",
-		})
+		writeAuthError(c, http.StatusBadRequest, "refresh_token is required")
+		return
+	}
+	if h.sessionService == nil || h.tokenService == nil {
+		writeAuthError(c, http.StatusInternalServerError, "Authentication service unavailable")
 		return
 	}
 
-	user, refreshToken, err := h.sessionService.Rotate(
-		c.Request.Context(),
-		req.RefreshToken,
-	)
+	principal, replacement, err := h.sessionService.Rotate(c.Request.Context(), strings.TrimSpace(req.RefreshToken))
 	if err != nil {
 		switch {
-		case errors.Is(err, services.ErrInvalidRefreshToken),
-			errors.Is(err, services.ErrRefreshTokenReuse):
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"status":  "error",
-				"message": "Invalid or expired refresh token",
-			})
+		case errors.Is(err, services.ErrInvalidRefreshToken), errors.Is(err, services.ErrRefreshTokenReuse):
+			writeAuthError(c, http.StatusUnauthorized, "Invalid or expired refresh token")
 		case errors.Is(err, services.ErrRefreshSessionInactive):
-			c.JSON(http.StatusForbidden, gin.H{
-				"status":  "error",
-				"message": "Account or school is inactive",
-			})
+			writeAuthError(c, http.StatusForbidden, "Account or school is inactive")
 		default:
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"status":  "error",
-				"message": "Unable to refresh session",
-			})
+			writeAuthError(c, http.StatusInternalServerError, "Unable to refresh session")
 		}
 		return
 	}
-
-	accessToken, err := h.tokenService.GenerateAccessToken(user.ID, user.SchoolID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status":  "error",
-			"message": "Unable to refresh session",
-		})
+	if !validPrincipal(principal) {
+		writeAuthError(c, http.StatusInternalServerError, "Unable to refresh session")
 		return
 	}
-
+	accessToken, err := h.tokenService.GenerateAccessToken(principal.ID, principal.TokenVersion, principal.Type)
+	if err != nil {
+		writeAuthError(c, http.StatusInternalServerError, "Unable to refresh session")
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{
-		"status":        "success",
-		"access_token":  accessToken,
-		"refresh_token": refreshToken,
-		"token_type":    "Bearer",
-		"user": loginUserResponse{
-			ID:       user.ID,
-			SchoolID: user.SchoolID,
-			Username: user.Username,
-			Status:   user.Status,
-		},
+		"status": "success", "access_token": accessToken, "refresh_token": replacement,
+		"token_type": "Bearer", "principal": toPrincipalResponse(principal),
 	})
 }
 
-// Logout revokes the supplied refresh token. Repeating logout is safe.
+// Logout is idempotent at the session repository boundary. It revokes the
+// refresh-token family; access tokens are rejected after expiry or when the
+// principal token_version is incremented.
 func (h *AuthHandler) Logout(c *gin.Context) {
 	var req refreshRequest
 	if err := c.ShouldBindJSON(&req); err != nil || strings.TrimSpace(req.RefreshToken) == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status":  "error",
-			"message": "refresh_token is required",
-		})
+		writeAuthError(c, http.StatusBadRequest, "refresh_token is required")
 		return
 	}
-
-	if err := h.sessionService.Revoke(c.Request.Context(), req.RefreshToken); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status":  "error",
-			"message": "Unable to log out",
-		})
+	if h.sessionService == nil {
+		writeAuthError(c, http.StatusInternalServerError, "Authentication service unavailable")
 		return
 	}
+	if err := h.sessionService.Revoke(c.Request.Context(), strings.TrimSpace(req.RefreshToken)); err != nil {
+		writeAuthError(c, http.StatusInternalServerError, "Unable to log out")
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "success", "message": "Logged out successfully"})
+}
 
-	c.JSON(http.StatusOK, gin.H{
-		"status":  "success",
-		"message": "Logged out successfully",
-	})
+func validStaffPrincipal(p *models.AuthPrincipal) bool {
+	return validPrincipal(p) && p.Type == "staff" && p.SchoolID > 0 && strings.TrimSpace(p.Username) != ""
+}
+
+func validPrincipal(p *models.AuthPrincipal) bool {
+	if p == nil || p.ID <= 0 || p.TokenVersion <= 0 || p.Status != "active" {
+		return false
+	}
+	switch p.Type {
+	case "staff":
+		return p.SchoolID > 0
+	case "platform_admin":
+		return true
+	case "parent":
+		return p.MobileVerified
+	default:
+		return false
+	}
+}
+
+func toPrincipalResponse(p *models.AuthPrincipal) principalResponse {
+	return principalResponse{ID: p.ID, Type: p.Type, Status: p.Status, SchoolID: p.SchoolID, Username: p.Username}
+}
+
+func writeAuthError(c *gin.Context, status int, message string) {
+	c.JSON(status, gin.H{"status": "error", "message": message})
 }

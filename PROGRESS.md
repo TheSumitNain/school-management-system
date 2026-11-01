@@ -1,23 +1,25 @@
+> **2026-11-01 V4 cutover checkpoint (newest):** A separate build-fix candidate now wires principal-based staff login, principal refresh sessions, live principal loading, and conservative effective-permission resolution. API `/auth/me` and affected tests/fakes were updated to principal context. See `docs/CURRENT-BUILD-FIX-HANDOFF-20261101.md`. The review environment could not run Go 1.27.1 tests (only Go 1.23.2 was installed and dependencies were unavailable offline), so the full test suite remains **unverified** until `go test -count=1 ./...` and `go vet ./...` run on the user's Windows Go 1.27.1 setup. Migration v4 remains unexecuted and unsafe to run; RBAC is not complete.
+
 # Project Progress
 
 ## Current Stage
 
-**Current milestone:** Backend foundation, initial JWT authentication, refresh-token lifecycle, and PostgreSQL refresh-session integration tests.
+**Current milestone:** Existing authentication foundation verified from the supplied `cb6af3b` source snapshot; approved V4 identity/RBAC schema draft prepared. Application-level RBAC and principal-aware authentication remain pending.
 
 The project has a working authentication foundation, including login, JWT authentication middleware, a protected identity endpoint, refresh-token rotation, replay detection, family-wide logout revocation, family-scoped transaction advisory locking, and per-user serialization of concurrent rotations across token families.
 
-The latest user-reported pushed code checkpoint represented by the supplied source ZIP is:
+The latest user-reported pushed documentation checkpoint represented by the supplied source ZIP is:
 
-- **Commit:** `fe4db1d` — `fix(auth): harden refresh session concurrency`
-- **Full commit hash in ZIP root:** `fe4db1d6851399fc68cecb258d8d377587c8dd4a`
+- **Commit:** `cb6af3b` — `docs: finalize phase 1 RBAC and account decisions`
+- **Full commit hash in ZIP root:** `cb6af3b5abc5249fba420e2699d16e87b1d14664`
 - **Branch:** `main`
 - **Repository:** https://github.com/TheSumitNain/school-management-system
-- **Source snapshot:** supplied ZIP `school-management-system-fe4db1d.zip`; it contains source and docs but no `.git` directory.
+- **Source snapshot:** supplied ZIP `school-management-system-audit(1).zip`; it contains source and docs but no `.git` directory.
 - **Local working-tree state:** not established by the ZIP. The user previously reported an untracked `APPLY-DOCS.txt`; inspect `git status -sb` in the actual local repository before committing. Do not assume the working tree is clean.
 
 The refresh-session work includes opt-in PostgreSQL integration tests for rotation, replay/family revocation, family-wide logout, idempotency, expiry, and concurrent refresh requests.
 
-The user reported the full backend test suite and `go vet` passing after the concurrency changes. The dedicated PostgreSQL integration run included six refresh-session lifecycle subtests plus the cross-family inactive-user race regression test. `git diff --cached --check` passed and the `fe4db1d` commit was pushed. These are historical user-reported results; rerun them in the actual local repository before relying on them.
+The user reported the full backend test suite and `go vet` passing after the concurrency changes. The dedicated PostgreSQL integration run included six refresh-session lifecycle subtests plus the cross-family inactive-user race regression test. `git diff --cached --check` passed and the `cb6af3b` commit was pushed. These are historical user-reported results; rerun them in the actual local repository before relying on them.
 
 **Important:** Passing tests does not establish production readiness. RBAC, tenant authorization, account-security controls, deployment hardening, and other production requirements remain outstanding.
 
@@ -52,7 +54,7 @@ The school and student counts are planning targets, not verified capacity limits
 - [x] Testing strategy documented
 - [x] Project handoff documentation created
 - [x] Progress and changelog files maintained
-- [x] Documentation consistency audit against supplied `fe4db1d` source snapshot; RBAC decisions documented separately as approved requirements
+- [x] Documentation consistency audit against supplied `cb6af3b` source snapshot; RBAC decisions documented as approved requirements
 
 ### Backend Foundation
 
@@ -191,7 +193,7 @@ go vet ./...
 
 - [x] Integration-test file staged and reviewed
 - [x] `git diff --cached --check` completed without whitespace errors
-- [x] Latest user-reported pushed code checkpoint represented by supplied ZIP: `fe4db1d` (`fix(auth): harden refresh session concurrency`)
+- [x] Latest user-reported pushed code checkpoint represented by supplied ZIP: `cb6af3b` (`docs: finalize phase 1 RBAC and account decisions`)
 - [ ] Verify actual local Git status and remote alignment before committing documentation; the ZIP has no `.git` metadata
 
 These results describe the last verified state. Repeat relevant checks after future code changes.
@@ -211,7 +213,7 @@ The user has finalized the Phase 1 account and RBAC direction. The detailed auth
 - One verified parent mobile/OTP account can access all officially linked children, including across schools. Parent selects a child; every API request verifies the relationship. Parent access is read-only; no student login accounts in Phase 1.
 - Permissions are checked server-side on each protected request; permission changes apply to the next request. Tenant, assignment, field-level, account-status, and school-status checks cannot be bypassed by overrides.
 
-These are approved requirements, not implemented code. The current source still uses school-scoped username uniqueness and a `school_id + username + password` login contract. A safe schema and API migration must be designed before changing it.
+These are approved requirements, not implemented application behavior. A V4 SQL schema draft exists, but the current source still uses school-scoped username uniqueness and a `school_id + username + password` login contract. Principal-aware Go changes, authorization enforcement, and PostgreSQL migration tests remain pending.
 
 ## In Progress
 
@@ -242,7 +244,8 @@ These are approved requirements, not implemented code. The current source still 
 
 ### Authorization and Multi-Tenancy
 
-- [ ] Define and implement role-based access control (RBAC)
+- [ ] Implement application-level role-based access control (RBAC)
+- [x] Prepare V4 identity/RBAC SQL migration draft (not applied or PostgreSQL-tested)
 - [ ] Implement permission checks on protected endpoints
 - [ ] Support authorized permission changes taking effect on subsequent protected requests
 - [ ] Implement school-level tenant authorization
@@ -280,14 +283,14 @@ These are approved requirements, not implemented code. The current source still 
 
 ## Next Steps
 
-1. Apply the updated documentation files to the local repository and inspect the complete diff; do not replace source files from this docs-only update.
-2. Confirm the local source still matches the supplied `fe4db1d` refresh-session implementation.
+1. Review `docs/V4-IMPLEMENTATION-NOTES.md` and the V4 migration draft. Do not apply it to the development database yet.
+2. Complete principal-aware Go authentication/session refactoring and automated migration tests before applying V4.
 3. Verify `backend/.env` is ignored and not tracked. Never paste secret contents into chat.
 4. Run `git diff --check` and inspect `git status -sb`, including the previously reported untracked `APPLY-DOCS.txt`.
 5. Re-run `go test -count=1 ./...` and `go vet ./...` from the backend directory after any code changes.
 6. Run the opt-in PostgreSQL integration tests against the dedicated `school_management_test` database, including the cross-family inactive-user race test.
 7. Review and commit the documentation diff only after checking the exact files; then push if the user approves the milestone.
-8. Design the additive identity/RBAC migrations while preserving existing refresh-session behavior. Resolve global staff username uniqueness and the new login contract as part of that design.
+8. Implement principal-aware login, JWT claims, refresh-session rotation/revocation, token-version checks, and DB-backed permission evaluation against the reviewed V4 schema.
 9. Implement roles, permissions, custom roles, bounded overrides, staff password lifecycle, teacher assignment scopes, and parent-child authorization with automated tests.
 10. Implement login rate limiting and failed-login lockout with automated tests.
 11. Continue school-management APIs and frontend integration in small, verified milestones.

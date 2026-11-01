@@ -15,7 +15,8 @@ The backend uses Go, Gin, and PostgreSQL.
 - `POST /auth/logout` is implemented.
 - JWT access-token generation and validation are implemented.
 - JWT authentication middleware protects `GET /auth/me`.
-- `GET /auth/me` returns the authenticated user's ID and school ID, not the full user profile.
+- `GET /auth/me` returns the live authenticated principal ID/type and staff school/username context, not the full profile.
+- V4 JWT subjects identify `auth_principals.id`; current principal status and token version are reloaded on every protected request. Permissions are resolved live, but the current resolver is conservative and full RBAC remains incomplete.
 - Internal user creation is available through the service layer and a development seed command.
 - Public user registration is not implemented.
 - Refresh tokens use opaque random values, database-backed rotation and revocation, and token-family replay detection.
@@ -128,13 +129,12 @@ The database ping uses a two-second timeout.
 
 **Endpoint:** `POST /auth/login`
 
-**Purpose:** Authenticates a user belonging to a school and returns an access token and a refresh token.
+**Purpose:** Authenticates a staff account by its globally unique username and returns principal-based access and refresh tokens. School selection is deliberately not supplied by the login client.
 
 Request body:
 
 ```json
 {
-  "school_id": 1,
   "username": "devtest",
   "password": "your-test-password"
 }
@@ -152,11 +152,12 @@ The values are illustrative placeholders, not actual credentials.
   "access_token": "<access-token>",
   "refresh_token": "<refresh-token>",
   "token_type": "Bearer",
-  "user": {
-    "id": 1,
+  "principal": {
+    "principal_id": 1,
+    "principal_type": "staff",
+    "status": "active",
     "school_id": 1,
-    "username": "devtest",
-    "status": "active"
+    "username": "devtest"
   }
 }
 ```
@@ -167,15 +168,15 @@ The actual user ID and username depend on the authenticated account. The respons
 
 | HTTP status | Meaning |
 |---|---|
-| `400 Bad Request` | Malformed JSON, missing required fields, or invalid `school_id`. |
+| `400 Bad Request` | Malformed JSON or missing/blank username or password. |
 | `401 Unauthorized` | Invalid username or password. |
 | `403 Forbidden` | User account or school is inactive. |
 | `500 Internal Server Error` | Unexpected internal failure, such as access-token or session issuance failure. |
 
 #### Authentication notes
 
-- The login request identifies the school using `school_id`.
-- The authentication service checks the user and school.
+- The login request does not accept a client-supplied school ID; the backend resolves the globally unique staff username and its school.
+- The authentication service checks the canonical principal, staff account and school status.
 - Passwords are verified against stored password hashes.
 - Password hashing currently uses bcrypt.
 - A successful login returns an access token and an opaque refresh token.
@@ -202,7 +203,7 @@ Request body:
 
 **HTTP status:** `200 OK`
 
-The response contains a new `access_token`, a replacement `refresh_token`, `token_type: "Bearer"`, and the basic user DTO, using the same response structure as login.
+The response contains a new `access_token`, a replacement `refresh_token`, `token_type: "Bearer"`, and the principal DTO, using the same response structure as login.
 
 A successful rotation replaces the previous refresh session with a new one. Do not continue using the old refresh token after receiving a successful response.
 
@@ -286,8 +287,10 @@ Use the access token returned by a successful login or refresh operation.
 ```json
 {
   "status": "success",
-  "user_id": 10,
-  "school_id": 2
+  "principal_id": 10,
+  "principal_type": "staff",
+  "school_id": 2,
+  "username": "devtest"
 }
 ```
 
@@ -302,11 +305,11 @@ The IDs are illustrative examples.
 
 #### Authentication notes
 
-- The middleware validates the access token before the handler runs.
-- The user ID is extracted from the token subject and the school ID from token claims.
-- Invalid identity identifiers are rejected.
-- The endpoint returns IDs from validated claims; it does not retrieve the full user profile from the database.
-- The endpoint does not yet perform role or permission checks.
+- The middleware validates the access token and reloads current principal and permission state before the handler runs.
+- The principal ID is extracted from the token subject. The middleware reloads the current principal subtype, status, token version, and staff school from PostgreSQL.
+- The live principal type and token version must match the JWT claims.
+- Effective permissions are resolved from live RBAC tables on every protected request; the current resolver intentionally ignores custom-role grants and user ALLOW overrides until exact delegation linkage is implemented.
+- The endpoint returns principal identity context, not the full user profile. Complete resource-level authorization and tenant isolation are not yet implemented.
 - The endpoint does not, by itself, prove complete tenant isolation for other resources.
 
 ## 4. HTTP Status Codes
@@ -337,7 +340,7 @@ Not every status code listed above is currently returned by an implemented endpo
 | `POST` | `/auth/login` | Authenticate a user and issue access and refresh tokens. |
 | `POST` | `/auth/refresh` | Rotate a refresh token and issue a new access token. |
 | `POST` | `/auth/logout` | Revoke all active refresh sessions in the supplied token family. |
-| `GET` | `/auth/me` | Return identity identifiers from a validated access token. |
+| `GET` | `/auth/me` | Return live principal identity context after token and database validation. |
 
 Internal user creation is available through the service layer and a development seed command. There is no public registration endpoint.
 

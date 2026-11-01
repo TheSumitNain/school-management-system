@@ -21,104 +21,76 @@ var (
 )
 
 type refreshSessionRepository interface {
-	Create(ctx context.Context, userID int64, tokenHash string, expiresAt time.Time) error
-	Rotate(ctx context.Context, oldTokenHash, newTokenHash string, newExpiresAt time.Time) (*models.User, error)
-	Revoke(ctx context.Context, tokenHash string) error
+	CreatePrincipal(ctx context.Context, principalID int64, tokenHash string, expiresAt time.Time) error
+	RotatePrincipal(ctx context.Context, oldTokenHash, newTokenHash string, newExpiresAt time.Time) (*models.AuthPrincipal, error)
+	RevokePrincipal(ctx context.Context, tokenHash string) error
 }
 
-// SessionService manages opaque refresh tokens and their persisted lifecycle.
+// SessionService stores only SHA-256 hashes of opaque, principal-bound tokens.
 type SessionService struct {
 	sessions refreshSessionRepository
 	expiry   time.Duration
 }
 
-func NewSessionService(
-	sessions refreshSessionRepository,
-	refreshExpiryDays int,
-) (*SessionService, error) {
+func NewSessionService(sessions refreshSessionRepository, refreshExpiryDays int) (*SessionService, error) {
 	if sessions == nil {
 		return nil, fmt.Errorf("refresh session repository is required")
 	}
 	if refreshExpiryDays < 1 || refreshExpiryDays > 30 {
 		return nil, fmt.Errorf("refresh token expiry must be between 1 and 30 days")
 	}
-
-	return &SessionService{
-		sessions: sessions,
-		expiry:   time.Duration(refreshExpiryDays) * 24 * time.Hour,
-	}, nil
+	return &SessionService{sessions: sessions, expiry: time.Duration(refreshExpiryDays) * 24 * time.Hour}, nil
 }
 
-// Issue creates a cryptographically random refresh token and stores only its SHA-256 hash.
-func (s *SessionService) Issue(ctx context.Context, userID int64) (string, error) {
-	if userID <= 0 {
-		return "", fmt.Errorf("user ID must be positive")
+func (s *SessionService) Issue(ctx context.Context, principalID int64) (string, error) {
+	if principalID <= 0 {
+		return "", fmt.Errorf("principal ID must be positive")
 	}
-
-	rawToken, err := generateOpaqueRefreshToken()
+	raw, err := generateOpaqueRefreshToken()
 	if err != nil {
 		return "", err
 	}
-
-	if err := s.sessions.Create(
-		ctx,
-		userID,
-		HashRefreshToken(rawToken),
-		time.Now().Add(s.expiry),
-	); err != nil {
+	if err := s.sessions.CreatePrincipal(ctx, principalID, HashRefreshToken(raw), time.Now().Add(s.expiry)); err != nil {
 		return "", err
 	}
-
-	return rawToken, nil
+	return raw, nil
 }
 
-// Rotate invalidates the presented token and returns a one-time replacement.
-func (s *SessionService) Rotate(
-	ctx context.Context,
-	rawToken string,
-) (*models.User, string, error) {
+func (s *SessionService) Rotate(ctx context.Context, rawToken string) (*models.AuthPrincipal, string, error) {
 	if strings.TrimSpace(rawToken) == "" {
 		return nil, "", ErrInvalidRefreshToken
 	}
-
 	replacement, err := generateOpaqueRefreshToken()
 	if err != nil {
 		return nil, "", err
 	}
-
-	user, err := s.sessions.Rotate(
-		ctx,
-		HashRefreshToken(rawToken),
-		HashRefreshToken(replacement),
-		time.Now().Add(s.expiry),
-	)
+	principal, err := s.sessions.RotatePrincipal(ctx, HashRefreshToken(rawToken), HashRefreshToken(replacement), time.Now().Add(s.expiry))
 	if err != nil {
 		return nil, "", err
 	}
-	if user == nil || user.ID <= 0 || user.SchoolID <= 0 || user.Status != "active" {
-		return nil, "", fmt.Errorf("refresh session repository returned invalid user identity")
+	if principal == nil || principal.ID <= 0 || principal.TokenVersion <= 0 || principal.Status != "active" ||
+		(principal.Type != "staff" && principal.Type != "platform_admin" && principal.Type != "parent") ||
+		(principal.Type == "staff" && principal.SchoolID <= 0) || (principal.Type == "parent" && !principal.MobileVerified) {
+		return nil, "", fmt.Errorf("refresh session repository returned invalid principal identity")
 	}
-
-	return user, replacement, nil
+	return principal, replacement, nil
 }
 
-// Revoke is safe to call more than once; unknown token hashes are no-ops.
 func (s *SessionService) Revoke(ctx context.Context, rawToken string) error {
 	if strings.TrimSpace(rawToken) == "" {
 		return ErrInvalidRefreshToken
 	}
-	return s.sessions.Revoke(ctx, HashRefreshToken(rawToken))
+	return s.sessions.RevokePrincipal(ctx, HashRefreshToken(rawToken))
 }
 
 func generateOpaqueRefreshToken() (string, error) {
-	bytes := make([]byte, 32)
-	if _, err := rand.Read(bytes); err != nil {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
 		return "", fmt.Errorf("generate refresh token: %w", err)
 	}
-	return base64.RawURLEncoding.EncodeToString(bytes), nil
+	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
-// HashRefreshToken returns the lowercase hexadecimal SHA-256 digest of a raw token.
 func HashRefreshToken(rawToken string) string {
 	sum := sha256.Sum256([]byte(rawToken))
 	return hex.EncodeToString(sum[:])

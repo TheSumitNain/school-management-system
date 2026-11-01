@@ -31,6 +31,8 @@ func setupRouter(
 	db databasePinger,
 	authHandler *handlers.AuthHandler,
 	tokenService middleware.AccessTokenValidator,
+	principalLoader middleware.PrincipalLoader,
+	permissionLoader middleware.PermissionLoader,
 ) (*gin.Engine, error) {
 	router := gin.Default()
 
@@ -44,14 +46,18 @@ func setupRouter(
 		router.POST("/auth/logout", authHandler.Logout)
 	}
 
-	router.GET("/auth/me", middleware.AuthMiddleware(tokenService), func(c *gin.Context) {
-		userID, _ := c.Get(middleware.ContextUserIDKey)
+	router.GET("/auth/me", middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader), func(c *gin.Context) {
+		principalID, _ := c.Get(middleware.ContextPrincipalIDKey)
+		principalType, _ := c.Get(middleware.ContextPrincipalTypeKey)
 		schoolID, _ := c.Get(middleware.ContextSchoolIDKey)
+		username, _ := c.Get(middleware.ContextUsernameKey)
 
 		c.JSON(http.StatusOK, gin.H{
-			"status":    "success",
-			"user_id":   userID,
-			"school_id": schoolID,
+			"status":         "success",
+			"principal_id":   principalID,
+			"principal_type": principalType,
+			"school_id":      schoolID,
+			"username":       username,
 		})
 	})
 
@@ -120,7 +126,8 @@ func run() error {
 	schoolRepo := repository.NewSchoolRepository(db)
 
 	authService := services.NewAuthService(userRepo, schoolRepo)
-	refreshSessionRepo := repository.NewRefreshSessionRepository(db)
+	refreshSessionRepo := repository.NewPrincipalRefreshSessionRepository(db)
+	principalAuthorizationRepo := repository.NewPrincipalAuthorizationRepository(db)
 
 	sessionService, err := services.NewSessionService(
 		refreshSessionRepo,
@@ -145,7 +152,7 @@ func run() error {
 		sessionService,
 	)
 
-	router, err := setupRouter(db, authHandler, tokenService)
+	router, err := setupRouter(db, authHandler, tokenService, principalAuthorizationRepo, principalAuthorizationRepo)
 
 	if err != nil {
 		return fmt.Errorf("setup router: %w", err)

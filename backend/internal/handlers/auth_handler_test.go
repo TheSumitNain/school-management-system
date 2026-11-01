@@ -15,17 +15,12 @@ import (
 )
 
 type fakeAuthService struct {
-	user *models.User
-	err  error
+	principal *models.AuthPrincipal
+	err       error
 }
 
-func (f fakeAuthService) Authenticate(
-	ctx context.Context,
-	schoolID int64,
-	username string,
-	password string,
-) (*models.User, error) {
-	return f.user, f.err
+func (f fakeAuthService) AuthenticateStaff(_ context.Context, _, _ string) (*models.AuthPrincipal, error) {
+	return f.principal, f.err
 }
 
 type fakeTokenService struct {
@@ -34,14 +29,14 @@ type fakeTokenService struct {
 }
 
 func (f fakeTokenService) GenerateAccessToken(
-	userID, schoolID int64,
+	principalID, tokenVersion int64, principalType string,
 ) (string, error) {
 	return f.token, f.err
 }
 
 type fakeSessionService struct {
 	refreshToken string
-	user         *models.User
+	principal    *models.AuthPrincipal
 	err          error
 	issuedUserID int64
 	rotatedToken string
@@ -53,9 +48,9 @@ func (f *fakeSessionService) Issue(_ context.Context, userID int64) (string, err
 	return f.refreshToken, f.err
 }
 
-func (f *fakeSessionService) Rotate(_ context.Context, refreshToken string) (*models.User, string, error) {
+func (f *fakeSessionService) Rotate(_ context.Context, refreshToken string) (*models.AuthPrincipal, string, error) {
 	f.rotatedToken = refreshToken
-	return f.user, f.refreshToken, f.err
+	return f.principal, f.refreshToken, f.err
 }
 
 func (f *fakeSessionService) Revoke(_ context.Context, refreshToken string) error {
@@ -77,12 +72,7 @@ func setupTestRouter(authService AuthService, tokenService TokenService, session
 
 func TestLoginSuccess(t *testing.T) {
 	authService := fakeAuthService{
-		user: &models.User{
-			ID:       10,
-			SchoolID: 2,
-			Username: "testuser",
-			Status:   "active",
-		},
+		principal: &models.AuthPrincipal{ID: 10, Type: "staff", Status: "active", TokenVersion: 1, SchoolID: 2, Username: "testuser"},
 	}
 	tokenService := fakeTokenService{
 		token: "test-access-token",
@@ -90,7 +80,7 @@ func TestLoginSuccess(t *testing.T) {
 
 	router := setupTestRouter(authService, tokenService, &fakeSessionService{refreshToken: "test-refresh-token"})
 
-	body := `{"school_id":2,"username":"testuser","password":"StrongPass123"}`
+	body := `{"username":"testuser","password":"StrongPass123"}`
 	req := httptest.NewRequest(
 		http.MethodPost,
 		"/auth/login",
@@ -129,7 +119,7 @@ func TestLoginInvalidRequest(t *testing.T) {
 		&fakeSessionService{refreshToken: "test-refresh-token"},
 	)
 
-	body := `{"school_id":0,"username":"","password":""}`
+	body := `{"username":"","password":""}`
 	req := httptest.NewRequest(
 		http.MethodPost,
 		"/auth/login",
@@ -153,7 +143,7 @@ func TestLoginInvalidCredentials(t *testing.T) {
 		&fakeSessionService{},
 	)
 
-	body := `{"school_id":2,"username":"testuser","password":"WrongPassword"}`
+	body := `{"username":"testuser","password":"WrongPassword"}`
 	req := httptest.NewRequest(
 		http.MethodPost,
 		"/auth/login",
@@ -173,18 +163,13 @@ func TestLoginInvalidCredentials(t *testing.T) {
 func TestLoginTokenGenerationFailure(t *testing.T) {
 	router := setupTestRouter(
 		fakeAuthService{
-			user: &models.User{
-				ID:       10,
-				SchoolID: 2,
-				Username: "testuser",
-				Status:   "active",
-			},
+			principal: &models.AuthPrincipal{ID: 10, Type: "staff", Status: "active", TokenVersion: 1, SchoolID: 2, Username: "testuser"},
 		},
 		fakeTokenService{err: errors.New("token generation failed")},
 		&fakeSessionService{},
 	)
 
-	body := `{"school_id":2,"username":"testuser","password":"StrongPass123"}`
+	body := `{"username":"testuser","password":"StrongPass123"}`
 	req := httptest.NewRequest(
 		http.MethodPost,
 		"/auth/login",
@@ -208,7 +193,7 @@ func TestLoginTokenGenerationFailure(t *testing.T) {
 func TestRefreshSuccess(t *testing.T) {
 	sessions := &fakeSessionService{
 		refreshToken: "replacement-refresh-token",
-		user:         &models.User{ID: 10, SchoolID: 2, Username: "testuser", Status: "active"},
+		principal:    &models.AuthPrincipal{ID: 10, Type: "staff", Status: "active", TokenVersion: 1, SchoolID: 2, Username: "testuser"},
 	}
 	router := setupTestRouter(fakeAuthService{}, fakeTokenService{token: "new-access-token"}, sessions)
 

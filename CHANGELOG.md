@@ -6,6 +6,13 @@ This project is under active development. Verification results describe the late
 
 ## [Unreleased]
 
+### Database — V4 identity/RBAC migration draft
+
+- Added a draft additive migration for shared principals, globally unique staff usernames, account subtype tables, permission catalogue, system roles, role assignments, bounded overrides/delegations, principal-bound refresh sessions, MFA/parent OTP storage, and append-only audit events.
+- Preserved existing user IDs and refresh-token family identifiers in the migration design.
+- Added `docs/V4-IMPLEMENTATION-NOTES.md` documenting observed v3 database state, migration scope, compatibility behavior, and blockers.
+- Migration is **not applied and not PostgreSQL-tested**; Go principal-aware authentication, RBAC enforcement, and automated migration tests remain required.
+
 ### Documentation — Approved Phase 1 account and RBAC decisions
 
 - Finalized Phase 1 core roles: Platform Admin, School Admin, Teacher, and Parent.
@@ -105,8 +112,8 @@ This project is under active development. Verification results describe the late
 
 ## Latest Reported Git Checkpoint
 
-- Latest user-reported pushed code checkpoint represented by supplied ZIP: `fe4db1d` — `fix(auth): harden refresh session concurrency`
-- Full commit hash recorded by the ZIP root: `fe4db1d6851399fc68cecb258d8d377587c8dd4a`
+- Latest user-reported pushed code checkpoint represented by supplied ZIP: `cb6af3b` — `docs: finalize phase 1 RBAC and account decisions`
+- Full commit hash recorded by the ZIP root: `cb6af3b5abc5249fba420e2699d16e87b1d14664`
 - The ZIP is a source snapshot without `.git`; verify local `git status -sb` and remote alignment before committing these documentation updates.
 - Branch: `main`; remote: `origin`
 - Later local modifications were reported. Verify the current working tree before committing; this changelog does not assert that it is clean.
@@ -119,3 +126,12 @@ This project is under active development. Verification results describe the late
 - Add a dated or versioned section when preparing a release.
 - Re-run relevant tests after code changes and before recording verification results.
 - Do not claim production readiness until required security, testing and operational controls are in place.
+
+## 2026-11-01 — V4 principal-auth build-fix checkpoint
+
+- Wired the API to principal-based refresh sessions and live principal/permission loaders.
+- Added globally unique staff-principal authentication lookup and service method.
+- Updated `/auth/me` to principal context and revised handler/middleware/API/session tests for principal-based interfaces.
+- Added fail-closed permission resolution: system roles only, explicit DENY overrides, no custom-role or ALLOW override grants until exact delegation linkage is implemented.
+- Added runtime allowlisting for the approved School Admin permission bundle.
+- Full Go tests/vet remain unverified in the review environment because Go 1.27.1 and dependencies were unavailable. V4 migration remains unexecuted and unsafe to run. See `docs/CURRENT-BUILD-FIX-HANDOFF-20261101.md`.

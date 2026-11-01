@@ -1,69 +1,150 @@
 package middleware
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
 
+	"school-management-system/internal/models"
 	"school-management-system/internal/services"
 
 	"github.com/gin-gonic/gin"
 )
 
+var ErrPrincipalNotAuthenticated = models.ErrPrincipalNotAuthenticated
+
 const (
-	ContextUserIDKey   = "auth_user_id"
-	ContextSchoolIDKey = "auth_school_id"
+	ContextPrincipalIDKey   = "auth_principal_id"
+	ContextPrincipalTypeKey = "auth_principal_type"
+	ContextSchoolIDKey      = "auth_school_id"
+	ContextUsernameKey      = "auth_username"
+	ContextPermissionsKey   = "auth_permissions"
 )
 
-// AccessTokenValidator defines the token validation dependency
-// required by the authentication middleware.
 type AccessTokenValidator interface {
 	ValidateAccessToken(tokenString string) (*services.TokenClaims, error)
 }
 
-// AuthMiddleware validates the Bearer access token and stores
-// the authenticated user's identity in the Gin context.
-func AuthMiddleware(tokenService AccessTokenValidator) gin.HandlerFunc {
+// PrincipalLoader must return the current database state, not data copied from
+// the JWT. Its implementation must reject inactive principals, inactive staff
+// schools, unverified parent mobiles, and unsupported subtype combinations.
+type PrincipalLoader interface {
+	LoadPrincipalForAuthentication(ctx context.Context, principalID int64) (*models.AuthPrincipal, error)
+}
+
+// PermissionLoader resolves effective permissions from current RBAC tables on
+// every protected request. It must apply role scope, overrides and delegation
+// ceilings; it must not trust permissions from the token or client.
+type PermissionLoader interface {
+	LoadEffectivePermissions(ctx context.Context, principal *models.AuthPrincipal) ([]string, error)
+}
+
+func AuthMiddleware(tokenService AccessTokenValidator, principals PrincipalLoader, permissions PermissionLoader) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if tokenService == nil {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-				"status":  "error",
-				"message": "Authentication service unavailable",
-			})
+		if tokenService == nil || principals == nil || permissions == nil {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Authentication service unavailable"})
 			return
 		}
-
-		authHeader := c.GetHeader("Authorization")
-		parts := strings.Fields(authHeader)
-
-		if len(parts) != 2 ||
-			!strings.EqualFold(parts[0], "Bearer") {
+		authHeader := strings.Fields(c.GetHeader("Authorization"))
+		if len(authHeader) != 2 || !strings.EqualFold(authHeader[0], "Bearer") {
 			unauthorized(c)
 			return
 		}
-
-		claims, err := tokenService.ValidateAccessToken(parts[1])
+		claims, err := tokenService.ValidateAccessToken(authHeader[1])
 		if err != nil || claims == nil {
 			unauthorized(c)
 			return
 		}
-
-		userID, err := strconv.ParseInt(claims.Subject, 10, 64)
-		if err != nil || userID <= 0 || claims.SchoolID <= 0 {
+		principalID, err := strconv.ParseInt(claims.Subject, 10, 64)
+		if err != nil || principalID <= 0 {
 			unauthorized(c)
 			return
 		}
 
-		c.Set(ContextUserIDKey, userID)
-		c.Set(ContextSchoolIDKey, claims.SchoolID)
+		principal, err := principals.LoadPrincipalForAuthentication(c.Request.Context(), principalID)
+		if err != nil {
+			if errors.Is(err, ErrPrincipalNotAuthenticated) {
+				unauthorized(c)
+			} else {
+				c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unable to authenticate request"})
+			}
+			return
+		}
+		if !validCurrentPrincipal(principal) || principal.Type != claims.PrincipalType || principal.TokenVersion != claims.TokenVersion {
+			unauthorized(c)
+			return
+		}
 
+		effectivePermissions, err := permissions.LoadEffectivePermissions(c.Request.Context(), principal)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unable to resolve authorization"})
+			return
+		}
+
+		c.Set(ContextPrincipalIDKey, principal.ID)
+		c.Set(ContextPrincipalTypeKey, principal.Type)
+		if principal.SchoolID > 0 {
+			c.Set(ContextSchoolIDKey, principal.SchoolID)
+		}
+		if principal.Username != "" {
+			c.Set(ContextUsernameKey, principal.Username)
+		}
+		c.Set(ContextPermissionsKey, permissionSet(effectivePermissions))
 		c.Next()
 	}
 }
 
+// RequirePermission must be added after AuthMiddleware on each protected route.
+// Permissions are already freshly resolved for this request by AuthMiddleware.
+func RequirePermission(permission string) gin.HandlerFunc {
+	permission = strings.TrimSpace(permission)
+	return func(c *gin.Context) {
+		if permission == "" {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Authorization policy unavailable"})
+			return
+		}
+		value, exists := c.Get(ContextPermissionsKey)
+		granted, ok := value.(map[string]struct{})
+		if !exists || !ok {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Authorization context unavailable"})
+			return
+		}
+		if _, allowed := granted[permission]; !allowed {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"status": "error", "message": "Permission denied"})
+			return
+		}
+		c.Next()
+	}
+}
+
+func validCurrentPrincipal(p *models.AuthPrincipal) bool {
+	if p == nil || p.ID <= 0 || p.TokenVersion <= 0 || p.Status != "active" {
+		return false
+	}
+	switch p.Type {
+	case "staff":
+		return p.SchoolID > 0
+	case "platform_admin":
+		return true
+	case "parent":
+		return p.MobileVerified
+	default:
+		return false
+	}
+}
+
+func permissionSet(values []string) map[string]struct{} {
+	set := make(map[string]struct{}, len(values))
+	for _, value := range values {
+		if value = strings.TrimSpace(value); value != "" {
+			set[value] = struct{}{}
+		}
+	}
+	return set
+}
+
 func unauthorized(c *gin.Context) {
-	c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-		"status":  "error",
-		"message": "Authentication required",
-	})
+	c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "Authentication required"})
 }

@@ -1,8 +1,10 @@
+> **Newest handoff — 2026-11-01:** Read `docs/CURRENT-BUILD-FIX-HANDOFF-20261101.md` before following older handoff notes. The V4 principal-auth cutover candidate now updates `main.go`, staff authentication, live principal/permission loaders, and affected tests. Full Go tests are not verified in the review environment (Go 1.27.1 unavailable); run the exact commands in that handoff on Windows. V4 migration has not been run and must not be run. Do not commit/push.
+
 # School Management System — Project Handoff
 
 > **Purpose:** This document is the primary handoff reference for continuing the existing School Management System project. Keep it synchronized with the source code, tests, database migrations, and other project documentation.
 >
-> **Last confirmed pushed repository checkpoint:** `fe4db1d` — `fix(auth): harden refresh session concurrency`
+> **Last confirmed pushed repository checkpoint:** `cb6af3b` — `docs: finalize phase 1 RBAC and account decisions`
 >
 > **Previous code/test milestone:** `a705f9a` — `test(auth): add PostgreSQL refresh session integration tests`
 >
@@ -13,6 +15,16 @@
 > **Git status:** The supplied ZIP has no `.git` metadata, so its working-tree state cannot be determined. The latest prior local report included an untracked `APPLY-DOCS.txt`; inspect `git status -sb` in the actual local repository before committing.
 >
 > **Important:** These details describe the last reported state. Check the actual repository before assuming that no newer changes exist.
+
+## 0.1 Latest V4 Work (Current)
+
+The supplied archive root records commit `cb6af3b5abc5249fba420e2699d16e87b1d14664` (`cb6af3b`, `docs: finalize phase 1 RBAC and account decisions`). The uploaded ZIP has been inspected and its commit hash matches the user's reported checkpoint.
+
+The user verified the development database: migration v3, `dirty = false`; 1 school; 1 user; 4 refresh sessions; 0 active and 0 expired. Username duplicate and canonical-format preflight checks returned no rows. Exact existing columns, indexes, and FK names were inspected.
+
+A V4 SQL draft now exists at `backend/migrations/000004_add_principal_rbac_foundation.up.sql`. Read `docs/V4-IMPLEMENTATION-NOTES.md` before touching it. **Do not run V4 yet:** it has not been PostgreSQL-tested, and the Go code still uses user-ID JWT subjects and does not enforce RBAC or principal token versions. The existing staff account's role is unknown and must not be guessed.
+
+The verified current refresh-session code uses family advisory locks, per-user cross-family advisory locks, replay detection, and family-wide revocation. Preserve all of these during the principal-aware session refactor.
 
 ## 1. Project Overview
 
@@ -71,13 +83,13 @@ Verify the actual route registration and request/response structures before chan
 
 ### Latest Git checkpoint
 
-- **Last confirmed pushed repository commit:** `fe4db1d`
+- **Last confirmed pushed repository commit:** `cb6af3b`
 - **Message:** `docs: reconcile authentication testing status`
 - **Branch:** `main`
 - **Remote:** `origin/main`
 - **Last reported status:** local modifications existed in refresh-session repository/test and documentation files; verify with `git status -sb`.
 
-The supplied source ZIP root records full commit `fe4db1d6851399fc68cecb258d8d377587c8dd4a`. It includes the refresh-session cross-family concurrency implementation and regression test. The ZIP has no `.git` metadata; verify the actual local repository and remote before committing. The latest user-reported local status previously included an untracked `APPLY-DOCS.txt`; inspect it rather than deleting or confusing it with the archive `APPLY-CHANGES.txt`.
+The supplied source ZIP root records full commit `cb6af3b5abc5249fba420e2699d16e87b1d14664`. It includes the refresh-session cross-family concurrency implementation and regression test. The ZIP has no `.git` metadata; verify the actual local repository and remote before committing. The latest user-reported local status previously included an untracked `APPLY-DOCS.txt`; inspect it rather than deleting or confusing it with the archive `APPLY-CHANGES.txt`.
 
 Never commit `.env` files, passwords, JWT signing secrets, real student data, or other sensitive credentials. Never ask the user to paste real secret values into chat.
 
@@ -405,7 +417,7 @@ The refresh-token lifecycle implementation was previously committed in:
 
 Earlier authentication work was followed by the PostgreSQL integration-test milestone:
 
-`fe4db1d fix(auth): harden refresh session concurrency`
+`cb6af3b docs: finalize phase 1 RBAC and account decisions`
 
 Known files include:
 
@@ -889,32 +901,32 @@ After running `gofmt`, inspect the resulting diff to ensure formatting did not i
 - PostgreSQL refresh-session integration tests for rotation, replay, logout, expiry, and concurrency.
 - Reported full backend test-suite success.
 - Reported `go vet` success.
-- Code/test milestone `a705f9a`, documentation checkpoint `d85e1ef`, and latest concurrency-hardening checkpoint `fe4db1d` were reported committed and pushed.
+- Code/test milestone `a705f9a`, documentation checkpoint `d85e1ef`, and latest concurrency-hardening checkpoint `cb6af3b` were reported committed and pushed.
 
-### 13.2 Documentation Audit Follow-up
+### 13.2 V4 Migration Draft and Application Cutover
 
-The source ZIP supplied for checkpoint `fe4db1d` includes the cross-family inactive-user race regression implementation. The current documentation update records the approved Phase 1 RBAC/account decisions in README, PROGRESS, CHANGELOG, REQUIREMENTS, ARCHITECTURE, DATABASE, API, SECURITY, TESTING, and this handoff, with the detailed matrix in `docs/PHASE1-RBAC.md`. These documentation changes are not yet committed to the user's local repository. Remaining engineering work includes RBAC schema/implementation, global username migration, tenant/resource authorization, parent OTP, staff password lifecycle, access-token invalidation, broader migration and HTTP tests, and production controls.
+The supplied `cb6af3b` archive contains the current authentication source and the approved RBAC/account documentation. A V4 schema migration draft has now been added, with implementation notes in `docs/V4-IMPLEMENTATION-NOTES.md`. The migration is not applied or PostgreSQL-tested. The source application still uses user-ID JWT subjects and has no RBAC enforcement; do not treat the schema draft as a completed security feature.
 
-After applying the documentation bundle locally:
+Next engineering sequence:
 
-1. Inspect `git diff --check` and `git diff --stat`.
-2. Verify `backend/.env` is ignored and not tracked; never include it in an archive or commit.
-3. Confirm no application source files changed as part of a documentation-only update.
-4. Do not report a new Go test result unless the command has actually been run.
-5. Commit and push only after reviewing the final diff and confirming the working tree contains only intended files.
+1. Review and statically inspect the V4 migration and its forward-only rollback warning.
+2. Build and test the principal-aware Go auth/session model, preserving family-level and cross-family locking, replay detection, and revocation.
+3. Implement database-backed principal status/token-version validation and RBAC evaluation on every protected request.
+4. Add migration integration tests on a disposable PostgreSQL 18 database, including compatibility with existing staff login/session creation.
+5. Explicitly confirm the existing staff account's intended role; do not guess it.
+6. Only after all tests pass, back up and apply V4 to the intended development database.
+7. Update docs and changelog from verified implementation/test results, then review and commit/push the exact diff.
 
 ### 13.3 Recommended Engineering Priorities
 
-After applying and committing the documentation update:
-
-1. Verify the actual local Git state and confirm it matches the supplied `fe4db1d` source checkpoint.
-2. Design additive identity/RBAC migrations from current schema v3, preserving user IDs, refresh-session references, and refresh-token concurrency behavior.
-3. Resolve global case-insensitive staff username uniqueness and the target username + password login contract; detect cross-school duplicates before migration.
-4. Design distinct global Platform Admin, one-school staff, and cross-school parent identity/link models without multi-school staff membership.
-5. Implement RBAC, custom roles, bounded permission overrides, staff password lifecycle, teacher assignment scope, and parent-child authorization with automated tests.
-6. Complete user-profile retrieval, immediate access-token revocation, admin MFA, login rate limiting, lockout, and security-event monitoring.
+1. Verify the actual local Git state and confirm it matches the supplied `cb6af3b` source checkpoint; preserve the untracked `APPLY-DOCS.txt`.
+2. Review the V4 migration draft and complete Go principal-aware login, JWT claims, refresh-session rotation/revocation, principal status/token-version checks, and authorization middleware.
+3. Implement RBAC evaluation, custom roles, bounded permission overrides, and next-request permission updates with automated tests.
+4. Add migration integration tests against a disposable PostgreSQL 18 database. Do not apply V4 to the development database until those tests pass.
+5. Explicitly confirm the existing staff account's role and provision its principal-role assignment through a controlled, audited operation.
+6. Complete teacher teaching/class-in-charge assignment enforcement, parent-child linking and OTP, staff password lifecycle, mandatory admin MFA, login rate limiting, lockout, and audit workflows.
 7. Implement secure school onboarding, invitations, and password-reset workflows.
-8. Build academic, student, attendance, and parent features after their authorization model is enforced.
+8. Build academic, student, attendance, timetable, homework, results, and parent features only after authorization enforcement is in place.
 9. Perform production deployment, monitoring, backup, recovery, and security reviews.
 
 Do not reimplement refresh-token rotation from scratch. Inspect the existing code and extend it only where verification identifies a real gap.
@@ -929,7 +941,7 @@ Copy the following into a new ChatGPT conversation when needed:
 >
 > Explain in Hindi/Hinglish with a friendly tone. Work on one small task at a time. Provide exact commands and complete replacement code when appropriate. Explain why each step is needed and wait for my output before proceeding. Do not assume a command succeeded without seeing the result.
 >
-> The latest user-reported repository checkpoint represented by the supplied ZIP is `fe4db1d`, `fix(auth): harden refresh session concurrency`; the previous code/test milestone was `a705f9a`, `test(auth): add PostgreSQL refresh session integration tests`. The ZIP root records full hash `fe4db1d6851399fc68cecb258d8d377587c8dd4a`. The refresh-token implementation includes opaque random tokens, SHA-256 hash storage, rotation, logout, token-family replay handling, family-wide advisory locking, and per-user cross-family serialization. The user reported `go test -count=1 ./...`, the opt-in PostgreSQL refresh-session integration suite (including the cross-family inactive-user race regression), and `go vet ./...` passing after the concurrency changes. Verify the current local state before relying on those results.
+> The latest user-reported repository checkpoint represented by the supplied ZIP is `cb6af3b`, `docs: finalize phase 1 RBAC and account decisions`; the previous code/test milestone was `a705f9a`, `test(auth): add PostgreSQL refresh session integration tests`. The ZIP root records full hash `cb6af3b5abc5249fba420e2699d16e87b1d14664`. The refresh-token implementation includes opaque random tokens, SHA-256 hash storage, rotation, logout, token-family replay handling, family-wide advisory locking, and per-user cross-family serialization. The user reported `go test -count=1 ./...`, the opt-in PostgreSQL refresh-session integration suite (including the cross-family inactive-user race regression), and `go vet ./...` passing after the concurrency changes. Verify the current local state before relying on those results.
 >
 > The backend includes PostgreSQL connectivity, health/readiness endpoints, migrations for `schools`, `users`, and `refresh_sessions`, password hashing, user/school repositories, an authentication service, JWT access-token generation/validation, `POST /auth/login`, authentication middleware, `GET /auth/me`, `POST /auth/refresh`, and `POST /auth/logout`.
 >

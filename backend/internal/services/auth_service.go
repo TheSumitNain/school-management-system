@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"school-management-system/internal/models"
@@ -137,4 +138,51 @@ func (s *AuthService) Authenticate(
 	}
 
 	return user, nil
+}
+
+// staffPrincipalRepository resolves globally unique usernames to canonical
+// principals after the V4 identity cutover.
+type staffPrincipalRepository interface {
+	GetStaffPrincipalByUsername(ctx context.Context, username string) (*models.AuthPrincipal, error)
+}
+
+// AuthenticateStaff authenticates the V4 globally unique staff username.
+func (s *AuthService) AuthenticateStaff(ctx context.Context, username, password string) (*models.AuthPrincipal, error) {
+	username = strings.TrimSpace(username)
+	if username == "" || password == "" {
+		return nil, ErrInvalidCredentials
+	}
+
+	repo, ok := s.users.(staffPrincipalRepository)
+	if !ok {
+		return nil, fmt.Errorf("staff principal repository is not configured")
+	}
+
+	principal, err := repo.GetStaffPrincipalByUsername(ctx, username)
+	if err != nil {
+		switch {
+		case errors.Is(err, repository.ErrUserNotFound):
+			return nil, ErrInvalidCredentials
+		case errors.Is(err, repository.ErrStaffInactive):
+			return nil, ErrUserInactive
+		case errors.Is(err, repository.ErrSchoolInactive):
+			return nil, ErrSchoolInactive
+		default:
+			return nil, err
+		}
+	}
+
+	// Fetch the password hash through the canonical username lookup. This
+	// keeps password material out of AuthPrincipal and response models.
+	user, err := s.users.GetUserByUsername(ctx, principal.SchoolID, principal.Username)
+	if err != nil {
+		if errors.Is(err, repository.ErrUserNotFound) {
+			return nil, ErrInvalidCredentials
+		}
+		return nil, err
+	}
+	if user.Status != "active" || !CheckPassword(password, user.PasswordHash) {
+		return nil, ErrInvalidCredentials
+	}
+	return principal, nil
 }

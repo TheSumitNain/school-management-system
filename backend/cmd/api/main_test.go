@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"school-management-system/internal/models"
 	"school-management-system/internal/services"
 
 	"github.com/gin-gonic/gin"
@@ -15,6 +16,24 @@ import (
 
 type fakeDatabase struct {
 	err error
+}
+
+type fakePrincipalLoader struct {
+	principal *models.AuthPrincipal
+	err       error
+}
+
+func (f fakePrincipalLoader) LoadPrincipalForAuthentication(_ context.Context, _ int64) (*models.AuthPrincipal, error) {
+	return f.principal, f.err
+}
+
+type fakePermissionLoader struct {
+	permissions []string
+	err         error
+}
+
+func (f fakePermissionLoader) LoadEffectivePermissions(_ context.Context, _ *models.AuthPrincipal) ([]string, error) {
+	return f.permissions, f.err
 }
 
 type fakeTokenValidator struct {
@@ -39,7 +58,7 @@ func (f fakeDatabase) Ping(ctx context.Context) error {
 func TestHealthEndpoint(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	router, err := setupRouter(fakeDatabase{}, nil, nil)
+	router, err := setupRouter(fakeDatabase{}, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("failed to setup router: %v", err)
 	}
@@ -73,7 +92,7 @@ func TestHealthEndpoint(t *testing.T) {
 func TestReadyEndpointWhenDatabaseIsAvailable(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	router, err := setupRouter(fakeDatabase{}, nil, nil)
+	router, err := setupRouter(fakeDatabase{}, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("failed to setup router: %v", err)
 	}
@@ -102,7 +121,7 @@ func TestReadyEndpointWhenDatabaseFails(t *testing.T) {
 
 	router, err := setupRouter(fakeDatabase{
 		err: errors.New("database unavailable"),
-	}, nil, nil)
+	}, nil, nil, nil, nil)
 
 	if err != nil {
 		t.Fatalf("failed to setup router: %v", err)
@@ -139,11 +158,12 @@ func TestAuthMeWithValidToken(t *testing.T) {
 			RegisteredClaims: jwt.RegisteredClaims{
 				Subject: "10",
 			},
-			SchoolID: 2,
+			PrincipalType: "staff",
+			TokenVersion:  1,
 		},
 	}
 
-	router, err := setupRouter(fakeDatabase{}, nil, validator)
+	router, err := setupRouter(fakeDatabase{}, nil, validator, fakePrincipalLoader{principal: &models.AuthPrincipal{ID: 10, Type: "staff", Status: "active", TokenVersion: 1, SchoolID: 2, Username: "tester"}}, fakePermissionLoader{})
 	if err != nil {
 		t.Fatalf("failed to setup router: %v", err)
 	}
@@ -159,7 +179,7 @@ func TestAuthMeWithValidToken(t *testing.T) {
 			http.StatusOK, rec.Code, rec.Body.String())
 	}
 
-	expectedBody := `{"school_id":2,"status":"success","user_id":10}`
+	expectedBody := `{"principal_id":10,"principal_type":"staff","school_id":2,"status":"success","username":"tester"}`
 	if rec.Body.String() != expectedBody {
 		t.Fatalf("expected body %s, got %s", expectedBody, rec.Body.String())
 	}
@@ -168,7 +188,7 @@ func TestAuthMeWithValidToken(t *testing.T) {
 func TestAuthMeWithoutToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	router, err := setupRouter(fakeDatabase{}, nil, fakeTokenValidator{})
+	router, err := setupRouter(fakeDatabase{}, nil, fakeTokenValidator{}, fakePrincipalLoader{}, fakePermissionLoader{})
 	if err != nil {
 		t.Fatalf("failed to setup router: %v", err)
 	}
@@ -186,7 +206,7 @@ func TestAuthMeWithoutToken(t *testing.T) {
 func TestAuthMeWithInvalidToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	router, err := setupRouter(fakeDatabase{}, nil, fakeTokenValidator{})
+	router, err := setupRouter(fakeDatabase{}, nil, fakeTokenValidator{}, fakePrincipalLoader{}, fakePermissionLoader{})
 	if err != nil {
 		t.Fatalf("failed to setup router: %v", err)
 	}

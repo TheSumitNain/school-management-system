@@ -11,34 +11,30 @@ import (
 )
 
 type fakeRefreshSessionRepository struct {
-	user         *models.User
-	createUserID int64
-	createHash   string
-	createExpiry time.Time
-	oldHash      string
-	newHash      string
-	newExpiry    time.Time
-	revokeHash   string
-	createErr    error
-	rotateErr    error
-	revokeErr    error
+	principal         *models.AuthPrincipal
+	createPrincipalID int64
+	createHash        string
+	createExpiry      time.Time
+	oldHash           string
+	newHash           string
+	newExpiry         time.Time
+	revokeHash        string
+	createErr         error
+	rotateErr         error
+	revokeErr         error
 }
 
-func (f *fakeRefreshSessionRepository) Create(
-	_ context.Context, userID int64, tokenHash string, expiresAt time.Time,
-) error {
-	f.createUserID, f.createHash, f.createExpiry = userID, tokenHash, expiresAt
+func (f *fakeRefreshSessionRepository) CreatePrincipal(_ context.Context, principalID int64, tokenHash string, expiresAt time.Time) error {
+	f.createPrincipalID, f.createHash, f.createExpiry = principalID, tokenHash, expiresAt
 	return f.createErr
 }
 
-func (f *fakeRefreshSessionRepository) Rotate(
-	_ context.Context, oldHash, newHash string, expiresAt time.Time,
-) (*models.User, error) {
+func (f *fakeRefreshSessionRepository) RotatePrincipal(_ context.Context, oldHash, newHash string, expiresAt time.Time) (*models.AuthPrincipal, error) {
 	f.oldHash, f.newHash, f.newExpiry = oldHash, newHash, expiresAt
-	return f.user, f.rotateErr
+	return f.principal, f.rotateErr
 }
 
-func (f *fakeRefreshSessionRepository) Revoke(_ context.Context, tokenHash string) error {
+func (f *fakeRefreshSessionRepository) RevokePrincipal(_ context.Context, tokenHash string) error {
 	f.revokeHash = tokenHash
 	return f.revokeErr
 }
@@ -69,8 +65,8 @@ func TestIssueStoresOnlyTokenHash(t *testing.T) {
 	if rawToken == "" {
 		t.Fatal("expected a non-empty refresh token")
 	}
-	if repo.createUserID != 12 {
-		t.Fatalf("stored user ID = %d, want 12", repo.createUserID)
+	if repo.createPrincipalID != 12 {
+		t.Fatalf("stored user ID = %d, want 12", repo.createPrincipalID)
 	}
 	if repo.createHash != HashRefreshToken(rawToken) || repo.createHash == rawToken {
 		t.Fatal("repository must receive only the token hash")
@@ -82,18 +78,18 @@ func TestIssueStoresOnlyTokenHash(t *testing.T) {
 
 func TestRotateHashesBothTokensAndReturnsReplacement(t *testing.T) {
 	repo := &fakeRefreshSessionRepository{
-		user: &models.User{ID: 12, SchoolID: 3, Username: "user", Status: "active"},
+		principal: &models.AuthPrincipal{ID: 12, Type: "staff", Status: "active", TokenVersion: 1, SchoolID: 3, Username: "user"},
 	}
 	service, err := NewSessionService(repo, 7)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	user, replacement, err := service.Rotate(context.Background(), "old-token")
+	principal, replacement, err := service.Rotate(context.Background(), "old-token")
 	if err != nil {
 		t.Fatalf("Rotate() error: %v", err)
 	}
-	if user.ID != 12 || replacement == "" || replacement == "old-token" {
+	if principal.ID != 12 || replacement == "" || replacement == "old-token" {
 		t.Fatal("expected user and a new refresh token")
 	}
 	if repo.oldHash != HashRefreshToken("old-token") {

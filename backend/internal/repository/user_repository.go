@@ -14,9 +14,11 @@ import (
 )
 
 var (
-	ErrUserNotFound  = errors.New("user not found")
-	ErrUsernameTaken = errors.New("username already exists in this school")
-	ErrInvalidUser   = errors.New("invalid user data")
+	ErrUserNotFound   = errors.New("user not found")
+	ErrUsernameTaken  = errors.New("username already exists")
+	ErrInvalidUser    = errors.New("invalid user data")
+	ErrStaffInactive  = errors.New("staff account is inactive")
+	ErrSchoolInactive = errors.New("school is inactive")
 )
 
 type UserRepository struct {
@@ -108,7 +110,7 @@ func (r *UserRepository) CreateUser(
 
 		if errors.As(err, &pgErr) &&
 			pgErr.Code == "23505" &&
-			pgErr.ConstraintName == "users_school_username_unique" {
+			pgErr.ConstraintName == "ux_users_username_global" {
 			return nil, ErrUsernameTaken
 		}
 
@@ -116,4 +118,53 @@ func (r *UserRepository) CreateUser(
 	}
 
 	return &user, nil
+}
+
+// GetStaffPrincipalByUsername resolves a globally unique staff username to its
+// canonical V4 principal and verifies the associated school is active.
+func (r *UserRepository) GetStaffPrincipalByUsername(
+	ctx context.Context,
+	username string,
+) (*models.AuthPrincipal, error) {
+	username = strings.TrimSpace(username)
+	if username == "" {
+		return nil, ErrInvalidUser
+	}
+
+	const query = `
+SELECT ap.id, ap.principal_type, ap.status, ap.token_version,
+       u.school_id, u.username, u.status, s.status
+FROM users u
+JOIN auth_principals ap ON ap.id = u.principal_id
+JOIN schools s ON s.id = u.school_id
+WHERE LOWER(u.username) = LOWER($1)
+  AND ap.principal_type = 'staff'
+`
+
+	var principal models.AuthPrincipal
+	var userStatus string
+	var schoolStatus string
+	if err := r.db.QueryRow(ctx, query, username).Scan(
+		&principal.ID,
+		&principal.Type,
+		&principal.Status,
+		&principal.TokenVersion,
+		&principal.SchoolID,
+		&principal.Username,
+		&userStatus,
+		&schoolStatus,
+	); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrUserNotFound
+		}
+		return nil, fmt.Errorf("get staff principal by username: %w", err)
+	}
+
+	if principal.Status != "active" || userStatus != "active" {
+		return nil, ErrStaffInactive
+	}
+	if schoolStatus != "active" {
+		return nil, ErrSchoolInactive
+	}
+	return &principal, nil
 }
