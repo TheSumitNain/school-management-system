@@ -467,17 +467,43 @@ CREATE INDEX ix_refresh_sessions_principal_active
 
 -- Transitional compatibility: the current staff session service inserts user_id
 -- only. Resolve principal_id for staff; future platform/parent services supply it.
+-- Keep the legacy user_id and canonical principal_id columns synchronized
+-- for staff sessions, regardless of which identity the caller supplies.
 CREATE OR REPLACE FUNCTION assign_refresh_session_principal() RETURNS trigger
-LANGUAGE plpgsql AS $$
+LANGUAGE plpgsql AS $
+DECLARE
+    v_user_principal_id BIGINT;
+    v_staff_user_id BIGINT;
 BEGIN
-    IF NEW.principal_id IS NULL AND NEW.user_id IS NOT NULL THEN
-        SELECT principal_id INTO NEW.principal_id FROM users WHERE id = NEW.user_id;
+    IF NEW.user_id IS NOT NULL THEN
+        SELECT principal_id INTO v_user_principal_id
+          FROM users
+         WHERE id = NEW.user_id;
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'refresh session user does not exist';
+        END IF;
+
+        IF NEW.principal_id IS NULL THEN
+            NEW.principal_id := v_user_principal_id;
+        ELSIF NEW.principal_id IS DISTINCT FROM v_user_principal_id THEN
+            RAISE EXCEPTION 'refresh session user_id and principal_id do not match';
+        END IF;
+    ELSIF NEW.principal_id IS NOT NULL THEN
+        SELECT id INTO v_staff_user_id
+          FROM users
+         WHERE principal_id = NEW.principal_id;
+
+        IF FOUND THEN
+            NEW.user_id := v_staff_user_id;
+        END IF;
     END IF;
+
     RETURN NEW;
 END;
-$$;
+$;
 CREATE TRIGGER trg_refresh_sessions_assign_principal
-BEFORE INSERT OR UPDATE OF user_id ON refresh_sessions
+BEFORE INSERT OR UPDATE OF user_id, principal_id ON refresh_sessions
 FOR EACH ROW EXECUTE FUNCTION assign_refresh_session_principal();
 
 CREATE TABLE principal_mfa_credentials (
