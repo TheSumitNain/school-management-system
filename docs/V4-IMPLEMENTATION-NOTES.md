@@ -106,3 +106,10 @@ Never paste `.env` values, JWT secrets, passwords, OTPs, MFA secrets, or real st
 - Kept the approved 51-key seed unchanged and strengthened the assertion with the same explicit expected-key array plus bidirectional `EXCEPT` checks. It now detects missing and unexpected grants as well as count drift.
 - The assertion targets School Admin system roles only and confirms each such role is staff-principal, school-scoped, and tied to a non-NULL school. It does not change the permission bundle or authorize custom-role grants.
 - Source-level review only. PostgreSQL execution/integration tests have not been run; migration v4 remains unapplied.
+
+### C11 — Teacher exact permission set
+
+- Restricted the Teacher system-role seed to active catalogue entries in the school permission scope and to staff, school-scoped, non-NULL-school system Teacher roles.
+- Added a migration assertion requiring exactly one Teacher system role per school and exactly the seven approved default keys: `students.read_basic`, `attendance.read`, `attendance.mark`, `attendance.update_same_day`, `timetable.read`, `homework.read`, and `notices.read`. Bidirectional `EXCEPT` checks detect missing and unexpected grants; a count check alone is not relied on.
+- The bundle does not grant attendance access across all classes. API authorization must still require the exact class-in-charge assignment for attendance read/mark/same-day correction, and must enforce teaching-assignment scope and the approved basic-student field allowlist. Subject teaching assignment alone does not grant attendance access. Past attendance correction remains School Admin-only.
+- This is source-level review only. PostgreSQL execution/integration tests have not been run; migration v4 remains unapplied.
