@@ -137,3 +137,4 @@ This project is under active development. Verification results describe the late
 - Added fail-closed permission resolution: system roles only, explicit DENY overrides, no custom-role or ALLOW override grants until exact delegation linkage is implemented.
 - Added runtime allowlisting for the approved School Admin permission bundle.
 - Full Go tests/vet remain unverified in the review environment because Go 1.27.1 and dependencies were unavailable. V4 migration remains unexecuted and unsafe to run. See `docs/CURRENT-BUILD-FIX-HANDOFF-20261101.md`.
+- V4 C4 hardening: principal-role assignments now reject inactive/missing target principals; School Admin provisioning requires an active Platform Admin holding the `platform.school_admins.create` system-role grant; routine staff role assignment requires an active same-school School Admin with the `roles.assign` system-role grant and no explicit DENY override. Migration remains unapplied and PostgreSQL-unverified.
