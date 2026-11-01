@@ -13,6 +13,7 @@ This project is under active development. Verification results describe the late
 - Added `docs/V4-IMPLEMENTATION-NOTES.md` documenting observed v3 database state, migration scope, compatibility behavior, and blockers.
 - Migration is **not applied and not PostgreSQL-tested**; Go principal-aware authentication, RBAC enforcement, and automated migration tests remain required.
 - Added a V4 username preflight that validates normalized legacy usernames, detects global collisions before changing data, reports affected user IDs, and only then canonicalizes case/outer whitespace. It does not silently rename invalid or colliding accounts.
+- Added database guardrails for custom-role insertion: runtime inserts cannot create system/platform/global roles, must be school-scoped staff roles created by an active staff principal in that school, and cannot change a role's system classification or creator afterward. Exact `roles.create_custom` authorization remains an API responsibility.
 
 ### Documentation — Approved Phase 1 account and RBAC decisions
 
