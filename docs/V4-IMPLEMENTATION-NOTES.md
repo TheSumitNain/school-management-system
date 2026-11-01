@@ -85,3 +85,10 @@ Never paste `.env` values, JWT secrets, passwords, OTPs, MFA secrets, or real st
 - Explicit DENY overrides remain effective because they reduce access; user ALLOW overrides are ignored. Custom-role assignments may exist in data but their grants do not enter the effective permission set.
 - **Do not enable custom-role permission grants or ALLOW overrides** until the schema stores an exact delegation ID on each applicable grant, enforces a composite FK tying delegation ID + school + permission together, and the resolver checks that exact delegation remains active. A re-grant must create a new delegation ID so old grants cannot revive.
 - No code/schema change was required for this audit item; the existing resolver is intentionally fail-closed. Source review only; no PostgreSQL execution or Go test was run for this documentation-only audit. Migration v4 remains unapplied.
+### C8 — Audit events: UPDATE, DELETE and TRUNCATE protection
+
+- Existing row-level `BEFORE UPDATE OR DELETE` trigger rejects mutation of audit rows.
+- Added a statement-level `BEFORE TRUNCATE` trigger using the same rejection function. PostgreSQL TRUNCATE does not fire row-level triggers, so the separate statement trigger is required.
+- This does not make the table tamper-proof against its owner or a superuser. Before deployment, keep `audit_events` owned by a separate migration/administrative role; the application role must not own the table and should receive only the required `INSERT` and `SELECT` privileges, with `UPDATE`, `DELETE`, and `TRUNCATE` denied.
+- Do not grant application role membership or ownership paths that let it assume the owner role. Review actual role inheritance and deployment grants once the production role names are defined.
+- Source-level review only. PostgreSQL execution/integration tests have not been run; migration v4 remains unapplied.
