@@ -12,6 +12,7 @@ This project is under active development. Verification results describe the late
 - Preserved existing user IDs and refresh-token family identifiers in the migration design.
 - Added `docs/V4-IMPLEMENTATION-NOTES.md` documenting observed v3 database state, migration scope, compatibility behavior, and blockers.
 - Migration is **not applied and not PostgreSQL-tested**; Go principal-aware authentication, RBAC enforcement, and automated migration tests remain required.
+- Added a V4 username preflight that validates normalized legacy usernames, detects global collisions before changing data, reports affected user IDs, and only then canonicalizes case/outer whitespace. It does not silently rename invalid or colliding accounts.
 
 ### Documentation — Approved Phase 1 account and RBAC decisions
 
