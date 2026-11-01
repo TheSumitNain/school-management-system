@@ -180,6 +180,7 @@ INSERT INTO permissions (permission_key, description, scope_type, is_delegable) 
 ('platform.school_admins.create','Provision or invite a School Admin','platform',FALSE),
 ('platform.school_admins.disable','Disable a School Admin account','platform',FALSE),
 ('platform.audit.read','Read platform-level audit events','platform',FALSE),
+('platform.permissions.delegate','Grant school permission delegation ceilings','platform',FALSE),
 ('school.settings.read','View school settings','school',TRUE),
 ('school.settings.update','Update school settings','school',FALSE),
 ('school.audit.read','Read authorized school audit events','school',FALSE),
@@ -245,14 +246,16 @@ CREATE OR REPLACE FUNCTION protect_permission_identity_scope() RETURNS trigger
 LANGUAGE plpgsql AS $$
 BEGIN
     IF NEW.permission_key IS DISTINCT FROM OLD.permission_key OR
-       NEW.scope_type IS DISTINCT FROM OLD.scope_type THEN
-        RAISE EXCEPTION 'permission key and scope are immutable';
+       NEW.scope_type IS DISTINCT FROM OLD.scope_type OR
+       NEW.is_delegable IS DISTINCT FROM OLD.is_delegable THEN
+        RAISE EXCEPTION
+            'permission identity, scope, and delegability are immutable';
     END IF;
     RETURN NEW;
 END;
 $$;
 CREATE TRIGGER trg_protect_permission_identity_scope
-BEFORE UPDATE OF permission_key, scope_type ON permissions
+BEFORE UPDATE OF permission_key, scope_type, is_delegable ON permissions
 FOR EACH ROW EXECUTE FUNCTION protect_permission_identity_scope();
 
 CREATE TABLE roles (
@@ -309,9 +312,96 @@ CREATE TABLE role_permissions (
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM roles r CROSS JOIN permissions p
 WHERE r.role_key = 'platform_admin' AND r.scope_type = 'platform' AND p.scope_type = 'platform';
+
+-- School Admin receives only the explicitly approved Phase 1 permission bundle.
+-- Never grant every school-scoped permission automatically.
 INSERT INTO role_permissions (role_id, permission_id)
-SELECT r.id, p.id FROM roles r CROSS JOIN permissions p
-WHERE r.role_key = 'school_admin' AND r.scope_type = 'school' AND p.scope_type = 'school';
+SELECT r.id, p.id
+FROM roles r
+JOIN permissions p
+  ON p.scope_type = 'school'
+   AND p.permission_key IN (
+    'school.settings.read',
+    'school.settings.update',
+    'school.audit.read',
+    'academic_years.read',
+    'academic_years.manage',
+    'classes.read',
+    'classes.manage',
+    'subjects.read',
+    'subjects.manage',
+    'teacher_assignments.read',
+    'teacher_assignments.manage',
+    'class_incharge_assignments.read',
+    'class_incharge_assignments.manage',
+    'students.read_basic',
+    'students.read_sensitive',
+    'students.create',
+    'students.update',
+    'students.archive',
+    'attendance.read',
+    'attendance.mark',
+    'attendance.update_same_day',
+    'attendance.correct_past',
+    'timetable.read',
+    'timetable.manage',
+    'homework.read',
+    'homework.create',
+    'homework.update',
+    'homework.delete',
+    'exams.read',
+    'exams.manage',
+    'results.read',
+    'results.enter',
+    'results.update',
+    'results.publish',
+    'notices.read',
+    'notices.create',
+    'notices.update',
+    'notices.publish',
+    'notices.delete',
+    'users.read',
+    'users.create',
+    'users.update',
+    'users.disable',
+    'users.password_reset',
+    'roles.read',
+    'roles.create_custom',
+    'roles.update_custom',
+    'roles.assign',
+    'permissions.read',
+    'permissions.assign',
+    'permissions.override'
+  )
+WHERE r.role_key = 'school_admin'
+  AND r.scope_type = 'school';
+
+-- Fail migration if any School Admin role does not receive
+-- exactly the 51 permissions approved for Phase 1.
+DO $$
+DECLARE
+    v_role RECORD;
+    v_permission_count INTEGER;
+BEGIN
+    FOR v_role IN
+        SELECT id FROM roles
+        WHERE role_key = 'school_admin'
+          AND scope_type = 'school'
+    LOOP
+        SELECT COUNT(*)
+          INTO v_permission_count
+          FROM role_permissions
+         WHERE role_id = v_role.id;
+
+        IF v_permission_count <> 51 THEN
+            RAISE EXCEPTION
+                'School Admin role % has % permissions; expected exactly 51',
+                v_role.id, v_permission_count;
+        END IF;
+    END LOOP;
+END;
+$$;
+
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM roles r JOIN permissions p ON p.permission_key IN
  ('students.read_basic','attendance.read','attendance.mark','attendance.update_same_day',
@@ -685,17 +775,44 @@ CREATE OR REPLACE FUNCTION validate_permission_delegation() RETURNS trigger
 LANGUAGE plpgsql AS $$
 BEGIN
     IF NOT EXISTS (
-        SELECT 1 FROM permissions
-         WHERE id = NEW.permission_id AND scope_type = 'school' AND is_delegable = TRUE
+        SELECT 1
+          FROM permissions
+         WHERE id = NEW.permission_id
+           AND scope_type = 'school'
+           AND is_delegable = TRUE
+           AND is_active = TRUE
     ) THEN
-        RAISE EXCEPTION 'only explicitly delegable school permissions may be delegated';
+        RAISE EXCEPTION
+            'only active, explicitly delegable school permissions may be delegated';
     END IF;
+
     IF NOT EXISTS (
-        SELECT 1 FROM auth_principals
-         WHERE id = NEW.granted_by AND principal_type = 'platform_admin' AND status = 'active'
+        SELECT 1
+          FROM auth_principals ap
+          JOIN principal_roles pr
+            ON pr.principal_id = ap.id
+           AND pr.revoked_at IS NULL
+          JOIN roles r
+            ON r.id = pr.role_id
+           AND r.principal_type = 'platform_admin'
+           AND r.scope_type = 'platform'
+           AND r.role_key = 'platform_admin'
+           AND r.is_system = TRUE
+          JOIN role_permissions rp
+            ON rp.role_id = r.id
+          JOIN permissions dp
+            ON dp.id = rp.permission_id
+           AND dp.permission_key = 'platform.permissions.delegate'
+           AND dp.scope_type = 'platform'
+           AND dp.is_active = TRUE
+         WHERE ap.id = NEW.granted_by
+           AND ap.principal_type = 'platform_admin'
+           AND ap.status = 'active'
     ) THEN
-        RAISE EXCEPTION 'only an active Platform Admin may grant delegation ceilings';
+        RAISE EXCEPTION
+            'grantor must be an active Platform Admin with platform.permissions.delegate';
     END IF;
+
     RETURN NEW;
 END;
 $$;
