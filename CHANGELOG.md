@@ -146,3 +146,4 @@ This project is under active development. Verification results describe the late
 - V4 C10 hardening: School Admin bundle verification now checks the exact approved 51-key permission set in both directions, in addition to the count, and restricts the assertion to School Admin system roles. PostgreSQL execution remains pending.
 
 - V4 C11 hardening: Teacher system-role seeding is explicitly limited to school-scoped permissions and the migration asserts one Teacher system role per school with exactly the approved seven-key default bundle. Assignment-specific access remains an API responsibility. PostgreSQL execution remains pending.
+- V4 C12 hardening: principal role assignment rows now preserve immutable identity/provenance, cannot be deleted, must be inserted active, and cannot be reactivated or have their revocation timestamp rewritten. Re-grants require a new history row. PostgreSQL execution remains pending.
