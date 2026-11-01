@@ -127,3 +127,10 @@ Never paste `.env` values, JWT secrets, passwords, OTPs, MFA secrets, or real st
 - The existing C6 guard continues to make revocation one-way. A revoked delegation cannot be reactivated or have its revocation timestamp rewritten; restoring authority requires a new delegation row with new provenance.
 - This prevents a revoked delegation's historical school/permission/capability/grantor details from being rewritten or erased. The application must still authorize the revocation actor and write an audit event.
 - Source-level review only. PostgreSQL execution/integration tests have not been run; migration v4 remains unapplied.
+
+### C14 — Platform permission catalogue entries cannot be deleted
+
+- Added a database trigger rejecting deletion of any permission catalogue row, including currently unused permissions that would not yet be protected by role/override foreign keys.
+- Existing identity-scope protection continues to make `permission_key`, `scope_type`, and `is_delegable` immutable. Obsolete permissions should be deactivated with `is_active`, preserving stable keys and historical meaning.
+- This trigger does not authorize runtime permission creation or replace least-privilege database grants; deployment must keep catalogue writes under controlled migration/platform administration.
+- Source-level review only. PostgreSQL execution/integration tests have not been run; migration v4 remains unapplied.
