@@ -470,7 +470,7 @@ CREATE INDEX ix_refresh_sessions_principal_active
 -- Keep the legacy user_id and canonical principal_id columns synchronized
 -- for staff sessions, regardless of which identity the caller supplies.
 CREATE OR REPLACE FUNCTION assign_refresh_session_principal() RETURNS trigger
-LANGUAGE plpgsql AS $
+LANGUAGE plpgsql AS $$
 DECLARE
     v_user_principal_id BIGINT;
     v_staff_user_id BIGINT;
@@ -501,7 +501,7 @@ BEGIN
 
     RETURN NEW;
 END;
-$;
+$$;
 CREATE TRIGGER trg_refresh_sessions_assign_principal
 BEFORE INSERT OR UPDATE OF user_id, principal_id ON refresh_sessions
 FOR EACH ROW EXECUTE FUNCTION assign_refresh_session_principal();
