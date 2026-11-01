@@ -541,7 +541,7 @@ WHERE r.role_key = 'parent'
 
 -- Fail migration unless exactly one Parent system role has exactly the approved permission set.
 -- Bidirectional EXCEPT checks catch both missing and unexpected grants, not just count drift.
-DO $
+DO $parent_assert$
 DECLARE
     v_parent_role_count INTEGER;
     v_role RECORD;
@@ -617,7 +617,7 @@ BEGIN
         END IF;
     END LOOP;
 END;
-$;
+$parent_assert$;
 
 CREATE TABLE principal_roles (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
