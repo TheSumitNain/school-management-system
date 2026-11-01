@@ -796,13 +796,29 @@ CREATE OR REPLACE FUNCTION validate_principal_role_assignment() RETURNS trigger
 LANGUAGE plpgsql AS $$
 DECLARE
     v_type VARCHAR(30);
+    v_target_status VARCHAR(20);
     v_role RECORD;
     v_school_id BIGINT;
     v_actor_type VARCHAR(30);
     v_actor_school_id BIGINT;
+    v_permission_id BIGINT;
 BEGIN
-    SELECT principal_type INTO v_type FROM auth_principals WHERE id = NEW.principal_id;
-    SELECT id, school_id, principal_type, scope_type, role_key INTO v_role FROM roles WHERE id = NEW.role_id;
+    SELECT principal_type, status
+      INTO v_type, v_target_status
+      FROM auth_principals
+     WHERE id = NEW.principal_id;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'role assignment target principal does not exist';
+    END IF;
+    IF v_target_status <> 'active' THEN
+        RAISE EXCEPTION 'role assignment target principal must be active';
+    END IF;
+
+    SELECT id, school_id, principal_type, scope_type, role_key
+      INTO v_role FROM roles WHERE id = NEW.role_id;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'role assignment target role does not exist';
+    END IF;
     IF v_type IS DISTINCT FROM v_role.principal_type THEN
         RAISE EXCEPTION 'principal type does not match role type';
     END IF;
@@ -842,29 +858,57 @@ BEGIN
     END IF;
 
     IF v_role.role_key = 'school_admin' THEN
-        IF v_actor_type <> 'platform_admin' THEN
-            RAISE EXCEPTION 'only an active Platform Admin may assign School Admin role';
+        IF v_actor_type <> 'platform_admin' OR NOT EXISTS (
+            SELECT 1
+              FROM principal_roles apr
+              JOIN roles ar ON ar.id = apr.role_id
+              JOIN role_permissions arp ON arp.role_id = ar.id
+              JOIN permissions ap ON ap.id = arp.permission_id
+             WHERE apr.principal_id = NEW.assigned_by
+               AND apr.revoked_at IS NULL
+               AND ar.scope_type = 'platform'
+               AND ar.principal_type = 'platform_admin'
+               AND ar.role_key = 'platform_admin'
+               AND ap.permission_key = 'platform.school_admins.create'
+               AND ap.scope_type = 'platform'
+               AND ap.is_active = TRUE
+        ) THEN
+            RAISE EXCEPTION 'School Admin assignment requires an active Platform Admin with platform.school_admins.create';
         END IF;
     ELSE
-        -- Platform Admin provisions School Admin accounts; routine staff role
-        -- assignment is reserved to an active School Admin in the same school.
+        -- Routine staff role assignment requires an active same-school School Admin
+        -- whose effective system-role grant includes roles.assign and is not denied.
         IF v_actor_type <> 'staff' THEN
             RAISE EXCEPTION 'only a same-school School Admin may assign routine staff roles';
         END IF;
         SELECT u.school_id INTO v_actor_school_id
           FROM users u
          WHERE u.principal_id = NEW.assigned_by;
+        SELECT id INTO v_permission_id
+          FROM permissions
+         WHERE permission_key = 'roles.assign'
+           AND scope_type = 'school' AND is_active = TRUE;
         IF v_actor_school_id IS DISTINCT FROM v_role.school_id OR NOT EXISTS (
             SELECT 1
               FROM principal_roles pr
               JOIN roles ar ON ar.id = pr.role_id
+              JOIN role_permissions arp ON arp.role_id = ar.id
              WHERE pr.principal_id = NEW.assigned_by
                AND pr.revoked_at IS NULL
                AND ar.scope_type = 'school'
                AND ar.school_id = v_role.school_id
+               AND ar.principal_type = 'staff'
                AND ar.role_key = 'school_admin'
+               AND arp.permission_id = v_permission_id
+        ) OR v_permission_id IS NULL OR EXISTS (
+            SELECT 1
+              FROM user_permission_overrides upo
+             WHERE upo.principal_id = NEW.assigned_by
+               AND upo.school_id = v_role.school_id
+               AND upo.permission_id = v_permission_id
+               AND upo.effect = 'deny'
         ) THEN
-            RAISE EXCEPTION 'assigning principal must be an active School Admin in the target school';
+            RAISE EXCEPTION 'role assignment requires an active same-school School Admin with effective roles.assign permission';
         END IF;
     END IF;
     RETURN NEW;
