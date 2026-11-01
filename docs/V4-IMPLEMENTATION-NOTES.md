@@ -58,3 +58,10 @@ The draft migration:
 - Take and verify a fresh backup, quiesce writes, apply the migration to the intended development database, and verify counts and migration state.
 
 Never paste `.env` values, JWT secrets, passwords, OTPs, MFA secrets, or real student data into chat.
+### C4 — Principal-role assignment authorization
+
+- The assignment trigger now verifies that the target principal exists and is active before accepting any role assignment.
+- Provisioning a School Admin requires an active Platform Admin who already holds the system `platform_admin` role and its active `platform.school_admins.create` grant.
+- Routine staff role assignment requires an active same-school School Admin whose system-role bundle contains active `roles.assign`; an explicit DENY override for that permission blocks assignment.
+- The existing same-school and principal/role scope checks remain in force. Custom-role grants remain fail-closed until delegation linkage is implemented.
+- This is SQL source-level review only. PostgreSQL execution/integration tests have not been run, and migration v4 remains unapplied.
