@@ -77,3 +77,11 @@ Never paste `.env` values, JWT secrets, passwords, OTPs, MFA secrets, or real st
 - Setting `revoked_at` on an active row is allowed; once non-NULL, the value cannot be cleared or rewritten. A new delegation must be created to restore authority.
 - The existing delegation validator still checks inserts and updates to school, permission, delegation capabilities, and grantor. This change does not add an authenticated `revoked_by` actor or independently authorize who may perform the initial revocation; the schema currently lacks that audit field/workflow.
 - Source-level review only. PostgreSQL execution/integration tests have not been run, and migration v4 remains unapplied.
+### C7 — Exact delegation linkage (fail-closed status retained)
+
+- `role_permissions` and `user_permission_overrides` do not store the exact `role_permission_delegations.id` that authorized a custom-role grant or user override. Their write triggers only check that a matching delegation is active at write time.
+- This means the database records alone cannot distinguish a grant created under an old delegation from one created under a later re-grant for the same school/permission.
+- The current Go `LoadEffectivePermissions()` deliberately resolves only built-in system-role grants and explicit DENY overrides. It excludes all custom-role grants and all ALLOW overrides, preventing stale delegated grants from becoming effective after revocation/re-grant. This fail-closed behavior was verified in source.
+- Explicit DENY overrides remain effective because they reduce access; user ALLOW overrides are ignored. Custom-role assignments may exist in data but their grants do not enter the effective permission set.
+- **Do not enable custom-role permission grants or ALLOW overrides** until the schema stores an exact delegation ID on each applicable grant, enforces a composite FK tying delegation ID + school + permission together, and the resolver checks that exact delegation remains active. A re-grant must create a new delegation ID so old grants cannot revive.
+- No code/schema change was required for this audit item; the existing resolver is intentionally fail-closed. Source review only; no PostgreSQL execution or Go test was run for this documentation-only audit. Migration v4 remains unapplied.
