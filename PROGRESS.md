@@ -311,14 +311,15 @@ These are approved requirements, not proof of complete RBAC enforcement. The V4 
 
 ## V4 Corrective Source Audit — 2026-11-01
 
-- [x] C1–C15 source-level migration review/corrections recorded in docs/V4-IMPLEMENTATION-NOTES.md
+- [x] C1–C16 source-level migration review/corrections recorded in docs/V4-IMPLEMENTATION-NOTES.md
 - [x] Principal role assignment history guard (C12)
 - [x] Permission delegation history guard (C13)
 - [x] Permission catalogue deletion guard (C14)
 - [x] One-time MFA recovery-code history guard (C15)
+- [x] Parent OTP challenge one-use/attempt-history guard (C16)
 - [ ] PostgreSQL 18 clean-install and v3-upgrade execution/integration tests
 - [ ] Verify all migration constraints/triggers and failure cases on a disposable database
 - [ ] Apply V4 to the development database only after Go cutover and disposable-database verification, with explicit user approval
 
-C1–C15 are source-level changes only. They have not been executed or integration-tested against PostgreSQL. Migration V4 remains unapplied. The current Go principal-auth build-fix candidate still requires full verification on the user's Windows Go 1.27.1 environment. Do not infer production RBAC readiness from this migration audit.
+C1–C16 are source-level changes only. They have not been executed or integration-tested against PostgreSQL. Migration V4 remains unapplied. The current Go principal-auth build-fix candidate still requires full verification on the user's Windows Go 1.27.1 environment. Do not infer production RBAC readiness from this migration audit.
 
