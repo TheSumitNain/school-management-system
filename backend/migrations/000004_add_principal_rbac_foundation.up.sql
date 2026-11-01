@@ -520,9 +520,104 @@ SELECT r.id, p.id FROM roles r JOIN permissions p ON p.permission_key IN
  ('students.read_basic','attendance.read','attendance.mark','attendance.update_same_day',
   'timetable.read','homework.read','notices.read')
 WHERE r.role_key = 'teacher' AND r.scope_type = 'school';
+-- Parent receives only the seven explicitly approved read-only child/dashboard permissions.
+-- Do not CROSS JOIN the global catalogue: future global permissions must not be inherited automatically.
 INSERT INTO role_permissions (role_id, permission_id)
-SELECT r.id, p.id FROM roles r CROSS JOIN permissions p
-WHERE r.role_key = 'parent' AND r.scope_type = 'global' AND p.scope_type = 'global';
+SELECT r.id, p.id
+FROM roles r
+JOIN permissions p
+  ON p.scope_type = 'global'
+ AND p.permission_key IN (
+    'children.list',
+    'children.profile.read',
+    'children.attendance.read',
+    'children.timetable.read',
+    'children.homework.read',
+    'children.results.read',
+    'children.notices.read'
+ )
+WHERE r.role_key = 'parent'
+  AND r.scope_type = 'global';
+
+-- Fail migration unless exactly one Parent system role has exactly the approved permission set.
+-- Bidirectional EXCEPT checks catch both missing and unexpected grants, not just count drift.
+DO $
+DECLARE
+    v_parent_role_count INTEGER;
+    v_role RECORD;
+    v_permission_count INTEGER;
+BEGIN
+    SELECT COUNT(*)
+      INTO v_parent_role_count
+      FROM roles
+     WHERE role_key = 'parent'
+       AND principal_type = 'parent'
+       AND scope_type = 'global'
+       AND school_id IS NULL
+       AND is_system = TRUE;
+
+    IF v_parent_role_count <> 1 THEN
+        RAISE EXCEPTION
+            'Expected exactly one global Parent system role; found %',
+            v_parent_role_count;
+    END IF;
+
+    FOR v_role IN
+        SELECT id
+          FROM roles
+         WHERE role_key = 'parent'
+           AND principal_type = 'parent'
+           AND scope_type = 'global'
+           AND school_id IS NULL
+           AND is_system = TRUE
+    LOOP
+        SELECT COUNT(*)
+          INTO v_permission_count
+          FROM role_permissions
+         WHERE role_id = v_role.id;
+
+        IF v_permission_count <> 7
+           OR EXISTS (
+                SELECT permission_key
+                  FROM (VALUES
+                    ('children.list'),
+                    ('children.profile.read'),
+                    ('children.attendance.read'),
+                    ('children.timetable.read'),
+                    ('children.homework.read'),
+                    ('children.results.read'),
+                    ('children.notices.read')
+                  ) AS expected(permission_key)
+                EXCEPT
+                SELECT p.permission_key
+                  FROM role_permissions rp
+                  JOIN permissions p ON p.id = rp.permission_id
+                 WHERE rp.role_id = v_role.id
+           )
+           OR EXISTS (
+                SELECT p.permission_key
+                  FROM role_permissions rp
+                  JOIN permissions p ON p.id = rp.permission_id
+                 WHERE rp.role_id = v_role.id
+                EXCEPT
+                SELECT permission_key
+                  FROM (VALUES
+                    ('children.list'),
+                    ('children.profile.read'),
+                    ('children.attendance.read'),
+                    ('children.timetable.read'),
+                    ('children.homework.read'),
+                    ('children.results.read'),
+                    ('children.notices.read')
+                  ) AS expected(permission_key)
+           ) THEN
+            RAISE EXCEPTION
+                'Parent role % does not have exactly the seven approved permissions',
+                v_role.id;
+        END IF;
+    END LOOP;
+END;
+$;
 
 CREATE TABLE principal_roles (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
