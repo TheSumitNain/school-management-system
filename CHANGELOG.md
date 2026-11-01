@@ -147,3 +147,4 @@ This project is under active development. Verification results describe the late
 
 - V4 C11 hardening: Teacher system-role seeding is explicitly limited to school-scoped permissions and the migration asserts one Teacher system role per school with exactly the approved seven-key default bundle. Assignment-specific access remains an API responsibility. PostgreSQL execution remains pending.
 - V4 C12 hardening: principal role assignment rows now preserve immutable identity/provenance, cannot be deleted, must be inserted active, and cannot be reactivated or have their revocation timestamp rewritten. Re-grants require a new history row. PostgreSQL execution remains pending.
+- V4 C13 hardening: permission delegation rows now start active, preserve immutable identity/capability/grantor provenance, and cannot be deleted. Combined with C6's one-way revocation guard, restoring authority requires a new delegation record. PostgreSQL execution remains pending.
