@@ -113,3 +113,10 @@ Never paste `.env` values, JWT secrets, passwords, OTPs, MFA secrets, or real st
 - Added a migration assertion requiring exactly one Teacher system role per school and exactly the seven approved default keys: `students.read_basic`, `attendance.read`, `attendance.mark`, `attendance.update_same_day`, `timetable.read`, `homework.read`, and `notices.read`. Bidirectional `EXCEPT` checks detect missing and unexpected grants; a count check alone is not relied on.
 - The bundle does not grant attendance access across all classes. API authorization must still require the exact class-in-charge assignment for attendance read/mark/same-day correction, and must enforce teaching-assignment scope and the approved basic-student field allowlist. Subject teaching assignment alone does not grant attendance access. Past attendance correction remains School Admin-only.
 - This is source-level review only. PostgreSQL execution/integration tests have not been run; migration v4 remains unapplied.
+
+### C12 — Principal role assignment history is immutable
+
+- Added a database guard for `principal_roles` so new assignment rows must start active, assignment identity/provenance fields (`principal_id`, `role_id`, `assigned_by`, and `assigned_at`) cannot be rewritten, and assignment rows cannot be deleted.
+- Revocation is one-way: an active assignment may transition from `revoked_at IS NULL` to a non-NULL timestamp, but a revoked assignment cannot be reactivated or have its revocation timestamp rewritten. Re-granting a role requires a new assignment row, preserving the historical record.
+- This guard protects history, not the authority to revoke: the application must still authorize the revoking actor and write an audit event. Deployment database privileges must also prevent untrusted direct writes.
+- Source-level review only. PostgreSQL execution/integration tests have not been run; migration v4 remains unapplied.
