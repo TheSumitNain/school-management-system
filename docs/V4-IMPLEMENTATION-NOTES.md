@@ -99,3 +99,10 @@ Never paste `.env` values, JWT secrets, passwords, OTPs, MFA secrets, or real st
 - Added a migration assertion requiring exactly one global Parent system role and exactly those seven grants. Bidirectional `EXCEPT` checks detect both missing permissions and unexpected additional grants; the count check alone is not relied on for set equality.
 - This prevents future additions to the global permission catalogue from being granted to Parent automatically. Parent-child link verification and resource-level authorization remain mandatory in the API.
 - Source-level review only. PostgreSQL execution/integration tests have not been run; migration v4 remains unapplied.
+
+### C10 — School Admin exact permission set
+
+- The School Admin seed already used the approved explicit 51-key allowlist, but its original migration assertion checked only the number of grants. A wrong set of 51 permissions could therefore pass.
+- Kept the approved 51-key seed unchanged and strengthened the assertion with the same explicit expected-key array plus bidirectional `EXCEPT` checks. It now detects missing and unexpected grants as well as count drift.
+- The assertion targets School Admin system roles only and confirms each such role is staff-principal, school-scoped, and tied to a non-NULL school. It does not change the permission bundle or authorize custom-role grants.
+- Source-level review only. PostgreSQL execution/integration tests have not been run; migration v4 remains unapplied.
