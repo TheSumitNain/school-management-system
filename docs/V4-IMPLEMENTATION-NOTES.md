@@ -71,3 +71,9 @@ Never paste `.env` values, JWT secrets, passwords, OTPs, MFA secrets, or real st
 - An explicit DENY override for `permissions.override` on the grantor blocks the operation.
 - Existing checks remain: grantor must be active staff in the target school; the permission being overridden must itself be active, school-scoped, and delegable; and an active `can_override_users` delegation ceiling must exist for that school/permission.
 - Custom-role grants remain fail-closed until delegation linkage is modeled. This is SQL source-level review only; PostgreSQL execution/integration tests have not been run, and migration v4 remains unapplied.
+### C6 — Delegation revocation is irreversible
+
+- Added a dedicated `BEFORE UPDATE OF revoked_at` guard on `role_permission_delegations`.
+- Setting `revoked_at` on an active row is allowed; once non-NULL, the value cannot be cleared or rewritten. A new delegation must be created to restore authority.
+- The existing delegation validator still checks inserts and updates to school, permission, delegation capabilities, and grantor. This change does not add an authenticated `revoked_by` actor or independently authorize who may perform the initial revocation; the schema currently lacks that audit field/workflow.
+- Source-level review only. PostgreSQL execution/integration tests have not been run, and migration v4 remains unapplied.
