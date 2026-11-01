@@ -1,14 +1,14 @@
-> **2026-11-01 V4 cutover checkpoint (newest):** A separate build-fix candidate now wires principal-based staff login, principal refresh sessions, live principal loading, and conservative effective-permission resolution. API `/auth/me` and affected tests/fakes were updated to principal context. See `docs/CURRENT-BUILD-FIX-HANDOFF-20261101.md`. The review environment could not run Go 1.27.1 tests (only Go 1.23.2 was installed and dependencies were unavailable offline), so the full test suite remains **unverified** until `go test -count=1 ./...` and `go vet ./...` run on the user's Windows Go 1.27.1 setup. Migration v4 remains unexecuted and unsafe to run; RBAC is not complete.
+> **2026-11-01 V4 cutover verification (newest):** The principal-auth Go cutover candidate has been formatted and verified on the user's Windows environment: `go test -count=1 -p 1 ./...` passed across all packages with tests, and `go vet ./...` completed without diagnostics. This does not prove opt-in PostgreSQL integration tests ran or validate Migration V4. The reviewed local Go diff contains only gofmt changes. See `docs/CURRENT-BUILD-FIX-HANDOFF-20261101.md` for exact output, local Git status, and safe delivery steps. V4 remains unapplied; RBAC is incomplete.
 
 # Project Progress
 
 ## Current Stage
 
-**Current milestone:** Existing authentication foundation verified from the supplied `cb6af3b` source snapshot; approved V4 identity/RBAC schema draft prepared. Application-level RBAC and principal-aware authentication remain pending.
+**Current milestone:** Principal-aware Go authentication cutover candidate passes the user's Windows Go package tests and `go vet`. Migration V4 remains a draft and unapplied; complete RBAC and PostgreSQL migration verification remain pending.
 
 The project has a working authentication foundation, including login, JWT authentication middleware, a protected identity endpoint, refresh-token rotation, replay detection, family-wide logout revocation, family-scoped transaction advisory locking, and per-user serialization of concurrent rotations across token families.
 
-The latest user-reported pushed documentation checkpoint represented by the supplied source ZIP is:
+The last recorded remote documentation checkpoint before the current local verification was:
 
 - **Commit:** `cb6af3b` — `docs: finalize phase 1 RBAC and account decisions`
 - **Full commit hash in ZIP root:** `cb6af3b5abc5249fba420e2699d16e87b1d14664`
