@@ -134,3 +134,10 @@ Never paste `.env` values, JWT secrets, passwords, OTPs, MFA secrets, or real st
 - Existing identity-scope protection continues to make `permission_key`, `scope_type`, and `is_delegable` immutable. Obsolete permissions should be deactivated with `is_active`, preserving stable keys and historical meaning.
 - This trigger does not authorize runtime permission creation or replace least-privilege database grants; deployment must keep catalogue writes under controlled migration/platform administration.
 - Source-level review only. PostgreSQL execution/integration tests have not been run; migration v4 remains unapplied.
+
+### C15 — MFA recovery codes are one-use and immutable
+
+- Added a database guard requiring newly issued recovery-code rows to start unused, preserving the code hash/principal/creation provenance, and rejecting row deletion.
+- A recovery code may transition from unused to used once. A used code's timestamp cannot be cleared or rewritten, and its hash cannot be changed to make the credential reusable.
+- Replacing a recovery-code set must insert new code rows; it must not reset or rewrite historical rows. The application must still consume a code atomically and audit recovery events.
+- Source-level review only. PostgreSQL execution/integration tests have not been run; migration v4 remains unapplied.
