@@ -9,8 +9,8 @@ import (
 	"school-management-system/internal/models"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type PrincipalRefreshSessionRepository struct {
@@ -401,7 +401,6 @@ func (r *PrincipalRefreshSessionRepository) RevokePrincipal(
 
 	return nil
 }
-
 
 // nullableInt64 returns SQL NULL for non-staff principals, which do not have
 // a corresponding row in users.

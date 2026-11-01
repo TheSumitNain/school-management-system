@@ -152,7 +152,6 @@ func newPostgresIntegrationRepository(
 	return NewRefreshSessionRepository(pool), pool, userID
 }
 
-
 // TestPrincipalRefreshSessionRepositoryPostgresIntegration verifies the V4
 // principal-based session path against the real PostgreSQL triggers.
 func TestPrincipalRefreshSessionRepositoryPostgresIntegration(t *testing.T) {
