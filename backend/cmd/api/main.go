@@ -125,7 +125,8 @@ func run() error {
 	userRepo := repository.NewUserRepository(db)
 	schoolRepo := repository.NewSchoolRepository(db)
 
-	authService := services.NewAuthService(userRepo, schoolRepo)
+	loginSecurityRepo := repository.NewStaffLoginSecurityRepository(db)
+	authService := services.NewAuthService(userRepo, schoolRepo, loginSecurityRepo)
 	refreshSessionRepo := repository.NewPrincipalRefreshSessionRepository(db)
 	principalAuthorizationRepo := repository.NewPrincipalAuthorizationRepository(db)
 
