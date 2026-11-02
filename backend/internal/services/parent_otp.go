@@ -18,6 +18,7 @@ import (
 var (
 	ErrParentOTPInvalid             = errors.New("invalid or expired parent OTP")
 	ErrParentOTPDeliveryUnavailable = errors.New("parent OTP delivery is unavailable")
+	ErrParentOTPDeliveryCleanupFailed = errors.New("parent OTP challenge cleanup failed after delivery failure")
 )
 
 var (
@@ -174,7 +175,12 @@ func (s *ParentOTPService) RequestOTP(ctx context.Context, mobileE164, clientIP 
 		// the durable rate-limit reservation.
 		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 		defer cancel()
-		_ = s.challenges.InvalidatePreAccountChallenge(cleanupCtx, challengeID)
+		if cleanupErr := s.challenges.InvalidatePreAccountChallenge(cleanupCtx, challengeID); cleanupErr != nil {
+			// Do not expose provider or database details to the caller. The
+			// additional sentinel lets internal callers distinguish a failed
+			// cleanup and trigger operational alerting without leaking secrets.
+			return errors.Join(ErrParentOTPDeliveryUnavailable, ErrParentOTPDeliveryCleanupFailed)
+		}
 		return ErrParentOTPDeliveryUnavailable
 	}
 	return nil
