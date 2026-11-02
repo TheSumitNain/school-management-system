@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	ErrParentOTPInvalid       = errors.New("invalid or expired parent OTP")
+	ErrParentOTPInvalid             = errors.New("invalid or expired parent OTP")
 	ErrParentOTPDeliveryUnavailable = errors.New("parent OTP delivery is unavailable")
 )
 
