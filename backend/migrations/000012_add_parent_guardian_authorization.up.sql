@@ -191,7 +191,7 @@ CREATE INDEX ix_parent_otp_rate_limits_window
 
 CREATE OR REPLACE FUNCTION guard_v12_relationship_history()
 RETURNS trigger
-LANGUAGE plpgsql AS $v12$$
+LANGUAGE plpgsql AS $v12$
 BEGIN
     IF TG_OP = 'DELETE' THEN
         RAISE EXCEPTION '% relationship history cannot be deleted', TG_TABLE_NAME;
@@ -245,7 +245,7 @@ FOR EACH ROW EXECUTE FUNCTION guard_v12_relationship_history();
 
 CREATE OR REPLACE FUNCTION guard_parent_guardian_link_history()
 RETURNS trigger
-LANGUAGE plpgsql AS $v12$$
+LANGUAGE plpgsql AS $v12$
 BEGIN
     IF TG_OP = 'DELETE' THEN
         RAISE EXCEPTION 'parent guardian link history cannot be deleted';
@@ -310,7 +310,7 @@ FOR EACH ROW EXECUTE FUNCTION guard_parent_guardian_link_history();
 -- mobile explicitly enabled on the active school guardian record.
 CREATE OR REPLACE FUNCTION validate_parent_guardian_link()
 RETURNS trigger
-LANGUAGE plpgsql AS $v12$$
+LANGUAGE plpgsql AS $v12$
 DECLARE
     v_principal_status VARCHAR(20);
     v_mobile VARCHAR(20);
@@ -407,7 +407,7 @@ FOR EACH ROW EXECUTE FUNCTION guard_guardian_portal_eligibility();
 -- Keep relationship changes visible in the append-only security audit trail.
 CREATE OR REPLACE FUNCTION audit_v12_parent_relationship_change()
 RETURNS trigger
-LANGUAGE plpgsql AS $v12$$
+LANGUAGE plpgsql AS $v12$
 DECLARE
     v_actor BIGINT;
     v_school BIGINT;
