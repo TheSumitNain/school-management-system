@@ -77,4 +77,40 @@ func TestParentOTPChallengeRepositoryPostgresIntegration(t *testing.T) {
 	if challengeCount != 1 {
 		t.Fatalf("active challenge count = %d, want 1", challengeCount)
 	}
+
+	// Move only this test's send timestamps past the cooldown while keeping
+	// them inside the rolling 15-minute window.
+	for send := 2; send <= parentOTPMobileSendLimit; send++ {
+		if _, err := pool.Exec(ctx, `
+			UPDATE parent_otp_rate_limits
+			   SET last_sent_at=NOW()-INTERVAL '61 seconds'
+			 WHERE subject_hash IN ($1, $2)
+		`, mobileHash, ipHash); err != nil {
+			t.Fatalf("age rate-limit timestamps before send %d: %v", send, err)
+		}
+		_, err := repo.CreatePreAccountChallenge(
+			ctx, mobileHash, ipHash,
+			integrationTokenHash("parent-otp-code-"+unique+"-"+strconv.Itoa(send)),
+			time.Now().Add(5*time.Minute),
+		)
+		if err != nil {
+			t.Fatalf("create allowed challenge %d: %v", send, err)
+		}
+	}
+
+	if _, err := pool.Exec(ctx, `
+		UPDATE parent_otp_rate_limits
+		   SET last_sent_at=NOW()-INTERVAL '61 seconds'
+		 WHERE subject_hash IN ($1, $2)
+	`, mobileHash, ipHash); err != nil {
+		t.Fatalf("age rate-limit timestamps before over-limit send: %v", err)
+	}
+	_, err = repo.CreatePreAccountChallenge(
+		ctx, mobileHash, ipHash,
+		integrationTokenHash("parent-otp-code-over-limit-"+unique),
+		time.Now().Add(5*time.Minute),
+	)
+	if !errors.Is(err, ErrParentOTPRateLimited) {
+		t.Fatalf("fourth mobile send error = %v, want ErrParentOTPRateLimited", err)
+	}
 }
