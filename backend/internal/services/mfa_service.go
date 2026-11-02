@@ -25,13 +25,13 @@ type mfaCredentialStore interface {
 	GetCredential(context.Context,int64) (*repository.MFACredential,error)
 	SavePendingCredential(context.Context,int64,[]byte,int) error
 	ActivateEnrollment(context.Context,int64,string,int64) error
+	ConsumeLoginChallenge(context.Context,int64,string,int64) error
 }
 
 type mfaChallengeStore interface {
 	Create(context.Context,int64,repository.MFAChallengePurpose,string,time.Time) error
 	Get(context.Context,string) (*repository.MFAChallenge,error)
 	RecordFailure(context.Context,string) error
-	ConsumeLoginChallenge(context.Context,int64,string,int64) error
 }
 
 type MFAService struct {
