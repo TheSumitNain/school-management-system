@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func TestParentOTPChallengeRepositoryPostgresIntegration(t *testing.T) {
@@ -28,7 +30,7 @@ func TestParentOTPChallengeRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("challenge ID = %d, want positive ID", challengeID)
 	}
 
-	var principalID *int64
+	var principalID pgtype.Int8
 	var storedMobileHash, storedOTPHash string
 	var attemptCount int16
 	if err := pool.QueryRow(ctx, `
@@ -37,7 +39,7 @@ func TestParentOTPChallengeRepositoryPostgresIntegration(t *testing.T) {
 	`, challengeID).Scan(&principalID, &storedMobileHash, &storedOTPHash, &attemptCount); err != nil {
 		t.Fatalf("read persisted pre-account challenge: %v", err)
 	}
-	if principalID != nil {
+	if principalID.Valid {
 		t.Fatal("pre-account challenge unexpectedly reserved a principal")
 	}
 	if storedMobileHash != mobileHash || storedOTPHash != otpHash || attemptCount != 0 {
