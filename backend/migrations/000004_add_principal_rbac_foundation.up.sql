@@ -332,11 +332,11 @@ FOR EACH ROW EXECUTE FUNCTION protect_permission_identity_scope();
 -- Permission keys are platform-defined catalogue identities. Deactivate an
 -- obsolete permission with is_active instead of deleting its historical key.
 CREATE OR REPLACE FUNCTION prevent_permission_catalogue_delete() RETURNS trigger
-LANGUAGE plpgsql AS $
+LANGUAGE plpgsql AS $$
 BEGIN
     RAISE EXCEPTION 'platform permission catalogue entries cannot be deleted; deactivate them instead';
 END;
-$;
+$$;
 CREATE TRIGGER trg_permissions_no_delete
 BEFORE DELETE ON permissions
 FOR EACH ROW EXECUTE FUNCTION prevent_permission_catalogue_delete();
@@ -818,7 +818,7 @@ CREATE INDEX ix_principal_roles_role_active ON principal_roles (role_id) WHERE r
 -- Preserve role-assignment history. Revocation is one-way; a later grant must
 -- create a new principal_roles row rather than reactivating historical data.
 CREATE OR REPLACE FUNCTION guard_principal_role_history() RETURNS trigger
-LANGUAGE plpgsql AS $
+LANGUAGE plpgsql AS $$
 BEGIN
     IF TG_OP = 'DELETE' THEN
         RAISE EXCEPTION 'principal role assignment history cannot be deleted';
@@ -845,7 +845,7 @@ BEGIN
 
     RETURN NEW;
 END;
-$;
+$$;
 CREATE TRIGGER trg_guard_principal_role_history
 BEFORE INSERT OR UPDATE OR DELETE ON principal_roles
 FOR EACH ROW EXECUTE FUNCTION guard_principal_role_history();
@@ -954,7 +954,7 @@ CREATE INDEX ix_mfa_recovery_unused ON principal_mfa_recovery_codes (principal_i
 -- Recovery codes are one-use credentials. Preserve their hashes and usage
 -- history; replace a code set by inserting new rows, never resetting old rows.
 CREATE OR REPLACE FUNCTION guard_mfa_recovery_code_history() RETURNS trigger
-LANGUAGE plpgsql AS $
+LANGUAGE plpgsql AS $$
 BEGIN
     IF TG_OP = 'DELETE' THEN
         RAISE EXCEPTION 'MFA recovery code history cannot be deleted';
@@ -980,7 +980,7 @@ BEGIN
 
     RETURN NEW;
 END;
-$;
+$$;
 CREATE TRIGGER trg_guard_mfa_recovery_code_history
 BEFORE INSERT OR UPDATE OR DELETE ON principal_mfa_recovery_codes
 FOR EACH ROW EXECUTE FUNCTION guard_mfa_recovery_code_history();
@@ -1001,7 +1001,7 @@ CREATE INDEX ix_parent_otp_recent ON parent_otp_challenges (principal_id, create
 -- OTP challenges are one-use and attempt-limited. Keep challenge identity and
 -- expiry immutable, attempts monotonic, and consumption irreversible.
 CREATE OR REPLACE FUNCTION guard_parent_otp_challenge_history() RETURNS trigger
-LANGUAGE plpgsql AS $
+LANGUAGE plpgsql AS $$
 BEGIN
     IF TG_OP = 'DELETE' THEN
         RAISE EXCEPTION 'parent OTP challenge history cannot be deleted';
@@ -1033,7 +1033,7 @@ BEGIN
 
     RETURN NEW;
 END;
-$;
+$$;
 CREATE TRIGGER trg_guard_parent_otp_challenge_history
 BEFORE INSERT OR UPDATE OR DELETE ON parent_otp_challenges
 FOR EACH ROW EXECUTE FUNCTION guard_parent_otp_challenge_history();
@@ -1427,7 +1427,7 @@ FOR EACH ROW EXECUTE FUNCTION prevent_delegation_reactivation();
 -- Revoking a delegation is handled separately by the one-way guard above;
 -- restoring authority requires a new delegation row.
 CREATE OR REPLACE FUNCTION guard_role_permission_delegation_history() RETURNS trigger
-LANGUAGE plpgsql AS $
+LANGUAGE plpgsql AS $$
 BEGIN
     IF TG_OP = 'DELETE' THEN
         RAISE EXCEPTION 'permission delegation history cannot be deleted';
@@ -1452,7 +1452,7 @@ BEGIN
 
     RETURN NEW;
 END;
-$;
+$$;
 CREATE TRIGGER trg_guard_role_permission_delegation_history
 BEFORE INSERT OR UPDATE OR DELETE ON role_permission_delegations
 FOR EACH ROW EXECUTE FUNCTION guard_role_permission_delegation_history();
