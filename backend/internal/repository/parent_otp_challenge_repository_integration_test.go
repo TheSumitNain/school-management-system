@@ -103,7 +103,8 @@ func TestParentOTPChallengeRepositoryPostgresIntegration(t *testing.T) {
 
 	if _, err := pool.Exec(ctx, `
 		UPDATE parent_otp_rate_limits
-		   SET last_sent_at=NOW()-INTERVAL '61 seconds'
+		   SET window_started_at=window_started_at-INTERVAL '61 seconds',
+		       last_sent_at=last_sent_at-INTERVAL '61 seconds'
 		 WHERE subject_hash IN ($1, $2)
 	`, mobileHash, ipHash); err != nil {
 		t.Fatalf("age rate-limit timestamps before over-limit send: %v", err)
