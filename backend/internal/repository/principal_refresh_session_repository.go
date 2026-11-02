@@ -296,7 +296,7 @@ FOR UPDATE OF rs, ap`
 		return nil, ErrRefreshTokenInvalid
 	}
 
-	active := principalStatus == "active" && tokenVersion > 0
+	active := principalStatus == "active" && tokenVersion > 0 && mfaVerified
 
 	switch principalType {
 	case "staff":
