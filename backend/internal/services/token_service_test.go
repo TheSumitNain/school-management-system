@@ -1,6 +1,7 @@
 package services
 
 import (
+	"encoding/base64"
 	"strings"
 	"testing"
 	"time"
@@ -81,6 +82,34 @@ func TestPrincipalAccessTokenRoundTrip(t *testing.T) {
 				t.Error("expected token ID")
 			}
 		})
+	}
+}
+
+
+func TestGeneratedAccessTokenIDsAreCryptographicallyRandom(t *testing.T) {
+	service := newTestTokenService(t)
+	seen := make(map[string]struct{}, 2)
+
+	for i := 0; i < 2; i++ {
+		raw, err := service.GenerateAccessToken(42, 1, "staff")
+		if err != nil {
+			t.Fatalf("GenerateAccessToken() error = %v", err)
+		}
+		claims, err := service.ValidateAccessToken(raw)
+		if err != nil {
+			t.Fatalf("ValidateAccessToken() error = %v", err)
+		}
+		decoded, err := base64.RawURLEncoding.DecodeString(claims.ID)
+		if err != nil {
+			t.Fatalf("JWT ID is not base64url encoded: %v", err)
+		}
+		if len(decoded) != 16 {
+			t.Fatalf("JWT ID contains %d random bytes, want 16", len(decoded))
+		}
+		if _, exists := seen[claims.ID]; exists {
+			t.Fatal("two independently generated access tokens reused the same JWT ID")
+		}
+		seen[claims.ID] = struct{}{}
 	}
 }
 
