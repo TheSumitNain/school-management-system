@@ -65,6 +65,18 @@ func TestParentAuthenticationRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("create verified Parent account: %v", err)
 	}
 	if _, err := tx.Exec(ctx, `
+		INSERT INTO principal_roles (principal_id, role_id, assigned_by)
+		SELECT $1, r.id, NULL
+		  FROM roles r
+		 WHERE r.role_key = 'parent'
+		   AND r.principal_type = 'parent'
+		   AND r.scope_type = 'global'
+		   AND r.school_id IS NULL
+		   AND r.is_system = TRUE
+	`, principalID); err != nil {
+		t.Fatalf("assign global Parent system role: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
 		INSERT INTO parent_guardian_links (principal_id, guardian_id, school_id, link_method)
 		VALUES ($1, $2, $3, 'otp_verified')
 	`, principalID, guardianID, schoolID); err != nil {
