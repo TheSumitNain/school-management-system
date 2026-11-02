@@ -21,7 +21,7 @@ func (r *ParentOTPChallengeRepository) CreatePrincipalChallenge(
 ) (int64, error) {
 	now := time.Now()
 	if r == nil || r.db == nil || principalID <= 0 ||
-		!parentE164PatternForRepository(mobileE164) ||
+		!parentGuardianE164Pattern.MatchString(mobileE164) ||
 		!isSHA256Hash(mobileHash) || !isSHA256Hash(ipHash) ||
 		!isSHA256Hash(otpHash) || !expiresAt.After(now) ||
 		expiresAt.After(now.Add(parentOTPChallengeTTL)) {
