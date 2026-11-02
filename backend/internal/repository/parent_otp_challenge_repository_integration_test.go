@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -162,4 +163,110 @@ func TestParentOTPChallengeRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("delivery-failure cleanup refunded rate limits: mobile=%d IP=%d",
 			invalidatedMobileSends, invalidatedIPSends)
 	}
+
+	// A failed guess increments the durable counter. The fifth attempt remains
+	// usable when correct; a wrong fifth attempt permanently consumes the row.
+	verifyMobileHash := integrationTokenHash("parent-otp-verify-mobile-" + unique)
+	verifyOTPHash := integrationTokenHash("parent-otp-verify-code-" + unique)
+	wrongOTPHash := integrationTokenHash("parent-otp-verify-wrong-" + unique)
+	verifyID, err := repo.CreatePreAccountChallenge(
+		ctx, verifyMobileHash, integrationTokenHash("parent-otp-verify-ip-"+unique),
+		verifyOTPHash, time.Now().Add(5*time.Minute),
+	)
+	if err != nil {
+		t.Fatalf("create challenge for verification: %v", err)
+	}
+	for attempt := 1; attempt <= 4; attempt++ {
+		verified, verifyErr := repo.VerifyPreAccountChallenge(ctx, verifyMobileHash, wrongOTPHash)
+		if verifyErr != nil || verified {
+			t.Fatalf("wrong attempt %d: verified=%v error=%v", attempt, verified, verifyErr)
+		}
+	}
+	verified, err := repo.VerifyPreAccountChallenge(ctx, verifyMobileHash, verifyOTPHash)
+	if err != nil || !verified {
+		t.Fatalf("correct fifth attempt: verified=%v error=%v", verified, err)
+	}
+	var verifyAttempts int16
+	var verifyConsumed bool
+	if err := pool.QueryRow(ctx, `
+		SELECT attempt_count, consumed_at IS NOT NULL
+		  FROM parent_otp_challenges WHERE id=$1
+	`, verifyID).Scan(&verifyAttempts, &verifyConsumed); err != nil {
+		t.Fatalf("read successfully verified challenge: %v", err)
+	}
+	if verifyAttempts != 4 || !verifyConsumed {
+		t.Fatalf("verified challenge attempts=%d consumed=%v, want 4/true", verifyAttempts, verifyConsumed)
+	}
+	if verified, err := repo.VerifyPreAccountChallenge(ctx, verifyMobileHash, verifyOTPHash); err != nil || verified {
+		t.Fatalf("replayed OTP: verified=%v error=%v, want false/nil", verified, err)
+	}
+
+	exhaustedMobileHash := integrationTokenHash("parent-otp-exhaust-mobile-" + unique)
+	exhaustedOTPHash := integrationTokenHash("parent-otp-exhaust-code-" + unique)
+	exhaustedID, err := repo.CreatePreAccountChallenge(
+		ctx, exhaustedMobileHash, integrationTokenHash("parent-otp-exhaust-ip-"+unique),
+		exhaustedOTPHash, time.Now().Add(5*time.Minute),
+	)
+	if err != nil {
+		t.Fatalf("create challenge for attempt exhaustion: %v", err)
+	}
+	for attempt := 1; attempt <= 5; attempt++ {
+		verified, verifyErr := repo.VerifyPreAccountChallenge(ctx, exhaustedMobileHash, wrongOTPHash)
+		if verifyErr != nil || verified {
+			t.Fatalf("exhaustion attempt %d: verified=%v error=%v", attempt, verified, verifyErr)
+		}
+	}
+	if verified, err := repo.VerifyPreAccountChallenge(ctx, exhaustedMobileHash, exhaustedOTPHash); err != nil || verified {
+		t.Fatalf("correct OTP after exhaustion: verified=%v error=%v, want false/nil", verified, err)
+	}
+	if err := pool.QueryRow(ctx, `
+		SELECT attempt_count, consumed_at IS NOT NULL
+		  FROM parent_otp_challenges WHERE id=$1
+	`, exhaustedID).Scan(&verifyAttempts, &verifyConsumed); err != nil {
+		t.Fatalf("read exhausted challenge: %v", err)
+	}
+	if verifyAttempts != 5 || !verifyConsumed {
+		t.Fatalf("exhausted challenge attempts=%d consumed=%v, want 5/true", verifyAttempts, verifyConsumed)
+	}
+
+	// Two simultaneous submissions of one valid code must yield exactly one
+	// success. SELECT FOR UPDATE serializes both attempts on the challenge row.
+	concurrentMobileHash := integrationTokenHash("parent-otp-concurrent-mobile-" + unique)
+	concurrentOTPHash := integrationTokenHash("parent-otp-concurrent-code-" + unique)
+	if _, err := repo.CreatePreAccountChallenge(
+		ctx, concurrentMobileHash, integrationTokenHash("parent-otp-concurrent-ip-"+unique),
+		concurrentOTPHash, time.Now().Add(5*time.Minute),
+	); err != nil {
+		t.Fatalf("create challenge for concurrent verification: %v", err)
+	}
+	var wg sync.WaitGroup
+	results := make(chan bool, 2)
+	errorsFound := make(chan error, 2)
+	for i := 0; i < 2; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			ok, verifyErr := repo.VerifyPreAccountChallenge(ctx, concurrentMobileHash, concurrentOTPHash)
+			results <- ok
+			errorsFound <- verifyErr
+		}()
+	}
+	wg.Wait()
+	close(results)
+	close(errorsFound)
+	successes := 0
+	for ok := range results {
+		if ok {
+			successes++
+		}
+	}
+	for verifyErr := range errorsFound {
+		if verifyErr != nil {
+			t.Fatalf("concurrent verification error: %v", verifyErr)
+		}
+	}
+	if successes != 1 {
+		t.Fatalf("concurrent successful verifications = %d, want exactly 1", successes)
+	}
+
 }
