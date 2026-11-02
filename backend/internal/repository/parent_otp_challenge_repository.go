@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"crypto/hmac"
 	"errors"
 	"fmt"
 	"time"
@@ -115,6 +116,103 @@ func (r *ParentOTPChallengeRepository) CreatePreAccountChallenge(
 		return 0, fmt.Errorf("commit parent OTP challenge: %w", err)
 	}
 	return challengeID, nil
+}
+
+// VerifyPreAccountChallenge atomically verifies and consumes a pre-account OTP.
+// The candidate is already HMAC-bound to mobileHash by the service. Row locking
+// ensures concurrent submissions cannot both authenticate or bypass attempts.
+// A missing, expired, consumed, or exhausted challenge is an ordinary mismatch.
+func (r *ParentOTPChallengeRepository) VerifyPreAccountChallenge(
+	ctx context.Context, mobileHash, candidateOTPHash string,
+) (bool, error) {
+	if r == nil || r.db == nil || !isSHA256Hash(mobileHash) || !isSHA256Hash(candidateOTPHash) {
+		return false, fmt.Errorf("invalid parent OTP verification data")
+	}
+
+	tx, err := r.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return false, fmt.Errorf("begin parent OTP verification: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	var challengeID int64
+	var storedOTPHash string
+	var expired bool
+	var attemptCount int16
+	err = tx.QueryRow(ctx,
+		`SELECT id, otp_hash, (expires_at <= NOW()), attempt_count
+		   FROM parent_otp_challenges
+		  WHERE mobile_lookup_hash = $1
+		    AND principal_id IS NULL
+		    AND consumed_at IS NULL
+		  ORDER BY created_at DESC
+		  LIMIT 1
+		  FOR UPDATE`,
+		mobileHash,
+	).Scan(&challengeID, &storedOTPHash, &expired, &attemptCount)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("load parent OTP challenge for verification: %w", err)
+	}
+
+	// Defensive handling for rows that reached the attempt ceiling through an
+	// older application version or manual repair.
+	if expired || attemptCount >= 5 {
+		if _, err := tx.Exec(ctx,
+			`UPDATE parent_otp_challenges SET consumed_at = NOW()
+			  WHERE id = $1 AND consumed_at IS NULL`,
+			challengeID,
+		); err != nil {
+			return false, fmt.Errorf("consume expired or exhausted parent OTP challenge: %w", err)
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return false, fmt.Errorf("commit expired parent OTP challenge: %w", err)
+		}
+		return false, nil
+	}
+
+	if hmac.Equal([]byte(storedOTPHash), []byte(candidateOTPHash)) {
+		result, err := tx.Exec(ctx,
+			`UPDATE parent_otp_challenges SET consumed_at = NOW()
+			  WHERE id = $1 AND consumed_at IS NULL`,
+			challengeID,
+		)
+		if err != nil {
+			return false, fmt.Errorf("consume verified parent OTP challenge: %w", err)
+		}
+		if result.RowsAffected() != 1 {
+			return false, fmt.Errorf("parent OTP challenge changed during verification")
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return false, fmt.Errorf("commit verified parent OTP challenge: %w", err)
+		}
+		return true, nil
+	}
+
+	nextAttempt := attemptCount + 1
+	var consume any
+	if nextAttempt >= 5 {
+		consume = time.Now()
+	}
+	result, err := tx.Exec(ctx,
+		`UPDATE parent_otp_challenges
+		    SET attempt_count = $2,
+		        consumed_at = CASE WHEN $3::BOOLEAN THEN NOW() ELSE consumed_at END
+		  WHERE id = $1 AND consumed_at IS NULL`,
+		challengeID, nextAttempt, consume != nil,
+	)
+	if err != nil {
+		return false, fmt.Errorf("record failed parent OTP attempt: %w", err)
+	}
+	if result.RowsAffected() != 1 {
+		return false, fmt.Errorf("parent OTP challenge changed during failed verification")
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return false, fmt.Errorf("commit failed parent OTP attempt: %w", err)
+	}
+	return false, nil
 }
 
 // InvalidatePreAccountChallenge consumes a challenge when delivery fails.
