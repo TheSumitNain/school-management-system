@@ -117,7 +117,7 @@ CREATE INDEX ix_parent_otp_mobile_recent
 -- A pre-account challenge must carry a mobile HMAC; a bound challenge must
 -- reference an actual Parent principal. The lookup hash is immutable.
 CREATE OR REPLACE FUNCTION guard_parent_otp_challenge_history() RETURNS trigger
-LANGUAGE plpgsql AS $
+LANGUAGE plpgsql AS $v12$
 BEGIN
     IF TG_OP = 'DELETE' THEN
         RAISE EXCEPTION 'parent OTP challenge history cannot be deleted';
@@ -152,10 +152,10 @@ BEGIN
 
     RETURN NEW;
 END;
-$;
+$v12$;
 
 CREATE OR REPLACE FUNCTION validate_parent_otp_principal() RETURNS trigger
-LANGUAGE plpgsql AS $
+LANGUAGE plpgsql AS $v12$
 BEGIN
     IF NEW.principal_id IS NULL THEN
         IF NEW.mobile_lookup_hash IS NULL THEN
@@ -169,7 +169,7 @@ BEGIN
     END IF;
     RETURN NEW;
 END;
-$;
+$v12$;
 
 CREATE TABLE parent_otp_rate_limits (
     subject_type VARCHAR(8) NOT NULL
@@ -191,7 +191,7 @@ CREATE INDEX ix_parent_otp_rate_limits_window
 
 CREATE OR REPLACE FUNCTION guard_v12_relationship_history()
 RETURNS trigger
-LANGUAGE plpgsql AS $$
+LANGUAGE plpgsql AS $v12$$
 BEGIN
     IF TG_OP = 'DELETE' THEN
         RAISE EXCEPTION '% relationship history cannot be deleted', TG_TABLE_NAME;
@@ -237,7 +237,7 @@ BEGIN
 
     RETURN NEW;
 END;
-$$;
+$v12$;
 
 CREATE TRIGGER trg_student_guardians_v12_history
 BEFORE UPDATE OR DELETE ON student_guardians
@@ -245,7 +245,7 @@ FOR EACH ROW EXECUTE FUNCTION guard_v12_relationship_history();
 
 CREATE OR REPLACE FUNCTION guard_parent_guardian_link_history()
 RETURNS trigger
-LANGUAGE plpgsql AS $$
+LANGUAGE plpgsql AS $v12$$
 BEGIN
     IF TG_OP = 'DELETE' THEN
         RAISE EXCEPTION 'parent guardian link history cannot be deleted';
@@ -300,7 +300,7 @@ BEGIN
 
     RETURN NEW;
 END;
-$$;
+$v12$;
 
 CREATE TRIGGER trg_parent_guardian_links_history
 BEFORE INSERT OR UPDATE OR DELETE ON parent_guardian_links
@@ -310,7 +310,7 @@ FOR EACH ROW EXECUTE FUNCTION guard_parent_guardian_link_history();
 -- mobile explicitly enabled on the active school guardian record.
 CREATE OR REPLACE FUNCTION validate_parent_guardian_link()
 RETURNS trigger
-LANGUAGE plpgsql AS $$
+LANGUAGE plpgsql AS $v12$$
 DECLARE
     v_principal_status VARCHAR(20);
     v_mobile VARCHAR(20);
@@ -346,7 +346,7 @@ BEGIN
 
     RETURN NEW;
 END;
-$$;
+$v12$;
 
 CREATE TRIGGER trg_validate_parent_guardian_link
 BEFORE INSERT ON parent_guardian_links
@@ -356,7 +356,7 @@ FOR EACH ROW EXECUTE FUNCTION validate_parent_guardian_link();
 -- the guardian record is active and has a canonical mobile contact.
 CREATE OR REPLACE FUNCTION guard_guardian_portal_eligibility()
 RETURNS trigger
-LANGUAGE plpgsql AS $
+LANGUAGE plpgsql AS $v12$
 BEGIN
     IF NEW.parent_portal_enabled_at IS NOT NULL THEN
         IF NEW.status <> 'active' OR NEW.mobile_number_e164 IS NULL THEN
@@ -397,7 +397,7 @@ BEGIN
 
     RETURN NEW;
 END;
-$;
+$v12$;
 
 CREATE TRIGGER trg_guardian_portal_eligibility
 BEFORE INSERT OR UPDATE
@@ -407,7 +407,7 @@ FOR EACH ROW EXECUTE FUNCTION guard_guardian_portal_eligibility();
 -- Keep relationship changes visible in the append-only security audit trail.
 CREATE OR REPLACE FUNCTION audit_v12_parent_relationship_change()
 RETURNS trigger
-LANGUAGE plpgsql AS $$
+LANGUAGE plpgsql AS $v12$$
 DECLARE
     v_actor BIGINT;
     v_school BIGINT;
@@ -441,7 +441,7 @@ BEGIN
 
     RETURN NEW;
 END;
-$$;
+$v12$;
 
 CREATE TRIGGER trg_audit_parent_guardian_links
 AFTER INSERT OR UPDATE ON parent_guardian_links
