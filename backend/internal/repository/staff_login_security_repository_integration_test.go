@@ -142,7 +142,7 @@ UPDATE auth_login_attempts
 	})
 
 	t.Run("IP limit is shared and atomic under concurrent requests", func(t *testing.T) {
-		clientIP := "198.51.100.21"
+		clientIP := fmt.Sprintf("198.51.100.%d", time.Now().UnixNano()%254+1)
 		ipHash, err := loginIPHash(clientIP)
 		if err != nil {
 			t.Fatalf("hash integration client IP: %v", err)
@@ -187,7 +187,7 @@ UPDATE auth_login_attempts
 			t.Fatalf("check blocked IP: %v", err)
 		}
 		if ok {
-			t.Fatal("31st and subsequent requests from a blocked IP must be denied")
+			t.Fatal("121st and subsequent requests from a blocked IP must be denied")
 		}
 	})
 
