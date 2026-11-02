@@ -220,6 +220,21 @@ BEGIN
         RAISE EXCEPTION '% revocation requires an actor and reason', TG_TABLE_NAME;
     END IF;
 
+    IF TG_TABLE_NAME = 'student_guardians'
+       AND OLD.revoked_at IS NULL AND NEW.revoked_at IS NOT NULL
+       AND NOT EXISTS (
+           SELECT 1
+             FROM auth_principals ap
+             JOIN users u ON u.principal_id = ap.id
+            WHERE ap.id = NEW.revoked_by_principal_id
+              AND ap.principal_type = 'staff'
+              AND ap.status = 'active'
+              AND u.status = 'active'
+              AND u.school_id = NEW.school_id
+       ) THEN
+        RAISE EXCEPTION 'student-guardian revocation requires active staff from the same school';
+    END IF;
+
     RETURN NEW;
 END;
 $$;
@@ -266,6 +281,21 @@ BEGIN
             OR NEW.revocation_reason IS NULL
             OR length(btrim(NEW.revocation_reason)) = 0) THEN
         RAISE EXCEPTION 'parent guardian link revocation requires an actor and reason';
+    END IF;
+
+    IF OLD.revoked_at IS NULL AND NEW.revoked_at IS NOT NULL
+       AND NEW.revoked_by_principal_id <> NEW.principal_id
+       AND NOT EXISTS (
+           SELECT 1
+             FROM auth_principals ap
+             JOIN users u ON u.principal_id = ap.id
+            WHERE ap.id = NEW.revoked_by_principal_id
+              AND ap.principal_type = 'staff'
+              AND ap.status = 'active'
+              AND u.status = 'active'
+              AND u.school_id = NEW.school_id
+       ) THEN
+        RAISE EXCEPTION 'parent link revocation requires the linked Parent or active same-school staff';
     END IF;
 
     RETURN NEW;
@@ -326,14 +356,29 @@ FOR EACH ROW EXECUTE FUNCTION validate_parent_guardian_link();
 -- the guardian record is active and has a canonical mobile contact.
 CREATE OR REPLACE FUNCTION guard_guardian_portal_eligibility()
 RETURNS trigger
-LANGUAGE plpgsql AS $$
+LANGUAGE plpgsql AS $
 BEGIN
-    IF NEW.parent_portal_enabled_at IS NOT NULL
-       AND (NEW.status <> 'active' OR NEW.mobile_number_e164 IS NULL) THEN
-        RAISE EXCEPTION 'parent portal eligibility requires an active guardian with an E.164 mobile';
+    IF NEW.parent_portal_enabled_at IS NOT NULL THEN
+        IF NEW.status <> 'active' OR NEW.mobile_number_e164 IS NULL THEN
+            RAISE EXCEPTION 'parent portal eligibility requires an active guardian with an E.164 mobile';
+        END IF;
+
+        IF NOT EXISTS (
+            SELECT 1
+              FROM auth_principals ap
+              JOIN users u ON u.principal_id = ap.id
+             WHERE ap.id = NEW.parent_portal_enabled_by
+               AND ap.principal_type = 'staff'
+               AND ap.status = 'active'
+               AND u.status = 'active'
+               AND u.school_id = NEW.school_id
+        ) THEN
+            RAISE EXCEPTION 'parent portal eligibility must be enabled by active staff from the guardian school';
+        END IF;
     END IF;
 
-    IF NEW.mobile_number_e164 IS DISTINCT FROM OLD.mobile_number_e164
+    IF TG_OP = 'UPDATE'
+       AND NEW.mobile_number_e164 IS DISTINCT FROM OLD.mobile_number_e164
        AND EXISTS (
            SELECT 1 FROM parent_guardian_links pgl
             WHERE pgl.guardian_id = NEW.id AND pgl.revoked_at IS NULL
@@ -341,7 +386,8 @@ BEGIN
         RAISE EXCEPTION 'guardian mobile cannot change while an active Parent link exists; revoke the link first';
     END IF;
 
-    IF (NEW.status <> 'active' OR NEW.parent_portal_enabled_at IS NULL)
+    IF TG_OP = 'UPDATE'
+       AND (NEW.status <> 'active' OR NEW.parent_portal_enabled_at IS NULL)
        AND EXISTS (
            SELECT 1 FROM parent_guardian_links
             WHERE guardian_id = NEW.id AND revoked_at IS NULL
@@ -351,10 +397,10 @@ BEGIN
 
     RETURN NEW;
 END;
-$$;
+$;
 
 CREATE TRIGGER trg_guardian_portal_eligibility
-BEFORE UPDATE OF status, mobile_number_e164, parent_portal_enabled_at, parent_portal_enabled_by
+BEFORE INSERT OR UPDATE OF status, mobile_number_e164, parent_portal_enabled_at, parent_portal_enabled_by
 ON guardians
 FOR EACH ROW EXECUTE FUNCTION guard_guardian_portal_eligibility();
 
