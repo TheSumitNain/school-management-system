@@ -106,6 +106,7 @@ func parentHMAC(key []byte, value string) string {
 // flow. The repository stores only HMACs and enforces persistent send limits.
 type ParentOTPChallengeCreator interface {
 	CreatePreAccountChallenge(ctx context.Context, mobileHash, ipHash, otpHash string, expiresAt time.Time) (int64, error)
+	InvalidatePreAccountChallenge(ctx context.Context, challengeID int64) error
 }
 
 // ParentOTPService coordinates OTP generation, durable rate-limit reservation,
@@ -161,12 +162,19 @@ func (s *ParentOTPService) RequestOTP(ctx context.Context, mobileE164, clientIP 
 	if err != nil {
 		return fmt.Errorf("hash parent OTP: %w", err)
 	}
-	if _, err := s.challenges.CreatePreAccountChallenge(
+	challengeID, err := s.challenges.CreatePreAccountChallenge(
 		ctx, mobileHash, ipHash, otpHash, time.Now().Add(5*time.Minute),
-	); err != nil {
+	)
+	if err != nil {
 		return err
 	}
 	if err := s.delivery.SendParentOTP(ctx, mobile, code); err != nil {
+		// Delivery may have partially succeeded. Consume the challenge using
+		// a bounded context detached from caller cancellation, while retaining
+		// the durable rate-limit reservation.
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		defer cancel()
+		_ = s.challenges.InvalidatePreAccountChallenge(cleanupCtx, challengeID)
 		return ErrParentOTPDeliveryUnavailable
 	}
 	return nil
