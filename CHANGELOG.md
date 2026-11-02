@@ -6,6 +6,15 @@ This project is under active development. Verification results describe the late
 
 ## [Unreleased]
 
+### Database — V11 student and guardian foundation
+
+- Added stable school-scoped student records with normalized, school-unique admission numbers.
+- Added separate school-scoped guardian contact records; contact mobile numbers and email addresses are intentionally not unique and do not authenticate a Parent account.
+- Added a many-to-many student/guardian mapping with same-school composite foreign keys, duplicate-link prevention, and immutable school ownership.
+- Added PostgreSQL integration coverage for multiple guardians per student, one guardian linked to multiple students, duplicate admission/link rejection, cross-school link rejection, and school-scope immutability.
+- Kept academic-year enrollment, class/section placement, and authenticated parent-to-guardian/child relationships out of V11.
+- V11 migration and integration test source are committed, but the migration has not yet been applied or PostgreSQL-tested in this milestone. Do not mark V11 verified until the dedicated `school_management_test` database run passes.
+
 ### Database — V4 identity/RBAC migration draft
 
 - Added a draft additive migration for shared principals, globally unique staff usernames, account subtype tables, permission catalogue, system roles, role assignments, bounded overrides/delegations, principal-bound refresh sessions, MFA/parent OTP storage, and append-only audit events.
