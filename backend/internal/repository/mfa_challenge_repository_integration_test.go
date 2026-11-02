@@ -79,6 +79,9 @@ func TestMFAChallengeRepositoryPostgresIntegration(t *testing.T) {
 		if _, err := pool.Exec(ctx, "INSERT INTO principal_mfa_credentials (principal_id,method,secret_ciphertext,encryption_key_version,verified_at) VALUES ($1,'totp',$2,1,NOW())", principalID, credential); err != nil {
 			t.Fatalf("insert MFA credential: %v", err)
 		}
+		t.Cleanup(func() {
+			_, _ = pool.Exec(context.Background(), "DELETE FROM principal_mfa_credentials WHERE principal_id=$1", principalID)
+		})
 		mfaRepo := NewMFARepository(pool)
 		first := integrationTokenHash("mfa-replay-first")
 		if err := repo.Create(ctx, principalID, MFAChallengeLogin, first, time.Now().Add(5*time.Minute)); err != nil {
