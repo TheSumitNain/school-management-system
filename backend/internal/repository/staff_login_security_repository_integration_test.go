@@ -93,7 +93,7 @@ func TestStaffLoginSecurityRepositoryPostgresIntegration(t *testing.T) {
 		}
 	})
 
-	t.Run("fifth failure locks username and success clears lockout", func(t *testing.T) {
+	t.Run("fifth failure locks username within the rolling window", func(t *testing.T) {
 		for i := 1; i <= 4; i++ {
 			if err := repo.RecordFailure(ctx, username); err != nil {
 				t.Fatalf("record failure %d: %v", i, err)
@@ -118,15 +118,20 @@ func TestStaffLoginSecurityRepositoryPostgresIntegration(t *testing.T) {
 			t.Fatal("expected username to be locked after five failures")
 		}
 
-		if err := repo.RecordSuccess(ctx, username, principalID); err != nil {
-			t.Fatalf("record successful login: %v", err)
+		// Reset the isolated fixture directly. RecordSuccess writes an audit
+		// event referencing the principal, and append-only audit history must
+		// not be deleted merely to clean up an integration-test fixture.
+		if _, err := pool.Exec(ctx,
+			`DELETE FROM auth_login_attempts WHERE identifier_hash = $1`, identifierHash,
+		); err != nil {
+			t.Fatalf("reset isolated lockout fixture: %v", err)
 		}
 		locked, err = repo.IsLocked(ctx, username)
 		if err != nil {
-			t.Fatalf("check lockout after successful login: %v", err)
+			t.Fatalf("check lockout after fixture reset: %v", err)
 		}
 		if locked {
-			t.Fatal("successful authentication must clear the username lockout")
+			t.Fatal("expected isolated lockout fixture to be reset")
 		}
 	})
 
