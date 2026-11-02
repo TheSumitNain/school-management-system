@@ -97,6 +97,25 @@ func TestParentGuardianAuthorizationV12PostgresIntegration(t *testing.T) {
 		t.Fatalf("create official student-guardian relationship: %v", err)
 	}
 
+	// Stage B matching must use the exact portal-enabled guardian mobile and
+	// only count active official student relationships in the same school.
+	matches, err := findPortalEligibleGuardiansByMobile(ctx, tx, mobile)
+	if err != nil {
+		t.Fatalf("match official guardian mobile: %v", err)
+	}
+	if len(matches) != 1 || matches[0].GuardianID != guardianID ||
+		matches[0].SchoolID != schoolID || matches[0].GuardianName != "V12 Guardian "+suffix ||
+		matches[0].ActiveStudentCount != 1 {
+		t.Fatalf("unexpected official guardian matches: %#v", matches)
+	}
+	otherMobileMatches, err := findPortalEligibleGuardiansByMobile(ctx, tx, mobile+"9")
+	if err != nil {
+		t.Fatalf("query non-matching guardian mobile: %v", err)
+	}
+	if len(otherMobileMatches) != 0 {
+		t.Fatalf("expected exact mobile matching, got %#v", otherMobileMatches)
+	}
+
 	var parentLinkID int64
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO parent_guardian_links (principal_id, guardian_id, school_id, link_method)
@@ -163,6 +182,14 @@ func TestParentGuardianAuthorizationV12PostgresIntegration(t *testing.T) {
 	}
 	if visibleChildren != 0 {
 		t.Fatalf("expected revoked official relationship to hide child immediately, got %d", visibleChildren)
+	}
+
+	matches, err = findPortalEligibleGuardiansByMobile(ctx, tx, mobile)
+	if err != nil {
+		t.Fatalf("rematch guardian after official relationship revocation: %v", err)
+	}
+	if len(matches) != 0 {
+		t.Fatalf("revoked official relationship remained eligible for matching: %#v", matches)
 	}
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO student_guardians
