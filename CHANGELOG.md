@@ -13,7 +13,9 @@ This project is under active development. Verification results describe the late
 - Added a many-to-many student/guardian mapping with same-school composite foreign keys, duplicate-link prevention, and immutable school ownership.
 - Added PostgreSQL integration coverage for multiple guardians per student, one guardian linked to multiple students, duplicate admission/link rejection, cross-school link rejection, and school-scope immutability.
 - Kept academic-year enrollment, class/section placement, and authenticated parent-to-guardian/child relationships out of V11.
-- V11 migration and integration test source are committed, but the migration has not yet been applied or PostgreSQL-tested in this milestone. Do not mark V11 verified until the dedicated `school_management_test` database run passes.
+- User applied V11 to the dedicated `school_management_test` database; `schema_migrations` reported version `11`, `dirty = false`.
+- User ran `go test -count=1 -p 1 ./...` with `RUN_POSTGRES_INTEGRATION_TESTS=1`; all packages with tests passed. `go vet ./...` completed without diagnostics.
+- The MFA recovery-code PostgreSQL integration test passed twice consecutively after commit `79c2717` made its fixtures unique per run. Its append-only recovery-code history constraint remains intact.
 
 ### Database — V4 identity/RBAC migration draft
 
