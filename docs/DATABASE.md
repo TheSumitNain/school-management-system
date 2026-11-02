@@ -524,3 +524,35 @@ The V4 draft adds shared principals, global username uniqueness, Platform Admin 
 Before the global username constraint is created, the migration now preflights `LOWER(BTRIM(username))` across all schools. It rejects values outside the canonical 3–32 character lowercase ASCII username format and reports sample user IDs for invalid rows or normalized collisions. Only if the full preflight passes does it lowercase and trim existing usernames; it never invents replacement usernames. This safeguard is part of the migration draft and has **not** been run or PostgreSQL-tested.
 
 **Important:** This migration has not been executed against PostgreSQL and must not yet be applied to the user's development database. The current Go code still issues user-ID JWT subjects and does not perform principal/token-version checks or RBAC evaluation. Complete and test the Go cutover plus migration tests against a disposable PostgreSQL 18 database first. The existing staff account's role must be explicitly confirmed; do not infer it from there being one user.
+
+
+## 16. V12 Parent–Guardian Authorization Foundation
+
+Migration V12 is introduced by:
+
+- `backend/migrations/000012_add_parent_guardian_authorization.up.sql`
+- `backend/migrations/000012_add_parent_guardian_authorization.down.sql`
+
+The migration is additive and must be applied only after the V11 schema exists. It has **not yet been applied or PostgreSQL-verified**.
+
+### 16.1 School-authorized guardian portal eligibility
+
+V12 adds `guardians.mobile_number_e164`, `parent_portal_enabled_at`, and `parent_portal_enabled_by`. Existing free-form V11 contact numbers are not silently normalized. A guardian must receive an explicitly populated canonical E.164 mobile and an explicit portal enablement action. The database requires the enabling actor to be active staff from the same school; the application must additionally enforce the live `guardians.manage` permission.
+
+### 16.2 Authenticated Parent-to-Guardian links
+
+`parent_guardian_links` connects a verified active Parent principal to a school-owned guardian record. A composite foreign key enforces the guardian's school. A guardian can have only one active Parent link at a time; a Parent may link multiple guardian records across schools. Link creation requires the Parent's verified mobile to exactly match the portal-enabled guardian's canonical E.164 mobile. Link records are append-only in identity and have irreversible revocation history.
+
+### 16.3 Official Student–Guardian relationship revocation
+
+V12 adds revocation metadata to `student_guardians`, replaces the permanent pair uniqueness constraint with a partial unique index over active pairs, and preserves revoked rows. Revocation requires an active staff principal from the same school, an actor, and a reason. Re-establishing a relationship inserts a new row. Parent child-data queries must join both active relationship layers on the same school and must re-check student and guardian status on every request.
+
+### 16.4 Pre-account Parent OTP challenges and rate limits
+
+V12 makes `parent_otp_challenges.principal_id` nullable only for a pre-account challenge and adds `mobile_lookup_hash`. Such a challenge must contain a lowercase 64-character keyed HMAC of the normalized mobile; raw mobile numbers are not stored in the challenge or rate-limit table. Existing principal-bound challenges remain supported. Challenge hashes, identity and expiry remain immutable; attempts remain monotonic; challenges remain one-use and undeletable.
+
+`parent_otp_rate_limits` stores keyed mobile/IP subject hashes and time-window counters. Runtime service logic must enforce the approved operational defaults (six-digit OTP, five-minute expiry, five attempts, 60-second resend cooldown, and no more than three sends per mobile per 15 minutes) and appropriate IP throttling. The migration does not send OTPs or implement the service.
+
+### 16.5 Audit and rollback
+
+Parent link creation/revocation and official student–guardian revocation append audit events. V12 down migration refuses rollback after any Parent links, pre-account OTP/rate-limit history, portal configuration, or relationship revocation exists. Never edit V11 or V4 migrations to retrofit this functionality.
