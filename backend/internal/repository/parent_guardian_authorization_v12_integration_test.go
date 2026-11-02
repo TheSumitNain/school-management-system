@@ -124,6 +124,14 @@ func TestParentGuardianAuthorizationV12PostgresIntegration(t *testing.T) {
 		t.Fatalf("create verified parent-guardian link: %v", err)
 	}
 
+	claimedMatches, err := findPortalEligibleGuardiansByMobile(ctx, tx, mobile)
+	if err != nil {
+		t.Fatalf("check claimed guardian is excluded from registration matching: %v", err)
+	}
+	if len(claimedMatches) != 0 {
+		t.Fatalf("already-claimed guardian remained eligible for a new Parent: %#v", claimedMatches)
+	}
+
 	expectFailure("change Parent mobile while guardian link is active", func() error {
 		_, err := tx.Exec(ctx, `
 			UPDATE parent_accounts SET mobile_number = $1 WHERE principal_id = $2
