@@ -117,7 +117,7 @@ WHERE principal_id=$1 AND revoked_at IS NULL`,principalID); err!=nil {
 		return fmt.Errorf("store initial recovery codes: %w", err)
 	}
 	if _,err=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,action,resource_type,resource_id,outcome,metadata)
-VALUES($1,'auth.mfa.enrollment_completed','principal',$1::text,'success','{}'::jsonb)`,principalID); err!=nil {
+VALUES($1,'auth.mfa.enrollment_completed','principal',$1::bigint::text,'success','{}'::jsonb)`,principalID); err!=nil {
 		return fmt.Errorf("audit MFA enrollment: %w",err)
 	}
 	if err=tx.Commit(ctx); err!=nil { return fmt.Errorf("commit MFA enrollment: %w",err) }
@@ -200,7 +200,7 @@ WHERE challenge_hash=$1 AND principal_id=$2 AND consumed_at IS NULL AND expires_
 	if err != nil { return fmt.Errorf("consume recovery-code challenge: %w", err) }
 	if tag.RowsAffected() != 1 { return ErrMFAEnrollmentInvalid }
 	if _, err = tx.Exec(ctx, `INSERT INTO audit_events(actor_principal_id,action,resource_type,resource_id,outcome,metadata)
-VALUES($1,'auth.mfa.recovery_code_used','principal',$1::text,'success','{}'::jsonb)`, principalID); err != nil {
+VALUES($1,'auth.mfa.recovery_code_used','principal',$1::bigint::text,'success','{}'::jsonb)`, principalID); err != nil {
 		return fmt.Errorf("audit recovery-code use: %w", err)
 	}
 	if err = tx.Commit(ctx); err != nil { return fmt.Errorf("commit recovery-code login: %w", err) }
@@ -237,7 +237,7 @@ WHERE challenge_hash=$1 AND principal_id=$2 AND consumed_at IS NULL AND expires_
 	if err != nil { return fmt.Errorf("consume recovery regeneration challenge: %w", err) }
 	if tag.RowsAffected() != 1 { return ErrMFAEnrollmentInvalid }
 	if _, err = tx.Exec(ctx, `INSERT INTO audit_events(actor_principal_id,action,resource_type,resource_id,outcome,metadata)
-VALUES($1,'auth.mfa.recovery_codes_regenerated','principal',$1::text,'success','{}'::jsonb)`, principalID); err != nil {
+VALUES($1,'auth.mfa.recovery_codes_regenerated','principal',$1::bigint::text,'success','{}'::jsonb)`, principalID); err != nil {
 		return fmt.Errorf("audit recovery-code regeneration: %w", err)
 	}
 	if err = tx.Commit(ctx); err != nil { return fmt.Errorf("commit recovery-code regeneration: %w", err) }
