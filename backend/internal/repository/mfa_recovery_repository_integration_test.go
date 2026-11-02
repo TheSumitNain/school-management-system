@@ -27,7 +27,9 @@ ON CONFLICT (principal_id) DO UPDATE SET verified_at=NOW(),last_accepted_step=NU
 	challenges := NewMFAChallengeRepository(pool)
 	initial := make([]string, 10)
 	for i := range initial { initial[i] = integrationTokenHash("recovery-initial-" + string(rune('a'+i))) }
-	if err := repo.ReplaceRecoveryCodeHashes(ctx, principalID, 100, initial); err != nil { t.Fatalf("store initial set: %v", err) }
+	initialChallenge := integrationTokenHash("recovery-regeneration-initial")
+	if err := challenges.Create(ctx, principalID, MFAChallengeRecoveryRegeneration, initialChallenge, time.Now().Add(5*time.Minute)); err != nil { t.Fatalf("create initial regeneration challenge: %v", err) }
+	if err := repo.ReplaceRecoveryCodeHashes(ctx, principalID, initialChallenge, 100, initial); err != nil { t.Fatalf("store initial set: %v", err) }
 
 	first := integrationTokenHash("recovery-login-first")
 	if err := challenges.Create(ctx, principalID, MFAChallengeLogin, first, time.Now().Add(5*time.Minute)); err != nil { t.Fatal(err) }
@@ -41,7 +43,9 @@ ON CONFLICT (principal_id) DO UPDATE SET verified_at=NOW(),last_accepted_step=NU
 
 	replacement := make([]string, 10)
 	for i := range replacement { replacement[i] = integrationTokenHash("recovery-replacement-" + string(rune('a'+i))) }
-	if err := repo.ReplaceRecoveryCodeHashes(ctx, principalID, 101, replacement); err != nil { t.Fatalf("replace set: %v", err) }
+	replacementChallenge := integrationTokenHash("recovery-regeneration-replacement")
+	if err := challenges.Create(ctx, principalID, MFAChallengeRecoveryRegeneration, replacementChallenge, time.Now().Add(5*time.Minute)); err != nil { t.Fatalf("create replacement challenge: %v", err) }
+	if err := repo.ReplaceRecoveryCodeHashes(ctx, principalID, replacementChallenge, 101, replacement); err != nil { t.Fatalf("replace set: %v", err) }
 	var oldUnused, newUnused int
 	if err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM principal_mfa_recovery_codes WHERE principal_id=$1 AND code_hash=ANY($2) AND used_at IS NULL`, principalID, initial).Scan(&oldUnused); err != nil { t.Fatal(err) }
 	if err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM principal_mfa_recovery_codes WHERE principal_id=$1 AND code_hash=ANY($2) AND used_at IS NULL`, principalID, replacement).Scan(&newUnused); err != nil { t.Fatal(err) }
