@@ -1,6 +1,9 @@
 package config
 
-import "testing"
+import (
+	"encoding/base64"
+	"testing"
+)
 
 func validTestConfig() Config {
 	return Config{
@@ -109,6 +112,8 @@ func TestLoadDefaults(t *testing.T) {
 	t.Setenv("DB_PASSWORD", "")
 	t.Setenv("DB_SSLMODE", "")
 	t.Setenv("REFRESH_TOKEN_EXPIRY_DAYS", "")
+	t.Setenv("TOTP_ENCRYPTION_KEY", "")
+	t.Setenv("TOTP_ENCRYPTION_KEY_VERSION", "")
 
 	cfg := Load()
 
@@ -253,5 +258,32 @@ func TestValidateJWT(t *testing.T) {
 				)
 			}
 		})
+	}
+}
+
+func TestTOTPEncryptionKeyConfiguration(t *testing.T) {
+	t.Setenv("TOTP_ENCRYPTION_KEY", base64.StdEncoding.EncodeToString(make([]byte, 32)))
+	t.Setenv("TOTP_ENCRYPTION_KEY_VERSION", "3")
+	cfg := Load()
+	if err := cfg.ValidateTOTPEncryption(); err != nil {
+		t.Fatalf("valid TOTP encryption configuration rejected: %v", err)
+	}
+	if cfg.TOTPEncryptionKeyVersion != 3 {
+		t.Fatalf("key version = %d, want 3", cfg.TOTPEncryptionKeyVersion)
+	}
+}
+
+func TestTOTPEncryptionKeyConfigurationRejectsInvalidValues(t *testing.T) {
+	for _, encoded := range []string{"", "not-valid-base64!", base64.StdEncoding.EncodeToString(make([]byte, 31))} {
+		t.Setenv("TOTP_ENCRYPTION_KEY", encoded)
+		t.Setenv("TOTP_ENCRYPTION_KEY_VERSION", "1")
+		if err := Load().ValidateTOTPEncryption(); err == nil {
+			t.Fatalf("expected invalid key %q to be rejected", encoded)
+		}
+	}
+	t.Setenv("TOTP_ENCRYPTION_KEY", base64.StdEncoding.EncodeToString(make([]byte, 32)))
+	t.Setenv("TOTP_ENCRYPTION_KEY_VERSION", "0")
+	if err := Load().ValidateTOTPEncryption(); err == nil {
+		t.Fatal("expected zero key version to be rejected")
 	}
 }
