@@ -145,6 +145,10 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		writeAuthError(c, http.StatusInternalServerError, "Unable to log in")
 		return
 	}
+	if h.mfaService == nil {
+		writeAuthError(c,http.StatusServiceUnavailable,"Multi-factor authentication is unavailable")
+		return
+	}
 	if h.mfaService != nil {
 		mfaStart, mfaErr := h.mfaService.BeginAuthentication(c.Request.Context(), principal.ID, principal.Username)
 		if mfaErr != nil {
