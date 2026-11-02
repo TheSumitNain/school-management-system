@@ -347,7 +347,7 @@ BEGIN
       JOIN parent_accounts pa ON pa.principal_id = ap.id
      WHERE ap.id = NEW.principal_id
        AND ap.principal_type = 'parent'
-     FOR KEY SHARE OF ap, pa;
+     FOR SHARE OF ap, pa;
 
     IF NOT FOUND OR v_principal_status <> 'active' OR v_mobile_verified_at IS NULL THEN
         RAISE EXCEPTION 'parent guardian link requires an active, mobile-verified Parent principal';
@@ -358,7 +358,7 @@ BEGIN
       FROM guardians g
      WHERE g.id = NEW.guardian_id
        AND g.school_id = NEW.school_id
-     FOR KEY SHARE;
+     FOR SHARE;
 
     IF NOT FOUND OR v_guardian_status <> 'active'
        OR v_portal_enabled_at IS NULL
