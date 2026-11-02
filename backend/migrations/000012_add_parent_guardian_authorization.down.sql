@@ -50,7 +50,7 @@ CREATE UNIQUE INDEX ux_parent_otp_unconsumed
 -- Restore the original V4 principal-bound OTP guards after dropping V12's
 -- pre-account mobile-HMAC columns.
 CREATE OR REPLACE FUNCTION guard_parent_otp_challenge_history() RETURNS trigger
-LANGUAGE plpgsql AS $
+LANGUAGE plpgsql AS $v12$
 BEGIN
     IF TG_OP = 'DELETE' THEN
         RAISE EXCEPTION 'parent OTP challenge history cannot be deleted';
@@ -81,10 +81,10 @@ BEGIN
 
     RETURN NEW;
 END;
-$;
+$v12$;
 
 CREATE OR REPLACE FUNCTION validate_parent_otp_principal() RETURNS trigger
-LANGUAGE plpgsql AS $
+LANGUAGE plpgsql AS $v12$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM auth_principals
@@ -94,7 +94,7 @@ BEGIN
     END IF;
     RETURN NEW;
 END;
-$;
+$v12$;
 
 DROP INDEX IF EXISTS ix_student_guardians_active_guardian;
 DROP INDEX IF EXISTS ux_student_guardians_active_pair;
