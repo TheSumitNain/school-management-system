@@ -83,8 +83,8 @@ WHERE principal_mfa_credentials.verified_at IS NULL`,principalID,ciphertext,keyV
 // ActivateEnrollment consumes the challenge, verifies its principal and
 // purpose, activates the pending credential, invalidates existing sessions,
 // and records the security event in one transaction.
-func (r *MFARepository) ActivateEnrollment(ctx context.Context, principalID int64, challengeHash string, acceptedStep int64) error {
-	if principalID<=0 || !isSHA256Hash(challengeHash) || acceptedStep < 0 { return ErrMFAEnrollmentInvalid }
+func (r *MFARepository) ActivateEnrollment(ctx context.Context, principalID int64, challengeHash string, acceptedStep int64, recoveryHashes []string) error {
+	if principalID<=0 || !isSHA256Hash(challengeHash) || acceptedStep < 0 || !validRecoveryCodeHashes(recoveryHashes) { return ErrMFAEnrollmentInvalid }
 	tx,err:=r.db.Begin(ctx); if err!=nil { return fmt.Errorf("begin MFA enrollment: %w",err) }
 	defer func(){ _=tx.Rollback(ctx) }()
 	var challengePrincipal int64
@@ -112,6 +112,9 @@ WHERE challenge_hash=$1 AND consumed_at IS NULL`,challengeHash)
 	if _,err=tx.Exec(ctx,`UPDATE refresh_sessions SET revoked_at=COALESCE(revoked_at,NOW())
 WHERE principal_id=$1 AND revoked_at IS NULL`,principalID); err!=nil {
 		return fmt.Errorf("revoke pre-MFA refresh sessions: %w",err)
+	}
+	if err = insertRecoveryCodeHashes(ctx, tx, principalID, recoveryHashes); err != nil {
+		return fmt.Errorf("store initial recovery codes: %w", err)
 	}
 	if _,err=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,action,resource_type,resource_id,outcome,metadata)
 VALUES($1,'auth.mfa.enrollment_completed','principal',$1::text,'success','{}'::jsonb)`,principalID); err!=nil {
@@ -174,38 +177,80 @@ WHERE challenge_hash=$1 AND principal_id=$2 AND consumed_at IS NULL
 	return nil
 }
 
-// AddRecoveryCodeHashes stores only SHA-256 digests. Existing rows remain as
-// immutable history; callers must generate a fresh set only after reauth.
-func (r *MFARepository) AddRecoveryCodeHashes(ctx context.Context, principalID int64, hashes []string) error {
-	if principalID<=0 || len(hashes)<8 || len(hashes)>12 { return fmt.Errorf("recovery code set must contain 8 to 12 codes") }
-	seen:=make(map[string]struct{},len(hashes))
-	tx,err:=r.db.Begin(ctx); if err!=nil { return fmt.Errorf("begin recovery-code storage: %w",err) }
-	defer func(){ _=tx.Rollback(ctx) }()
-	for _,h:=range hashes {
-		if !isSHA256Hash(h) { return fmt.Errorf("invalid recovery code hash") }
-		if _,ok:=seen[h]; ok { return fmt.Errorf("duplicate recovery code hash") }; seen[h]=struct{}{}
-		if _,err=tx.Exec(ctx,`INSERT INTO principal_mfa_recovery_codes(principal_id,code_hash) VALUES($1,$2)`,principalID,strings.ToLower(h)); err!=nil {
-			return fmt.Errorf("store recovery code hash: %w",err)
-		}
+// ConsumeLoginRecoveryCode consumes a recovery code and its login challenge atomically.
+func (r *MFARepository) ConsumeLoginRecoveryCode(ctx context.Context, principalID int64, challengeHash, codeHash string) error {
+	if principalID <= 0 || !isSHA256Hash(challengeHash) || !isSHA256Hash(codeHash) { return ErrMFARecoveryCodeInvalid }
+	tx, err := r.db.Begin(ctx)
+	if err != nil { return fmt.Errorf("begin recovery-code login: %w", err) }
+	defer func() { _ = tx.Rollback(ctx) }()
+	var challengePrincipal int64
+	var purpose string
+	err = tx.QueryRow(ctx, `SELECT principal_id,purpose FROM auth_mfa_challenges
+WHERE challenge_hash=$1 AND consumed_at IS NULL AND expires_at>NOW() AND attempts<5
+FOR UPDATE`, challengeHash).Scan(&challengePrincipal, &purpose)
+	if errors.Is(err, pgx.ErrNoRows) { return ErrMFAEnrollmentInvalid }
+	if err != nil { return fmt.Errorf("lock recovery-code challenge: %w", err) }
+	if challengePrincipal != principalID || purpose != "login" { return ErrMFAEnrollmentInvalid }
+	tag, err := tx.Exec(ctx, `UPDATE principal_mfa_recovery_codes SET used_at=NOW()
+WHERE principal_id=$1 AND code_hash=$2 AND used_at IS NULL`, principalID, strings.ToLower(codeHash))
+	if err != nil { return fmt.Errorf("consume recovery code: %w", err) }
+	if tag.RowsAffected() != 1 { return ErrMFARecoveryCodeInvalid }
+	tag, err = tx.Exec(ctx, `UPDATE auth_mfa_challenges SET consumed_at=NOW()
+WHERE challenge_hash=$1 AND principal_id=$2 AND consumed_at IS NULL AND expires_at>NOW() AND attempts<5`, challengeHash, principalID)
+	if err != nil { return fmt.Errorf("consume recovery-code challenge: %w", err) }
+	if tag.RowsAffected() != 1 { return ErrMFAEnrollmentInvalid }
+	if _, err = tx.Exec(ctx, `INSERT INTO audit_events(actor_principal_id,action,resource_type,resource_id,outcome,metadata)
+VALUES($1,'auth.mfa.recovery_code_used','principal',$1::text,'success','{}'::jsonb)`, principalID); err != nil {
+		return fmt.Errorf("audit recovery-code use: %w", err)
 	}
-	if err=tx.Commit(ctx); err!=nil { return fmt.Errorf("commit recovery-code storage: %w",err) }
+	if err = tx.Commit(ctx); err != nil { return fmt.Errorf("commit recovery-code login: %w", err) }
 	return nil
 }
 
-// ConsumeRecoveryCode is atomic and one-use, including under concurrent requests.
-func (r *MFARepository) ConsumeRecoveryCode(ctx context.Context, principalID int64, hash string) error {
-	if principalID<=0 || !isSHA256Hash(hash) { return ErrMFARecoveryCodeInvalid }
-	tx,err:=r.db.Begin(ctx); if err!=nil { return fmt.Errorf("begin recovery-code consumption: %w",err) }
-	defer func(){ _=tx.Rollback(ctx) }()
-	tag,err:=tx.Exec(ctx,`UPDATE principal_mfa_recovery_codes SET used_at=NOW()
-WHERE principal_id=$1 AND code_hash=$2 AND used_at IS NULL`,principalID,strings.ToLower(hash))
-	if err!=nil { return fmt.Errorf("consume recovery code: %w",err) }
-	if tag.RowsAffected()!=1 { return ErrMFARecoveryCodeInvalid }
-	if _,err=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,action,resource_type,resource_id,outcome,metadata)
-VALUES($1,'auth.mfa.recovery_code_used','principal',$1::text,'success','{}'::jsonb)`,principalID); err!=nil {
-		return fmt.Errorf("audit recovery-code use: %w",err)
+// ReplaceRecoveryCodeHashes invalidates all remaining codes, records the fresh
+// TOTP step, inserts the replacement set and audits the change atomically.
+func (r *MFARepository) ReplaceRecoveryCodeHashes(ctx context.Context, principalID, acceptedStep int64, hashes []string) error {
+	if principalID <= 0 || acceptedStep < 0 || !validRecoveryCodeHashes(hashes) { return ErrMFAEnrollmentInvalid }
+	tx, err := r.db.Begin(ctx)
+	if err != nil { return fmt.Errorf("begin recovery-code regeneration: %w", err) }
+	defer func() { _ = tx.Rollback(ctx) }()
+	tag, err := tx.Exec(ctx, `UPDATE principal_mfa_credentials SET last_accepted_step=$2,updated_at=NOW()
+WHERE principal_id=$1 AND method='totp' AND verified_at IS NOT NULL
+AND (last_accepted_step IS NULL OR last_accepted_step<$2)`, principalID, acceptedStep)
+	if err != nil { return fmt.Errorf("consume TOTP step for recovery regeneration: %w", err) }
+	if tag.RowsAffected() != 1 { return ErrMFAEnrollmentInvalid }
+	if _, err = tx.Exec(ctx, `UPDATE principal_mfa_recovery_codes SET used_at=NOW()
+WHERE principal_id=$1 AND used_at IS NULL`, principalID); err != nil {
+		return fmt.Errorf("invalidate previous recovery codes: %w", err)
 	}
-	if err=tx.Commit(ctx); err!=nil { return fmt.Errorf("commit recovery-code consumption: %w",err) }
+	if err = insertRecoveryCodeHashes(ctx, tx, principalID, hashes); err != nil { return fmt.Errorf("store replacement recovery codes: %w", err) }
+	if _, err = tx.Exec(ctx, `INSERT INTO audit_events(actor_principal_id,action,resource_type,resource_id,outcome,metadata)
+VALUES($1,'auth.mfa.recovery_codes_regenerated','principal',$1::text,'success','{}'::jsonb)`, principalID); err != nil {
+		return fmt.Errorf("audit recovery-code regeneration: %w", err)
+	}
+	if err = tx.Commit(ctx); err != nil { return fmt.Errorf("commit recovery-code regeneration: %w", err) }
+	return nil
+}
+
+func validRecoveryCodeHashes(hashes []string) bool {
+	if len(hashes) < 8 || len(hashes) > 12 { return false }
+	seen := make(map[string]struct{}, len(hashes))
+	for _, hash := range hashes {
+		if !isSHA256Hash(hash) { return false }
+		hash = strings.ToLower(hash)
+		if _, ok := seen[hash]; ok { return false }
+		seen[hash] = struct{}{}
+	}
+	return true
+}
+
+func insertRecoveryCodeHashes(ctx context.Context, tx pgx.Tx, principalID int64, hashes []string) error {
+	if !validRecoveryCodeHashes(hashes) { return fmt.Errorf("invalid recovery code hash set") }
+	for _, hash := range hashes {
+		if _, err := tx.Exec(ctx, `INSERT INTO principal_mfa_recovery_codes(principal_id,code_hash) VALUES($1,$2)`, principalID, strings.ToLower(hash)); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

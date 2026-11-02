@@ -37,8 +37,9 @@ type LoginIPRateLimiter interface {
 
 type MFAService interface {
 	BeginAuthentication(ctx context.Context, principalID int64, accountName string) (*services.MFAStart, error)
-	CompleteEnrollment(ctx context.Context, challengeToken, code string) (int64, error)
+	CompleteEnrollment(ctx context.Context, challengeToken, code string) (int64, []string, error)
 	VerifyLoginChallenge(ctx context.Context, challengeToken, code string) (int64, error)
+	RegenerateRecoveryCodes(ctx context.Context, principalID int64, code string) ([]string, error)
 }
 type MFAPrincipalLoader interface {
 	LoadPrincipalForAuthentication(ctx context.Context, principalID int64) (*models.AuthPrincipal, error)
@@ -75,6 +76,10 @@ type refreshRequest struct {
 }
 type mfaVerifyRequest struct {
 	ChallengeToken string `json:"challenge_token"`
+	Code string `json:"code"`
+}
+
+type mfaRecoveryCodeRegenerationRequest struct {
 	Code string `json:"code"`
 }
 
@@ -214,9 +219,9 @@ func (h *AuthHandler) CompleteMFAEnrollment(c *gin.Context) {
 	if err:=c.ShouldBindJSON(&req); err!=nil || strings.TrimSpace(req.ChallengeToken)=="" || strings.TrimSpace(req.Code)=="" {
 		writeAuthError(c,http.StatusBadRequest,"challenge_token and code are required"); return
 	}
-	principalID,err:=h.mfaService.CompleteEnrollment(c.Request.Context(),req.ChallengeToken,req.Code)
-	if err!=nil { writeMFAError(c,err); return }
-	h.issueMFASession(c,principalID)
+	principalID, recoveryCodes, err := h.mfaService.CompleteEnrollment(c.Request.Context(), req.ChallengeToken, req.Code)
+	if err != nil { writeMFAError(c, err); return }
+	h.issueMFASession(c, principalID, recoveryCodes)
 }
 
 func (h *AuthHandler) VerifyMFA(c *gin.Context) {
@@ -226,10 +231,31 @@ func (h *AuthHandler) VerifyMFA(c *gin.Context) {
 	}
 	principalID,err:=h.mfaService.VerifyLoginChallenge(c.Request.Context(),req.ChallengeToken,req.Code)
 	if err!=nil { writeMFAError(c,err); return }
-	h.issueMFASession(c,principalID)
+	h.issueMFASession(c, principalID, nil)
 }
 
-func (h *AuthHandler) issueMFASession(c *gin.Context, principalID int64) {
+func (h *AuthHandler) RegenerateMFARecoveryCodes(c *gin.Context) {
+	var req mfaRecoveryCodeRegenerationRequest
+	if err := c.ShouldBindJSON(&req); err != nil || strings.TrimSpace(req.Code) == "" {
+		writeAuthError(c, http.StatusBadRequest, "code is required")
+		return
+	}
+	value, exists := c.Get("auth_principal_id")
+	principalID, ok := value.(int64)
+	if !exists || !ok || principalID <= 0 {
+		writeAuthError(c, http.StatusUnauthorized, "Authentication required")
+		return
+	}
+	if h.mfaService == nil {
+		writeAuthError(c, http.StatusServiceUnavailable, "Multi-factor authentication is unavailable")
+		return
+	}
+	codes, err := h.mfaService.RegenerateRecoveryCodes(c.Request.Context(), principalID, strings.TrimSpace(req.Code))
+	if err != nil { writeMFAError(c, err); return }
+	c.JSON(http.StatusOK, gin.H{"status": "success", "recovery_codes": codes})
+}
+
+func (h *AuthHandler) issueMFASession(c *gin.Context, principalID int64, recoveryCodes []string) {
 	if h.principalLoader==nil || h.tokenService==nil || h.sessionService==nil {
 		writeAuthError(c,http.StatusInternalServerError,"Authentication service unavailable"); return
 	}
@@ -241,7 +267,9 @@ func (h *AuthHandler) issueMFASession(c *gin.Context, principalID int64) {
 	if err!=nil { writeAuthError(c,http.StatusInternalServerError,"Unable to complete authentication"); return }
 	refreshToken,err:=h.sessionService.Issue(c.Request.Context(),principal.ID)
 	if err!=nil { writeAuthError(c,http.StatusInternalServerError,"Unable to complete authentication"); return }
-	c.JSON(http.StatusOK,gin.H{"status":"success","access_token":accessToken,"refresh_token":refreshToken,"token_type":"Bearer","principal":toPrincipalResponse(principal)})
+	response := gin.H{"status":"success","access_token":accessToken,"refresh_token":refreshToken,"token_type":"Bearer","principal":toPrincipalResponse(principal)}
+	if len(recoveryCodes) > 0 { response["recovery_codes"] = recoveryCodes }
+	c.JSON(http.StatusOK, response)
 }
 
 func writeMFAError(c *gin.Context, err error) {

@@ -75,8 +75,9 @@ type fakeMFAService struct{}
 func (fakeMFAService) BeginAuthentication(context.Context,int64,string) (*services.MFAStart,error) {
 	return &services.MFAStart{Required:false},nil
 }
-func (fakeMFAService) CompleteEnrollment(context.Context,string,string) (int64,error) { return 0,services.ErrMFAInvalid }
+func (fakeMFAService) CompleteEnrollment(context.Context,string,string) (int64,[]string,error) { return 0,nil,services.ErrMFAInvalid }
 func (fakeMFAService) VerifyLoginChallenge(context.Context,string,string) (int64,error) { return 0,services.ErrMFAInvalid }
+func (fakeMFAService) RegenerateRecoveryCodes(context.Context,int64,string) ([]string,error) { return nil,services.ErrMFAInvalid }
 
 type fakeMFAPrincipalLoader struct{}
 func (fakeMFAPrincipalLoader) LoadPrincipalForAuthentication(context.Context,int64) (*models.AuthPrincipal,error) {
