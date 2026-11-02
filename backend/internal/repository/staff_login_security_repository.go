@@ -180,6 +180,26 @@ VALUES ($1, 'auth.staff_login', 'authentication', 'success', $2::jsonb)`, princi
 	return nil
 }
 
+
+func (r *StaffLoginSecurityRepository) RecordPlatformAdminSuccess(ctx context.Context, email string, principalID int64) error {
+	if strings.TrimSpace(email)=="" || principalID<=0 {
+		return fmt.Errorf("invalid successful Platform Admin login identity")
+	}
+	tx,err:=r.db.Begin(ctx)
+	if err!=nil { return fmt.Errorf("begin successful Platform Admin login: %w",err) }
+	defer func(){ _=tx.Rollback(ctx) }()
+	if _,err=tx.Exec(ctx,`DELETE FROM auth_login_attempts WHERE identifier_hash=$1`,loginIdentifierHash(email)); err!=nil {
+		return fmt.Errorf("clear Platform Admin login failures: %w",err)
+	}
+	metadata,_:=json.Marshal(map[string]string{"identifier_hash":loginIdentifierHash(email)})
+	if _,err=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,action,resource_type,outcome,metadata)
+VALUES($1,'auth.platform_admin_login','authentication','success',$2::jsonb)`,principalID,string(metadata)); err!=nil {
+		return fmt.Errorf("audit successful Platform Admin login: %w",err)
+	}
+	if err=tx.Commit(ctx); err!=nil { return fmt.Errorf("commit successful Platform Admin login: %w",err) }
+	return nil
+}
+
 // AllowIPAttempt permits at most 120 login requests from one client IP in a
 // rolling 15-minute window. The 121st request starts a 15-minute block.
 func (r *StaffLoginSecurityRepository) AllowIPAttempt(ctx context.Context, rawIP string) (bool, error) {
