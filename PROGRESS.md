@@ -323,3 +323,11 @@ These are approved requirements, not proof of complete RBAC enforcement. The V4 
 
 C1–C16 are source-level changes only. They have not been executed or integration-tested against PostgreSQL. Migration V4 remains unapplied. The current Go principal-auth build-fix candidate still requires full verification on the user's Windows Go 1.27.1 environment. Do not infer production RBAC readiness from this migration audit.
 
+## V4 Corrective Source Audit — C17
+
+- [x] Correct malformed PL/pgSQL dollar-quote delimiters in five trigger functions: prevent_permission_catalogue_delete, guard_principal_role_history, guard_mfa_recovery_code_history, guard_parent_otp_challenge_history, and guard_role_permission_delegation_history
+- [x] Static full-file scan confirms five corrected opening delimiters, five corrected closing delimiters, and no remaining targeted malformed patterns
+- [ ] Validate migration parsing and clean v3-to-v4 upgrade on a disposable PostgreSQL 18 database
+- [ ] Run trigger behavior and failure-case integration tests against the disposable database
+
+C17 changes only SQL function-body delimiters; function logic is unchanged. Static verification does not establish PostgreSQL execution success. Migration V4 remains unapplied and must not be applied without explicit user approval.
