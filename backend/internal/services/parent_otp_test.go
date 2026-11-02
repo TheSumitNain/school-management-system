@@ -245,3 +245,26 @@ func TestHashParentIPCanonicalizesAddressesAndSeparatesDomains(t *testing.T) {
 		t.Fatal("empty IP address was accepted")
 	}
 }
+
+
+func TestParentOTPServiceReportsCleanupFailureWithoutLeakingDetails(t *testing.T) {
+	key := []byte(strings.Repeat("k", 32))
+	repo := &parentOTPChallengeCapture{invalidateErr: errors.New("db-detail")}
+	delivery := &parentOTPDeliveryCapture{err: errors.New("provider-detail")}
+	service, err := NewParentOTPService(repo, delivery, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = service.RequestOTP(context.Background(), "+919876543210", "192.0.2.13")
+	if !errors.Is(err, ErrParentOTPDeliveryUnavailable) ||
+		!errors.Is(err, ErrParentOTPDeliveryCleanupFailed) {
+		t.Fatalf("RequestOTP() error = %v, want delivery and cleanup sentinels", err)
+	}
+	if strings.Contains(err.Error(), "db-detail") || strings.Contains(err.Error(), "provider-detail") {
+		t.Fatal("internal provider or database detail escaped the service boundary")
+	}
+	if len(repo.invalidations) != 1 || repo.invalidations[0] != 42 {
+		t.Fatalf("invalidations = %v, want [42]", repo.invalidations)
+	}
+}
