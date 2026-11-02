@@ -54,7 +54,13 @@ func (r *StaffLoginSecurityRepository) AcquireAttemptLock(ctx context.Context, u
 	}
 	key := loginIdentifierHash(username)
 	if _, err := conn.Exec(ctx, `SELECT pg_advisory_lock(hashtextextended($1, 0))`, key); err != nil {
-		conn.Release()
+		// The request may have been cancelled after PostgreSQL acquired the
+		// session lock but before the result reached this process. Discard the
+		// connection rather than returning a possibly locked session to the pool.
+		rawConn := conn.Hijack()
+		closeCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		_ = rawConn.Close(closeCtx)
 		return nil, fmt.Errorf("acquire staff login advisory lock: %w", err)
 	}
 
