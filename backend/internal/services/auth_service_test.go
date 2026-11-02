@@ -314,6 +314,9 @@ type fakeStaffLoginSecurity struct {
 	lastPrincipalID int64
 }
 
+func (f *fakeStaffLoginSecurity) AcquireAttemptLock(context.Context, string) (func(), error) {
+	return func() {}, nil
+}
 func (f *fakeStaffLoginSecurity) IsLocked(context.Context, string) (bool, error) {
 	return f.locked, f.lockErr
 }
