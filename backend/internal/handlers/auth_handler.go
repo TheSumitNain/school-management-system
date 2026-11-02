@@ -65,6 +65,19 @@ type principalResponse struct {
 }
 
 func (h *AuthHandler) Login(c *gin.Context) {
+	if h.ipRateLimiter != nil {
+		allowed, err := h.ipRateLimiter.AllowIPAttempt(c.Request.Context(), c.ClientIP())
+		if err != nil {
+			writeAuthError(c, http.StatusInternalServerError, "Unable to process login")
+			return
+		}
+		if !allowed {
+			c.Header("Retry-After", "900")
+			writeAuthError(c, http.StatusTooManyRequests, "Too many login requests from this network. Try again in 15 minutes.")
+			return
+		}
+	}
+
 	var req loginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		writeAuthError(c, http.StatusBadRequest, "Invalid request body")
@@ -79,19 +92,6 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		writeAuthError(c, http.StatusInternalServerError, "Authentication service unavailable")
 		return
 	}
-	if h.ipRateLimiter != nil {
-		allowed, err := h.ipRateLimiter.AllowIPAttempt(c.Request.Context(), c.ClientIP())
-		if err != nil {
-			writeAuthError(c, http.StatusInternalServerError, "Unable to process login")
-			return
-		}
-		if !allowed {
-			c.Header("Retry-After", "900")
-			writeAuthError(c, http.StatusTooManyRequests, "Too many login requests from this network. Try again in 15 minutes.")
-			return
-		}
-	}
-
 	principal, err := h.authService.AuthenticateStaff(c.Request.Context(), req.Username, req.Password)
 	if err != nil {
 		if errors.Is(err, services.ErrLoginLocked) {
