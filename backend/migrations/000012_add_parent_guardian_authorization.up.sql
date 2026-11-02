@@ -308,6 +308,28 @@ FOR EACH ROW EXECUTE FUNCTION guard_parent_guardian_link_history();
 
 -- A link is valid only when the parent account has verified the exact E.164
 -- mobile explicitly enabled on the active school guardian record.
+-- A verified Parent mobile is part of the link proof. Do not permit it
+-- to drift while any guardian link remains active; revoke links first.
+CREATE OR REPLACE FUNCTION guard_parent_account_link_identity()
+RETURNS trigger
+LANGUAGE plpgsql AS $v12$
+BEGIN
+    IF (NEW.mobile_number IS DISTINCT FROM OLD.mobile_number
+        OR NEW.mobile_verified_at IS DISTINCT FROM OLD.mobile_verified_at)
+       AND EXISTS (
+           SELECT 1 FROM parent_guardian_links
+            WHERE principal_id = OLD.principal_id AND revoked_at IS NULL
+       ) THEN
+        RAISE EXCEPTION 'revoke active Parent guardian links before changing or un-verifying the mobile number';
+    END IF;
+    RETURN NEW;
+END;
+$v12$;
+
+CREATE TRIGGER trg_parent_account_link_identity
+BEFORE UPDATE OF mobile_number, mobile_verified_at ON parent_accounts
+FOR EACH ROW EXECUTE FUNCTION guard_parent_account_link_identity();
+
 CREATE OR REPLACE FUNCTION validate_parent_guardian_link()
 RETURNS trigger
 LANGUAGE plpgsql AS $v12$
