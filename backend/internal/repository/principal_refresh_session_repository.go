@@ -42,7 +42,7 @@ func (r *PrincipalRefreshSessionRepository) CreatePrincipal(
 	// Use the same principal-level lock as refresh-token rotation.
 	if _, err = tx.Exec(
 		ctx,
-		`SELECT pg_advisory_xact_lock(hashtextextended('refresh-principal:' || $1::text,0))`,
+		`SELECT pg_advisory_xact_lock(hashtextextended('refresh-principal:' || $1::bigint::text,0))`,
 		principalID,
 	); err != nil {
 		return fmt.Errorf("lock principal refresh sessions: %w", err)
@@ -174,7 +174,7 @@ func (r *PrincipalRefreshSessionRepository) RotatePrincipal(
 
 	if _, err = tx.Exec(
 		ctx,
-		`SELECT pg_advisory_xact_lock(hashtextextended('refresh-principal:' || $1::text,0))`,
+		`SELECT pg_advisory_xact_lock(hashtextextended('refresh-principal:' || $1::bigint::text,0))`,
 		principalID,
 	); err != nil {
 		return nil, fmt.Errorf("lock principal refresh sessions: %w", err)
