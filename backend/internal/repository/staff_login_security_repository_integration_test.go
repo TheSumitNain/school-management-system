@@ -152,7 +152,7 @@ UPDATE auth_login_attempts
 				`DELETE FROM auth_login_ip_attempts WHERE ip_hash = $1`, ipHash)
 		})
 
-		const requests = 40
+		const requests = 150
 		var wg sync.WaitGroup
 		var mu sync.Mutex
 		allowed := 0
@@ -178,8 +178,8 @@ UPDATE auth_login_attempts
 		for callErr := range errs {
 			t.Errorf("record concurrent IP attempt: %v", callErr)
 		}
-		if allowed != 30 {
-			t.Fatalf("allowed concurrent requests = %d, want exactly 30", allowed)
+		if allowed != 120 {
+			t.Fatalf("allowed concurrent requests = %d, want exactly 120", allowed)
 		}
 
 		ok, err := repo.AllowIPAttempt(ctx, clientIP)
