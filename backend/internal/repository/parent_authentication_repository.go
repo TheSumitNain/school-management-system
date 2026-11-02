@@ -44,6 +44,18 @@ SELECT ap.id, ap.principal_type, ap.status, ap.token_version,
    AND ap.token_version > 0
    AND EXISTS (
        SELECT 1
+         FROM principal_roles pr
+         JOIN roles r ON r.id = pr.role_id
+        WHERE pr.principal_id = ap.id
+          AND pr.revoked_at IS NULL
+          AND r.is_system = TRUE
+          AND r.role_key = 'parent'
+          AND r.principal_type = 'parent'
+          AND r.scope_type = 'global'
+          AND r.school_id IS NULL
+   )
+   AND EXISTS (
+       SELECT 1
          FROM parent_guardian_links pgl
          JOIN guardians g
            ON g.id = pgl.guardian_id
