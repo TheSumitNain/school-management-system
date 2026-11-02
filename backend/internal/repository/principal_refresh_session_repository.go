@@ -104,7 +104,7 @@ FOR UPDATE OF ap`
 		return fmt.Errorf("load principal for refresh-session creation: %w", err)
 	}
 
-	active := principalStatus == "active" && tokenVersion > 0 && mfaVerified && mfaVerified
+	active := principalStatus == "active" && tokenVersion > 0 && mfaVerified
 
 	switch principalType {
 	case "staff":
