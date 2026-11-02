@@ -400,7 +400,7 @@ END;
 $;
 
 CREATE TRIGGER trg_guardian_portal_eligibility
-BEFORE INSERT OR UPDATE OF status, mobile_number_e164, parent_portal_enabled_at, parent_portal_enabled_by
+BEFORE INSERT OR UPDATE
 ON guardians
 FOR EACH ROW EXECUTE FUNCTION guard_guardian_portal_eligibility();
 
