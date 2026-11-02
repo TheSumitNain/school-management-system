@@ -42,6 +42,8 @@ func setupRouter(
 
 	if authHandler != nil {
 		router.POST("/auth/login", authHandler.Login)
+		router.POST("/auth/mfa/enroll/verify", authHandler.CompleteMFAEnrollment)
+		router.POST("/auth/mfa/verify", authHandler.VerifyMFA)
 		router.POST("/auth/refresh", authHandler.Refresh)
 		router.POST("/auth/logout", authHandler.Logout)
 	}
@@ -106,6 +108,9 @@ func run() error {
 	if err := cfg.ValidateJWT(); err != nil {
 		return fmt.Errorf("invalid JWT configuration: %w", err)
 	}
+	if err := cfg.ValidateTOTPEncryption(); err != nil {
+		return fmt.Errorf("invalid TOTP encryption configuration: %w", err)
+	}
 
 	if cfg.AppEnv == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -129,6 +134,18 @@ func run() error {
 	authService := services.NewAuthService(userRepo, schoolRepo, loginSecurityRepo)
 	refreshSessionRepo := repository.NewPrincipalRefreshSessionRepository(db)
 	principalAuthorizationRepo := repository.NewPrincipalAuthorizationRepository(db)
+	mfaChallengeRepo := repository.NewMFAChallengeRepository(db)
+	mfaRepo := repository.NewMFARepository(db)
+	mfaService, err := services.NewMFAService(
+		mfaRepo,
+		mfaChallengeRepo,
+		cfg.TOTPEncryptionKey,
+		cfg.TOTPEncryptionKeyVersion,
+		cfg.JWTIssuer,
+	)
+	if err != nil {
+		return fmt.Errorf("initialize MFA service: %w", err)
+	}
 
 	sessionService, err := services.NewSessionService(
 		refreshSessionRepo,
@@ -153,6 +170,7 @@ func run() error {
 		sessionService,
 		loginSecurityRepo,
 	)
+	authHandler.SetMFAService(mfaService, principalAuthorizationRepo)
 
 	router, err := setupRouter(db, authHandler, tokenService, principalAuthorizationRepo, principalAuthorizationRepo)
 
