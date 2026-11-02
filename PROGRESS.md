@@ -1,10 +1,10 @@
-> **2026-11-01 V4 cutover verification (newest):** The principal-auth Go cutover candidate has been formatted and verified on the user's Windows environment: `go test -count=1 -p 1 ./...` passed across all packages with tests, and `go vet ./...` completed without diagnostics. This does not prove opt-in PostgreSQL integration tests ran or validate Migration V4. The reviewed local Go diff contains only gofmt changes. See `docs/CURRENT-BUILD-FIX-HANDOFF-20261101.md` for exact output, local Git status, and safe delivery steps. V4 remains unapplied; RBAC is incomplete.
+> **2026-11-02 current checkpoint:** The latest user-reported locally verified application commit is `e0bdbba`; the user confirmed the full Go suite, PostgreSQL repository integration tests (including recovery-code lifecycle coverage), and `go vet` passed, with V10 applied to `school_management_test`. GitHub subsequently received the V4 C17 SQL delimiter correction and the V11 student/guardian source milestone. Those later remote changes have not yet been pulled or tested in the user's local environment. V11 has not been applied to any database. Complete business APIs, route-level RBAC, and tenant/relationship authorization remain unfinished.
 
 # Project Progress
 
 ## Current Stage
 
-**Current milestone:** Principal-aware Go authentication cutover candidate passes the user's Windows Go package tests and `go vet`. Migration V4 remains a draft and unapplied; complete RBAC and PostgreSQL migration verification remain pending.
+**Current milestone:** V11 student/guardian schema source and PostgreSQL integration test have been added to `fix/v4-auth-security-hardening`. The user's last locally verified code checkpoint remains `e0bdbba`; pull the newer remote commits before testing. V11 is not yet applied or PostgreSQL-verified. The V4–V10 authentication/security work has user-reported verification on the dedicated test database, while complete business APIs, route-level RBAC, tenant isolation, and parent relationship authorization remain pending.
 
 The project has a working authentication foundation, including login, JWT authentication middleware, a protected identity endpoint, refresh-token rotation, replay detection, family-wide logout revocation, family-scoped transaction advisory locking, and per-user serialization of concurrent rotations across token families.
 
