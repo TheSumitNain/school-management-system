@@ -45,9 +45,10 @@ func setupRouter(
 		router.POST("/auth/platform-admin/login", authHandler.PlatformAdminLogin)
 		router.POST("/auth/mfa/enroll/verify", authHandler.CompleteMFAEnrollment)
 		router.POST("/auth/mfa/verify", authHandler.VerifyMFA)
-		router.POST("/auth/mfa/recovery-codes/regenerate",
+		router.POST("/auth/mfa/recovery-codes/regenerate/start",
 			middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader),
-			authHandler.RegenerateMFARecoveryCodes)
+			authHandler.BeginMFARecoveryCodeRegeneration)
+		router.POST("/auth/mfa/recovery-codes/regenerate", authHandler.RegenerateMFARecoveryCodes)
 		router.POST("/auth/refresh", authHandler.Refresh)
 		router.POST("/auth/logout", authHandler.Logout)
 	}

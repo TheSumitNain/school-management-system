@@ -15,6 +15,7 @@ type MFAChallengePurpose string
 const (
 	MFAChallengeEnrollment MFAChallengePurpose = "enrollment"
 	MFAChallengeLogin      MFAChallengePurpose = "login"
+	MFAChallengeRecoveryRegeneration MFAChallengePurpose = "recovery_regeneration"
 	maxMFAChallengeAttempts                     = 5
 )
 
@@ -174,5 +175,5 @@ func (r *MFAChallengeRepository) Consume(
 }
 
 func validMFAChallengePurpose(purpose MFAChallengePurpose) bool {
-	return purpose == MFAChallengeEnrollment || purpose == MFAChallengeLogin
+	return purpose == MFAChallengeEnrollment || purpose == MFAChallengeLogin || purpose == MFAChallengeRecoveryRegeneration
 }

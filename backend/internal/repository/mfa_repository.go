@@ -209,11 +209,19 @@ VALUES($1,'auth.mfa.recovery_code_used','principal',$1::text,'success','{}'::jso
 
 // ReplaceRecoveryCodeHashes invalidates all remaining codes, records the fresh
 // TOTP step, inserts the replacement set and audits the change atomically.
-func (r *MFARepository) ReplaceRecoveryCodeHashes(ctx context.Context, principalID, acceptedStep int64, hashes []string) error {
-	if principalID <= 0 || acceptedStep < 0 || !validRecoveryCodeHashes(hashes) { return ErrMFAEnrollmentInvalid }
+func (r *MFARepository) ReplaceRecoveryCodeHashes(ctx context.Context, principalID int64, challengeHash string, acceptedStep int64, hashes []string) error {
+	if principalID <= 0 || !isSHA256Hash(challengeHash) || acceptedStep < 0 || !validRecoveryCodeHashes(hashes) { return ErrMFAEnrollmentInvalid }
 	tx, err := r.db.Begin(ctx)
 	if err != nil { return fmt.Errorf("begin recovery-code regeneration: %w", err) }
 	defer func() { _ = tx.Rollback(ctx) }()
+	var challengePrincipal int64
+	var purpose string
+	err = tx.QueryRow(ctx, `SELECT principal_id,purpose FROM auth_mfa_challenges
+WHERE challenge_hash=$1 AND consumed_at IS NULL AND expires_at>NOW() AND attempts<5
+FOR UPDATE`, challengeHash).Scan(&challengePrincipal, &purpose)
+	if errors.Is(err, pgx.ErrNoRows) { return ErrMFAEnrollmentInvalid }
+	if err != nil { return fmt.Errorf("lock recovery regeneration challenge: %w", err) }
+	if challengePrincipal != principalID || purpose != "recovery_regeneration" { return ErrMFAEnrollmentInvalid }
 	tag, err := tx.Exec(ctx, `UPDATE principal_mfa_credentials SET last_accepted_step=$2,updated_at=NOW()
 WHERE principal_id=$1 AND method='totp' AND verified_at IS NOT NULL
 AND (last_accepted_step IS NULL OR last_accepted_step<$2)`, principalID, acceptedStep)
@@ -224,6 +232,10 @@ WHERE principal_id=$1 AND used_at IS NULL`, principalID); err != nil {
 		return fmt.Errorf("invalidate previous recovery codes: %w", err)
 	}
 	if err = insertRecoveryCodeHashes(ctx, tx, principalID, hashes); err != nil { return fmt.Errorf("store replacement recovery codes: %w", err) }
+	tag, err = tx.Exec(ctx, `UPDATE auth_mfa_challenges SET consumed_at=NOW()
+WHERE challenge_hash=$1 AND principal_id=$2 AND consumed_at IS NULL AND expires_at>NOW() AND attempts<5`, challengeHash, principalID)
+	if err != nil { return fmt.Errorf("consume recovery regeneration challenge: %w", err) }
+	if tag.RowsAffected() != 1 { return ErrMFAEnrollmentInvalid }
 	if _, err = tx.Exec(ctx, `INSERT INTO audit_events(actor_principal_id,action,resource_type,resource_id,outcome,metadata)
 VALUES($1,'auth.mfa.recovery_codes_regenerated','principal',$1::text,'success','{}'::jsonb)`, principalID); err != nil {
 		return fmt.Errorf("audit recovery-code regeneration: %w", err)

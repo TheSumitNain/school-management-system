@@ -39,7 +39,8 @@ type MFAService interface {
 	BeginAuthentication(ctx context.Context, principalID int64, accountName string) (*services.MFAStart, error)
 	CompleteEnrollment(ctx context.Context, challengeToken, code string) (int64, []string, error)
 	VerifyLoginChallenge(ctx context.Context, challengeToken, code string) (int64, error)
-	RegenerateRecoveryCodes(ctx context.Context, principalID int64, code string) ([]string, error)
+	BeginRecoveryCodeRegeneration(ctx context.Context, principalID int64) (*services.MFAStart, error)
+	RegenerateRecoveryCodes(ctx context.Context, challengeToken, code string) ([]string, error)
 }
 type MFAPrincipalLoader interface {
 	LoadPrincipalForAuthentication(ctx context.Context, principalID int64) (*models.AuthPrincipal, error)
@@ -80,6 +81,7 @@ type mfaVerifyRequest struct {
 }
 
 type mfaRecoveryCodeRegenerationRequest struct {
+	ChallengeToken string `json:"challenge_token"`
 	Code string `json:"code"`
 }
 
@@ -234,12 +236,7 @@ func (h *AuthHandler) VerifyMFA(c *gin.Context) {
 	h.issueMFASession(c, principalID, nil)
 }
 
-func (h *AuthHandler) RegenerateMFARecoveryCodes(c *gin.Context) {
-	var req mfaRecoveryCodeRegenerationRequest
-	if err := c.ShouldBindJSON(&req); err != nil || strings.TrimSpace(req.Code) == "" {
-		writeAuthError(c, http.StatusBadRequest, "code is required")
-		return
-	}
+func (h *AuthHandler) BeginMFARecoveryCodeRegeneration(c *gin.Context) {
 	value, exists := c.Get("auth_principal_id")
 	principalID, ok := value.(int64)
 	if !exists || !ok || principalID <= 0 {
@@ -250,7 +247,22 @@ func (h *AuthHandler) RegenerateMFARecoveryCodes(c *gin.Context) {
 		writeAuthError(c, http.StatusServiceUnavailable, "Multi-factor authentication is unavailable")
 		return
 	}
-	codes, err := h.mfaService.RegenerateRecoveryCodes(c.Request.Context(), principalID, strings.TrimSpace(req.Code))
+	challenge, err := h.mfaService.BeginRecoveryCodeRegeneration(c.Request.Context(), principalID)
+	if err != nil { writeMFAError(c, err); return }
+	c.JSON(http.StatusOK, gin.H{"status": "challenge_required", "challenge_token": challenge.ChallengeToken, "expires_at": challenge.ExpiresAt})
+}
+
+func (h *AuthHandler) RegenerateMFARecoveryCodes(c *gin.Context) {
+	var req mfaRecoveryCodeRegenerationRequest
+	if err := c.ShouldBindJSON(&req); err != nil || strings.TrimSpace(req.ChallengeToken) == "" || strings.TrimSpace(req.Code) == "" {
+		writeAuthError(c, http.StatusBadRequest, "challenge_token and code are required")
+		return
+	}
+	if h.mfaService == nil {
+		writeAuthError(c, http.StatusServiceUnavailable, "Multi-factor authentication is unavailable")
+		return
+	}
+	codes, err := h.mfaService.RegenerateRecoveryCodes(c.Request.Context(), strings.TrimSpace(req.ChallengeToken), strings.TrimSpace(req.Code))
 	if err != nil { writeMFAError(c, err); return }
 	c.JSON(http.StatusOK, gin.H{"status": "success", "recovery_codes": codes})
 }

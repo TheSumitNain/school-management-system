@@ -27,7 +27,7 @@ type mfaCredentialStore interface {
 	ActivateEnrollment(context.Context,int64,string,int64,[]string) error
 	ConsumeLoginChallenge(context.Context,int64,string,int64) error
 	ConsumeLoginRecoveryCode(context.Context,int64,string,string) error
-	ReplaceRecoveryCodeHashes(context.Context,int64,int64,[]string) error
+	ReplaceRecoveryCodeHashes(context.Context,int64,string,int64,[]string) error
 }
 
 type mfaChallengeStore interface {
@@ -148,21 +148,38 @@ func (s *MFAService) VerifyLoginChallenge(ctx context.Context, challengeToken, c
 	return 0, ErrMFAInvalid
 }
 
-// RegenerateRecoveryCodes requires a fresh, previously unused TOTP step.
-func (s *MFAService) RegenerateRecoveryCodes(ctx context.Context, principalID int64, code string) ([]string, error) {
+// BeginRecoveryCodeRegeneration creates a short-lived, five-attempt step-up challenge.
+func (s *MFAService) BeginRecoveryCodeRegeneration(ctx context.Context, principalID int64) (*MFAStart, error) {
 	required, err := s.credentials.IsMandatoryForPrincipal(ctx, principalID)
 	if err != nil { return nil, err }
 	if !required { return nil, ErrMFAInvalid }
 	credential, err := s.credentials.GetCredential(ctx, principalID)
 	if err != nil { return nil, err }
 	if credential == nil || credential.VerifiedAt == nil { return nil, ErrMFAInvalid }
+	token, expiry, err := s.newChallenge(ctx, principalID, repository.MFAChallengeRecoveryRegeneration)
+	if err != nil { return nil, err }
+	return &MFAStart{Required: true, ChallengeToken: token, ExpiresAt: expiry}, nil
+}
+
+// RegenerateRecoveryCodes accepts a challenge-bound fresh TOTP and atomically
+// consumes the challenge, old codes, and the matched authenticator time-step.
+func (s *MFAService) RegenerateRecoveryCodes(ctx context.Context, challengeToken, code string) ([]string, error) {
+	challengeHash := HashRefreshToken(strings.TrimSpace(challengeToken))
+	challenge, err := s.challenges.Get(ctx, challengeHash)
+	if err != nil || challenge.Purpose != repository.MFAChallengeRecoveryRegeneration { return nil, ErrMFAInvalid }
+	credential, err := s.credentials.GetCredential(ctx, challenge.PrincipalID)
+	if err != nil { return nil, err }
+	if credential == nil || credential.VerifiedAt == nil { return nil, ErrMFAInvalid }
 	secret, err := s.decryptCredential(credential)
 	if err != nil { return nil, err }
 	step, valid := VerifyTOTPAndGetStep(secret, strings.TrimSpace(code), time.Now())
-	if !valid { return nil, ErrMFAInvalid }
+	if !valid {
+		if recordErr := s.challenges.RecordFailure(ctx, challengeHash); recordErr != nil && !errors.Is(recordErr, repository.ErrMFAChallengeUnavailable) { return nil, recordErr }
+		return nil, ErrMFAInvalid
+	}
 	codes, hashes, err := GenerateRecoveryCodes(10)
 	if err != nil { return nil, err }
-	if err := s.credentials.ReplaceRecoveryCodeHashes(ctx, principalID, step, hashes); err != nil {
+	if err := s.credentials.ReplaceRecoveryCodeHashes(ctx, challenge.PrincipalID, challengeHash, step, hashes); err != nil {
 		if errors.Is(err, repository.ErrMFAEnrollmentInvalid) { return nil, ErrMFAInvalid }
 		return nil, err
 	}
