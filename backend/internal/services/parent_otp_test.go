@@ -93,14 +93,19 @@ func TestParentOTPHashRejectsInvalidInputs(t *testing.T) {
 
 
 type parentOTPChallengeCapture struct {
-	mobileHash string
-	ipHash     string
-	otpHash    string
-	expiresAt  time.Time
-	calls         int
-	err           error
-	invalidations []int64
-	invalidateErr  error
+	mobileHash       string
+	ipHash           string
+	otpHash          string
+	expiresAt        time.Time
+	calls             int
+	err               error
+	invalidations     []int64
+	invalidateErr     error
+	verifyCalls       int
+	verifyMobileHash  string
+	verifyOTPHash     string
+	verifyResult      bool
+	verifyErr         error
 }
 
 func (c *parentOTPChallengeCapture) InvalidatePreAccountChallenge(_ context.Context, challengeID int64) error {
@@ -119,6 +124,15 @@ func (c *parentOTPChallengeCapture) CreatePreAccountChallenge(
 	return 42, nil
 }
 
+func (c *parentOTPChallengeCapture) VerifyPreAccountChallenge(
+	_ context.Context, mobileHash, candidateOTPHash string,
+) (bool, error) {
+	c.verifyCalls++
+	c.verifyMobileHash = mobileHash
+	c.verifyOTPHash = candidateOTPHash
+	return c.verifyResult, c.verifyErr
+}
+
 // This fake is test-only and intentionally retains the code in memory so the
 // test can verify the delivery boundary without exposing it through an API.
 type parentOTPDeliveryCapture struct {
@@ -130,6 +144,48 @@ type parentOTPDeliveryCapture struct {
 func (d *parentOTPDeliveryCapture) SendParentOTP(_ context.Context, mobile, code string) error {
 	d.mobile, d.code = mobile, code
 	return d.err
+}
+
+func TestParentOTPServiceVerifyOTP(t *testing.T) {
+	key := []byte(strings.Repeat("k", 32))
+	repo := &parentOTPChallengeCapture{verifyResult: true}
+	delivery := &parentOTPDeliveryCapture{}
+	service, err := NewParentOTPService(repo, delivery, key)
+	if err != nil {
+		t.Fatalf("NewParentOTPService() error = %v", err)
+	}
+
+	if err := service.VerifyOTP(context.Background(), "+919876543210", "042719"); err != nil {
+		t.Fatalf("VerifyOTP() valid code error = %v", err)
+	}
+	wantMobileHash, _ := HashParentMobile(key, "+919876543210")
+	wantOTPHash, _ := HashParentOTP(key, wantMobileHash, "042719")
+	if repo.verifyCalls != 1 || repo.verifyMobileHash != wantMobileHash || repo.verifyOTPHash != wantOTPHash {
+		t.Fatal("verification repository did not receive the mobile-bound candidate HMAC")
+	}
+	if delivery.code != "" {
+		t.Fatal("OTP verification unexpectedly invoked the delivery provider")
+	}
+
+	repo.verifyResult = false
+	if err := service.VerifyOTP(context.Background(), "+919876543210", "042718"); !errors.Is(err, ErrParentOTPInvalid) {
+		t.Fatalf("VerifyOTP() wrong code error = %v, want generic invalid error", err)
+	}
+	if err := service.VerifyOTP(context.Background(), "9876543210", "042719"); !errors.Is(err, ErrParentOTPInvalid) {
+		t.Fatalf("VerifyOTP() non-E.164 mobile error = %v", err)
+	}
+	if err := service.VerifyOTP(context.Background(), "+919876543210", "42719"); !errors.Is(err, ErrParentOTPInvalid) {
+		t.Fatalf("VerifyOTP() malformed code error = %v", err)
+	}
+	if repo.verifyCalls != 2 {
+		t.Fatalf("invalid input reached repository; calls = %d, want 2", repo.verifyCalls)
+	}
+
+	repo.verifyErr = errors.New("database-private-detail")
+	err = service.VerifyOTP(context.Background(), "+919876543210", "042719")
+	if err == nil || !strings.Contains(err.Error(), "database-private-detail") {
+		t.Fatalf("VerifyOTP() repository error = %v, want wrapped internal error", err)
+	}
 }
 
 func TestParentOTPServiceRequestOTP(t *testing.T) {
