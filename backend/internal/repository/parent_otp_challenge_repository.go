@@ -17,8 +17,8 @@ var (
 )
 
 const (
-	parentOTPSendWindow = 15 * time.Minute
-	parentOTPResendWait = 60 * time.Second
+	parentOTPChallengeTTL = 5 * time.Minute
+	parentOTPResendWait   = 60 * time.Second
 	parentOTPMobileSendLimit = 3
 	parentOTPIPSendLimit = 10
 )
@@ -47,7 +47,7 @@ func (r *ParentOTPChallengeRepository) CreatePreAccountChallenge(
 	now := time.Now()
 	if r == nil || r.db == nil || !isSHA256Hash(mobileHash) ||
 		!isSHA256Hash(ipHash) || !isSHA256Hash(otpHash) ||
-		!expiresAt.After(now) || expiresAt.After(now.Add(6*time.Minute)) {
+		!expiresAt.After(now) || expiresAt.After(now.Add(parentOTPChallengeTTL)) {
 		return 0, fmt.Errorf("invalid parent OTP challenge data")
 	}
 
