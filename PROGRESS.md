@@ -1,10 +1,10 @@
-> **2026-11-02 current checkpoint:** The latest user-reported locally verified application commit is `e0bdbba`; the user confirmed the full Go suite, PostgreSQL repository integration tests (including recovery-code lifecycle coverage), and `go vet` passed, with V10 applied to `school_management_test`. GitHub subsequently received the V4 C17 SQL delimiter correction and the V11 student/guardian source milestone. Those later remote changes have not yet been pulled or tested in the user's local environment. V11 has not been applied to any database. Complete business APIs, route-level RBAC, and tenant/relationship authorization remain unfinished.
+> **2026-11-02 current checkpoint:** The user pulled branch `fix/v4-auth-security-hardening` through commit `79c2717` (MFA recovery-code integration fixture repeatability fix). Migration V11 was successfully applied to the dedicated `school_management_test` database; `schema_migrations` reported version `11`, `dirty = false`. With `DB_NAME=school_management_test` and `RUN_POSTGRES_INTEGRATION_TESTS=1`, the user ran `go test -count=1 -p 1 ./...`; all packages with tests passed, including repository integration tests. `go vet ./...` completed without diagnostics. The focused recovery-code integration test also passed twice consecutively. These results are user-reported on Windows. The local working tree still has user-owned helper/untracked files; inspect status before any commit. Complete business APIs, route-level RBAC, tenant isolation, and parent relationship authorization remain unfinished.
 
 # Project Progress
 
 ## Current Stage
 
-**Current milestone:** V11 student/guardian schema source and PostgreSQL integration test have been added to `fix/v4-auth-security-hardening`. The user's last locally verified code checkpoint remains `e0bdbba`; pull the newer remote commits before testing. V11 is not yet applied or PostgreSQL-verified. The V4–V10 authentication/security work has user-reported verification on the dedicated test database, while complete business APIs, route-level RBAC, tenant isolation, and parent relationship authorization remain pending.
+**Current milestone:** V11 student/guardian foundation is applied and PostgreSQL-tested on the dedicated `school_management_test` database at migration version 11 (`dirty = false`). The full Go suite with PostgreSQL integration enabled and `go vet ./...` passed at local commit `79c2717` plus local `gofmt` of the recovery-code integration test. The focused recovery-code integration test passed twice consecutively. Complete business APIs, route-level RBAC, tenant isolation, and parent relationship authorization remain pending.
 
 The project has a working authentication foundation, including login, JWT authentication middleware, a protected identity endpoint, refresh-token rotation, replay detection, family-wide logout revocation, family-scoped transaction advisory locking, and per-user serialization of concurrent rotations across token families.
 
@@ -316,7 +316,7 @@ These are approved requirements, not proof of complete RBAC enforcement. The V4 
 - [x] Corrected PL/pgSQL dollar-quote delimiters in the five identified V4 trigger functions
 - [ ] Re-run the corrected V4 source through a clean PostgreSQL 18 v3-to-v4 upgrade and trigger failure-case suite after syncing the latest branch
 
-The user's latest reported local verification at `e0bdbba` passed the full Go suite, PostgreSQL repository integration tests (including recovery-code lifecycle coverage), and `go vet`; V10 was applied to the dedicated `school_management_test` database. The later C17 and V11 remote commits have not yet been pulled or verified locally. Do not infer that the newer source has passed PostgreSQL execution merely from the earlier test run. Do not apply migrations to `school_management` without explicit approval.
+The user subsequently pulled the V11 and recovery-test fix commits. On the dedicated `school_management_test` database, V11 is applied and clean (`schema_migrations.version = 11`, `dirty = false`). The full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1` and `go vet ./...` both passed on the user's Windows environment. Do not apply migrations to `school_management` without explicit approval.
 
 ## V11 Student and Guardian Foundation — 2026-11-02
 
@@ -327,7 +327,9 @@ The user's latest reported local verification at `e0bdbba` passed the full Go su
 - [x] Added immutable school ownership for student and guardian records
 - [x] Added PostgreSQL integration test source for many-to-many links, duplicate prevention, cross-school isolation, normalized admission-number uniqueness, and school-scope immutability
 - [x] Updated `docs/DATABASE.md` and `CHANGELOG.md`
-- [ ] Pull the latest branch and apply V11 only to `school_management_test`
-- [ ] Run the full Go suite with PostgreSQL integration enabled and run `go vet ./...`
+- [x] Pull latest branch through recovery-code fixture fix `79c2717`
+- [x] Apply V11 only to `school_management_test`; verified migration version `11`, `dirty = false`
+- [x] Run full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1` and `go vet ./...`; both passed
+- [x] Run focused recovery-code integration test twice consecutively; both runs passed
 
-V11 is source-complete but **not yet applied or PostgreSQL-verified**. It does not create academic-year enrollment, class/section placement, parent login endpoints, SMS/OTP delivery, or authenticated parent-to-child authorization. Guardian contact records remain separate from authenticated `parent_accounts`; V12 must add the reviewed verification/revocation relationship before parent access is enabled.
+V11 is **applied and PostgreSQL-verified on the dedicated test database**. This verification does not imply production readiness or complete parent authorization. It does not create academic-year enrollment, class/section placement, parent login endpoints, SMS/OTP delivery, or authenticated parent-to-child authorization. Guardian contact records remain separate from authenticated `parent_accounts`; V12 must add the reviewed verification/revocation relationship before parent access is enabled.
