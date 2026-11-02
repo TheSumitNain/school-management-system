@@ -181,6 +181,9 @@ func (s *AuthService) AuthenticateStaff(ctx context.Context, username, password 
 		}
 		return nil, err
 	}
+	if user.PrincipalID != principal.ID {
+		return nil, ErrInvalidCredentials
+	}
 	if user.Status != "active" || !CheckPassword(password, user.PasswordHash) {
 		return nil, ErrInvalidCredentials
 	}
