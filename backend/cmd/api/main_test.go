@@ -221,3 +221,40 @@ func TestAuthMeWithInvalidToken(t *testing.T) {
 		t.Fatalf("expected status %d, got %d", http.StatusUnauthorized, rec.Code)
 	}
 }
+
+func TestAuthMeForParentOmitsStaffOnlyFields(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	validator := fakeTokenValidator{
+		claims: &services.TokenClaims{
+			RegisteredClaims: jwt.RegisteredClaims{Subject: "42"},
+			PrincipalType: "parent",
+			TokenVersion: 1,
+		},
+	}
+	router, err := setupRouter(
+		fakeDatabase{},
+		nil,
+		validator,
+		fakePrincipalLoader{principal: &models.AuthPrincipal{
+			ID: 42, Type: "parent", Status: "active", TokenVersion: 1, MobileVerified: true,
+		}},
+		fakePermissionLoader{},
+	)
+	if err != nil {
+		t.Fatalf("failed to setup router: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/auth/me", nil)
+	req.Header.Set("Authorization", "Bearer valid-test-token")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d; body: %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	expectedBody := `{"principal_id":42,"principal_type":"parent","status":"success"}`
+	if rec.Body.String() != expectedBody {
+		t.Fatalf("expected Parent identity response %s, got %s", expectedBody, rec.Body.String())
+	}
+}
