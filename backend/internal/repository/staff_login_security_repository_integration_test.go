@@ -40,6 +40,59 @@ func TestStaffLoginSecurityRepositoryPostgresIntegration(t *testing.T) {
 			`DELETE FROM auth_login_attempts WHERE identifier_hash = $1`, identifierHash)
 	})
 
+	t.Run("username advisory lock serializes database sessions", func(t *testing.T) {
+		release, err := repo.AcquireAttemptLock(ctx, username)
+		if err != nil {
+			t.Fatalf("acquire username lock: %v", err)
+		}
+		defer release()
+
+		otherConn, err := pool.Acquire(ctx)
+		if err != nil {
+			t.Fatalf("acquire second database connection: %v", err)
+		}
+		var acquired bool
+		err = otherConn.QueryRow(ctx,
+			`SELECT pg_try_advisory_lock(hashtextextended($1, 0))`,
+			identifierHash,
+		).Scan(&acquired)
+		if err != nil {
+			otherConn.Release()
+			t.Fatalf("probe username advisory lock: %v", err)
+		}
+		if acquired {
+			_, _ = otherConn.Exec(ctx,
+				`SELECT pg_advisory_unlock(hashtextextended($1, 0))`,
+				identifierHash,
+			)
+			otherConn.Release()
+			t.Fatal("a second database session acquired a username lock that should be held")
+		}
+		otherConn.Release()
+
+		release()
+		checkConn, err := pool.Acquire(ctx)
+		if err != nil {
+			t.Fatalf("acquire verification connection: %v", err)
+		}
+		defer checkConn.Release()
+		if err := checkConn.QueryRow(ctx,
+			`SELECT pg_try_advisory_lock(hashtextextended($1, 0))`,
+			identifierHash,
+		).Scan(&acquired); err != nil {
+			t.Fatalf("verify username lock release: %v", err)
+		}
+		if !acquired {
+			t.Fatal("username advisory lock remained held after release")
+		}
+		if _, err := checkConn.Exec(ctx,
+			`SELECT pg_advisory_unlock(hashtextextended($1, 0))`,
+			identifierHash,
+		); err != nil {
+			t.Fatalf("release verification advisory lock: %v", err)
+		}
+	})
+
 	t.Run("fifth failure locks username and success clears lockout", func(t *testing.T) {
 		for i := 1; i <= 4; i++ {
 			if err := repo.RecordFailure(ctx, username); err != nil {
