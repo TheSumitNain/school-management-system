@@ -15,9 +15,9 @@ var parentGuardianE164Pattern = regexp.MustCompile(`^\+[1-9][0-9]{7,14}$`)
 // parent-registration flow. It deliberately excludes student names and other
 // student profile data.
 type ParentGuardianMatch struct {
-	GuardianID        int64
-	SchoolID          int64
-	GuardianName      string
+	GuardianID         int64
+	SchoolID           int64
+	GuardianName       string
 	ActiveStudentCount int64
 }
 
