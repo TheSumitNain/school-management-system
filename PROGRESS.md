@@ -309,25 +309,25 @@ These are approved requirements, not proof of complete RBAC enforcement. The V4 
 - Do not run destructive production migrations without an approved backup and recovery plan.
 - Do not claim production readiness until security, testing, deployment, monitoring and recovery requirements have been addressed.
 
-## V4 Corrective Source Audit — 2026-11-01
+## V4 Corrective Source Audit — 2026-11-01/02
 
-- [x] C1–C16 source-level migration review/corrections recorded in docs/V4-IMPLEMENTATION-NOTES.md
-- [x] Principal role assignment history guard (C12)
-- [x] Permission delegation history guard (C13)
-- [x] Permission catalogue deletion guard (C14)
-- [x] One-time MFA recovery-code history guard (C15)
-- [x] Parent OTP challenge one-use/attempt-history guard (C16)
-- [ ] PostgreSQL 18 clean-install and v3-upgrade execution/integration tests
-- [ ] Verify all migration constraints/triggers and failure cases on a disposable database
-- [ ] Apply V4 to the development database only after Go cutover and disposable-database verification, with explicit user approval
+- [x] C1–C17 source-level migration review and corrective changes are recorded in `docs/V4-IMPLEMENTATION-NOTES.md`
+- [x] Principal role assignment, permission delegation, permission catalogue, MFA recovery-code, and parent OTP history guard source changes are present
+- [x] Corrected PL/pgSQL dollar-quote delimiters in the five identified V4 trigger functions
+- [ ] Re-run the corrected V4 source through a clean PostgreSQL 18 v3-to-v4 upgrade and trigger failure-case suite after syncing the latest branch
 
-C1–C16 are source-level changes only. They have not been executed or integration-tested against PostgreSQL. Migration V4 remains unapplied. The current Go principal-auth build-fix candidate still requires full verification on the user's Windows Go 1.27.1 environment. Do not infer production RBAC readiness from this migration audit.
+The user's latest reported local verification at `e0bdbba` passed the full Go suite, PostgreSQL repository integration tests (including recovery-code lifecycle coverage), and `go vet`; V10 was applied to the dedicated `school_management_test` database. The later C17 and V11 remote commits have not yet been pulled or verified locally. Do not infer that the newer source has passed PostgreSQL execution merely from the earlier test run. Do not apply migrations to `school_management` without explicit approval.
 
-## V4 Corrective Source Audit — C17
+## V11 Student and Guardian Foundation — 2026-11-02
 
-- [x] Correct malformed PL/pgSQL dollar-quote delimiters in five trigger functions: prevent_permission_catalogue_delete, guard_principal_role_history, guard_mfa_recovery_code_history, guard_parent_otp_challenge_history, and guard_role_permission_delegation_history
-- [x] Static full-file scan confirms five corrected opening delimiters, five corrected closing delimiters, and no remaining targeted malformed patterns
-- [ ] Validate migration parsing and clean v3-to-v4 upgrade on a disposable PostgreSQL 18 database
-- [ ] Run trigger behavior and failure-case integration tests against the disposable database
+- [x] Added `000011_add_student_guardian_foundation.up.sql`
+- [x] Added a guarded down migration that refuses rollback when V11 data exists
+- [x] Added school-scoped `students` and `guardians` records
+- [x] Added many-to-many `student_guardians` mapping with composite same-school foreign keys
+- [x] Added immutable school ownership for student and guardian records
+- [x] Added PostgreSQL integration test source for many-to-many links, duplicate prevention, cross-school isolation, normalized admission-number uniqueness, and school-scope immutability
+- [x] Updated `docs/DATABASE.md` and `CHANGELOG.md`
+- [ ] Pull the latest branch and apply V11 only to `school_management_test`
+- [ ] Run the full Go suite with PostgreSQL integration enabled and run `go vet ./...`
 
-C17 changes only SQL function-body delimiters; function logic is unchanged. Static verification does not establish PostgreSQL execution success. Migration V4 remains unapplied and must not be applied without explicit user approval.
+V11 is source-complete but **not yet applied or PostgreSQL-verified**. It does not create academic-year enrollment, class/section placement, parent login endpoints, SMS/OTP delivery, or authenticated parent-to-child authorization. Guardian contact records remain separate from authenticated `parent_accounts`; V12 must add the reviewed verification/revocation relationship before parent access is enabled.
