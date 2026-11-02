@@ -111,20 +111,33 @@ func TestStaffLoginSecurityRepositoryPostgresIntegration(t *testing.T) {
 			t.Fatal("expected username to be locked after five failures")
 		}
 
-		// Reset the isolated fixture directly. RecordSuccess writes an audit
-		// event referencing the principal, and append-only audit history must
-		// not be deleted merely to clean up an integration-test fixture.
-		if _, err := pool.Exec(ctx,
-			`DELETE FROM auth_login_attempts WHERE identifier_hash = $1`, identifierHash,
-		); err != nil {
-			t.Fatalf("reset isolated lockout fixture: %v", err)
+		// Simulate expiration without waiting 15 minutes in real time.
+		if _, err := pool.Exec(ctx, `
+UPDATE auth_login_attempts
+   SET window_started_at = NOW() - INTERVAL '16 minutes',
+       locked_until = NOW() - INTERVAL '1 minute'
+ WHERE identifier_hash = $1`, identifierHash); err != nil {
+			t.Fatalf("age lockout fixture: %v", err)
+		}
+		if err := repo.RecordFailure(ctx, username); err != nil {
+			t.Fatalf("record failure after expired window: %v", err)
+		}
+		var attempts int
+		if err := pool.QueryRow(ctx,
+			`SELECT failed_attempts FROM auth_login_attempts WHERE identifier_hash = $1`,
+			identifierHash,
+		).Scan(&attempts); err != nil {
+			t.Fatalf("load reset failure count: %v", err)
+		}
+		if attempts != 1 {
+			t.Fatalf("failure count after expired window = %d, want 1", attempts)
 		}
 		locked, err = repo.IsLocked(ctx, username)
 		if err != nil {
-			t.Fatalf("check lockout after fixture reset: %v", err)
+			t.Fatalf("check lockout after expired window reset: %v", err)
 		}
 		if locked {
-			t.Fatal("expected isolated lockout fixture to be reset")
+			t.Fatal("expired lockout window must not remain active")
 		}
 	})
 
