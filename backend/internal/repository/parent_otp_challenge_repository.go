@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 var (
@@ -123,21 +124,9 @@ func (r *ParentOTPChallengeRepository) CreatePreAccountChallenge(
 	return challengeID, nil
 }
 
-type parentOTPRateState struct {
-	count int16
-	lastSent pgtypeTimestamp
-	blocked bool
-}
-
-// pgtypeTimestamp keeps NULL last_sent_at distinct from a zero timestamp.
-type pgtypeTimestamp struct {
-	Time time.Time
-	Valid bool
-}
-
 func lockParentOTPRateBucket(
 	ctx context.Context, tx pgx.Tx, subjectType, subjectHash string, windowStarted time.Time,
-) (int16, pgtypeTimestamp, bool, error) {
+) (int16, pgtype.Timestamptz, bool, error) {
 	if _, err := tx.Exec(ctx,
 		`INSERT INTO parent_otp_rate_limits
 		    (subject_type, subject_hash, window_started_at, send_count)
