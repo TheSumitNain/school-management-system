@@ -198,7 +198,7 @@ LEFT JOIN schools s ON s.id=u.school_id
 LEFT JOIN platform_admin_accounts pa ON pa.principal_id=ap.id
 LEFT JOIN parent_accounts parent ON parent.principal_id=ap.id
 WHERE rs.token_hash=$1
-FOR UPDATE OF rs`
+FOR UPDATE OF rs, ap`
 
 	var sessionID int64
 	var currentFamily string
