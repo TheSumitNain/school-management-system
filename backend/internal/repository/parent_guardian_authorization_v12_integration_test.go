@@ -105,6 +105,13 @@ func TestParentGuardianAuthorizationV12PostgresIntegration(t *testing.T) {
 		t.Fatalf("create verified parent-guardian link: %v", err)
 	}
 
+	expectFailure("change Parent mobile while guardian link is active", func() error {
+		_, err := tx.Exec(ctx, `
+			UPDATE parent_accounts SET mobile_number = $1 WHERE principal_id = $2
+		`, mobile+"1", parentPrincipalID)
+		return err
+	})
+
 	// A guardian contact can have only one active parent link.
 	expectFailure("duplicate active parent guardian link", func() error {
 		_, err := tx.Exec(ctx, `
