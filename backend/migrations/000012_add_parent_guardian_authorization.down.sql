@@ -23,12 +23,14 @@ DROP TRIGGER IF EXISTS trg_audit_student_guardian_revocation ON student_guardian
 DROP TRIGGER IF EXISTS trg_audit_parent_guardian_links ON parent_guardian_links;
 DROP TRIGGER IF EXISTS trg_guardian_portal_eligibility ON guardians;
 DROP TRIGGER IF EXISTS trg_validate_parent_guardian_link ON parent_guardian_links;
+DROP TRIGGER IF EXISTS trg_parent_account_link_identity ON parent_accounts;
 DROP TRIGGER IF EXISTS trg_parent_guardian_links_history ON parent_guardian_links;
 DROP TRIGGER IF EXISTS trg_student_guardians_v12_history ON student_guardians;
 
 DROP FUNCTION IF EXISTS audit_v12_parent_relationship_change();
 DROP FUNCTION IF EXISTS guard_guardian_portal_eligibility();
 DROP FUNCTION IF EXISTS validate_parent_guardian_link();
+DROP FUNCTION IF EXISTS guard_parent_account_link_identity();
 DROP FUNCTION IF EXISTS guard_parent_guardian_link_history();
 DROP FUNCTION IF EXISTS guard_v12_relationship_history();
 
