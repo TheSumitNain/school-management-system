@@ -18,6 +18,19 @@ type fakeAuthService struct {
 	principal *models.AuthPrincipal
 	err       error
 }
+type fakeLoginIPRateLimiter struct {
+	allowed bool
+	err     error
+	clientIP string
+	calls   int
+}
+
+func (f *fakeLoginIPRateLimiter) AllowIPAttempt(_ context.Context, clientIP string) (bool, error) {
+	f.calls++
+	f.clientIP = clientIP
+	return f.allowed, f.err
+}
+
 
 func (f fakeAuthService) AuthenticateStaff(_ context.Context, _, _ string) (*models.AuthPrincipal, error) {
 	return f.principal, f.err
@@ -109,6 +122,35 @@ func TestLoginSuccess(t *testing.T) {
 
 	if strings.Contains(rec.Body.String(), "PasswordHash") {
 		t.Fatal("response must not expose password hash")
+	}
+}
+
+func TestLoginRejectsRateLimitedClientIP(t *testing.T) {
+	limiter := &fakeLoginIPRateLimiter{allowed: false}
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	handler := NewAuthHandler(
+		fakeAuthService{},
+		fakeTokenService{},
+		&fakeSessionService{},
+		limiter,
+	)
+	router.POST("/auth/login", handler.Login)
+
+	req := httptest.NewRequest(http.MethodPost, "/auth/login",
+		strings.NewReader(`{"username":"teacher.one","password":"StrongPass123!"}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("expected status %d, got %d; body: %s", http.StatusTooManyRequests, rec.Code, rec.Body.String())
+	}
+	if rec.Header().Get("Retry-After") != "900" {
+		t.Fatalf("Retry-After = %q, want 900", rec.Header().Get("Retry-After"))
+	}
+	if limiter.calls != 1 || limiter.clientIP != "192.0.2.1" {
+		t.Fatalf("rate limiter received unexpected client IP/call count: %+v", limiter)
 	}
 }
 
