@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 	"testing"
 	"time"
@@ -11,7 +10,7 @@ import (
 // TestStudentGuardianFoundationPostgresIntegration verifies V11's relational
 // constraints against PostgreSQL, including the composite tenant boundaries.
 func TestStudentGuardianFoundationPostgresIntegration(t *testing.T) {
-	_, pool, _ := newPostgresIntegrationRepository(t)
+	_, pool, userID := newPostgresIntegrationRepository(t)
 	ctx := context.Background()
 
 	var hasV11Schema bool
@@ -22,6 +21,13 @@ func TestStudentGuardianFoundationPostgresIntegration(t *testing.T) {
 	}
 	if !hasV11Schema {
 		t.Fatal("V11 student/guardian schema is missing; apply migrations to school_management_test first")
+	}
+
+	var schoolID1 int64
+	if err := pool.QueryRow(ctx,
+		`SELECT school_id FROM users WHERE id = $1`, userID,
+	).Scan(&schoolID1); err != nil {
+		t.Fatalf("load helper school: %v", err)
 	}
 
 	suffix := strconv.FormatInt(time.Now().UnixNano(), 10)
@@ -35,30 +41,25 @@ func TestStudentGuardianFoundationPostgresIntegration(t *testing.T) {
 		t.Fatalf("create second test school: %v", err)
 	}
 
-	// Register after the shared helper so this cleanup runs before its
-	// first-school/user cleanup.
+	// This cleanup runs before the shared helper removes its school/user.
 	t.Cleanup(func() {
 		cleanupCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		_, _ = pool.Exec(cleanupCtx,
 			`DELETE FROM student_guardians WHERE school_id = $1 OR school_id = $2`,
-			0, schoolID2,
+			schoolID1, schoolID2,
 		)
 		_, _ = pool.Exec(cleanupCtx,
-			`DELETE FROM guardians WHERE school_id = $1`, schoolID2)
+			`DELETE FROM guardians WHERE school_id = $1 OR school_id = $2`,
+			schoolID1, schoolID2,
+		)
 		_, _ = pool.Exec(cleanupCtx,
-			`DELETE FROM students WHERE school_id = $1`, schoolID2)
+			`DELETE FROM students WHERE school_id = $1 OR school_id = $2`,
+			schoolID1, schoolID2,
+		)
 		_, _ = pool.Exec(cleanupCtx,
 			`DELETE FROM schools WHERE id = $1`, schoolID2)
 	})
-
-	// The helper's school is discoverable from the test user created for it.
-	var schoolID1 int64
-	if err := pool.QueryRow(ctx,
-		`SELECT school_id FROM users ORDER BY id DESC LIMIT 1`,
-	).Scan(&schoolID1); err != nil {
-		t.Fatalf("load helper school: %v", err)
-	}
 
 	admission := "V11-" + suffix
 	var student1, student2, otherSchoolStudent int64
@@ -168,6 +169,6 @@ func TestStudentGuardianFoundationPostgresIntegration(t *testing.T) {
 		t.Fatalf("count student-guardian links: %v", err)
 	}
 	if linkCount != 3 {
-		t.Fatalf("expected 3 valid student-guardian links, got %d (%s)", linkCount, fmt.Sprint(linkCount))
+		t.Fatalf("expected 3 valid student-guardian links, got %d", linkCount)
 	}
 }
