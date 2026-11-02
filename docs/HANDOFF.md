@@ -1020,3 +1020,25 @@ The V4 C14 source checkpoint is ecaf9af211289f52a46f79ebffa0f41f62b06d5a — fix
 4. Add disposable PostgreSQL 18 migration tests from a v3 snapshot, including upgrade, constraint/trigger behavior, and rollback/forward-recovery checks.
 5. Only after the Go cutover and migration tests pass, plan a backed-up, controlled V4 application. The user must explicitly approve applying V4 to the development database.
 
+
+
+## 16. V12 Parent–Guardian Foundation — 2026-11-02
+
+The user explicitly approved the V12 schema. Source changes have been added to branch `fix/v4-auth-security-hardening`:
+
+- `backend/migrations/000012_add_parent_guardian_authorization.up.sql`
+- `backend/migrations/000012_add_parent_guardian_authorization.down.sql`
+- `backend/internal/repository/parent_guardian_authorization_v12_integration_test.go`
+- V12 sections in `docs/DATABASE.md`, `CHANGELOG.md`, and `PROGRESS.md`.
+
+V12 source design:
+- Guardian portal eligibility is explicit and school-scoped. Existing V11 free-form mobile numbers are not silently normalized; the school must set a canonical E.164 mobile and enable portal eligibility.
+- A verified active Parent principal can link to a guardian only when the Parent's verified mobile exactly matches the portal-enabled guardian mobile. One guardian has at most one active Parent link; one Parent may link multiple guardians across schools.
+- Parent–Guardian and Student–Guardian revocations are irreversible history records. A revoked official Student–Guardian relationship can be re-established only as a new row.
+- First-time OTP challenges can exist before a Parent principal, keyed by a lowercase 64-character mobile HMAC. Raw mobile numbers are not stored in challenge/rate-limit tables.
+- Persistent mobile/IP rate-limit buckets and append-only audit events support the OTP and relationship workflows.
+- The application must still enforce the live `guardians.manage` permission when enabling portal eligibility and must check both active relationship layers, school scope, account status, guardian/student status, and the requested Parent permission on every child-data request.
+
+**Verification status:** V12 is source-only. It has not been applied or PostgreSQL-tested, and the new integration test has not been run. Do not claim Parent login or Parent child-data APIs are implemented. OTP delivery, OTP repository/service, Parent handlers/routes, and child-data APIs remain the next application-layer work. Apply only to `school_management_test` after reviewing the migration source and verifying the local branch; never apply to `school_management` without separate explicit approval.
+
+The V12 down migration is guarded and refuses rollback once Parent links, OTP/rate-limit history, portal settings, or relationship revocations exist. Do not modify the applied V11/V4 migrations.
