@@ -148,3 +148,15 @@ Never paste `.env` values, JWT secrets, passwords, OTPs, MFA secrets, or real st
 - Once consumed, a challenge cannot be reactivated or have its consumption timestamp rewritten. The existing database check still caps attempts at five; the application must increment attempts atomically and consume/expire challenges as part of the OTP verification workflow.
 - The partial unique index allows only one unconsumed challenge per parent. Because an expired row remains unconsumed until the application marks it consumed, the resend workflow must retire an expired challenge before inserting its replacement.
 - Source-level review only. PostgreSQL execution/integration tests have not been run; migration v4 remains unapplied.
+
+### C17 — Correct PL/pgSQL dollar-quote delimiters
+
+A source-level syntax defect was found in five PL/pgSQL trigger functions: their function bodies used a single-dollar delimiter ($) rather than a valid PostgreSQL dollar-quote delimiter ($$). Corrected both the opening and closing delimiters for:
+
+- prevent_permission_catalogue_delete
+- guard_principal_role_history
+- guard_mfa_recovery_code_history
+- guard_parent_otp_challenge_history
+- guard_role_permission_delegation_history
+
+Only the delimiters changed; function logic was not modified. A complete source scan confirmed five corrected opening delimiters, five corrected closing delimiters, and no remaining instances of the malformed patterns. This is static source verification only: PostgreSQL 18 parsing, clean v3-to-v4 migration execution, and trigger integration tests remain pending. Migration V4 remains unapplied and must not be run without explicit approval.
