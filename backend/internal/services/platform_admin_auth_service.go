@@ -14,12 +14,19 @@ type platformAdminCredentialStore interface {
 	GetByEmail(context.Context,string) (*repository.PlatformAdminCredential,error)
 }
 
-type PlatformAdminAuthService struct {
-	credentials platformAdminCredentialStore
-	loginSecurity staffLoginSecurity
+type platformAdminLoginSecurity interface {
+	AcquireAttemptLock(context.Context,string) (func(),error)
+	IsLocked(context.Context,string) (bool,error)
+	RecordFailure(context.Context,string) error
+	RecordPlatformAdminSuccess(context.Context,string,int64) error
 }
 
-func NewPlatformAdminAuthService(credentials platformAdminCredentialStore, security staffLoginSecurity) (*PlatformAdminAuthService,error) {
+type PlatformAdminAuthService struct {
+	credentials platformAdminCredentialStore
+	loginSecurity platformAdminLoginSecurity
+}
+
+func NewPlatformAdminAuthService(credentials platformAdminCredentialStore, security platformAdminLoginSecurity) (*PlatformAdminAuthService,error) {
 	if credentials==nil || security==nil { return nil,fmt.Errorf("Platform Admin credential and login-security repositories are required") }
 	return &PlatformAdminAuthService{credentials:credentials,loginSecurity:security},nil
 }
@@ -45,6 +52,6 @@ func (s *PlatformAdminAuthService) Authenticate(ctx context.Context,email,passwo
 		if recordErr:=s.loginSecurity.RecordFailure(ctx,email); recordErr!=nil { return nil,recordErr }
 		return nil,ErrInvalidCredentials
 	}
-	if err:=s.loginSecurity.RecordSuccess(ctx,email,record.Principal.ID); err!=nil { return nil,err }
+	if err:=s.loginSecurity.RecordPlatformAdminSuccess(ctx,email,record.Principal.ID); err!=nil { return nil,err }
 	return record.Principal,nil
 }
