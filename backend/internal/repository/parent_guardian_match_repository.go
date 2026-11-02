@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-var parentGuardianE164Pattern = regexp.MustCompile(`^\\+[1-9][0-9]{7,14}$`)
+var parentGuardianE164Pattern = regexp.MustCompile(`^\+[1-9][0-9]{7,14}$`)
 
 // ParentGuardianMatch is the minimum official guardian identity needed by the
 // parent-registration flow. It deliberately excludes student names and other
