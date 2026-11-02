@@ -117,6 +117,29 @@ func (r *ParentOTPChallengeRepository) CreatePreAccountChallenge(
 	return challengeID, nil
 }
 
+// InvalidatePreAccountChallenge consumes a challenge when delivery fails.
+// It intentionally does not modify rate-limit reservations.
+func (r *ParentOTPChallengeRepository) InvalidatePreAccountChallenge(
+	ctx context.Context, challengeID int64,
+) error {
+	if r == nil || r.db == nil || challengeID <= 0 {
+		return fmt.Errorf("invalid parent OTP challenge ID")
+	}
+	tag, err := r.db.Exec(ctx,
+		`UPDATE parent_otp_challenges
+		    SET consumed_at = COALESCE(consumed_at, NOW())
+		  WHERE id = $1 AND principal_id IS NULL`,
+		challengeID,
+	)
+	if err != nil {
+		return fmt.Errorf("invalidate undelivered parent OTP challenge: %w", err)
+	}
+	if tag.RowsAffected() != 1 {
+		return fmt.Errorf("pre-account parent OTP challenge not found")
+	}
+	return nil
+}
+
 func readParentOTPRateState(
 	ctx context.Context, tx pgx.Tx, subjectType, subjectHash string,
 ) (int16, pgtype.Timestamptz, bool, error) {
