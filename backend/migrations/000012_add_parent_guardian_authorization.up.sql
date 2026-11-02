@@ -11,7 +11,7 @@ ALTER TABLE guardians
     ADD COLUMN parent_portal_enabled_by BIGINT
         REFERENCES auth_principals(id) ON DELETE RESTRICT,
     ADD CONSTRAINT guardians_mobile_e164_check
-        CHECK (mobile_number_e164 IS NULL OR mobile_number_e164 ~ '^\\+[1-9][0-9]{7,14}$'),
+        CHECK (mobile_number_e164 IS NULL OR mobile_number_e164 ~ '^\+[1-9][0-9]{7,14}$'),
     ADD CONSTRAINT guardians_portal_enablement_actor_check
         CHECK (
             (parent_portal_enabled_at IS NULL AND parent_portal_enabled_by IS NULL)
