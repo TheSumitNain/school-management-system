@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"school-management-system/internal/models"
 
@@ -14,8 +13,8 @@ import (
 )
 
 var (
-	ErrParentAccountAlreadyExists = errors.New("a Parent account already exists for this mobile")
-	ErrNoEligibleParentGuardians   = errors.New("no eligible official guardian records found")
+	ErrParentAccountAlreadyExists  = errors.New("a Parent account already exists for this mobile")
+	ErrNoEligibleParentGuardians    = errors.New("no eligible official guardian records found")
 	ErrParentGuardianAlreadyClaimed = errors.New("one or more guardian records are already linked")
 )
 
@@ -23,8 +22,8 @@ var (
 // number of linked guardian records. Student and guardian profile data is not
 // returned by the account-provisioning boundary.
 type ParentRegistrationResult struct {
-	Principal            *models.AuthPrincipal
-	LinkedGuardianCount  int
+	Principal           *models.AuthPrincipal
+	LinkedGuardianCount int
 }
 
 // ParentRegistrationRepository provisions a verified Parent identity and all
@@ -54,8 +53,8 @@ func (r *ParentRegistrationRepository) ProvisionVerifiedMobile(
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	// Serialize duplicate registrations for one verified mobile. This lock is
-	// independent of the OTP lock and remains held through transaction commit.
+	// Serialize duplicate registrations for one mobile. This lock is held
+	// through commit and complements the unique mobile index.
 	if _, err := tx.Exec(ctx,
 		`SELECT pg_advisory_xact_lock(hashtextextended('parent-registration:' || $1, 0))`,
 		mobileE164,
@@ -77,7 +76,7 @@ func (r *ParentRegistrationRepository) ProvisionVerifiedMobile(
 
 	// Lock guardian, relationship, and student rows while taking a fresh
 	// eligibility snapshot. Repeated rows represent multiple active children
-	// for the same guardian and are deduplicated before links are inserted.
+	// for one guardian and are deduplicated before links are inserted.
 	rows, err := tx.Query(ctx, `
 		SELECT g.id, g.school_id
 		  FROM guardians g
@@ -147,9 +146,9 @@ func (r *ParentRegistrationRepository) ProvisionVerifiedMobile(
 		return nil, fmt.Errorf("create verified Parent account: %w", err)
 	}
 
-	// assigned_by=NULL is deliberately permitted only for the migration-seeded
-	// global Parent system role after the database verifies the mobile subtype.
-	var assignedPrincipalID int64
+	// NULL assigned_by is allowed by the database only for the verified Parent
+	// principal receiving the migration-seeded global Parent system role.
+	var roleAssignmentID int64
 	err = tx.QueryRow(ctx, `
 		INSERT INTO principal_roles (principal_id, role_id, assigned_by)
 		SELECT $1, r.id, NULL
@@ -159,8 +158,8 @@ func (r *ParentRegistrationRepository) ProvisionVerifiedMobile(
 		   AND r.scope_type='global'
 		   AND r.school_id IS NULL
 		   AND r.is_system=TRUE
-		RETURNING principal_id
-	`, principalID).Scan(&assignedPrincipalID)
+		RETURNING id
+	`, principalID).Scan(&roleAssignmentID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("global Parent system role is missing")
 	}
@@ -198,7 +197,3 @@ func isUniqueConstraintViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "23505"
 }
-
-// Keep the E.164 value canonical at this repository boundary as well as at the
-// service boundary; whitespace normalization is intentionally not performed.
-var _ = strings.TrimSpace
