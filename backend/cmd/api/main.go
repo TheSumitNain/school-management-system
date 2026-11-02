@@ -42,6 +42,7 @@ func setupRouter(
 
 	if authHandler != nil {
 		router.POST("/auth/login", authHandler.Login)
+		router.POST("/auth/platform-admin/login", authHandler.PlatformAdminLogin)
 		router.POST("/auth/mfa/enroll/verify", authHandler.CompleteMFAEnrollment)
 		router.POST("/auth/mfa/verify", authHandler.VerifyMFA)
 		router.POST("/auth/refresh", authHandler.Refresh)
@@ -132,6 +133,11 @@ func run() error {
 
 	loginSecurityRepo := repository.NewStaffLoginSecurityRepository(db)
 	authService := services.NewAuthService(userRepo, schoolRepo, loginSecurityRepo)
+	platformAdminRepo := repository.NewPlatformAdminRepository(db)
+	platformAdminAuthService, err := services.NewPlatformAdminAuthService(platformAdminRepo, loginSecurityRepo)
+	if err != nil {
+		return fmt.Errorf("initialize Platform Admin authentication: %w", err)
+	}
 	refreshSessionRepo := repository.NewPrincipalRefreshSessionRepository(db)
 	principalAuthorizationRepo := repository.NewPrincipalAuthorizationRepository(db)
 	mfaChallengeRepo := repository.NewMFAChallengeRepository(db)
@@ -171,6 +177,7 @@ func run() error {
 		loginSecurityRepo,
 	)
 	authHandler.SetMFAService(mfaService, principalAuthorizationRepo)
+	authHandler.SetPlatformAdminAuthService(platformAdminAuthService)
 
 	router, err := setupRouter(db, authHandler, tokenService, principalAuthorizationRepo, principalAuthorizationRepo)
 
