@@ -32,16 +32,34 @@ func (r *PrincipalRefreshSessionRepository) CreatePrincipal(
 	if principalID <= 0 || !isSHA256Hash(tokenHash) || !expiresAt.After(time.Now()) {
 		return fmt.Errorf("invalid refresh session data")
 	}
-
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("begin refresh-session creation: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	if err := r.CreatePrincipalInTx(ctx, tx, principalID, tokenHash, expiresAt); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit refresh-session creation: %w", err)
+	}
+	return nil
+}
 
-	// Use the same principal-level lock as refresh-token rotation.
-	if _, err = tx.Exec(
-		ctx,
+// CreatePrincipalInTx creates a principal-bound refresh session in a
+// caller-owned transaction. The caller controls commit and rollback so
+// provisioning and session issuance can be atomic.
+func (r *PrincipalRefreshSessionRepository) CreatePrincipalInTx(
+	ctx context.Context,
+	tx pgx.Tx,
+	principalID int64,
+	tokenHash string,
+	expiresAt time.Time,
+) error {
+	if tx == nil || principalID <= 0 || !isSHA256Hash(tokenHash) || !expiresAt.After(time.Now()) {
+		return fmt.Errorf("invalid refresh session data")
+	}
+	if _, err := tx.Exec(ctx,
 		`SELECT pg_advisory_xact_lock(hashtextextended('refresh-principal:' || $1::bigint::text,0))`,
 		principalID,
 	); err != nil {
@@ -74,28 +92,13 @@ LEFT JOIN parent_accounts parent ON parent.principal_id=ap.id
 WHERE ap.id=$1
 FOR UPDATE OF ap`
 
-	var principalType string
-	var principalStatus string
-	var username string
-	var schoolStatus string
-	var tokenVersion int64
+	var principalType, principalStatus, username, schoolStatus string
+	var tokenVersion, schoolID int64
 	var userID pgtype.Int8
-	var schoolID int64
-	var hasPlatformAccount bool
-	var mobileVerified bool
-	var mfaVerified bool
-
-	err = tx.QueryRow(ctx, lookup, principalID).Scan(
-		&principalType,
-		&principalStatus,
-		&tokenVersion,
-		&userID,
-		&schoolID,
-		&username,
-		&schoolStatus,
-		&hasPlatformAccount,
-		&mobileVerified,
-		&mfaVerified,
+	var hasPlatformAccount, mobileVerified, mfaVerified bool
+	err := tx.QueryRow(ctx, lookup, principalID).Scan(
+		&principalType, &principalStatus, &tokenVersion, &userID, &schoolID,
+		&username, &schoolStatus, &hasPlatformAccount, &mobileVerified, &mfaVerified,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrRefreshSessionInactive
@@ -105,40 +108,27 @@ FOR UPDATE OF ap`
 	}
 
 	active := principalStatus == "active" && tokenVersion > 0 && mfaVerified
-
 	switch principalType {
 	case "staff":
-		active = active &&
-			schoolID > 0 &&
-			schoolStatus == "active" &&
-			username != ""
-
+		active = active && schoolID > 0 && schoolStatus == "active" && username != ""
 	case "platform_admin":
 		active = active && hasPlatformAccount
-
 	case "parent":
 		active = active && mobileVerified
-
 	default:
 		active = false
 	}
-
 	if !active {
 		return ErrRefreshSessionInactive
 	}
 
-	const insert = `
-INSERT INTO refresh_sessions (user_id, principal_id, token_hash, expires_at)
-VALUES ($1, $2, $3, $4)`
-
-	if _, err = tx.Exec(ctx, insert, nullableInt64(userID), principalID, tokenHash, expiresAt); err != nil {
+	if _, err := tx.Exec(ctx,
+		`INSERT INTO refresh_sessions (user_id, principal_id, token_hash, expires_at)
+		 VALUES ($1, $2, $3, $4)`,
+		nullableInt64(userID), principalID, tokenHash, expiresAt,
+	); err != nil {
 		return fmt.Errorf("create refresh session: %w", err)
 	}
-
-	if err = tx.Commit(ctx); err != nil {
-		return fmt.Errorf("commit refresh-session creation: %w", err)
-	}
-
 	return nil
 }
 
