@@ -304,3 +304,66 @@ func TestAuthenticateStaffAcceptsMatchingPrincipalIdentity(t *testing.T) {
 		t.Fatalf("authenticated principal ID = %d, want 42", principal.ID)
 	}
 }
+
+
+type fakeStaffLoginSecurity struct {
+	locked bool
+	lockErr error
+	failures int
+	successes int
+	lastPrincipalID int64
+}
+
+func (f *fakeStaffLoginSecurity) IsLocked(context.Context, string) (bool, error) {
+	return f.locked, f.lockErr
+}
+func (f *fakeStaffLoginSecurity) RecordFailure(context.Context, string) error {
+	f.failures++
+	return nil
+}
+func (f *fakeStaffLoginSecurity) RecordSuccess(_ context.Context, _ string, principalID int64) error {
+	f.successes++
+	f.lastPrincipalID = principalID
+	return nil
+}
+
+func TestAuthenticateStaffRejectsLockedUsernameBeforeCredentialLookup(t *testing.T) {
+	security := &fakeStaffLoginSecurity{locked: true}
+	users := &fakeUserRepository{}
+	service := NewAuthService(users, &fakeSchoolRepository{}, security)
+
+	_, err := service.AuthenticateStaff(context.Background(), "teacher.one", "WrongPassword123!")
+	if !errors.Is(err, ErrLoginLocked) {
+		t.Fatalf("expected ErrLoginLocked, got %v", err)
+	}
+	if users.principal != nil {
+		t.Fatal("locked login must not proceed to principal lookup")
+	}
+}
+
+func TestAuthenticateStaffRecordsInvalidCredentialAndSuccessfulLogin(t *testing.T) {
+	hash, err := HashPassword("StrongPass123!")
+	if err != nil { t.Fatal(err) }
+	users := &fakeUserRepository{
+		user: &models.User{ID: 100, PrincipalID: 42, SchoolID: 7, Username: "teacher.one", PasswordHash: hash, Status: "active"},
+		principal: &models.AuthPrincipal{ID: 42, Type: "staff", Status: "active", TokenVersion: 1, SchoolID: 7, Username: "teacher.one"},
+	}
+	security := &fakeStaffLoginSecurity{}
+	service := NewAuthService(users, &fakeSchoolRepository{}, security)
+
+	_, err = service.AuthenticateStaff(context.Background(), "teacher.one", "WrongPassword123!")
+	if !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("expected invalid credentials, got %v", err)
+	}
+	if security.failures != 1 {
+		t.Fatalf("failure events = %d, want 1", security.failures)
+	}
+
+	principal, err := service.AuthenticateStaff(context.Background(), "teacher.one", "StrongPass123!")
+	if err != nil {
+		t.Fatalf("expected valid login, got %v", err)
+	}
+	if principal.ID != 42 || security.successes != 1 || security.lastPrincipalID != 42 {
+		t.Fatalf("successful login was not recorded correctly: principal=%v security=%+v", principal, security)
+	}
+}
