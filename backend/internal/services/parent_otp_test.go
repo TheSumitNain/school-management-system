@@ -97,8 +97,15 @@ type parentOTPChallengeCapture struct {
 	ipHash     string
 	otpHash    string
 	expiresAt  time.Time
-	calls      int
-	err        error
+	calls         int
+	err           error
+	invalidations []int64
+	invalidateErr  error
+}
+
+func (c *parentOTPChallengeCapture) InvalidatePreAccountChallenge(_ context.Context, challengeID int64) error {
+	c.invalidations = append(c.invalidations, challengeID)
+	return c.invalidateErr
 }
 
 func (c *parentOTPChallengeCapture) CreatePreAccountChallenge(
@@ -208,6 +215,9 @@ func TestParentOTPServicePropagatesRateLimitAndHidesDeliveryFailure(t *testing.T
 	}
 	if strings.Contains(err.Error(), "provider private failure detail") {
 		t.Fatal("provider error detail escaped the service boundary")
+	}
+	if len(repo.invalidations) != 1 || repo.invalidations[0] != 42 {
+		t.Fatalf("failed delivery invalidations = %v, want [42]", repo.invalidations)
 	}
 }
 
