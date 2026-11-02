@@ -181,7 +181,7 @@ VALUES ($1, 'auth.staff_login', 'authentication', 'success', $2::jsonb)`, princi
 }
 
 // AllowIPAttempt permits at most 120 login requests from one client IP in a
-// rolling 15-minute window. The 31st request starts a 15-minute block.
+// rolling 15-minute window. The 121st request starts a 15-minute block.
 func (r *StaffLoginSecurityRepository) AllowIPAttempt(ctx context.Context, rawIP string) (bool, error) {
 	hash, err := loginIPHash(rawIP)
 	if err != nil {
