@@ -46,7 +46,7 @@ func TestParentOTPChallengeRepositoryPostgresIntegration(t *testing.T) {
 
 	var mobileSends, ipSends int16
 	if err := pool.QueryRow(ctx, `
-		SELECT send_count FROM parent_otp_rate_limits
+		SELECT SUM(send_count)::SMALLINT FROM parent_otp_rate_limits
 		 WHERE subject_type='mobile' AND subject_hash=$1
 	`, mobileHash).Scan(&mobileSends); err != nil {
 		t.Fatalf("read mobile rate bucket: %v", err)
