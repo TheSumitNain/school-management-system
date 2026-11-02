@@ -165,7 +165,7 @@ func (cfg Config) ValidateJWT() error {
 	return nil
 }
 
- 
+
 // ValidateTOTPEncryption validates the key material required by the MFA
 // service. It is intentionally separate from ValidateJWT so deployments can
 // roll out the MFA capability without silently inventing a local key.
@@ -173,8 +173,8 @@ func (cfg Config) ValidateTOTPEncryption() error {
 	if len(cfg.TOTPEncryptionKey) != 32 {
 		return fmt.Errorf("TOTP_ENCRYPTION_KEY must be valid Base64 encoding of exactly 32 bytes")
 	}
-	if cfg.TOTPEncryptionKeyVersion < 1 {
-		return fmt.Errorf("TOTP_ENCRYPTION_KEY_VERSION must be a positive integer")
+	if cfg.TOTPEncryptionKeyVersion < 1 || cfg.TOTPEncryptionKeyVersion > 2147483647 {
+		return fmt.Errorf("TOTP_ENCRYPTION_KEY_VERSION must be between 1 and 2147483647")
 	}
 	return nil
 }
