@@ -11,7 +11,7 @@ import (
 // This integration test uses the same strict school_management_test guard as
 // the refresh-session integration suite. Apply migrations through V6 first.
 func TestStaffLoginSecurityRepositoryPostgresIntegration(t *testing.T) {
-	_, pool, userID := newPostgresIntegrationRepository(t)
+	_, pool, _ := newPostgresIntegrationRepository(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
