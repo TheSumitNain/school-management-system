@@ -110,7 +110,7 @@ func TestTOTPEncryptionRejectsInvalidKeyAndSecret(t *testing.T) {
 }
 
 func TestTOTPProvisioningURI(t *testing.T) {
-	secret := "JBSWY3DPEHPK3PXP"
+	secret := "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP"
 	got, err := TOTPProvisioningURI("School Management", "admin@example.com", secret)
 	if err != nil {
 		t.Fatalf("TOTPProvisioningURI() error = %v", err)
