@@ -96,24 +96,17 @@ func newPostgresIntegrationRepository(
 	}
 
 	var principalID int64
-	if hasV4Schema {
-		err = pool.QueryRow(ctx,
-			`INSERT INTO auth_principals (principal_type, status)
-			 VALUES ('staff', 'active') RETURNING id`,
-		).Scan(&principalID)
-		if err != nil {
-			_, _ = pool.Exec(ctx, `DELETE FROM schools WHERE id = $1`, schoolID)
-			t.Fatalf("create test principal: %v", err)
-		}
-	}
-
 	var userID int64
 	if hasV4Schema {
+		// Let the V4 compatibility trigger create the staff principal as part
+		// of the users INSERT. The deferred subtype constraint then validates
+		// both rows at the end of this statement's transaction.
 		err = pool.QueryRow(ctx,
-			`INSERT INTO users (school_id, principal_id, username, password_hash, status)
-			 VALUES ($1, $2, $3, $4, 'active') RETURNING id`,
-			schoolID, principalID, "test-user-"+suffix, "integration-test-password-hash",
-		).Scan(&userID)
+			`INSERT INTO users (school_id, username, password_hash, status)
+			 VALUES ($1, $2, $3, 'active')
+			 RETURNING id, principal_id`,
+			schoolID, "test-user-"+suffix, "integration-test-password-hash",
+		).Scan(&userID, &principalID)
 	} else {
 		err = pool.QueryRow(ctx,
 			`INSERT INTO users (school_id, username, password_hash, status)
