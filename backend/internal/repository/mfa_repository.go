@@ -83,8 +83,8 @@ WHERE principal_mfa_credentials.verified_at IS NULL`,principalID,ciphertext,keyV
 // ActivateEnrollment consumes the challenge, verifies its principal and
 // purpose, activates the pending credential, invalidates existing sessions,
 // and records the security event in one transaction.
-func (r *MFARepository) ActivateEnrollment(ctx context.Context, principalID int64, challengeHash string) error {
-	if principalID<=0 || !isSHA256Hash(challengeHash) { return ErrMFAEnrollmentInvalid }
+func (r *MFARepository) ActivateEnrollment(ctx context.Context, principalID int64, challengeHash string, acceptedStep int64) error {
+	if principalID<=0 || !isSHA256Hash(challengeHash) || acceptedStep < 0 { return ErrMFAEnrollmentInvalid }
 	tx,err:=r.db.Begin(ctx); if err!=nil { return fmt.Errorf("begin MFA enrollment: %w",err) }
 	defer func(){ _=tx.Rollback(ctx) }()
 	var challengePrincipal int64
@@ -95,8 +95,8 @@ FOR UPDATE`,challengeHash).Scan(&challengePrincipal,&purpose)
 	if errors.Is(err,pgx.ErrNoRows) { return ErrMFAEnrollmentInvalid }
 	if err!=nil { return fmt.Errorf("lock MFA enrollment challenge: %w",err) }
 	if challengePrincipal!=principalID || purpose!="enrollment" { return ErrMFAEnrollmentInvalid }
-	tag,err:=tx.Exec(ctx,`UPDATE principal_mfa_credentials SET verified_at=NOW(),updated_at=NOW()
-WHERE principal_id=$1 AND method='totp' AND verified_at IS NULL`,principalID)
+	tag,err:=tx.Exec(ctx,`UPDATE principal_mfa_credentials SET verified_at=NOW(),last_accepted_step=$2,updated_at=NOW()
+WHERE principal_id=$1 AND method='totp' AND verified_at IS NULL`,principalID,acceptedStep)
 	if err!=nil { return fmt.Errorf("activate MFA credential: %w",err) }
 	if tag.RowsAffected()!=1 { return ErrMFAEnrollmentInvalid }
 	tag,err=tx.Exec(ctx,`UPDATE auth_mfa_challenges SET consumed_at=NOW()
@@ -118,6 +118,59 @@ VALUES($1,'auth.mfa.enrollment_completed','principal',$1::text,'success','{}'::j
 		return fmt.Errorf("audit MFA enrollment: %w",err)
 	}
 	if err=tx.Commit(ctx); err!=nil { return fmt.Errorf("commit MFA enrollment: %w",err) }
+	return nil
+}
+
+// ConsumeLoginChallenge atomically consumes the challenge and the matched
+// TOTP time-step. The conditional counter update prevents replay across distinct
+// challenges and remains safe when requests race.
+func (r *MFARepository) ConsumeLoginChallenge(ctx context.Context, principalID int64, challengeHash string, acceptedStep int64) error {
+	if principalID <= 0 || !isSHA256Hash(challengeHash) || acceptedStep < 0 {
+		return ErrMFAEnrollmentInvalid
+	}
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin MFA login verification: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	var challengePrincipal int64
+	var purpose string
+	err = tx.QueryRow(ctx, `SELECT principal_id,purpose FROM auth_mfa_challenges
+WHERE challenge_hash=$1 AND consumed_at IS NULL AND expires_at>NOW() AND attempts<5
+FOR UPDATE`, challengeHash).Scan(&challengePrincipal, &purpose)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrMFAEnrollmentInvalid
+	}
+	if err != nil {
+		return fmt.Errorf("lock MFA login challenge: %w", err)
+	}
+	if challengePrincipal != principalID || purpose != "login" {
+		return ErrMFAEnrollmentInvalid
+	}
+
+	tag, err := tx.Exec(ctx, `UPDATE principal_mfa_credentials
+SET last_accepted_step=$2,updated_at=NOW()
+WHERE principal_id=$1 AND method='totp' AND verified_at IS NOT NULL
+  AND (last_accepted_step IS NULL OR last_accepted_step < $2)`, principalID, acceptedStep)
+	if err != nil {
+		return fmt.Errorf("record accepted TOTP time-step: %w", err)
+	}
+	if tag.RowsAffected() != 1 {
+		return ErrMFAEnrollmentInvalid
+	}
+	tag, err = tx.Exec(ctx, `UPDATE auth_mfa_challenges SET consumed_at=NOW()
+WHERE challenge_hash=$1 AND principal_id=$2 AND consumed_at IS NULL
+  AND expires_at>NOW() AND attempts<5`, challengeHash, principalID)
+	if err != nil {
+		return fmt.Errorf("consume MFA login challenge: %w", err)
+	}
+	if tag.RowsAffected() != 1 {
+		return ErrMFAEnrollmentInvalid
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit MFA login verification: %w", err)
+	}
 	return nil
 }
 
