@@ -138,7 +138,7 @@ func TestLoginRejectsRateLimitedClientIP(t *testing.T) {
 	router.POST("/auth/login", handler.Login)
 
 	req := httptest.NewRequest(http.MethodPost, "/auth/login",
-		strings.NewReader(`{"username":"teacher.one","password":"StrongPass123!"}`))
+		strings.NewReader(`{malformed-json`))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
