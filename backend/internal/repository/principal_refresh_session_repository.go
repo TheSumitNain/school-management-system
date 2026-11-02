@@ -70,6 +70,7 @@ FOR UPDATE OF ap`
 	var schoolID int64
 	var hasPlatformAccount bool
 	var mobileVerified bool
+	var mfaVerified bool
 
 	err = tx.QueryRow(ctx, lookup, principalID).Scan(
 		&principalType,
@@ -81,6 +82,7 @@ FOR UPDATE OF ap`
 		&schoolStatus,
 		&hasPlatformAccount,
 		&mobileVerified,
+		&mfaVerified,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrRefreshSessionInactive
@@ -89,7 +91,7 @@ FOR UPDATE OF ap`
 		return fmt.Errorf("load principal for refresh-session creation: %w", err)
 	}
 
-	active := principalStatus == "active" && tokenVersion > 0
+	active := principalStatus == "active" && tokenVersion > 0 && mfaVerified
 
 	switch principalType {
 	case "staff":
@@ -190,7 +192,20 @@ SELECT rs.id, rs.family_id, rs.principal_id,
        COALESCE(u.username,''),
        COALESCE(s.status,''),
        (pa.principal_id IS NOT NULL),
-       COALESCE(parent.mobile_verified_at IS NOT NULL,FALSE)
+       COALESCE(parent.mobile_verified_at IS NOT NULL,FALSE),
+       CASE
+         WHEN ap.principal_type='platform_admin' OR
+              (ap.principal_type='staff' AND EXISTS (
+                SELECT 1 FROM principal_roles mpr JOIN roles mr ON mr.id=mpr.role_id
+                WHERE mpr.principal_id=ap.id AND mpr.revoked_at IS NULL
+                  AND mr.is_system=TRUE AND mr.role_key='school_admin'
+                  AND mr.principal_type='staff' AND mr.scope_type='school'
+                  AND mr.school_id=u.school_id
+              ))
+         THEN EXISTS (SELECT 1 FROM principal_mfa_credentials mc
+                      WHERE mc.principal_id=ap.id AND mc.method='totp' AND mc.verified_at IS NOT NULL)
+         ELSE TRUE
+       END
 FROM refresh_sessions rs
 JOIN auth_principals ap ON ap.id=rs.principal_id
 LEFT JOIN users u ON u.principal_id=ap.id
