@@ -98,6 +98,7 @@ func (r *UserRepository) CreateUser(
 		passwordHash,
 	).Scan(
 		&user.ID,
+		&user.PrincipalID,
 		&user.SchoolID,
 		&user.Username,
 		&user.PasswordHash,
