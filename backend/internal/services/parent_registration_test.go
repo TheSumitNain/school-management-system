@@ -79,7 +79,7 @@ func TestParentRegistrationRejectsInvalidMobileBeforeOTP(t *testing.T) {
 	}
 
 	if _, _, err := service.Register(context.Background(), "9876543210", "123456"); !errors.Is(err, ErrParentOTPInvalid) {
-		t.Fatalf("error = %v, want invalid OTP")
+		t.Fatalf("error = %v, want invalid OTP", err)
 	}
 	if otp.calls != 0 || provisioner.calls != 0 {
 		t.Fatalf("invalid mobile reached dependencies: otp=%d provisioner=%d", otp.calls, provisioner.calls)
