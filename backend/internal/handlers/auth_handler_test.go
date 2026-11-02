@@ -71,11 +71,24 @@ func (f *fakeSessionService) Revoke(_ context.Context, refreshToken string) erro
 	return f.err
 }
 
+type fakeMFAService struct{}
+func (fakeMFAService) BeginAuthentication(context.Context,int64,string) (*services.MFAStart,error) {
+	return &services.MFAStart{Required:false},nil
+}
+func (fakeMFAService) CompleteEnrollment(context.Context,string,string) (int64,error) { return 0,services.ErrMFAInvalid }
+func (fakeMFAService) VerifyLoginChallenge(context.Context,string,string) (int64,error) { return 0,services.ErrMFAInvalid }
+
+type fakeMFAPrincipalLoader struct{}
+func (fakeMFAPrincipalLoader) LoadPrincipalForAuthentication(context.Context,int64) (*models.AuthPrincipal,error) {
+	return nil,models.ErrPrincipalNotAuthenticated
+}
+
 func setupTestRouter(authService AuthService, tokenService TokenService, sessionService SessionService) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 
 	router := gin.New()
 	handler := NewAuthHandler(authService, tokenService, sessionService)
+	handler.SetMFAService(fakeMFAService{},fakeMFAPrincipalLoader{})
 	router.POST("/auth/login", handler.Login)
 	router.POST("/auth/refresh", handler.Refresh)
 	router.POST("/auth/logout", handler.Logout)
