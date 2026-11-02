@@ -6,6 +6,17 @@ This project is under active development. Verification results describe the late
 
 ## [Unreleased]
 
+### Database — V12 Parent–Guardian authorization foundation
+
+- Added migration V12 for school-authorized guardian portal eligibility, authenticated Parent-to-Guardian links, and revocation history.
+- Added same-school and exact verified-mobile checks before a Parent principal can be linked to a guardian record.
+- Added irreversible revocation history for official student–guardian relationships while allowing a later re-link as a new row.
+- Extended Parent OTP storage to support pre-account challenges using a keyed mobile HMAC without creating or reserving an unauthenticated principal.
+- Added persistent keyed-HMAC mobile/IP OTP rate-limit buckets and append-only audit events for relationship changes.
+- Added PostgreSQL integration-test source for link validation, active relationship visibility, revocation, pre-account OTP uniqueness/immutability, and rate-limit storage.
+- V12 is source-only at this checkpoint. It has **not** been applied or PostgreSQL-tested. Parent OTP delivery/service, Parent auth handlers/routes, and business-resource authorization remain pending.
+
+
 ### Database — V11 student and guardian foundation
 
 - Added stable school-scoped student records with normalized, school-unique admission numbers.
