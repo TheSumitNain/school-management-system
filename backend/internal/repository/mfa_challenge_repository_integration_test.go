@@ -74,6 +74,35 @@ func TestMFAChallengeRepositoryPostgresIntegration(t *testing.T) {
 		}
 	})
 
+	t.Run("TOTP replay is rejected across distinct challenges", func(t *testing.T) {
+		credential := make([]byte, 64)
+		if _, err := pool.Exec(ctx, "INSERT INTO principal_mfa_credentials (principal_id,method,secret_ciphertext,encryption_key_version,verified_at) VALUES ($1,'totp',$2,1,NOW())", principalID, credential); err != nil {
+			t.Fatalf("insert MFA credential: %v", err)
+		}
+		mfaRepo := NewMFARepository(pool)
+		first := integrationTokenHash("mfa-replay-first")
+		if err := repo.Create(ctx, principalID, MFAChallengeLogin, first, time.Now().Add(5*time.Minute)); err != nil {
+			t.Fatal(err)
+		}
+		if err := mfaRepo.ConsumeLoginChallenge(ctx, principalID, first, 12345); err != nil {
+			t.Fatalf("first TOTP use: %v", err)
+		}
+		second := integrationTokenHash("mfa-replay-second")
+		if err := repo.Create(ctx, principalID, MFAChallengeLogin, second, time.Now().Add(5*time.Minute)); err != nil {
+			t.Fatal(err)
+		}
+		if err := mfaRepo.ConsumeLoginChallenge(ctx, principalID, second, 12345); !errors.Is(err, ErrMFAEnrollmentInvalid) {
+			t.Fatalf("replay should fail, got %v", err)
+		}
+		if _, err := repo.Get(ctx, second); err != nil {
+			t.Fatalf("rejected replay should roll back challenge consumption: %v", err)
+		}
+		if err := mfaRepo.ConsumeLoginChallenge(ctx, principalID, second, 12346); err != nil {
+			t.Fatalf("next TOTP step should succeed: %v", err)
+		}
+		_, _ = pool.Exec(ctx, "DELETE FROM principal_mfa_credentials WHERE principal_id=$1", principalID)
+	})
+
 	t.Run("invalid purpose and expired expiry are rejected", func(t *testing.T) {
 		if err := repo.Create(ctx, principalID, MFAChallengePurpose("other"), integrationTokenHash("mfa-invalid-purpose"), time.Now().Add(time.Minute)); err == nil {
 			t.Fatal("expected invalid purpose to be rejected")
