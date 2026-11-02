@@ -14,17 +14,17 @@ The migration SQL files in `backend/migrations/` are the authoritative definitio
 
 ## 2. Current Implementation Status
 
-The initial migrations define the following tables:
+The versioned migrations define the current schema foundation:
 
-| Table | Purpose | Status |
+| Table / group | Purpose | Status |
 |---|---|---|
-| `schools` | Stores school records and their setup status | Created by migration v1 |
-| `users` | Stores user accounts associated with schools | Created by migration v2 |
-| `refresh_sessions` | Stores hashed refresh-token information and session metadata | Created by migration v2; token-family metadata added by migration v3 |
+| `schools` | School identity and setup status | Created by migration v1 |
+| `users`, `refresh_sessions` | School staff accounts and refresh sessions | Created by migration v2; token-family metadata added by v3 |
+| Principal, account-subtype, RBAC, MFA, OTP and audit tables | Shared identity, scoped roles/permissions, security challenges and audit history | Defined by migrations v4–v10; verify the target database's applied migration version independently |
+| `students` | Stable school-scoped student identity | Added by V11 source migration; application to a database and PostgreSQL verification are pending |
+| `guardians`, `student_guardians` | School-scoped guardian contact records and many-to-many student links | Added by V11 source migration; application to a database and PostgreSQL verification are pending |
 
-Functional tables for students, teachers, classes, subjects, attendance, transport, and other school modules are planned for future migrations.
-
-The existence of these authentication-related tables does not mean the complete school management data model has been implemented.
+V11 deliberately does not create academic-year enrollment, class/section placement, or authenticated parent-to-child links. Those require separate schema and authorization milestones. The complete school management data model and business APIs are not implemented by these foundation tables.
 
 ## 3. Database Migrations
 
@@ -73,7 +73,30 @@ The migration adds `family_id UUID NOT NULL DEFAULT gen_random_uuid()` and an in
 
 The family identifier supports refresh-token replay handling and family-wide logout. When a previously rotated or revoked token is presented again, the application revokes the remaining active sessions in that family. The repository uses a PostgreSQL transaction advisory lock derived from the family ID to serialize refresh rotation and logout operations for the same family. Rotation additionally acquires a per-user transaction advisory lock to serialize rotations across different families belonging to the same user. It performs a fresh `FOR UPDATE` lookup after acquiring both locks before making security decisions.
 
-### 3.4 Running Migrations
+### 3.4 Migration v11 — Student and Guardian Foundation
+
+**Purpose:** Add stable school-scoped student identities, school-scoped guardian contact records, and their many-to-many relationship.
+
+Files:
+
+- `000011_add_student_guardian_foundation.up.sql`
+- `000011_add_student_guardian_foundation.down.sql`
+
+The migration creates:
+
+- `students`: one stable identity per student within one school, with a school-unique admission number, full name, status, and timestamps.
+- `guardians`: school-owned contact records with name, optional mobile number, optional email address, status, and timestamps. Contact details are intentionally not unique; shared family contact details and separate family members must be representable.
+- `student_guardians`: a many-to-many link with a relationship label and primary/emergency-contact flags.
+
+Composite foreign keys require the student and guardian in each link to belong to the same school. Student and guardian school ownership is immutable after creation. All foreign keys use restrictive deletion behavior; the migration does not cascade-delete student or guardian records.
+
+**Separation from login identity:** A guardian contact row is not an authenticated parent account. V11 does not create credentials, verify a mobile number, grant the Parent role, or authorize access to a child. The parent-account-to-official-guardian relationship and its verification/revocation lifecycle are deferred to a later migration and must be checked on every parent data request.
+
+**Deliberately excluded:** academic-year enrollment, class/section placement, student academic history, parent login/session endpoints, and SMS/OTP delivery.
+
+The down migration refuses to run while any student, guardian, or student-guardian link exists. It is not a data-deletion mechanism.
+
+### 3.5 Running Migrations
 
 Run the migration command from the backend directory:
 
@@ -330,9 +353,11 @@ For senior classes where students can select different subjects, represent the r
 
 ### 9.2 Student and Parent Relationships
 
-Student identity should be separated from class placement or enrollment so that academic-year changes do not require creating a new student identity.
+Migration V11 establishes a stable `students` identity table separate from academic-year enrollment or class placement. Academic-year changes must not require creating a new student identity; enrollment and class/section history remain future schema work.
 
-A parent or guardian may be officially linked to multiple students. The model should support many-to-many relationships and enforce authorization for every linked child.
+V11 also creates school-scoped `guardians` contact records and the `student_guardians` many-to-many mapping. A guardian may be linked to multiple students in the same school, and a student may have multiple guardian contacts. Guardian records are school contact data, not login identities. Mobile numbers and email addresses are not unique constraints.
+
+The V4 `parent_accounts` identity remains separate. V11 does not automatically link a verified mobile account to a guardian record or grant child access. A later migration must model the verified/revoked parent-to-official-guardian relationship, support parents with children across schools, and enforce that relationship on every protected child-data request. Revoking one child link must not revoke other valid child links.
 
 ### 9.3 Fees and Payments
 
