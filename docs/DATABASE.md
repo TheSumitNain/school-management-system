@@ -541,7 +541,7 @@ V12 adds `guardians.mobile_number_e164`, `parent_portal_enabled_at`, and `parent
 
 ### 16.2 Authenticated Parent-to-Guardian links
 
-`parent_guardian_links` connects a verified active Parent principal to a school-owned guardian record. A composite foreign key enforces the guardian's school. A guardian can have only one active Parent link at a time; a Parent may link multiple guardian records across schools. Link creation requires the Parent's verified mobile to exactly match the portal-enabled guardian's canonical E.164 mobile. Link records are append-only in identity and have irreversible revocation history.
+`parent_guardian_links` connects a verified active Parent principal to a school-owned guardian record. A composite foreign key enforces the guardian's school. A guardian can have only one active Parent link at a time; a Parent may link multiple guardian records across schools. Link creation requires the Parent's verified mobile to exactly match the portal-enabled guardian's canonical E.164 mobile. A Parent mobile number cannot be changed or unverified while active guardian links exist; revoke links first. Link records are append-only in identity and have irreversible revocation history.
 
 ### 16.3 Official Student–Guardian relationship revocation
 
