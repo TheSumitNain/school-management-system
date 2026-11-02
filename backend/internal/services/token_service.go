@@ -1,6 +1,8 @@
 package services
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"strconv"
@@ -48,6 +50,10 @@ func (s *TokenService) GenerateAccessToken(principalID, tokenVersion int64, prin
 	if principalID <= 0 || tokenVersion <= 0 || !validPrincipalType(principalType) {
 		return "", fmt.Errorf("invalid principal identity")
 	}
+	jtiBytes := make([]byte, 16)
+	if _, err := rand.Read(jtiBytes); err != nil {
+		return "", fmt.Errorf("generate access-token ID: %w", err)
+	}
 	now := time.Now()
 	claims := TokenClaims{
 		PrincipalType: principalType,
@@ -58,7 +64,7 @@ func (s *TokenService) GenerateAccessToken(principalID, tokenVersion int64, prin
 			IssuedAt:  jwt.NewNumericDate(now),
 			NotBefore: jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(s.accessExpiry)),
-			ID:        fmt.Sprintf("%d-%d", principalID, now.UnixNano()),
+			ID:        base64.RawURLEncoding.EncodeToString(jtiBytes),
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
