@@ -21,8 +21,8 @@ The versioned migrations define the current schema foundation:
 | `schools` | School identity and setup status | Created by migration v1 |
 | `users`, `refresh_sessions` | School staff accounts and refresh sessions | Created by migration v2; token-family metadata added by v3 |
 | Principal, account-subtype, RBAC, MFA, OTP and audit tables | Shared identity, scoped roles/permissions, security challenges and audit history | Defined by migrations v4–v10; verify the target database's applied migration version independently |
-| `students` | Stable school-scoped student identity | Added by V11 source migration; application to a database and PostgreSQL verification are pending |
-| `guardians`, `student_guardians` | School-scoped guardian contact records and many-to-many student links | Added by V11 source migration; application to a database and PostgreSQL verification are pending |
+| `students` | Stable school-scoped student identity | V11 applied and PostgreSQL integration-tested on `school_management_test` (migration version 11, clean) |
+| `guardians`, `student_guardians` | School-scoped guardian contact records and many-to-many student links | V11 applied and PostgreSQL integration-tested on `school_management_test` (migration version 11, clean) |
 
 V11 deliberately does not create academic-year enrollment, class/section placement, or authenticated parent-to-child links. Those require separate schema and authorization milestones. The complete school management data model and business APIs are not implemented by these foundation tables.
 
