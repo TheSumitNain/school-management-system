@@ -37,6 +37,25 @@ func TestParentGuardianAuthorizationV12PostgresIntegration(t *testing.T) {
 	}
 	defer tx.Rollback(ctx)
 
+	expectFailure := func(name string, operation func() error) {
+		t.Helper()
+		if _, err := tx.Exec(ctx, "SAVEPOINT v12_expected_failure"); err != nil {
+			t.Fatalf("%s: create savepoint: %v", name, err)
+		}
+		operationErr := operation()
+		if operationErr == nil {
+			_, _ = tx.Exec(ctx, "ROLLBACK TO SAVEPOINT v12_expected_failure")
+			_, _ = tx.Exec(ctx, "RELEASE SAVEPOINT v12_expected_failure")
+			t.Fatalf("%s: expected database rejection", name)
+		}
+		if _, err := tx.Exec(ctx, "ROLLBACK TO SAVEPOINT v12_expected_failure"); err != nil {
+			t.Fatalf("%s: rollback expected failure: %v", name, err)
+		}
+		if _, err := tx.Exec(ctx, "RELEASE SAVEPOINT v12_expected_failure"); err != nil {
+			t.Fatalf("%s: release savepoint: %v", name, err)
+		}
+	}
+
 	suffix := strconv.FormatInt(time.Now().UnixNano(), 10)
 	mobile := "+9198765" + suffix[len(suffix)-5:]
 	var guardianID, studentID int64
@@ -86,14 +105,15 @@ func TestParentGuardianAuthorizationV12PostgresIntegration(t *testing.T) {
 		t.Fatalf("create verified parent-guardian link: %v", err)
 	}
 
-	// A guardian contact cannot be actively claimed by a second Parent.
-	if _, err := tx.Exec(ctx, `
-		INSERT INTO parent_guardian_links
-			(principal_id, guardian_id, school_id, link_method)
-		VALUES ($1, $2, $3, 'school_approved')
-	`, parentPrincipalID, guardianID, schoolID); err == nil {
-		t.Fatal("expected duplicate active guardian claim to be rejected")
-	}
+	// A guardian contact can have only one active parent link.
+	expectFailure("duplicate active parent guardian link", func() error {
+		_, err := tx.Exec(ctx, `
+			INSERT INTO parent_guardian_links
+				(principal_id, guardian_id, school_id, link_method)
+			VALUES ($1, $2, $3, 'school_approved')
+		`, parentPrincipalID, guardianID, schoolID)
+		return err
+	})
 
 	// Parent can access only students connected through both active link layers.
 	var visibleChildren int
@@ -140,13 +160,14 @@ func TestParentGuardianAuthorizationV12PostgresIntegration(t *testing.T) {
 	`, parentPrincipalID, parentLinkID); err != nil {
 		t.Fatalf("revoke parent-guardian link: %v", err)
 	}
-	if _, err := tx.Exec(ctx, `
-		UPDATE parent_guardian_links
-		   SET revoked_at = NULL, revoked_by_principal_id = NULL, revocation_reason = NULL
-		 WHERE id = $1
-	`, parentLinkID); err == nil {
-		t.Fatal("expected revoked parent-guardian link to be immutable")
-	}
+	expectFailure("reactivate revoked parent guardian link", func() error {
+		_, err := tx.Exec(ctx, `
+			UPDATE parent_guardian_links
+			   SET revoked_at = NULL, revoked_by_principal_id = NULL, revocation_reason = NULL
+			 WHERE id = $1
+		`, parentLinkID)
+		return err
+	})
 
 	// First-time OTP challenges are mobile-HMAC-bound without a provisional
 	// principal. Only the HMAC and OTP hash are persisted.
@@ -158,18 +179,20 @@ func TestParentGuardianAuthorizationV12PostgresIntegration(t *testing.T) {
 	`, mobileHash, otpHash); err != nil {
 		t.Fatalf("create pre-account parent OTP challenge: %v", err)
 	}
-	if _, err := tx.Exec(ctx, `
-		INSERT INTO parent_otp_challenges (principal_id, mobile_lookup_hash, otp_hash, expires_at)
-		VALUES (NULL, $1, $2, NOW() + INTERVAL '5 minutes')
-	`, mobileHash, otpHash); err == nil {
-		t.Fatal("expected only one active pre-account OTP challenge per mobile HMAC")
-	}
-	if _, err := tx.Exec(ctx, `
-		UPDATE parent_otp_challenges SET mobile_lookup_hash = $1
-		WHERE mobile_lookup_hash = $2
-	`, "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", mobileHash); err == nil {
-		t.Fatal("expected OTP mobile lookup HMAC to be immutable")
-	}
+	expectFailure("duplicate active pre-account OTP challenge", func() error {
+		_, err := tx.Exec(ctx, `
+			INSERT INTO parent_otp_challenges (principal_id, mobile_lookup_hash, otp_hash, expires_at)
+			VALUES (NULL, $1, $2, NOW() + INTERVAL '5 minutes')
+		`, mobileHash, otpHash)
+		return err
+	})
+	expectFailure("mutate pre-account OTP mobile HMAC", func() error {
+		_, err := tx.Exec(ctx, `
+			UPDATE parent_otp_challenges SET mobile_lookup_hash = $1
+			WHERE mobile_lookup_hash = $2
+		`, "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", mobileHash)
+		return err
+	})
 
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO parent_otp_rate_limits
