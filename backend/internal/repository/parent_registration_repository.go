@@ -13,8 +13,8 @@ import (
 )
 
 var (
-	ErrParentAccountAlreadyExists  = errors.New("a Parent account already exists for this mobile")
-	ErrNoEligibleParentGuardians    = errors.New("no eligible official guardian records found")
+	ErrParentAccountAlreadyExists   = errors.New("a Parent account already exists for this mobile")
+	ErrNoEligibleParentGuardians     = errors.New("no eligible official guardian records found")
 	ErrParentGuardianAlreadyClaimed = errors.New("one or more guardian records are already linked")
 )
 
@@ -36,25 +36,42 @@ func NewParentRegistrationRepository(db *pgxpool.Pool) *ParentRegistrationReposi
 	return &ParentRegistrationRepository{db: db}
 }
 
-// ProvisionVerifiedMobile serializes registrations for the same mobile,
-// rechecks official guardian eligibility under row locks, and atomically
-// creates the Parent subtype, global Parent role, and OTP-verified links.
-// The caller must have consumed a valid pre-account OTP before calling.
+// ProvisionVerifiedMobile serializes registrations for the same mobile and
+// commits the Parent subtype, role, and guardian links atomically.
 func (r *ParentRegistrationRepository) ProvisionVerifiedMobile(
 	ctx context.Context, mobileE164 string,
 ) (*ParentRegistrationResult, error) {
-	if r == nil || r.db == nil || !parentGuardianE164Pattern.MatchString(mobileE164) {
-		return nil, fmt.Errorf("invalid Parent registration request")
+	if r == nil || r.db == nil {
+		return nil, fmt.Errorf("Parent registration repository is unavailable")
 	}
-
 	tx, err := r.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("begin Parent registration: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	// Serialize duplicate registrations for one mobile. This lock is held
-	// through commit and complements the unique mobile index.
+	result, err := r.ProvisionVerifiedMobileInTx(ctx, tx, mobileE164)
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit Parent registration: %w", err)
+	}
+	return result, nil
+}
+
+// ProvisionVerifiedMobileInTx performs the complete registration in a
+// caller-owned transaction. It is also the integration-test boundary so
+// append-only Parent link and audit history can be rolled back after testing.
+// The caller must have consumed a valid pre-account OTP before calling.
+func (r *ParentRegistrationRepository) ProvisionVerifiedMobileInTx(
+	ctx context.Context, tx pgx.Tx, mobileE164 string,
+) (*ParentRegistrationResult, error) {
+	if r == nil || r.db == nil || tx == nil ||
+		!parentGuardianE164Pattern.MatchString(mobileE164) {
+		return nil, fmt.Errorf("invalid Parent registration request")
+	}
+
 	if _, err := tx.Exec(ctx,
 		`SELECT pg_advisory_xact_lock(hashtextextended('parent-registration:' || $1, 0))`,
 		mobileE164,
@@ -63,7 +80,7 @@ func (r *ParentRegistrationRepository) ProvisionVerifiedMobile(
 	}
 
 	var existingPrincipalID int64
-	err = tx.QueryRow(ctx,
+	err := tx.QueryRow(ctx,
 		`SELECT principal_id FROM parent_accounts WHERE mobile_number=$1`,
 		mobileE164,
 	).Scan(&existingPrincipalID)
@@ -146,8 +163,8 @@ func (r *ParentRegistrationRepository) ProvisionVerifiedMobile(
 		return nil, fmt.Errorf("create verified Parent account: %w", err)
 	}
 
-	// NULL assigned_by is allowed by the database only for the verified Parent
-	// principal receiving the migration-seeded global Parent system role.
+	// NULL assigned_by is allowed only for the verified Parent principal
+	// receiving the migration-seeded global Parent system role.
 	var roleAssignmentID int64
 	err = tx.QueryRow(ctx, `
 		INSERT INTO principal_roles (principal_id, role_id, assigned_by)
@@ -178,10 +195,6 @@ func (r *ParentRegistrationRepository) ProvisionVerifiedMobile(
 			}
 			return nil, fmt.Errorf("link verified Parent to official guardian: %w", err)
 		}
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("commit Parent registration: %w", err)
 	}
 
 	return &ParentRegistrationResult{
