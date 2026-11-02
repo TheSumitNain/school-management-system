@@ -22,7 +22,7 @@ type ParentGuardianMatchFinder interface {
 // school guardian records. It does not create Parent principals or links;
 // those belong to the subsequent account-provisioning stage.
 type ParentGuardianMatchingService struct {
-	otp      ParentOTPVerifier
+	otp       ParentOTPVerifier
 	guardians ParentGuardianMatchFinder
 }
 
