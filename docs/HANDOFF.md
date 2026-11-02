@@ -1,10 +1,10 @@
-> **Newest handoff — 2026-11-01:** The V4 principal-auth Go cutover candidate has passed the user's Windows package tests (`go test -count=1 -p 1 ./...`) and `go vet ./...`. This does not verify PostgreSQL integration tests or Migration V4. Review `docs/CURRENT-BUILD-FIX-HANDOFF-20261101.md` for exact results and local Git status. Preserve all local modifications/untracked artifacts; Migration V4 has not been run and must not be run without explicit approval.
+> **Newest handoff — 2026-11-02:** The user pulled branch `fix/v4-auth-security-hardening` through `79c2717`. V11 was applied only to `school_management_test` (migration version 11, `dirty = false`). With PostgreSQL integration enabled, the full Go suite passed and `go vet ./...` completed without diagnostics. The focused MFA recovery-code integration test passed twice consecutively after its fixture-repeatability fix. Preserve all local modifications/untracked artifacts; do not run migrations against `school_management` without explicit approval.
 
 # School Management System — Project Handoff
 
 > **Purpose:** This document is the primary handoff reference for continuing the existing School Management System project. Keep it synchronized with the source code, tests, database migrations, and other project documentation.
 >
-> **Last confirmed pushed repository checkpoint:** `cb6af3b` — `docs: finalize phase 1 RBAC and account decisions`
+> **Latest source checkpoint:** `79c2717` — `test: isolate MFA recovery integration fixtures` on `fix/v4-auth-security-hardening` (verify the branch before making further changes).
 >
 > **Previous code/test milestone:** `a705f9a` — `test(auth): add PostgreSQL refresh session integration tests`
 >
@@ -16,7 +16,16 @@
 >
 > **Important:** These details describe the last reported state. Check the actual repository before assuming that no newer changes exist.
 
-## 0.1 Latest V4 Work (Current)
+## 0.1 Latest V11 Verification (2026-11-02)
+
+- V11 student/guardian schema migration applied successfully to `school_management_test`; migration state is version `11`, `dirty = false`.
+- `go test -count=1 -p 1 ./...` passed with `DB_NAME=school_management_test` and `RUN_POSTGRES_INTEGRATION_TESTS=1`.
+- `go vet ./...` completed without diagnostics.
+- `TestMFARecoveryCodeRepositoryPostgresIntegration` passed twice consecutively after test fixtures were changed to use a cryptographically random per-run namespace. Recovery-code history remains append-only; no production schema constraint was weakened.
+- These are user-reported Windows results. The local helper/untracked files must be preserved, and the working tree must be checked before staging or committing.
+- V11 does not implement authenticated parent-to-guardian/student relationships, OTP delivery, academic enrollment, class/section placement, or parent data APIs. Those remain separate future milestones.
+
+## 0.2 Earlier V4 Work (Historical; verify against current source)
 
 The V4 principal-auth Go cutover candidate is now wired into the API: principal-based staff login, principal refresh sessions, live principal loading, conservative effective-permission resolution, and principal-aware `/auth/me` context. The detailed file-level scope and known limitations are documented in `docs/CURRENT-BUILD-FIX-HANDOFF-20261101.md`.
 
