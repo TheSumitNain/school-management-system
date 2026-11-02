@@ -22,6 +22,7 @@ const (
 	parentOTPResendWait   = 60 * time.Second
 	parentOTPMobileSendLimit = 3
 	parentOTPIPSendLimit = 10
+	parentOTPMaxAttempts = 5
 )
 
 // ParentOTPChallengeRepository persists pre-account OTP challenges and their
@@ -159,7 +160,7 @@ func (r *ParentOTPChallengeRepository) VerifyPreAccountChallenge(
 
 	// Defensive handling for rows that reached the attempt ceiling through an
 	// older application version or manual repair.
-	if expired || attemptCount >= 5 {
+	if expired || attemptCount >= parentOTPMaxAttempts {
 		if _, err := tx.Exec(ctx,
 			`UPDATE parent_otp_challenges SET consumed_at = NOW()
 			  WHERE id = $1 AND consumed_at IS NULL`,
@@ -192,16 +193,13 @@ func (r *ParentOTPChallengeRepository) VerifyPreAccountChallenge(
 	}
 
 	nextAttempt := attemptCount + 1
-	var consume any
-	if nextAttempt >= 5 {
-		consume = time.Now()
-	}
+	consume := nextAttempt >= parentOTPMaxAttempts
 	result, err := tx.Exec(ctx,
 		`UPDATE parent_otp_challenges
 		    SET attempt_count = $2,
 		        consumed_at = CASE WHEN $3::BOOLEAN THEN NOW() ELSE consumed_at END
 		  WHERE id = $1 AND consumed_at IS NULL`,
-		challengeID, nextAttempt, consume != nil,
+		challengeID, nextAttempt, consume,
 	)
 	if err != nil {
 		return false, fmt.Errorf("record failed parent OTP attempt: %w", err)
