@@ -14,7 +14,9 @@ type fakeUserRepository struct {
 	getErr     error
 	createErr  error
 	createdID  int64
-	createHash string
+	createHash  string
+	principal   *models.AuthPrincipal
+	principalErr error
 }
 
 func (f *fakeUserRepository) GetUserByUsername(
@@ -44,6 +46,13 @@ func (f *fakeUserRepository) CreateUser(
 		PasswordHash: passwordHash,
 		Status:       "active",
 	}, nil
+}
+
+func (f *fakeUserRepository) GetStaffPrincipalByUsername(
+	_ context.Context,
+	_ string,
+) (*models.AuthPrincipal, error) {
+	return f.principal, f.principalErr
 }
 
 type fakeSchoolRepository struct {
@@ -258,5 +267,40 @@ func TestAuthenticateRejectsUnknownUser(t *testing.T) {
 
 	if !errors.Is(err, ErrInvalidCredentials) {
 		t.Fatalf("expected ErrInvalidCredentials, got %v", err)
+	}
+}
+
+func TestAuthenticateStaffRequiresMatchingPrincipalIdentity(t *testing.T) {
+	hash, err := HashPassword("StrongPass123!")
+	if err != nil { t.Fatal(err) }
+
+	users := &fakeUserRepository{
+		user: &models.User{ID: 100, PrincipalID: 999, SchoolID: 7, Username: "teacher.one", PasswordHash: hash, Status: "active"},
+		principal: &models.AuthPrincipal{ID: 42, Type: "staff", Status: "active", TokenVersion: 1, SchoolID: 7, Username: "teacher.one"},
+	}
+	service := NewAuthService(users, &fakeSchoolRepository{})
+
+	_, err = service.AuthenticateStaff(context.Background(), "teacher.one", "StrongPass123!")
+	if !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("expected mismatched principal identity to be rejected, got %v", err)
+	}
+}
+
+func TestAuthenticateStaffAcceptsMatchingPrincipalIdentity(t *testing.T) {
+	hash, err := HashPassword("StrongPass123!")
+	if err != nil { t.Fatal(err) }
+
+	users := &fakeUserRepository{
+		user: &models.User{ID: 100, PrincipalID: 42, SchoolID: 7, Username: "teacher.one", PasswordHash: hash, Status: "active"},
+		principal: &models.AuthPrincipal{ID: 42, Type: "staff", Status: "active", TokenVersion: 1, SchoolID: 7, Username: "teacher.one"},
+	}
+	service := NewAuthService(users, &fakeSchoolRepository{})
+
+	principal, err := service.AuthenticateStaff(context.Background(), "teacher.one", "StrongPass123!")
+	if err != nil {
+		t.Fatalf("expected matching principal authentication to succeed, got %v", err)
+	}
+	if principal.ID != 42 {
+		t.Fatalf("authenticated principal ID = %d, want 42", principal.ID)
 	}
 }
