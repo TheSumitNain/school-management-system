@@ -152,6 +152,18 @@ func TestParentGuardianAuthorizationV12PostgresIntegration(t *testing.T) {
 	`, staffPrincipalID, schoolID, studentID, guardianID); err != nil {
 		t.Fatalf("revoke official student-guardian relationship: %v", err)
 	}
+
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(DISTINCT sg.student_id)
+		FROM parent_guardian_links pgl
+		JOIN student_guardians sg ON sg.guardian_id = pgl.guardian_id AND sg.school_id = pgl.school_id
+		WHERE pgl.principal_id = $1 AND pgl.revoked_at IS NULL AND sg.revoked_at IS NULL
+	`, parentPrincipalID).Scan(&visibleChildren); err != nil {
+		t.Fatalf("recheck children after official relationship revocation: %v", err)
+	}
+	if visibleChildren != 0 {
+		t.Fatalf("expected revoked official relationship to hide child immediately, got %d", visibleChildren)
+	}
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO student_guardians
 			(school_id, student_id, guardian_id, relationship_type)
