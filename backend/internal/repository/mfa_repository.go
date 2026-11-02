@@ -92,15 +92,17 @@ func (r *MFARepository) ActivateEnrollment(ctx context.Context, principalID int6
 	err=tx.QueryRow(ctx,`SELECT principal_id,purpose FROM auth_mfa_challenges
 WHERE challenge_hash=$1 AND consumed_at IS NULL AND expires_at>NOW() AND attempts<5
 FOR UPDATE`,challengeHash).Scan(&challengePrincipal,&purpose)
-	if errors.Is(err,pgx.ErrNoRows) || challengePrincipal!=principalID || purpose!="enrollment" { return ErrMFAEnrollmentInvalid }
+	if errors.Is(err,pgx.ErrNoRows) { return ErrMFAEnrollmentInvalid }
 	if err!=nil { return fmt.Errorf("lock MFA enrollment challenge: %w",err) }
+	if challengePrincipal!=principalID || purpose!="enrollment" { return ErrMFAEnrollmentInvalid }
 	tag,err:=tx.Exec(ctx,`UPDATE principal_mfa_credentials SET verified_at=NOW(),updated_at=NOW()
 WHERE principal_id=$1 AND method='totp' AND verified_at IS NULL`,principalID)
 	if err!=nil { return fmt.Errorf("activate MFA credential: %w",err) }
 	if tag.RowsAffected()!=1 { return ErrMFAEnrollmentInvalid }
 	tag,err=tx.Exec(ctx,`UPDATE auth_mfa_challenges SET consumed_at=NOW()
 WHERE challenge_hash=$1 AND consumed_at IS NULL`,challengeHash)
-	if err!=nil || tag.RowsAffected()!=1 { return fmt.Errorf("consume MFA enrollment challenge: %w",err) }
+	if err!=nil { return fmt.Errorf("consume MFA enrollment challenge: %w",err) }
+	if tag.RowsAffected()!=1 { return ErrMFAEnrollmentInvalid }
 	if _,err=tx.Exec(ctx,`UPDATE platform_admin_accounts SET mfa_enrolled_at=NOW(),updated_at=NOW() WHERE principal_id=$1`,principalID); err!=nil {
 		return fmt.Errorf("mark Platform Admin MFA enrollment: %w",err)
 	}
