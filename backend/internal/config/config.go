@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/base64"
 	"fmt"
 	"os"
 	"strconv"
@@ -24,6 +25,11 @@ type Config struct {
 	JWTIssuer              string
 	JWTAccessExpiryMinutes int
 	RefreshTokenExpiryDays int
+
+	// TOTPEncryptionKey is loaded from Base64-encoded secret material.
+	// It must never be logged or exposed in API responses.
+	TOTPEncryptionKey        []byte
+	TOTPEncryptionKeyVersion int
 }
 
 func Load() Config {
@@ -66,6 +72,24 @@ func Load() Config {
 		}
 	}
 
+	totpEncryptionKey := []byte(nil)
+	if encoded := strings.TrimSpace(os.Getenv("TOTP_ENCRYPTION_KEY")); encoded != "" {
+		decoded, err := base64.StdEncoding.DecodeString(encoded)
+		if err == nil {
+			totpEncryptionKey = decoded
+		}
+	}
+
+	totpEncryptionKeyVersion := 1
+	if value := strings.TrimSpace(os.Getenv("TOTP_ENCRYPTION_KEY_VERSION")); value != "" {
+		parsed, err := strconv.Atoi(value)
+		if err != nil {
+			totpEncryptionKeyVersion = 0
+		} else {
+			totpEncryptionKeyVersion = parsed
+		}
+	}
+
 	return Config{
 		AppEnv:                 appEnv,
 		AppPort:                appPort,
@@ -79,6 +103,8 @@ func Load() Config {
 		JWTIssuer:              jwtIssuer,
 		JWTAccessExpiryMinutes: jwtAccessExpiry,
 		RefreshTokenExpiryDays: refreshExpiryDays,
+		TOTPEncryptionKey:        totpEncryptionKey,
+		TOTPEncryptionKeyVersion: totpEncryptionKeyVersion,
 	}
 }
 
@@ -136,5 +162,19 @@ func (cfg Config) ValidateJWT() error {
 		return fmt.Errorf("REFRESH_TOKEN_EXPIRY_DAYS must be between 1 and 30")
 	}
 
+	return nil
+}
+
+ 
+// ValidateTOTPEncryption validates the key material required by the MFA
+// service. It is intentionally separate from ValidateJWT so deployments can
+// roll out the MFA capability without silently inventing a local key.
+func (cfg Config) ValidateTOTPEncryption() error {
+	if len(cfg.TOTPEncryptionKey) != 32 {
+		return fmt.Errorf("TOTP_ENCRYPTION_KEY must be valid Base64 encoding of exactly 32 bytes")
+	}
+	if cfg.TOTPEncryptionKeyVersion < 1 {
+		return fmt.Errorf("TOTP_ENCRYPTION_KEY_VERSION must be a positive integer")
+	}
 	return nil
 }
