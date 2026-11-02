@@ -1,8 +1,11 @@
 package services
 
 import (
+	"context"
+	"errors"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestGenerateParentOTP(t *testing.T) {
@@ -85,5 +88,149 @@ func TestParentOTPHashRejectsInvalidInputs(t *testing.T) {
 	}
 	if VerifyParentOTPHash(key, strings.Repeat("a", 64), "123456", "not-a-hash") {
 		t.Fatal("malformed stored hash unexpectedly verified")
+	}
+}
+
+
+type parentOTPChallengeCapture struct {
+	mobileHash string
+	ipHash     string
+	otpHash    string
+	expiresAt  time.Time
+	calls      int
+	err        error
+}
+
+func (c *parentOTPChallengeCapture) CreatePreAccountChallenge(
+	_ context.Context, mobileHash, ipHash, otpHash string, expiresAt time.Time,
+) (int64, error) {
+	c.calls++
+	c.mobileHash, c.ipHash, c.otpHash, c.expiresAt = mobileHash, ipHash, otpHash, expiresAt
+	if c.err != nil {
+		return 0, c.err
+	}
+	return 42, nil
+}
+
+// This fake is test-only and intentionally retains the code in memory so the
+// test can verify the delivery boundary without exposing it through an API.
+type parentOTPDeliveryCapture struct {
+	mobile string
+	code   string
+	err    error
+}
+
+func (d *parentOTPDeliveryCapture) SendParentOTP(_ context.Context, mobile, code string) error {
+	d.mobile, d.code = mobile, code
+	return d.err
+}
+
+func TestParentOTPServiceRequestOTP(t *testing.T) {
+	key := []byte(strings.Repeat("k", 32))
+	repo := &parentOTPChallengeCapture{}
+	delivery := &parentOTPDeliveryCapture{}
+	service, err := NewParentOTPService(repo, delivery, key)
+	if err != nil {
+		t.Fatalf("NewParentOTPService() error = %v", err)
+	}
+
+	if err := service.RequestOTP(context.Background(), "+919876543210", "192.0.2.10"); err != nil {
+		t.Fatalf("RequestOTP() error = %v", err)
+	}
+	if repo.calls != 1 {
+		t.Fatalf("challenge repository calls = %d, want 1", repo.calls)
+	}
+	if delivery.mobile != "+919876543210" || len(delivery.code) != 6 {
+		t.Fatalf("delivery received mobile %q and code length %d", delivery.mobile, len(delivery.code))
+	}
+	if repo.mobileHash == "" || repo.ipHash == "" || repo.otpHash == "" {
+		t.Fatal("repository did not receive all required HMAC hashes")
+	}
+	if repo.mobileHash == "+919876543210" || repo.ipHash == "192.0.2.10" || repo.otpHash == delivery.code {
+		t.Fatal("raw mobile, IP, or OTP was passed to persistent storage")
+	}
+	if !VerifyParentOTPHash(key, repo.mobileHash, delivery.code, repo.otpHash) {
+		t.Fatal("persisted OTP hash does not match the code delivered to provider")
+	}
+	remaining := time.Until(repo.expiresAt)
+	if remaining <= 0 || remaining > 5*time.Minute {
+		t.Fatalf("challenge expiry is outside the five-minute window: %s", remaining)
+	}
+}
+
+func TestParentOTPServiceFailsClosed(t *testing.T) {
+	key := []byte(strings.Repeat("k", 32))
+	repo := &parentOTPChallengeCapture{}
+	if _, err := NewParentOTPService(repo, nil, key); !errors.Is(err, ErrParentOTPDeliveryUnavailable) {
+		t.Fatalf("constructor without provider error = %v", err)
+	}
+	if _, err := NewParentOTPService(repo, &parentOTPDeliveryCapture{}, []byte("short")); err == nil {
+		t.Fatal("constructor accepted an undersized HMAC key")
+	}
+
+	service, err := NewParentOTPService(repo, &parentOTPDeliveryCapture{}, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := service.RequestOTP(context.Background(), "+919876543210", "not-an-ip"); !errors.Is(err, ErrParentOTPInvalid) {
+		t.Fatalf("RequestOTP() invalid IP error = %v", err)
+	}
+	if repo.calls != 0 {
+		t.Fatal("invalid IP reached persistent challenge repository")
+	}
+}
+
+func TestParentOTPServicePropagatesRateLimitAndHidesDeliveryFailure(t *testing.T) {
+	key := []byte(strings.Repeat("k", 32))
+	rateErr := errors.New("rate limited")
+	repo := &parentOTPChallengeCapture{err: rateErr}
+	delivery := &parentOTPDeliveryCapture{}
+	service, err := NewParentOTPService(repo, delivery, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := service.RequestOTP(context.Background(), "+919876543210", "192.0.2.11"); !errors.Is(err, rateErr) {
+		t.Fatalf("RequestOTP() rate-limit error = %v", err)
+	}
+	if delivery.code != "" {
+		t.Fatal("provider was called after repository rejected the rate-limit reservation")
+	}
+
+	repo = &parentOTPChallengeCapture{}
+	delivery = &parentOTPDeliveryCapture{err: errors.New("provider private failure detail")}
+	service, err = NewParentOTPService(repo, delivery, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := service.RequestOTP(context.Background(), "+919876543210", "192.0.2.12"); !errors.Is(err, ErrParentOTPDeliveryUnavailable) {
+		t.Fatalf("RequestOTP() delivery error = %v", err)
+	}
+	if strings.Contains(err.Error(), "provider private failure detail") {
+		t.Fatal("provider error detail escaped the service boundary")
+	}
+}
+
+func TestHashParentIPCanonicalizesAddressesAndSeparatesDomains(t *testing.T) {
+	key := []byte(strings.Repeat("k", 32))
+	v4, err := HashParentIP(key, "192.0.2.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	v4WithWhitespace, err := HashParentIP(key, " 192.0.2.1 ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v4 != v4WithWhitespace {
+		t.Fatal("equivalent IPv4 text produced different rate-limit hashes")
+	}
+	mobileHash, err := HashParentMobile(key, "+919876543210")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v4 == mobileHash {
+		t.Fatal("IP and mobile HMAC domains unexpectedly collided")
+	}
+	if _, err := HashParentIP(key, ""); err == nil {
+		t.Fatal("empty IP address was accepted")
 	}
 }
