@@ -68,7 +68,7 @@ func (f *fakeSchoolRepository) GetByID(
 }
 
 func TestAuthenticateSuccess(t *testing.T) {
-	hash, err := HashPassword("School@123")
+	hash, err := HashPassword("School@Secure2026")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ func TestAuthenticateSuccess(t *testing.T) {
 		context.Background(),
 		1,
 		"sumit",
-		"School@123",
+		"School@Secure2026",
 	)
 	if err != nil {
 		t.Fatalf("expected successful authentication, got %v", err)
@@ -108,7 +108,7 @@ func TestAuthenticateSuccess(t *testing.T) {
 }
 
 func TestAuthenticateRejectsWrongPassword(t *testing.T) {
-	hash, err := HashPassword("School@123")
+	hash, err := HashPassword("School@Secure2026")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,7 +133,7 @@ func TestAuthenticateRejectsWrongPassword(t *testing.T) {
 		context.Background(),
 		1,
 		"sumit",
-		"Wrong@123",
+		"Wrong@Secure2026",
 	)
 
 	if !errors.Is(err, ErrInvalidCredentials) {
@@ -153,7 +153,7 @@ func TestAuthenticateRejectsInactiveSchool(t *testing.T) {
 		context.Background(),
 		1,
 		"sumit",
-		"School@123",
+		"School@Secure2026",
 	)
 
 	if !errors.Is(err, ErrInvalidCredentials) {
@@ -162,7 +162,7 @@ func TestAuthenticateRejectsInactiveSchool(t *testing.T) {
 }
 
 func TestAuthenticateRejectsDisabledUser(t *testing.T) {
-	hash, err := HashPassword("School@123")
+	hash, err := HashPassword("School@Secure2026")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -187,7 +187,7 @@ func TestAuthenticateRejectsDisabledUser(t *testing.T) {
 		context.Background(),
 		1,
 		"sumit",
-		"School@123",
+		"School@Secure2026",
 	)
 
 	if !errors.Is(err, ErrInvalidCredentials) {
@@ -207,7 +207,7 @@ func TestCreateUserRejectsInactiveSchool(t *testing.T) {
 		context.Background(),
 		1,
 		"sumit",
-		"School@123",
+		"School@Secure2026",
 	)
 
 	if !errors.Is(err, ErrSchoolInactive) {
@@ -231,13 +231,13 @@ func TestCreateUserStoresHashNotPlainPassword(t *testing.T) {
 		context.Background(),
 		1,
 		"sumit",
-		"School@123",
+		"School@Secure2026",
 	)
 	if err != nil {
 		t.Fatalf("CreateUser() returned error: %v", err)
 	}
 
-	if users.createHash == "" || users.createHash == "School@123" {
+	if users.createHash == "" || users.createHash == "School@Secure2026" {
 		t.Fatal("repository must receive a password hash, not plain text")
 	}
 
@@ -245,7 +245,7 @@ func TestCreateUserStoresHashNotPlainPassword(t *testing.T) {
 		t.Fatal("returned user should contain the stored hash internally")
 	}
 
-	if !CheckPassword("School@123", user.PasswordHash) {
+	if !CheckPassword("School@Secure2026", user.PasswordHash) {
 		t.Fatal("stored hash did not verify against original password")
 	}
 }
@@ -262,7 +262,7 @@ func TestAuthenticateRejectsUnknownUser(t *testing.T) {
 		context.Background(),
 		1,
 		"unknown",
-		"School@123",
+		"School@Secure2026",
 	)
 
 	if !errors.Is(err, ErrInvalidCredentials) {
