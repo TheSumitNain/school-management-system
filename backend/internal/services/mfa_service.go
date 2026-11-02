@@ -89,24 +89,25 @@ func (s *MFAService) BeginAuthentication(ctx context.Context, principalID int64,
 	return result,nil
 }
 
-func (s *MFAService) CompleteEnrollment(ctx context.Context, principalID int64, challengeToken, code string) error {
+func (s *MFAService) CompleteEnrollment(ctx context.Context, challengeToken, code string) (int64,error) {
 	hash:=HashRefreshToken(strings.TrimSpace(challengeToken))
 	challenge,err:=s.challenges.Get(ctx,hash)
-	if err!=nil { return ErrMFAInvalid }
-	if challenge.PrincipalID!=principalID || challenge.Purpose!=repository.MFAChallengeEnrollment { return ErrMFAInvalid }
+	if err!=nil { return 0,ErrMFAInvalid }
+	principalID:=challenge.PrincipalID
+	if challenge.Purpose!=repository.MFAChallengeEnrollment { return 0,ErrMFAInvalid }
 	credential,err:=s.credentials.GetCredential(ctx,principalID)
-	if err!=nil { return err }
-	if credential==nil || credential.VerifiedAt!=nil { return ErrMFAInvalid }
-	secret,err:=s.decryptCredential(credential); if err!=nil { return err }
+	if err!=nil { return 0,err }
+	if credential==nil || credential.VerifiedAt!=nil { return 0,ErrMFAInvalid }
+	secret,err:=s.decryptCredential(credential); if err!=nil { return 0,err }
 	if !VerifyTOTP(secret,strings.TrimSpace(code),time.Now()) {
-		if err:=s.challenges.RecordFailure(ctx,hash); err!=nil && !errors.Is(err,repository.ErrMFAChallengeUnavailable) { return err }
-		return ErrMFAInvalid
+		if err:=s.challenges.RecordFailure(ctx,hash); err!=nil && !errors.Is(err,repository.ErrMFAChallengeUnavailable) { return 0,err }
+		return 0,ErrMFAInvalid
 	}
 	if err:=s.credentials.ActivateEnrollment(ctx,principalID,hash); err!=nil {
-		if errors.Is(err,repository.ErrMFAEnrollmentInvalid) { return ErrMFAInvalid }
-		return err
+		if errors.Is(err,repository.ErrMFAEnrollmentInvalid) { return 0,ErrMFAInvalid }
+		return 0,err
 	}
-	return nil
+	return principalID,nil
 }
 
 // VerifyLoginChallenge consumes a valid login challenge exactly once. The
