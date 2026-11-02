@@ -180,7 +180,7 @@ VALUES ($1, 'auth.staff_login', 'authentication', 'success', $2::jsonb)`, princi
 	return nil
 }
 
-// AllowIPAttempt permits at most 30 login requests from one client IP in a
+// AllowIPAttempt permits at most 120 login requests from one client IP in a
 // rolling 15-minute window. The 31st request starts a 15-minute block.
 func (r *StaffLoginSecurityRepository) AllowIPAttempt(ctx context.Context, rawIP string) (bool, error) {
 	hash, err := loginIPHash(rawIP)
@@ -194,8 +194,8 @@ VALUES ($1, 1, NOW(), NOW(), NOW())
 ON CONFLICT (ip_hash) DO UPDATE SET
     attempts = CASE
         WHEN auth_login_ip_attempts.window_started_at <= NOW() - INTERVAL '15 minutes' THEN 1
-        WHEN auth_login_ip_attempts.blocked_until > NOW() THEN 30
-        ELSE LEAST(auth_login_ip_attempts.attempts + 1, 30)
+        WHEN auth_login_ip_attempts.blocked_until > NOW() THEN 120
+        ELSE LEAST(auth_login_ip_attempts.attempts + 1, 120)
     END,
     window_started_at = CASE
         WHEN auth_login_ip_attempts.window_started_at <= NOW() - INTERVAL '15 minutes' THEN NOW()
@@ -204,7 +204,7 @@ ON CONFLICT (ip_hash) DO UPDATE SET
     blocked_until = CASE
         WHEN auth_login_ip_attempts.window_started_at <= NOW() - INTERVAL '15 minutes' THEN NULL
         WHEN auth_login_ip_attempts.blocked_until > NOW() THEN auth_login_ip_attempts.blocked_until
-        WHEN auth_login_ip_attempts.attempts >= 30 THEN COALESCE(auth_login_ip_attempts.blocked_until, NOW() + INTERVAL '15 minutes')
+        WHEN auth_login_ip_attempts.attempts >= 120 THEN COALESCE(auth_login_ip_attempts.blocked_until, NOW() + INTERVAL '15 minutes')
         ELSE NULL
     END,
     last_attempt_at = NOW(),
