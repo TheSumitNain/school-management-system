@@ -30,6 +30,10 @@ type Config struct {
 	// It must never be logged or exposed in API responses.
 	TOTPEncryptionKey        []byte
 	TOTPEncryptionKeyVersion int
+
+	// ParentOTPHMACKey is independent secret material used only to derive
+	// keyed lookup and OTP hashes for the Parent portal.
+	ParentOTPHMACKey []byte
 }
 
 func Load() Config {
@@ -90,6 +94,14 @@ func Load() Config {
 		}
 	}
 
+	parentOTPHMACKey := []byte(nil)
+	if encoded := strings.TrimSpace(os.Getenv("PARENT_OTP_HMAC_KEY")); encoded != "" {
+		decoded, err := base64.StdEncoding.DecodeString(encoded)
+		if err == nil {
+			parentOTPHMACKey = decoded
+		}
+	}
+
 	return Config{
 		AppEnv:                 appEnv,
 		AppPort:                appPort,
@@ -105,6 +117,7 @@ func Load() Config {
 		RefreshTokenExpiryDays: refreshExpiryDays,
 		TOTPEncryptionKey:        totpEncryptionKey,
 		TOTPEncryptionKeyVersion: totpEncryptionKeyVersion,
+		ParentOTPHMACKey:         parentOTPHMACKey,
 	}
 }
 
@@ -175,6 +188,15 @@ func (cfg Config) ValidateTOTPEncryption() error {
 	}
 	if cfg.TOTPEncryptionKeyVersion < 1 || cfg.TOTPEncryptionKeyVersion > 2147483647 {
 		return fmt.Errorf("TOTP_ENCRYPTION_KEY_VERSION must be between 1 and 2147483647")
+	}
+	return nil
+}
+
+// ValidateParentOTPHMAC validates the independent secret required by Parent
+// OTP. It is deliberately separate from TOTP encryption configuration.
+func (cfg Config) ValidateParentOTPHMAC() error {
+	if len(cfg.ParentOTPHMACKey) < 32 {
+		return fmt.Errorf("PARENT_OTP_HMAC_KEY must be valid Base64 encoding of at least 32 bytes")
 	}
 	return nil
 }
