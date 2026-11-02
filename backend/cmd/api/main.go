@@ -59,13 +59,18 @@ func setupRouter(
 		schoolID, _ := c.Get(middleware.ContextSchoolIDKey)
 		username, _ := c.Get(middleware.ContextUsernameKey)
 
-		c.JSON(http.StatusOK, gin.H{
+		response := gin.H{
 			"status":         "success",
 			"principal_id":   principalID,
 			"principal_type": principalType,
-			"school_id":      schoolID,
-			"username":       username,
-		})
+		}
+		// Parent and Platform Admin identities are not school-scoped staff
+		// accounts. Do not serialize empty/zero staff-only fields for them.
+		if principalType == "staff" {
+			response["school_id"] = schoolID
+			response["username"] = username
+		}
+		c.JSON(http.StatusOK, response)
 	})
 
 	router.GET("/health", func(c *gin.Context) {
