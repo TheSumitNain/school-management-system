@@ -201,11 +201,21 @@ func (s *AuthService) AuthenticateStaff(ctx context.Context, username, password 
 	user, err := s.users.GetUserByUsername(ctx, principal.SchoolID, principal.Username)
 	if err != nil {
 		if errors.Is(err, repository.ErrUserNotFound) {
+			if s.loginSecurity != nil {
+				if recordErr := s.loginSecurity.RecordFailure(ctx, username); recordErr != nil {
+					return nil, recordErr
+				}
+			}
 			return nil, ErrInvalidCredentials
 		}
 		return nil, err
 	}
 	if user.PrincipalID != principal.ID {
+		if s.loginSecurity != nil {
+			if recordErr := s.loginSecurity.RecordFailure(ctx, username); recordErr != nil {
+				return nil, recordErr
+			}
+		}
 		return nil, ErrInvalidCredentials
 	}
 	if user.Status != "active" || !CheckPassword(password, user.PasswordHash) {
