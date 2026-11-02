@@ -151,6 +151,7 @@ func run() error {
 		authService,
 		tokenService,
 		sessionService,
+		loginSecurityRepo,
 	)
 
 	router, err := setupRouter(db, authHandler, tokenService, principalAuthorizationRepo, principalAuthorizationRepo)
