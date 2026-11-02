@@ -28,14 +28,23 @@ type SessionService interface {
 	Revoke(ctx context.Context, refreshToken string) error
 }
 
+type LoginIPRateLimiter interface {
+	AllowIPAttempt(ctx context.Context, clientIP string) (bool, error)
+}
+
 type AuthHandler struct {
 	authService    AuthService
 	tokenService   TokenService
 	sessionService SessionService
+	ipRateLimiter  LoginIPRateLimiter
 }
 
-func NewAuthHandler(authService AuthService, tokenService TokenService, sessionService SessionService) *AuthHandler {
-	return &AuthHandler{authService: authService, tokenService: tokenService, sessionService: sessionService}
+func NewAuthHandler(authService AuthService, tokenService TokenService, sessionService SessionService, ipRateLimiters ...LoginIPRateLimiter) *AuthHandler {
+	h := &AuthHandler{authService: authService, tokenService: tokenService, sessionService: sessionService}
+	if len(ipRateLimiters) > 0 {
+		h.ipRateLimiter = ipRateLimiters[0]
+	}
+	return h
 }
 
 type loginRequest struct {
@@ -69,6 +78,18 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	if h.authService == nil || h.tokenService == nil || h.sessionService == nil {
 		writeAuthError(c, http.StatusInternalServerError, "Authentication service unavailable")
 		return
+	}
+	if h.ipRateLimiter != nil {
+		allowed, err := h.ipRateLimiter.AllowIPAttempt(c.Request.Context(), c.ClientIP())
+		if err != nil {
+			writeAuthError(c, http.StatusInternalServerError, "Unable to process login")
+			return
+		}
+		if !allowed {
+			c.Header("Retry-After", "900")
+			writeAuthError(c, http.StatusTooManyRequests, "Too many login requests from this network. Try again in 15 minutes.")
+			return
+		}
 	}
 
 	principal, err := h.authService.AuthenticateStaff(c.Request.Context(), req.Username, req.Password)
