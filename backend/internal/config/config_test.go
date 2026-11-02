@@ -114,6 +114,7 @@ func TestLoadDefaults(t *testing.T) {
 	t.Setenv("REFRESH_TOKEN_EXPIRY_DAYS", "")
 	t.Setenv("TOTP_ENCRYPTION_KEY", "")
 	t.Setenv("TOTP_ENCRYPTION_KEY_VERSION", "")
+	t.Setenv("PARENT_OTP_HMAC_KEY", "")
 
 	cfg := Load()
 
@@ -292,5 +293,29 @@ func TestTOTPEncryptionKeyConfigurationRejectsInvalidValues(t *testing.T) {
 	t.Setenv("TOTP_ENCRYPTION_KEY_VERSION", "2147483648")
 	if err := Load().ValidateTOTPEncryption(); err == nil {
 		t.Fatal("expected key version outside PostgreSQL INTEGER range to be rejected")
+	}
+}
+
+func TestParentOTPHMACKeyConfiguration(t *testing.T) {
+	key := make([]byte, 32)
+	t.Setenv("PARENT_OTP_HMAC_KEY", base64.StdEncoding.EncodeToString(key))
+	cfg := Load()
+	if err := cfg.ValidateParentOTPHMAC(); err != nil {
+		t.Fatalf("valid Parent OTP HMAC key rejected: %v", err)
+	}
+	if len(cfg.ParentOTPHMACKey) != 32 {
+		t.Fatalf("Parent OTP HMAC key length = %d, want 32", len(cfg.ParentOTPHMACKey))
+	}
+	if string(cfg.ParentOTPHMACKey) == string(cfg.TOTPEncryptionKey) {
+		t.Fatal("Parent OTP HMAC key must be separately configured from TOTP encryption key")
+	}
+}
+
+func TestParentOTPHMACKeyConfigurationRejectsMissingOrInvalidValues(t *testing.T) {
+	for _, encoded := range []string{"", "invalid-base64!", base64.StdEncoding.EncodeToString(make([]byte, 31))} {
+		t.Setenv("PARENT_OTP_HMAC_KEY", encoded)
+		if err := Load().ValidateParentOTPHMAC(); err == nil {
+			t.Fatalf("expected invalid Parent OTP HMAC key %q to be rejected", encoded)
+		}
 	}
 }
