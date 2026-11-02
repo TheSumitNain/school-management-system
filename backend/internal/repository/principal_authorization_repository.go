@@ -35,6 +35,19 @@ SELECT ap.id, ap.principal_type, ap.status, ap.token_version,
        COALESCE(u.status, ''), COALESCE(s.status, ''),
        (pa.principal_id IS NOT NULL),
        (parent.mobile_verified_at IS NOT NULL),
+       CASE
+         WHEN ap.principal_type='platform_admin' OR
+              (ap.principal_type='staff' AND EXISTS (
+                SELECT 1 FROM principal_roles mpr JOIN roles mr ON mr.id=mpr.role_id
+                WHERE mpr.principal_id=ap.id AND mpr.revoked_at IS NULL
+                  AND mr.is_system=TRUE AND mr.role_key='school_admin'
+                  AND mr.principal_type='staff' AND mr.scope_type='school'
+                  AND mr.school_id=u.school_id
+              ))
+         THEN EXISTS (SELECT 1 FROM principal_mfa_credentials mc
+                      WHERE mc.principal_id=ap.id AND mc.method='totp' AND mc.verified_at IS NOT NULL)
+         ELSE TRUE
+       END,
        (u.principal_id IS NOT NULL)::int +
        (pa.principal_id IS NOT NULL)::int +
        (parent.principal_id IS NOT NULL)::int
@@ -47,12 +60,12 @@ WHERE ap.id = $1`
 
 	var p models.AuthPrincipal
 	var staffStatus, schoolStatus string
-	var hasPlatformAccount, mobileVerified bool
+	var hasPlatformAccount, mobileVerified, mfaVerified bool
 	var subtypeCount int
 	err := r.db.QueryRow(ctx, query, principalID).Scan(
 		&p.ID, &p.Type, &p.Status, &p.TokenVersion,
 		&p.SchoolID, &p.Username, &staffStatus, &schoolStatus,
-		&hasPlatformAccount, &mobileVerified, &subtypeCount,
+		&hasPlatformAccount, &mobileVerified, &mfaVerified, &subtypeCount,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, models.ErrPrincipalNotAuthenticated
@@ -61,7 +74,7 @@ WHERE ap.id = $1`
 		return nil, fmt.Errorf("load principal for authentication: %w", err)
 	}
 
-	if p.Status != "active" || p.TokenVersion <= 0 || subtypeCount != 1 {
+	if p.Status != "active" || p.TokenVersion <= 0 || subtypeCount != 1 || !mfaVerified {
 		return nil, models.ErrPrincipalNotAuthenticated
 	}
 	switch p.Type {
