@@ -112,6 +112,65 @@ CREATE INDEX ix_parent_otp_mobile_recent
     ON parent_otp_challenges (mobile_lookup_hash, created_at DESC)
     WHERE mobile_lookup_hash IS NOT NULL;
 
+ 
+-- Extend the existing V4 OTP guards without weakening principal-bound history.
+-- A pre-account challenge must carry a mobile HMAC; a bound challenge must
+-- reference an actual Parent principal. The lookup hash is immutable.
+CREATE OR REPLACE FUNCTION guard_parent_otp_challenge_history() RETURNS trigger
+LANGUAGE plpgsql AS $
+BEGIN
+    IF TG_OP = 'DELETE' THEN
+        RAISE EXCEPTION 'parent OTP challenge history cannot be deleted';
+    END IF;
+
+    IF TG_OP = 'INSERT' THEN
+        IF NEW.consumed_at IS NOT NULL OR NEW.attempt_count <> 0 THEN
+            RAISE EXCEPTION 'new parent OTP challenges must be unconsumed with zero attempts';
+        END IF;
+        IF NEW.principal_id IS NULL AND NEW.mobile_lookup_hash IS NULL THEN
+            RAISE EXCEPTION 'pre-account OTP challenge requires a mobile lookup HMAC';
+        END IF;
+        RETURN NEW;
+    END IF;
+
+    IF NEW.id IS DISTINCT FROM OLD.id
+       OR NEW.principal_id IS DISTINCT FROM OLD.principal_id
+       OR NEW.mobile_lookup_hash IS DISTINCT FROM OLD.mobile_lookup_hash
+       OR NEW.otp_hash IS DISTINCT FROM OLD.otp_hash
+       OR NEW.expires_at IS DISTINCT FROM OLD.expires_at
+       OR NEW.created_at IS DISTINCT FROM OLD.created_at THEN
+        RAISE EXCEPTION 'parent OTP challenge identity and expiry are immutable';
+    END IF;
+
+    IF NEW.attempt_count < OLD.attempt_count THEN
+        RAISE EXCEPTION 'parent OTP challenge attempt count cannot decrease';
+    END IF;
+
+    IF OLD.consumed_at IS NOT NULL AND NEW.consumed_at IS DISTINCT FROM OLD.consumed_at THEN
+        RAISE EXCEPTION 'consumed parent OTP challenge cannot be reactivated or rewritten';
+    END IF;
+
+    RETURN NEW;
+END;
+$;
+
+CREATE OR REPLACE FUNCTION validate_parent_otp_principal() RETURNS trigger
+LANGUAGE plpgsql AS $
+BEGIN
+    IF NEW.principal_id IS NULL THEN
+        IF NEW.mobile_lookup_hash IS NULL THEN
+            RAISE EXCEPTION 'pre-account OTP challenges require a mobile lookup HMAC';
+        END IF;
+    ELSIF NOT EXISTS (
+        SELECT 1 FROM auth_principals
+         WHERE id = NEW.principal_id AND principal_type = 'parent'
+    ) THEN
+        RAISE EXCEPTION 'OTP challenges require a parent principal';
+    END IF;
+    RETURN NEW;
+END;
+$;
+
 CREATE TABLE parent_otp_rate_limits (
     subject_type VARCHAR(8) NOT NULL
         CHECK (subject_type IN ('mobile', 'ip')),
@@ -282,22 +341,12 @@ BEGIN
         RAISE EXCEPTION 'guardian mobile cannot change while an active Parent link exists; revoke the link first';
     END IF;
 
-    IF NEW.status <> 'active' OR NEW.parent_portal_enabled_at IS NULL THEN
-        -- Do not silently preserve active Parent access after disabling the
-        -- guardian record or its portal eligibility.
-        UPDATE parent_guardian_links
-           SET revoked_at = NOW(),
-               revoked_by_principal_id = NEW.parent_portal_enabled_by,
-               revocation_reason = 'guardian portal eligibility or guardian status disabled'
-         WHERE guardian_id = NEW.id
-           AND revoked_at IS NULL
-           AND NEW.parent_portal_enabled_by IS NOT NULL;
-        IF EXISTS (
-            SELECT 1 FROM parent_guardian_links
-             WHERE guardian_id = NEW.id AND revoked_at IS NULL
-        ) THEN
-            RAISE EXCEPTION 'revoke active Parent links with an authorized actor before disabling guardian portal eligibility';
-        END IF;
+    IF (NEW.status <> 'active' OR NEW.parent_portal_enabled_at IS NULL)
+       AND EXISTS (
+           SELECT 1 FROM parent_guardian_links
+            WHERE guardian_id = NEW.id AND revoked_at IS NULL
+       ) THEN
+        RAISE EXCEPTION 'revoke active Parent links with an authorized actor before disabling guardian portal eligibility';
     END IF;
 
     RETURN NEW;
