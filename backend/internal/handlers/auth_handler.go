@@ -73,6 +73,11 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	principal, err := h.authService.AuthenticateStaff(c.Request.Context(), req.Username, req.Password)
 	if err != nil {
+		if errors.Is(err, services.ErrLoginLocked) {
+			c.Header("Retry-After", "900")
+			writeAuthError(c, http.StatusTooManyRequests, "Too many failed login attempts. Try again in 15 minutes.")
+			return
+		}
 		if errors.Is(err, services.ErrInvalidCredentials) {
 			writeAuthError(c, http.StatusUnauthorized, "Invalid username or password")
 			return
