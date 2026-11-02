@@ -64,6 +64,10 @@ func findPortalEligibleGuardiansByMobile(
 		 WHERE g.mobile_number_e164 = $1
 		   AND g.status = 'active'
 		   AND g.parent_portal_enabled_at IS NOT NULL
+		   AND NOT EXISTS (
+		       SELECT 1 FROM parent_guardian_links pgl
+		        WHERE pgl.guardian_id = g.id AND pgl.revoked_at IS NULL
+		   )
 		 GROUP BY g.id, g.school_id, g.full_name
 		 ORDER BY g.school_id, g.id
 	`, mobileE164)
