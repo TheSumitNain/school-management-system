@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"strings"
 
@@ -50,8 +51,8 @@ type parentOTPVerifyRequest struct {
 
 // RequestOTP always returns the same accepted response for a syntactically
 // valid E.164 mobile, regardless of account eligibility or delivery outcome.
-// Operational errors are attached to the Gin context for internal middleware;
-// they are never returned to the caller.
+// Operational failures are logged without attaching the raw error to Gin's
+// context, because the default Gin logger may serialize context errors.
 func (h *ParentAuthHandler) RequestOTP(c *gin.Context) {
 	var req parentOTPRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -71,7 +72,9 @@ func (h *ParentAuthHandler) RequestOTP(c *gin.Context) {
 		return
 	}
 	if err := h.authentication.RequestOTP(c.Request.Context(), mobile, c.ClientIP()); err != nil {
-		_ = c.Error(err)
+		// Do not log the underlying error: provider and database errors may
+		// contain sensitive operational details or personal information.
+		log.Print("Parent OTP request failed")
 	}
 	c.JSON(http.StatusAccepted, gin.H{
 		"status": "accepted",
