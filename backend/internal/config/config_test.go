@@ -131,6 +131,9 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.RefreshTokenExpiryDays != 7 {
 		t.Errorf("RefreshTokenExpiryDays = %d, want 7", cfg.RefreshTokenExpiryDays)
 	}
+	if cfg.TOTPEncryptionKeyVersion != 1 {
+		t.Errorf("TOTPEncryptionKeyVersion = %d, want default 1", cfg.TOTPEncryptionKeyVersion)
+	}
 }
 
 func TestLoadProductionDefaultsToVerifyFull(t *testing.T) {
@@ -285,5 +288,9 @@ func TestTOTPEncryptionKeyConfigurationRejectsInvalidValues(t *testing.T) {
 	t.Setenv("TOTP_ENCRYPTION_KEY_VERSION", "0")
 	if err := Load().ValidateTOTPEncryption(); err == nil {
 		t.Fatal("expected zero key version to be rejected")
+	}
+	t.Setenv("TOTP_ENCRYPTION_KEY_VERSION", "2147483648")
+	if err := Load().ValidateTOTPEncryption(); err == nil {
+		t.Fatal("expected key version outside PostgreSQL INTEGER range to be rejected")
 	}
 }
