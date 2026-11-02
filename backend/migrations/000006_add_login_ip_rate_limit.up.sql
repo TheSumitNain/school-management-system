@@ -4,7 +4,7 @@ CREATE TABLE auth_login_ip_attempts (
     ip_hash CHAR(64) PRIMARY KEY
         CHECK (ip_hash ~ '^[0-9a-f]{64}$'),
     attempts SMALLINT NOT NULL DEFAULT 1
-        CHECK (attempts BETWEEN 1 AND 30),
+        CHECK (attempts BETWEEN 1 AND 120),
     window_started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     last_attempt_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     blocked_until TIMESTAMPTZ,
