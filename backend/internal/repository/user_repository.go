@@ -39,7 +39,7 @@ func (r *UserRepository) GetUserByUsername(
 	}
 
 	const query = `
-		SELECT id, school_id, username, password_hash,
+		SELECT id, principal_id, school_id, username, password_hash,
 		       status, created_at, updated_at
 		FROM users
 		WHERE school_id = $1
@@ -50,6 +50,7 @@ func (r *UserRepository) GetUserByUsername(
 
 	err := r.db.QueryRow(ctx, query, schoolID, strings.TrimSpace(username)).Scan(
 		&user.ID,
+		&user.PrincipalID,
 		&user.SchoolID,
 		&user.Username,
 		&user.PasswordHash,
@@ -83,7 +84,7 @@ func (r *UserRepository) CreateUser(
 	const query = `
 		INSERT INTO users (school_id, username, password_hash)
 		VALUES ($1, $2, $3)
-		RETURNING id, school_id, username, password_hash,
+		RETURNING id, principal_id, school_id, username, password_hash,
 		          status, created_at, updated_at
 	`
 
