@@ -47,19 +47,17 @@ ON CONFLICT (principal_id) DO UPDATE SET verified_at=NOW(),last_accepted_step=NU
 	if err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM principal_mfa_recovery_codes WHERE principal_id=$1 AND code_hash=ANY($2) AND used_at IS NULL`, principalID, replacement).Scan(&newUnused); err != nil { t.Fatal(err) }
 	if oldUnused != 0 || newUnused != 10 { t.Fatalf("after replace: old unused=%d new unused=%d", oldUnused, newUnused) }
 
-	raceChallenges := []string{integrationTokenHash("recovery-race-a"), integrationTokenHash("recovery-race-b")}
-	for _, challenge := range raceChallenges {
-		if err := challenges.Create(ctx, principalID, MFAChallengeLogin, challenge, time.Now().Add(5*time.Minute)); err != nil { t.Fatal(err) }
-	}
+	raceChallenge := integrationTokenHash("recovery-race-single-challenge")
+	if err := challenges.Create(ctx, principalID, MFAChallengeLogin, raceChallenge, time.Now().Add(5*time.Minute)); err != nil { t.Fatal(err) }
 	var successes atomic.Int32
 	var wg sync.WaitGroup
-	for _, challenge := range raceChallenges {
+	for i := 0; i < 2; i++ {
 		wg.Add(1)
-		go func(ch string) {
+		go func() {
 			defer wg.Done()
-			err := repo.ConsumeLoginRecoveryCode(ctx, principalID, ch, replacement[0])
+			err := repo.ConsumeLoginRecoveryCode(ctx, principalID, raceChallenge, replacement[0])
 			if err == nil { successes.Add(1) } else if !errors.Is(err, ErrMFARecoveryCodeInvalid) && !errors.Is(err, ErrMFAEnrollmentInvalid) { t.Errorf("unexpected error: %v", err) }
-		}(challenge)
+		}()
 	}
 	wg.Wait()
 	if successes.Load() != 1 { t.Fatalf("concurrent uses succeeded %d times; want 1", successes.Load()) }

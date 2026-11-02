@@ -127,17 +127,19 @@ func (s *MFAService) VerifyLoginChallenge(ctx context.Context, challengeToken, c
 	if err != nil { return 0, err }
 	if credential == nil || credential.VerifiedAt == nil { return 0, ErrMFAInvalid }
 	normalizedCode := strings.TrimSpace(code)
-	secret, err := s.decryptCredential(credential)
-	if err != nil { return 0, err }
-	step, valid := VerifyTOTPAndGetStep(secret, normalizedCode, time.Now())
-	if valid {
-		if err := s.credentials.ConsumeLoginChallenge(ctx, challenge.PrincipalID, hash, step); err != nil {
-			if errors.Is(err, repository.ErrMFAEnrollmentInvalid) { return 0, ErrMFAInvalid }
-			return 0, err
+	secret, decryptErr := s.decryptCredential(credential)
+	if decryptErr == nil {
+		step, valid := VerifyTOTPAndGetStep(secret, normalizedCode, time.Now())
+		if valid {
+			if err := s.credentials.ConsumeLoginChallenge(ctx, challenge.PrincipalID, hash, step); err != nil {
+				if errors.Is(err, repository.ErrMFAEnrollmentInvalid) { return 0, ErrMFAInvalid }
+				return 0, err
+			}
+			return challenge.PrincipalID, nil
 		}
-		return challenge.PrincipalID, nil
 	}
-	// Recovery-code use and challenge consumption are one atomic repository operation.
+	// Recovery-code use is independent of the encrypted TOTP secret and is
+	// committed together with challenge consumption.
 	recoveryHash := HashRefreshToken(strings.ToUpper(normalizedCode))
 	err = s.credentials.ConsumeLoginRecoveryCode(ctx, challenge.PrincipalID, hash, recoveryHash)
 	if err == nil { return challenge.PrincipalID, nil }

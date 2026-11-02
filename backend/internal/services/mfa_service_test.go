@@ -17,6 +17,7 @@ func TestGenerateRecoveryCodes(t *testing.T) {
 		seenCodes[code] = struct{}{}
 		if len(hashes[i]) != 64 { t.Fatalf("hash %d length=%d; want 64", i, len(hashes[i])) }
 		if _, err := hex.DecodeString(hashes[i]); err != nil { t.Fatalf("hash %d is not hex: %v", i, err) }
+		if hashes[i] != HashRefreshToken(code) { t.Fatalf("hash %d does not match its recovery code", i) }
 		if _, ok := seenHashes[hashes[i]]; ok { t.Fatal("duplicate recovery hash") }
 		seenHashes[hashes[i]] = struct{}{}
 	}
