@@ -1,13 +1,14 @@
-> **2026-11-02 V12 source checkpoint:** The user approved the V12 Parent–Guardian schema. Added migration `000012_add_parent_guardian_authorization` (up/down), a PostgreSQL integration-test source, and database/changelog documentation on `fix/v4-auth-security-hardening`. The migration adds school-authorized guardian portal eligibility, verified Parent-to-Guardian links, irreversible revocation history, pre-account OTP challenges keyed by mobile HMAC, persistent mobile/IP rate-limit buckets, and relationship audit events. **V12 has not been applied or PostgreSQL-tested.** Do not run migrations against `school_management`; next verification target is `school_management_test` only. Parent OTP delivery/service, handlers/routes, and child-data APIs are still not implemented.
-
-> **2026-11-02 current checkpoint:** The user pulled branch `fix/v4-auth-security-hardening` through commit `79c2717` (MFA recovery-code integration fixture repeatability fix). Migration V11 was successfully applied to the dedicated `school_management_test` database; `schema_migrations` reported version `11`, `dirty = false`. With `DB_NAME=school_management_test` and `RUN_POSTGRES_INTEGRATION_TESTS=1`, the user ran `go test -count=1 -p 1 ./...`; all packages with tests passed, including repository integration tests. `go vet ./...` completed without diagnostics. The focused recovery-code integration test also passed twice consecutively. These results are user-reported on Windows. The local working tree still has user-owned helper/untracked files; inspect status before any commit. Complete business APIs, route-level RBAC, tenant isolation, and parent relationship authorization remain unfinished.
-
-# Project Progress
-
-## Current Stage
-
-**Current milestone:** V11 student/guardian foundation is applied and PostgreSQL-tested on the dedicated `school_management_test` database at migration version 11 (`dirty = false`). The full Go suite with PostgreSQL integration enabled and `go vet ./...` passed at local commit `79c2717` plus local `gofmt` of the recovery-code integration test. The focused recovery-code integration test passed twice consecutively. Complete business APIs, route-level RBAC, tenant isolation, and parent relationship authorization remain pending.
-
+> **2026-11-02 latest verified checkpoint — commit `c78e770`:** Parent OTP request/delivery foundation is implemented. On the user's Windows environment, focused Parent OTP unit tests, the full `go test -count=1 -p 1 ./...` suite, and `go vet ./...` passed. The full suite ran in the same CMD session with `DB_NAME=school_management_test` and `RUN_POSTGRES_INTEGRATION_TESTS=1` set. The focused PostgreSQL Parent OTP repository integration test passed on commit `7105762`, including challenge invalidation after delivery failure and preservation of rate-limit counters. Windows may emit temporary test-executable `unlinkat` cleanup warnings after successful test results.
+>
+> **Parent OTP scope boundary:** The request/delivery service generates six-digit OTPs, stores only keyed hashes, uses an injected provider interface, and invalidates the challenge after delivery failure. A separate safe sentinel identifies cleanup failure without exposing provider/database details. OTP verification, guardian matching, Parent principal/account creation, Parent login/session issuance, handlers/routes, and protected child-data APIs are not implemented yet.
+>
+> **V12 database boundary:** Migration V12 and its Parent–Guardian authorization integration suite remain source-only and have not been applied or PostgreSQL-tested. Do not run migrations against `school_management`. Use only `school_management_test` after review and explicit user approval.
+>
+> # Project Progress
+>
+> ## Current Stage
+>
+> **Current milestone:** Parent OTP request/delivery foundation implemented and user-verified at `c78e770`. The full Go test suite and `go vet ./...` passed; the focused Parent OTP PostgreSQL repository integration test passed at `7105762`. V11 remains applied and verified on `school_management_test` (version 11, clean). V12 remains source-only. Parent OTP verification/account/session flow, API routes, child-data authorization, complete RBAC enforcement, business APIs, and tenant-isolation validation remain pending.
 The project has a working authentication foundation, including login, JWT authentication middleware, a protected identity endpoint, refresh-token rotation, replay detection, family-wide logout revocation, family-scoped transaction advisory locking, and per-user serialization of concurrent rotations across token families.
 
 The last recorded remote documentation checkpoint before the current local verification was:
@@ -334,4 +335,4 @@ The user subsequently pulled the V11 and recovery-test fix commits. On the dedic
 - [x] Run full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1` and `go vet ./...`; both passed
 - [x] Run focused recovery-code integration test twice consecutively; both runs passed
 
-V11 is **applied and PostgreSQL-verified on the dedicated test database**. This verification does not imply production readiness or complete parent authorization. It does not create academic-year enrollment, class/section placement, parent login endpoints, SMS/OTP delivery, or authenticated parent-to-child authorization. Guardian contact records remain separate from authenticated `parent_accounts`; V12 must add the reviewed verification/revocation relationship before parent access is enabled.
+V11 is **applied and PostgreSQL-verified on the dedicated test database**. This verification does not imply production readiness or complete parent authorization. It does not create academic-year enrollment, class/section placement, Parent login endpoints, or authenticated Parent-to-child API access. V12 now defines the reviewed Parent–Guardian verification/revocation relationship but remains source-only and unverified. The Parent OTP request/delivery service is implemented separately; OTP verification, Parent account/session issuance, and protected child-data routes remain pending.
