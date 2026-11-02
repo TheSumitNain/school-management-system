@@ -202,7 +202,8 @@ func TestParentOTPServicePropagatesRateLimitAndHidesDeliveryFailure(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := service.RequestOTP(context.Background(), "+919876543210", "192.0.2.12"); !errors.Is(err, ErrParentOTPDeliveryUnavailable) {
+	err = service.RequestOTP(context.Background(), "+919876543210", "192.0.2.12")
+	if !errors.Is(err, ErrParentOTPDeliveryUnavailable) {
 		t.Fatalf("RequestOTP() delivery error = %v", err)
 	}
 	if strings.Contains(err.Error(), "provider private failure detail") {
