@@ -9,6 +9,8 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"net"
+	"time"
 	"regexp"
 	"strings"
 )
@@ -97,4 +99,93 @@ func parentHMAC(key []byte, value string) string {
 	mac := hmac.New(sha256.New, key)
 	_, _ = mac.Write([]byte(value))
 	return hex.EncodeToString(mac.Sum(nil))
+}
+
+
+// ParentOTPChallengeCreator is the persistence boundary used by the request
+// flow. The repository stores only HMACs and enforces persistent send limits.
+type ParentOTPChallengeCreator interface {
+	CreatePreAccountChallenge(ctx context.Context, mobileHash, ipHash, otpHash string, expiresAt time.Time) (int64, error)
+}
+
+// ParentOTPService coordinates OTP generation, durable rate-limit reservation,
+// and provider delivery. The raw code exists only in this method's memory and
+// is passed only to the configured delivery provider.
+type ParentOTPService struct {
+	challenges ParentOTPChallengeCreator
+	delivery   ParentOTPDelivery
+	hmacKey    []byte
+}
+
+func NewParentOTPService(challenges ParentOTPChallengeCreator, delivery ParentOTPDelivery, hmacKey []byte) (*ParentOTPService, error) {
+	if challenges == nil {
+		return nil, fmt.Errorf("parent OTP challenge repository is required")
+	}
+	if delivery == nil {
+		return nil, ErrParentOTPDeliveryUnavailable
+	}
+	if len(hmacKey) < 32 {
+		return nil, fmt.Errorf("parent OTP HMAC key must contain at least 32 bytes")
+	}
+	return &ParentOTPService{
+		challenges: challenges,
+		delivery: delivery,
+		hmacKey: append([]byte(nil), hmacKey...),
+	}, nil
+}
+
+// RequestOTP starts a pre-account challenge. clientIP must be the address
+// resolved by the HTTP server's trusted-proxy policy, never a raw forwarded
+// header supplied directly by the caller.
+func (s *ParentOTPService) RequestOTP(ctx context.Context, mobileE164, clientIP string) error {
+	if s == nil || s.challenges == nil || s.delivery == nil || len(s.hmacKey) < 32 {
+		return ErrParentOTPDeliveryUnavailable
+	}
+	mobile, err := NormalizeParentMobile(mobileE164)
+	if err != nil {
+		return ErrParentOTPInvalid
+	}
+	mobileHash, err := HashParentMobile(s.hmacKey, mobile)
+	if err != nil {
+		return ErrParentOTPInvalid
+	}
+	ipHash, err := HashParentIP(s.hmacKey, clientIP)
+	if err != nil {
+		return ErrParentOTPInvalid
+	}
+	code, err := GenerateParentOTP()
+	if err != nil {
+		return fmt.Errorf("generate parent OTP: %w", err)
+	}
+	otpHash, err := HashParentOTP(s.hmacKey, mobileHash, code)
+	if err != nil {
+		return fmt.Errorf("hash parent OTP: %w", err)
+	}
+	if _, err := s.challenges.CreatePreAccountChallenge(
+		ctx, mobileHash, ipHash, otpHash, time.Now().Add(5*time.Minute),
+	); err != nil {
+		return err
+	}
+	if err := s.delivery.SendParentOTP(ctx, mobile, code); err != nil {
+		return ErrParentOTPDeliveryUnavailable
+	}
+	return nil
+}
+
+// HashParentIP produces a domain-separated lookup HMAC for persistent IP
+// throttling. It canonicalizes IPv4/IPv6 text to prevent equivalent textual
+// representations from bypassing the same rate-limit bucket.
+func HashParentIP(key []byte, address string) (string, error) {
+	if len(key) < 32 {
+		return "", fmt.Errorf("parent OTP HMAC key must contain at least 32 bytes")
+	}
+	ip := net.ParseIP(strings.TrimSpace(address))
+	if ip == nil {
+		return "", fmt.Errorf("invalid client IP address")
+	}
+	canonical := ip.String()
+	if ipv4 := ip.To4(); ipv4 != nil {
+		canonical = ipv4.String()
+	}
+	return parentHMAC(key, "school-management:parent-otp:ip:v1:"+canonical), nil
 }
