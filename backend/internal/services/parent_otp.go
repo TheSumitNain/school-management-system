@@ -108,6 +108,7 @@ func parentHMAC(key []byte, value string) string {
 type ParentOTPChallengeCreator interface {
 	CreatePreAccountChallenge(ctx context.Context, mobileHash, ipHash, otpHash string, expiresAt time.Time) (int64, error)
 	InvalidatePreAccountChallenge(ctx context.Context, challengeID int64) error
+	VerifyPreAccountChallenge(ctx context.Context, mobileHash, candidateOTPHash string) (bool, error)
 }
 
 // ParentOTPService coordinates OTP generation, durable rate-limit reservation,
@@ -182,6 +183,36 @@ func (s *ParentOTPService) RequestOTP(ctx context.Context, mobileE164, clientIP 
 			return errors.Join(ErrParentOTPDeliveryUnavailable, ErrParentOTPDeliveryCleanupFailed)
 		}
 		return ErrParentOTPDeliveryUnavailable
+	}
+	return nil
+}
+
+// VerifyOTP verifies a delivered pre-account challenge for the supplied E.164
+// mobile. Success consumes the challenge exactly once; callers may provision a
+// Parent only after this method returns nil. All challenge mismatches share one
+// public error so callers cannot distinguish missing, expired, or exhausted OTPs.
+func (s *ParentOTPService) VerifyOTP(ctx context.Context, mobileE164, code string) error {
+	if s == nil || s.challenges == nil || len(s.hmacKey) < 32 {
+		return ErrParentOTPInvalid
+	}
+	mobile, err := NormalizeParentMobile(mobileE164)
+	if err != nil {
+		return ErrParentOTPInvalid
+	}
+	mobileHash, err := HashParentMobile(s.hmacKey, mobile)
+	if err != nil {
+		return ErrParentOTPInvalid
+	}
+	candidateHash, err := HashParentOTP(s.hmacKey, mobileHash, code)
+	if err != nil {
+		return ErrParentOTPInvalid
+	}
+	verified, err := s.challenges.VerifyPreAccountChallenge(ctx, mobileHash, candidateHash)
+	if err != nil {
+		return fmt.Errorf("verify parent OTP challenge: %w", err)
+	}
+	if !verified {
+		return ErrParentOTPInvalid
 	}
 	return nil
 }
