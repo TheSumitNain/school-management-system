@@ -87,28 +87,34 @@ func DecryptTOTPSecret(ciphertext, key []byte) ([]byte, error) {
 // VerifyTOTP accepts a six-digit SHA-1 TOTP code in the current 30-second
 // time step, with one adjacent step of clock-skew tolerance in either direction.
 func VerifyTOTP(secret []byte, code string, now time.Time) bool {
+	_, ok := VerifyTOTPAndGetStep(secret, code, now)
+	return ok
+}
+
+// VerifyTOTPAndGetStep returns the exact counter matched by the supplied code.
+// Persisting this counter lets the repository reject reuse across challenges.
+func VerifyTOTPAndGetStep(secret []byte, code string, now time.Time) (int64, bool) {
 	if len(secret) < 16 || len(secret) > 64 || len(code) != totpDigits || now.Unix() < 0 {
-		return false
+		return 0, false
 	}
 	for _, r := range code {
 		if r < '0' || r > '9' {
-			return false
+			return 0, false
 		}
 	}
 	counter := now.Unix() / int64(totpPeriod/time.Second)
-	for offset := int64(-1); offset <= 1; offset++ {
+	for _, offset := range []int64{0, -1, 1} {
 		step := counter + offset
 		if step < 0 {
 			continue
 		}
 		expected := totpCode(secret, uint64(step))
 		if subtle.ConstantTimeCompare([]byte(expected), []byte(code)) == 1 {
-			return true
+			return step, true
 		}
 	}
-	return false
+	return 0, false
 }
-
 func totpCode(secret []byte, counter uint64) string {
 	var message [8]byte
 	binary.BigEndian.PutUint64(message[:], counter)
