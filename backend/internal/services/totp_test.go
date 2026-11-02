@@ -54,6 +54,21 @@ func TestVerifyTOTPAcceptsAdjacentTimeStepsOnly(t *testing.T) {
 	}
 }
 
+func TestVerifyTOTPAndGetStepReturnsMatchedCounter(t *testing.T) {
+	secret := []byte("12345678901234567890")
+	step, ok := VerifyTOTPAndGetStep(secret, "287082", time.Unix(59, 0))
+	if !ok || step != 1 {
+		t.Fatalf("VerifyTOTPAndGetStep() = (%d, %v), want (1, true)", step, ok)
+	}
+	step, ok = VerifyTOTPAndGetStep(secret, "359152", time.Unix(59, 0))
+	if !ok || step != 2 {
+		t.Fatalf("adjacent-step match = (%d, %v), want (2, true)", step, ok)
+	}
+	if step, ok = VerifyTOTPAndGetStep(secret, "000000", time.Unix(59, 0)); ok {
+		t.Fatalf("unexpectedly matched invalid code at step %d", step)
+	}
+}
+
 func TestVerifyTOTPRejectsMalformedInputs(t *testing.T) {
 	secret := []byte("12345678901234567890")
 	now := time.Unix(59, 0)
