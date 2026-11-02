@@ -41,6 +41,7 @@ type authSchoolRepository interface {
 }
 
 type staffLoginSecurity interface {
+	AcquireAttemptLock(ctx context.Context, username string) (func(), error)
 	IsLocked(ctx context.Context, username string) (bool, error)
 	RecordFailure(ctx context.Context, username string) error
 	RecordSuccess(ctx context.Context, username string, principalID int64) error
@@ -163,6 +164,12 @@ func (s *AuthService) AuthenticateStaff(ctx context.Context, username, password 
 		return nil, ErrInvalidCredentials
 	}
 	if s.loginSecurity != nil {
+		release, err := s.loginSecurity.AcquireAttemptLock(ctx, username)
+		if err != nil {
+			return nil, err
+		}
+		defer release()
+
 		locked, err := s.loginSecurity.IsLocked(ctx, username)
 		if err != nil {
 			return nil, err
