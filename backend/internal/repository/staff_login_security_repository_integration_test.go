@@ -15,13 +15,6 @@ func TestStaffLoginSecurityRepositoryPostgresIntegration(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	var principalID int64
-	if err := pool.QueryRow(ctx,
-		`SELECT principal_id FROM users WHERE id = $1`, userID,
-	).Scan(&principalID); err != nil {
-		t.Fatalf("load integration principal: %v", err)
-	}
-
 	var hasV6 bool
 	if err := pool.QueryRow(ctx,
 		`SELECT to_regclass('public.auth_login_ip_attempts') IS NOT NULL`,
