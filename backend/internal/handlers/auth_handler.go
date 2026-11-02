@@ -17,6 +17,9 @@ import (
 type AuthService interface {
 	AuthenticateStaff(ctx context.Context, username, password string) (*models.AuthPrincipal, error)
 }
+type PlatformAdminAuthService interface {
+	Authenticate(ctx context.Context, email, password string) (*models.AuthPrincipal, error)
+}
 
 type TokenService interface {
 	GenerateAccessToken(principalID, tokenVersion int64, principalType string) (string, error)
@@ -42,6 +45,7 @@ type MFAPrincipalLoader interface {
 }
 type AuthHandler struct {
 	authService AuthService
+	platformAdminAuthService PlatformAdminAuthService
 	tokenService TokenService
 	sessionService SessionService
 	ipRateLimiter LoginIPRateLimiter
@@ -61,6 +65,10 @@ type loginRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
+type platformAdminLoginRequest struct {
+	Email string `json:"email"`
+	Password string `json:"password"`
+}
 
 type refreshRequest struct {
 	RefreshToken string `json:"refresh_token"`
@@ -76,6 +84,10 @@ type principalResponse struct {
 	Status   string `json:"status"`
 	SchoolID int64  `json:"school_id,omitempty"`
 	Username string `json:"username,omitempty"`
+}
+
+func (h *AuthHandler) SetPlatformAdminAuthService(service PlatformAdminAuthService) {
+	h.platformAdminAuthService = service
 }
 
 func (h *AuthHandler) SetMFAService(mfa MFAService, loader MFAPrincipalLoader) {
@@ -163,6 +175,35 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	})
 }
 
+
+
+func (h *AuthHandler) PlatformAdminLogin(c *gin.Context) {
+	if h.ipRateLimiter!=nil {
+		allowed,err:=h.ipRateLimiter.AllowIPAttempt(c.Request.Context(),c.ClientIP())
+		if err!=nil { writeAuthError(c,http.StatusInternalServerError,"Unable to process login"); return }
+		if !allowed { c.Header("Retry-After","900"); writeAuthError(c,http.StatusTooManyRequests,"Too many login requests from this network. Try again in 15 minutes."); return }
+	}
+	var req platformAdminLoginRequest
+	if err:=c.ShouldBindJSON(&req); err!=nil { writeAuthError(c,http.StatusBadRequest,"Invalid request body"); return }
+	req.Email=strings.TrimSpace(req.Email)
+	if req.Email=="" || req.Password=="" { writeAuthError(c,http.StatusBadRequest,"email and password are required"); return }
+	if h.platformAdminAuthService==nil || h.mfaService==nil {
+		writeAuthError(c,http.StatusServiceUnavailable,"Platform Admin authentication is unavailable"); return
+	}
+	principal,err:=h.platformAdminAuthService.Authenticate(c.Request.Context(),req.Email,req.Password)
+	if err!=nil {
+		if errors.Is(err,services.ErrLoginLocked) { c.Header("Retry-After","900"); writeAuthError(c,http.StatusTooManyRequests,"Too many failed login attempts. Try again in 15 minutes."); return }
+		if errors.Is(err,services.ErrInvalidCredentials) { writeAuthError(c,http.StatusUnauthorized,"Invalid email or password"); return }
+		writeAuthError(c,http.StatusInternalServerError,"Unable to log in"); return
+	}
+	if !validPrincipal(principal) || principal.Type!="platform_admin" { writeAuthError(c,http.StatusInternalServerError,"Unable to log in"); return }
+	mfaStart,err:=h.mfaService.BeginAuthentication(c.Request.Context(),principal.ID,req.Email)
+	if err!=nil { writeAuthError(c,http.StatusInternalServerError,"Unable to start multi-factor authentication"); return }
+	if !mfaStart.Required { writeAuthError(c,http.StatusForbidden,"Platform Admin MFA policy is not enabled"); return }
+	c.JSON(http.StatusAccepted,gin.H{"status":"mfa_required","challenge_token":mfaStart.ChallengeToken,
+		"enrollment_required":mfaStart.EnrollmentRequired,"secret":mfaStart.Secret,
+		"provisioning_uri":mfaStart.ProvisioningURI,"expires_at":mfaStart.ExpiresAt})
+}
 
 func (h *AuthHandler) CompleteMFAEnrollment(c *gin.Context) {
 	var req mfaVerifyRequest
