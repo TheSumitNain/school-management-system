@@ -136,7 +136,8 @@ func TOTPProvisioningURI(issuer, accountName, secret string) (string, error) {
 	if issuer == "" || accountName == "" || secret == "" {
 		return "", fmt.Errorf("issuer, account name, and TOTP secret are required")
 	}
-	if _, err := base32.StdEncoding.WithPadding(base32.NoPadding).DecodeString(secret); err != nil {
+	decoded, err := base32.StdEncoding.WithPadding(base32.NoPadding).DecodeString(secret)
+	if err != nil || len(decoded) < 16 || len(decoded) > 64 {
 		return "", fmt.Errorf("invalid Base32 TOTP secret")
 	}
 	label := url.PathEscape(issuer + ":" + accountName)
