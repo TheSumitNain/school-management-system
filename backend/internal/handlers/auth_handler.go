@@ -32,11 +32,21 @@ type LoginIPRateLimiter interface {
 	AllowIPAttempt(ctx context.Context, clientIP string) (bool, error)
 }
 
+type MFAService interface {
+	BeginAuthentication(ctx context.Context, principalID int64, accountName string) (*services.MFAStart, error)
+	CompleteEnrollment(ctx context.Context, challengeToken, code string) (int64, error)
+	VerifyLoginChallenge(ctx context.Context, challengeToken, code string) (int64, error)
+}
+type MFAPrincipalLoader interface {
+	LoadPrincipalForAuthentication(ctx context.Context, principalID int64) (*models.AuthPrincipal, error)
+}
 type AuthHandler struct {
-	authService    AuthService
-	tokenService   TokenService
+	authService AuthService
+	tokenService TokenService
 	sessionService SessionService
-	ipRateLimiter  LoginIPRateLimiter
+	ipRateLimiter LoginIPRateLimiter
+	mfaService MFAService
+	principalLoader MFAPrincipalLoader
 }
 
 func NewAuthHandler(authService AuthService, tokenService TokenService, sessionService SessionService, ipRateLimiters ...LoginIPRateLimiter) *AuthHandler {
@@ -55,6 +65,10 @@ type loginRequest struct {
 type refreshRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
+type mfaVerifyRequest struct {
+	ChallengeToken string `json:"challenge_token"`
+	Code string `json:"code"`
+}
 
 type principalResponse struct {
 	ID       int64  `json:"principal_id"`
@@ -62,6 +76,11 @@ type principalResponse struct {
 	Status   string `json:"status"`
 	SchoolID int64  `json:"school_id,omitempty"`
 	Username string `json:"username,omitempty"`
+}
+
+func (h *AuthHandler) SetMFAService(mfa MFAService, loader MFAPrincipalLoader) {
+	h.mfaService = mfa
+	h.principalLoader = loader
 }
 
 func (h *AuthHandler) Login(c *gin.Context) {
@@ -114,7 +133,19 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		writeAuthError(c, http.StatusInternalServerError, "Unable to log in")
 		return
 	}
-
+	if h.mfaService != nil {
+		mfaStart, mfaErr := h.mfaService.BeginAuthentication(c.Request.Context(), principal.ID, principal.Username)
+		if mfaErr != nil {
+			writeAuthError(c, http.StatusInternalServerError, "Unable to start multi-factor authentication")
+			return
+		}
+		if mfaStart.Required {
+			c.JSON(http.StatusAccepted, gin.H{"status":"mfa_required","challenge_token":mfaStart.ChallengeToken,
+				"enrollment_required":mfaStart.EnrollmentRequired,"secret":mfaStart.Secret,
+				"provisioning_uri":mfaStart.ProvisioningURI,"expires_at":mfaStart.ExpiresAt})
+			return
+		}
+	}
 	accessToken, err := h.tokenService.GenerateAccessToken(principal.ID, principal.TokenVersion, principal.Type)
 	if err != nil {
 		writeAuthError(c, http.StatusInternalServerError, "Unable to log in")
@@ -130,6 +161,47 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		"status": "success", "access_token": accessToken, "refresh_token": refreshToken,
 		"token_type": "Bearer", "principal": toPrincipalResponse(principal),
 	})
+}
+
+
+func (h *AuthHandler) CompleteMFAEnrollment(c *gin.Context) {
+	var req mfaVerifyRequest
+	if err:=c.ShouldBindJSON(&req); err!=nil || strings.TrimSpace(req.ChallengeToken)=="" || strings.TrimSpace(req.Code)=="" {
+		writeAuthError(c,http.StatusBadRequest,"challenge_token and code are required"); return
+	}
+	principalID,err:=h.mfaService.CompleteEnrollment(c.Request.Context(),req.ChallengeToken,req.Code)
+	if err!=nil { writeMFAError(c,err); return }
+	h.issueMFASession(c,principalID)
+}
+
+func (h *AuthHandler) VerifyMFA(c *gin.Context) {
+	var req mfaVerifyRequest
+	if err:=c.ShouldBindJSON(&req); err!=nil || strings.TrimSpace(req.ChallengeToken)=="" || strings.TrimSpace(req.Code)=="" {
+		writeAuthError(c,http.StatusBadRequest,"challenge_token and code are required"); return
+	}
+	principalID,err:=h.mfaService.VerifyLoginChallenge(c.Request.Context(),req.ChallengeToken,req.Code)
+	if err!=nil { writeMFAError(c,err); return }
+	h.issueMFASession(c,principalID)
+}
+
+func (h *AuthHandler) issueMFASession(c *gin.Context, principalID int64) {
+	if h.principalLoader==nil || h.tokenService==nil || h.sessionService==nil {
+		writeAuthError(c,http.StatusInternalServerError,"Authentication service unavailable"); return
+	}
+	principal,err:=h.principalLoader.LoadPrincipalForAuthentication(c.Request.Context(),principalID)
+	if err!=nil || !validPrincipal(principal) {
+		writeAuthError(c,http.StatusUnauthorized,"Authentication could not be completed"); return
+	}
+	accessToken,err:=h.tokenService.GenerateAccessToken(principal.ID,principal.TokenVersion,principal.Type)
+	if err!=nil { writeAuthError(c,http.StatusInternalServerError,"Unable to complete authentication"); return }
+	refreshToken,err:=h.sessionService.Issue(c.Request.Context(),principal.ID)
+	if err!=nil { writeAuthError(c,http.StatusInternalServerError,"Unable to complete authentication"); return }
+	c.JSON(http.StatusOK,gin.H{"status":"success","access_token":accessToken,"refresh_token":refreshToken,"token_type":"Bearer","principal":toPrincipalResponse(principal)})
+}
+
+func writeMFAError(c *gin.Context, err error) {
+	if errors.Is(err,services.ErrMFAInvalid) { writeAuthError(c,http.StatusUnauthorized,"Invalid or expired MFA challenge or code"); return }
+	writeAuthError(c,http.StatusInternalServerError,"Unable to complete multi-factor authentication")
 }
 
 // Refresh rotates the opaque refresh token and issues a principal-subject JWT.
