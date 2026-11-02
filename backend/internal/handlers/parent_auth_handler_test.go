@@ -169,3 +169,34 @@ func TestParentOTPVerifyRejectsNonParentPrincipal(t *testing.T) {
 		t.Fatal("non-Parent principal must not receive a session")
 	}
 }
+
+func TestParentOTPRequestDoesNotAttachRawErrorsToGinContext(t *testing.T) {
+	service := &fakeParentAuthenticationService{
+		requestErr: errors.New("sensitive provider or database detail"),
+	}
+	handler := NewParentAuthHandler(service, nil, nil)
+	var contextErrors string
+
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.POST("/auth/parent/otp/request", func(c *gin.Context) {
+		handler.RequestOTP(c)
+		contextErrors = c.Errors.String()
+	})
+
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPost, "/auth/parent/otp/request",
+		strings.NewReader(`{"mobile_e164":"+919876543210"}`))
+	request.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusAccepted {
+		t.Fatalf("expected generic 202 response, got %d: %s", recorder.Code, recorder.Body.String())
+	}
+	if contextErrors != "" || strings.Contains(contextErrors, "sensitive provider or database detail") {
+		t.Fatalf("raw operational error was attached to Gin context: %q", contextErrors)
+	}
+	if strings.Contains(recorder.Body.String(), "sensitive provider or database detail") {
+		t.Fatalf("raw operational error leaked in response: %s", recorder.Body.String())
+	}
+}
