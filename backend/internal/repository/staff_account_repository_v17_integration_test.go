@@ -198,3 +198,65 @@ func upperASCII(value string) string {
 	}
 	return string(bytes)
 }
+
+
+func TestStaffAccountUpdateAndEnableAuthorizationPostgresIntegration(t *testing.T) {
+	_, pool, actorUserID := newPostgresIntegrationRepository(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	var actorPrincipalID, schoolID int64
+	if err := pool.QueryRow(ctx,
+		`SELECT principal_id, school_id FROM users WHERE id = $1`, actorUserID,
+	).Scan(&actorPrincipalID, &schoolID); err != nil {
+		t.Fatalf("load ordinary staff actor: %v", err)
+	}
+
+	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
+	var activePrincipalID, disabledPrincipalID int64
+	var activeUserID int64
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO users (school_id, username, password_hash, status)
+		VALUES ($1, $2, 'existing-test-hash', 'active')
+		RETURNING id, principal_id
+	`, schoolID, "active-"+suffix).Scan(&activeUserID, &activePrincipalID); err != nil {
+		t.Fatalf("create active target account: %v", err)
+	}
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO users (school_id, username, password_hash, status)
+		VALUES ($1, $2, 'disabled-test-hash', 'disabled')
+		RETURNING principal_id
+	`, schoolID, "disabled-"+suffix).Scan(&disabledPrincipalID); err != nil {
+		t.Fatalf("create disabled target account: %v", err)
+	}
+
+	repo := NewUserRepository(pool)
+	if _, err := repo.UpdateStaffAccount(ctx, actorPrincipalID, schoolID, activePrincipalID, "renamed-"+suffix); !errors.Is(err, ErrUserNotFound) {
+		t.Fatalf("unauthorized UpdateStaffAccount error = %v, want ErrUserNotFound", err)
+	}
+	if err := repo.EnableStaffAccount(ctx, actorPrincipalID, schoolID, disabledPrincipalID, "valid-test-password-hash"); !errors.Is(err, ErrUserNotFound) {
+		t.Fatalf("unauthorized EnableStaffAccount error = %v, want ErrUserNotFound", err)
+	}
+
+	var activeUsername, disabledUserStatus, disabledPrincipalStatus string
+	if err := pool.QueryRow(ctx, `
+		SELECT username FROM users WHERE id = $1
+	`, activeUserID).Scan(&activeUsername); err != nil {
+		t.Fatalf("verify active username after denied update: %v", err)
+	}
+	if activeUsername != "active-"+suffix {
+		t.Fatalf("unauthorized update changed username to %q", activeUsername)
+	}
+	if err := pool.QueryRow(ctx, `
+		SELECT u.status, ap.status
+		  FROM users u
+		  JOIN auth_principals ap ON ap.id = u.principal_id
+		 WHERE u.principal_id = $1
+	`, disabledPrincipalID).Scan(&disabledUserStatus, &disabledPrincipalStatus); err != nil {
+		t.Fatalf("verify disabled account after denied re-enable: %v", err)
+	}
+	if disabledUserStatus != "disabled" || disabledPrincipalStatus != "disabled" {
+		t.Fatalf("unauthorized re-enable changed account state: user=%q principal=%q",
+			disabledUserStatus, disabledPrincipalStatus)
+	}
+}
