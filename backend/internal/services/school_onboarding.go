@@ -2,18 +2,13 @@ package services
 
 import (
 	"context"
-	"errors"
 	"regexp"
 	"strings"
 
 	"school-management-system/internal/repository"
 )
 
-var (
-	ErrInvalidSchoolOnboarding = errors.New("invalid school onboarding data")
-	ErrSchoolCodeTaken         = errors.New("school code already exists")
-	ErrAdminUsernameTaken      = errors.New("staff username already exists")
-)
+var ErrInvalidSchoolOnboarding = errors.New("invalid school onboarding data")
 
 var (
 	schoolCodePattern = regexp.MustCompile(`^[A-Z0-9][A-Z0-9_-]{1,49}$`)

@@ -11,6 +11,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+var ErrSchoolCodeTaken = errors.New("school code already exists")
+
 type SchoolOnboardingResult struct {
 	SchoolID         int64
 	SchoolName       string
