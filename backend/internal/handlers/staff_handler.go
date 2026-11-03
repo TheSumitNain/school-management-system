@@ -19,6 +19,8 @@ type StaffAccountManagementService interface {
 	Create(ctx context.Context, actorPrincipalID, schoolID int64, username, initialPassword string) (*models.User, error)
 	List(ctx context.Context, actorPrincipalID, schoolID int64) ([]models.User, error)
 	Disable(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64) error
+	Update(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64, username string) (*models.User, error)
+	Enable(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64, temporaryPassword string) error
 }
 
 type StaffHandler struct {
@@ -145,5 +147,106 @@ func (h *StaffHandler) Disable(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": "Active staff account not found in this school"})
 	default:
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unable to disable staff account"})
+	}
+}
+
+
+// Update changes an active staff account's login username.
+func (h *StaffHandler) Update(c *gin.Context) {
+	actorValue, actorExists := c.Get(middleware.ContextPrincipalIDKey)
+	actorID, actorOK := actorValue.(int64)
+	schoolValue, schoolExists := c.Get(middleware.ContextSchoolIDKey)
+	schoolID, schoolOK := schoolValue.(int64)
+	if !actorExists || !actorOK || actorID <= 0 || !schoolExists || !schoolOK || schoolID <= 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "School staff authentication required"})
+		return
+	}
+	if h == nil || h.service == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Staff account update is unavailable"})
+		return
+	}
+	targetID, err := strconv.ParseInt(c.Param("principalID"), 10, 64)
+	if err != nil || targetID <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid target principal ID"})
+		return
+	}
+	var request struct {
+		Username string `json:"username"`
+	}
+	if err := c.ShouldBindJSON(&request); err != nil || strings.TrimSpace(request.Username) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "username is required"})
+		return
+	}
+	user, err := h.service.Update(c.Request.Context(), actorID, schoolID, targetID, request.Username)
+	switch {
+	case err == nil:
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"staff": gin.H{
+				"id": user.ID,
+				"principal_id": user.PrincipalID,
+				"school_id": user.SchoolID,
+				"username": user.Username,
+				"status": user.Status,
+				"must_change_password": user.MustChangePassword,
+			},
+			"message": "Staff username updated; active sessions revoked",
+		})
+	case errors.Is(err, services.ErrInvalidStaffAccount):
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid staff account update request"})
+	case errors.Is(err, repository.ErrUsernameTaken):
+		c.JSON(http.StatusConflict, gin.H{"status": "error", "message": "This username is already in use"})
+	case errors.Is(err, repository.ErrUserNotFound):
+		c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": "Active staff account not found in this school"})
+	case errors.Is(err, repository.ErrRolePermissionDenied):
+		c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": "Staff account update is not authorized"})
+	default:
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unable to update staff account"})
+	}
+}
+
+// Enable reactivates a disabled account with a new temporary password.
+func (h *StaffHandler) Enable(c *gin.Context) {
+	actorValue, actorExists := c.Get(middleware.ContextPrincipalIDKey)
+	actorID, actorOK := actorValue.(int64)
+	schoolValue, schoolExists := c.Get(middleware.ContextSchoolIDKey)
+	schoolID, schoolOK := schoolValue.(int64)
+	if !actorExists || !actorOK || actorID <= 0 || !schoolExists || !schoolOK || schoolID <= 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "School staff authentication required"})
+		return
+	}
+	if h == nil || h.service == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Staff account re-enable is unavailable"})
+		return
+	}
+	targetID, err := strconv.ParseInt(c.Param("principalID"), 10, 64)
+	if err != nil || targetID <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid target principal ID"})
+		return
+	}
+	var request struct {
+		TemporaryPassword string `json:"temporary_password"`
+	}
+	if err := c.ShouldBindJSON(&request); err != nil || request.TemporaryPassword == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "temporary_password is required"})
+		return
+	}
+	err = h.service.Enable(c.Request.Context(), actorID, schoolID, targetID, request.TemporaryPassword)
+	switch {
+	case err == nil:
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"message": "Staff account enabled with a temporary password; password change is required at next login",
+		})
+	case errors.Is(err, services.ErrInvalidStaffAccount):
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid staff account re-enable request"})
+	case errors.Is(err, services.ErrInvalidPassword):
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Temporary password must meet the password policy"})
+	case errors.Is(err, repository.ErrUserNotFound):
+		c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": "Disabled staff account not found in this school"})
+	case errors.Is(err, repository.ErrRolePermissionDenied):
+		c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": "Staff account re-enable is not authorized"})
+	default:
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unable to enable staff account"})
 	}
 }
