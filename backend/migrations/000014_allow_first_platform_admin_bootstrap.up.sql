@@ -32,7 +32,7 @@ BEGIN
         RAISE EXCEPTION 'role assignment target principal must be active';
     END IF;
 
-    SELECT id, school_id, principal_type, scope_type, role_key
+    SELECT id, school_id, principal_type, scope_type, role_key, is_system
       INTO v_role FROM public.roles WHERE id = NEW.role_id;
     IF NOT FOUND THEN
         RAISE EXCEPTION 'role assignment target role does not exist';
@@ -59,6 +59,7 @@ BEGIN
     IF v_type = 'platform_admin'
        AND v_role.role_key = 'platform_admin'
        AND v_role.scope_type = 'platform'
+       AND v_role.is_system IS TRUE
        AND NEW.assigned_by IS NULL THEN
         PERFORM pg_catalog.pg_advisory_xact_lock(7414, 1);
 
