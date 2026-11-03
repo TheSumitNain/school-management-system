@@ -23,6 +23,10 @@ func (f *fakeStaffAccountRepository) CreateStaffAccount(_ context.Context, actor
 	return f.user, nil
 }
 
+func (f *fakeStaffAccountRepository) ListStaffAccounts(context.Context, int64, int64) ([]models.User, error) {
+	return []models.User{}, nil
+}
+
 func TestStaffAccountServiceCreatesHashedTemporaryAccount(t *testing.T) {
 	repo := &fakeStaffAccountRepository{user: &models.User{
 		ID: 15, PrincipalID: 27, SchoolID: 8, Username: "teacher.one",
