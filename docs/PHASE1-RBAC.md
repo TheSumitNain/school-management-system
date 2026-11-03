@@ -45,7 +45,7 @@ This document is the detailed reference for Phase 1 web role scope, permission i
 
 ## 3. Permission catalogue
 
-Permission keys are stable identifiers in a platform-defined catalogue. School Admins may create custom roles from authorized catalogue entries; they cannot invent platform permissions or exceed their delegation authority. Custom-role grants and per-user overrides must carry the exact delegation ID that authorized them; V16 enforces this in database triggers and the live resolver ignores grants whose exact delegation has been revoked. V16 PostgreSQL verification is pending.
+Permission keys are stable identifiers in a platform-defined catalogue. School Admins may create custom roles from authorized catalogue entries; they cannot invent platform permissions or exceed their delegation authority. Custom-role grants and per-user overrides must carry the exact delegation ID that authorized them; V16 enforces this in database triggers and the live resolver ignores grants whose exact delegation has been revoked. Fresh PostgreSQL 18 migration and integration verification passed in GitHub Actions; the user's persistent `school_management_test` database remains unchanged.
 
 ### 3.1 Platform and school administration
 
