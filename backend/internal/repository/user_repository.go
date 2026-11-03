@@ -40,7 +40,7 @@ func (r *UserRepository) GetUserByUsername(
 
 	const query = `
 		SELECT id, principal_id, school_id, username, password_hash,
-		       status, created_at, updated_at
+		       status, must_change_password, created_at, updated_at
 		FROM users
 		WHERE school_id = $1
 		  AND LOWER(username) = LOWER($2)
@@ -55,6 +55,7 @@ func (r *UserRepository) GetUserByUsername(
 		&user.Username,
 		&user.PasswordHash,
 		&user.Status,
+		&user.MustChangePassword,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
@@ -85,7 +86,7 @@ func (r *UserRepository) CreateUser(
 		INSERT INTO users (school_id, username, password_hash)
 		VALUES ($1, $2, $3)
 		RETURNING id, principal_id, school_id, username, password_hash,
-		          status, created_at, updated_at
+		          		          status, must_change_password, created_at, updated_at
 	`
 
 	var user models.User
@@ -103,6 +104,7 @@ func (r *UserRepository) CreateUser(
 		&user.Username,
 		&user.PasswordHash,
 		&user.Status,
+		&user.MustChangePassword,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
