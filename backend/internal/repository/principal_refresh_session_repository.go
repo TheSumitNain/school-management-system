@@ -258,6 +258,7 @@ FOR UPDATE OF rs, ap`
 	var schoolID int64
 	var hasPlatformAccount bool
 	var mobileVerified bool
+	var hasEligibleParentLink bool
 	var mfaVerified bool
 
 	err = tx.QueryRow(ctx, lookup, oldHash).Scan(
