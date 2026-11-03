@@ -156,3 +156,69 @@ func TestStaffHandlerDisableRequiresAuthenticatedPrincipal(t *testing.T) {
 		t.Fatalf("disable status = %d, body=%s", rec.Code, rec.Body.String())
 	}
 }
+
+
+func TestStaffHandlerUpdateAndEnableUseAuthenticatedScope(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	service := &fakeStaffAccountService{user: &models.User{
+		ID: 15, PrincipalID: 27, SchoolID: 8, Username: "new.teacher", Status: "active",
+	}}
+	handler := NewStaffHandler(service)
+	auth := func(c *gin.Context) {
+		c.Set("auth_principal_id", int64(31))
+		c.Set("auth_school_id", int64(8))
+		c.Next()
+	}
+
+	router := gin.New()
+	router.PATCH("/school/staff/:principalID", auth, handler.Update)
+	req := httptest.NewRequest(http.MethodPatch, "/school/staff/27", strings.NewReader(`{"username":"new.teacher"}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "new.teacher") {
+		t.Fatalf("unexpected staff update response: status=%d body=%s", rec.Code, rec.Body.String())
+	}
+
+	router = gin.New()
+	router.POST("/school/staff/:principalID/enable", auth, handler.Enable)
+	req = httptest.NewRequest(http.MethodPost, "/school/staff/27/enable",
+		strings.NewReader(`{"temporary_password":"A-Strong-Temporary-Pass-123"}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "password change is required") {
+		t.Fatalf("unexpected staff enable response: status=%d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestStaffHandlerEnableMapsPasswordAndNotFoundErrors(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	service := &fakeStaffAccountService{}
+	router := gin.New()
+	router.POST("/school/staff/:principalID/enable", func(c *gin.Context) {
+		c.Set("auth_principal_id", int64(31))
+		c.Set("auth_school_id", int64(8))
+		c.Next()
+	}, NewStaffHandler(service).Enable)
+
+	for _, test := range []struct {
+		err error
+		want int
+	}{
+		{err: services.ErrInvalidPassword, want: http.StatusBadRequest},
+		{err: repository.ErrUserNotFound, want: http.StatusNotFound},
+		{err: repository.ErrRolePermissionDenied, want: http.StatusForbidden},
+		{err: errors.New("internal"), want: http.StatusInternalServerError},
+	} {
+		service.err = test.err
+		req := httptest.NewRequest(http.MethodPost, "/school/staff/27/enable",
+			strings.NewReader(`{"temporary_password":"A-Strong-Temporary-Pass-123"}`))
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		if rec.Code != test.want {
+			t.Fatalf("error %v: status=%d want=%d body=%s", test.err, rec.Code, test.want, rec.Body.String())
+		}
+	}
+}
