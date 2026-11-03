@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strconv"
 
 	"school-management-system/internal/middleware"
 	"school-management-system/internal/repository"
@@ -16,6 +17,8 @@ type RoleManagementService interface {
 	ListSchoolRoles(ctx context.Context, actorPrincipalID, schoolID int64) ([]repository.SchoolRole, error)
 	ListSchoolPermissions(ctx context.Context) ([]repository.SchoolPermission, error)
 	CreateCustomRole(ctx context.Context, actorPrincipalID, schoolID int64, name string) (*repository.SchoolRole, error)
+	GrantSchoolPermissionDelegation(ctx context.Context, actorPrincipalID, schoolID int64, permissionKey string, canAssignToRoles, canOverrideUsers bool) (*repository.SchoolPermissionDelegation, error)
+	RevokeSchoolPermissionDelegation(ctx context.Context, actorPrincipalID, delegationID int64) error
 }
 
 type RoleHandler struct {
@@ -99,4 +102,82 @@ func roleActorContext(c *gin.Context) (int64, int64, bool) {
 	actorID, actorOK := actorValue.(int64)
 	schoolID, schoolOK := schoolValue.(int64)
 	return actorID, schoolID, actorExists && schoolExists && actorOK && schoolOK && actorID > 0 && schoolID > 0
+}
+
+func (h *RoleHandler) GrantSchoolPermissionDelegation(c *gin.Context) {
+	actorValue, exists := c.Get(middleware.ContextPrincipalIDKey)
+	actorID, ok := actorValue.(int64)
+	if !exists || !ok || actorID <= 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "Platform Admin authentication required"})
+		return
+	}
+	if h == nil || h.service == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Permission delegation is unavailable"})
+		return
+	}
+	schoolID, err := strconv.ParseInt(c.Param("schoolID"), 10, 64)
+	if err != nil || schoolID <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid school ID"})
+		return
+	}
+	var request struct {
+		PermissionKey string `json:"permission_key"`
+		CanAssignToRoles bool `json:"can_assign_to_roles"`
+		CanOverrideUsers bool `json:"can_override_users"`
+	}
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid request body"})
+		return
+	}
+	if request.PermissionKey == "" || (!request.CanAssignToRoles && !request.CanOverrideUsers) {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "A permission and at least one delegation capability are required"})
+		return
+	}
+	delegation, err := h.service.GrantSchoolPermissionDelegation(
+		c.Request.Context(), actorID, schoolID, request.PermissionKey,
+		request.CanAssignToRoles, request.CanOverrideUsers,
+	)
+	switch {
+	case err == nil:
+		c.JSON(http.StatusCreated, gin.H{"status": "success", "delegation": delegation})
+	case errors.Is(err, services.ErrInvalidCustomRole):
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid delegation request"})
+	case errors.Is(err, repository.ErrDelegationAlreadyActive):
+		c.JSON(http.StatusConflict, gin.H{"status": "error", "message": "An active delegation already exists for this school permission"})
+	case errors.Is(err, repository.ErrRolePermissionDenied):
+		c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": "Permission delegation is not authorized"})
+	default:
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unable to grant permission delegation"})
+	}
+}
+
+func (h *RoleHandler) RevokeSchoolPermissionDelegation(c *gin.Context) {
+	actorValue, exists := c.Get(middleware.ContextPrincipalIDKey)
+	actorID, ok := actorValue.(int64)
+	if !exists || !ok || actorID <= 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "Platform Admin authentication required"})
+		return
+	}
+	if h == nil || h.service == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Permission delegation is unavailable"})
+		return
+	}
+	delegationID, err := strconv.ParseInt(c.Param("delegationID"), 10, 64)
+	if err != nil || delegationID <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid delegation ID"})
+		return
+	}
+	err = h.service.RevokeSchoolPermissionDelegation(c.Request.Context(), actorID, delegationID)
+	switch {
+	case err == nil:
+		c.JSON(http.StatusOK, gin.H{"status": "success", "message": "Permission delegation revoked"})
+	case errors.Is(err, services.ErrInvalidCustomRole):
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid delegation request"})
+	case errors.Is(err, repository.ErrDelegationNotFound):
+		c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": "Active permission delegation not found"})
+	case errors.Is(err, repository.ErrRolePermissionDenied):
+		c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": "Permission delegation is not authorized"})
+	default:
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unable to revoke permission delegation"})
+	}
 }
