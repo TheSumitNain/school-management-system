@@ -748,6 +748,7 @@ func (r *UserRepository) UpdateStaffAccount(
 	if err != nil {
 		return nil, fmt.Errorf("authorize same-school staff account update: %w", err)
 	}
+	oldUsername := user.Username
 
 	err = tx.QueryRow(ctx, `
 		UPDATE users
@@ -793,8 +794,8 @@ func (r *UserRepository) UpdateStaffAccount(
 		INSERT INTO audit_events
 		    (actor_principal_id, school_id, action, resource_type, resource_id, outcome, metadata)
 		VALUES ($1, $2, 'staff.account.updated', 'staff_user', $3, 'success',
-		        jsonb_build_object('username', $4, 'sessions_revoked', TRUE))
-	`, actorPrincipalID, schoolID, fmt.Sprint(user.ID), user.Username); err != nil {
+		        jsonb_build_object('old_username', $4, 'username', $5, 'sessions_revoked', TRUE))
+	`, actorPrincipalID, schoolID, fmt.Sprint(user.ID), oldUsername, user.Username); err != nil {
 		return nil, fmt.Errorf("audit staff account update: %w", err)
 	}
 
