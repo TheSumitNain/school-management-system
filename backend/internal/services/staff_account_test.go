@@ -31,6 +31,14 @@ func (f *fakeStaffAccountRepository) DisableStaffAccount(context.Context, int64,
 	return nil
 }
 
+func (f *fakeStaffAccountRepository) UpdateStaffAccount(context.Context, int64, int64, int64, string) (*models.User, error) {
+	return f.user, nil
+}
+
+func (f *fakeStaffAccountRepository) EnableStaffAccount(context.Context, int64, int64, int64, string) error {
+	return nil
+}
+
 func TestStaffAccountServiceCreatesHashedTemporaryAccount(t *testing.T) {
 	repo := &fakeStaffAccountRepository{user: &models.User{
 		ID: 15, PrincipalID: 27, SchoolID: 8, Username: "teacher.one",
@@ -63,5 +71,35 @@ func TestStaffAccountServiceRejectsInvalidUsernameOrPassword(t *testing.T) {
 	}
 	if repo.calls != 0 {
 		t.Fatalf("invalid requests reached repository %d times", repo.calls)
+	}
+}
+
+
+func TestStaffAccountServiceValidatesUsernameUpdate(t *testing.T) {
+	repo := &fakeStaffAccountRepository{user: &models.User{ID: 15, PrincipalID: 27, SchoolID: 8, Username: "new.teacher"}}
+	service := NewStaffAccountService(repo)
+	user, err := service.Update(context.Background(), 31, 8, 27, " New.Teacher ")
+	if err != nil {
+		t.Fatalf("Update returned error: %v", err)
+	}
+	if user != repo.user {
+		t.Fatal("Update did not return repository user")
+	}
+	if _, err := service.Update(context.Background(), 31, 8, 27, "bad name"); err != ErrInvalidStaffAccount {
+		t.Fatalf("invalid username update error = %v, want ErrInvalidStaffAccount", err)
+	}
+}
+
+func TestStaffAccountServiceHashesTemporaryPasswordBeforeReEnable(t *testing.T) {
+	repo := &fakeStaffAccountRepository{}
+	service := NewStaffAccountService(repo)
+	if err := service.Enable(context.Background(), 31, 8, 27, "A-Strong-Temporary-Pass-123"); err != nil {
+		t.Fatalf("Enable returned error: %v", err)
+	}
+	if repo.calls != 0 {
+		t.Fatalf("Enable unexpectedly called CreateStaffAccount %d times", repo.calls)
+	}
+	if err := service.Enable(context.Background(), 31, 8, 27, "short"); err != ErrInvalidPassword {
+		t.Fatalf("invalid temporary password error = %v, want ErrInvalidPassword", err)
 	}
 }
