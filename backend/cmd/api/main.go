@@ -68,6 +68,11 @@ func setupRouterWithHandlers(
 	}
 
 	if len(staffHandlers) > 0 && staffHandlers[0] != nil {
+		router.GET("/school/staff",
+			middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader),
+			middleware.RequirePermission("users.read"),
+			staffHandlers[0].List,
+		)
 		router.POST("/school/staff",
 			middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader),
 			middleware.RequirePermission("users.create"),
