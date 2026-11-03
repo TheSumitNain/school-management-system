@@ -8,19 +8,17 @@ The backend uses Go, Gin, and PostgreSQL.
 
 ### Current Implementation Status
 
-- `GET /health` is implemented.
-- `GET /ready` is implemented.
-- `POST /auth/login` is implemented.
-- `POST /auth/refresh` is implemented.
-- `POST /auth/logout` is implemented.
-- JWT access-token generation and validation are implemented.
-- JWT authentication middleware protects `GET /auth/me`.
-- `GET /auth/me` returns the live authenticated principal ID/type and staff school/username context, not the full profile.
-- V4 JWT subjects identify `auth_principals.id`; current principal status and token version are reloaded on every protected request. Permissions are resolved live, but the current resolver is conservative and full RBAC remains incomplete.
-- Internal user creation is available through the service layer and a development seed command.
-- Public user registration is not implemented.
-- Refresh tokens use opaque random values, database-backed rotation and revocation, and token-family replay detection.
-- Role-Based Access Control (RBAC), complete tenant-isolation enforcement, MFA, login rate limiting, and account lockout are not yet complete.
+- GET /health and GET /ready are implemented.
+- Staff POST /auth/login resolves a globally unique username; no school ID is accepted.
+- Platform Admin POST /auth/platform-admin/login uses a separate email/password flow.
+- MFA enrollment, verification and recovery-code routes are implemented for privileged accounts.
+- POST /auth/refresh and POST /auth/logout use principal-bound refresh sessions with rotation and token-family replay/revocation protections.
+- GET /auth/me validates the JWT and reloads current principal identity, status, token version and effective permissions.
+- RequirePermission middleware is implemented and used by the Platform Admin school-onboarding route.
+- POST /platform/schools creates a school and its first School Admin transactionally, protected by platform.schools.create and platform.school_admins.create.
+- V13 provisions the fixed School Admin and Teacher system roles for newly created schools.
+- V14 contains a source-only one-time first Platform Admin bootstrap migration and CLI; it is not yet PostgreSQL-verified or approved for application.
+- Public registration is not implemented. Complete school business APIs, resource/tenant/assignment authorization and custom-role delegation are still pending.
 
 **Important:** An implemented authentication endpoint does not mean that the full authorization system or every production security control is implemented. Verify code and tests before treating a feature as complete.
 
@@ -337,24 +335,29 @@ Not every status code listed above is currently returned by an implemented endpo
 
 | Method | Endpoint | Purpose |
 |---|---|---|
-| `POST` | `/auth/login` | Authenticate a user and issue access and refresh tokens. |
-| `POST` | `/auth/refresh` | Rotate a refresh token and issue a new access token. |
-| `POST` | `/auth/logout` | Revoke all active refresh sessions in the supplied token family. |
-| `GET` | `/auth/me` | Return live principal identity context after token and database validation. |
+| Method | Endpoint | Purpose |
+|---|---|---|
+| POST | /auth/login | Staff username/password login; privileged staff continue through MFA. |
+| POST | /auth/platform-admin/login | Platform Admin email/password login; always starts mandatory MFA. |
+| POST | /auth/mfa/enroll/verify | Complete first-time TOTP enrollment using a challenge token and code. |
+| POST | /auth/mfa/verify | Verify a TOTP login challenge and issue the session. |
+| POST | /auth/mfa/recovery-codes/regenerate/start | Start authenticated recovery-code regeneration challenge. |
+| POST | /auth/mfa/recovery-codes/regenerate | Verify challenge/code and issue replacement recovery codes. |
+| POST | /auth/refresh | Rotate a principal-bound refresh token. |
+| POST | /auth/logout | Revoke active refresh sessions in the supplied token family. |
+| GET | /auth/me | Return live principal identity context after token and database validation. |
+| POST | /platform/schools | Create a school and its initial School Admin; requires both platform school-create permissions. |
 
-Internal user creation is available through the service layer and a development seed command. There is no public registration endpoint.
-
-RBAC and complete tenant-isolation enforcement are separate, pending capabilities.
+The one-time first Platform Admin bootstrap is a manually invoked CLI command, not a public HTTP endpoint. There is no public registration endpoint. RequirePermission and live permission resolution are implemented, but complete tenant/resource/assignment authorization and custom-role delegation remain incomplete.
 
 ### 5.2 Planned Authentication Endpoints and Controls
 
 | Endpoint or capability | Purpose | Status |
 |---|---|---|
-| `POST /auth/register` | Controlled user provisioning, if approved by the final onboarding policy. | Planned |
-| Password reset | Secure, one-use password reset workflow. | Planned |
-| MFA | Mandatory MFA for Platform Admin and School Admin. | Planned |
-| Login rate limiting and account lockout | Reduce brute-force login attempts. | Planned |
-| Immediate access-token revocation | Invalidate an access token before expiry. | Planned |
+| Staff password change/reset | Secure self-service and same-school administrative password lifecycle. | Pending |
+| Exact delegation linkage | Bind custom-role grants and user ALLOW overrides to the precise delegation record. | Pending |
+| Immediate access-token revocation | Invalidate already-issued access tokens after password reset, disablement or other security events. | Pending |
+| Business API route guards | Add authentication, permission and resource-scope checks to each school module route. | Pending |
 
 School and user provisioning must be restricted to authorized workflows. Do not expose unrestricted public registration.
 
@@ -585,3 +588,20 @@ Parent authentication uses registered mobile number + OTP. After successful OTP 
 Every protected operation must check the effective permission and resource scope. Teacher teaching assignments and class-in-charge assignments are distinct; teaching assignment alone does not grant attendance access. Subject teachers receive only basic student fields (name, roll number, class, section) for assigned class/subject. Class-in-charge teachers may access attendance, same-day corrections within cutoff, basic details, timetable, homework, and applicable notices only for their assigned class/section. Past attendance correction is School Admin-only. Parent endpoints verify child links on every request.
 
 School Admin may create school-scoped custom roles only from platform-defined permissions within an explicit delegation ceiling. Explicit user deny overrides role allow; explicit allow is valid only when the assigning admin can delegate that permission. Permission changes take effect on the next protected request, including existing sessions.
+
+
+## 6. Platform Admin onboarding and MFA routes
+
+### Platform Admin login
+
+POST /auth/platform-admin/login accepts email and password. On valid credentials it returns HTTP 202 with status=mfa_required and a short-lived challenge token. The client must complete TOTP enrollment or verification before a session is issued. A successful MFA completion returns the normal principal-based access/refresh token response. Platform Admin MFA cannot be bypassed by using the staff login route.
+
+### MFA verification
+
+POST /auth/mfa/enroll/verify and POST /auth/mfa/verify accept challenge_token and code. Enrollment completion returns recovery codes once; clients must display and securely store them because they are not returned again. Recovery-code regeneration first requires an authenticated start request, then POST /auth/mfa/recovery-codes/regenerate with challenge_token and code.
+
+### Platform Admin school onboarding
+
+POST /platform/schools requires a Bearer access token and both live permissions platform.schools.create and platform.school_admins.create. The JSON body contains name, code, school_admin_username and school_admin_initial_password. School, initial School Admin principal/account and role assignment are created transactionally. The endpoint returns the school and new School Admin principal ID/username, never the password or password hash.
+
+The initial Platform Admin itself is created separately by the one-time bootstrap CLI after the V14 migration has been reviewed and applied to the dedicated test database. Do not run that CLI against a database until the operator has explicitly selected and verified the target.
