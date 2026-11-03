@@ -2,8 +2,10 @@ package repository
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
-	"strconv"
+	"fmt"
+	"math/big"
 	"testing"
 	"time"
 )
@@ -27,9 +29,13 @@ func TestParentOTPLoginChallengeRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatal("V12 Parent OTP schema is missing; apply migrations to school_management_test first")
 	}
 
-	suffix := strconv.FormatInt(time.Now().UnixNano(), 10)
-	mobileA := "+9198765" + suffix[len(suffix)-5:]
-	mobileB := "+9187654" + suffix[len(suffix)-5:]
+	randomSuffix, err := rand.Int(rand.Reader, big.NewInt(1_000_000_000))
+	if err != nil {
+		t.Fatalf("generate unique Parent fixture mobile suffix: %v", err)
+	}
+	suffix := fmt.Sprintf("%09d", randomSuffix.Int64())
+	mobileA := "+919" + suffix
+	mobileB := "+918" + suffix
 	mobileHashA := integrationTokenHash("parent-login-mobile-a-" + suffix)
 	mobileHashB := integrationTokenHash("parent-login-mobile-b-" + suffix)
 	ipHashA := integrationTokenHash("parent-login-ip-a-" + suffix)
@@ -37,6 +43,40 @@ func TestParentOTPLoginChallengeRepositoryPostgresIntegration(t *testing.T) {
 	otpHashA := integrationTokenHash("parent-login-otp-a-" + suffix)
 	otpHashB := integrationTokenHash("parent-login-otp-b-" + suffix)
 	wrongOTPHash := integrationTokenHash("parent-login-otp-wrong-" + suffix)
+
+	var principalIDs []int64
+	rateLimitHashes := []string{mobileHashA, mobileHashB, ipHashA, ipHashB}
+	t.Cleanup(func() {
+		cleanupCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		if len(principalIDs) > 0 {
+			if _, err := pool.Exec(cleanupCtx,
+				`DELETE FROM parent_otp_challenges WHERE principal_id = ANY($1::BIGINT[])`,
+				principalIDs,
+			); err != nil {
+				t.Errorf("clean up Parent OTP challenge fixtures: %v", err)
+			}
+			if _, err := pool.Exec(cleanupCtx,
+				`DELETE FROM parent_accounts WHERE principal_id = ANY($1::BIGINT[])`,
+				principalIDs,
+			); err != nil {
+				t.Errorf("clean up Parent account fixtures: %v", err)
+			}
+			if _, err := pool.Exec(cleanupCtx,
+				`DELETE FROM auth_principals WHERE id = ANY($1::BIGINT[])`,
+				principalIDs,
+			); err != nil {
+				t.Errorf("clean up Parent principal fixtures: %v", err)
+			}
+		}
+		if _, err := pool.Exec(cleanupCtx,
+			`DELETE FROM parent_otp_rate_limits WHERE subject_hash = ANY($1::TEXT[])`,
+			rateLimitHashes,
+		); err != nil {
+			t.Errorf("clean up Parent OTP rate-limit fixtures: %v", err)
+		}
+	})
 
 	createVerifiedParent := func(mobile string) int64 {
 		t.Helper()
@@ -63,6 +103,7 @@ func TestParentOTPLoginChallengeRepositoryPostgresIntegration(t *testing.T) {
 		if err := tx.Commit(ctx); err != nil {
 			t.Fatalf("commit Parent fixture: %v", err)
 		}
+		principalIDs = append(principalIDs, principalID)
 		return principalID
 	}
 
