@@ -21,7 +21,8 @@ Current test areas include:
 - Middleware enforcement for temporary-password staff sessions.
 - API server behavior and selected configuration validation.
 - Refresh-token session-service behavior and concurrency safeguards.
-- V15/V16 PostgreSQL integration-test source for password lifecycle and exact delegation revocation.
+- V15/V16 PostgreSQL integration coverage for password lifecycle and exact delegation revocation.
+- Router/middleware authorization tests for all 14 Platform Admin and school role-administration routes, including AND semantics for multi-permission routes.
 
 An earlier source-only CI run on commit `4351ce9` passed the unit suite and vet but did not enable PostgreSQL integration tests. The latest full database-backed verification is recorded immediately below.
 
@@ -30,11 +31,11 @@ go test -count=1 ./...
 go vet ./...
 ```
 
-The latest GitHub Actions run on commit `524d795` applied migrations V1–V16 to a fresh ephemeral PostgreSQL 18 database, ran the full suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and passed `go vet ./...`. The user's persistent `school_management_test` database was not changed. Repeat the workflow after relevant code changes.
+The latest GitHub Actions push run `41658994787` and Draft PR run `41659008482` on commit `2c81dfc` applied migrations V1–V16 to a fresh ephemeral PostgreSQL 18 database, ran the full suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and passed `go vet ./...`. Both runs include the 14 role-administration route permission tests. The user's persistent `school_management_test` and `school_management` databases were not changed. Repeat the workflow after relevant code changes.
 
 The current test suite does not establish that every application behavior is tested or that the application is production-ready.
 
-Important remaining gaps include PostgreSQL coverage for repository paths outside the currently tested authentication, staff lifecycle, parent foundation, and role-administration workflows; additional concurrency/failure-mode testing; independent end-to-end HTTP verification; business-resource tenant/assignment isolation; migration/rollback testing; and tests for future school business modules.
+Important remaining gaps include PostgreSQL coverage for repository paths outside the currently tested authentication, staff lifecycle, parent foundation, and role-administration workflows; additional concurrency/failure-mode testing; full HTTP-to-PostgreSQL end-to-end verification (the current 14-route tests use controlled token/principal/permission loaders); business-resource tenant/assignment isolation; migration/rollback testing; and tests for future school business modules.
 
 ## 3. Testing Principles
 
