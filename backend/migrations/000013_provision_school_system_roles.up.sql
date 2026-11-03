@@ -5,7 +5,7 @@
 -- runtime path is the AFTER INSERT trigger on schools, which inserts the two
 -- fixed staff system roles and their exact permission bundles atomically.
 
-CREATE OR REPLACE FUNCTION guard_role_insert_and_system_classification()
+CREATE OR REPLACE FUNCTION public.guard_role_insert_and_system_classification()
 RETURNS trigger
 LANGUAGE plpgsql
 SET search_path = pg_catalog, public
@@ -55,7 +55,7 @@ BEGIN
 END;
 $v13$;
 
-CREATE OR REPLACE FUNCTION protect_system_roles()
+CREATE OR REPLACE FUNCTION public.protect_system_roles()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $v13$
