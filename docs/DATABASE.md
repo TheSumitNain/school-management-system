@@ -514,9 +514,9 @@ Teaching class/subject assignments and class-in-charge assignments must be separ
 
 ### 14.6 New-school system-role provisioning
 
-The V4 source migration seeds school-scoped `school_admin` and `teacher` system-role rows for schools that exist when V4 executes. It does not currently provision these system roles for schools created later, while the role-insert guard blocks ordinary runtime creation of system roles.
+The V4 source migration seeds school-scoped `school_admin` and `teacher` system-role rows only for schools that exist when V4 executes. This gap is addressed in source by the new additive migration `000013_provision_school_system_roles.up.sql`: it provisions the exact 51-permission School Admin bundle and 7-permission Teacher bundle from the school-insert trigger, while direct runtime creation/mutation remains blocked. The matching integration test is `school_system_role_provisioning_v13_integration_test.go`.
 
-This is a blocker for Platform Admin school onboarding. Before implementing the create-school/School Admin provisioning workflow, add and review a secure mechanism that provisions the exact system-role rows and approved permission bundles for every new school. The mechanism must not let the application manufacture arbitrary system roles or mutate existing system-role identity/permissions. Test school creation, role provisioning, rollback/transaction failure and unauthorized insertion against PostgreSQL. If V4 has been applied, solve this through a new additive migration, never by editing V4.
+V13 is source-only at this checkpoint and has not been applied or PostgreSQL-tested. It is a prerequisite for Platform Admin school onboarding. Do not implement the create-school/School Admin provisioning workflow as complete until V13 is reviewed, applied to `school_management_test`, and its integration test passes. V13 has a forward-only down migration; never edit V4 or another applied migration.
 
 
 
