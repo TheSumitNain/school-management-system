@@ -233,6 +233,7 @@ func (s *AuthService) AuthenticateStaff(ctx context.Context, username, password 
 		}
 		return nil, ErrInvalidCredentials
 	}
+	principal.MustChangePassword = user.MustChangePassword
 	if s.loginSecurity != nil {
 		if err := s.loginSecurity.RecordSuccess(ctx, username, principal.ID); err != nil {
 			return nil, err
