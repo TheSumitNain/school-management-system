@@ -29,6 +29,7 @@ type fakeRoleManagementService struct {
 	overridePermissionKey string
 	overrideEffect string
 	overrideReason string
+	assignedRoleID int64
 	permissionKey string
 	canAssignToRoles bool
 	canOverrideUsers bool
@@ -90,10 +91,12 @@ func (f *fakeRoleManagementService) DeleteStaffPermissionOverride(_ context.Cont
 func (f *fakeRoleManagementService) ListStaffRoleAssignments(context.Context, int64, int64, int64) ([]repository.StaffRoleAssignment, error) {
 	return []repository.StaffRoleAssignment{}, nil
 }
-func (f *fakeRoleManagementService) AssignStaffRole(context.Context, int64, int64, int64, int64) error {
+func (f *fakeRoleManagementService) AssignStaffRole(_ context.Context, actorID, schoolID, targetID, roleID int64) error {
+	f.actorID, f.schoolID, f.targetPrincipalID, f.assignedRoleID = actorID, schoolID, targetID, roleID
 	return f.err
 }
-func (f *fakeRoleManagementService) RevokeStaffRole(context.Context, int64, int64, int64, int64) error {
+func (f *fakeRoleManagementService) RevokeStaffRole(_ context.Context, actorID, schoolID, targetID, roleID int64) error {
+	f.actorID, f.schoolID, f.targetPrincipalID, f.assignedRoleID = actorID, schoolID, targetID, roleID
 	return f.err
 }
 
@@ -266,5 +269,40 @@ func TestRoleHandlerStaffPermissionOverrideLifecycle(t *testing.T) {
 	if rec.Code != http.StatusOK || service.actorID != 31 || service.schoolID != 8 ||
 		service.targetPrincipalID != 42 || service.overridePermissionKey != "attendance.read" {
 		t.Fatalf("unexpected permission override delete: status=%d service=%+v body=%s", rec.Code, service, rec.Body.String())
+	}
+}
+
+func TestRoleHandlerStaffRoleAssignmentLifecycle(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	service := &fakeRoleManagementService{}
+	router := gin.New()
+	authenticate := func(c *gin.Context) {
+		c.Set("auth_principal_id", int64(31))
+		c.Set("auth_school_id", int64(8))
+		c.Next()
+	}
+	handler := NewRoleHandler(service)
+	router.GET("/school/staff/:principalID/roles", authenticate, handler.ListStaffRoleAssignments)
+	router.POST("/school/staff/:principalID/roles/:roleID", authenticate, handler.AssignStaffRole)
+	router.DELETE("/school/staff/:principalID/roles/:roleID", authenticate, handler.RevokeStaffRole)
+
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/school/staff/42/roles", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("list staff roles status = %d, body=%s", rec.Code, rec.Body.String())
+	}
+
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/school/staff/42/roles/7", nil))
+	if rec.Code != http.StatusCreated || service.actorID != 31 || service.schoolID != 8 ||
+		service.targetPrincipalID != 42 || service.assignedRoleID != 7 {
+		t.Fatalf("unexpected staff role assignment: status=%d service=%+v body=%s", rec.Code, service, rec.Body.String())
+	}
+
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodDelete, "/school/staff/42/roles/7", nil))
+	if rec.Code != http.StatusOK || service.actorID != 31 || service.schoolID != 8 ||
+		service.targetPrincipalID != 42 || service.assignedRoleID != 7 {
+		t.Fatalf("unexpected staff role revocation: status=%d service=%+v body=%s", rec.Code, service, rec.Body.String())
 	}
 }
