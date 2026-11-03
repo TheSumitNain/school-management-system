@@ -71,6 +71,19 @@ SELECT ap.principal_type, ap.status, ap.token_version,
        u.id, COALESCE(u.school_id,0), COALESCE(u.username,''), COALESCE(s.status,''),
        (pa.principal_id IS NOT NULL),
        COALESCE(parent.mobile_verified_at IS NOT NULL,FALSE),
+       EXISTS (
+         SELECT 1
+         FROM parent_guardian_links pgl
+         JOIN guardians g ON g.id = pgl.guardian_id AND g.school_id = pgl.school_id
+         JOIN student_guardians sg ON sg.guardian_id = g.id AND sg.school_id = g.school_id
+         JOIN students st ON st.id = sg.student_id AND st.school_id = sg.school_id
+         WHERE pgl.principal_id = ap.id
+           AND pgl.revoked_at IS NULL
+           AND sg.revoked_at IS NULL
+           AND g.status = 'active'
+           AND st.status = 'active'
+           AND g.parent_portal_enabled_at IS NOT NULL
+       ),
        CASE
          WHEN ap.principal_type='platform_admin' OR
               (ap.principal_type='staff' AND EXISTS (
@@ -95,10 +108,10 @@ FOR UPDATE OF ap`
 	var principalType, principalStatus, username, schoolStatus string
 	var tokenVersion, schoolID int64
 	var userID pgtype.Int8
-	var hasPlatformAccount, mobileVerified, mfaVerified bool
+	var hasPlatformAccount, mobileVerified, hasEligibleParentLink, mfaVerified bool
 	err := tx.QueryRow(ctx, lookup, principalID).Scan(
 		&principalType, &principalStatus, &tokenVersion, &userID, &schoolID,
-		&username, &schoolStatus, &hasPlatformAccount, &mobileVerified, &mfaVerified,
+		&username, &schoolStatus, &hasPlatformAccount, &mobileVerified, &hasEligibleParentLink, &mfaVerified,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrRefreshSessionInactive
@@ -114,7 +127,7 @@ FOR UPDATE OF ap`
 	case "platform_admin":
 		active = active && hasPlatformAccount
 	case "parent":
-		active = active && mobileVerified
+		active = active && mobileVerified && hasEligibleParentLink && hasEligibleParentLink
 	default:
 		active = false
 	}
@@ -196,6 +209,19 @@ SELECT rs.id, rs.family_id, rs.principal_id,
        COALESCE(s.status,''),
        (pa.principal_id IS NOT NULL),
        COALESCE(parent.mobile_verified_at IS NOT NULL,FALSE),
+       EXISTS (
+         SELECT 1
+         FROM parent_guardian_links pgl
+         JOIN guardians g ON g.id = pgl.guardian_id AND g.school_id = pgl.school_id
+         JOIN student_guardians sg ON sg.guardian_id = g.id AND sg.school_id = g.school_id
+         JOIN students st ON st.id = sg.student_id AND st.school_id = sg.school_id
+         WHERE pgl.principal_id = ap.id
+           AND pgl.revoked_at IS NULL
+           AND sg.revoked_at IS NULL
+           AND g.status = 'active'
+           AND st.status = 'active'
+           AND g.parent_portal_enabled_at IS NOT NULL
+       ),
        CASE
          WHEN ap.principal_type='platform_admin' OR
               (ap.principal_type='staff' AND EXISTS (
@@ -249,6 +275,7 @@ FOR UPDATE OF rs, ap`
 		&schoolStatus,
 		&hasPlatformAccount,
 		&mobileVerified,
+		&hasEligibleParentLink,
 		&mfaVerified,
 	)
 
