@@ -5,6 +5,14 @@ All notable changes to the School Management System are documented in this file.
 This project is under active development. Verification results describe the latest reported local checks and should be rerun whenever relevant code changes.
 
 ## [Unreleased]
+### Database — V13 new-school system-role provisioning (2026-11-03)
+
+- Added an additive V13 migration that provisions the fixed School Admin and Teacher system roles whenever a new school is inserted.
+- The School Admin role receives exactly the approved 51 permissions; the Teacher role receives exactly the approved 7 permissions.
+- Direct runtime creation of system roles and direct modification of system-role permission bundles remain blocked; only the nested school-insert trigger may provision the reserved roles.
+- Added PostgreSQL integration coverage for exact role bundles, rejection of direct system-role writes, and atomic rollback when a required permission is inactive.
+- V13 is source-only and has not been applied or PostgreSQL-tested. Do not implement Platform Admin school onboarding until this migration is reviewed and verified on `school_management_test`.
+
 ### Database verification clarification — 2026-11-03
 
 - The user directly reported `school_management_test.schema_migrations` at cumulative `version=12, dirty=false` on 2026-11-02. This means V4–V12 were applied in sequence on the dedicated test database; it does not establish the state of `school_management`.
