@@ -48,6 +48,16 @@ func (f *fakeRoleRepository) RevokeCustomRolePermission(context.Context, int64, 
 	return nil
 }
 
+func (f *fakeRoleRepository) ListStaffPermissionOverrides(context.Context, int64, int64, int64) ([]repository.StaffPermissionOverride, error) {
+	return nil, nil
+}
+func (f *fakeRoleRepository) SetStaffPermissionOverride(context.Context, int64, int64, int64, int64, string, string, string) error {
+	return nil
+}
+func (f *fakeRoleRepository) DeleteStaffPermissionOverride(context.Context, int64, int64, int64, string) error {
+	return nil
+}
+
 func TestCustomRoleKey(t *testing.T) {
 	tests := []struct {
 		name string
