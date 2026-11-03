@@ -506,6 +506,20 @@ Teaching class/subject assignments and class-in-charge assignments must be separ
 
 ### 14.5 Safe migration requirements
 
+- Preserve existing principal IDs, user IDs, refresh-token hashes and token-family metadata.
+- Do not edit an already-applied migration; use an additive migration after compatibility review.
+- Before any migration, inspect the actual target database version and dirty flag.
+- Test upgrades from the actual supported prior schema on a disposable PostgreSQL database.
+- Keep audit history append-only and preserve the intended application-role privilege boundary.
+
+### 14.6 New-school system-role provisioning
+
+The V4 source migration seeds school-scoped `school_admin` and `teacher` system-role rows for schools that exist when V4 executes. It does not currently provision these system roles for schools created later, while the role-insert guard blocks ordinary runtime creation of system roles.
+
+This is a blocker for Platform Admin school onboarding. Before implementing the create-school/School Admin provisioning workflow, add and review a secure mechanism that provisions the exact system-role rows and approved permission bundles for every new school. The mechanism must not let the application manufacture arbitrary system roles or mutate existing system-role identity/permissions. Test school creation, role provisioning, rollback/transaction failure and unauthorized insertion against PostgreSQL. If V4 has been applied, solve this through a new additive migration, never by editing V4.
+
+
+
 - Preserve existing `users.id` values and `refresh_sessions.user_id` relationships where possible.
 - Do not modify already-applied migrations; add new versioned migrations.
 - Plan rollback and forward-recovery behavior before applying schema changes.
