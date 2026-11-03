@@ -67,7 +67,7 @@ func TestStaffPasswordLifecycleV15PostgresIntegration(t *testing.T) {
 	}
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO users (school_id, username, password_hash, status)
-		SELECT school_id, username || '-v15', password_hash, status
+		SELECT school_id, 'v15-' || id::text, password_hash, status
 		FROM users WHERE id = $1
 	`, userID); err != nil {
 		t.Fatalf("insert a new staff account using database defaults: %v", err)
@@ -75,7 +75,7 @@ func TestStaffPasswordLifecycleV15PostgresIntegration(t *testing.T) {
 	var newAccountRequired bool
 	if err := tx.QueryRow(ctx, `
 		SELECT must_change_password FROM users
-		WHERE username = (SELECT username || '-v15' FROM users WHERE id = $1)
+		WHERE username = 'v15-' || $1::text
 	`, userID).Scan(&newAccountRequired); err != nil {
 		t.Fatalf("read second staff account password state: %v", err)
 	}
