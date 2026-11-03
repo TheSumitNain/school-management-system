@@ -50,6 +50,7 @@ func setupRouterWithHandlers(
 	permissionLoader middleware.PermissionLoader,
 	schoolOnboardingHandler *handlers.SchoolOnboardingHandler,
 	roleHandler *handlers.RoleHandler,
+	staffHandlers ...*handlers.StaffHandler,
 ) (*gin.Engine, error) {
 	router := gin.Default()
 
@@ -63,6 +64,14 @@ func setupRouterWithHandlers(
 			middleware.RequirePermission("platform.schools.create"),
 			middleware.RequirePermission("platform.school_admins.create"),
 			schoolOnboardingHandler.Create,
+		)
+	}
+
+	if len(staffHandlers) > 0 && staffHandlers[0] != nil {
+		router.POST("/school/staff",
+			middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader),
+			middleware.RequirePermission("users.create"),
+			staffHandlers[0].Create,
 		)
 	}
 
@@ -314,7 +323,11 @@ func run() error {
 	roleService := services.NewRoleService(roleRepo)
 	roleHandler := handlers.NewRoleHandler(roleService)
 
-	router, err := setupRouterWithHandlers(db, authHandler, tokenService, principalAuthorizationRepo, principalAuthorizationRepo, schoolOnboardingHandler, roleHandler)
+	staffAccountRepo := repository.NewUserRepository(db)
+	staffAccountService := services.NewStaffAccountService(staffAccountRepo)
+	staffHandler := handlers.NewStaffHandler(staffAccountService)
+
+	router, err := setupRouterWithHandlers(db, authHandler, tokenService, principalAuthorizationRepo, principalAuthorizationRepo, schoolOnboardingHandler, roleHandler, staffHandler)
 
 	if err != nil {
 		return fmt.Errorf("setup router: %w", err)
