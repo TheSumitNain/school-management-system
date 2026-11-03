@@ -159,7 +159,7 @@ A source-level syntax defect was found in five PL/pgSQL trigger functions: their
 - guard_parent_otp_challenge_history
 - guard_role_permission_delegation_history
 
-Only the delimiters changed; function logic was not modified. A complete source scan confirmed five corrected opening delimiters, five corrected closing delimiters, and no remaining instances of the malformed patterns. This is static source verification only: PostgreSQL 18 parsing, clean v3-to-v4 migration execution, and trigger integration tests remain pending. Migration V4 remains unapplied and must not be run without explicit approval.
+Only the delimiters changed; function logic was not modified. A complete source scan confirmed five corrected opening delimiters, five corrected closing delimiters, and no remaining instances of the malformed patterns. At the time of that source scan, PostgreSQL 18 parsing and migration execution had not yet been verified. The later user-reported cumulative test-database version 12 (`dirty=false`) supersedes the earlier 'V4 unapplied' status for `school_management_test`; dedicated trigger edge-case coverage still requires verification. Never apply migrations to `school_management` without separate explicit approval.
 
 
 ## 2026-11-03 Current-Branch Reconciliation
