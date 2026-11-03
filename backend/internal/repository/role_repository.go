@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -15,6 +16,8 @@ var (
 	ErrRoleNotFound = errors.New("school role not found")
 	ErrRoleNameTaken = errors.New("school role key already exists")
 	ErrRolePermissionDenied = errors.New("school role operation is not authorized")
+	ErrDelegationNotFound = errors.New("school permission delegation not found")
+	ErrDelegationAlreadyActive = errors.New("an active delegation already exists for this school permission")
 )
 
 type SchoolRole struct {
@@ -207,4 +210,183 @@ func (r *RoleRepository) CreateCustomRole(
 		return nil, fmt.Errorf("commit custom school role creation: %w", err)
 	}
 	return &role, nil
+}
+
+type SchoolPermissionDelegation struct {
+	ID                 int64     `json:"id"`
+	SchoolID           int64     `json:"school_id"`
+	PermissionKey      string    `json:"permission_key"`
+	CanAssignToRoles   bool      `json:"can_assign_to_roles"`
+	CanOverrideUsers   bool      `json:"can_override_users"`
+	GrantedBy          int64     `json:"granted_by"`
+	CreatedAt          time.Time `json:"created_at"`
+	RevokedAt          *time.Time `json:"revoked_at,omitempty"`
+}
+
+// GrantSchoolPermissionDelegation gives a Platform Admin an audited way to
+// delegate only explicitly delegable school permissions. The exact inserted
+// delegation ID must accompany any later custom-role or ALLOW grant.
+func (r *RoleRepository) GrantSchoolPermissionDelegation(
+	ctx context.Context,
+	actorPrincipalID, schoolID int64,
+	permissionKey string,
+	canAssignToRoles, canOverrideUsers bool,
+) (*SchoolPermissionDelegation, error) {
+	permissionKey = strings.TrimSpace(permissionKey)
+	if r == nil || r.db == nil || actorPrincipalID <= 0 || schoolID <= 0 ||
+		permissionKey == "" || (!canAssignToRoles && !canOverrideUsers) {
+		return nil, ErrRolePermissionDenied
+	}
+
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin permission delegation: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	var authorized bool
+	if err := tx.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM auth_principals ap
+			JOIN principal_roles pr ON pr.principal_id = ap.id AND pr.revoked_at IS NULL
+			JOIN roles r ON r.id = pr.role_id
+			JOIN role_permissions rp ON rp.role_id = r.id
+			JOIN permissions p ON p.id = rp.permission_id
+			WHERE ap.id = $1
+			  AND ap.principal_type = 'platform_admin'
+			  AND ap.status = 'active'
+			  AND r.scope_type = 'platform'
+			  AND r.school_id IS NULL
+			  AND r.principal_type = 'platform_admin'
+			  AND r.role_key = 'platform_admin'
+			  AND p.permission_key = 'platform.permissions.delegate'
+			  AND p.scope_type = 'platform'
+			  AND p.is_active = TRUE
+		)
+	`, actorPrincipalID).Scan(&authorized); err != nil {
+		return nil, fmt.Errorf("authorize permission delegation: %w", err)
+	}
+	if !authorized {
+		return nil, ErrRolePermissionDenied
+	}
+
+	var delegation SchoolPermissionDelegation
+	err = tx.QueryRow(ctx, `
+		INSERT INTO role_permission_delegations
+		    (school_id, permission_id, can_assign_to_roles, can_override_users, granted_by)
+		SELECT s.id, p.id, $3, $4, $5
+		FROM schools s
+		JOIN permissions p ON p.permission_key = $2
+		WHERE s.id = $1
+		  AND s.status = 'active'
+		  AND p.scope_type = 'school'
+		  AND p.is_active = TRUE
+		  AND p.is_delegable = TRUE
+		RETURNING id, school_id, $2::text, can_assign_to_roles, can_override_users, granted_by, created_at, revoked_at
+	`, schoolID, permissionKey, canAssignToRoles, canOverrideUsers, actorPrincipalID).Scan(
+		&delegation.ID, &delegation.SchoolID, &delegation.PermissionKey,
+		&delegation.CanAssignToRoles, &delegation.CanOverrideUsers,
+		&delegation.GrantedBy, &delegation.CreatedAt, &delegation.RevokedAt,
+	)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "ux_role_permission_delegations_active" {
+			return nil, ErrDelegationAlreadyActive
+		}
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return nil, ErrDelegationAlreadyActive
+		}
+		if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+			return nil, ErrRoleNotFound
+		}
+		return nil, fmt.Errorf("insert permission delegation: %w", err)
+	}
+	if delegation.ID <= 0 {
+		return nil, ErrRoleNotFound
+	}
+
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO audit_events
+		    (actor_principal_id, school_id, action, resource_type, resource_id, outcome, metadata)
+		VALUES ($1, $2, 'platform.permission_delegation.granted', 'permission_delegation', $3, 'success',
+		        jsonb_build_object('permission_key', $4, 'can_assign_to_roles', $5, 'can_override_users', $6))
+	`, actorPrincipalID, schoolID, fmt.Sprint(delegation.ID), permissionKey, canAssignToRoles, canOverrideUsers); err != nil {
+		return nil, fmt.Errorf("audit permission delegation: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit permission delegation: %w", err)
+	}
+	return &delegation, nil
+}
+
+func (r *RoleRepository) RevokeSchoolPermissionDelegation(
+	ctx context.Context,
+	actorPrincipalID, delegationID int64,
+) error {
+	if r == nil || r.db == nil || actorPrincipalID <= 0 || delegationID <= 0 {
+		return ErrRolePermissionDenied
+	}
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin delegation revocation: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	var authorized bool
+	if err := tx.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM auth_principals ap
+			JOIN principal_roles pr ON pr.principal_id = ap.id AND pr.revoked_at IS NULL
+			JOIN roles r ON r.id = pr.role_id
+			JOIN role_permissions rp ON rp.role_id = r.id
+			JOIN permissions p ON p.id = rp.permission_id
+			WHERE ap.id = $1
+			  AND ap.principal_type = 'platform_admin'
+			  AND ap.status = 'active'
+			  AND r.scope_type = 'platform'
+			  AND r.school_id IS NULL
+			  AND r.principal_type = 'platform_admin'
+			  AND r.role_key = 'platform_admin'
+			  AND p.permission_key = 'platform.permissions.delegate'
+			  AND p.scope_type = 'platform'
+			  AND p.is_active = TRUE
+		)
+	`, actorPrincipalID).Scan(&authorized); err != nil {
+		return fmt.Errorf("authorize delegation revocation: %w", err)
+	}
+	if !authorized {
+		return ErrRolePermissionDenied
+	}
+
+	var schoolID int64
+	var permissionKey string
+	err = tx.QueryRow(ctx, `
+		UPDATE role_permission_delegations d
+		SET revoked_at = NOW()
+		FROM permissions p
+		WHERE d.id = $1
+		  AND d.revoked_at IS NULL
+		  AND p.id = d.permission_id
+		RETURNING d.school_id, p.permission_key
+	`, delegationID).Scan(&schoolID, &permissionKey)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrDelegationNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("revoke permission delegation: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO audit_events
+		    (actor_principal_id, school_id, action, resource_type, resource_id, outcome, metadata)
+		VALUES ($1, $2, 'platform.permission_delegation.revoked', 'permission_delegation', $3, 'success',
+		        jsonb_build_object('permission_key', $4))
+	`, actorPrincipalID, schoolID, fmt.Sprint(delegationID), permissionKey); err != nil {
+		return fmt.Errorf("audit permission delegation revocation: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit permission delegation revocation: %w", err)
+	}
+	return nil
 }
