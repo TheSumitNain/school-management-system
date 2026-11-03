@@ -12,8 +12,9 @@ This project is under active development. Verification results describe the late
 - Added School Admin listing of active delegation IDs and custom-role permission grant/revoke endpoints. Custom grants carry the exact active delegation ID enforced by V16.
 - Added School Admin staff permission override list/set/remove endpoints. ALLOW and DENY overrides both require the exact active override delegation ID, a same-school active target staff account, and an audit event.
 - Added same-school staff role assignment list/assign/revoke endpoints. School Admin can assign only active staff roles within the authenticated school and cannot assign or revoke the reserved `school_admin` role. Every assignment/revocation is audited.
+- Added `POST /school/staff` for same-school School Admin staff account creation. Usernames are canonicalized and globally unique, initial passwords are hashed under the shared policy, new accounts require first-login password change, and account creation is audited. Password material is never returned.
 - These are backend API foundations, not a completed role administration UI or complete RBAC rollout. Staff role assignment workflows and business-resource/tenant/teacher-scope authorization remain pending.
-- GitHub Actions commit `d7aa45b` passed the complete V1–V16 PostgreSQL 18 migration/integration workflow, handler/service tests, and `go vet ./...`. The user's persistent databases were not modified by GitHub Actions. Dedicated PostgreSQL integration tests for the new role/delegation/override/assignment repository methods remain pending.
+- GitHub Actions commit `524d795` passed the complete V1–V16 PostgreSQL 18 migration/integration workflow, handler/service tests, and `go vet ./...`. The user's persistent databases were not modified by GitHub Actions. Dedicated PostgreSQL integration tests for the new role/delegation/override/assignment repository methods remain pending.
 
 ### Authentication — staff password lifecycle (2026-11-03)
 
