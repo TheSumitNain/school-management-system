@@ -304,3 +304,62 @@ func TestSchoolStaffListingRouteEnforcesLiveUsersReadPermission(t *testing.T) {
 		t.Fatalf("authorized request should reach handler (nil service), got status=%d body=%s", allowedRec.Code, allowedRec.Body.String())
 	}
 }
+
+
+func TestStaffUpdateAndEnableRoutesEnforceLiveUsersUpdatePermission(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	validator := fakeTokenValidator{claims: &services.TokenClaims{
+		RegisteredClaims: jwt.RegisteredClaims{Subject: "31"},
+		PrincipalType: "staff",
+		TokenVersion: 1,
+	}}
+	principal := &models.AuthPrincipal{ID: 31, Type: "staff", Status: "active", TokenVersion: 1, SchoolID: 8, Username: "school.admin"}
+	staffHandler := handlers.NewStaffHandler(nil)
+
+	for _, test := range []struct {
+		method string
+		path string
+		body string
+	}{
+		{method: http.MethodPatch, path: "/school/staff/42", body: `{"username":"new.teacher"}`},
+		{method: http.MethodPost, path: "/school/staff/42/enable", body: `{"temporary_password":"A-Strong-Temporary-Pass-123"}`},
+	} {
+		deniedRouter, err := setupRouterWithHandlers(
+			fakeDatabase{}, nil, validator,
+			fakePrincipalLoader{principal: principal},
+			fakePermissionLoader{permissions: []string{}},
+			nil, nil, staffHandler,
+		)
+		if err != nil {
+			t.Fatalf("setup denied %s route: %v", test.method, err)
+		}
+		deniedReq := httptest.NewRequest(test.method, test.path, strings.NewReader(test.body))
+		deniedReq.Header.Set("Authorization", "Bearer valid-test-token")
+		deniedReq.Header.Set("Content-Type", "application/json")
+		deniedRec := httptest.NewRecorder()
+		deniedRouter.ServeHTTP(deniedRec, deniedReq)
+		if deniedRec.Code != http.StatusForbidden {
+			t.Fatalf("%s %s without users.update: status=%d body=%s",
+				test.method, test.path, deniedRec.Code, deniedRec.Body.String())
+		}
+
+		allowedRouter, err := setupRouterWithHandlers(
+			fakeDatabase{}, nil, validator,
+			fakePrincipalLoader{principal: principal},
+			fakePermissionLoader{permissions: []string{"users.update"}},
+			nil, nil, staffHandler,
+		)
+		if err != nil {
+			t.Fatalf("setup allowed %s route: %v", test.method, err)
+		}
+		allowedReq := httptest.NewRequest(test.method, test.path, strings.NewReader(test.body))
+		allowedReq.Header.Set("Authorization", "Bearer valid-test-token")
+		allowedReq.Header.Set("Content-Type", "application/json")
+		allowedRec := httptest.NewRecorder()
+		allowedRouter.ServeHTTP(allowedRec, allowedReq)
+		if allowedRec.Code != http.StatusServiceUnavailable {
+			t.Fatalf("%s %s with users.update should reach unavailable handler, got status=%d body=%s",
+				test.method, test.path, allowedRec.Code, allowedRec.Body.String())
+		}
+	}
+}
