@@ -138,3 +138,68 @@ func TestAuthMiddlewareNilDependencies(t *testing.T) {
 		t.Fatalf("expected 500, got %d", rec.Code)
 	}
 }
+
+func TestRequirePermission(t *testing.T) {
+	tests := []struct {
+		name           string
+		permission     string
+		contextValue   any
+		setContext     bool
+		expectedStatus int
+	}{
+		{
+			name:           "granted permission continues",
+			permission:     "students.read_basic",
+			contextValue:   map[string]struct{}{"students.read_basic": {}},
+			setContext:     true,
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "missing permission is forbidden",
+			permission:     "students.read_sensitive",
+			contextValue:   map[string]struct{}{"students.read_basic": {}},
+			setContext:     true,
+			expectedStatus: http.StatusForbidden,
+		},
+		{
+			name:           "missing authorization context fails closed",
+			permission:     "students.read_basic",
+			expectedStatus: http.StatusInternalServerError,
+		},
+		{
+			name:           "unexpected authorization context type fails closed",
+			permission:     "students.read_basic",
+			contextValue:   []string{"students.read_basic"},
+			setContext:     true,
+			expectedStatus: http.StatusInternalServerError,
+		},
+		{
+			name:           "empty permission policy fails closed",
+			contextValue:   map[string]struct{}{"students.read_basic": {}},
+			setContext:     true,
+			expectedStatus: http.StatusInternalServerError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gin.SetMode(gin.TestMode)
+			router := gin.New()
+			router.GET("/protected", func(c *gin.Context) {
+				if tt.setContext {
+					c.Set(ContextPermissionsKey, tt.contextValue)
+				}
+				c.Next()
+			}, RequirePermission(tt.permission), func(c *gin.Context) {
+				c.Status(http.StatusOK)
+			})
+
+			rec := httptest.NewRecorder()
+			router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/protected", nil))
+
+			if rec.Code != tt.expectedStatus {
+				t.Fatalf("expected status %d, got %d; body: %s", tt.expectedStatus, rec.Code, rec.Body.String())
+			}
+		})
+	}
+}
