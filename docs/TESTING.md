@@ -30,7 +30,7 @@ go test -count=1 ./...
 go vet ./...
 ```
 
-The latest GitHub Actions run on commit `fcffdbf` applied migrations V1–V16 to a fresh ephemeral PostgreSQL 18 database, ran the full suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and passed `go vet ./...`. The user's persistent `school_management_test` database was not changed. Repeat the workflow after relevant code changes.
+The latest GitHub Actions run on commit `d7aa45b` applied migrations V1–V16 to a fresh ephemeral PostgreSQL 18 database, ran the full suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and passed `go vet ./...`. The user's persistent `school_management_test` database was not changed. Repeat the workflow after relevant code changes.
 
 The current test suite does not establish that every application behavior is tested or that the application is production-ready.
 
@@ -85,7 +85,7 @@ They should cover:
 
 Tests requiring PostgreSQL must use a dedicated test database or isolated test schema. They must never modify production data.
 
-The repository has opt-in PostgreSQL integration tests in `backend/internal/repository/`. They require `RUN_POSTGRES_INTEGRATION_TESTS=1` and must use the dedicated `school_management_test` database. New tests cover V15 staff password defaults and transactional password-change invalidation, plus V16 exact-delegation revocation/regrant behavior. These tests passed in GitHub Actions against a fresh ephemeral PostgreSQL 18 database after applying migrations V1–V16. The user's persistent `school_management_test` remains unchanged. Never point tests or migrations at `school_management`.
+The repository has opt-in PostgreSQL integration tests in `backend/internal/repository/`. They require `RUN_POSTGRES_INTEGRATION_TESTS=1` and must use the dedicated `school_management_test` database. New tests cover V15 staff password defaults and transactional password-change invalidation, V16 exact-delegation revocation/regrant behavior, and handler/service validation for role, delegation, override, and staff-role assignment APIs. The new repository methods still need dedicated PostgreSQL integration tests. These tests passed in GitHub Actions against a fresh ephemeral PostgreSQL 18 database after applying migrations V1–V16. The user's persistent `school_management_test` remains unchanged. Never point tests or migrations at `school_management`.
 
 ### 4.3 HTTP tests
 
