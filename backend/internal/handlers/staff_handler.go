@@ -17,6 +17,7 @@ import (
 type StaffAccountManagementService interface {
 	Create(ctx context.Context, actorPrincipalID, schoolID int64, username, initialPassword string) (*models.User, error)
 	List(ctx context.Context, actorPrincipalID, schoolID int64) ([]models.User, error)
+	Disable(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64) error
 }
 
 type StaffHandler struct {
@@ -111,4 +112,37 @@ func (h *StaffHandler) List(c *gin.Context) {
 		})
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "success", "staff": staff})
+}
+
+func (h *StaffHandler) Disable(c *gin.Context) {
+	actorValue, actorExists := c.Get(middleware.ContextPrincipalIDKey)
+	actorID, actorOK := actorValue.(int64)
+	schoolValue, schoolExists := c.Get(middleware.ContextSchoolIDKey)
+	schoolID, schoolOK := schoolValue.(int64)
+	if !actorExists || !actorOK || actorID <= 0 || !schoolExists || !schoolOK || schoolID <= 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "School staff authentication required"})
+		return
+	}
+	if h == nil || h.service == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Staff account disable is unavailable"})
+		return
+	}
+	targetID, err := strconv.ParseInt(c.Param("principalID"), 10, 64)
+	if err != nil || targetID <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid target principal ID"})
+		return
+	}
+	err = h.service.Disable(c.Request.Context(), actorID, schoolID, targetID)
+	switch {
+	case err == nil:
+		c.JSON(http.StatusOK, gin.H{"status": "success", "message": "Staff account disabled and active sessions revoked"})
+	case errors.Is(err, services.ErrInvalidStaffAccount):
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid staff account disable request"})
+	case errors.Is(err, repository.ErrRolePermissionDenied):
+		c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": "Staff account disable is not authorized"})
+	case errors.Is(err, repository.ErrUserNotFound):
+		c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": "Active staff account not found in this school"})
+	default:
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unable to disable staff account"})
+	}
 }
