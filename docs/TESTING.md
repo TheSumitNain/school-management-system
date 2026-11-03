@@ -473,3 +473,25 @@ Use `docs/PHASE1-RBAC.md` as the source of truth for the permission catalogue an
 - Fresh database installation produces the same target schema as an upgrade path.
 - Rollback/forward-recovery procedures are reviewed and tested on disposable databases.
 - Existing refresh-token rotation, replay detection, family-wide logout, and cross-family concurrency tests continue to pass after identity changes.
+
+
+## 16. Current authentication/RBAC verification — 2026-11-03
+
+The user reported the following successful local checks after pulling commit bea184f (before the subsequent V14 bootstrap hardening commits):
+
+- go test -count=1 -p 1 ./... — PASS, exit code 0.
+- go vet ./... — PASS, exit code 0.
+- Focused TestPrincipalRefreshSessionCreateInTxPostgresIntegration assertions passed. That focused command emitted a Windows temporary test-executable cleanup/lock warning and returned exit code 1; the subsequent full suite completed with exit code 0.
+
+The current branch has since added hidden terminal password input for the one-time Platform Admin bootstrap CLI, a caller-owned transaction helper for rollback-based PostgreSQL tests, and integration assertions for bootstrap contents, audit event, second-attempt rejection, and the V14 system-role-only trigger guard.
+
+These newest changes are not yet locally verified. Pull the latest branch, run gofmt on changed Go files, then run:
+
+```cmd
+go test -count=1 -p 1 ./...
+echo TEST_EXIT_CODE=%ERRORLEVEL%
+go vet ./...
+echo VET_EXIT_CODE=%ERRORLEVEL%
+```
+
+After explicit approval to apply V14 to school_management_test, run the focused integration test with the project's opt-in PostgreSQL integration environment enabled. Confirm it does not skip and exits with code 0. Do not run the bootstrap CLI against either database as part of migration verification. Never apply V14 to school_management without separate explicit approval.
