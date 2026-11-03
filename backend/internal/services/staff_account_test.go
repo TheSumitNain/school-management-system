@@ -15,6 +15,9 @@ type fakeStaffAccountRepository struct {
 	username string
 	passwordHash string
 	calls int
+	updateCalls int
+	enableCalls int
+	enablePasswordHash string
 }
 
 func (f *fakeStaffAccountRepository) CreateStaffAccount(_ context.Context, actorID, schoolID int64, username, passwordHash string) (*models.User, error) {
@@ -32,10 +35,13 @@ func (f *fakeStaffAccountRepository) DisableStaffAccount(context.Context, int64,
 }
 
 func (f *fakeStaffAccountRepository) UpdateStaffAccount(context.Context, int64, int64, int64, string) (*models.User, error) {
+	f.updateCalls++
 	return f.user, nil
 }
 
-func (f *fakeStaffAccountRepository) EnableStaffAccount(context.Context, int64, int64, int64, string) error {
+func (f *fakeStaffAccountRepository) EnableStaffAccount(_ context.Context, _, _, _ int64, passwordHash string) error {
+	f.enableCalls++
+	f.enablePasswordHash = passwordHash
 	return nil
 }
 
@@ -82,8 +88,8 @@ func TestStaffAccountServiceValidatesUsernameUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Update returned error: %v", err)
 	}
-	if user != repo.user {
-		t.Fatal("Update did not return repository user")
+	if user != repo.user || repo.updateCalls != 1 {
+		t.Fatalf("Update did not call repository exactly once: user=%+v calls=%d", user, repo.updateCalls)
 	}
 	if _, err := service.Update(context.Background(), 31, 8, 27, "bad name"); err != ErrInvalidStaffAccount {
 		t.Fatalf("invalid username update error = %v, want ErrInvalidStaffAccount", err)
@@ -96,8 +102,11 @@ func TestStaffAccountServiceHashesTemporaryPasswordBeforeReEnable(t *testing.T) 
 	if err := service.Enable(context.Background(), 31, 8, 27, "A-Strong-Temporary-Pass-123"); err != nil {
 		t.Fatalf("Enable returned error: %v", err)
 	}
-	if repo.calls != 0 {
-		t.Fatalf("Enable unexpectedly called CreateStaffAccount %d times", repo.calls)
+	if repo.enableCalls != 1 || repo.enablePasswordHash == "" ||
+		repo.enablePasswordHash == "A-Strong-Temporary-Pass-123" ||
+		!CheckPassword("A-Strong-Temporary-Pass-123", repo.enablePasswordHash) {
+		t.Fatalf("Enable did not pass a valid password hash: calls=%d hash_set=%v",
+			repo.enableCalls, repo.enablePasswordHash != "")
 	}
 	if err := service.Enable(context.Background(), 31, 8, 27, "short"); err != ErrInvalidPassword {
 		t.Fatalf("invalid temporary password error = %v, want ErrInvalidPassword", err)
