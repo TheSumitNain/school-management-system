@@ -14,6 +14,7 @@ import (
 )
 
 var (
+	ErrStaffPasswordConflict = errors.New("staff password changed concurrently")
 	ErrUserNotFound   = errors.New("user not found")
 	ErrUsernameTaken  = errors.New("username already exists")
 	ErrInvalidUser    = errors.New("invalid user data")
@@ -171,4 +172,115 @@ WHERE LOWER(u.username) = LOWER($1)
 		return nil, ErrSchoolInactive
 	}
 	return &principal, nil
+}
+
+
+// GetStaffPasswordCredential returns the password hash for a canonical staff
+// principal. Password hashes are only consumed by the password service.
+func (r *UserRepository) GetStaffPasswordCredential(ctx context.Context, principalID int64) (int64, string, error) {
+	if principalID <= 0 {
+		return 0, "", ErrInvalidUser
+	}
+	var userID int64
+	var passwordHash string
+	err := r.db.QueryRow(ctx, `
+		SELECT id, password_hash
+		FROM users
+		WHERE principal_id = $1
+		  AND EXISTS (
+		      SELECT 1 FROM auth_principals ap
+		      WHERE ap.id = users.principal_id
+		        AND ap.principal_type = 'staff'
+		        AND ap.status = 'active'
+		  )
+	`, principalID).Scan(&userID, &passwordHash)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, "", ErrUserNotFound
+	}
+	if err != nil {
+		return 0, "", fmt.Errorf("load staff password credential: %w", err)
+	}
+	return userID, passwordHash, nil
+}
+
+// ChangeStaffPassword atomically changes the credential, clears the temporary
+// password flag, increments token_version, revokes all refresh sessions, and
+// appends an audit event. The expected hash prevents a stale password check
+// from overwriting a concurrent credential change.
+func (r *UserRepository) ChangeStaffPassword(
+	ctx context.Context,
+	principalID int64,
+	expectedPasswordHash string,
+	newPasswordHash string,
+) error {
+	if principalID <= 0 || expectedPasswordHash == "" || newPasswordHash == "" {
+		return ErrInvalidUser
+	}
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin staff password change: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if _, err := tx.Exec(ctx,
+		`SELECT pg_advisory_xact_lock(hashtextextended('refresh-principal:' || $1::bigint::text,0))`,
+		principalID,
+	); err != nil {
+		return fmt.Errorf("lock staff principal password change: %w", err)
+	}
+
+	var userID, schoolID int64
+	err = tx.QueryRow(ctx, `
+		UPDATE users
+		   SET password_hash = $3,
+		       must_change_password = FALSE,
+		       updated_at = NOW()
+		 WHERE principal_id = $1
+		   AND password_hash = $2
+		RETURNING id, school_id
+	`, principalID, expectedPasswordHash, newPasswordHash).Scan(&userID, &schoolID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrStaffPasswordConflict
+	}
+	if err != nil {
+		return fmt.Errorf("update staff password: %w", err)
+	}
+
+	tag, err := tx.Exec(ctx, `
+		UPDATE auth_principals
+		   SET token_version = token_version + 1,
+		       updated_at = NOW()
+		 WHERE id = $1
+		   AND principal_type = 'staff'
+		   AND status = 'active'
+	`, principalID)
+	if err != nil {
+		return fmt.Errorf("invalidate staff access tokens: %w", err)
+	}
+	if tag.RowsAffected() != 1 {
+		return ErrUserNotFound
+	}
+
+	if _, err := tx.Exec(ctx, `
+		UPDATE refresh_sessions
+		   SET revoked_at = COALESCE(revoked_at, NOW())
+		 WHERE principal_id = $1
+		   AND revoked_at IS NULL
+	`, principalID); err != nil {
+		return fmt.Errorf("revoke staff refresh sessions: %w", err)
+	}
+
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO audit_events
+		    (actor_principal_id, school_id, action, resource_type, resource_id, outcome, metadata)
+		VALUES ($1, $2, 'staff.password.changed', 'staff_user', $3, 'success',
+		        jsonb_build_object('password_change_required_cleared', TRUE))
+	`, principalID, schoolID, fmt.Sprint(userID)); err != nil {
+		return fmt.Errorf("audit staff password change: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit staff password change: %w", err)
+	}
+	return nil
 }
