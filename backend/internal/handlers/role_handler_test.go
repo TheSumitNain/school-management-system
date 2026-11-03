@@ -24,6 +24,11 @@ type fakeRoleManagementService struct {
 	roleID int64
 	grantedDelegationID int64
 	grantPermissionKey string
+	targetPrincipalID int64
+	overrideDelegationID int64
+	overridePermissionKey string
+	overrideEffect string
+	overrideReason string
 	permissionKey string
 	canAssignToRoles bool
 	canOverrideUsers bool
@@ -72,10 +77,13 @@ func (f *fakeRoleManagementService) RevokeCustomRolePermission(_ context.Context
 func (f *fakeRoleManagementService) ListStaffPermissionOverrides(context.Context, int64, int64, int64) ([]repository.StaffPermissionOverride, error) {
 	return []repository.StaffPermissionOverride{}, nil
 }
-func (f *fakeRoleManagementService) SetStaffPermissionOverride(context.Context, int64, int64, int64, int64, string, string, string) error {
+func (f *fakeRoleManagementService) SetStaffPermissionOverride(_ context.Context, actorID, schoolID, targetID, delegationID int64, permissionKey, effect, reason string) error {
+	f.actorID, f.schoolID, f.targetPrincipalID, f.overrideDelegationID = actorID, schoolID, targetID, delegationID
+	f.overridePermissionKey, f.overrideEffect, f.overrideReason = permissionKey, effect, reason
 	return f.err
 }
-func (f *fakeRoleManagementService) DeleteStaffPermissionOverride(context.Context, int64, int64, int64, string) error {
+func (f *fakeRoleManagementService) DeleteStaffPermissionOverride(_ context.Context, actorID, schoolID, targetID int64, permissionKey string) error {
+	f.actorID, f.schoolID, f.targetPrincipalID, f.overridePermissionKey = actorID, schoolID, targetID, permissionKey
 	return f.err
 }
 
@@ -208,5 +216,45 @@ func TestRoleHandlerCustomRolePermissionGrantAndRevoke(t *testing.T) {
 	if rec.Code != http.StatusOK || service.actorID != 31 || service.schoolID != 8 ||
 		service.roleID != 14 || service.grantPermissionKey != "attendance.read" {
 		t.Fatalf("unexpected custom role permission revoke: status=%d service=%+v body=%s", rec.Code, service, rec.Body.String())
+	}
+}
+
+func TestRoleHandlerStaffPermissionOverrideLifecycle(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	service := &fakeRoleManagementService{}
+	router := gin.New()
+	authenticate := func(c *gin.Context) {
+		c.Set("auth_principal_id", int64(31))
+		c.Set("auth_school_id", int64(8))
+		c.Next()
+	}
+	handler := NewRoleHandler(service)
+	router.GET("/school/staff/:principalID/permission-overrides", authenticate, handler.ListStaffPermissionOverrides)
+	router.POST("/school/staff/:principalID/permission-overrides", authenticate, handler.SetStaffPermissionOverride)
+	router.DELETE("/school/staff/:principalID/permission-overrides/:permissionKey", authenticate, handler.DeleteStaffPermissionOverride)
+
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/school/staff/42/permission-overrides", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("list overrides status = %d, body=%s", rec.Code, rec.Body.String())
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/school/staff/42/permission-overrides",
+		strings.NewReader(`{"permission_key":"attendance.read","effect":"allow","reason":"Assigned attendance responsibility","delegation_id":73}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK || service.actorID != 31 || service.schoolID != 8 ||
+		service.targetPrincipalID != 42 || service.overrideDelegationID != 73 ||
+		service.overridePermissionKey != "attendance.read" || service.overrideEffect != "allow" ||
+		service.overrideReason != "Assigned attendance responsibility" {
+		t.Fatalf("unexpected permission override set: status=%d service=%+v body=%s", rec.Code, service, rec.Body.String())
+	}
+
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodDelete, "/school/staff/42/permission-overrides/attendance.read", nil))
+	if rec.Code != http.StatusOK || service.actorID != 31 || service.schoolID != 8 ||
+		service.targetPrincipalID != 42 || service.overridePermissionKey != "attendance.read" {
+		t.Fatalf("unexpected permission override delete: status=%d service=%+v body=%s", rec.Code, service, rec.Body.String())
 	}
 }
