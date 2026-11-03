@@ -30,9 +30,20 @@ These are planning targets, not verified capacity limits. Production capacity wi
 - Implement features incrementally and verify each milestone.
 - Keep implemented functionality clearly separated from planned functionality.
 
+## Approved Product Delivery Direction (2026-11-03)
+
+**Phase 1 is the complete web-based school management product.** It includes:
+- Platform Admin dashboard for platform operations and school onboarding.
+- School Admin dashboard for complete school administration.
+- Role-based dashboards and workflows for school staff, including teachers and future school-scoped operational roles as their modules are delivered.
+
+**Phase 2 follows after the web product is complete:** mobile applications/interfaces for Parents, Drivers and other approved user groups. Parent access is intended to be read-only initially; its authentication and OTP provider will be decided when Phase 2 is planned. Parent-specific implementation is paused in the meantime. Existing Parent/Guardian schema and OTP foundation must be preserved, not deleted or expanded during Phase 1 without a separately approved requirement.
+
+The database must be designed incrementally but with future compatibility in mind: stable student identity separate from academic enrollment, school-scoped ownership, extensible roles/permissions, guardian relationships, transport-ready concepts, audit history and API contracts reusable by web and mobile clients. Future-proofing does not authorize speculative tables or premature migrations. Every schema change requires source review, additive migration design, tests on the dedicated test database and explicit approval before applying migrations.
+
 ## Current Status
 
-**Stage:** Backend foundation and initial authentication, including JWT access tokens and refresh-token rotation/revocation. Phase 1 role, permission, staff-account, teacher-scope, and parent-access requirements are now approved and documented; RBAC implementation and complete tenant authorization remain pending.
+**Stage:** Go/Gin authentication and principal/RBAC foundation. The current repository has no React frontend yet. Business APIs, complete tenant/resource authorization and dashboards remain to be implemented. The active development branch is `fix/v4-auth-security-hardening`; do not treat this as a production-ready application.
 
 ### Implemented
 
@@ -119,7 +130,8 @@ These are previously reported results, not a guarantee that the current working 
 - Mandatory MFA for Platform Admin and School Admin.
 - Password-reset workflows, login rate limiting, lockout enforcement, and security-event monitoring.
 - Student, teacher, class, subject, and attendance APIs.
-- React frontend, dashboards, and parent-facing interfaces.
+- React frontend and Platform Admin, School Admin, and school-staff dashboards (Phase 1).
+- Parent/Driver mobile interfaces and Parent authentication flow (Phase 2; intentionally deferred).
 - Production deployment, monitoring, backup, and recovery procedures.
 - Comprehensive security, end-to-end, and load testing.
 
