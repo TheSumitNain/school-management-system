@@ -19,6 +19,9 @@ type RoleManagementService interface {
 	CreateCustomRole(ctx context.Context, actorPrincipalID, schoolID int64, name string) (*repository.SchoolRole, error)
 	GrantSchoolPermissionDelegation(ctx context.Context, actorPrincipalID, schoolID int64, permissionKey string, canAssignToRoles, canOverrideUsers bool) (*repository.SchoolPermissionDelegation, error)
 	RevokeSchoolPermissionDelegation(ctx context.Context, actorPrincipalID, delegationID int64) error
+	ListSchoolPermissionDelegations(ctx context.Context, actorPrincipalID, schoolID int64) ([]repository.SchoolPermissionDelegation, error)
+	GrantCustomRolePermission(ctx context.Context, actorPrincipalID, schoolID, roleID, delegationID int64, permissionKey string) error
+	RevokeCustomRolePermission(ctx context.Context, actorPrincipalID, schoolID, roleID int64, permissionKey string) error
 }
 
 type RoleHandler struct {
@@ -181,5 +184,97 @@ func (h *RoleHandler) RevokeSchoolPermissionDelegation(c *gin.Context) {
 		c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": "Permission delegation is not authorized"})
 	default:
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unable to revoke permission delegation"})
+	}
+}
+
+func (h *RoleHandler) ListSchoolPermissionDelegations(c *gin.Context) {
+	actorID, schoolID, ok := roleActorContext(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "School staff authentication required"})
+		return
+	}
+	if h == nil || h.service == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Permission delegation is unavailable"})
+		return
+	}
+	items, err := h.service.ListSchoolPermissionDelegations(c.Request.Context(), actorID, schoolID)
+	if errors.Is(err, repository.ErrRolePermissionDenied) {
+		c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": "Permission delegation access is not authorized"})
+		return
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unable to list permission delegations"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "success", "delegations": items})
+}
+
+func (h *RoleHandler) GrantCustomRolePermission(c *gin.Context) {
+	actorID, schoolID, ok := roleActorContext(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "School staff authentication required"})
+		return
+	}
+	if h == nil || h.service == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Role permission management is unavailable"})
+		return
+	}
+	roleID, err := strconv.ParseInt(c.Param("roleID"), 10, 64)
+	if err != nil || roleID <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid role ID"})
+		return
+	}
+	var request struct {
+		PermissionKey string `json:"permission_key"`
+		DelegationID int64 `json:"delegation_id"`
+	}
+	if err := c.ShouldBindJSON(&request); err != nil || request.PermissionKey == "" || request.DelegationID <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "A permission key and exact delegation ID are required"})
+		return
+	}
+	err = h.service.GrantCustomRolePermission(c.Request.Context(), actorID, schoolID, roleID, request.DelegationID, request.PermissionKey)
+	switch {
+	case err == nil:
+		c.JSON(http.StatusCreated, gin.H{"status": "success", "message": "Permission granted to custom role"})
+	case errors.Is(err, services.ErrInvalidCustomRole):
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid role permission grant"})
+	case errors.Is(err, repository.ErrRolePermissionDenied):
+		c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": "Role permission grant is not authorized"})
+	case errors.Is(err, repository.ErrDelegationNotFound), errors.Is(err, repository.ErrRoleNotFound):
+		c.JSON(http.StatusConflict, gin.H{"status": "error", "message": "The exact active delegation or custom role is not available"})
+	case errors.Is(err, repository.ErrRoleNameTaken):
+		c.JSON(http.StatusConflict, gin.H{"status": "error", "message": "Permission is already granted to this role"})
+	default:
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unable to grant permission to custom role"})
+	}
+}
+
+func (h *RoleHandler) RevokeCustomRolePermission(c *gin.Context) {
+	actorID, schoolID, ok := roleActorContext(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "School staff authentication required"})
+		return
+	}
+	if h == nil || h.service == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Role permission management is unavailable"})
+		return
+	}
+	roleID, err := strconv.ParseInt(c.Param("roleID"), 10, 64)
+	if err != nil || roleID <= 0 || c.Param("permissionKey") == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid role ID or permission key"})
+		return
+	}
+	err = h.service.RevokeCustomRolePermission(c.Request.Context(), actorID, schoolID, roleID, c.Param("permissionKey"))
+	switch {
+	case err == nil:
+		c.JSON(http.StatusOK, gin.H{"status": "success", "message": "Custom role permission revoked"})
+	case errors.Is(err, services.ErrInvalidCustomRole):
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid role permission revocation"})
+	case errors.Is(err, repository.ErrRolePermissionDenied):
+		c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": "Role permission revocation is not authorized"})
+	case errors.Is(err, repository.ErrDelegationNotFound), errors.Is(err, repository.ErrRoleNotFound):
+		c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": "Custom role permission grant not found"})
+	default:
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unable to revoke custom role permission"})
 	}
 }
