@@ -379,9 +379,7 @@ The intended authorization header is:
 Authorization: Bearer <access-token>
 ```
 
-The authentication middleware currently protects `GET /auth/me`.
-
-The presence of middleware does not automatically protect other routes. Every protected route must explicitly apply the required middleware. Role-based authorization and complete tenant isolation remain pending.
+The authentication middleware protects GET /auth/me, the authenticated MFA recovery-code regeneration start route, and POST /platform/schools. The school-onboarding route applies both required live platform permissions. Every future protected route must explicitly add authentication, the relevant permission checks, and resource-scope enforcement. Complete tenant/resource/assignment authorization remains pending.
 
 ### 5.4 Refresh Token
 
@@ -393,11 +391,11 @@ Opt-in PostgreSQL repository integration tests cover refresh-session persistence
 
 ## 6. Authorization and Tenant Isolation
 
-RBAC and complete tenant-isolation enforcement are pending. The Phase 1 role list and permission requirements are now approved and documented in `docs/PHASE1-RBAC.md`; implementation is not yet present in the API.
+The core principal/RBAC schema and permission resolver are implemented in the current branch. Protected requests reload live principal state and permissions; RequirePermission is used on the Platform Admin school-onboarding route. Built-in system-role grants and explicit DENY overrides are resolved. Custom-role grants and user ALLOW overrides intentionally fail closed until exact delegation-ID linkage is added. Full tenant/resource/assignment/field-level authorization remains pending for the school business APIs.
 
-Approved Phase 1 roles are Platform Admin (global), School Admin (one school), Teacher (one school), and Parent (verified linked children). Student login and additional operational roles are not part of Phase 1.
+Approved Phase 1 roles are Platform Admin (global), School Admin (one school), and Teacher (one school). Parent and Driver are Phase 2 mobile roles; Parent-specific implementation is currently paused. Student login is not part of Phase 1.
 
-Current API behavior must be distinguished from the target contract: `POST /auth/login` still requires `school_id`, `username`, and `password`, and the current database enforces username uniqueness only within a school. The approved target for staff is a globally unique, case-insensitive username plus password, with one account per school. This requires coordinated schema, repository, service, handler, token-claim, and API migration; do not document the target as implemented until that work is complete. Parent mobile/OTP login is a separate planned flow.
+Staff login now accepts a globally unique, case-insensitive username and password; it does not accept school_id. Staff accounts remain tied to exactly one school. Platform Admin uses a separate email/password login followed by mandatory TOTP MFA. School Admin also requires TOTP MFA.
 
 ### Tenant-Isolation Requirements
 
@@ -418,12 +416,18 @@ The currently registered routes are:
 
 | Method | Endpoint | Authentication |
 |---|---|---|
-| `GET` | `/health` | Not required |
-| `GET` | `/ready` | Not required; checks database readiness |
-| `POST` | `/auth/login` | Not required |
-| `POST` | `/auth/refresh` | Refresh token in request body |
-| `POST` | `/auth/logout` | Refresh token in request body |
-| `GET` | `/auth/me` | Bearer access token required |
+| GET | /health | Not required |
+| GET | /ready | Not required; checks database readiness |
+| POST | /auth/login | Staff credentials; no token required |
+| POST | /auth/platform-admin/login | Platform Admin credentials; no token required; MFA follows |
+| POST | /auth/mfa/enroll/verify | One-time challenge token and TOTP code |
+| POST | /auth/mfa/verify | One-time challenge token and TOTP/recovery code |
+| POST | /auth/mfa/recovery-codes/regenerate/start | Bearer access token required |
+| POST | /auth/mfa/recovery-codes/regenerate | One-time challenge token and TOTP code |
+| POST | /auth/refresh | Refresh token in request body |
+| POST | /auth/logout | Refresh token in request body |
+| GET | /auth/me | Bearer access token required |
+| POST | /platform/schools | Bearer token plus platform.schools.create and platform.school_admins.create |
 
 The current routes do not use an `/api/v1` prefix. Versioned routes may be introduced through an explicit routing and migration decision.
 
