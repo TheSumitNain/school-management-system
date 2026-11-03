@@ -364,3 +364,89 @@ func TestStaffUpdateAndEnableRoutesEnforceLiveUsersUpdatePermission(t *testing.T
 		}
 	}
 }
+
+func TestRoleAdministrationRoutesEnforceLivePermissions(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	tests := []struct {
+		name        string
+		method      string
+		path        string
+		principalType string
+		permissions []string
+	}{
+		{name: "platform delegation grant", method: http.MethodPost, path: "/platform/schools/8/permission-delegations", principalType: "platform_admin", permissions: []string{"platform.permissions.delegate"}},
+		{name: "platform delegation revoke", method: http.MethodPost, path: "/platform/permission-delegations/6/revoke", principalType: "platform_admin", permissions: []string{"platform.permissions.delegate"}},
+		{name: "school role list", method: http.MethodGet, path: "/school/roles", principalType: "staff", permissions: []string{"roles.read"}},
+		{name: "custom role create", method: http.MethodPost, path: "/school/roles", principalType: "staff", permissions: []string{"roles.create_custom"}},
+		{name: "permission catalogue", method: http.MethodGet, path: "/school/permissions", principalType: "staff", permissions: []string{"permissions.read"}},
+		{name: "school delegation list", method: http.MethodGet, path: "/school/permission-delegations", principalType: "staff", permissions: []string{"permissions.assign"}},
+		{name: "custom role permission grant", method: http.MethodPost, path: "/school/roles/14/permissions", principalType: "staff", permissions: []string{"permissions.assign", "roles.update_custom"}},
+		{name: "custom role permission revoke", method: http.MethodDelete, path: "/school/roles/14/permissions/students.read_basic", principalType: "staff", permissions: []string{"permissions.assign", "roles.update_custom"}},
+		{name: "staff override list", method: http.MethodGet, path: "/school/staff/42/permission-overrides", principalType: "staff", permissions: []string{"permissions.override"}},
+		{name: "staff override set", method: http.MethodPost, path: "/school/staff/42/permission-overrides", principalType: "staff", permissions: []string{"permissions.override"}},
+		{name: "staff override delete", method: http.MethodDelete, path: "/school/staff/42/permission-overrides/homework.create", principalType: "staff", permissions: []string{"permissions.override"}},
+		{name: "staff role assignment list", method: http.MethodGet, path: "/school/staff/42/roles", principalType: "staff", permissions: []string{"roles.read"}},
+		{name: "staff role assignment grant", method: http.MethodPost, path: "/school/staff/42/roles/14", principalType: "staff", permissions: []string{"roles.assign"}},
+		{name: "staff role assignment revoke", method: http.MethodDelete, path: "/school/staff/42/roles/14", principalType: "staff", permissions: []string{"roles.assign"}},
+	}
+
+	buildRouter := func(principalType string, permissions []string) *gin.Engine {
+		principal := &models.AuthPrincipal{
+			ID: 31, Type: principalType, Status: "active", TokenVersion: 1,
+			SchoolID: 8, Username: "school.admin",
+		}
+		if principalType == "platform_admin" {
+			principal.SchoolID = 0
+			principal.Username = ""
+		}
+		validator := fakeTokenValidator{claims: &services.TokenClaims{
+			RegisteredClaims: jwt.RegisteredClaims{Subject: "31"},
+			PrincipalType: principalType,
+			TokenVersion: 1,
+		}}
+		router, err := setupRouterWithHandlers(
+			fakeDatabase{}, nil, validator,
+			fakePrincipalLoader{principal: principal},
+			fakePermissionLoader{permissions: permissions},
+			nil, handlers.NewRoleHandler(nil),
+		)
+		if err != nil {
+			t.Fatalf("setup %s router: %v", principalType, err)
+		}
+		return router
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			request := func(permissions []string) *httptest.ResponseRecorder {
+				req := httptest.NewRequest(test.method, test.path, nil)
+				req.Header.Set("Authorization", "Bearer valid-test-token")
+				rec := httptest.NewRecorder()
+				buildRouter(test.principalType, permissions).ServeHTTP(rec, req)
+				return rec
+			}
+
+			denied := request(nil)
+			if denied.Code != http.StatusForbidden {
+				t.Fatalf("without required permissions: status=%d body=%s; want 403",
+					denied.Code, denied.Body.String())
+			}
+
+			if len(test.permissions) > 1 {
+				partial := request(test.permissions[:1])
+				if partial.Code != http.StatusForbidden {
+					t.Fatalf("with only one of %v: status=%d body=%s; want 403",
+						test.permissions, partial.Code, partial.Body.String())
+				}
+			}
+
+			allowed := request(test.permissions)
+			if allowed.Code != http.StatusServiceUnavailable {
+				t.Fatalf("with all required permissions request should pass route authorization and reach nil handler service: status=%d body=%s; want 503",
+					allowed.Code, allowed.Body.String())
+			}
+		})
+	}
+}
+
