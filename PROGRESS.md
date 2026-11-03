@@ -224,7 +224,8 @@ These are approved requirements, not proof of complete RBAC enforcement. The V4 
 - [x] Confirmed the API currently exposes authentication/MFA, `/auth/me`, `/health` and `/ready`; Platform Admin school onboarding and school business APIs are not yet wired.
 - [x] Confirmed authentication middleware reloads current principal/token version and permissions; `RequirePermission` exists and fails closed.
 - [x] Identified a school-onboarding schema blocker: V4 seeds school-scoped `school_admin` and `teacher` system roles only for schools existing at migration time; the current role guard blocks ordinary runtime creation of system roles.
-- [ ] Design and PostgreSQL-test a secure new-school system-role provisioning mechanism before implementing Platform Admin school creation.
+- [x] Add V13 source migration for secure new-school system-role provisioning and a PostgreSQL integration test.
+- [ ] Review/apply V13 only on `school_management_test` after user approval, then run `TestSchoolSystemRoleProvisioningV13PostgresIntegration` with the integration flag.
 - [ ] Reconcile the actual `school_management_test` migration version/dirty flag; historical docs conflict about V4–V12 application status. Do not run migrations until this is resolved.
 
 ## Approved Web-First Delivery Plan — 2026-11-03
@@ -233,7 +234,8 @@ These are approved requirements, not proof of complete RBAC enforcement. The V4 
 - [x] Defer Parent, Driver and other approved mobile-first interfaces to Phase 2 after web completion.
 - [x] Pause Parent-specific implementation and preserve existing source/schema foundations.
 - [x] Require future-ready but incremental database design; no speculative migrations.
-- [ ] Reconcile current backend/database modules and prepare the implementation sequence.
+- [x] Reconcile current backend/database modules and identify Platform Admin onboarding prerequisites.
+- [ ] Verify V13 migration and new-school system-role provisioning on PostgreSQL before Platform Admin school creation APIs.
 - [ ] Build the frontend foundation and start the Platform Admin workflow.
 
 ## In Progress
