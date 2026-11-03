@@ -26,7 +26,7 @@
 
 ## 0.2 Latest V11 Verification (2026-11-02)
 
-- V11 student/guardian schema migration applied successfully to `school_management_test`; migration state is version `11`, `dirty = false`.
+- V11 student/guardian schema and V12 Parent–Guardian migration are included in `school_management_test`; direct cumulative status reported version `12`, `dirty = false`.
 - `go test -count=1 -p 1 ./...` passed with `DB_NAME=school_management_test` and `RUN_POSTGRES_INTEGRATION_TESTS=1`.
 - `go vet ./...` completed without diagnostics.
 - `TestMFARecoveryCodeRepositoryPostgresIntegration` passed twice consecutively after test fixtures were changed to use a cryptographically random per-run namespace. Recovery-code history remains append-only; no production schema constraint was weakened.
@@ -956,7 +956,7 @@ After running `gofmt`, inspect the resulting diff to ensure formatting did not i
 
 ### 13.2 V4 Migration Draft and Application Cutover
 
-The supplied `cb6af3b` archive contains the current authentication source and the approved RBAC/account documentation. A V4 schema migration draft has now been added, with implementation notes in `docs/V4-IMPLEMENTATION-NOTES.md`. The migration is not applied or PostgreSQL-tested. The source application still uses user-ID JWT subjects and has no RBAC enforcement; do not treat the schema draft as a completed security feature.
+The supplied `cb6af3b` archive contains the current authentication source and the approved RBAC/account documentation. A V4 schema migration was included in the cumulative V4–V12 sequence reported at version `12`, `dirty = false` on `school_management_test`. The current source has principal-aware JWT subjects, live principal/token-version checks and permission resolution; business route enforcement and full tenant/resource authorization remain incomplete.
 
 Next engineering sequence:
 
@@ -1048,6 +1048,6 @@ V12 source design:
 - Persistent mobile/IP rate-limit buckets and append-only audit events support the OTP and relationship workflows.
 - The application must still enforce the live `guardians.manage` permission when enabling portal eligibility and must check both active relationship layers, school scope, account status, guardian/student status, and the requested Parent permission on every child-data request.
 
-**Verification status:** V12 is source-only. It has not been applied or PostgreSQL-tested, and the new integration test has not been run. Do not claim Parent login or Parent child-data APIs are implemented. OTP delivery, OTP repository/service, Parent handlers/routes, and child-data APIs remain the next application-layer work. Apply only to `school_management_test` after reviewing the migration source and verifying the local branch; never apply to `school_management` without separate explicit approval.
+**Verification status:** The user directly reported V12 applied in `school_management_test` (cumulative migration version `12`, `dirty = false`) and a dedicated `TestParentGuardianAuthorizationV12PostgresIntegration` run PASS. A later verbose attempt skipped integration tests because `RUN_POSTGRES_INTEGRATION_TESTS=1` was omitted; rerun with the flag after relevant changes. Do not claim Parent login or Parent child-data APIs are implemented. OTP delivery, OTP repository/service, Parent handlers/routes, and child-data APIs remain the next application-layer work. Apply only to `school_management_test` after reviewing the migration source and verifying the local branch; never apply to `school_management` without separate explicit approval.
 
 The V12 down migration is guarded and refuses rollback once Parent links, OTP/rate-limit history, portal settings, or relationship revocations exist. Do not modify the applied V11/V4 migrations.
