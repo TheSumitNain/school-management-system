@@ -69,6 +69,16 @@ func (f *fakeRoleManagementService) RevokeCustomRolePermission(_ context.Context
 	return f.err
 }
 
+func (f *fakeRoleManagementService) ListStaffPermissionOverrides(context.Context, int64, int64, int64) ([]repository.StaffPermissionOverride, error) {
+	return []repository.StaffPermissionOverride{}, nil
+}
+func (f *fakeRoleManagementService) SetStaffPermissionOverride(context.Context, int64, int64, int64, int64, string, string, string) error {
+	return f.err
+}
+func (f *fakeRoleManagementService) DeleteStaffPermissionOverride(context.Context, int64, int64, int64, string) error {
+	return f.err
+}
+
 func TestRoleHandlerCreateRoleUsesAuthenticatedSchool(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	role := &repository.SchoolRole{ID: 3, RoleKey: "custom_library", Name: "Library"}
