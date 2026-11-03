@@ -34,7 +34,7 @@ The latest GitHub Actions run on commit `524d795` applied migrations V1–V16 to
 
 The current test suite does not establish that every application behavior is tested or that the application is production-ready.
 
-Important remaining gaps include broader PostgreSQL repository integration coverage beyond the refresh-session lifecycle tests, additional concurrency/failure-mode testing, independent end-to-end HTTP verification, RBAC, tenant isolation, authentication rate limiting, migration/rollback testing, and tests for future school business modules.
+Important remaining gaps include PostgreSQL coverage for repository paths outside the currently tested authentication, staff lifecycle, parent foundation, and role-administration workflows; additional concurrency/failure-mode testing; independent end-to-end HTTP verification; business-resource tenant/assignment isolation; migration/rollback testing; and tests for future school business modules.
 
 ## 3. Testing Principles
 
@@ -85,7 +85,7 @@ They should cover:
 
 Tests requiring PostgreSQL must use a dedicated test database or isolated test schema. They must never modify production data.
 
-The repository has opt-in PostgreSQL integration tests in `backend/internal/repository/`. They require `RUN_POSTGRES_INTEGRATION_TESTS=1` and must use the dedicated `school_management_test` database. New tests cover V15 staff password defaults and transactional password-change invalidation, V16 exact-delegation revocation/regrant behavior, and handler/service validation for staff account creation, role, delegation, override, and staff-role assignment APIs. The new repository methods still need dedicated PostgreSQL integration tests. These tests passed in GitHub Actions against a fresh ephemeral PostgreSQL 18 database after applying migrations V1–V16. The user's persistent `school_management_test` remains unchanged. Never point tests or migrations at `school_management`.
+The repository has opt-in PostgreSQL integration tests in `backend/internal/repository/`. They require `RUN_POSTGRES_INTEGRATION_TESTS=1` and must use the dedicated `school_management_test` database when run locally. Coverage includes V15 staff password defaults and transactional password-change invalidation, V16 exact-delegation revocation/regrant behavior, rollback-scoped role/delegation/custom-permission/staff-role/ALLOW-DENY override repository workflows, and staff account create/list/update/disable/re-enable lifecycle. GitHub Actions applies V1–V16 to a fresh ephemeral PostgreSQL 18 database and runs the full integration suite; commit `64acf1b` and run `41657762673` passed, including `go vet ./...`. The user's persistent `school_management_test` remains unchanged. Never point tests or migrations at `school_management`.
 
 ### 4.3 HTTP tests
 
@@ -229,7 +229,7 @@ The test plan includes:
 
 **Remaining verification:**
 
-- Expand PostgreSQL repository integration tests beyond the existing refresh-session lifecycle suite.
+- Expand PostgreSQL integration coverage for remaining repository paths and concurrency/failure modes not covered by the existing refresh-session, auth, staff lifecycle, parent foundation, and role administration tests.
 - Add further transaction-failure and family-revocation edge cases against PostgreSQL.
 
 - Test additional simultaneous refresh/logout interleavings and database failure scenarios.
