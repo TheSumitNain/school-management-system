@@ -147,7 +147,7 @@ These are previously reported results, not a guarantee that the current working 
 - `docs/SECURITY.md` — security requirements and implementation status.
 - `docs/TESTING.md` — testing strategy and verification.
 - `docs/HANDOFF.md` — handoff instructions for continuing in a new chat.
-- `docs/PHASE1-RBAC.md` — approved Phase 1 roles, permission catalogue, teacher scopes, staff account rules, and parent access model.
+- `docs/PHASE1-RBAC.md` — approved Phase 1 web roles, permission catalogue, teacher scopes, staff account rules, and future Parent mobile access model.
 - `CHANGELOG.md` — milestone history.
 
 ## Development
