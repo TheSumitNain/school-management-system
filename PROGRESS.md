@@ -372,11 +372,12 @@ V11 is **applied and PostgreSQL-verified on the dedicated test database**. This 
 
 ### Latest automated verification
 
-- [x] GitHub Actions push workflow on commit `4351ce9`: `go test -count=1 -p 1 ./...` PASS.
-- [x] GitHub Actions push workflow on commit `4351ce9`: `go vet ./...` PASS.
-- [x] GitHub Actions pull-request workflow on commit `4351ce9`: PASS.
-- [ ] Apply V15 and V16 only to `school_management_test` after confirming the migration state and safe V16 preflight.
-- [ ] Run V15/V16 PostgreSQL integration tests with `RUN_POSTGRES_INTEGRATION_TESTS=1` against `school_management_test`.
+- [x] GitHub Actions push workflow on commit `fcffdbf`: ephemeral PostgreSQL 18, V1–V16 migrations, full PostgreSQL integration suite, and `go vet ./...` PASS.
+- [x] GitHub Actions pull-request workflow on commit `fcffdbf`: PASS.
+- [x] Apply V1–V16 to a fresh ephemeral PostgreSQL 18 database in GitHub Actions; migration sequence completed successfully.
+- [x] Run the complete Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1` against ephemeral PostgreSQL 18; all integration tests passed, including V15 password lifecycle and V16 exact delegation revocation/regrant.
+- [x] Run `go vet ./...` in the same CI job; passed.
+- [ ] Apply V15/V16 to the user's persistent `school_management_test` only after checking its current migration version and dirty flag; CI did not modify that database.
 - [ ] Confirm Windows local working-copy synchronization without overwriting the user's untracked helper files or tracked local edits.
 
 ### Boundaries
