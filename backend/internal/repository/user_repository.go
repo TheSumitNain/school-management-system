@@ -297,14 +297,14 @@ WHERE LOWER(u.username) = LOWER($1)
 		&principal.Type,
 		&principal.Status,
 		&principal.TokenVersion,
-		&principal.SchoolID,
-		&principal.Username,
+		&principal.SchoolID,		&principal.Username,
 		&userStatus,
 		&schoolStatus,
 	); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrUserNotFound
-		}		return nil, fmt.Errorf("get staff principal by username: %w", err)
+		}
+		return nil, fmt.Errorf("get staff principal by username: %w", err)
 	}
 
 	if principal.Status != "active" || userStatus != "active" {
@@ -597,8 +597,7 @@ func (r *UserRepository) DisableStaffAccount(ctx context.Context, actorPrincipal
 		  AND target_principal.principal_type = 'staff'
 		  AND target_principal.status = 'active'
 		  AND NOT EXISTS (
-		      SELECT 1
-		      FROM principal_roles target_roles
+		      SELECT 1		      FROM principal_roles target_roles
 		      JOIN roles target_role ON target_role.id = target_roles.role_id
 		      WHERE target_roles.principal_id = target.principal_id
 		        AND target_roles.revoked_at IS NULL
@@ -897,12 +896,12 @@ func (r *UserRepository) EnableStaffAccount(
 		return fmt.Errorf("authorize same-school staff account re-enable: %w", err)
 	}
 
-	// Reactivate the canonical principal first. The V4 status-sync trigger
-	// updates users.status atomically; the credential update below then sets
+	// Reactivate the canonical principal first. The V4 status-sync trigger	// updates users.status atomically; the credential update below then sets
 	// the temporary password and forced-change flag without a second status
 	// transition.
 	tag, err := tx.Exec(ctx, `
-		UPDATE auth_principals		   SET status = 'active',
+		UPDATE auth_principals
+		   SET status = 'active',
 		       token_version = token_version + 1,
 		       updated_at = NOW()
 		 WHERE id = $1
