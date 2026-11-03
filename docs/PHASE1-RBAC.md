@@ -266,7 +266,7 @@ Clerk, Manager, Librarian, Gate Keeper, Helper, Bus Conductor, Driver and other 
 
 ## 10. Implementation status and next work
 
-The approved Phase 1 requirements remain broader than the currently completed application. The active branch has completed principal-aware authentication, live permission resolution, mandatory admin MFA, staff password lifecycle controls, and the V1–V16 schema hardening. GitHub Actions verifies the complete migration chain and opt-in PostgreSQL integration suite on an ephemeral PostgreSQL 18 database.
+The approved Phase 1 requirements remain broader than the currently completed application. The active branch has completed principal-aware authentication, live permission resolution, mandatory admin MFA, staff password lifecycle controls, and the V1–V16 schema hardening. GitHub Actions verifies the complete migration chain and opt-in PostgreSQL integration suite on an ephemeral PostgreSQL 18 database. The latest run on commit `d7aa45b` passed the full suite and `go vet ./...`.
 
 Implemented API foundations now include:
 - Platform Admin school onboarding and one-time first Platform Admin bootstrap.
@@ -275,11 +275,11 @@ Implemented API foundations now include:
 - Platform Admin grant/revoke of school permission delegation ceilings, guarded by `platform.permissions.delegate`.
 - School Admin listing of active delegation IDs and custom-role permission grant/revoke using exact delegation IDs.
 - School Admin staff permission override list/set/remove using exact delegation IDs and explicit ALLOW/DENY effects.
+- Same-school staff role assignment list/assign/revoke; School Admin cannot assign or revoke the reserved `school_admin` role.
 - Staff password change and same-school School Admin password reset, with token-version invalidation and audit events.
 
 The following remain incomplete and must not be represented as finished:
 - Staff account creation/invitation and full provisioning workflows.
-- Assigning/revoking roles for staff accounts through audited HTTP workflows.
 - Platform Admin UI/workflow for reviewing all delegation history.
 - Full HTTP/security integration coverage for the new role/delegation/override endpoints and PostgreSQL repository paths.
 - Business API authorization, including tenant boundaries, class/section/subject assignment scope, class-in-charge scope, and field-level student/family/financial data controls.
