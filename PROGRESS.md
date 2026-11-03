@@ -216,7 +216,7 @@ The user has finalized the Phase 1 account and RBAC direction. The detailed auth
 - Future Parent mobile target: one verified Parent identity may access officially linked children across schools, read-only. Authentication and OTP provider are deferred to Phase 2; no Parent implementation is active now.
 - Permissions are checked server-side on each protected request; permission changes apply to the next request. Tenant, assignment, field-level, account-status, and school-status checks cannot be bypassed by overrides.
 
-These are approved requirements, not proof of complete RBAC enforcement. The V4 SQL draft now contains source-level corrective audit items C1–C14, and the 2026-11-01 Go principal-auth cutover candidate is documented in `docs/CURRENT-BUILD-FIX-HANDOFF-20261101.md`. The V4–V12 sequence is included in the user's reported `school_management_test` schema (version 12, `dirty=false`); this does not establish production DB state or complete edge-case coverage. The current Go principal-auth cutover is present; rerun full tests/vet after subsequent code changes. Custom-role grants and ALLOW overrides remain intentionally fail-closed, and business-resource/tenant/teacher/parent authorization routes remain pending.
+These are approved requirements, not proof of complete RBAC enforcement. The V4 SQL draft now contains source-level corrective audit items C1–C14, and the 2026-11-01 Go principal-auth cutover candidate is documented in `docs/CURRENT-BUILD-FIX-HANDOFF-20261101.md`. The V4–V12 sequence is included in the user's reported `school_management_test` schema (version 12, `dirty=false`); this does not establish production DB state or complete edge-case coverage. The current branch now includes V15 staff temporary-password enforcement and V16 exact delegation-ID linkage. Custom-role grants and ALLOW overrides are resolved only while the exact referenced delegation remains active. V15/V16 migrations and their PostgreSQL integration tests remain pending on `school_management_test`; role/permission administration HTTP workflows and business-resource/tenant/teacher authorization routes remain pending.
 
 ## 2026-11-03 Backend/Database Source Audit
 
@@ -255,22 +255,22 @@ These are approved requirements, not proof of complete RBAC enforcement. The V4 
 - [ ] Complete user-profile retrieval
 - [ ] Production school onboarding and secure invitation workflow
 - [ ] Password-reset workflow and one-time reset tokens
-- [ ] Mandatory MFA for Platform Admin and School Admin
-- [ ] MFA recovery codes, recovery workflows and audit logging
-- [ ] Failed-login lockout: 5 failed attempts followed by a 15-minute lock
-- [ ] Login and account/IP rate limiting
+- [x] Mandatory TOTP MFA for Platform Admin and School Admin (V8–V10 source and current auth flow)
+- [x] MFA recovery codes, one-time recovery workflow and audit history (broader threat-model review remains pending)
+- [x] Failed-login lockout: 5 failed attempts followed by a 15-minute lock
+- [x] Identifier-based login lockout and IP-based login rate limiting
 - [ ] Security-event logging and audit trail
 - [ ] Account deactivation and complete session invalidation
 - [ ] Admin idle-session timeout of 30 minutes
-- [ ] Verify all agreed password policy requirements
-- [ ] Complete access-token revocation strategy
+- [x] Current 12–72 byte password policy and local common-password denylist; breached-password intelligence remains pending
+- [x] Password changes/resets immediately invalidate access JWTs through token-version increments; broader administrative event revocation policy remains pending
 
 ### Authorization and Multi-Tenancy
 
-- [ ] Implement application-level role-based access control (RBAC)
+- [x] Core principal RBAC schema, live permission resolver, RequirePermission, and exact delegation-linked custom-role/ALLOW resolution; role administration and resource-level enforcement remain pending
 - [x] Prepare V4 identity/RBAC SQL migration draft; user later reported cumulative V4–V12 applied on `school_management_test` (version 12, `dirty=false`)
 - [ ] Implement permission checks on protected endpoints
-- [ ] Support authorized permission changes taking effect on subsequent protected requests
+- [x] Live permissions are reloaded from PostgreSQL on every protected request; permission changes apply on the next request
 - [ ] Implement school-level tenant authorization
 - [ ] Ensure client-provided school IDs never independently grant access
 - [ ] Add cross-school authorization and data-isolation tests
