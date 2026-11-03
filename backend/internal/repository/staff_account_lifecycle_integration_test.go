@@ -57,6 +57,23 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
 		 LIMIT 1
 	`).Scan(&platformAdminPrincipalID)
 	if errors.Is(err, pgx.ErrNoRows) {
+		var anyPlatformAdminExists bool
+		if checkErr := tx.QueryRow(ctx, `
+			SELECT EXISTS (SELECT 1 FROM platform_admin_accounts)
+			    OR EXISTS (
+			        SELECT 1
+			          FROM principal_roles pr
+			          JOIN roles r ON r.id = pr.role_id
+			         WHERE r.principal_type = 'platform_admin'
+			           AND r.scope_type = 'platform'
+			           AND r.role_key = 'platform_admin'
+			    )
+		`).Scan(&anyPlatformAdminExists); checkErr != nil {
+			t.Fatalf("check existing Platform Admin bootstrap state: %v", checkErr)
+		}
+		if anyPlatformAdminExists {
+			t.Skip("an existing Platform Admin is not active with the required onboarding permission")
+		}
 		platformAdminPrincipalID, err = NewPlatformAdminRepository(pool).bootstrapFirstInTx(
 			ctx, tx, fmt.Sprintf("staff-lifecycle-%d@example.invalid", time.Now().UnixNano()),
 			"integration-test-password-hash",
