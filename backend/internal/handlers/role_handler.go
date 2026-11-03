@@ -242,7 +242,7 @@ func (h *RoleHandler) GrantCustomRolePermission(c *gin.Context) {
 		c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": "Role permission grant is not authorized"})
 	case errors.Is(err, repository.ErrDelegationNotFound), errors.Is(err, repository.ErrRoleNotFound):
 		c.JSON(http.StatusConflict, gin.H{"status": "error", "message": "The exact active delegation or custom role is not available"})
-	case errors.Is(err, repository.ErrRoleNameTaken):
+	case errors.Is(err, repository.ErrRolePermissionAlreadyGranted):
 		c.JSON(http.StatusConflict, gin.H{"status": "error", "message": "Permission is already granted to this role"})
 	default:
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unable to grant permission to custom role"})
