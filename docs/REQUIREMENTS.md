@@ -24,23 +24,26 @@ These figures are initial planning targets, not verified system capacity limits.
 - Authentication: JWT access tokens and opaque refresh tokens
 - Password hashing: bcrypt
 
-## 4. Initial User Roles
+## 4. User Groups and Delivery Phases
 
+**Phase 1 — complete web product:**
 - Platform Admin
 - School Admin
-- Teacher
+- School staff, including Teachers and approved school-scoped operational roles as their modules are delivered.
+
+**Phase 2 — mobile applications/interfaces after Phase 1 web completion:**
 - Parent
+- Driver and other approved operational user groups.
+- Student access is not currently approved; no student login is included in Phase 1.
 
-Separate Student login and additional operational staff roles (such as Driver, Clerk, Manager, Librarian, Gate Keeper, Helper, and Bus Conductor) may be introduced in later phases. Teacher accounts are Phase 1 school staff accounts. No student login is included in Phase 1.
-
-These are planned product roles. Complete role storage, role-based access control (RBAC), permission management and authorization enforcement must be implemented and tested before the roles are treated as fully operational.
+These are planned user groups, not proof of implemented account types. Complete role storage, RBAC, permission management, resource scope and authorization enforcement must be implemented and tested before any role is treated as operational.
 
 ### Role responsibilities
 
 - **Platform Admin:** Manage platform-level school onboarding and authorized platform operations.
 - **School Admin:** Manage their own school's settings, users and authorized school operations.
 - **Teacher:** One-school staff account. Access is restricted by separately managed teaching assignments and class-in-charge assignments, with field-level limits on student data.
-- **Parent:** One verified mobile/OTP account may access all officially linked children, including children in different schools; parent access is read-only in Phase 1.
+- **Parent (Phase 2):** Intended to access officially linked children across schools through a read-only mobile experience. Authentication and OTP provider are deferred until Phase 2 planning.
 
 School Admin creates staff accounts and provides a temporary initial password. Staff usernames are globally unique and case-insensitive. A person working at multiple schools receives separate accounts at each school. School Admin provisions staff and may reset their passwords without the old password; staff self-service changes require the current password.
 
@@ -109,7 +112,7 @@ Initial attendance statuses:
 
 Assigned teachers and School Admins are intended to mark attendance according to the finalized permission rules. Past attendance corrections are intended to be restricted to School Admins.
 
-### 5.6 Parent Features
+### 5.6 Future Parent Mobile Features (Phase 2 — Deferred)
 
 - Parent account management
 - Verified parent–student relationships
@@ -120,21 +123,19 @@ Assigned teachers and School Admins are intended to mark attendance according to
 - Examination results and report cards
 - Notices and announcements
 
-Parent authentication is planned around a mobile number and OTP. The OTP provider and detailed recovery workflow remain open decisions.
+The future Parent experience is intended to be read-only and may include linked children's basic profiles, attendance, timetable, homework, published results and notices. One Parent identity may access multiple officially verified children, including across schools. Parent login, OTP provider, account activation and recovery decisions will be made when Phase 2 begins. Do not implement or extend Parent authentication while the Parent workstream is paused.
 
-One parent account should be able to access multiple children when each relationship has been officially verified.
+## 6. Phase 1 Exclusions and Future Scope
 
-## 6. Excluded From Initial Scope
+The following are excluded from the Phase 1 web delivery, but may be considered after the complete web product is stable:
 
-The following features are not part of the initial implementation:
+- Parent and Driver mobile applications/interfaces (Phase 2).
+- Fee collection and payment gateway.
+- Live bus GPS tracking.
+- Advanced analytics and AI features.
+- Microservices architecture.
 
-- Fee collection and payment gateway
-- Live bus tracking
-- Native Android or iOS applications
-- Advanced analytics and AI features
-- Microservices architecture
-
-These may be considered in future releases.
+Transport administration may be planned as a school web module if approved; live GPS tracking remains separate future scope.
 
 ## 7. Core Business Rules
 
@@ -209,6 +210,9 @@ Tenant isolation must be verified through automated tests, including attempts by
 
 ## 10. Development Approach
 
+- Deliver the complete web product first: Platform Admin, School Admin and school staff.
+- Defer Parent, Driver and other mobile-first experiences until the Phase 1 web product is complete.
+- Inspect the existing repository and reconcile the approved schema before each module; do not start a parallel rewrite.
 - Implement one module at a time.
 - Document requirements before implementing each major module.
 - Use version-controlled database migrations.
@@ -329,13 +333,14 @@ The Phase 1 role and permission direction is approved. Detailed permission ident
 
 ### 14.1 Account boundaries
 
+- Phase 1 web accounts are Platform Admin, School Admin and school staff (including Teachers and approved school-scoped roles).
 - Platform Admin has global platform scope and provisions School Admin accounts.
 - Every School Admin and staff account belongs to exactly one school. No staff account can access multiple schools. A person working at multiple schools must have separate accounts, passwords, and sessions.
 - Staff usernames are globally unique and case-insensitive. Duplicate usernames are not permitted across different schools.
 - School Admin creates staff accounts and provides a temporary initial password. Staff must change it at first login. Self-service password change requires the current password.
 - School Admin can reset a same-school staff password without knowing the old password. Reset must revoke all target sessions/access, force password change at next login, and be audited.
 - School Admin cannot create another School Admin or a Platform Admin.
-- Parent signs in using registered mobile + OTP. One verified parent identity can access multiple officially linked children across schools. No student login accounts are included in Phase 1.
+- Parent mobile access is Phase 2, after web completion. The intended model is one verified parent identity linked to multiple officially recorded children across schools; authentication is undecided and no Parent auth work is active in Phase 1. No student login accounts are included in Phase 1.
 
 ### 14.2 Teacher assignment and data limits
 
@@ -349,9 +354,9 @@ School Admin may create school-scoped custom roles from platform-defined permiss
 
 Permission evaluation is server-side on every protected request so changes take effect on the next request, including existing sessions.
 
-### 14.4 Parent dashboard
+### 14.4 Future Parent mobile experience (Phase 2)
 
-After OTP verification and guardian matching, the parent sees the list of all officially linked children. Selecting a child shows that child's permitted profile, attendance, timetable, homework, published results/report cards, and applicable notices. The backend verifies the parent-child link on every request; a selected child ID from the client is not proof of authorization. Parent access is read-only in Phase 1.
+After OTP verification and guardian matching, the parent sees the list of all officially linked children. Selecting a child shows that child's permitted profile, attendance, timetable, homework, published results/report cards, and applicable notices. The backend verifies the parent-child link on every request; a selected child ID from the client is not proof of authorization. Parent access is intended to be read-only in Phase 2. No Parent dashboard or Parent mobile implementation is part of Phase 1.
 
 ### 14.5 Implementation status
 
