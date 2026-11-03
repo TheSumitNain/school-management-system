@@ -219,5 +219,9 @@ AFTER INSERT ON public.schools
 FOR EACH ROW
 EXECUTE FUNCTION public.provision_school_system_roles();
 
+-- Trigger execution remains available after creation; callers receive no
+-- direct EXECUTE privilege on this SECURITY DEFINER trigger function.
+REVOKE ALL ON FUNCTION public.provision_school_system_roles() FROM PUBLIC;
+
 COMMENT ON FUNCTION public.provision_school_system_roles() IS
 'Atomically creates the reserved School Admin and Teacher system roles for a newly created school; callable only as a schools AFTER INSERT trigger.';
