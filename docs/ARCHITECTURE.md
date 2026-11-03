@@ -442,9 +442,9 @@ A teaching assignment (class/section/subject) and a class-in-charge assignment a
 
 A subject teacher can read only the basic student fields (name, roll number, class, section) for the assigned class/section and permitted teaching-related data for the assigned subject/class. A class-in-charge teacher can access attendance, same-day corrections within the configured cutoff, basic student details, timetable, homework, and applicable notices only for the exact class/section in charge. Past attendance corrections are School Admin-only. Neither assignment grants access to other classes or sensitive student fields by default.
 
-### 18.3 Parent dashboard and authorization
+### 18.3 Future Parent mobile access (Phase 2)
 
-The parent dashboard lists all officially linked children. Parent selects one child to view the permitted profile, attendance, timetable, homework, published results/report cards, and applicable notices. Every child-data API request must verify the authenticated parent's current verified relationship to that child. Parent access is read-only in Phase 1. Father and mother may have separate verified mobile accounts linked to the same child; removing one child link must not affect other links.
+Parent mobile access is deferred until the Phase 1 web product is complete. The intended experience is read-only: a Parent may view officially linked children and permitted profile, attendance, timetable, homework, published results/report cards and notices. Every child-data API request must verify the current authenticated Parent-to-guardian/student relationship server-side. One Parent may have links across schools; separate guardians may have their own verified accounts. Authentication, OTP provider and recovery rules remain undecided. Existing schema and service foundations are preserved, but no further Parent implementation is in the active Phase 1 workstream.
 
 ### 18.4 Dynamic RBAC
 
