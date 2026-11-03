@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"sync"
 	"testing"
@@ -29,7 +30,8 @@ func newPostgresIntegrationRepository(
 		t.Skip("set RUN_POSTGRES_INTEGRATION_TESTS=1 to run PostgreSQL integration tests")
 	}
 
-	if err := godotenv.Load("..\\..\\.env"); err != nil {
+	envPath := filepath.Join("..", "..", ".env")
+	if err := godotenv.Load(envPath); err != nil && !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("load backend .env file: %v", err)
 	}
 
