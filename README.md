@@ -52,7 +52,7 @@ The database must be designed incrementally but with future compatibility in min
 - PostgreSQL connection pool using pgxpool.
 - Health and database-readiness endpoints.
 - HTTP server timeouts and graceful shutdown handling.
-- Versioned migrations for `schools`, `users`, and `refresh_sessions`, including refresh-token family metadata.
+- Versioned PostgreSQL migrations for shared principals, RBAC, account subtypes, MFA/OTP foundations, audit history, student/guardian records and new-school system-role provisioning.
 - User and school repository operations.
 - bcrypt password hashing and verification, including password-length validation.
 - Authentication service operations for user creation and credential verification.
@@ -70,8 +70,8 @@ The database must be designed incrementally but with future compatibility in min
 - `POST /auth/logout` endpoint to revoke every active refresh session in the supplied token family.
 - Generic unauthorized responses for invalid login credentials.
 - Login response DTO that excludes password hashes.
-- Authentication middleware that validates Bearer access tokens and extracts authenticated user and school IDs.
-- Protected `GET /auth/me` endpoint returning the authenticated user's ID and school ID.
+- Authentication middleware that validates Bearer access tokens, reloads principal status/token version and effective permissions, and places canonical principal context in the request.
+- Protected `GET /auth/me` endpoint returning principal ID/type and staff-only school/username context.
 - Unit and handler tests for implemented authentication behavior.
 - Authentication middleware and API route tests.
 - Development-only seed command with environment safeguards.
@@ -95,9 +95,9 @@ Revokes all active refresh sessions in the token family associated with the supp
 
 #### `GET /auth/me`
 
-Requires an `Authorization: Bearer <access-token>` header. The middleware validates the token, and the endpoint returns the authenticated user's ID and school ID.
+Requires an `Authorization: Bearer <access-token>` header. The middleware validates the token, reloads current principal and authorization state, and returns principal ID/type plus staff-only school/username context.
 
-This endpoint currently returns identity IDs only; complete user-profile retrieval remains pending.
+This endpoint returns identity context only; complete user-profile retrieval and business-resource authorization remain pending.
 
 Platform Admin uses POST /auth/platform-admin/login with email/password and must complete TOTP enrollment or verification through /auth/mfa/enroll/verify or /auth/mfa/verify. MFA recovery-code regeneration routes are also present. See docs/API.md for request and response contracts.
 
