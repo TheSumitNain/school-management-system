@@ -113,11 +113,10 @@ WHERE ap.id = $1`
 	return &p, nil
 }
 
-// LoadEffectivePermissions intentionally fails closed for user-specific ALLOW
-// overrides and custom-role grants. The current V4 schema does not bind those
-// grants to the exact delegation that authorized them, so enabling them here
-// could revive stale privileges after a delegation is revoked and re-granted.
-// Built-in system-role grants and explicit DENY overrides are safe to resolve.
+// LoadEffectivePermissions resolves system-role grants, custom-role grants
+// bound to their exact active delegation, and user-specific overrides. A
+// revoked delegation cannot revive a grant after a later delegation is issued
+// for the same school/permission pair.
 type authorizationQueryer interface {
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 }
@@ -167,7 +166,7 @@ WHERE pr.principal_id = $1
 
 	rows, err := db.Query(ctx, roleQuery, principal.ID, principal.Type, nullableSchoolID(principal))
 	if err != nil {
-		return nil, fmt.Errorf("load built-in role permissions: %w", err)
+		return nil, fmt.Errorf("load effective role permissions: %w", err)
 	}
 	set := make(map[string]struct{})
 	for rows.Next() {
