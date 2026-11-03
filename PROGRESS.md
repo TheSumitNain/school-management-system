@@ -216,7 +216,7 @@ The user has finalized the Phase 1 account and RBAC direction. The detailed auth
 - Future Parent mobile target: one verified Parent identity may access officially linked children across schools, read-only. Authentication and OTP provider are deferred to Phase 2; no Parent implementation is active now.
 - Permissions are checked server-side on each protected request; permission changes apply to the next request. Tenant, assignment, field-level, account-status, and school-status checks cannot be bypassed by overrides.
 
-These are approved requirements, not proof of complete RBAC enforcement. The V4 SQL draft now contains source-level corrective audit items C1–C14, and the 2026-11-01 Go principal-auth cutover candidate is documented in `docs/CURRENT-BUILD-FIX-HANDOFF-20261101.md`. The migration remains unapplied and PostgreSQL-unverified; full Go tests/vet for the cutover candidate must be verified on the user's Windows Go 1.27.1 environment. Custom-role grants and ALLOW overrides remain intentionally fail-closed, and business-resource/tenant/teacher/parent authorization routes remain pending.
+These are approved requirements, not proof of complete RBAC enforcement. The V4 SQL draft now contains source-level corrective audit items C1–C14, and the 2026-11-01 Go principal-auth cutover candidate is documented in `docs/CURRENT-BUILD-FIX-HANDOFF-20261101.md`. The V4–V12 sequence is included in the user's reported `school_management_test` schema (version 12, `dirty=false`); this does not establish production DB state or complete edge-case coverage. The current Go principal-auth cutover is present; rerun full tests/vet after subsequent code changes. Custom-role grants and ALLOW overrides remain intentionally fail-closed, and business-resource/tenant/teacher/parent authorization routes remain pending.
 
 ## 2026-11-03 Backend/Database Source Audit
 
@@ -266,7 +266,7 @@ These are approved requirements, not proof of complete RBAC enforcement. The V4 
 ### Authorization and Multi-Tenancy
 
 - [ ] Implement application-level role-based access control (RBAC)
-- [x] Prepare V4 identity/RBAC SQL migration draft (not applied or PostgreSQL-tested)
+- [x] Prepare V4 identity/RBAC SQL migration draft; user later reported cumulative V4–V12 applied on `school_management_test` (version 12, `dirty=false`)
 - [ ] Implement permission checks on protected endpoints
 - [ ] Support authorized permission changes taking effect on subsequent protected requests
 - [ ] Implement school-level tenant authorization
