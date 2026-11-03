@@ -1,14 +1,14 @@
-> **Newest handoff — 2026-11-02:** The user pulled branch `fix/v4-auth-security-hardening` through `79c2717`. V11 was applied only to `school_management_test` (migration version 11, `dirty = false`). With PostgreSQL integration enabled, the full Go suite passed and `go vet ./...` completed without diagnostics. The focused MFA recovery-code integration test passed twice consecutively after its fixture-repeatability fix. Preserve all local modifications/untracked artifacts; do not run migrations against `school_management` without explicit approval.
+> **Newest handoff — 2026-11-03:** Active branch `fix/v4-auth-security-hardening`, code checkpoint `c79b3a5959e0d125dae0326298b554f7b2f90133` before the latest documentation updates. User approved Phase 1 as the complete Platform Admin, School Admin and school-staff web product. Parent/Driver mobile experiences are Phase 2 after web completion. Parent-specific work is paused; preserve the existing Parent/Guardian and OTP foundation. The repository currently has no React frontend directory. Preserve all local modifications, untracked helper files and stashes. Do not run migrations against `school_management` or apply V12 without explicit approval.
 
 # School Management System — Project Handoff
 
 > **Purpose:** This document is the primary handoff reference for continuing the existing School Management System project. Keep it synchronized with the source code, tests, database migrations, and other project documentation.
 >
-> **Latest source checkpoint:** `79c2717` — `test: isolate MFA recovery integration fixtures` on `fix/v4-auth-security-hardening` (verify the branch before making further changes).
+> **Latest source checkpoint before this docs update:** `c79b3a5959e0d125dae0326298b554f7b2f90133` — `test: cover fail-closed permission middleware` on `fix/v4-auth-security-hardening`.
 >
 > **Previous code/test milestone:** `a705f9a` — `test(auth): add PostgreSQL refresh session integration tests`
 >
-> **Branch:** `main`
+> **Active development branch:** `fix/v4-auth-security-hardening` (do not switch to or modify `main` without explicit approval).
 >
 > **Repository:** https://github.com/TheSumitNain/school-management-system
 >
@@ -16,7 +16,15 @@
 >
 > **Important:** These details describe the last reported state. Check the actual repository before assuming that no newer changes exist.
 
-## 0.1 Latest V11 Verification (2026-11-02)
+## 0.1 Approved Product Delivery Direction (2026-11-03)
+
+- Phase 1: complete web application for Platform Admin, School Admin and all approved school staff workflows.
+- Phase 2: Parent, Driver and other approved mobile experiences after Phase 1 web completion. Parent access is intended to be read-only initially; Parent authentication/OTP provider is deferred.
+- Parent-specific implementation is paused. Preserve existing Parent/Guardian schema and OTP code; do not extend or delete it.
+- Database design must support future modules through stable identity/role boundaries, strict school ownership, student/enrollment history separation, guardian relationship history, transport extensibility, auditability and shared backend APIs. Do not create speculative schema or run migrations without review and explicit approval.
+- Current repository has no React frontend directory. First reconcile backend/database modules, then establish frontend/API foundation and deliver dashboards module by module.
+
+## 0.2 Latest V11 Verification (2026-11-02)
 
 - V11 student/guardian schema migration applied successfully to `school_management_test`; migration state is version `11`, `dirty = false`.
 - `go test -count=1 -p 1 ./...` passed with `DB_NAME=school_management_test` and `RUN_POSTGRES_INTEGRATION_TESTS=1`.
@@ -25,7 +33,7 @@
 - These are user-reported Windows results. The local helper/untracked files must be preserved, and the working tree must be checked before staging or committing.
 - V11 does not implement authenticated parent-to-guardian/student relationships, OTP delivery, academic enrollment, class/section placement, or parent data APIs. Those remain separate future milestones.
 
-## 0.2 Earlier V4 Work (Historical; verify against current source)
+## 0.3 Earlier V4 Work (Historical; verify against current source)
 
 The V4 principal-auth Go cutover candidate is now wired into the API: principal-based staff login, principal refresh sessions, live principal loading, conservative effective-permission resolution, and principal-aware `/auth/me` context. The detailed file-level scope and known limitations are documented in `docs/CURRENT-BUILD-FIX-HANDOFF-20261101.md`.
 
@@ -63,7 +71,8 @@ Migration `000004_add_principal_rbac_foundation.up.sql` remains unapplied and Po
 
 ### Next steps
 
-1. Finish documentation reconciliation and safe Git delivery without disturbing local artifacts.
+1. Reconcile the current backend/database design against the approved web-first module plan; keep Parent implementation paused.
+2. Finish documentation reconciliation and safe Git delivery without disturbing local artifacts.
 2. Continue source-level migration audit from C17, based on actual evidence.
 3. Add disposable PostgreSQL migration/integration tests before planning any V4 application.
 4. Request explicit user approval before applying V4 to any database.
