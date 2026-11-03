@@ -5,6 +5,14 @@ All notable changes to the School Management System are documented in this file.
 This project is under active development. Verification results describe the latest reported local checks and should be rerun whenever relevant code changes.
 
 ## [Unreleased]
+### Product direction — web-first delivery (2026-11-03)
+
+- Approved Phase 1 as the complete web application for Platform Admin, School Admin and school staff.
+- Deferred Parent and Driver mobile applications/interfaces until Phase 1 web completion. Parent access is intended to be read-only initially; authentication and OTP provider remain undecided for Phase 2.
+- Paused further Parent-specific implementation while preserving existing Parent/Guardian schema and OTP foundation.
+- Confirmed future-ready database principles: shared identity/role boundaries, strict school ownership, student/enrollment history separation, guardian relationship history, transport extensibility, auditability and shared backend APIs for web/mobile. No speculative schema or migration execution is authorized.
+- Set delivery order: reconcile existing backend/database foundation, establish frontend/API foundation, then deliver Platform Admin, School Admin and staff modules with server-side authorization and tests.
+
 
 ### Parent OTP request and delivery foundation — 2026-11-02
 
