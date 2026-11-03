@@ -8,6 +8,7 @@
 CREATE OR REPLACE FUNCTION guard_role_insert_and_system_classification()
 RETURNS trigger
 LANGUAGE plpgsql
+SET search_path = pg_catalog, public
 AS $v13$
 BEGIN
     IF TG_OP = 'INSERT' THEN
@@ -100,7 +101,7 @@ BEGIN
 END;
 $v13$;
 
-CREATE OR REPLACE FUNCTION provision_school_system_roles()
+CREATE OR REPLACE FUNCTION public.provision_school_system_roles()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -216,7 +217,7 @@ $v13$;
 CREATE TRIGGER trg_provision_school_system_roles
 AFTER INSERT ON public.schools
 FOR EACH ROW
-EXECUTE FUNCTION provision_school_system_roles();
+EXECUTE FUNCTION public.provision_school_system_roles();
 
-COMMENT ON FUNCTION provision_school_system_roles() IS
+COMMENT ON FUNCTION public.provision_school_system_roles() IS
 'Atomically creates the reserved School Admin and Teacher system roles for a newly created school; callable only as a schools AFTER INSERT trigger.';
