@@ -95,6 +95,23 @@ func setupRouterWithHandlers(
 			middleware.RequirePermission("permissions.read"),
 			roleHandler.ListPermissions,
 		)
+		router.GET("/school/permission-delegations",
+			roleAuth,
+			middleware.RequirePermission("permissions.assign"),
+			roleHandler.ListSchoolPermissionDelegations,
+		)
+		router.POST("/school/roles/:roleID/permissions",
+			roleAuth,
+			middleware.RequirePermission("permissions.assign"),
+			middleware.RequirePermission("roles.update_custom"),
+			roleHandler.GrantCustomRolePermission,
+		)
+		router.DELETE("/school/roles/:roleID/permissions/:permissionKey",
+			roleAuth,
+			middleware.RequirePermission("permissions.assign"),
+			middleware.RequirePermission("roles.update_custom"),
+			roleHandler.RevokeCustomRolePermission,
+		)
 	}
 
 	if authHandler != nil {
