@@ -2,6 +2,8 @@ package repository
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"strconv"
 	"testing"
@@ -98,5 +100,48 @@ func TestParentAuthenticationRepositoryPostgresIntegration(t *testing.T) {
 
 	if _, err := repo.FindActiveParentByMobile(ctx, mobile+"9"); !errors.Is(err, models.ErrPrincipalNotAuthenticated) {
 		t.Fatalf("non-matching mobile error = %v, want principal not authenticated", err)
+	}
+
+	authorizationRepo := NewPrincipalAuthorizationRepository(pool)
+	if _, err := authorizationRepo.LoadPrincipalForAuthentication(ctx, principalID); err != nil {
+		t.Fatalf("eligible Parent should authenticate before link revocation: %v", err)
+	}
+
+	refreshRepo := NewPrincipalRefreshSessionRepository(pool)
+	oldDigest := sha256.Sum256([]byte("parent-session-before-link-revocation-" + suffix))
+	oldHash := hex.EncodeToString(oldDigest[:])
+	newDigest := sha256.Sum256([]byte("parent-session-after-link-revocation-" + suffix))
+	newHash := hex.EncodeToString(newDigest[:])
+	if err := refreshRepo.CreatePrincipal(ctx, principalID, oldHash, time.Now().Add(time.Hour)); err != nil {
+		t.Fatalf("create refresh session for eligible Parent: %v", err)
+	}
+
+	if _, err := pool.Exec(ctx, `
+		UPDATE parent_guardian_links
+		   SET revoked_at = NOW()
+		 WHERE principal_id = $1 AND revoked_at IS NULL
+	`, principalID); err != nil {
+		t.Fatalf("revoke all Parent guardian links: %v", err)
+	}
+
+	if _, err := authorizationRepo.LoadPrincipalForAuthentication(ctx, principalID); !errors.Is(err, models.ErrPrincipalNotAuthenticated) {
+		t.Fatalf("Parent authentication after all links revoked = %v, want not authenticated", err)
+	}
+	if _, err := repo.FindActiveParentByMobile(ctx, mobile); !errors.Is(err, models.ErrPrincipalNotAuthenticated) {
+		t.Fatalf("Parent mobile lookup after all links revoked = %v, want not authenticated", err)
+	}
+	if _, err := refreshRepo.RotatePrincipal(ctx, oldHash, newHash, time.Now().Add(2*time.Hour)); !errors.Is(err, ErrRefreshSessionInactive) {
+		t.Fatalf("Parent refresh after all links revoked = %v, want inactive session", err)
+	}
+
+	var activeSessions int
+	if err := pool.QueryRow(ctx, `
+		SELECT COUNT(*) FROM refresh_sessions
+		 WHERE principal_id = $1 AND revoked_at IS NULL
+	`, principalID).Scan(&activeSessions); err != nil {
+		t.Fatalf("count remaining active Parent refresh sessions: %v", err)
+	}
+	if activeSessions != 0 {
+		t.Fatalf("active Parent refresh sessions after link revocation = %d, want 0", activeSessions)
 	}
 }
