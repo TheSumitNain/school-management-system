@@ -86,7 +86,7 @@ func TestResetStaffPasswordHandlerUsesAuthenticatedSchoolScope(t *testing.T) {
 	}
 }
 
-func TestResetStaffPasswordHandlerMapsOutOfSchoolTarget(t *testing.T) {
+func TestResetStaffPasswordHandlerHidesUnexpectedRepositoryError(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	service := &fakeStaffPasswordService{resetErr: errors.New("not found")}
 	handler := &AuthHandler{staffPasswordService: service}
