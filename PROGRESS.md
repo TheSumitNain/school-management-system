@@ -218,6 +218,15 @@ The user has finalized the Phase 1 account and RBAC direction. The detailed auth
 
 These are approved requirements, not proof of complete RBAC enforcement. The V4 SQL draft now contains source-level corrective audit items C1–C14, and the 2026-11-01 Go principal-auth cutover candidate is documented in `docs/CURRENT-BUILD-FIX-HANDOFF-20261101.md`. The migration remains unapplied and PostgreSQL-unverified; full Go tests/vet for the cutover candidate must be verified on the user's Windows Go 1.27.1 environment. Custom-role grants and ALLOW overrides remain intentionally fail-closed, and business-resource/tenant/teacher/parent authorization routes remain pending.
 
+## 2026-11-03 Backend/Database Source Audit
+
+- [x] Confirmed there is no frontend directory in the current repository.
+- [x] Confirmed the API currently exposes authentication/MFA, `/auth/me`, `/health` and `/ready`; Platform Admin school onboarding and school business APIs are not yet wired.
+- [x] Confirmed authentication middleware reloads current principal/token version and permissions; `RequirePermission` exists and fails closed.
+- [x] Identified a school-onboarding schema blocker: V4 seeds school-scoped `school_admin` and `teacher` system roles only for schools existing at migration time; the current role guard blocks ordinary runtime creation of system roles.
+- [ ] Design and PostgreSQL-test a secure new-school system-role provisioning mechanism before implementing Platform Admin school creation.
+- [ ] Reconcile the actual `school_management_test` migration version/dirty flag; historical docs conflict about V4–V12 application status. Do not run migrations until this is resolved.
+
 ## Approved Web-First Delivery Plan — 2026-11-03
 
 - [x] Confirm Platform Admin, School Admin and complete school staff web dashboards as Phase 1.
