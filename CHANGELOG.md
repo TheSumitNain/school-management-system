@@ -5,6 +5,15 @@ All notable changes to the School Management System are documented in this file.
 This project is under active development. Verification results describe the latest reported local checks and should be rerun whenever relevant code changes.
 
 ## [Unreleased]
+### RBAC administration APIs (2026-11-03)
+
+- Added school role listing, custom school-role creation, and the active school permission catalogue endpoint.
+- Added Platform Admin grant/revoke endpoints for school permission delegation ceilings. Delegations require an active school and active delegable school permission and are audit logged.
+- Added School Admin listing of active delegation IDs and custom-role permission grant/revoke endpoints. Custom grants carry the exact active delegation ID enforced by V16.
+- Added School Admin staff permission override list/set/remove endpoints. ALLOW and DENY overrides both require the exact active override delegation ID, a same-school active target staff account, and an audit event.
+- These are backend API foundations, not a completed role administration UI or complete RBAC rollout. Staff role assignment workflows and business-resource/tenant/teacher-scope authorization remain pending.
+- Latest database-backed CI must be checked against the branch head before treating these newest endpoints as verified. The user's persistent databases were not modified by GitHub Actions.
+
 ### Authentication — staff password lifecycle (2026-11-03)
 
 - Added V15 `users.must_change_password` state. Existing staff rows retain the permanent-password state; newly inserted staff accounts default to requiring a first-login password change.
