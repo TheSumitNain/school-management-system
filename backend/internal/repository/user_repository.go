@@ -669,3 +669,282 @@ func (r *UserRepository) DisableStaffAccount(ctx context.Context, actorPrincipal
 	}
 	return nil
 }
+
+
+// UpdateStaffAccount changes a same-school staff username. The operation is
+// restricted to School Admins with users.update and invalidates every existing
+// access/refresh credential because the login identity has changed.
+func (r *UserRepository) UpdateStaffAccount(
+	ctx context.Context,
+	actorPrincipalID, schoolID, targetPrincipalID int64,
+	username string,
+) (*models.User, error) {
+	username = strings.TrimSpace(strings.ToLower(username))
+	if r == nil || r.db == nil || actorPrincipalID <= 0 || schoolID <= 0 ||
+		targetPrincipalID <= 0 || username == "" {
+		return nil, ErrInvalidUser
+	}
+
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin staff account update: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if _, err := tx.Exec(ctx,
+		`SELECT pg_advisory_xact_lock(hashtextextended('refresh-principal:' || $1::bigint::text,0))`,
+		targetPrincipalID,
+	); err != nil {
+		return nil, fmt.Errorf("lock target staff principal update: %w", err)
+	}
+
+	var user models.User
+	err = tx.QueryRow(ctx, `
+		SELECT target.id, target.principal_id, target.school_id, target.username,
+		       target.status, target.must_change_password, target.created_at, target.updated_at
+		  FROM users target
+		  JOIN auth_principals target_principal ON target_principal.id = target.principal_id
+		 WHERE target.principal_id = $1
+		   AND target.school_id = $2
+		   AND target.status = 'active'
+		   AND target_principal.principal_type = 'staff'
+		   AND target_principal.status = 'active'
+		   AND EXISTS (
+		       SELECT 1
+		         FROM users actor
+		         JOIN auth_principals actor_principal ON actor_principal.id = actor.principal_id
+		         JOIN principal_roles pr ON pr.principal_id = actor.principal_id AND pr.revoked_at IS NULL
+		         JOIN roles role ON role.id = pr.role_id
+		         JOIN role_permissions rp ON rp.role_id = role.id
+		         JOIN permissions perm ON perm.id = rp.permission_id
+		         JOIN schools actor_school ON actor_school.id = actor.school_id AND actor_school.status = 'active'
+		        WHERE actor.principal_id = $3
+		          AND actor.school_id = $2
+		          AND actor.status = 'active'
+		          AND actor_principal.principal_type = 'staff'
+		          AND actor_principal.status = 'active'
+		          AND role.school_id = $2
+		          AND role.scope_type = 'school'
+		          AND role.principal_type = 'staff'
+		          AND role.role_key = 'school_admin'
+		          AND role.is_system = TRUE
+		          AND perm.permission_key = 'users.update'
+		          AND perm.scope_type = 'school'
+		          AND perm.is_active = TRUE
+		          AND NOT EXISTS (
+		              SELECT 1 FROM user_permission_overrides denied
+		               WHERE denied.principal_id = actor.principal_id
+		                 AND denied.school_id = $2
+		                 AND denied.permission_id = perm.id
+		                 AND denied.effect = 'deny'
+		          )
+		   )
+		 FOR UPDATE OF target, target_principal
+	`, targetPrincipalID, schoolID, actorPrincipalID).Scan(
+		&user.ID, &user.PrincipalID, &user.SchoolID, &user.Username,
+		&user.Status, &user.MustChangePassword, &user.CreatedAt, &user.UpdatedAt,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrUserNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("authorize same-school staff account update: %w", err)
+	}
+
+	err = tx.QueryRow(ctx, `
+		UPDATE users
+		   SET username = $2,
+		       updated_at = NOW()
+		 WHERE id = $1
+		RETURNING username, updated_at
+	`, user.ID, username).Scan(&user.Username, &user.UpdatedAt)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" &&
+			pgErr.ConstraintName == "ux_users_username_global" {
+			return nil, ErrUsernameTaken
+		}
+		return nil, fmt.Errorf("update staff username: %w", err)
+	}
+
+	tag, err := tx.Exec(ctx, `
+		UPDATE auth_principals
+		   SET token_version = token_version + 1,
+		       updated_at = NOW()
+		 WHERE id = $1
+		   AND principal_type = 'staff'
+		   AND status = 'active'
+	`, targetPrincipalID)
+	if err != nil {
+		return nil, fmt.Errorf("invalidate updated staff access tokens: %w", err)
+	}
+	if tag.RowsAffected() != 1 {
+		return nil, ErrUserNotFound
+	}
+
+	if _, err := tx.Exec(ctx, `
+		UPDATE refresh_sessions
+		   SET revoked_at = COALESCE(revoked_at, NOW())
+		 WHERE principal_id = $1
+		   AND revoked_at IS NULL
+	`, targetPrincipalID); err != nil {
+		return nil, fmt.Errorf("revoke updated staff refresh sessions: %w", err)
+	}
+
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO audit_events
+		    (actor_principal_id, school_id, action, resource_type, resource_id, outcome, metadata)
+		VALUES ($1, $2, 'staff.account.updated', 'staff_user', $3, 'success',
+		        jsonb_build_object('username', $4, 'sessions_revoked', TRUE))
+	`, actorPrincipalID, schoolID, fmt.Sprint(user.ID), user.Username); err != nil {
+		return nil, fmt.Errorf("audit staff account update: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit staff account update: %w", err)
+	}
+	return &user, nil
+}
+
+// EnableStaffAccount reactivates a disabled same-school staff account only
+// when a School Admin supplies a new temporary password. It forces a password
+// change at next login and invalidates all pre-disable credentials.
+func (r *UserRepository) EnableStaffAccount(
+	ctx context.Context,
+	actorPrincipalID, schoolID, targetPrincipalID int64,
+	newPasswordHash string,
+) error {
+	if r == nil || r.db == nil || actorPrincipalID <= 0 || schoolID <= 0 ||
+		targetPrincipalID <= 0 || actorPrincipalID == targetPrincipalID || newPasswordHash == "" {
+		return ErrInvalidUser
+	}
+
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin staff account re-enable: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if _, err := tx.Exec(ctx,
+		`SELECT pg_advisory_xact_lock(hashtextextended('refresh-principal:' || $1::bigint::text,0))`,
+		targetPrincipalID,
+	); err != nil {
+		return fmt.Errorf("lock target staff principal re-enable: %w", err)
+	}
+
+	var targetUserID int64
+	err = tx.QueryRow(ctx, `
+		SELECT target.id
+		  FROM users target
+		  JOIN auth_principals target_principal ON target_principal.id = target.principal_id
+		 WHERE target.principal_id = $1
+		   AND target.school_id = $2
+		   AND target.status = 'disabled'
+		   AND target_principal.principal_type = 'staff'
+		   AND target_principal.status = 'disabled'
+		   AND NOT EXISTS (
+		       SELECT 1
+		         FROM principal_roles target_roles
+		         JOIN roles target_role ON target_role.id = target_roles.role_id
+		        WHERE target_roles.principal_id = target.principal_id
+		          AND target_roles.revoked_at IS NULL
+		          AND target_role.school_id = $2
+		          AND target_role.scope_type = 'school'
+		          AND target_role.principal_type = 'staff'
+		          AND target_role.role_key = 'school_admin'
+		          AND target_role.is_system = TRUE
+		   )
+		   AND EXISTS (
+		       SELECT 1
+		         FROM users actor
+		         JOIN auth_principals actor_principal ON actor_principal.id = actor.principal_id
+		         JOIN principal_roles pr ON pr.principal_id = actor.principal_id AND pr.revoked_at IS NULL
+		         JOIN roles role ON role.id = pr.role_id
+		         JOIN role_permissions rp ON rp.role_id = role.id
+		         JOIN permissions perm ON perm.id = rp.permission_id
+		         JOIN schools actor_school ON actor_school.id = actor.school_id AND actor_school.status = 'active'
+		        WHERE actor.principal_id = $3
+		          AND actor.school_id = $2
+		          AND actor.status = 'active'
+		          AND actor_principal.principal_type = 'staff'
+		          AND actor_principal.status = 'active'
+		          AND role.school_id = $2
+		          AND role.scope_type = 'school'
+		          AND role.principal_type = 'staff'
+		          AND role.role_key = 'school_admin'
+		          AND role.is_system = TRUE
+		          AND perm.permission_key = 'users.update'
+		          AND perm.scope_type = 'school'
+		          AND perm.is_active = TRUE
+		          AND NOT EXISTS (
+		              SELECT 1 FROM user_permission_overrides denied
+		               WHERE denied.principal_id = actor.principal_id
+		                 AND denied.school_id = $2
+		                 AND denied.permission_id = perm.id
+		                 AND denied.effect = 'deny'
+		          )
+		   )
+		 FOR UPDATE OF target, target_principal
+	`, targetPrincipalID, schoolID, actorPrincipalID).Scan(&targetUserID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrUserNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("authorize same-school staff account re-enable: %w", err)
+	}
+
+	tag, err := tx.Exec(ctx, `
+		UPDATE users
+		   SET status = 'active',
+		       password_hash = $2,
+		       must_change_password = TRUE,
+		       updated_at = NOW()
+		 WHERE id = $1
+		   AND status = 'disabled'
+	`, targetUserID, newPasswordHash)
+	if err != nil {
+		return fmt.Errorf("reactivate staff user row: %w", err)
+	}
+	if tag.RowsAffected() != 1 {
+		return ErrUserNotFound
+	}
+
+	tag, err = tx.Exec(ctx, `
+		UPDATE auth_principals
+		   SET status = 'active',
+		       token_version = token_version + 1,
+		       updated_at = NOW()
+		 WHERE id = $1
+		   AND principal_type = 'staff'
+		   AND status = 'disabled'
+	`, targetPrincipalID)
+	if err != nil {
+		return fmt.Errorf("reactivate staff principal: %w", err)
+	}
+	if tag.RowsAffected() != 1 {
+		return ErrUserNotFound
+	}
+
+	if _, err := tx.Exec(ctx, `
+		UPDATE refresh_sessions
+		   SET revoked_at = COALESCE(revoked_at, NOW())
+		 WHERE principal_id = $1
+		   AND revoked_at IS NULL
+	`, targetPrincipalID); err != nil {
+		return fmt.Errorf("revoke pre-existing staff refresh sessions: %w", err)
+	}
+
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO audit_events
+		    (actor_principal_id, school_id, action, resource_type, resource_id, outcome, metadata)
+		VALUES ($1, $2, 'staff.account.enabled', 'staff_user', $3, 'success',
+		        jsonb_build_object('must_change_password', TRUE, 'sessions_revoked', TRUE))
+	`, actorPrincipalID, schoolID, fmt.Sprint(targetUserID)); err != nil {
+		return fmt.Errorf("audit staff account re-enable: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit staff account re-enable: %w", err)
+	}
+	return nil
+}
