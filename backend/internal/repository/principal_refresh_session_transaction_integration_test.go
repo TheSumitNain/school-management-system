@@ -2,8 +2,11 @@ package repository
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
+	"math/big"
 	"strconv"
 	"testing"
 	"time"
@@ -38,7 +41,11 @@ func TestPrincipalRefreshSessionCreateInTxPostgresIntegration(t *testing.T) {
 		t.Fatalf("create parent principal: %v", err)
 	}
 	suffix := strconv.FormatInt(time.Now().UnixNano(), 10)
-	mobile := "+9198765" + suffix[len(suffix)-5:]
+	mobileRandom, err := rand.Int(rand.Reader, big.NewInt(4_000_000_000))
+	if err != nil {
+		t.Fatalf("generate unique integration mobile number: %v", err)
+	}
+	mobile := fmt.Sprintf("+91%d", 6_000_000_000+mobileRandom.Int64())
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO parent_accounts (principal_id, mobile_number, mobile_verified_at)
 		VALUES ($1, $2, NOW())
