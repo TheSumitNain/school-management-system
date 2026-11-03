@@ -23,7 +23,7 @@ This project is under active development. Verification results describe the late
 ### Verification
 
 - GitHub Actions on `fix/v4-auth-security-hardening` commit `4351ce9`: `go test -count=1 -p 1 ./...` PASS; `go vet ./...` PASS.
-- CI did not enable `RUN_POSTGRES_INTEGRATION_TESTS=1`; do not treat V15/V16 PostgreSQL integration tests as executed.
+- GitHub Actions commit `fcffdbf` enabled `RUN_POSTGRES_INTEGRATION_TESTS=1`, applied V1–V16 to ephemeral PostgreSQL 18, passed `go test -count=1 -p 1 ./...`, and passed `go vet ./...`. The persistent user database was not touched.
 
 ### Database — V13 new-school system-role provisioning (2026-11-03)
 
