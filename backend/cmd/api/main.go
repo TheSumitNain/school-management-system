@@ -33,11 +33,21 @@ func setupRouter(
 	tokenService middleware.AccessTokenValidator,
 	principalLoader middleware.PrincipalLoader,
 	permissionLoader middleware.PermissionLoader,
+	schoolOnboardingHandlers ...*handlers.SchoolOnboardingHandler,
 ) (*gin.Engine, error) {
 	router := gin.Default()
 
 	if err := router.SetTrustedProxies(nil); err != nil {
 		return nil, fmt.Errorf("configure trusted proxies: %w", err)
+	}
+
+	if len(schoolOnboardingHandlers) > 0 && schoolOnboardingHandlers[0] != nil {
+		router.POST("/platform/schools",
+			middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader),
+			middleware.RequirePermission("platform.schools.create"),
+			middleware.RequirePermission("platform.school_admins.create"),
+			schoolOnboardingHandlers[0].Create,
+		)
 	}
 
 	if authHandler != nil {
@@ -188,7 +198,11 @@ func run() error {
 	authHandler.SetMFAService(mfaService, principalAuthorizationRepo)
 	authHandler.SetPlatformAdminAuthService(platformAdminAuthService)
 
-	router, err := setupRouter(db, authHandler, tokenService, principalAuthorizationRepo, principalAuthorizationRepo)
+	schoolOnboardingRepo := repository.NewSchoolOnboardingRepository(db)
+	schoolOnboardingService := services.NewSchoolOnboardingService(schoolOnboardingRepo)
+	schoolOnboardingHandler := handlers.NewSchoolOnboardingHandler(schoolOnboardingService)
+
+	router, err := setupRouter(db, authHandler, tokenService, principalAuthorizationRepo, principalAuthorizationRepo, schoolOnboardingHandler)
 
 	if err != nil {
 		return fmt.Errorf("setup router: %w", err)
