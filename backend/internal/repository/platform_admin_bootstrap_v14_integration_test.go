@@ -50,6 +50,55 @@ func TestFirstPlatformAdminBootstrapV14PostgresIntegration(t *testing.T) {
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
+
+	t.Run("repository bootstrap transaction and audit", func(t *testing.T) {
+		bootstrapTx, err := pool.Begin(ctx)
+		if err != nil {
+			t.Fatalf("begin repository bootstrap transaction: %v", err)
+		}
+		defer func() { _ = bootstrapTx.Rollback(ctx) }()
+
+		email := fmt.Sprintf("bootstrap-repository-%d@example.invalid", time.Now().UnixNano())
+		const passwordHash = "integration-test-password-hash"
+		repo := NewPlatformAdminRepository(pool)
+		principalID, err := repo.bootstrapFirstInTx(ctx, bootstrapTx, email, passwordHash)
+		if err != nil {
+			t.Fatalf("run repository first-admin bootstrap: %v", err)
+		}
+		if _, err := bootstrapTx.Exec(ctx, "SET CONSTRAINTS ALL IMMEDIATE"); err != nil {
+			t.Fatalf("validate bootstrapped principal subtype: %v", err)
+		}
+
+		var storedPrincipalID int64
+		if err := bootstrapTx.QueryRow(ctx, `
+			SELECT principal_id FROM platform_admin_accounts WHERE LOWER(BTRIM(email)) = $1
+		`, email).Scan(&storedPrincipalID); err != nil {
+			t.Fatalf("load bootstrapped Platform Admin: %v", err)
+		}
+		var roleCount, auditCount int
+		if err := bootstrapTx.QueryRow(ctx, `
+			SELECT COUNT(*) FROM principal_roles pr
+			JOIN roles r ON r.id = pr.role_id
+			WHERE pr.principal_id = $1 AND pr.revoked_at IS NULL
+			  AND r.role_key = 'platform_admin' AND r.scope_type = 'platform'
+		`, principalID).Scan(&roleCount); err != nil {
+			t.Fatalf("verify Platform Admin role assignment: %v", err)
+		}
+		if err := bootstrapTx.QueryRow(ctx, `
+			SELECT COUNT(*) FROM audit_events
+			WHERE action = 'platform.admin.bootstrapped'
+			  AND resource_id = $1 AND metadata->>'email' = $2
+		`, fmt.Sprint(principalID), email).Scan(&auditCount); err != nil {
+			t.Fatalf("verify bootstrap audit event: %v", err)
+		}
+		if storedPrincipalID != principalID || roleCount != 1 || auditCount != 1 {
+			t.Fatalf("bootstrap mismatch: principal=%d stored=%d roles=%d audit=%d", principalID, storedPrincipalID, roleCount, auditCount)
+		}
+		if _, err := repo.bootstrapFirstInTx(ctx, bootstrapTx, "second-"+email, passwordHash); err != ErrPlatformAdminAlreadyBootstrapped {
+			t.Fatalf("expected second bootstrap rejection, got %v", err)
+		}
+	})
+
 	if _, err := tx.Exec(ctx, "SAVEPOINT first_platform_admin"); err != nil {
 		t.Fatalf("create first bootstrap savepoint: %v", err)
 	}
