@@ -35,6 +35,10 @@ func (f *fakeStaffAccountService) List(context.Context, int64, int64) ([]models.
 	return []models.User{{ID: 15, PrincipalID: 27, SchoolID: 8, Username: "teacher.one", Status: "active", MustChangePassword: true}}, f.err
 }
 
+func (f *fakeStaffAccountService) Disable(context.Context, int64, int64, int64) error {
+	return f.err
+}
+
 func TestStaffHandlerCreateSuccessDoesNotExposePassword(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	service := &fakeStaffAccountService{user: &models.User{
@@ -126,5 +130,21 @@ func TestStaffHandlerListUsesAuthenticatedSchoolAndReturnsPrincipalIDs(t *testin
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"principal_id":27`) ||
 		!strings.Contains(rec.Body.String(), "teacher.one") || strings.Contains(rec.Body.String(), "PasswordHash") {
 		t.Fatalf("unexpected staff listing response: status=%d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestStaffHandlerDisableRequiresAuthenticatedPrincipal(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	service := &fakeStaffAccountService{}
+	router := gin.New()
+	router.DELETE("/school/staff/:principalID", func(c *gin.Context) {
+		c.Set("auth_principal_id", int64(31))
+		c.Set("auth_school_id", int64(8))
+		c.Next()
+	}, NewStaffHandler(service).Disable)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodDelete, "/school/staff/42", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("disable status = %d, body=%s", rec.Code, rec.Body.String())
 	}
 }
