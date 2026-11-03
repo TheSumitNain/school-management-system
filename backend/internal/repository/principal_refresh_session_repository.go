@@ -206,6 +206,7 @@ SELECT rs.id, rs.family_id, rs.principal_id,
        u.id,
        COALESCE(u.school_id,0),
        COALESCE(u.username,''),
+       COALESCE(u.must_change_password,FALSE),
        COALESCE(s.status,''),
        (pa.principal_id IS NOT NULL),
        COALESCE(parent.mobile_verified_at IS NOT NULL,FALSE),
@@ -252,6 +253,7 @@ FOR UPDATE OF rs, ap`
 	var principalType string
 	var principalStatus string
 	var username string
+	var mustChangePassword bool
 	var schoolStatus string
 	var tokenVersion int64
 	var userID pgtype.Int8
@@ -273,6 +275,7 @@ FOR UPDATE OF rs, ap`
 		&userID,
 		&schoolID,
 		&username,
+		&mustChangePassword,
 		&schoolStatus,
 		&hasPlatformAccount,
 		&mobileVerified,
@@ -385,13 +388,14 @@ FOR UPDATE OF rs, ap`
 	}
 
 	return &models.AuthPrincipal{
-		ID:             principalID,
-		Type:           principalType,
-		Status:         principalStatus,
-		TokenVersion:   tokenVersion,
-		SchoolID:       schoolID,
-		Username:       username,
-		MobileVerified: mobileVerified,
+		ID:                 principalID,
+		Type:               principalType,
+		Status:             principalStatus,
+		TokenVersion:       tokenVersion,
+		SchoolID:           schoolID,
+		Username:           username,
+		MobileVerified:     mobileVerified,
+		MustChangePassword: principalType == "staff" && mustChangePassword,
 	}, nil
 }
 
