@@ -50,7 +50,6 @@ func TestFirstPlatformAdminBootstrapV14PostgresIntegration(t *testing.T) {
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-
 	t.Run("repository bootstrap transaction and audit", func(t *testing.T) {
 		bootstrapTx, err := pool.Begin(ctx)
 		if err != nil {
