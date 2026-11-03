@@ -20,6 +20,9 @@ func TestFirstPlatformAdminBootstrapV14PostgresIntegration(t *testing.T) {
 		SELECT POSITION('7414' IN pg_get_functiondef(
 			'public.validate_principal_role_assignment()'::regprocedure
 		)) > 0
+		AND POSITION('v_role.is_system IS TRUE' IN pg_get_functiondef(
+			'public.validate_principal_role_assignment()'::regprocedure
+		)) > 0
 	`).Scan(&hasV14); err != nil {
 		t.Fatalf("detect V14 Platform Admin bootstrap guard: %v", err)
 	}
