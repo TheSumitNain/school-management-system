@@ -19,4 +19,7 @@ type AuthPrincipal struct {
 
 	// False for a parent until the mobile number is verified.
 	MobileVerified bool `json:"-"`
+
+	// Staff-only flag set when a temporary password must be replaced.
+	MustChangePassword bool `json:"must_change_password,omitempty"`
 }
