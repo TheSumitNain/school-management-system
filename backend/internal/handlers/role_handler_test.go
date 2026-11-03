@@ -19,6 +19,12 @@ type fakeRoleManagementService struct {
 	actorID int64
 	schoolID int64
 	name string
+	delegation *repository.SchoolPermissionDelegation
+	delegationID int64
+	permissionKey string
+	canAssignToRoles bool
+	canOverrideUsers bool
+	err error
 }
 
 func (f *fakeRoleManagementService) ListSchoolRoles(context.Context, int64, int64) ([]repository.SchoolRole, error) {
@@ -34,12 +40,18 @@ func (f *fakeRoleManagementService) CreateCustomRole(_ context.Context, actorID,
 	return f.created, nil
 }
 
-func (f *fakeRoleManagementService) GrantSchoolPermissionDelegation(context.Context, int64, int64, string, bool, bool) (*repository.SchoolPermissionDelegation, error) {
-	return &repository.SchoolPermissionDelegation{ID: 6, SchoolID: 8, PermissionKey: "attendance.read", CanAssignToRoles: true}, nil
+func (f *fakeRoleManagementService) GrantSchoolPermissionDelegation(_ context.Context, actorID, schoolID int64, permissionKey string, canAssignToRoles, canOverrideUsers bool) (*repository.SchoolPermissionDelegation, error) {
+	f.actorID, f.schoolID, f.permissionKey = actorID, schoolID, permissionKey
+	f.canAssignToRoles, f.canOverrideUsers = canAssignToRoles, canOverrideUsers
+	if f.delegation == nil {
+		f.delegation = &repository.SchoolPermissionDelegation{ID: 6, SchoolID: schoolID, PermissionKey: permissionKey, CanAssignToRoles: canAssignToRoles, CanOverrideUsers: canOverrideUsers}
+	}
+	return f.delegation, f.err
 }
 
-func (f *fakeRoleManagementService) RevokeSchoolPermissionDelegation(context.Context, int64, int64) error {
-	return nil
+func (f *fakeRoleManagementService) RevokeSchoolPermissionDelegation(_ context.Context, actorID, delegationID int64) error {
+	f.actorID, f.delegationID = actorID, delegationID
+	return f.err
 }
 
 func TestRoleHandlerCreateRoleUsesAuthenticatedSchool(t *testing.T) {
@@ -92,5 +104,53 @@ func TestRoleHandlerListsSchoolRolesAndPermissionCatalogue(t *testing.T) {
 	router.ServeHTTP(permissionsRec, httptest.NewRequest(http.MethodGet, "/school/permissions", nil))
 	if permissionsRec.Code != http.StatusOK || !strings.Contains(permissionsRec.Body.String(), "students.read_basic") {
 		t.Fatalf("permission list response = %d %s", permissionsRec.Code, permissionsRec.Body.String())
+	}
+}
+
+func TestRoleHandlerPlatformAdminDelegationGrantAndRevoke(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	service := &fakeRoleManagementService{}
+	handler := NewRoleHandler(service)
+	router := gin.New()
+	authenticate := func(c *gin.Context) {
+		c.Set("auth_principal_id", int64(99))
+		c.Next()
+	}
+	router.POST("/platform/schools/:schoolID/permission-delegations", authenticate, handler.GrantSchoolPermissionDelegation)
+	router.POST("/platform/permission-delegations/:delegationID/revoke", authenticate, handler.RevokeSchoolPermissionDelegation)
+
+	req := httptest.NewRequest(http.MethodPost, "/platform/schools/8/permission-delegations",
+		strings.NewReader(`{"permission_key":"attendance.read","can_assign_to_roles":true,"can_override_users":false}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated || service.actorID != 99 || service.schoolID != 8 ||
+		service.permissionKey != "attendance.read" || !service.canAssignToRoles || service.canOverrideUsers {
+		t.Fatalf("unexpected delegation grant: status=%d service=%+v body=%s", rec.Code, service, rec.Body.String())
+	}
+
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/platform/permission-delegations/6/revoke", nil))
+	if rec.Code != http.StatusOK || service.actorID != 99 || service.delegationID != 6 {
+		t.Fatalf("unexpected delegation revoke: status=%d service=%+v body=%s", rec.Code, service, rec.Body.String())
+	}
+}
+
+func TestRoleHandlerDelegationRejectsInvalidRequests(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	service := &fakeRoleManagementService{}
+	router := gin.New()
+	router.POST("/platform/schools/:schoolID/permission-delegations", func(c *gin.Context) {
+		c.Set("auth_principal_id", int64(99))
+		c.Next()
+	}, NewRoleHandler(service).GrantSchoolPermissionDelegation)
+
+	req := httptest.NewRequest(http.MethodPost, "/platform/schools/8/permission-delegations",
+		strings.NewReader(`{"permission_key":"attendance.read","can_assign_to_roles":false,"can_override_users":false}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected invalid delegation to be rejected, got %d: %s", rec.Code, rec.Body.String())
 	}
 }
