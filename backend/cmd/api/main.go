@@ -33,8 +33,23 @@ func setupRouter(
 	tokenService middleware.AccessTokenValidator,
 	principalLoader middleware.PrincipalLoader,
 	permissionLoader middleware.PermissionLoader,
-\tschoolOnboardingHandlers ...*handlers.SchoolOnboardingHandler,
-	roleHandlers ...*handlers.RoleHandler,
+	schoolOnboardingHandlers ...*handlers.SchoolOnboardingHandler,
+) (*gin.Engine, error) {
+	var schoolOnboardingHandler *handlers.SchoolOnboardingHandler
+	if len(schoolOnboardingHandlers) > 0 {
+		schoolOnboardingHandler = schoolOnboardingHandlers[0]
+	}
+	return setupRouterWithHandlers(db, authHandler, tokenService, principalLoader, permissionLoader, schoolOnboardingHandler, nil)
+}
+
+func setupRouterWithHandlers(
+	db databasePinger,
+	authHandler *handlers.AuthHandler,
+	tokenService middleware.AccessTokenValidator,
+	principalLoader middleware.PrincipalLoader,
+	permissionLoader middleware.PermissionLoader,
+	schoolOnboardingHandler *handlers.SchoolOnboardingHandler,
+	roleHandler *handlers.RoleHandler,
 ) (*gin.Engine, error) {
 	router := gin.Default()
 
@@ -42,31 +57,31 @@ func setupRouter(
 		return nil, fmt.Errorf("configure trusted proxies: %w", err)
 	}
 
-	if len(schoolOnboardingHandlers) > 0 && schoolOnboardingHandlers[0] != nil {
+	if schoolOnboardingHandler != nil {
 		router.POST("/platform/schools",
 			middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader),
 			middleware.RequirePermission("platform.schools.create"),
 			middleware.RequirePermission("platform.school_admins.create"),
-			schoolOnboardingHandlers[0].Create,
+			schoolOnboardingHandler.Create,
 		)
 	}
 
-	if len(roleHandlers) > 0 && roleHandlers[0] != nil {
+	if roleHandler != nil {
 		roleAuth := middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader)
 		router.GET("/school/roles",
 			roleAuth,
 			middleware.RequirePermission("roles.read"),
-			roleHandlers[0].ListRoles,
+			roleHandler.ListRoles,
 		)
 		router.POST("/school/roles",
 			roleAuth,
 			middleware.RequirePermission("roles.create_custom"),
-			roleHandlers[0].CreateRole,
+			roleHandler.CreateRole,
 		)
 		router.GET("/school/permissions",
 			roleAuth,
 			middleware.RequirePermission("permissions.read"),
-			roleHandlers[0].ListPermissions,
+			roleHandler.ListPermissions,
 		)
 	}
 
@@ -240,7 +255,7 @@ func run() error {
 	roleService := services.NewRoleService(roleRepo)
 	roleHandler := handlers.NewRoleHandler(roleService)
 
-	router, err := setupRouter(db, authHandler, tokenService, principalAuthorizationRepo, principalAuthorizationRepo, schoolOnboardingHandler, roleHandler)
+	router, err := setupRouterWithHandlers(db, authHandler, tokenService, principalAuthorizationRepo, principalAuthorizationRepo, schoolOnboardingHandler, roleHandler)
 
 	if err != nil {
 		return fmt.Errorf("setup router: %w", err)
