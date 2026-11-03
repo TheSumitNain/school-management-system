@@ -350,7 +350,7 @@ Parent uses registered mobile + OTP and can access multiple officially linked ch
 
 ### Immediate enforcement
 
-Role/permission changes, staff password resets, account disabling, and school suspension must affect subsequent protected requests. The access-token revocation mechanism is not yet implemented; design it before claiming immediate invalidation. Do not rely on refresh-session revocation alone to invalidate an already-issued access JWT.
+Role/permission changes and staff password changes/resets take effect on subsequent protected requests through live database permission loading and `auth_principals.token_version` checks. Staff password changes/resets increment token version and revoke active refresh sessions. Account disabling and school suspension are rejected by the live principal loader; their complete administration workflows remain pending.
 
 ## 2026-11-03 implementation update
 
