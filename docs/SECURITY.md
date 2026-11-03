@@ -37,22 +37,18 @@ These features establish an initial authentication foundation. They do not mean 
 
 ### Not yet implemented or fully verified
 
-- Immediate revocation of already-issued access JWTs.
 - Complete tenant/resource/assignment/field-level enforcement across school business services and repository queries.
-- Safe custom-role grants and user ALLOW overrides (currently fail closed pending exact delegation-ID linkage).
-- Staff password change/reset workflows and immediate invalidation of already-issued access tokens after administrative security changes.
 - Compromised-password intelligence checks and comprehensive production abuse monitoring.
-- Session invalidation after password changes, password resets, or other administrative security events.
 - Complete current-user profile retrieval from `GET /auth/me`.
 - Secure school and user provisioning workflows.
 - Comprehensive security audit logging and monitoring.
 - Production TLS and deployment-specific security configuration.
-- Broader PostgreSQL repository integration tests beyond the existing refresh-session lifecycle coverage.
+- PostgreSQL execution of the new V15/V16 password-lifecycle and exact-delegation integration tests remains pending on `school_management_test`.
 - Additional concurrent refresh-token rotation edge cases and broader race-condition testing.
 - A clean, independent end-to-end logout and refresh-after-logout verification.
 - Full production security testing, deployment review, and incident-response procedures.
 
-The authentication middleware currently protects `GET /auth/me`. Every additional protected route must explicitly enforce authentication and authorization.
+The authentication middleware currently protects `GET /auth/me`, password change, same-school staff password reset, Platform Admin school onboarding, and MFA recovery-code regeneration start. Every additional protected route must explicitly enforce authentication and authorization.
 
 ## 3. Password Security
 
@@ -77,7 +73,7 @@ Before public production deployment:
 - Implement a safe migration and rehash strategy if the hashing algorithm or policy changes.
 - Revoke appropriate sessions after password changes and password resets.
 
-The current minimum is 12 bytes and maximum is 72 bytes. The local common-password denylist is intentionally limited; a breached-password intelligence check and password-reset lifecycle remain outstanding.
+The current minimum is 12 bytes and maximum is 72 bytes. Staff self-service password change and same-school School Admin password reset are implemented. New staff accounts default to a temporary-password state; the next authenticated request is restricted to password change and identity inspection until replacement. Password changes/resets increment the principal token version and revoke all refresh sessions in the same transaction. The local common-password denylist is intentionally limited; breached-password intelligence remains outstanding.
 
 ## 4. Authentication and Token Security
 
@@ -120,7 +116,7 @@ The implemented service behavior and opt-in PostgreSQL repository integration te
 
 ### Logout limitations
 
-Logout revokes every active refresh session in the supplied token family. Repeated logout is idempotent and unknown tokens are a no-op. It does **not** immediately invalidate access JWTs that have already been issued. Those tokens remain valid until they expire unless an additional revocation mechanism is introduced.
+Logout revokes every active refresh session in the supplied token family. Repeated logout is idempotent and unknown tokens are a no-op. Logout alone does **not** immediately invalidate access JWTs that have already been issued. Staff password changes and administrator password resets do immediately invalidate existing access JWTs by incrementing the principal's database-backed token version; they also revoke every active refresh session for that principal.
 
 Before production deployment, decide whether short access-token lifetimes are sufficient or whether immediate revocation is required. Also define session invalidation behavior after password changes, account disabling, and administrative security events.
 
@@ -168,7 +164,7 @@ Tenant isolation must be enforced in backend services and repository queries, no
 
 ## 6. Authorization and Roles
 
-The core principal/RBAC schema, built-in role bundles, live system-role permission resolver and RequirePermission middleware are implemented. Custom-role grants and user ALLOW overrides remain disabled until exact delegation-ID linkage is enforced. Full route/resource/tenant/assignment authorization remains pending. Phase 1 web roles are Platform Admin, School Admin and Teacher; Parent and Driver are Phase 2.
+The core principal/RBAC schema, built-in role bundles, live permission resolver and RequirePermission middleware are implemented. V16 adds exact delegation-ID linkage for custom-role grants and user permission overrides; the resolver now accepts custom-role grants and ALLOW overrides only while the exact referenced delegation remains active. V16 migration and PostgreSQL behavior tests are committed but have not yet been applied/run on `school_management_test`. Full route/resource/tenant/assignment authorization remains pending. Phase 1 web roles are Platform Admin, School Admin and Teacher; Parent and Driver are Phase 2.
 
 The implementation must enforce:
 
@@ -187,7 +183,7 @@ The backend must enforce permissions independently of the frontend. Hiding a but
 
 The backend must enforce permissions independently of the frontend. Hiding a button or route in React is not an authorization control.
 
-The current authentication middleware establishes identity only. It does not prove that a user is authorized to perform every operation or access every resource within the user's school.
+The current authentication middleware establishes identity and resolves live role/override permissions. `RequirePermission` is applied to the implemented Platform Admin school-onboarding and staff password-reset routes. This does not yet prove that future business APIs will enforce every resource, assignment, field-level, and tenant boundary.
 
 ## 7. Database Security
 
@@ -355,3 +351,12 @@ Parent uses registered mobile + OTP and can access multiple officially linked ch
 ### Immediate enforcement
 
 Role/permission changes, staff password resets, account disabling, and school suspension must affect subsequent protected requests. The access-token revocation mechanism is not yet implemented; design it before claiming immediate invalidation. Do not rely on refresh-session revocation alone to invalidate an already-issued access JWT.
+
+## 2026-11-03 implementation update
+
+- V15 adds `users.must_change_password`: existing staff accounts retain their current state, while new staff accounts default to a required first-login password change.
+- Staff password change verifies the current password and policy-checks the replacement. In one transaction it clears the temporary flag, increments `auth_principals.token_version`, revokes all active refresh sessions, and appends an audit event.
+- School Admin password reset is exposed at `POST /school/staff/:principalID/password/reset`. The route requires `users.password_reset`; the repository independently verifies an active same-school School Admin, an active target staff account in the same active school, and the non-denied permission grant. Reset sets `must_change_password=TRUE`, increments token version, revokes refresh sessions, and audits the action.
+- Temporary-password staff access is restricted on each protected request to `POST /auth/password/change` and `GET /auth/me`; refresh rotation does not remove the restriction because the flag is reloaded from PostgreSQL.
+- V16 binds custom-role permission grants and user permission overrides to exact delegation IDs. A revoked delegation cannot reactivate an old grant after a new delegation is issued; explicit rebinding to the new ID is required.
+- GitHub Actions on branch `fix/v4-auth-security-hardening`, commit `4351ce9`, passed `go test -count=1 -p 1 ./...` and `go vet ./...`. V15/V16 PostgreSQL integration tests are present but still require execution against `school_management_test` after migrations are reviewed and applied.
