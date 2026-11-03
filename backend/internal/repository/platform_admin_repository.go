@@ -83,14 +83,31 @@ func (r *PlatformAdminRepository) BootstrapFirst(
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	// The same transaction-scoped lock is enforced by the V14 role-assignment
-	// trigger, so concurrent bootstrap attempts cannot both pass the first-admin check.
+	principalID, err := r.bootstrapFirstInTx(ctx, tx, email, passwordHash)
+	if err != nil {
+		return 0, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return 0, fmt.Errorf("commit initial Platform Admin bootstrap: %w", err)
+	}
+	return principalID, nil
+}
+
+// bootstrapFirstInTx performs the complete bootstrap inside a caller-owned
+// transaction. Keeping transaction ownership outside permits rollback-based
+// PostgreSQL integration tests without leaving a permanent Platform Admin.
+func (r *PlatformAdminRepository) bootstrapFirstInTx(
+	ctx context.Context,
+	tx pgx.Tx,
+	email string,
+	passwordHash string,
+) (int64, error) {
 	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(7414, 1)`); err != nil {
 		return 0, fmt.Errorf("lock Platform Admin bootstrap: %w", err)
 	}
 
 	var alreadyExists bool
-	err = tx.QueryRow(ctx, `
+	if err := tx.QueryRow(ctx, `
 		SELECT EXISTS (SELECT 1 FROM platform_admin_accounts)
 		    OR EXISTS (
 		        SELECT 1
@@ -100,8 +117,7 @@ func (r *PlatformAdminRepository) BootstrapFirst(
 		           AND r.scope_type = 'platform'
 		           AND r.role_key = 'platform_admin'
 		    )
-	`).Scan(&alreadyExists)
-	if err != nil {
+	`).Scan(&alreadyExists); err != nil {
 		return 0, fmt.Errorf("check existing Platform Admin bootstrap: %w", err)
 	}
 	if alreadyExists {
@@ -146,7 +162,7 @@ func (r *PlatformAdminRepository) BootstrapFirst(
 		return 0, fmt.Errorf("assign initial Platform Admin system role: %w", err)
 	}
 
-	_, err = tx.Exec(ctx, `
+	_, err := tx.Exec(ctx, `
 		INSERT INTO audit_events
 		    (actor_principal_id, action, resource_type, resource_id, outcome, metadata)
 		VALUES (NULL, 'platform.admin.bootstrapped', 'platform_admin', $1, 'success',
@@ -154,10 +170,6 @@ func (r *PlatformAdminRepository) BootstrapFirst(
 	`, strconv.FormatInt(principalID, 10), email)
 	if err != nil {
 		return 0, fmt.Errorf("audit initial Platform Admin bootstrap: %w", err)
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return 0, fmt.Errorf("commit initial Platform Admin bootstrap: %w", err)
 	}
 	return principalID, nil
 }
