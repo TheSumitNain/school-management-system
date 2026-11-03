@@ -142,6 +142,18 @@ func TestSchoolSystemRoleProvisioningV13PostgresIntegration(t *testing.T) {
 	}
 	rows.Close()
 
+	var provisionedRoleCount int
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*) FROM roles
+		 WHERE school_id = $1 AND is_system = TRUE
+		   AND role_key IN ('school_admin', 'teacher')
+	`, schoolID).Scan(&provisionedRoleCount); err != nil {
+		t.Fatalf("count provisioned system roles: %v", err)
+	}
+	if provisionedRoleCount != 2 {
+		t.Fatalf("expected exactly 2 school system roles, got %d", provisionedRoleCount)
+	}
+
 	if len(actual) != len(expected) {
 		t.Fatalf("expected exactly %d provisioned system roles, got %#v", len(expected), actual)
 	}
@@ -180,7 +192,7 @@ func TestSchoolSystemRoleProvisioningV13PostgresIntegration(t *testing.T) {
 		_, err := tx.Exec(ctx, `
 			INSERT INTO roles
 				(school_id, principal_type, scope_type, role_key, name, is_system)
-			VALUES ($1, 'staff', 'school', 'school_admin', 'Forged School Admin', TRUE)
+			VALUES ($1, 'staff', 'school', 'forged_system', 'Forged System Role', TRUE)
 		`, schoolID)
 		return err
 	})
@@ -190,7 +202,7 @@ func TestSchoolSystemRoleProvisioningV13PostgresIntegration(t *testing.T) {
 			INSERT INTO role_permissions (role_id, permission_id)
 			SELECT r.id, p.id
 			  FROM roles r
-			  JOIN permissions p ON p.permission_key = 'school.settings.read'
+			  JOIN permissions p ON p.permission_key = 'guardians.read'
 			 WHERE r.school_id = $1
 			   AND r.role_key = 'school_admin'
 			   AND r.is_system = TRUE
@@ -198,18 +210,27 @@ func TestSchoolSystemRoleProvisioningV13PostgresIntegration(t *testing.T) {
 		return err
 	})
 
-	expectFailure("missing required permission rolls back school creation", func() error {
-		if _, err := tx.Exec(ctx,
-			`UPDATE permissions SET is_active = FALSE WHERE permission_key = 'students.create'`,
-		); err != nil {
-			return err
-		}
-		_, err := tx.Exec(ctx, `
-			INSERT INTO schools (name, code, status)
-			VALUES ($1, $2, 'pending_setup')
-		`, "V13 Incomplete "+suffix, "V13X-"+suffix)
-		return err
-	})
+	if _, err := tx.Exec(ctx, "SAVEPOINT v13_missing_permission"); err != nil {
+		t.Fatalf("create missing-permission savepoint: %v", err)
+	}
+	if _, err := tx.Exec(ctx,
+		`UPDATE permissions SET is_active = FALSE WHERE permission_key = 'students.create'`,
+	); err != nil {
+		t.Fatalf("deactivate permission inside test savepoint: %v", err)
+	}
+	_, missingPermissionErr := tx.Exec(ctx, `
+		INSERT INTO schools (name, code, status)
+		VALUES ($1, $2, 'pending_setup')
+	`, "V13 Incomplete "+suffix, "V13X-"+suffix)
+	if missingPermissionErr == nil {
+		t.Fatal("expected school creation to fail when a required system-role permission is inactive")
+	}
+	if _, err := tx.Exec(ctx, "ROLLBACK TO SAVEPOINT v13_missing_permission"); err != nil {
+		t.Fatalf("rollback missing-permission savepoint: %v", err)
+	}
+	if _, err := tx.Exec(ctx, "RELEASE SAVEPOINT v13_missing_permission"); err != nil {
+		t.Fatalf("release missing-permission savepoint: %v", err)
+	}
 
 	var incompleteSchoolCount int
 	if err := tx.QueryRow(ctx, `
