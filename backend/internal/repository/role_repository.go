@@ -18,6 +18,7 @@ var (
 	ErrRolePermissionDenied = errors.New("school role operation is not authorized")
 	ErrDelegationNotFound = errors.New("school permission delegation not found")
 	ErrDelegationAlreadyActive = errors.New("an active delegation already exists for this school permission")
+	ErrRolePermissionAlreadyGranted = errors.New("permission is already granted to this custom role")
 )
 
 type SchoolRole struct {
@@ -536,7 +537,7 @@ func (r *RoleRepository) GrantCustomRolePermission(
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			return ErrRoleNameTaken
+			return ErrRolePermissionAlreadyGranted
 		}
 		return fmt.Errorf("insert custom role permission grant: %w", err)
 	}
