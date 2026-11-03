@@ -636,3 +636,229 @@ func (r *RoleRepository) RevokeCustomRolePermission(
 	}
 	return nil
 }
+
+type StaffPermissionOverride struct {
+	ID int64 `json:"id"`
+	PrincipalID int64 `json:"principal_id"`
+	PermissionKey string `json:"permission_key"`
+	Effect string `json:"effect"`
+	Reason string `json:"reason"`
+	GrantedBy int64 `json:"granted_by"`
+	DelegationID int64 `json:"delegation_id"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+func (r *RoleRepository) ListStaffPermissionOverrides(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64) ([]StaffPermissionOverride, error) {
+	if r == nil || r.db == nil || actorPrincipalID <= 0 || schoolID <= 0 || targetPrincipalID <= 0 {
+		return nil, ErrRolePermissionDenied
+	}
+	var authorized bool
+	err := r.db.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM auth_principals ap
+			JOIN users u ON u.principal_id = ap.id
+			JOIN schools s ON s.id = u.school_id
+			JOIN principal_roles pr ON pr.principal_id = ap.id AND pr.revoked_at IS NULL
+			JOIN roles r ON r.id = pr.role_id
+			JOIN role_permissions rp ON rp.role_id = r.id
+			JOIN permissions p ON p.id = rp.permission_id
+			WHERE ap.id = $1 AND ap.principal_type = 'staff' AND ap.status = 'active'
+			  AND u.status = 'active' AND u.school_id = $2 AND s.status = 'active'
+			  AND r.school_id = $2 AND r.scope_type = 'school' AND r.role_key = 'school_admin'
+			  AND p.permission_key = 'permissions.override' AND p.scope_type = 'school' AND p.is_active = TRUE
+			  AND NOT EXISTS (
+			      SELECT 1 FROM user_permission_overrides denied
+			      WHERE denied.principal_id = ap.id AND denied.school_id = $2
+			        AND denied.permission_id = p.id AND denied.effect = 'deny'
+			  )
+		)
+	`, actorPrincipalID, schoolID).Scan(&authorized)
+	if err != nil {
+		return nil, fmt.Errorf("authorize staff permission override listing: %w", err)
+	}
+	if !authorized {
+		return nil, ErrRolePermissionDenied
+	}
+	rows, err := r.db.Query(ctx, `
+		SELECT o.id, o.principal_id, p.permission_key, o.effect, o.reason,
+		       o.granted_by, o.delegation_id, o.created_at
+		FROM user_permission_overrides o
+		JOIN permissions p ON p.id = o.permission_id
+		JOIN users target ON target.principal_id = o.principal_id AND target.school_id = o.school_id
+		WHERE o.school_id = $1 AND o.principal_id = $2
+		ORDER BY p.permission_key
+	`, schoolID, targetPrincipalID)
+	if err != nil {
+		return nil, fmt.Errorf("list staff permission overrides: %w", err)
+	}
+	defer rows.Close()
+	items := make([]StaffPermissionOverride, 0)
+	for rows.Next() {
+		var item StaffPermissionOverride
+		if err := rows.Scan(&item.ID, &item.PrincipalID, &item.PermissionKey, &item.Effect,
+			&item.Reason, &item.GrantedBy, &item.DelegationID, &item.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scan staff permission override: %w", err)
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate staff permission overrides: %w", err)
+	}
+	return items, nil
+}
+
+func (r *RoleRepository) SetStaffPermissionOverride(
+	ctx context.Context,
+	actorPrincipalID, schoolID, targetPrincipalID, delegationID int64,
+	permissionKey, effect, reason string,
+) error {
+	permissionKey, effect, reason = strings.TrimSpace(permissionKey), strings.TrimSpace(effect), strings.TrimSpace(reason)
+	if r == nil || r.db == nil || actorPrincipalID <= 0 || schoolID <= 0 ||
+		targetPrincipalID <= 0 || delegationID <= 0 || permissionKey == "" ||
+		(effect != "allow" && effect != "deny") || reason == "" || len(reason) > 1000 {
+		return ErrRolePermissionDenied
+	}
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin staff permission override: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	var authorized bool
+	err = tx.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM auth_principals ap
+			JOIN users u ON u.principal_id = ap.id
+			JOIN schools s ON s.id = u.school_id
+			JOIN principal_roles pr ON pr.principal_id = ap.id AND pr.revoked_at IS NULL
+			JOIN roles r ON r.id = pr.role_id
+			JOIN role_permissions rp ON rp.role_id = r.id
+			JOIN permissions p ON p.id = rp.permission_id
+			WHERE ap.id = $1 AND ap.principal_type = 'staff' AND ap.status = 'active'
+			  AND u.status = 'active' AND u.school_id = $2 AND s.status = 'active'
+			  AND r.school_id = $2 AND r.scope_type = 'school' AND r.role_key = 'school_admin'
+			  AND p.permission_key = 'permissions.override' AND p.scope_type = 'school' AND p.is_active = TRUE
+			  AND NOT EXISTS (
+			      SELECT 1 FROM user_permission_overrides denied
+			      WHERE denied.principal_id = ap.id AND denied.school_id = $2
+			        AND denied.permission_id = p.id AND denied.effect = 'deny'
+			  )
+		)
+	`, actorPrincipalID, schoolID).Scan(&authorized)
+	if err != nil {
+		return fmt.Errorf("authorize staff permission override: %w", err)
+	}
+	if !authorized {
+		return ErrRolePermissionDenied
+	}
+	var overrideID int64
+	err = tx.QueryRow(ctx, `
+		INSERT INTO user_permission_overrides
+		    (principal_id, school_id, permission_id, effect, reason, granted_by, delegation_id)
+		SELECT target.principal_id, target.school_id, p.id, $5, $6, $1, d.id
+		FROM users target
+		JOIN auth_principals target_principal ON target_principal.id = target.principal_id
+		JOIN permissions p ON p.permission_key = $4
+		JOIN role_permission_delegations d
+		  ON d.id = $3 AND d.school_id = $2 AND d.permission_id = p.id
+		 AND d.can_override_users = TRUE AND d.revoked_at IS NULL
+		WHERE target.principal_id = $7 AND target.school_id = $2
+		  AND target.status = 'active' AND target_principal.status = 'active'
+		  AND target_principal.principal_type = 'staff'
+		  AND p.scope_type = 'school' AND p.is_active = TRUE AND p.is_delegable = TRUE
+		ON CONFLICT (principal_id, school_id, permission_id)
+		DO UPDATE SET effect = EXCLUDED.effect,
+		              reason = EXCLUDED.reason,
+		              granted_by = EXCLUDED.granted_by,
+		              delegation_id = EXCLUDED.delegation_id
+		RETURNING id
+	`, actorPrincipalID, schoolID, delegationID, permissionKey, effect, reason, targetPrincipalID).Scan(&overrideID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrDelegationNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("upsert staff permission override: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO audit_events
+		    (actor_principal_id, school_id, action, resource_type, resource_id, outcome, metadata)
+		VALUES ($1, $2, 'school.staff.permission_override.set', 'user_permission_override', $3, 'success',
+		        jsonb_build_object('permission_key', $4, 'effect', $5, 'delegation_id', $6, 'reason', $7))
+	`, actorPrincipalID, schoolID, fmt.Sprint(targetPrincipalID), permissionKey, effect, delegationID, reason); err != nil {
+		return fmt.Errorf("audit staff permission override: %w", err)
+	}
+	_ = overrideID
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit staff permission override: %w", err)
+	}
+	return nil
+}
+
+func (r *RoleRepository) DeleteStaffPermissionOverride(
+	ctx context.Context,
+	actorPrincipalID, schoolID, targetPrincipalID int64,
+	permissionKey string,
+) error {
+	permissionKey = strings.TrimSpace(permissionKey)
+	if r == nil || r.db == nil || actorPrincipalID <= 0 || schoolID <= 0 || targetPrincipalID <= 0 || permissionKey == "" {
+		return ErrRolePermissionDenied
+	}
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin staff permission override deletion: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	var authorized bool
+	err = tx.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM auth_principals ap
+			JOIN users u ON u.principal_id = ap.id
+			JOIN schools s ON s.id = u.school_id
+			JOIN principal_roles pr ON pr.principal_id = ap.id AND pr.revoked_at IS NULL
+			JOIN roles r ON r.id = pr.role_id
+			JOIN role_permissions rp ON rp.role_id = r.id
+			JOIN permissions p ON p.id = rp.permission_id
+			WHERE ap.id = $1 AND ap.principal_type = 'staff' AND ap.status = 'active'
+			  AND u.status = 'active' AND u.school_id = $2 AND s.status = 'active'
+			  AND r.school_id = $2 AND r.scope_type = 'school' AND r.role_key = 'school_admin'
+			  AND p.permission_key = 'permissions.override' AND p.scope_type = 'school' AND p.is_active = TRUE
+			  AND NOT EXISTS (
+			      SELECT 1 FROM user_permission_overrides denied
+			      WHERE denied.principal_id = ap.id AND denied.school_id = $2
+			        AND denied.permission_id = p.id AND denied.effect = 'deny'
+			  )
+		)
+	`, actorPrincipalID, schoolID).Scan(&authorized)
+	if err != nil {
+		return fmt.Errorf("authorize staff permission override deletion: %w", err)
+	}
+	if !authorized {
+		return ErrRolePermissionDenied
+	}
+	tag, err := tx.Exec(ctx, `
+		DELETE FROM user_permission_overrides o
+		USING permissions p
+		WHERE o.permission_id = p.id AND o.school_id = $1
+		  AND o.principal_id = $2 AND p.permission_key = $3
+	`, schoolID, targetPrincipalID, permissionKey)
+	if err != nil {
+		return fmt.Errorf("delete staff permission override: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrDelegationNotFound
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO audit_events
+		    (actor_principal_id, school_id, action, resource_type, resource_id, outcome, metadata)
+		VALUES ($1, $2, 'school.staff.permission_override.removed', 'user_permission_override', $3, 'success',
+		        jsonb_build_object('permission_key', $4))
+	`, actorPrincipalID, schoolID, fmt.Sprint(targetPrincipalID), permissionKey); err != nil {
+		return fmt.Errorf("audit staff permission override deletion: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit staff permission override deletion: %w", err)
+	}
+	return nil
+}
