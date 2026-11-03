@@ -250,7 +250,7 @@ The following details require further planning before the relevant modules are i
 
 - Initial product scope and target users
 - Technology stack and planned user roles
-- Core school, student, academic, attendance and parent features
+- Phase 1 web requirements for Platform Admin, School Admin and school staff; future Phase 2 Parent/Driver mobile requirements
 - Features excluded from the initial scope
 - Core business and security rules
 - Multi-tenant architecture decision
@@ -266,41 +266,36 @@ The following details require further planning before the relevant modules are i
 - Refresh-token family metadata migration
 - API health and database-readiness endpoints
 - HTTP server timeouts and graceful shutdown handling
-- User and school repository operations
+- Initial user and school repository operations
 - bcrypt password hashing and verification
-- Initial authentication service
-- JWT access-token generation and validation
-- `POST /auth/login`
-- Authentication middleware
-- Protected `GET /auth/me`
-- Refresh-token issuance and rotation
-- `POST /auth/refresh`
-- Refresh-token revocation on logout through `POST /auth/logout`
-- Refresh-token family revocation on replay
-- Unit and service tests for implemented authentication functionality
+- Principal-aware staff login with globally unique username lookup
+- Separate Platform Admin authentication
+- Principal-based JWT access tokens with token-version claims
+- Authentication middleware that reloads principal status, token version and current permissions
+- Fail-closed `RequirePermission` middleware
+- MFA enrollment, challenge verification and recovery-code workflows
+- Staff failed-login lockout and login IP rate-limit components
+- Principal-aware refresh-token issuance, rotation, replay detection and logout revocation
+- PostgreSQL integration coverage for refresh-session, MFA, login security, student/guardian and Parent/Guardian foundation areas (with opt-in test execution)
+- Unit, handler, middleware and service tests for implemented behavior
 
 These implementations form an initial foundation; they do not mean that all authentication, authorization, tenant-isolation or production-security requirements have been met.
 
 ### 12.3 Not Yet Implemented or Fully Verified
 
-- Complete RBAC and permission management
-- Comprehensive school-level tenant authorization
-- Automated cross-school isolation tests
-- Mandatory administrator MFA
-- Login rate limiting and failed-login lockout
-- Complete security audit logging
-- Administrator password-policy enforcement and compromised-password checks
-- Password reset and account recovery
-- Parent mobile OTP authentication
-- Full school onboarding and deactivation workflows
-- Complete user and school management workflows
-- Student admission and enrollment
-- Academic, timetable, attendance and parent-facing modules
-- Frontend dashboards and user workflows
-- Broader PostgreSQL repository integration tests beyond the existing refresh-session lifecycle suite
-- Additional concurrent refresh-token rotation and replay edge cases
-- Independent HTTP-level logout and session-revocation verification
-- Full migration and rollback verification
+- Complete route-level RBAC for all business APIs, custom-role grants and delegation-bound ALLOW overrides
+- Comprehensive school/resource/teacher-assignment authorization and automated cross-school isolation tests
+- Complete append-only audit-event writes for all sensitive business operations
+- Full staff password lifecycle, administrator idle timeout and final password-policy verification
+- Full school onboarding, School Admin provisioning and school lifecycle workflows
+- Complete staff account, role and assignment management workflows
+- Student admission, academic-year enrollment and class/section placement/history
+- Academic setup, attendance, timetable, homework, examinations, results, notices and reporting APIs
+- React frontend, API integration, Platform Admin dashboard, School Admin dashboard and school-staff workflows
+- Parent authentication, Parent mobile app and Driver mobile app (Phase 2; intentionally deferred and Parent work paused)
+- V13 new-school system-role provisioning migration review/application and PostgreSQL integration verification
+- Independent HTTP-level logout/session-revocation and full migration/forward-recovery verification
+- End-to-end, production deployment, backup/recovery, security and load testing
 - Production deployment, monitoring, backup and recovery safeguards
 - Load and performance testing
 
