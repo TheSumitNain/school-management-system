@@ -118,7 +118,9 @@ func TestParentAuthenticationRepositoryPostgresIntegration(t *testing.T) {
 
 	if _, err := pool.Exec(ctx, `
 		UPDATE parent_guardian_links
-		   SET revoked_at = NOW()
+		   SET revoked_at = NOW(),
+		       revoked_by_principal_id = $2,
+		       revocation_reason = 'integration test: revoke Parent eligibility'
 		 WHERE principal_id = $1 AND revoked_at IS NULL
 	`, principalID); err != nil {
 		t.Fatalf("revoke all Parent guardian links: %v", err)
