@@ -21,18 +21,11 @@ var (
 	ErrSchoolInactive = errors.New("school is inactive")
 )
 
-type userRepositoryDB interface {
-	Begin(context.Context) (pgx.Tx, error)
-	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
-	Query(context.Context, string, ...any) (pgx.Rows, error)
-	QueryRow(context.Context, string, ...any) pgx.Row
-}
-
 type UserRepository struct {
-	db userRepositoryDB
+	db repositoryDB
 }
 
-func NewUserRepository(db userRepositoryDB) *UserRepository {
+func NewUserRepository(db repositoryDB) *UserRepository {
 	return &UserRepository{db: db}
 }
 
