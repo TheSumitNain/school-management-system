@@ -19,6 +19,7 @@ var (
 	ErrDelegationNotFound = errors.New("school permission delegation not found")
 	ErrDelegationAlreadyActive = errors.New("an active delegation already exists for this school permission")
 	ErrRolePermissionAlreadyGranted = errors.New("permission is already granted to this custom role")
+	ErrRoleAssignmentExists = errors.New("staff member already has this active role assignment")
 )
 
 type SchoolRole struct {
@@ -860,5 +861,224 @@ func (r *RoleRepository) DeleteStaffPermissionOverride(
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("commit staff permission override deletion: %w", err)
 	}
+	return nil
+}
+
+type StaffRoleAssignment struct {
+	RoleID int64 `json:"role_id"`
+	RoleKey string `json:"role_key"`
+	Name string `json:"name"`
+	IsSystem bool `json:"is_system"`
+	AssignedAt time.Time `json:"assigned_at"`
+}
+
+func (r *RoleRepository) ListStaffRoleAssignments(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64) ([]StaffRoleAssignment, error) {
+	if r == nil || r.db == nil || actorPrincipalID <= 0 || schoolID <= 0 || targetPrincipalID <= 0 {
+		return nil, ErrRolePermissionDenied
+	}
+	var authorized bool
+	err := r.db.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM auth_principals ap
+			JOIN users u ON u.principal_id = ap.id
+			JOIN schools s ON s.id = u.school_id
+			JOIN principal_roles pr ON pr.principal_id = ap.id AND pr.revoked_at IS NULL
+			JOIN roles r ON r.id = pr.role_id
+			JOIN role_permissions rp ON rp.role_id = r.id
+			JOIN permissions p ON p.id = rp.permission_id
+			WHERE ap.id = $1 AND ap.principal_type = 'staff' AND ap.status = 'active'
+			  AND u.status = 'active' AND u.school_id = $2 AND s.status = 'active'
+			  AND r.school_id = $2 AND r.scope_type = 'school' AND r.role_key = 'school_admin'
+			  AND p.permission_key = 'roles.read' AND p.scope_type = 'school' AND p.is_active = TRUE
+			  AND NOT EXISTS (
+			      SELECT 1 FROM user_permission_overrides denied
+			      WHERE denied.principal_id = ap.id AND denied.school_id = $2
+			        AND denied.permission_id = p.id AND denied.effect = 'deny'
+			  )
+		)
+	`, actorPrincipalID, schoolID).Scan(&authorized)
+	if err != nil {
+		return nil, fmt.Errorf("authorize staff role assignment listing: %w", err)
+	}
+	if !authorized {
+		return nil, ErrRolePermissionDenied
+	}
+	rows, err := r.db.Query(ctx, `
+		SELECT r.id, r.role_key, r.name, r.is_system, pr.assigned_at
+		FROM principal_roles pr
+		JOIN roles r ON r.id = pr.role_id
+		JOIN users target ON target.principal_id = pr.principal_id AND target.school_id = $1
+		WHERE pr.principal_id = $2 AND pr.revoked_at IS NULL
+		  AND r.school_id = $1 AND r.scope_type = 'school'
+		  AND r.principal_type = 'staff'
+		ORDER BY r.is_system DESC, r.role_key
+	`, schoolID, targetPrincipalID)
+	if err != nil {
+		return nil, fmt.Errorf("list staff role assignments: %w", err)
+	}
+	defer rows.Close()
+	items := make([]StaffRoleAssignment, 0)
+	for rows.Next() {
+		var item StaffRoleAssignment
+		if err := rows.Scan(&item.RoleID, &item.RoleKey, &item.Name, &item.IsSystem, &item.AssignedAt); err != nil {
+			return nil, fmt.Errorf("scan staff role assignment: %w", err)
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate staff role assignments: %w", err)
+	}
+	return items, nil
+}
+
+func (r *RoleRepository) AssignStaffRole(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID, roleID int64) error {
+	if r == nil || r.db == nil || actorPrincipalID <= 0 || schoolID <= 0 || targetPrincipalID <= 0 || roleID <= 0 {
+		return ErrRolePermissionDenied
+	}
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin staff role assignment: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	var authorized bool
+	err = tx.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM auth_principals ap
+			JOIN users u ON u.principal_id = ap.id
+			JOIN schools s ON s.id = u.school_id
+			JOIN principal_roles pr ON pr.principal_id = ap.id AND pr.revoked_at IS NULL
+			JOIN roles r ON r.id = pr.role_id
+			JOIN role_permissions rp ON rp.role_id = r.id
+			JOIN permissions p ON p.id = rp.permission_id
+			WHERE ap.id = $1 AND ap.principal_type = 'staff' AND ap.status = 'active'
+			  AND u.status = 'active' AND u.school_id = $2 AND s.status = 'active'
+			  AND r.school_id = $2 AND r.scope_type = 'school' AND r.role_key = 'school_admin'
+			  AND p.permission_key = 'roles.assign' AND p.scope_type = 'school' AND p.is_active = TRUE
+			  AND NOT EXISTS (
+			      SELECT 1 FROM user_permission_overrides denied
+			      WHERE denied.principal_id = ap.id AND denied.school_id = $2
+			        AND denied.permission_id = p.id AND denied.effect = 'deny'
+			  )
+		)
+	`, actorPrincipalID, schoolID).Scan(&authorized)
+	if err != nil {
+		return fmt.Errorf("authorize staff role assignment: %w", err)
+	}
+	if !authorized {
+		return ErrRolePermissionDenied
+	}
+	var assignmentID int64
+	err = tx.QueryRow(ctx, `
+		INSERT INTO principal_roles (principal_id, role_id, assigned_by)
+		SELECT target.principal_id, target_role.id, $1
+		FROM users target
+		JOIN auth_principals target_principal ON target_principal.id = target.principal_id
+		JOIN roles target_role ON target_role.id = $4
+		WHERE target.principal_id = $2 AND target.school_id = $3
+		  AND target.status = 'active' AND target_principal.status = 'active'
+		  AND target_principal.principal_type = 'staff'
+		  AND target_role.school_id = $3 AND target_role.scope_type = 'school'
+		  AND target_role.principal_type = 'staff' AND target_role.role_key <> 'school_admin'
+		RETURNING id
+	`, actorPrincipalID, targetPrincipalID, schoolID, roleID).Scan(&assignmentID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrRoleNotFound
+	}
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return ErrRoleAssignmentExists
+		}
+		return fmt.Errorf("insert staff role assignment: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO audit_events
+		    (actor_principal_id, school_id, action, resource_type, resource_id, outcome, metadata)
+		VALUES ($1, $2, 'school.staff.role_assigned', 'staff_principal', $3, 'success',
+		        jsonb_build_object('role_id', $4))
+	`, actorPrincipalID, schoolID, fmt.Sprint(targetPrincipalID), roleID); err != nil {
+		return fmt.Errorf("audit staff role assignment: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit staff role assignment: %w", err)
+	}
+	_ = assignmentID
+	return nil
+}
+
+func (r *RoleRepository) RevokeStaffRole(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID, roleID int64) error {
+	if r == nil || r.db == nil || actorPrincipalID <= 0 || schoolID <= 0 || targetPrincipalID <= 0 || roleID <= 0 {
+		return ErrRolePermissionDenied
+	}
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin staff role revocation: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	var authorized bool
+	err = tx.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM auth_principals ap
+			JOIN users u ON u.principal_id = ap.id
+			JOIN schools s ON s.id = u.school_id
+			JOIN principal_roles pr ON pr.principal_id = ap.id AND pr.revoked_at IS NULL
+			JOIN roles r ON r.id = pr.role_id
+			JOIN role_permissions rp ON rp.role_id = r.id
+			JOIN permissions p ON p.id = rp.permission_id
+			WHERE ap.id = $1 AND ap.principal_type = 'staff' AND ap.status = 'active'
+			  AND u.status = 'active' AND u.school_id = $2 AND s.status = 'active'
+			  AND r.school_id = $2 AND r.scope_type = 'school' AND r.role_key = 'school_admin'
+			  AND p.permission_key = 'roles.assign' AND p.scope_type = 'school' AND p.is_active = TRUE
+			  AND NOT EXISTS (
+			      SELECT 1 FROM user_permission_overrides denied
+			      WHERE denied.principal_id = ap.id AND denied.school_id = $2
+			        AND denied.permission_id = p.id AND denied.effect = 'deny'
+			  )
+		)
+	`, actorPrincipalID, schoolID).Scan(&authorized)
+	if err != nil {
+		return fmt.Errorf("authorize staff role revocation: %w", err)
+	}
+	if !authorized {
+		return ErrRolePermissionDenied
+	}
+	var revokedAssignmentID int64
+	err = tx.QueryRow(ctx, `
+		UPDATE principal_roles pr
+		SET revoked_at = NOW()
+		FROM users target, roles target_role
+		WHERE pr.principal_id = target.principal_id
+		  AND pr.role_id = target_role.id
+		  AND pr.principal_id = $1
+		  AND target.school_id = $2
+		  AND pr.role_id = $3
+		  AND pr.revoked_at IS NULL
+		  AND target_role.school_id = $2
+		  AND target_role.scope_type = 'school'
+		  AND target_role.principal_type = 'staff'
+		  AND target_role.role_key <> 'school_admin'
+		RETURNING pr.id
+	`, targetPrincipalID, schoolID, roleID).Scan(&revokedAssignmentID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrRoleNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("revoke staff role assignment: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO audit_events
+		    (actor_principal_id, school_id, action, resource_type, resource_id, outcome, metadata)
+		VALUES ($1, $2, 'school.staff.role_revoked', 'staff_principal', $3, 'success',
+		        jsonb_build_object('role_id', $4))
+	`, actorPrincipalID, schoolID, fmt.Sprint(targetPrincipalID), roleID); err != nil {
+		return fmt.Errorf("audit staff role revocation: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit staff role revocation: %w", err)
+	}
+	_ = revokedAssignmentID
 	return nil
 }
