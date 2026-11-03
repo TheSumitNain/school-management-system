@@ -289,16 +289,13 @@ func (r *RoleRepository) GrantSchoolPermissionDelegation(
 		&delegation.CanAssignToRoles, &delegation.CanOverrideUsers,
 		&delegation.GrantedBy, &delegation.CreatedAt, &delegation.RevokedAt,
 	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrRoleNotFound
+	}
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "ux_role_permission_delegations_active" {
 			return nil, ErrDelegationAlreadyActive
-		}
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			return nil, ErrDelegationAlreadyActive
-		}
-		if errors.As(err, &pgErr) && pgErr.Code == "23503" {
-			return nil, ErrRoleNotFound
 		}
 		return nil, fmt.Errorf("insert permission delegation: %w", err)
 	}
