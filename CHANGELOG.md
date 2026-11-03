@@ -5,6 +5,26 @@ All notable changes to the School Management System are documented in this file.
 This project is under active development. Verification results describe the latest reported local checks and should be rerun whenever relevant code changes.
 
 ## [Unreleased]
+### Authentication — staff password lifecycle (2026-11-03)
+
+- Added V15 `users.must_change_password` state. Existing staff rows retain the permanent-password state; newly inserted staff accounts default to requiring a first-login password change.
+- Added authenticated staff password change with current-password verification and the shared password policy.
+- Added same-school School Admin staff password reset, independently authorized in the repository and protected by the `users.password_reset` permission.
+- Password change/reset now atomically increment principal token version, revoke active refresh sessions, and append audit events. New/reset staff credentials require a change before normal protected access.
+- Added unit, handler, middleware and opt-in PostgreSQL integration tests. PostgreSQL execution against `school_management_test` remains pending.
+
+### Authorization — exact delegation linkage (2026-11-03)
+
+- Added V16 `delegation_id` linkage to custom-role permission grants and user permission overrides.
+- Database triggers require the exact active delegation and appropriate capability (`can_assign_to_roles` or `can_override_users`); legacy un-attributable custom grants/overrides cause a safe migration preflight failure rather than guessed backfill.
+- Live permission resolution now includes custom-role grants and ALLOW overrides only while the exact referenced delegation remains active. A later delegation for the same permission does not revive an old grant.
+- Added opt-in PostgreSQL integration tests for exact-delegation revocation and explicit rebinding. Migration application and PostgreSQL test execution remain pending on `school_management_test`.
+
+### Verification
+
+- GitHub Actions on `fix/v4-auth-security-hardening` commit `4351ce9`: `go test -count=1 -p 1 ./...` PASS; `go vet ./...` PASS.
+- CI did not enable `RUN_POSTGRES_INTEGRATION_TESTS=1`; do not treat V15/V16 PostgreSQL integration tests as executed.
+
 ### Database — V13 new-school system-role provisioning (2026-11-03)
 
 - Added an additive V13 migration that provisions the fixed School Admin and Teacher system roles whenever a new school is inserted.
