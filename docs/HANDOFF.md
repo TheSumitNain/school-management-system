@@ -93,11 +93,11 @@ Migration `000004_add_principal_rbac_foundation.up.sql` remains unapplied and Po
 
 The school and student counts are planning targets, not verified capacity limits.
 
-## 1.1 Approved Phase 1 Identity and RBAC Decisions (Important)
+## 1.1 Approved Phase 1 Web Identity and RBAC Decisions (Important)
 
 The user has finalized the Phase 1 role and account rules. The authoritative detailed matrix is `docs/PHASE1-RBAC.md`.
 
-- Core roles: Platform Admin (global), School Admin (exactly one school), Teacher (exactly one school), Parent (verified linked children; links may span schools). Student login accounts are excluded from Phase 1.
+- Phase 1 web roles: Platform Admin (global), School Admin (exactly one school), and school staff (exactly one school, including Teacher and approved school-scoped roles). Parent and Driver mobile experiences are Phase 2, after the web product is complete. Student login accounts are not included in Phase 1.
 - Every staff account is single-school. A person employed by multiple schools must receive separate accounts, credentials, and sessions at each school. Staff usernames are globally unique and case-insensitive. Current code does not yet meet global uniqueness; it currently requires school ID at login and has school-scoped username uniqueness.
 - School Admin provisions staff with a temporary initial password. Staff must change it at first login and provide the current password for self-service changes. School Admin may reset same-school staff passwords without old password; reset revokes sessions/access, forces password change at next login, and is audited.
 - Platform Admin provisions School Admin accounts. School Admin cannot create another School Admin or Platform Admin.
@@ -105,7 +105,7 @@ The user has finalized the Phase 1 role and account rules. The authoritative det
 - Staff may hold multiple roles only within their one school. Role permissions combine with per-user allow/deny overrides; explicit deny beats role allow, explicit authorized allow can add a permission, and default is deny. Permission changes apply on the next protected request.
 - Teaching assignments and class-in-charge assignments are separate. Subject teachers see only student name, roll number, class, and section for assigned class/subject, plus permitted teaching data. Teaching assignment alone does not grant attendance access.
 - Class-in-charge teachers may access attendance, same-day correction within the configured cutoff, basic student details, timetable, homework, and applicable notices only for their exact class/section. Past attendance correction is School Admin-only.
-- Parent uses registered mobile + OTP; one verified account can access all officially linked children across schools. Parent selects a child, but every API request verifies the relationship. Parent access is read-only; no student login in Phase 1.
+- Future Parent mobile target: read-only access to officially linked children across schools, with relationship verification on every API request. Parent authentication/OTP provider is undecided and all Parent-specific implementation is paused until Phase 2.
 
 These are approved requirements, not implemented functionality. Do not begin migrations by blindly dropping `users.school_id` or adding universal multi-school staff memberships. First design a safe model for global Platform Admin identity, strictly one-school staff accounts, globally unique usernames, and parent-child links across schools while preserving current user IDs and refresh sessions.
 
@@ -674,7 +674,7 @@ The product should support role-based defaults and configurable individual permi
 
 Invitation and parent OTP workflows are planned, not yet implemented.
 
-### 8.4 Parent Features — Initial Scope
+### 8.4 Future Parent Mobile Features — Phase 2 (Deferred)
 
 Planned parent features include:
 
@@ -685,7 +685,7 @@ Planned parent features include:
 - Notices and announcements.
 - Student profile and basic details.
 
-Parent-child authorization must be enforced by the backend before these features expose student data.
+These features are not part of the Phase 1 web delivery. Parent-child authorization must be enforced by the backend before Phase 2 mobile APIs expose student data. Preserve existing Parent/Guardian schema and OTP foundation; do not extend it while paused.
 
 ### 8.5 Academic Data Model Principles
 
@@ -970,14 +970,14 @@ Next engineering sequence:
 
 ### 13.3 Recommended Engineering Priorities
 
-1. Verify the actual local Git state and confirm it matches the supplied `cb6af3b` source checkpoint; preserve the untracked `APPLY-DOCS.txt`.
+1. Verify the actual local Git state and confirm it matches the active `fix/v4-auth-security-hardening` branch; preserve all reported untracked helper files and stashes.
 2. Review the V4 migration draft and complete Go principal-aware login, JWT claims, refresh-session rotation/revocation, principal status/token-version checks, and authorization middleware.
 3. Implement RBAC evaluation, custom roles, bounded permission overrides, and next-request permission updates with automated tests.
 4. Add migration integration tests against a disposable PostgreSQL 18 database. Do not apply V4 to the development database until those tests pass.
 5. Explicitly confirm the existing staff account's role and provision its principal-role assignment through a controlled, audited operation.
-6. Complete teacher teaching/class-in-charge assignment enforcement, parent-child linking and OTP, staff password lifecycle, mandatory admin MFA, login rate limiting, lockout, and audit workflows.
+6. Complete teacher teaching/class-in-charge assignment enforcement, staff password lifecycle, mandatory admin MFA, login rate limiting, lockout, and audit workflows. Keep Parent-child linking/OTP paused for Phase 2.
 7. Implement secure school onboarding, invitations, and password-reset workflows.
-8. Build academic, student, attendance, timetable, homework, results, and parent features only after authorization enforcement is in place.
+8. Build the complete Phase 1 web product: Platform Admin, School Admin and staff dashboards, then academic, student, attendance, timetable, homework, results, notices and reports. Plan Parent/Driver mobile features only after web completion.
 9. Perform production deployment, monitoring, backup, recovery, and security reviews.
 
 Do not reimplement refresh-token rotation from scratch. Inspect the existing code and extend it only where verification identifies a real gap.
