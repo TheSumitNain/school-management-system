@@ -162,7 +162,7 @@ func (r *UserRepository) CreateStaffAccount(
 		INSERT INTO audit_events
 		    (actor_principal_id, school_id, action, resource_type, resource_id, outcome, metadata)
 		VALUES ($1, $2, 'staff.account.created', 'staff_user', $3, 'success',
-		        jsonb_build_object('principal_id', $4, 'username', $5, 'must_change_password', $6))
+		        jsonb_build_object('principal_id', $4::bigint, 'username', $5::text, 'must_change_password', $6::boolean))
 	`, actorPrincipalID, schoolID, fmt.Sprint(user.ID), user.PrincipalID, user.Username, user.MustChangePassword); err != nil {
 		return nil, fmt.Errorf("audit staff account creation: %w", err)
 	}
