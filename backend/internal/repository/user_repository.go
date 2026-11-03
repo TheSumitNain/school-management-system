@@ -284,3 +284,138 @@ func (r *UserRepository) ChangeStaffPassword(
 	}
 	return nil
 }
+
+
+// ResetStaffPassword permits an active same-school School Admin with the
+// users.password_reset grant to set another staff member's temporary password.
+// It independently enforces school scope and authorization in the transaction.
+func (r *UserRepository) ResetStaffPassword(
+	ctx context.Context,
+	actorPrincipalID int64,
+	schoolID int64,
+	targetPrincipalID int64,
+	newPasswordHash string,
+) error {
+	if actorPrincipalID <= 0 || schoolID <= 0 || targetPrincipalID <= 0 ||
+		actorPrincipalID == targetPrincipalID || newPasswordHash == "" {
+		return ErrInvalidUser
+	}
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin staff password reset: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if _, err := tx.Exec(ctx,
+		`SELECT pg_advisory_xact_lock(hashtextextended('refresh-principal:' || $1::bigint::text,0))`,
+		targetPrincipalID,
+	); err != nil {
+		return fmt.Errorf("lock target staff principal password reset: %w", err)
+	}
+
+	var targetUserID int64
+	err = tx.QueryRow(ctx, `
+		SELECT target.id
+		FROM users target
+		JOIN auth_principals target_principal
+		  ON target_principal.id = target.principal_id
+		WHERE target.principal_id = $1
+		  AND target.school_id = $2
+		  AND target_principal.principal_type = 'staff'
+		  AND target_principal.status = 'active'
+		  AND target.status = 'active'
+		  AND EXISTS (
+		      SELECT 1
+		      FROM users actor
+		      JOIN auth_principals actor_principal
+		        ON actor_principal.id = actor.principal_id
+		      JOIN principal_roles pr
+		        ON pr.principal_id = actor.principal_id
+		       AND pr.revoked_at IS NULL
+		      JOIN roles role
+		        ON role.id = pr.role_id
+		       AND role.school_id = actor.school_id
+		       AND role.scope_type = 'school'
+		       AND role.principal_type = 'staff'
+		       AND role.role_key = 'school_admin'
+		       AND role.is_system = TRUE
+		      JOIN role_permissions rp ON rp.role_id = role.id
+		      JOIN permissions permission ON permission.id = rp.permission_id
+		      WHERE actor.principal_id = $3
+		        AND actor.school_id = $2
+		        AND actor.status = 'active'
+		        AND actor_principal.status = 'active'
+		        AND actor_principal.principal_type = 'staff'
+		        AND permission.permission_key = 'users.password_reset'
+		        AND permission.scope_type = 'school'
+		        AND permission.is_active = TRUE
+		        AND NOT EXISTS (
+		            SELECT 1
+		            FROM user_permission_overrides override
+		            WHERE override.principal_id = actor.principal_id
+		              AND override.school_id = $2
+		              AND override.permission_id = permission.id
+		              AND override.effect = 'deny'
+		        )
+		  )
+		FOR UPDATE OF target
+	`, targetPrincipalID, schoolID, actorPrincipalID).Scan(&targetUserID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrUserNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("authorize same-school staff password reset: %w", err)
+	}
+
+	tag, err := tx.Exec(ctx, `
+		UPDATE users
+		   SET password_hash = $2,
+		       must_change_password = TRUE,
+		       updated_at = NOW()
+		 WHERE id = $1
+	`, targetUserID, newPasswordHash)
+	if err != nil {
+		return fmt.Errorf("update reset staff password: %w", err)
+	}
+	if tag.RowsAffected() != 1 {
+		return ErrUserNotFound
+	}
+
+	tag, err = tx.Exec(ctx, `
+		UPDATE auth_principals
+		   SET token_version = token_version + 1,
+		       updated_at = NOW()
+		 WHERE id = $1
+		   AND principal_type = 'staff'
+		   AND status = 'active'
+	`, targetPrincipalID)
+	if err != nil {
+		return fmt.Errorf("invalidate reset staff access tokens: %w", err)
+	}
+	if tag.RowsAffected() != 1 {
+		return ErrUserNotFound
+	}
+
+	if _, err := tx.Exec(ctx, `
+		UPDATE refresh_sessions
+		   SET revoked_at = COALESCE(revoked_at, NOW())
+		 WHERE principal_id = $1
+		   AND revoked_at IS NULL
+	`, targetPrincipalID); err != nil {
+		return fmt.Errorf("revoke reset staff refresh sessions: %w", err)
+	}
+
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO audit_events
+		    (actor_principal_id, school_id, action, resource_type, resource_id, outcome, metadata)
+		VALUES ($1, $2, 'staff.password.reset', 'staff_user', $3, 'success',
+		        jsonb_build_object('must_change_password', TRUE))
+	`, actorPrincipalID, schoolID, fmt.Sprint(targetUserID)); err != nil {
+		return fmt.Errorf("audit staff password reset: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit staff password reset: %w", err)
+	}
+	return nil
+}
