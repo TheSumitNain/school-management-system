@@ -23,6 +23,9 @@ type roleRepository interface {
 	ListStaffPermissionOverrides(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64) ([]repository.StaffPermissionOverride, error)
 	SetStaffPermissionOverride(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID, delegationID int64, permissionKey, effect, reason string) error
 	DeleteStaffPermissionOverride(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64, permissionKey string) error
+	ListStaffRoleAssignments(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64) ([]repository.StaffRoleAssignment, error)
+	AssignStaffRole(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID, roleID int64) error
+	RevokeStaffRole(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID, roleID int64) error
 }
 
 type RoleService struct {
@@ -160,4 +163,25 @@ func (s *RoleService) DeleteStaffPermissionOverride(ctx context.Context, actorPr
 		return ErrInvalidCustomRole
 	}
 	return s.repository.DeleteStaffPermissionOverride(ctx, actorPrincipalID, schoolID, targetPrincipalID, strings.TrimSpace(permissionKey))
+}
+
+func (s *RoleService) ListStaffRoleAssignments(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64) ([]repository.StaffRoleAssignment, error) {
+	if s == nil || s.repository == nil || actorPrincipalID <= 0 || schoolID <= 0 || targetPrincipalID <= 0 {
+		return nil, ErrInvalidCustomRole
+	}
+	return s.repository.ListStaffRoleAssignments(ctx, actorPrincipalID, schoolID, targetPrincipalID)
+}
+
+func (s *RoleService) AssignStaffRole(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID, roleID int64) error {
+	if s == nil || s.repository == nil || actorPrincipalID <= 0 || schoolID <= 0 || targetPrincipalID <= 0 || roleID <= 0 {
+		return ErrInvalidCustomRole
+	}
+	return s.repository.AssignStaffRole(ctx, actorPrincipalID, schoolID, targetPrincipalID, roleID)
+}
+
+func (s *RoleService) RevokeStaffRole(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID, roleID int64) error {
+	if s == nil || s.repository == nil || actorPrincipalID <= 0 || schoolID <= 0 || targetPrincipalID <= 0 || roleID <= 0 {
+		return ErrInvalidCustomRole
+	}
+	return s.repository.RevokeStaffRole(ctx, actorPrincipalID, schoolID, targetPrincipalID, roleID)
 }
