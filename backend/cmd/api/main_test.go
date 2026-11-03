@@ -179,7 +179,7 @@ func TestAuthMeWithValidToken(t *testing.T) {
 			http.StatusOK, rec.Code, rec.Body.String())
 	}
 
-	expectedBody := `{"principal_id":10,"principal_type":"staff","school_id":2,"status":"success","username":"tester"}`
+	expectedBody := `{"must_change_password":false,"principal_id":10,"principal_type":"staff","school_id":2,"status":"success","username":"tester"}`
 	if rec.Body.String() != expectedBody {
 		t.Fatalf("expected body %s, got %s", expectedBody, rec.Body.String())
 	}
