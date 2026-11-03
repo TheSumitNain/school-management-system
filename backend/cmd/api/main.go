@@ -83,6 +83,16 @@ func setupRouterWithHandlers(
 			middleware.RequirePermission("users.disable"),
 			staffHandlers[0].Disable,
 		)
+		router.PATCH("/school/staff/:principalID",
+			middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader),
+			middleware.RequirePermission("users.update"),
+			staffHandlers[0].Update,
+		)
+		router.POST("/school/staff/:principalID/enable",
+			middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader),
+			middleware.RequirePermission("users.update"),
+			staffHandlers[0].Enable,
+		)
 	}
 
 	if roleHandler != nil {
