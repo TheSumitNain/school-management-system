@@ -11,6 +11,7 @@ import (
 var (
 	ErrPasswordUnchanged = errors.New("new password must differ from the current password")
 	ErrPasswordChangeConflict = repository.ErrStaffPasswordConflict
+	ErrStaffPasswordTargetNotFound = repository.ErrUserNotFound
 )
 
 type staffPasswordRepository interface {
