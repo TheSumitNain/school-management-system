@@ -350,13 +350,15 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 		t.Fatalf("non-admin delegation listing error = %v, want ErrRolePermissionDenied", err)
 	}
 
-	var auditCount int
+	var schoolAdminAuditCount, platformAdminAuditCount int
 	if err := tx.QueryRow(ctx, `
-		SELECT COUNT(*)
+		SELECT
+		    COUNT(*) FILTER (WHERE actor_principal_id = $1),
+		    COUNT(*) FILTER (WHERE actor_principal_id = $2)
 		  FROM audit_events
-		 WHERE actor_principal_id = $1
-		   AND school_id = $2
-		   AND resource_id IN ($3, $4, $5, $6)
+		 WHERE actor_principal_id IN ($1, $2)
+		   AND school_id = $3
+		   AND resource_id IN ($4, $5, $6, $7)
 		   AND action IN (
 		       'school.role.created',
 		       'platform.permission_delegation.granted',
@@ -368,11 +370,13 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 		       'school.staff.role_assigned',
 		       'school.staff.role_revoked'
 		   )
-	`, actorPrincipalID, schoolID, fmt.Sprint(customRole.ID), fmt.Sprint(roleDelegation.ID),
-		fmt.Sprint(overrideDelegation.ID), fmt.Sprint(targetPrincipalID)).Scan(&auditCount); err != nil {
+	`, actorPrincipalID, platformAdminPrincipalID, schoolID, fmt.Sprint(customRole.ID),
+		fmt.Sprint(roleDelegation.ID), fmt.Sprint(overrideDelegation.ID),
+		fmt.Sprint(targetPrincipalID)).Scan(&schoolAdminAuditCount, &platformAdminAuditCount); err != nil {
 		t.Fatalf("count role administration audit events: %v", err)
 	}
-	if auditCount != 13 {
-		t.Fatalf("role administration audit event count = %d, want 13", auditCount)
+	if schoolAdminAuditCount != 9 || platformAdminAuditCount != 4 {
+		t.Fatalf("role administration audit counts = School Admin %d, Platform Admin %d; want 9 and 4",
+			schoolAdminAuditCount, platformAdminAuditCount)
 	}
 }
