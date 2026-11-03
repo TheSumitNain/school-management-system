@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
@@ -188,9 +187,6 @@ func TestStaffAccountRepositoryV17PostgresIntegration(t *testing.T) {
 		t.Fatal("staff account tests unexpectedly modified the actor fixture")
 	}
 
-	// Keep pgx imported here as an explicit assertion of repository error
-	// compatibility for SQL no-row handling in this integration package.
-	_ = pgx.ErrNoRows
 }
 
 func upperASCII(value string) string {
