@@ -354,3 +354,35 @@ The user subsequently pulled the V11 and recovery-test fix commits. On the dedic
 - [x] Run focused recovery-code integration test twice consecutively; both runs passed
 
 V11 is **applied and PostgreSQL-verified on the dedicated test database**. This verification does not imply production readiness or complete parent authorization. It does not create academic-year enrollment, class/section placement, Parent login endpoints, or authenticated Parent-to-child API access. V12 now defines the reviewed Parent–Guardian verification/revocation relationship but remains source-only and unverified. The Parent OTP request/delivery service is implemented separately; OTP verification, Parent account/session issuance, and protected child-data routes remain pending.
+
+## 2026-11-03 — Staff password lifecycle and exact delegation linkage
+
+### Implemented in source on `fix/v4-auth-security-hardening`
+
+- [x] V15 migration adds `users.must_change_password`; existing accounts default to permanent-password state and new staff inserts default to temporary-password state.
+- [x] Staff login and MFA-completed session issuance carry the current temporary-password state from PostgreSQL.
+- [x] Protected middleware restricts temporary-password staff sessions to `POST /auth/password/change` and `GET /auth/me`; refresh rotation preserves the database-backed restriction.
+- [x] Staff self-service password change verifies the current password and password policy.
+- [x] School Admin staff reset route requires `users.password_reset`; repository independently checks active same-school School Admin authority, active target staff/school, and explicit DENY.
+- [x] Password change/reset transactions increment `auth_principals.token_version`, revoke active refresh sessions, and append audit events.
+- [x] V16 migration adds exact `delegation_id` references to custom-role permission grants and staff permission overrides; migration fails safely if un-attributable legacy custom grants/overrides already exist.
+- [x] Live permission resolver includes custom-role grants and ALLOW overrides only when their exact delegation row remains active; DENY continues to remove access.
+- [x] Added unit, handler, middleware, and opt-in PostgreSQL integration-test source for V15/V16 behavior.
+- [x] Updated `docs/SECURITY.md`, `docs/PHASE1-RBAC.md`, `docs/TESTING.md`, and `CHANGELOG.md`.
+
+### Latest automated verification
+
+- [x] GitHub Actions push workflow on commit `4351ce9`: `go test -count=1 -p 1 ./...` PASS.
+- [x] GitHub Actions push workflow on commit `4351ce9`: `go vet ./...` PASS.
+- [x] GitHub Actions pull-request workflow on commit `4351ce9`: PASS.
+- [ ] Apply V15 and V16 only to `school_management_test` after confirming the migration state and safe V16 preflight.
+- [ ] Run V15/V16 PostgreSQL integration tests with `RUN_POSTGRES_INTEGRATION_TESTS=1` against `school_management_test`.
+- [ ] Confirm Windows local working-copy synchronization without overwriting the user's untracked helper files or tracked local edits.
+
+### Boundaries
+
+- No migration has been applied to `school_management` or `school_management_test` by this work.
+- No permanent Platform Admin account has been created.
+- Parent OTP/registration production implementation remains paused and untouched.
+- Draft PR #1 remains open and must not be merged without explicit approval.
+- Custom-role/override resolution is implemented at the permission resolver and database-guard level; role/permission administration HTTP workflows and business-resource authorization routes are still pending.
