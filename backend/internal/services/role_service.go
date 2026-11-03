@@ -15,6 +15,8 @@ type roleRepository interface {
 	ListSchoolRoles(ctx context.Context, actorPrincipalID, schoolID int64) ([]repository.SchoolRole, error)
 	ListSchoolPermissions(ctx context.Context) ([]repository.SchoolPermission, error)
 	CreateCustomRole(ctx context.Context, actorPrincipalID, schoolID int64, roleKey, name string) (*repository.SchoolRole, error)
+	GrantSchoolPermissionDelegation(ctx context.Context, actorPrincipalID, schoolID int64, permissionKey string, canAssignToRoles, canOverrideUsers bool) (*repository.SchoolPermissionDelegation, error)
+	RevokeSchoolPermissionDelegation(ctx context.Context, actorPrincipalID, delegationID int64) error
 }
 
 type RoleService struct {
@@ -81,4 +83,29 @@ func customRoleKey(name string) string {
 		return ""
 	}
 	return "custom_" + key
+}
+
+func (s *RoleService) GrantSchoolPermissionDelegation(
+	ctx context.Context,
+	actorPrincipalID, schoolID int64,
+	permissionKey string,
+	canAssignToRoles, canOverrideUsers bool,
+) (*repository.SchoolPermissionDelegation, error) {
+	if s == nil || s.repository == nil || actorPrincipalID <= 0 || schoolID <= 0 ||
+		strings.TrimSpace(permissionKey) == "" || (!canAssignToRoles && !canOverrideUsers) {
+		return nil, ErrInvalidCustomRole
+	}
+	return s.repository.GrantSchoolPermissionDelegation(
+		ctx, actorPrincipalID, schoolID, strings.TrimSpace(permissionKey), canAssignToRoles, canOverrideUsers,
+	)
+}
+
+func (s *RoleService) RevokeSchoolPermissionDelegation(
+	ctx context.Context,
+	actorPrincipalID, delegationID int64,
+) error {
+	if s == nil || s.repository == nil || actorPrincipalID <= 0 || delegationID <= 0 {
+		return ErrInvalidCustomRole
+	}
+	return s.repository.RevokeSchoolPermissionDelegation(ctx, actorPrincipalID, delegationID)
 }
