@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"school-management-system/internal/handlers"
 	"school-management-system/internal/models"
 	"school-management-system/internal/services"
 
@@ -256,5 +257,50 @@ func TestAuthMeForParentOmitsStaffOnlyFields(t *testing.T) {
 	expectedBody := `{"principal_id":42,"principal_type":"parent","status":"success"}`
 	if rec.Body.String() != expectedBody {
 		t.Fatalf("expected Parent identity response %s, got %s", expectedBody, rec.Body.String())
+	}
+}
+
+func TestSchoolStaffListingRouteEnforcesLiveUsersReadPermission(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	validator := fakeTokenValidator{claims: &services.TokenClaims{
+		RegisteredClaims: jwt.RegisteredClaims{Subject: "31"},
+		PrincipalType: "staff",
+		TokenVersion: 1,
+	}}
+	principal := &models.AuthPrincipal{ID: 31, Type: "staff", Status: "active", TokenVersion: 1, SchoolID: 8, Username: "school.admin"}
+	staffHandler := handlers.NewStaffHandler(nil)
+
+	deniedRouter, err := setupRouterWithHandlers(
+		fakeDatabase{}, nil, validator,
+		fakePrincipalLoader{principal: principal},
+		fakePermissionLoader{permissions: []string{}},
+		nil, nil, staffHandler,
+	)
+	if err != nil {
+		t.Fatalf("setup denied staff router: %v", err)
+	}
+	deniedReq := httptest.NewRequest(http.MethodGet, "/school/staff", nil)
+	deniedReq.Header.Set("Authorization", "Bearer valid-test-token")
+	deniedRec := httptest.NewRecorder()
+	deniedRouter.ServeHTTP(deniedRec, deniedReq)
+	if deniedRec.Code != http.StatusForbidden {
+		t.Fatalf("missing users.read permission: status=%d body=%s", deniedRec.Code, deniedRec.Body.String())
+	}
+
+	allowedRouter, err := setupRouterWithHandlers(
+		fakeDatabase{}, nil, validator,
+		fakePrincipalLoader{principal: principal},
+		fakePermissionLoader{permissions: []string{"users.read"}},
+		nil, nil, staffHandler,
+	)
+	if err != nil {
+		t.Fatalf("setup allowed staff router: %v", err)
+	}
+	allowedReq := httptest.NewRequest(http.MethodGet, "/school/staff", nil)
+	allowedReq.Header.Set("Authorization", "Bearer valid-test-token")
+	allowedRec := httptest.NewRecorder()
+	allowedRouter.ServeHTTP(allowedRec, allowedReq)
+	if allowedRec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("authorized request should reach handler (nil service), got status=%d body=%s", allowedRec.Code, allowedRec.Body.String())
 	}
 }
