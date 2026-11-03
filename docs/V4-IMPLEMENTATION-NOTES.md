@@ -160,3 +160,26 @@ A source-level syntax defect was found in five PL/pgSQL trigger functions: their
 - guard_role_permission_delegation_history
 
 Only the delimiters changed; function logic was not modified. A complete source scan confirmed five corrected opening delimiters, five corrected closing delimiters, and no remaining instances of the malformed patterns. This is static source verification only: PostgreSQL 18 parsing, clean v3-to-v4 migration execution, and trigger integration tests remain pending. Migration V4 remains unapplied and must not be run without explicit approval.
+
+
+## 2026-11-03 Current-Branch Reconciliation
+
+The historical source-behavior and blocker notes above describe an earlier pre-cutover snapshot. The current active branch now contains the principal-aware Go cutover:
+
+- Staff login resolves a globally unique username to a staff principal; Platform Admin has a separate login service.
+- Access JWTs carry principal identity/type and token version. Middleware reloads current principal state and effective permissions from PostgreSQL on every protected request.
+- `RequirePermission` is implemented and has fail-closed middleware tests.
+- Principal refresh-session repository/service code is wired into login, refresh and logout; the previously verified refresh-token concurrency/replay protections must remain covered.
+- Mandatory MFA flows and login lockout/IP rate-limit components are present in the current source.
+- The API router currently exposes authentication/MFA, `/auth/me`, `/health` and `/ready`; it does not yet expose Platform Admin school-onboarding or school business-module routes.
+- The permission resolver intentionally fails closed for custom-role grants and user ALLOW overrides until exact delegation linkage is safe. This is a known functional limitation, not a completed custom-role workflow.
+
+### Newly identified school-onboarding prerequisite
+
+The V4 migration seeds school-scoped system roles (`school_admin` and `teacher`) only for school rows that exist when the migration runs. The current migration source has no corresponding school-insert provisioning trigger/service, and its role-insert guard rejects runtime creation of system roles. Therefore, a school created after V4 migration would not automatically receive its required system roles. **Do not implement the Platform Admin create-school/School Admin provisioning endpoint until a reviewed, secure, tested system-role provisioning mechanism exists.**
+
+The mechanism must preserve system-role immutability, prevent application callers from manufacturing system roles, create the exact approved permission bundles for each new school, and be covered by PostgreSQL integration tests. If V4 has already been applied to any persistent environment, resolve this only through a new additive migration; never edit an applied migration.
+
+### Migration-state reconciliation still required
+
+Historical documentation conflicts about whether V4–V12 have been applied to `school_management_test`. The user has reported V11 clean and successful PostgreSQL-backed V12/Parent-related integration tests, while older notes say V4/V12 were source-only. Before any migration-dependent implementation or execution, verify the actual `schema_migrations` version and dirty flag in the dedicated test database. Do not infer migration state from source files or test names, and do not apply migrations to `school_management`.
