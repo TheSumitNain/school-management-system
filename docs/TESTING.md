@@ -14,14 +14,16 @@ The backend has automated Go tests for selected packages and components.
 
 Current test areas include:
 
-- Password-service behavior.
-- Authentication-service behavior.
+- Password-service behavior, including staff current-password change and School Admin temporary-password reset.
+- Authentication-service behavior and temporary-password state propagation.
 - JWT access-token generation and validation.
-- Authentication HTTP handler behavior.
+- Authentication HTTP handler behavior, including staff password change/reset.
+- Middleware enforcement for temporary-password staff sessions.
 - API server behavior and selected configuration validation.
-- Refresh-token session-service behavior.
+- Refresh-token session-service behavior and concurrency safeguards.
+- V15/V16 PostgreSQL integration-test source for password lifecycle and exact delegation revocation.
 
-The last recorded verification after the refresh-token implementation reported successful execution of:
+The latest GitHub Actions verification on commit `4351ce9` successfully executed the following commands (without PostgreSQL integration environment variables, so opt-in database tests were skipped):
 
 ```bash
 go test -count=1 ./...
@@ -83,7 +85,7 @@ They should cover:
 
 Tests requiring PostgreSQL must use a dedicated test database or isolated test schema. They must never modify production data.
 
-The refresh-session repository has opt-in PostgreSQL integration tests in `backend/internal/repository/refresh_session_repository_integration_test.go`. They require `RUN_POSTGRES_INTEGRATION_TESTS=1` and must use the dedicated `school_management_test` database. Broader repository integration tests remain pending.
+The repository has opt-in PostgreSQL integration tests in `backend/internal/repository/`. They require `RUN_POSTGRES_INTEGRATION_TESTS=1` and must use the dedicated `school_management_test` database. New tests cover V15 staff password defaults and transactional password-change invalidation, plus V16 exact-delegation revocation/regrant behavior. These new tests are source-committed but have not yet been confirmed executed against PostgreSQL. Never point them at `school_management`.
 
 ### 4.3 HTTP tests
 
