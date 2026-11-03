@@ -22,6 +22,9 @@ type RoleManagementService interface {
 	ListSchoolPermissionDelegations(ctx context.Context, actorPrincipalID, schoolID int64) ([]repository.SchoolPermissionDelegation, error)
 	GrantCustomRolePermission(ctx context.Context, actorPrincipalID, schoolID, roleID, delegationID int64, permissionKey string) error
 	RevokeCustomRolePermission(ctx context.Context, actorPrincipalID, schoolID, roleID int64, permissionKey string) error
+	ListStaffPermissionOverrides(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64) ([]repository.StaffPermissionOverride, error)
+	SetStaffPermissionOverride(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID, delegationID int64, permissionKey, effect, reason string) error
+	DeleteStaffPermissionOverride(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64, permissionKey string) error
 }
 
 type RoleHandler struct {
@@ -276,5 +279,105 @@ func (h *RoleHandler) RevokeCustomRolePermission(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": "Custom role permission grant not found"})
 	default:
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unable to revoke custom role permission"})
+	}
+}
+
+func (h *RoleHandler) ListStaffPermissionOverrides(c *gin.Context) {
+	actorID, schoolID, ok := roleActorContext(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "School staff authentication required"})
+		return
+	}
+	if h == nil || h.service == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Permission override management is unavailable"})
+		return
+	}
+	targetID, err := strconv.ParseInt(c.Param("principalID"), 10, 64)
+	if err != nil || targetID <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid target principal ID"})
+		return
+	}
+	items, err := h.service.ListStaffPermissionOverrides(c.Request.Context(), actorID, schoolID, targetID)
+	if errors.Is(err, repository.ErrRolePermissionDenied) {
+		c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": "Permission override access is not authorized"})
+		return
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unable to list staff permission overrides"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "success", "overrides": items})
+}
+
+func (h *RoleHandler) SetStaffPermissionOverride(c *gin.Context) {
+	actorID, schoolID, ok := roleActorContext(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "School staff authentication required"})
+		return
+	}
+	if h == nil || h.service == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Permission override management is unavailable"})
+		return
+	}
+	targetID, err := strconv.ParseInt(c.Param("principalID"), 10, 64)
+	if err != nil || targetID <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid target principal ID"})
+		return
+	}
+	var request struct {
+		PermissionKey string `json:"permission_key"`
+		Effect string `json:"effect"`
+		Reason string `json:"reason"`
+		DelegationID int64 `json:"delegation_id"`
+	}
+	if err := c.ShouldBindJSON(&request); err != nil || request.PermissionKey == "" ||
+		(request.Effect != "allow" && request.Effect != "deny") ||
+		request.Reason == "" || request.DelegationID <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Permission, allow/deny effect, reason, and exact delegation ID are required"})
+		return
+	}
+	err = h.service.SetStaffPermissionOverride(c.Request.Context(), actorID, schoolID, targetID,
+		request.DelegationID, request.PermissionKey, request.Effect, request.Reason)
+	switch {
+	case err == nil:
+		c.JSON(http.StatusOK, gin.H{"status": "success", "message": "Staff permission override saved"})
+	case errors.Is(err, services.ErrInvalidCustomRole):
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid permission override"})
+	case errors.Is(err, repository.ErrRolePermissionDenied):
+		c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": "Permission override is not authorized"})
+	case errors.Is(err, repository.ErrDelegationNotFound):
+		c.JSON(http.StatusConflict, gin.H{"status": "error", "message": "The exact active override delegation is not available"})
+	default:
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unable to save staff permission override"})
+	}
+}
+
+func (h *RoleHandler) DeleteStaffPermissionOverride(c *gin.Context) {
+	actorID, schoolID, ok := roleActorContext(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "School staff authentication required"})
+		return
+	}
+	if h == nil || h.service == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Permission override management is unavailable"})
+		return
+	}
+	targetID, err := strconv.ParseInt(c.Param("principalID"), 10, 64)
+	if err != nil || targetID <= 0 || c.Param("permissionKey") == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid target principal ID or permission key"})
+		return
+	}
+	err = h.service.DeleteStaffPermissionOverride(c.Request.Context(), actorID, schoolID, targetID, c.Param("permissionKey"))
+	switch {
+	case err == nil:
+		c.JSON(http.StatusOK, gin.H{"status": "success", "message": "Staff permission override removed"})
+	case errors.Is(err, services.ErrInvalidCustomRole):
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid permission override removal"})
+	case errors.Is(err, repository.ErrRolePermissionDenied):
+		c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": "Permission override removal is not authorized"})
+	case errors.Is(err, repository.ErrDelegationNotFound):
+		c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": "Staff permission override not found"})
+	default:
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unable to remove staff permission override"})
 	}
 }
