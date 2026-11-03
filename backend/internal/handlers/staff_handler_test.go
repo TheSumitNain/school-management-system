@@ -31,6 +31,10 @@ func (f *fakeStaffAccountService) Create(_ context.Context, actorID, schoolID in
 	return f.user, f.err
 }
 
+func (f *fakeStaffAccountService) List(context.Context, int64, int64) ([]models.User, error) {
+	return []models.User{{ID: 15, PrincipalID: 27, SchoolID: 8, Username: "teacher.one", Status: "active", MustChangePassword: true}}, f.err
+}
+
 func TestStaffHandlerCreateSuccessDoesNotExposePassword(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	service := &fakeStaffAccountService{user: &models.User{
@@ -105,5 +109,22 @@ func TestStaffHandlerCreateRejectsMissingAuthMalformedAndServiceErrors(t *testin
 		if rec.Code != test.want {
 			t.Fatalf("error %v: status=%d want=%d body=%s", test.err, rec.Code, test.want, rec.Body.String())
 		}
+	}
+}
+
+func TestStaffHandlerListUsesAuthenticatedSchoolAndReturnsPrincipalIDs(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	service := &fakeStaffAccountService{}
+	router := gin.New()
+	router.GET("/school/staff", func(c *gin.Context) {
+		c.Set("auth_principal_id", int64(31))
+		c.Set("auth_school_id", int64(8))
+		c.Next()
+	}, NewStaffHandler(service).List)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/school/staff", nil))
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"principal_id":27`) ||
+		!strings.Contains(rec.Body.String(), "teacher.one") || strings.Contains(rec.Body.String(), "PasswordHash") {
+		t.Fatalf("unexpected staff listing response: status=%d body=%s", rec.Code, rec.Body.String())
 	}
 }
