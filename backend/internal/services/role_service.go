@@ -20,6 +20,9 @@ type roleRepository interface {
 	ListSchoolPermissionDelegations(ctx context.Context, actorPrincipalID, schoolID int64) ([]repository.SchoolPermissionDelegation, error)
 	GrantCustomRolePermission(ctx context.Context, actorPrincipalID, schoolID, roleID, delegationID int64, permissionKey string) error
 	RevokeCustomRolePermission(ctx context.Context, actorPrincipalID, schoolID, roleID int64, permissionKey string) error
+	ListStaffPermissionOverrides(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64) ([]repository.StaffPermissionOverride, error)
+	SetStaffPermissionOverride(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID, delegationID int64, permissionKey, effect, reason string) error
+	DeleteStaffPermissionOverride(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64, permissionKey string) error
 }
 
 type RoleService struct {
@@ -132,4 +135,29 @@ func (s *RoleService) RevokeCustomRolePermission(ctx context.Context, actorPrinc
 		return ErrInvalidCustomRole
 	}
 	return s.repository.RevokeCustomRolePermission(ctx, actorPrincipalID, schoolID, roleID, strings.TrimSpace(permissionKey))
+}
+
+func (s *RoleService) ListStaffPermissionOverrides(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64) ([]repository.StaffPermissionOverride, error) {
+	if s == nil || s.repository == nil || actorPrincipalID <= 0 || schoolID <= 0 || targetPrincipalID <= 0 {
+		return nil, ErrInvalidCustomRole
+	}
+	return s.repository.ListStaffPermissionOverrides(ctx, actorPrincipalID, schoolID, targetPrincipalID)
+}
+
+func (s *RoleService) SetStaffPermissionOverride(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID, delegationID int64, permissionKey, effect, reason string) error {
+	if s == nil || s.repository == nil || actorPrincipalID <= 0 || schoolID <= 0 || targetPrincipalID <= 0 || delegationID <= 0 {
+		return ErrInvalidCustomRole
+	}
+	permissionKey, effect, reason = strings.TrimSpace(permissionKey), strings.TrimSpace(effect), strings.TrimSpace(reason)
+	if permissionKey == "" || (effect != "allow" && effect != "deny") || reason == "" || len(reason) > 1000 {
+		return ErrInvalidCustomRole
+	}
+	return s.repository.SetStaffPermissionOverride(ctx, actorPrincipalID, schoolID, targetPrincipalID, delegationID, permissionKey, effect, reason)
+}
+
+func (s *RoleService) DeleteStaffPermissionOverride(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64, permissionKey string) error {
+	if s == nil || s.repository == nil || actorPrincipalID <= 0 || schoolID <= 0 || targetPrincipalID <= 0 || strings.TrimSpace(permissionKey) == "" {
+		return ErrInvalidCustomRole
+	}
+	return s.repository.DeleteStaffPermissionOverride(ctx, actorPrincipalID, schoolID, targetPrincipalID, strings.TrimSpace(permissionKey))
 }
