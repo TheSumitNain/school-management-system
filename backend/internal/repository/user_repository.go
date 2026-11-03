@@ -30,6 +30,83 @@ func NewUserRepository(db *pgxpool.Pool) *UserRepository {
 	return &UserRepository{db: db}
 }
 
+func (r *UserRepository) CreateStaffAccount(
+	ctx context.Context,
+	actorPrincipalID, schoolID int64,
+	username, passwordHash string,
+) (*models.User, error) {
+	username = strings.TrimSpace(strings.ToLower(username))
+	if r == nil || r.db == nil || actorPrincipalID <= 0 || schoolID <= 0 || username == "" || passwordHash == "" {
+		return nil, ErrInvalidUser
+	}
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin staff account creation: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	var authorized bool
+	err = tx.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM auth_principals ap
+			JOIN users actor ON actor.principal_id = ap.id
+			JOIN schools s ON s.id = actor.school_id
+			JOIN principal_roles pr ON pr.principal_id = ap.id AND pr.revoked_at IS NULL
+			JOIN roles r ON r.id = pr.role_id
+			JOIN role_permissions rp ON rp.role_id = r.id
+			JOIN permissions p ON p.id = rp.permission_id
+			WHERE ap.id = $1 AND ap.principal_type = 'staff' AND ap.status = 'active'
+			  AND actor.status = 'active' AND actor.school_id = $2 AND s.status = 'active'
+			  AND r.school_id = $2 AND r.scope_type = 'school'
+			  AND r.principal_type = 'staff' AND r.role_key = 'school_admin' AND r.is_system = TRUE
+			  AND p.permission_key = 'users.create' AND p.scope_type = 'school' AND p.is_active = TRUE
+			  AND NOT EXISTS (
+			      SELECT 1 FROM user_permission_overrides denied
+			      WHERE denied.principal_id = ap.id AND denied.school_id = $2
+			        AND denied.permission_id = p.id AND denied.effect = 'deny'
+			  )
+		)
+	`, actorPrincipalID, schoolID).Scan(&authorized)
+	if err != nil {
+		return nil, fmt.Errorf("authorize staff account creation: %w", err)
+	}
+	if !authorized {
+		return nil, ErrRolePermissionDenied
+	}
+
+	var user models.User
+	err = tx.QueryRow(ctx, `
+		INSERT INTO users (school_id, username, password_hash, status)
+		VALUES ($1, $2, $3, 'active')
+		RETURNING id, principal_id, school_id, username, status,
+		          must_change_password, created_at, updated_at
+	`, schoolID, username, passwordHash).Scan(
+		&user.ID, &user.PrincipalID, &user.SchoolID, &user.Username,
+		&user.Status, &user.MustChangePassword, &user.CreatedAt, &user.UpdatedAt,
+	)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "ux_users_username_global" {
+			return nil, ErrUsernameTaken
+		}
+		return nil, fmt.Errorf("insert staff account: %w", err)
+	}
+
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO audit_events
+		    (actor_principal_id, school_id, action, resource_type, resource_id, outcome, metadata)
+		VALUES ($1, $2, 'staff.account.created', 'staff_user', $3, 'success',
+		        jsonb_build_object('principal_id', $4, 'username', $5, 'must_change_password', $6))
+	`, actorPrincipalID, schoolID, fmt.Sprint(user.ID), user.PrincipalID, user.Username, user.MustChangePassword); err != nil {
+		return nil, fmt.Errorf("audit staff account creation: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit staff account creation: %w", err)
+	}
+	return &user, nil
+}
+
 func (r *UserRepository) GetUserByUsername(
 	ctx context.Context,
 	schoolID int64,
