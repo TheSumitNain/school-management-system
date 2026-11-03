@@ -15,7 +15,7 @@ The application is designed to support multiple schools. Student, parent, teache
 - PostgreSQL database connection uses application configuration and a connection pool.
 - User records store password hashes rather than plaintext passwords.
 - Password hashing uses Go's bcrypt implementation with cost 12.
-- The current password implementation rejects passwords shorter than 8 bytes, longer than 72 bytes, or containing only whitespace.
+- The current password implementation rejects passwords shorter than 12 bytes, longer than 72 bytes, whitespace-only values, and entries in a small local common-password denylist.
 - Password verification is implemented.
 - Authentication service logic checks whether the associated school and user are active.
 - JWT access-token generation and validation are implemented.
@@ -38,11 +38,10 @@ These features establish an initial authentication foundation. They do not mean 
 ### Not yet implemented or fully verified
 
 - Immediate revocation of already-issued access JWTs.
-- Complete role-based access control (RBAC).
-- Complete tenant-isolation enforcement across business services and repository queries.
-- Authentication rate limiting and comprehensive abuse protection.
-- Mandatory multi-factor authentication (MFA) for Platform Admin and School Admin.
-- Production password policy, compromised-password checks, and complete password-reset workflows.
+- Complete tenant/resource/assignment/field-level enforcement across school business services and repository queries.
+- Safe custom-role grants and user ALLOW overrides (currently fail closed pending exact delegation-ID linkage).
+- Staff password change/reset workflows and immediate invalidation of already-issued access tokens after administrative security changes.
+- Compromised-password intelligence checks and comprehensive production abuse monitoring.
 - Session invalidation after password changes, password resets, or other administrative security events.
 - Complete current-user profile retrieval from `GET /auth/me`.
 - Secure school and user provisioning workflows.
@@ -61,7 +60,7 @@ The authentication middleware currently protects `GET /auth/me`. Every additiona
 
 The password service uses bcrypt with a cost factor of 12. Passwords are hashed before storage, and password verification compares a supplied password against the stored hash.
 
-The current implementation enforces an input range of 8–72 bytes and rejects whitespace-only passwords.
+The current implementation enforces an input range of 12–72 bytes, rejects whitespace-only passwords, and checks a deliberately small local common-password denylist. This is not a breached-password intelligence service.
 
 Bcrypt has a 72-byte input limit. Any future password-policy change must handle Unicode and byte length correctly and must not silently truncate passwords.
 
@@ -78,7 +77,7 @@ Before public production deployment:
 - Implement a safe migration and rehash strategy if the hashing algorithm or policy changes.
 - Revoke appropriate sessions after password changes and password resets.
 
-The current minimum is 8 bytes. The proposed 12-character administrator policy is not yet fully implemented.
+The current minimum is 12 bytes and maximum is 72 bytes. The local common-password denylist is intentionally limited; a breached-password intelligence check and password-reset lifecycle remain outstanding.
 
 ## 4. Authentication and Token Security
 
@@ -91,14 +90,14 @@ The authentication middleware:
 1. Reads the `Authorization` header.
 2. Requires the Bearer authentication scheme and a token.
 3. Validates the token through the token-validation service.
-4. Extracts the user ID and school ID from validated claims.
-5. Rejects invalid identity identifiers.
-6. Places the validated identity in the Gin request context.
+4. Extracts the principal ID from the JWT subject.
+5. Reloads canonical principal subtype, status, token version, school/account state and effective permissions from PostgreSQL.
+6. Rejects inactive or mismatched identities and places canonical principal context and permissions in the Gin request context.
 7. Allows the request to continue only after successful authentication.
 
 Authentication failures return `401 Unauthorized`. If the middleware has no token validator configured, it returns `500 Internal Server Error` to indicate an internal configuration problem.
 
-`GET /auth/me` returns the authenticated user's ID and school ID from validated token claims. It does not yet provide a complete user profile or perform full role-based authorization.
+`GET /auth/me` returns the authenticated principal ID/type and staff-only school/username context. Protected requests reload current principal status, token version and permissions. The endpoint does not provide a complete user profile or prove resource-level tenant isolation.
 
 The middleware establishes token-based identity. It does not independently guarantee that a user remains active in the database on every request, that the user has permission to perform an operation, or that all database queries are restricted to the correct school.
 
@@ -165,11 +164,11 @@ Each school-owned record must be associated with the correct school. Users must 
 
 Tenant isolation must be enforced in backend services and repository queries, not just in the frontend.
 
-**Current status:** Authentication middleware extracts the school ID from validated token claims. Complete tenant-isolation enforcement across business resources is still pending. A `school_id` column, foreign key, or valid token alone does not prove that tenant isolation is complete.
+**Current status:** Authentication middleware loads canonical school context from the database-backed principal and validates current status/token version. Complete tenant-isolation enforcement across business resources remains pending because the school business APIs and their resource-scope filters are not yet implemented. A school_id column or valid token alone does not prove tenant isolation.
 
 ## 6. Authorization and Roles
 
-Complete role-based access control (RBAC) is not yet implemented. The Phase 1 requirements are approved and specified in `docs/PHASE1-RBAC.md`. Core roles are Platform Admin (global), School Admin (one school), Teacher (one school), and Parent (verified linked children). Operational roles such as Clerk/Manager, Librarian, Gate Keeper, Helper, and Bus Conductor are future scope.
+The core principal/RBAC schema, built-in role bundles, live system-role permission resolver and RequirePermission middleware are implemented. Custom-role grants and user ALLOW overrides remain disabled until exact delegation-ID linkage is enforced. Full route/resource/tenant/assignment authorization remains pending. Phase 1 web roles are Platform Admin, School Admin and Teacher; Parent and Driver are Phase 2.
 
 The implementation must enforce:
 
@@ -242,7 +241,7 @@ Before production release:
 - Review file uploads, exports, and external integrations before exposing them.
 - Test authentication endpoints against brute-force attempts, replay attempts, and abuse scenarios.
 
-The existing HTTP timeouts, configuration validation, and graceful shutdown are only part of the broader security requirements. Rate limiting and comprehensive authentication abuse protection remain pending.
+The existing HTTP timeouts, configuration validation, and graceful shutdown are only part of the broader security requirements. Identifier-based five-failure/15-minute lockout and IP-based login rate limiting are implemented in the current branch. Broader abuse monitoring and production alerting remain pending.
 
 ## 10. Development Seed Command
 
@@ -341,7 +340,7 @@ Whenever security behavior changes:
 
 ### Staff account isolation
 
-Every School Admin/staff account is tied to exactly one school. A staff account cannot be reused across schools. If a person works at multiple schools, each school provisions a separate account with separate credentials and sessions. Staff usernames are globally unique and case-insensitive. The current schema's school-scoped username index and the current school-ID-based login do not satisfy this target yet.
+Every School Admin/staff account is tied to exactly one school. A staff account cannot be reused across schools. If a person works at multiple schools, each school provisions a separate account with separate credentials and sessions. Staff usernames are globally unique and case-insensitive. The current principal-aware schema enforces globally unique, case-insensitive staff usernames and the staff login resolves by username without a school ID.
 
 ### Password change and reset
 
