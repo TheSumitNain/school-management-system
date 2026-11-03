@@ -12,6 +12,7 @@ var ErrInvalidStaffAccount = errors.New("invalid staff account details")
 
 type staffAccountRepository interface {
 	CreateStaffAccount(ctx context.Context, actorPrincipalID, schoolID int64, username, passwordHash string) (*models.User, error)
+	ListStaffAccounts(ctx context.Context, actorPrincipalID, schoolID int64) ([]models.User, error)
 }
 
 type StaffAccountService struct {
@@ -50,4 +51,11 @@ func validStaffUsername(username string) bool {
 		return false
 	}
 	return true
+}
+
+func (s *StaffAccountService) List(ctx context.Context, actorPrincipalID, schoolID int64) ([]models.User, error) {
+	if s == nil || s.repository == nil || actorPrincipalID <= 0 || schoolID <= 0 {
+		return nil, ErrInvalidStaffAccount
+	}
+	return s.repository.ListStaffAccounts(ctx, actorPrincipalID, schoolID)
 }
