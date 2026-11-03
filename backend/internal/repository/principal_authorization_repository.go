@@ -8,6 +8,7 @@ import (
 	"school-management-system/internal/models"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -118,11 +119,23 @@ WHERE ap.id = $1`
 // grants to the exact delegation that authorized them, so enabling them here
 // could revive stale privileges after a delegation is revoked and re-granted.
 // Built-in system-role grants and explicit DENY overrides are safe to resolve.
+type authorizationQueryer interface {
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+}
+
 func (r *PrincipalAuthorizationRepository) LoadEffectivePermissions(
 	ctx context.Context,
 	principal *models.AuthPrincipal,
 ) ([]string, error) {
-	if principal == nil || principal.ID <= 0 {
+	return loadEffectivePermissions(ctx, r.db, principal)
+}
+
+func loadEffectivePermissions(
+	ctx context.Context,
+	db authorizationQueryer,
+	principal *models.AuthPrincipal,
+) ([]string, error) {
+	if db == nil || principal == nil || principal.ID <= 0 {
 		return nil, fmt.Errorf("invalid principal")
 	}
 
@@ -153,7 +166,7 @@ WHERE pr.principal_id = $1
       OR ($2 = 'parent' AND r.scope_type = 'global' AND r.school_id IS NULL)
   )`
 
-	rows, err := r.db.Query(ctx, roleQuery, principal.ID, principal.Type, nullableSchoolID(principal))
+	rows, err := db.Query(ctx, roleQuery, principal.ID, principal.Type, nullableSchoolID(principal))
 	if err != nil {
 		return nil, fmt.Errorf("load built-in role permissions: %w", err)
 	}
@@ -194,7 +207,7 @@ JOIN role_permission_delegations d
  AND d.revoked_at IS NULL
 WHERE o.principal_id = $1 AND o.school_id = $2
   AND o.effect = 'allow' AND p.is_active = TRUE`
-		rows, err := r.db.Query(ctx, allowQuery, principal.ID, principal.SchoolID)
+		rows, err := db.Query(ctx, allowQuery, principal.ID, principal.SchoolID)
 		if err != nil {
 			return nil, fmt.Errorf("load delegated permission allowances: %w", err)
 		}
@@ -218,7 +231,7 @@ FROM user_permission_overrides o
 JOIN permissions p ON p.id = o.permission_id
 WHERE o.principal_id = $1 AND o.school_id = $2
   AND o.effect = 'deny' AND p.is_active = TRUE`
-		rows, err = r.db.Query(ctx, denyQuery, principal.ID, principal.SchoolID)
+		rows, err = db.Query(ctx, denyQuery, principal.ID, principal.SchoolID)
 		if err != nil {
 			return nil, fmt.Errorf("load explicit permission denials: %w", err)
 		}
