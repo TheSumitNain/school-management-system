@@ -1,0 +1,31 @@
+name: Backend CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Go tests and vet
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Run backend tests
+        working-directory: backend
+        run: go test -count=1 -p 1 ./...
+
+      - name: Run go vet
+        working-directory: backend
+        run: go vet ./...
