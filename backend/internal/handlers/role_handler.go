@@ -142,6 +142,8 @@ func (h *RoleHandler) GrantSchoolPermissionDelegation(c *gin.Context) {
 		c.JSON(http.StatusCreated, gin.H{"status": "success", "delegation": delegation})
 	case errors.Is(err, services.ErrInvalidCustomRole):
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid delegation request"})
+	case errors.Is(err, repository.ErrRoleNotFound):
+		c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": "School or delegable permission not found"})
 	case errors.Is(err, repository.ErrDelegationAlreadyActive):
 		c.JSON(http.StatusConflict, gin.H{"status": "error", "message": "An active delegation already exists for this school permission"})
 	case errors.Is(err, repository.ErrRolePermissionDenied):
