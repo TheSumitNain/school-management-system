@@ -34,6 +34,14 @@ func (f *fakeRoleManagementService) CreateCustomRole(_ context.Context, actorID,
 	return f.created, nil
 }
 
+func (f *fakeRoleManagementService) GrantSchoolPermissionDelegation(context.Context, int64, int64, string, bool, bool) (*repository.SchoolPermissionDelegation, error) {
+	return &repository.SchoolPermissionDelegation{ID: 6, SchoolID: 8, PermissionKey: "attendance.read", CanAssignToRoles: true}, nil
+}
+
+func (f *fakeRoleManagementService) RevokeSchoolPermissionDelegation(context.Context, int64, int64) error {
+	return nil
+}
+
 func TestRoleHandlerCreateRoleUsesAuthenticatedSchool(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	role := &repository.SchoolRole{ID: 3, RoleKey: "custom_library", Name: "Library"}
