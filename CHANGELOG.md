@@ -5,6 +5,14 @@ All notable changes to the School Management System are documented in this file.
 This project is under active development. Verification results describe the latest reported local checks and should be rerun whenever relevant code changes.
 
 ## [Unreleased]
+
+### Role administration PostgreSQL integration coverage (2026-11-03)
+
+- Added a shared transaction-aware repository database interface implemented by both `pgxpool.Pool` and `pgx.Tx`. Role administration methods can now participate in a caller-owned transaction, allowing all test writes and audit events to be rolled back safely.
+- Added `TestRoleRepositoryAdministrationPostgresIntegration` for custom-role creation/listing, permission catalogue listing, Platform Admin delegation grant/list/revoke, exact-delegation custom-role permission grant/revoke, staff role assignment/list/revoke, ALLOW/DENY override set/list/delete, duplicate rejection, authorization failures, and actor-attributed audit events.
+- Added explicit PostgreSQL parameter casts to role-administration JSONB audit metadata to avoid ambiguous parameter type inference.
+- GitHub Actions push workflow on commit `64acf1b` applied V1–V16 to ephemeral PostgreSQL 18, passed the complete Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and passed `go vet ./...`. The user's persistent databases were not modified.
+
 ### RBAC administration APIs (2026-11-03)
 
 - Added school role listing, custom school-role creation, and the active school permission catalogue endpoint.
@@ -14,7 +22,7 @@ This project is under active development. Verification results describe the late
 - Added same-school staff role assignment list/assign/revoke endpoints. School Admin can assign only active staff roles within the authenticated school and cannot assign or revoke the reserved `school_admin` role. Every assignment/revocation is audited.
 - Added `POST /school/staff` for same-school School Admin staff account creation. Usernames are canonicalized and globally unique, initial passwords are hashed under the shared policy, new accounts require first-login password change, and account creation is audited. Password material is never returned.
 - These are backend API foundations, not a completed role administration UI or complete RBAC rollout. Staff role assignment workflows and business-resource/tenant/teacher-scope authorization remain pending.
-- GitHub Actions commit `524d795` passed the complete V1–V16 PostgreSQL 18 migration/integration workflow, handler/service tests, and `go vet ./...`. The user's persistent databases were not modified by GitHub Actions. Dedicated PostgreSQL integration tests for the new role/delegation/override/assignment repository methods remain pending.
+- GitHub Actions commit `524d795` passed the V1–V16 PostgreSQL 18 migration/integration workflow and handler/service tests. Dedicated repository-method coverage was subsequently added and passed on commit `64acf1b` as recorded above. The user's persistent databases were not modified by GitHub Actions.
 
 ### Authentication — staff password lifecycle (2026-11-03)
 
