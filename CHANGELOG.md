@@ -5,6 +5,12 @@ All notable changes to the School Management System are documented in this file.
 This project is under active development. Verification results describe the latest reported local checks and should be rerun whenever relevant code changes.
 
 ## [Unreleased]
+### Database verification clarification — 2026-11-03
+
+- The user directly reported `school_management_test.schema_migrations` at cumulative `version=12, dirty=false` on 2026-11-02. This means V4–V12 were applied in sequence on the dedicated test database; it does not establish the state of `school_management`.
+- A dedicated `TestParentGuardianAuthorizationV12PostgresIntegration` run was reported PASS. A later verbose attempt skipped integration tests because `RUN_POSTGRES_INTEGRATION_TESTS=1` was omitted; re-run with the flag after relevant changes.
+- Older changelog entries below retain the status as it was recorded at their original checkpoint.
+
 ### Product direction — web-first delivery (2026-11-03)
 
 - Approved Phase 1 as the complete web application for Platform Admin, School Admin and school staff.
