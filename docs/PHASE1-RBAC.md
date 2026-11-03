@@ -266,8 +266,23 @@ Clerk, Manager, Librarian, Gate Keeper, Helper, Bus Conductor, Driver and other 
 
 ## 10. Implementation status and next work
 
-The above decisions are approved requirements. Phase 1 implementation scope is Platform Admin, School Admin and school staff. Parent requirements are future Phase 2 targets. These requirements are **not yet fully implemented** in the current backend application. The current source still has school-scoped username uniqueness and school-ID + username + password login; the current JWT subject is `users.id`, and middleware does not yet enforce principal status/token version, RBAC, tenant/resource scope, teaching/class-in-charge assignments, or parent-child links.
+The approved Phase 1 requirements remain broader than the currently completed application. The active branch has completed principal-aware authentication, live permission resolution, mandatory admin MFA, staff password lifecycle controls, and the V1–V16 schema hardening. GitHub Actions verifies the complete migration chain and opt-in PostgreSQL integration suite on an ephemeral PostgreSQL 18 database.
 
-A draft additive migration now exists at `backend/migrations/000004_add_principal_rbac_foundation.up.sql`. It introduces the shared principal model, account subtype tables, global username uniqueness, permission catalogue, system roles, role permissions, principal-role assignments, overrides, delegation ceilings, principal-bound refresh sessions, MFA/OTP storage, and audit events. The existing `users.id` and refresh-token family design are preserved. See `docs/V4-IMPLEMENTATION-NOTES.md` for exact contents and blockers.
+Implemented API foundations now include:
+- Platform Admin school onboarding and one-time first Platform Admin bootstrap.
+- School role and active permission-catalogue listing.
+- School Admin custom-role creation.
+- Platform Admin grant/revoke of school permission delegation ceilings, guarded by `platform.permissions.delegate`.
+- School Admin listing of active delegation IDs and custom-role permission grant/revoke using exact delegation IDs.
+- School Admin staff permission override list/set/remove using exact delegation IDs and explicit ALLOW/DENY effects.
+- Staff password change and same-school School Admin password reset, with token-version invalidation and audit events.
 
-**Migration v4 is not applied and has not been executed against PostgreSQL. Do not run it yet.** Complete the principal-aware Go authentication/session refactor, database-backed token-version checks, permission evaluation, migration tests on a disposable PostgreSQL 18 database, and explicit confirmation of the existing staff account's role first. Preserve refresh-token family locks, cross-family principal serialization, replay detection, and family revocation. Do not infer the existing account's role from database counts.
+The following remain incomplete and must not be represented as finished:
+- Staff account creation/invitation and full provisioning workflows.
+- Assigning/revoking roles for staff accounts through audited HTTP workflows.
+- Platform Admin UI/workflow for reviewing all delegation history.
+- Full HTTP/security integration coverage for the new role/delegation/override endpoints and PostgreSQL repository paths.
+- Business API authorization, including tenant boundaries, class/section/subject assignment scope, class-in-charge scope, and field-level student/family/financial data controls.
+- Production DB least-privilege grants, deployment hardening, monitoring, and security review.
+
+V1–V16 have passed on a fresh ephemeral PostgreSQL 18 database in GitHub Actions. This does not alter or confirm the migration state of the user's persistent `school_management_test` database, and it says nothing about `school_management`. Never apply migrations to `school_management` without separate explicit approval. Preserve refresh-token family locks, cross-family principal serialization, replay detection, and family revocation.
