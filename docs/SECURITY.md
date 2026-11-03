@@ -40,7 +40,7 @@ These features establish an initial authentication foundation. They do not mean 
 - Complete tenant/resource/assignment/field-level enforcement across school business services and repository queries.
 - Compromised-password intelligence checks and comprehensive production abuse monitoring.
 - Complete current-user profile retrieval from `GET /auth/me`.
-- Secure school and user provisioning workflows.
+- Complete staff account creation/invitation workflows and production provisioning controls.
 - Comprehensive security audit logging and monitoring.
 - Production TLS and deployment-specific security configuration.
 - PostgreSQL execution of the new V15/V16 password-lifecycle and exact-delegation integration tests remains pending on `school_management_test`.
@@ -169,11 +169,11 @@ The core principal/RBAC schema, built-in role bundles, live permission resolver 
 The implementation must enforce:
 
 - One-school-only School Admin and staff accounts; separate accounts for a person employed by multiple schools.
-- Globally unique, case-insensitive staff usernames. The current schema/login does not yet meet this target.
-- School Admin staff provisioning with temporary password and forced first-login change; staff self-change requires current password.
+- Globally unique, case-insensitive staff usernames. The current principal-aware schema and username-only staff login enforce this boundary.
+- New staff rows default to a temporary-password state; authenticated first-login change and same-school School Admin reset are implemented. The complete School Admin staff-creation HTTP workflow remains pending.
 - Admin-initiated same-school staff password reset without old password, with session/access revocation, forced next-login change, and audit logging.
-- School Admin-created custom roles limited to the platform permission catalogue and an explicit delegation ceiling.
-- Multiple roles per staff account within its one school; per-user allow/deny overrides; explicit deny beats role allow; default deny.
+- Custom-role grants are bound to the exact active delegation ID in V16; the database guard and live resolver enforce the ceiling. Role-management HTTP workflows remain pending.
+- Multiple roles per staff account and per-user allow/deny overrides are supported by the schema/resolver; ALLOW overrides require their exact active delegation, explicit DENY removes access, and default is deny. Management HTTP workflows remain pending.
 - Separate teacher teaching and class-in-charge assignments, field-level student data restrictions, and exact class/section scoping.
 - Parent OTP identity linked to verified children; parent can access multiple linked children across schools, with server-side link verification on every request.
 - Server-side permission evaluation on every protected request so changes apply to existing sessions on the next request.
