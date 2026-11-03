@@ -32,6 +32,7 @@ func (r *PrincipalAuthorizationRepository) LoadPrincipalForAuthentication(
 	const query = `
 SELECT ap.id, ap.principal_type, ap.status, ap.token_version,
        COALESCE(u.school_id, 0), COALESCE(u.username, ''),
+       COALESCE(u.must_change_password, FALSE),
        COALESCE(u.status, ''), COALESCE(s.status, ''),
        (pa.principal_id IS NOT NULL),
        (parent.mobile_verified_at IS NOT NULL),
@@ -73,11 +74,12 @@ WHERE ap.id = $1`
 
 	var p models.AuthPrincipal
 	var staffStatus, schoolStatus string
+	var mustChangePassword bool
 	var hasPlatformAccount, mobileVerified, hasEligibleParentLink, mfaVerified bool
 	var subtypeCount int
 	err := r.db.QueryRow(ctx, query, principalID).Scan(
 		&p.ID, &p.Type, &p.Status, &p.TokenVersion,
-		&p.SchoolID, &p.Username, &staffStatus, &schoolStatus,
+		&p.SchoolID, &p.Username, &mustChangePassword, &staffStatus, &schoolStatus,
 		&hasPlatformAccount, &mobileVerified, &hasEligibleParentLink, &mfaVerified, &subtypeCount,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -107,6 +109,7 @@ WHERE ap.id = $1`
 		return nil, models.ErrPrincipalNotAuthenticated
 	}
 	p.MobileVerified = mobileVerified
+	p.MustChangePassword = p.Type == "staff" && mustChangePassword
 	return &p, nil
 }
 
