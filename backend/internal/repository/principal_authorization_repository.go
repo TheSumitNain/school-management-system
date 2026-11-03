@@ -35,6 +35,19 @@ SELECT ap.id, ap.principal_type, ap.status, ap.token_version,
        COALESCE(u.status, ''), COALESCE(s.status, ''),
        (pa.principal_id IS NOT NULL),
        (parent.mobile_verified_at IS NOT NULL),
+       EXISTS (
+         SELECT 1
+         FROM parent_guardian_links pgl
+         JOIN guardians g ON g.id = pgl.guardian_id AND g.school_id = pgl.school_id
+         JOIN student_guardians sg ON sg.guardian_id = g.id AND sg.school_id = g.school_id
+         JOIN students st ON st.id = sg.student_id AND st.school_id = sg.school_id
+         WHERE pgl.principal_id = ap.id
+           AND pgl.revoked_at IS NULL
+           AND sg.revoked_at IS NULL
+           AND g.status = 'active'
+           AND st.status = 'active'
+           AND g.parent_portal_enabled_at IS NOT NULL
+       ),
        CASE
          WHEN ap.principal_type='platform_admin' OR
               (ap.principal_type='staff' AND EXISTS (
@@ -60,12 +73,12 @@ WHERE ap.id = $1`
 
 	var p models.AuthPrincipal
 	var staffStatus, schoolStatus string
-	var hasPlatformAccount, mobileVerified, mfaVerified bool
+	var hasPlatformAccount, mobileVerified, hasEligibleParentLink, mfaVerified bool
 	var subtypeCount int
 	err := r.db.QueryRow(ctx, query, principalID).Scan(
 		&p.ID, &p.Type, &p.Status, &p.TokenVersion,
 		&p.SchoolID, &p.Username, &staffStatus, &schoolStatus,
-		&hasPlatformAccount, &mobileVerified, &mfaVerified, &subtypeCount,
+		&hasPlatformAccount, &mobileVerified, &hasEligibleParentLink, &mfaVerified, &subtypeCount,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, models.ErrPrincipalNotAuthenticated
@@ -87,7 +100,7 @@ WHERE ap.id = $1`
 			return nil, models.ErrPrincipalNotAuthenticated
 		}
 	case "parent":
-		if !mobileVerified {
+		if !mobileVerified || !hasEligibleParentLink {
 			return nil, models.ErrPrincipalNotAuthenticated
 		}
 	default:
