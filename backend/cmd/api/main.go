@@ -33,7 +33,8 @@ func setupRouter(
 	tokenService middleware.AccessTokenValidator,
 	principalLoader middleware.PrincipalLoader,
 	permissionLoader middleware.PermissionLoader,
-	schoolOnboardingHandlers ...*handlers.SchoolOnboardingHandler,
+\tschoolOnboardingHandlers ...*handlers.SchoolOnboardingHandler,
+	roleHandlers ...*handlers.RoleHandler,
 ) (*gin.Engine, error) {
 	router := gin.Default()
 
@@ -47,6 +48,25 @@ func setupRouter(
 			middleware.RequirePermission("platform.schools.create"),
 			middleware.RequirePermission("platform.school_admins.create"),
 			schoolOnboardingHandlers[0].Create,
+		)
+	}
+
+	if len(roleHandlers) > 0 && roleHandlers[0] != nil {
+		roleAuth := middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader)
+		router.GET("/school/roles",
+			roleAuth,
+			middleware.RequirePermission("roles.read"),
+			roleHandlers[0].ListRoles,
+		)
+		router.POST("/school/roles",
+			roleAuth,
+			middleware.RequirePermission("roles.create_custom"),
+			roleHandlers[0].CreateRole,
+		)
+		router.GET("/school/permissions",
+			roleAuth,
+			middleware.RequirePermission("permissions.read"),
+			roleHandlers[0].ListPermissions,
 		)
 	}
 
@@ -216,7 +236,11 @@ func run() error {
 	schoolOnboardingService := services.NewSchoolOnboardingService(schoolOnboardingRepo)
 	schoolOnboardingHandler := handlers.NewSchoolOnboardingHandler(schoolOnboardingService)
 
-	router, err := setupRouter(db, authHandler, tokenService, principalAuthorizationRepo, principalAuthorizationRepo, schoolOnboardingHandler)
+	roleRepo := repository.NewRoleRepository(db)
+	roleService := services.NewRoleService(roleRepo)
+	roleHandler := handlers.NewRoleHandler(roleService)
+
+	router, err := setupRouter(db, authHandler, tokenService, principalAuthorizationRepo, principalAuthorizationRepo, schoolOnboardingHandler, roleHandler)
 
 	if err != nil {
 		return fmt.Errorf("setup router: %w", err)
