@@ -1,6 +1,6 @@
 # Phase 1 Web RBAC — Roles, Permissions and Account Rules
 
-**Decision status:** Product and authorization requirements approved for the Phase 1 web application. Parent and Driver mobile experiences are Phase 2 and deferred. Database schema and complete enforcement remain pending.
+**Decision status:** Product and authorization requirements approved for the Phase 1 web application. Core principal/RBAC schema and authentication enforcement are present in the current branch; complete resource-level enforcement remains pending. Parent and Driver mobile experiences are Phase 2 and deferred.
 
 This document is the detailed reference for Phase 1 web role scope, permission identifiers, account boundaries and teacher assignments. Parent-related sections are retained as future Phase 2 design requirements only; they are not active Phase 1 implementation scope. It describes approved requirements, not implemented functionality.
 
