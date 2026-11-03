@@ -132,10 +132,20 @@ FROM principal_roles pr
 JOIN roles r ON r.id = pr.role_id
 JOIN role_permissions rp ON rp.role_id = r.id
 JOIN permissions p ON p.id = rp.permission_id
+LEFT JOIN role_permission_delegations d
+  ON d.id = rp.delegation_id
+ AND d.school_id = r.school_id
+ AND d.permission_id = rp.permission_id
+ AND d.can_assign_to_roles = TRUE
+ AND d.revoked_at IS NULL
 WHERE pr.principal_id = $1
   AND pr.revoked_at IS NULL
-  AND r.is_system = TRUE
   AND p.is_active = TRUE
+  AND (
+      (r.is_system = TRUE AND rp.delegation_id IS NULL)
+      OR
+      (r.is_system = FALSE AND r.scope_type = 'school' AND d.id IS NOT NULL)
+  )
   AND r.principal_type = $2
   AND (
       ($2 = 'staff' AND r.scope_type = 'school' AND r.school_id = $3)
@@ -169,13 +179,46 @@ WHERE pr.principal_id = $1
 	rows.Close()
 
 	if principal.Type == "staff" {
+		// ALLOW overrides are effective only while the exact delegation row
+		// that authorized them remains active. A later delegation for the same
+		// permission has a different ID and cannot revive this override.
+		const allowQuery = `
+SELECT p.permission_key
+FROM user_permission_overrides o
+JOIN permissions p ON p.id = o.permission_id
+JOIN role_permission_delegations d
+  ON d.id = o.delegation_id
+ AND d.school_id = o.school_id
+ AND d.permission_id = o.permission_id
+ AND d.can_override_users = TRUE
+ AND d.revoked_at IS NULL
+WHERE o.principal_id = $1 AND o.school_id = $2
+  AND o.effect = 'allow' AND p.is_active = TRUE`
+		rows, err := r.db.Query(ctx, allowQuery, principal.ID, principal.SchoolID)
+		if err != nil {
+			return nil, fmt.Errorf("load delegated permission allowances: %w", err)
+		}
+		for rows.Next() {
+			var key string
+			if err := rows.Scan(&key); err != nil {
+				rows.Close()
+				return nil, fmt.Errorf("scan delegated permission allowance: %w", err)
+			}
+			set[key] = struct{}{}
+		}
+		if err := rows.Err(); err != nil {
+			rows.Close()
+			return nil, fmt.Errorf("iterate delegated permission allowances: %w", err)
+		}
+		rows.Close()
+
 		const denyQuery = `
 SELECT p.permission_key
 FROM user_permission_overrides o
 JOIN permissions p ON p.id = o.permission_id
 WHERE o.principal_id = $1 AND o.school_id = $2
   AND o.effect = 'deny' AND p.is_active = TRUE`
-		rows, err := r.db.Query(ctx, denyQuery, principal.ID, principal.SchoolID)
+		rows, err = r.db.Query(ctx, denyQuery, principal.ID, principal.SchoolID)
 		if err != nil {
 			return nil, fmt.Errorf("load explicit permission denials: %w", err)
 		}
