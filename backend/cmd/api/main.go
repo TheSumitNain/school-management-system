@@ -127,6 +127,21 @@ func setupRouterWithHandlers(
 			middleware.RequirePermission("permissions.override"),
 			roleHandler.DeleteStaffPermissionOverride,
 		)
+		router.GET("/school/staff/:principalID/roles",
+			roleAuth,
+			middleware.RequirePermission("roles.read"),
+			roleHandler.ListStaffRoleAssignments,
+		)
+		router.POST("/school/staff/:principalID/roles/:roleID",
+			roleAuth,
+			middleware.RequirePermission("roles.assign"),
+			roleHandler.AssignStaffRole,
+		)
+		router.DELETE("/school/staff/:principalID/roles/:roleID",
+			roleAuth,
+			middleware.RequirePermission("roles.assign"),
+			roleHandler.RevokeStaffRole,
+		)
 	}
 
 	if authHandler != nil {
