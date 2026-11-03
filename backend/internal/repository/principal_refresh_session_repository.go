@@ -127,7 +127,7 @@ FOR UPDATE OF ap`
 	case "platform_admin":
 		active = active && hasPlatformAccount
 	case "parent":
-		active = active && mobileVerified && hasEligibleParentLink && hasEligibleParentLink
+		active = active && mobileVerified && hasEligibleParentLink
 	default:
 		active = false
 	}
@@ -326,7 +326,7 @@ FOR UPDATE OF rs, ap`
 		active = active && hasPlatformAccount
 
 	case "parent":
-		active = active && mobileVerified
+		active = active && mobileVerified && hasEligibleParentLink
 
 	default:
 		active = false
