@@ -11,8 +11,9 @@ This project is under active development. Verification results describe the late
 - Added Platform Admin grant/revoke endpoints for school permission delegation ceilings. Delegations require an active school and active delegable school permission and are audit logged.
 - Added School Admin listing of active delegation IDs and custom-role permission grant/revoke endpoints. Custom grants carry the exact active delegation ID enforced by V16.
 - Added School Admin staff permission override list/set/remove endpoints. ALLOW and DENY overrides both require the exact active override delegation ID, a same-school active target staff account, and an audit event.
+- Added same-school staff role assignment list/assign/revoke endpoints. School Admin can assign only active staff roles within the authenticated school and cannot assign or revoke the reserved `school_admin` role. Every assignment/revocation is audited.
 - These are backend API foundations, not a completed role administration UI or complete RBAC rollout. Staff role assignment workflows and business-resource/tenant/teacher-scope authorization remain pending.
-- Latest database-backed CI must be checked against the branch head before treating these newest endpoints as verified. The user's persistent databases were not modified by GitHub Actions.
+- GitHub Actions commit `d7aa45b` passed the complete V1–V16 PostgreSQL 18 migration/integration workflow, handler/service tests, and `go vet ./...`. The user's persistent databases were not modified by GitHub Actions. Dedicated PostgreSQL integration tests for the new role/delegation/override/assignment repository methods remain pending.
 
 ### Authentication — staff password lifecycle (2026-11-03)
 
