@@ -2,10 +2,12 @@ package repository
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
+	"fmt"
+	"math/big"
 	"strconv"
 	"testing"
-	"time"
 )
 
 func TestParentRegistrationRepositoryPostgresIntegration(t *testing.T) {
@@ -36,8 +38,33 @@ func TestParentRegistrationRepositoryPostgresIntegration(t *testing.T) {
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	suffix := strconv.FormatInt(time.Now().UnixNano(), 10)
-	mobile := "+9198765" + suffix[len(suffix)-5:]
+	var mobile, suffix string
+	for attempt := 0; attempt < 5; attempt++ {
+		randomSuffix, err := rand.Int(rand.Reader, big.NewInt(1_000_000_000))
+		if err != nil {
+			t.Fatalf("generate unique Parent registration fixture mobile: %v", err)
+		}
+		suffix = fmt.Sprintf("%09d", randomSuffix.Int64())
+		mobile = "+919" + suffix
+
+		var available bool
+		if err := pool.QueryRow(ctx, `
+			SELECT NOT EXISTS (
+				SELECT 1 FROM parent_accounts WHERE mobile_number = $1
+			) AND NOT EXISTS (
+				SELECT 1 FROM guardians WHERE mobile_number_e164 = $1
+			)
+		`, mobile).Scan(&available); err != nil {
+			t.Fatalf("check Parent registration fixture mobile availability: %v", err)
+		}
+		if available {
+			break
+		}
+		mobile = ""
+	}
+	if mobile == "" {
+		t.Fatal("could not generate an unused Parent registration fixture mobile after 5 attempts")
+	}
 	var guardianIDs [2]int64
 	var studentIDs [2]int64
 
