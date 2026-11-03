@@ -1,10 +1,10 @@
-> **2026-11-02 latest verified checkpoint — commit `c78e770`:** Parent OTP request/delivery foundation is implemented. On the user's Windows environment, focused Parent OTP unit tests, the full `go test -count=1 -p 1 ./...` suite, and `go vet ./...` passed. The full suite ran in the same CMD session with `DB_NAME=school_management_test` and `RUN_POSTGRES_INTEGRATION_TESTS=1` set. The focused PostgreSQL Parent OTP repository integration test passed on commit `7105762`, including challenge invalidation after delivery failure and preservation of rate-limit counters. Windows may emit temporary test-executable `unlinkat` cleanup warnings after successful test results.
->
-> **Parent OTP scope boundary:** The request/delivery service generates six-digit OTPs, stores only keyed hashes, uses an injected provider interface, and invalidates the challenge after delivery failure. A separate safe sentinel identifies cleanup failure without exposing provider/database details. OTP verification, guardian matching, Parent principal/account creation, Parent login/session issuance, handlers/routes, and protected child-data APIs are not implemented yet.
->
-> **V12 database boundary:** Migration V12 and its Parent–Guardian authorization integration suite remain source-only and have not been applied or PostgreSQL-tested. Do not run migrations against `school_management`. Use only `school_management_test` after review and explicit user approval.
->
-> # Project Progress
+> **2026-11-03 approved delivery direction:** Phase 1 is the complete web product for Platform Admin, School Admin and school staff. Phase 2 Parent/Driver mobile interfaces begin only after the web product is complete. Parent work is paused; preserve existing Parent/Guardian schema and OTP foundation without extending it. Parent authentication/OTP provider remains undecided. Database design must remain extensible for future modules without speculative migrations. Active branch checkpoint before this documentation update: `c79b3a5959e0d125dae0326298b554f7b2f90133` (`fix/v4-auth-security-hardening`).
+
+> **Current implementation reality:** The repository has a Go/Gin backend foundation but no React frontend directory yet. Complete business APIs, full route-level authorization/tenant isolation and dashboards are still pending. The user-reported middleware test on the current checkpoint passed; earlier full Go suite, PostgreSQL integration suite and `go vet` results are historical verification and must be rerun after code changes.
+
+> **Migration safety:** V11 is verified on `school_management_test`; V12 remains source-only. Do not apply migrations to `school_management` or apply V12 without explicit review and approval.
+
+# Project Progress
 >
 > ## Current Stage
 >
@@ -205,7 +205,7 @@ These results describe the last verified state. Repeat relevant checks after fut
 
 The user has finalized the Phase 1 account and RBAC direction. The detailed authoritative matrix is `docs/PHASE1-RBAC.md`. Key decisions:
 
-- Core Phase 1 roles: Platform Admin (global), School Admin (one school), Teacher (one school), Parent (verified linked children).
+- Phase 1 web roles: Platform Admin (global), School Admin (one school), and school staff (one school; Teacher plus approved school-scoped roles). Parent and Driver mobile experiences are Phase 2.
 - Every staff account is school-specific. A person employed by multiple schools receives separate accounts, passwords, and sessions for each school. Staff usernames are globally unique and case-insensitive.
 - School Admin provisions staff with a temporary initial password; staff must change it at first login and must enter the current password for self-service changes. School Admin can reset same-school staff passwords without the old password; reset revokes sessions/access, requires a change at next login, and is audited.
 - Platform Admin provisions School Admin accounts. School Admin cannot create another School Admin or Platform Admin.
@@ -213,10 +213,19 @@ The user has finalized the Phase 1 account and RBAC direction. The detailed auth
 - Multiple roles per staff account are supported within that account's single school. Role permissions plus per-user allow/deny overrides are supported; explicit deny overrides role allow, explicit authorized allow can add a permission otherwise absent, and default is deny.
 - Teaching assignment and class-in-charge assignment are separate. Subject teachers see only basic student fields (name, roll number, class, section) for assigned class/subject and relevant permitted teaching data. A teaching assignment alone never grants attendance access.
 - A class-in-charge teacher can access attendance, same-day attendance correction within the configured cutoff, basic student details, timetable, homework, and applicable notices only for the specific class/section in charge. Past attendance correction is School Admin-only.
-- One verified parent mobile/OTP account can access all officially linked children, including across schools. Parent selects a child; every API request verifies the relationship. Parent access is read-only; no student login accounts in Phase 1.
+- Future Parent mobile target: one verified Parent identity may access officially linked children across schools, read-only. Authentication and OTP provider are deferred to Phase 2; no Parent implementation is active now.
 - Permissions are checked server-side on each protected request; permission changes apply to the next request. Tenant, assignment, field-level, account-status, and school-status checks cannot be bypassed by overrides.
 
 These are approved requirements, not proof of complete RBAC enforcement. The V4 SQL draft now contains source-level corrective audit items C1–C14, and the 2026-11-01 Go principal-auth cutover candidate is documented in `docs/CURRENT-BUILD-FIX-HANDOFF-20261101.md`. The migration remains unapplied and PostgreSQL-unverified; full Go tests/vet for the cutover candidate must be verified on the user's Windows Go 1.27.1 environment. Custom-role grants and ALLOW overrides remain intentionally fail-closed, and business-resource/tenant/teacher/parent authorization routes remain pending.
+
+## Approved Web-First Delivery Plan — 2026-11-03
+
+- [x] Confirm Platform Admin, School Admin and complete school staff web dashboards as Phase 1.
+- [x] Defer Parent, Driver and other approved mobile-first interfaces to Phase 2 after web completion.
+- [x] Pause Parent-specific implementation and preserve existing source/schema foundations.
+- [x] Require future-ready but incremental database design; no speculative migrations.
+- [ ] Reconcile current backend/database modules and prepare the implementation sequence.
+- [ ] Build the frontend foundation and start the Platform Admin workflow.
 
 ## In Progress
 
@@ -255,7 +264,7 @@ These are approved requirements, not proof of complete RBAC enforcement. The V4 
 - [ ] Ensure client-provided school IDs never independently grant access
 - [ ] Add cross-school authorization and data-isolation tests
 - [ ] Restrict teachers to assigned classes and subjects
-- [ ] Restrict parents to verified linked children
+- [ ] Design and implement Parent access to verified linked children (Phase 2 only; paused)
 - [ ] Implement authorized role and school-membership management
 
 ### Database and School Features
@@ -266,7 +275,7 @@ These are approved requirements, not proof of complete RBAC enforcement. The V4 
 - [ ] Teacher and staff APIs
 - [ ] Class and subject APIs
 - [ ] Daily attendance APIs
-- [ ] Parent-child relationship management
+- [ ] Parent-child portal authorization (Phase 2; existing foundation preserved)
 - [ ] Timetable, homework, exam results and notices
 - [ ] Additional school workflows and reporting
 
@@ -275,7 +284,7 @@ These are approved requirements, not proof of complete RBAC enforcement. The V4 
 - [ ] React frontend implementation
 - [ ] Login and authentication integration
 - [ ] Role-specific dashboards
-- [ ] Parent-facing interfaces
+- [ ] Parent/Driver mobile interfaces (Phase 2, after complete web delivery)
 - [ ] CI/CD and deployment configuration
 - [ ] Production TLS and certificate verification
 - [ ] Production database connection-pool tuning
@@ -286,18 +295,16 @@ These are approved requirements, not proof of complete RBAC enforcement. The V4 
 
 ## Next Steps
 
-1. Review `docs/V4-IMPLEMENTATION-NOTES.md` and the V4 migration draft. Do not apply it to the development database yet.
-2. Complete principal-aware Go authentication/session refactoring and automated migration tests before applying V4.
-3. Verify `backend/.env` is ignored and not tracked. Never paste secret contents into chat.
-4. Run `git diff --check` and inspect `git status -sb`, including the previously reported untracked `APPLY-DOCS.txt`.
-5. Re-run `go test -count=1 ./...` and `go vet ./...` from the backend directory after any code changes.
-6. Run the opt-in PostgreSQL integration tests against the dedicated `school_management_test` database, including the cross-family inactive-user race test.
-7. Review and commit the documentation diff only after checking the exact files; then push if the user approves the milestone.
-8. Implement principal-aware login, JWT claims, refresh-session rotation/revocation, token-version checks, and DB-backed permission evaluation against the reviewed V4 schema.
-9. Implement roles, permissions, custom roles, bounded overrides, staff password lifecycle, teacher assignment scopes, and parent-child authorization with automated tests.
-10. Implement login rate limiting and failed-login lockout with automated tests.
-11. Continue school-management APIs and frontend integration in small, verified milestones.
-12. Complete production security, deployment, monitoring and recovery checks before release.
+1. Reconcile the current V4 principal/authentication code and SQL migration drafts against the approved Phase 1 web roles; preserve refresh-token concurrency guarantees.
+2. Complete the database/backend module blueprint against the actual existing migrations, models, repositories, handlers and tests. Identify additive schema gaps before implementing each module.
+3. Complete permission enforcement, staff account lifecycle, school onboarding and school/resource tenant isolation.
+4. Establish the React + TypeScript + Vite frontend foundation and typed API integration.
+5. Deliver Platform Admin dashboard and school onboarding.
+6. Deliver School Admin settings and school staff management.
+7. Deliver academic setup, student/enrollment management, attendance, timetable, exams/results, homework, notices and reports one module at a time.
+8. Run full backend, PostgreSQL integration, frontend build, authorization and tenant-isolation verification after relevant milestones.
+9. Plan Parent/Driver mobile apps only after Phase 1 web completion; keep Parent work paused until then.
+10. Complete production security, deployment, monitoring, backup and recovery checks before release.
 
 ## Working Rules
 
