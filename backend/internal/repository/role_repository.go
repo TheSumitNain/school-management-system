@@ -387,3 +387,251 @@ func (r *RoleRepository) RevokeSchoolPermissionDelegation(
 	}
 	return nil
 }
+
+func (r *RoleRepository) ListSchoolPermissionDelegations(
+	ctx context.Context,
+	actorPrincipalID, schoolID int64,
+) ([]SchoolPermissionDelegation, error) {
+	if r == nil || r.db == nil || actorPrincipalID <= 0 || schoolID <= 0 {
+		return nil, ErrRolePermissionDenied
+	}
+	var authorized bool
+	err := r.db.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM auth_principals ap
+			JOIN users u ON u.principal_id = ap.id
+			JOIN schools s ON s.id = u.school_id
+			JOIN principal_roles pr ON pr.principal_id = ap.id AND pr.revoked_at IS NULL
+			JOIN roles r ON r.id = pr.role_id
+			JOIN role_permissions rp ON rp.role_id = r.id
+			JOIN permissions p ON p.id = rp.permission_id
+			WHERE ap.id = $1 AND ap.principal_type = 'staff'
+			  AND ap.status = 'active' AND u.status = 'active'
+			  AND u.school_id = $2 AND s.id = $2 AND s.status = 'active'
+			  AND r.school_id = $2 AND r.scope_type = 'school'
+			  AND r.principal_type = 'staff' AND r.role_key = 'school_admin'
+			  AND p.permission_key = 'permissions.assign'
+			  AND p.scope_type = 'school' AND p.is_active = TRUE
+			  AND NOT EXISTS (
+			      SELECT 1 FROM user_permission_overrides denied
+			      WHERE denied.principal_id = ap.id
+			        AND denied.school_id = $2
+			        AND denied.permission_id = p.id
+			        AND denied.effect = 'deny'
+			  )
+		)
+	`, actorPrincipalID, schoolID).Scan(&authorized)
+	if err != nil {
+		return nil, fmt.Errorf("authorize school delegation listing: %w", err)
+	}
+	if !authorized {
+		return nil, ErrRolePermissionDenied
+	}
+
+	rows, err := r.db.Query(ctx, `
+		SELECT d.id, d.school_id, p.permission_key,
+		       d.can_assign_to_roles, d.can_override_users,
+		       d.granted_by, d.created_at, d.revoked_at
+		FROM role_permission_delegations d
+		JOIN permissions p ON p.id = d.permission_id
+		WHERE d.school_id = $1 AND d.revoked_at IS NULL
+		ORDER BY p.permission_key, d.id
+	`, schoolID)
+	if err != nil {
+		return nil, fmt.Errorf("list school permission delegations: %w", err)
+	}
+	defer rows.Close()
+	delegations := make([]SchoolPermissionDelegation, 0)
+	for rows.Next() {
+		var item SchoolPermissionDelegation
+		if err := rows.Scan(&item.ID, &item.SchoolID, &item.PermissionKey,
+			&item.CanAssignToRoles, &item.CanOverrideUsers, &item.GrantedBy,
+			&item.CreatedAt, &item.RevokedAt); err != nil {
+			return nil, fmt.Errorf("scan school permission delegation: %w", err)
+		}
+		delegations = append(delegations, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate school permission delegations: %w", err)
+	}
+	return delegations, nil
+}
+
+func (r *RoleRepository) GrantCustomRolePermission(
+	ctx context.Context,
+	actorPrincipalID, schoolID, roleID, delegationID int64,
+	permissionKey string,
+) error {
+	permissionKey = strings.TrimSpace(permissionKey)
+	if r == nil || r.db == nil || actorPrincipalID <= 0 || schoolID <= 0 ||
+		roleID <= 0 || delegationID <= 0 || permissionKey == "" {
+		return ErrRolePermissionDenied
+	}
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin custom role permission grant: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	var authorized bool
+	err = tx.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM auth_principals ap
+			JOIN users u ON u.principal_id = ap.id
+			JOIN schools s ON s.id = u.school_id
+			JOIN principal_roles pr ON pr.principal_id = ap.id AND pr.revoked_at IS NULL
+			JOIN roles r ON r.id = pr.role_id
+			JOIN role_permissions rp ON rp.role_id = r.id
+			JOIN permissions p ON p.id = rp.permission_id
+			WHERE ap.id = $1 AND ap.principal_type = 'staff'
+			  AND ap.status = 'active' AND u.status = 'active'
+			  AND u.school_id = $2 AND s.id = $2 AND s.status = 'active'
+			  AND r.school_id = $2 AND r.scope_type = 'school'
+			  AND r.principal_type = 'staff' AND r.role_key = 'school_admin'
+			  AND p.permission_key = 'permissions.assign'
+			  AND p.scope_type = 'school' AND p.is_active = TRUE
+			  AND NOT EXISTS (
+			      SELECT 1 FROM user_permission_overrides denied
+			      WHERE denied.principal_id = ap.id
+			        AND denied.school_id = $2
+			        AND denied.permission_id = p.id
+			        AND denied.effect = 'deny'
+			  )
+		)
+	`, actorPrincipalID, schoolID).Scan(&authorized)
+	if err != nil {
+		return fmt.Errorf("authorize custom role permission grant: %w", err)
+	}
+	if !authorized {
+		return ErrRolePermissionDenied
+	}
+
+	var insertedRoleID int64
+	err = tx.QueryRow(ctx, `
+		INSERT INTO role_permissions (role_id, permission_id, delegation_id)
+		SELECT target.id, p.id, d.id
+		FROM roles target
+		JOIN permissions p ON p.permission_key = $4
+		JOIN role_permission_delegations d
+		  ON d.id = $3
+		 AND d.school_id = $2
+		 AND d.permission_id = p.id
+		 AND d.can_assign_to_roles = TRUE
+		 AND d.revoked_at IS NULL
+		WHERE target.id = $1
+		  AND target.school_id = $2
+		  AND target.scope_type = 'school'
+		  AND target.principal_type = 'staff'
+		  AND target.is_system = FALSE
+		  AND p.scope_type = 'school'
+		  AND p.is_active = TRUE
+		  AND p.is_delegable = TRUE
+		RETURNING role_id
+	`, roleID, schoolID, delegationID, permissionKey).Scan(&insertedRoleID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrDelegationNotFound
+	}
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return ErrRoleNameTaken
+		}
+		return fmt.Errorf("insert custom role permission grant: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO audit_events
+		    (actor_principal_id, school_id, action, resource_type, resource_id, outcome, metadata)
+		VALUES ($1, $2, 'school.custom_role.permission_granted', 'school_role', $3, 'success',
+		        jsonb_build_object('permission_key', $4, 'delegation_id', $5))
+	`, actorPrincipalID, schoolID, fmt.Sprint(insertedRoleID), permissionKey, delegationID); err != nil {
+		return fmt.Errorf("audit custom role permission grant: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit custom role permission grant: %w", err)
+	}
+	return nil
+}
+
+func (r *RoleRepository) RevokeCustomRolePermission(
+	ctx context.Context,
+	actorPrincipalID, schoolID, roleID int64,
+	permissionKey string,
+) error {
+	permissionKey = strings.TrimSpace(permissionKey)
+	if r == nil || r.db == nil || actorPrincipalID <= 0 || schoolID <= 0 || roleID <= 0 || permissionKey == "" {
+		return ErrRolePermissionDenied
+	}
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin custom role permission revocation: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	var authorized bool
+	err = tx.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM auth_principals ap
+			JOIN users u ON u.principal_id = ap.id
+			JOIN schools s ON s.id = u.school_id
+			JOIN principal_roles pr ON pr.principal_id = ap.id AND pr.revoked_at IS NULL
+			JOIN roles r ON r.id = pr.role_id
+			JOIN role_permissions rp ON rp.role_id = r.id
+			JOIN permissions p ON p.id = rp.permission_id
+			WHERE ap.id = $1 AND ap.principal_type = 'staff'
+			  AND ap.status = 'active' AND u.status = 'active'
+			  AND u.school_id = $2 AND s.id = $2 AND s.status = 'active'
+			  AND r.school_id = $2 AND r.scope_type = 'school'
+			  AND r.principal_type = 'staff' AND r.role_key = 'school_admin'
+			  AND p.permission_key = 'permissions.assign'
+			  AND p.scope_type = 'school' AND p.is_active = TRUE
+			  AND NOT EXISTS (
+			      SELECT 1 FROM user_permission_overrides denied
+			      WHERE denied.principal_id = ap.id
+			        AND denied.school_id = $2
+			        AND denied.permission_id = p.id
+			        AND denied.effect = 'deny'
+			  )
+		)
+	`, actorPrincipalID, schoolID).Scan(&authorized)
+	if err != nil {
+		return fmt.Errorf("authorize custom role permission revocation: %w", err)
+	}
+	if !authorized {
+		return ErrRolePermissionDenied
+	}
+
+	tag, err := tx.Exec(ctx, `
+		DELETE FROM role_permissions rp
+		USING roles target, permissions p
+		WHERE rp.role_id = target.id
+		  AND rp.permission_id = p.id
+		  AND target.id = $1
+		  AND target.school_id = $2
+		  AND target.scope_type = 'school'
+		  AND target.principal_type = 'staff'
+		  AND target.is_system = FALSE
+		  AND p.permission_key = $3
+		  AND rp.delegation_id IS NOT NULL
+	`, roleID, schoolID, permissionKey)
+	if err != nil {
+		return fmt.Errorf("delete custom role permission grant: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrDelegationNotFound
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO audit_events
+		    (actor_principal_id, school_id, action, resource_type, resource_id, outcome, metadata)
+		VALUES ($1, $2, 'school.custom_role.permission_revoked', 'school_role', $3, 'success',
+		        jsonb_build_object('permission_key', $4))
+	`, actorPrincipalID, schoolID, fmt.Sprint(roleID), permissionKey); err != nil {
+		return fmt.Errorf("audit custom role permission revocation: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit custom role permission revocation: %w", err)
+	}
+	return nil
+}
