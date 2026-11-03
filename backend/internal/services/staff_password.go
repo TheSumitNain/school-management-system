@@ -16,6 +16,7 @@ var (
 type staffPasswordRepository interface {
 	GetStaffPasswordCredential(ctx context.Context, principalID int64) (int64, string, error)
 	ChangeStaffPassword(ctx context.Context, principalID int64, expectedPasswordHash, newPasswordHash string) error
+	ResetStaffPassword(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64, newPasswordHash string) error
 }
 
 type StaffPasswordService struct {
@@ -60,4 +61,24 @@ func (s *StaffPasswordService) ChangePassword(
 		return err
 	}
 	return s.repository.ChangeStaffPassword(ctx, principalID, currentHash, newHash)
+}
+
+
+// ResetPassword sets a same-school staff member's password to a new temporary
+// credential. The repository independently verifies the actor's School Admin
+// grant, school boundary, target status, token-version rotation and audit trail.
+func (s *StaffPasswordService) ResetPassword(
+	ctx context.Context,
+	actorPrincipalID, schoolID, targetPrincipalID int64,
+	newPassword string,
+) error {
+	if s == nil || s.repository == nil || actorPrincipalID <= 0 ||
+		schoolID <= 0 || targetPrincipalID <= 0 || actorPrincipalID == targetPrincipalID {
+		return ErrInvalidRegistration
+	}
+	newHash, err := HashPassword(newPassword)
+	if err != nil {
+		return err
+	}
+	return s.repository.ResetStaffPassword(ctx, actorPrincipalID, schoolID, targetPrincipalID, newHash)
 }
