@@ -65,7 +65,7 @@ func TestStaffAccountRepositoryV17PostgresIntegration(t *testing.T) {
 		INSERT INTO users (school_id, username, password_hash, status)
 		VALUES ($1, $2, $3, 'active')
 		RETURNING id, principal_id
-	`, secondSchoolID, "staff-other-school-"+suffix, targetPasswordHash).Scan(
+	`, secondSchoolID, "other-"+suffix, targetPasswordHash).Scan(
 		&otherSchoolUserID, &otherSchoolPrincipalID,
 	); err != nil {
 		t.Fatalf("create other-school staff account: %v", err)
