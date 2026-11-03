@@ -64,6 +64,10 @@ func setupRouter(
 		router.POST("/auth/password/change",
 			middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader),
 			authHandler.ChangeStaffPassword)
+		router.POST("/school/staff/:principalID/password/reset",
+			middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader),
+			middleware.RequirePermission("users.password_reset"),
+			authHandler.ResetStaffPassword)
 	}
 
 	router.GET("/auth/me", middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader), func(c *gin.Context) {
