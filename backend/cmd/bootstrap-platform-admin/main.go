@@ -51,12 +51,10 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("read initial Platform Admin password: %w", err)
 	}
-	defer func() {
-		for i := range passwordBytes {
-			passwordBytes[i] = 0
-		}
-	}()
 	passwordHash, err := services.HashPassword(string(passwordBytes))
+	for i := range passwordBytes {
+		passwordBytes[i] = 0
+	}
 	if err != nil {
 		return fmt.Errorf("initial Platform Admin password does not meet policy: %w", err)
 	}
