@@ -11,18 +11,17 @@ This project is under active development. Verification results describe the late
 - Added authenticated staff password change with current-password verification and the shared password policy.
 - Added same-school School Admin staff password reset, independently authorized in the repository and protected by the `users.password_reset` permission.
 - Password change/reset now atomically increment principal token version, revoke active refresh sessions, and append audit events. New/reset staff credentials require a change before normal protected access.
-- Added unit, handler, middleware and opt-in PostgreSQL integration tests. PostgreSQL execution against `school_management_test` remains pending.
+- Added unit, handler, middleware and opt-in PostgreSQL integration tests. V15 integration tests passed on ephemeral PostgreSQL 18 in GitHub Actions; the user's persistent `school_management_test` remains unchanged.
 
 ### Authorization — exact delegation linkage (2026-11-03)
 
 - Added V16 `delegation_id` linkage to custom-role permission grants and user permission overrides.
 - Database triggers require the exact active delegation and appropriate capability (`can_assign_to_roles` or `can_override_users`); legacy un-attributable custom grants/overrides cause a safe migration preflight failure rather than guessed backfill.
 - Live permission resolution now includes custom-role grants and ALLOW overrides only while the exact referenced delegation remains active. A later delegation for the same permission does not revive an old grant.
-- Added opt-in PostgreSQL integration tests for exact-delegation revocation and explicit rebinding. Migration application and PostgreSQL test execution remain pending on `school_management_test`.
+- Added opt-in PostgreSQL integration tests for exact-delegation revocation and explicit rebinding. V16 migration and behavior tests passed on ephemeral PostgreSQL 18 in GitHub Actions; the user's persistent `school_management_test` remains unchanged.
 
 ### Verification
 
-- GitHub Actions on `fix/v4-auth-security-hardening` commit `4351ce9`: `go test -count=1 -p 1 ./...` PASS; `go vet ./...` PASS.
 - GitHub Actions commit `fcffdbf` enabled `RUN_POSTGRES_INTEGRATION_TESTS=1`, applied V1–V16 to ephemeral PostgreSQL 18, passed `go test -count=1 -p 1 ./...`, and passed `go vet ./...`. The persistent user database was not touched.
 
 ### Database — V13 new-school system-role provisioning (2026-11-03)
