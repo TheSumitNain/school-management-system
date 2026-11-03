@@ -259,4 +259,34 @@ func TestStaffAccountUpdateAndEnableAuthorizationPostgresIntegration(t *testing.
 		t.Fatalf("unauthorized re-enable changed account state: user=%q principal=%q",
 			disabledUserStatus, disabledPrincipalStatus)
 	}
+
+	// The V4 principal status is canonical. Verify both directions of the
+	// database synchronization relied on by repository disable/re-enable.
+	if _, err := pool.Exec(ctx,
+		`UPDATE auth_principals SET status = 'disabled' WHERE id = $1`, activePrincipalID,
+	); err != nil {
+		t.Fatalf("disable canonical principal for status-sync check: %v", err)
+	}
+	var syncedUserStatus string
+	if err := pool.QueryRow(ctx,
+		`SELECT status FROM users WHERE id = $1`, activeUserID,
+	).Scan(&syncedUserStatus); err != nil {
+		t.Fatalf("read user status after principal disable: %v", err)
+	}
+	if syncedUserStatus != "disabled" {
+		t.Fatalf("principal disable did not synchronize users.status: got %q", syncedUserStatus)
+	}
+	if _, err := pool.Exec(ctx,
+		`UPDATE auth_principals SET status = 'active' WHERE id = $1`, activePrincipalID,
+	); err != nil {
+		t.Fatalf("reactivate canonical principal for status-sync check: %v", err)
+	}
+	if err := pool.QueryRow(ctx,
+		`SELECT status FROM users WHERE id = $1`, activeUserID,
+	).Scan(&syncedUserStatus); err != nil {
+		t.Fatalf("read user status after principal re-enable: %v", err)
+	}
+	if syncedUserStatus != "active" {
+		t.Fatalf("principal re-enable did not synchronize users.status: got %q", syncedUserStatus)
+	}
 }
