@@ -202,7 +202,7 @@ func (r *RoleRepository) CreateCustomRole(
 		INSERT INTO audit_events
 		    (actor_principal_id, school_id, action, resource_type, resource_id, outcome, metadata)
 		VALUES ($1, $2, 'school.role.created', 'school_role', $3, 'success',
-		        jsonb_build_object('role_key', $4, 'name', $5))
+		        jsonb_build_object('role_key', $4::text, 'name', $5::text))
 	`, actorPrincipalID, schoolID, fmt.Sprint(role.ID), role.RoleKey, role.Name); err != nil {
 		return nil, fmt.Errorf("audit custom school role creation: %w", err)
 	}
@@ -308,7 +308,7 @@ func (r *RoleRepository) GrantSchoolPermissionDelegation(
 		INSERT INTO audit_events
 		    (actor_principal_id, school_id, action, resource_type, resource_id, outcome, metadata)
 		VALUES ($1, $2, 'platform.permission_delegation.granted', 'permission_delegation', $3, 'success',
-		        jsonb_build_object('permission_key', $4, 'can_assign_to_roles', $5, 'can_override_users', $6))
+		        jsonb_build_object('permission_key', $4::text, 'can_assign_to_roles', $5::boolean, 'can_override_users', $6::boolean))
 	`, actorPrincipalID, schoolID, fmt.Sprint(delegation.ID), permissionKey, canAssignToRoles, canOverrideUsers); err != nil {
 		return nil, fmt.Errorf("audit permission delegation: %w", err)
 	}
@@ -379,7 +379,7 @@ func (r *RoleRepository) RevokeSchoolPermissionDelegation(
 		INSERT INTO audit_events
 		    (actor_principal_id, school_id, action, resource_type, resource_id, outcome, metadata)
 		VALUES ($1, $2, 'platform.permission_delegation.revoked', 'permission_delegation', $3, 'success',
-		        jsonb_build_object('permission_key', $4))
+		        jsonb_build_object('permission_key', $4::text))
 	`, actorPrincipalID, schoolID, fmt.Sprint(delegationID), permissionKey); err != nil {
 		return fmt.Errorf("audit permission delegation revocation: %w", err)
 	}
@@ -545,7 +545,7 @@ func (r *RoleRepository) GrantCustomRolePermission(
 		INSERT INTO audit_events
 		    (actor_principal_id, school_id, action, resource_type, resource_id, outcome, metadata)
 		VALUES ($1, $2, 'school.custom_role.permission_granted', 'school_role', $3, 'success',
-		        jsonb_build_object('permission_key', $4, 'delegation_id', $5))
+		        jsonb_build_object('permission_key', $4::text, 'delegation_id', $5::bigint))
 	`, actorPrincipalID, schoolID, fmt.Sprint(insertedRoleID), permissionKey, delegationID); err != nil {
 		return fmt.Errorf("audit custom role permission grant: %w", err)
 	}
@@ -627,7 +627,7 @@ func (r *RoleRepository) RevokeCustomRolePermission(
 		INSERT INTO audit_events
 		    (actor_principal_id, school_id, action, resource_type, resource_id, outcome, metadata)
 		VALUES ($1, $2, 'school.custom_role.permission_revoked', 'school_role', $3, 'success',
-		        jsonb_build_object('permission_key', $4))
+		        jsonb_build_object('permission_key', $4::text))
 	`, actorPrincipalID, schoolID, fmt.Sprint(roleID), permissionKey); err != nil {
 		return fmt.Errorf("audit custom role permission revocation: %w", err)
 	}
@@ -784,7 +784,7 @@ func (r *RoleRepository) SetStaffPermissionOverride(
 		INSERT INTO audit_events
 		    (actor_principal_id, school_id, action, resource_type, resource_id, outcome, metadata)
 		VALUES ($1, $2, 'school.staff.permission_override.set', 'user_permission_override', $3, 'success',
-		        jsonb_build_object('permission_key', $4, 'effect', $5, 'delegation_id', $6, 'reason', $7))
+		        jsonb_build_object('permission_key', $4::text, 'effect', $5::text, 'delegation_id', $6::bigint, 'reason', $7::text))
 	`, actorPrincipalID, schoolID, fmt.Sprint(targetPrincipalID), permissionKey, effect, delegationID, reason); err != nil {
 		return fmt.Errorf("audit staff permission override: %w", err)
 	}
@@ -853,7 +853,7 @@ func (r *RoleRepository) DeleteStaffPermissionOverride(
 		INSERT INTO audit_events
 		    (actor_principal_id, school_id, action, resource_type, resource_id, outcome, metadata)
 		VALUES ($1, $2, 'school.staff.permission_override.removed', 'user_permission_override', $3, 'success',
-		        jsonb_build_object('permission_key', $4))
+		        jsonb_build_object('permission_key', $4::text))
 	`, actorPrincipalID, schoolID, fmt.Sprint(targetPrincipalID), permissionKey); err != nil {
 		return fmt.Errorf("audit staff permission override deletion: %w", err)
 	}
@@ -996,7 +996,7 @@ func (r *RoleRepository) AssignStaffRole(ctx context.Context, actorPrincipalID, 
 		INSERT INTO audit_events
 		    (actor_principal_id, school_id, action, resource_type, resource_id, outcome, metadata)
 		VALUES ($1, $2, 'school.staff.role_assigned', 'staff_principal', $3, 'success',
-		        jsonb_build_object('role_id', $4))
+		        jsonb_build_object('role_id', $4::bigint))
 	`, actorPrincipalID, schoolID, fmt.Sprint(targetPrincipalID), roleID); err != nil {
 		return fmt.Errorf("audit staff role assignment: %w", err)
 	}
@@ -1071,7 +1071,7 @@ func (r *RoleRepository) RevokeStaffRole(ctx context.Context, actorPrincipalID, 
 		INSERT INTO audit_events
 		    (actor_principal_id, school_id, action, resource_type, resource_id, outcome, metadata)
 		VALUES ($1, $2, 'school.staff.role_revoked', 'staff_principal', $3, 'success',
-		        jsonb_build_object('role_id', $4))
+		        jsonb_build_object('role_id', $4::bigint))
 	`, actorPrincipalID, schoolID, fmt.Sprint(targetPrincipalID), roleID); err != nil {
 		return fmt.Errorf("audit staff role revocation: %w", err)
 	}
