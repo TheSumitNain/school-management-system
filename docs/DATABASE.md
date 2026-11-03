@@ -520,13 +520,6 @@ This is a blocker for Platform Admin school onboarding. Before implementing the 
 
 
 
-- Preserve existing `users.id` values and `refresh_sessions.user_id` relationships where possible.
-- Do not modify already-applied migrations; add new versioned migrations.
-- Plan rollback and forward-recovery behavior before applying schema changes.
-- Preserve refresh-token family/replay/concurrency protections during the identity refactor.
-- Add clean-database migration tests and upgrade tests from the current v3 schema.
-
-
 ## 15. V4 Identity and RBAC Migration (Applied in Dedicated Test Database)
 
 The user approved the V4 identity/RBAC schema direction. A draft migration is present at `backend/migrations/000004_add_principal_rbac_foundation.up.sql`, with an intentionally forward-only down migration. Its design and blockers are documented in `docs/V4-IMPLEMENTATION-NOTES.md`.
