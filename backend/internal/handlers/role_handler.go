@@ -25,6 +25,9 @@ type RoleManagementService interface {
 	ListStaffPermissionOverrides(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64) ([]repository.StaffPermissionOverride, error)
 	SetStaffPermissionOverride(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID, delegationID int64, permissionKey, effect, reason string) error
 	DeleteStaffPermissionOverride(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64, permissionKey string) error
+	ListStaffRoleAssignments(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64) ([]repository.StaffRoleAssignment, error)
+	AssignStaffRole(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID, roleID int64) error
+	RevokeStaffRole(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID, roleID int64) error
 }
 
 type RoleHandler struct {
@@ -379,5 +382,95 @@ func (h *RoleHandler) DeleteStaffPermissionOverride(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": "Staff permission override not found"})
 	default:
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unable to remove staff permission override"})
+	}
+}
+
+func (h *RoleHandler) ListStaffRoleAssignments(c *gin.Context) {
+	actorID, schoolID, ok := roleActorContext(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "School staff authentication required"})
+		return
+	}
+	if h == nil || h.service == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Staff role management is unavailable"})
+		return
+	}
+	targetID, err := strconv.ParseInt(c.Param("principalID"), 10, 64)
+	if err != nil || targetID <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid target principal ID"})
+		return
+	}
+	items, err := h.service.ListStaffRoleAssignments(c.Request.Context(), actorID, schoolID, targetID)
+	switch {
+	case err == nil:
+		c.JSON(http.StatusOK, gin.H{"status": "success", "roles": items})
+	case errors.Is(err, repository.ErrRolePermissionDenied):
+		c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": "Staff role access is not authorized"})
+	default:
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unable to list staff roles"})
+	}
+}
+
+func (h *RoleHandler) AssignStaffRole(c *gin.Context) {
+	actorID, schoolID, ok := roleActorContext(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "School staff authentication required"})
+		return
+	}
+	if h == nil || h.service == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Staff role management is unavailable"})
+		return
+	}
+	targetID, targetErr := strconv.ParseInt(c.Param("principalID"), 10, 64)
+	roleID, roleErr := strconv.ParseInt(c.Param("roleID"), 10, 64)
+	if targetErr != nil || roleErr != nil || targetID <= 0 || roleID <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid target principal ID or role ID"})
+		return
+	}
+	err := h.service.AssignStaffRole(c.Request.Context(), actorID, schoolID, targetID, roleID)
+	switch {
+	case err == nil:
+		c.JSON(http.StatusCreated, gin.H{"status": "success", "message": "Staff role assigned"})
+	case errors.Is(err, services.ErrInvalidCustomRole):
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid staff role assignment"})
+	case errors.Is(err, repository.ErrRolePermissionDenied):
+		c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": "Staff role assignment is not authorized"})
+	case errors.Is(err, repository.ErrRoleNotFound):
+		c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": "Target staff account or assignable role not found"})
+	case errors.Is(err, repository.ErrRoleAssignmentExists):
+		c.JSON(http.StatusConflict, gin.H{"status": "error", "message": "Staff member already has this role"})
+	default:
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unable to assign staff role"})
+	}
+}
+
+func (h *RoleHandler) RevokeStaffRole(c *gin.Context) {
+	actorID, schoolID, ok := roleActorContext(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "School staff authentication required"})
+		return
+	}
+	if h == nil || h.service == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Staff role management is unavailable"})
+		return
+	}
+	targetID, targetErr := strconv.ParseInt(c.Param("principalID"), 10, 64)
+	roleID, roleErr := strconv.ParseInt(c.Param("roleID"), 10, 64)
+	if targetErr != nil || roleErr != nil || targetID <= 0 || roleID <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid target principal ID or role ID"})
+		return
+	}
+	err := h.service.RevokeStaffRole(c.Request.Context(), actorID, schoolID, targetID, roleID)
+	switch {
+	case err == nil:
+		c.JSON(http.StatusOK, gin.H{"status": "success", "message": "Staff role revoked"})
+	case errors.Is(err, services.ErrInvalidCustomRole):
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid staff role revocation"})
+	case errors.Is(err, repository.ErrRolePermissionDenied):
+		c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": "Staff role revocation is not authorized"})
+	case errors.Is(err, repository.ErrRoleNotFound):
+		c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": "Active staff role assignment not found"})
+	default:
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unable to revoke staff role"})
 	}
 }
