@@ -39,6 +39,14 @@ func (f *fakeStaffAccountService) Disable(context.Context, int64, int64, int64) 
 	return f.err
 }
 
+func (f *fakeStaffAccountService) Update(context.Context, int64, int64, int64, string) (*models.User, error) {
+	return f.user, f.err
+}
+
+func (f *fakeStaffAccountService) Enable(context.Context, int64, int64, int64, string) error {
+	return f.err
+}
+
 func TestStaffHandlerCreateSuccessDoesNotExposePassword(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	service := &fakeStaffAccountService{user: &models.User{
