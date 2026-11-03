@@ -21,7 +21,7 @@ The versioned migrations define the current schema foundation:
 | `schools` | School identity and setup status | Created by migration v1 |
 | `users`, `refresh_sessions` | School staff accounts and refresh sessions | Created by migration v2; token-family metadata added by v3 |
 | Principal, account-subtype, RBAC, MFA, OTP and audit tables | Shared identity, scoped roles/permissions, security challenges and audit history | Defined by migrations v4–v10; verify the target database's applied migration version independently |
-| `students` | Stable school-scoped student identity | V11 applied and PostgreSQL integration-tested on `school_management_test` (migration version 11, clean) |
+| `students` | Stable school-scoped student identity | V11 applied and PostgreSQL integration-tested on `school_management_test`; later cumulative migration state reported at version 12, `dirty=false` |
 | `guardians`, `student_guardians` | School-scoped guardian contact records and many-to-many student links | V11 applied and PostgreSQL integration-tested on `school_management_test` (migration version 11, clean) |
 
 V11 deliberately does not create academic-year enrollment, class/section placement, or authenticated parent-to-child links. Those require separate schema and authorization milestones. The complete school management data model and business APIs are not implemented by these foundation tables.
@@ -527,17 +527,17 @@ This is a blocker for Platform Admin school onboarding. Before implementing the 
 - Add clean-database migration tests and upgrade tests from the current v3 schema.
 
 
-## 15. V4 Identity and RBAC Migration Draft (Not Applied)
+## 15. V4 Identity and RBAC Migration (Applied in Dedicated Test Database)
 
 The user approved the V4 identity/RBAC schema direction. A draft migration is present at `backend/migrations/000004_add_principal_rbac_foundation.up.sql`, with an intentionally forward-only down migration. Its design and blockers are documented in `docs/V4-IMPLEMENTATION-NOTES.md`.
 
-The observed development database was at migration v3 with `dirty = false`: 1 school, 1 user, 4 refresh sessions, 0 active sessions, and 0 expired sessions. The user ran duplicate and canonical-username preflight checks; both returned no violations. The existing username index was `users_school_username_unique`; the refresh-session FK was `refresh_sessions_user_id_fkey` with `ON DELETE CASCADE`.
+The development database was historically observed at migration v3 with `dirty = false`: 1 school, 1 user, 4 refresh sessions, 0 active sessions, and 0 expired sessions. This is a historical pre-V4 observation, not the current test-database state. The user later directly reported `school_management_test.schema_migrations` at cumulative version `12`, `dirty = false` (2026-11-02), which means V4–V12 were applied in sequence on that dedicated test database. Do not infer that the same migrations are applied to `school_management`.
 
 The V4 draft adds shared principals, global username uniqueness, Platform Admin and Parent subtype tables, the permission catalogue, system roles, role permissions, principal-role assignments, per-user overrides, permission delegations, principal-bound refresh sessions, MFA/OTP storage, and append-only audit events. It preserves existing `users.id`, refresh-token hashes, and token families.
 
-Before the global username constraint is created, the migration now preflights `LOWER(BTRIM(username))` across all schools. It rejects values outside the canonical 3–32 character lowercase ASCII username format and reports sample user IDs for invalid rows or normalized collisions. Only if the full preflight passes does it lowercase and trim existing usernames; it never invents replacement usernames. This safeguard is part of the migration draft and has **not** been run or PostgreSQL-tested.
+Before the global username constraint is created, the migration now preflights `LOWER(BTRIM(username))` across all schools. It rejects values outside the canonical 3–32 character lowercase ASCII username format and reports sample user IDs for invalid rows or normalized collisions. Only if the full preflight passes does it lowercase and trim existing usernames; it never invents replacement usernames. This safeguard was part of the migration source and was included in the cumulative migration sequence reported at version 12 on `school_management_test`. The direct version query confirms migration state, not every individual edge-case assertion.
 
-**Important:** This migration has not been executed against PostgreSQL and must not yet be applied to the user's development database. The current Go code still issues user-ID JWT subjects and does not perform principal/token-version checks or RBAC evaluation. Complete and test the Go cutover plus migration tests against a disposable PostgreSQL 18 database first. The existing staff account's role must be explicitly confirmed; do not infer it from there being one user.
+**Current status:** V4 is included in the cumulative version-12 schema reported for `school_management_test`; it must not be reapplied there. The current Go code has principal-aware JWT subjects, live principal/token-version checks and permission resolution. The exact role assignment for any pre-existing staff account must still be verified; never infer it from account counts. The migration's full trigger/edge-case suite and production-database state must be verified independently.
 
 
 ## 16. V12 Parent–Guardian Authorization Foundation
@@ -547,7 +547,7 @@ Migration V12 is introduced by:
 - `backend/migrations/000012_add_parent_guardian_authorization.up.sql`
 - `backend/migrations/000012_add_parent_guardian_authorization.down.sql`
 
-The migration is additive and must be applied only after the V11 schema exists. It has **not yet been applied or PostgreSQL-verified**.
+The migration is additive and was reported applied on `school_management_test`; the direct cumulative migration status is version 12, `dirty=false`. A dedicated `TestParentGuardianAuthorizationV12PostgresIntegration` run was reported PASS. A later verbose attempt skipped integration tests because the opt-in environment flag was omitted, so rerun it with `RUN_POSTGRES_INTEGRATION_TESTS=1` after relevant changes. This does not authorize applying V12 to `school_management`.
 
 ### 16.1 School-authorized guardian portal eligibility
 
