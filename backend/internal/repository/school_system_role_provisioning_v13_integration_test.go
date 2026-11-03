@@ -210,6 +210,33 @@ func TestSchoolSystemRoleProvisioningV13PostgresIntegration(t *testing.T) {
 		return err
 	})
 
+expectFailure("direct system-role update", func() error {
+		_, err := tx.Exec(ctx, `
+			UPDATE roles SET name = 'Modified School Admin'
+			 WHERE school_id = $1 AND role_key = 'school_admin' AND is_system = TRUE
+		`, schoolID)
+		return err
+	})
+
+	expectFailure("direct system-role deletion", func() error {
+		_, err := tx.Exec(ctx, `
+			DELETE FROM roles
+			 WHERE school_id = $1 AND role_key = 'teacher' AND is_system = TRUE
+		`, schoolID)
+		return err
+	})
+
+	expectFailure("direct system-role permission deletion", func() error {
+		_, err := tx.Exec(ctx, `
+			DELETE FROM role_permissions rp
+			 USING roles r, permissions p
+			 WHERE rp.role_id = r.id AND rp.permission_id = p.id
+			   AND r.school_id = $1 AND r.role_key = 'school_admin'
+			   AND r.is_system = TRUE AND p.permission_key = 'school.settings.read'
+		`, schoolID)
+		return err
+	})
+
 	if _, err := tx.Exec(ctx, "SAVEPOINT v13_missing_permission"); err != nil {
 		t.Fatalf("create missing-permission savepoint: %v", err)
 	}
