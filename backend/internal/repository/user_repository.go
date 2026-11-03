@@ -22,11 +22,18 @@ var (
 	ErrSchoolInactive = errors.New("school is inactive")
 )
 
-type UserRepository struct {
-	db *pgxpool.Pool
+type userRepositoryDB interface {
+	Begin(context.Context) (pgx.Tx, error)
+	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+	QueryRow(context.Context, string, ...any) pgx.Row
 }
 
-func NewUserRepository(db *pgxpool.Pool) *UserRepository {
+type UserRepository struct {
+	db userRepositoryDB
+}
+
+func NewUserRepository(db userRepositoryDB) *UserRepository {
 	return &UserRepository{db: db}
 }
 
@@ -297,8 +304,7 @@ WHERE LOWER(u.username) = LOWER($1)
 	); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrUserNotFound
-		}
-		return nil, fmt.Errorf("get staff principal by username: %w", err)
+		}		return nil, fmt.Errorf("get staff principal by username: %w", err)
 	}
 
 	if principal.Status != "active" || userStatus != "active" {
@@ -597,8 +603,7 @@ func (r *UserRepository) DisableStaffAccount(ctx context.Context, actorPrincipal
 		      WHERE target_roles.principal_id = target.principal_id
 		        AND target_roles.revoked_at IS NULL
 		        AND target_role.school_id = $2
-		        AND target_role.scope_type = 'school'
-		        AND target_role.principal_type = 'staff'
+		        AND target_role.scope_type = 'school'		        AND target_role.principal_type = 'staff'
 		        AND target_role.role_key = 'school_admin'
 		        AND target_role.is_system = TRUE
 		  )
@@ -897,8 +902,7 @@ func (r *UserRepository) EnableStaffAccount(
 	// the temporary password and forced-change flag without a second status
 	// transition.
 	tag, err := tx.Exec(ctx, `
-		UPDATE auth_principals
-		   SET status = 'active',
+		UPDATE auth_principals		   SET status = 'active',
 		       token_version = token_version + 1,
 		       updated_at = NOW()
 		 WHERE id = $1
