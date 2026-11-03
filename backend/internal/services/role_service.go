@@ -17,6 +17,9 @@ type roleRepository interface {
 	CreateCustomRole(ctx context.Context, actorPrincipalID, schoolID int64, roleKey, name string) (*repository.SchoolRole, error)
 	GrantSchoolPermissionDelegation(ctx context.Context, actorPrincipalID, schoolID int64, permissionKey string, canAssignToRoles, canOverrideUsers bool) (*repository.SchoolPermissionDelegation, error)
 	RevokeSchoolPermissionDelegation(ctx context.Context, actorPrincipalID, delegationID int64) error
+	ListSchoolPermissionDelegations(ctx context.Context, actorPrincipalID, schoolID int64) ([]repository.SchoolPermissionDelegation, error)
+	GrantCustomRolePermission(ctx context.Context, actorPrincipalID, schoolID, roleID, delegationID int64, permissionKey string) error
+	RevokeCustomRolePermission(ctx context.Context, actorPrincipalID, schoolID, roleID int64, permissionKey string) error
 }
 
 type RoleService struct {
@@ -108,4 +111,25 @@ func (s *RoleService) RevokeSchoolPermissionDelegation(
 		return ErrInvalidCustomRole
 	}
 	return s.repository.RevokeSchoolPermissionDelegation(ctx, actorPrincipalID, delegationID)
+}
+
+func (s *RoleService) ListSchoolPermissionDelegations(ctx context.Context, actorPrincipalID, schoolID int64) ([]repository.SchoolPermissionDelegation, error) {
+	if s == nil || s.repository == nil || actorPrincipalID <= 0 || schoolID <= 0 {
+		return nil, ErrInvalidCustomRole
+	}
+	return s.repository.ListSchoolPermissionDelegations(ctx, actorPrincipalID, schoolID)
+}
+
+func (s *RoleService) GrantCustomRolePermission(ctx context.Context, actorPrincipalID, schoolID, roleID, delegationID int64, permissionKey string) error {
+	if s == nil || s.repository == nil || actorPrincipalID <= 0 || schoolID <= 0 || roleID <= 0 || delegationID <= 0 || strings.TrimSpace(permissionKey) == "" {
+		return ErrInvalidCustomRole
+	}
+	return s.repository.GrantCustomRolePermission(ctx, actorPrincipalID, schoolID, roleID, delegationID, strings.TrimSpace(permissionKey))
+}
+
+func (s *RoleService) RevokeCustomRolePermission(ctx context.Context, actorPrincipalID, schoolID, roleID int64, permissionKey string) error {
+	if s == nil || s.repository == nil || actorPrincipalID <= 0 || schoolID <= 0 || roleID <= 0 || strings.TrimSpace(permissionKey) == "" {
+		return ErrInvalidCustomRole
+	}
+	return s.repository.RevokeCustomRolePermission(ctx, actorPrincipalID, schoolID, roleID, strings.TrimSpace(permissionKey))
 }
