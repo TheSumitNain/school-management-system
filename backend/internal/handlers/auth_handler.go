@@ -17,6 +17,10 @@ import (
 type AuthService interface {
 	AuthenticateStaff(ctx context.Context, username, password string) (*models.AuthPrincipal, error)
 }
+type StaffPasswordService interface {
+	ChangePassword(ctx context.Context, principalID int64, currentPassword, newPassword string) error
+}
+
 type PlatformAdminAuthService interface {
 	Authenticate(ctx context.Context, email, password string) (*models.AuthPrincipal, error)
 }
@@ -53,6 +57,7 @@ type AuthHandler struct {
 	ipRateLimiter LoginIPRateLimiter
 	mfaService MFAService
 	principalLoader MFAPrincipalLoader
+	staffPasswordService StaffPasswordService
 }
 
 func NewAuthHandler(authService AuthService, tokenService TokenService, sessionService SessionService, ipRateLimiters ...LoginIPRateLimiter) *AuthHandler {
@@ -91,6 +96,11 @@ type principalResponse struct {
 	Status   string `json:"status"`
 	SchoolID int64  `json:"school_id,omitempty"`
 	Username string `json:"username,omitempty"`
+	MustChangePassword bool `json:"must_change_password,omitempty"`
+}
+
+func (h *AuthHandler) SetStaffPasswordService(service StaffPasswordService) {
+	h.staffPasswordService = service
 }
 
 func (h *AuthHandler) SetPlatformAdminAuthService(service PlatformAdminAuthService) {
@@ -289,6 +299,58 @@ func writeMFAError(c *gin.Context, err error) {
 	writeAuthError(c,http.StatusInternalServerError,"Unable to complete multi-factor authentication")
 }
 
+type changeStaffPasswordRequest struct {
+	CurrentPassword string `json:"current_password"`
+	NewPassword string `json:"new_password"`
+}
+
+// ChangeStaffPassword is the only authenticated operation available to a
+// staff principal while a temporary password is active.
+func (h *AuthHandler) ChangeStaffPassword(c *gin.Context) {
+	if h.staffPasswordService == nil {
+		writeAuthError(c, http.StatusServiceUnavailable, "Password change is unavailable")
+		return
+	}
+	value, exists := c.Get("auth_principal_id")
+	principalID, ok := value.(int64)
+	if !exists || !ok || principalID <= 0 {
+		writeAuthError(c, http.StatusUnauthorized, "Authentication required")
+		return
+	}
+	principalType, _ := c.Get("auth_principal_type")
+	if principalType != "staff" {
+		writeAuthError(c, http.StatusForbidden, "Only staff accounts can use this password-change endpoint")
+		return
+	}
+	var req changeStaffPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil ||
+		strings.TrimSpace(req.CurrentPassword) == "" ||
+		strings.TrimSpace(req.NewPassword) == "" {
+		writeAuthError(c, http.StatusBadRequest, "current_password and new_password are required")
+		return
+	}
+	err := h.staffPasswordService.ChangePassword(
+		c.Request.Context(), principalID, req.CurrentPassword, req.NewPassword,
+	)
+	switch {
+	case err == nil:
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"message": "Password changed successfully. Sign in again with your new password.",
+		})
+	case errors.Is(err, services.ErrInvalidCredentials):
+		writeAuthError(c, http.StatusUnauthorized, "Current password is incorrect")
+	case errors.Is(err, services.ErrInvalidPassword):
+		writeAuthError(c, http.StatusBadRequest, "New password must meet the password policy")
+	case errors.Is(err, services.ErrPasswordUnchanged):
+		writeAuthError(c, http.StatusBadRequest, "New password must differ from the current password")
+	case errors.Is(err, services.ErrPasswordChangeConflict):
+		writeAuthError(c, http.StatusConflict, "Password changed concurrently. Sign in again.")
+	default:
+		writeAuthError(c, http.StatusInternalServerError, "Unable to change password")
+	}
+}
+
 // Refresh rotates the opaque refresh token and issues a principal-subject JWT.
 func (h *AuthHandler) Refresh(c *gin.Context) {
 	var req refreshRequest
@@ -369,7 +431,7 @@ func validPrincipal(p *models.AuthPrincipal) bool {
 }
 
 func toPrincipalResponse(p *models.AuthPrincipal) principalResponse {
-	return principalResponse{ID: p.ID, Type: p.Type, Status: p.Status, SchoolID: p.SchoolID, Username: p.Username}
+	return principalResponse{ID: p.ID, Type: p.Type, Status: p.Status, SchoolID: p.SchoolID, Username: p.Username, MustChangePassword: p.MustChangePassword}
 }
 
 func writeAuthError(c *gin.Context, status int, message string) {
