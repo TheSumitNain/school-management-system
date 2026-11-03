@@ -297,7 +297,8 @@ WHERE LOWER(u.username) = LOWER($1)
 		&principal.Type,
 		&principal.Status,
 		&principal.TokenVersion,
-		&principal.SchoolID,		&principal.Username,
+		&principal.SchoolID,
+		&principal.Username,
 		&userStatus,
 		&schoolStatus,
 	); err != nil {
@@ -597,12 +598,14 @@ func (r *UserRepository) DisableStaffAccount(ctx context.Context, actorPrincipal
 		  AND target_principal.principal_type = 'staff'
 		  AND target_principal.status = 'active'
 		  AND NOT EXISTS (
-		      SELECT 1		      FROM principal_roles target_roles
+		      SELECT 1
+		      FROM principal_roles target_roles
 		      JOIN roles target_role ON target_role.id = target_roles.role_id
 		      WHERE target_roles.principal_id = target.principal_id
 		        AND target_roles.revoked_at IS NULL
 		        AND target_role.school_id = $2
-		        AND target_role.scope_type = 'school'		        AND target_role.principal_type = 'staff'
+		        AND target_role.scope_type = 'school'
+		        AND target_role.principal_type = 'staff'
 		        AND target_role.role_key = 'school_admin'
 		        AND target_role.is_system = TRUE
 		  )
@@ -896,7 +899,8 @@ func (r *UserRepository) EnableStaffAccount(
 		return fmt.Errorf("authorize same-school staff account re-enable: %w", err)
 	}
 
-	// Reactivate the canonical principal first. The V4 status-sync trigger	// updates users.status atomically; the credential update below then sets
+	// Reactivate the canonical principal first. The V4 status-sync trigger
+	// updates users.status atomically; the credential update below then sets
 	// the temporary password and forced-change flag without a second status
 	// transition.
 	tag, err := tx.Exec(ctx, `
