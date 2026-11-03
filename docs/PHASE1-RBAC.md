@@ -27,9 +27,9 @@ This document is the detailed reference for Phase 1 web role scope, permission i
 - Every School Admin and staff account belongs to exactly one school. The same account must never access multiple schools.
 - If one person works at multiple schools, each school creates a separate account with independent username, password, and sessions.
 - Staff usernames are globally unique and case-insensitive across the platform. Login must resolve exactly one account; school selection is not used to disambiguate duplicate usernames.
-- School Admin creates staff accounts and provides an initial temporary password. Staff must change it on first login.
-- Staff self-service password change requires the current password.
-- School Admin can reset a staff password without knowing the old password. Reset revokes the target account's sessions and outstanding access, requires a password change at next login, and creates an audit event.
+- New staff records default to `must_change_password=true`; School Admin provisioning must supply an initial temporary password. Temporary-password staff sessions can only change the password or inspect `/auth/me` until replacement. V15 source is committed; PostgreSQL application/verification remains pending.
+- Staff self-service password change requires the current password. The implemented endpoint is `POST /auth/password/change`; a successful change clears the temporary flag, increments token version, revokes refresh sessions, and writes an audit event.
+- School Admin can reset an active staff password only within the same active school, without knowing the old password. `POST /school/staff/:principalID/password/reset` requires `users.password_reset`; the repository independently checks the School Admin role and permission. Reset revokes refresh sessions and access tokens, requires a password change at next login, and creates an audit event.
 - School Admin accounts are provisioned by Platform Admin. A School Admin cannot create another School Admin or a Platform Admin.
 
 ### 2.2 Future Parent and student account rules (Phase 2)
@@ -45,7 +45,7 @@ This document is the detailed reference for Phase 1 web role scope, permission i
 
 ## 3. Permission catalogue
 
-Permission keys are stable identifiers in a platform-defined catalogue. School Admins may create custom roles from authorized catalogue entries; they cannot invent platform permissions or exceed their delegation authority.
+Permission keys are stable identifiers in a platform-defined catalogue. School Admins may create custom roles from authorized catalogue entries; they cannot invent platform permissions or exceed their delegation authority. Custom-role grants and per-user overrides must carry the exact delegation ID that authorized them; V16 enforces this in database triggers and the live resolver ignores grants whose exact delegation has been revoked. V16 PostgreSQL verification is pending.
 
 ### 3.1 Platform and school administration
 
