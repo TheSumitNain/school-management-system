@@ -203,3 +203,46 @@ func TestRequirePermission(t *testing.T) {
 		})
 	}
 }
+
+
+func TestAuthMiddlewareRestrictsTemporaryPasswordStaff(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	validator := &fakeTokenValidator{claims: validClaims()}
+	principal := &models.AuthPrincipal{
+		ID: 10, Type: "staff", Status: "active", TokenVersion: 1,
+		SchoolID: 2, Username: "tester", MustChangePassword: true,
+	}
+	permissions := fakePermissionLoader{permissions: []string{"students.read_basic"}}
+	loader := fakePrincipalLoader{principal: principal}
+	router := gin.New()
+	auth := AuthMiddleware(validator, loader, permissions)
+
+	router.GET("/protected", auth, func(c *gin.Context) { c.Status(http.StatusOK) })
+	router.POST("/auth/password/change", auth, func(c *gin.Context) {
+		value, exists := c.Get(ContextMustChangePasswordKey)
+		if !exists || value != true {
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+		c.Status(http.StatusOK)
+	})
+	router.GET("/auth/me", auth, func(c *gin.Context) { c.Status(http.StatusOK) })
+
+	request := func(method, path string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(method, path, nil)
+		req.Header.Set("Authorization", "Bearer valid-token")
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		return rec
+	}
+
+	if rec := request(http.MethodGet, "/protected"); rec.Code != http.StatusForbidden {
+		t.Fatalf("temporary-password staff access status = %d, want 403; body=%s", rec.Code, rec.Body.String())
+	}
+	if rec := request(http.MethodPost, "/auth/password/change"); rec.Code != http.StatusOK {
+		t.Fatalf("password-change endpoint status = %d, want 200; body=%s", rec.Code, rec.Body.String())
+	}
+	if rec := request(http.MethodGet, "/auth/me"); rec.Code != http.StatusOK {
+		t.Fatalf("identity endpoint status = %d, want 200; body=%s", rec.Code, rec.Body.String())
+	}
+}
