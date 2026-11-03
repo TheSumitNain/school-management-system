@@ -372,7 +372,7 @@ V11 is **applied and PostgreSQL-verified on the dedicated test database**. This 
 
 ### Latest automated verification
 
-- [x] GitHub Actions push workflow on commit `d7aa45b`: ephemeral PostgreSQL 18, V1–V16 migrations, full PostgreSQL integration suite, handler/service tests for role/delegation/override/assignment APIs, and `go vet ./...` PASS.
+- [x] GitHub Actions push workflow on commit `524d795`: ephemeral PostgreSQL 18, V1–V16 migrations, full PostgreSQL integration suite, handler/service tests for staff account creation and role/delegation/override/assignment APIs, and `go vet ./...` PASS.
 - [x] GitHub Actions pull-request workflow on commit `fcffdbf`: PASS.
 - [x] Apply V1–V16 to a fresh ephemeral PostgreSQL 18 database in GitHub Actions; migration sequence completed successfully.
 - [x] Run the complete Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1` against ephemeral PostgreSQL 18; all integration tests passed, including V15 password lifecycle and V16 exact delegation revocation/regrant.
@@ -386,4 +386,4 @@ V11 is **applied and PostgreSQL-verified on the dedicated test database**. This 
 - No permanent Platform Admin account has been created.
 - Parent OTP/registration production implementation remains paused and untouched.
 - Draft PR #1 remains open and must not be merged without explicit approval.
-- Custom-role/override resolution is implemented at the permission resolver and database-guard level. School role creation, permission delegation, custom-role permission grants, staff ALLOW/DENY overrides, and same-school staff role assignment list/assign/revoke HTTP workflows now exist. Repository-level PostgreSQL tests for these administration methods, complete endpoint security integration tests, staff account provisioning, and business-resource authorization routes remain pending.
+- Custom-role/override resolution is implemented at the permission resolver and database-guard level. School role creation, permission delegation, custom-role permission grants, staff ALLOW/DENY overrides, and same-school staff role assignment list/assign/revoke HTTP workflows now exist. Repository-level PostgreSQL tests for these administration methods, complete endpoint security integration tests, staff listing/update/disable administration, and business-resource authorization routes remain pending.
