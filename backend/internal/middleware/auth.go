@@ -21,6 +21,7 @@ const (
 	ContextSchoolIDKey      = "auth_school_id"
 	ContextUsernameKey      = "auth_username"
 	ContextPermissionsKey   = "auth_permissions"
+	ContextMustChangePasswordKey = "auth_must_change_password"
 )
 
 type AccessTokenValidator interface {
@@ -77,14 +78,41 @@ func AuthMiddleware(tokenService AccessTokenValidator, principals PrincipalLoade
 			return
 		}
 
+		c.Set(ContextPrincipalIDKey, principal.ID)
+		c.Set(ContextPrincipalTypeKey, principal.Type)
+		c.Set(ContextMustChangePasswordKey, principal.MustChangePassword)
+
+		// Temporary-password staff sessions are deliberately restricted to
+		// password replacement and identity inspection. This check runs on
+		// every request using the current database state, so refresh-token
+		// rotation cannot bypass the requirement.
+		if principal.Type == "staff" && principal.MustChangePassword {
+			switch c.FullPath() {
+			case "/auth/password/change", "/auth/me":
+				c.Set(ContextPermissionsKey, map[string]struct{}{})
+				if principal.SchoolID > 0 {
+					c.Set(ContextSchoolIDKey, principal.SchoolID)
+				}
+				if principal.Username != "" {
+					c.Set(ContextUsernameKey, principal.Username)
+				}
+				c.Next()
+			default:
+				c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+					"status": "error",
+					"code": "password_change_required",
+					"message": "Change your temporary password before continuing",
+				})
+			}
+			return
+		}
+
 		effectivePermissions, err := permissions.LoadEffectivePermissions(c.Request.Context(), principal)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unable to resolve authorization"})
 			return
 		}
 
-		c.Set(ContextPrincipalIDKey, principal.ID)
-		c.Set(ContextPrincipalTypeKey, principal.Type)
 		if principal.SchoolID > 0 {
 			c.Set(ContextSchoolIDKey, principal.SchoolID)
 		}
