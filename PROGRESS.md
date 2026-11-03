@@ -2,13 +2,13 @@
 
 > **Current implementation reality:** The repository has a Go/Gin backend foundation but no React frontend directory yet. Complete business APIs, full route-level authorization/tenant isolation and dashboards are still pending. The user-reported middleware test on the current checkpoint passed; earlier full Go suite, PostgreSQL integration suite and `go vet` results are historical verification and must be rerun after code changes.
 
-> **Migration safety:** V11 is verified on `school_management_test`; V12 remains source-only. Do not apply migrations to `school_management` or apply V12 without explicit review and approval.
+> **Migration safety:** The user's direct PostgreSQL query reported `school_management_test.schema_migrations` at `version=12, dirty=false` (2026-11-02), so V11 and V12 are included in that cumulative test schema. A dedicated V12 Parent–Guardian integration run was reported PASS; a later verbose attempt skipped integration tests because `RUN_POSTGRES_INTEGRATION_TESTS=1` was omitted. Re-run with the flag after relevant changes. Do not apply migrations to `school_management` without separate explicit approval.
 
 # Project Progress
 >
 > ## Current Stage
 >
-> **Current milestone:** Parent OTP request/delivery foundation implemented and user-verified at `c78e770`. The full Go test suite and `go vet ./...` passed; the focused Parent OTP PostgreSQL repository integration test passed at `7105762`. V11 remains applied and verified on `school_management_test` (version 11, clean). V12 remains source-only. Parent OTP verification/account/session flow, API routes, child-data authorization, complete RBAC enforcement, business APIs, and tenant-isolation validation remain pending.
+> **Current milestone:** Parent OTP request/delivery foundation implemented and user-verified at `c78e770`. The full Go test suite and `go vet ./...` passed; the focused Parent OTP PostgreSQL repository integration test passed at `7105762`. V11 and V12 are included in `school_management_test` (cumulative migration version 12, `dirty=false`, direct user-reported query). Parent OTP verification/account/session flow, API routes, child-data authorization, complete RBAC enforcement, business APIs, and tenant-isolation validation remain pending.
 The project has a working authentication foundation, including login, JWT authentication middleware, a protected identity endpoint, refresh-token rotation, replay detection, family-wide logout revocation, family-scoped transaction advisory locking, and per-user serialization of concurrent rotations across token families.
 
 The last recorded remote documentation checkpoint before the current local verification was:
@@ -347,7 +347,7 @@ The user subsequently pulled the V11 and recovery-test fix commits. On the dedic
 - [x] Added PostgreSQL integration test source for many-to-many links, duplicate prevention, cross-school isolation, normalized admission-number uniqueness, and school-scope immutability
 - [x] Updated `docs/DATABASE.md` and `CHANGELOG.md`
 - [x] Pull latest branch through recovery-code fixture fix `79c2717`
-- [x] Apply V11 only to `school_management_test`; verified migration version `11`, `dirty = false`
+- [x] Apply V11 only to `school_management_test`; subsequent direct query reported cumulative migration version `12`, `dirty = false` after V12
 - [x] Run full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1` and `go vet ./...`; both passed
 - [x] Run focused recovery-code integration test twice consecutively; both runs passed
 
