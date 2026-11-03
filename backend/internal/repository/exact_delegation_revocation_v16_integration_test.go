@@ -167,7 +167,6 @@ func TestExactDelegationRevocationV16PostgresIntegration(t *testing.T) {
 		t.Fatalf("assign custom role to target staff: %v", err)
 	}
 
-	resolver := NewPrincipalAuthorizationRepository(pool)
 	target := &models.AuthPrincipal{
 		ID: targetPrincipalID, Type: "staff", Status: "active",
 		TokenVersion: 1, SchoolID: schoolID,
@@ -189,7 +188,6 @@ func TestExactDelegationRevocationV16PostgresIntegration(t *testing.T) {
 			t.Fatalf("permission %q present=%v, want %v (resolved=%v)", permission, found, want, permissions)
 		}
 	}
-	_ = resolver // The transaction-aware helper is used so every fixture rolls back.
 
 	assertPermission("students.read_basic", true)
 	if _, err := tx.Exec(ctx, `
