@@ -9,7 +9,7 @@
 - Constraint/index inspection: completed against the development database.
 - Migration v4 corrective review draft: `backend/migrations/000004_add_principal_rbac_foundation.up.sql`.
 - Down migration: intentionally refuses rollback because v4 data may include platform and parent identities, roles, audit events, and security credentials.
-- **Not applied. Not PostgreSQL-executed or integration-tested. Do not run yet.**
+- **Status update (2026-11-02):** The user later directly reported `school_management_test.schema_migrations` at cumulative `version=12`, `dirty=false`; V4 is therefore included in the applied V4–V12 sequence on that dedicated test database. Do not reapply V4 there. This does not prove every trigger edge case has a dedicated passing test, and it says nothing about the state of `school_management`.**
 
 ## Existing source behavior verified from the supplied archive
 
@@ -39,10 +39,10 @@ The draft migration:
 
 ## Important blockers before applying v4
 
-1. The SQL has not been run against PostgreSQL 18. Review and test it on a disposable database cloned from v3 before applying it to `school_management`.
-2. The application code has not yet been refactored. The current JWT and middleware remain user-ID based and do not enforce RBAC or `token_version`. The migration alone does not deliver the approved authorization model.
+1. The user later reported the cumulative migration state at version 12, `dirty=false` on `school_management_test`. Re-run the migration/trigger integration suite against a clean disposable PostgreSQL 18 database after any SQL changes; do not reapply V4 to the already migrated test database.
+2. The application code has since been refactored to principal-aware JWT claims, live principal/token-version checks and permission loading. `RequirePermission` exists, but business routes are not yet wired and custom-role grants/ALLOW overrides intentionally fail closed.
 3. The existing staff account's intended role is not established by the database counts. Do not assign `school_admin` or another role by assumption. Confirm the account's intended role and create its principal-role assignment through an audited bootstrap operation.
-4. The app's migration cutover must update login to globally unique username + password, principal-aware JWT claims, DB-backed principal/token-version checks, principal-aware session rotation/revocation, and permission evaluation before the system is treated as RBAC-protected.
+4. The principal-aware login/JWT/session cutover is present in the current branch. Remaining work includes business route guards, resource/tenant scope enforcement, safe role/custom-role management, and end-to-end verification.
 5. Database application-role grants for append-only `audit_events` must be configured. The application role must not own the audit table and must not have UPDATE/DELETE privileges.
 6. Parent-child links, teaching assignments, and class-in-charge assignments remain deferred until the academic/student schema exists.
 7. The down migration is intentionally forward-only. Use a verified backup/restore plan only if explicitly accepting loss of writes made after that backup.
@@ -182,4 +182,4 @@ The mechanism must preserve system-role immutability, prevent application caller
 
 ### Migration-state reconciliation still required
 
-Historical documentation conflicts about whether V4–V12 have been applied to `school_management_test`. The user has reported V11 clean and successful PostgreSQL-backed V12/Parent-related integration tests, while older notes say V4/V12 were source-only. Before any migration-dependent implementation or execution, verify the actual `schema_migrations` version and dirty flag in the dedicated test database. Do not infer migration state from source files or test names, and do not apply migrations to `school_management`.
+Migration-state clarification: the user directly reported `school_management_test.schema_migrations` at cumulative `version=12`, `dirty=false` on 2026-11-02. A dedicated V12 Parent–Guardian integration test run was reported PASS; a later verbose attempt skipped because the opt-in flag was omitted. This supersedes earlier statements in this document that V4/V12 were source-only at that time. Re-run integration tests with the required flag after relevant changes. Do not infer `school_management` state from the test database and do not apply migrations there without separate explicit approval.
