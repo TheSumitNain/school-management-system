@@ -9,8 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgxpool"
-)
+	)
 
 var (
 	ErrRoleNotFound = errors.New("school role not found")
@@ -37,10 +36,10 @@ type SchoolPermission struct {
 }
 
 type RoleRepository struct {
-	db *pgxpool.Pool
+	db repositoryDB
 }
 
-func NewRoleRepository(db *pgxpool.Pool) *RoleRepository {
+func NewRoleRepository(db repositoryDB) *RoleRepository {
 	return &RoleRepository{db: db}
 }
 
