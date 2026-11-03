@@ -61,6 +61,9 @@ func setupRouter(
 		router.POST("/auth/mfa/recovery-codes/regenerate", authHandler.RegenerateMFARecoveryCodes)
 		router.POST("/auth/refresh", authHandler.Refresh)
 		router.POST("/auth/logout", authHandler.Logout)
+		router.POST("/auth/password/change",
+			middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader),
+			authHandler.ChangeStaffPassword)
 	}
 
 	router.GET("/auth/me", middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader), func(c *gin.Context) {
@@ -68,6 +71,7 @@ func setupRouter(
 		principalType, _ := c.Get(middleware.ContextPrincipalTypeKey)
 		schoolID, _ := c.Get(middleware.ContextSchoolIDKey)
 		username, _ := c.Get(middleware.ContextUsernameKey)
+		mustChangePassword, _ := c.Get(middleware.ContextMustChangePasswordKey)
 
 		response := gin.H{
 			"status":         "success",
@@ -79,6 +83,7 @@ func setupRouter(
 		if principalType == "staff" {
 			response["school_id"] = schoolID
 			response["username"] = username
+			response["must_change_password"] = mustChangePassword
 		}
 		c.JSON(http.StatusOK, response)
 	})
@@ -197,6 +202,11 @@ func run() error {
 	)
 	authHandler.SetMFAService(mfaService, principalAuthorizationRepo)
 	authHandler.SetPlatformAdminAuthService(platformAdminAuthService)
+	staffPasswordService, err := services.NewStaffPasswordService(userRepo)
+	if err != nil {
+		return fmt.Errorf("initialize staff password service: %w", err)
+	}
+	authHandler.SetStaffPasswordService(staffPasswordService)
 
 	schoolOnboardingRepo := repository.NewSchoolOnboardingRepository(db)
 	schoolOnboardingService := services.NewSchoolOnboardingService(schoolOnboardingRepo)
