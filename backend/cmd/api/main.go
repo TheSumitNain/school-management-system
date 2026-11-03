@@ -78,6 +78,11 @@ func setupRouterWithHandlers(
 			middleware.RequirePermission("users.create"),
 			staffHandlers[0].Create,
 		)
+		router.DELETE("/school/staff/:principalID",
+			middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader),
+			middleware.RequirePermission("users.disable"),
+			staffHandlers[0].Disable,
+		)
 	}
 
 	if roleHandler != nil {
