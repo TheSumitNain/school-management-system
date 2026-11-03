@@ -336,7 +336,7 @@ The following areas are planned and must be modeled through reviewed migrations:
 - Subjects and class-subject assignments.
 - Attendance.
 - Timetables.
-- Transport and bus tracking.
+- Transport administration (vehicles, routes, stops, driver/attendant assignments, trip records); live GPS tracking is a separate future decision.
 - Notifications and reporting.
 - Roles and permissions.
 - MFA and recovery mechanisms.
@@ -357,7 +357,7 @@ Migration V11 establishes a stable `students` identity table separate from acade
 
 V11 also creates school-scoped `guardians` contact records and the `student_guardians` many-to-many mapping. A guardian may be linked to multiple students in the same school, and a student may have multiple guardian contacts. Guardian records are school contact data, not login identities. Mobile numbers and email addresses are not unique constraints.
 
-The V4 `parent_accounts` identity remains separate. V11 does not automatically link a verified mobile account to a guardian record or grant child access. A later migration must model the verified/revoked parent-to-official-guardian relationship, support parents with children across schools, and enforce that relationship on every protected child-data request. Revoking one child link must not revoke other valid child links.
+The V4 Parent identity remains separate from school-owned guardian contact records. V11 does not automatically link a verified mobile account to a guardian record or grant child access. V12 source defines a future verified/revoked Parent-to-Guardian relationship but remains source-only until separately reviewed and approved. Parent authentication and mobile access are Phase 2; do not extend or apply Parent migrations as part of the current web-first work. The eventual model must support a Parent with children across schools and enforce the current relationship on every protected child-data request. Revoking one child link must not revoke other valid child links.
 
 ### 9.3 Fees and Payments
 
@@ -556,3 +556,19 @@ V12 makes `parent_otp_challenges.principal_id` nullable only for a pre-account c
 ### 16.5 Audit and rollback
 
 Parent link creation/revocation and official student–guardian revocation append audit events. V12 down migration refuses rollback after any Parent links, pre-account OTP/rate-limit history, portal configuration, or relationship revocation exists. Never edit V11 or V4 migrations to retrofit this functionality.
+
+
+## 17. Future-Ready Data Modeling and Phase Boundaries
+
+The schema should support the approved long-term product without prematurely implementing every future module.
+
+- **Identity versus role:** Keep a person's authentication identity separate from assigned roles and permissions. Do not create a new principal subtype for every job title. A future Driver may be represented by an appropriate school-scoped account/role and transport assignment if the approved requirements support that model; do not assume the final Driver account model before Phase 2 design.
+- **School ownership:** Every school-owned resource must carry enforceable school ownership. Cross-school Parent access, when implemented, must be explicit through verified relationships rather than by weakening tenant isolation.
+- **Student history:** Keep stable student identity separate from academic-year enrollment, class/section placement and promotion history. A class change must not overwrite historical enrollment.
+- **Guardian relationships:** Preserve school-owned guardian contact records and relationship history independently from authentication accounts. Do not treat a phone number as proof of identity or access.
+- **Transport readiness:** Before transport implementation, model vehicles, routes/stops, assignments, trips and any required driver/attendant relationships as explicit relational entities with school scope and auditability. Live GPS location/event retention requires a separate privacy, cost and retention review.
+- **Extensible authorization:** Use a platform-defined permission catalogue and bounded school-scoped role assignment. Avoid hard-coded database tables for each staff job title.
+- **Audit and lifecycle:** Important account, assignment, permission, enrollment and operational changes should retain actor/time/history as appropriate.
+- **Client independence:** Web and future mobile clients should use the same business APIs and backend authorization. Do not duplicate business rules in client applications.
+
+Each future schema change must have a reviewed data model, additive migration, foreign-key/check/index strategy, tenant-isolation tests, migration tests against the dedicated test database and explicit user approval before execution. Never modify an already-applied migration to change deployed schema.
