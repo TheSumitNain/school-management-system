@@ -386,4 +386,16 @@ V11 is **applied and PostgreSQL-verified on the dedicated test database**. This 
 - No permanent Platform Admin account has been created.
 - Parent OTP/registration production implementation remains paused and untouched.
 - Draft PR #1 remains open and must not be merged without explicit approval.
-- Custom-role/override resolution is implemented at the permission resolver and database-guard level. School role creation, permission delegation, custom-role permission grants, staff ALLOW/DENY overrides, and same-school staff role assignment list/assign/revoke HTTP workflows now exist. Repository-level PostgreSQL tests for these administration methods, complete endpoint security integration tests, staff listing/update/disable administration, and business-resource authorization routes remain pending.
+- Custom-role/override resolution is implemented at the permission resolver and database-guard level. School role creation, permission delegation, custom-role permission grants, staff ALLOW/DENY overrides, and same-school staff role assignment list/assign/revoke HTTP workflows now exist. Rollback-scoped PostgreSQL integration coverage for the role/delegation/override/assignment repository workflows and the staff account create/list/update/disable/re-enable lifecycle has since passed in GitHub Actions. Complete endpoint security integration tests and business-resource/tenant/teacher-scope authorization routes remain pending.
+
+
+## 2026-11-03 — Role repository integration coverage
+
+- [x] Added a shared transaction-aware repository DB interface implemented by `pgxpool.Pool` and `pgx.Tx`; repository-owned transactions use nested savepoints when called inside a caller-owned transaction.
+- [x] Added rollback-scoped PostgreSQL integration coverage for custom-role create/list, permission catalogue, Platform Admin permission delegation grant/list/revoke, custom-role permission grant/revoke, staff role assignment/list/revoke, and staff ALLOW/DENY override set/list/delete.
+- [x] Verified duplicate role/delegation/permission/assignment rejection, reserved School Admin assignment protection, unauthorized actor rejection, and audit events attributed to the correct Platform Admin or School Admin actor.
+- [x] Added explicit SQL casts for JSONB audit metadata parameters in role administration operations.
+- [x] GitHub Actions run `41657762673` on commit `64acf1b`: V1–V16 applied to ephemeral PostgreSQL 18, full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1` PASS, and `go vet ./...` PASS.
+- [x] No migrations were applied to the user's persistent `school_management_test` or `school_management` databases.
+- [ ] Complete HTTP-level security integration coverage for role/delegation/override/assignment endpoints.
+- [ ] Implement and verify business-resource, tenant, class/section/subject assignment, and teacher field-level authorization.
