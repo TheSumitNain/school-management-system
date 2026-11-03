@@ -30,6 +30,14 @@ func (f *fakeRoleRepository) CreateCustomRole(_ context.Context, actorID, school
 	return f.created, nil
 }
 
+func (f *fakeRoleRepository) GrantSchoolPermissionDelegation(context.Context, int64, int64, string, bool, bool) (*repository.SchoolPermissionDelegation, error) {
+	return nil, nil
+}
+
+func (f *fakeRoleRepository) RevokeSchoolPermissionDelegation(context.Context, int64, int64) error {
+	return nil
+}
+
 func TestCustomRoleKey(t *testing.T) {
 	tests := []struct {
 		name string
