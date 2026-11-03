@@ -358,11 +358,11 @@ func (r *UserRepository) ResetStaffPassword(
 		        AND perm.is_active = TRUE
 		        AND NOT EXISTS (
 		            SELECT 1
-		            FROM user_permission_overrides override
-		            WHERE override.principal_id = actor.principal_id
-		              AND override.school_id = $2
-		              AND override.permission_id = perm.id
-		              AND override.effect = 'deny'
+		            FROM user_permission_overrides actor_override
+		            WHERE actor_override.principal_id = actor.principal_id
+		              AND actor_override.school_id = $2
+		              AND actor_override.permission_id = perm.id
+		              AND actor_override.effect = 'deny'
 		        )
 		  )
 		FOR UPDATE OF target
