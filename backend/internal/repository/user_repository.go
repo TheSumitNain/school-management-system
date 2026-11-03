@@ -634,11 +634,9 @@ func (r *UserRepository) DisableStaffAccount(ctx context.Context, actorPrincipal
 	if err != nil {
 		return fmt.Errorf("authorize same-school staff account disable: %w", err)
 	}
-	if _, err := tx.Exec(ctx, `
-		UPDATE users SET status = 'disabled', updated_at = NOW() WHERE id = $1
-	`, targetUserID); err != nil {
-		return fmt.Errorf("disable staff user row: %w", err)
-	}
+	// auth_principals is canonical in V4. Its status trigger synchronizes
+	// users.status in the same transaction; updating both rows independently
+	// would make the second status transition a zero-row update.
 	tag, err := tx.Exec(ctx, `
 		UPDATE auth_principals
 		SET status = 'disabled', token_version = token_version + 1, updated_at = NOW()
@@ -893,23 +891,11 @@ func (r *UserRepository) EnableStaffAccount(
 		return fmt.Errorf("authorize same-school staff account re-enable: %w", err)
 	}
 
+	// Reactivate the canonical principal first. The V4 status-sync trigger
+	// updates users.status atomically; the credential update below then sets
+	// the temporary password and forced-change flag without a second status
+	// transition.
 	tag, err := tx.Exec(ctx, `
-		UPDATE users
-		   SET status = 'active',
-		       password_hash = $2,
-		       must_change_password = TRUE,
-		       updated_at = NOW()
-		 WHERE id = $1
-		   AND status = 'disabled'
-	`, targetUserID, newPasswordHash)
-	if err != nil {
-		return fmt.Errorf("reactivate staff user row: %w", err)
-	}
-	if tag.RowsAffected() != 1 {
-		return ErrUserNotFound
-	}
-
-	tag, err = tx.Exec(ctx, `
 		UPDATE auth_principals
 		   SET status = 'active',
 		       token_version = token_version + 1,
@@ -920,6 +906,21 @@ func (r *UserRepository) EnableStaffAccount(
 	`, targetPrincipalID)
 	if err != nil {
 		return fmt.Errorf("reactivate staff principal: %w", err)
+	}
+	if tag.RowsAffected() != 1 {
+		return ErrUserNotFound
+	}
+
+	tag, err = tx.Exec(ctx, `
+		UPDATE users
+		   SET password_hash = $2,
+		       must_change_password = TRUE,
+		       updated_at = NOW()
+		 WHERE id = $1
+		   AND status = 'active'
+	`, targetUserID, newPasswordHash)
+	if err != nil {
+		return fmt.Errorf("update re-enabled staff credential: %w", err)
 	}
 	if tag.RowsAffected() != 1 {
 		return ErrUserNotFound
