@@ -6,6 +6,14 @@ This project is under active development. Verification results describe the late
 
 ## [Unreleased]
 
+### Role administration HTTP route authorization tests (2026-11-03)
+
+- Added `TestRoleAdministrationRoutesEnforceLivePermissions` covering all 14 registered Platform Admin and school role-administration endpoints.
+- Each route is tested with missing permission (403), and with all required live permissions (request passes authorization middleware and reaches the handler). Routes requiring two permissions also verify that only one grant is insufficient.
+- GitHub Actions push run `41658994787` and Draft PR run `41659008482` on commit `2c81dfc` both passed: V1–V16 migrations on ephemeral PostgreSQL 18, full Go integration suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and `go vet ./...`.
+- These are router/middleware authorization tests with controlled token/principal/permission loaders; they do not replace full HTTP-to-PostgreSQL end-to-end tests. The user's persistent databases were not modified.
+
+
 ### Role administration PostgreSQL integration coverage (2026-11-03)
 
 - Added a shared transaction-aware repository database interface implemented by both `pgxpool.Pool` and `pgx.Tx`. Role administration methods can now participate in a caller-owned transaction, allowing all test writes and audit events to be rolled back safely.
