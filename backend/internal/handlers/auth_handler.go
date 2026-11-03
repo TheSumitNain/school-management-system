@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -19,6 +20,7 @@ type AuthService interface {
 }
 type StaffPasswordService interface {
 	ChangePassword(ctx context.Context, principalID int64, currentPassword, newPassword string) error
+	ResetPassword(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64, newPassword string) error
 }
 
 type PlatformAdminAuthService interface {
@@ -348,6 +350,54 @@ func (h *AuthHandler) ChangeStaffPassword(c *gin.Context) {
 		writeAuthError(c, http.StatusConflict, "Password changed concurrently. Sign in again.")
 	default:
 		writeAuthError(c, http.StatusInternalServerError, "Unable to change password")
+	}
+}
+
+type resetStaffPasswordRequest struct {
+	NewPassword string `json:"new_password"`
+}
+
+// ResetStaffPassword lets a School Admin reset a staff member in the same
+// school. Authorization is checked by middleware and independently by SQL.
+func (h *AuthHandler) ResetStaffPassword(c *gin.Context) {
+	if h.staffPasswordService == nil {
+		writeAuthError(c, http.StatusServiceUnavailable, "Password reset is unavailable")
+		return
+	}
+	actorValue, actorExists := c.Get("auth_principal_id")
+	actorID, actorOK := actorValue.(int64)
+	schoolValue, schoolExists := c.Get("auth_school_id")
+	schoolID, schoolOK := schoolValue.(int64)
+	if !actorExists || !actorOK || actorID <= 0 ||
+		!schoolExists || !schoolOK || schoolID <= 0 {
+		writeAuthError(c, http.StatusUnauthorized, "School staff authentication required")
+		return
+	}
+	targetID, err := strconv.ParseInt(strings.TrimSpace(c.Param("principalID")), 10, 64)
+	if err != nil || targetID <= 0 {
+		writeAuthError(c, http.StatusBadRequest, "A valid staff principal ID is required")
+		return
+	}
+	var req resetStaffPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil || strings.TrimSpace(req.NewPassword) == "" {
+		writeAuthError(c, http.StatusBadRequest, "new_password is required")
+		return
+	}
+	err = h.staffPasswordService.ResetPassword(c.Request.Context(), actorID, schoolID, targetID, req.NewPassword)
+	switch {
+	case err == nil:
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"message": "Staff password reset successfully. The staff member must change it at next login.",
+		})
+	case errors.Is(err, services.ErrInvalidPassword):
+		writeAuthError(c, http.StatusBadRequest, "New password must meet the password policy")
+	case errors.Is(err, services.ErrStaffPasswordTargetNotFound):
+		writeAuthError(c, http.StatusNotFound, "Staff account was not found in this school")
+	case errors.Is(err, services.ErrInvalidRegistration):
+		writeAuthError(c, http.StatusBadRequest, "Invalid password reset request")
+	default:
+		writeAuthError(c, http.StatusInternalServerError, "Unable to reset staff password")
 	}
 }
 
