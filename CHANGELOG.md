@@ -11,11 +11,11 @@ This project is under active development. Verification results describe the late
 - The School Admin role receives exactly the approved 51 permissions; the Teacher role receives exactly the approved 7 permissions.
 - Direct runtime creation of system roles and direct modification of system-role permission bundles remain blocked; only the nested school-insert trigger may provision the reserved roles.
 - Added PostgreSQL integration coverage for exact role bundles, rejection of direct system-role writes, and atomic rollback when a required permission is inactive.
-- V13 is source-only and has not been applied or PostgreSQL-tested. Do not implement Platform Admin school onboarding until this migration is reviewed and verified on `school_management_test`.
+- User confirmed V13 is applied on school_management_test (cumulative migration version 13, dirty=false); the V13 school-system-role provisioning integration test passed. This does not establish the school_management state.
 
 ### Database verification clarification — 2026-11-03
 
-- The user directly reported `school_management_test.schema_migrations` at cumulative `version=12, dirty=false` on 2026-11-02. This means V4–V12 were applied in sequence on the dedicated test database; it does not establish the state of `school_management`.
+- The user later confirmed `school_management_test.schema_migrations` at cumulative version 13, dirty=false. This supersedes the earlier version-12 checkpoint and does not establish the state of school_management.
 - A dedicated `TestParentGuardianAuthorizationV12PostgresIntegration` run was reported PASS. A later verbose attempt skipped integration tests because `RUN_POSTGRES_INTEGRATION_TESTS=1` was omitted; re-run with the flag after relevant changes.
 - Older changelog entries below retain the status as it was recorded at their original checkpoint.
 
@@ -218,3 +218,12 @@ This project is under active development. Verification results describe the late
 - Corrected malformed PL/pgSQL dollar-quote delimiters in five trigger functions (delimiter-only change; no business logic changes).
 - Static full-file scan confirms all five opening/closing pairs are valid and no targeted malformed delimiters remain.
 - PostgreSQL 18 execution and integration verification are still pending; Migration V4 remains unapplied.
+
+
+### Authentication/RBAC hardening — 2026-11-03
+
+- Added a one-time first Platform Admin bootstrap path through a manually invoked CLI; no public registration endpoint is exposed.
+- Hardened bootstrap password entry to require an interactive terminal and read the password without echo. Plaintext is no longer accepted through an environment variable; the byte buffer is cleared immediately after hashing.
+- Refactored the repository bootstrap transaction body for rollback-based PostgreSQL integration testing. Added assertions for principal/account creation, the Platform Admin system-role assignment, the audit event, rejection of a second bootstrap attempt, and the V14 system-role-only trigger condition.
+- Tightened the V14 database exception to require the reserved Platform Admin role to be marked is_system = TRUE. Existing authenticated role-assignment rules remain in the replacement trigger.
+- V14 has not been applied to PostgreSQL. New Go changes and the V14 integration test must be run on the user's machine after pulling the latest branch; migration application to school_management_test requires explicit approval.
