@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"testing"
 )
 
@@ -65,21 +66,30 @@ func TestStaffPasswordLifecycleV15PostgresIntegration(t *testing.T) {
 	`, userID); err != nil {
 		t.Fatalf("mark existing account as already using a permanent password: %v", err)
 	}
+	newUsername := fmt.Sprintf("v15-%d", userID)
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO users (school_id, username, password_hash, status)
-		SELECT school_id, 'v15-' || id::text, password_hash, status
+		SELECT school_id, $2, password_hash, status
 		FROM users WHERE id = $1
-	`, userID); err != nil {
+	`, userID, newUsername); err != nil {
 		t.Fatalf("insert a new staff account using database defaults: %v", err)
 	}
 	var newAccountRequired bool
 	if err := tx.QueryRow(ctx, `
-		SELECT must_change_password FROM users
-		WHERE username = 'v15-' || $1::text
-	`, userID).Scan(&newAccountRequired); err != nil {
+		SELECT must_change_password FROM users WHERE username = $1
+	`, newUsername).Scan(&newAccountRequired); err != nil {
 		t.Fatalf("read second staff account password state: %v", err)
 	}
 	if !newAccountRequired {
 		t.Fatal("new staff account did not inherit must_change_password=true")
+	}
+	var existingStillFalse bool
+	if err := tx.QueryRow(ctx, `
+		SELECT NOT must_change_password FROM users WHERE id = $1
+	`, userID).Scan(&existingStillFalse); err != nil {
+		t.Fatalf("verify existing account retained its permanent-password state: %v", err)
+	}
+	if !existingStillFalse {
+		t.Fatal("changing the default for new accounts must not alter existing account state")
 	}
 }
