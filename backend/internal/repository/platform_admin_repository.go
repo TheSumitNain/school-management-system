@@ -166,7 +166,7 @@ func (r *PlatformAdminRepository) bootstrapFirstInTx(
 		INSERT INTO audit_events
 		    (actor_principal_id, action, resource_type, resource_id, outcome, metadata)
 		VALUES (NULL, 'platform.admin.bootstrapped', 'platform_admin', $1, 'success',
-		        jsonb_build_object('email', $2, 'bootstrap_method', 'one_time_cli'))
+		        jsonb_build_object('email', $2::text, 'bootstrap_method', 'one_time_cli'))
 	`, strconv.FormatInt(principalID, 10), email)
 	if err != nil {
 		return 0, fmt.Errorf("audit initial Platform Admin bootstrap: %w", err)
