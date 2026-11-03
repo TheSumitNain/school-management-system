@@ -176,9 +176,9 @@ The historical source-behavior and blocker notes above describe an earlier pre-c
 
 ### Newly identified school-onboarding prerequisite
 
-The V4 migration seeds school-scoped system roles (`school_admin` and `teacher`) only for school rows that exist when the migration runs. The current migration source has no corresponding school-insert provisioning trigger/service, and its role-insert guard rejects runtime creation of system roles. Therefore, a school created after V4 migration would not automatically receive its required system roles. **Do not implement the Platform Admin create-school/School Admin provisioning endpoint until a reviewed, secure, tested system-role provisioning mechanism exists.**
+The V4 migration seeds school-scoped system roles (`school_admin` and `teacher`) only for school rows that exist when V4 executes. This gap is now addressed in source by additive migration V13 (`000013_provision_school_system_roles.up.sql`), which creates the exact approved system roles and permission bundles from a school-insert trigger while keeping direct runtime system-role creation/mutation blocked. Integration coverage is added in `school_system_role_provisioning_v13_integration_test.go`.
 
-The mechanism must preserve system-role immutability, prevent application callers from manufacturing system roles, create the exact approved permission bundles for each new school, and be covered by PostgreSQL integration tests. If V4 has already been applied to any persistent environment, resolve this only through a new additive migration; never edit an applied migration.
+V13 is source-only and has not been applied or PostgreSQL-tested. **Do not implement the Platform Admin create-school/School Admin provisioning endpoint as complete until V13 is reviewed, applied to `school_management_test`, and its integration test passes.** V13 is forward-only; never edit an applied migration.
 
 ### Migration-state reconciliation still required
 
