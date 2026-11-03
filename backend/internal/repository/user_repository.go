@@ -344,7 +344,7 @@ func (r *UserRepository) ResetStaffPassword(
 		       AND role.role_key = 'school_admin'
 		       AND role.is_system = TRUE
 		      JOIN role_permissions rp ON rp.role_id = role.id
-		      JOIN permissions permission ON permission.id = rp.permission_id
+		      JOIN permissions perm ON perm.id = rp.permission_id
 		      JOIN schools actor_school
 		        ON actor_school.id = actor.school_id
 		       AND actor_school.status = 'active'
@@ -353,15 +353,15 @@ func (r *UserRepository) ResetStaffPassword(
 		        AND actor.status = 'active'
 		        AND actor_principal.status = 'active'
 		        AND actor_principal.principal_type = 'staff'
-		        AND permission.permission_key = 'users.password_reset'
-		        AND permission.scope_type = 'school'
-		        AND permission.is_active = TRUE
+		        AND perm.permission_key = 'users.password_reset'
+		        AND perm.scope_type = 'school'
+		        AND perm.is_active = TRUE
 		        AND NOT EXISTS (
 		            SELECT 1
 		            FROM user_permission_overrides override
 		            WHERE override.principal_id = actor.principal_id
 		              AND override.school_id = $2
-		              AND override.permission_id = permission.id
+		              AND override.permission_id = perm.id
 		              AND override.effect = 'deny'
 		        )
 		  )
