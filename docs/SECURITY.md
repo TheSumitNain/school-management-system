@@ -43,7 +43,7 @@ These features establish an initial authentication foundation. They do not mean 
 - Complete staff account creation/invitation workflows and production provisioning controls.
 - Comprehensive security audit logging and monitoring.
 - Production TLS and deployment-specific security configuration.
-- PostgreSQL execution of the new V15/V16 password-lifecycle and exact-delegation integration tests remains pending on `school_management_test`.
+- V15/V16 password-lifecycle and exact-delegation integration tests pass on ephemeral PostgreSQL 18 in GitHub Actions; the user's dedicated `school_management_test` database remains unchanged and has not yet been migrated.
 - Additional concurrent refresh-token rotation edge cases and broader race-condition testing.
 - A clean, independent end-to-end logout and refresh-after-logout verification.
 - Full production security testing, deployment review, and incident-response procedures.
@@ -164,7 +164,7 @@ Tenant isolation must be enforced in backend services and repository queries, no
 
 ## 6. Authorization and Roles
 
-The core principal/RBAC schema, built-in role bundles, live permission resolver and RequirePermission middleware are implemented. V16 adds exact delegation-ID linkage for custom-role grants and user permission overrides; the resolver now accepts custom-role grants and ALLOW overrides only while the exact referenced delegation remains active. V16 migration and PostgreSQL behavior tests are committed but have not yet been applied/run on `school_management_test`. Full route/resource/tenant/assignment authorization remains pending. Phase 1 web roles are Platform Admin, School Admin and Teacher; Parent and Driver are Phase 2.
+The core principal/RBAC schema, built-in role bundles, live permission resolver and RequirePermission middleware are implemented. V16 adds exact delegation-ID linkage for custom-role grants and user permission overrides; the resolver now accepts custom-role grants and ALLOW overrides only while the exact referenced delegation remains active. V16 migration and PostgreSQL behavior tests are committed and passed on a fresh ephemeral PostgreSQL 18 database in GitHub Actions. The user's dedicated `school_management_test` database has not been changed by CI and still requires a separately reviewed migration application. Full route/resource/tenant/assignment authorization remains pending. Phase 1 web roles are Platform Admin, School Admin and Teacher; Parent and Driver are Phase 2.
 
 The implementation must enforce:
 
@@ -359,4 +359,4 @@ Role/permission changes, staff password resets, account disabling, and school su
 - School Admin password reset is exposed at `POST /school/staff/:principalID/password/reset`. The route requires `users.password_reset`; the repository independently verifies an active same-school School Admin, an active target staff account in the same active school, and the non-denied permission grant. Reset sets `must_change_password=TRUE`, increments token version, revokes refresh sessions, and audits the action.
 - Temporary-password staff access is restricted on each protected request to `POST /auth/password/change` and `GET /auth/me`; refresh rotation does not remove the restriction because the flag is reloaded from PostgreSQL.
 - V16 binds custom-role permission grants and user permission overrides to exact delegation IDs. A revoked delegation cannot reactivate an old grant after a new delegation is issued; explicit rebinding to the new ID is required.
-- GitHub Actions on branch `fix/v4-auth-security-hardening`, commit `4351ce9`, passed `go test -count=1 -p 1 ./...` and `go vet ./...`. V15/V16 PostgreSQL integration tests are present but still require execution against `school_management_test` after migrations are reviewed and applied.
+- GitHub Actions on branch `fix/v4-auth-security-hardening`, commit `fcffdbf`, applied V1–V16 to a fresh ephemeral PostgreSQL 18 database, passed `go test -count=1 -p 1 ./...` with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and passed `go vet ./...`. The user's dedicated `school_management_test` database was not modified.
