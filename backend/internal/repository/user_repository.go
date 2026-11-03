@@ -321,6 +321,10 @@ func (r *UserRepository) ResetStaffPassword(
 		  ON target_principal.id = target.principal_id
 		WHERE target.principal_id = $1
 		  AND target.school_id = $2
+		  AND EXISTS (
+		      SELECT 1 FROM schools target_school
+		      WHERE target_school.id = $2 AND target_school.status = 'active'
+		  )
 		  AND target_principal.principal_type = 'staff'
 		  AND target_principal.status = 'active'
 		  AND target.status = 'active'
@@ -341,6 +345,9 @@ func (r *UserRepository) ResetStaffPassword(
 		       AND role.is_system = TRUE
 		      JOIN role_permissions rp ON rp.role_id = role.id
 		      JOIN permissions permission ON permission.id = rp.permission_id
+		      JOIN schools actor_school
+		        ON actor_school.id = actor.school_id
+		       AND actor_school.status = 'active'
 		      WHERE actor.principal_id = $3
 		        AND actor.school_id = $2
 		        AND actor.status = 'active'
