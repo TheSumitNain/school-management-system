@@ -23,7 +23,7 @@ Current test areas include:
 - Refresh-token session-service behavior and concurrency safeguards.
 - V15/V16 PostgreSQL integration-test source for password lifecycle and exact delegation revocation.
 
-The latest GitHub Actions verification on commit `4351ce9` successfully executed the following commands (without PostgreSQL integration environment variables, so opt-in database tests were skipped):
+An earlier source-only CI run on commit `4351ce9` passed the unit suite and vet but did not enable PostgreSQL integration tests. The latest full database-backed verification is recorded immediately below.
 
 ```bash
 go test -count=1 ./...
