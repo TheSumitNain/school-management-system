@@ -43,12 +43,12 @@ func TestExactDelegationLinkageV16PostgresIntegration(t *testing.T) {
 		t.Fatalf("read V16 delegation guard definitions: %v", err)
 	}
 
-	for _, required := range []string{"NEW.delegation_id", "d.id", "d.can_assign_to_roles", "d.revoked_at IS NULL"} {
+	for _, required := range []string{"NEW.delegation_id", "id = NEW.delegation_id", "can_assign_to_roles = TRUE", "revoked_at IS NULL"} {
 		if !strings.Contains(roleGuard, required) {
 			t.Errorf("role permission guard is missing exact-delegation check %q", required)
 		}
 	}
-	for _, required := range []string{"NEW.delegation_id", "d.id", "d.can_override_users", "d.revoked_at IS NULL"} {
+	for _, required := range []string{"NEW.delegation_id", "id = NEW.delegation_id", "can_override_users = TRUE", "revoked_at IS NULL"} {
 		if !strings.Contains(overrideGuard, required) {
 			t.Errorf("user override guard is missing exact-delegation check %q", required)
 		}
