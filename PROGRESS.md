@@ -386,4 +386,4 @@ V11 is **applied and PostgreSQL-verified on the dedicated test database**. This 
 - No permanent Platform Admin account has been created.
 - Parent OTP/registration production implementation remains paused and untouched.
 - Draft PR #1 remains open and must not be merged without explicit approval.
-- Custom-role/override resolution is implemented at the permission resolver and database-guard level; role/permission administration HTTP workflows and business-resource authorization routes are still pending.
+- Custom-role/override resolution is implemented at the permission resolver and database-guard level. Initial role/delegation/override HTTP workflows now exist; role assignment workflows, full endpoint/database integration coverage, and business-resource authorization routes remain pending.
