@@ -66,6 +66,14 @@ SELECT ap.id, ap.principal_type, ap.status, ap.token_version,
                       WHERE mc.principal_id=ap.id AND mc.method='totp' AND mc.verified_at IS NOT NULL)
          ELSE TRUE
        END,
+       (ap.principal_type='platform_admin' OR
+        (ap.principal_type='staff' AND EXISTS (
+          SELECT 1 FROM principal_roles apr JOIN roles ar ON ar.id=apr.role_id
+          WHERE apr.principal_id=ap.id AND apr.revoked_at IS NULL
+            AND ar.is_system=TRUE AND ar.role_key='school_admin'
+            AND ar.principal_type='staff' AND ar.scope_type='school'
+            AND ar.school_id=u.school_id
+        ))),
        (u.principal_id IS NOT NULL)::int +
        (pa.principal_id IS NOT NULL)::int +
        (parent.principal_id IS NOT NULL)::int
@@ -79,12 +87,12 @@ WHERE ap.id = $1`
 	var p models.AuthPrincipal
 	var staffStatus, schoolStatus string
 	var mustChangePassword bool
-	var hasPlatformAccount, mobileVerified, hasEligibleParentLink, mfaVerified bool
+	var hasPlatformAccount, mobileVerified, hasEligibleParentLink, mfaVerified, requiresAdminSessionActivity bool
 	var subtypeCount int
 	err := r.db.QueryRow(ctx, query, principalID).Scan(
 		&p.ID, &p.Type, &p.Status, &p.TokenVersion,
 		&p.SchoolID, &p.Username, &mustChangePassword, &staffStatus, &schoolStatus,
-		&hasPlatformAccount, &mobileVerified, &hasEligibleParentLink, &mfaVerified, &subtypeCount,
+		&hasPlatformAccount, &mobileVerified, &hasEligibleParentLink, &mfaVerified, &requiresAdminSessionActivity, &subtypeCount,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, models.ErrPrincipalNotAuthenticated
@@ -114,6 +122,7 @@ WHERE ap.id = $1`
 	}
 	p.MobileVerified = mobileVerified
 	p.MustChangePassword = p.Type == "staff" && mustChangePassword
+	p.RequiresAdminSessionActivity = requiresAdminSessionActivity
 	return &p, nil
 }
 
