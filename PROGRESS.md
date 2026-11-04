@@ -491,3 +491,13 @@ V11 is **applied and PostgreSQL-verified on the dedicated test database**. This 
 - [x] Rejected cross-school staff-role assignment and permission override are verified to create neither foreign-school data rows nor success audit events.
 - [x] Push CI run `41768691764` and Draft PR run `41768696622` on `17808905`: V1–V16 migrations, full PostgreSQL integration-enabled Go suite, and `go vet ./...` PASS.
 - All assertions run inside the rollback-only PostgreSQL integration transaction; no persistent user database is modified.
+
+
+## 2026-11-04 — Live permission override takes effect on the next request
+
+- [x] Added a second signed staff JWT for a same-school staff principal with no role grants.
+- [x] Before any override, `GET /school/roles` returns 403.
+- [x] After School Admin creates a delegated `roles.read` ALLOW override, the same token succeeds on the next request (200).
+- [x] After deleting the override, the same token is denied again on the next request (403), proving current database permissions are reloaded rather than cached in JWT/session state.
+- [x] Push CI run `41769118132` and Draft PR run `41769126077` on `b947cf2`: V1–V16 migrations, full PostgreSQL integration-enabled Go suite, and `go vet ./...` PASS.
+- All test principals, overrides, delegations, and audit events remain rollback-scoped.
