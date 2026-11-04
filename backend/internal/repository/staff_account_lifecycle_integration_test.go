@@ -117,6 +117,58 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
 		t.Fatalf("unexpected created staff account: %+v", created)
 	}
 
+	// Force the audit write to fail and prove the user/principal insert rolls
+	// back with it. This guards the all-or-nothing account provisioning contract.
+	auditFailureSuffix := suffix[len(suffix)-8:]
+	triggerName := "test_reject_staff_created_audit_" + auditFailureSuffix
+	functionName := "test_reject_staff_created_audit_fn_" + auditFailureSuffix
+	createFailureTrigger := fmt.Sprintf(`
+		CREATE FUNCTION %s() RETURNS trigger
+		LANGUAGE plpgsql AS $
+		BEGIN
+		    IF NEW.action = 'staff.account.created' THEN
+		        RAISE EXCEPTION 'forced staff audit failure' USING ERRCODE = 'P0001';
+		    END IF;
+		    RETURN NEW;
+		END;
+		$;
+		CREATE TRIGGER %s
+		BEFORE INSERT ON audit_events
+		FOR EACH ROW EXECUTE FUNCTION %s();
+	`, functionName, triggerName, functionName)
+	if _, err := tx.Exec(ctx, createFailureTrigger); err != nil {
+		t.Fatalf("install scoped staff audit failure trigger: %v", err)
+	}
+	auditFailureUsername := "audit-fail-" + auditFailureSuffix
+	if _, err := repo.CreateStaffAccount(ctx, actorPrincipalID, schoolID,
+		auditFailureUsername, "audit-failure-password-hash"); err == nil {
+		t.Fatal("staff creation must fail when its required audit insert fails")
+	}
+	if _, err := tx.Exec(ctx, fmt.Sprintf("DROP TRIGGER %s ON audit_events", triggerName)); err != nil {
+		t.Fatalf("remove scoped staff audit failure trigger: %v", err)
+	}
+	if _, err := tx.Exec(ctx, fmt.Sprintf("DROP FUNCTION %s()", functionName)); err != nil {
+		t.Fatalf("remove scoped staff audit failure function: %v", err)
+	}
+	var rolledBackUsers, failedAuditEvents int
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*) FROM users WHERE school_id = $1 AND username = $2
+	`, schoolID, auditFailureUsername).Scan(&rolledBackUsers); err != nil {
+		t.Fatalf("verify failed staff creation left no user: %v", err)
+	}
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*) FROM audit_events
+		 WHERE actor_principal_id = $1 AND school_id = $2
+		   AND action = 'staff.account.created'
+		   AND metadata->>'username' = $3
+	`, actorPrincipalID, schoolID, auditFailureUsername).Scan(&failedAuditEvents); err != nil {
+		t.Fatalf("verify failed staff creation left no audit event: %v", err)
+	}
+	if rolledBackUsers != 0 || failedAuditEvents != 0 {
+		t.Fatalf("failed staff creation was not atomic: users=%d audit_events=%d",
+			rolledBackUsers, failedAuditEvents)
+	}
+
 	// The repository must translate the global case-insensitive unique
 	// constraint into its stable domain error, not leak a raw PostgreSQL error.
 	if _, err := repo.CreateStaffAccount(ctx, actorPrincipalID, schoolID, username,
