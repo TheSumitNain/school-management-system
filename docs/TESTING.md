@@ -641,3 +641,17 @@ The HTTP/PostgreSQL integration test now creates a separate same-school staff pr
 This proves the protected request resolves effective permissions from current PostgreSQL state on each request: no token refresh or re-login is needed for the grant to take effect, and deleting the override removes access on the next request. The test also retains audit-event assertions for override creation/removal and the corresponding delegation lifecycle.
 
 Verification: push run `41769118132` and Draft PR run `41769126077` on `b947cf2` both passed V1–V16 migrations, the full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and `go vet ./...`.
+
+
+## 26. DENY override precedence over a role grant — 2026-11-04
+
+The live-permission HTTP integration flow now also proves the precedence of explicit DENY overrides over role permissions:
+
+1. The target staff principal receives `roles.read` through a custom role; `GET /school/roles` returns 200.
+2. School Admin applies a delegated `roles.read` DENY override; the same unchanged JWT receives 403 on the next request.
+3. School Admin removes the DENY override; the same JWT returns to 200 because the role grant remains active.
+4. School Admin revokes the custom-role assignment; the same JWT returns to 403 again.
+
+This verifies the authorization resolver applies explicit denials after role grants and reloads the current permission state for each protected request. Audit assertions also account for both role assignment/revocation cycles and both override set/removal cycles.
+
+Verification: push run `41769509298` and Draft PR run `41769515139` on `2f7a6d4` both passed V1–V16 migrations, the full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and `go vet ./...`.
