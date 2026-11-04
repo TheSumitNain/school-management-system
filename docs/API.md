@@ -794,7 +794,7 @@ The initial Platform Admin itself is created separately by the one-time bootstra
 
 ### 3.8 Student Admission and Basic Profile
 
-All routes require an authenticated staff principal and derive the school from that principal. No endpoint accepts a client-supplied `school_id`. Repository authorization independently checks the current permission and school ownership. Student identity is separate from academic-year enrollment: creating a student does not automatically place the student into a class or section. Use the enrollment endpoint after creating the profile.
+Profile read routes require \`students.read_sensitive\`, not the Teacher role's limited \`students.read_basic\` permission. This prevents the basic teacher permission from exposing the full school student directory or unrestricted profile records. All routes require an authenticated staff principal and derive the school from that principal. No endpoint accepts a client-supplied `school_id`. Repository authorization independently checks the current permission and school ownership. Student identity is separate from academic-year enrollment: creating a student does not automatically place the student into a class or section. Use the enrollment endpoint after creating the profile.
 
 The current V11 schema stores only admission number, full name, status, and timestamps. This API intentionally does not invent date-of-birth, gender, address, medical, family, or other sensitive profile fields. Those require a separately reviewed schema and field-level permission design.
 
