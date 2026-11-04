@@ -374,7 +374,7 @@ func (r *PrincipalRefreshSessionRepository) RotatePrincipal(
 SELECT rs.id, rs.family_id, rs.principal_id,
        (rs.expires_at > NOW()),
        (rs.revoked_at IS NOT NULL),
-       (rs.last_activity_at <= NOW()-INTERVAL '30 minutes'),
+       (rs.last_activity_at <= clock_timestamp()-INTERVAL '30 minutes'),
        ap.principal_type,
        (ap.principal_type='platform_admin' OR
         (ap.principal_type='staff' AND EXISTS (
