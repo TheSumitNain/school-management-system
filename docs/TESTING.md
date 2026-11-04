@@ -561,3 +561,19 @@ Both requests traverse the actual Gin middleware, PostgreSQL principal/permissio
 Verification: push run `41767168878` and Draft PR run `41767176542` on `6bf8ca5` both passed V1–V16 migrations, the full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and `go vet ./...`.
 
 Remaining HTTP write-path cases include delegation revocation, custom-role permission revocation, staff permission overrides, and staff role assignment/revocation.
+
+
+## 21. HTTP permission grant and revocation lifecycle — 2026-11-04
+
+The real HTTP/PostgreSQL integration test verifies the permission delegation lifecycle across Platform Admin and School Admin boundaries:
+
+- Platform Admin grants the `students.read_basic` delegation; HTTP 201.
+- School Admin grants that permission to a custom role using the exact returned delegation ID; HTTP 201.
+- School Admin revokes the custom-role permission through the DELETE route; HTTP 200.
+- Platform Admin revokes the exact delegation through the platform revoke route; HTTP 200.
+
+All requests use signed JWTs and the actual authentication middleware, PostgreSQL-backed principal and permission resolution, handlers, services, and transaction-aware repositories. The Platform Admin fixture satisfies mandatory MFA; newly bootstrapped test administrators receive a verified MFA fixture only inside the rollback-only transaction.
+
+Verification: push run `41767372453` and Draft PR run `41767378009` on `0b560fd` both passed V1–V16 migrations, the full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and `go vet ./...`.
+
+Staff permission override and staff role assignment/revocation HTTP write paths remain to be covered.
