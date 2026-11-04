@@ -22,13 +22,16 @@ type staffPasswordRepository interface {
 
 type StaffPasswordService struct {
 	repository staffPasswordRepository
+	breachChecker PasswordBreachChecker
 }
 
-func NewStaffPasswordService(repository staffPasswordRepository) (*StaffPasswordService, error) {
+func NewStaffPasswordService(repository staffPasswordRepository, checkers ...PasswordBreachChecker) (*StaffPasswordService, error) {
 	if repository == nil {
 		return nil, fmt.Errorf("staff password repository is required")
 	}
-	return &StaffPasswordService{repository: repository}, nil
+	checker := defaultPasswordBreachChecker
+	if len(checkers) > 0 { checker = checkers[0] }
+	return &StaffPasswordService{repository: repository, breachChecker: checker}, nil
 }
 
 // ChangePassword verifies the current credential and applies the password
@@ -57,7 +60,7 @@ func (s *StaffPasswordService) ChangePassword(
 	if CheckPassword(newPassword, currentHash) {
 		return ErrPasswordUnchanged
 	}
-	newHash, err := HashPassword(newPassword)
+	newHash, err := hashPasswordWithChecker(ctx, newPassword, s.breachChecker)
 	if err != nil {
 		return err
 	}
