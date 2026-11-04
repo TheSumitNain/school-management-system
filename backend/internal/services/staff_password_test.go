@@ -48,7 +48,7 @@ func TestStaffPasswordServiceChangesPassword(t *testing.T) {
 		t.Fatal(err)
 	}
 	repo := &fakeStaffPasswordRepository{userID: 7, passwordHash: oldHash}
-	service, err := NewStaffPasswordService(repo)
+	service, err := NewStaffPasswordService(repo, alwaysClearPasswordChecker{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestStaffPasswordServiceRejectsWrongCurrentPassword(t *testing.T) {
 		t.Fatal(err)
 	}
 	repo := &fakeStaffPasswordRepository{userID: 7, passwordHash: oldHash}
-	service, _ := NewStaffPasswordService(repo)
+	service, _ := NewStaffPasswordService(repo, alwaysClearPasswordChecker{})
 	err = service.ChangePassword(context.Background(), 11, "WrongStrong!Password", "NewStrong!Password456")
 	if !errors.Is(err, ErrInvalidCredentials) || repo.changeCalls != 0 {
 		t.Fatalf("expected invalid credentials without update, err=%v calls=%d", err, repo.changeCalls)
@@ -82,7 +82,7 @@ func TestStaffPasswordServiceRejectsWeakNewPassword(t *testing.T) {
 		t.Fatal(err)
 	}
 	repo := &fakeStaffPasswordRepository{userID: 7, passwordHash: oldHash}
-	service, _ := NewStaffPasswordService(repo)
+	service, _ := NewStaffPasswordService(repo, alwaysClearPasswordChecker{})
 	err = service.ChangePassword(context.Background(), 11, "OldStrong!Password123", "short")
 	if !errors.Is(err, ErrInvalidPassword) || repo.changeCalls != 0 {
 		t.Fatalf("expected password-policy rejection without update, err=%v calls=%d", err, repo.changeCalls)
@@ -95,7 +95,7 @@ func TestStaffPasswordServiceRejectsUnchangedPassword(t *testing.T) {
 		t.Fatal(err)
 	}
 	repo := &fakeStaffPasswordRepository{userID: 7, passwordHash: oldHash}
-	service, _ := NewStaffPasswordService(repo)
+	service, _ := NewStaffPasswordService(repo, alwaysClearPasswordChecker{})
 	err = service.ChangePassword(context.Background(), 11, "OldStrong!Password123", "OldStrong!Password123")
 	if !errors.Is(err, ErrPasswordUnchanged) || repo.changeCalls != 0 {
 		t.Fatalf("expected unchanged-password rejection, err=%v calls=%d", err, repo.changeCalls)
@@ -108,7 +108,7 @@ func TestStaffPasswordServiceReturnsConcurrentChangeConflict(t *testing.T) {
 		t.Fatal(err)
 	}
 	repo := &fakeStaffPasswordRepository{userID: 7, passwordHash: oldHash, changeErr: ErrPasswordChangeConflict}
-	service, _ := NewStaffPasswordService(repo)
+	service, _ := NewStaffPasswordService(repo, alwaysClearPasswordChecker{})
 	err = service.ChangePassword(context.Background(), 11, "OldStrong!Password123", "NewStrong!Password456")
 	if !errors.Is(err, ErrPasswordChangeConflict) {
 		t.Fatalf("expected concurrent change conflict, got %v", err)
@@ -118,7 +118,7 @@ func TestStaffPasswordServiceReturnsConcurrentChangeConflict(t *testing.T) {
 
 func TestStaffPasswordServiceResetsPasswordAsTemporary(t *testing.T) {
 	repo := &fakeStaffPasswordRepository{userID: 7}
-	service, err := NewStaffPasswordService(repo)
+	service, err := NewStaffPasswordService(repo, alwaysClearPasswordChecker{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,7 +135,7 @@ func TestStaffPasswordServiceResetsPasswordAsTemporary(t *testing.T) {
 
 func TestStaffPasswordServiceRejectsWeakResetPassword(t *testing.T) {
 	repo := &fakeStaffPasswordRepository{}
-	service, _ := NewStaffPasswordService(repo)
+	service, _ := NewStaffPasswordService(repo, alwaysClearPasswordChecker{})
 	err := service.ResetPassword(context.Background(), 10, 4, 11, "short")
 	if !errors.Is(err, ErrInvalidPassword) || repo.resetCalls != 0 {
 		t.Fatalf("expected password-policy rejection, err=%v calls=%d", err, repo.resetCalls)
