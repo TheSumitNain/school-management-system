@@ -125,13 +125,29 @@ type refreshSessionFamilyLookup interface {
 // RotateWithFamily preserves the repository's transactional rotation/replay
 // protections, then resolves the immutable family UUID for the replacement.
 func (s *SessionService) RotateWithFamily(ctx context.Context, rawToken string) (*models.AuthPrincipal, string, string, error) {
-	principal, replacement, err := s.Rotate(ctx, rawToken)
-	if err != nil { return nil, "", "", err }
+	if strings.TrimSpace(rawToken) == "" {
+		return nil, "", "", ErrInvalidRefreshToken
+	}
 	repo, ok := s.sessions.(refreshSessionFamilyLookup)
-	if !ok { return nil, "", "", fmt.Errorf("refresh repository does not support session-family lookup") }
-	familyID, err := repo.FamilyIDForTokenHash(ctx, HashRefreshToken(replacement))
-	if err != nil { return nil, "", "", err }
-	if !validRefreshFamilyID(familyID) { return nil, "", "", fmt.Errorf("refresh repository returned invalid family ID") }
+	if !ok {
+		return nil, "", "", fmt.Errorf("refresh repository does not support session-family lookup")
+	}
+
+	// Resolve the immutable family ID before rotation commits. A post-commit
+	// lookup failure would otherwise strand an active replacement token that
+	// was never returned to the client.
+	familyID, err := repo.FamilyIDForTokenHash(ctx, HashRefreshToken(rawToken))
+	if err != nil {
+		return nil, "", "", err
+	}
+	if !validRefreshFamilyID(familyID) {
+		return nil, "", "", fmt.Errorf("refresh repository returned invalid family ID")
+	}
+
+	principal, replacement, err := s.Rotate(ctx, rawToken)
+	if err != nil {
+		return nil, "", "", err
+	}
 	return principal, replacement, familyID, nil
 }
 
