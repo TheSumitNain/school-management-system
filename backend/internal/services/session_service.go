@@ -117,6 +117,23 @@ func (s *SessionService) Rotate(ctx context.Context, rawToken string) (*models.A
 	return principal, replacement, nil
 }
 
+type refreshSessionFamilyLookup interface {
+	FamilyIDForTokenHash(ctx context.Context, tokenHash string) (string, error)
+}
+
+// RotateWithFamily preserves the repository's transactional rotation/replay
+// protections, then resolves the immutable family UUID for the replacement.
+func (s *SessionService) RotateWithFamily(ctx context.Context, rawToken string) (*models.AuthPrincipal, string, string, error) {
+	principal, replacement, err := s.Rotate(ctx, rawToken)
+	if err != nil { return nil, "", "", err }
+	repo, ok := s.sessions.(refreshSessionFamilyLookup)
+	if !ok { return nil, "", "", fmt.Errorf("refresh repository does not support session-family lookup") }
+	familyID, err := repo.FamilyIDForTokenHash(ctx, HashRefreshToken(replacement))
+	if err != nil { return nil, "", "", err }
+	if !validRefreshFamilyID(familyID) { return nil, "", "", fmt.Errorf("refresh repository returned invalid family ID") }
+	return principal, replacement, familyID, nil
+}
+
 func (s *SessionService) Revoke(ctx context.Context, rawToken string) error {
 	if strings.TrimSpace(rawToken) == "" {
 		return ErrInvalidRefreshToken
