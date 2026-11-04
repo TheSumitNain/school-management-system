@@ -117,6 +117,13 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
 		t.Fatalf("unexpected created staff account: %+v", created)
 	}
 
+	// The repository must translate the global case-insensitive unique
+	// constraint into its stable domain error, not leak a raw PostgreSQL error.
+	if _, err := repo.CreateStaffAccount(ctx, actorPrincipalID, schoolID, username,
+		"duplicate-integration-password-hash"); !errors.Is(err, ErrUsernameTaken) {
+		t.Fatalf("duplicate staff username error = %v, want ErrUsernameTaken", err)
+	}
+
 	listed, err := repo.ListStaffAccounts(ctx, actorPrincipalID, schoolID)
 	if err != nil {
 		t.Fatalf("authorized staff account listing failed: %v", err)
@@ -226,5 +233,58 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
 	}
 	if auditCount != 4 {
 		t.Fatalf("expected 4 staff lifecycle audit events, got %d", auditCount)
+	}
+
+	// An active School Admin must not be disableable by another School Admin.
+	var protectedAdminUserID, protectedAdminPrincipalID int64
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO users (school_id, username, password_hash, status)
+		VALUES ($1, $2, $3, 'active')
+		RETURNING id, principal_id
+	`, schoolID, "protected-admin-"+suffix, "protected-admin-password-hash").Scan(
+		&protectedAdminUserID, &protectedAdminPrincipalID,
+	); err != nil {
+		t.Fatalf("create second School Admin target: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO principal_roles (principal_id, role_id, assigned_by)
+		VALUES ($1, (
+		    SELECT id FROM roles
+		     WHERE school_id = $2 AND principal_type = 'staff'
+		       AND scope_type = 'school' AND role_key = 'school_admin' AND is_system = TRUE
+		), $3)
+	`, protectedAdminPrincipalID, schoolID, platformAdminPrincipalID); err != nil {
+		t.Fatalf("assign protected School Admin role: %v", err)
+	}
+	if err := repo.DisableStaffAccount(ctx, actorPrincipalID, schoolID, protectedAdminPrincipalID); !errors.Is(err, ErrUserNotFound) {
+		t.Fatalf("disabling another active School Admin error = %v, want ErrUserNotFound", err)
+	}
+	var protectedUserStatus, protectedPrincipalStatus string
+	var protectedTokenVersion int64
+	if err := tx.QueryRow(ctx, `
+		SELECT u.status, ap.status, ap.token_version
+		  FROM users u
+		  JOIN auth_principals ap ON ap.id = u.principal_id
+		 WHERE u.id = $1 AND ap.id = $2
+	`, protectedAdminUserID, protectedAdminPrincipalID).Scan(
+		&protectedUserStatus, &protectedPrincipalStatus, &protectedTokenVersion,
+	); err != nil {
+		t.Fatalf("verify protected School Admin state: %v", err)
+	}
+	if protectedUserStatus != "active" || protectedPrincipalStatus != "active" || protectedTokenVersion != 1 {
+		t.Fatalf("rejected School Admin disable changed target state: user=%q principal=%q token_version=%d",
+			protectedUserStatus, protectedPrincipalStatus, protectedTokenVersion)
+	}
+	var protectedAuditCount int
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*) FROM audit_events
+		 WHERE actor_principal_id = $1 AND school_id = $2
+		   AND action = 'staff.account.disabled' AND resource_type = 'staff_user'
+		   AND resource_id = $3 AND outcome = 'success'
+	`, actorPrincipalID, schoolID, fmt.Sprint(protectedAdminUserID)).Scan(&protectedAuditCount); err != nil {
+		t.Fatalf("check rejected School Admin disable audit side effects: %v", err)
+	}
+	if protectedAuditCount != 0 {
+		t.Fatalf("rejected School Admin disable must not create a success audit event; got %d", protectedAuditCount)
 	}
 }
