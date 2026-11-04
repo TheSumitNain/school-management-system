@@ -61,6 +61,10 @@ func (h *SchoolOnboardingHandler) Create(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "School name, code or School Admin username is invalid"})
 		case errors.Is(err, services.ErrInvalidPassword):
 			c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "School Admin initial password must meet the password policy"})
+		case errors.Is(err, services.ErrCompromisedPassword):
+			c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "School Admin initial password has appeared in known data breaches. Choose a different password."})
+		case errors.Is(err, services.ErrPasswordBreachCheckUnavailable):
+			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Password safety verification is temporarily unavailable. Try again shortly."})
 		case errors.Is(err, repository.ErrSchoolCodeTaken):
 			c.JSON(http.StatusConflict, gin.H{"status": "error", "message": "School code is already in use"})
 		case errors.Is(err, repository.ErrUsernameTaken):
