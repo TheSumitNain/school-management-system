@@ -32,8 +32,7 @@ type TokenService interface {
 }
 
 type SessionService interface {
-	Issue(ctx context.Context, principalID int64) (string, error)
-	IssueForPrincipal(ctx context.Context, principal *models.AuthPrincipal) (string, error)
+	Issue(ctx context.Context, principal *models.AuthPrincipal) (string, error)
 	Rotate(ctx context.Context, refreshToken string) (*models.AuthPrincipal, string, error)
 	Revoke(ctx context.Context, refreshToken string) error
 }
@@ -187,7 +186,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		writeAuthError(c, http.StatusInternalServerError, "Unable to log in")
 		return
 	}
-	refreshToken, err := h.sessionService.IssueForPrincipal(c.Request.Context(), principal)
+	refreshToken, err := h.sessionService.Issue(c.Request.Context(), principal)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrSessionPrincipalVersionChanged):
@@ -297,7 +296,7 @@ func (h *AuthHandler) issueMFASession(c *gin.Context, principalID int64, recover
 	}
 	accessToken,err:=h.tokenService.GenerateAccessToken(principal.ID,principal.TokenVersion,principal.Type)
 	if err!=nil { writeAuthError(c,http.StatusInternalServerError,"Unable to complete authentication"); return }
-	refreshToken,err:=h.sessionService.IssueForPrincipal(c.Request.Context(),principal)
+	refreshToken,err:=h.sessionService.Issue(c.Request.Context(),principal)
 	if err!=nil {
 		if errors.Is(err, services.ErrSessionPrincipalVersionChanged) {
 			writeAuthError(c, http.StatusUnauthorized, "Credentials changed during sign-in. Please sign in again.")
