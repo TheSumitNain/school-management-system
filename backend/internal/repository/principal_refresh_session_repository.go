@@ -544,13 +544,16 @@ FOR UPDATE OF rs, ap`
 	if _, err = tx.Exec(
 		ctx,
 		`INSERT INTO refresh_sessions
-		 (user_id,principal_id,token_hash,expires_at,family_id)
-		 VALUES ($1,$2,$3,$4,$5)`,
+		 (user_id,principal_id,token_hash,expires_at,family_id,last_activity_at)
+		 SELECT $1,$2,$3,$4,$5,last_activity_at
+		 FROM refresh_sessions
+		 WHERE id=$6 AND family_id=$5`,
 		nullableInt64(userID),
 		principalID,
 		newHash,
 		newExpiry,
 		familyID,
+		sessionID,
 	); err != nil {
 		return nil, fmt.Errorf("store replacement refresh token: %w", err)
 	}

@@ -8,6 +8,7 @@ UPDATE refresh_sessions
  WHERE last_activity_at IS NULL;
 
 ALTER TABLE refresh_sessions
+    ALTER COLUMN last_activity_at SET DEFAULT NOW(),
     ALTER COLUMN last_activity_at SET NOT NULL;
 
 CREATE INDEX ix_refresh_sessions_active_family_activity
