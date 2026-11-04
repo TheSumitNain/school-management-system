@@ -43,7 +43,7 @@ The database must be designed incrementally but with future compatibility in min
 
 ## Current Status
 
-**Stage:** Principal-aware authentication, core RBAC foundation, Platform Admin bootstrap/onboarding backend. The React frontend and most school business APIs are not yet implemented. Route-level permission middleware and live permission resolution exist, but complete resource/tenant authorization and custom-role delegation are not finished. Active branch: `fix/v4-auth-security-hardening`. This is not production-ready.
+**Stage:** Principal-aware authentication, RBAC, academic foundation, student admission/profile APIs, and school-scoped Guardian Management backend. The React frontend is not yet implemented, and most school business modules remain pending. Guardian permissions use explicit Platform Admin delegation; built-in School Admin and Teacher role bundles remain unchanged. Active branch: `fix/v4-auth-security-hardening`. This is not production-ready.
 
 ### Implemented
 
@@ -75,6 +75,7 @@ The database must be designed incrementally but with future compatibility in min
 - Unit and handler tests for implemented authentication behavior.
 - Authentication middleware and API route tests.
 - Development-only seed command with environment safeguards.
+- School-scoped Guardian Management APIs for guardian contacts and student relationships, including audited creation/update, primary/emergency contacts, history-preserving revocation, dedicated RBAC permissions, and V19 controlled delegation.
 - Documentation for requirements, architecture, database design, API behavior, security, testing, progress, and handoff.
 
 ### Authentication Endpoints
