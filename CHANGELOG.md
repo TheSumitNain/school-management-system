@@ -23,6 +23,8 @@ This project is under active development. Verification results describe the late
 - Extended the same HTTP integration flow to create a same-school target staff principal, assign the created custom role (201), list the staff role assignments (200), and revoke the assignment (200).
 - Added a separate exact delegation for `homework.create` with `can_override_users=true`; School Admin sets an ALLOW override (200), deletes it (200), and Platform Admin revokes the delegation (200).
 - Push run `41767598076` and Draft PR run `41767602833` on commit `d90ba9e` both passed V1–V16 migrations, the full PostgreSQL integration-enabled Go suite, and `go vet ./...`.
+- Added actual HTTP cross-school target checks with a second school and staff principal: School A's admin receives 404 when attempting to assign a School A custom role to School B staff, and receives 409 when attempting to apply a School A permission override to School B staff. No foreign-school assignment or override is created.
+- Push run `41767842024` and Draft PR run `41767846927` on commit `4bd8af4` both passed V1–V16 migrations, the full PostgreSQL integration-enabled Go suite, and `go vet ./...`.
 - This verifies tenant boundaries for RBAC administration operations only; business-resource tenant isolation remains pending until those resource APIs and repositories are implemented.
 
 
