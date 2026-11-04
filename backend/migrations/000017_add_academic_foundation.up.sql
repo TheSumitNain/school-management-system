@@ -210,8 +210,20 @@ BEGIN
            AND ap.status = 'active'
            AND u.status = 'active'
            AND u.school_id = NEW.school_id
+           AND EXISTS (
+               SELECT 1
+                 FROM public.principal_roles pr
+                 JOIN public.roles r ON r.id = pr.role_id
+                WHERE pr.principal_id = ap.id
+                  AND pr.revoked_at IS NULL
+                  AND r.school_id = NEW.school_id
+                  AND r.principal_type = 'staff'
+                  AND r.scope_type = 'school'
+                  AND r.role_key = 'teacher'
+                  AND r.is_system = TRUE
+           )
     ) THEN
-        RAISE EXCEPTION 'teacher assignment requires active staff from the same school';
+        RAISE EXCEPTION 'teacher assignment requires an active same-school staff principal with the Teacher role';
     END IF;
 
     IF NOT EXISTS (
