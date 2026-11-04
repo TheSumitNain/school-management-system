@@ -447,7 +447,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		return
 	}
 
-	principal, replacement, familyID, err := rotateSessionTokens(c.Request.Context(), h.tokenService, h.sessionService, strings.TrimSpace(req.RefreshToken))
+	principal, replacement, familyID, err := rotateSessionTokens(c.Request.Context(), h.sessionService, strings.TrimSpace(req.RefreshToken))
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrInvalidRefreshToken), errors.Is(err, services.ErrRefreshTokenReuse):
@@ -550,7 +550,7 @@ func issueSessionTokens(ctx context.Context, tokens TokenService, sessions Sessi
 	}
 	return access, refresh, nil
 }
-func rotateSessionTokens(ctx context.Context, tokens TokenService, sessions SessionService, refresh string) (*models.AuthPrincipal, string, string, error) {
+func rotateSessionTokens(ctx context.Context, sessions SessionService, refresh string) (*models.AuthPrincipal, string, string, error) {
 	rotator, ok := sessions.(sessionFamilyRotator)
 	if !ok { return nil, "", "", errors.New("session-family rotation unavailable") }
 	principal, replacement, familyID, err := rotator.RotateWithFamily(ctx, refresh)
