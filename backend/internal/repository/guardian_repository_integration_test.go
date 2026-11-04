@@ -273,9 +273,12 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 		FROM audit_events
 		WHERE school_id = $1
 		  AND actor_principal_id = $2
-		  AND resource_id IN ($3, $4, $5)
+		  AND (
+		    (resource_type = 'guardian' AND resource_id IN ($3, $4))
+		    OR resource_type = 'student_guardian_link'
+		  )
 	`, schoolID, actorPrincipalID, fmt.Sprint(guardian.ID),
-		fmt.Sprint(firstLink.ID), fmt.Sprint(secondLink.ID)).Scan(
+		fmt.Sprint(secondGuardian.ID)).Scan(
 		&guardianAuditCount, &linkCreateAuditCount, &linkRevokeAuditCount,
 	); err != nil {
 		t.Fatalf("count guardian audit events: %v", err)
