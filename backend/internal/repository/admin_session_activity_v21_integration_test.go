@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -13,7 +14,7 @@ import (
 // tracked per device family, expired families are revoked and audited, and
 // another device belonging to the same administrator remains active.
 func TestAdminSessionActivityV21PostgresIntegration(t *testing.T) {
-	_, pool, _ := newPostgresIntegrationRepository(t)
+	_, pool, userID := newPostgresIntegrationRepository(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
@@ -87,6 +88,46 @@ func TestAdminSessionActivityV21PostgresIntegration(t *testing.T) {
 		  AND resource_id=$2
 	`, principalID, expiredFamily).Scan(&auditCount); err != nil { t.Fatalf("verify idle-timeout audit: %v", err) }
 	if auditCount != 1 { t.Fatalf("expected exactly one idle-timeout audit event, got %d",auditCount) }
+
+	// Refresh rotation must enforce the same idle timeout inside its existing
+	// family/principal-locked transaction and revoke only the expired family.
+	refreshTokenSum := sha256.Sum256([]byte("admin-idle-v21-refresh-" + suffix))
+	refreshTokenHash := hex.EncodeToString(refreshTokenSum[:])
+	newTokenSum := sha256.Sum256([]byte("admin-idle-v21-refresh-replacement-" + suffix))
+	newTokenHash := hex.EncodeToString(newTokenSum[:])
+	var refreshFamily string
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO refresh_sessions (principal_id,token_hash,expires_at)
+		VALUES ($1,$2,NOW()+INTERVAL '1 day') RETURNING family_id::text
+	`, principalID, refreshTokenHash).Scan(&refreshFamily); err != nil { t.Fatalf("create refresh-expiry family: %v",err) }
+	if _, err := pool.Exec(ctx, `
+		UPDATE refresh_sessions SET last_activity_at=NOW()-INTERVAL '31 minutes'
+		WHERE family_id=$1::uuid AND revoked_at IS NULL
+	`, refreshFamily); err != nil { t.Fatalf("age refresh-expiry family: %v",err) }
+	refreshRepo := NewPrincipalRefreshSessionRepository(pool)
+	if _, err := refreshRepo.RotatePrincipal(ctx,refreshTokenHash,newTokenHash,time.Now().Add(24*time.Hour)); !errors.Is(err,ErrAdminSessionIdleExpired) {
+		t.Fatalf("idle admin refresh must return ErrAdminSessionIdleExpired, got %v",err)
+	}
+	var refreshFamilyActive int
+	if err := pool.QueryRow(ctx,`SELECT COUNT(*) FROM refresh_sessions WHERE family_id=$1::uuid AND revoked_at IS NULL`,refreshFamily).Scan(&refreshFamilyActive); err != nil { t.Fatalf("verify idle refresh family revocation: %v",err) }
+	if refreshFamilyActive != 0 { t.Fatalf("idle refresh family still has %d active sessions",refreshFamilyActive) }
+
+	// Ordinary staff sessions do not use the administrative idle-timeout rule.
+	var staffPrincipalID int64
+	if err := pool.QueryRow(ctx,`SELECT principal_id FROM users WHERE id=$1`,userID).Scan(&staffPrincipalID); err != nil { t.Fatalf("load integration staff principal: %v",err) }
+	staffTokenSum := sha256.Sum256([]byte("staff-idle-v21-" + suffix))
+	staffTokenHash := hex.EncodeToString(staffTokenSum[:])
+	staffReplacementSum := sha256.Sum256([]byte("staff-idle-v21-replacement-" + suffix))
+	staffReplacementHash := hex.EncodeToString(staffReplacementSum[:])
+	var staffFamily string
+	if err := pool.QueryRow(ctx,`
+		INSERT INTO refresh_sessions(user_id,principal_id,token_hash,expires_at)
+		VALUES($1,$2,$3,NOW()+INTERVAL '1 day') RETURNING family_id::text
+	`,userID,staffPrincipalID,staffTokenHash).Scan(&staffFamily); err != nil { t.Fatalf("create ordinary staff family: %v",err) }
+	if _, err := pool.Exec(ctx,`UPDATE refresh_sessions SET last_activity_at=NOW()-INTERVAL '31 minutes' WHERE family_id=$1::uuid AND revoked_at IS NULL`,staffFamily); err != nil { t.Fatalf("age ordinary staff family: %v",err) }
+	rotatedPrincipal, err := refreshRepo.RotatePrincipal(ctx,staffTokenHash,staffReplacementHash,time.Now().Add(24*time.Hour))
+	if err != nil { t.Fatalf("ordinary staff refresh must not be subject to admin idle timeout: %v",err) }
+	if rotatedPrincipal == nil || rotatedPrincipal.ID != staffPrincipalID { t.Fatalf("ordinary staff refresh returned wrong principal: %+v",rotatedPrincipal) }
 
 	isAdmin, valid, err = tracker.CheckAndTouchAdminSession(ctx, principalID, activeFamily)
 	if err != nil { t.Fatalf("recheck other device family: %v", err) }
