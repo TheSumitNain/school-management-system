@@ -40,8 +40,8 @@ func (r *RefreshSessionRepository) Create(
 	}
 
 	const query = `
-		INSERT INTO refresh_sessions (user_id, token_hash, expires_at)
-		VALUES ($1, $2, $3)
+		INSERT INTO refresh_sessions (user_id, token_hash, expires_at, last_activity_at)
+		VALUES ($1, $2, $3, clock_timestamp())
 	`
 	if _, err := r.db.Exec(ctx, query, userID, tokenHash, expiresAt); err != nil {
 		return fmt.Errorf("create refresh session: %w", err)
@@ -193,10 +193,12 @@ func (r *RefreshSessionRepository) Rotate(
 	}
 
 	const insertReplacement = `
-		INSERT INTO refresh_sessions (user_id, token_hash, expires_at, family_id)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO refresh_sessions (user_id, token_hash, expires_at, family_id, last_activity_at)
+		SELECT $1, $2, $3, $4, last_activity_at
+		FROM refresh_sessions
+		WHERE id = $5 AND family_id = $4
 	`
-	if _, err := tx.Exec(ctx, insertReplacement, userID, newTokenHash, newExpiresAt, familyID); err != nil {
+	if _, err := tx.Exec(ctx, insertReplacement, userID, newTokenHash, newExpiresAt, familyID, sessionID); err != nil {
 		return nil, fmt.Errorf("store replacement refresh token: %w", err)
 	}
 
