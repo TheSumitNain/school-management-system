@@ -446,3 +446,13 @@ V11 is **applied and PostgreSQL-verified on the dedicated test database**. This 
 - [x] Draft PR CI run `41766719434` on `d5f8340`: all V1–V16 migrations, full PostgreSQL integration-enabled Go suite, and `go vet ./...` PASS.
 - [ ] Continue HTTP-to-PostgreSQL coverage for delegation, permission override, and staff-role assignment write routes.
 - No persistent user database was modified; PR #1 remains Draft and unmerged.
+
+
+## 2026-11-04 — HTTP permission delegation and custom-role permission grant
+
+- [x] Extended the real HTTP/PostgreSQL integration flow with a signed Platform Admin token and mandatory verified-MFA fixture, scoped to the rollback-only test transaction.
+- [x] Platform Admin grants `students.read_basic` delegation through the actual `POST /platform/schools/:schoolID/permission-delegations` route; response is HTTP 201.
+- [x] School Admin consumes the exact returned delegation ID to grant `students.read_basic` to the previously created custom role through `POST /school/roles/:roleID/permissions`; response is HTTP 201.
+- [x] Push CI run `41767168878` and Draft PR run `41767176542` on `6bf8ca5`: V1–V16 migrations, full PostgreSQL integration-enabled Go suite, and `go vet ./...` PASS.
+- [ ] Continue HTTP/PostgreSQL write-path coverage for delegation revocation, custom-role permission revocation, staff permission overrides, and staff role assignment/revocation.
+- All writes and MFA fixtures are rolled back; no persistent user database was modified. PR #1 remains Draft and unmerged.
