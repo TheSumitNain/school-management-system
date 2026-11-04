@@ -28,3 +28,28 @@ func TestGenerateRecoveryCodesRejectsUnsafeCounts(t *testing.T) {
 		if _, _, err := GenerateRecoveryCodes(count); err == nil { t.Fatalf("count %d should be rejected", count) }
 	}
 }
+
+func TestParseMFAChallengeTokenVersion(t *testing.T) {
+	for _, test := range []struct {
+		token string
+		want  int64
+		ok    bool
+	}{
+		{token: "opaque-random-token.7", want: 7, ok: true},
+		{token: "opaque-random-token.1", want: 1, ok: true},
+		{token: "opaque-random-token", ok: false},
+		{token: "opaque-random-token.0", ok: false},
+		{token: "opaque-random-token.-1", ok: false},
+		{token: ".7", ok: false},
+		{token: "opaque-random-token.not-a-version", ok: false},
+	} {
+		got, err := parseMFAChallengeTokenVersion(test.token)
+		if test.ok {
+			if err != nil || got != test.want {
+				t.Fatalf("parseMFAChallengeTokenVersion(%q) = %d, %v; want %d, nil", test.token, got, err, test.want)
+			}
+		} else if err == nil {
+			t.Fatalf("parseMFAChallengeTokenVersion(%q) unexpectedly accepted version %d", test.token, got)
+		}
+	}
+}
