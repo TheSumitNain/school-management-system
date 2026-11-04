@@ -159,7 +159,7 @@ func TestAdminSessionActivityV21PostgresIntegration(t *testing.T) {
 		UPDATE refresh_sessions SET last_activity_at=NOW()-INTERVAL '31 minutes'
 		WHERE family_id=$1::uuid AND revoked_at IS NULL
 	`,schoolAdminFamily); err != nil { t.Fatalf("age School Admin family: %v",err) }
-	isAdmin, valid, err := tracker.CheckAndTouchAdminSession(ctx,staffPrincipalID,schoolAdminFamily)
+	isAdmin, valid, err = tracker.CheckAndTouchAdminSession(ctx,staffPrincipalID,schoolAdminFamily)
 	if err != nil { t.Fatalf("check School Admin idle timeout: %v",err) }
 	if !isAdmin || valid { t.Fatalf("active system School Admin role must enforce idle timeout: isAdmin=%v valid=%v",isAdmin,valid) }
 	if _, err := refreshRepo.RotatePrincipal(ctx,schoolAdminTokenHash,schoolAdminReplacementHash,time.Now().Add(24*time.Hour)); !errors.Is(err,ErrAdminSessionIdleExpired) {
