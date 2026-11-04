@@ -139,7 +139,6 @@ func TestAdminSessionActivityV21PostgresIntegration(t *testing.T) {
 		INSERT INTO principal_mfa_credentials
 		    (principal_id,method,secret_ciphertext,encryption_key_version,verified_at)
 		VALUES($1,'totp',decode('01','hex'),1,NOW())
-		ON CONFLICT (principal_id,method) DO NOTHING
 	`,staffPrincipalID); err != nil { t.Fatalf("create School Admin MFA fixture: %v",err) }
 	if _, err := pool.Exec(ctx,`
 		INSERT INTO principal_roles(principal_id,role_id,assigned_by)
