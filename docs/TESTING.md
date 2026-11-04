@@ -625,3 +625,19 @@ The real HTTP/PostgreSQL integration test now checks audit persistence inside it
 The test scopes every audit lookup by actor, school, action, resource type, resource ID, and successful outcome. All writes and audit rows are rolled back with the integration transaction.
 
 Verification: push run `41768691764` and Draft PR run `41768696622` on `17808905` both passed V1–V16 migrations, the full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and `go vet ./...`.
+
+
+## 25. Live permission override changes are effective on the next HTTP request — 2026-11-04
+
+The HTTP/PostgreSQL integration test now creates a separate same-school staff principal and signs a real HS256 token for that principal. The principal initially has no role grants:
+
+1. `GET /school/roles` returns HTTP 403.
+2. A Platform Admin creates an exact `roles.read` delegation with `can_override_users=true`.
+3. A School Admin creates a delegated ALLOW override for the target principal.
+4. The same unchanged JWT calls `GET /school/roles` again and receives HTTP 200.
+5. The School Admin deletes the override.
+6. The same JWT calls the route again and receives HTTP 403.
+
+This proves the protected request resolves effective permissions from current PostgreSQL state on each request: no token refresh or re-login is needed for the grant to take effect, and deleting the override removes access on the next request. The test also retains audit-event assertions for override creation/removal and the corresponding delegation lifecycle.
+
+Verification: push run `41769118132` and Draft PR run `41769126077` on `b947cf2` both passed V1–V16 migrations, the full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and `go vet ./...`.
