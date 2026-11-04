@@ -44,9 +44,36 @@ func (r *AcademicRepository) ListStudentEnrollments(ctx context.Context, actorID
 	if yearID < 0 || studentID < 0 { return nil, ErrInvalidAcademicInput }
 	if err := authorizeAcademic(ctx, r.db, actorID, schoolID, "students.read_basic"); err != nil { return nil, err }
 	rows, err := r.db.Query(ctx, `SELECT `+enrollmentColumns+`
-		FROM student_enrollments
-		WHERE school_id=$1 AND ($2=0 OR academic_year_id=$2) AND ($3=0 OR student_id=$3)
-		ORDER BY enrolled_at DESC,id DESC`, schoolID, yearID, studentID)
+		FROM student_enrollments e
+		WHERE e.school_id=$1 AND ($2=0 OR e.academic_year_id=$2) AND ($3=0 OR e.student_id=$3)
+		  AND (
+			EXISTS (
+				SELECT 1
+				FROM principal_roles pr
+				JOIN roles r ON r.id=pr.role_id
+				WHERE pr.principal_id=$4 AND pr.revoked_at IS NULL
+				  AND r.school_id=$1 AND r.scope_type='school'
+				  AND r.principal_type='staff' AND r.role_key='school_admin'
+				  AND r.is_system=TRUE
+			)
+			OR EXISTS (
+				SELECT 1 FROM class_incharge_assignments cia
+				WHERE cia.school_id=e.school_id
+				  AND cia.academic_year_id=e.academic_year_id
+				  AND cia.section_id=e.section_id
+				  AND cia.teacher_principal_id=$4
+				  AND cia.revoked_at IS NULL
+			)
+			OR EXISTS (
+				SELECT 1 FROM teacher_subject_assignments tsa
+				WHERE tsa.school_id=e.school_id
+				  AND tsa.academic_year_id=e.academic_year_id
+				  AND tsa.section_id=e.section_id
+				  AND tsa.teacher_principal_id=$4
+				  AND tsa.revoked_at IS NULL
+			)
+		  )
+		ORDER BY e.enrolled_at DESC,e.id DESC`, schoolID, yearID, studentID, actorID)
 	if err != nil { return nil, fmt.Errorf("list student enrollments: %w", err) }
 	defer rows.Close()
 	items := make([]StudentEnrollment, 0)
