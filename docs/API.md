@@ -14,11 +14,11 @@ The backend uses Go, Gin, and PostgreSQL.
 - MFA enrollment, verification and recovery-code routes are implemented for privileged accounts.
 - POST /auth/refresh and POST /auth/logout use principal-bound refresh sessions with rotation and token-family replay/revocation protections.
 - GET /auth/me validates the JWT and reloads current principal identity, status, token version and effective permissions.
-- RequirePermission middleware is implemented and used by the Platform Admin school-onboarding route.
+- RequirePermission middleware is enforced on school staff, role-management, and academic management routes; effective permissions are reloaded for every protected request.
 - POST /platform/schools creates a school and its first School Admin transactionally, protected by platform.schools.create and platform.school_admins.create.
 - V13 provisions the fixed School Admin and Teacher system roles for newly created schools.
 - V14 contains a source-only one-time first Platform Admin bootstrap migration and CLI; it is not yet PostgreSQL-verified or approved for application.
-- Public registration is not implemented. Complete school business APIs, resource/tenant/assignment authorization and custom-role delegation are still pending.
+- Academic Year, Class, Section, Subject, teacher-subject assignment, and class-in-charge assignment APIs are implemented with school-scoped repository authorization, audited writes, and PostgreSQL integration coverage. Student enrollment/promotion APIs, attendance, timetable, examinations, results, notices, and frontend workflows remain pending.
 
 **Important:** An implemented authentication endpoint does not mean that the full authorization system or every production security control is implemented. Verify code and tests before treating a feature as complete.
 
@@ -60,7 +60,7 @@ The application is designed to support multiple schools within a shared PostgreS
 
 School-specific records are associated with a `school_id`.
 
-Future protected endpoints must verify that the authenticated user is authorized to access the requested school's data. A client-provided `school_id` must not, by itself, be treated as proof of authorization.
+Academic management endpoints derive the school from the authenticated staff principal and verify the matching live permission in PostgreSQL. They do not accept a client-provided school ID. Other resource families must follow the same rule before being considered complete.
 
 ## 3. Implemented Endpoints
 
@@ -309,6 +309,132 @@ The IDs are illustrative examples.
 - Effective permissions are resolved from live RBAC tables on every protected request; the current resolver intentionally ignores custom-role grants and user ALLOW overrides until exact delegation linkage is implemented.
 - The endpoint returns principal identity context, not the full user profile. Complete resource-level authorization and tenant isolation are not yet implemented.
 - The endpoint does not, by itself, prove complete tenant isolation for other resources.
+
+### 3.7 Academic Management
+
+All routes in this section require a Bearer access token for an active staff principal. The school ID is derived from the authenticated principal; clients must not send or choose a `school_id`. Each route enforces its live permission in middleware, and the repository independently checks the actor, permission, and school scope. Successful create/update/revoke operations write an audit event in the same database transaction.
+
+#### Academic years
+
+| Method | Endpoint | Permission |
+|---|---|---|
+| GET | `/school/academic-years` | `academic_years.read` |
+| POST | `/school/academic-years` | `academic_years.manage` |
+| PATCH | `/school/academic-years/:yearID` | `academic_years.manage` |
+
+Create/update request:
+
+```json
+{
+  "name": "2026-27",
+  "starts_on": "2026-04-01",
+  "ends_on": "2027-03-31",
+  "status": "active",
+  "is_current": true
+}
+```
+
+Dates use `YYYY-MM-DD`; status is `planned`, `active`, or `closed`. Only an active year can be current, and a school can have only one current year. Closed academic years cannot be edited or reopened through this API.
+
+#### Classes and sections
+
+| Method | Endpoint | Permission |
+|---|---|---|
+| GET | `/school/classes` | `classes.read` |
+| POST | `/school/classes` | `classes.manage` |
+| PATCH | `/school/classes/:classID` | `classes.manage` |
+| GET | `/school/sections` | `classes.read` |
+| POST | `/school/sections` | `classes.manage` |
+| PATCH | `/school/sections/:sectionID` | `classes.manage` |
+
+Class request:
+
+```json
+{
+  "name": "LKG",
+  "display_order": 10,
+  "is_active": true
+}
+```
+
+Class names are configurable school data, not a fixed enum. Names such as Pre-Nursery, Play Group, Nursery, LKG, UKG, Class 1–12, or future custom names are supported. Deactivation uses `is_active: false`; class rows are not physically deleted.
+
+Section request:
+
+```json
+{
+  "academic_year_id": 1,
+  "class_id": 1,
+  "name": "A",
+  "display_order": 1,
+  "is_active": true
+}
+```
+
+Sections are tied to one class and one academic year. The list endpoint optionally accepts `?academic_year_id=1`. Updates preserve the section's original class and academic-year identity. A new/reactivated section requires an active class and a non-closed academic year in the same school.
+
+#### Subjects
+
+| Method | Endpoint | Permission |
+|---|---|---|
+| GET | `/school/subjects` | `subjects.read` |
+| POST | `/school/subjects` | `subjects.manage` |
+| PATCH | `/school/subjects/:subjectID` | `subjects.manage` |
+
+Request:
+
+```json
+{
+  "name": "Mathematics",
+  "subject_code": "MATH",
+  "is_active": true
+}
+```
+
+Subject names and optional codes are unique within a school after trimming and case normalization. Deactivation is soft; historical assignment rows remain.
+
+#### Teacher-subject assignments
+
+| Method | Endpoint | Permission |
+|---|---|---|
+| GET | `/school/teacher-assignments` | `teacher_assignments.read` |
+| POST | `/school/teacher-assignments` | `teacher_assignments.manage` |
+| DELETE | `/school/teacher-assignments/:assignmentID` | `teacher_assignments.manage` |
+
+Create request:
+
+```json
+{
+  "academic_year_id": 1,
+  "section_id": 1,
+  "subject_id": 1,
+  "teacher_principal_id": 25
+}
+```
+
+The list endpoint optionally accepts `academic_year_id` and `section_id` query parameters. PostgreSQL verifies that the teacher is an active same-school staff principal with the Teacher system role, and that the section, class, subject, and academic year are eligible. DELETE revokes the assignment; it does not delete history or permit reactivation.
+
+#### Class-in-charge assignments
+
+| Method | Endpoint | Permission |
+|---|---|---|
+| GET | `/school/class-incharge-assignments` | `class_incharge_assignments.read` |
+| POST | `/school/class-incharge-assignments` | `class_incharge_assignments.manage` |
+| DELETE | `/school/class-incharge-assignments/:assignmentID` | `class_incharge_assignments.manage` |
+
+Create request:
+
+```json
+{
+  "academic_year_id": 1,
+  "section_id": 1,
+  "teacher_principal_id": 25
+}
+```
+
+The list endpoint optionally accepts `academic_year_id`. At most one active class-in-charge assignment can exist per section. PostgreSQL enforces the same-school active Teacher identity and non-closed academic-year constraints. DELETE performs a one-way revocation and preserves the assignment history.
+
+Academic create/update conflicts return `409 Conflict`; invalid input or database-enforced academic eligibility failures return `400 Bad Request`; missing school-scoped resources return `404 Not Found`; missing permissions or invalid assignment actors return `403 Forbidden`.
 
 ## 4. HTTP Status Codes
 
