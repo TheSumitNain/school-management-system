@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -88,7 +89,8 @@ func (c *HIBPPasswordBreachChecker) IsCompromised(ctx context.Context, password 
 		if len(parts) != 2 || len(parts[0]) != 35 {
 			return false, fmt.Errorf("password range service returned malformed data")
 		}
-		if _, err := fmt.Sscan(parts[1], new(int)); err != nil {
+		count, err := strconv.Atoi(parts[1])
+		if err != nil || count < 0 {
 			return false, fmt.Errorf("password range service returned malformed count")
 		}
 		suffixes[strings.ToUpper(parts[0])] = struct{}{}
@@ -98,14 +100,14 @@ func (c *HIBPPasswordBreachChecker) IsCompromised(ctx context.Context, password 
 	}
 
 	c.mu.Lock()
-	if len(c.cache) >= 256 {
-		for key, cached := range c.cache {
-			if !now.Before(cached.expiresAt) || len(c.cache) >= 256 {
-				delete(c.cache, key)
-			}
+	for key, cached := range c.cache {
+		if !now.Before(cached.expiresAt) {
+			delete(c.cache, key)
 		}
 	}
-	c.cache[prefix] = breachCacheEntry{suffixes: suffixes, expiresAt: now.Add(time.Hour)}
+	if len(c.cache) < 256 || c.cache[prefix].suffixes != nil {
+		c.cache[prefix] = breachCacheEntry{suffixes: suffixes, expiresAt: now.Add(time.Hour)}
+	}
 	c.mu.Unlock()
 
 	_, found := suffixes[suffix]
