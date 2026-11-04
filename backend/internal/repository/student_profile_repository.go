@@ -99,7 +99,7 @@ func (r *AcademicRepository) GetStudent(
 	if studentID <= 0 {
 		return nil, ErrInvalidAcademicInput
 	}
-	if err := authorizeAcademic(ctx, r.db, actorID, schoolID, "students.read_basic"); err != nil {
+	if err := authorizeAcademic(ctx, r.db, actorID, schoolID, "students.read_sensitive"); err != nil {
 		return nil, err
 	}
 	student, err := scanStudentProfile(r.db.QueryRow(ctx,
