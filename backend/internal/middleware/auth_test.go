@@ -246,3 +246,58 @@ func TestAuthMiddlewareRestrictsTemporaryPasswordStaff(t *testing.T) {
 		t.Fatalf("identity endpoint status = %d, want 200; body=%s", rec.Code, rec.Body.String())
 	}
 }
+
+
+type fakeAdminSessionTracker struct {
+	isAdmin bool
+	valid bool
+	err error
+	called int
+	familyID string
+	principalID int64
+}
+func (f *fakeAdminSessionTracker) CheckAndTouchAdminSession(_ context.Context, principalID int64, familyID string) (bool,bool,error) {
+	f.called++; f.principalID=principalID; f.familyID=familyID
+	return f.isAdmin,f.valid,f.err
+}
+
+func TestAuthMiddlewareRequiresValidSessionForAdmins(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	principal:=&models.AuthPrincipal{ID:99,Type:"platform_admin",Status:"active",TokenVersion:4}
+	tracker:=&fakeAdminSessionTracker{isAdmin:true,valid:true}
+	claims:=&services.TokenClaims{PrincipalType:"platform_admin",TokenVersion:4}
+	claims.Subject="99"
+	router:=gin.New()
+	router.GET("/protected",AuthMiddleware(&fakeTokenValidator{claims:claims},fakePrincipalLoader{principal:principal},fakePermissionLoader{},tracker),func(c *gin.Context){c.Status(http.StatusOK)})
+	req:=httptest.NewRequest(http.MethodGet,"/protected",nil);req.Header.Set("Authorization","Bearer token")
+	rec:=httptest.NewRecorder();router.ServeHTTP(rec,req)
+	if rec.Code!=http.StatusUnauthorized { t.Fatalf("admin token without sid must be rejected, got %d",rec.Code) }
+	if tracker.called!=1 || tracker.principalID!=99 { t.Fatalf("tracker was not called for admin principal: %+v",tracker) }
+}
+
+func TestAuthMiddlewareAcceptsActiveAdminSessionFamily(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	principal:=&models.AuthPrincipal{ID:99,Type:"platform_admin",Status:"active",TokenVersion:4}
+	tracker:=&fakeAdminSessionTracker{isAdmin:true,valid:true}
+	claims:=&services.TokenClaims{PrincipalType:"platform_admin",TokenVersion:4,SessionID:"a1b2c3d4-e5f6-4789-8123-abcdef012345"}
+	claims.Subject="99"
+	router:=gin.New()
+	router.GET("/protected",AuthMiddleware(&fakeTokenValidator{claims:claims},fakePrincipalLoader{principal:principal},fakePermissionLoader{},tracker),func(c *gin.Context){c.Status(http.StatusOK)})
+	req:=httptest.NewRequest(http.MethodGet,"/protected",nil);req.Header.Set("Authorization","Bearer token")
+	rec:=httptest.NewRecorder();router.ServeHTTP(rec,req)
+	if rec.Code!=http.StatusOK { t.Fatalf("valid admin session should pass, got %d: %s",rec.Code,rec.Body.String()) }
+	if tracker.familyID!=claims.SessionID { t.Fatalf("tracker family = %q, want %q",tracker.familyID,claims.SessionID) }
+}
+
+func TestAuthMiddlewareRejectsExpiredAdminSessionFamily(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	principal:=&models.AuthPrincipal{ID:99,Type:"platform_admin",Status:"active",TokenVersion:4}
+	tracker:=&fakeAdminSessionTracker{isAdmin:true,valid:false}
+	claims:=&services.TokenClaims{PrincipalType:"platform_admin",TokenVersion:4,SessionID:"a1b2c3d4-e5f6-4789-8123-abcdef012345"}
+	claims.Subject="99"
+	router:=gin.New()
+	router.GET("/protected",AuthMiddleware(&fakeTokenValidator{claims:claims},fakePrincipalLoader{principal:principal},fakePermissionLoader{},tracker),func(c *gin.Context){c.Status(http.StatusOK)})
+	req:=httptest.NewRequest(http.MethodGet,"/protected",nil);req.Header.Set("Authorization","Bearer token")
+	rec:=httptest.NewRecorder();router.ServeHTTP(rec,req)
+	if rec.Code!=http.StatusUnauthorized { t.Fatalf("expired admin session should fail, got %d",rec.Code) }
+}
