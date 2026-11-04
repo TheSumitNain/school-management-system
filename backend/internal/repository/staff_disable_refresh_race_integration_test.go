@@ -41,10 +41,28 @@ func TestStaffDisableSerializesWithPrincipalRefreshRotationPostgresIntegration(t
 	t.Cleanup(func() {
 		cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cleanupCancel()
-		_, _ = pool.Exec(cleanupCtx, "UPDATE refresh_sessions SET revoked_at=COALESCE(revoked_at,NOW()) WHERE principal_id=$1", targetPrincipalID)
-		_, _ = pool.Exec(cleanupCtx, "DELETE FROM refresh_sessions WHERE principal_id=$1", targetPrincipalID)
-		_, _ = pool.Exec(cleanupCtx, "DELETE FROM users WHERE id=$1", targetUserID)
-		_, _ = pool.Exec(cleanupCtx, "DELETE FROM auth_principals WHERE id=$1", targetPrincipalID)
+		cleanupTx, err := pool.Begin(cleanupCtx)
+		if err != nil {
+			t.Errorf("begin race fixture cleanup: %v", err)
+			return
+		}
+		defer func() { _ = cleanupTx.Rollback(cleanupCtx) }()
+		_, err = cleanupTx.Exec(cleanupCtx, "UPDATE refresh_sessions SET revoked_at=COALESCE(revoked_at,NOW()) WHERE principal_id=$1", targetPrincipalID)
+		if err == nil {
+			_, err = cleanupTx.Exec(cleanupCtx, "DELETE FROM refresh_sessions WHERE principal_id=$1", targetPrincipalID)
+		}
+		if err == nil {
+			_, err = cleanupTx.Exec(cleanupCtx, "DELETE FROM users WHERE id=$1", targetUserID)
+		}
+		if err == nil {
+			_, err = cleanupTx.Exec(cleanupCtx, "DELETE FROM auth_principals WHERE id=$1", targetPrincipalID)
+		}
+		if err == nil {
+			err = cleanupTx.Commit(cleanupCtx)
+		}
+		if err != nil {
+			t.Errorf("clean up race fixtures transactionally: %v", err)
+		}
 	})
 
 	// Prepare an authorized School Admin actor inside an outer transaction.
