@@ -51,7 +51,7 @@ func (r *AcademicRepository) ListStudents(
 		limit < 1 || limit > 100 || offset < 0 {
 		return nil, 0, ErrInvalidAcademicInput
 	}
-	if err := authorizeAcademic(ctx, r.db, actorID, schoolID, "students.read_basic"); err != nil {
+	if err := authorizeAcademic(ctx, r.db, actorID, schoolID, "students.read_sensitive"); err != nil {
 		return nil, 0, err
 	}
 	var total int64
