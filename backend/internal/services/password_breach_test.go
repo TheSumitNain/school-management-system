@@ -65,7 +65,7 @@ func TestHIBPPasswordBreachCheckerIgnoresZeroCountPadding(t *testing.T) {
 	hash := strings.ToUpper(hex.EncodeToString(sum[:]))
 	suffix := hash[5:]
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter,r *http.Request) {
-		_,_ = fmt.Fprintf(w,"%s:0\\n",suffix)
+		_,_ = fmt.Fprintf(w,"%s:0\n",suffix)
 	}))
 	defer server.Close()
 	checker := NewHIBPPasswordBreachChecker(server.Client())
