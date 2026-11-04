@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"school-management-system/internal/handlers"
-	"school-management-system/internal/middleware"
 	"school-management-system/internal/models"
 	"school-management-system/internal/services"
 
@@ -66,5 +65,4 @@ func TestStudentRoutesEnforceLivePermissions(t *testing.T) {
 			}
 		})
 	}
-	_ = middleware.ContextPrincipalIDKey
 }
