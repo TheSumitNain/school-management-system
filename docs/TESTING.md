@@ -501,14 +501,20 @@ echo VET_EXIT_CODE=%ERRORLEVEL%
 After explicit approval to apply V14 to school_management_test, run the focused integration test with the project's opt-in PostgreSQL integration environment enabled. Confirm it does not skip and exits with code 0. Do not run the bootstrap CLI against either database as part of migration verification. Never apply V14 to school_management without separate explicit approval.
 
 
-## 17. HTTP/PostgreSQL RBAC integration slice — 2026-11-04
+## 17. HTTP/PostgreSQL RBAC integration — 2026-11-04
 
-`TestRBACHTTPAuthorizationUsesPostgresState` starts the actual Gin router with the real `PrincipalAuthorizationRepository`, `RoleRepository`, `RoleService`, and `RoleHandler`, backed by the ephemeral PostgreSQL integration database. It creates a temporary school and staff principal with no role assignments, then verifies:
+`TestRBACHTTPAuthorizationUsesPostgresState` starts the actual Gin router with the real `PrincipalAuthorizationRepository`, `RoleRepository`, `RoleService`, and `RoleHandler`, backed by the ephemeral PostgreSQL integration database. The principal repository and role repository use the same caller-owned transaction as the fixture, so all test writes are rolled back.
+
+The test creates a temporary school and staff principal, then verifies:
 
 - `GET /auth/me` returns 200 for the active principal loaded from PostgreSQL.
-- `GET /school/roles` returns 403 because the database-backed effective permission set contains no `roles.read` grant.
+- `GET /school/roles` returns 403 while the principal has no role grants.
+- A School Admin system-role assignment, inserted through the existing database authorization trigger and attributed to a Platform Admin with `platform.school_admins.create`, is picked up on the next protected request.
+- The same `GET /school/roles` request then returns 200 from the real role handler and includes the School Admin role.
 - Incrementing the principal's database `token_version` invalidates the already-issued test token; the next `GET /auth/me` returns 401.
 
-The test uses the package's controlled fake token validator. It does not yet prove real JWT signature validation, a successful protected role-management operation with a database-granted role, or tenant/resource/teacher assignment isolation. Those remain explicit follow-up tests, not completed coverage.
+The School Admin fixture includes a verified MFA credential because the live principal loader enforces MFA for School Admins. The staff fixture has no temporary-password gate. If the ephemeral database has never been bootstrapped, the test creates the first Platform Admin inside the same transaction using `BootstrapFirstInTx`; the deferred rollback removes the account, role grant, and audit event. No permanent Platform Admin is created.
 
-Verification: push run `41762250818` and Draft PR run `41762256758` on `9e74c88` both passed the full PostgreSQL 18 migration/integration workflow and `go vet ./...`.
+The test uses the package's controlled fake token validator. Real JWT signature validation, cross-school tenant/resource isolation, teacher class/section/subject assignment-scope authorization, and HTTP write-path coverage for delegation/override/role assignment remain explicit follow-up work.
+
+Verification: push run `41764671472` and Draft PR run `41764679462` on `d5e0c8d` both passed V1–V16 migrations on ephemeral PostgreSQL 18, the full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and `go vet ./...`. No persistent user database was modified.
