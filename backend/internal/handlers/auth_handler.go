@@ -172,6 +172,10 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	if h.mfaService != nil {
 		mfaStart, mfaErr := h.mfaService.BeginAuthentication(c.Request.Context(), principal, principal.Username)
 		if mfaErr != nil {
+			if errors.Is(mfaErr, services.ErrSessionPrincipalVersionChanged) {
+				writeAuthError(c, http.StatusUnauthorized, "Credentials changed during sign-in. Please sign in again.")
+				return
+			}
 			writeAuthError(c, http.StatusInternalServerError, "Unable to start multi-factor authentication")
 			return
 		}
@@ -229,7 +233,13 @@ func (h *AuthHandler) PlatformAdminLogin(c *gin.Context) {
 	}
 	if !validPrincipal(principal) || principal.Type!="platform_admin" { writeAuthError(c,http.StatusInternalServerError,"Unable to log in"); return }
 	mfaStart,err:=h.mfaService.BeginAuthentication(c.Request.Context(),principal,req.Email)
-	if err!=nil { writeAuthError(c,http.StatusInternalServerError,"Unable to start multi-factor authentication"); return }
+	if err!=nil {
+		if errors.Is(err, services.ErrSessionPrincipalVersionChanged) {
+			writeAuthError(c, http.StatusUnauthorized, "Credentials changed during sign-in. Please sign in again.")
+			return
+		}
+		writeAuthError(c,http.StatusInternalServerError,"Unable to start multi-factor authentication"); return
+	}
 	if !mfaStart.Required { writeAuthError(c,http.StatusForbidden,"Platform Admin MFA policy is not enabled"); return }
 	c.JSON(http.StatusAccepted,gin.H{"status":"mfa_required","challenge_token":mfaStart.ChallengeToken,
 		"enrollment_required":mfaStart.EnrollmentRequired,"secret":mfaStart.Secret,
@@ -322,6 +332,10 @@ func (h *AuthHandler) issueMFASession(c *gin.Context, principalID, expectedToken
 }
 
 func writeMFAError(c *gin.Context, err error) {
+	if errors.Is(err, services.ErrSessionPrincipalVersionChanged) {
+		writeAuthError(c, http.StatusUnauthorized, "Credentials changed. Please sign in again.")
+		return
+	}
 	if errors.Is(err,services.ErrMFAInvalid) { writeAuthError(c,http.StatusUnauthorized,"Invalid or expired MFA challenge or code"); return }
 	writeAuthError(c,http.StatusInternalServerError,"Unable to complete multi-factor authentication")
 }
