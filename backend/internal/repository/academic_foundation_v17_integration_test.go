@@ -50,6 +50,55 @@ func TestAcademicFoundationV17PostgresIntegration(t *testing.T) {
 	`, schoolID, "v17-teacher-"+suffix, "integration-test-password-hash").Scan(&teacherPrincipalID); err != nil {
 		t.Fatalf("create Teacher account fixture: %v", err)
 	}
+	// The principal_roles guard requires the assigning actor to be an
+	// authorized School Admin. Grant that role to the fixture actor through a
+	// rollback-scoped Platform Admin, matching the production authorization path.
+	var schoolAdminRoleID int64
+	if err := tx.QueryRow(ctx, `
+		SELECT id FROM roles
+		 WHERE school_id = $1 AND principal_type = 'staff'
+		   AND scope_type = 'school' AND role_key = 'school_admin' AND is_system = TRUE
+	`, schoolID).Scan(&schoolAdminRoleID); err != nil {
+		t.Fatalf("load system School Admin role: %v", err)
+	}
+	var platformAdminPrincipalID int64
+	err := tx.QueryRow(ctx, `
+		SELECT ap.id
+		  FROM platform_admin_accounts pa
+		  JOIN auth_principals ap ON ap.id = pa.principal_id
+		  JOIN principal_roles pr ON pr.principal_id = ap.id AND pr.revoked_at IS NULL
+		  JOIN roles r ON r.id = pr.role_id
+		  JOIN role_permissions rp ON rp.role_id = r.id
+		  JOIN permissions p ON p.id = rp.permission_id
+		 WHERE ap.principal_type = 'platform_admin'
+		   AND ap.status = 'active'
+		   AND r.role_key = 'platform_admin'
+		   AND r.scope_type = 'platform'
+		   AND r.is_system = TRUE
+		   AND p.permission_key = 'platform.permissions.delegate'
+		   AND p.scope_type = 'platform'
+		   AND p.is_active = TRUE
+		 LIMIT 1
+	`).Scan(&platformAdminPrincipalID)
+	if err == nil {
+		t.Skip("an existing Platform Admin bootstrap is present; this fixture must not alter its authorization state")
+	}
+	if err != nil {
+		platformAdminPrincipalID, err = NewPlatformAdminRepository(tx).bootstrapFirstInTx(
+			ctx, tx, fmt.Sprintf("academic-v17-%s@example.invalid", suffix),
+			"integration-test-password-hash",
+		)
+		if err != nil {
+			t.Fatalf("create rollback-scoped Platform Admin fixture: %v", err)
+		}
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO principal_roles (principal_id, role_id, assigned_by)
+		VALUES ($1, $2, $3)
+	`, actorPrincipalID, schoolAdminRoleID, platformAdminPrincipalID); err != nil {
+		t.Fatalf("grant School Admin role to fixture actor: %v", err)
+	}
+
 	var teacherRoleID int64
 	if err := tx.QueryRow(ctx, `
 		SELECT id FROM roles
@@ -202,16 +251,16 @@ func TestAcademicFoundationV17PostgresIntegration(t *testing.T) {
 		INSERT INTO teacher_subject_assignments
 			(school_id, academic_year_id, section_id, subject_id,
 			 teacher_principal_id, assigned_by_principal_id)
-		VALUES ($1, $2, $3, $4, $5, $5)
-	`, schoolID, year2, section2, subjectID, teacherPrincipalID); err != nil {
+		VALUES ($1, $2, $3, $4, $5, $6)
+	`, schoolID, year2, section2, subjectID, teacherPrincipalID, actorPrincipalID); err != nil {
 		t.Fatalf("assign active same-school teacher to subject/section: %v", err)
 	}
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO class_incharge_assignments
 			(school_id, academic_year_id, section_id,
 			 teacher_principal_id, assigned_by_principal_id)
-		VALUES ($1, $2, $3, $4, $4)
-	`, schoolID, year2, section2, teacherPrincipalID); err != nil {
+		VALUES ($1, $2, $3, $4, $5)
+	`, schoolID, year2, section2, teacherPrincipalID, actorPrincipalID); err != nil {
 		t.Fatalf("assign class in-charge teacher: %v", err)
 	}
 	if _, err := tx.Exec(ctx, `
