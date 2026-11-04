@@ -174,10 +174,15 @@ func (r *AcademicRepository) LinkStudentGuardian(ctx context.Context,actorID,sch
 	if primary { if _,err=tx.Exec(ctx,`UPDATE student_guardians SET is_primary_contact=FALSE,updated_at=NOW() WHERE school_id=$1 AND student_id=$2 AND revoked_at IS NULL`,schoolID,studentID);err!=nil{return nil,fmt.Errorf("clear prior primary contact: %w",err)} }
 	var v StudentGuardian
 	err=tx.QueryRow(ctx,`INSERT INTO student_guardians(school_id,student_id,guardian_id,relationship_type,is_primary_contact,is_emergency_contact)
-		VALUES($1,$2,$3,$4,$5,$6)
-		RETURNING id,student_id,guardian_id,$7::text,NULL::text,NULL::text,relationship_type,is_primary_contact,is_emergency_contact,created_at,revoked_at`,
-		schoolID,studentID,guardianID,relationship,primary,emergency,"").Scan(&v.ID,&v.StudentID,&v.GuardianID,&v.GuardianName,&v.MobileNumber,&v.EmailAddress,&v.RelationshipType,&v.IsPrimaryContact,&v.IsEmergencyContact,&v.CreatedAt,&v.RevokedAt)
+		VALUES($1,$2,$3,$4,$5,$6) RETURNING id`,
+		schoolID,studentID,guardianID,relationship,primary,emergency).Scan(&v.ID)
 	if err!=nil{return nil,guardianWriteError(err)}
+	err=tx.QueryRow(ctx,`SELECT sg.id,sg.student_id,sg.guardian_id,g.full_name,g.mobile_number,g.email_address,
+		sg.relationship_type,sg.is_primary_contact,sg.is_emergency_contact,sg.created_at,sg.revoked_at
+		FROM student_guardians sg JOIN guardians g ON g.id=sg.guardian_id AND g.school_id=sg.school_id
+		WHERE sg.id=$1 AND sg.school_id=$2`,v.ID,schoolID).
+		Scan(&v.ID,&v.StudentID,&v.GuardianID,&v.GuardianName,&v.MobileNumber,&v.EmailAddress,&v.RelationshipType,&v.IsPrimaryContact,&v.IsEmergencyContact,&v.CreatedAt,&v.RevokedAt)
+	if err!=nil{return nil,fmt.Errorf("load created student guardian link: %w",err)}
 	if _,err=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
 		VALUES($1,$2,'school.student_guardian_link_created','student_guardian_link',$3,'success',
 		jsonb_build_object('student_id',$4::bigint,'guardian_id',$5::bigint,'relationship_type',$6::text))`,actorID,schoolID,fmt.Sprint(v.ID),studentID,guardianID,relationship);err!=nil{return nil,fmt.Errorf("audit student guardian link: %w",err)}
