@@ -31,9 +31,9 @@ func TestStudentRoutesEnforceLivePermissions(t *testing.T) {
 		permission string
 		body string
 	}{
-		{http.MethodGet, "/school/students", "students.read_basic", ""},
+		{http.MethodGet, "/school/students", "students.read_sensitive", ""},
 		{http.MethodPost, "/school/students", "students.create", `{"admission_number":"ADM-001","full_name":"Student One"}`},
-		{http.MethodGet, "/school/students/1", "students.read_basic", ""},
+		{http.MethodGet, "/school/students/1", "students.read_sensitive", ""},
 		{http.MethodPatch, "/school/students/1", "students.update", `{"full_name":"Student Updated"}`},
 		{http.MethodPost, "/school/students/1/archive", "students.archive", ""},
 	}
