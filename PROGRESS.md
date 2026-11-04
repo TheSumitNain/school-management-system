@@ -474,3 +474,12 @@ V11 is **applied and PostgreSQL-verified on the dedicated test database**. This 
 - [x] Push CI run `41767598076` and Draft PR run `41767602833` on `d90ba9e`: V1–V16 migrations, full PostgreSQL integration-enabled Go suite, and `go vet ./...` PASS.
 - [ ] Review remaining authorization boundaries and add tests for HTTP write failure cases, cross-school route targets, and audit/event outcomes.
 - All test staff, Platform Admin/MFA fixtures, assignments, delegations, overrides, and audit events are rolled back. No persistent user database was modified.
+
+
+## 2026-11-04 — HTTP cross-school staff-target isolation
+
+- [x] Created a second school and foreign-school staff principal inside the rollback-scoped HTTP integration transaction.
+- [x] School A admin attempting to assign a School A custom role to School B staff receives HTTP 404; no cross-school role assignment is created.
+- [x] School A admin attempting to apply a School A permission override to School B staff receives HTTP 409; no cross-school override is created.
+- [x] Push CI run `41767842024` and Draft PR run `41767846927` on `4bd8af4`: V1–V16 migrations, full PostgreSQL integration-enabled Go suite, and `go vet ./...` PASS.
+- Cross-school RBAC administration boundaries are now covered at both repository and HTTP levels. Business-resource isolation remains pending until those resource APIs exist.
