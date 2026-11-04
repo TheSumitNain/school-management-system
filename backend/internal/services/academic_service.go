@@ -23,6 +23,9 @@ type academicRepository interface {
 	ListClassInchargeAssignments(context.Context,int64,int64,int64)([]repository.ClassInchargeAssignment,error)
 	CreateClassInchargeAssignment(context.Context,int64,int64,int64,int64,int64)(*repository.ClassInchargeAssignment,error)
 	RevokeClassInchargeAssignment(context.Context,int64,int64,int64)error
+	ListStudentEnrollments(context.Context,int64,int64,int64,int64)([]repository.StudentEnrollment,error)
+	CreateStudentEnrollment(context.Context,int64,int64,int64,int64,int64,*string,time.Time)(*repository.StudentEnrollment,error)
+	PromoteStudentEnrollment(context.Context,int64,int64,int64,int64,int64,*string,time.Time)(*repository.StudentEnrollment,error)
 }
 
 type AcademicService struct { repository academicRepository }
