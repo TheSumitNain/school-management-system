@@ -162,6 +162,7 @@ func (r *RoleRepository) CreateCustomRole(
 			  AND r.principal_type = 'staff'
 			  AND r.role_key = 'school_admin'
 			  AND r.is_system = TRUE
+			  AND r.is_system = TRUE
 			  AND p.permission_key = 'roles.create_custom'
 			  AND p.scope_type = 'school'
 			  AND p.is_active = TRUE
@@ -261,6 +262,7 @@ func (r *RoleRepository) GrantSchoolPermissionDelegation(
 			  AND r.school_id IS NULL
 			  AND r.principal_type = 'platform_admin'
 			  AND r.role_key = 'platform_admin'
+			  AND r.is_system = TRUE
 			  AND p.permission_key = 'platform.permissions.delegate'
 			  AND p.scope_type = 'platform'
 			  AND p.is_active = TRUE
@@ -347,6 +349,7 @@ func (r *RoleRepository) RevokeSchoolPermissionDelegation(
 			  AND r.school_id IS NULL
 			  AND r.principal_type = 'platform_admin'
 			  AND r.role_key = 'platform_admin'
+			  AND r.is_system = TRUE
 			  AND p.permission_key = 'platform.permissions.delegate'
 			  AND p.scope_type = 'platform'
 			  AND p.is_active = TRUE
@@ -412,6 +415,7 @@ func (r *RoleRepository) ListSchoolPermissionDelegations(
 			  AND u.school_id = $2 AND s.id = $2 AND s.status = 'active'
 			  AND r.school_id = $2 AND r.scope_type = 'school'
 			  AND r.principal_type = 'staff' AND r.role_key = 'school_admin'
+			  AND r.is_system = TRUE
 			  AND p.permission_key = 'permissions.assign'
 			  AND p.scope_type = 'school' AND p.is_active = TRUE
 			  AND NOT EXISTS (
@@ -491,6 +495,7 @@ func (r *RoleRepository) GrantCustomRolePermission(
 			  AND u.school_id = $2 AND s.id = $2 AND s.status = 'active'
 			  AND r.school_id = $2 AND r.scope_type = 'school'
 			  AND r.principal_type = 'staff' AND r.role_key = 'school_admin'
+			  AND r.is_system = TRUE
 			  AND p.permission_key = 'permissions.assign'
 			  AND p.scope_type = 'school' AND p.is_active = TRUE
 			  AND NOT EXISTS (
@@ -586,6 +591,7 @@ func (r *RoleRepository) RevokeCustomRolePermission(
 			  AND u.school_id = $2 AND s.id = $2 AND s.status = 'active'
 			  AND r.school_id = $2 AND r.scope_type = 'school'
 			  AND r.principal_type = 'staff' AND r.role_key = 'school_admin'
+			  AND r.is_system = TRUE
 			  AND p.permission_key = 'permissions.assign'
 			  AND p.scope_type = 'school' AND p.is_active = TRUE
 			  AND NOT EXISTS (
@@ -666,6 +672,7 @@ func (r *RoleRepository) ListStaffPermissionOverrides(ctx context.Context, actor
 			WHERE ap.id = $1 AND ap.principal_type = 'staff' AND ap.status = 'active'
 			  AND u.status = 'active' AND u.school_id = $2 AND s.status = 'active'
 			  AND r.school_id = $2 AND r.scope_type = 'school' AND r.role_key = 'school_admin'
+			  AND r.is_system = TRUE
 			  AND p.permission_key = 'permissions.override' AND p.scope_type = 'school' AND p.is_active = TRUE
 			  AND NOT EXISTS (
 			      SELECT 1 FROM user_permission_overrides denied
@@ -738,6 +745,7 @@ func (r *RoleRepository) SetStaffPermissionOverride(
 			WHERE ap.id = $1 AND ap.principal_type = 'staff' AND ap.status = 'active'
 			  AND u.status = 'active' AND u.school_id = $2 AND s.status = 'active'
 			  AND r.school_id = $2 AND r.scope_type = 'school' AND r.role_key = 'school_admin'
+			  AND r.is_system = TRUE
 			  AND p.permission_key = 'permissions.override' AND p.scope_type = 'school' AND p.is_active = TRUE
 			  AND NOT EXISTS (
 			      SELECT 1 FROM user_permission_overrides denied
@@ -823,6 +831,7 @@ func (r *RoleRepository) DeleteStaffPermissionOverride(
 			WHERE ap.id = $1 AND ap.principal_type = 'staff' AND ap.status = 'active'
 			  AND u.status = 'active' AND u.school_id = $2 AND s.status = 'active'
 			  AND r.school_id = $2 AND r.scope_type = 'school' AND r.role_key = 'school_admin'
+			  AND r.is_system = TRUE
 			  AND p.permission_key = 'permissions.override' AND p.scope_type = 'school' AND p.is_active = TRUE
 			  AND NOT EXISTS (
 			      SELECT 1 FROM user_permission_overrides denied
@@ -889,6 +898,7 @@ func (r *RoleRepository) ListStaffRoleAssignments(ctx context.Context, actorPrin
 			WHERE ap.id = $1 AND ap.principal_type = 'staff' AND ap.status = 'active'
 			  AND u.status = 'active' AND u.school_id = $2 AND s.status = 'active'
 			  AND r.school_id = $2 AND r.scope_type = 'school' AND r.role_key = 'school_admin'
+			  AND r.is_system = TRUE
 			  AND p.permission_key = 'roles.read' AND p.scope_type = 'school' AND p.is_active = TRUE
 			  AND NOT EXISTS (
 			      SELECT 1 FROM user_permission_overrides denied
@@ -954,6 +964,7 @@ func (r *RoleRepository) AssignStaffRole(ctx context.Context, actorPrincipalID, 
 			WHERE ap.id = $1 AND ap.principal_type = 'staff' AND ap.status = 'active'
 			  AND u.status = 'active' AND u.school_id = $2 AND s.status = 'active'
 			  AND r.school_id = $2 AND r.scope_type = 'school' AND r.role_key = 'school_admin'
+			  AND r.is_system = TRUE
 			  AND p.permission_key = 'roles.assign' AND p.scope_type = 'school' AND p.is_active = TRUE
 			  AND NOT EXISTS (
 			      SELECT 1 FROM user_permission_overrides denied
@@ -1030,6 +1041,7 @@ func (r *RoleRepository) RevokeStaffRole(ctx context.Context, actorPrincipalID, 
 			WHERE ap.id = $1 AND ap.principal_type = 'staff' AND ap.status = 'active'
 			  AND u.status = 'active' AND u.school_id = $2 AND s.status = 'active'
 			  AND r.school_id = $2 AND r.scope_type = 'school' AND r.role_key = 'school_admin'
+			  AND r.is_system = TRUE
 			  AND p.permission_key = 'roles.assign' AND p.scope_type = 'school' AND p.is_active = TRUE
 			  AND NOT EXISTS (
 			      SELECT 1 FROM user_permission_overrides denied
