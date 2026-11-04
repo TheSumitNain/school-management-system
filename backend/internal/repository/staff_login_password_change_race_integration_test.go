@@ -28,19 +28,19 @@ func TestLoginSessionIssuanceRejectsStalePrincipalVersionPostgresIntegration(t *
 	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
 	username := "login-race-" + suffix[len(suffix)-10:]
 	var userID, principalID, initialTokenVersion int64
-	if err := tx.QueryRow(ctx, \`
+	if err := tx.QueryRow(ctx, `
 		INSERT INTO users (school_id, username, password_hash, status)
 		SELECT school_id, $2, $3, 'active'
 		  FROM users
 		 ORDER BY id
 		 LIMIT 1
 		RETURNING id, principal_id
-	\`, username, "login-race-old-password-hash").Scan(&userID, &principalID); err != nil {
+	`, username, "login-race-old-password-hash").Scan(&userID, &principalID); err != nil {
 		t.Fatalf("create rollback-scoped login race staff account: %v", err)
 	}
-	if err := tx.QueryRow(ctx, \`
+	if err := tx.QueryRow(ctx, `
 		SELECT token_version FROM auth_principals WHERE id = $1
-	\`, principalID).Scan(&initialTokenVersion); err != nil {
+	`, principalID).Scan(&initialTokenVersion); err != nil {
 		t.Fatalf("read initial login race token version: %v", err)
 	}
 	if initialTokenVersion <= 0 {
@@ -60,9 +60,9 @@ func TestLoginSessionIssuanceRejectsStalePrincipalVersionPostgresIntegration(t *
 	}
 
 	var currentTokenVersion int64
-	if err := tx.QueryRow(ctx, \`
+	if err := tx.QueryRow(ctx, `
 		SELECT token_version FROM auth_principals WHERE id = $1
-	\`, principalID).Scan(&currentTokenVersion); err != nil {
+	`, principalID).Scan(&currentTokenVersion); err != nil {
 		t.Fatalf("read token version after password change: %v", err)
 	}
 	if currentTokenVersion != initialTokenVersion+1 {
@@ -77,9 +77,9 @@ func TestLoginSessionIssuanceRejectsStalePrincipalVersionPostgresIntegration(t *
 		t.Fatalf("stale login session creation error = %v, want ErrPrincipalVersionChanged", err)
 	}
 	var staleSessionCount int
-	if err := tx.QueryRow(ctx, \`
+	if err := tx.QueryRow(ctx, `
 		SELECT COUNT(*) FROM refresh_sessions WHERE token_hash = $1
-	\`, staleSessionHash).Scan(&staleSessionCount); err != nil {
+	`, staleSessionHash).Scan(&staleSessionCount); err != nil {
 		t.Fatalf("verify stale login did not persist a refresh session: %v", err)
 	}
 	if staleSessionCount != 0 {
@@ -93,10 +93,10 @@ func TestLoginSessionIssuanceRejectsStalePrincipalVersionPostgresIntegration(t *
 		t.Fatalf("current-version login session creation failed: %v", err)
 	}
 	var currentSessionCount int
-	if err := tx.QueryRow(ctx, \`
+	if err := tx.QueryRow(ctx, `
 		SELECT COUNT(*) FROM refresh_sessions
 		 WHERE token_hash = $1 AND revoked_at IS NULL
-	\`, currentSessionHash).Scan(&currentSessionCount); err != nil {
+	`, currentSessionHash).Scan(&currentSessionCount); err != nil {
 		t.Fatalf("verify current-version refresh session: %v", err)
 	}
 	if currentSessionCount != 1 {
@@ -104,9 +104,9 @@ func TestLoginSessionIssuanceRejectsStalePrincipalVersionPostgresIntegration(t *
 	}
 
 	var targetUserStillExists bool
-	if err := tx.QueryRow(ctx, \`
+	if err := tx.QueryRow(ctx, `
 		SELECT EXISTS (SELECT 1 FROM users WHERE id = $1 AND principal_id = $2)
-	\`, userID, principalID).Scan(&targetUserStillExists); err != nil {
+	`, userID, principalID).Scan(&targetUserStillExists); err != nil {
 		t.Fatalf("verify rollback-scoped staff fixture: %v", err)
 	}
 	if !targetUserStillExists {
