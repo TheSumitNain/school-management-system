@@ -14,6 +14,8 @@ This project is under active development. Verification results describe the late
 - The test verifies default-deny role listing (403), a database-trigger-authorized School Admin role grant reaching the real role handler (200), and immediate token-version invalidation (401).
 - Extended role-repository PostgreSQL integration coverage with a second school: a School A School Admin cannot list or create School B roles, inspect School B staff role assignments/overrides, assign a School A role to School B staff, or set a School A permission override on School B staff. Cross-school target lookups return no foreign records and mutation attempts are rejected.
 - Push run `41766408925` and Draft PR run `41766414685` on commit `c7dd5ce` both passed V1–V16 migrations on ephemeral PostgreSQL 18, the full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and `go vet ./...`. All test fixtures are rolled back; no persistent user database was modified.
+- Extended the HTTP/PostgreSQL test with an authorized `POST /school/roles` request. The same real signed JWT, live database permission resolution, role handler, role service, and transaction-backed repository create a custom role and return 201; the created role is rolled back with the test transaction.
+- Draft PR run `41766719434` on commit `d5f8340` passed V1–V16 migrations, the full PostgreSQL integration-enabled Go suite, and `go vet ./...`.
 - This verifies tenant boundaries for RBAC administration operations only; business-resource tenant isolation remains pending until those resource APIs and repositories are implemented.
 
 
