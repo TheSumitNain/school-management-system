@@ -18,7 +18,7 @@ The backend uses Go, Gin, and PostgreSQL.
 - POST /platform/schools creates a school and its first School Admin transactionally, protected by platform.schools.create and platform.school_admins.create.
 - V13 provisions the fixed School Admin and Teacher system roles for newly created schools.
 - V14 contains a source-only one-time first Platform Admin bootstrap migration and CLI; it is not yet PostgreSQL-verified or approved for application.
-- Academic Year, Class, Section, Subject, teacher-subject assignment, class-in-charge assignment, student admission/profile, enrollment, promotion, and enrollment-history APIs are implemented with school-scoped repository authorization, audited writes, and PostgreSQL integration coverage. Guardian contact/link management, attendance, timetable, examinations, results, notices, and frontend workflows remain pending.
+- Academic Year, Class, Section, Subject, teacher-subject assignment, class-in-charge assignment, student admission/profile, enrollment, promotion, enrollment-history, and guardian contact/link APIs are implemented with school-scoped repository authorization, audited writes, and PostgreSQL integration coverage. Attendance, timetable, examinations, results, notices, parent authentication/OTP, and frontend workflows remain pending.
 
 **Important:** An implemented authentication endpoint does not mean that the full authorization system or every production security control is implemented. Verify code and tests before treating a feature as complete.
 
@@ -488,7 +488,7 @@ Content-Type: application/json
 
 Promotion is one transaction: the source enrollment transitions from `active` to `promoted` with its end date, and a new enrollment row is inserted for the destination year. If either operation or its audit write fails, the entire transaction rolls back. Enrollment-time class and section names are snapshotted by PostgreSQL and are never rewritten when catalogue names later change. Enrollment history cannot be deleted or re-homed. A destination year must differ from the source year, and the promotion date cannot precede the original enrollment date.
 
-These endpoints manage placement for an existing student record. Student profile/admission creation and guardian management APIs are separate pending work; no public student self-registration is provided.
+These endpoints manage placement for an existing student record. Student profile/admission creation and guardian contact/link management are provided by separate APIs; see the student profile and Guardian Contacts sections. No public student self-registration is provided.
 
 
 ## 4. HTTP Status Codes
