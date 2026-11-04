@@ -300,7 +300,6 @@ BEGIN
        OR NEW.academic_year_id IS DISTINCT FROM OLD.academic_year_id
        OR NEW.class_id IS DISTINCT FROM OLD.class_id
        OR NEW.section_id IS DISTINCT FROM OLD.section_id
-       OR NEW.roll_number IS DISTINCT FROM OLD.roll_number
        OR NEW.class_name_snapshot IS DISTINCT FROM OLD.class_name_snapshot
        OR NEW.section_name_snapshot IS DISTINCT FROM OLD.section_name_snapshot
        OR NEW.enrolled_at IS DISTINCT FROM OLD.enrolled_at
@@ -310,7 +309,13 @@ BEGIN
     IF OLD.status <> 'active' THEN
         RAISE EXCEPTION 'closed student enrollment history is immutable';
     END IF;
-    IF NEW.status = 'active' OR NEW.ended_at IS NULL THEN
+    IF NEW.status = 'active' THEN
+        IF NEW.ended_at IS NOT NULL THEN
+            RAISE EXCEPTION 'active enrollment cannot have ended_at';
+        END IF;
+        RETURN NEW;
+    END IF;
+    IF NEW.ended_at IS NULL THEN
         RAISE EXCEPTION 'active enrollment can only transition to a terminal status with ended_at';
     END IF;
     RETURN NEW;
