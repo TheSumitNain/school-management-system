@@ -88,3 +88,16 @@ func (s *AcademicService) RevokeClassInchargeAssignment(ctx context.Context,acto
 	if s==nil||s.repository==nil{return repository.ErrAcademicAccessDenied}
 	return s.repository.RevokeClassInchargeAssignment(ctx,actorID,schoolID,assignmentID)
 }
+
+func (s *AcademicService) ListStudentEnrollments(ctx context.Context, actorID, schoolID, yearID, studentID int64) ([]repository.StudentEnrollment, error) {
+	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
+	return s.repository.ListStudentEnrollments(ctx, actorID, schoolID, yearID, studentID)
+}
+func (s *AcademicService) CreateStudentEnrollment(ctx context.Context, actorID, schoolID, studentID, yearID, sectionID int64, rollNumber *string, enrolledAt time.Time) (*repository.StudentEnrollment, error) {
+	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
+	return s.repository.CreateStudentEnrollment(ctx, actorID, schoolID, studentID, yearID, sectionID, rollNumber, enrolledAt)
+}
+func (s *AcademicService) PromoteStudentEnrollment(ctx context.Context, actorID, schoolID, sourceEnrollmentID, destinationYearID, destinationSectionID int64, rollNumber *string, enrolledAt time.Time) (*repository.StudentEnrollment, error) {
+	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
+	return s.repository.PromoteStudentEnrollment(ctx, actorID, schoolID, sourceEnrollmentID, destinationYearID, destinationSectionID, rollNumber, enrolledAt)
+}
