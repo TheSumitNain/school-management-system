@@ -47,6 +47,11 @@ func (f fakeTokenService) GenerateAccessToken(
 	return f.token, f.err
 }
 
+func (f fakeTokenService) GenerateAccessTokenForSession(principalID, tokenVersion int64, principalType, sessionID string) (string,error) {
+	if sessionID=="" { return "",errors.New("session id required") }
+	return f.token,f.err
+}
+
 type fakeSessionService struct {
 	refreshToken string
 	principal    *models.AuthPrincipal
@@ -65,9 +70,21 @@ func (f *fakeSessionService) Issue(_ context.Context, principal *models.AuthPrin
 	return f.refreshToken, f.err
 }
 
+func (f *fakeSessionService) IssueWithFamily(ctx context.Context, principal *models.AuthPrincipal) (string,string,error) {
+	token,err:=f.Issue(ctx,principal)
+	if err!=nil { return "", "", err }
+	return token,"a1b2c3d4-e5f6-4789-8123-abcdef012345",nil
+}
+
 func (f *fakeSessionService) Rotate(_ context.Context, refreshToken string) (*models.AuthPrincipal, string, error) {
 	f.rotatedToken = refreshToken
 	return f.principal, f.refreshToken, f.err
+}
+
+func (f *fakeSessionService) RotateWithFamily(ctx context.Context, refreshToken string) (*models.AuthPrincipal,string,string,error) {
+	principal,replacement,err:=f.Rotate(ctx,refreshToken)
+	if err!=nil { return nil,"","",err }
+	return principal,replacement,"a1b2c3d4-e5f6-4789-8123-abcdef012345",nil
 }
 
 func (f *fakeSessionService) Revoke(_ context.Context, refreshToken string) error {
