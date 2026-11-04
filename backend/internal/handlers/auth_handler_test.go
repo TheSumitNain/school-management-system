@@ -354,3 +354,23 @@ func TestLogoutRevokesRefreshToken(t *testing.T) {
 		t.Fatalf("expected logout to revoke the supplied token, got %q", sessions.revokedToken)
 	}
 }
+
+
+func TestRefreshAccessTokenFailureRevokesRotatedRefreshSession(t *testing.T) {
+	principal := &models.AuthPrincipal{ID: 10, Type: "staff", Status: "active", TokenVersion: 1, SchoolID: 2, Username: "testuser"}
+	tokenService := fakeTokenService{err: errors.New("signing unavailable")}
+	sessionService := &fakeSessionService{refreshToken: "replacement-refresh-token", principal: principal}
+	router := setupTestRouter(fakeAuthService{}, tokenService, sessionService)
+
+	req := httptest.NewRequest(http.MethodPost, "/auth/refresh", strings.NewReader(`{"refresh_token":"old-refresh-token"}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500 when access-token signing fails, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if sessionService.revokedToken != "replacement-refresh-token" {
+		t.Fatalf("rotated refresh token was not revoked after access-token failure: got %q", sessionService.revokedToken)
+	}
+}
