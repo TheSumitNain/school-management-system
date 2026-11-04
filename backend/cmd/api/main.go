@@ -173,6 +173,23 @@ func setupRouterWithHandlers(
 		)
 	}
 
+	if len(academicHandlers) > 0 && academicHandlers[0] != nil {
+		academic := academicHandlers[0]
+		academicAuth := middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader)
+		router.GET("/school/academic-years", academicAuth, middleware.RequirePermission("academic_years.read"), academic.ListAcademicYears)
+		router.POST("/school/academic-years", academicAuth, middleware.RequirePermission("academic_years.manage"), academic.SaveAcademicYear)
+		router.PATCH("/school/academic-years/:yearID", academicAuth, middleware.RequirePermission("academic_years.manage"), academic.SaveAcademicYear)
+		router.GET("/school/classes", academicAuth, middleware.RequirePermission("classes.read"), academic.ListClasses)
+		router.POST("/school/classes", academicAuth, middleware.RequirePermission("classes.manage"), academic.SaveClass)
+		router.PATCH("/school/classes/:classID", academicAuth, middleware.RequirePermission("classes.manage"), academic.SaveClass)
+		router.GET("/school/sections", academicAuth, middleware.RequirePermission("classes.read"), academic.ListSections)
+		router.POST("/school/sections", academicAuth, middleware.RequirePermission("classes.manage"), academic.SaveSection)
+		router.PATCH("/school/sections/:sectionID", academicAuth, middleware.RequirePermission("classes.manage"), academic.SaveSection)
+		router.GET("/school/subjects", academicAuth, middleware.RequirePermission("subjects.read"), academic.ListSubjects)
+		router.POST("/school/subjects", academicAuth, middleware.RequirePermission("subjects.manage"), academic.SaveSubject)
+		router.PATCH("/school/subjects/:subjectID", academicAuth, middleware.RequirePermission("subjects.manage"), academic.SaveSubject)
+	}
+
 	if authHandler != nil {
 		router.POST("/auth/login", authHandler.Login)
 		router.POST("/auth/platform-admin/login", authHandler.PlatformAdminLogin)
@@ -342,12 +359,15 @@ func run() error {
 	roleRepo := repository.NewRoleRepository(db)
 	roleService := services.NewRoleService(roleRepo)
 	roleHandler := handlers.NewRoleHandler(roleService)
+	academicRepo := repository.NewAcademicRepository(db)
+	academicService := services.NewAcademicService(academicRepo)
+	academicHandler := handlers.NewAcademicHandler(academicService)
 
 	staffAccountRepo := repository.NewUserRepository(db)
 	staffAccountService := services.NewStaffAccountService(staffAccountRepo)
 	staffHandler := handlers.NewStaffHandler(staffAccountService)
 
-	router, err := setupRouterWithHandlers(db, authHandler, tokenService, principalAuthorizationRepo, principalAuthorizationRepo, schoolOnboardingHandler, roleHandler, staffHandler)
+	router, err := setupRouterWithHandlers(db, authHandler, tokenService, principalAuthorizationRepo, principalAuthorizationRepo, schoolOnboardingHandler, roleHandler, staffHandler, academicHandler)
 
 	if err != nil {
 		return fmt.Errorf("setup router: %w", err)
