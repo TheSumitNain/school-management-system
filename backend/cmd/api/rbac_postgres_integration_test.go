@@ -18,6 +18,7 @@ import (
 
 	"school-management-system/internal/config"
 	"school-management-system/internal/handlers"
+	"school-management-system/internal/models"
 	"school-management-system/internal/repository"
 	"school-management-system/internal/services"
 
@@ -26,6 +27,20 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 )
+
+type rbacIntegrationSessionService struct{}
+
+func (rbacIntegrationSessionService) Issue(context.Context, int64) (string, error) {
+	return "unused-refresh-token", nil
+}
+
+func (rbacIntegrationSessionService) Rotate(context.Context, string) (*models.AuthPrincipal, string, error) {
+	return nil, "", errors.New("unexpected refresh rotation in login-only integration test")
+}
+
+func (rbacIntegrationSessionService) Revoke(context.Context, string) error {
+	return nil
+}
 
 // TestRBACHTTPAuthorizationUsesPostgresState exercises the real Gin router,
 // authentication middleware, PostgreSQL principal/permission repositories,
@@ -137,6 +152,19 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 		t.Fatalf("setup PostgreSQL-backed API router: %v", err)
 	}
 
+	// A second router wires the real staff authentication service as well.
+	// Its login route is used below to prove a disabled account cannot log in.
+	authService := services.NewAuthService(repository.NewUserRepository(tx), nil)
+	authHandler := handlers.NewAuthHandler(authService, tokenService, rbacIntegrationSessionService{})
+	loginRouter, err := setupRouterWithHandlers(
+		fakeDatabase{}, authHandler, tokenService,
+		principalRepo, principalRepo,
+		nil, roleHandler, staffHandler,
+	)
+	if err != nil {
+		t.Fatalf("setup PostgreSQL-backed login router: %v", err)
+	}
+
 	request := func(method, path, bearerToken string) *httptest.ResponseRecorder {
 		t.Helper()
 		req := httptest.NewRequest(method, path, nil)
@@ -230,6 +258,17 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	}
 	if deniedStaffCreationCount != 0 {
 		t.Fatalf("permission-denied staff creation inserted %d user rows", deniedStaffCreationCount)
+	}
+
+	deniedPasswordReset := httptest.NewRequest(http.MethodPost,
+		fmt.Sprintf("/school/staff/%d/password/reset", principalID), strings.NewReader("{}"))
+	deniedPasswordReset.Header.Set("Authorization", "Bearer "+accessToken)
+	deniedPasswordReset.Header.Set("Content-Type", "application/json")
+	deniedPasswordResetRecorder := httptest.NewRecorder()
+	loginRouter.ServeHTTP(deniedPasswordResetRecorder, deniedPasswordReset)
+	if deniedPasswordResetRecorder.Code != http.StatusForbidden {
+		t.Fatalf("staff password reset without users.password_reset must return 403: status=%d body=%s",
+			deniedPasswordResetRecorder.Code, deniedPasswordResetRecorder.Body.String())
 	}
 
 	// Resolve an existing Platform Admin authorized to provision a School
@@ -520,6 +559,16 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	if disabledStaffIdentity.Code != http.StatusUnauthorized {
 		t.Fatalf("disabled staff principal must no longer authenticate with its previously valid access token: status=%d body=%s; want 401",
 			disabledStaffIdentity.Code, disabledStaffIdentity.Body.String())
+	}
+
+	disabledStaffLogin := httptest.NewRequest(http.MethodPost, "/auth/login",
+		strings.NewReader(fmt.Sprintf("{\"username\":%q,\"password\":\"A-Strong-Initial-Pass-123\"}", staffUsername)))
+	disabledStaffLogin.Header.Set("Content-Type", "application/json")
+	disabledStaffLoginRecorder := httptest.NewRecorder()
+	loginRouter.ServeHTTP(disabledStaffLoginRecorder, disabledStaffLogin)
+	if disabledStaffLoginRecorder.Code != http.StatusForbidden {
+		t.Fatalf("disabled staff account must be rejected by the real login endpoint: status=%d body=%s; want 403",
+			disabledStaffLoginRecorder.Code, disabledStaffLoginRecorder.Body.String())
 	}
 	var staffAuditCount int
 	if err := tx.QueryRow(ctx, `
