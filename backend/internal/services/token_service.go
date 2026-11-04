@@ -19,6 +19,7 @@ var ErrInvalidToken = errors.New("invalid or expired token")
 type TokenClaims struct {
 	PrincipalType string `json:"principal_type"`
 	TokenVersion  int64  `json:"token_version"`
+	SessionID     string `json:"sid,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -47,8 +48,18 @@ func NewTokenService(secret, issuer string, accessExpiryMinutes int) (*TokenServ
 // auth_principals.id, not users.id. tokenVersion supports immediate global
 // access-token invalidation when the principal's version is incremented.
 func (s *TokenService) GenerateAccessToken(principalID, tokenVersion int64, principalType string) (string, error) {
+	return s.GenerateAccessTokenForSession(principalID, tokenVersion, principalType, "")
+}
+
+// GenerateAccessTokenForSession binds an access token to the refresh-session
+// family that issued it. sid is deliberately optional for compatibility with
+// non-session-scoped callers; admin login flows will require it at cutover.
+func (s *TokenService) GenerateAccessTokenForSession(principalID, tokenVersion int64, principalType, sessionID string) (string, error) {
 	if principalID <= 0 || tokenVersion <= 0 || !validPrincipalType(principalType) {
 		return "", fmt.Errorf("invalid principal identity")
+	}
+	if sessionID != "" && !validSessionID(sessionID) {
+		return "", fmt.Errorf("invalid refresh-session family ID")
 	}
 	jtiBytes := make([]byte, 16)
 	if _, err := rand.Read(jtiBytes); err != nil {
@@ -58,6 +69,7 @@ func (s *TokenService) GenerateAccessToken(principalID, tokenVersion int64, prin
 	claims := TokenClaims{
 		PrincipalType: principalType,
 		TokenVersion:  tokenVersion,
+		SessionID:     sessionID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   strconv.FormatInt(principalID, 10),
 			Issuer:    s.issuer,
@@ -73,6 +85,23 @@ func (s *TokenService) GenerateAccessToken(principalID, tokenVersion int64, prin
 		return "", fmt.Errorf("sign access token: %w", err)
 	}
 	return signed, nil
+}
+
+func validSessionID(value string) bool {
+	if len(value) != 36 {
+		return false
+	}
+	for i, r := range value {
+		switch i {
+		case 8, 13, 18, 23:
+			if r != '-' { return false }
+		default:
+			if !((r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F')) {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func (s *TokenService) ValidateAccessToken(tokenString string) (*TokenClaims, error) {
@@ -91,7 +120,8 @@ func (s *TokenService) ValidateAccessToken(tokenString string) (*TokenClaims, er
 	}
 	if claims.ExpiresAt == nil || claims.IssuedAt == nil || claims.NotBefore == nil ||
 		strings.TrimSpace(claims.ID) == "" || strings.TrimSpace(claims.Subject) == "" ||
-		claims.Issuer != s.issuer || claims.TokenVersion <= 0 || !validPrincipalType(claims.PrincipalType) {
+		claims.Issuer != s.issuer || claims.TokenVersion <= 0 || !validPrincipalType(claims.PrincipalType) ||
+		(claims.SessionID != "" && !validSessionID(claims.SessionID)) {
 		return nil, ErrInvalidToken
 	}
 	now := time.Now()
