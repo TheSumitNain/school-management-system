@@ -9,14 +9,14 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
 
 var (
-	ErrCompromisedPassword = errors.New("password appears in known data breaches")
+	ErrCompromisedPassword            = errors.New("password appears in known data breaches")
 	ErrPasswordBreachCheckUnavailable = errors.New("unable to verify password against known data breaches")
 )
 
@@ -27,15 +27,15 @@ type PasswordBreachChecker interface {
 }
 
 type breachCacheEntry struct {
-	suffixes map[string]struct{}
+	suffixes  map[string]struct{}
 	expiresAt time.Time
 }
 
 type HIBPPasswordBreachChecker struct {
-	client *http.Client
+	client   *http.Client
 	endpoint string
-	mu sync.RWMutex
-	cache map[string]breachCacheEntry
+	mu       sync.RWMutex
+	cache    map[string]breachCacheEntry
 }
 
 func NewHIBPPasswordBreachChecker(client *http.Client) *HIBPPasswordBreachChecker {
@@ -43,9 +43,9 @@ func NewHIBPPasswordBreachChecker(client *http.Client) *HIBPPasswordBreachChecke
 		client = &http.Client{Timeout: 4 * time.Second}
 	}
 	return &HIBPPasswordBreachChecker{
-		client: client,
+		client:   client,
 		endpoint: "https://api.pwnedpasswords.com",
-		cache: make(map[string]breachCacheEntry),
+		cache:    make(map[string]breachCacheEntry),
 	}
 }
 
@@ -53,6 +53,7 @@ func (c *HIBPPasswordBreachChecker) IsCompromised(ctx context.Context, password 
 	if c == nil || c.client == nil {
 		return false, fmt.Errorf("password breach checker is not configured")
 	}
+
 	sum := sha1.Sum([]byte(password))
 	hash := strings.ToUpper(hex.EncodeToString(sum[:]))
 	prefix, suffix := hash[:5], hash[5:]
@@ -68,17 +69,20 @@ func (c *HIBPPasswordBreachChecker) IsCompromised(ctx context.Context, password 
 
 	// HIBP's range API receives only the first five SHA-1 hex characters.
 	// The remaining suffix is compared locally and is never sent over the wire.
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(c.endpoint, "/")+"/range/"+prefix, nil)
+	endpoint := strings.TrimRight(c.endpoint, "/") + "/range/" + prefix
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return false, fmt.Errorf("build password range request: %w", err)
 	}
 	req.Header.Set("Add-Padding", "true")
 	req.Header.Set("User-Agent", "school-management-system-password-policy")
+
 	resp, err := c.client.Do(req)
 	if err != nil {
 		return false, fmt.Errorf("request password range: %w", err)
 	}
 	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
 		return false, fmt.Errorf("password range service returned HTTP %d", resp.StatusCode)
 	}
@@ -94,6 +98,7 @@ func (c *HIBPPasswordBreachChecker) IsCompromised(ctx context.Context, password 
 		if strings.Trim(parts[0], "0123456789ABCDEFabcdef") != "" {
 			return false, fmt.Errorf("password range service returned malformed hash suffix")
 		}
+
 		count, err := strconv.Atoi(parts[1])
 		if err != nil || count < 0 {
 			return false, fmt.Errorf("password range service returned malformed count")
@@ -139,6 +144,7 @@ func hashPasswordWithChecker(ctx context.Context, password string, checker Passw
 	if checker == nil {
 		return "", ErrPasswordBreachCheckUnavailable
 	}
+
 	compromised, err := checker.IsCompromised(ctx, password)
 	if err != nil {
 		return "", fmt.Errorf("%w: %v", ErrPasswordBreachCheckUnavailable, err)
