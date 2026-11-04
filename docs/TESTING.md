@@ -546,3 +546,18 @@ Expected result: HTTP 201 Created and a response containing the newly created cu
 Draft PR CI run `41766719434` on `d5f8340` passed all V1–V16 migrations, the full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and `go vet ./...`.
 
 Remaining HTTP/PostgreSQL write-path coverage includes permission delegation, custom-role permission grants/revokes, staff permission overrides, and staff role assignment/revocation.
+
+
+## 20. HTTP permission delegation and custom-role grant — 2026-11-04
+
+The PostgreSQL-backed HTTP integration test now covers the first complete cross-role write sequence:
+
+1. A Platform Admin authenticates with a real HS256 token. The test uses an existing eligible Platform Admin with verified MFA, or bootstraps a temporary one and inserts a verified MFA fixture inside the rollback-only transaction.
+2. The Platform Admin submits `POST /platform/schools/:schoolID/permission-delegations` to delegate `students.read_basic` with `can_assign_to_roles=true`; the route returns HTTP 201.
+3. The School Admin submits `POST /school/roles/:roleID/permissions` with the exact delegation ID returned by step 2; the route returns HTTP 201.
+
+Both requests traverse the actual Gin middleware, PostgreSQL principal/permission resolution, handler, service, and repository. All role, delegation, audit, and temporary MFA rows are rolled back with the outer transaction.
+
+Verification: push run `41767168878` and Draft PR run `41767176542` on `6bf8ca5` both passed V1–V16 migrations, the full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and `go vet ./...`.
+
+Remaining HTTP write-path cases include delegation revocation, custom-role permission revocation, staff permission overrides, and staff role assignment/revocation.
