@@ -175,6 +175,14 @@ func TestAdminSessionActivityV21PostgresIntegration(t *testing.T) {
 	if _, err := refreshRepo.RotatePrincipal(ctx,schoolAdminRefreshHash,schoolAdminRefreshReplacementHash,time.Now().Add(24*time.Hour)); !errors.Is(err,ErrAdminSessionIdleExpired) {
 		t.Fatalf("School Admin refresh must enforce idle timeout: %v",err)
 	}
+	var ordinaryUserID, ordinaryStaffPrincipalID int64
+	if err := pool.QueryRow(ctx,`
+		INSERT INTO users(school_id,username,password_hash,status)
+		VALUES($1,$2,'integration-password-hash','active')
+		RETURNING id,principal_id
+	`,schoolID,"ordinary-idle-v21-"+suffix).Scan(&ordinaryUserID,&ordinaryStaffPrincipalID); err != nil {
+		t.Fatalf("create separate ordinary staff fixture: %v",err)
+	}
 	staffTokenSum := sha256.Sum256([]byte("staff-idle-v21-" + suffix))
 	staffTokenHash := hex.EncodeToString(staffTokenSum[:])
 	staffReplacementSum := sha256.Sum256([]byte("staff-idle-v21-replacement-" + suffix))
@@ -183,11 +191,11 @@ func TestAdminSessionActivityV21PostgresIntegration(t *testing.T) {
 	if err := pool.QueryRow(ctx,`
 		INSERT INTO refresh_sessions(user_id,principal_id,token_hash,expires_at)
 		VALUES($1,$2,$3,NOW()+INTERVAL '1 day') RETURNING family_id::text
-	`,userID,staffPrincipalID,staffTokenHash).Scan(&staffFamily); err != nil { t.Fatalf("create ordinary staff family: %v",err) }
+	`,ordinaryUserID,ordinaryStaffPrincipalID,staffTokenHash).Scan(&staffFamily); err != nil { t.Fatalf("create ordinary staff family: %v",err) }
 	if _, err := pool.Exec(ctx,`UPDATE refresh_sessions SET last_activity_at=NOW()-INTERVAL '31 minutes' WHERE family_id=$1::uuid AND revoked_at IS NULL`,staffFamily); err != nil { t.Fatalf("age ordinary staff family: %v",err) }
 	rotatedPrincipal, err := refreshRepo.RotatePrincipal(ctx,staffTokenHash,staffReplacementHash,time.Now().Add(24*time.Hour))
 	if err != nil { t.Fatalf("ordinary staff refresh must not be subject to admin idle timeout: %v",err) }
-	if rotatedPrincipal == nil || rotatedPrincipal.ID != staffPrincipalID { t.Fatalf("ordinary staff refresh returned wrong principal: %+v",rotatedPrincipal) }
+	if rotatedPrincipal == nil || rotatedPrincipal.ID != ordinaryStaffPrincipalID { t.Fatalf("ordinary staff refresh returned wrong principal: %+v",rotatedPrincipal) }
 
 	isAdmin, valid, err = tracker.CheckAndTouchAdminSession(ctx, principalID, activeFamily)
 	if err != nil { t.Fatalf("recheck other device family: %v", err) }
