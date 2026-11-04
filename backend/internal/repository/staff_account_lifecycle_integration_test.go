@@ -124,14 +124,12 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
 	functionName := "test_reject_staff_created_audit_fn_" + auditFailureSuffix
 	createFailureTrigger := fmt.Sprintf(`
 		CREATE FUNCTION %s() RETURNS trigger
-		LANGUAGE plpgsql AS $
-		BEGIN
-		    IF NEW.action = 'staff.account.created' THEN
-		        RAISE EXCEPTION 'forced staff audit failure' USING ERRCODE = 'P0001';
+		LANGUAGE plpgsql AS 'BEGIN
+		    IF NEW.action = ''staff.account.created'' THEN
+		        RAISE EXCEPTION ''forced staff audit failure'' USING ERRCODE = ''P0001'';
 		    END IF;
 		    RETURN NEW;
-		END;
-		$;
+		END;';
 		CREATE TRIGGER %s
 		BEFORE INSERT ON audit_events
 		FOR EACH ROW EXECUTE FUNCTION %s();
