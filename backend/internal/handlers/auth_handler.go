@@ -468,11 +468,15 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		return
 	}
 	if !validPrincipal(principal) {
+		_ = h.sessionService.Revoke(c.Request.Context(), replacement)
 		writeAuthError(c, http.StatusInternalServerError, "Unable to refresh session")
 		return
 	}
 	accessToken, err := generateSessionAccessToken(h.tokenService, principal, familyID)
 	if err != nil {
+		// Rotation has already committed. Revoke the replacement so a failed
+		// access-token issue cannot leave an undisclosed usable refresh token.
+		_ = h.sessionService.Revoke(c.Request.Context(), replacement)
 		writeAuthError(c, http.StatusInternalServerError, "Unable to refresh session")
 		return
 	}
