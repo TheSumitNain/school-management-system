@@ -17,6 +17,12 @@ type academicRepository interface {
 	SaveSection(context.Context,int64,int64,int64,int64,int64,string,int,bool)(*repository.AcademicSection,error)
 	ListSubjects(context.Context,int64,int64)([]repository.AcademicSubject,error)
 	SaveSubject(context.Context,int64,int64,int64,string,*string,bool)(*repository.AcademicSubject,error)
+	ListTeacherSubjectAssignments(context.Context,int64,int64,int64,int64)([]repository.TeacherSubjectAssignment,error)
+	CreateTeacherSubjectAssignment(context.Context,int64,int64,int64,int64,int64,int64)(*repository.TeacherSubjectAssignment,error)
+	RevokeTeacherSubjectAssignment(context.Context,int64,int64,int64)error
+	ListClassInchargeAssignments(context.Context,int64,int64,int64)([]repository.ClassInchargeAssignment,error)
+	CreateClassInchargeAssignment(context.Context,int64,int64,int64,int64,int64)(*repository.ClassInchargeAssignment,error)
+	RevokeClassInchargeAssignment(context.Context,int64,int64,int64)error
 }
 
 type AcademicService struct { repository academicRepository }
@@ -55,4 +61,30 @@ func (s *AcademicService) ListSubjects(ctx context.Context,actorID,schoolID int6
 func (s *AcademicService) SaveSubject(ctx context.Context,actorID,schoolID,id int64,name string,code *string,active bool)(*repository.AcademicSubject,error){
 	if s==nil||s.repository==nil{return nil,repository.ErrAcademicAccessDenied}
 	return s.repository.SaveSubject(ctx,actorID,schoolID,id,name,code,active)
+}
+
+
+func (s *AcademicService) ListTeacherSubjectAssignments(ctx context.Context,actorID,schoolID,yearID,sectionID int64)([]repository.TeacherSubjectAssignment,error){
+	if s==nil||s.repository==nil{return nil,repository.ErrAcademicAccessDenied}
+	return s.repository.ListTeacherSubjectAssignments(ctx,actorID,schoolID,yearID,sectionID)
+}
+func (s *AcademicService) CreateTeacherSubjectAssignment(ctx context.Context,actorID,schoolID,yearID,sectionID,subjectID,teacherID int64)(*repository.TeacherSubjectAssignment,error){
+	if s==nil||s.repository==nil{return nil,repository.ErrAcademicAccessDenied}
+	return s.repository.CreateTeacherSubjectAssignment(ctx,actorID,schoolID,yearID,sectionID,subjectID,teacherID)
+}
+func (s *AcademicService) RevokeTeacherSubjectAssignment(ctx context.Context,actorID,schoolID,assignmentID int64)error{
+	if s==nil||s.repository==nil{return repository.ErrAcademicAccessDenied}
+	return s.repository.RevokeTeacherSubjectAssignment(ctx,actorID,schoolID,assignmentID)
+}
+func (s *AcademicService) ListClassInchargeAssignments(ctx context.Context,actorID,schoolID,yearID int64)([]repository.ClassInchargeAssignment,error){
+	if s==nil||s.repository==nil{return nil,repository.ErrAcademicAccessDenied}
+	return s.repository.ListClassInchargeAssignments(ctx,actorID,schoolID,yearID)
+}
+func (s *AcademicService) CreateClassInchargeAssignment(ctx context.Context,actorID,schoolID,yearID,sectionID,teacherID int64)(*repository.ClassInchargeAssignment,error){
+	if s==nil||s.repository==nil{return nil,repository.ErrAcademicAccessDenied}
+	return s.repository.CreateClassInchargeAssignment(ctx,actorID,schoolID,yearID,sectionID,teacherID)
+}
+func (s *AcademicService) RevokeClassInchargeAssignment(ctx context.Context,actorID,schoolID,assignmentID int64)error{
+	if s==nil||s.repository==nil{return repository.ErrAcademicAccessDenied}
+	return s.repository.RevokeClassInchargeAssignment(ctx,actorID,schoolID,assignmentID)
 }
