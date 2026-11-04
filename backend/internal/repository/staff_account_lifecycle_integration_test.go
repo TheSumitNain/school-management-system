@@ -236,12 +236,14 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
 	}
 
 	// An active School Admin must not be disableable by another School Admin.
+	// Keep the generated username comfortably below the database's 32-char limit.
+	protectedAdminUsername := "padmin-" + suffix[len(suffix)-8:]
 	var protectedAdminUserID, protectedAdminPrincipalID int64
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO users (school_id, username, password_hash, status)
 		VALUES ($1, $2, $3, 'active')
 		RETURNING id, principal_id
-	`, schoolID, "padmin-"+suffix, "protected-admin-password-hash").Scan(
+	`, schoolID, protectedAdminUsername, "protected-admin-password-hash").Scan(
 		&protectedAdminUserID, &protectedAdminPrincipalID,
 	); err != nil {
 		t.Fatalf("create second School Admin target: %v", err)
