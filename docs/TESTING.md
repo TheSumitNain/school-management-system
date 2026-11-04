@@ -515,6 +515,8 @@ The test creates a temporary school and staff principal, then verifies:
 
 The School Admin fixture includes a verified MFA credential because the live principal loader enforces MFA for School Admins. The staff fixture has no temporary-password gate. If the ephemeral database has never been bootstrapped, the test creates the first Platform Admin inside the same transaction using `BootstrapFirstInTx`; the deferred rollback removes the account, role grant, and audit event. No permanent Platform Admin is created.
 
-The test uses the package's controlled fake token validator. Real JWT signature validation, cross-school tenant/resource isolation, teacher class/section/subject assignment-scope authorization, and HTTP write-path coverage for delegation/override/role assignment remain explicit follow-up work.
+The test uses the real `services.TokenService` rather than a fake validator. It generates an HS256 access token with the integration principal ID and current database token version, then passes that token through the actual authentication middleware. A request with one altered signature character must return `401 Unauthorized`; the unmodified token must authenticate successfully.
 
-Verification: push run `41764671472` and Draft PR run `41764679462` on `d5e0c8d` both passed V1–V16 migrations on ephemeral PostgreSQL 18, the full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and `go vet ./...`. No persistent user database was modified.
+Cross-school tenant/resource isolation, teacher class/section/subject assignment-scope authorization, and HTTP write-path coverage for delegation/override/role assignment remain explicit follow-up work.
+
+Verification: push run `41765751785` and Draft PR run `41765745170` on `ec55ea4` both passed V1–V16 migrations on ephemeral PostgreSQL 18, the full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and `go vet ./...`. No persistent user database was modified.
