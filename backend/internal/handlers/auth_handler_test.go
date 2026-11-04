@@ -52,12 +52,21 @@ type fakeSessionService struct {
 	principal    *models.AuthPrincipal
 	err          error
 	issuedUserID int64
+	issuedTokenVersion int64
 	rotatedToken string
 	revokedToken string
 }
 
 func (f *fakeSessionService) Issue(_ context.Context, userID int64) (string, error) {
 	f.issuedUserID = userID
+	return f.refreshToken, f.err
+}
+
+func (f *fakeSessionService) IssueForPrincipal(_ context.Context, principal *models.AuthPrincipal) (string, error) {
+	if principal != nil {
+		f.issuedUserID = principal.ID
+		f.issuedTokenVersion = principal.TokenVersion
+	}
 	return f.refreshToken, f.err
 }
 
