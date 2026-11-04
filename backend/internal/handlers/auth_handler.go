@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"school-management-system/internal/middleware"
 	"school-management-system/internal/models"
 	"school-management-system/internal/services"
 )
