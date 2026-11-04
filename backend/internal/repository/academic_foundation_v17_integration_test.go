@@ -20,6 +20,23 @@ func TestAcademicFoundationV17PostgresIntegration(t *testing.T) {
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
+	// Expected constraint failures are isolated in nested transactions because
+	// PostgreSQL aborts the current transaction after a failed statement.
+	expectRejected := func(label string, operation func() error) {
+		t.Helper()
+		savepoint, savepointErr := tx.Begin(ctx)
+		if savepointErr != nil {
+			t.Fatalf("begin savepoint for %s: %v", label, savepointErr)
+		}
+		operationErr := operation()
+		if rollbackErr := savepoint.Rollback(ctx); rollbackErr != nil {
+			t.Fatalf("rollback savepoint for %s: %v", label, rollbackErr)
+		}
+		if operationErr == nil {
+			t.Fatalf("%s unexpectedly succeeded", label)
+		}
+	}
+
 	var schoolID, actorPrincipalID, teacherPrincipalID int64
 	if err := tx.QueryRow(ctx, `
 		SELECT school_id, principal_id FROM users WHERE id = $1
@@ -160,11 +177,10 @@ func TestAcademicFoundationV17PostgresIntegration(t *testing.T) {
 	}
 	// Class names are arbitrary school data, not a fixed enum. Duplicate names
 	// are rejected after trimming and case-folding.
-	if _, err := tx.Exec(ctx, `
-		INSERT INTO classes (school_id, name) VALUES ($1, $2)
-	`, schoolID, "  lkg  "); err == nil {
-		t.Fatal("expected normalized duplicate class name to be rejected")
-	}
+	expectRejected("normalized duplicate class name", func() error {
+		_, err := tx.Exec(ctx, `INSERT INTO classes (school_id, name) VALUES ($1, $2)`, schoolID, "  lkg  ")
+		return err
+	})
 
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO sections (school_id, academic_year_id, class_id, name)
@@ -178,12 +194,10 @@ func TestAcademicFoundationV17PostgresIntegration(t *testing.T) {
 	`, schoolID, year2, classUKG).Scan(&section2); err != nil {
 		t.Fatalf("create UKG section for next year: %v", err)
 	}
-	if _, err := tx.Exec(ctx, `
-		INSERT INTO sections (school_id, academic_year_id, class_id, name)
-		VALUES ($1, $2, $3, ' a ')
-	`, schoolID, year1, classLKG); err == nil {
-		t.Fatal("expected duplicate normalized section name in same class/year to be rejected")
-	}
+	expectRejected("duplicate normalized section name", func() error {
+		_, err := tx.Exec(ctx, `INSERT INTO sections (school_id, academic_year_id, class_id, name) VALUES ($1, $2, $3, ' a ')`, schoolID, year1, classLKG)
+		return err
+	})
 
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO subjects (school_id, name, subject_code)
@@ -256,19 +270,18 @@ func TestAcademicFoundationV17PostgresIntegration(t *testing.T) {
 	if historyCount != 2 {
 		t.Fatalf("promotion retained %d enrollment rows, want 2", historyCount)
 	}
-	if _, err := tx.Exec(ctx, `DELETE FROM student_enrollments WHERE id = $1`, enrollment1); err == nil {
-		t.Fatal("expected historical enrollment deletion to be rejected")
-	}
-	if _, err := tx.Exec(ctx, `
-		UPDATE student_enrollments SET roll_number = '03' WHERE id = $1
-	`, enrollment1); err == nil {
-		t.Fatal("expected closed enrollment roll number to be immutable")
-	}
-	if _, err := tx.Exec(ctx, `
-		UPDATE student_enrollments SET class_id = $1 WHERE id = $2
-	`, classLKG, enrollment1); err == nil {
-		t.Fatal("expected historical enrollment identity rewrite to be rejected")
-	}
+	expectRejected("historical enrollment deletion", func() error {
+		_, err := tx.Exec(ctx, `DELETE FROM student_enrollments WHERE id = $1`, enrollment1)
+		return err
+	})
+	expectRejected("closed enrollment roll-number update", func() error {
+		_, err := tx.Exec(ctx, `UPDATE student_enrollments SET roll_number = '03' WHERE id = $1`, enrollment1)
+		return err
+	})
+	expectRejected("historical enrollment identity rewrite", func() error {
+		_, err := tx.Exec(ctx, `UPDATE student_enrollments SET class_id = $1 WHERE id = $2`, classLKG, enrollment1)
+		return err
+	})
 
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO teacher_subject_assignments
@@ -286,14 +299,10 @@ func TestAcademicFoundationV17PostgresIntegration(t *testing.T) {
 	`, schoolID, year2, section2, teacherPrincipalID, actorPrincipalID); err != nil {
 		t.Fatalf("assign class in-charge teacher: %v", err)
 	}
-	if _, err := tx.Exec(ctx, `
-		INSERT INTO class_incharge_assignments
-			(school_id, academic_year_id, section_id,
-			 teacher_principal_id, assigned_by_principal_id)
-		VALUES ($1, $2, $3, $4, $4)
-	`, schoolID, year2, section2, teacherPrincipalID); err == nil {
-		t.Fatal("expected a section to reject a second active class-in-charge")
-	}
+	expectRejected("second active class-in-charge", func() error {
+		_, err := tx.Exec(ctx, `INSERT INTO class_incharge_assignments (school_id, academic_year_id, section_id, teacher_principal_id, assigned_by_principal_id) VALUES ($1, $2, $3, $4, $5)`, schoolID, year2, section2, teacherPrincipalID, actorPrincipalID)
+		return err
+	})
 
 	var otherSchoolID, foreignClassID int64
 	if err := tx.QueryRow(ctx, `
@@ -307,15 +316,12 @@ func TestAcademicFoundationV17PostgresIntegration(t *testing.T) {
 	`, otherSchoolID).Scan(&foreignClassID); err != nil {
 		t.Fatalf("create second-school configurable class: %v", err)
 	}
-	if _, err := tx.Exec(ctx, `
-		INSERT INTO sections (school_id, academic_year_id, class_id, name)
-		VALUES ($1, $2, $3, 'Foreign')
-	`, schoolID, year1, foreignClassID); err == nil {
-		t.Fatal("expected cross-school class reference to be rejected")
-	}
-	if _, err := tx.Exec(ctx, `
-		UPDATE classes SET school_id = $1 WHERE id = $2
-	`, otherSchoolID, classLKG); err == nil {
-		t.Fatal("expected class school ownership to be immutable")
-	}
+	expectRejected("cross-school section class reference", func() error {
+		_, err := tx.Exec(ctx, `INSERT INTO sections (school_id, academic_year_id, class_id, name) VALUES ($1, $2, $3, 'Foreign')`, schoolID, year1, foreignClassID)
+		return err
+	})
+	expectRejected("class school ownership change", func() error {
+		_, err := tx.Exec(ctx, `UPDATE classes SET school_id = $1 WHERE id = $2`, otherSchoolID, classLKG)
+		return err
+	})
 }
