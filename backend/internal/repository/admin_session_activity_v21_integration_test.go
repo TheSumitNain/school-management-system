@@ -115,6 +115,56 @@ func TestAdminSessionActivityV21PostgresIntegration(t *testing.T) {
 	// Ordinary staff sessions do not use the administrative idle-timeout rule.
 	var staffPrincipalID int64
 	if err := pool.QueryRow(ctx,`SELECT principal_id FROM users WHERE id=$1`,userID).Scan(&staffPrincipalID); err != nil { t.Fatalf("load integration staff principal: %v",err) }
+
+	// Promote this fixture staff account to the exact system School Admin role.
+	// The platform role assignment mirrors the one-time bootstrap path and is
+	// confined to this dedicated integration database.
+	var platformRoleID, schoolID, schoolAdminRoleID int64
+	if err := pool.QueryRow(ctx,`
+		SELECT id FROM roles
+		WHERE principal_type='platform_admin' AND scope_type='platform'
+		  AND role_key='platform_admin' AND is_system=TRUE
+	`).Scan(&platformRoleID); err != nil { t.Fatalf("load Platform Admin system role: %v",err) }
+	if _, err := pool.Exec(ctx,`
+		INSERT INTO principal_roles(principal_id,role_id,assigned_by)
+		VALUES($1,$2,NULL)
+		ON CONFLICT (principal_id,role_id) WHERE revoked_at IS NULL DO NOTHING
+	`,principalID,platformRoleID); err != nil { t.Fatalf("assign Platform Admin system role fixture: %v",err) }
+	if err := pool.QueryRow(ctx,`SELECT school_id FROM users WHERE id=$1`,userID).Scan(&schoolID); err != nil { t.Fatalf("load School Admin school: %v",err) }
+	if err := pool.QueryRow(ctx,`
+		SELECT id FROM roles WHERE school_id=$1 AND principal_type='staff'
+		  AND scope_type='school' AND role_key='school_admin' AND is_system=TRUE
+	`,schoolID).Scan(&schoolAdminRoleID); err != nil { t.Fatalf("load School Admin system role: %v",err) }
+	if _, err := pool.Exec(ctx,`
+		INSERT INTO principal_mfa_credentials
+		    (principal_id,method,secret_ciphertext,encryption_key_version,verified_at)
+		VALUES($1,'totp',decode('01','hex'),1,NOW())
+		ON CONFLICT (principal_id,method) DO NOTHING
+	`,staffPrincipalID); err != nil { t.Fatalf("create School Admin MFA fixture: %v",err) }
+	if _, err := pool.Exec(ctx,`
+		INSERT INTO principal_roles(principal_id,role_id,assigned_by)
+		VALUES($1,$2,$3)
+	`,staffPrincipalID,schoolAdminRoleID,principalID); err != nil { t.Fatalf("assign exact School Admin system role: %v",err) }
+
+	schoolAdminTokenSum := sha256.Sum256([]byte("school-admin-idle-v21-"+suffix))
+	schoolAdminTokenHash := hex.EncodeToString(schoolAdminTokenSum[:])
+	schoolAdminReplacementSum := sha256.Sum256([]byte("school-admin-idle-v21-replacement-"+suffix))
+	schoolAdminReplacementHash := hex.EncodeToString(schoolAdminReplacementSum[:])
+	var schoolAdminFamily string
+	if err := pool.QueryRow(ctx,`
+		INSERT INTO refresh_sessions(user_id,principal_id,token_hash,expires_at)
+		VALUES($1,$2,$3,NOW()+INTERVAL '1 day') RETURNING family_id::text
+	`,userID,staffPrincipalID,schoolAdminTokenHash).Scan(&schoolAdminFamily); err != nil { t.Fatalf("create School Admin family: %v",err) }
+	if _, err := pool.Exec(ctx,`
+		UPDATE refresh_sessions SET last_activity_at=NOW()-INTERVAL '31 minutes'
+		WHERE family_id=$1::uuid AND revoked_at IS NULL
+	`,schoolAdminFamily); err != nil { t.Fatalf("age School Admin family: %v",err) }
+	isAdmin, valid, err := tracker.CheckAndTouchAdminSession(ctx,staffPrincipalID,schoolAdminFamily)
+	if err != nil { t.Fatalf("check School Admin idle timeout: %v",err) }
+	if !isAdmin || valid { t.Fatalf("active system School Admin role must enforce idle timeout: isAdmin=%v valid=%v",isAdmin,valid) }
+	if _, err := refreshRepo.RotatePrincipal(ctx,schoolAdminTokenHash,schoolAdminReplacementHash,time.Now().Add(24*time.Hour)); !errors.Is(err,ErrAdminSessionIdleExpired) {
+		t.Fatalf("School Admin refresh must enforce idle timeout: %v",err)
+	}
 	staffTokenSum := sha256.Sum256([]byte("staff-idle-v21-" + suffix))
 	staffTokenHash := hex.EncodeToString(staffTokenSum[:])
 	staffReplacementSum := sha256.Sum256([]byte("staff-idle-v21-replacement-" + suffix))
