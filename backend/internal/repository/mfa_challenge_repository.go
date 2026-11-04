@@ -41,12 +41,12 @@ func NewMFAChallengeRepository(db *pgxpool.Pool) *MFAChallengeRepository {
 // principal and purpose. The raw bearer token is never stored.
 func (r *MFAChallengeRepository) Create(
 	ctx context.Context,
-	principalID int64,
+	principalID, expectedTokenVersion int64,
 	purpose MFAChallengePurpose,
 	challengeHash string,
 	expiresAt time.Time,
 ) error {
-	if principalID <= 0 || !validMFAChallengePurpose(purpose) ||
+	if principalID <= 0 || expectedTokenVersion <= 0 || !validMFAChallengePurpose(purpose) ||
 		!isSHA256Hash(challengeHash) || !expiresAt.After(time.Now()) ||
 		expiresAt.After(time.Now().Add(15*time.Minute)) {
 		return fmt.Errorf("invalid MFA challenge data")
@@ -63,6 +63,19 @@ func (r *MFAChallengeRepository) Create(
 		`SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, lockKey,
 	); err != nil {
 		return fmt.Errorf("lock MFA challenge creation: %w", err)
+	}
+
+	var currentTokenVersion int64
+	err = tx.QueryRow(ctx, `SELECT token_version FROM auth_principals
+		WHERE id=$1 AND status='active' FOR UPDATE`, principalID).Scan(&currentTokenVersion)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrMFAChallengeUnavailable
+	}
+	if err != nil {
+		return fmt.Errorf("load principal version for MFA challenge: %w", err)
+	}
+	if currentTokenVersion != expectedTokenVersion {
+		return ErrPrincipalVersionChanged
 	}
 
 	if _, err := tx.Exec(ctx,
