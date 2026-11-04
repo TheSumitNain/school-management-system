@@ -58,3 +58,19 @@ func TestHashPasswordWithCheckerKeepsLocalPasswordPolicy(t *testing.T) {
 	_,err:=hashPasswordWithChecker(context.Background(),"password1234",alwaysClearPasswordChecker{})
 	if !errors.Is(err,ErrInvalidPassword) { t.Fatalf("expected local password policy error, got %v",err) }
 }
+
+func TestHIBPPasswordBreachCheckerIgnoresZeroCountPadding(t *testing.T) {
+	password := "Password-that-is-not-breached-2026!"
+	sum := sha1.Sum([]byte(password))
+	hash := strings.ToUpper(hex.EncodeToString(sum[:]))
+	prefix, suffix := hash[:5], hash[5:]
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter,r *http.Request) {
+		_,_ = fmt.Fprintf(w,"%s:0\\n",suffix)
+	}))
+	defer server.Close()
+	checker := NewHIBPPasswordBreachChecker(server.Client())
+	checker.endpoint = server.URL
+	compromised,err:=checker.IsCompromised(context.Background(),password)
+	if err!=nil { t.Fatalf("check zero-count padding entry: %v",err) }
+	if compromised { t.Fatal("zero-count padding entry must not be treated as a breached password") }
+}
