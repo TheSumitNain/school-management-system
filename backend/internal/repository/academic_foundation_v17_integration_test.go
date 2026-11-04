@@ -404,4 +404,30 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 	if err != nil || len(sections) != 1 || sections[0].ID != apiSection.ID { t.Fatalf("list sections through repository: items=%+v err=%v", sections, err) }
 	subjects, err := academicRepo.ListSubjects(ctx, actorPrincipalID, schoolID)
 	if err != nil || len(subjects) < 3 || apiSubject.ID <= 0 { t.Fatalf("list subjects through repository: count=%d err=%v", len(subjects), err) }
+
+	teacherAssignment, err := academicRepo.CreateTeacherSubjectAssignment(ctx, actorPrincipalID, schoolID,
+		apiYear.ID, apiSection.ID, apiSubject.ID, teacherPrincipalID)
+	if err != nil || teacherAssignment == nil || teacherAssignment.TeacherPrincipalID != teacherPrincipalID {
+		t.Fatalf("create teacher subject assignment through repository: assignment=%+v err=%v", teacherAssignment, err)
+	}
+	teacherAssignments, err := academicRepo.ListTeacherSubjectAssignments(ctx, actorPrincipalID, schoolID, apiYear.ID, apiSection.ID)
+	if err != nil || len(teacherAssignments) != 1 || teacherAssignments[0].ID != teacherAssignment.ID {
+		t.Fatalf("list teacher subject assignments through repository: items=%+v err=%v", teacherAssignments, err)
+	}
+	if err := academicRepo.RevokeTeacherSubjectAssignment(ctx, actorPrincipalID, schoolID, teacherAssignment.ID); err != nil {
+		t.Fatalf("revoke teacher subject assignment through repository: %v", err)
+	}
+	classIncharge, err := academicRepo.CreateClassInchargeAssignment(ctx, actorPrincipalID, schoolID,
+		apiYear.ID, apiSection.ID, teacherPrincipalID)
+	if err != nil || classIncharge == nil || classIncharge.TeacherPrincipalID != teacherPrincipalID {
+		t.Fatalf("create class in-charge assignment through repository: assignment=%+v err=%v", classIncharge, err)
+	}
+	classIncharges, err := academicRepo.ListClassInchargeAssignments(ctx, actorPrincipalID, schoolID, apiYear.ID)
+	if err != nil || len(classIncharges) != 1 || classIncharges[0].ID != classIncharge.ID {
+		t.Fatalf("list class in-charge assignments through repository: items=%+v err=%v", classIncharges, err)
+	}
+	if err := academicRepo.RevokeClassInchargeAssignment(ctx, actorPrincipalID, schoolID, classIncharge.ID); err != nil {
+		t.Fatalf("revoke class in-charge assignment through repository: %v", err)
+	}
+
 }
