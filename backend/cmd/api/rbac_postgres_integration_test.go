@@ -28,6 +28,12 @@ import (
 	"github.com/joho/godotenv"
 )
 
+type rbacIntegrationPasswordBreachChecker struct{}
+
+func (rbacIntegrationPasswordBreachChecker) IsCompromised(context.Context, string) (bool, error) {
+	return false, nil
+}
+
 type rbacIntegrationSessionService struct{}
 
 func (rbacIntegrationSessionService) Issue(context.Context, *models.AuthPrincipal) (string, error) {
@@ -142,7 +148,7 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	}
 	principalRepo := repository.NewPrincipalAuthorizationRepository(tx)
 	roleHandler := handlers.NewRoleHandler(services.NewRoleService(repository.NewRoleRepository(tx)))
-	staffHandler := handlers.NewStaffHandler(services.NewStaffAccountService(repository.NewUserRepository(tx)))
+	staffHandler := handlers.NewStaffHandler(services.NewStaffAccountService(repository.NewUserRepository(tx), rbacIntegrationPasswordBreachChecker{}))
 	router, err := setupRouterWithHandlers(
 		fakeDatabase{}, nil, tokenService,
 		principalRepo, principalRepo,
@@ -156,7 +162,7 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	// Its login route is used below to prove a disabled account cannot log in.
 	authService := services.NewAuthService(repository.NewUserRepository(tx), nil)
 	authHandler := handlers.NewAuthHandler(authService, tokenService, rbacIntegrationSessionService{})
-	staffPasswordService, err := services.NewStaffPasswordService(repository.NewUserRepository(tx))
+	staffPasswordService, err := services.NewStaffPasswordService(repository.NewUserRepository(tx), rbacIntegrationPasswordBreachChecker{})
 	if err != nil {
 		t.Fatalf("create PostgreSQL-backed staff password service: %v", err)
 	}
