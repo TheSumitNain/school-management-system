@@ -18,7 +18,7 @@ The backend uses Go, Gin, and PostgreSQL.
 - POST /platform/schools creates a school and its first School Admin transactionally, protected by platform.schools.create and platform.school_admins.create.
 - V13 provisions the fixed School Admin and Teacher system roles for newly created schools.
 - V14 contains a source-only one-time first Platform Admin bootstrap migration and CLI; it is not yet PostgreSQL-verified or approved for application.
-- Academic Year, Class, Section, Subject, teacher-subject assignment, class-in-charge assignment, student enrollment, promotion, and enrollment-history APIs are implemented with school-scoped repository authorization, audited writes, and PostgreSQL integration coverage. Student profile/guardian management APIs, attendance, timetable, examinations, results, notices, and frontend workflows remain pending.
+- Academic Year, Class, Section, Subject, teacher-subject assignment, class-in-charge assignment, student admission/profile, enrollment, promotion, and enrollment-history APIs are implemented with school-scoped repository authorization, audited writes, and PostgreSQL integration coverage. Guardian contact/link management, attendance, timetable, examinations, results, notices, and frontend workflows remain pending.
 
 **Important:** An implemented authentication endpoint does not mean that the full authorization system or every production security control is implemented. Verify code and tests before treating a feature as complete.
 
@@ -790,3 +790,45 @@ POST /auth/mfa/enroll/verify and POST /auth/mfa/verify accept challenge_token an
 POST /platform/schools requires a Bearer access token and both live permissions platform.schools.create and platform.school_admins.create. The JSON body contains name, code, school_admin_username and school_admin_initial_password. School, initial School Admin principal/account and role assignment are created transactionally. The endpoint returns the school and new School Admin principal ID/username, never the password or password hash.
 
 The initial Platform Admin itself is created separately by the one-time bootstrap CLI after the V14 migration has been reviewed and applied to the dedicated test database. Do not run that CLI against a database until the operator has explicitly selected and verified the target.
+
+
+### 3.8 Student Admission and Basic Profile
+
+All routes require an authenticated staff principal and derive the school from that principal. No endpoint accepts a client-supplied `school_id`. Repository authorization independently checks the current permission and school ownership. Student identity is separate from academic-year enrollment: creating a student does not automatically place the student into a class or section. Use the enrollment endpoint after creating the profile.
+
+The current V11 schema stores only admission number, full name, status, and timestamps. This API intentionally does not invent date-of-birth, gender, address, medical, family, or other sensitive profile fields. Those require a separately reviewed schema and field-level permission design.
+
+| Method | Endpoint | Permission | Purpose |
+|---|---|---|---|
+| GET | `/school/students` | `students.read_basic` | Search/list school students |
+| POST | `/school/students` | `students.create` | Admit/create student identity |
+| GET | `/school/students/:studentID` | `students.read_basic` | Read one student |
+| PATCH | `/school/students/:studentID` | `students.update` | Update student name |
+| POST | `/school/students/:studentID/archive` | `students.archive` | Soft-archive student |
+
+Create request:
+
+```json
+{
+  "admission_number": "ADM-2026-001",
+  "full_name": "Student Name"
+}
+```
+
+The admission number is unique within its school after trimming and case-folding. The API returns `409 Conflict` for a duplicate. Names and admission numbers are trimmed and validated against the existing V11 column lengths.
+
+List supports optional `q`, `status`, `limit`, and `offset` query parameters. Search matches admission number or full name; status may be `active`, `inactive`, or `archived`. The default page size is 50 and the maximum is 100. The response includes a total count and pagination values. The basic directory does not join guardian contacts or sensitive student data.
+
+Update request:
+
+```json
+{
+  "full_name": "Updated Student Name"
+}
+```
+
+Admission number is immutable through the profile update endpoint to preserve the school's stable identity reference. Archived students cannot be updated or archived again. Archiving is a status transition, not physical deletion; enrollment and guardian relationship history is retained. Student creation, update, and archive each write an audit event in the same transaction as the data change.
+
+After admission, create the student's academic placement using `POST /school/enrollments`. Promotion creates a new enrollment row and preserves the previous academic-year history; it does not create another student identity.
+
+Guardian contact records and student-guardian relationship APIs are not part of this release. Parent account creation, OTP verification, and SMS delivery remain paused.
