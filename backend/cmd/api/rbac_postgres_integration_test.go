@@ -252,7 +252,7 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 
 	// Permissions are loaded from PostgreSQL on every request. The role grant
 	// above must now permit the same token to reach the real role handler.
-	allowed := request(http.MethodGet, "/school/roles")
+	allowed := request(http.MethodGet, "/school/roles", accessToken)
 	if allowed.Code != http.StatusOK {
 		t.Fatalf("staff principal with database-granted School Admin role should list school roles: status=%d body=%s; want 200",
 			allowed.Code, allowed.Body.String())
