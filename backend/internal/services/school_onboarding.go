@@ -37,11 +37,16 @@ type schoolOnboardingRepository interface {
 }
 
 type SchoolOnboardingService struct {
-	repository schoolOnboardingRepository
+	repository    schoolOnboardingRepository
+	breachChecker PasswordBreachChecker
 }
 
-func NewSchoolOnboardingService(repository schoolOnboardingRepository) *SchoolOnboardingService {
-	return &SchoolOnboardingService{repository: repository}
+func NewSchoolOnboardingService(repository schoolOnboardingRepository, checkers ...PasswordBreachChecker) *SchoolOnboardingService {
+	checker := defaultPasswordBreachChecker
+	if len(checkers) > 0 {
+		checker = checkers[0]
+	}
+	return &SchoolOnboardingService{repository: repository, breachChecker: checker}
 }
 
 // CreateSchoolWithAdmin atomically creates an active school, provisions its
@@ -60,7 +65,7 @@ func (s *SchoolOnboardingService) CreateSchoolWithAdmin(ctx context.Context, act
 		return nil, ErrInvalidSchoolOnboarding
 	}
 
-	passwordHash, err := HashPassword(input.AdminInitialPassword)
+	passwordHash, err := hashPasswordWithChecker(ctx, input.AdminInitialPassword, s.breachChecker)
 	if err != nil {
 		return nil, err
 	}
