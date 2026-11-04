@@ -374,6 +374,7 @@ func (r *PrincipalRefreshSessionRepository) RotatePrincipal(
 SELECT rs.id, rs.family_id, rs.principal_id,
        (rs.expires_at > NOW()),
        (rs.revoked_at IS NOT NULL),
+       rs.last_activity_at,
        ap.principal_type, ap.status, ap.token_version,
        u.id,
        COALESCE(u.school_id,0),
@@ -422,6 +423,7 @@ FOR UPDATE OF rs, ap`
 	var currentPrincipal int64
 	var notExpired bool
 	var revoked bool
+	var lastActivityAt time.Time
 	var principalType string
 	var principalStatus string
 	var username string
@@ -441,6 +443,7 @@ FOR UPDATE OF rs, ap`
 		&currentPrincipal,
 		&notExpired,
 		&revoked,
+		&lastActivityAt,
 		&principalType,
 		&principalStatus,
 		&tokenVersion,
@@ -487,6 +490,31 @@ FOR UPDATE OF rs, ap`
 
 	if !notExpired {
 		return nil, ErrRefreshTokenInvalid
+	}
+
+	if time.Since(lastActivityAt) >= 30*time.Minute {
+		if _, err = tx.Exec(ctx, `UPDATE refresh_sessions SET revoked_at=COALESCE(revoked_at,NOW()) WHERE family_id=$1 AND revoked_at IS NULL`, familyID); err != nil {
+			return nil, fmt.Errorf("revoke idle administrative refresh family: %w", err)
+		}
+		if _, err = tx.Exec(ctx, `
+			INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
+			SELECT ap.id,NULLIF(u.school_id,0),'auth.admin_session_idle_timeout','refresh_session',$2,'success',
+			       jsonb_build_object('idle_timeout_minutes',30)
+			FROM auth_principals ap LEFT JOIN users u ON u.principal_id=ap.id
+			WHERE ap.id=$1 AND (
+			  ap.principal_type='platform_admin' OR
+			  (ap.principal_type='staff' AND EXISTS (
+			    SELECT 1 FROM principal_roles pr JOIN roles ro ON ro.id=pr.role_id
+			    WHERE pr.principal_id=ap.id AND pr.revoked_at IS NULL
+			      AND ro.is_system=TRUE AND ro.role_key='school_admin'
+			      AND ro.principal_type='staff' AND ro.scope_type='school'
+			      AND ro.school_id=u.school_id
+			  ))
+			)`, principalID, familyID); err != nil {
+			return nil, fmt.Errorf("audit idle administrative refresh family: %w", err)
+		}
+		if err = tx.Commit(ctx); err != nil { return nil, fmt.Errorf("commit idle administrative session revocation: %w", err) }
+		return nil, ErrAdminSessionIdleExpired
 	}
 
 	active := principalStatus == "active" && tokenVersion > 0 && mfaVerified
