@@ -54,7 +54,7 @@ BEGIN
        OR NEW.academic_year_id IS DISTINCT FROM OLD.academic_year_id
        OR NEW.section_id IS DISTINCT FROM OLD.section_id
        OR (TG_TABLE_NAME = 'teacher_subject_assignments'
-           AND NEW.subject_id IS DISTINCT FROM OLD.subject_id)
+           AND (to_jsonb(NEW) -> 'subject_id') IS DISTINCT FROM (to_jsonb(OLD) -> 'subject_id'))
        OR NEW.teacher_principal_id IS DISTINCT FROM OLD.teacher_principal_id
        OR NEW.assigned_by_principal_id IS DISTINCT FROM OLD.assigned_by_principal_id
        OR NEW.assigned_at IS DISTINCT FROM OLD.assigned_at THEN
