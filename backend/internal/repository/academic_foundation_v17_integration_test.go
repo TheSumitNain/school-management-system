@@ -9,7 +9,7 @@ import (
 
 // TestAcademicFoundationV17PostgresIntegration exercises configurable class
 // names, year-specific sections, promotion history, teacher scope, and tenant FKs.
-func TestAcademicFoundationV17PostgresIntegration(t *testing.T) {
+func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing.T) {
 	_, pool, userID := newPostgresIntegrationRepository(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 	defer cancel()
@@ -303,6 +303,52 @@ func TestAcademicFoundationV17PostgresIntegration(t *testing.T) {
 		_, err := tx.Exec(ctx, `INSERT INTO class_incharge_assignments (school_id, academic_year_id, section_id, teacher_principal_id, assigned_by_principal_id) VALUES ($1, $2, $3, $4, $5)`, schoolID, year2, section2, teacherPrincipalID, actorPrincipalID)
 		return err
 	})
+
+	// Academic sections may be deactivated after use, but must not be
+	// reactivated once their class is inactive.
+	if _, err := tx.Exec(ctx, `UPDATE classes SET is_active = FALSE WHERE id = $1`, classLKG); err != nil {
+		t.Fatalf("deactivate historical LKG class: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `UPDATE sections SET is_active = FALSE WHERE id = $1`, section1); err != nil {
+		t.Fatalf("deactivate historical LKG section: %v", err)
+	}
+	expectRejected("reactivate section under inactive class", func() error {
+		_, err := tx.Exec(ctx, `UPDATE sections SET is_active = TRUE WHERE id = $1`, section1)
+		return err
+	})
+
+	// Assignment records are append-only except for their one-way revocation.
+	expectRejected("teacher subject assignment identity rewrite", func() error {
+		_, err := tx.Exec(ctx, `UPDATE teacher_subject_assignments SET subject_id = $1 WHERE school_id = $2 AND section_id = $3 AND teacher_principal_id = $4 AND revoked_at IS NULL`, subjectID, schoolID, section2, teacherPrincipalID)
+		return err
+	})
+	expectRejected("teacher subject assignment deletion", func() error {
+		_, err := tx.Exec(ctx, `DELETE FROM teacher_subject_assignments WHERE school_id = $1 AND section_id = $2 AND teacher_principal_id = $3 AND revoked_at IS NULL`, schoolID, section2, teacherPrincipalID)
+		return err
+	})
+	if _, err := tx.Exec(ctx, `
+		UPDATE teacher_subject_assignments SET revoked_at = NOW()
+		 WHERE school_id = $1 AND section_id = $2 AND teacher_principal_id = $3 AND revoked_at IS NULL
+	`, schoolID, section2, teacherPrincipalID); err != nil {
+		t.Fatalf("revoke teacher subject assignment: %v", err)
+	}
+	expectRejected("teacher assignment reactivation after revocation", func() error {
+		_, err := tx.Exec(ctx, `
+			UPDATE teacher_subject_assignments SET revoked_at = NULL
+			 WHERE school_id = $1 AND section_id = $2 AND teacher_principal_id = $3
+		`, schoolID, section2, teacherPrincipalID)
+		return err
+	})
+	expectRejected("class in-charge assignment identity rewrite", func() error {
+		_, err := tx.Exec(ctx, `UPDATE class_incharge_assignments SET assigned_by_principal_id = $1 WHERE school_id = $2 AND section_id = $3 AND teacher_principal_id = $4 AND revoked_at IS NULL`, platformAdminPrincipalID, schoolID, section2, teacherPrincipalID)
+		return err
+	})
+	if _, err := tx.Exec(ctx, `
+		UPDATE class_incharge_assignments SET revoked_at = NOW()
+		 WHERE school_id = $1 AND section_id = $2 AND teacher_principal_id = $3 AND revoked_at IS NULL
+	`, schoolID, section2, teacherPrincipalID); err != nil {
+		t.Fatalf("revoke class in-charge assignment: %v", err)
+	}
 
 	var otherSchoolID, foreignClassID int64
 	if err := tx.QueryRow(ctx, `
