@@ -34,6 +34,9 @@ var commonPasswords = map[string]struct{}{
 	"changeme123":  {},
 }
 
+// HashPassword performs local policy validation and bcrypt hashing only.
+// Production account/password workflows must use HashPasswordContext so the
+// breached-password check cannot be skipped.
 func HashPassword(password string) (string, error) {
 	if !validNewPassword(password) {
 		return "", ErrInvalidPassword
