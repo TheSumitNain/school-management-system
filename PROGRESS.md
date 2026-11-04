@@ -428,3 +428,12 @@ V11 is **applied and PostgreSQL-verified on the dedicated test database**. This 
 - [ ] Replace the controlled test token validator with real JWT signing/validation in this HTTP integration path.
 - [ ] Extend HTTP/database integration coverage to delegation/override/assignment writes and tenant/resource/teacher assignment-scope isolation.
 - All test fixtures are transaction-scoped and rolled back; no persistent user database or permanent Platform Admin account was modified.
+
+
+## 2026-11-04 — Real JWT verification and RBAC tenant-boundary tests
+
+- [x] HTTP/PostgreSQL integration now uses the real HS256 `TokenService`, not a fake token validator. A genuinely altered signature is rejected with 401; valid signed tokens proceed through live principal and permission loading.
+- [x] Expanded PostgreSQL role-repository integration tests with a second school. A School A admin cannot list/create School B roles, view School B staff role assignments or permission overrides, assign a School A role to School B staff, or apply School A permission overrides to School B staff.
+- [x] CI push run `41766408925` and Draft PR run `41766414685` on `c7dd5ce`: V1–V16 migrations, full PostgreSQL integration-enabled Go suite, and `go vet ./...` all PASS.
+- [ ] Continue cross-school isolation coverage for future business-resource APIs and data repositories; no academic class/section/subject assignment model or student-resource API is currently available to test teacher assignment scope.
+- All integration fixtures are rollback-scoped. No persistent user database was modified. PR #1 remains Draft and unmerged.
