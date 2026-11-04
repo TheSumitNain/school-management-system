@@ -30,7 +30,7 @@ import (
 
 type rbacIntegrationSessionService struct{}
 
-func (rbacIntegrationSessionService) Issue(context.Context, int64) (string, error) {
+func (rbacIntegrationSessionService) Issue(context.Context, *models.AuthPrincipal) (string, error) {
 	return "unused-refresh-token", nil
 }
 
