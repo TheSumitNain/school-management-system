@@ -191,8 +191,8 @@ FOR UPDATE OF ap`
 	}
 
 	if _, err := tx.Exec(ctx,
-		`INSERT INTO refresh_sessions (user_id, principal_id, token_hash, expires_at)
-		 VALUES ($1, $2, $3, $4)`,
+		`INSERT INTO refresh_sessions (user_id, principal_id, token_hash, expires_at, last_activity_at)
+		 VALUES ($1, $2, $3, $4, clock_timestamp())`,
 		nullableInt64(userID), principalID, tokenHash, expiresAt,
 	); err != nil {
 		return fmt.Errorf("create refresh session: %w", err)
@@ -291,8 +291,8 @@ FOR UPDATE OF ap`
 
 	var familyID string
 	if err := tx.QueryRow(ctx,
-		`INSERT INTO refresh_sessions (user_id, principal_id, token_hash, expires_at)
-		 VALUES ($1, $2, $3, $4)
+		`INSERT INTO refresh_sessions (user_id, principal_id, token_hash, expires_at, last_activity_at)
+		 VALUES ($1, $2, $3, $4, clock_timestamp())
 		 RETURNING family_id`,
 		nullableInt64(userID), principalID, tokenHash, expiresAt,
 	).Scan(&familyID); err != nil {
