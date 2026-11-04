@@ -324,6 +324,54 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 		t.Fatalf("deleted staff override remains: %+v", overrides)
 	}
 
+	// A School Admin from School A must not read or mutate School B's role
+	// administration state, even when supplied with School B identifiers.
+	var otherSchoolID int64
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO schools (name, code, status)
+		VALUES ($1, $2, 'active')
+		RETURNING id
+	`, "RBAC Isolation School "+suffix, "RBAC-ISO-"+suffix).Scan(&otherSchoolID); err != nil {
+		t.Fatalf("create second-school isolation fixture: %v", err)
+	}
+	var otherSchoolPrincipalID int64
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO users (school_id, username, password_hash, status)
+		VALUES ($1, $2, $3, 'active')
+		RETURNING principal_id
+	`, otherSchoolID, "role-target-other-"+suffix, "integration-test-password-hash").Scan(&otherSchoolPrincipalID); err != nil {
+		t.Fatalf("create second-school staff fixture: %v", err)
+	}
+	if _, err := repo.ListSchoolRoles(ctx, actorPrincipalID, otherSchoolID); !errors.Is(err, ErrRolePermissionDenied) {
+		t.Fatalf("School A actor listing School B roles error = %v, want ErrRolePermissionDenied", err)
+	}
+	if _, err := repo.CreateCustomRole(ctx, actorPrincipalID, otherSchoolID, "cross_school_"+suffix, "Cross School Role"); !errors.Is(err, ErrRolePermissionDenied) {
+		t.Fatalf("School A actor creating School B role error = %v, want ErrRolePermissionDenied", err)
+	}
+	crossSchoolAssignments, err := repo.ListStaffRoleAssignments(ctx, actorPrincipalID, schoolID, otherSchoolPrincipalID)
+	if err != nil {
+		t.Fatalf("list role assignments for foreign-school target: %v", err)
+	}
+	if len(crossSchoolAssignments) != 0 {
+		t.Fatalf("School A actor received School B role assignments: %+v", crossSchoolAssignments)
+	}
+	if err := repo.AssignStaffRole(ctx, actorPrincipalID, schoolID, otherSchoolPrincipalID, customRole.ID); !errors.Is(err, ErrRoleNotFound) {
+		t.Fatalf("School A actor assigning role to School B staff error = %v, want ErrRoleNotFound", err)
+	}
+	if err := repo.SetStaffPermissionOverride(
+		ctx, actorPrincipalID, schoolID, otherSchoolPrincipalID, overrideDelegation.ID,
+		"homework.create", "allow", "cross-school isolation test",
+	); !errors.Is(err, ErrRoleNotFound) {
+		t.Fatalf("School A actor overriding School B staff error = %v, want ErrRoleNotFound", err)
+	}
+	crossSchoolOverrides, err := repo.ListStaffPermissionOverrides(ctx, actorPrincipalID, schoolID, otherSchoolPrincipalID)
+	if err != nil {
+		t.Fatalf("list permission overrides for foreign-school target: %v", err)
+	}
+	if len(crossSchoolOverrides) != 0 {
+		t.Fatalf("School A actor received School B permission overrides: %+v", crossSchoolOverrides)
+	}
+
 	if err := repo.RevokeSchoolPermissionDelegation(ctx, platformAdminPrincipalID, roleDelegation.ID); err != nil {
 		t.Fatalf("authorized role delegation revoke failed: %v", err)
 	}
