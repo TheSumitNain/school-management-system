@@ -357,11 +357,78 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 			duplicateStaff.Code, duplicateStaff.Body.String())
 	}
 
+	// Create a separate school's staff principal and a live refresh session.
+	// The authenticated School Admin must neither see nor disable this account.
+	var otherSchoolID, otherSchoolStaffUserID, otherSchoolStaffPrincipalID int64
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO schools (name, code, status)
+		VALUES ($1, $2, 'active')
+		RETURNING id
+	`, "RBAC Other School "+suffix, "RBAC-OTHER-"+suffix).Scan(&otherSchoolID); err != nil {
+		t.Fatalf("create second integration school: %v", err)
+	}
+	otherSchoolUsername := "other-" + suffix[len(suffix)-8:]
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO users (school_id, username, password_hash, status, must_change_password)
+		VALUES ($1, $2, $3, 'active', FALSE)
+		RETURNING id, principal_id
+	`, otherSchoolID, otherSchoolUsername, "integration-test-password-hash").Scan(
+		&otherSchoolStaffUserID, &otherSchoolStaffPrincipalID,
+	); err != nil {
+		t.Fatalf("create staff account in second school: %v", err)
+	}
+	otherSchoolSessionHash := fmt.Sprintf("%064x", otherSchoolStaffPrincipalID)
+	refreshRepo := repository.NewPrincipalRefreshSessionRepository(pool)
+	if err := refreshRepo.CreatePrincipalInTx(ctx, tx, otherSchoolStaffPrincipalID,
+		otherSchoolSessionHash, time.Now().Add(time.Hour)); err != nil {
+		t.Fatalf("create second-school staff refresh session: %v", err)
+	}
+
 	staffList := request(http.MethodGet, "/school/staff", accessToken)
 	if staffList.Code != http.StatusOK ||
 		!strings.Contains(staffList.Body.String(), fmt.Sprintf(`"principal_id":%d`, staffCreatePayload.Staff.PrincipalID)) {
 		t.Fatalf("School Admin should list the newly created same-school staff account: status=%d body=%s",
 			staffList.Code, staffList.Body.String())
+	}
+	if strings.Contains(staffList.Body.String(), otherSchoolUsername) ||
+		strings.Contains(staffList.Body.String(), fmt.Sprintf(`"principal_id":%d`, otherSchoolStaffPrincipalID)) {
+		t.Fatalf("School Admin staff listing leaked a different school's account: %s", staffList.Body.String())
+	}
+
+	crossSchoolDisable := request(http.MethodDelete,
+		fmt.Sprintf("/school/staff/%d", otherSchoolStaffPrincipalID), accessToken)
+	if crossSchoolDisable.Code != http.StatusNotFound {
+		t.Fatalf("cross-school staff disable must be indistinguishable from missing target: status=%d body=%s; want 404",
+			crossSchoolDisable.Code, crossSchoolDisable.Body.String())
+	}
+	var otherUserStatus, otherPrincipalStatus string
+	var otherTokenVersion int64
+	var otherSessionRevoked bool
+	if err := tx.QueryRow(ctx, `
+		SELECT u.status, ap.status, ap.token_version,
+		       EXISTS (SELECT 1 FROM refresh_sessions WHERE token_hash = $3 AND revoked_at IS NOT NULL)
+		  FROM users u JOIN auth_principals ap ON ap.id = u.principal_id
+		 WHERE u.id = $1 AND ap.id = $2
+	`, otherSchoolStaffUserID, otherSchoolStaffPrincipalID, otherSchoolSessionHash).Scan(
+		&otherUserStatus, &otherPrincipalStatus, &otherTokenVersion, &otherSessionRevoked,
+	); err != nil {
+		t.Fatalf("verify cross-school disable had no credential side effects: %v", err)
+	}
+	if otherUserStatus != "active" || otherPrincipalStatus != "active" ||
+		otherTokenVersion != 1 || otherSessionRevoked {
+		t.Fatalf("cross-school disable changed target account or credentials: user=%q principal=%q token_version=%d session_revoked=%v",
+			otherUserStatus, otherPrincipalStatus, otherTokenVersion, otherSessionRevoked)
+	}
+	var crossSchoolAuditCount int
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*) FROM audit_events
+		 WHERE actor_principal_id = $1 AND action = 'staff.account.disabled'
+		   AND resource_type = 'staff_user' AND resource_id = $2 AND outcome = 'success'
+	`, principalID, fmt.Sprint(otherSchoolStaffUserID)).Scan(&crossSchoolAuditCount); err != nil {
+		t.Fatalf("check cross-school disable audit side effects: %v", err)
+	}
+	if crossSchoolAuditCount != 0 {
+		t.Fatalf("cross-school disable must not emit a successful audit event; got %d", crossSchoolAuditCount)
 	}
 
 	// The service must reject self-disable even when the caller has the
@@ -374,7 +441,6 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	}
 
 	staffSessionHash := fmt.Sprintf("%064x", staffCreatePayload.Staff.PrincipalID)
-	refreshRepo := repository.NewPrincipalRefreshSessionRepository(pool)
 	if err := refreshRepo.CreatePrincipalInTx(ctx, tx, staffCreatePayload.Staff.PrincipalID,
 		staffSessionHash, time.Now().Add(time.Hour)); err != nil {
 		t.Fatalf("create refresh session for HTTP staff-disable test: %v", err)
