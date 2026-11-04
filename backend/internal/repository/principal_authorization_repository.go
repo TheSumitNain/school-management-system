@@ -357,11 +357,11 @@ family_state AS (
 ),
 touch AS (
     UPDATE refresh_sessions rs
-       SET last_activity_at=NOW()
+       SET last_activity_at=clock_timestamp()
       FROM admin_principal a, family_state f
      WHERE a.is_admin AND f.principal_id=a.id AND f.family_id=rs.family_id
        AND rs.revoked_at IS NULL AND rs.expires_at>NOW()
-       AND f.last_activity>NOW()-INTERVAL '30 minutes'
+       AND f.last_activity>clock_timestamp()-INTERVAL '30 minutes'
     RETURNING rs.id
 ),
 expired AS (
@@ -370,7 +370,7 @@ expired AS (
       FROM admin_principal a, family_state f
      WHERE a.is_admin AND f.principal_id=a.id AND f.family_id=rs.family_id
        AND rs.revoked_at IS NULL
-       AND f.last_activity<=NOW()-INTERVAL '30 minutes'
+       AND f.last_activity<=clock_timestamp()-INTERVAL '30 minutes'
     RETURNING rs.id
 ),
 audit AS (
