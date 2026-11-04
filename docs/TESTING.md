@@ -520,3 +520,18 @@ The test uses the real `services.TokenService` rather than a fake validator. It 
 Cross-school tenant/resource isolation, teacher class/section/subject assignment-scope authorization, and HTTP write-path coverage for delegation/override/role assignment remain explicit follow-up work.
 
 Verification: push run `41765751785` and Draft PR run `41765745170` on `ec55ea4` both passed V1–V16 migrations on ephemeral PostgreSQL 18, the full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and `go vet ./...`. No persistent user database was modified.
+
+
+## 18. Real JWT and cross-school RBAC administration integration — 2026-11-04
+
+The HTTP/PostgreSQL integration test now uses the real `services.TokenService` and a signed HS256 access token. It verifies that:
+
+- A valid signed token authenticates through the actual Gin middleware and PostgreSQL principal loader.
+- Altering a meaningful base64url signature character causes the middleware to return `401 Unauthorized`.
+- The valid token reaches live PostgreSQL-backed permission checks: no role grants produce 403, a database-trigger-authorized School Admin grant permits the real role-list handler (200), and incrementing the database token version revokes the existing access token (401).
+
+The role-administration PostgreSQL integration test now provisions a second school inside its rollback-scoped transaction. It verifies that a School A School Admin cannot list or create School B roles, inspect School B staff role assignments or permission overrides, assign a School A role to School B staff, or apply a School A permission override to School B staff. Foreign-school list queries return no foreign records; mutation attempts are rejected.
+
+Verification: push run `41766408925` and Draft PR run `41766414685` on `c7dd5ce` both passed V1–V16 migrations on ephemeral PostgreSQL 18, the full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and `go vet ./...`.
+
+Scope limitation: these checks establish JWT signature validation and cross-school isolation for RBAC administration repositories/routes. They do not establish tenant isolation for future student, attendance, timetable, homework, fee, or other business-resource APIs. Teacher class/section/subject assignment scope remains untestable until the academic-domain model and corresponding APIs exist. All CI fixtures are transaction-scoped; no persistent user database is modified.
