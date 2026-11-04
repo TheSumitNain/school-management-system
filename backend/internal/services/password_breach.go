@@ -33,6 +33,7 @@ type breachCacheEntry struct {
 
 type HIBPPasswordBreachChecker struct {
 	client *http.Client
+	endpoint string
 	mu sync.RWMutex
 	cache map[string]breachCacheEntry
 }
@@ -43,6 +44,7 @@ func NewHIBPPasswordBreachChecker(client *http.Client) *HIBPPasswordBreachChecke
 	}
 	return &HIBPPasswordBreachChecker{
 		client: client,
+		endpoint: "https://api.pwnedpasswords.com",
 		cache: make(map[string]breachCacheEntry),
 	}
 }
@@ -66,7 +68,7 @@ func (c *HIBPPasswordBreachChecker) IsCompromised(ctx context.Context, password 
 
 	// HIBP's range API receives only the first five SHA-1 hex characters.
 	// The remaining suffix is compared locally and is never sent over the wire.
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.pwnedpasswords.com/range/"+prefix, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(c.endpoint, "/")+"/range/"+prefix, nil)
 	if err != nil {
 		return false, fmt.Errorf("build password range request: %w", err)
 	}
