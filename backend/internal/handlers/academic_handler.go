@@ -32,6 +32,11 @@ type AcademicManagementService interface {
 	ListStudentEnrollments(context.Context,int64,int64,int64,int64)([]repository.StudentEnrollment,error)
 	CreateStudentEnrollment(context.Context,int64,int64,int64,int64,int64,*string,time.Time)(*repository.StudentEnrollment,error)
 	PromoteStudentEnrollment(context.Context,int64,int64,int64,int64,int64,*string,time.Time)(*repository.StudentEnrollment,error)
+	ListStudents(context.Context,int64,int64,string,string,int,int)([]repository.StudentProfile,int64,error)
+	GetStudent(context.Context,int64,int64,int64)(*repository.StudentProfile,error)
+	CreateStudent(context.Context,int64,int64,string,string)(*repository.StudentProfile,error)
+	UpdateStudent(context.Context,int64,int64,int64,string)(*repository.StudentProfile,error)
+	ArchiveStudent(context.Context,int64,int64,int64)(*repository.StudentProfile,error)
 }
 
 type AcademicHandler struct { service AcademicManagementService }
@@ -194,4 +199,78 @@ func (h *AcademicHandler) PromoteStudentEnrollment(c *gin.Context) {
 	item, err := h.service.PromoteStudentEnrollment(c.Request.Context(), actor, school, sourceID, req.AcademicYearID, req.SectionID, req.RollNumber, date)
 	if err != nil { academicError(c, err, "Student promotion"); return }
 	c.JSON(http.StatusCreated, gin.H{"status":"success","enrollment":item})
+}
+
+func (h *AcademicHandler) ListStudents(c *gin.Context) {
+	actor, school, ok := h.ready(c)
+	if !ok { return }
+	limit := 50
+	offset := 0
+	if raw := c.Query("limit"); raw != "" {
+		value, err := strconv.Atoi(raw)
+		if err != nil { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid limit"}); return }
+		limit = value
+	}
+	if raw := c.Query("offset"); raw != "" {
+		value, err := strconv.Atoi(raw)
+		if err != nil { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid offset"}); return }
+		offset = value
+	}
+	items, total, err := h.service.ListStudents(c.Request.Context(), actor, school,
+		c.Query("q"), c.Query("status"), limit, offset)
+	if err != nil { academicError(c, err, "Student"); return }
+	c.JSON(http.StatusOK, gin.H{"status":"success","students":items,"pagination":gin.H{
+		"limit":limit,"offset":offset,"total":total,
+	}})
+}
+
+func (h *AcademicHandler) GetStudent(c *gin.Context) {
+	actor, school, ok := h.ready(c)
+	if !ok { return }
+	studentID, valid := academicID(c, "studentID")
+	if !valid { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid student ID"}); return }
+	item, err := h.service.GetStudent(c.Request.Context(), actor, school, studentID)
+	if err != nil { academicError(c, err, "Student"); return }
+	c.JSON(http.StatusOK, gin.H{"status":"success","student":item})
+}
+
+func (h *AcademicHandler) CreateStudent(c *gin.Context) {
+	actor, school, ok := h.ready(c)
+	if !ok { return }
+	var req struct {
+		AdmissionNumber string `json:"admission_number"`
+		FullName string `json:"full_name"`
+	}
+	if c.ShouldBindJSON(&req) != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid request body"})
+		return
+	}
+	item, err := h.service.CreateStudent(c.Request.Context(), actor, school, req.AdmissionNumber, req.FullName)
+	if err != nil { academicError(c, err, "Student"); return }
+	c.JSON(http.StatusCreated, gin.H{"status":"success","student":item})
+}
+
+func (h *AcademicHandler) UpdateStudent(c *gin.Context) {
+	actor, school, ok := h.ready(c)
+	if !ok { return }
+	studentID, valid := academicID(c, "studentID")
+	if !valid { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid student ID"}); return }
+	var req struct { FullName string `json:"full_name"` }
+	if c.ShouldBindJSON(&req) != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid request body"})
+		return
+	}
+	item, err := h.service.UpdateStudent(c.Request.Context(), actor, school, studentID, req.FullName)
+	if err != nil { academicError(c, err, "Student"); return }
+	c.JSON(http.StatusOK, gin.H{"status":"success","student":item})
+}
+
+func (h *AcademicHandler) ArchiveStudent(c *gin.Context) {
+	actor, school, ok := h.ready(c)
+	if !ok { return }
+	studentID, valid := academicID(c, "studentID")
+	if !valid { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid student ID"}); return }
+	item, err := h.service.ArchiveStudent(c.Request.Context(), actor, school, studentID)
+	if err != nil { academicError(c, err, "Student"); return }
+	c.JSON(http.StatusOK, gin.H{"status":"success","student":item})
 }
