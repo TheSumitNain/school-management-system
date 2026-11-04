@@ -91,7 +91,7 @@ func (c *HIBPPasswordBreachChecker) IsCompromised(ctx context.Context, password 
 		if len(parts) != 2 || len(parts[0]) != 35 {
 			return false, fmt.Errorf("password range service returned malformed data")
 		}
-		if _, err := hex.DecodeString(parts[0]); err != nil {
+		if strings.Trim(parts[0], "0123456789ABCDEFabcdef") != "" {
 			return false, fmt.Errorf("password range service returned malformed hash suffix")
 		}
 		count, err := strconv.Atoi(parts[1])
