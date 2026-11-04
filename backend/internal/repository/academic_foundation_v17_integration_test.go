@@ -305,6 +305,24 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 	`, schoolID, year2, section2, teacherPrincipalID, actorPrincipalID); err != nil {
 		t.Fatalf("assign class in-charge teacher: %v", err)
 	}
+
+	// Basic enrollment reads must be constrained to the teacher's currently
+	// assigned sections, even when the teacher has school-level read_basic.
+	teacherAcademicRepo := NewAcademicRepository(tx)
+	teacherEnrollments, err := teacherAcademicRepo.ListStudentEnrollments(ctx, teacherPrincipalID, schoolID, 0, 0)
+	if err != nil {
+		t.Fatalf("list teacher's assigned-section enrollments: %v", err)
+	}
+	if len(teacherEnrollments) != 1 || teacherEnrollments[0].SectionID != section2 {
+		t.Fatalf("teacher enrollment scope = %+v; want only assigned section %d", teacherEnrollments, section2)
+	}
+	unassignedHistory, err := teacherAcademicRepo.ListStudentEnrollments(ctx, teacherPrincipalID, schoolID, 0, studentID)
+	if err != nil {
+		t.Fatalf("read history for unassigned student section: %v", err)
+	}
+	if len(unassignedHistory) != 1 || unassignedHistory[0].SectionID != section2 {
+		t.Fatalf("teacher student history exposed unassigned sections: %+v", unassignedHistory)
+	}
 	expectRejected("second active class-in-charge", func() error {
 		_, err := tx.Exec(ctx, `INSERT INTO class_incharge_assignments (school_id, academic_year_id, section_id, teacher_principal_id, assigned_by_principal_id) VALUES ($1, $2, $3, $4, $5)`, schoolID, year2, section2, teacherPrincipalID, actorPrincipalID)
 		return err
