@@ -872,7 +872,8 @@ Guardian contact and student-guardian relationship APIs are implemented below. P
 
 - GET `/school/attendance?academic_year_id=1&section_id=2&date=2026-11-04` lists attendance within the caller's permitted school and section scope. Filters are optional; results are capped at 1,000 records.
 - POST `/school/attendance` records one status for an enrollment and date. JSON: `{"enrollment_id":12,"attendance_date":"2026-11-04","status":"present","remarks":"optional"}`.
-- PATCH `/school/attendance/:attendanceID` corrects status and remarks. JSON: `{"status":"late","remarks":"optional"}`.
+- PATCH `/school/attendance/:attendanceID` updates same-day status/remarks and requires `attendance.update_same_day`.
+- PATCH `/school/attendance/:attendanceID/correct` corrects historical status/remarks and requires `attendance.correct_past`. JSON: `{"status":"late","remarks":"optional"}`.
 - Status values: `present`, `absent`, `late`, `excused`. Only one record is allowed per enrollment/date.
 - School Admin access is school-scoped. Teachers are restricted to sections with an active class-in-charge assignment; subject-only assignments do not grant attendance access.
 - Same-day changes require `attendance.update_same_day`; past-date entries/corrections require `attendance.correct_past`. Future dates and dates outside the enrollment period are rejected. Every write creates an audit event.

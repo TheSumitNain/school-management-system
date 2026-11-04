@@ -602,3 +602,23 @@ func TestAttendanceRoutesEnforceReadAndMarkPermissions(t *testing.T) {
 		})
 	}
 }
+
+
+func TestAttendanceCorrectionRouteEnforcesDedicatedPermission(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	validator:=fakeTokenValidator{claims:&services.TokenClaims{RegisteredClaims:jwt.RegisteredClaims{Subject:"31"},PrincipalType:"staff",TokenVersion:1}}
+	principal:=&models.AuthPrincipal{ID:31,Type:"staff",Status:"active",TokenVersion:1,SchoolID:8,Username:"school.staff"}
+	routerFor:=func(perms []string)*gin.Engine{
+		router,err:=setupRouterWithHandlers(fakeDatabase{},nil,validator,fakePrincipalLoader{principal:principal},
+			fakePermissionLoader{permissions:perms},nil,nil,nil,nil,nil,handlers.NewAttendanceHandler(nil))
+		if err!=nil{t.Fatalf("setup router: %v",err)}
+		return router
+	}
+	request:=func(perms []string)*httptest.ResponseRecorder{
+		req:=httptest.NewRequest(http.MethodPatch,"/school/attendance/7/correct",strings.NewReader(`{"status":"absent"}`))
+		req.Header.Set("Authorization","Bearer valid-test-token");req.Header.Set("Content-Type","application/json")
+		rec:=httptest.NewRecorder();routerFor(perms).ServeHTTP(rec,req);return rec
+	}
+	if got:=request(nil);got.Code!=http.StatusForbidden{t.Fatalf("without attendance.correct_past: %d %s",got.Code,got.Body.String())}
+	if got:=request([]string{"attendance.correct_past"});got.Code!=http.StatusServiceUnavailable{t.Fatalf("with attendance.correct_past should reach handler: %d %s",got.Code,got.Body.String())}
+}

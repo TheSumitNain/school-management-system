@@ -225,7 +225,8 @@ func setupRouterWithHandlers(
 		attendanceAuth := middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader)
 		router.GET("/school/attendance", attendanceAuth, middleware.RequirePermission("attendance.read"), attendanceHandler.List)
 		router.POST("/school/attendance", attendanceAuth, middleware.RequirePermission("attendance.mark"), attendanceHandler.Mark)
-		router.PATCH("/school/attendance/:attendanceID", attendanceAuth, attendanceHandler.Update)
+		router.PATCH("/school/attendance/:attendanceID", attendanceAuth, middleware.RequirePermission("attendance.update_same_day"), attendanceHandler.Update)
+		router.PATCH("/school/attendance/:attendanceID/correct", attendanceAuth, middleware.RequirePermission("attendance.correct_past"), attendanceHandler.Update)
 	}
 
 	if guardianHandler != nil {
