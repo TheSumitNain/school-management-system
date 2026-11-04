@@ -13,6 +13,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+var ErrPrincipalVersionChanged = errors.New("principal credentials changed during authentication")
+
 type PrincipalRefreshSessionRepository struct {
 	db *pgxpool.Pool
 }
@@ -29,6 +31,31 @@ func (r *PrincipalRefreshSessionRepository) CreatePrincipal(
 	tokenHash string,
 	expiresAt time.Time,
 ) error {
+	return r.createPrincipal(ctx, principalID, 0, tokenHash, expiresAt)
+}
+
+// CreatePrincipalForVersion creates a refresh session only if the principal's
+// current token version still matches the version observed during authentication.
+// This closes the login/password-change race between credential verification
+// and refresh-session persistence.
+func (r *PrincipalRefreshSessionRepository) CreatePrincipalForVersion(
+	ctx context.Context,
+	principalID, expectedTokenVersion int64,
+	tokenHash string,
+	expiresAt time.Time,
+) error {
+	if expectedTokenVersion <= 0 {
+		return fmt.Errorf("invalid expected principal token version")
+	}
+	return r.createPrincipal(ctx, principalID, expectedTokenVersion, tokenHash, expiresAt)
+}
+
+func (r *PrincipalRefreshSessionRepository) createPrincipal(
+	ctx context.Context,
+	principalID, expectedTokenVersion int64,
+	tokenHash string,
+	expiresAt time.Time,
+) error {
 	if principalID <= 0 || !isSHA256Hash(tokenHash) || !expiresAt.After(time.Now()) {
 		return fmt.Errorf("invalid refresh session data")
 	}
@@ -37,7 +64,7 @@ func (r *PrincipalRefreshSessionRepository) CreatePrincipal(
 		return fmt.Errorf("begin refresh-session creation: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	if err := r.CreatePrincipalInTx(ctx, tx, principalID, tokenHash, expiresAt); err != nil {
+	if err := r.createPrincipalInTx(ctx, tx, principalID, expectedTokenVersion, tokenHash, expiresAt); err != nil {
 		return err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -53,6 +80,31 @@ func (r *PrincipalRefreshSessionRepository) CreatePrincipalInTx(
 	ctx context.Context,
 	tx pgx.Tx,
 	principalID int64,
+	tokenHash string,
+	expiresAt time.Time,
+) error {
+	return r.createPrincipalInTx(ctx, tx, principalID, 0, tokenHash, expiresAt)
+}
+
+// CreatePrincipalForVersionInTx applies the same token-version check inside a
+// caller-owned transaction.
+func (r *PrincipalRefreshSessionRepository) CreatePrincipalForVersionInTx(
+	ctx context.Context,
+	tx pgx.Tx,
+	principalID, expectedTokenVersion int64,
+	tokenHash string,
+	expiresAt time.Time,
+) error {
+	if expectedTokenVersion <= 0 {
+		return fmt.Errorf("invalid expected principal token version")
+	}
+	return r.createPrincipalInTx(ctx, tx, principalID, expectedTokenVersion, tokenHash, expiresAt)
+}
+
+func (r *PrincipalRefreshSessionRepository) createPrincipalInTx(
+	ctx context.Context,
+	tx pgx.Tx,
+	principalID, expectedTokenVersion int64,
 	tokenHash string,
 	expiresAt time.Time,
 ) error {
@@ -118,6 +170,9 @@ FOR UPDATE OF ap`
 	}
 	if err != nil {
 		return fmt.Errorf("load principal for refresh-session creation: %w", err)
+	}
+	if expectedTokenVersion > 0 && tokenVersion != expectedTokenVersion {
+		return ErrPrincipalVersionChanged
 	}
 
 	active := principalStatus == "active" && tokenVersion > 0 && mfaVerified
