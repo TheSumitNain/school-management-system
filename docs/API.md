@@ -18,7 +18,7 @@ The backend uses Go, Gin, and PostgreSQL.
 - POST /platform/schools creates a school and its first School Admin transactionally, protected by platform.schools.create and platform.school_admins.create.
 - V13 provisions the fixed School Admin and Teacher system roles for newly created schools.
 - V14 contains a source-only one-time first Platform Admin bootstrap migration and CLI; it is not yet PostgreSQL-verified or approved for application.
-- Academic Year, Class, Section, Subject, teacher-subject assignment, and class-in-charge assignment APIs are implemented with school-scoped repository authorization, audited writes, and PostgreSQL integration coverage. Student enrollment/promotion APIs, attendance, timetable, examinations, results, notices, and frontend workflows remain pending.
+- Academic Year, Class, Section, Subject, teacher-subject assignment, class-in-charge assignment, student enrollment, promotion, and enrollment-history APIs are implemented with school-scoped repository authorization, audited writes, and PostgreSQL integration coverage. Student profile/guardian management APIs, attendance, timetable, examinations, results, notices, and frontend workflows remain pending.
 
 **Important:** An implemented authentication endpoint does not mean that the full authorization system or every production security control is implemented. Verify code and tests before treating a feature as complete.
 
@@ -435,6 +435,61 @@ Create request:
 The list endpoint optionally accepts `academic_year_id`. At most one active class-in-charge assignment can exist per section. PostgreSQL enforces the same-school active Teacher identity and non-closed academic-year constraints. DELETE performs a one-way revocation and preserves the assignment history.
 
 Academic create/update conflicts return `409 Conflict`; invalid input or database-enforced academic eligibility failures return `400 Bad Request`; missing school-scoped resources return `404 Not Found`; missing permissions or invalid assignment actors return `403 Forbidden`.
+
+
+#### Student enrollment, promotion, and history
+
+| Method | Endpoint | Permission |
+|---|---|---|
+| GET | `/school/enrollments` | `students.read_basic` |
+| POST | `/school/enrollments` | `students.create` |
+| GET | `/school/students/:studentID/enrollments` | `students.read_basic` |
+| POST | `/school/enrollments/:enrollmentID/promote` | `students.update` |
+
+List current/historical enrollment rows for the school, optionally filtered by `academic_year_id`:
+
+```http
+GET /school/enrollments?academic_year_id=1
+```
+
+Create an initial enrollment for an existing active student:
+
+```json
+{
+  "student_id": 42,
+  "academic_year_id": 1,
+  "section_id": 7,
+  "roll_number": "12",
+  "enrolled_at": "2028-04-01"
+}
+```
+
+The section determines its class; clients cannot supply a class ID or school ID. The student must be active and belong to the authenticated school. The academic year must be active, and the section must be active and belong to that year and school. Enrollment dates use `YYYY-MM-DD`. A student can have only one enrollment row per academic year; duplicate admission to the same year returns `409 Conflict`.
+
+Read a student's complete school-scoped enrollment history:
+
+```http
+GET /school/students/42/enrollments
+```
+
+Promote an actively enrolled student into a different active academic year and destination section:
+
+```http
+POST /school/enrollments/15/promote
+Content-Type: application/json
+
+{
+  "academic_year_id": 2,
+  "section_id": 9,
+  "roll_number": "08",
+  "enrolled_at": "2029-04-01"
+}
+```
+
+Promotion is one transaction: the source enrollment transitions from `active` to `promoted` with its end date, and a new enrollment row is inserted for the destination year. If either operation or its audit write fails, the entire transaction rolls back. Enrollment-time class and section names are snapshotted by PostgreSQL and are never rewritten when catalogue names later change. Enrollment history cannot be deleted or re-homed. A destination year must differ from the source year, and the promotion date cannot precede the original enrollment date.
+
+These endpoints manage placement for an existing student record. Student profile/admission creation and guardian management APIs are separate pending work; no public student self-registration is provided.
+
 
 ## 4. HTTP Status Codes
 
