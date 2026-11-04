@@ -80,7 +80,7 @@ func (s *StaffPasswordService) ResetPassword(
 		schoolID <= 0 || targetPrincipalID <= 0 || actorPrincipalID == targetPrincipalID {
 		return ErrInvalidRegistration
 	}
-	newHash, err := HashPassword(newPassword)
+	newHash, err := hashPasswordWithChecker(ctx, newPassword, s.breachChecker)
 	if err != nil {
 		return err
 	}
