@@ -18,6 +18,7 @@ var ErrPrincipalNotAuthenticated = models.ErrPrincipalNotAuthenticated
 const (
 	ContextPrincipalIDKey   = "auth_principal_id"
 	ContextPrincipalTypeKey = "auth_principal_type"
+	ContextTokenVersionKey = "auth_token_version"
 	ContextSchoolIDKey      = "auth_school_id"
 	ContextUsernameKey      = "auth_username"
 	ContextPermissionsKey   = "auth_permissions"
@@ -80,6 +81,7 @@ func AuthMiddleware(tokenService AccessTokenValidator, principals PrincipalLoade
 
 		c.Set(ContextPrincipalIDKey, principal.ID)
 		c.Set(ContextPrincipalTypeKey, principal.Type)
+		c.Set(ContextTokenVersionKey, principal.TokenVersion)
 		c.Set(ContextMustChangePasswordKey, principal.MustChangePassword)
 
 		// Temporary-password staff sessions are deliberately restricted to
