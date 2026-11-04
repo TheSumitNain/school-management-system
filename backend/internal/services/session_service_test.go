@@ -65,7 +65,7 @@ func TestIssueStoresOnlyTokenHash(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	rawToken, err := service.Issue(context.Background(), 12)
+	rawToken, err := service.Issue(context.Background(), &models.AuthPrincipal{ID: 12, Type: "staff", Status: "active", TokenVersion: 1, SchoolID: 3})
 	if err != nil {
 		t.Fatalf("Issue() error: %v", err)
 	}
@@ -83,14 +83,14 @@ func TestIssueStoresOnlyTokenHash(t *testing.T) {
 	}
 }
 
-func TestIssueForPrincipalBindsExpectedTokenVersion(t *testing.T) {
+func TestIssueBindsExpectedTokenVersion(t *testing.T) {
 	repo := &fakeRefreshSessionRepository{}
 	service, err := NewSessionService(repo, 7)
 	if err != nil {
 		t.Fatal(err)
 	}
 	principal := &models.AuthPrincipal{ID: 42, Type: "staff", Status: "active", TokenVersion: 7, SchoolID: 3}
-	rawToken, err := service.IssueForPrincipal(context.Background(), principal)
+	rawToken, err := service.Issue(context.Background(), principal)
 	if err != nil {
 		t.Fatalf("IssueForPrincipal() error: %v", err)
 	}
@@ -104,7 +104,7 @@ func TestIssueForPrincipalBindsExpectedTokenVersion(t *testing.T) {
 	}
 }
 
-func TestIssueForPrincipalRejectsMissingOrStaleIdentity(t *testing.T) {
+func TestIssueRejectsMissingOrStaleIdentity(t *testing.T) {
 	service, err := NewSessionService(&fakeRefreshSessionRepository{}, 7)
 	if err != nil {
 		t.Fatal(err)
@@ -114,7 +114,7 @@ func TestIssueForPrincipalRejectsMissingOrStaleIdentity(t *testing.T) {
 		{ID: 1, Type: "staff", Status: "active", TokenVersion: 0, SchoolID: 2},
 		{ID: 1, Type: "staff", Status: "disabled", TokenVersion: 1, SchoolID: 2},
 	} {
-		if _, err := service.IssueForPrincipal(context.Background(), principal); err == nil {
+		if _, err := service.Issue(context.Background(), principal); err == nil {
 			t.Fatalf("IssueForPrincipal(%+v) should reject invalid principal", principal)
 		}
 	}
