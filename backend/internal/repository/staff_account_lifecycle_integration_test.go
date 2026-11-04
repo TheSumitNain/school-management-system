@@ -143,9 +143,30 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
 		t.Fatalf("updated username = %q, want %q", updated.Username, renamedUsername)
 	}
 
+	// Seed a live refresh session in the same outer transaction before disable.
+	// The repository must serialize with refresh rotation and revoke this session
+	// atomically with principal deactivation.
+	sessionHash := integrationTokenHash("staff-lifecycle-disable-" + suffix)
+	sessions := NewPrincipalRefreshSessionRepository(pool)
+	if err := sessions.CreatePrincipalInTx(ctx, tx, created.PrincipalID, sessionHash, time.Now().Add(time.Hour)); err != nil {
+		t.Fatalf("create target refresh session before disable: %v", err)
+	}
+
 	if err := repo.DisableStaffAccount(ctx, actorPrincipalID, schoolID, created.PrincipalID); err != nil {
 		t.Fatalf("authorized staff account disable failed: %v", err)
 	}
+	var sessionRevoked bool
+	if err := tx.QueryRow(ctx, `
+		SELECT revoked_at IS NOT NULL
+		  FROM refresh_sessions
+		 WHERE token_hash = $1
+	`, sessionHash).Scan(&sessionRevoked); err != nil {
+		t.Fatalf("read target refresh session after disable: %v", err)
+	}
+	if !sessionRevoked {
+		t.Fatal("successful staff disable must revoke every active refresh session")
+	}
+
 	var userStatus, principalStatus string
 	if err := tx.QueryRow(ctx, `
 		SELECT u.status, ap.status
