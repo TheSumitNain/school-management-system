@@ -378,6 +378,14 @@ func (h *AuthHandler) ChangeStaffPassword(c *gin.Context) {
 		writeAuthError(c, http.StatusUnauthorized, "Current password is incorrect")
 	case errors.Is(err, services.ErrInvalidPassword):
 		writeAuthError(c, http.StatusBadRequest, "New password must meet the password policy")
+	case errors.Is(err, services.ErrCompromisedPassword):
+		writeAuthError(c, http.StatusBadRequest, "This password has appeared in known data breaches. Choose a different password.")
+	case errors.Is(err, services.ErrPasswordBreachCheckUnavailable):
+		writeAuthError(c, http.StatusServiceUnavailable, "Password safety verification is temporarily unavailable. Try again shortly.")
+	case errors.Is(err, services.ErrCompromisedPassword):
+		writeAuthError(c, http.StatusBadRequest, "This password has appeared in known data breaches. Choose a different password.")
+	case errors.Is(err, services.ErrPasswordBreachCheckUnavailable):
+		writeAuthError(c, http.StatusServiceUnavailable, "Password safety verification is temporarily unavailable. Try again shortly.")
 	case errors.Is(err, services.ErrPasswordUnchanged):
 		writeAuthError(c, http.StatusBadRequest, "New password must differ from the current password")
 	case errors.Is(err, services.ErrPasswordChangeConflict):
