@@ -18,10 +18,12 @@ var (
 	ErrInvalidRefreshToken    = repository.ErrRefreshTokenInvalid
 	ErrRefreshTokenReuse      = repository.ErrRefreshTokenReuse
 	ErrRefreshSessionInactive = repository.ErrRefreshSessionInactive
+	ErrSessionPrincipalVersionChanged = repository.ErrPrincipalVersionChanged
 )
 
 type refreshSessionRepository interface {
 	CreatePrincipal(ctx context.Context, principalID int64, tokenHash string, expiresAt time.Time) error
+	CreatePrincipalForVersion(ctx context.Context, principalID, expectedTokenVersion int64, tokenHash string, expiresAt time.Time) error
 	RotatePrincipal(ctx context.Context, oldTokenHash, newTokenHash string, newExpiresAt time.Time) (*models.AuthPrincipal, error)
 	RevokePrincipal(ctx context.Context, tokenHash string) error
 }
@@ -51,6 +53,25 @@ func (s *SessionService) Issue(ctx context.Context, principalID int64) (string, 
 		return "", err
 	}
 	if err := s.sessions.CreatePrincipal(ctx, principalID, HashRefreshToken(raw), time.Now().Add(s.expiry)); err != nil {
+		return "", err
+	}
+	return raw, nil
+}
+
+// IssueForPrincipal binds session creation to the exact principal version
+// returned by password/MFA authentication. A concurrent credential reset or
+// account-security change therefore invalidates the in-flight login.
+func (s *SessionService) IssueForPrincipal(ctx context.Context, principal *models.AuthPrincipal) (string, error) {
+	if principal == nil || principal.ID <= 0 || principal.TokenVersion <= 0 || principal.Status != "active" {
+		return "", fmt.Errorf("valid authenticated principal is required")
+	}
+	raw, err := generateOpaqueRefreshToken()
+	if err != nil {
+		return "", err
+	}
+	if err := s.sessions.CreatePrincipalForVersion(
+		ctx, principal.ID, principal.TokenVersion, HashRefreshToken(raw), time.Now().Add(s.expiry),
+	); err != nil {
 		return "", err
 	}
 	return raw, nil
