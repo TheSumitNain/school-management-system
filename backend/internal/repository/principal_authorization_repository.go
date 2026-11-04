@@ -344,6 +344,8 @@ WITH admin_principal AS (
 ),
 family_lock AS MATERIALIZED (
     SELECT pg_advisory_xact_lock(hashtextextended($2,0))
+    FROM admin_principal
+    WHERE is_admin
 ),
 family_state AS (
     SELECT rs.family_id, rs.principal_id,
