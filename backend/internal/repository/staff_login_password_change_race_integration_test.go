@@ -30,7 +30,7 @@ func TestLoginSessionIssuanceRejectsStalePrincipalVersionPostgresIntegration(t *
 	var userID, principalID, initialTokenVersion int64
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO users (school_id, username, password_hash, status)
-		SELECT school_id, $2, $3, 'active'
+		SELECT school_id, $1, $2, 'active'
 		  FROM users
 		 ORDER BY id
 		 LIMIT 1
