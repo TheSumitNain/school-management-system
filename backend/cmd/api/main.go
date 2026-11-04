@@ -54,12 +54,15 @@ func setupRouterWithHandlers(
 ) (*gin.Engine, error) {
 	var staffHandler *handlers.StaffHandler
 	var academicHandler *handlers.AcademicHandler
+	var guardianHandler *handlers.GuardianHandler
 	for _, optional := range optionalHandlers {
 		switch handler := optional.(type) {
 		case *handlers.StaffHandler:
 			staffHandler = handler
 		case *handlers.AcademicHandler:
 			academicHandler = handler
+		case *handlers.GuardianHandler:
+			guardianHandler = handler
 		}
 	}
 	router := gin.Default()
@@ -213,6 +216,17 @@ func setupRouterWithHandlers(
 		router.POST("/school/enrollments", academicAuth, middleware.RequirePermission("students.create"), academic.CreateStudentEnrollment)
 		router.GET("/school/students/:studentID/enrollments", academicAuth, middleware.RequirePermission("students.read_basic"), academic.ListStudentEnrollmentHistory)
 		router.POST("/school/enrollments/:enrollmentID/promote", academicAuth, middleware.RequirePermission("students.update"), academic.PromoteStudentEnrollment)
+	}
+
+	if guardianHandler != nil {
+		guardianAuth := middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader)
+		router.GET("/school/guardians", guardianAuth, middleware.RequirePermission("guardians.read"), guardianHandler.ListGuardians)
+		router.POST("/school/guardians", guardianAuth, middleware.RequirePermission("guardians.manage"), guardianHandler.SaveGuardian)
+		router.GET("/school/guardians/:guardianID", guardianAuth, middleware.RequirePermission("guardians.read"), guardianHandler.GetGuardian)
+		router.PATCH("/school/guardians/:guardianID", guardianAuth, middleware.RequirePermission("guardians.manage"), guardianHandler.SaveGuardian)
+		router.GET("/school/students/:studentID/guardians", guardianAuth, middleware.RequirePermission("guardians.read"), guardianHandler.ListStudentGuardians)
+		router.POST("/school/students/:studentID/guardians", guardianAuth, middleware.RequirePermission("guardians.manage"), guardianHandler.LinkStudentGuardian)
+		router.POST("/school/student-guardian-links/:linkID/revoke", guardianAuth, middleware.RequirePermission("guardians.manage"), guardianHandler.RevokeStudentGuardianLink)
 	}
 
 	if authHandler != nil {
@@ -387,12 +401,14 @@ func run() error {
 	academicRepo := repository.NewAcademicRepository(db)
 	academicService := services.NewAcademicService(academicRepo)
 	academicHandler := handlers.NewAcademicHandler(academicService)
+	guardianService := services.NewGuardianService(academicRepo)
+	guardianHandler := handlers.NewGuardianHandler(guardianService)
 
 	staffAccountRepo := repository.NewUserRepository(db)
 	staffAccountService := services.NewStaffAccountService(staffAccountRepo)
 	staffHandler := handlers.NewStaffHandler(staffAccountService)
 
-	router, err := setupRouterWithHandlers(db, authHandler, tokenService, principalAuthorizationRepo, principalAuthorizationRepo, schoolOnboardingHandler, roleHandler, staffHandler, academicHandler)
+	router, err := setupRouterWithHandlers(db, authHandler, tokenService, principalAuthorizationRepo, principalAuthorizationRepo, schoolOnboardingHandler, roleHandler, staffHandler, academicHandler, guardianHandler)
 
 	if err != nil {
 		return fmt.Errorf("setup router: %w", err)
