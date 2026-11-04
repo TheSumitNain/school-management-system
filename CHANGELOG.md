@@ -305,3 +305,6 @@ This project is under active development. Verification results describe the late
 - Exposed `PlatformAdminRepository.BootstrapFirstInTx` for caller-owned atomic workflows; the integration test uses it only when the ephemeral test database has never been bootstrapped, and rolls the created account and audit event back with the test transaction.
 - Push run `41764671472` and Draft PR run `41764679462` on commit `d5e0c8d` passed migrations V1–V16 on ephemeral PostgreSQL 18, the full Go suite with PostgreSQL integration enabled, and `go vet ./...`.
 - The HTTP test still uses a controlled token validator; real JWT signature verification, cross-school tenant/resource isolation, and teacher assignment-scope authorization remain pending.
+
+- Strengthened the real HTTP/PostgreSQL RBAC integration test to assert exactly one success audit event for custom-role creation, permission grant/revocation, both Platform Admin delegation grant/revocation pairs, staff role assignment/revocation, and staff permission override set/removal. It also verifies rejected cross-school role assignment and permission override attempts create neither data rows nor success audit events.
+- Push run `41768691764` and Draft PR run `41768696622` on commit `17808905` both passed V1–V16 migrations, the full PostgreSQL integration-enabled Go suite, and `go vet ./...`.
