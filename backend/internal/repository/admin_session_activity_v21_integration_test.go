@@ -2,6 +2,8 @@ package repository
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"testing"
 	"time"
@@ -39,7 +41,8 @@ func TestAdminSessionActivityV21PostgresIntegration(t *testing.T) {
 	createFamily := func(label string) string {
 		t.Helper()
 		var familyID string
-		tokenHash := HashRefreshToken("admin-idle-v21-" + suffix + "-" + label)
+		tokenSum := sha256.Sum256([]byte("admin-idle-v21-" + suffix + "-" + label))
+		tokenHash := hex.EncodeToString(tokenSum[:])
 		err := pool.QueryRow(ctx, `
 			INSERT INTO refresh_sessions (principal_id,token_hash,expires_at)
 			VALUES ($1,$2,NOW()+INTERVAL '1 day')
