@@ -118,7 +118,7 @@ func (s *MFAService) CompleteEnrollment(ctx context.Context, challengeToken, cod
 		return 0, 0, nil, ErrMFAInvalid
 	}
 	codes, hashes, err := GenerateRecoveryCodes(10)
-	if err != nil { return 0, nil, err }
+	if err != nil { return 0, 0, nil, err }
 	if err := s.credentials.ActivateEnrollment(ctx, principalID, hash, tokenVersion, step, hashes); err != nil {
 		if errors.Is(err, repository.ErrMFAEnrollmentInvalid) { return 0, 0, nil, ErrMFAInvalid }
 		return 0, 0, nil, err
