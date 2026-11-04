@@ -33,6 +33,7 @@ type TokenService interface {
 
 type SessionService interface {
 	Issue(ctx context.Context, principalID int64) (string, error)
+	IssueForPrincipal(ctx context.Context, principal *models.AuthPrincipal) (string, error)
 	Rotate(ctx context.Context, refreshToken string) (*models.AuthPrincipal, string, error)
 	Revoke(ctx context.Context, refreshToken string) error
 }
@@ -186,7 +187,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		writeAuthError(c, http.StatusInternalServerError, "Unable to log in")
 		return
 	}
-	refreshToken, err := h.sessionService.Issue(c.Request.Context(), principal.ID)
+	refreshToken, err := h.sessionService.IssueForPrincipal(c.Request.Context(), principal)
 	if err != nil {
 		writeAuthError(c, http.StatusInternalServerError, "Unable to log in")
 		return
@@ -289,7 +290,7 @@ func (h *AuthHandler) issueMFASession(c *gin.Context, principalID int64, recover
 	}
 	accessToken,err:=h.tokenService.GenerateAccessToken(principal.ID,principal.TokenVersion,principal.Type)
 	if err!=nil { writeAuthError(c,http.StatusInternalServerError,"Unable to complete authentication"); return }
-	refreshToken,err:=h.sessionService.Issue(c.Request.Context(),principal.ID)
+	refreshToken,err:=h.sessionService.IssueForPrincipal(c.Request.Context(),principal)
 	if err!=nil { writeAuthError(c,http.StatusInternalServerError,"Unable to complete authentication"); return }
 	response := gin.H{"status":"success","access_token":accessToken,"refresh_token":refreshToken,"token_type":"Bearer","principal":toPrincipalResponse(principal)}
 	if len(recoveryCodes) > 0 { response["recovery_codes"] = recoveryCodes }
