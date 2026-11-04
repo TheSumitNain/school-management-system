@@ -596,3 +596,17 @@ The requests use real signed JWTs, mandatory MFA for Platform Admin and School A
 Verification: push run `41767598076` and Draft PR run `41767602833` on `d90ba9e` both passed V1–V16 migrations, the full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and `go vet ./...`.
 
 Remaining review should focus on HTTP failure-path responses, cross-school target IDs at the HTTP boundary, and audit/event assertions for these routes.
+
+
+## 23. Cross-school staff-target rejection at the HTTP boundary — 2026-11-04
+
+The real HTTP/PostgreSQL test creates a second school and an active staff principal belonging to that school. It then uses the School A administrator's valid signed token to attempt two operations against the foreign-school principal:
+
+- Assign a School A custom role to School B staff; expect HTTP 404.
+- Apply a School A delegated permission override to School B staff; expect HTTP 409.
+
+The test verifies that neither operation creates a cross-school assignment or override. This complements the repository-level cross-school tests and exercises the actual Gin middleware, handlers, services, and PostgreSQL repositories.
+
+Verification: push run `41767842024` and Draft PR run `41767846927` on `4bd8af4` both passed V1–V16 migrations, the full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and `go vet ./...`.
+
+This covers staff-target isolation for RBAC administration endpoints only; student, attendance, timetable, homework, fee, and other business-resource tenant boundaries remain future work.
