@@ -130,19 +130,36 @@ func newPostgresIntegrationRepository(
 		)
 		defer cleanupCancel()
 
+		cleanupTx, err := pool.Begin(cleanupCtx)
+		if err != nil {
+			t.Errorf("begin integration fixture cleanup: %v", err)
+			return
+		}
+		defer func() { _ = cleanupTx.Rollback(cleanupCtx) }()
+
 		if hasV4Schema {
-			_, _ = pool.Exec(cleanupCtx,
+			_, err = cleanupTx.Exec(cleanupCtx,
 				`DELETE FROM refresh_sessions WHERE principal_id = $1 OR user_id = $2`,
 				principalID, userID)
 		} else {
-			_, _ = pool.Exec(cleanupCtx,
+			_, err = cleanupTx.Exec(cleanupCtx,
 				`DELETE FROM refresh_sessions WHERE user_id = $1`, userID)
 		}
-		_, _ = pool.Exec(cleanupCtx, `DELETE FROM users WHERE id = $1`, userID)
-		if hasV4Schema {
-			_, _ = pool.Exec(cleanupCtx, `DELETE FROM auth_principals WHERE id = $1`, principalID)
+		if err == nil {
+			_, err = cleanupTx.Exec(cleanupCtx, `DELETE FROM users WHERE id = $1`, userID)
 		}
-		_, _ = pool.Exec(cleanupCtx, `DELETE FROM schools WHERE id = $1`, schoolID)
+		if err == nil && hasV4Schema {
+			_, err = cleanupTx.Exec(cleanupCtx, `DELETE FROM auth_principals WHERE id = $1`, principalID)
+		}
+		if err == nil {
+			_, err = cleanupTx.Exec(cleanupCtx, `DELETE FROM schools WHERE id = $1`, schoolID)
+		}
+		if err == nil {
+			err = cleanupTx.Commit(cleanupCtx)
+		}
+		if err != nil {
+			t.Errorf("clean up integration fixtures transactionally: %v", err)
+		}
 	})
 	return NewRefreshSessionRepository(pool), pool, userID
 }
