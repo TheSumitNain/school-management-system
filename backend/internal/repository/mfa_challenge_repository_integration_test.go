@@ -110,6 +110,24 @@ func TestMFAChallengeRepositoryPostgresIntegration(t *testing.T) {
 		_, _ = pool.Exec(ctx, "DELETE FROM principal_mfa_credentials WHERE principal_id=$1", principalID)
 	})
 
+	t.Run("stale principal version cannot create or consume a challenge", func(t *testing.T) {
+		hash := integrationTokenHash("mfa-stale-principal-version")
+		if err := repo.Create(ctx, principalID, tokenVersion+1, MFAChallengeLogin, hash, time.Now().Add(5*time.Minute)); !errors.Is(err, ErrPrincipalVersionChanged) {
+			t.Fatalf("stale challenge creation error = %v, want ErrPrincipalVersionChanged", err)
+		}
+		mfaRepo := NewMFARepository(pool)
+		liveHash := integrationTokenHash("mfa-live-challenge-wrong-version")
+		if err := repo.Create(ctx, principalID, tokenVersion, MFAChallengeLogin, liveHash, time.Now().Add(5*time.Minute)); err != nil {
+			t.Fatalf("create live challenge: %v", err)
+		}
+		if err := mfaRepo.ConsumeLoginChallenge(ctx, principalID, liveHash, tokenVersion+1, 12347); !errors.Is(err, ErrMFAEnrollmentInvalid) {
+			t.Fatalf("challenge consumption with stale version error = %v, want ErrMFAEnrollmentInvalid", err)
+		}
+		if _, err := repo.Get(ctx, liveHash); err != nil {
+			t.Fatalf("stale-version attempt must not consume the live challenge: %v", err)
+		}
+	})
+
 	t.Run("invalid purpose and expired expiry are rejected", func(t *testing.T) {
 		if err := repo.Create(ctx, principalID, tokenVersion, MFAChallengePurpose("other"), integrationTokenHash("mfa-invalid-purpose"), time.Now().Add(time.Minute)); err == nil {
 			t.Fatal("expected invalid purpose to be rejected")
