@@ -94,6 +94,8 @@ CREATE TABLE student_enrollments (
     class_id BIGINT NOT NULL,
     section_id BIGINT NOT NULL,
     roll_number VARCHAR(30),
+    class_name_snapshot VARCHAR(100) NOT NULL,
+    section_name_snapshot VARCHAR(40) NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'active'
         CHECK (status IN ('active', 'promoted', 'transferred', 'withdrawn')),
     enrolled_at DATE NOT NULL DEFAULT CURRENT_DATE,
@@ -253,6 +255,35 @@ BEFORE INSERT OR UPDATE OF school_id, teacher_principal_id, assigned_by_principa
 ON class_incharge_assignments
 FOR EACH ROW EXECUTE FUNCTION validate_v17_teacher_assignment();
 
+-- Capture the display labels at enrollment time so later class/section
+-- renames never rewrite the student's historical academic record.
+CREATE OR REPLACE FUNCTION snapshot_v17_enrollment_labels()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public
+AS $v17$
+BEGIN
+    SELECT c.name, s.name
+      INTO NEW.class_name_snapshot, NEW.section_name_snapshot
+      FROM public.classes c
+      JOIN public.sections s
+        ON s.class_id = c.id
+       AND s.school_id = c.school_id
+     WHERE c.id = NEW.class_id
+       AND c.school_id = NEW.school_id
+       AND s.id = NEW.section_id
+       AND s.academic_year_id = NEW.academic_year_id;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'enrollment class and section must belong to the same school and academic year';
+    END IF;
+    RETURN NEW;
+END;
+$v17$;
+
+CREATE TRIGGER trg_snapshot_v17_enrollment_labels
+BEFORE INSERT ON student_enrollments
+FOR EACH ROW EXECUTE FUNCTION snapshot_v17_enrollment_labels();
+
 -- School ownership and academic identity are immutable. Historical enrollment
 -- rows may only transition once from active to a terminal status; they cannot
 -- be deleted, re-homed, or rewritten into another year/class/section.
@@ -270,6 +301,8 @@ BEGIN
        OR NEW.class_id IS DISTINCT FROM OLD.class_id
        OR NEW.section_id IS DISTINCT FROM OLD.section_id
        OR NEW.roll_number IS DISTINCT FROM OLD.roll_number
+       OR NEW.class_name_snapshot IS DISTINCT FROM OLD.class_name_snapshot
+       OR NEW.section_name_snapshot IS DISTINCT FROM OLD.section_name_snapshot
        OR NEW.enrolled_at IS DISTINCT FROM OLD.enrolled_at
        OR NEW.created_at IS DISTINCT FROM OLD.created_at THEN
         RAISE EXCEPTION 'student enrollment identity is immutable';
