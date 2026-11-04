@@ -25,9 +25,9 @@ func NewAttendanceHandler(service AttendanceManagementService) *AttendanceHandle
 
 func (h *AttendanceHandler) List(c *gin.Context) {
 	if h == nil || h.service == nil { c.JSON(http.StatusServiceUnavailable, gin.H{"status":"error","message":"Attendance service is unavailable"}); return }
-	yearID, err := optionalPositiveID(c.Query("academic_year_id"))
+	yearID, err := attendanceOptionalPositiveID(c.Query("academic_year_id"))
 	if err != nil { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid academic_year_id"}); return }
-	sectionID, err := optionalPositiveID(c.Query("section_id"))
+	sectionID, err := attendanceOptionalPositiveID(c.Query("section_id"))
 	if err != nil { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid section_id"}); return }
 	var day time.Time
 	if raw := strings.TrimSpace(c.Query("date")); raw != "" {
@@ -84,4 +84,11 @@ func writeAttendanceError(c *gin.Context, err error) {
 	default:
 		c.JSON(http.StatusInternalServerError, gin.H{"status":"error","message":"Attendance operation failed"})
 	}
+}
+
+func attendanceOptionalPositiveID(raw string) (int64, error) {
+	if strings.TrimSpace(raw) == "" { return 0, nil }
+	id, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil || id <= 0 { return 0, errors.New("invalid identifier") }
+	return id, nil
 }
