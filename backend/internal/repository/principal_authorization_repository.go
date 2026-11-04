@@ -319,3 +319,69 @@ var approvedSchoolAdminPermissions = map[string]bool{
 	"permissions.assign":                true,
 	"permissions.override":              true,
 }
+
+
+// CheckAndTouchAdminSession enforces the 30-minute idle window independently
+// for each administrative refresh-session family. Expired families are
+// revoked and recorded in the append-only audit log.
+func (r *PrincipalAuthorizationRepository) CheckAndTouchAdminSession(ctx context.Context, principalID int64, familyID string) (bool, bool, error) {
+	if principalID <= 0 { return false, false, nil }
+	const query = `
+WITH admin_principal AS (
+    SELECT ap.id, COALESCE(u.school_id,0) AS school_id,
+           (ap.principal_type='platform_admin' OR
+            (ap.principal_type='staff' AND EXISTS (
+                SELECT 1 FROM principal_roles pr
+                JOIN roles ro ON ro.id=pr.role_id
+                WHERE pr.principal_id=ap.id AND pr.revoked_at IS NULL
+                  AND ro.is_system=TRUE AND ro.role_key='school_admin'
+                  AND ro.principal_type='staff' AND ro.scope_type='school'
+                  AND ro.school_id=u.school_id
+            ))) AS is_admin
+    FROM auth_principals ap
+    LEFT JOIN users u ON u.principal_id=ap.id
+    WHERE ap.id=$1
+),
+family_state AS (
+    SELECT family_id, principal_id,
+           MAX(last_activity_at) FILTER (WHERE revoked_at IS NULL) AS last_activity
+    FROM refresh_sessions
+    WHERE family_id::text=$2
+    GROUP BY family_id, principal_id
+),
+touch AS (
+    UPDATE refresh_sessions rs
+       SET last_activity_at=NOW()
+      FROM admin_principal a, family_state f
+     WHERE a.is_admin AND f.principal_id=a.id AND f.family_id=rs.family_id
+       AND rs.revoked_at IS NULL AND rs.expires_at>NOW()
+       AND f.last_activity>NOW()-INTERVAL '30 minutes'
+    RETURNING rs.id
+),
+expired AS (
+    UPDATE refresh_sessions rs
+       SET revoked_at=COALESCE(rs.revoked_at,NOW())
+      FROM admin_principal a, family_state f
+     WHERE a.is_admin AND f.principal_id=a.id AND f.family_id=rs.family_id
+       AND rs.revoked_at IS NULL
+       AND f.last_activity<=NOW()-INTERVAL '30 minutes'
+    RETURNING rs.id
+),
+audit AS (
+    INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
+    SELECT a.id,NULLIF(a.school_id,0),'auth.admin_session_idle_timeout','refresh_session',$2,'success',
+           jsonb_build_object('idle_timeout_minutes',30)
+      FROM admin_principal a
+     WHERE a.is_admin AND EXISTS(SELECT 1 FROM expired)
+    RETURNING id
+)
+SELECT COALESCE((SELECT is_admin FROM admin_principal),FALSE),
+       EXISTS(SELECT 1 FROM touch),
+       EXISTS(SELECT 1 FROM expired),
+       EXISTS(SELECT 1 FROM family_state)`
+	var isAdmin, touched, expired, familyExists bool
+	err := r.db.QueryRow(ctx, query, principalID, familyID).Scan(&isAdmin,&touched,&expired,&familyExists)
+	if err != nil { return false,false,fmt.Errorf("check administrative session activity: %w",err) }
+	if !isAdmin { return false,true,nil }
+	return true, touched && !expired, nil
+}
