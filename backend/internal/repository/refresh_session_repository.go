@@ -17,6 +17,7 @@ var (
 	ErrRefreshTokenInvalid    = errors.New("invalid or expired refresh token")
 	ErrRefreshTokenReuse      = errors.New("refresh token reuse detected")
 	ErrRefreshSessionInactive = errors.New("user or school is inactive")
+	ErrAdminSessionIdleExpired = errors.New("administrative session idle timeout expired")
 )
 
 // RefreshSessionRepository persists refresh-token hashes, never raw tokens.
