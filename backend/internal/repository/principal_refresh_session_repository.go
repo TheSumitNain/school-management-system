@@ -634,3 +634,13 @@ func nullableInt64(value pgtype.Int8) any {
 	}
 	return value.Int64
 }
+
+
+func (r *PrincipalRefreshSessionRepository) FamilyIDForTokenHash(ctx context.Context, tokenHash string) (string, error) {
+	if !isSHA256Hash(tokenHash) { return "", ErrRefreshTokenInvalid }
+	var familyID string
+	err := r.db.QueryRow(ctx, `SELECT family_id FROM refresh_sessions WHERE token_hash=$1`, tokenHash).Scan(&familyID)
+	if errors.Is(err, pgx.ErrNoRows) { return "", ErrRefreshTokenInvalid }
+	if err != nil { return "", fmt.Errorf("load refresh-session family: %w", err) }
+	return familyID, nil
+}
