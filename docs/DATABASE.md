@@ -22,7 +22,7 @@ The versioned migrations define the current schema foundation:
 | `users`, `refresh_sessions` | School staff accounts and refresh sessions | Created by migration v2; token-family metadata added by v3 |
 | Principal, account-subtype, RBAC, MFA, OTP and audit tables | Shared identity, scoped roles/permissions, security challenges and audit history | Defined by migrations v4–v10; verify the target database's applied migration version independently |
 | `students` | Stable school-scoped student identity | V11 applied and PostgreSQL integration-tested on `school_management_test`; later cumulative migration state reported at version 12, `dirty=false` |
-| `guardians`, `student_guardians` | School-scoped guardian contact records and many-to-many student links | V11 applied and PostgreSQL integration-tested on `school_management_test` (migration version 11, clean) |
+| `guardians`, `student_guardians` | School-scoped guardian contacts, student relationships, and preserved revocation history | V11/V12 foundation; V19 controls explicit delegation of guardian permissions; latest cumulative migrations verified by ephemeral PostgreSQL CI |
 
 V11 deliberately does not create academic-year enrollment, class/section placement, or authenticated parent-to-child links. Those require separate schema and authorization milestones. The complete school management data model and business APIs are not implemented by these foundation tables.
 
@@ -579,3 +579,21 @@ The schema should support the approved long-term product without prematurely imp
 - **Client independence:** Web and future mobile clients should use the same business APIs and backend authorization. Do not duplicate business rules in client applications.
 
 Each future schema change must have a reviewed data model, additive migration, foreign-key/check/index strategy, tenant-isolation tests, migration tests against the dedicated test database and explicit user approval before execution. Never modify an already-applied migration to change deployed schema.
+
+## 18. Migration v19 — Controlled Guardian Permission Delegation
+
+**Purpose:** Permit Platform Admins to explicitly delegate the existing school-scoped `guardians.read` and `guardians.manage` permissions to a specific school's custom staff roles.
+
+Files:
+
+- `000019_enable_guardian_permission_delegation.up.sql`
+- `000019_enable_guardian_permission_delegation.down.sql`
+
+V4 protects permission identity, scope, and delegability from runtime updates. V19 temporarily drops only the `trg_protect_permission_identity_scope` trigger inside the migration, changes the two reviewed permission-catalogue rows to `is_delegable=TRUE`, and immediately recreates the exact trigger. The protection remains active for all runtime SQL and API requests.
+
+This migration does not grant either permission to a school, staff member, or built-in role. A Platform Admin with `platform.permissions.delegate` must create a school-specific delegation with `can_assign_to_roles=TRUE`. A School Admin can then create a custom staff role, grant the required guardian permission using the exact active delegation ID, and assign the role to authorized staff. V16 binds the custom-role grant to that exact delegation row; revoking the delegation does not reactivate historical grants.
+
+The School Admin and Teacher system-role permission bundles remain immutable and unchanged. The Teacher's `students.read_basic` permission does not provide access to guardian contact records. The down migration refuses to proceed if any guardian delegation history exists, preserving append-only authorization history.
+
+The migration and complete backend test suite, including PostgreSQL integration tests and `go vet ./...`, passed in GitHub Actions run 41800105405 against an ephemeral PostgreSQL 18 database. This CI database is temporary and does not represent the user's local database migration state.
+
