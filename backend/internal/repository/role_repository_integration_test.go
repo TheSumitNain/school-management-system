@@ -361,8 +361,8 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 	if err := repo.SetStaffPermissionOverride(
 		ctx, actorPrincipalID, schoolID, otherSchoolPrincipalID, overrideDelegation.ID,
 		"homework.create", "allow", "cross-school isolation test",
-	); !errors.Is(err, ErrRoleNotFound) {
-		t.Fatalf("School A actor overriding School B staff error = %v, want ErrRoleNotFound", err)
+	); !errors.Is(err, ErrDelegationNotFound) {
+		t.Fatalf("School A actor overriding School B staff error = %v, want ErrDelegationNotFound", err)
 	}
 	crossSchoolOverrides, err := repo.ListStaffPermissionOverrides(ctx, actorPrincipalID, schoolID, otherSchoolPrincipalID)
 	if err != nil {
