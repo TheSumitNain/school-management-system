@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -16,6 +15,7 @@ import (
 
 	"school-management-system/internal/config"
 	"school-management-system/internal/handlers"
+	"school-management-system/internal/models"
 	"school-management-system/internal/repository"
 	"school-management-system/internal/services"
 
@@ -172,5 +172,4 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 			stale.Code, stale.Body.String())
 	}
 
-	_ = fmt.Sprintf("%d", schoolID) // retain a readable school identifier in failure diagnostics while keeping fixtures local.
 }
