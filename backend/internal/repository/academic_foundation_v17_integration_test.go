@@ -20,11 +20,11 @@ func TestAcademicFoundationV17PostgresIntegration(t *testing.T) {
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	var schoolID, teacherPrincipalID int64
+	var schoolID, actorPrincipalID, teacherPrincipalID int64
 	if err := tx.QueryRow(ctx, `
 		SELECT school_id, principal_id FROM users WHERE id = $1
-	`, userID).Scan(&schoolID, &teacherPrincipalID); err != nil {
-		t.Fatalf("load active staff fixture: %v", err)
+	`, userID).Scan(&schoolID, &actorPrincipalID); err != nil {
+		t.Fatalf("load active staff actor fixture: %v", err)
 	}
 
 	var hasV17 bool
@@ -44,6 +44,27 @@ func TestAcademicFoundationV17PostgresIntegration(t *testing.T) {
 	}
 
 	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO users (school_id, username, password_hash, status)
+		VALUES ($1, $2, $3, 'active') RETURNING principal_id
+	`, schoolID, "v17-teacher-"+suffix, "integration-test-password-hash").Scan(&teacherPrincipalID); err != nil {
+		t.Fatalf("create Teacher account fixture: %v", err)
+	}
+	var teacherRoleID int64
+	if err := tx.QueryRow(ctx, `
+		SELECT id FROM roles
+		 WHERE school_id = $1 AND principal_type = 'staff'
+		   AND scope_type = 'school' AND role_key = 'teacher' AND is_system = TRUE
+	`, schoolID).Scan(&teacherRoleID); err != nil {
+		t.Fatalf("load system Teacher role: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO principal_roles (principal_id, role_id, assigned_by)
+		VALUES ($1, $2, $3)
+	`, teacherPrincipalID, teacherRoleID, actorPrincipalID); err != nil {
+		t.Fatalf("assign Teacher role to fixture: %v", err)
+	}
+
 	var year1, year2, classLKG, classUKG, section1, section2, subjectID, studentID int64
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO academic_years (school_id, name, starts_on, ends_on, status, is_current)
