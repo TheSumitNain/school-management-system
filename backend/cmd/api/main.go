@@ -427,7 +427,7 @@ func run() error {
 	staffAccountService := services.NewStaffAccountService(staffAccountRepo)
 	staffHandler := handlers.NewStaffHandler(staffAccountService)
 
-	router, err := setupRouterWithHandlers(db, authHandler, tokenService, principalAuthorizationRepo, principalAuthorizationRepo, schoolOnboardingHandler, roleHandler, staffHandler, academicHandler, guardianHandler, attendanceHandler)
+	router, err := setupRouterWithHandlers(db, authHandler, tokenService, principalAuthorizationRepo, principalAuthorizationRepo, schoolOnboardingHandler, roleHandler, staffHandler, academicHandler, guardianHandler, attendanceHandler, principalAuthorizationRepo)
 
 	if err != nil {
 		return fmt.Errorf("setup router: %w", err)
