@@ -28,7 +28,7 @@ func TestSchoolOnboardingServiceNormalizesAndHashesCredentials(t *testing.T) {
 		SchoolID: 3, SchoolName: "Example School", SchoolCode: "EX-3",
 		SchoolStatus: "active", AdminPrincipalID: 8, AdminUsername: "admin.user",
 	}}
-	service := NewSchoolOnboardingService(repo)
+	service := NewSchoolOnboardingService(repo, alwaysClearPasswordChecker{})
 	result, err := service.CreateSchoolWithAdmin(context.Background(), 9, SchoolOnboardingInput{
 		Name: " Example School ", Code: " ex-3 ", AdminUsername: " Admin.User ",
 		AdminInitialPassword: "StrongUnique!Pass123",
@@ -72,5 +72,30 @@ func TestSchoolOnboardingServiceRejectsWeakPasswordBeforeRepository(t *testing.T
 	})
 	if !errors.Is(err, ErrInvalidPassword) || repo.called {
 		t.Fatalf("expected password-policy failure without repository call, err=%v called=%v", err, repo.called)
+	}
+}
+
+
+func TestSchoolOnboardingRejectsCompromisedAdminPassword(t *testing.T) {
+	repo := &fakeSchoolOnboardingRepository{}
+	service := NewSchoolOnboardingService(repo, fixedPasswordChecker{compromised: true})
+	_, err := service.CreateSchoolWithAdmin(context.Background(), 9, SchoolOnboardingInput{
+		Name: "School", Code: "SCH-2", AdminUsername: "admin.user",
+		AdminInitialPassword: "StrongUnique!Pass123",
+	})
+	if !errors.Is(err, ErrCompromisedPassword) || repo.called {
+		t.Fatalf("compromised School Admin password must be rejected before repository call, err=%v called=%v", err, repo.called)
+	}
+}
+
+func TestSchoolOnboardingFailsClosedWhenBreachCheckUnavailable(t *testing.T) {
+	repo := &fakeSchoolOnboardingRepository{}
+	service := NewSchoolOnboardingService(repo, fixedPasswordChecker{err: errors.New("offline")})
+	_, err := service.CreateSchoolWithAdmin(context.Background(), 9, SchoolOnboardingInput{
+		Name: "School", Code: "SCH-3", AdminUsername: "admin.user",
+		AdminInitialPassword: "StrongUnique!Pass123",
+	})
+	if !errors.Is(err, ErrPasswordBreachCheckUnavailable) || repo.called {
+		t.Fatalf("School Admin onboarding must fail closed before repository call, err=%v called=%v", err, repo.called)
 	}
 }
