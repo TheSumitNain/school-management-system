@@ -301,3 +301,26 @@ func TestAuthMiddlewareRejectsExpiredAdminSessionFamily(t *testing.T) {
 	rec:=httptest.NewRecorder();router.ServeHTTP(rec,req)
 	if rec.Code!=http.StatusUnauthorized { t.Fatalf("expired admin session should fail, got %d",rec.Code) }
 }
+
+
+func TestAuthMiddlewareFailsClosedWhenAdminIdleTrackerMissing(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	principal := &models.AuthPrincipal{
+		ID: 10, Type: "staff", Status: "active", TokenVersion: 1, SchoolID: 2,
+		RequiresAdminSessionActivity: true,
+	}
+	router := gin.New()
+	router.GET("/protected", AuthMiddleware(
+		&fakeTokenValidator{claims: validClaims()},
+		fakePrincipalLoader{principal: principal},
+		fakePermissionLoader{permissions: []string{"students.read_basic"}},
+	), func(c *gin.Context) { c.Status(http.StatusOK) })
+
+	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
+	req.Header.Set("Authorization", "Bearer valid-token")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("School Admin request without idle tracker must fail closed, got %d", rec.Code)
+	}
+}
