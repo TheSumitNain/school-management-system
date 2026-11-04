@@ -60,6 +60,11 @@ func TestStudentRoutesEnforceLivePermissions(t *testing.T) {
 			if got := request(nil); got.Code != http.StatusForbidden {
 				t.Fatalf("without %s: status=%d body=%s", test.permission, got.Code, got.Body.String())
 			}
+			if test.permission == "students.read_sensitive" {
+				if got := request([]string{"students.read_basic"}); got.Code != http.StatusForbidden {
+					t.Fatalf("basic Teacher read permission must not expose student profiles: status=%d body=%s", got.Code, got.Body.String())
+				}
+			}
 			if got := request([]string{test.permission}); got.Code != http.StatusServiceUnavailable {
 				t.Fatalf("authorized route should reach handler: status=%d body=%s", got.Code, got.Body.String())
 			}
