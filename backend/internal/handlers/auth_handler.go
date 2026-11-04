@@ -186,12 +186,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 			return
 		}
 	}
-	accessToken, err := h.tokenService.GenerateAccessToken(principal.ID, principal.TokenVersion, principal.Type)
-	if err != nil {
-		writeAuthError(c, http.StatusInternalServerError, "Unable to log in")
-		return
-	}
-	refreshToken, err := h.sessionService.Issue(c.Request.Context(), principal)
+	accessToken, refreshToken, err := issueSessionTokens(c.Request.Context(), h.tokenService, h.sessionService, principal)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrSessionPrincipalVersionChanged):
@@ -311,9 +306,7 @@ func (h *AuthHandler) issueMFASession(c *gin.Context, principalID, expectedToken
 	if err!=nil || !validPrincipal(principal) || expectedTokenVersion <= 0 || principal.TokenVersion != expectedTokenVersion {
 		writeAuthError(c,http.StatusUnauthorized,"Authentication could not be completed"); return
 	}
-	accessToken,err:=h.tokenService.GenerateAccessToken(principal.ID,principal.TokenVersion,principal.Type)
-	if err!=nil { writeAuthError(c,http.StatusInternalServerError,"Unable to complete authentication"); return }
-	refreshToken,err:=h.sessionService.Issue(c.Request.Context(),principal)
+	accessToken,refreshToken,err:=issueSessionTokens(c.Request.Context(),h.tokenService,h.sessionService,principal)
 	if err!=nil {
 		if errors.Is(err, services.ErrSessionPrincipalVersionChanged) {
 			writeAuthError(c, http.StatusUnauthorized, "Credentials changed during sign-in. Please sign in again.")
@@ -452,7 +445,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		return
 	}
 
-	principal, replacement, err := h.sessionService.Rotate(c.Request.Context(), strings.TrimSpace(req.RefreshToken))
+	principal, replacement, familyID, err := rotateSessionTokens(c.Request.Context(), h.tokenService, h.sessionService, strings.TrimSpace(req.RefreshToken))
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrInvalidRefreshToken), errors.Is(err, services.ErrRefreshTokenReuse):
@@ -468,7 +461,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		writeAuthError(c, http.StatusInternalServerError, "Unable to refresh session")
 		return
 	}
-	accessToken, err := h.tokenService.GenerateAccessToken(principal.ID, principal.TokenVersion, principal.Type)
+	accessToken, err := generateSessionAccessToken(h.tokenService, principal, familyID)
 	if err != nil {
 		writeAuthError(c, http.StatusInternalServerError, "Unable to refresh session")
 		return
@@ -525,4 +518,41 @@ func toPrincipalResponse(p *models.AuthPrincipal) principalResponse {
 
 func writeAuthError(c *gin.Context, status int, message string) {
 	c.JSON(status, gin.H{"status": "error", "message": message})
+}
+
+
+type sessionBoundAccessTokenGenerator interface {
+	GenerateAccessTokenForSession(principalID, tokenVersion int64, principalType, sessionID string) (string, error)
+}
+type sessionFamilyIssuer interface {
+	IssueWithFamily(ctx context.Context, principal *models.AuthPrincipal) (string, string, error)
+}
+type sessionFamilyRotator interface {
+	RotateWithFamily(ctx context.Context, refreshToken string) (*models.AuthPrincipal, string, string, error)
+}
+
+func generateSessionAccessToken(tokens TokenService, principal *models.AuthPrincipal, familyID string) (string, error) {
+	bound, ok := tokens.(sessionBoundAccessTokenGenerator)
+	if !ok { return "", errors.New("session-bound access token generation unavailable") }
+	return bound.GenerateAccessTokenForSession(principal.ID, principal.TokenVersion, principal.Type, familyID)
+}
+func issueSessionTokens(ctx context.Context, tokens TokenService, sessions SessionService, principal *models.AuthPrincipal) (string, string, error) {
+	issuer, ok := sessions.(sessionFamilyIssuer)
+	if !ok { return "", "", errors.New("session-family issuance unavailable") }
+	refresh, familyID, err := issuer.IssueWithFamily(ctx, principal)
+	if err != nil { return "", "", err }
+	access, err := generateSessionAccessToken(tokens, principal, familyID)
+	if err != nil {
+		_ = sessions.Revoke(ctx, refresh)
+		return "", "", err
+	}
+	return access, refresh, nil
+}
+func rotateSessionTokens(ctx context.Context, tokens TokenService, sessions SessionService, refresh string) (*models.AuthPrincipal, string, string, error) {
+	rotator, ok := sessions.(sessionFamilyRotator)
+	if !ok { return nil, "", "", errors.New("session-family rotation unavailable") }
+	principal, replacement, familyID, err := rotator.RotateWithFamily(ctx, refresh)
+	if err != nil { return nil, "", "", err }
+	if _, err := generateSessionAccessToken(tokens, principal, familyID); err != nil { return nil, "", "", err }
+	return principal, replacement, familyID, nil
 }
