@@ -20,6 +20,9 @@ This project is under active development. Verification results describe the late
 - Push run `41767168878` and Draft PR run `41767176542` on commit `6bf8ca5` passed V1–V16 migrations, the full PostgreSQL integration-enabled Go suite, and `go vet ./...`.
 - Added HTTP revocation checks: School Admin revokes the custom-role permission through `DELETE /school/roles/:roleID/permissions/:permissionKey` (200), then Platform Admin revokes the exact delegation through `POST /platform/permission-delegations/:delegationID/revoke` (200).
 - Push run `41767372453` and Draft PR run `41767378009` on commit `0b560fd` both passed V1–V16 migrations, the full PostgreSQL integration-enabled Go suite, and `go vet ./...`.
+- Extended the same HTTP integration flow to create a same-school target staff principal, assign the created custom role (201), list the staff role assignments (200), and revoke the assignment (200).
+- Added a separate exact delegation for `homework.create` with `can_override_users=true`; School Admin sets an ALLOW override (200), deletes it (200), and Platform Admin revokes the delegation (200).
+- Push run `41767598076` and Draft PR run `41767602833` on commit `d90ba9e` both passed V1–V16 migrations, the full PostgreSQL integration-enabled Go suite, and `go vet ./...`.
 - This verifies tenant boundaries for RBAC administration operations only; business-resource tenant isolation remains pending until those resource APIs and repositories are implemented.
 
 
