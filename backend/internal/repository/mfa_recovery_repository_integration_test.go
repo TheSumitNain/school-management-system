@@ -60,6 +60,9 @@ ON CONFLICT (principal_id) DO UPDATE SET verified_at=NOW(),last_accepted_step=NU
 	if err := challenges.Create(ctx, principalID, tokenVersion, MFAChallengeLogin, first, time.Now().Add(5*time.Minute)); err != nil {
 		t.Fatal(err)
 	}
+	if err := repo.ConsumeLoginRecoveryCode(ctx, principalID, first, tokenVersion+1, initial[0]); !errors.Is(err, ErrMFAEnrollmentInvalid) {
+		t.Fatalf("stale token version accepted recovery code: %v", err)
+	}
 	if err := repo.ConsumeLoginRecoveryCode(ctx, principalID, first, tokenVersion, initial[0]); err != nil {
 		t.Fatalf("consume first code: %v", err)
 	}
