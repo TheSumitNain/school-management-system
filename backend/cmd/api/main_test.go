@@ -572,3 +572,33 @@ func TestGuardianRoutesEnforceDedicatedLivePermissions(t *testing.T) {
 		})
 	}
 }
+
+
+func TestAttendanceRoutesEnforceReadAndMarkPermissions(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	validator := fakeTokenValidator{claims: &services.TokenClaims{
+		RegisteredClaims: jwt.RegisteredClaims{Subject: "31"},
+		PrincipalType: "staff", TokenVersion: 1,
+	}}
+	principal := &models.AuthPrincipal{ID:31,Type:"staff",Status:"active",TokenVersion:1,SchoolID:8,Username:"school.staff"}
+	tests := []struct{method,path,permission,body string}{
+		{http.MethodGet,"/school/attendance","attendance.read",""},
+		{http.MethodPost,"/school/attendance","attendance.mark",`{"enrollment_id":2,"attendance_date":"2026-11-04","status":"present"}`},
+	}
+	for _,test:=range tests {
+		t.Run(test.method+" "+test.path,func(t *testing.T){
+			request:=func(perms []string)*httptest.ResponseRecorder{
+				router,err:=setupRouterWithHandlers(fakeDatabase{},nil,validator,
+					fakePrincipalLoader{principal:principal},fakePermissionLoader{permissions:perms},
+					nil,nil,nil,nil,nil,handlers.NewAttendanceHandler(nil))
+				if err!=nil{t.Fatalf("setup router: %v",err)}
+				req:=httptest.NewRequest(test.method,test.path,strings.NewReader(test.body))
+				req.Header.Set("Authorization","Bearer valid-test-token")
+				req.Header.Set("Content-Type","application/json")
+				rec:=httptest.NewRecorder();router.ServeHTTP(rec,req);return rec
+			}
+			if got:=request(nil);got.Code!=http.StatusForbidden{t.Fatalf("without %s: status=%d body=%s",test.permission,got.Code,got.Body.String())}
+			if got:=request([]string{test.permission});got.Code!=http.StatusServiceUnavailable{t.Fatalf("with %s should reach handler: status=%d body=%s",test.permission,got.Code,got.Body.String())}
+		})
+	}
+}

@@ -55,6 +55,7 @@ func setupRouterWithHandlers(
 	var staffHandler *handlers.StaffHandler
 	var academicHandler *handlers.AcademicHandler
 	var guardianHandler *handlers.GuardianHandler
+	var attendanceHandler *handlers.AttendanceHandler
 	for _, optional := range optionalHandlers {
 		switch handler := optional.(type) {
 		case *handlers.StaffHandler:
@@ -63,6 +64,8 @@ func setupRouterWithHandlers(
 			academicHandler = handler
 		case *handlers.GuardianHandler:
 			guardianHandler = handler
+		case *handlers.AttendanceHandler:
+			attendanceHandler = handler
 		}
 	}
 	router := gin.Default()
@@ -216,6 +219,13 @@ func setupRouterWithHandlers(
 		router.POST("/school/enrollments", academicAuth, middleware.RequirePermission("students.create"), academic.CreateStudentEnrollment)
 		router.GET("/school/students/:studentID/enrollments", academicAuth, middleware.RequirePermission("students.read_basic"), academic.ListStudentEnrollmentHistory)
 		router.POST("/school/enrollments/:enrollmentID/promote", academicAuth, middleware.RequirePermission("students.update"), academic.PromoteStudentEnrollment)
+	}
+
+	if attendanceHandler != nil {
+		attendanceAuth := middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader)
+		router.GET("/school/attendance", attendanceAuth, middleware.RequirePermission("attendance.read"), attendanceHandler.List)
+		router.POST("/school/attendance", attendanceAuth, middleware.RequirePermission("attendance.mark"), attendanceHandler.Mark)
+		router.PATCH("/school/attendance/:attendanceID", attendanceAuth, attendanceHandler.Update)
 	}
 
 	if guardianHandler != nil {
@@ -403,12 +413,14 @@ func run() error {
 	academicHandler := handlers.NewAcademicHandler(academicService)
 	guardianService := services.NewGuardianService(academicRepo)
 	guardianHandler := handlers.NewGuardianHandler(guardianService)
+	attendanceService := services.NewAttendanceService(academicRepo)
+	attendanceHandler := handlers.NewAttendanceHandler(attendanceService)
 
 	staffAccountRepo := repository.NewUserRepository(db)
 	staffAccountService := services.NewStaffAccountService(staffAccountRepo)
 	staffHandler := handlers.NewStaffHandler(staffAccountService)
 
-	router, err := setupRouterWithHandlers(db, authHandler, tokenService, principalAuthorizationRepo, principalAuthorizationRepo, schoolOnboardingHandler, roleHandler, staffHandler, academicHandler, guardianHandler)
+	router, err := setupRouterWithHandlers(db, authHandler, tokenService, principalAuthorizationRepo, principalAuthorizationRepo, schoolOnboardingHandler, roleHandler, staffHandler, academicHandler, guardianHandler, attendanceHandler)
 
 	if err != nil {
 		return fmt.Errorf("setup router: %w", err)
