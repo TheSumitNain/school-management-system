@@ -147,8 +147,6 @@ func TestAdminSessionActivityV21PostgresIntegration(t *testing.T) {
 
 	schoolAdminTokenSum := sha256.Sum256([]byte("school-admin-idle-v21-"+suffix))
 	schoolAdminTokenHash := hex.EncodeToString(schoolAdminTokenSum[:])
-	schoolAdminReplacementSum := sha256.Sum256([]byte("school-admin-idle-v21-replacement-"+suffix))
-	schoolAdminReplacementHash := hex.EncodeToString(schoolAdminReplacementSum[:])
 	var schoolAdminFamily string
 	if err := pool.QueryRow(ctx,`
 		INSERT INTO refresh_sessions(user_id,principal_id,token_hash,expires_at)
