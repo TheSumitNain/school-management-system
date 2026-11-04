@@ -23,7 +23,7 @@ func TestHIBPPasswordBreachCheckerUsesKAnonymityAndCachesPrefix(t *testing.T) {
 	password := "A-unique-password-For-Testing-2026!"
 	sum := sha1.Sum([]byte(password))
 	hash := strings.ToUpper(hex.EncodeToString(sum[:]))
-	prefix, suffix := hash[:5], hash[5:]
+	suffix := hash[5:]
 	var requests atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter,r *http.Request) {
 		requests.Add(1)
