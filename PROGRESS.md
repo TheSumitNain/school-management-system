@@ -1,3 +1,5 @@
+> **2026-11-04 latest verified RBAC HTTP checkpoint:** `d5e0c8d` adds a real-router PostgreSQL integration success path. Push run `41764671472` and Draft PR run `41764679462` both passed V1–V16 migrations on ephemeral PostgreSQL 18, the full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and `go vet ./...`. The test verifies 200 for active identity, 403 with no grants, 200 after a database-authorized School Admin role grant, and 401 after token-version revocation. It uses a controlled token validator, not real JWT signature validation. All test writes, including a possible temporary first Platform Admin bootstrap, are rolled back.
+
 > **2026-11-04 latest remote checkpoint:** `9e74c88` adds the first HTTP/PostgreSQL RBAC integration slice. Push run `41762250818` and Draft PR run `41762256758` both passed migrations V1–V16 on ephemeral PostgreSQL 18, the full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and `go vet ./...`. The new test uses a controlled token validator with real PostgreSQL-backed principal and permission repositories; real JWT signature validation and a granted-role success path remain pending.
 
 > **2026-11-03 approved delivery direction:** Phase 1 is the complete web product for Platform Admin, School Admin and school staff. Phase 2 Parent/Driver mobile interfaces begin only after the web product is complete. Parent work is paused; preserve existing Parent/Guardian schema and OTP foundation without extending it. Parent authentication/OTP provider remains undecided. Database design must remain extensible for future modules without speculative migrations. Active branch checkpoint before this documentation update: `c79b3a5959e0d125dae0326298b554f7b2f90133` (`fix/v4-auth-security-hardening`).
@@ -400,7 +402,7 @@ V11 is **applied and PostgreSQL-verified on the dedicated test database**. This 
 - [x] GitHub Actions run `41657762673` on commit `64acf1b`: V1–V16 applied to ephemeral PostgreSQL 18, full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1` PASS, and `go vet ./...` PASS.
 - [x] No migrations were applied to the user's persistent `school_management_test` or `school_management` databases.
 - [x] Added router/middleware permission-gate tests for all 14 Platform Admin and school role-administration endpoints, including AND semantics for routes requiring multiple permissions. Push run `41658994787` and Draft PR run `41659008482` on commit `2c81dfc` passed the full PostgreSQL integration suite and `go vet ./...`.
-- [ ] Add full HTTP-to-PostgreSQL end-to-end security integration coverage for role/delegation/override/assignment endpoints.
+- [ ] Extend HTTP-to-PostgreSQL integration coverage from the verified role-list authorization path to role/delegation/override/assignment write endpoints.
 - [ ] Implement and verify business-resource, tenant, class/section/subject assignment, and teacher field-level authorization.
 
 
@@ -409,7 +411,18 @@ V11 is **applied and PostgreSQL-verified on the dedicated test database**. This 
 - [x] Added an integration test that exercises the actual Gin router and authentication middleware with PostgreSQL-backed principal and effective-permission repositories.
 - [x] Verified active staff identity inspection returns 200, staff without role grants is denied `/school/roles` with 403, and a stale token version is rejected with 401.
 - [x] Push CI run `41762250818` and Draft PR CI run `41762256758` passed V1–V16 migrations, full PostgreSQL integration tests, and `go vet ./...` on ephemeral PostgreSQL 18.
-- [ ] Add a database-backed allowed-role path that proves a granted role reaches the role handler, without weakening role-assignment triggers or leaving permanent privileged fixtures.
+- [x] Add a database-backed allowed-role path that proves a granted School Admin role reaches the real role handler. Role assignment uses the existing database trigger; the fixture and optional first Platform Admin bootstrap are rolled back.
 - [ ] Add real JWT signing/validation to the HTTP integration path; the current test uses a controlled token validator to isolate live database identity and permission checks.
 - [ ] Continue tenant/resource isolation and teacher assignment-scope authorization tests.
 - No persistent user database was changed by CI; PR #1 remains Draft and unmerged.
+
+
+## 2026-11-04 — Database-granted role authorization success path
+
+- [x] Principal authorization repository can now use a caller-owned `pgx.Tx`, allowing the HTTP test router and PostgreSQL fixture to share one transaction.
+- [x] Added `PlatformAdminRepository.BootstrapFirstInTx` so a temporary first Platform Admin can be created inside the test transaction only when needed; the transaction rollback removes the temporary account, role assignment, and audit event.
+- [x] Extended `TestRBACHTTPAuthorizationUsesPostgresState`: a staff principal without grants gets 403; after verified MFA fixture setup and a database-trigger-authorized School Admin role assignment, the same request gets 200 from the real role handler; token-version increment then makes `/auth/me` return 401.
+- [x] Push run `41764671472` and Draft PR run `41764679462` on `d5e0c8d` passed PostgreSQL 18 V1–V16 migrations, the full integration-enabled Go suite, and `go vet ./...`.
+- [ ] Replace the controlled test token validator with real JWT signing/validation in this HTTP integration path.
+- [ ] Extend HTTP/database integration coverage to delegation/override/assignment writes and tenant/resource/teacher assignment-scope isolation.
+- All test fixtures are transaction-scoped and rolled back; no persistent user database or permanent Platform Admin account was modified.
