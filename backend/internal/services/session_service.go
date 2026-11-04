@@ -22,7 +22,6 @@ var (
 )
 
 type refreshSessionRepository interface {
-	CreatePrincipal(ctx context.Context, principalID int64, tokenHash string, expiresAt time.Time) error
 	CreatePrincipalForVersion(ctx context.Context, principalID, expectedTokenVersion int64, tokenHash string, expiresAt time.Time) error
 	RotatePrincipal(ctx context.Context, oldTokenHash, newTokenHash string, newExpiresAt time.Time) (*models.AuthPrincipal, error)
 	RevokePrincipal(ctx context.Context, tokenHash string) error
@@ -44,24 +43,10 @@ func NewSessionService(sessions refreshSessionRepository, refreshExpiryDays int)
 	return &SessionService{sessions: sessions, expiry: time.Duration(refreshExpiryDays) * 24 * time.Hour}, nil
 }
 
-func (s *SessionService) Issue(ctx context.Context, principalID int64) (string, error) {
-	if principalID <= 0 {
-		return "", fmt.Errorf("principal ID must be positive")
-	}
-	raw, err := generateOpaqueRefreshToken()
-	if err != nil {
-		return "", err
-	}
-	if err := s.sessions.CreatePrincipal(ctx, principalID, HashRefreshToken(raw), time.Now().Add(s.expiry)); err != nil {
-		return "", err
-	}
-	return raw, nil
-}
-
 // IssueForPrincipal binds session creation to the exact principal version
 // returned by password/MFA authentication. A concurrent credential reset or
 // account-security change therefore invalidates the in-flight login.
-func (s *SessionService) IssueForPrincipal(ctx context.Context, principal *models.AuthPrincipal) (string, error) {
+func (s *SessionService) Issue(ctx context.Context, principal *models.AuthPrincipal) (string, error) {
 	if principal == nil || principal.ID <= 0 || principal.TokenVersion <= 0 || principal.Status != "active" {
 		return "", fmt.Errorf("valid authenticated principal is required")
 	}
