@@ -228,6 +228,11 @@ func TestAcademicFoundationV17PostgresIntegration(t *testing.T) {
 		t.Fatalf("class rename rewrote historical enrollment label to %q", historicalClassName)
 	}
 	if _, err := tx.Exec(ctx, `
+		UPDATE student_enrollments SET roll_number = '02' WHERE id = $1
+	`, enrollment1); err != nil {
+		t.Fatalf("allow roll number correction while enrollment is active: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
 		UPDATE student_enrollments
 		   SET status = 'promoted', ended_at = DATE '2027-03-31'
 		 WHERE id = $1
@@ -253,6 +258,11 @@ func TestAcademicFoundationV17PostgresIntegration(t *testing.T) {
 	}
 	if _, err := tx.Exec(ctx, `DELETE FROM student_enrollments WHERE id = $1`, enrollment1); err == nil {
 		t.Fatal("expected historical enrollment deletion to be rejected")
+	}
+	if _, err := tx.Exec(ctx, `
+		UPDATE student_enrollments SET roll_number = '03' WHERE id = $1
+	`, enrollment1); err == nil {
+		t.Fatal("expected closed enrollment roll number to be immutable")
 	}
 	if _, err := tx.Exec(ctx, `
 		UPDATE student_enrollments SET class_id = $1 WHERE id = $2
