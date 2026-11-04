@@ -145,7 +145,7 @@ func (r *AcademicRepository) RevokeClassInchargeAssignment(ctx context.Context,a
 	if _,err=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
 		VALUES($1,$2,'school.class_incharge_assignment.revoked','class_incharge_assignment',$3,'success',
 		jsonb_build_object('academic_year_id',$4::bigint,'section_id',$5::bigint,'teacher_principal_id',$6::bigint))`,
-		actorID,schoolID,fmt.Sprint(assignmentID),yearID,sectionID,teacherID);err!=nil{return nil,fmt.Errorf("audit class in-charge assignment revocation: %w",err)}
+		actorID,schoolID,fmt.Sprint(assignmentID),yearID,sectionID,teacherID);err!=nil{return fmt.Errorf("audit class in-charge assignment revocation: %w",err)}
 	if err=tx.Commit(ctx);err!=nil{return fmt.Errorf("commit class in-charge assignment revocation: %w",err)}
 	return nil
 }
