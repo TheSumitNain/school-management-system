@@ -80,10 +80,23 @@ func TestAcademicFoundationV17PostgresIntegration(t *testing.T) {
 		   AND p.is_active = TRUE
 		 LIMIT 1
 	`).Scan(&platformAdminPrincipalID)
-	if err == nil {
-		t.Skip("an existing Platform Admin bootstrap is present; this fixture must not alter its authorization state")
-	}
 	if err != nil {
+		var bootstrapExists bool
+		if checkErr := tx.QueryRow(ctx, `
+			SELECT EXISTS (SELECT 1 FROM platform_admin_accounts)
+			    OR EXISTS (
+			        SELECT 1 FROM principal_roles pr
+			        JOIN roles r ON r.id = pr.role_id
+			        WHERE r.principal_type = 'platform_admin'
+			          AND r.scope_type = 'platform'
+			          AND r.role_key = 'platform_admin'
+			    )
+		`).Scan(&bootstrapExists); checkErr != nil {
+			t.Fatalf("check Platform Admin bootstrap state: %v", checkErr)
+		}
+		if bootstrapExists {
+			t.Skip("Platform Admin bootstrap exists but no active administrator has platform.permissions.delegate")
+		}
 		platformAdminPrincipalID, err = NewPlatformAdminRepository(tx).bootstrapFirstInTx(
 			ctx, tx, fmt.Sprintf("academic-v17-%s@example.invalid", suffix),
 			"integration-test-password-hash",
