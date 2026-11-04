@@ -42,10 +42,10 @@ type LoginIPRateLimiter interface {
 }
 
 type MFAService interface {
-	BeginAuthentication(ctx context.Context, principalID int64, accountName string) (*services.MFAStart, error)
-	CompleteEnrollment(ctx context.Context, challengeToken, code string) (int64, []string, error)
-	VerifyLoginChallenge(ctx context.Context, challengeToken, code string) (int64, error)
-	BeginRecoveryCodeRegeneration(ctx context.Context, principalID int64) (*services.MFAStart, error)
+	BeginAuthentication(ctx context.Context, principal *models.AuthPrincipal, accountName string) (*services.MFAStart, error)
+	CompleteEnrollment(ctx context.Context, challengeToken, code string) (int64, int64, []string, error)
+	VerifyLoginChallenge(ctx context.Context, challengeToken, code string) (int64, int64, error)
+	BeginRecoveryCodeRegeneration(ctx context.Context, principalID, tokenVersion int64) (*services.MFAStart, error)
 	RegenerateRecoveryCodes(ctx context.Context, challengeToken, code string) ([]string, error)
 }
 type MFAPrincipalLoader interface {
@@ -169,7 +169,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 	if h.mfaService != nil {
-		mfaStart, mfaErr := h.mfaService.BeginAuthentication(c.Request.Context(), principal.ID, principal.Username)
+		mfaStart, mfaErr := h.mfaService.BeginAuthentication(c.Request.Context(), principal, principal.Username)
 		if mfaErr != nil {
 			writeAuthError(c, http.StatusInternalServerError, "Unable to start multi-factor authentication")
 			return
@@ -227,7 +227,7 @@ func (h *AuthHandler) PlatformAdminLogin(c *gin.Context) {
 		writeAuthError(c,http.StatusInternalServerError,"Unable to log in"); return
 	}
 	if !validPrincipal(principal) || principal.Type!="platform_admin" { writeAuthError(c,http.StatusInternalServerError,"Unable to log in"); return }
-	mfaStart,err:=h.mfaService.BeginAuthentication(c.Request.Context(),principal.ID,req.Email)
+	mfaStart,err:=h.mfaService.BeginAuthentication(c.Request.Context(),principal,req.Email)
 	if err!=nil { writeAuthError(c,http.StatusInternalServerError,"Unable to start multi-factor authentication"); return }
 	if !mfaStart.Required { writeAuthError(c,http.StatusForbidden,"Platform Admin MFA policy is not enabled"); return }
 	c.JSON(http.StatusAccepted,gin.H{"status":"mfa_required","challenge_token":mfaStart.ChallengeToken,
@@ -240,9 +240,9 @@ func (h *AuthHandler) CompleteMFAEnrollment(c *gin.Context) {
 	if err:=c.ShouldBindJSON(&req); err!=nil || strings.TrimSpace(req.ChallengeToken)=="" || strings.TrimSpace(req.Code)=="" {
 		writeAuthError(c,http.StatusBadRequest,"challenge_token and code are required"); return
 	}
-	principalID, recoveryCodes, err := h.mfaService.CompleteEnrollment(c.Request.Context(), req.ChallengeToken, req.Code)
+	principalID, expectedTokenVersion, recoveryCodes, err := h.mfaService.CompleteEnrollment(c.Request.Context(), req.ChallengeToken, req.Code)
 	if err != nil { writeMFAError(c, err); return }
-	h.issueMFASession(c, principalID, recoveryCodes)
+	h.issueMFASession(c, principalID, expectedTokenVersion, recoveryCodes)
 }
 
 func (h *AuthHandler) VerifyMFA(c *gin.Context) {
@@ -250,9 +250,9 @@ func (h *AuthHandler) VerifyMFA(c *gin.Context) {
 	if err:=c.ShouldBindJSON(&req); err!=nil || strings.TrimSpace(req.ChallengeToken)=="" || strings.TrimSpace(req.Code)=="" {
 		writeAuthError(c,http.StatusBadRequest,"challenge_token and code are required"); return
 	}
-	principalID,err:=h.mfaService.VerifyLoginChallenge(c.Request.Context(),req.ChallengeToken,req.Code)
+	principalID, expectedTokenVersion, err:=h.mfaService.VerifyLoginChallenge(c.Request.Context(),req.ChallengeToken,req.Code)
 	if err!=nil { writeMFAError(c,err); return }
-	h.issueMFASession(c, principalID, nil)
+	h.issueMFASession(c, principalID, expectedTokenVersion, nil)
 }
 
 func (h *AuthHandler) BeginMFARecoveryCodeRegeneration(c *gin.Context) {
@@ -266,7 +266,13 @@ func (h *AuthHandler) BeginMFARecoveryCodeRegeneration(c *gin.Context) {
 		writeAuthError(c, http.StatusServiceUnavailable, "Multi-factor authentication is unavailable")
 		return
 	}
-	challenge, err := h.mfaService.BeginRecoveryCodeRegeneration(c.Request.Context(), principalID)
+	tokenVersionValue, tokenVersionExists := c.Get(middleware.ContextTokenVersionKey)
+	tokenVersion, tokenVersionOK := tokenVersionValue.(int64)
+	if !tokenVersionExists || !tokenVersionOK || tokenVersion <= 0 {
+		writeAuthError(c, http.StatusUnauthorized, "Authentication required")
+		return
+	}
+	challenge, err := h.mfaService.BeginRecoveryCodeRegeneration(c.Request.Context(), principalID, tokenVersion)
 	if err != nil { writeMFAError(c, err); return }
 	c.JSON(http.StatusOK, gin.H{"status": "challenge_required", "challenge_token": challenge.ChallengeToken, "expires_at": challenge.ExpiresAt})
 }
@@ -286,12 +292,12 @@ func (h *AuthHandler) RegenerateMFARecoveryCodes(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "success", "recovery_codes": codes})
 }
 
-func (h *AuthHandler) issueMFASession(c *gin.Context, principalID int64, recoveryCodes []string) {
+func (h *AuthHandler) issueMFASession(c *gin.Context, principalID, expectedTokenVersion int64, recoveryCodes []string) {
 	if h.principalLoader==nil || h.tokenService==nil || h.sessionService==nil {
 		writeAuthError(c,http.StatusInternalServerError,"Authentication service unavailable"); return
 	}
 	principal,err:=h.principalLoader.LoadPrincipalForAuthentication(c.Request.Context(),principalID)
-	if err!=nil || !validPrincipal(principal) {
+	if err!=nil || !validPrincipal(principal) || expectedTokenVersion <= 0 || principal.TokenVersion != expectedTokenVersion {
 		writeAuthError(c,http.StatusUnauthorized,"Authentication could not be completed"); return
 	}
 	accessToken,err:=h.tokenService.GenerateAccessToken(principal.ID,principal.TokenVersion,principal.Type)
