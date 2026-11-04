@@ -195,7 +195,7 @@ func TestAdminSessionActivityV21PostgresIntegration(t *testing.T) {
 		INSERT INTO users(school_id,username,password_hash,status)
 		VALUES($1,$2,'integration-password-hash','active')
 		RETURNING id,principal_id
-	`,schoolID,"ordinary-idle-v21-"+suffix).Scan(&ordinaryUserID,&ordinaryStaffPrincipalID); err != nil {
+	`,schoolID,"o"+suffix).Scan(&ordinaryUserID,&ordinaryStaffPrincipalID); err != nil {
 		t.Fatalf("create separate ordinary staff fixture: %v",err)
 	}
 	staffTokenSum := sha256.Sum256([]byte("staff-idle-v21-" + suffix))
