@@ -21,7 +21,6 @@ import (
 	"school-management-system/internal/services"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
@@ -113,15 +112,22 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	}
 
 	gin.SetMode(gin.TestMode)
-	validator := fakeTokenValidator{claims: &services.TokenClaims{
-		RegisteredClaims: jwt.RegisteredClaims{Subject: strconv.FormatInt(principalID, 10)},
-		PrincipalType:    "staff",
-		TokenVersion:     tokenVersion,
-	}}
+	tokenService, err := services.NewTokenService(
+		"rbac-postgres-integration-secret-material-32-bytes-minimum",
+		"school-management-rbac-integration-test",
+		5,
+	)
+	if err != nil {
+		t.Fatalf("create real JWT service for integration test: %v", err)
+	}
+	accessToken, err := tokenService.GenerateAccessToken(principalID, tokenVersion, "staff")
+	if err != nil {
+		t.Fatalf("sign integration access token: %v", err)
+	}
 	principalRepo := repository.NewPrincipalAuthorizationRepository(tx)
 	roleHandler := handlers.NewRoleHandler(services.NewRoleService(repository.NewRoleRepository(tx)))
 	router, err := setupRouterWithHandlers(
-		fakeDatabase{}, nil, validator,
+		fakeDatabase{}, nil, tokenService,
 		principalRepo, principalRepo,
 		nil, roleHandler,
 	)
@@ -129,22 +135,38 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 		t.Fatalf("setup PostgreSQL-backed API router: %v", err)
 	}
 
-	request := func(method, path string) *httptest.ResponseRecorder {
+	request := func(method, path, bearerToken string) *httptest.ResponseRecorder {
 		t.Helper()
 		req := httptest.NewRequest(method, path, nil)
-		req.Header.Set("Authorization", "Bearer valid-test-token")
+		req.Header.Set("Authorization", "Bearer "+bearerToken)
 		rec := httptest.NewRecorder()
 		router.ServeHTTP(rec, req)
 		return rec
 	}
 
-	identity := request(http.MethodGet, "/auth/me")
+	// The real HS256 validator must reject a token whose signature is altered.
+	parts := strings.Split(accessToken, ".")
+	if len(parts) != 3 || parts[2] == "" {
+		t.Fatal("generated access token has an invalid JWT structure")
+	}
+	if strings.HasSuffix(parts[2], "A") {
+		parts[2] = parts[2][:len(parts[2])-1] + "B"
+	} else {
+		parts[2] = parts[2][:len(parts[2])-1] + "A"
+	}
+	invalidSignature := request(http.MethodGet, "/auth/me", strings.Join(parts, "."))
+	if invalidSignature.Code != http.StatusUnauthorized {
+		t.Fatalf("JWT with altered signature must be rejected: status=%d body=%s; want 401",
+			invalidSignature.Code, invalidSignature.Body.String())
+	}
+
+	identity := request(http.MethodGet, "/auth/me", accessToken)
 	if identity.Code != http.StatusOK {
 		t.Fatalf("active database principal should access /auth/me: status=%d body=%s",
 			identity.Code, identity.Body.String())
 	}
 
-	denied := request(http.MethodGet, "/school/roles")
+	denied := request(http.MethodGet, "/school/roles", accessToken)
 	if denied.Code != http.StatusForbidden {
 		t.Fatalf("staff principal without role grants must be denied role administration: status=%d body=%s; want 403",
 			denied.Code, denied.Body.String())
@@ -244,7 +266,7 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	); err != nil {
 		t.Fatalf("revoke integration access token by advancing token version: %v", err)
 	}
-	stale := request(http.MethodGet, "/auth/me")
+	stale := request(http.MethodGet, "/auth/me", accessToken)
 	if stale.Code != http.StatusUnauthorized {
 		t.Fatalf("request with stale token version must be rejected using current PostgreSQL state: status=%d body=%s; want 401",
 			stale.Code, stale.Body.String())
