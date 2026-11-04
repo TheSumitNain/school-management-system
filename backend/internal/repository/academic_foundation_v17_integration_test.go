@@ -144,7 +144,7 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 		t.Fatalf("assign Teacher role to fixture: %v", err)
 	}
 
-	var year1, year2, classLKG, classUKG, section1, section2, subjectID, studentID int64
+	var year1, year2, classLKG, classUKG, section1, section2, subjectID, subjectAltID, studentID int64
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO academic_years (school_id, name, starts_on, ends_on, status, is_current)
 		VALUES ($1, $2, DATE '2026-04-01', DATE '2027-03-31', 'active', TRUE)
@@ -204,6 +204,12 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 		VALUES ($1, 'Mathematics', $2) RETURNING id
 	`, schoolID, "MATH-"+suffix).Scan(&subjectID); err != nil {
 		t.Fatalf("create school subject: %v", err)
+	}
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO subjects (school_id, name, subject_code)
+		VALUES ($1, 'Science', $2) RETURNING id
+	`, schoolID, "SCI-"+suffix).Scan(&subjectAltID); err != nil {
+		t.Fatalf("create alternate school subject: %v", err)
 	}
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO students (school_id, admission_number, full_name)
@@ -319,7 +325,7 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 
 	// Assignment records are append-only except for their one-way revocation.
 	expectRejected("teacher subject assignment identity rewrite", func() error {
-		_, err := tx.Exec(ctx, `UPDATE teacher_subject_assignments SET assigned_by_principal_id = $1 WHERE school_id = $2 AND section_id = $3 AND teacher_principal_id = $4 AND revoked_at IS NULL`, platformAdminPrincipalID, schoolID, section2, teacherPrincipalID)
+		_, err := tx.Exec(ctx, `UPDATE teacher_subject_assignments SET subject_id = $1 WHERE school_id = $2 AND section_id = $3 AND teacher_principal_id = $4 AND revoked_at IS NULL`, subjectAltID, schoolID, section2, teacherPrincipalID)
 		return err
 	})
 	expectRejected("teacher subject assignment deletion", func() error {
