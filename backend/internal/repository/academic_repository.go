@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"school-management-system/internal/models"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 )
@@ -67,31 +69,46 @@ type AcademicRepository struct { db repositoryDB }
 func NewAcademicRepository(db repositoryDB) *AcademicRepository { return &AcademicRepository{db: db} }
 
 func authorizeAcademic(ctx context.Context, db repositoryDB, actorID, schoolID int64, permission string) error {
-	if db == nil || actorID <= 0 || schoolID <= 0 || permission == "" { return ErrAcademicAccessDenied }
-	var allowed bool
+	if db == nil || actorID <= 0 || schoolID <= 0 || permission == "" {
+		return ErrAcademicAccessDenied
+	}
+
+	// Use the same live RBAC evaluator as AuthMiddleware and the guardian
+	// repository. A direct role-permission join would bypass exact delegation
+	// identity, revoked delegation checks, and ALLOW/DENY user overrides.
+	var principal models.AuthPrincipal
+	var userStatus, schoolStatus string
 	err := db.QueryRow(ctx, `
-		SELECT EXISTS (
-			SELECT 1
-			FROM auth_principals ap
-			JOIN users u ON u.principal_id = ap.id
-			JOIN schools s ON s.id = u.school_id
-			JOIN principal_roles pr ON pr.principal_id = ap.id AND pr.revoked_at IS NULL
-			JOIN roles ro ON ro.id = pr.role_id
-			JOIN role_permissions rp ON rp.role_id = ro.id
-			JOIN permissions p ON p.id = rp.permission_id
-			WHERE ap.id = $1 AND ap.principal_type = 'staff' AND ap.status = 'active'
-			  AND u.status = 'active' AND u.school_id = $2 AND s.status = 'active'
-			  AND ro.school_id = $2 AND ro.scope_type = 'school' AND ro.principal_type = 'staff'
-			  AND p.permission_key = $3 AND p.scope_type = 'school' AND p.is_active = TRUE
-			  AND NOT EXISTS (
-				SELECT 1 FROM user_permission_overrides o
-				WHERE o.principal_id = ap.id AND o.school_id = $2
-				  AND o.permission_id = p.id AND o.effect = 'deny'
-			  )
-		)`, actorID, schoolID, permission).Scan(&allowed)
-	if err != nil { return fmt.Errorf("authorize academic operation: %w", err) }
-	if !allowed { return ErrAcademicAccessDenied }
-	return nil
+		SELECT ap.id, ap.principal_type, ap.status, u.school_id, u.status, s.status
+		FROM auth_principals ap
+		JOIN users u ON u.principal_id = ap.id
+		JOIN schools s ON s.id = u.school_id
+		WHERE ap.id = $1
+	`, actorID).Scan(
+		&principal.ID, &principal.Type, &principal.Status,
+		&principal.SchoolID, &userStatus, &schoolStatus,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrAcademicAccessDenied
+	}
+	if err != nil {
+		return fmt.Errorf("load academic actor: %w", err)
+	}
+	if principal.Type != "staff" || principal.Status != "active" ||
+		principal.SchoolID != schoolID || userStatus != "active" || schoolStatus != "active" {
+		return ErrAcademicAccessDenied
+	}
+
+	effective, err := loadEffectivePermissions(ctx, db, &principal)
+	if err != nil {
+		return fmt.Errorf("authorize academic operation: %w", err)
+	}
+	for _, key := range effective {
+		if key == permission {
+			return nil
+		}
+	}
+	return ErrAcademicAccessDenied
 }
 
 func academicWriteError(err error) error {
