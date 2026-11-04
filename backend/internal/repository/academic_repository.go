@@ -148,49 +148,94 @@ func (r *AcademicRepository) SaveAcademicYear(ctx context.Context, actorID, scho
 }
 
 func (r *AcademicRepository) ListClasses(ctx context.Context, actorID,schoolID int64)([]AcademicClass,error){
-	if err:=r.authorize(ctx,actorID,schoolID,"classes.read");err!=nil{return nil,err}
+	if err:=authorizeAcademic(ctx,r.db,actorID,schoolID,"classes.read");err!=nil{return nil,err}
 	rows,err:=r.db.Query(ctx,`SELECT id,school_id,name,display_order,is_active,created_at,updated_at FROM classes WHERE school_id=$1 ORDER BY display_order,id`,schoolID);if err!=nil{return nil,fmt.Errorf("list classes: %w",err)};defer rows.Close()
 	items:=make([]AcademicClass,0);for rows.Next(){var v AcademicClass;if err:=rows.Scan(&v.ID,&v.SchoolID,&v.Name,&v.DisplayOrder,&v.IsActive,&v.CreatedAt,&v.UpdatedAt);err!=nil{return nil,fmt.Errorf("scan class: %w",err)};items=append(items,v)};if err:=rows.Err();err!=nil{return nil,fmt.Errorf("iterate classes: %w",err)};return items,nil
 }
-func (r *AcademicRepository) SaveClass(ctx context.Context,actorID,schoolID,id int64,name string,order int,active bool)(*AcademicClass,error){
-	name=strings.TrimSpace(name);if name==""||len(name)>100||order<0{return nil,ErrInvalidAcademicInput}
-	if err:=r.authorize(ctx,actorID,schoolID,"classes.manage");err!=nil{return nil,err}
-	var v AcademicClass;var err error
-	if id==0{err=tx.QueryRow(ctx,`INSERT INTO classes(school_id,name,display_order,is_active) VALUES($1,$2,$3,$4) RETURNING id,school_id,name,display_order,is_active,created_at,updated_at`,schoolID,name,order,active).Scan(&v.ID,&v.SchoolID,&v.Name,&v.DisplayOrder,&v.IsActive,&v.CreatedAt,&v.UpdatedAt)}else{err=tx.QueryRow(ctx,`UPDATE classes SET name=$3,display_order=$4,is_active=$5,updated_at=NOW() WHERE school_id=$1 AND id=$2 RETURNING id,school_id,name,display_order,is_active,created_at,updated_at`,schoolID,id,name,order,active).Scan(&v.ID,&v.SchoolID,&v.Name,&v.DisplayOrder,&v.IsActive,&v.CreatedAt,&v.UpdatedAt)}
-	if err!=nil{return nil,academicWriteError(err)}
-	if _,err=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata) VALUES($1,$2,$3,'class',$4,'success',jsonb_build_object('name',$5::text,'is_active',$6::boolean))`,actorID,schoolID,map[bool]string{true:"school.class.created",false:"school.class.updated"}[id==0],fmt.Sprint(v.ID),v.Name,v.IsActive);err!=nil{return nil,fmt.Errorf("audit class save: %w",err)}
-	if err=tx.Commit(ctx);err!=nil{return nil,fmt.Errorf("commit class save: %w",err)}
+func (r *AcademicRepository) SaveClass(ctx context.Context, actorID, schoolID, id int64, name string, order int, active bool) (*AcademicClass, error) {
+	name = strings.TrimSpace(name)
+	if name == "" || len(name) > 100 || order < 0 { return nil, ErrInvalidAcademicInput }
+	tx, err := r.db.Begin(ctx); if err != nil { return nil, fmt.Errorf("begin class save: %w", err) }
+	defer func(){ _ = tx.Rollback(ctx) }()
+	if err = authorizeAcademic(ctx, tx, actorID, schoolID, "classes.manage"); err != nil { return nil, err }
+	var v AcademicClass
+	if id == 0 {
+		err = tx.QueryRow(ctx, `INSERT INTO classes(school_id,name,display_order,is_active) VALUES($1,$2,$3,$4)
+			RETURNING id,school_id,name,display_order,is_active,created_at,updated_at`, schoolID,name,order,active).
+			Scan(&v.ID,&v.SchoolID,&v.Name,&v.DisplayOrder,&v.IsActive,&v.CreatedAt,&v.UpdatedAt)
+	} else {
+		err = tx.QueryRow(ctx, `UPDATE classes SET name=$3,display_order=$4,is_active=$5,updated_at=NOW()
+			WHERE school_id=$1 AND id=$2 RETURNING id,school_id,name,display_order,is_active,created_at,updated_at`,
+			schoolID,id,name,order,active).Scan(&v.ID,&v.SchoolID,&v.Name,&v.DisplayOrder,&v.IsActive,&v.CreatedAt,&v.UpdatedAt)
+	}
+	if err != nil { return nil, academicWriteError(err) }
+	action := "school.class.updated"; if id == 0 { action = "school.class.created" }
+	if _,err = tx.Exec(ctx, `INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
+		VALUES($1,$2,$3,'class',$4,'success',jsonb_build_object('name',$5::text,'is_active',$6::boolean))`,
+		actorID,schoolID,action,fmt.Sprint(v.ID),v.Name,v.IsActive); err != nil { return nil,fmt.Errorf("audit class save: %w",err) }
+	if err=tx.Commit(ctx); err!=nil { return nil,fmt.Errorf("commit class save: %w",err) }
 	return &v,nil
 }
 
 func (r *AcademicRepository) ListSections(ctx context.Context,actorID,schoolID,yearID int64)([]AcademicSection,error){
-	if err:=r.authorize(ctx,actorID,schoolID,"classes.read");err!=nil{return nil,err}
+	if err:=authorizeAcademic(ctx,r.db,actorID,schoolID,"classes.read");err!=nil{return nil,err}
 	rows,err:=r.db.Query(ctx,`SELECT id,school_id,academic_year_id,class_id,name,display_order,is_active,created_at,updated_at FROM sections WHERE school_id=$1 AND ($2=0 OR academic_year_id=$2) ORDER BY academic_year_id,class_id,display_order,id`,schoolID,yearID);if err!=nil{return nil,fmt.Errorf("list sections: %w",err)};defer rows.Close()
 	items:=make([]AcademicSection,0);for rows.Next(){var v AcademicSection;if err:=rows.Scan(&v.ID,&v.SchoolID,&v.AcademicYearID,&v.ClassID,&v.Name,&v.DisplayOrder,&v.IsActive,&v.CreatedAt,&v.UpdatedAt);err!=nil{return nil,fmt.Errorf("scan section: %w",err)};items=append(items,v)};if err:=rows.Err();err!=nil{return nil,fmt.Errorf("iterate sections: %w",err)};return items,nil
 }
-func (r *AcademicRepository) SaveSection(ctx context.Context,actorID,schoolID,id,yearID,classID int64,name string,order int,active bool)(*AcademicSection,error){
-	name=strings.TrimSpace(name);if name==""||len(name)>40||order<0||yearID<=0||classID<=0{return nil,ErrInvalidAcademicInput}
-	if err:=r.authorize(ctx,actorID,schoolID,"classes.manage");err!=nil{return nil,err}
-	var v AcademicSection;var err error
-	if id==0{err=tx.QueryRow(ctx,`INSERT INTO sections(school_id,academic_year_id,class_id,name,display_order,is_active) VALUES($1,$2,$3,$4,$5,$6) RETURNING id,school_id,academic_year_id,class_id,name,display_order,is_active,created_at,updated_at`,schoolID,yearID,classID,name,order,active).Scan(&v.ID,&v.SchoolID,&v.AcademicYearID,&v.ClassID,&v.Name,&v.DisplayOrder,&v.IsActive,&v.CreatedAt,&v.UpdatedAt)}else{err=tx.QueryRow(ctx,`UPDATE sections SET name=$4,display_order=$5,is_active=$6,updated_at=NOW() WHERE school_id=$1 AND id=$2 AND academic_year_id=$3 RETURNING id,school_id,academic_year_id,class_id,name,display_order,is_active,created_at,updated_at`,schoolID,id,yearID,name,order,active).Scan(&v.ID,&v.SchoolID,&v.AcademicYearID,&v.ClassID,&v.Name,&v.DisplayOrder,&v.IsActive,&v.CreatedAt,&v.UpdatedAt)}
-	if err!=nil{return nil,academicWriteError(err)}
-	if _,err=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata) VALUES($1,$2,$3,'section',$4,'success',jsonb_build_object('name',$5::text,'is_active',$6::boolean))`,actorID,schoolID,map[bool]string{true:"school.section.created",false:"school.section.updated"}[id==0],fmt.Sprint(v.ID),v.Name,v.IsActive);err!=nil{return nil,fmt.Errorf("audit section save: %w",err)}
+func (r *AcademicRepository) SaveSection(ctx context.Context, actorID, schoolID, id, yearID, classID int64, name string, order int, active bool) (*AcademicSection, error) {
+	name = strings.TrimSpace(name)
+	if name == "" || len(name) > 40 || order < 0 || yearID <= 0 || classID <= 0 { return nil, ErrInvalidAcademicInput }
+	tx, err := r.db.Begin(ctx); if err != nil { return nil, fmt.Errorf("begin section save: %w",err) }
+	defer func(){ _ = tx.Rollback(ctx) }()
+	if err=authorizeAcademic(ctx,tx,actorID,schoolID,"classes.manage"); err!=nil { return nil,err }
+	var v AcademicSection
+	if id==0 {
+		err=tx.QueryRow(ctx,`INSERT INTO sections(school_id,academic_year_id,class_id,name,display_order,is_active)
+			VALUES($1,$2,$3,$4,$5,$6) RETURNING id,school_id,academic_year_id,class_id,name,display_order,is_active,created_at,updated_at`,
+			schoolID,yearID,classID,name,order,active).Scan(&v.ID,&v.SchoolID,&v.AcademicYearID,&v.ClassID,&v.Name,&v.DisplayOrder,&v.IsActive,&v.CreatedAt,&v.UpdatedAt)
+	} else {
+		err=tx.QueryRow(ctx,`UPDATE sections SET name=$4,display_order=$5,is_active=$6,updated_at=NOW()
+			WHERE school_id=$1 AND id=$2 AND academic_year_id=$3
+			RETURNING id,school_id,academic_year_id,class_id,name,display_order,is_active,created_at,updated_at`,
+			schoolID,id,yearID,name,order,active).Scan(&v.ID,&v.SchoolID,&v.AcademicYearID,&v.ClassID,&v.Name,&v.DisplayOrder,&v.IsActive,&v.CreatedAt,&v.UpdatedAt)
+	}
+	if err!=nil { return nil,academicWriteError(err) }
+	action:="school.section.updated";if id==0{action="school.section.created"}
+	if _,err=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
+		VALUES($1,$2,$3,'section',$4,'success',jsonb_build_object('name',$5::text,'is_active',$6::boolean))`,
+		actorID,schoolID,action,fmt.Sprint(v.ID),v.Name,v.IsActive);err!=nil{return nil,fmt.Errorf("audit section save: %w",err)}
 	if err=tx.Commit(ctx);err!=nil{return nil,fmt.Errorf("commit section save: %w",err)}
 	return &v,nil
 }
 
 func (r *AcademicRepository) ListSubjects(ctx context.Context,actorID,schoolID int64)([]AcademicSubject,error){
-	if err:=r.authorize(ctx,actorID,schoolID,"subjects.read");err!=nil{return nil,err}
+	if err:=authorizeAcademic(ctx,r.db,actorID,schoolID,"subjects.read");err!=nil{return nil,err}
 	rows,err:=r.db.Query(ctx,`SELECT id,school_id,name,subject_code,is_active,created_at,updated_at FROM subjects WHERE school_id=$1 ORDER BY lower(name),id`,schoolID);if err!=nil{return nil,fmt.Errorf("list subjects: %w",err)};defer rows.Close()
 	items:=make([]AcademicSubject,0);for rows.Next(){var v AcademicSubject;if err:=rows.Scan(&v.ID,&v.SchoolID,&v.Name,&v.Code,&v.IsActive,&v.CreatedAt,&v.UpdatedAt);err!=nil{return nil,fmt.Errorf("scan subject: %w",err)};items=append(items,v)};if err:=rows.Err();err!=nil{return nil,fmt.Errorf("iterate subjects: %w",err)};return items,nil
 }
-func (r *AcademicRepository) SaveSubject(ctx context.Context,actorID,schoolID,id int64,name string,code *string,active bool)(*AcademicSubject,error){
-	name=strings.TrimSpace(name);if code!=nil{v:=strings.TrimSpace(*code);if v==""{code=nil}else if len(v)>40{return nil,ErrInvalidAcademicInput}else{code=&v}};if name==""||len(name)>120{return nil,ErrInvalidAcademicInput}
-	if err:=r.authorize(ctx,actorID,schoolID,"subjects.manage");err!=nil{return nil,err}
-	var v AcademicSubject;var err error
-	if id==0{err=tx.QueryRow(ctx,`INSERT INTO subjects(school_id,name,subject_code,is_active) VALUES($1,$2,$3,$4) RETURNING id,school_id,name,subject_code,is_active,created_at,updated_at`,schoolID,name,code,active).Scan(&v.ID,&v.SchoolID,&v.Name,&v.Code,&v.IsActive,&v.CreatedAt,&v.UpdatedAt)}else{err=tx.QueryRow(ctx,`UPDATE subjects SET name=$3,subject_code=$4,is_active=$5,updated_at=NOW() WHERE school_id=$1 AND id=$2 RETURNING id,school_id,name,subject_code,is_active,created_at,updated_at`,schoolID,id,name,code,active).Scan(&v.ID,&v.SchoolID,&v.Name,&v.Code,&v.IsActive,&v.CreatedAt,&v.UpdatedAt)}
+func (r *AcademicRepository) SaveSubject(ctx context.Context, actorID, schoolID, id int64, name string, code *string, active bool) (*AcademicSubject,error) {
+	name=strings.TrimSpace(name)
+	if code!=nil { value:=strings.TrimSpace(*code); if value=="" { code=nil } else if len(value)>40 { return nil,ErrInvalidAcademicInput } else { code=&value } }
+	if name==""||len(name)>120{return nil,ErrInvalidAcademicInput}
+	tx,err:=r.db.Begin(ctx);if err!=nil{return nil,fmt.Errorf("begin subject save: %w",err)}
+	defer func(){_ = tx.Rollback(ctx)}()
+	if err=authorizeAcademic(ctx,tx,actorID,schoolID,"subjects.manage");err!=nil{return nil,err}
+	var v AcademicSubject
+	if id==0 {
+		err=tx.QueryRow(ctx,`INSERT INTO subjects(school_id,name,subject_code,is_active) VALUES($1,$2,$3,$4)
+			RETURNING id,school_id,name,subject_code,is_active,created_at,updated_at`,schoolID,name,code,active).
+			Scan(&v.ID,&v.SchoolID,&v.Name,&v.Code,&v.IsActive,&v.CreatedAt,&v.UpdatedAt)
+	} else {
+		err=tx.QueryRow(ctx,`UPDATE subjects SET name=$3,subject_code=$4,is_active=$5,updated_at=NOW()
+			WHERE school_id=$1 AND id=$2 RETURNING id,school_id,name,subject_code,is_active,created_at,updated_at`,
+			schoolID,id,name,code,active).Scan(&v.ID,&v.SchoolID,&v.Name,&v.Code,&v.IsActive,&v.CreatedAt,&v.UpdatedAt)
+	}
 	if err!=nil{return nil,academicWriteError(err)}
-	if _,err=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata) VALUES($1,$2,$3,'subject',$4,'success',jsonb_build_object('name',$5::text,'is_active',$6::boolean))`,actorID,schoolID,map[bool]string{true:"school.subject.created",false:"school.subject.updated"}[id==0],fmt.Sprint(v.ID),v.Name,v.IsActive);err!=nil{return nil,fmt.Errorf("audit subject save: %w",err)}
+	action:="school.subject.updated";if id==0{action="school.subject.created"}
+	if _,err=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
+		VALUES($1,$2,$3,'subject',$4,'success',jsonb_build_object('name',$5::text,'is_active',$6::boolean))`,
+		actorID,schoolID,action,fmt.Sprint(v.ID),v.Name,v.IsActive);err!=nil{return nil,fmt.Errorf("audit subject save: %w",err)}
 	if err=tx.Commit(ctx);err!=nil{return nil,fmt.Errorf("commit subject save: %w",err)}
 	return &v,nil
 }
+
