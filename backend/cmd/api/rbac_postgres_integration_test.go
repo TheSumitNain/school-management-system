@@ -471,7 +471,7 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	overrideDelegationResponse := postJSON(
 		fmt.Sprintf("/platform/schools/%d/permission-delegations", schoolID),
 		platformAccessToken,
-		`{"permission_key":"roles.read","can_assign_to_roles":false,"can_override_users":true}`,
+		`{"permission_key":"roles.read","can_assign_to_roles":true,"can_override_users":true}`,
 	)
 	if overrideDelegationResponse.Code != http.StatusCreated {
 		t.Fatalf("Platform Admin override delegation should return 201: status=%d body=%s",
@@ -526,6 +526,75 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 		t.Fatalf("removed roles.read override must stop authorizing the next protected request: status=%d body=%s",
 			targetAfterRemoval.Code, targetAfterRemoval.Body.String())
 	}
+
+	// A DENY override must take precedence over the same permission granted
+	// through a role, and deleting the override must restore role-based access.
+	roleReadGrant := postJSON(
+		fmt.Sprintf("/school/roles/%d/permissions", createdRolePayload.Role.ID),
+		accessToken,
+		fmt.Sprintf(`{"permission_key":"roles.read","delegation_id":%d}`, overrideDelegationPayload.Delegation.ID),
+	)
+	if roleReadGrant.Code != http.StatusCreated {
+		t.Fatalf("grant roles.read to custom role should return 201: status=%d body=%s",
+			roleReadGrant.Code, roleReadGrant.Body.String())
+	}
+	secondRoleAssignment := request(
+		http.MethodPost,
+		fmt.Sprintf("/school/staff/%d/roles/%d", targetStaffPrincipalID, createdRolePayload.Role.ID),
+		accessToken,
+	)
+	if secondRoleAssignment.Code != http.StatusCreated {
+		t.Fatalf("assign custom role with roles.read should return 201: status=%d body=%s",
+			secondRoleAssignment.Code, secondRoleAssignment.Body.String())
+	}
+	targetWithRole := request(http.MethodGet, "/school/roles", targetAccessToken)
+	if targetWithRole.Code != http.StatusOK {
+		t.Fatalf("role-granted roles.read must authorize the target staff: status=%d body=%s",
+			targetWithRole.Code, targetWithRole.Body.String())
+	}
+	setDenyOverride := postJSON(
+		fmt.Sprintf("/school/staff/%d/permission-overrides", targetStaffPrincipalID),
+		accessToken,
+		fmt.Sprintf(`{"permission_key":"roles.read","effect":"deny","reason":"verify deny precedence","delegation_id":%d}`,
+			overrideDelegationPayload.Delegation.ID),
+	)
+	if setDenyOverride.Code != http.StatusOK {
+		t.Fatalf("School Admin DENY override should return 200: status=%d body=%s",
+			setDenyOverride.Code, setDenyOverride.Body.String())
+	}
+	targetAfterDeny := request(http.MethodGet, "/school/roles", targetAccessToken)
+	if targetAfterDeny.Code != http.StatusForbidden {
+		t.Fatalf("DENY override must override role-granted roles.read on the next request: status=%d body=%s",
+			targetAfterDeny.Code, targetAfterDeny.Body.String())
+	}
+	deleteDenyOverride := request(
+		http.MethodDelete,
+		fmt.Sprintf("/school/staff/%d/permission-overrides/roles.read", targetStaffPrincipalID),
+		accessToken,
+	)
+	if deleteDenyOverride.Code != http.StatusOK {
+		t.Fatalf("deleting DENY override should return 200: status=%d body=%s",
+			deleteDenyOverride.Code, deleteDenyOverride.Body.String())
+	}
+	targetAfterDenyRemoval := request(http.MethodGet, "/school/roles", targetAccessToken)
+	if targetAfterDenyRemoval.Code != http.StatusOK {
+		t.Fatalf("removing DENY override must restore role-granted roles.read: status=%d body=%s",
+			targetAfterDenyRemoval.Code, targetAfterDenyRemoval.Body.String())
+	}
+	secondRoleRevocation := request(
+		http.MethodDelete,
+		fmt.Sprintf("/school/staff/%d/roles/%d", targetStaffPrincipalID, createdRolePayload.Role.ID),
+		accessToken,
+	)
+	if secondRoleRevocation.Code != http.StatusOK {
+		t.Fatalf("revoke second custom-role assignment should return 200: status=%d body=%s",
+			secondRoleRevocation.Code, secondRoleRevocation.Body.String())
+	}
+	targetAfterSecondRoleRevocation := request(http.MethodGet, "/school/roles", targetAccessToken)
+	if targetAfterSecondRoleRevocation.Code != http.StatusForbidden {
+		t.Fatalf("revoking role assignment must remove roles.read on the next request: status=%d body=%s",
+			targetAfterSecondRoleRevocation.Code, targetAfterSecondRoleRevocation.Body.String())
+	}
 	revokeOverrideDelegation := request(
 		http.MethodPost,
 		fmt.Sprintf("/platform/permission-delegations/%d/revoke", overrideDelegationPayload.Delegation.ID),
@@ -539,8 +608,12 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	// HTTP success responses must correspond to durable-in-transaction audit
 	// events, while rejected cross-school writes must leave no audit or data
 	// side effects. The outer transaction is rolled back at test completion.
-	assertAuditEvent := func(action, resourceType string, resourceID int64) {
+	assertAuditEvent := func(action, resourceType string, resourceID int64, expectedCounts ...int) {
 		t.Helper()
+		expected := 1
+		if len(expectedCounts) > 0 {
+			expected = expectedCounts[0]
+		}
 		var count int
 		if err := tx.QueryRow(ctx, `
 			SELECT COUNT(*)
@@ -554,9 +627,9 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 		`, principalID, schoolID, action, resourceType, fmt.Sprint(resourceID)).Scan(&count); err != nil {
 			t.Fatalf("count audit event %s: %v", action, err)
 		}
-		if count != 1 {
-			t.Fatalf("expected exactly one %s audit event for %s/%d; got %d",
-				action, resourceType, resourceID, count)
+		if count != expected {
+			t.Fatalf("expected %d %s audit events for %s/%d; got %d",
+				expected, action, resourceType, resourceID, count)
 		}
 	}
 	assertPlatformAuditEvent := func(action string, resourceID int64) {
@@ -582,14 +655,14 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	assertAuditEvent("school.role.created", "school_role", createdRolePayload.Role.ID)
 	assertPlatformAuditEvent("platform.permission_delegation.granted", delegationPayload.Delegation.ID)
 	assertPlatformAuditEvent("platform.permission_delegation.revoked", delegationPayload.Delegation.ID)
-	assertAuditEvent("school.custom_role.permission_granted", "school_role", createdRolePayload.Role.ID)
+	assertAuditEvent("school.custom_role.permission_granted", "school_role", createdRolePayload.Role.ID, 2)
 	assertAuditEvent("school.custom_role.permission_revoked", "school_role", createdRolePayload.Role.ID)
-	assertAuditEvent("school.staff.role_assigned", "staff_principal", targetStaffPrincipalID)
-	assertAuditEvent("school.staff.role_revoked", "staff_principal", targetStaffPrincipalID)
+	assertAuditEvent("school.staff.role_assigned", "staff_principal", targetStaffPrincipalID, 2)
+	assertAuditEvent("school.staff.role_revoked", "staff_principal", targetStaffPrincipalID, 2)
 	assertPlatformAuditEvent("platform.permission_delegation.granted", overrideDelegationPayload.Delegation.ID)
 	assertPlatformAuditEvent("platform.permission_delegation.revoked", overrideDelegationPayload.Delegation.ID)
-	assertAuditEvent("school.staff.permission_override.set", "user_permission_override", targetStaffPrincipalID)
-	assertAuditEvent("school.staff.permission_override.removed", "user_permission_override", targetStaffPrincipalID)
+	assertAuditEvent("school.staff.permission_override.set", "user_permission_override", targetStaffPrincipalID, 2)
+	assertAuditEvent("school.staff.permission_override.removed", "user_permission_override", targetStaffPrincipalID, 2)
 
 	var foreignAssignmentExists, foreignOverrideExists bool
 	if err := tx.QueryRow(ctx, `
