@@ -339,7 +339,7 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 		INSERT INTO users (school_id, username, password_hash, status)
 		VALUES ($1, $2, $3, 'active')
 		RETURNING principal_id
-	`, otherSchoolID, "role-target-other-"+suffix, "integration-test-password-hash").Scan(&otherSchoolPrincipalID); err != nil {
+	`, otherSchoolID, "oth-"+suffix, "integration-test-password-hash").Scan(&otherSchoolPrincipalID); err != nil {
 		t.Fatalf("create second-school staff fixture: %v", err)
 	}
 	if _, err := repo.ListSchoolRoles(ctx, actorPrincipalID, otherSchoolID); !errors.Is(err, ErrRolePermissionDenied) {
