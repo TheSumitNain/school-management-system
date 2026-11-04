@@ -555,6 +555,5 @@ func rotateSessionTokens(ctx context.Context, tokens TokenService, sessions Sess
 	if !ok { return nil, "", "", errors.New("session-family rotation unavailable") }
 	principal, replacement, familyID, err := rotator.RotateWithFamily(ctx, refresh)
 	if err != nil { return nil, "", "", err }
-	if _, err := generateSessionAccessToken(tokens, principal, familyID); err != nil { return nil, "", "", err }
 	return principal, replacement, familyID, nil
 }
