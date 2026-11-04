@@ -43,7 +43,7 @@ func NewSessionService(sessions refreshSessionRepository, refreshExpiryDays int)
 	return &SessionService{sessions: sessions, expiry: time.Duration(refreshExpiryDays) * 24 * time.Hour}, nil
 }
 
-// IssueForPrincipal binds session creation to the exact principal version
+// Issue binds session creation to the exact principal version
 // returned by password/MFA authentication. A concurrent credential reset or
 // account-security change therefore invalidates the in-flight login.
 func (s *SessionService) Issue(ctx context.Context, principal *models.AuthPrincipal) (string, error) {
