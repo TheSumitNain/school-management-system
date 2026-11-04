@@ -254,7 +254,7 @@ func setupRouterWithHandlers(
 		router.POST("/auth/mfa/recovery-codes/regenerate/start",
 			authMiddleware(),
 			authHandler.BeginMFARecoveryCodeRegeneration)
-		router.POST("/auth/mfa/recovery-codes/regenerate", authHandler.RegenerateMFARecoveryCodes)
+		router.POST("/auth/mfa/recovery-codes/regenerate", authMiddleware(), authHandler.RegenerateMFARecoveryCodes)
 		router.POST("/auth/refresh", authHandler.Refresh)
 		router.POST("/auth/logout", authHandler.Logout)
 		router.POST("/auth/password/change",
