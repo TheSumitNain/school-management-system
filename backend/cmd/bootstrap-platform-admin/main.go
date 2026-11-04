@@ -51,7 +51,9 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("read initial Platform Admin password: %w", err)
 	}
-	passwordHash, err := services.HashPassword(string(passwordBytes))
+	passwordCtx, passwordCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	passwordHash, err := services.HashPasswordContext(passwordCtx, string(passwordBytes))
+	passwordCancel()
 	for i := range passwordBytes {
 		passwordBytes[i] = 0
 	}
