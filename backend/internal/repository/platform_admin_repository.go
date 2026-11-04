@@ -93,6 +93,22 @@ func (r *PlatformAdminRepository) BootstrapFirst(
 	return principalID, nil
 }
 
+// BootstrapFirstInTx performs the one-time bootstrap inside a caller-owned
+// transaction. It is intended for atomic setup workflows and rollback-scoped
+// integration tests; callers retain responsibility for committing or rolling back.
+func (r *PlatformAdminRepository) BootstrapFirstInTx(
+	ctx context.Context,
+	tx pgx.Tx,
+	email string,
+	passwordHash string,
+) (int64, error) {
+	email = strings.TrimSpace(strings.ToLower(email))
+	if r == nil || r.db == nil || tx == nil || email == "" || len(email) > 254 || passwordHash == "" {
+		return 0, fmt.Errorf("invalid Platform Admin bootstrap input")
+	}
+	return r.bootstrapFirstInTx(ctx, tx, email, passwordHash)
+}
+
 // bootstrapFirstInTx performs the complete bootstrap inside a caller-owned
 // transaction. Keeping transaction ownership outside permits rollback-based
 // PostgreSQL integration tests without leaving a permanent Platform Admin.
