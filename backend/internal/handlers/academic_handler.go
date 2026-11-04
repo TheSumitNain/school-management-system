@@ -23,6 +23,12 @@ type AcademicManagementService interface {
 	SaveSection(context.Context,int64,int64,int64,int64,int64,string,int,bool)(*repository.AcademicSection,error)
 	ListSubjects(context.Context,int64,int64)([]repository.AcademicSubject,error)
 	SaveSubject(context.Context,int64,int64,int64,string,*string,bool)(*repository.AcademicSubject,error)
+	ListTeacherSubjectAssignments(context.Context,int64,int64,int64,int64)([]repository.TeacherSubjectAssignment,error)
+	CreateTeacherSubjectAssignment(context.Context,int64,int64,int64,int64,int64,int64)(*repository.TeacherSubjectAssignment,error)
+	RevokeTeacherSubjectAssignment(context.Context,int64,int64,int64)error
+	ListClassInchargeAssignments(context.Context,int64,int64,int64)([]repository.ClassInchargeAssignment,error)
+	CreateClassInchargeAssignment(context.Context,int64,int64,int64,int64,int64)(*repository.ClassInchargeAssignment,error)
+	RevokeClassInchargeAssignment(context.Context,int64,int64,int64)error
 }
 
 type AcademicHandler struct { service AcademicManagementService }
@@ -89,4 +95,46 @@ func(h *AcademicHandler) SaveSubject(c *gin.Context){
 	var req struct{Name string `json:"name"`;Code *string `json:"subject_code"`;IsActive *bool `json:"is_active"`}
 	if c.ShouldBindJSON(&req)!=nil{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid request body"});return};active:=true;if req.IsActive!=nil{active=*req.IsActive}
 	v,err:=h.service.SaveSubject(c.Request.Context(),a,s,id,req.Name,req.Code,active);if err!=nil{academicError(c,err,"Subject");return};code:=http.StatusOK;if id==0{code=http.StatusCreated};c.JSON(code,gin.H{"status":"success","subject":v})
+}
+
+
+func queryPositiveID(c *gin.Context,key string)(int64,bool){
+	raw:=c.Query(key);if raw==""{return 0,true};v,err:=strconv.ParseInt(raw,10,64);return v,err==nil&&v>0
+}
+
+func(h *AcademicHandler) ListTeacherSubjectAssignments(c *gin.Context){
+	a,s,ok:=h.ready(c);if !ok{return}
+	yearID,valid:=queryPositiveID(c,"academic_year_id");if !valid{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid academic_year_id"});return}
+	sectionID,valid:=queryPositiveID(c,"section_id");if !valid{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid section_id"});return}
+	items,err:=h.service.ListTeacherSubjectAssignments(c.Request.Context(),a,s,yearID,sectionID);if err!=nil{academicError(c,err,"Teacher assignment");return}
+	c.JSON(http.StatusOK,gin.H{"status":"success","assignments":items})
+}
+func(h *AcademicHandler) CreateTeacherSubjectAssignment(c *gin.Context){
+	a,s,ok:=h.ready(c);if !ok{return}
+	var req struct{AcademicYearID int64 `json:"academic_year_id"`;SectionID int64 `json:"section_id"`;SubjectID int64 `json:"subject_id"`;TeacherPrincipalID int64 `json:"teacher_principal_id"`}
+	if c.ShouldBindJSON(&req)!=nil{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid request body"});return}
+	item,err:=h.service.CreateTeacherSubjectAssignment(c.Request.Context(),a,s,req.AcademicYearID,req.SectionID,req.SubjectID,req.TeacherPrincipalID)
+	if err!=nil{academicError(c,err,"Teacher assignment");return}
+	c.JSON(http.StatusCreated,gin.H{"status":"success","assignment":item})
+}
+func(h *AcademicHandler) RevokeTeacherSubjectAssignment(c *gin.Context){
+	a,s,ok:=h.ready(c);if !ok{return};id,valid:=academicID(c,"assignmentID");if !valid{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid assignment ID"});return}
+	if err:=h.service.RevokeTeacherSubjectAssignment(c.Request.Context(),a,s,id);err!=nil{academicError(c,err,"Teacher assignment");return}
+	c.JSON(http.StatusOK,gin.H{"status":"success","message":"Teacher assignment revoked"})
+}
+func(h *AcademicHandler) ListClassInchargeAssignments(c *gin.Context){
+	a,s,ok:=h.ready(c);if !ok{return};yearID,valid:=queryPositiveID(c,"academic_year_id");if !valid{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid academic_year_id"});return}
+	items,err:=h.service.ListClassInchargeAssignments(c.Request.Context(),a,s,yearID);if err!=nil{academicError(c,err,"Class in-charge assignment");return}
+	c.JSON(http.StatusOK,gin.H{"status":"success","assignments":items})
+}
+func(h *AcademicHandler) CreateClassInchargeAssignment(c *gin.Context){
+	a,s,ok:=h.ready(c);if !ok{return};var req struct{AcademicYearID int64 `json:"academic_year_id"`;SectionID int64 `json:"section_id"`;TeacherPrincipalID int64 `json:"teacher_principal_id"`}
+	if c.ShouldBindJSON(&req)!=nil{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid request body"});return}
+	item,err:=h.service.CreateClassInchargeAssignment(c.Request.Context(),a,s,req.AcademicYearID,req.SectionID,req.TeacherPrincipalID);if err!=nil{academicError(c,err,"Class in-charge assignment");return}
+	c.JSON(http.StatusCreated,gin.H{"status":"success","assignment":item})
+}
+func(h *AcademicHandler) RevokeClassInchargeAssignment(c *gin.Context){
+	a,s,ok:=h.ready(c);if !ok{return};id,valid:=academicID(c,"assignmentID");if !valid{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid assignment ID"});return}
+	if err:=h.service.RevokeClassInchargeAssignment(c.Request.Context(),a,s,id);err!=nil{academicError(c,err,"Class in-charge assignment");return}
+	c.JSON(http.StatusOK,gin.H{"status":"success","message":"Class in-charge assignment revoked"})
 }
