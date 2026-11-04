@@ -144,6 +144,16 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 		return rec
 	}
 
+	postJSON := func(path, bearerToken, body string) *httptest.ResponseRecorder {
+		t.Helper()
+		req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+bearerToken)
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		return rec
+	}
+
 	// The real HS256 validator must reject a token whose signature is altered.
 	parts := strings.Split(accessToken, ".")
 	if len(parts) != 3 || parts[2] == "" {
@@ -261,6 +271,19 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	}
 	if !strings.Contains(allowed.Body.String(), "school_admin") {
 		t.Fatalf("successful role response does not contain the School Admin role: %s", allowed.Body.String())
+	}
+
+	// Exercise a real authorized HTTP write through the role handler, service,
+	// and transaction-backed PostgreSQL repository.
+	customRoleName := "HTTP Integration Custom Role " + suffix
+	createdRole := postJSON("/school/roles", accessToken,
+		fmt.Sprintf(`{"name":%q}`, customRoleName))
+	if createdRole.Code != http.StatusCreated {
+		t.Fatalf("School Admin custom-role creation should reach PostgreSQL and return 201: status=%d body=%s",
+			createdRole.Code, createdRole.Body.String())
+	}
+	if !strings.Contains(createdRole.Body.String(), customRoleName) {
+		t.Fatalf("custom-role creation response does not include the created role name: %s", createdRole.Body.String())
 	}
 
 	if _, err := tx.Exec(ctx,
