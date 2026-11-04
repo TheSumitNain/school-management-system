@@ -18,6 +18,8 @@ This project is under active development. Verification results describe the late
 - Draft PR run `41766719434` on commit `d5f8340` passed V1–V16 migrations, the full PostgreSQL integration-enabled Go suite, and `go vet ./...`.
 - Extended the same HTTP integration path: a real Platform Admin token (with a transaction-scoped verified-MFA fixture when bootstrapped for the test) grants a school permission delegation over `POST /platform/schools/:schoolID/permission-delegations`; the School Admin then consumes that exact delegation to grant `students.read_basic` to the custom role through `POST /school/roles/:roleID/permissions`. Both real HTTP write routes return 201 and all writes roll back.
 - Push run `41767168878` and Draft PR run `41767176542` on commit `6bf8ca5` passed V1–V16 migrations, the full PostgreSQL integration-enabled Go suite, and `go vet ./...`.
+- Added HTTP revocation checks: School Admin revokes the custom-role permission through `DELETE /school/roles/:roleID/permissions/:permissionKey` (200), then Platform Admin revokes the exact delegation through `POST /platform/permission-delegations/:delegationID/revoke` (200).
+- Push run `41767372453` and Draft PR run `41767378009` on commit `0b560fd` both passed V1–V16 migrations, the full PostgreSQL integration-enabled Go suite, and `go vet ./...`.
 - This verifies tenant boundaries for RBAC administration operations only; business-resource tenant isolation remains pending until those resource APIs and repositories are implemented.
 
 
