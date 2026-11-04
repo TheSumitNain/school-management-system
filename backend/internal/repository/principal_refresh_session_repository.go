@@ -200,6 +200,123 @@ FOR UPDATE OF ap`
 	return nil
 }
 
+func (r *PrincipalRefreshSessionRepository) createPrincipalInTxWithFamily(
+	ctx context.Context,
+	tx pgx.Tx,
+	principalID, expectedTokenVersion int64,
+	tokenHash string,
+	expiresAt time.Time,
+) (string, error) {
+	if tx == nil || principalID <= 0 || !isSHA256Hash(tokenHash) || !expiresAt.After(time.Now()) {
+		return "", fmt.Errorf("invalid refresh session data")
+	}
+	if _, err := tx.Exec(ctx,
+		`SELECT pg_advisory_xact_lock(hashtextextended('refresh-principal:' || $1::bigint::text,0))`,
+		principalID,
+	); err != nil {
+		return "", fmt.Errorf("lock principal refresh sessions: %w", err)
+	}
+
+	const lookup = `
+SELECT ap.principal_type, ap.status, ap.token_version,
+       u.id, COALESCE(u.school_id,0), COALESCE(u.username,''), COALESCE(s.status,''),
+       (pa.principal_id IS NOT NULL),
+       COALESCE(parent.mobile_verified_at IS NOT NULL,FALSE),
+       EXISTS (
+         SELECT 1
+         FROM parent_guardian_links pgl
+         JOIN guardians g ON g.id = pgl.guardian_id AND g.school_id = pgl.school_id
+         JOIN student_guardians sg ON sg.guardian_id = g.id AND sg.school_id = g.school_id
+         JOIN students st ON st.id = sg.student_id AND st.school_id = sg.school_id
+         WHERE pgl.principal_id = ap.id
+           AND pgl.revoked_at IS NULL
+           AND sg.revoked_at IS NULL
+           AND g.status = 'active'
+           AND st.status = 'active'
+           AND g.parent_portal_enabled_at IS NOT NULL
+       ),
+       CASE
+         WHEN ap.principal_type='platform_admin' OR
+              (ap.principal_type='staff' AND EXISTS (
+                SELECT 1 FROM principal_roles mpr JOIN roles mr ON mr.id=mpr.role_id
+                WHERE mpr.principal_id=ap.id AND mpr.revoked_at IS NULL
+                  AND mr.is_system=TRUE AND mr.role_key='school_admin'
+                  AND mr.principal_type='staff' AND mr.scope_type='school'
+                  AND mr.school_id=u.school_id
+              ))
+         THEN EXISTS (SELECT 1 FROM principal_mfa_credentials mc
+                      WHERE mc.principal_id=ap.id AND mc.method='totp' AND mc.verified_at IS NOT NULL)
+         ELSE TRUE
+       END
+FROM auth_principals ap
+LEFT JOIN users u ON u.principal_id=ap.id
+LEFT JOIN schools s ON s.id=u.school_id
+LEFT JOIN platform_admin_accounts pa ON pa.principal_id=ap.id
+LEFT JOIN parent_accounts parent ON parent.principal_id=ap.id
+WHERE ap.id=$1
+FOR UPDATE OF ap`
+
+	var principalType, principalStatus, username, schoolStatus string
+	var tokenVersion, schoolID int64
+	var userID pgtype.Int8
+	var hasPlatformAccount, mobileVerified, hasEligibleParentLink, mfaVerified bool
+	err := tx.QueryRow(ctx, lookup, principalID).Scan(
+		&principalType, &principalStatus, &tokenVersion, &userID, &schoolID,
+		&username, &schoolStatus, &hasPlatformAccount, &mobileVerified, &hasEligibleParentLink, &mfaVerified,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", ErrRefreshSessionInactive
+	}
+	if err != nil {
+		return "", fmt.Errorf("load principal for refresh-session creation: %w", err)
+	}
+	if expectedTokenVersion > 0 && tokenVersion != expectedTokenVersion {
+		return "", ErrPrincipalVersionChanged
+	}
+
+	active := principalStatus == "active" && tokenVersion > 0 && mfaVerified
+	switch principalType {
+	case "staff":
+		active = active && schoolID > 0 && schoolStatus == "active" && username != ""
+	case "platform_admin":
+		active = active && hasPlatformAccount
+	case "parent":
+		active = active && mobileVerified && hasEligibleParentLink
+	default:
+		active = false
+	}
+	if !active {
+		return ErrRefreshSessionInactive
+	}
+
+	var familyID string
+	if err := tx.QueryRow(ctx,
+		`INSERT INTO refresh_sessions (user_id, principal_id, token_hash, expires_at)
+		 VALUES ($1, $2, $3, $4)
+		 RETURNING family_id`,
+		nullableInt64(userID), principalID, tokenHash, expiresAt,
+	).Scan(&familyID); err != nil {
+		return "", fmt.Errorf("create refresh session: %w", err)
+	}
+	return familyID, nil
+}
+
+
+func (r *PrincipalRefreshSessionRepository) CreatePrincipalForVersionWithFamily(
+	ctx context.Context, principalID, expectedTokenVersion int64, tokenHash string, expiresAt time.Time,
+) (string, error) {
+	if expectedTokenVersion <= 0 || principalID <= 0 || !isSHA256Hash(tokenHash) || !expiresAt.After(time.Now()) {
+		return "", fmt.Errorf("invalid refresh session data")
+	}
+	tx, err := r.db.Begin(ctx)
+	if err != nil { return "", fmt.Errorf("begin refresh-session creation: %w", err) }
+	defer func() { _ = tx.Rollback(ctx) }()
+	familyID, err := r.createPrincipalInTxWithFamily(ctx, tx, principalID, expectedTokenVersion, tokenHash, expiresAt)
+	if err != nil { return "", err }
+	if err := tx.Commit(ctx); err != nil { return "", fmt.Errorf("commit refresh-session creation: %w", err) }
+	return familyID, nil
+}
+
 // Rotate preserves family replay detection and cross-family principal locking.
 // The replacement is inserted in the same transaction as revoking the old row.
 func (r *PrincipalRefreshSessionRepository) RotatePrincipal(
