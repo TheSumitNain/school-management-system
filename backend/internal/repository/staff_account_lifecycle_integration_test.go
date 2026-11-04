@@ -241,7 +241,7 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
 		INSERT INTO users (school_id, username, password_hash, status)
 		VALUES ($1, $2, $3, 'active')
 		RETURNING id, principal_id
-	`, schoolID, "protected-admin-"+suffix, "protected-admin-password-hash").Scan(
+	`, schoolID, "padmin-"+suffix, "protected-admin-password-hash").Scan(
 		&protectedAdminUserID, &protectedAdminPrincipalID,
 	); err != nil {
 		t.Fatalf("create second School Admin target: %v", err)
