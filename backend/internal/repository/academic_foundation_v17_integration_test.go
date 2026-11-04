@@ -430,4 +430,42 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 		t.Fatalf("revoke class in-charge assignment through repository: %v", err)
 	}
 
+	// Exercise enrollment and promotion through the production repository.
+	var apiStudentID int64
+	if err := tx.QueryRow(ctx, `INSERT INTO students(school_id,admission_number,full_name)
+		VALUES($1,$2,$3) RETURNING id`, schoolID, "API-ENROLL-"+suffix, "API Enrollment Student").Scan(&apiStudentID); err != nil {
+		t.Fatalf("create API enrollment student: %v", err)
+	}
+	enrolledAt := time.Date(2028, 4, 1, 0, 0, 0, 0, time.UTC)
+	apiEnrollment, err := academicRepo.CreateStudentEnrollment(ctx, actorPrincipalID, schoolID,
+		apiStudentID, apiYear.ID, apiSection.ID, nil, enrolledAt)
+	if err != nil || apiEnrollment == nil || apiEnrollment.ClassNameSnapshot != apiClass.Name || apiEnrollment.SectionNameSnapshot != "B" {
+		t.Fatalf("create enrollment through repository: enrollment=%+v err=%v", apiEnrollment, err)
+	}
+	if _, err := academicRepo.CreateStudentEnrollment(ctx, actorPrincipalID, schoolID,
+		apiStudentID, apiYear.ID, apiSection.ID, nil, enrolledAt); err == nil {
+		t.Fatal("expected duplicate student/year enrollment to be rejected")
+	}
+	nextYear, err := academicRepo.SaveAcademicYear(ctx, actorPrincipalID, schoolID, 0,
+		"API Next Academic "+suffix, time.Date(2029, 4, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2030, 3, 31, 0, 0, 0, 0, time.UTC), "active", false)
+	if err != nil { t.Fatalf("create next academic year for promotion: %v", err) }
+	nextSection, err := academicRepo.SaveSection(ctx, actorPrincipalID, schoolID, 0,
+		nextYear.ID, apiClass.ID, "C", 3, true)
+	if err != nil { t.Fatalf("create next-year section for promotion: %v", err) }
+	promotedAt := time.Date(2029, 4, 1, 0, 0, 0, 0, time.UTC)
+	promoted, err := academicRepo.PromoteStudentEnrollment(ctx, actorPrincipalID, schoolID,
+		apiEnrollment.ID, nextYear.ID, nextSection.ID, nil, promotedAt)
+	if err != nil || promoted == nil || promoted.AcademicYearID != nextYear.ID || promoted.SectionNameSnapshot != "C" {
+		t.Fatalf("promote enrollment through repository: enrollment=%+v err=%v", promoted, err)
+	}
+	history, err := academicRepo.ListStudentEnrollments(ctx, actorPrincipalID, schoolID, 0, apiStudentID)
+	if err != nil || len(history) != 2 {
+		t.Fatalf("list student enrollment history: items=%+v err=%v", history, err)
+	}
+	var priorStatus string
+	if err := tx.QueryRow(ctx, `SELECT status FROM student_enrollments WHERE id=$1`, apiEnrollment.ID).Scan(&priorStatus); err != nil || priorStatus != "promoted" {
+		t.Fatalf("prior enrollment status=%q err=%v; want promoted", priorStatus, err)
+	}
+
 }
