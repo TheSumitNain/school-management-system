@@ -60,8 +60,8 @@ CREATE TABLE sections (
     CONSTRAINT sections_class_school_fkey
         FOREIGN KEY (class_id, school_id)
         REFERENCES classes (id, school_id) ON DELETE RESTRICT,
-    CONSTRAINT sections_id_scope_unique UNIQUE (id, school_id, academic_year_id, class_id)
-    ,CONSTRAINT sections_id_year_school_unique UNIQUE (id, school_id, academic_year_id)
+    CONSTRAINT sections_id_scope_unique UNIQUE (id, school_id, academic_year_id, class_id),
+    CONSTRAINT sections_id_year_school_unique UNIQUE (id, school_id, academic_year_id)
 );
 CREATE UNIQUE INDEX ux_sections_class_year_name
     ON sections (school_id, academic_year_id, class_id, normalized_name);
