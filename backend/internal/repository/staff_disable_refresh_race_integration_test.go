@@ -216,13 +216,10 @@ func TestStaffPasswordChangeSerializesWithDisablePostgresIntegration(t *testing.
 			return
 		}
 		defer func() { _ = cleanupTx.Rollback(cleanupCtx) }()
+		// Password-change audit events are append-only and retain the target
+		// principal as their actor. Keep that identity fixture so audit history
+		// remains intact; only remove its refresh-session credentials.
 		_, err = cleanupTx.Exec(cleanupCtx, "DELETE FROM refresh_sessions WHERE principal_id=$1", targetPrincipalID)
-		if err == nil {
-			_, err = cleanupTx.Exec(cleanupCtx, "DELETE FROM users WHERE id=$1", targetUserID)
-		}
-		if err == nil {
-			_, err = cleanupTx.Exec(cleanupCtx, "DELETE FROM auth_principals WHERE id=$1", targetPrincipalID)
-		}
 		if err == nil {
 			err = cleanupTx.Commit(cleanupCtx)
 		}
