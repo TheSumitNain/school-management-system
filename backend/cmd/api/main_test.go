@@ -514,3 +514,61 @@ func TestAcademicRoutesEnforceResourcePermissions(t *testing.T) {
 		})
 	}
 }
+
+
+func TestGuardianRoutesEnforceDedicatedLivePermissions(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	validator := fakeTokenValidator{claims: &services.TokenClaims{
+		RegisteredClaims: jwt.RegisteredClaims{Subject: "31"},
+		PrincipalType: "staff",
+		TokenVersion: 1,
+	}}
+	principal := &models.AuthPrincipal{
+		ID: 31, Type: "staff", Status: "active", TokenVersion: 1,
+		SchoolID: 8, Username: "school.staff",
+	}
+	tests := []struct {
+		method, path, permission, body string
+	}{
+		{http.MethodGet, "/school/guardians", "guardians.read", ""},
+		{http.MethodPost, "/school/guardians", "guardians.manage", `{"full_name":"Guardian"}`},
+		{http.MethodGet, "/school/guardians/9", "guardians.read", ""},
+		{http.MethodPatch, "/school/guardians/9", "guardians.manage", `{"full_name":"Guardian","status":"active"}`},
+		{http.MethodGet, "/school/students/12/guardians", "guardians.read", ""},
+		{http.MethodPost, "/school/students/12/guardians", "guardians.manage", `{"guardian_id":9,"relationship_type":"mother"}`},
+		{http.MethodPost, "/school/student-guardian-links/14/revoke", "guardians.manage", `{"reason":"relationship ended"}`},
+	}
+	for _, test := range tests {
+		t.Run(test.method+" "+test.path, func(t *testing.T) {
+			buildRouter := func(permissions []string) *gin.Engine {
+				router, err := setupRouterWithHandlers(
+					fakeDatabase{}, nil, validator,
+					fakePrincipalLoader{principal: principal},
+					fakePermissionLoader{permissions: permissions},
+					nil, nil, nil, nil, handlers.NewGuardianHandler(nil),
+				)
+				if err != nil {
+					t.Fatalf("setup guardian router: %v", err)
+				}
+				return router
+			}
+			request := func(permissions []string) *httptest.ResponseRecorder {
+				req := httptest.NewRequest(test.method, test.path, strings.NewReader(test.body))
+				req.Header.Set("Authorization", "Bearer valid-test-token")
+				req.Header.Set("Content-Type", "application/json")
+				rec := httptest.NewRecorder()
+				buildRouter(permissions).ServeHTTP(rec, req)
+				return rec
+			}
+			denied := request(nil)
+			if denied.Code != http.StatusForbidden {
+				t.Fatalf("without %s: status=%d body=%s", test.permission, denied.Code, denied.Body.String())
+			}
+			allowed := request([]string{test.permission})
+			if allowed.Code != http.StatusServiceUnavailable {
+				t.Fatalf("with %s request should reach unavailable handler: status=%d body=%s",
+					test.permission, allowed.Code, allowed.Body.String())
+			}
+		})
+	}
+}
