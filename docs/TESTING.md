@@ -577,3 +577,22 @@ All requests use signed JWTs and the actual authentication middleware, PostgreSQ
 Verification: push run `41767372453` and Draft PR run `41767378009` on `0b560fd` both passed V1–V16 migrations, the full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and `go vet ./...`.
 
 Staff permission override and staff role assignment/revocation HTTP write paths remain to be covered.
+
+
+## 22. HTTP staff role and permission override lifecycle — 2026-11-04
+
+The real HTTP/PostgreSQL integration test now exercises these School Admin and Platform Admin operations:
+
+- Assign a custom role to a same-school staff principal; expect HTTP 201.
+- List that staff member's role assignments and confirm the created role is present; expect HTTP 200.
+- Revoke the staff role assignment; expect HTTP 200.
+- Platform Admin delegates `homework.create` with `can_override_users=true`; expect HTTP 201.
+- School Admin sets an ALLOW override using the exact returned delegation ID; expect HTTP 200.
+- School Admin deletes the override; expect HTTP 200.
+- Platform Admin revokes the exact override delegation; expect HTTP 200.
+
+The requests use real signed JWTs, mandatory MFA for Platform Admin and School Admin identities, live PostgreSQL authorization, and the actual Gin handlers/services/repositories. All fixtures and audit rows are rolled back.
+
+Verification: push run `41767598076` and Draft PR run `41767602833` on `d90ba9e` both passed V1–V16 migrations, the full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and `go vet ./...`.
+
+Remaining review should focus on HTTP failure-path responses, cross-school target IDs at the HTTP boundary, and audit/event assertions for these routes.
