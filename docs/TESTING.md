@@ -32,7 +32,7 @@ go test -count=1 ./...
 go vet ./...
 ```
 
-The latest GitHub Actions push run `41762250818` and Draft PR run `41762256758` on commit `9e74c88` applied migrations V1–V16 to a fresh ephemeral PostgreSQL 18 database, ran the full suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and passed `go vet ./...`. Both runs include the 14 role-administration route permission tests and the first HTTP/PostgreSQL RBAC integration test. The user's persistent `school_management_test` and `school_management` databases were not changed. Repeat the workflow after relevant code changes.
+The latest GitHub Actions run `41773896580` on commit `808cc0600dc2ebdf63d34c8737d1244a6c74ec31` applied migrations V1–V16 to a fresh ephemeral PostgreSQL 18 database, ran the full suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and passed `go vet ./...`. It includes the real HTTP/PostgreSQL staff account creation, listing, duplicate-username conflict mapping, self-disable rejection, successful disable, token-version increment, refresh-session revocation, and audit-event assertions described in Section 27. The preceding run `41773701644` on `07f22dea` also passed the repository-level successful-disable refresh-session revocation assertion. The user's persistent `school_management_test` and `school_management` databases were not changed. Repeat the workflow after relevant code changes.
 
 The current test suite does not establish that every application behavior is tested or that the application is production-ready.
 
@@ -167,7 +167,7 @@ Verify:
 - The original password is not stored as plaintext.
 - Password hashes are not exposed in API responses.
 
-The current password implementation uses bcrypt with cost 12 and an input range of 8–72 bytes. A separate 12-character administrator password policy and compromised-password checks remain outstanding.
+The current password implementation uses bcrypt with cost 12 and an input range of 12–72 bytes. The local common-password denylist is limited and is not a breached-password intelligence service. A separate 12-character administrator password policy and compromised-password checks remain outstanding.
 
 ### 6.2 Authentication service
 
@@ -655,3 +655,23 @@ The live-permission HTTP integration flow now also proves the precedence of expl
 This verifies the authorization resolver applies explicit denials after role grants and reloads the current permission state for each protected request. Audit assertions also account for both role assignment/revocation cycles and both override set/removal cycles.
 
 Verification: push run `41769509298` and Draft PR run `41769515139` on `2f7a6d4` both passed V1–V16 migrations, the full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and `go vet ./...`.
+
+## 27. Staff account lifecycle through real HTTP and PostgreSQL — 2026-11-04
+
+The existing `TestRBACHTTPAuthorizationUsesPostgresState` now wires the production `StaffHandler`, `StaffAccountService`, and `UserRepository` into the real Gin router. The School Admin fixture authenticates with a signed JWT and live PostgreSQL-backed principal and permission resolution.
+
+The test verifies:
+
+- `POST /school/staff` creates a same-school staff account and returns HTTP 201 with the generated principal ID and `must_change_password=true`.
+- Repeating creation with the same globally unique username returns HTTP 409 through the `ux_users_username_global` constraint mapping.
+- `GET /school/staff` returns the created same-school account through the authenticated School Admin route.
+- A School Admin cannot disable their own account; the request returns HTTP 400 and does not deactivate the actor.
+- `DELETE /school/staff/:principalID` disables the target through the real handler/service/repository and returns HTTP 200.
+- The database reflects both `users.status='disabled'` and `auth_principals.status='disabled'`, token version advances from 1 to 2, and the target's active refresh session is revoked.
+- Exactly one successful `staff.account.created` and one successful `staff.account.disabled` audit event are persisted inside the rollback-only transaction.
+
+The test uses the existing outer transaction and leaves no permanent staff, session, or audit rows. The repository-level lifecycle integration test separately verifies successful create/list/update/disable/re-enable and now explicitly asserts that disable revokes a live refresh session.
+
+Verification: run `41773896580` on `808cc0600dc2ebdf63d34c8737d1244a6c74ec31` passed all V1–V16 migrations on ephemeral PostgreSQL 18, the full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and `go vet ./...`. Run `41773701644` on `07f22dea` also passed. No persistent user database was modified.
+
+Remaining staff-account coverage includes explicit School Admin target-protection assertions, a direct PostgreSQL test that the repository maps a global duplicate-username constraint violation to `ErrUsernameTaken`, and concurrent disable/refresh interleaving coverage. Cross-school and ordinary-staff authorization denial are already covered at repository level; the wider business-resource tenant boundaries remain separate future work.
