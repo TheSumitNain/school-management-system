@@ -25,6 +25,13 @@ const (
 	ContextMustChangePasswordKey = "auth_must_change_password"
 )
 
+
+var ErrAdminSessionIdleExpired = errors.New("administrative session idle timeout expired")
+
+type AdminSessionActivityTracker interface {
+	CheckAndTouchAdminSession(ctx context.Context, principalID int64, familyID string) (isAdmin bool, valid bool, err error)
+}
+
 type AccessTokenValidator interface {
 	ValidateAccessToken(tokenString string) (*services.TokenClaims, error)
 }
@@ -43,7 +50,9 @@ type PermissionLoader interface {
 	LoadEffectivePermissions(ctx context.Context, principal *models.AuthPrincipal) ([]string, error)
 }
 
-func AuthMiddleware(tokenService AccessTokenValidator, principals PrincipalLoader, permissions PermissionLoader) gin.HandlerFunc {
+func AuthMiddleware(tokenService AccessTokenValidator, principals PrincipalLoader, permissions PermissionLoader, trackers ...AdminSessionActivityTracker) gin.HandlerFunc {
+	var activityTracker AdminSessionActivityTracker
+	if len(trackers) > 0 { activityTracker = trackers[0] }
 	return func(c *gin.Context) {
 		if tokenService == nil || principals == nil || permissions == nil {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Authentication service unavailable"})
@@ -77,6 +86,21 @@ func AuthMiddleware(tokenService AccessTokenValidator, principals PrincipalLoade
 		if !validCurrentPrincipal(principal) || principal.Type != claims.PrincipalType || principal.TokenVersion != claims.TokenVersion {
 			unauthorized(c)
 			return
+		}
+
+		// Admin sessions are bound to one refresh-token family. Each request
+		// touches only that device's family; a missing, revoked, or idle family
+		// is rejected before the handler runs.
+		if activityTracker != nil {
+			isAdmin, valid, trackErr := activityTracker.CheckAndTouchAdminSession(c.Request.Context(), principal.ID, claims.SessionID)
+			if trackErr != nil {
+				c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"status":"error","message":"Unable to validate administrative session"})
+				return
+			}
+			if isAdmin && (!valid || claims.SessionID == "") {
+				unauthorized(c)
+				return
+			}
 		}
 
 		c.Set(ContextPrincipalIDKey, principal.ID)
