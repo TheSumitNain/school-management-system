@@ -144,18 +144,6 @@ func TestRotateHashesBothTokensAndReturnsReplacement(t *testing.T) {
 	}
 }
 
-type fakeFamilyRefreshSessionRepository struct {
-	*fakeRefreshSessionRepository
-	familyID string
-	lookupErr error
-	lookupHash string
-}
-
-func (f *fakeFamilyRefreshSessionRepository) FamilyIDForTokenHash(_ context.Context, tokenHash string) (string, error) {
-	f.lookupHash = tokenHash
-	return f.familyID, f.lookupErr
-}
-
 func TestRotateRejectsEmptyToken(t *testing.T) {
 	service, err := NewSessionService(&fakeRefreshSessionRepository{}, 7)
 	if err != nil {
