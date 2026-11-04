@@ -57,7 +57,7 @@ func TestStudentProfileRepositoryPostgresIntegration(t *testing.T) {
 	t.Cleanup(func() {
 		cleanupCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		_, _ = pool.Exec(cleanupCtx, `DELETE FROM audit_events WHERE school_id = $1`, schoolID)
+		_, _ = pool.Exec(cleanupCtx, `DELETE FROM audit_events WHERE school_id = $1 AND resource_type = 'student' AND resource_id = $2`, schoolID, strconv.FormatInt(student.ID, 10))
 		_, _ = pool.Exec(cleanupCtx, `DELETE FROM students WHERE school_id = $1 AND id = $2`, schoolID, student.ID)
 		_, _ = pool.Exec(cleanupCtx, `DELETE FROM schools WHERE id = $1`, otherSchoolID)
 	})
