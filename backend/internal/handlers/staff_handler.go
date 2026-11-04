@@ -70,6 +70,10 @@ func (h *StaffHandler) Create(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Username must be 3–32 lowercase letters, digits, dots, underscores, or hyphens"})
 	case errors.Is(err, services.ErrInvalidPassword):
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Initial password must meet the password policy"})
+	case errors.Is(err, services.ErrCompromisedPassword):
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "This password has appeared in known data breaches. Choose a different password."})
+	case errors.Is(err, services.ErrPasswordBreachCheckUnavailable):
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Password safety verification is temporarily unavailable. Try again shortly."})
 	case errors.Is(err, repository.ErrUsernameTaken):
 		c.JSON(http.StatusConflict, gin.H{"status": "error", "message": "This username is already in use"})
 	case errors.Is(err, repository.ErrRolePermissionDenied):
@@ -242,6 +246,10 @@ func (h *StaffHandler) Enable(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid staff account re-enable request"})
 	case errors.Is(err, services.ErrInvalidPassword):
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Temporary password must meet the password policy"})
+	case errors.Is(err, services.ErrCompromisedPassword):
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "This password has appeared in known data breaches. Choose a different password."})
+	case errors.Is(err, services.ErrPasswordBreachCheckUnavailable):
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Password safety verification is temporarily unavailable. Try again shortly."})
 	case errors.Is(err, repository.ErrUserNotFound):
 		c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": "Disabled staff account not found in this school"})
 	case errors.Is(err, repository.ErrRolePermissionDenied):
