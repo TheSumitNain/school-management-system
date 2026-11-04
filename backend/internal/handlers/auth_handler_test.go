@@ -115,7 +115,8 @@ func TestLoginSuccess(t *testing.T) {
 		token: "test-access-token",
 	}
 
-	router := setupTestRouter(authService, tokenService, &fakeSessionService{refreshToken: "test-refresh-token"})
+	sessionService := &fakeSessionService{refreshToken: "test-refresh-token"}
+	router := setupTestRouter(authService, tokenService, sessionService)
 
 	body := `{"username":"testuser","password":"StrongPass123"}`
 	req := httptest.NewRequest(
@@ -146,6 +147,31 @@ func TestLoginSuccess(t *testing.T) {
 
 	if strings.Contains(rec.Body.String(), "PasswordHash") {
 		t.Fatal("response must not expose password hash")
+	}
+	if sessionService.issuedUserID != 10 || sessionService.issuedTokenVersion != 1 {
+		t.Fatalf("login refresh session was not bound to authenticated principal version: principal=%d version=%d",
+			sessionService.issuedUserID, sessionService.issuedTokenVersion)
+	}
+}
+
+func TestLoginRejectsPrincipalVersionChangeDuringSessionIssue(t *testing.T) {
+	authService := fakeAuthService{
+		principal: &models.AuthPrincipal{ID: 10, Type: "staff", Status: "active", TokenVersion: 1, SchoolID: 2, Username: "testuser"},
+	}
+	sessionService := &fakeSessionService{err: services.ErrSessionPrincipalVersionChanged}
+	router := setupTestRouter(authService, fakeTokenService{token: "test-access-token"}, sessionService)
+
+	req := httptest.NewRequest(http.MethodPost, "/auth/login",
+		strings.NewReader(`{"username":"testuser","password":"StrongPass123"}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("stale authenticated principal version status=%d, want 401; body=%s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "Credentials changed during sign-in") {
+		t.Fatalf("unexpected stale login response: %s", rec.Body.String())
 	}
 }
 
