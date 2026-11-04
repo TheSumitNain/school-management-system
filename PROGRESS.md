@@ -501,3 +501,13 @@ V11 is **applied and PostgreSQL-verified on the dedicated test database**. This 
 - [x] After deleting the override, the same token is denied again on the next request (403), proving current database permissions are reloaded rather than cached in JWT/session state.
 - [x] Push CI run `41769118132` and Draft PR run `41769126077` on `b947cf2`: V1–V16 migrations, full PostgreSQL integration-enabled Go suite, and `go vet ./...` PASS.
 - All test principals, overrides, delegations, and audit events remain rollback-scoped.
+
+
+## 2026-11-04 — DENY override precedence over role grants
+
+- [x] Target staff receives `roles.read` through a delegated custom-role permission; protected route returns 200.
+- [x] School Admin applies a delegated DENY override; the same unchanged target JWT is denied on the next request (403), proving DENY takes precedence over the role grant.
+- [x] Deleting the DENY override restores role-based access (200); revoking the role assignment removes access again (403).
+- [x] Push CI run `41769509298` and Draft PR run `41769515139` on `2f7a6d4`: V1–V16 migrations, full PostgreSQL integration-enabled Go suite, and `go vet ./...` PASS.
+- [x] Updated HTTP integration audit assertions for the additional role grant, role assignment/revocation, and override set/removal events.
+- All test fixtures and audit events remain inside the rollback-only transaction.
