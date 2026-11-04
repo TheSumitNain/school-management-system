@@ -1,3 +1,5 @@
+> **2026-11-04 latest remote checkpoint:** `9e74c88` adds the first HTTP/PostgreSQL RBAC integration slice. Push run `41762250818` and Draft PR run `41762256758` both passed migrations V1–V16 on ephemeral PostgreSQL 18, the full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and `go vet ./...`. The new test uses a controlled token validator with real PostgreSQL-backed principal and permission repositories; real JWT signature validation and a granted-role success path remain pending.
+
 > **2026-11-03 approved delivery direction:** Phase 1 is the complete web product for Platform Admin, School Admin and school staff. Phase 2 Parent/Driver mobile interfaces begin only after the web product is complete. Parent work is paused; preserve existing Parent/Guardian schema and OTP foundation without extending it. Parent authentication/OTP provider remains undecided. Database design must remain extensible for future modules without speculative migrations. Active branch checkpoint before this documentation update: `c79b3a5959e0d125dae0326298b554f7b2f90133` (`fix/v4-auth-security-hardening`).
 
 > **Current implementation reality (2026-11-03):** The repository has a Go/Gin backend foundation but no React frontend directory yet. Authentication, staff account lifecycle, role/delegation/override repository workflows, and 14 role-administration route permission gates have automated coverage. Full business APIs, end-to-end HTTP-to-PostgreSQL authorization, tenant/resource isolation, class/section/subject assignment scope, and dashboards remain pending. The latest CI run on commit `2c81dfc` passed the full PostgreSQL 18 integration suite and `go vet ./...`.
@@ -8,7 +10,7 @@
 >
 > ## Current Stage
 >
-> **Current milestone:** V4 RBAC/security hardening is continuing on `fix/v4-auth-security-hardening`. Parent OTP/registration implementation remains paused by decision. The latest verified remote commit is `2c81dfc`; push and Draft PR CI both passed V1–V16 on ephemeral PostgreSQL 18, the full Go integration suite, and `go vet ./...`. The user's persistent `school_management_test` was not modified by CI; its current migration version must be checked locally before any migration action.
+> **Current milestone:** V4 RBAC/security hardening is continuing on `fix/v4-auth-security-hardening`. Parent OTP/registration implementation remains paused by decision. The latest verified remote code checkpoint is `9e74c88`; push and Draft PR CI both passed V1–V16 on ephemeral PostgreSQL 18, the full Go integration suite, and `go vet ./...`. The first HTTP/PostgreSQL RBAC integration slice now verifies database-backed principal identity, default-deny role access, and token-version revocation. The user's persistent databases were not modified by CI.
 The project has a working authentication foundation, including login, JWT authentication middleware, a protected identity endpoint, refresh-token rotation, replay detection, family-wide logout revocation, family-scoped transaction advisory locking, and per-user serialization of concurrent rotations across token families.
 
 The last recorded remote documentation checkpoint before the current local verification was:
@@ -400,3 +402,14 @@ V11 is **applied and PostgreSQL-verified on the dedicated test database**. This 
 - [x] Added router/middleware permission-gate tests for all 14 Platform Admin and school role-administration endpoints, including AND semantics for routes requiring multiple permissions. Push run `41658994787` and Draft PR run `41659008482` on commit `2c81dfc` passed the full PostgreSQL integration suite and `go vet ./...`.
 - [ ] Add full HTTP-to-PostgreSQL end-to-end security integration coverage for role/delegation/override/assignment endpoints.
 - [ ] Implement and verify business-resource, tenant, class/section/subject assignment, and teacher field-level authorization.
+
+
+## 2026-11-04 — First HTTP/PostgreSQL RBAC integration slice
+
+- [x] Added an integration test that exercises the actual Gin router and authentication middleware with PostgreSQL-backed principal and effective-permission repositories.
+- [x] Verified active staff identity inspection returns 200, staff without role grants is denied `/school/roles` with 403, and a stale token version is rejected with 401.
+- [x] Push CI run `41762250818` and Draft PR CI run `41762256758` passed V1–V16 migrations, full PostgreSQL integration tests, and `go vet ./...` on ephemeral PostgreSQL 18.
+- [ ] Add a database-backed allowed-role path that proves a granted role reaches the role handler, without weakening role-assignment triggers or leaving permanent privileged fixtures.
+- [ ] Add real JWT signing/validation to the HTTP integration path; the current test uses a controlled token validator to isolate live database identity and permission checks.
+- [ ] Continue tenant/resource isolation and teacher assignment-scope authorization tests.
+- No persistent user database was changed by CI; PR #1 remains Draft and unmerged.
