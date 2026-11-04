@@ -376,4 +376,32 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 		_, err := tx.Exec(ctx, `UPDATE classes SET school_id = $1 WHERE id = $2`, otherSchoolID, classLKG)
 		return err
 	})
+
+	// Exercise the production repository/service-facing operations against the
+	// same PostgreSQL schema and rollback-scoped School Admin fixture.
+	academicRepo := NewAcademicRepository(tx)
+	apiYear, err := academicRepo.SaveAcademicYear(ctx, actorPrincipalID, schoolID, 0,
+		"API Academic "+suffix, time.Date(2028, 4, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2029, 3, 31, 0, 0, 0, 0, time.UTC), "planned", false)
+	if err != nil { t.Fatalf("create academic year through repository: %v", err) }
+	apiYear, err = academicRepo.SaveAcademicYear(ctx, actorPrincipalID, schoolID, apiYear.ID,
+		apiYear.Name, apiYear.StartsOn, apiYear.EndsOn, "active", true)
+	if err != nil || !apiYear.IsCurrent || apiYear.Status != "active" {
+		t.Fatalf("activate current academic year through repository: year=%+v err=%v", apiYear, err)
+	}
+	apiClass, err := academicRepo.SaveClass(ctx, actorPrincipalID, schoolID, 0, "Pre-Nursery "+suffix, 5, true)
+	if err != nil { t.Fatalf("create configurable class through repository: %v", err) }
+	apiSection, err := academicRepo.SaveSection(ctx, actorPrincipalID, schoolID, 0, apiYear.ID, apiClass.ID, "B", 2, true)
+	if err != nil { t.Fatalf("create year-specific section through repository: %v", err) }
+	apiCode := "API-" + suffix
+	apiSubject, err := academicRepo.SaveSubject(ctx, actorPrincipalID, schoolID, 0, "Environmental Studies "+suffix, &apiCode, true)
+	if err != nil { t.Fatalf("create subject through repository: %v", err) }
+	years, err := academicRepo.ListAcademicYears(ctx, actorPrincipalID, schoolID)
+	if err != nil || len(years) < 3 { t.Fatalf("list academic years through repository: count=%d err=%v", len(years), err) }
+	classes, err := academicRepo.ListClasses(ctx, actorPrincipalID, schoolID)
+	if err != nil || len(classes) < 3 { t.Fatalf("list classes through repository: count=%d err=%v", len(classes), err) }
+	sections, err := academicRepo.ListSections(ctx, actorPrincipalID, schoolID, apiYear.ID)
+	if err != nil || len(sections) != 1 || sections[0].ID != apiSection.ID { t.Fatalf("list sections through repository: items=%+v err=%v", sections, err) }
+	subjects, err := academicRepo.ListSubjects(ctx, actorPrincipalID, schoolID)
+	if err != nil || len(subjects) < 3 || apiSubject.ID <= 0 { t.Fatalf("list subjects through repository: count=%d err=%v", len(subjects), err) }
 }
