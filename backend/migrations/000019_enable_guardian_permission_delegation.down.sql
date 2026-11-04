@@ -14,7 +14,13 @@ BEGIN
 END;
 $v19_preflight$;
 
+DROP TRIGGER trg_protect_permission_identity_scope ON public.permissions;
+
 UPDATE public.permissions
    SET is_delegable = FALSE
  WHERE scope_type = 'school'
    AND permission_key IN ('guardians.read', 'guardians.manage');
+
+CREATE TRIGGER trg_protect_permission_identity_scope
+BEFORE UPDATE OF permission_key, scope_type, is_delegable ON public.permissions
+FOR EACH ROW EXECUTE FUNCTION public.protect_permission_identity_scope();
