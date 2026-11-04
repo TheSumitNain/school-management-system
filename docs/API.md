@@ -14,11 +14,12 @@ The backend uses Go, Gin, and PostgreSQL.
 - MFA enrollment, verification and recovery-code routes are implemented for privileged accounts.
 - POST /auth/refresh and POST /auth/logout use principal-bound refresh sessions with rotation and token-family replay/revocation protections.
 - GET /auth/me validates the JWT and reloads current principal identity, status, token version and effective permissions.
-- RequirePermission middleware is enforced on school staff, role-management, and academic management routes; effective permissions are reloaded for every protected request.
+- All registered protected API routes use the shared authentication middleware; school staff, role/delegation, academic, student/enrollment, guardian, attendance, onboarding, and password-reset operations enforce their live `RequirePermission` policies. Effective permissions are reloaded for every protected request.
+- Administrative access tokens bind to a per-device refresh-session family through the `sid` claim. Platform Admin and active School Admin sessions have a 30-minute per-device idle timeout, enforced on protected requests and refresh rotation.
 - POST /platform/schools creates a school and its first School Admin transactionally, protected by platform.schools.create and platform.school_admins.create.
 - V13 provisions the fixed School Admin and Teacher system roles for newly created schools.
-- V14 contains a source-only one-time first Platform Admin bootstrap migration and CLI; it is not yet PostgreSQL-verified or approved for application.
-- Academic Year, Class, Section, Subject, teacher-subject assignment, class-in-charge assignment, student admission/profile, enrollment, promotion, enrollment-history, and guardian contact/link APIs are implemented with school-scoped repository authorization, audited writes, and PostgreSQL integration coverage. Attendance, timetable, examinations, results, notices, parent authentication/OTP, and frontend workflows remain pending.
+- V14 Platform Admin bootstrap schema/CLI and migrations V1–V21 are applied and tested by GitHub Actions against an ephemeral PostgreSQL database. No permanent Platform Admin account has been created by CI.
+- Academic Year, Class, Section, Subject, teacher-subject assignment, class-in-charge assignment, student admission/profile, enrollment, promotion, enrollment-history, guardian contact/link, and V20 attendance APIs are implemented with school-scoped repository authorization, audited writes, and PostgreSQL integration coverage. Timetable, examinations, results, notices, parent OTP/SMS provider integration, and frontend workflows remain pending.
 
 **Important:** An implemented authentication endpoint does not mean that the full authorization system or every production security control is implemented. Verify code and tests before treating a feature as complete.
 
@@ -180,6 +181,7 @@ The actual user ID and username depend on the authenticated account. The respons
 - A successful login returns an access token and an opaque refresh token.
 - Access-token expiry is controlled by the JWT configuration.
 - Refresh-token expiry is controlled by `REFRESH_TOKEN_EXPIRY_DAYS` (default: 7 days; allowed range: 1–30 days).
+- Access tokens include a `sid` claim containing the refresh-session family UUID. This is used internally for per-device administrative idle-timeout enforcement.
 - Refresh tokens are random opaque values; their SHA-256 hashes are persisted in PostgreSQL.
 - Login does not, by itself, establish that RBAC or complete tenant-isolation enforcement is implemented.
 
@@ -877,3 +879,23 @@ Guardian contact and student-guardian relationship APIs are implemented below. P
 - Status values: `present`, `absent`, `late`, `excused`. Only one record is allowed per enrollment/date.
 - School Admin access is school-scoped. Teachers are restricted to sections with an active class-in-charge assignment; subject-only assignments do not grant attendance access.
 - Same-day changes require `attendance.update_same_day`; past-date entries/corrections require `attendance.correct_past`. Future dates and dates outside the enrollment period are rejected. Every write creates an audit event.
+
+
+## 3.9 Administrative Session Inactivity and Password Safety
+
+### Per-device administrative idle timeout
+
+- The access JWT `sid` claim identifies the refresh-session family for the device that signed in.
+- Platform Admin and staff with an active system `school_admin` role are subject to a 30-minute idle timeout. Ordinary staff and parent sessions are not.
+- Every protected request updates the activity timestamp for only the matching active family. At 30 minutes of inactivity, that family is revoked and an audit event is written; other device families remain independent.
+- `POST /auth/refresh` applies the same idle check inside the transactional refresh rotation. Refreshing a token does not itself reset the idle timestamp.
+- An idle-expired admin access token receives `401 Unauthorized` on protected routes. An idle-expired admin refresh token receives `401 Unauthorized` and must be replaced by signing in again.
+
+### Password breach check
+
+New staff initial passwords, re-enable temporary passwords, self-service password changes, School Admin password resets, and first Platform Admin bootstrap passwords are checked against the Pwned Passwords range API. The API receives only the first five SHA-1 hexadecimal characters; the remaining suffix is matched locally. Zero-count padding records are ignored and range responses are cached for one hour.
+
+| HTTP status | Meaning |
+|---|---|
+| `400 Bad Request` | Password fails local policy or has appeared in known data breaches. |
+| `503 Service Unavailable` | Password breach verification provider is temporarily unavailable; the password operation fails closed. |
