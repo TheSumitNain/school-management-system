@@ -95,7 +95,11 @@ func (c *HIBPPasswordBreachChecker) IsCompromised(ctx context.Context, password 
 		if err != nil || count < 0 {
 			return false, fmt.Errorf("password range service returned malformed count")
 		}
-		suffixes[strings.ToUpper(parts[0])] = struct{}{}
+		// HIBP padding records use a zero count and must never be treated as
+		// evidence that a password has appeared in a breach.
+		if count > 0 {
+			suffixes[strings.ToUpper(parts[0])] = struct{}{}
+		}
 	}
 	if err := scanner.Err(); err != nil {
 		return false, fmt.Errorf("read password range response: %w", err)
