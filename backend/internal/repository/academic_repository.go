@@ -126,7 +126,7 @@ func (r *AcademicRepository) SaveAcademicYear(ctx context.Context, actorID, scho
 	tx,err:=r.db.Begin(ctx); if err!=nil{return nil,fmt.Errorf("begin academic year save: %w",err)}; defer func(){_ = tx.Rollback(ctx)}()
 	if err=authorizeAcademic(ctx,tx,actorID,schoolID,"academic_years.manage"); err!=nil{return nil,err}
 	if id>0 {
-		if _,err=tx.Exec(ctx,`UPDATE academic_years SET is_current=FALSE, updated_at=NOW() WHERE school_id=$1 AND id=$2 AND $3=TRUE`,schoolID,id,current); err!=nil{return nil,fmt.Errorf("clear current academic year: %w",err)}
+		if _,err=tx.Exec(ctx,`UPDATE academic_years SET is_current=FALSE, updated_at=NOW() WHERE school_id=$1 AND id<>$2 AND $3=TRUE`,schoolID,id,current); err!=nil{return nil,fmt.Errorf("clear current academic year: %w",err)}
 	} else if current {
 		if _,err=tx.Exec(ctx,`UPDATE academic_years SET is_current=FALSE, updated_at=NOW() WHERE school_id=$1 AND is_current=TRUE`,schoolID); err!=nil{return nil,fmt.Errorf("clear current academic year: %w",err)}
 	}
