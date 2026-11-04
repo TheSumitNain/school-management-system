@@ -387,6 +387,94 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 			delegationRevoke.Code, delegationRevoke.Body.String())
 	}
 
+	// Exercise staff-role assignment and revocation through the real HTTP
+	// handler using a same-school target staff principal.
+	var targetStaffPrincipalID int64
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO users (school_id, username, password_hash, status, must_change_password)
+		VALUES ($1, $2, $3, 'active', FALSE)
+		RETURNING principal_id
+	`, schoolID, "http-target-"+suffix, "integration-test-password-hash").Scan(&targetStaffPrincipalID); err != nil {
+		t.Fatalf("create HTTP target staff principal: %v", err)
+	}
+	assignRoleResponse := request(
+		http.MethodPost,
+		fmt.Sprintf("/school/staff/%d/roles/%d", targetStaffPrincipalID, createdRolePayload.Role.ID),
+		accessToken,
+	)
+	if assignRoleResponse.Code != http.StatusCreated {
+		t.Fatalf("School Admin staff-role assignment should return 201: status=%d body=%s",
+			assignRoleResponse.Code, assignRoleResponse.Body.String())
+	}
+	listAssignments := request(
+		http.MethodGet,
+		fmt.Sprintf("/school/staff/%d/roles", targetStaffPrincipalID),
+		accessToken,
+	)
+	if listAssignments.Code != http.StatusOK || !strings.Contains(listAssignments.Body.String(), customRoleName) {
+		t.Fatalf("School Admin should list the assigned staff role: status=%d body=%s",
+			listAssignments.Code, listAssignments.Body.String())
+	}
+	revokeRoleResponse := request(
+		http.MethodDelete,
+		fmt.Sprintf("/school/staff/%d/roles/%d", targetStaffPrincipalID, createdRolePayload.Role.ID),
+		accessToken,
+	)
+	if revokeRoleResponse.Code != http.StatusOK {
+		t.Fatalf("School Admin staff-role revocation should return 200: status=%d body=%s",
+			revokeRoleResponse.Code, revokeRoleResponse.Body.String())
+	}
+
+	// Verify the delegated per-user override HTTP path, including exact
+	// delegation linkage and the matching revocation route.
+	overrideDelegationResponse := postJSON(
+		fmt.Sprintf("/platform/schools/%d/permission-delegations", schoolID),
+		platformAccessToken,
+		`{"permission_key":"homework.create","can_assign_to_roles":false,"can_override_users":true}`,
+	)
+	if overrideDelegationResponse.Code != http.StatusCreated {
+		t.Fatalf("Platform Admin override delegation should return 201: status=%d body=%s",
+			overrideDelegationResponse.Code, overrideDelegationResponse.Body.String())
+	}
+	var overrideDelegationPayload struct {
+		Delegation struct {
+			ID int64 `json:"id"`
+		} `json:"delegation"`
+	}
+	if err := json.Unmarshal(overrideDelegationResponse.Body.Bytes(), &overrideDelegationPayload); err != nil ||
+		overrideDelegationPayload.Delegation.ID <= 0 {
+		t.Fatalf("decode override delegation ID: payload=%s error=%v",
+			overrideDelegationResponse.Body.String(), err)
+	}
+	setOverrideResponse := postJSON(
+		fmt.Sprintf("/school/staff/%d/permission-overrides", targetStaffPrincipalID),
+		accessToken,
+		fmt.Sprintf(`{"permission_key":"homework.create","effect":"allow","reason":"HTTP integration test","delegation_id":%d}`,
+			overrideDelegationPayload.Delegation.ID),
+	)
+	if setOverrideResponse.Code != http.StatusOK {
+		t.Fatalf("School Admin staff permission override should return 200: status=%d body=%s",
+			setOverrideResponse.Code, setOverrideResponse.Body.String())
+	}
+	deleteOverrideResponse := request(
+		http.MethodDelete,
+		fmt.Sprintf("/school/staff/%d/permission-overrides/homework.create", targetStaffPrincipalID),
+		accessToken,
+	)
+	if deleteOverrideResponse.Code != http.StatusOK {
+		t.Fatalf("School Admin staff permission override deletion should return 200: status=%d body=%s",
+			deleteOverrideResponse.Code, deleteOverrideResponse.Body.String())
+	}
+	revokeOverrideDelegation := request(
+		http.MethodPost,
+		fmt.Sprintf("/platform/permission-delegations/%d/revoke", overrideDelegationPayload.Delegation.ID),
+		platformAccessToken,
+	)
+	if revokeOverrideDelegation.Code != http.StatusOK {
+		t.Fatalf("Platform Admin override delegation revoke should return 200: status=%d body=%s",
+			revokeOverrideDelegation.Code, revokeOverrideDelegation.Body.String())
+	}
+
 	if _, err := tx.Exec(ctx,
 		`UPDATE auth_principals SET token_version = token_version + 1 WHERE id = $1`, principalID,
 	); err != nil {
