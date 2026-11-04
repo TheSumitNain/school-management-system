@@ -12,7 +12,9 @@ This project is under active development. Verification results describe the late
 - The test verifies that an active staff principal can inspect `/auth/me`, a staff principal with no role grants receives `403 Forbidden` on `/school/roles`, and advancing the database token version makes the existing access token receive `401 Unauthorized`.
 - The test uses the real `TokenService` to generate and validate an HS256 access token through the actual authentication middleware. An altered signature is rejected with `401 Unauthorized`; a valid token reaches the live PostgreSQL identity and permission checks.
 - The test verifies default-deny role listing (403), a database-trigger-authorized School Admin role grant reaching the real role handler (200), and immediate token-version invalidation (401).
-- Push run `41765751785` and Draft PR run `41765745170` on commit `ec55ea4` both passed V1–V16 migrations on ephemeral PostgreSQL 18, the full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and `go vet ./...`. All test fixtures are rolled back; no persistent user database was modified.
+- Extended role-repository PostgreSQL integration coverage with a second school: a School A School Admin cannot list or create School B roles, inspect School B staff role assignments/overrides, assign a School A role to School B staff, or set a School A permission override on School B staff. Cross-school target lookups return no foreign records and mutation attempts are rejected.
+- Push run `41766408925` and Draft PR run `41766414685` on commit `c7dd5ce` both passed V1–V16 migrations on ephemeral PostgreSQL 18, the full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and `go vet ./...`. All test fixtures are rolled back; no persistent user database was modified.
+- This verifies tenant boundaries for RBAC administration operations only; business-resource tenant isolation remains pending until those resource APIs and repositories are implemented.
 
 
 ### Role administration HTTP route authorization tests (2026-11-03)
