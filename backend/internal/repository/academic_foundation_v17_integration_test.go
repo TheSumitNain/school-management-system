@@ -62,7 +62,7 @@ func TestAcademicFoundationV17PostgresIntegration(t *testing.T) {
 		t.Fatalf("load system School Admin role: %v", err)
 	}
 	var platformAdminPrincipalID int64
-	err := tx.QueryRow(ctx, `
+	err = tx.QueryRow(ctx, `
 		SELECT ap.id
 		  FROM platform_admin_accounts pa
 		  JOIN auth_principals ap ON ap.id = pa.principal_id
@@ -97,7 +97,7 @@ func TestAcademicFoundationV17PostgresIntegration(t *testing.T) {
 		if bootstrapExists {
 			t.Skip("Platform Admin bootstrap exists but no active administrator has platform.permissions.delegate")
 		}
-		platformAdminPrincipalID, err = NewPlatformAdminRepository(tx).bootstrapFirstInTx(
+		platformAdminPrincipalID, err = NewPlatformAdminRepository(pool).bootstrapFirstInTx(
 			ctx, tx, fmt.Sprintf("academic-v17-%s@example.invalid", suffix),
 			"integration-test-password-hash",
 		)
