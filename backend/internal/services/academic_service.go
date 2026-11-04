@@ -26,6 +26,12 @@ type academicRepository interface {
 	ListStudentEnrollments(context.Context,int64,int64,int64,int64)([]repository.StudentEnrollment,error)
 	CreateStudentEnrollment(context.Context,int64,int64,int64,int64,int64,*string,time.Time)(*repository.StudentEnrollment,error)
 	PromoteStudentEnrollment(context.Context,int64,int64,int64,int64,int64,*string,time.Time)(*repository.StudentEnrollment,error)
+
+	ListStudents(context.Context,int64,int64,string,string,int,int)([]repository.StudentProfile,int64,error)
+	GetStudent(context.Context,int64,int64,int64)(*repository.StudentProfile,error)
+	CreateStudent(context.Context,int64,int64,string,string)(*repository.StudentProfile,error)
+	UpdateStudent(context.Context,int64,int64,int64,string)(*repository.StudentProfile,error)
+	ArchiveStudent(context.Context,int64,int64,int64)(*repository.StudentProfile,error)
 }
 
 type AcademicService struct { repository academicRepository }
@@ -103,4 +109,25 @@ func (s *AcademicService) CreateStudentEnrollment(ctx context.Context, actorID, 
 func (s *AcademicService) PromoteStudentEnrollment(ctx context.Context, actorID, schoolID, sourceEnrollmentID, destinationYearID, destinationSectionID int64, rollNumber *string, enrolledAt time.Time) (*repository.StudentEnrollment, error) {
 	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
 	return s.repository.PromoteStudentEnrollment(ctx, actorID, schoolID, sourceEnrollmentID, destinationYearID, destinationSectionID, rollNumber, enrolledAt)
+}
+
+func (s *AcademicService) ListStudents(ctx context.Context, actorID, schoolID int64, search, status string, limit, offset int) ([]repository.StudentProfile, int64, error) {
+	if s == nil || s.repository == nil { return nil, 0, repository.ErrAcademicAccessDenied }
+	return s.repository.ListStudents(ctx, actorID, schoolID, search, status, limit, offset)
+}
+func (s *AcademicService) GetStudent(ctx context.Context, actorID, schoolID, studentID int64) (*repository.StudentProfile, error) {
+	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
+	return s.repository.GetStudent(ctx, actorID, schoolID, studentID)
+}
+func (s *AcademicService) CreateStudent(ctx context.Context, actorID, schoolID int64, admissionNumber, fullName string) (*repository.StudentProfile, error) {
+	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
+	return s.repository.CreateStudent(ctx, actorID, schoolID, admissionNumber, fullName)
+}
+func (s *AcademicService) UpdateStudent(ctx context.Context, actorID, schoolID, studentID int64, fullName string) (*repository.StudentProfile, error) {
+	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
+	return s.repository.UpdateStudent(ctx, actorID, schoolID, studentID, fullName)
+}
+func (s *AcademicService) ArchiveStudent(ctx context.Context, actorID, schoolID, studentID int64) (*repository.StudentProfile, error) {
+	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
+	return s.repository.ArchiveStudent(ctx, actorID, schoolID, studentID)
 }
