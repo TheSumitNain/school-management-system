@@ -10,8 +10,9 @@ This project is under active development. Verification results describe the late
 
 - Added `TestRBACHTTPAuthorizationUsesPostgresState`, which starts the real Gin API router with the PostgreSQL-backed principal and effective-permission repositories and the real role service/handler.
 - The test verifies that an active staff principal can inspect `/auth/me`, a staff principal with no role grants receives `403 Forbidden` on `/school/roles`, and advancing the database token version makes the existing access token receive `401 Unauthorized`.
-- The test uses a controlled token validator; it exercises the HTTP middleware and live PostgreSQL identity/permission state, but does not yet test real JWT signature validation or an allowed role-administration operation backed by a granted database role.
-- GitHub Actions push run `41762250818` and Draft PR run `41762256758` on commit `9e74c88` both passed V1–V16 migrations on ephemeral PostgreSQL 18, the full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and `go vet ./...`. No persistent user database was modified.
+- The test uses the real `TokenService` to generate and validate an HS256 access token through the actual authentication middleware. An altered signature is rejected with `401 Unauthorized`; a valid token reaches the live PostgreSQL identity and permission checks.
+- The test verifies default-deny role listing (403), a database-trigger-authorized School Admin role grant reaching the real role handler (200), and immediate token-version invalidation (401).
+- Push run `41765751785` and Draft PR run `41765745170` on commit `ec55ea4` both passed V1–V16 migrations on ephemeral PostgreSQL 18, the full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and `go vet ./...`. All test fixtures are rolled back; no persistent user database was modified.
 
 
 ### Role administration HTTP route authorization tests (2026-11-03)
