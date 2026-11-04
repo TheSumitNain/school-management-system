@@ -18,6 +18,10 @@ func TestMFARecoveryCodeRepositoryPostgresIntegration(t *testing.T) {
 	if err := pool.QueryRow(ctx, `SELECT principal_id FROM users WHERE id=$1`, userID).Scan(&principalID); err != nil {
 		t.Fatalf("load principal: %v", err)
 	}
+	var tokenVersion int64
+	if err := pool.QueryRow(ctx, `SELECT token_version FROM auth_principals WHERE id=$1`, principalID).Scan(&tokenVersion); err != nil {
+		t.Fatalf("load principal token version: %v", err)
+	}
 	if _, err := pool.Exec(ctx, `INSERT INTO principal_mfa_credentials
 (principal_id,method,secret_ciphertext,encryption_key_version,verified_at,last_accepted_step)
 VALUES($1,'totp',$2,1,NOW(),NULL)
@@ -45,32 +49,32 @@ ON CONFLICT (principal_id) DO UPDATE SET verified_at=NOW(),last_accepted_step=NU
 		initial[i] = integrationTokenHash(runPrefix + "-recovery-initial-" + string(rune('a'+i)))
 	}
 	initialChallenge := integrationTokenHash(runPrefix + "-recovery-regeneration-initial")
-	if err := challenges.Create(ctx, principalID, MFAChallengeRecoveryRegeneration, initialChallenge, time.Now().Add(5*time.Minute)); err != nil {
+	if err := challenges.Create(ctx, principalID, tokenVersion, MFAChallengeRecoveryRegeneration, initialChallenge, time.Now().Add(5*time.Minute)); err != nil {
 		t.Fatalf("create initial regeneration challenge: %v", err)
 	}
-	if err := repo.ReplaceRecoveryCodeHashes(ctx, principalID, initialChallenge, 100, initial); err != nil {
+	if err := repo.ReplaceRecoveryCodeHashes(ctx, principalID, initialChallenge, tokenVersion, 100, initial); err != nil {
 		t.Fatalf("store initial set: %v", err)
 	}
 
 	first := integrationTokenHash(runPrefix + "-recovery-login-first")
-	if err := challenges.Create(ctx, principalID, MFAChallengeLogin, first, time.Now().Add(5*time.Minute)); err != nil {
+	if err := challenges.Create(ctx, principalID, tokenVersion, MFAChallengeLogin, first, time.Now().Add(5*time.Minute)); err != nil {
 		t.Fatal(err)
 	}
-	if err := repo.ConsumeLoginRecoveryCode(ctx, principalID, first, initial[0]); err != nil {
+	if err := repo.ConsumeLoginRecoveryCode(ctx, principalID, first, tokenVersion, initial[0]); err != nil {
 		t.Fatalf("consume first code: %v", err)
 	}
-	if err := repo.ConsumeLoginRecoveryCode(ctx, principalID, first, initial[1]); !errors.Is(err, ErrMFAEnrollmentInvalid) {
+	if err := repo.ConsumeLoginRecoveryCode(ctx, principalID, first, tokenVersion, initial[1]); !errors.Is(err, ErrMFAEnrollmentInvalid) {
 		t.Fatalf("consumed challenge accepted another code: %v", err)
 	}
 
 	second := integrationTokenHash(runPrefix + "-recovery-login-second")
-	if err := challenges.Create(ctx, principalID, MFAChallengeLogin, second, time.Now().Add(5*time.Minute)); err != nil {
+	if err := challenges.Create(ctx, principalID, tokenVersion, MFAChallengeLogin, second, time.Now().Add(5*time.Minute)); err != nil {
 		t.Fatal(err)
 	}
-	if err := repo.ConsumeLoginRecoveryCode(ctx, principalID, second, initial[0]); !errors.Is(err, ErrMFARecoveryCodeInvalid) {
+	if err := repo.ConsumeLoginRecoveryCode(ctx, principalID, second, tokenVersion, initial[0]); !errors.Is(err, ErrMFARecoveryCodeInvalid) {
 		t.Fatalf("used code accepted again: %v", err)
 	}
-	if err := repo.ConsumeLoginRecoveryCode(ctx, principalID, second, initial[1]); err != nil {
+	if err := repo.ConsumeLoginRecoveryCode(ctx, principalID, second, tokenVersion, initial[1]); err != nil {
 		t.Fatalf("unused code rejected: %v", err)
 	}
 
@@ -79,10 +83,10 @@ ON CONFLICT (principal_id) DO UPDATE SET verified_at=NOW(),last_accepted_step=NU
 		replacement[i] = integrationTokenHash(runPrefix + "-recovery-replacement-" + string(rune('a'+i)))
 	}
 	replacementChallenge := integrationTokenHash(runPrefix + "-recovery-regeneration-replacement")
-	if err := challenges.Create(ctx, principalID, MFAChallengeRecoveryRegeneration, replacementChallenge, time.Now().Add(5*time.Minute)); err != nil {
+	if err := challenges.Create(ctx, principalID, tokenVersion, MFAChallengeRecoveryRegeneration, replacementChallenge, time.Now().Add(5*time.Minute)); err != nil {
 		t.Fatalf("create replacement challenge: %v", err)
 	}
-	if err := repo.ReplaceRecoveryCodeHashes(ctx, principalID, replacementChallenge, 101, replacement); err != nil {
+	if err := repo.ReplaceRecoveryCodeHashes(ctx, principalID, replacementChallenge, tokenVersion, 101, replacement); err != nil {
 		t.Fatalf("replace set: %v", err)
 	}
 	var oldUnused, newUnused int
@@ -97,7 +101,7 @@ ON CONFLICT (principal_id) DO UPDATE SET verified_at=NOW(),last_accepted_step=NU
 	}
 
 	raceChallenge := integrationTokenHash(runPrefix + "-recovery-race-single-challenge")
-	if err := challenges.Create(ctx, principalID, MFAChallengeLogin, raceChallenge, time.Now().Add(5*time.Minute)); err != nil {
+	if err := challenges.Create(ctx, principalID, tokenVersion, MFAChallengeLogin, raceChallenge, time.Now().Add(5*time.Minute)); err != nil {
 		t.Fatal(err)
 	}
 	var successes atomic.Int32
@@ -106,7 +110,7 @@ ON CONFLICT (principal_id) DO UPDATE SET verified_at=NOW(),last_accepted_step=NU
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			err := repo.ConsumeLoginRecoveryCode(ctx, principalID, raceChallenge, replacement[0])
+			err := repo.ConsumeLoginRecoveryCode(ctx, principalID, raceChallenge, tokenVersion, replacement[0])
 			if err == nil {
 				successes.Add(1)
 			} else if !errors.Is(err, ErrMFARecoveryCodeInvalid) && !errors.Is(err, ErrMFAEnrollmentInvalid) {
