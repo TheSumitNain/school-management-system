@@ -342,12 +342,16 @@ WITH admin_principal AS (
     LEFT JOIN users u ON u.principal_id=ap.id
     WHERE ap.id=$1
 ),
+family_lock AS MATERIALIZED (
+    SELECT pg_advisory_xact_lock(hashtextextended($2,0))
+),
 family_state AS (
-    SELECT family_id, principal_id,
-           MAX(last_activity_at) FILTER (WHERE revoked_at IS NULL) AS last_activity
-    FROM refresh_sessions
-    WHERE family_id::text=$2
-    GROUP BY family_id, principal_id
+    SELECT rs.family_id, rs.principal_id,
+           MAX(rs.last_activity_at) FILTER (WHERE rs.revoked_at IS NULL) AS last_activity
+    FROM refresh_sessions rs
+    CROSS JOIN family_lock
+    WHERE rs.family_id::text=$2
+    GROUP BY rs.family_id, rs.principal_id
 ),
 touch AS (
     UPDATE refresh_sessions rs
@@ -377,10 +381,9 @@ audit AS (
 )
 SELECT COALESCE((SELECT is_admin FROM admin_principal),FALSE),
        EXISTS(SELECT 1 FROM touch),
-       EXISTS(SELECT 1 FROM expired),
-       EXISTS(SELECT 1 FROM family_state)`
-	var isAdmin, touched, expired, familyExists bool
-	err := r.db.QueryRow(ctx, query, principalID, familyID).Scan(&isAdmin,&touched,&expired,&familyExists)
+       EXISTS(SELECT 1 FROM expired)`
+	var isAdmin, touched, expired bool
+	err := r.db.QueryRow(ctx, query, principalID, familyID).Scan(&isAdmin,&touched,&expired)
 	if err != nil { return false,false,fmt.Errorf("check administrative session activity: %w",err) }
 	if !isAdmin { return false,true,nil }
 	return true, touched && !expired, nil
