@@ -13,11 +13,16 @@ import (
 
 // PrincipalAuthorizationRepository loads live principal identity and a
 // conservative effective-permission set for each protected request.
-type PrincipalAuthorizationRepository struct {
-	db *pgxpool.Pool
+type principalAuthorizationDB interface {
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 }
 
-func NewPrincipalAuthorizationRepository(db *pgxpool.Pool) *PrincipalAuthorizationRepository {
+type PrincipalAuthorizationRepository struct {
+	db principalAuthorizationDB
+}
+
+func NewPrincipalAuthorizationRepository(db principalAuthorizationDB) *PrincipalAuthorizationRepository {
 	return &PrincipalAuthorizationRepository{db: db}
 }
 
