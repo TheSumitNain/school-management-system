@@ -333,6 +333,23 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 			staffCreate.Body.String(), err)
 	}
 
+	// Preserve a valid access token for the new staff principal. It must stop
+	// authenticating immediately after the account is disabled, even though
+	// the JWT signature and expiry remain valid.
+	var newStaffTokenVersion int64
+	if err := tx.QueryRow(ctx,
+		`SELECT token_version FROM auth_principals WHERE id = $1`,
+		staffCreatePayload.Staff.PrincipalID,
+	).Scan(&newStaffTokenVersion); err != nil {
+		t.Fatalf("load new staff principal token version: %v", err)
+	}
+	newStaffAccessToken, err := tokenService.GenerateAccessToken(
+		staffCreatePayload.Staff.PrincipalID, newStaffTokenVersion, "staff",
+	)
+	if err != nil {
+		t.Fatalf("sign new staff access token: %v", err)
+	}
+
 	duplicateStaff := postJSON("/school/staff", accessToken,
 		fmt.Sprintf(`{"username":%q,"initial_password":"A-Strong-Initial-Pass-123"}`, staffUsername))
 	if duplicateStaff.Code != http.StatusConflict {
@@ -386,6 +403,11 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 		disabledTokenVersion != 2 || !staffSessionRevoked {
 		t.Fatalf("HTTP staff disable did not atomically deactivate and revoke credentials: user=%q principal=%q token_version=%d session_revoked=%v",
 			disabledUserStatus, disabledPrincipalStatus, disabledTokenVersion, staffSessionRevoked)
+	}
+	disabledStaffIdentity := request(http.MethodGet, "/auth/me", newStaffAccessToken)
+	if disabledStaffIdentity.Code != http.StatusUnauthorized {
+		t.Fatalf("disabled staff principal must no longer authenticate with its previously valid access token: status=%d body=%s; want 401",
+			disabledStaffIdentity.Code, disabledStaffIdentity.Body.String())
 	}
 	var staffAuditCount int
 	if err := tx.QueryRow(ctx, `
