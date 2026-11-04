@@ -425,6 +425,32 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 			revokeRoleResponse.Code, revokeRoleResponse.Body.String())
 	}
 
+	var foreignSchoolID int64
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO schools (name, code, status)
+		VALUES ($1, $2, 'active')
+		RETURNING id
+	`, "HTTP Foreign School "+suffix, "HTTP-FOR-"+suffix).Scan(&foreignSchoolID); err != nil {
+		t.Fatalf("create foreign-school HTTP fixture: %v", err)
+	}
+	var foreignStaffPrincipalID int64
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO users (school_id, username, password_hash, status, must_change_password)
+		VALUES ($1, $2, $3, 'active', FALSE)
+		RETURNING principal_id
+	`, foreignSchoolID, "http-foreign-"+suffix, "integration-test-password-hash").Scan(&foreignStaffPrincipalID); err != nil {
+		t.Fatalf("create foreign-school staff principal: %v", err)
+	}
+	foreignRoleAssignment := request(
+		http.MethodPost,
+		fmt.Sprintf("/school/staff/%d/roles/%d", foreignStaffPrincipalID, createdRolePayload.Role.ID),
+		accessToken,
+	)
+	if foreignRoleAssignment.Code != http.StatusNotFound {
+		t.Fatalf("School A admin assigning a role to School B staff must return 404: status=%d body=%s",
+			foreignRoleAssignment.Code, foreignRoleAssignment.Body.String())
+	}
+
 	// Verify the delegated per-user override HTTP path, including exact
 	// delegation linkage and the matching revocation route.
 	overrideDelegationResponse := postJSON(
@@ -455,6 +481,16 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	if setOverrideResponse.Code != http.StatusOK {
 		t.Fatalf("School Admin staff permission override should return 200: status=%d body=%s",
 			setOverrideResponse.Code, setOverrideResponse.Body.String())
+	}
+	foreignOverrideResponse := postJSON(
+		fmt.Sprintf("/school/staff/%d/permission-overrides", foreignStaffPrincipalID),
+		accessToken,
+		fmt.Sprintf(`{"permission_key":"homework.create","effect":"allow","reason":"cross-school HTTP test","delegation_id":%d}`,
+			overrideDelegationPayload.Delegation.ID),
+	)
+	if foreignOverrideResponse.Code != http.StatusConflict {
+		t.Fatalf("School A admin overriding School B staff must be rejected with 409: status=%d body=%s",
+			foreignOverrideResponse.Code, foreignOverrideResponse.Body.String())
 	}
 	deleteOverrideResponse := request(
 		http.MethodDelete,
