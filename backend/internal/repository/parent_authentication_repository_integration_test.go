@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"strconv"
 	"testing"
 	"time"
@@ -24,12 +25,37 @@ func TestParentAuthenticationRepositoryPostgresIntegration(t *testing.T) {
 	}
 
 	suffix := strconv.FormatInt(time.Now().UnixNano(), 10)
-	mobile := "+9198765" + suffix[len(suffix)-5:]
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		t.Fatalf("begin Parent authentication fixture: %v", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+
+	// Parent accounts persist in the integration database. Allocate a full
+	// ten-digit mobile and check both uniqueness domains before inserting it;
+	// a five-digit timestamp suffix collides as the fixture database grows.
+	base := time.Now().UnixNano() % 1_000_000_000
+	var mobile string
+	for attempt := int64(0); attempt < 10_000; attempt++ {
+		candidate := "+919" + fmt.Sprintf("%09d", (base+attempt)%1_000_000_000)
+		var exists bool
+		if err := tx.QueryRow(ctx, `
+			SELECT EXISTS (
+				SELECT 1 FROM parent_accounts WHERE mobile_number = $1
+				UNION ALL
+				SELECT 1 FROM guardians WHERE mobile_number_e164 = $1
+			)
+		`, candidate).Scan(&exists); err != nil {
+			t.Fatalf("check unique Parent authentication mobile fixture: %v", err)
+		}
+		if !exists {
+			mobile = candidate
+			break
+		}
+	}
+	if mobile == "" {
+		t.Fatal("could not allocate a unique Parent authentication mobile fixture")
+	}
 
 	var guardianID, studentID, principalID int64
 	if err := tx.QueryRow(ctx, `
