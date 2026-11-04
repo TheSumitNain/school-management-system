@@ -15,6 +15,7 @@ END;
 $v17_down$;
 
 DROP TRIGGER trg_guard_v17_enrollment_history ON student_enrollments;
+DROP TRIGGER trg_validate_v17_section ON sections;
 DROP TRIGGER trg_snapshot_v17_enrollment_labels ON student_enrollments;
 DROP TRIGGER trg_validate_v17_class_incharge_assignment ON class_incharge_assignments;
 DROP TRIGGER trg_validate_v17_teacher_subject_assignment ON teacher_subject_assignments;
@@ -32,6 +33,7 @@ DROP TABLE classes;
 DROP TABLE academic_years;
 
 DROP FUNCTION guard_v17_enrollment_history();
+DROP FUNCTION validate_v17_section();
 DROP FUNCTION snapshot_v17_enrollment_labels();
 DROP FUNCTION validate_v17_teacher_assignment();
 DROP FUNCTION guard_v17_school_scope_immutable();
