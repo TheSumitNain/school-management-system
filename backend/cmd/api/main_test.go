@@ -622,3 +622,32 @@ func TestAttendanceCorrectionRouteEnforcesDedicatedPermission(t *testing.T) {
 	if got:=request(nil);got.Code!=http.StatusForbidden{t.Fatalf("without attendance.correct_past: %d %s",got.Code,got.Body.String())}
 	if got:=request([]string{"attendance.correct_past"});got.Code!=http.StatusServiceUnavailable{t.Fatalf("with attendance.correct_past should reach handler: %d %s",got.Code,got.Body.String())}
 }
+
+
+func TestMFARecoveryCodeRegenerationRequiresAuthenticatedSession(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	authHandler := handlers.NewAuthHandler(nil, nil, nil)
+	router, err := setupRouter(
+		fakeDatabase{},
+		authHandler,
+		fakeTokenValidator{},
+		fakePrincipalLoader{},
+		fakePermissionLoader{},
+	)
+	if err != nil {
+		t.Fatalf("setup router: %v", err)
+	}
+
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/auth/mfa/recovery-codes/regenerate",
+		strings.NewReader(`{"challenge_token":"opaque-challenge","code":"123456"}`),
+	)
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("recovery-code regeneration without access token must be rejected, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
