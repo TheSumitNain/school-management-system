@@ -535,3 +535,14 @@ The role-administration PostgreSQL integration test now provisions a second scho
 Verification: push run `41766408925` and Draft PR run `41766414685` on `c7dd5ce` both passed V1–V16 migrations on ephemeral PostgreSQL 18, the full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and `go vet ./...`.
 
 Scope limitation: these checks establish JWT signature validation and cross-school isolation for RBAC administration repositories/routes. They do not establish tenant isolation for future student, attendance, timetable, homework, fee, or other business-resource APIs. Teacher class/section/subject assignment scope remains untestable until the academic-domain model and corresponding APIs exist. All CI fixtures are transaction-scoped; no persistent user database is modified.
+
+
+## 19. HTTP custom-role creation with live PostgreSQL authorization — 2026-11-04
+
+`TestRBACHTTPAuthorizationUsesPostgresState` also submits an authorized `POST /school/roles` request after the temporary staff principal receives its School Admin role in PostgreSQL. The request uses the same valid HS256 access token and traverses the actual Gin authentication middleware, live principal/permission repositories, role handler, role service, and transaction-backed role repository.
+
+Expected result: HTTP 201 Created and a response containing the newly created custom role name. The custom role and its audit event remain inside the test's outer rollback-only transaction and are not persisted.
+
+Draft PR CI run `41766719434` on `d5f8340` passed all V1–V16 migrations, the full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and `go vet ./...`.
+
+Remaining HTTP/PostgreSQL write-path coverage includes permission delegation, custom-role permission grants/revokes, staff permission overrides, and staff role assignment/revocation.
