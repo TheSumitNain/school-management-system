@@ -11,7 +11,7 @@ import (
 	"school-management-system/internal/services"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
+	"github.com/golang-jwt/jwt/v4"
 )
 
 func TestStudentRoutesEnforceLivePermissions(t *testing.T) {
