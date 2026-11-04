@@ -156,6 +156,11 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	// Its login route is used below to prove a disabled account cannot log in.
 	authService := services.NewAuthService(repository.NewUserRepository(tx), nil)
 	authHandler := handlers.NewAuthHandler(authService, tokenService, rbacIntegrationSessionService{})
+	staffPasswordService, err := services.NewStaffPasswordService(repository.NewUserRepository(tx))
+	if err != nil {
+		t.Fatalf("create PostgreSQL-backed staff password service: %v", err)
+	}
+	authHandler.SetStaffPasswordService(staffPasswordService)
 	loginRouter, err := setupRouterWithHandlers(
 		fakeDatabase{}, authHandler, tokenService,
 		principalRepo, principalRepo,
@@ -469,6 +474,88 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 		t.Fatalf("create second-school staff refresh session: %v", err)
 	}
 
+	// School Admin can reset a same-school staff member's password. The
+	// operation must require users.password_reset, invalidate access/refresh
+	// credentials, and force the staff member to change the temporary password.
+	staffResetSessionHash := fmt.Sprintf("%064x", staffCreatePayload.Staff.PrincipalID+1000000)
+	if err := refreshRepo.CreatePrincipalInTx(ctx, tx, staffCreatePayload.Staff.PrincipalID,
+		staffResetSessionHash, time.Now().Add(time.Hour)); err != nil {
+		t.Fatalf("create refresh session before staff password reset: %v", err)
+	}
+	resetRequest := httptest.NewRequest(http.MethodPost,
+		fmt.Sprintf("/school/staff/%d/password/reset", staffCreatePayload.Staff.PrincipalID),
+		strings.NewReader("{\"new_password\":\"A-Strong-Reset-Pass-456\"}"))
+	resetRequest.Header.Set("Authorization", "Bearer "+accessToken)
+	resetRequest.Header.Set("Content-Type", "application/json")
+	resetRecorder := httptest.NewRecorder()
+	loginRouter.ServeHTTP(resetRecorder, resetRequest)
+	if resetRecorder.Code != http.StatusOK {
+		t.Fatalf("School Admin same-school password reset should return 200: status=%d body=%s",
+			resetRecorder.Code, resetRecorder.Body.String())
+	}
+	var resetPasswordHash string
+	var resetMustChangePassword bool
+	var resetTokenVersion int64
+	var resetSessionRevoked bool
+	if err := tx.QueryRow(ctx, "SELECT u.password_hash,u.must_change_password,ap.token_version,EXISTS(SELECT 1 FROM refresh_sessions WHERE token_hash=$2 AND revoked_at IS NOT NULL) FROM users u JOIN auth_principals ap ON ap.id=u.principal_id WHERE ap.id=$1",
+		staffCreatePayload.Staff.PrincipalID, staffResetSessionHash).Scan(
+		&resetPasswordHash, &resetMustChangePassword, &resetTokenVersion, &resetSessionRevoked,
+	); err != nil {
+		t.Fatalf("verify same-school staff password reset effects: %v", err)
+	}
+	if resetPasswordHash == "" || resetMustChangePassword != true || resetTokenVersion != 2 || !resetSessionRevoked {
+		t.Fatalf("password reset did not rotate credentials and require first-login change: hash_present=%v must_change=%v token_version=%d session_revoked=%v",
+			resetPasswordHash != "", resetMustChangePassword, resetTokenVersion, resetSessionRevoked)
+	}
+	if resetPasswordHash == "initial-integration-password-hash" {
+		t.Fatal("password reset did not replace the original credential hash")
+	}
+	staffAccessAfterReset := request(http.MethodGet, "/auth/me", newStaffAccessToken)
+	if staffAccessAfterReset.Code != http.StatusUnauthorized {
+		t.Fatalf("password reset must invalidate the previously valid staff access token: status=%d body=%s; want 401",
+			staffAccessAfterReset.Code, staffAccessAfterReset.Body.String())
+	}
+
+	// A School Admin from another school must receive the same not-found
+	// response as an unknown principal and must not change credentials.
+	crossSchoolReset := httptest.NewRequest(http.MethodPost,
+		fmt.Sprintf("/school/staff/%d/password/reset", otherSchoolStaffPrincipalID),
+		strings.NewReader("{\"new_password\":\"A-Strong-Reset-Pass-456\"}"))
+	crossSchoolReset.Header.Set("Authorization", "Bearer "+accessToken)
+	crossSchoolReset.Header.Set("Content-Type", "application/json")
+	crossSchoolResetRecorder := httptest.NewRecorder()
+	loginRouter.ServeHTTP(crossSchoolResetRecorder, crossSchoolReset)
+	if crossSchoolResetRecorder.Code != http.StatusNotFound {
+		t.Fatalf("cross-school password reset must return 404: status=%d body=%s; want 404",
+			crossSchoolResetRecorder.Code, crossSchoolResetRecorder.Body.String())
+	}
+	var crossResetPasswordHash string
+	var crossResetUserStatus, crossResetPrincipalStatus string
+	var crossResetTokenVersion int64
+	var crossResetSessionRevoked bool
+	if err := tx.QueryRow(ctx, "SELECT u.password_hash,u.status,ap.status,ap.token_version,EXISTS(SELECT 1 FROM refresh_sessions WHERE token_hash=$3 AND revoked_at IS NOT NULL) FROM users u JOIN auth_principals ap ON ap.id=u.principal_id WHERE u.id=$1 AND ap.id=$2",
+		otherSchoolStaffUserID, otherSchoolStaffPrincipalID, otherSchoolSessionHash).Scan(
+		&crossResetPasswordHash, &crossResetUserStatus, &crossResetPrincipalStatus,
+		&crossResetTokenVersion, &crossResetSessionRevoked,
+	); err != nil {
+		t.Fatalf("verify cross-school password reset had no credential side effects: %v", err)
+	}
+	if crossResetPasswordHash != "integration-test-password-hash" ||
+		crossResetUserStatus != "active" || crossResetPrincipalStatus != "active" ||
+		crossResetTokenVersion != 1 || crossResetSessionRevoked {
+		t.Fatalf("cross-school password reset changed target credentials: password_hash_changed=%v user=%q principal=%q token_version=%d session_revoked=%v",
+			crossResetPasswordHash != "integration-test-password-hash", crossResetUserStatus,
+			crossResetPrincipalStatus, crossResetTokenVersion, crossResetSessionRevoked)
+	}
+	var crossResetAuditCount int
+	if err := tx.QueryRow(ctx, "SELECT COUNT(*) FROM audit_events WHERE actor_principal_id=$1 AND action='staff.password.reset' AND resource_type='staff_user' AND resource_id=$2 AND outcome='success'",
+		principalID, fmt.Sprint(otherSchoolStaffUserID)).Scan(&crossResetAuditCount); err != nil {
+		t.Fatalf("check cross-school password reset audit side effects: %v", err)
+	}
+	if crossResetAuditCount != 0 {
+		t.Fatalf("cross-school password reset must not emit a success audit event; got %d", crossResetAuditCount)
+	}
+
 	staffList := request(http.MethodGet, "/school/staff", accessToken)
 	if staffList.Code != http.StatusOK ||
 		!strings.Contains(staffList.Body.String(), fmt.Sprintf(`"principal_id":%d`, staffCreatePayload.Staff.PrincipalID)) {
@@ -551,7 +638,7 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 		t.Fatalf("verify HTTP staff disable database effects: %v", err)
 	}
 	if disabledUserStatus != "disabled" || disabledPrincipalStatus != "disabled" ||
-		disabledTokenVersion != 2 || !staffSessionRevoked {
+		disabledTokenVersion != 3 || !staffSessionRevoked {
 		t.Fatalf("HTTP staff disable did not atomically deactivate and revoke credentials: user=%q principal=%q token_version=%d session_revoked=%v",
 			disabledUserStatus, disabledPrincipalStatus, disabledTokenVersion, staffSessionRevoked)
 	}
@@ -574,13 +661,13 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	if err := tx.QueryRow(ctx, `
 		SELECT COUNT(*) FROM audit_events
 		 WHERE actor_principal_id = $1 AND school_id = $2
-		   AND action IN ('staff.account.created', 'staff.account.disabled')
+		   AND action IN ('staff.account.created', 'staff.password.reset', 'staff.account.disabled')
 		   AND resource_type = 'staff_user' AND resource_id = $3 AND outcome = 'success'
 	`, principalID, schoolID, fmt.Sprint(staffCreatePayload.Staff.ID)).Scan(&staffAuditCount); err != nil {
 		t.Fatalf("count staff lifecycle HTTP audit events: %v", err)
 	}
-	if staffAuditCount != 2 {
-		t.Fatalf("expected exactly two successful staff create/disable audit events, got %d", staffAuditCount)
+	if staffAuditCount != 3 {
+		t.Fatalf("expected exactly three successful staff create/reset/disable audit events, got %d", staffAuditCount)
 	}
 
 	// Permissions are loaded from PostgreSQL on every request. The role grant
