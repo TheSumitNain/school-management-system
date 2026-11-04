@@ -68,6 +68,34 @@ CREATE UNIQUE INDEX ux_sections_class_year_name
 CREATE INDEX ix_sections_school_year_class
     ON sections (school_id, academic_year_id, class_id, is_active, display_order);
 
+CREATE OR REPLACE FUNCTION validate_v17_section()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public
+AS $v17$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+          FROM public.classes c
+          JOIN public.academic_years ay
+            ON ay.id = NEW.academic_year_id
+           AND ay.school_id = NEW.school_id
+         WHERE c.id = NEW.class_id
+           AND c.school_id = NEW.school_id
+           AND c.is_active = TRUE
+           AND ay.status <> 'closed'
+    ) THEN
+        RAISE EXCEPTION 'new sections require an active class and a non-closed academic year in the same school';
+    END IF;
+    RETURN NEW;
+END;
+$v17$;
+
+CREATE TRIGGER trg_validate_v17_section
+BEFORE INSERT OR UPDATE OF school_id, academic_year_id, class_id
+ON sections
+FOR EACH ROW EXECUTE FUNCTION validate_v17_section();
+
 CREATE TABLE subjects (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     school_id BIGINT NOT NULL REFERENCES schools(id) ON DELETE RESTRICT,
@@ -232,13 +260,67 @@ BEGIN
         SELECT 1
           FROM public.auth_principals ap
           JOIN public.users u ON u.principal_id = ap.id
+          JOIN public.principal_roles pr ON pr.principal_id = ap.id AND pr.revoked_at IS NULL
+          JOIN public.roles r ON r.id = pr.role_id
+          JOIN public.role_permissions rp ON rp.role_id = r.id
+          JOIN public.permissions p ON p.id = rp.permission_id
          WHERE ap.id = NEW.assigned_by_principal_id
            AND ap.principal_type = 'staff'
            AND ap.status = 'active'
            AND u.status = 'active'
            AND u.school_id = NEW.school_id
+           AND r.school_id = NEW.school_id
+           AND r.scope_type = 'school'
+           AND r.principal_type = 'staff'
+           AND r.role_key = 'school_admin'
+           AND p.permission_key = CASE
+               WHEN TG_TABLE_NAME = 'teacher_subject_assignments' THEN 'teacher_assignments.manage'
+               ELSE 'class_incharge_assignments.manage'
+           END
+           AND p.scope_type = 'school'
+           AND p.is_active = TRUE
+           AND NOT EXISTS (
+               SELECT 1
+                 FROM public.user_permission_overrides denied
+                WHERE denied.principal_id = ap.id
+                  AND denied.school_id = NEW.school_id
+                  AND denied.permission_id = p.id
+                  AND denied.effect = 'deny'
+           )
     ) THEN
-        RAISE EXCEPTION 'assignment actor must be active staff from the same school';
+        RAISE EXCEPTION 'assignment actor must be an active same-school School Admin with the required effective permission';
+    END IF;
+
+    IF TG_TABLE_NAME = 'teacher_subject_assignments' AND NOT EXISTS (
+        SELECT 1
+          FROM public.sections s
+          JOIN public.academic_years ay
+            ON ay.id = s.academic_year_id AND ay.school_id = s.school_id
+          JOIN public.classes c ON c.id = s.class_id AND c.school_id = s.school_id
+          JOIN public.subjects sub ON sub.id = NEW.subject_id AND sub.school_id = NEW.school_id
+         WHERE s.id = NEW.section_id
+           AND s.school_id = NEW.school_id
+           AND s.academic_year_id = NEW.academic_year_id
+           AND s.is_active = TRUE
+           AND c.is_active = TRUE
+           AND ay.status <> 'closed'
+           AND sub.is_active = TRUE
+    ) THEN
+        RAISE EXCEPTION 'teacher subject assignment requires an active section, class, subject, and non-closed academic year';
+    ELSIF TG_TABLE_NAME = 'class_incharge_assignments' AND NOT EXISTS (
+        SELECT 1
+          FROM public.sections s
+          JOIN public.academic_years ay
+            ON ay.id = s.academic_year_id AND ay.school_id = s.school_id
+          JOIN public.classes c ON c.id = s.class_id AND c.school_id = s.school_id
+         WHERE s.id = NEW.section_id
+           AND s.school_id = NEW.school_id
+           AND s.academic_year_id = NEW.academic_year_id
+           AND s.is_active = TRUE
+           AND c.is_active = TRUE
+           AND ay.status <> 'closed'
+    ) THEN
+        RAISE EXCEPTION 'class in-charge assignment requires an active section, class, and non-closed academic year';
     END IF;
 
     RETURN NEW;
@@ -271,8 +353,16 @@ BEGIN
        AND s.school_id = c.school_id
      WHERE c.id = NEW.class_id
        AND c.school_id = NEW.school_id
+       AND c.is_active = TRUE
        AND s.id = NEW.section_id
-       AND s.academic_year_id = NEW.academic_year_id;
+       AND s.academic_year_id = NEW.academic_year_id
+       AND s.is_active = TRUE
+       AND EXISTS (
+           SELECT 1 FROM public.academic_years ay
+            WHERE ay.id = NEW.academic_year_id
+              AND ay.school_id = NEW.school_id
+              AND ay.status <> 'closed'
+       );
     IF NOT FOUND THEN
         RAISE EXCEPTION 'enrollment class and section must belong to the same school and academic year';
     END IF;
