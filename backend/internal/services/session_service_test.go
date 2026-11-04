@@ -92,7 +92,7 @@ func TestIssueBindsExpectedTokenVersion(t *testing.T) {
 	principal := &models.AuthPrincipal{ID: 42, Type: "staff", Status: "active", TokenVersion: 7, SchoolID: 3}
 	rawToken, err := service.Issue(context.Background(), principal)
 	if err != nil {
-		t.Fatalf("IssueForPrincipal() error: %v", err)
+		t.Fatalf("Issue() error: %v", err)
 	}
 	if rawToken == "" || repo.createPrincipalID != principal.ID ||
 		repo.expectedTokenVersion != principal.TokenVersion {
@@ -115,7 +115,7 @@ func TestIssueRejectsMissingOrStaleIdentity(t *testing.T) {
 		{ID: 1, Type: "staff", Status: "disabled", TokenVersion: 1, SchoolID: 2},
 	} {
 		if _, err := service.Issue(context.Background(), principal); err == nil {
-			t.Fatalf("IssueForPrincipal(%+v) should reject invalid principal", principal)
+			t.Fatalf("Issue(%+v) should reject invalid principal", principal)
 		}
 	}
 }
