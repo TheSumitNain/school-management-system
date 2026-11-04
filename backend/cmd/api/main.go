@@ -91,34 +91,34 @@ func setupRouterWithHandlers(
 
 	if staffHandler != nil {
 		router.GET("/school/staff",
-			middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader),
+			authMiddleware(),
 			middleware.RequirePermission("users.read"),
 			staffHandler.List,
 		)
 		router.POST("/school/staff",
-			middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader),
+			authMiddleware(),
 			middleware.RequirePermission("users.create"),
 			staffHandler.Create,
 		)
 		router.DELETE("/school/staff/:principalID",
-			middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader),
+			authMiddleware(),
 			middleware.RequirePermission("users.disable"),
 			staffHandler.Disable,
 		)
 		router.PATCH("/school/staff/:principalID",
-			middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader),
+			authMiddleware(),
 			middleware.RequirePermission("users.update"),
 			staffHandler.Update,
 		)
 		router.POST("/school/staff/:principalID/enable",
-			middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader),
+			authMiddleware(),
 			middleware.RequirePermission("users.update"),
 			staffHandler.Enable,
 		)
 	}
 
 	if roleHandler != nil {
-		platformAuth := middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader)
+		platformAuth := authMiddleware()
 		router.POST("/platform/schools/:schoolID/permission-delegations",
 			platformAuth,
 			middleware.RequirePermission("platform.permissions.delegate"),
@@ -130,7 +130,7 @@ func setupRouterWithHandlers(
 			roleHandler.RevokeSchoolPermissionDelegation,
 		)
 
-		roleAuth := middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader)
+		roleAuth := authMiddleware()
 		router.GET("/school/roles",
 			roleAuth,
 			middleware.RequirePermission("roles.read"),
@@ -197,7 +197,7 @@ func setupRouterWithHandlers(
 
 	if academicHandler != nil {
 		academic := academicHandler
-		academicAuth := middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader)
+		academicAuth := authMiddleware()
 		router.GET("/school/academic-years", academicAuth, middleware.RequirePermission("academic_years.read"), academic.ListAcademicYears)
 		router.POST("/school/academic-years", academicAuth, middleware.RequirePermission("academic_years.manage"), academic.SaveAcademicYear)
 		router.PATCH("/school/academic-years/:yearID", academicAuth, middleware.RequirePermission("academic_years.manage"), academic.SaveAcademicYear)
@@ -228,7 +228,7 @@ func setupRouterWithHandlers(
 	}
 
 	if attendanceHandler != nil {
-		attendanceAuth := middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader)
+		attendanceAuth := authMiddleware()
 		router.GET("/school/attendance", attendanceAuth, middleware.RequirePermission("attendance.read"), attendanceHandler.List)
 		router.POST("/school/attendance", attendanceAuth, middleware.RequirePermission("attendance.mark"), attendanceHandler.Mark)
 		router.PATCH("/school/attendance/:attendanceID", attendanceAuth, middleware.RequirePermission("attendance.update_same_day"), attendanceHandler.Update)
@@ -236,7 +236,7 @@ func setupRouterWithHandlers(
 	}
 
 	if guardianHandler != nil {
-		guardianAuth := middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader)
+		guardianAuth := authMiddleware()
 		router.GET("/school/guardians", guardianAuth, middleware.RequirePermission("guardians.read"), guardianHandler.ListGuardians)
 		router.POST("/school/guardians", guardianAuth, middleware.RequirePermission("guardians.manage"), guardianHandler.SaveGuardian)
 		router.GET("/school/guardians/:guardianID", guardianAuth, middleware.RequirePermission("guardians.read"), guardianHandler.GetGuardian)
@@ -252,21 +252,21 @@ func setupRouterWithHandlers(
 		router.POST("/auth/mfa/enroll/verify", authHandler.CompleteMFAEnrollment)
 		router.POST("/auth/mfa/verify", authHandler.VerifyMFA)
 		router.POST("/auth/mfa/recovery-codes/regenerate/start",
-			middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader),
+			authMiddleware(),
 			authHandler.BeginMFARecoveryCodeRegeneration)
 		router.POST("/auth/mfa/recovery-codes/regenerate", authHandler.RegenerateMFARecoveryCodes)
 		router.POST("/auth/refresh", authHandler.Refresh)
 		router.POST("/auth/logout", authHandler.Logout)
 		router.POST("/auth/password/change",
-			middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader),
+			authMiddleware(),
 			authHandler.ChangeStaffPassword)
 		router.POST("/school/staff/:principalID/password/reset",
-			middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader),
+			authMiddleware(),
 			middleware.RequirePermission("users.password_reset"),
 			authHandler.ResetStaffPassword)
 	}
 
-	router.GET("/auth/me", middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader), func(c *gin.Context) {
+	router.GET("/auth/me", authMiddleware(), func(c *gin.Context) {
 		principalID, _ := c.Get(middleware.ContextPrincipalIDKey)
 		principalType, _ := c.Get(middleware.ContextPrincipalTypeKey)
 		schoolID, _ := c.Get(middleware.ContextSchoolIDKey)
