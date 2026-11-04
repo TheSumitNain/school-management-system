@@ -149,10 +149,12 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	if len(parts) != 3 || parts[2] == "" {
 		t.Fatal("generated access token has an invalid JWT structure")
 	}
-	if strings.HasSuffix(parts[2], "A") {
-		parts[2] = parts[2][:len(parts[2])-1] + "B"
+	// Mutate the first base64url character so the decoded signature bytes
+	// necessarily change; the final character may contain unused padding bits.
+	if parts[2][0] == 'A' {
+		parts[2] = "B" + parts[2][1:]
 	} else {
-		parts[2] = parts[2][:len(parts[2])-1] + "A"
+		parts[2] = "A" + parts[2][1:]
 	}
 	invalidSignature := request(http.MethodGet, "/auth/me", strings.Join(parts, "."))
 	if invalidSignature.Code != http.StatusUnauthorized {
