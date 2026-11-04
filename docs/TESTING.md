@@ -23,6 +23,7 @@ Current test areas include:
 - Refresh-token session-service behavior and concurrency safeguards.
 - V15/V16 PostgreSQL integration coverage for password lifecycle and exact delegation revocation.
 - Router/middleware authorization tests for all 14 Platform Admin and school role-administration routes, including AND semantics for multi-permission routes.
+- HTTP/PostgreSQL integration coverage for database-backed staff identity, default-deny role authorization, and token-version revocation using the real Gin router and principal/permission repositories.
 
 An earlier source-only CI run on commit `4351ce9` passed the unit suite and vet but did not enable PostgreSQL integration tests. The latest full database-backed verification is recorded immediately below.
 
@@ -31,7 +32,7 @@ go test -count=1 ./...
 go vet ./...
 ```
 
-The latest GitHub Actions push run `41658994787` and Draft PR run `41659008482` on commit `2c81dfc` applied migrations V1–V16 to a fresh ephemeral PostgreSQL 18 database, ran the full suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and passed `go vet ./...`. Both runs include the 14 role-administration route permission tests. The user's persistent `school_management_test` and `school_management` databases were not changed. Repeat the workflow after relevant code changes.
+The latest GitHub Actions push run `41762250818` and Draft PR run `41762256758` on commit `9e74c88` applied migrations V1–V16 to a fresh ephemeral PostgreSQL 18 database, ran the full suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and passed `go vet ./...`. Both runs include the 14 role-administration route permission tests and the first HTTP/PostgreSQL RBAC integration test. The user's persistent `school_management_test` and `school_management` databases were not changed. Repeat the workflow after relevant code changes.
 
 The current test suite does not establish that every application behavior is tested or that the application is production-ready.
 
@@ -498,3 +499,16 @@ echo VET_EXIT_CODE=%ERRORLEVEL%
 ```
 
 After explicit approval to apply V14 to school_management_test, run the focused integration test with the project's opt-in PostgreSQL integration environment enabled. Confirm it does not skip and exits with code 0. Do not run the bootstrap CLI against either database as part of migration verification. Never apply V14 to school_management without separate explicit approval.
+
+
+## 17. HTTP/PostgreSQL RBAC integration slice — 2026-11-04
+
+`TestRBACHTTPAuthorizationUsesPostgresState` starts the actual Gin router with the real `PrincipalAuthorizationRepository`, `RoleRepository`, `RoleService`, and `RoleHandler`, backed by the ephemeral PostgreSQL integration database. It creates a temporary school and staff principal with no role assignments, then verifies:
+
+- `GET /auth/me` returns 200 for the active principal loaded from PostgreSQL.
+- `GET /school/roles` returns 403 because the database-backed effective permission set contains no `roles.read` grant.
+- Incrementing the principal's database `token_version` invalidates the already-issued test token; the next `GET /auth/me` returns 401.
+
+The test uses the package's controlled fake token validator. It does not yet prove real JWT signature validation, a successful protected role-management operation with a database-granted role, or tenant/resource/teacher assignment isolation. Those remain explicit follow-up tests, not completed coverage.
+
+Verification: push run `41762250818` and Draft PR run `41762256758` on `9e74c88` both passed the full PostgreSQL 18 migration/integration workflow and `go vet ./...`.
