@@ -216,6 +216,12 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 		          AND delegate_p.permission_key = 'platform.permissions.delegate'
 		          AND delegate_p.is_active = TRUE
 		   )
+		   AND EXISTS (
+		       SELECT 1 FROM principal_mfa_credentials mfa
+		        WHERE mfa.principal_id = ap.id
+		          AND mfa.method = 'totp'
+		          AND mfa.verified_at IS NOT NULL
+		   )
 		 LIMIT 1
 	`).Scan(&platformAdminPrincipalID)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -244,6 +250,19 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	}
 	if err != nil {
 		t.Fatalf("resolve rollback-scoped Platform Admin actor: %v", err)
+	}
+	// A newly bootstrapped test-only Platform Admin needs a verified MFA
+	// fixture to pass the same mandatory-MFA middleware as production users.
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO principal_mfa_credentials
+		    (principal_id, method, secret_ciphertext, encryption_key_version, verified_at)
+		SELECT $1, 'totp', $2, 1, NOW()
+		 WHERE NOT EXISTS (
+		     SELECT 1 FROM principal_mfa_credentials
+		      WHERE principal_id = $1 AND method = 'totp' AND verified_at IS NOT NULL
+		 )
+	`, platformAdminPrincipalID, []byte("integration-platform-admin-mfa-ciphertext")); err != nil {
+		t.Fatalf("create verified MFA fixture for Platform Admin: %v", err)
 	}
 	var platformTokenVersion int64
 	if err := tx.QueryRow(ctx,
