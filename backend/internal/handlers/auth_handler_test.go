@@ -76,12 +76,12 @@ func (f *fakeSessionService) Revoke(_ context.Context, refreshToken string) erro
 }
 
 type fakeMFAService struct{}
-func (fakeMFAService) BeginAuthentication(context.Context,int64,string) (*services.MFAStart,error) {
+func (fakeMFAService) BeginAuthentication(context.Context,*models.AuthPrincipal,string) (*services.MFAStart,error) {
 	return &services.MFAStart{Required:false},nil
 }
-func (fakeMFAService) CompleteEnrollment(context.Context,string,string) (int64,[]string,error) { return 0,nil,services.ErrMFAInvalid }
-func (fakeMFAService) VerifyLoginChallenge(context.Context,string,string) (int64,error) { return 0,services.ErrMFAInvalid }
-func (fakeMFAService) BeginRecoveryCodeRegeneration(context.Context,int64) (*services.MFAStart,error) { return nil,services.ErrMFAInvalid }
+func (fakeMFAService) CompleteEnrollment(context.Context,string,string) (int64,int64,[]string,error) { return 0,0,nil,services.ErrMFAInvalid }
+func (fakeMFAService) VerifyLoginChallenge(context.Context,string,string) (int64,int64,error) { return 0,0,services.ErrMFAInvalid }
+func (fakeMFAService) BeginRecoveryCodeRegeneration(context.Context,int64,int64) (*services.MFAStart,error) { return nil,services.ErrMFAInvalid }
 func (fakeMFAService) RegenerateRecoveryCodes(context.Context,string,string) ([]string,error) { return nil,services.ErrMFAInvalid }
 
 type fakeMFAPrincipalLoader struct{}
