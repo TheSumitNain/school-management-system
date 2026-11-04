@@ -247,6 +247,13 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
 		t.Fatalf("create second School Admin target: %v", err)
 	}
 	if _, err := tx.Exec(ctx, `
+		INSERT INTO principal_mfa_credentials
+		    (principal_id, method, secret_ciphertext, encryption_key_version, verified_at)
+		VALUES ($1, 'totp', $2, 1, NOW())
+	`, protectedAdminPrincipalID, []byte("protected-school-admin-test-ciphertext")); err != nil {
+		t.Fatalf("create verified MFA fixture for protected School Admin: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
 		INSERT INTO principal_roles (principal_id, role_id, assigned_by)
 		VALUES ($1, (
 		    SELECT id FROM roles
