@@ -375,7 +375,16 @@ SELECT rs.id, rs.family_id, rs.principal_id,
        (rs.expires_at > NOW()),
        (rs.revoked_at IS NOT NULL),
        rs.last_activity_at,
-       ap.principal_type, ap.status, ap.token_version,
+       ap.principal_type,
+       (ap.principal_type='platform_admin' OR
+        (ap.principal_type='staff' AND EXISTS (
+          SELECT 1 FROM principal_roles ar JOIN roles rr ON rr.id=ar.role_id
+          WHERE ar.principal_id=ap.id AND ar.revoked_at IS NULL
+            AND rr.is_system=TRUE AND rr.role_key='school_admin'
+            AND rr.principal_type='staff' AND rr.scope_type='school'
+            AND rr.school_id=u.school_id
+        ))),
+       ap.status, ap.token_version,
        u.id,
        COALESCE(u.school_id,0),
        COALESCE(u.username,''),
@@ -425,6 +434,7 @@ FOR UPDATE OF rs, ap`
 	var revoked bool
 	var lastActivityAt time.Time
 	var principalType string
+	var isAdminPrincipal bool
 	var principalStatus string
 	var username string
 	var mustChangePassword bool
@@ -445,6 +455,7 @@ FOR UPDATE OF rs, ap`
 		&revoked,
 		&lastActivityAt,
 		&principalType,
+		&isAdminPrincipal,
 		&principalStatus,
 		&tokenVersion,
 		&userID,
@@ -492,7 +503,7 @@ FOR UPDATE OF rs, ap`
 		return nil, ErrRefreshTokenInvalid
 	}
 
-	if time.Since(lastActivityAt) >= 30*time.Minute {
+	if isAdminPrincipal && time.Since(lastActivityAt) >= 30*time.Minute {
 		if _, err = tx.Exec(ctx, `UPDATE refresh_sessions SET revoked_at=COALESCE(revoked_at,NOW()) WHERE family_id=$1 AND revoked_at IS NULL`, familyID); err != nil {
 			return nil, fmt.Errorf("revoke idle administrative refresh family: %w", err)
 		}
