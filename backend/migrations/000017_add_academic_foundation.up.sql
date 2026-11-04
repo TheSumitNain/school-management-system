@@ -291,36 +291,40 @@ BEGIN
         RAISE EXCEPTION 'assignment actor must be an active same-school School Admin with the required effective permission';
     END IF;
 
-    IF TG_TABLE_NAME = 'teacher_subject_assignments' AND NOT EXISTS (
-        SELECT 1
-          FROM public.sections s
-          JOIN public.academic_years ay
-            ON ay.id = s.academic_year_id AND ay.school_id = s.school_id
-          JOIN public.classes c ON c.id = s.class_id AND c.school_id = s.school_id
-          JOIN public.subjects sub ON sub.id = NEW.subject_id AND sub.school_id = NEW.school_id
-         WHERE s.id = NEW.section_id
-           AND s.school_id = NEW.school_id
-           AND s.academic_year_id = NEW.academic_year_id
-           AND s.is_active = TRUE
-           AND c.is_active = TRUE
-           AND ay.status <> 'closed'
-           AND sub.is_active = TRUE
-    ) THEN
-        RAISE EXCEPTION 'teacher subject assignment requires an active section, class, subject, and non-closed academic year';
-    ELSIF TG_TABLE_NAME = 'class_incharge_assignments' AND NOT EXISTS (
-        SELECT 1
-          FROM public.sections s
-          JOIN public.academic_years ay
-            ON ay.id = s.academic_year_id AND ay.school_id = s.school_id
-          JOIN public.classes c ON c.id = s.class_id AND c.school_id = s.school_id
-         WHERE s.id = NEW.section_id
-           AND s.school_id = NEW.school_id
-           AND s.academic_year_id = NEW.academic_year_id
-           AND s.is_active = TRUE
-           AND c.is_active = TRUE
-           AND ay.status <> 'closed'
-    ) THEN
-        RAISE EXCEPTION 'class in-charge assignment requires an active section, class, and non-closed academic year';
+    IF TG_TABLE_NAME = 'teacher_subject_assignments' THEN
+        IF NOT EXISTS (
+            SELECT 1
+              FROM public.sections s
+              JOIN public.academic_years ay
+                ON ay.id = s.academic_year_id AND ay.school_id = s.school_id
+              JOIN public.classes c ON c.id = s.class_id AND c.school_id = s.school_id
+              JOIN public.subjects sub ON sub.id = NEW.subject_id AND sub.school_id = NEW.school_id
+             WHERE s.id = NEW.section_id
+               AND s.school_id = NEW.school_id
+               AND s.academic_year_id = NEW.academic_year_id
+               AND s.is_active = TRUE
+               AND c.is_active = TRUE
+               AND ay.status <> 'closed'
+               AND sub.is_active = TRUE
+        ) THEN
+            RAISE EXCEPTION 'teacher subject assignment requires an active section, class, subject, and non-closed academic year';
+        END IF;
+    ELSIF TG_TABLE_NAME = 'class_incharge_assignments' THEN
+        IF NOT EXISTS (
+            SELECT 1
+              FROM public.sections s
+              JOIN public.academic_years ay
+                ON ay.id = s.academic_year_id AND ay.school_id = s.school_id
+              JOIN public.classes c ON c.id = s.class_id AND c.school_id = s.school_id
+             WHERE s.id = NEW.section_id
+               AND s.school_id = NEW.school_id
+               AND s.academic_year_id = NEW.academic_year_id
+               AND s.is_active = TRUE
+               AND c.is_active = TRUE
+               AND ay.status <> 'closed'
+        ) THEN
+            RAISE EXCEPTION 'class in-charge assignment requires an active section, class, and non-closed academic year';
+        END IF;
     END IF;
 
     RETURN NEW;
