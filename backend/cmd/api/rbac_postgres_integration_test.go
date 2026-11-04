@@ -397,6 +397,21 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	`, schoolID, "http-target-"+suffix, "integration-test-password-hash").Scan(&targetStaffPrincipalID); err != nil {
 		t.Fatalf("create HTTP target staff principal: %v", err)
 	}
+	var targetTokenVersion int64
+	if err := tx.QueryRow(ctx,
+		`SELECT token_version FROM auth_principals WHERE id = $1`, targetStaffPrincipalID,
+	).Scan(&targetTokenVersion); err != nil {
+		t.Fatalf("load target staff token version: %v", err)
+	}
+	targetAccessToken, err := tokenService.GenerateAccessToken(targetStaffPrincipalID, targetTokenVersion, "staff")
+	if err != nil {
+		t.Fatalf("sign target staff integration access token: %v", err)
+	}
+	targetBeforeOverride := request(http.MethodGet, "/school/roles", targetAccessToken)
+	if targetBeforeOverride.Code != http.StatusForbidden {
+		t.Fatalf("target staff without role or override must not list school roles: status=%d body=%s",
+			targetBeforeOverride.Code, targetBeforeOverride.Body.String())
+	}
 	assignRoleResponse := request(
 		http.MethodPost,
 		fmt.Sprintf("/school/staff/%d/roles/%d", targetStaffPrincipalID, createdRolePayload.Role.ID),
@@ -456,7 +471,7 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	overrideDelegationResponse := postJSON(
 		fmt.Sprintf("/platform/schools/%d/permission-delegations", schoolID),
 		platformAccessToken,
-		`{"permission_key":"homework.create","can_assign_to_roles":false,"can_override_users":true}`,
+		`{"permission_key":"roles.read","can_assign_to_roles":false,"can_override_users":true}`,
 	)
 	if overrideDelegationResponse.Code != http.StatusCreated {
 		t.Fatalf("Platform Admin override delegation should return 201: status=%d body=%s",
@@ -475,17 +490,22 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	setOverrideResponse := postJSON(
 		fmt.Sprintf("/school/staff/%d/permission-overrides", targetStaffPrincipalID),
 		accessToken,
-		fmt.Sprintf(`{"permission_key":"homework.create","effect":"allow","reason":"HTTP integration test","delegation_id":%d}`,
+		fmt.Sprintf(`{"permission_key":"roles.read","effect":"allow","reason":"HTTP integration test","delegation_id":%d}`,
 			overrideDelegationPayload.Delegation.ID),
 	)
 	if setOverrideResponse.Code != http.StatusOK {
 		t.Fatalf("School Admin staff permission override should return 200: status=%d body=%s",
 			setOverrideResponse.Code, setOverrideResponse.Body.String())
 	}
+	targetAfterAllow := request(http.MethodGet, "/school/roles", targetAccessToken)
+	if targetAfterAllow.Code != http.StatusOK {
+		t.Fatalf("newly granted roles.read override must take effect on the next protected request: status=%d body=%s",
+			targetAfterAllow.Code, targetAfterAllow.Body.String())
+	}
 	foreignOverrideResponse := postJSON(
 		fmt.Sprintf("/school/staff/%d/permission-overrides", foreignStaffPrincipalID),
 		accessToken,
-		fmt.Sprintf(`{"permission_key":"homework.create","effect":"allow","reason":"cross-school HTTP test","delegation_id":%d}`,
+		fmt.Sprintf(`{"permission_key":"roles.read","effect":"allow","reason":"cross-school HTTP test","delegation_id":%d}`,
 			overrideDelegationPayload.Delegation.ID),
 	)
 	if foreignOverrideResponse.Code != http.StatusConflict {
@@ -494,12 +514,17 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	}
 	deleteOverrideResponse := request(
 		http.MethodDelete,
-		fmt.Sprintf("/school/staff/%d/permission-overrides/homework.create", targetStaffPrincipalID),
+		fmt.Sprintf("/school/staff/%d/permission-overrides/roles.read", targetStaffPrincipalID),
 		accessToken,
 	)
 	if deleteOverrideResponse.Code != http.StatusOK {
 		t.Fatalf("School Admin staff permission override deletion should return 200: status=%d body=%s",
 			deleteOverrideResponse.Code, deleteOverrideResponse.Body.String())
+	}
+	targetAfterRemoval := request(http.MethodGet, "/school/roles", targetAccessToken)
+	if targetAfterRemoval.Code != http.StatusForbidden {
+		t.Fatalf("removed roles.read override must stop authorizing the next protected request: status=%d body=%s",
+			targetAfterRemoval.Code, targetAfterRemoval.Body.String())
 	}
 	revokeOverrideDelegation := request(
 		http.MethodPost,
