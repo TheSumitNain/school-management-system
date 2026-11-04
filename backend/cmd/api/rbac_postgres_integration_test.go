@@ -98,8 +98,8 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 
 	var principalID int64
 	if err := tx.QueryRow(ctx, `
-		INSERT INTO users (school_id, username, password_hash, status)
-		VALUES ($1, $2, $3, 'active')
+		INSERT INTO users (school_id, username, password_hash, status, must_change_password)
+		VALUES ($1, $2, $3, 'active', FALSE)
 		RETURNING principal_id
 	`, schoolID, "rbac-http-"+suffix, "integration-test-password-hash").Scan(&principalID); err != nil {
 		t.Fatalf("create integration staff principal: %v", err)
