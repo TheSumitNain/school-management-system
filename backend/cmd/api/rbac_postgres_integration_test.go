@@ -511,6 +511,101 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 			revokeOverrideDelegation.Code, revokeOverrideDelegation.Body.String())
 	}
 
+	// HTTP success responses must correspond to durable-in-transaction audit
+	// events, while rejected cross-school writes must leave no audit or data
+	// side effects. The outer transaction is rolled back at test completion.
+	assertAuditEvent := func(action, resourceType string, resourceID int64) {
+		t.Helper()
+		var count int
+		if err := tx.QueryRow(ctx, `
+			SELECT COUNT(*)
+			  FROM audit_events
+			 WHERE actor_principal_id = $1
+			   AND school_id = $2
+			   AND action = $3
+			   AND resource_type = $4
+			   AND resource_id = $5
+			   AND outcome = 'success'
+		`, principalID, schoolID, action, resourceType, fmt.Sprint(resourceID)).Scan(&count); err != nil {
+			t.Fatalf("count audit event %s: %v", action, err)
+		}
+		if count != 1 {
+			t.Fatalf("expected exactly one %s audit event for %s/%d; got %d",
+				action, resourceType, resourceID, count)
+		}
+	}
+	assertPlatformAuditEvent := func(action string, resourceID int64) {
+		t.Helper()
+		var count int
+		if err := tx.QueryRow(ctx, `
+			SELECT COUNT(*)
+			  FROM audit_events
+			 WHERE actor_principal_id = $1
+			   AND school_id = $2
+			   AND action = $3
+			   AND resource_type = 'permission_delegation'
+			   AND resource_id = $4
+			   AND outcome = 'success'
+		`, platformAdminPrincipalID, schoolID, action, fmt.Sprint(resourceID)).Scan(&count); err != nil {
+			t.Fatalf("count Platform Admin audit event %s: %v", action, err)
+		}
+		if count != 1 {
+			t.Fatalf("expected exactly one %s audit event for delegation %d; got %d",
+				action, resourceID, count)
+		}
+	}
+	assertAuditEvent("school.role.created", "school_role", createdRolePayload.Role.ID)
+	assertPlatformAuditEvent("platform.permission_delegation.granted", delegationPayload.Delegation.ID)
+	assertPlatformAuditEvent("platform.permission_delegation.revoked", delegationPayload.Delegation.ID)
+	assertAuditEvent("school.custom_role.permission_granted", "school_role", createdRolePayload.Role.ID)
+	assertAuditEvent("school.custom_role.permission_revoked", "school_role", createdRolePayload.Role.ID)
+	assertAuditEvent("school.staff.role_assigned", "staff_principal", targetStaffPrincipalID)
+	assertAuditEvent("school.staff.role_revoked", "staff_principal", targetStaffPrincipalID)
+	assertPlatformAuditEvent("platform.permission_delegation.granted", overrideDelegationPayload.Delegation.ID)
+	assertPlatformAuditEvent("platform.permission_delegation.revoked", overrideDelegationPayload.Delegation.ID)
+	assertAuditEvent("school.staff.permission_override.set", "user_permission_override", targetStaffPrincipalID)
+	assertAuditEvent("school.staff.permission_override.removed", "user_permission_override", targetStaffPrincipalID)
+
+	var foreignAssignmentExists, foreignOverrideExists bool
+	if err := tx.QueryRow(ctx, `
+		SELECT EXISTS (
+		    SELECT 1 FROM principal_roles
+		     WHERE principal_id = $1 AND role_id = $2 AND revoked_at IS NULL
+		 )
+	`, foreignStaffPrincipalID, createdRolePayload.Role.ID).Scan(&foreignAssignmentExists); err != nil {
+		t.Fatalf("check foreign-school role assignment side effect: %v", err)
+	}
+	if foreignAssignmentExists {
+		t.Fatal("rejected cross-school role assignment unexpectedly created a principal_roles row")
+	}
+	if err := tx.QueryRow(ctx, `
+		SELECT EXISTS (
+		    SELECT 1 FROM user_permission_overrides
+		     WHERE principal_id = $1 AND school_id = $2
+		       AND delegation_id = $3
+		 )
+	`, foreignStaffPrincipalID, foreignSchoolID, overrideDelegationPayload.Delegation.ID).Scan(&foreignOverrideExists); err != nil {
+		t.Fatalf("check foreign-school permission override side effect: %v", err)
+	}
+	if foreignOverrideExists {
+		t.Fatal("rejected cross-school permission override unexpectedly created a user_permission_overrides row")
+	}
+	var foreignAuditCount int
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*)
+		  FROM audit_events
+		 WHERE actor_principal_id = $1
+		   AND school_id = $2
+		   AND resource_id = $3
+		   AND action IN ('school.staff.role_assigned', 'school.staff.permission_override.set')
+		   AND outcome = 'success'
+	`, principalID, schoolID, fmt.Sprint(foreignStaffPrincipalID)).Scan(&foreignAuditCount); err != nil {
+		t.Fatalf("check rejected cross-school write audit side effects: %v", err)
+	}
+	if foreignAuditCount != 0 {
+		t.Fatalf("rejected cross-school writes must not emit success audit events; got %d", foreignAuditCount)
+	}
+
 	if _, err := tx.Exec(ctx,
 		`UPDATE auth_principals SET token_version = token_version + 1 WHERE id = $1`, principalID,
 	); err != nil {
