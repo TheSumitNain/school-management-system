@@ -68,6 +68,15 @@ func TestLoginSessionIssuanceRejectsStalePrincipalVersionPostgresIntegration(t *
 	if currentTokenVersion != initialTokenVersion+1 {
 		t.Fatalf("token version after password change = %d, want %d", currentTokenVersion, initialTokenVersion+1)
 	}
+	var initialSessionRevoked bool
+	if err := tx.QueryRow(ctx, `
+		SELECT revoked_at IS NOT NULL FROM refresh_sessions WHERE token_hash = $1
+	`, initialSessionHash).Scan(&initialSessionRevoked); err != nil {
+		t.Fatalf("verify password change revoked the prior refresh session: %v", err)
+	}
+	if !initialSessionRevoked {
+		t.Fatal("password change must revoke the pre-existing refresh session")
+	}
 
 	staleSessionHash := integrationTokenHash("login-password-race-stale-" + suffix)
 	err = sessions.CreatePrincipalForVersionInTx(
