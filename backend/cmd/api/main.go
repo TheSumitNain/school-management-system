@@ -56,6 +56,7 @@ func setupRouterWithHandlers(
 	var academicHandler *handlers.AcademicHandler
 	var guardianHandler *handlers.GuardianHandler
 	var attendanceHandler *handlers.AttendanceHandler
+	var sessionActivityTracker middleware.AdminSessionActivityTracker
 	for _, optional := range optionalHandlers {
 		switch handler := optional.(type) {
 		case *handlers.StaffHandler:
@@ -66,9 +67,14 @@ func setupRouterWithHandlers(
 			guardianHandler = handler
 		case *handlers.AttendanceHandler:
 			attendanceHandler = handler
+		case middleware.AdminSessionActivityTracker:
+			sessionActivityTracker = handler
 		}
 	}
 	router := gin.Default()
+	authMiddleware := func() gin.HandlerFunc {
+		return middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader, sessionActivityTracker)
+	}
 
 	if err := router.SetTrustedProxies(nil); err != nil {
 		return nil, fmt.Errorf("configure trusted proxies: %w", err)
@@ -76,7 +82,7 @@ func setupRouterWithHandlers(
 
 	if schoolOnboardingHandler != nil {
 		router.POST("/platform/schools",
-			middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader),
+			authMiddleware(),
 			middleware.RequirePermission("platform.schools.create"),
 			middleware.RequirePermission("platform.school_admins.create"),
 			schoolOnboardingHandler.Create,
