@@ -127,10 +127,11 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	}
 	principalRepo := repository.NewPrincipalAuthorizationRepository(tx)
 	roleHandler := handlers.NewRoleHandler(services.NewRoleService(repository.NewRoleRepository(tx)))
+	staffHandler := handlers.NewStaffHandler(services.NewStaffAccountService(repository.NewUserRepository(tx)))
 	router, err := setupRouterWithHandlers(
 		fakeDatabase{}, nil, tokenService,
 		principalRepo, principalRepo,
-		nil, roleHandler,
+		nil, roleHandler, staffHandler,
 	)
 	if err != nil {
 		t.Fatalf("setup PostgreSQL-backed API router: %v", err)
@@ -305,6 +306,98 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 		VALUES ($1, $2, $3)
 	`, principalID, schoolAdminRoleID, platformAdminPrincipalID); err != nil {
 		t.Fatalf("assign School Admin role through database authorization trigger: %v", err)
+	}
+
+	// Exercise staff account creation, listing, and disable through the real
+	// Gin authentication middleware, live permission loader, handler, service,
+	// and PostgreSQL repository. All rows remain inside the outer rollback.
+	staffUsername := "http-staff-" + suffix
+	staffCreate := postJSON("/school/staff", accessToken,
+		fmt.Sprintf(`{"username":%q,"initial_password":"A-Strong-Initial-Pass-123"}`, staffUsername))
+	if staffCreate.Code != http.StatusCreated {
+		t.Fatalf("School Admin staff creation should return 201: status=%d body=%s",
+			staffCreate.Code, staffCreate.Body.String())
+	}
+	var staffCreatePayload struct {
+		Staff struct {
+			ID                int64  `json:"id"`
+			PrincipalID       int64  `json:"principal_id"`
+			Username          string `json:"username"`
+			MustChangePassword bool  `json:"must_change_password"`
+		} `json:"staff"`
+	}
+	if err := json.Unmarshal(staffCreate.Body.Bytes(), &staffCreatePayload); err != nil ||
+		staffCreatePayload.Staff.ID <= 0 || staffCreatePayload.Staff.PrincipalID <= 0 ||
+		staffCreatePayload.Staff.Username != staffUsername || !staffCreatePayload.Staff.MustChangePassword {
+		t.Fatalf("decode or validate created staff account: payload=%s error=%v",
+			staffCreate.Body.String(), err)
+	}
+
+	duplicateStaff := postJSON("/school/staff", accessToken,
+		fmt.Sprintf(`{"username":%q,"initial_password":"A-Strong-Initial-Pass-123"}`, staffUsername))
+	if duplicateStaff.Code != http.StatusConflict {
+		t.Fatalf("globally duplicate staff username should map to HTTP 409: status=%d body=%s",
+			duplicateStaff.Code, duplicateStaff.Body.String())
+	}
+
+	staffList := request(http.MethodGet, "/school/staff", accessToken)
+	if staffList.Code != http.StatusOK ||
+		!strings.Contains(staffList.Body.String(), fmt.Sprintf(`"principal_id":%d`, staffCreatePayload.Staff.PrincipalID)) {
+		t.Fatalf("School Admin should list the newly created same-school staff account: status=%d body=%s",
+			staffList.Code, staffList.Body.String())
+	}
+
+	// The service must reject self-disable even when the caller has the
+	// users.disable permission.
+	selfDisable := request(http.MethodDelete,
+		fmt.Sprintf("/school/staff/%d", principalID), accessToken)
+	if selfDisable.Code != http.StatusBadRequest {
+		t.Fatalf("School Admin self-disable must be rejected: status=%d body=%s",
+			selfDisable.Code, selfDisable.Body.String())
+	}
+
+	staffSessionHash := fmt.Sprintf("%064x", staffCreatePayload.Staff.PrincipalID)
+	refreshRepo := repository.NewPrincipalRefreshSessionRepository(pool)
+	if err := refreshRepo.CreatePrincipalInTx(ctx, tx, staffCreatePayload.Staff.PrincipalID,
+		staffSessionHash, time.Now().Add(time.Hour)); err != nil {
+		t.Fatalf("create refresh session for HTTP staff-disable test: %v", err)
+	}
+	staffDisable := request(http.MethodDelete,
+		fmt.Sprintf("/school/staff/%d", staffCreatePayload.Staff.PrincipalID), accessToken)
+	if staffDisable.Code != http.StatusOK {
+		t.Fatalf("School Admin staff disable should return 200: status=%d body=%s",
+			staffDisable.Code, staffDisable.Body.String())
+	}
+	var disabledUserStatus, disabledPrincipalStatus string
+	var disabledTokenVersion int64
+	var staffSessionRevoked bool
+	if err := tx.QueryRow(ctx, `
+		SELECT u.status, ap.status, ap.token_version,
+		       EXISTS (SELECT 1 FROM refresh_sessions WHERE token_hash = $3 AND revoked_at IS NOT NULL)
+		  FROM users u
+		  JOIN auth_principals ap ON ap.id = u.principal_id
+		 WHERE u.id = $1 AND ap.id = $2
+	`, staffCreatePayload.Staff.ID, staffCreatePayload.Staff.PrincipalID, staffSessionHash).Scan(
+		&disabledUserStatus, &disabledPrincipalStatus, &disabledTokenVersion, &staffSessionRevoked,
+	); err != nil {
+		t.Fatalf("verify HTTP staff disable database effects: %v", err)
+	}
+	if disabledUserStatus != "disabled" || disabledPrincipalStatus != "disabled" ||
+		disabledTokenVersion != 2 || !staffSessionRevoked {
+		t.Fatalf("HTTP staff disable did not atomically deactivate and revoke credentials: user=%q principal=%q token_version=%d session_revoked=%v",
+			disabledUserStatus, disabledPrincipalStatus, disabledTokenVersion, staffSessionRevoked)
+	}
+	var staffAuditCount int
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*) FROM audit_events
+		 WHERE actor_principal_id = $1 AND school_id = $2
+		   AND action IN ('staff.account.created', 'staff.account.disabled')
+		   AND resource_type = 'staff_user' AND resource_id = $3 AND outcome = 'success'
+	`, principalID, schoolID, fmt.Sprint(staffCreatePayload.Staff.ID)).Scan(&staffAuditCount); err != nil {
+		t.Fatalf("count staff lifecycle HTTP audit events: %v", err)
+	}
+	if staffAuditCount != 2 {
+		t.Fatalf("expected exactly two successful staff create/disable audit events, got %d", staffAuditCount)
 	}
 
 	// Permissions are loaded from PostgreSQL on every request. The role grant
