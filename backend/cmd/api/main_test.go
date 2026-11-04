@@ -450,3 +450,57 @@ func TestRoleAdministrationRoutesEnforceLivePermissions(t *testing.T) {
 	}
 }
 
+
+
+func TestAcademicRoutesEnforceResourcePermissions(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	validator := fakeTokenValidator{claims: &services.TokenClaims{
+		RegisteredClaims: jwt.RegisteredClaims{Subject: "31"},
+		PrincipalType: "staff",
+		TokenVersion: 1,
+	}}
+	principal := &models.AuthPrincipal{ID: 31, Type: "staff", Status: "active", TokenVersion: 1, SchoolID: 8, Username: "school.admin"}
+	handler := handlers.NewAcademicHandler(nil)
+	tests := []struct {
+		method string
+		path string
+		permission string
+		body string
+	}{
+		{http.MethodGet, "/school/academic-years", "academic_years.read", ""},
+		{http.MethodPost, "/school/academic-years", "academic_years.manage", `{"name":"2026-27","starts_on":"2026-04-01","ends_on":"2027-03-31","status":"active","is_current":true}`},
+		{http.MethodGet, "/school/classes", "classes.read", ""},
+		{http.MethodPost, "/school/classes", "classes.manage", `{"name":"LKG","display_order":1}`},
+		{http.MethodGet, "/school/sections", "classes.read", ""},
+		{http.MethodPost, "/school/sections", "classes.manage", `{"academic_year_id":1,"class_id":1,"name":"A"}`},
+		{http.MethodGet, "/school/subjects", "subjects.read", ""},
+		{http.MethodPost, "/school/subjects", "subjects.manage", `{"name":"Mathematics","subject_code":"MATH"}`},
+	}
+	for _, test := range tests {
+		t.Run(test.method+" "+test.path, func(t *testing.T) {
+			deniedRouter, err := setupRouterWithHandlers(
+				fakeDatabase{}, nil, validator, fakePrincipalLoader{principal: principal},
+				fakePermissionLoader{}, nil, nil, nil, handler,
+			)
+			if err != nil { t.Fatalf("setup denied router: %v", err) }
+			req := httptest.NewRequest(test.method, test.path, strings.NewReader(test.body))
+			req.Header.Set("Authorization", "Bearer valid-test-token")
+			req.Header.Set("Content-Type", "application/json")
+			rec := httptest.NewRecorder()
+			deniedRouter.ServeHTTP(rec, req)
+			if rec.Code != http.StatusForbidden { t.Fatalf("missing %s: status=%d body=%s", test.permission, rec.Code, rec.Body.String()) }
+
+			allowedRouter, err := setupRouterWithHandlers(
+				fakeDatabase{}, nil, validator, fakePrincipalLoader{principal: principal},
+				fakePermissionLoader{permissions: []string{test.permission}}, nil, nil, nil, handler,
+			)
+			if err != nil { t.Fatalf("setup allowed router: %v", err) }
+			req = httptest.NewRequest(test.method, test.path, strings.NewReader(test.body))
+			req.Header.Set("Authorization", "Bearer valid-test-token")
+			req.Header.Set("Content-Type", "application/json")
+			rec = httptest.NewRecorder()
+			allowedRouter.ServeHTTP(rec, req)
+			if rec.Code != http.StatusServiceUnavailable { t.Fatalf("authorized request should reach handler, got status=%d body=%s", rec.Code, rec.Body.String()) }
+		})
+	}
+}
