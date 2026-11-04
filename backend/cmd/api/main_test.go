@@ -475,6 +475,12 @@ func TestAcademicRoutesEnforceResourcePermissions(t *testing.T) {
 		{http.MethodPost, "/school/sections", "classes.manage", `{"academic_year_id":1,"class_id":1,"name":"A"}`},
 		{http.MethodGet, "/school/subjects", "subjects.read", ""},
 		{http.MethodPost, "/school/subjects", "subjects.manage", `{"name":"Mathematics","subject_code":"MATH"}`},
+		{http.MethodGet, "/school/teacher-assignments", "teacher_assignments.read", ""},
+		{http.MethodPost, "/school/teacher-assignments", "teacher_assignments.manage", `{"academic_year_id":1,"section_id":1,"subject_id":1,"teacher_principal_id":1}`},
+		{http.MethodDelete, "/school/teacher-assignments/1", "teacher_assignments.manage", ""},
+		{http.MethodGet, "/school/class-incharge-assignments", "class_incharge_assignments.read", ""},
+		{http.MethodPost, "/school/class-incharge-assignments", "class_incharge_assignments.manage", `{"academic_year_id":1,"section_id":1,"teacher_principal_id":1}`},
+		{http.MethodDelete, "/school/class-incharge-assignments/1", "class_incharge_assignments.manage", ""},
 	}
 	for _, test := range tests {
 		t.Run(test.method+" "+test.path, func(t *testing.T) {
