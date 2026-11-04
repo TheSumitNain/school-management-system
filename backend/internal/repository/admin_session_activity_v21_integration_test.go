@@ -146,40 +146,44 @@ func TestSchoolAdminIdleTimeoutV21PostgresIntegration(t *testing.T) {
 		t.Fatalf("load fixture staff identity: %v",err)
 	}
 
+	tx, err := pool.Begin(ctx)
+	if err != nil { t.Fatalf("begin School Admin fixture transaction: %v",err) }
+	defer func() { _ = tx.Rollback(ctx) }()
 	var platformPrincipalID int64
-	if err := pool.QueryRow(ctx,`
+	if err := tx.QueryRow(ctx,`
 		INSERT INTO auth_principals(principal_type,status) VALUES('platform_admin','active') RETURNING id
 	`).Scan(&platformPrincipalID); err != nil { t.Fatalf("create Platform Admin actor: %v",err) }
-	if _, err := pool.Exec(ctx,`
+	if _, err := tx.Exec(ctx,`
 		INSERT INTO platform_admin_accounts(principal_id,email,password_hash,must_change_password,mfa_enrolled_at)
 		VALUES($1,$2,'integration-password-hash',FALSE,NOW())
 	`,platformPrincipalID,"school-admin-idle-actor-"+suffix+"@example.invalid"); err != nil { t.Fatalf("create Platform Admin actor account: %v",err) }
-	if _, err := pool.Exec(ctx,`
+	if _, err := tx.Exec(ctx,`
 		INSERT INTO principal_mfa_credentials(principal_id,method,secret_ciphertext,encryption_key_version,verified_at)
 		VALUES($1,'totp',decode('01','hex'),1,NOW())
 	`,platformPrincipalID); err != nil { t.Fatalf("create Platform Admin MFA: %v",err) }
 
-	if _, err := pool.Exec(ctx,`
+	if _, err := tx.Exec(ctx,`
 		INSERT INTO principal_mfa_credentials(principal_id,method,secret_ciphertext,encryption_key_version,verified_at)
 		VALUES($1,'totp',decode('01','hex'),1,NOW())
 	`,schoolAdminPrincipalID); err != nil { t.Fatalf("create School Admin MFA: %v",err) }
 	var roleID int64
-	if err := pool.QueryRow(ctx,`
+	if err := tx.QueryRow(ctx,`
 		SELECT id FROM roles WHERE school_id=$1 AND role_key='school_admin'
 		  AND principal_type='staff' AND scope_type='school' AND is_system=TRUE
 	`,schoolID).Scan(&roleID); err != nil { t.Fatalf("load School Admin system role: %v",err) }
-	if _, err := pool.Exec(ctx,`
+	if _, err := tx.Exec(ctx,`
 		INSERT INTO principal_roles(principal_id,role_id,assigned_by) VALUES($1,$2,$3)
-	`,schoolAdminPrincipalID,roleID,platformPrincipalID); err != nil { t.Fatalf("assign School Admin system role: %v",err) }
+`,schoolAdminPrincipalID,roleID,platformPrincipalID); err != nil { t.Fatalf("assign School Admin system role: %v",err) }
+	if err := tx.Commit(ctx); err != nil { t.Fatalf("commit School Admin fixture: %v",err) }
 
 	tokenSum := sha256.Sum256([]byte("school-admin-idle-v21-"+suffix))
 	tokenHash := hex.EncodeToString(tokenSum[:])
 	var familyID string
-	if err := pool.QueryRow(ctx,`
+	if err := tx.QueryRow(ctx,`
 		INSERT INTO refresh_sessions(user_id,principal_id,token_hash,expires_at)
 		VALUES($1,$2,$3,NOW()+INTERVAL '1 day') RETURNING family_id::text
 	`,userID,schoolAdminPrincipalID,tokenHash).Scan(&familyID); err != nil { t.Fatalf("create School Admin refresh family: %v",err) }
-	if _, err := pool.Exec(ctx,`
+	if _, err := tx.Exec(ctx,`
 		UPDATE refresh_sessions SET last_activity_at=NOW()-INTERVAL '31 minutes'
 		WHERE family_id=$1::uuid AND revoked_at IS NULL
 	`,familyID); err != nil { t.Fatalf("age School Admin session family: %v",err) }
