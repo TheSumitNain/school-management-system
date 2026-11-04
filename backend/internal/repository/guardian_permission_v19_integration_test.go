@@ -33,10 +33,10 @@ func TestGuardianPermissionDelegationV19Integration(t *testing.T) {
 	if value,ok:=found["guardians.manage"];!ok||!value{t.Fatalf("guardians.manage must be present and delegable; got %v",found)}
 
 	for _,key:=range []string{"guardians.read","guardians.manage"}{
-		tag,err:=pool.Exec(ctx,`UPDATE permissions SET is_delegable=FALSE WHERE permission_key=$1`,key)
-		if err==nil{
-			_ = tag
-			t.Fatalf("V4 catalogue trigger must reject runtime delegability changes for %s",key)
-		}
+		tx,err:=pool.Begin(ctx)
+		if err!=nil{t.Fatalf("begin permission guard test: %v",err)}
+		_,err=tx.Exec(ctx,`UPDATE permissions SET is_delegable=FALSE WHERE permission_key=$1`,key)
+		_ = tx.Rollback(ctx)
+		if err==nil{t.Fatalf("V4 catalogue trigger must reject runtime delegability changes for %s",key)}
 	}
 }
