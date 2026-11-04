@@ -368,6 +368,24 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 		t.Fatalf("School Admin custom-role permission grant should return 201: status=%d body=%s",
 			grantResponse.Code, grantResponse.Body.String())
 	}
+	permissionRevoke := request(
+		http.MethodDelete,
+		fmt.Sprintf("/school/roles/%d/permissions/students.read_basic", createdRolePayload.Role.ID),
+		accessToken,
+	)
+	if permissionRevoke.Code != http.StatusOK {
+		t.Fatalf("School Admin custom-role permission revoke should return 200: status=%d body=%s",
+			permissionRevoke.Code, permissionRevoke.Body.String())
+	}
+	delegationRevoke := request(
+		http.MethodPost,
+		fmt.Sprintf("/platform/permission-delegations/%d/revoke", delegationPayload.Delegation.ID),
+		platformAccessToken,
+	)
+	if delegationRevoke.Code != http.StatusOK {
+		t.Fatalf("Platform Admin permission delegation revoke should return 200: status=%d body=%s",
+			delegationRevoke.Code, delegationRevoke.Body.String())
+	}
 
 	if _, err := tx.Exec(ctx,
 		`UPDATE auth_principals SET token_version = token_version + 1 WHERE id = $1`, principalID,
