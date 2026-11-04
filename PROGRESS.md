@@ -465,3 +465,12 @@ V11 is **applied and PostgreSQL-verified on the dedicated test database**. This 
 - [x] Push CI run `41767372453` and Draft PR run `41767378009` on `0b560fd`: V1–V16 migrations, full PostgreSQL integration-enabled Go suite, and `go vet ./...` PASS.
 - [ ] Continue HTTP/PostgreSQL write-path coverage for staff permission overrides and staff role assignment/revocation.
 - All writes, test Platform Admin/MFA fixtures, and audit events remain inside the rollback-only integration transaction. No persistent user database was modified.
+
+
+## 2026-11-04 — HTTP staff role and permission override lifecycle
+
+- [x] Added same-school target staff fixture and verified School Admin role assignment over HTTP (201), assignment listing (200), and assignment revocation (200).
+- [x] Added Platform Admin `homework.create` override delegation with `can_override_users=true`; School Admin sets an ALLOW override (200), deletes the override (200), and Platform Admin revokes the delegation (200).
+- [x] Push CI run `41767598076` and Draft PR run `41767602833` on `d90ba9e`: V1–V16 migrations, full PostgreSQL integration-enabled Go suite, and `go vet ./...` PASS.
+- [ ] Review remaining authorization boundaries and add tests for HTTP write failure cases, cross-school route targets, and audit/event outcomes.
+- All test staff, Platform Admin/MFA fixtures, assignments, delegations, overrides, and audit events are rolled back. No persistent user database was modified.
