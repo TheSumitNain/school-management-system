@@ -610,3 +610,18 @@ The test verifies that neither operation creates a cross-school assignment or ov
 Verification: push run `41767842024` and Draft PR run `41767846927` on `4bd8af4` both passed V1–V16 migrations, the full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and `go vet ./...`.
 
 This covers staff-target isolation for RBAC administration endpoints only; student, attendance, timetable, homework, fee, and other business-resource tenant boundaries remain future work.
+
+
+## 24. RBAC audit-event and rejected-write side-effect assertions — 2026-11-04
+
+The real HTTP/PostgreSQL integration test now checks audit persistence inside its outer transaction, rather than relying only on HTTP response codes:
+
+- Exactly one success audit event is required for custom-role creation.
+- Exactly one success audit event is required for the custom-role permission grant and its revocation.
+- Both Platform Admin delegation lifecycles (role assignment and user override) must each have exactly one grant and one revocation event.
+- Exactly one success audit event is required for staff-role assignment/revocation and staff permission override set/removal.
+- Rejected cross-school role assignment and permission override attempts must create neither foreign-school data rows nor success audit events.
+
+The test scopes every audit lookup by actor, school, action, resource type, resource ID, and successful outcome. All writes and audit rows are rolled back with the integration transaction.
+
+Verification: push run `41768691764` and Draft PR run `41768696622` on `17808905` both passed V1–V16 migrations, the full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and `go vet ./...`.
