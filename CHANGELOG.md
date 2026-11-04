@@ -281,3 +281,13 @@ This project is under active development. Verification results describe the late
 - Refactored the repository bootstrap transaction body for rollback-based PostgreSQL integration testing. Added assertions for principal/account creation, the Platform Admin system-role assignment, the audit event, rejection of a second bootstrap attempt, and the V14 system-role-only trigger condition.
 - Tightened the V14 database exception to require the reserved Platform Admin role to be marked is_system = TRUE. Existing authenticated role-assignment rules remain in the replacement trigger.
 - V14 has not been applied to PostgreSQL. New Go changes and the V14 integration test must be run on the user's machine after pulling the latest branch; migration application to school_management_test requires explicit approval.
+
+
+### RBAC HTTP/PostgreSQL authorization success path — 2026-11-04
+
+- Extended the real-router PostgreSQL integration test to verify both default-deny and successful authorization after a School Admin system-role grant.
+- The test assigns the system role through the existing database authorization trigger, adds a verified-MFA fixture, and confirms the same authenticated request reaches the real role handler and returns the school role list.
+- Made principal authorization reads accept a caller-owned transaction, allowing the HTTP integration fixture and any temporary Platform Admin bootstrap to run inside one rollback boundary.
+- Exposed `PlatformAdminRepository.BootstrapFirstInTx` for caller-owned atomic workflows; the integration test uses it only when the ephemeral test database has never been bootstrapped, and rolls the created account and audit event back with the test transaction.
+- Push run `41764671472` and Draft PR run `41764679462` on commit `d5e0c8d` passed migrations V1–V16 on ephemeral PostgreSQL 18, the full Go suite with PostgreSQL integration enabled, and `go vet ./...`.
+- The HTTP test still uses a controlled token validator; real JWT signature verification, cross-school tenant/resource isolation, and teacher assignment-scope authorization remain pending.
