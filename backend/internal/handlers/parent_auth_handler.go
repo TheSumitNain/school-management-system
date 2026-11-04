@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"context"
 	"log"
 	"net/http"
@@ -110,8 +111,13 @@ func (h *ParentAuthHandler) VerifyOTP(c *gin.Context) {
 		writeAuthError(c, http.StatusInternalServerError, "Unable to complete authentication")
 		return
 	}
-	refreshToken, err := h.sessions.Issue(c.Request.Context(), principal.ID)
+	refreshToken, err := h.sessions.Issue(c.Request.Context(), principal)
 	if err != nil {
+		if errors.Is(err, services.ErrSessionPrincipalVersionChanged) ||
+			errors.Is(err, services.ErrRefreshSessionInactive) {
+			writeAuthError(c, http.StatusUnauthorized, "Invalid or expired OTP")
+			return
+		}
 		writeAuthError(c, http.StatusInternalServerError, "Unable to complete authentication")
 		return
 	}
