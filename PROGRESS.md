@@ -437,3 +437,12 @@ V11 is **applied and PostgreSQL-verified on the dedicated test database**. This 
 - [x] CI push run `41766408925` and Draft PR run `41766414685` on `c7dd5ce`: V1–V16 migrations, full PostgreSQL integration-enabled Go suite, and `go vet ./...` all PASS.
 - [ ] Continue cross-school isolation coverage for future business-resource APIs and data repositories; no academic class/section/subject assignment model or student-resource API is currently available to test teacher assignment scope.
 - All integration fixtures are rollback-scoped. No persistent user database was modified. PR #1 remains Draft and unmerged.
+
+
+## 2026-11-04 — Authorized custom-role creation over real HTTP/PostgreSQL
+
+- [x] Extended `TestRBACHTTPAuthorizationUsesPostgresState` with an authorized `POST /school/roles` request using the real HS256 access token.
+- [x] The request passes live PostgreSQL principal/permission checks, reaches the actual role handler/service/repository, creates a custom role, and returns HTTP 201 with the created role. The write is contained in the existing rollback-only transaction.
+- [x] Draft PR CI run `41766719434` on `d5f8340`: all V1–V16 migrations, full PostgreSQL integration-enabled Go suite, and `go vet ./...` PASS.
+- [ ] Continue HTTP-to-PostgreSQL coverage for delegation, permission override, and staff-role assignment write routes.
+- No persistent user database was modified; PR #1 remains Draft and unmerged.
