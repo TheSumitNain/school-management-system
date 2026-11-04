@@ -412,7 +412,9 @@ V11 is **applied and PostgreSQL-verified on the dedicated test database**. This 
 - [x] Verified active staff identity inspection returns 200, staff without role grants is denied `/school/roles` with 403, and a stale token version is rejected with 401.
 - [x] Push CI run `41762250818` and Draft PR CI run `41762256758` passed V1–V16 migrations, full PostgreSQL integration tests, and `go vet ./...` on ephemeral PostgreSQL 18.
 - [x] Add a database-backed allowed-role path that proves a granted School Admin role reaches the real role handler. Role assignment uses the existing database trigger; the fixture and optional first Platform Admin bootstrap are rolled back.
-- [ ] Add real JWT signing/validation to the HTTP integration path; the current test uses a controlled token validator to isolate live database identity and permission checks.
+- [x] Replaced the controlled token validator in this HTTP integration path with the real `TokenService`; the test signs an HS256 token and exercises actual middleware signature verification.
+- [x] Added a tampered-signature request assertion; the real middleware rejects it with 401 while the original valid token proceeds through PostgreSQL-backed authorization.
+- [x] Push CI run `41765751785` and Draft PR run `41765745170` on `ec55ea4`: V1–V16 migrations, full PostgreSQL integration-enabled Go suite, and `go vet ./...` all PASS.
 - [ ] Continue tenant/resource isolation and teacher assignment-scope authorization tests.
 - No persistent user database was changed by CI; PR #1 remains Draft and unmerged.
 
