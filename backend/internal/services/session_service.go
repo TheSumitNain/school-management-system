@@ -62,6 +62,41 @@ func (s *SessionService) Issue(ctx context.Context, principal *models.AuthPrinci
 	return raw, nil
 }
 
+type refreshSessionFamilyIssuer interface {
+	CreatePrincipalForVersionWithFamily(ctx context.Context, principalID, expectedTokenVersion int64, tokenHash string, expiresAt time.Time) (string, error)
+}
+
+// IssueWithFamily creates the refresh family before access-token issuance and
+// returns its stable UUID for the JWT sid claim.
+func (s *SessionService) IssueWithFamily(ctx context.Context, principal *models.AuthPrincipal) (string, string, error) {
+	if principal == nil || principal.ID <= 0 || principal.TokenVersion <= 0 || principal.Status != "active" {
+		return "", "", fmt.Errorf("valid authenticated principal is required")
+	}
+	repo, ok := s.sessions.(refreshSessionFamilyIssuer)
+	if !ok {
+		return "", "", fmt.Errorf("refresh repository does not support session-family binding")
+	}
+	raw, err := generateOpaqueRefreshToken()
+	if err != nil { return "", "", err }
+	familyID, err := repo.CreatePrincipalForVersionWithFamily(ctx, principal.ID, principal.TokenVersion, HashRefreshToken(raw), time.Now().Add(s.expiry))
+	if err != nil { return "", "", err }
+	if !validRefreshFamilyID(familyID) { return "", "", fmt.Errorf("refresh repository returned invalid family ID") }
+	return raw, familyID, nil
+}
+
+func validRefreshFamilyID(value string) bool {
+	if len(value) != 36 { return false }
+	for i, r := range value {
+		switch i {
+		case 8, 13, 18, 23:
+			if r != '-' { return false }
+		default:
+			if !((r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F')) { return false }
+		}
+	}
+	return true
+}
+
 func (s *SessionService) Rotate(ctx context.Context, rawToken string) (*models.AuthPrincipal, string, error) {
 	if strings.TrimSpace(rawToken) == "" {
 		return nil, "", ErrInvalidRefreshToken
