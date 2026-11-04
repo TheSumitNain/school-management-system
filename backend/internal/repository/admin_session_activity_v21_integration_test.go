@@ -179,11 +179,11 @@ func TestSchoolAdminIdleTimeoutV21PostgresIntegration(t *testing.T) {
 	tokenSum := sha256.Sum256([]byte("school-admin-idle-v21-"+suffix))
 	tokenHash := hex.EncodeToString(tokenSum[:])
 	var familyID string
-	if err := tx.QueryRow(ctx,`
+	if err := pool.QueryRow(ctx,`
 		INSERT INTO refresh_sessions(user_id,principal_id,token_hash,expires_at)
 		VALUES($1,$2,$3,NOW()+INTERVAL '1 day') RETURNING family_id::text
 	`,userID,schoolAdminPrincipalID,tokenHash).Scan(&familyID); err != nil { t.Fatalf("create School Admin refresh family: %v",err) }
-	if _, err := tx.Exec(ctx,`
+	if _, err := pool.Exec(ctx,`
 		UPDATE refresh_sessions SET last_activity_at=NOW()-INTERVAL '31 minutes'
 		WHERE family_id=$1::uuid AND revoked_at IS NULL
 	`,familyID); err != nil { t.Fatalf("age School Admin session family: %v",err) }
