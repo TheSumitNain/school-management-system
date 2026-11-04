@@ -40,10 +40,10 @@ These features establish an initial authentication foundation. They do not mean 
 - Complete tenant/resource/assignment/field-level enforcement across school business services and repository queries.
 - Comprehensive production abuse monitoring and alerting.
 - Complete current-user profile retrieval from `GET /auth/me`.
-- Complete staff account creation/invitation workflows and production provisioning controls.
+- Staff invitation workflows and production provisioning controls.
 - Comprehensive security audit logging and monitoring.
 - Production TLS and deployment-specific security configuration.
-- V15/V16 password-lifecycle and exact-delegation integration tests pass on ephemeral PostgreSQL 18 in GitHub Actions; the user's dedicated `school_management_test` database remains unchanged and has not yet been migrated.
+- Migrations V1–V21, the full backend test suite (including opt-in PostgreSQL integration tests), and `go vet` pass in GitHub Actions against an ephemeral PostgreSQL 18 database. CI does not migrate any developer or production database.
 - Additional concurrent refresh-token rotation edge cases and broader race-condition testing.
 - A clean, independent end-to-end logout and refresh-after-logout verification.
 - Full production security testing, deployment review, and incident-response procedures.
@@ -56,7 +56,7 @@ All currently registered protected business/API routes use the shared authentica
 
 The password service uses bcrypt with a cost factor of 12. Passwords are hashed before storage, and password verification compares a supplied password against the stored hash.
 
-The current implementation enforces an input range of 12–72 bytes, rejects whitespace-only passwords, checks a local common-password denylist, and checks the Pwned Passwords range API using k-anonymity. The application sends only the first five hexadecimal characters of the SHA-1 digest; the remaining suffix is compared locally. The complete password and complete hash are never sent. Range responses are cached in memory for one hour, and zero-count padding records are ignored. The check fails closed: if the service is unavailable, password creation/change/reset returns a temporary service-unavailable response instead of silently bypassing the policy.
+The current implementation enforces an input range of 12–72 bytes, rejects whitespace-only passwords, checks a local common-password denylist, and checks the Pwned Passwords range API using k-anonymity. The check is applied to first School Admin passwords during school onboarding, new staff initial passwords, temporary passwords when re-enabling staff, self-service password changes, School Admin resets, and first Platform Admin bootstrap passwords. The application sends only the first five hexadecimal characters of the SHA-1 digest; the remaining suffix is compared locally. The complete password and complete hash are never sent. Range responses are cached in memory for one hour, and zero-count padding records are ignored. The check fails closed: if the service is unavailable, password creation/change/reset returns a temporary service-unavailable response instead of silently bypassing the policy.
 
 Bcrypt has a 72-byte input limit. Any future password-policy change must handle Unicode and byte length correctly and must not silently truncate passwords.
 
@@ -73,7 +73,7 @@ Before public production deployment:
 - Implement a safe migration and rehash strategy if the hashing algorithm or policy changes.
 - Revoke appropriate sessions after password changes and password resets.
 
-The current minimum is 12 bytes and maximum is 72 bytes. Staff self-service password change and same-school School Admin password reset both use the breached-password check. New staff accounts and re-enabled accounts also check the initial/temporary password before persistence. New staff accounts default to a temporary-password state; the next authenticated request is restricted to password change and identity inspection until replacement. Password changes/resets increment the principal token version and revoke all refresh sessions in the same transaction.
+The current minimum is 12 bytes and maximum is 72 bytes. School onboarding, staff account creation/re-enable, staff self-service password changes, same-school School Admin password resets, and the one-time Platform Admin bootstrap all run the breached-password check before persistence. New staff accounts default to a temporary-password state; the next authenticated request is restricted to password change and identity inspection until replacement. Password changes/resets increment the principal token version and revoke all refresh sessions in the same transaction.
 
 ## 4. Authentication and Token Security
 
