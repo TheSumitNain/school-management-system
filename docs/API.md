@@ -729,6 +729,40 @@ Only functionality supported by the current code and relevant tests should be ma
 - Review database permissions, connection settings, migrations, logging, and deployment configuration before production release.
 - Do not treat the current authentication foundation as proof that the full application is production-ready.
 
+
+### 3.9 Guardian Contacts and Student Relationships
+
+Guardian records are school-scoped contact records, not authenticated Parent accounts. These APIs do not create parent principals, enable the parent portal, verify mobile ownership, send OTPs, or initiate SMS delivery.
+
+All guardian routes require the dedicated `guardians.read` or `guardians.manage` permission. Neither permission is included in the built-in School Admin or Teacher role. V19 makes these two permissions explicitly delegable; a Platform Admin must grant a school-specific delegation with `can_assign_to_roles=true`. The School Admin can then create a custom role such as **Guardian Manager**, grant only the required guardian permission(s) using the exact delegation ID, and assign that role to the designated staff. The system-role permission bundles remain immutable. Teacher's `students.read_basic` permission does not grant guardian access.
+
+| Method | Endpoint | Permission | Purpose |
+|---|---|---|---|
+| GET | `/school/guardians` | `guardians.read` | Search/list guardian contacts |
+| POST | `/school/guardians` | `guardians.manage` | Create a guardian contact |
+| GET | `/school/guardians/:guardianID` | `guardians.read` | Read one guardian contact |
+| PATCH | `/school/guardians/:guardianID` | `guardians.manage` | Update contact details/status |
+| GET | `/school/students/:studentID/guardians` | `guardians.read` | List linked guardians |
+| POST | `/school/students/:studentID/guardians` | `guardians.manage` | Link a guardian to a student |
+| POST | `/school/student-guardian-links/:linkID/revoke` | `guardians.manage` | Revoke a relationship with a reason |
+
+Guardian list supports `q`, `status`, `limit`, and `offset`; page size defaults to 50 and is capped at 100. Search matches name, mobile number, and email. Guardian creation accepts `full_name`, optional `mobile_number`, optional `email_address`, and optional `status` (defaults to active). Updates accept the same fields and require an explicit status. Guardian contact values are school-scoped and are not globally unique.
+
+Link request:
+
+```json
+{
+  "guardian_id": 42,
+  "relationship_type": "mother",
+  "is_primary_contact": true,
+  "is_emergency_contact": true
+}
+```
+
+A student can have multiple guardians and one guardian can be linked to multiple students in the same school. The API rejects inactive or cross-school records and duplicate active pairs. Selecting a new primary contact clears the previous active primary contact for that student within the same transaction. Relationship history is retained; it is never physically deleted or reactivated. Revocation requires a non-empty reason and is recorded in the audit trail.
+
+Use `GET /school/students/:studentID/guardians?include_history=true` to include revoked relationships. Without that query parameter, only active relationships are returned. All repository operations independently validate the authenticated staff principal, current permission, and school ownership; clients cannot submit a school ID.
+
 ## 11. Documentation Maintenance
 
 Update this document whenever an API endpoint, request or response schema, status code, authentication flow, or authorization rule changes.
@@ -800,9 +834,9 @@ The current V11 schema stores only admission number, full name, status, and time
 
 | Method | Endpoint | Permission | Purpose |
 |---|---|---|---|
-| GET | `/school/students` | `students.read_basic` | Search/list school students |
+| GET | `/school/students` | `students.read_sensitive` | Search/list school students |
 | POST | `/school/students` | `students.create` | Admit/create student identity |
-| GET | `/school/students/:studentID` | `students.read_basic` | Read one student |
+| GET | `/school/students/:studentID` | `students.read_sensitive` | Read one student |
 | PATCH | `/school/students/:studentID` | `students.update` | Update student name |
 | POST | `/school/students/:studentID/archive` | `students.archive` | Soft-archive student |
 
@@ -831,4 +865,4 @@ Admission number is immutable through the profile update endpoint to preserve th
 
 After admission, create the student's academic placement using `POST /school/enrollments`. Promotion creates a new enrollment row and preserves the previous academic-year history; it does not create another student identity.
 
-Guardian contact records and student-guardian relationship APIs are not part of this release. Parent account creation, OTP verification, and SMS delivery remain paused.
+Guardian contact and student-guardian relationship APIs are implemented below. Parent account creation, OTP verification, and SMS delivery remain paused.
