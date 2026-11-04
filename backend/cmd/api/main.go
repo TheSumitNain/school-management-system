@@ -204,6 +204,10 @@ func setupRouterWithHandlers(
 		router.GET("/school/class-incharge-assignments", academicAuth, middleware.RequirePermission("class_incharge_assignments.read"), academic.ListClassInchargeAssignments)
 		router.POST("/school/class-incharge-assignments", academicAuth, middleware.RequirePermission("class_incharge_assignments.manage"), academic.CreateClassInchargeAssignment)
 		router.DELETE("/school/class-incharge-assignments/:assignmentID", academicAuth, middleware.RequirePermission("class_incharge_assignments.manage"), academic.RevokeClassInchargeAssignment)
+		router.GET("/school/enrollments", academicAuth, middleware.RequirePermission("students.read_basic"), academic.ListStudentEnrollments)
+		router.POST("/school/enrollments", academicAuth, middleware.RequirePermission("students.create"), academic.CreateStudentEnrollment)
+		router.GET("/school/students/:studentID/enrollments", academicAuth, middleware.RequirePermission("students.read_basic"), academic.ListStudentEnrollmentHistory)
+		router.POST("/school/enrollments/:enrollmentID/promote", academicAuth, middleware.RequirePermission("students.update"), academic.PromoteStudentEnrollment)
 	}
 
 	if authHandler != nil {
