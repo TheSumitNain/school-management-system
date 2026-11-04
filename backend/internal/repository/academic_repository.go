@@ -99,7 +99,9 @@ func academicWriteError(err error) error {
 	if errors.As(err, &pgErr) {
 		switch pgErr.Code {
 		case "23505", "23P01": return ErrAcademicConflict
-		case "23503", "23514", "22001", "22007": return ErrInvalidAcademicInput
+		case "23503", "23514", "22001", "22007", "P0001":
+			if strings.Contains(strings.ToLower(pgErr.Message), "assignment actor") { return ErrAcademicAccessDenied }
+			return ErrInvalidAcademicInput
 		}
 	}
 	if errors.Is(err, pgx.ErrNoRows) { return ErrAcademicNotFound }
