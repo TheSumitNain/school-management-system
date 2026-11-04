@@ -106,22 +106,22 @@ func (s *MFAService) CompleteEnrollment(ctx context.Context, challengeToken, cod
 	challenge, err := s.challenges.Get(ctx, hash)
 	if err != nil { return 0, 0, nil, ErrMFAInvalid }
 	principalID := challenge.PrincipalID
-	if challenge.Purpose != repository.MFAChallengeEnrollment { return 0, nil, ErrMFAInvalid }
+	if challenge.Purpose != repository.MFAChallengeEnrollment { return 0, 0, nil, ErrMFAInvalid }
 	credential, err := s.credentials.GetCredential(ctx, principalID)
 	if err != nil { return 0, 0, nil, err }
-	if credential == nil || credential.VerifiedAt != nil { return 0, nil, ErrMFAInvalid }
+	if credential == nil || credential.VerifiedAt != nil { return 0, 0, nil, ErrMFAInvalid }
 	secret, err := s.decryptCredential(credential)
-	if err != nil { return 0, nil, err }
+	if err != nil { return 0, 0, nil, err }
 	step, valid := VerifyTOTPAndGetStep(secret, strings.TrimSpace(code), time.Now())
 	if !valid {
-		if err := s.challenges.RecordFailure(ctx, hash); err != nil && !errors.Is(err, repository.ErrMFAChallengeUnavailable) { return 0, nil, err }
-		return 0, nil, ErrMFAInvalid
+		if err := s.challenges.RecordFailure(ctx, hash); err != nil && !errors.Is(err, repository.ErrMFAChallengeUnavailable) { return 0, 0, nil, err }
+		return 0, 0, nil, ErrMFAInvalid
 	}
 	codes, hashes, err := GenerateRecoveryCodes(10)
 	if err != nil { return 0, nil, err }
 	if err := s.credentials.ActivateEnrollment(ctx, principalID, hash, tokenVersion, step, hashes); err != nil {
-		if errors.Is(err, repository.ErrMFAEnrollmentInvalid) { return 0, nil, ErrMFAInvalid }
-		return 0, nil, err
+		if errors.Is(err, repository.ErrMFAEnrollmentInvalid) { return 0, 0, nil, ErrMFAInvalid }
+		return 0, 0, nil, err
 	}
 	return principalID, tokenVersion + 1, codes, nil
 }
@@ -134,18 +134,18 @@ func (s *MFAService) VerifyLoginChallenge(ctx context.Context, challengeToken, c
 	hash := HashRefreshToken(strings.TrimSpace(challengeToken))
 	challenge, err := s.challenges.Get(ctx, hash)
 	if err != nil { return 0, 0, ErrMFAInvalid }
-	if challenge.Purpose != repository.MFAChallengeLogin { return 0, ErrMFAInvalid }
+	if challenge.Purpose != repository.MFAChallengeLogin { return 0, 0, ErrMFAInvalid }
 	credential, err := s.credentials.GetCredential(ctx, challenge.PrincipalID)
 	if err != nil { return 0, 0, err }
-	if credential == nil || credential.VerifiedAt == nil { return 0, ErrMFAInvalid }
+	if credential == nil || credential.VerifiedAt == nil { return 0, 0, ErrMFAInvalid }
 	normalizedCode := strings.TrimSpace(code)
 	secret, decryptErr := s.decryptCredential(credential)
 	if decryptErr == nil {
 		step, valid := VerifyTOTPAndGetStep(secret, normalizedCode, time.Now())
 		if valid {
 			if err := s.credentials.ConsumeLoginChallenge(ctx, challenge.PrincipalID, hash, tokenVersion, step); err != nil {
-				if errors.Is(err, repository.ErrMFAEnrollmentInvalid) { return 0, ErrMFAInvalid }
-				return 0, err
+				if errors.Is(err, repository.ErrMFAEnrollmentInvalid) { return 0, 0, ErrMFAInvalid }
+				return 0, 0, err
 			}
 			return challenge.PrincipalID, tokenVersion, nil
 		}
@@ -154,10 +154,10 @@ func (s *MFAService) VerifyLoginChallenge(ctx context.Context, challengeToken, c
 	// committed together with challenge consumption.
 	recoveryHash := HashRefreshToken(strings.ToUpper(normalizedCode))
 	err = s.credentials.ConsumeLoginRecoveryCode(ctx, challenge.PrincipalID, hash, tokenVersion, recoveryHash)
-	if err == nil { return challenge.PrincipalID, nil }
-	if !errors.Is(err, repository.ErrMFARecoveryCodeInvalid) && !errors.Is(err, repository.ErrMFAEnrollmentInvalid) { return 0, err }
-	if recordErr := s.challenges.RecordFailure(ctx, hash); recordErr != nil && !errors.Is(recordErr, repository.ErrMFAChallengeUnavailable) { return 0, recordErr }
-	return 0, ErrMFAInvalid
+	if err == nil { return challenge.PrincipalID, tokenVersion, nil }
+	if !errors.Is(err, repository.ErrMFARecoveryCodeInvalid) && !errors.Is(err, repository.ErrMFAEnrollmentInvalid) { return 0, 0, err }
+	if recordErr := s.challenges.RecordFailure(ctx, hash); recordErr != nil && !errors.Is(recordErr, repository.ErrMFAChallengeUnavailable) { return 0, 0, recordErr }
+	return 0, 0, ErrMFAInvalid
 }
 
 // BeginRecoveryCodeRegeneration creates a short-lived, five-attempt step-up challenge.
