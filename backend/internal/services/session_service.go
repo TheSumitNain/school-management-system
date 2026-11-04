@@ -18,6 +18,7 @@ var (
 	ErrInvalidRefreshToken    = repository.ErrRefreshTokenInvalid
 	ErrRefreshTokenReuse      = repository.ErrRefreshTokenReuse
 	ErrRefreshSessionInactive = repository.ErrRefreshSessionInactive
+	ErrAdminSessionIdleExpired = repository.ErrAdminSessionIdleExpired
 	ErrSessionPrincipalVersionChanged = repository.ErrPrincipalVersionChanged
 )
 
