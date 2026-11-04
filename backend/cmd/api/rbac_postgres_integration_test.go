@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -202,6 +203,19 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 		   AND p.permission_key = 'platform.school_admins.create'
 		   AND p.scope_type = 'platform'
 		   AND p.is_active = TRUE
+		   AND EXISTS (
+		       SELECT 1
+		         FROM principal_roles delegate_pr
+		         JOIN roles delegate_role ON delegate_role.id = delegate_pr.role_id
+		         JOIN role_permissions delegate_rp ON delegate_rp.role_id = delegate_role.id
+		         JOIN permissions delegate_p ON delegate_p.id = delegate_rp.permission_id
+		        WHERE delegate_pr.principal_id = ap.id
+		          AND delegate_pr.revoked_at IS NULL
+		          AND delegate_role.role_key = 'platform_admin'
+		          AND delegate_role.scope_type = 'platform'
+		          AND delegate_p.permission_key = 'platform.permissions.delegate'
+		          AND delegate_p.is_active = TRUE
+		   )
 		 LIMIT 1
 	`).Scan(&platformAdminPrincipalID)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -230,6 +244,18 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	}
 	if err != nil {
 		t.Fatalf("resolve rollback-scoped Platform Admin actor: %v", err)
+	}
+	var platformTokenVersion int64
+	if err := tx.QueryRow(ctx,
+		`SELECT token_version FROM auth_principals WHERE id = $1`, platformAdminPrincipalID,
+	).Scan(&platformTokenVersion); err != nil {
+		t.Fatalf("load Platform Admin token version: %v", err)
+	}
+	platformAccessToken, err := tokenService.GenerateAccessToken(
+		platformAdminPrincipalID, platformTokenVersion, "platform_admin",
+	)
+	if err != nil {
+		t.Fatalf("sign Platform Admin integration access token: %v", err)
 	}
 
 	// School Admin authentication requires verified MFA. A non-secret test
@@ -284,6 +310,44 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	}
 	if !strings.Contains(createdRole.Body.String(), customRoleName) {
 		t.Fatalf("custom-role creation response does not include the created role name: %s", createdRole.Body.String())
+	}
+	var createdRolePayload struct {
+		Role struct {
+			ID int64 `json:"id"`
+		} `json:"role"`
+	}
+	if err := json.Unmarshal(createdRole.Body.Bytes(), &createdRolePayload); err != nil || createdRolePayload.Role.ID <= 0 {
+		t.Fatalf("decode created custom-role ID: payload=%s error=%v", createdRole.Body.String(), err)
+	}
+
+	// Platform Admin grants a bounded permission delegation over HTTP; the
+	// School Admin then consumes that exact delegation to grant the permission
+	// to the custom role over the same real HTTP/PostgreSQL path.
+	delegationResponse := postJSON(
+		fmt.Sprintf("/platform/schools/%d/permission-delegations", schoolID),
+		platformAccessToken,
+		`{"permission_key":"students.read_basic","can_assign_to_roles":true,"can_override_users":false}`,
+	)
+	if delegationResponse.Code != http.StatusCreated {
+		t.Fatalf("Platform Admin permission delegation should return 201: status=%d body=%s",
+			delegationResponse.Code, delegationResponse.Body.String())
+	}
+	var delegationPayload struct {
+		Delegation struct {
+			ID int64 `json:"id"`
+		} `json:"delegation"`
+	}
+	if err := json.Unmarshal(delegationResponse.Body.Bytes(), &delegationPayload); err != nil || delegationPayload.Delegation.ID <= 0 {
+		t.Fatalf("decode permission delegation ID: payload=%s error=%v", delegationResponse.Body.String(), err)
+	}
+	grantResponse := postJSON(
+		fmt.Sprintf("/school/roles/%d/permissions", createdRolePayload.Role.ID),
+		accessToken,
+		fmt.Sprintf(`{"permission_key":"students.read_basic","delegation_id":%d}`, delegationPayload.Delegation.ID),
+	)
+	if grantResponse.Code != http.StatusCreated {
+		t.Fatalf("School Admin custom-role permission grant should return 201: status=%d body=%s",
+			grantResponse.Code, grantResponse.Body.String())
 	}
 
 	if _, err := tx.Exec(ctx,
