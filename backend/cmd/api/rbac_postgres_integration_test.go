@@ -446,6 +446,30 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 		t.Fatalf("load original staff password hash: %v", err)
 	}
 
+	// V15 temporary-password sessions may inspect identity and reach only the
+	// password-change endpoint. They must not access ordinary school APIs.
+	temporaryIdentity := request(http.MethodGet, "/auth/me", newStaffAccessToken)
+	if temporaryIdentity.Code != http.StatusOK ||
+		!strings.Contains(temporaryIdentity.Body.String(), "\"must_change_password\":true") {
+		t.Fatalf("temporary-password staff may inspect identity with its required-change flag: status=%d body=%s",
+			temporaryIdentity.Code, temporaryIdentity.Body.String())
+	}
+	temporaryRoleAccess := request(http.MethodGet, "/school/roles", newStaffAccessToken)
+	if temporaryRoleAccess.Code != http.StatusForbidden {
+		t.Fatalf("temporary-password staff must be blocked from ordinary school APIs: status=%d body=%s; want 403",
+			temporaryRoleAccess.Code, temporaryRoleAccess.Body.String())
+	}
+	temporaryPasswordChange := httptest.NewRequest(http.MethodPost, "/auth/password/change",
+		strings.NewReader("{\"current_password\":\"incorrect-current-password\",\"new_password\":\"A-Strong-Permanent-Pass-456\"}"))
+	temporaryPasswordChange.Header.Set("Authorization", "Bearer "+newStaffAccessToken)
+	temporaryPasswordChange.Header.Set("Content-Type", "application/json")
+	temporaryPasswordChangeRecorder := httptest.NewRecorder()
+	loginRouter.ServeHTTP(temporaryPasswordChangeRecorder, temporaryPasswordChange)
+	if temporaryPasswordChangeRecorder.Code != http.StatusUnauthorized {
+		t.Fatalf("temporary-password staff must reach password-change validation: status=%d body=%s; want 401 for incorrect current password",
+			temporaryPasswordChangeRecorder.Code, temporaryPasswordChangeRecorder.Body.String())
+	}
+
 	duplicateStaff := postJSON("/school/staff", accessToken,
 		fmt.Sprintf(`{"username":%q,"initial_password":"A-Strong-Initial-Pass-123"}`, staffUsername))
 	if duplicateStaff.Code != http.StatusConflict {
