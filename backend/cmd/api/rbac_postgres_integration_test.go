@@ -186,6 +186,52 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 			denied.Code, denied.Body.String())
 	}
 
+	// The same default-deny policy must protect every staff lifecycle route,
+	// not just role administration. The request must be rejected by middleware
+	// before a handler or repository can mutate any account.
+	deniedUsername := "denied-staff-" + suffix
+	deniedStaffRoutes := []struct {
+		name   string
+		method string
+		path   string
+		body   string
+	}{
+		{name: "staff list", method: http.MethodGet, path: "/school/staff"},
+		{name: "staff create", method: http.MethodPost, path: "/school/staff",
+			body: fmt.Sprintf("{\"username\":%q,\"initial_password\":\"A-Strong-Initial-Pass-123\"}", deniedUsername)},
+		{name: "staff disable", method: http.MethodDelete, path: fmt.Sprintf("/school/staff/%d", principalID)},
+		{name: "staff update", method: http.MethodPatch, path: fmt.Sprintf("/school/staff/%d", principalID),
+			body: "{\"username\":\"denied-renamed-user\"}"},
+		{name: "staff enable", method: http.MethodPost, path: fmt.Sprintf("/school/staff/%d/enable", principalID),
+			body: "{\"temporary_password\":\"A-Strong-Temporary-Pass-123\"}"},
+	}
+	for _, route := range deniedStaffRoutes {
+		var rec *httptest.ResponseRecorder
+		if route.body == "" {
+			rec = request(route.method, route.path, accessToken)
+		} else {
+			req := httptest.NewRequest(route.method, route.path, strings.NewReader(route.body))
+			req.Header.Set("Authorization", "Bearer "+accessToken)
+			req.Header.Set("Content-Type", "application/json")
+			rec = httptest.NewRecorder()
+			router.ServeHTTP(rec, req)
+		}
+		if rec.Code != http.StatusForbidden {
+			t.Errorf("%s without its permission must return 403: status=%d body=%s",
+				route.name, rec.Code, rec.Body.String())
+		}
+	}
+	var deniedStaffCreationCount int
+	if err := tx.QueryRow(ctx,
+		"SELECT COUNT(*) FROM users WHERE school_id=$1 AND username=$2",
+		schoolID, deniedUsername,
+	).Scan(&deniedStaffCreationCount); err != nil {
+		t.Fatalf("verify denied staff creation left no user: %v", err)
+	}
+	if deniedStaffCreationCount != 0 {
+		t.Fatalf("permission-denied staff creation inserted %d user rows", deniedStaffCreationCount)
+	}
+
 	// Resolve an existing Platform Admin authorized to provision a School
 	// Admin. On a fresh CI database, bootstrap one inside this transaction only.
 	var platformAdminPrincipalID int64
