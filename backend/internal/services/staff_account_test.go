@@ -50,7 +50,7 @@ func TestStaffAccountServiceCreatesHashedTemporaryAccount(t *testing.T) {
 		ID: 15, PrincipalID: 27, SchoolID: 8, Username: "teacher.one",
 		Status: "active", MustChangePassword: true,
 	}}
-	service := NewStaffAccountService(repo)
+	service := NewStaffAccountService(repo, alwaysClearPasswordChecker{})
 	user, err := service.Create(context.Background(), 31, 8, " Teacher.One ", "A-Strong-Initial-Pass-123")
 	if err != nil {
 		t.Fatalf("Create returned error: %v", err)
@@ -66,7 +66,7 @@ func TestStaffAccountServiceCreatesHashedTemporaryAccount(t *testing.T) {
 
 func TestStaffAccountServiceRejectsInvalidUsernameOrPassword(t *testing.T) {
 	repo := &fakeStaffAccountRepository{}
-	service := NewStaffAccountService(repo)
+	service := NewStaffAccountService(repo, alwaysClearPasswordChecker{})
 	for _, username := range []string{"ab", "bad name", "-teacher", "नमस्ते", strings.Repeat("a", 33)} {
 		if _, err := service.Create(context.Background(), 31, 8, username, "A-Strong-Initial-Pass-123"); err == nil {
 			t.Errorf("Create(%q) expected username validation error", username)
@@ -83,7 +83,7 @@ func TestStaffAccountServiceRejectsInvalidUsernameOrPassword(t *testing.T) {
 
 func TestStaffAccountServiceValidatesUsernameUpdate(t *testing.T) {
 	repo := &fakeStaffAccountRepository{user: &models.User{ID: 15, PrincipalID: 27, SchoolID: 8, Username: "new.teacher"}}
-	service := NewStaffAccountService(repo)
+	service := NewStaffAccountService(repo, alwaysClearPasswordChecker{})
 	user, err := service.Update(context.Background(), 31, 8, 27, " New.Teacher ")
 	if err != nil {
 		t.Fatalf("Update returned error: %v", err)
@@ -98,7 +98,7 @@ func TestStaffAccountServiceValidatesUsernameUpdate(t *testing.T) {
 
 func TestStaffAccountServiceHashesTemporaryPasswordBeforeReEnable(t *testing.T) {
 	repo := &fakeStaffAccountRepository{}
-	service := NewStaffAccountService(repo)
+	service := NewStaffAccountService(repo, alwaysClearPasswordChecker{})
 	if err := service.Enable(context.Background(), 31, 8, 27, "A-Strong-Temporary-Pass-123"); err != nil {
 		t.Fatalf("Enable returned error: %v", err)
 	}
