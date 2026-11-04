@@ -374,7 +374,7 @@ func (r *PrincipalRefreshSessionRepository) RotatePrincipal(
 SELECT rs.id, rs.family_id, rs.principal_id,
        (rs.expires_at > NOW()),
        (rs.revoked_at IS NOT NULL),
-       rs.last_activity_at,
+       (rs.last_activity_at <= NOW()-INTERVAL '30 minutes'),
        ap.principal_type,
        (ap.principal_type='platform_admin' OR
         (ap.principal_type='staff' AND EXISTS (
@@ -432,7 +432,7 @@ FOR UPDATE OF rs, ap`
 	var currentPrincipal int64
 	var notExpired bool
 	var revoked bool
-	var lastActivityAt time.Time
+	var adminSessionIdleExpired bool
 	var principalType string
 	var isAdminPrincipal bool
 	var principalStatus string
@@ -453,7 +453,7 @@ FOR UPDATE OF rs, ap`
 		&currentPrincipal,
 		&notExpired,
 		&revoked,
-		&lastActivityAt,
+		&adminSessionIdleExpired,
 		&principalType,
 		&isAdminPrincipal,
 		&principalStatus,
@@ -503,7 +503,7 @@ FOR UPDATE OF rs, ap`
 		return nil, ErrRefreshTokenInvalid
 	}
 
-	if isAdminPrincipal && time.Since(lastActivityAt) >= 30*time.Minute {
+	if isAdminPrincipal && adminSessionIdleExpired {
 		if _, err = tx.Exec(ctx, `UPDATE refresh_sessions SET revoked_at=COALESCE(revoked_at,NOW()) WHERE family_id=$1 AND revoked_at IS NULL`, familyID); err != nil {
 			return nil, fmt.Errorf("revoke idle administrative refresh family: %w", err)
 		}
