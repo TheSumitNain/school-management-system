@@ -50,8 +50,18 @@ func setupRouterWithHandlers(
 	permissionLoader middleware.PermissionLoader,
 	schoolOnboardingHandler *handlers.SchoolOnboardingHandler,
 	roleHandler *handlers.RoleHandler,
-	staffHandlers ...*handlers.StaffHandler,
+	optionalHandlers ...any,
 ) (*gin.Engine, error) {
+	var staffHandler *handlers.StaffHandler
+	var academicHandler *handlers.AcademicHandler
+	for _, optional := range optionalHandlers {
+		switch handler := optional.(type) {
+		case *handlers.StaffHandler:
+			staffHandler = handler
+		case *handlers.AcademicHandler:
+			academicHandler = handler
+		}
+	}
 	router := gin.Default()
 
 	if err := router.SetTrustedProxies(nil); err != nil {
@@ -67,31 +77,31 @@ func setupRouterWithHandlers(
 		)
 	}
 
-	if len(staffHandlers) > 0 && staffHandlers[0] != nil {
+	if staffHandler != nil {
 		router.GET("/school/staff",
 			middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader),
 			middleware.RequirePermission("users.read"),
-			staffHandlers[0].List,
+			staffHandler.List,
 		)
 		router.POST("/school/staff",
 			middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader),
 			middleware.RequirePermission("users.create"),
-			staffHandlers[0].Create,
+			staffHandler.Create,
 		)
 		router.DELETE("/school/staff/:principalID",
 			middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader),
 			middleware.RequirePermission("users.disable"),
-			staffHandlers[0].Disable,
+			staffHandler.Disable,
 		)
 		router.PATCH("/school/staff/:principalID",
 			middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader),
 			middleware.RequirePermission("users.update"),
-			staffHandlers[0].Update,
+			staffHandler.Update,
 		)
 		router.POST("/school/staff/:principalID/enable",
 			middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader),
 			middleware.RequirePermission("users.update"),
-			staffHandlers[0].Enable,
+			staffHandler.Enable,
 		)
 	}
 
@@ -173,8 +183,8 @@ func setupRouterWithHandlers(
 		)
 	}
 
-	if len(academicHandlers) > 0 && academicHandlers[0] != nil {
-		academic := academicHandlers[0]
+	if academicHandler != nil {
+		academic := academicHandler
 		academicAuth := middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader)
 		router.GET("/school/academic-years", academicAuth, middleware.RequirePermission("academic_years.read"), academic.ListAcademicYears)
 		router.POST("/school/academic-years", academicAuth, middleware.RequirePermission("academic_years.manage"), academic.SaveAcademicYear)
