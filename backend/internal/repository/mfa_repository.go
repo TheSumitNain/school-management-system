@@ -83,15 +83,16 @@ WHERE principal_mfa_credentials.verified_at IS NULL`,principalID,ciphertext,keyV
 // ActivateEnrollment consumes the challenge, verifies its principal and
 // purpose, activates the pending credential, invalidates existing sessions,
 // and records the security event in one transaction.
-func (r *MFARepository) ActivateEnrollment(ctx context.Context, principalID int64, challengeHash string, acceptedStep int64, recoveryHashes []string) error {
-	if principalID<=0 || !isSHA256Hash(challengeHash) || acceptedStep < 0 || !validRecoveryCodeHashes(recoveryHashes) { return ErrMFAEnrollmentInvalid }
+func (r *MFARepository) ActivateEnrollment(ctx context.Context, principalID int64, challengeHash string, expectedTokenVersion, acceptedStep int64, recoveryHashes []string) error {
+	if principalID<=0 || expectedTokenVersion<=0 || !isSHA256Hash(challengeHash) || acceptedStep < 0 || !validRecoveryCodeHashes(recoveryHashes) { return ErrMFAEnrollmentInvalid }
 	tx,err:=r.db.Begin(ctx); if err!=nil { return fmt.Errorf("begin MFA enrollment: %w",err) }
 	defer func(){ _=tx.Rollback(ctx) }()
 	var challengePrincipal int64
 	var purpose string
-	err=tx.QueryRow(ctx,`SELECT principal_id,purpose FROM auth_mfa_challenges
-WHERE challenge_hash=$1 AND consumed_at IS NULL AND expires_at>NOW() AND attempts<5
-FOR UPDATE`,challengeHash).Scan(&challengePrincipal,&purpose)
+	err=tx.QueryRow(ctx,`SELECT c.principal_id,c.purpose FROM auth_mfa_challenges c
+JOIN auth_principals ap ON ap.id=c.principal_id AND ap.status='active' AND ap.token_version=$2
+WHERE c.challenge_hash=$1 AND c.consumed_at IS NULL AND c.expires_at>NOW() AND c.attempts<5
+FOR UPDATE OF c,ap`,challengeHash,expectedTokenVersion).Scan(&challengePrincipal,&purpose)
 	if errors.Is(err,pgx.ErrNoRows) { return ErrMFAEnrollmentInvalid }
 	if err!=nil { return fmt.Errorf("lock MFA enrollment challenge: %w",err) }
 	if challengePrincipal!=principalID || purpose!="enrollment" { return ErrMFAEnrollmentInvalid }
@@ -127,8 +128,8 @@ VALUES($1,'auth.mfa.enrollment_completed','principal',$1::bigint::text,'success'
 // ConsumeLoginChallenge atomically consumes the challenge and the matched
 // TOTP time-step. The conditional counter update prevents replay across distinct
 // challenges and remains safe when requests race.
-func (r *MFARepository) ConsumeLoginChallenge(ctx context.Context, principalID int64, challengeHash string, acceptedStep int64) error {
-	if principalID <= 0 || !isSHA256Hash(challengeHash) || acceptedStep < 0 {
+func (r *MFARepository) ConsumeLoginChallenge(ctx context.Context, principalID int64, challengeHash string, expectedTokenVersion, acceptedStep int64) error {
+	if principalID <= 0 || expectedTokenVersion <= 0 || !isSHA256Hash(challengeHash) || acceptedStep < 0 {
 		return ErrMFAEnrollmentInvalid
 	}
 	tx, err := r.db.Begin(ctx)
@@ -139,9 +140,10 @@ func (r *MFARepository) ConsumeLoginChallenge(ctx context.Context, principalID i
 
 	var challengePrincipal int64
 	var purpose string
-	err = tx.QueryRow(ctx, `SELECT principal_id,purpose FROM auth_mfa_challenges
-WHERE challenge_hash=$1 AND consumed_at IS NULL AND expires_at>NOW() AND attempts<5
-FOR UPDATE`, challengeHash).Scan(&challengePrincipal, &purpose)
+	err = tx.QueryRow(ctx, `SELECT c.principal_id,c.purpose FROM auth_mfa_challenges c
+JOIN auth_principals ap ON ap.id=c.principal_id AND ap.status='active' AND ap.token_version=$2
+WHERE c.challenge_hash=$1 AND c.consumed_at IS NULL AND c.expires_at>NOW() AND c.attempts<5
+FOR UPDATE OF c,ap`, challengeHash, expectedTokenVersion).Scan(&challengePrincipal, &purpose)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrMFAEnrollmentInvalid
 	}
@@ -178,16 +180,17 @@ WHERE challenge_hash=$1 AND principal_id=$2 AND consumed_at IS NULL
 }
 
 // ConsumeLoginRecoveryCode consumes a recovery code and its login challenge atomically.
-func (r *MFARepository) ConsumeLoginRecoveryCode(ctx context.Context, principalID int64, challengeHash, codeHash string) error {
-	if principalID <= 0 || !isSHA256Hash(challengeHash) || !isSHA256Hash(codeHash) { return ErrMFARecoveryCodeInvalid }
+func (r *MFARepository) ConsumeLoginRecoveryCode(ctx context.Context, principalID int64, challengeHash string, expectedTokenVersion int64, codeHash string) error {
+	if principalID <= 0 || expectedTokenVersion <= 0 || !isSHA256Hash(challengeHash) || !isSHA256Hash(codeHash) { return ErrMFARecoveryCodeInvalid }
 	tx, err := r.db.Begin(ctx)
 	if err != nil { return fmt.Errorf("begin recovery-code login: %w", err) }
 	defer func() { _ = tx.Rollback(ctx) }()
 	var challengePrincipal int64
 	var purpose string
-	err = tx.QueryRow(ctx, `SELECT principal_id,purpose FROM auth_mfa_challenges
-WHERE challenge_hash=$1 AND consumed_at IS NULL AND expires_at>NOW() AND attempts<5
-FOR UPDATE`, challengeHash).Scan(&challengePrincipal, &purpose)
+	err = tx.QueryRow(ctx, `SELECT c.principal_id,c.purpose FROM auth_mfa_challenges c
+JOIN auth_principals ap ON ap.id=c.principal_id AND ap.status='active' AND ap.token_version=$2
+WHERE c.challenge_hash=$1 AND c.consumed_at IS NULL AND c.expires_at>NOW() AND c.attempts<5
+FOR UPDATE OF c,ap`, challengeHash, expectedTokenVersion).Scan(&challengePrincipal, &purpose)
 	if errors.Is(err, pgx.ErrNoRows) { return ErrMFAEnrollmentInvalid }
 	if err != nil { return fmt.Errorf("lock recovery-code challenge: %w", err) }
 	if challengePrincipal != principalID || purpose != "login" { return ErrMFAEnrollmentInvalid }
@@ -209,16 +212,17 @@ VALUES($1,'auth.mfa.recovery_code_used','principal',$1::bigint::text,'success','
 
 // ReplaceRecoveryCodeHashes invalidates all remaining codes, records the fresh
 // TOTP step, inserts the replacement set and audits the change atomically.
-func (r *MFARepository) ReplaceRecoveryCodeHashes(ctx context.Context, principalID int64, challengeHash string, acceptedStep int64, hashes []string) error {
-	if principalID <= 0 || !isSHA256Hash(challengeHash) || acceptedStep < 0 || !validRecoveryCodeHashes(hashes) { return ErrMFAEnrollmentInvalid }
+func (r *MFARepository) ReplaceRecoveryCodeHashes(ctx context.Context, principalID int64, challengeHash string, expectedTokenVersion, acceptedStep int64, hashes []string) error {
+	if principalID <= 0 || expectedTokenVersion <= 0 || !isSHA256Hash(challengeHash) || acceptedStep < 0 || !validRecoveryCodeHashes(hashes) { return ErrMFAEnrollmentInvalid }
 	tx, err := r.db.Begin(ctx)
 	if err != nil { return fmt.Errorf("begin recovery-code regeneration: %w", err) }
 	defer func() { _ = tx.Rollback(ctx) }()
 	var challengePrincipal int64
 	var purpose string
-	err = tx.QueryRow(ctx, `SELECT principal_id,purpose FROM auth_mfa_challenges
-WHERE challenge_hash=$1 AND consumed_at IS NULL AND expires_at>NOW() AND attempts<5
-FOR UPDATE`, challengeHash).Scan(&challengePrincipal, &purpose)
+	err = tx.QueryRow(ctx, `SELECT c.principal_id,c.purpose FROM auth_mfa_challenges c
+JOIN auth_principals ap ON ap.id=c.principal_id AND ap.status='active' AND ap.token_version=$2
+WHERE c.challenge_hash=$1 AND c.consumed_at IS NULL AND c.expires_at>NOW() AND c.attempts<5
+FOR UPDATE OF c,ap`, challengeHash, expectedTokenVersion).Scan(&challengePrincipal, &purpose)
 	if errors.Is(err, pgx.ErrNoRows) { return ErrMFAEnrollmentInvalid }
 	if err != nil { return fmt.Errorf("lock recovery regeneration challenge: %w", err) }
 	if challengePrincipal != principalID || purpose != "recovery_regeneration" { return ErrMFAEnrollmentInvalid }
