@@ -16,6 +16,10 @@ func TestMFAChallengeRepositoryPostgresIntegration(t *testing.T) {
 	).Scan(&principalID); err != nil {
 		t.Fatalf("load fixture principal: %v", err)
 	}
+	var tokenVersion int64
+	if err := pool.QueryRow(ctx, `SELECT token_version FROM auth_principals WHERE id=$1`, principalID).Scan(&tokenVersion); err != nil {
+		t.Fatalf("load fixture token version: %v", err)
+	}
 	repo := NewMFAChallengeRepository(pool)
 	t.Cleanup(func() {
 		_, _ = pool.Exec(context.Background(),
@@ -25,10 +29,10 @@ func TestMFAChallengeRepositoryPostgresIntegration(t *testing.T) {
 	t.Run("new challenge supersedes previous challenge", func(t *testing.T) {
 		oldHash := integrationTokenHash("mfa-challenge-old")
 		newHash := integrationTokenHash("mfa-challenge-new")
-		if err := repo.Create(ctx, principalID, MFAChallengeEnrollment, oldHash, time.Now().Add(5*time.Minute)); err != nil {
+		if err := repo.Create(ctx, principalID, tokenVersion, MFAChallengeEnrollment, oldHash, time.Now().Add(5*time.Minute)); err != nil {
 			t.Fatalf("create old challenge: %v", err)
 		}
-		if err := repo.Create(ctx, principalID, MFAChallengeEnrollment, newHash, time.Now().Add(5*time.Minute)); err != nil {
+		if err := repo.Create(ctx, principalID, tokenVersion, MFAChallengeEnrollment, newHash, time.Now().Add(5*time.Minute)); err != nil {
 			t.Fatalf("create replacement challenge: %v", err)
 		}
 		if _, err := repo.Get(ctx, oldHash); !errors.Is(err, ErrMFAChallengeUnavailable) {
@@ -41,7 +45,7 @@ func TestMFAChallengeRepositoryPostgresIntegration(t *testing.T) {
 
 	t.Run("fifth failed attempt consumes challenge", func(t *testing.T) {
 		hash := integrationTokenHash("mfa-challenge-five-failures")
-		if err := repo.Create(ctx, principalID, MFAChallengeLogin, hash, time.Now().Add(5*time.Minute)); err != nil {
+		if err := repo.Create(ctx, principalID, tokenVersion, MFAChallengeLogin, hash, time.Now().Add(5*time.Minute)); err != nil {
 			t.Fatalf("create login challenge: %v", err)
 		}
 		for i := 1; i <= maxMFAChallengeAttempts; i++ {
@@ -59,7 +63,7 @@ func TestMFAChallengeRepositoryPostgresIntegration(t *testing.T) {
 
 	t.Run("challenge can be consumed exactly once", func(t *testing.T) {
 		hash := integrationTokenHash("mfa-challenge-consume-once")
-		if err := repo.Create(ctx, principalID, MFAChallengeLogin, hash, time.Now().Add(5*time.Minute)); err != nil {
+		if err := repo.Create(ctx, principalID, tokenVersion, MFAChallengeLogin, hash, time.Now().Add(5*time.Minute)); err != nil {
 			t.Fatalf("create challenge: %v", err)
 		}
 		gotPrincipal, purpose, err := repo.Consume(ctx, hash)
@@ -84,33 +88,33 @@ func TestMFAChallengeRepositoryPostgresIntegration(t *testing.T) {
 		})
 		mfaRepo := NewMFARepository(pool)
 		first := integrationTokenHash("mfa-replay-first")
-		if err := repo.Create(ctx, principalID, MFAChallengeLogin, first, time.Now().Add(5*time.Minute)); err != nil {
+		if err := repo.Create(ctx, principalID, tokenVersion, MFAChallengeLogin, first, time.Now().Add(5*time.Minute)); err != nil {
 			t.Fatal(err)
 		}
-		if err := mfaRepo.ConsumeLoginChallenge(ctx, principalID, first, 12345); err != nil {
+		if err := mfaRepo.ConsumeLoginChallenge(ctx, principalID, first, tokenVersion, 12345); err != nil {
 			t.Fatalf("first TOTP use: %v", err)
 		}
 		second := integrationTokenHash("mfa-replay-second")
-		if err := repo.Create(ctx, principalID, MFAChallengeLogin, second, time.Now().Add(5*time.Minute)); err != nil {
+		if err := repo.Create(ctx, principalID, tokenVersion, MFAChallengeLogin, second, time.Now().Add(5*time.Minute)); err != nil {
 			t.Fatal(err)
 		}
-		if err := mfaRepo.ConsumeLoginChallenge(ctx, principalID, second, 12345); !errors.Is(err, ErrMFAEnrollmentInvalid) {
+		if err := mfaRepo.ConsumeLoginChallenge(ctx, principalID, second, tokenVersion, 12345); !errors.Is(err, ErrMFAEnrollmentInvalid) {
 			t.Fatalf("replay should fail, got %v", err)
 		}
 		if _, err := repo.Get(ctx, second); err != nil {
 			t.Fatalf("rejected replay should roll back challenge consumption: %v", err)
 		}
-		if err := mfaRepo.ConsumeLoginChallenge(ctx, principalID, second, 12346); err != nil {
+		if err := mfaRepo.ConsumeLoginChallenge(ctx, principalID, second, tokenVersion, 12346); err != nil {
 			t.Fatalf("next TOTP step should succeed: %v", err)
 		}
 		_, _ = pool.Exec(ctx, "DELETE FROM principal_mfa_credentials WHERE principal_id=$1", principalID)
 	})
 
 	t.Run("invalid purpose and expired expiry are rejected", func(t *testing.T) {
-		if err := repo.Create(ctx, principalID, MFAChallengePurpose("other"), integrationTokenHash("mfa-invalid-purpose"), time.Now().Add(time.Minute)); err == nil {
+		if err := repo.Create(ctx, principalID, tokenVersion, MFAChallengePurpose("other"), integrationTokenHash("mfa-invalid-purpose"), time.Now().Add(time.Minute)); err == nil {
 			t.Fatal("expected invalid purpose to be rejected")
 		}
-		if err := repo.Create(ctx, principalID, MFAChallengeLogin, integrationTokenHash("mfa-expired"), time.Now().Add(-time.Minute)); err == nil {
+		if err := repo.Create(ctx, principalID, tokenVersion, MFAChallengeLogin, integrationTokenHash("mfa-expired"), time.Now().Add(-time.Minute)); err == nil {
 			t.Fatal("expected expired challenge to be rejected")
 		}
 	})
