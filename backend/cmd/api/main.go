@@ -198,6 +198,12 @@ func setupRouterWithHandlers(
 		router.GET("/school/subjects", academicAuth, middleware.RequirePermission("subjects.read"), academic.ListSubjects)
 		router.POST("/school/subjects", academicAuth, middleware.RequirePermission("subjects.manage"), academic.SaveSubject)
 		router.PATCH("/school/subjects/:subjectID", academicAuth, middleware.RequirePermission("subjects.manage"), academic.SaveSubject)
+		router.GET("/school/teacher-assignments", academicAuth, middleware.RequirePermission("teacher_assignments.read"), academic.ListTeacherSubjectAssignments)
+		router.POST("/school/teacher-assignments", academicAuth, middleware.RequirePermission("teacher_assignments.manage"), academic.CreateTeacherSubjectAssignment)
+		router.DELETE("/school/teacher-assignments/:assignmentID", academicAuth, middleware.RequirePermission("teacher_assignments.manage"), academic.RevokeTeacherSubjectAssignment)
+		router.GET("/school/class-incharge-assignments", academicAuth, middleware.RequirePermission("class_incharge_assignments.read"), academic.ListClassInchargeAssignments)
+		router.POST("/school/class-incharge-assignments", academicAuth, middleware.RequirePermission("class_incharge_assignments.manage"), academic.CreateClassInchargeAssignment)
+		router.DELETE("/school/class-incharge-assignments/:assignmentID", academicAuth, middleware.RequirePermission("class_incharge_assignments.manage"), academic.RevokeClassInchargeAssignment)
 	}
 
 	if authHandler != nil {
