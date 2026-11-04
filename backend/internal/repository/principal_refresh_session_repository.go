@@ -286,7 +286,7 @@ FOR UPDATE OF ap`
 		active = false
 	}
 	if !active {
-		return ErrRefreshSessionInactive
+		return "", ErrRefreshSessionInactive
 	}
 
 	var familyID string
