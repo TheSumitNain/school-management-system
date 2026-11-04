@@ -483,3 +483,11 @@ V11 is **applied and PostgreSQL-verified on the dedicated test database**. This 
 - [x] School A admin attempting to apply a School A permission override to School B staff receives HTTP 409; no cross-school override is created.
 - [x] Push CI run `41767842024` and Draft PR run `41767846927` on `4bd8af4`: V1–V16 migrations, full PostgreSQL integration-enabled Go suite, and `go vet ./...` PASS.
 - Cross-school RBAC administration boundaries are now covered at both repository and HTTP levels. Business-resource isolation remains pending until those resource APIs exist.
+
+
+## 2026-11-04 — RBAC audit-event and rejected-write side-effect assertions
+
+- [x] HTTP/PostgreSQL integration test now checks exactly one success audit event for custom-role creation, custom-role permission grant/revocation, Platform Admin delegation grant/revocation for both delegation types, staff role assignment/revocation, and staff permission override set/removal.
+- [x] Rejected cross-school staff-role assignment and permission override are verified to create neither foreign-school data rows nor success audit events.
+- [x] Push CI run `41768691764` and Draft PR run `41768696622` on `17808905`: V1–V16 migrations, full PostgreSQL integration-enabled Go suite, and `go vet ./...` PASS.
+- All assertions run inside the rollback-only PostgreSQL integration transaction; no persistent user database is modified.
