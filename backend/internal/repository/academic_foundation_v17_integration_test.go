@@ -144,6 +144,27 @@ func TestAcademicFoundationV17PostgresIntegration(t *testing.T) {
 	`, schoolID, studentID, year1, classLKG, section1).Scan(&enrollment1); err != nil {
 		t.Fatalf("enroll student in LKG: %v", err)
 	}
+	var historicalClassName, historicalSectionName string
+	if err := tx.QueryRow(ctx, `
+		SELECT class_name_snapshot, section_name_snapshot
+		  FROM student_enrollments WHERE id = $1
+	`, enrollment1).Scan(&historicalClassName, &historicalSectionName); err != nil {
+		t.Fatalf("read enrollment-time class/section snapshots: %v", err)
+	}
+	if historicalClassName != "LKG" || historicalSectionName != "A" {
+		t.Fatalf("enrollment snapshots = %q/%q, want LKG/A", historicalClassName, historicalSectionName)
+	}
+	if _, err := tx.Exec(ctx, `UPDATE classes SET name = 'Lower Kindergarten' WHERE id = $1`, classLKG); err != nil {
+		t.Fatalf("rename configurable class: %v", err)
+	}
+	if err := tx.QueryRow(ctx, `
+		SELECT class_name_snapshot FROM student_enrollments WHERE id = $1
+	`, enrollment1).Scan(&historicalClassName); err != nil {
+		t.Fatalf("re-read historical class snapshot after class rename: %v", err)
+	}
+	if historicalClassName != "LKG" {
+		t.Fatalf("class rename rewrote historical enrollment label to %q", historicalClassName)
+	}
 	if _, err := tx.Exec(ctx, `
 		UPDATE student_enrollments
 		   SET status = 'promoted', ended_at = DATE '2027-03-31'
