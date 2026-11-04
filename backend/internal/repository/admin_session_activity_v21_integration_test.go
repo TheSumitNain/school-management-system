@@ -39,6 +39,21 @@ func TestAdminSessionActivityV21PostgresIntegration(t *testing.T) {
 	`, principalID); err != nil { t.Fatalf("create verified MFA credential: %v", err) }
 	if err := tx.Commit(ctx); err != nil { t.Fatalf("commit Platform Admin fixture: %v", err) }
 
+	// The production login issuance path must initialize the V21 activity
+	// timestamp on the first refresh-session row, not only after a rotation.
+	issuedTokenSum := sha256.Sum256([]byte("admin-idle-v21-issued-"+suffix))
+	issuedTokenHash := hex.EncodeToString(issuedTokenSum[:])
+	issuedFamily, err := NewPrincipalRefreshSessionRepository(pool).CreatePrincipalForVersionWithFamily(
+		ctx, principalID, 1, issuedTokenHash, time.Now().Add(24*time.Hour),
+	)
+	if err != nil { t.Fatalf("create first session through production family issuer: %v",err) }
+	var activityInitialized bool
+	if err := pool.QueryRow(ctx,`
+		SELECT last_activity_at > clock_timestamp()-INTERVAL '1 minute'
+		FROM refresh_sessions WHERE token_hash=$1 AND family_id=$2::uuid
+	`,issuedTokenHash,issuedFamily).Scan(&activityInitialized); err != nil { t.Fatalf("verify initial activity timestamp: %v",err) }
+	if !activityInitialized { t.Fatal("new refresh-session family must initialize last_activity_at at login") }
+
 	createFamily := func(label string) string {
 		t.Helper()
 		var familyID string
