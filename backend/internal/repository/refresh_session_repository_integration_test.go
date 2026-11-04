@@ -117,10 +117,8 @@ func newPostgresIntegrationRepository(
 		).Scan(&userID)
 	}
 	if err != nil {
-		if hasV4Schema {
-			_, _ = pool.Exec(ctx, `DELETE FROM auth_principals WHERE id = $1`, principalID)
-		}
-		_, _ = pool.Exec(ctx, `DELETE FROM schools WHERE id = $1`, schoolID)
+		// School creation provisions immutable system roles, so the school
+		// fixture is retained in the dedicated test database.
 		t.Fatalf("create test user: %v", err)
 	}
 
@@ -130,35 +128,18 @@ func newPostgresIntegrationRepository(
 		)
 		defer cleanupCancel()
 
-		cleanupTx, err := pool.Begin(cleanupCtx)
-		if err != nil {
-			t.Errorf("begin integration fixture cleanup: %v", err)
-			return
-		}
-		defer func() { _ = cleanupTx.Rollback(cleanupCtx) }()
-
+		// V13 provisions immutable school system roles, and append-only audit
+		// events may retain actor references. Keep the minimal school/user/
+		// principal fixtures; remove only refresh credentials owned by this test.
 		if hasV4Schema {
-			_, err = cleanupTx.Exec(cleanupCtx,
+			if _, err := pool.Exec(cleanupCtx,
 				`DELETE FROM refresh_sessions WHERE principal_id = $1 OR user_id = $2`,
-				principalID, userID)
-		} else {
-			_, err = cleanupTx.Exec(cleanupCtx,
-				`DELETE FROM refresh_sessions WHERE user_id = $1`, userID)
-		}
-		if err == nil {
-			_, err = cleanupTx.Exec(cleanupCtx, `DELETE FROM users WHERE id = $1`, userID)
-		}
-		if err == nil && hasV4Schema {
-			_, err = cleanupTx.Exec(cleanupCtx, `DELETE FROM auth_principals WHERE id = $1`, principalID)
-		}
-		if err == nil {
-			_, err = cleanupTx.Exec(cleanupCtx, `DELETE FROM schools WHERE id = $1`, schoolID)
-		}
-		if err == nil {
-			err = cleanupTx.Commit(cleanupCtx)
-		}
-		if err != nil {
-			t.Errorf("clean up integration fixtures transactionally: %v", err)
+				principalID, userID); err != nil {
+				t.Errorf("clean up integration refresh sessions: %v", err)
+			}
+		} else if _, err := pool.Exec(cleanupCtx,
+			`DELETE FROM refresh_sessions WHERE user_id = $1`, userID); err != nil {
+			t.Errorf("clean up integration refresh sessions: %v", err)
 		}
 	})
 	return NewRefreshSessionRepository(pool), pool, userID
