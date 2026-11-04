@@ -70,7 +70,7 @@ func attendanceSectionAllowed(ctx context.Context, db repositoryDB, actorID, sch
 		SELECT 1 FROM principal_roles pr JOIN roles r ON r.id=pr.role_id
 		WHERE pr.principal_id=$1 AND pr.revoked_at IS NULL
 		  AND r.school_id=$2 AND r.scope_type='school' AND r.principal_type='staff'
-		  AND r.role_key='school_admin'
+		  AND r.role_key='school_admin' AND r.is_system=TRUE
 	)`,actorID,schoolID).Scan(&allowed)
 	if err!=nil{return false,fmt.Errorf("check attendance administrator role: %w",err)}
 	return allowed,nil
@@ -104,7 +104,7 @@ func (r *AcademicRepository) ListAttendance(ctx context.Context,actorID,schoolID
 		  AND ($3=0 OR e.section_id=$3) AND ($4::date IS NULL OR a.attendance_date=$4)
 		  AND (EXISTS (SELECT 1 FROM principal_roles pr JOIN roles ro ON ro.id=pr.role_id
 		       WHERE pr.principal_id=$5 AND pr.revoked_at IS NULL AND ro.school_id=$1
-		         AND ro.scope_type='school' AND ro.role_key='school_admin')
+		         AND ro.scope_type='school' AND ro.role_key='school_admin' AND ro.is_system=TRUE)
 		       OR EXISTS (SELECT 1 FROM class_incharge_assignments ci
 		       WHERE ci.school_id=$1 AND ci.section_id=e.section_id
 		         AND ci.teacher_principal_id=$5 AND ci.revoked_at IS NULL))
