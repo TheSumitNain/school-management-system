@@ -70,7 +70,7 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	}
 
 	var hasV4 bool
-	if err := pool.QueryRow(ctx, \`SELECT to_regclass('public.auth_principals') IS NOT NULL\`).Scan(&hasV4); err != nil {
+	if err := pool.QueryRow(ctx, `SELECT to_regclass('public.auth_principals') IS NOT NULL`).Scan(&hasV4); err != nil {
 		t.Fatalf("detect V4 principal schema: %v", err)
 	}
 	if !hasV4 {
@@ -88,26 +88,26 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 
 	suffix := strconv.FormatInt(time.Now().UnixNano(), 10)
 	var schoolID int64
-	if err := tx.QueryRow(ctx, \`
+	if err := tx.QueryRow(ctx, `
 		INSERT INTO schools (name, code, status)
 		VALUES ($1, $2, 'active')
 		RETURNING id
-	\`, "RBAC HTTP Integration School "+suffix, "RBAC-HTTP-"+suffix).Scan(&schoolID); err != nil {
+	`, "RBAC HTTP Integration School "+suffix, "RBAC-HTTP-"+suffix).Scan(&schoolID); err != nil {
 		t.Fatalf("create integration school: %v", err)
 	}
 
 	var principalID int64
-	if err := tx.QueryRow(ctx, \`
+	if err := tx.QueryRow(ctx, `
 		INSERT INTO users (school_id, username, password_hash, status)
 		VALUES ($1, $2, $3, 'active')
 		RETURNING id, principal_id
-	\`, schoolID, "rbac-http-"+suffix, "integration-test-password-hash").Scan(&userID, &principalID); err != nil {
+	`, schoolID, "rbac-http-"+suffix, "integration-test-password-hash").Scan(&userID, &principalID); err != nil {
 		t.Fatalf("create integration staff principal: %v", err)
 	}
 
 	var tokenVersion int64
 	if err := tx.QueryRow(ctx,
-		\`SELECT token_version FROM auth_principals WHERE id = $1\`, principalID,
+		`SELECT token_version FROM auth_principals WHERE id = $1`, principalID,
 	).Scan(&tokenVersion); err != nil {
 		t.Fatalf("load integration principal token version: %v", err)
 	}
@@ -153,7 +153,7 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	// Resolve an existing Platform Admin authorized to provision a School
 	// Admin. On a fresh CI database, bootstrap one inside this transaction only.
 	var platformAdminPrincipalID int64
-	err = tx.QueryRow(ctx, \`
+	err = tx.QueryRow(ctx, `
 		SELECT ap.id
 		  FROM platform_admin_accounts pa
 		  JOIN auth_principals ap ON ap.id = pa.principal_id
@@ -169,10 +169,10 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 		   AND p.scope_type = 'platform'
 		   AND p.is_active = TRUE
 		 LIMIT 1
-	\`).Scan(&platformAdminPrincipalID)
+	`).Scan(&platformAdminPrincipalID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		var anyBootstrapExists bool
-		if checkErr := tx.QueryRow(ctx, \`
+		if checkErr := tx.QueryRow(ctx, `
 			SELECT EXISTS (SELECT 1 FROM platform_admin_accounts)
 			    OR EXISTS (
 			        SELECT 1
@@ -182,7 +182,7 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 			           AND r.scope_type = 'platform'
 			           AND r.role_key = 'platform_admin'
 			    )
-		\`).Scan(&anyBootstrapExists); checkErr != nil {
+		`).Scan(&anyBootstrapExists); checkErr != nil {
 			t.Fatalf("check existing Platform Admin bootstrap state: %v", checkErr)
 		}
 		if anyBootstrapExists {
@@ -201,16 +201,16 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	// School Admin authentication requires verified MFA. A non-secret test
 	// ciphertext is sufficient for this repository-level identity fixture;
 	// no MFA verification or encryption implementation is under test here.
-	if _, err := tx.Exec(ctx, \`
+	if _, err := tx.Exec(ctx, `
 		INSERT INTO principal_mfa_credentials
 		    (principal_id, method, secret_ciphertext, encryption_key_version, verified_at)
 		VALUES ($1, 'totp', $2, 1, NOW())
-	\`, principalID, []byte("integration-test-ciphertext")); err != nil {
+	`, principalID, []byte("integration-test-ciphertext")); err != nil {
 		t.Fatalf("create verified MFA fixture for School Admin: %v", err)
 	}
 
 	var schoolAdminRoleID int64
-	if err := tx.QueryRow(ctx, \`
+	if err := tx.QueryRow(ctx, `
 		SELECT id
 		  FROM roles
 		 WHERE school_id = $1
@@ -218,13 +218,13 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 		   AND scope_type = 'school'
 		   AND role_key = 'school_admin'
 		   AND is_system = TRUE
-	\`, schoolID).Scan(&schoolAdminRoleID); err != nil {
+	`, schoolID).Scan(&schoolAdminRoleID); err != nil {
 		t.Fatalf("load provisioned School Admin role: %v", err)
 	}
-	if _, err := tx.Exec(ctx, \`
+	if _, err := tx.Exec(ctx, `
 		INSERT INTO principal_roles (principal_id, role_id, assigned_by)
 		VALUES ($1, $2, $3)
-	\`, principalID, schoolAdminRoleID, platformAdminPrincipalID); err != nil {
+	`, principalID, schoolAdminRoleID, platformAdminPrincipalID); err != nil {
 		t.Fatalf("assign School Admin role through database authorization trigger: %v", err)
 	}
 
@@ -240,7 +240,7 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	}
 
 	if _, err := tx.Exec(ctx,
-		\`UPDATE auth_principals SET token_version = token_version + 1 WHERE id = $1\`, principalID,
+		`UPDATE auth_principals SET token_version = token_version + 1 WHERE id = $1`, principalID,
 	); err != nil {
 		t.Fatalf("revoke integration access token by advancing token version: %v", err)
 	}
