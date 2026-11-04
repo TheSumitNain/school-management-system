@@ -162,7 +162,6 @@ func (r *RoleRepository) CreateCustomRole(
 			  AND r.principal_type = 'staff'
 			  AND r.role_key = 'school_admin'
 			  AND r.is_system = TRUE
-			  AND r.is_system = TRUE
 			  AND p.permission_key = 'roles.create_custom'
 			  AND p.scope_type = 'school'
 			  AND p.is_active = TRUE
