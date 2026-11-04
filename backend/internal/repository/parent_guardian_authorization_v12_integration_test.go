@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"testing"
 	"time"
@@ -57,7 +58,28 @@ func TestParentGuardianAuthorizationV12PostgresIntegration(t *testing.T) {
 	}
 
 	suffix := strconv.FormatInt(time.Now().UnixNano(), 10)
-	mobile := "+9198765" + suffix[len(suffix)-5:]
+	// Keep the mobile number valid and unique against persistent test-database
+	// fixtures. A five-digit timestamp suffix can collide with existing parents.
+	base := time.Now().UnixNano() % 10_000_000_000
+	var mobile string
+	for attempt := int64(0); attempt < 10_000; attempt++ {
+		candidate := "+91" + fmt.Sprintf("%010d", (base+attempt)%10_000_000_000)
+		var exists bool
+		if err := tx.QueryRow(ctx, `
+			SELECT EXISTS (
+				SELECT 1 FROM parent_accounts WHERE mobile_number = $1
+			)
+		`, candidate).Scan(&exists); err != nil {
+			t.Fatalf("check unique V12 parent mobile fixture: %v", err)
+		}
+		if !exists {
+			mobile = candidate
+			break
+		}
+	}
+	if mobile == "" {
+		t.Fatal("could not allocate a unique V12 parent mobile fixture")
+	}
 	var guardianID, studentID int64
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO guardians
