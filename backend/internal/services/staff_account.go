@@ -20,10 +20,13 @@ type staffAccountRepository interface {
 
 type StaffAccountService struct {
 	repository staffAccountRepository
+	breachChecker PasswordBreachChecker
 }
 
-func NewStaffAccountService(repository staffAccountRepository) *StaffAccountService {
-	return &StaffAccountService{repository: repository}
+func NewStaffAccountService(repository staffAccountRepository, checkers ...PasswordBreachChecker) *StaffAccountService {
+	checker := defaultPasswordBreachChecker
+	if len(checkers) > 0 { checker = checkers[0] }
+	return &StaffAccountService{repository: repository, breachChecker: checker}
 }
 
 func (s *StaffAccountService) Create(
@@ -35,7 +38,7 @@ func (s *StaffAccountService) Create(
 	if s == nil || s.repository == nil || actorPrincipalID <= 0 || schoolID <= 0 || !validStaffUsername(username) {
 		return nil, ErrInvalidStaffAccount
 	}
-	passwordHash, err := HashPassword(initialPassword)
+	passwordHash, err := hashPasswordWithChecker(ctx, initialPassword, s.breachChecker)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +100,7 @@ func (s *StaffAccountService) Enable(
 		targetPrincipalID <= 0 || actorPrincipalID == targetPrincipalID {
 		return ErrInvalidStaffAccount
 	}
-	passwordHash, err := HashPassword(temporaryPassword)
+	passwordHash, err := hashPasswordWithChecker(ctx, temporaryPassword, s.breachChecker)
 	if err != nil {
 		return err
 	}
