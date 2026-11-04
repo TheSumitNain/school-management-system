@@ -440,6 +440,12 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 		t.Fatalf("sign new staff access token: %v", err)
 	}
 
+	var initialStaffPasswordHash string
+	if err := tx.QueryRow(ctx, "SELECT password_hash FROM users WHERE id=$1",
+		staffCreatePayload.Staff.ID).Scan(&initialStaffPasswordHash); err != nil {
+		t.Fatalf("load original staff password hash: %v", err)
+	}
+
 	duplicateStaff := postJSON("/school/staff", accessToken,
 		fmt.Sprintf(`{"username":%q,"initial_password":"A-Strong-Initial-Pass-123"}`, staffUsername))
 	if duplicateStaff.Code != http.StatusConflict {
@@ -507,7 +513,7 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 		t.Fatalf("password reset did not rotate credentials and require first-login change: hash_present=%v must_change=%v token_version=%d session_revoked=%v",
 			resetPasswordHash != "", resetMustChangePassword, resetTokenVersion, resetSessionRevoked)
 	}
-	if resetPasswordHash == "initial-integration-password-hash" {
+	if resetPasswordHash == initialStaffPasswordHash {
 		t.Fatal("password reset did not replace the original credential hash")
 	}
 	staffAccessAfterReset := request(http.MethodGet, "/auth/me", newStaffAccessToken)
