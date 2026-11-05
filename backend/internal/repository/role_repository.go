@@ -725,6 +725,10 @@ func (r *RoleRepository) SetStaffPermissionOverride(
 		(effect != "allow" && effect != "deny") || reason == "" || len(reason) > 1000 {
 		return ErrRolePermissionDenied
 	}
+	// Permission overrides are never self-service, including DENY overrides.
+	if actorPrincipalID == targetPrincipalID {
+		return ErrRolePermissionDenied
+	}
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("begin staff permission override: %w", err)
@@ -942,6 +946,11 @@ func (r *RoleRepository) ListStaffRoleAssignments(ctx context.Context, actorPrin
 
 func (r *RoleRepository) AssignStaffRole(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID, roleID int64) error {
 	if r == nil || r.db == nil || actorPrincipalID <= 0 || schoolID <= 0 || targetPrincipalID <= 0 || roleID <= 0 {
+		return ErrRolePermissionDenied
+	}
+	// A School Admin must not be able to elevate their own account through a
+	// custom or delegated staff role. Self-assignment is rejected before SQL.
+	if actorPrincipalID == targetPrincipalID {
 		return ErrRolePermissionDenied
 	}
 	tx, err := r.db.Begin(ctx)
