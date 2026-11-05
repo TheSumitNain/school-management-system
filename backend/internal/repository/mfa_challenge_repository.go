@@ -2,6 +2,8 @@ package repository
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"time"
@@ -19,7 +21,15 @@ const (
 	maxMFAChallengeAttempts                     = 5
 )
 
-var ErrMFAChallengeUnavailable = errors.New("MFA challenge is invalid, expired, consumed, or locked")
+var (
+	ErrMFAChallengeUnavailable = errors.New("MFA challenge is invalid, expired, consumed, or locked")
+	ErrMFALoginLocked = errors.New("MFA login is locked for this principal")
+)
+
+func mfaLoginAttemptHash(principalID int64) string {
+	sum := sha256.Sum256([]byte(fmt.Sprintf("mfa-login:%d", principalID)))
+	return hex.EncodeToString(sum[:])
+}
 
 type MFAChallenge struct {
 	PrincipalID int64
@@ -77,6 +87,20 @@ func (r *MFAChallengeRepository) Create(
 	if currentTokenVersion != expectedTokenVersion {
 		return ErrPrincipalVersionChanged
 	}
+	if purpose == MFAChallengeLogin {
+		var locked bool
+		if err := tx.QueryRow(ctx, `
+			SELECT EXISTS (
+				SELECT 1 FROM auth_login_attempts
+				WHERE identifier_hash=$1 AND locked_until > NOW()
+			)
+		`, mfaLoginAttemptHash(principalID)).Scan(&locked); err != nil {
+			return fmt.Errorf("check principal MFA login lockout: %w", err)
+		}
+		if locked {
+			return ErrMFALoginLocked
+		}
+	}
 
 	if _, err := tx.Exec(ctx,
 		`UPDATE auth_mfa_challenges
@@ -127,6 +151,20 @@ func (r *MFAChallengeRepository) Get(
 		challenge.Attempts >= maxMFAChallengeAttempts {
 		return nil, ErrMFAChallengeUnavailable
 	}
+	if challenge.Purpose == MFAChallengeLogin {
+		var locked bool
+		if err := r.db.QueryRow(ctx, `
+			SELECT EXISTS (
+				SELECT 1 FROM auth_login_attempts
+				WHERE identifier_hash=$1 AND locked_until > NOW()
+			)
+		`, mfaLoginAttemptHash(challenge.PrincipalID)).Scan(&locked); err != nil {
+			return nil, fmt.Errorf("check principal MFA login lockout: %w", err)
+		}
+		if locked {
+			return nil, ErrMFALoginLocked
+		}
+	}
 	return &challenge, nil
 }
 
@@ -136,23 +174,76 @@ func (r *MFAChallengeRepository) RecordFailure(ctx context.Context, challengeHas
 	if !isSHA256Hash(challengeHash) {
 		return ErrMFAChallengeUnavailable
 	}
+	var principalID int64
+	var purpose MFAChallengePurpose
+	if err := r.db.QueryRow(ctx,
+		`SELECT principal_id, purpose FROM auth_mfa_challenges WHERE challenge_hash=$1`,
+		challengeHash,
+	).Scan(&principalID, &purpose); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrMFAChallengeUnavailable
+		}
+		return fmt.Errorf("load MFA challenge for failure accounting: %w", err)
+	}
+
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin MFA challenge failure: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
 	var attempts int
-	err := r.db.QueryRow(ctx,
+	err = tx.QueryRow(ctx,
 		`UPDATE auth_mfa_challenges
 		    SET attempts = attempts + 1,
 		        consumed_at = CASE WHEN attempts + 1 >= $2 THEN NOW() ELSE consumed_at END
 		  WHERE challenge_hash = $1
+		    AND principal_id = $3
 		    AND consumed_at IS NULL
 		    AND expires_at > NOW()
 		    AND attempts < $2
 		  RETURNING attempts`,
-		challengeHash, maxMFAChallengeAttempts,
+		challengeHash, maxMFAChallengeAttempts, principalID,
 	).Scan(&attempts)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrMFAChallengeUnavailable
 	}
 	if err != nil {
 		return fmt.Errorf("record MFA challenge failure: %w", err)
+	}
+
+	principalLocked := false
+	if purpose == MFAChallengeLogin {
+		const upsert = `
+INSERT INTO auth_login_attempts
+    (identifier_hash, failed_attempts, window_started_at, last_attempt_at, updated_at)
+VALUES ($1, 1, NOW(), NOW(), NOW())
+ON CONFLICT (identifier_hash) DO UPDATE SET
+    failed_attempts = CASE
+        WHEN auth_login_attempts.window_started_at <= NOW() - INTERVAL '15 minutes' THEN 1
+        ELSE LEAST(auth_login_attempts.failed_attempts + 1, 5)
+    END,
+    window_started_at = CASE
+        WHEN auth_login_attempts.window_started_at <= NOW() - INTERVAL '15 minutes' THEN NOW()
+        ELSE auth_login_attempts.window_started_at
+    END,
+    locked_until = CASE
+        WHEN auth_login_attempts.window_started_at <= NOW() - INTERVAL '15 minutes' THEN NULL
+        WHEN auth_login_attempts.failed_attempts >= 4 THEN COALESCE(auth_login_attempts.locked_until, NOW() + INTERVAL '15 minutes')
+        ELSE NULL
+    END,
+    last_attempt_at = NOW(),
+    updated_at = NOW()
+RETURNING locked_until > NOW()`
+		if err := tx.QueryRow(ctx, upsert, mfaLoginAttemptHash(principalID)).Scan(&principalLocked); err != nil {
+			return fmt.Errorf("record principal MFA login failure: %w", err)
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit MFA challenge failure: %w", err)
+	}
+	if principalLocked {
+		return ErrMFALoginLocked
 	}
 	return nil
 }
