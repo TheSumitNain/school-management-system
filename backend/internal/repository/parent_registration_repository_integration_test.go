@@ -65,8 +65,26 @@ func TestParentRegistrationRepositoryPostgresIntegration(t *testing.T) {
 	if mobile == "" {
 		t.Fatal("could not generate an unused Parent registration fixture mobile after 5 attempts")
 	}
-	var guardianIDs [2]int64
-	var studentIDs [2]int64
+	var otherSchoolID, otherSchoolStaffPrincipalID int64
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO schools (name, code, status)
+		VALUES ($1, $2, 'active') RETURNING id
+	`, "Parent Registration Cross School "+suffix,
+		"PRCS-"+suffix).Scan(&otherSchoolID); err != nil {
+		t.Fatalf("create second school fixture: %v", err)
+	}
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO users (school_id, username, password_hash, status)
+		VALUES ($1, $2, 'integration-password-hash', 'active')
+		RETURNING principal_id
+	`, otherSchoolID, "preg-staff-"+suffix).Scan(&otherSchoolStaffPrincipalID); err != nil {
+		t.Fatalf("create second-school staff fixture: %v", err)
+	}
+
+	guardianSchoolIDs := []int64{schoolID, schoolID, otherSchoolID}
+	guardianActorPrincipalIDs := []int64{staffPrincipalID, staffPrincipalID, otherSchoolStaffPrincipalID}
+	var guardianIDs [3]int64
+	var studentIDs [3]int64
 
 	for i := range guardianIDs {
 		if err := tx.QueryRow(ctx, `
@@ -75,14 +93,14 @@ func TestParentRegistrationRepositoryPostgresIntegration(t *testing.T) {
 				 parent_portal_enabled_at, parent_portal_enabled_by)
 			VALUES ($1, $2, $3, $3, NOW(), $4)
 			RETURNING id
-		`, schoolID, "Registration Guardian "+suffix+"-"+strconv.Itoa(i),
-			mobile, staffPrincipalID).Scan(&guardianIDs[i]); err != nil {
+		`, guardianSchoolIDs[i], "Registration Guardian "+suffix+"-"+strconv.Itoa(i),
+			mobile, guardianActorPrincipalIDs[i]).Scan(&guardianIDs[i]); err != nil {
 			t.Fatalf("create portal-enabled guardian %d: %v", i, err)
 		}
 		if err := tx.QueryRow(ctx, `
 			INSERT INTO students (school_id, admission_number, full_name)
 			VALUES ($1, $2, $3) RETURNING id
-		`, schoolID, "PREG-"+suffix+"-"+strconv.Itoa(i),
+		`, guardianSchoolIDs[i], "PREG-"+suffix+"-"+strconv.Itoa(i),
 			"Registration Student "+strconv.Itoa(i)).Scan(&studentIDs[i]); err != nil {
 			t.Fatalf("create student %d: %v", i, err)
 		}
@@ -90,7 +108,7 @@ func TestParentRegistrationRepositoryPostgresIntegration(t *testing.T) {
 			INSERT INTO student_guardians
 				(school_id, student_id, guardian_id, relationship_type)
 			VALUES ($1, $2, $3, 'guardian')
-		`, schoolID, studentIDs[i], guardianIDs[i]); err != nil {
+		`, guardianSchoolIDs[i], studentIDs[i], guardianIDs[i]); err != nil {
 			t.Fatalf("create official student-guardian relationship %d: %v", i, err)
 		}
 	}
@@ -107,7 +125,7 @@ func TestParentRegistrationRepositoryPostgresIntegration(t *testing.T) {
 	}
 	if result.Principal == nil || result.Principal.Type != "parent" ||
 		result.Principal.Status != "active" || !result.Principal.MobileVerified ||
-		result.LinkedGuardianCount != 2 {
+		result.LinkedGuardianCount != 3 {
 		t.Fatalf("unexpected Parent registration result: %+v", result)
 	}
 
@@ -139,9 +157,20 @@ func TestParentRegistrationRepositoryPostgresIntegration(t *testing.T) {
 	`, result.Principal.ID).Scan(&auditCount); err != nil {
 		t.Fatalf("verify Parent link audit events: %v", err)
 	}
-	if accountCount != 1 || activeRoleCount != 1 || activeLinkCount != 2 || auditCount != 2 {
-		t.Fatalf("account=%d role=%d links=%d audit=%d; want 1/1/2/2",
+	if accountCount != 1 || activeRoleCount != 1 || activeLinkCount != 3 || auditCount != 3 {
+		t.Fatalf("account=%d role=%d links=%d audit=%d; want 1/1/3/3",
 			accountCount, activeRoleCount, activeLinkCount, auditCount)
+	}
+
+	var linkedSchoolCount int
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(DISTINCT school_id) FROM parent_guardian_links
+		 WHERE principal_id=$1 AND revoked_at IS NULL
+	`, result.Principal.ID).Scan(&linkedSchoolCount); err != nil {
+		t.Fatalf("verify cross-school Parent links: %v", err)
+	}
+	if linkedSchoolCount != 2 {
+		t.Fatalf("Parent linked schools=%d; want 2", linkedSchoolCount)
 	}
 
 	if _, err := repo.ProvisionVerifiedMobileInTx(ctx, tx, mobile); !errors.Is(err, ErrParentAccountAlreadyExists) {
