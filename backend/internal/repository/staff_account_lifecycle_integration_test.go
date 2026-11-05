@@ -362,24 +362,43 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
 	`, protectedAdminPrincipalID, schoolID, platformAdminPrincipalID); err != nil {
 		t.Fatalf("assign protected School Admin role: %v", err)
 	}
+	// School Admin lifecycle protections are consistent: another School Admin
+	// cannot be disabled or have their password reset by a peer administrator.
+	protectedAdminSessionHash := integrationTokenHash("protected-admin-reset-" + suffix)
+	if err := NewPrincipalRefreshSessionRepository(pool).CreatePrincipalInTx(
+		ctx, tx, protectedAdminPrincipalID, protectedAdminSessionHash, time.Now().Add(time.Hour),
+	); err != nil {
+		t.Fatalf("create protected School Admin refresh session: %v", err)
+	}
+	if err := repo.ResetStaffPassword(ctx, actorPrincipalID, schoolID, protectedAdminPrincipalID,
+		"attempted-admin-takeover-password-hash"); !errors.Is(err, ErrUserNotFound) {
+		t.Fatalf("resetting another active School Admin password error = %v, want ErrUserNotFound", err)
+	}
 	if err := repo.DisableStaffAccount(ctx, actorPrincipalID, schoolID, protectedAdminPrincipalID); !errors.Is(err, ErrUserNotFound) {
 		t.Fatalf("disabling another active School Admin error = %v, want ErrUserNotFound", err)
 	}
-	var protectedUserStatus, protectedPrincipalStatus string
+	var protectedUserStatus, protectedPrincipalStatus, protectedPasswordHash string
 	var protectedTokenVersion int64
+	var protectedMustChangePassword, protectedSessionActive bool
 	if err := tx.QueryRow(ctx, `
-		SELECT u.status, ap.status, ap.token_version
+		SELECT u.status, ap.status, ap.token_version, u.password_hash, u.must_change_password,
+		       EXISTS (SELECT 1 FROM refresh_sessions rs
+		                WHERE rs.token_hash = $3 AND rs.revoked_at IS NULL)
 		  FROM users u
 		  JOIN auth_principals ap ON ap.id = u.principal_id
 		 WHERE u.id = $1 AND ap.id = $2
-	`, protectedAdminUserID, protectedAdminPrincipalID).Scan(
+	`, protectedAdminUserID, protectedAdminPrincipalID, protectedAdminSessionHash).Scan(
 		&protectedUserStatus, &protectedPrincipalStatus, &protectedTokenVersion,
+		&protectedPasswordHash, &protectedMustChangePassword, &protectedSessionActive,
 	); err != nil {
 		t.Fatalf("verify protected School Admin state: %v", err)
 	}
-	if protectedUserStatus != "active" || protectedPrincipalStatus != "active" || protectedTokenVersion != 1 {
-		t.Fatalf("rejected School Admin disable changed target state: user=%q principal=%q token_version=%d",
-			protectedUserStatus, protectedPrincipalStatus, protectedTokenVersion)
+	if protectedUserStatus != "active" || protectedPrincipalStatus != "active" ||
+		protectedTokenVersion != 1 || protectedPasswordHash != "protected-admin-password-hash" ||
+		protectedMustChangePassword || !protectedSessionActive {
+		t.Fatalf("rejected School Admin lifecycle operation changed target state: user=%q principal=%q token_version=%d password_changed=%v must_change=%v session_active=%v",
+			protectedUserStatus, protectedPrincipalStatus, protectedTokenVersion,
+			protectedPasswordHash != "protected-admin-password-hash", protectedMustChangePassword, protectedSessionActive)
 	}
 	var protectedAuditCount int
 	if err := tx.QueryRow(ctx, `
