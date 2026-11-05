@@ -38,6 +38,16 @@ func (f fakePermissionLoader) LoadEffectivePermissions(_ context.Context, _ *mod
 	return f.permissions, f.err
 }
 
+type fakeAdminSessionActivityTracker struct {
+	adminPrincipalID int64
+	familyID string
+}
+
+func (f fakeAdminSessionActivityTracker) CheckAndTouchAdminSession(_ context.Context, principalID int64, familyID string) (bool, bool, error) {
+	isAdmin := principalID == f.adminPrincipalID
+	return isAdmin, !isAdmin || familyID == f.familyID, nil
+}
+
 type fakeTokenValidator struct {
 	claims *services.TokenClaims
 	err    error
@@ -397,19 +407,21 @@ func TestRoleAdministrationRoutesEnforceLivePermissions(t *testing.T) {
 			SchoolID: 8, Username: "school.admin",
 		}
 		if principalType == "platform_admin" {
+			principal.ID = 32
 			principal.SchoolID = 0
 			principal.Username = ""
 		}
 		validator := fakeTokenValidator{claims: &services.TokenClaims{
-			RegisteredClaims: jwt.RegisteredClaims{Subject: "31"},
+			RegisteredClaims: jwt.RegisteredClaims{Subject: "32"},
 			PrincipalType: principalType,
 			TokenVersion: 1,
+			SessionID: "00000000-0000-4000-8000-000000000031",
 		}}
 		router, err := setupRouterWithHandlers(
 			fakeDatabase{}, nil, validator,
 			fakePrincipalLoader{principal: principal},
 			fakePermissionLoader{permissions: permissions},
-			nil, handlers.NewRoleHandler(nil),
+			nil, handlers.NewRoleHandler(nil), fakeAdminSessionActivityTracker{adminPrincipalID: 32, familyID: "00000000-0000-4000-8000-000000000031"},
 		)
 		if err != nil {
 			t.Fatalf("setup %s router: %v", principalType, err)
