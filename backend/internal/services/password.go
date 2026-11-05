@@ -3,6 +3,7 @@ package services
 import (
 	"errors"
 	"strings"
+	"unicode/utf8"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -13,7 +14,7 @@ const (
 	maxPasswordLength = 72
 )
 
-var ErrInvalidPassword = errors.New("password must be between 12 and 72 bytes and must not be a commonly used password")
+var ErrInvalidPassword = errors.New("password must contain 12 to 72 UTF-8 bytes, at least 12 characters, and must not be a commonly used password")
 
 // commonPasswords is a deliberately small local denylist, not a substitute
 // for a breached-password intelligence service. Keep comparisons
@@ -67,7 +68,8 @@ func CheckPassword(password, passwordHash string) bool {
 }
 
 func validNewPassword(password string) bool {
-	if len(password) < minPasswordLength || len(password) > maxPasswordLength {
+	if !utf8.ValidString(password) || len(password) > maxPasswordLength ||
+		utf8.RuneCountInString(password) < minPasswordLength {
 		return false
 	}
 	if strings.TrimSpace(password) == "" {
