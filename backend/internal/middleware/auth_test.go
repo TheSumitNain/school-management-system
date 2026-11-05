@@ -47,7 +47,7 @@ func setupMiddlewareRouter(validator AccessTokenValidator) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	principal := &models.AuthPrincipal{ID: 10, Type: "staff", Status: "active", TokenVersion: 1, SchoolID: 2, Username: "tester"}
-	router.GET("/protected", AuthMiddleware(validator, fakePrincipalLoader{principal: principal}, fakePermissionLoader{permissions: []string{"students.read_basic"}}), func(c *gin.Context) {
+	router.GET("/protected", AuthMiddleware(validator, fakePrincipalLoader{principal: principal}, fakePermissionLoader{permissions: []string{"students.read_basic"}}, &fakeAdminSessionTracker{valid: true, familyID: "00000000-0000-4000-8000-000000000010"}), func(c *gin.Context) {
 		principalID, _ := c.Get(ContextPrincipalIDKey)
 		schoolID, _ := c.Get(ContextSchoolIDKey)
 		c.JSON(http.StatusOK, gin.H{"principal_id": principalID, "school_id": schoolID})
@@ -56,7 +56,7 @@ func setupMiddlewareRouter(validator AccessTokenValidator) *gin.Engine {
 }
 
 func validClaims() *services.TokenClaims {
-	claims := &services.TokenClaims{PrincipalType: "staff", TokenVersion: 1}
+	claims := &services.TokenClaims{PrincipalType: "staff", TokenVersion: 1, SessionID: "00000000-0000-4000-8000-000000000010"}
 	claims.Subject = "10"
 	return claims
 }
