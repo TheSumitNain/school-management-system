@@ -97,6 +97,9 @@ func (r *ParentRegistrationRepository) ProvisionVerifiedMobileInTx(
 	rows, err := tx.Query(ctx, `
 		SELECT g.id, g.school_id
 		  FROM guardians g
+		  JOIN schools linked_school
+		    ON linked_school.id = g.school_id
+		   AND linked_school.status = 'active'
 		  JOIN student_guardians sg
 		    ON sg.guardian_id = g.id
 		   AND sg.school_id = g.school_id
