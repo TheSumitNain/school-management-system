@@ -176,6 +176,11 @@ func (h *AuthHandler) Login(c *gin.Context) {
 				writeAuthError(c, http.StatusUnauthorized, "Credentials changed during sign-in. Please sign in again.")
 				return
 			}
+			if errors.Is(mfaErr, services.ErrLoginLocked) {
+				c.Header("Retry-After", "900")
+				writeAuthError(c, http.StatusTooManyRequests, "Too many failed MFA attempts. Try again in 15 minutes.")
+				return
+			}
 			writeAuthError(c, http.StatusInternalServerError, "Unable to start multi-factor authentication")
 			return
 		}
@@ -233,6 +238,11 @@ func (h *AuthHandler) PlatformAdminLogin(c *gin.Context) {
 	if err!=nil {
 		if errors.Is(err, services.ErrSessionPrincipalVersionChanged) {
 			writeAuthError(c, http.StatusUnauthorized, "Credentials changed during sign-in. Please sign in again.")
+			return
+		}
+		if errors.Is(err, services.ErrLoginLocked) {
+			c.Header("Retry-After", "900")
+			writeAuthError(c, http.StatusTooManyRequests, "Too many failed MFA attempts. Try again in 15 minutes.")
 			return
 		}
 		writeAuthError(c,http.StatusInternalServerError,"Unable to start multi-factor authentication"); return
@@ -327,6 +337,11 @@ func (h *AuthHandler) issueMFASession(c *gin.Context, principalID, expectedToken
 }
 
 func writeMFAError(c *gin.Context, err error) {
+	if errors.Is(err, services.ErrLoginLocked) {
+		c.Header("Retry-After", "900")
+		writeAuthError(c, http.StatusTooManyRequests, "Too many failed MFA attempts. Try again in 15 minutes.")
+		return
+	}
 	if errors.Is(err, services.ErrSessionPrincipalVersionChanged) {
 		writeAuthError(c, http.StatusUnauthorized, "Credentials changed. Please sign in again.")
 		return
