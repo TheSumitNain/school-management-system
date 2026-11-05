@@ -28,6 +28,13 @@ import (
 	"github.com/joho/godotenv"
 )
 
+type rbacIntegrationAdminSessionTracker struct{}
+
+func (rbacIntegrationAdminSessionTracker) CheckAndTouchAdminSession(_ context.Context, principalID int64, familyID string) (bool, bool, error) {
+	const expectedFamily = "00000000-0000-4000-8000-000000000031"
+	return principalID > 0, familyID == expectedFamily, nil
+}
+
 type rbacIntegrationPasswordBreachChecker struct{}
 
 func (rbacIntegrationPasswordBreachChecker) IsCompromised(context.Context, string) (bool, error) {
@@ -142,7 +149,7 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create real JWT service for integration test: %v", err)
 	}
-	accessToken, err := tokenService.GenerateAccessToken(principalID, tokenVersion, "staff")
+	accessToken, err := tokenService.GenerateAccessTokenForSession(principalID, tokenVersion, "staff", "00000000-0000-4000-8000-000000000031")
 	if err != nil {
 		t.Fatalf("sign integration access token: %v", err)
 	}
@@ -152,7 +159,7 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	router, err := setupRouterWithHandlers(
 		fakeDatabase{}, nil, tokenService,
 		principalRepo, principalRepo,
-		nil, roleHandler, staffHandler,
+		nil, roleHandler, staffHandler, rbacIntegrationAdminSessionTracker{},
 	)
 	if err != nil {
 		t.Fatalf("setup PostgreSQL-backed API router: %v", err)
@@ -170,7 +177,7 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	loginRouter, err := setupRouterWithHandlers(
 		fakeDatabase{}, authHandler, tokenService,
 		principalRepo, principalRepo,
-		nil, roleHandler, staffHandler,
+		nil, roleHandler, staffHandler, rbacIntegrationAdminSessionTracker{},
 	)
 	if err != nil {
 		t.Fatalf("setup PostgreSQL-backed login router: %v", err)
@@ -367,8 +374,8 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	).Scan(&platformTokenVersion); err != nil {
 		t.Fatalf("load Platform Admin token version: %v", err)
 	}
-	platformAccessToken, err := tokenService.GenerateAccessToken(
-		platformAdminPrincipalID, platformTokenVersion, "platform_admin",
+	platformAccessToken, err := tokenService.GenerateAccessTokenForSession(
+		platformAdminPrincipalID, platformTokenVersion, "platform_admin", "00000000-0000-4000-8000-000000000031",
 	)
 	if err != nil {
 		t.Fatalf("sign Platform Admin integration access token: %v", err)
@@ -439,8 +446,8 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	).Scan(&newStaffTokenVersion); err != nil {
 		t.Fatalf("load new staff principal token version: %v", err)
 	}
-	newStaffAccessToken, err := tokenService.GenerateAccessToken(
-		staffCreatePayload.Staff.PrincipalID, newStaffTokenVersion, "staff",
+	newStaffAccessToken, err := tokenService.GenerateAccessTokenForSession(
+		staffCreatePayload.Staff.PrincipalID, newStaffTokenVersion, "staff", "00000000-0000-4000-8000-000000000031",
 	)
 	if err != nil {
 		t.Fatalf("sign new staff access token: %v", err)
@@ -802,7 +809,7 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	).Scan(&targetTokenVersion); err != nil {
 		t.Fatalf("load target staff token version: %v", err)
 	}
-	targetAccessToken, err := tokenService.GenerateAccessToken(targetStaffPrincipalID, targetTokenVersion, "staff")
+	targetAccessToken, err := tokenService.GenerateAccessTokenForSession(targetStaffPrincipalID, targetTokenVersion, "staff", "00000000-0000-4000-8000-000000000031")
 	if err != nil {
 		t.Fatalf("sign target staff integration access token: %v", err)
 	}
