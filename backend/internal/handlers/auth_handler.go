@@ -158,12 +158,12 @@ func (h *AuthHandler) Login(c *gin.Context) {
 			writeAuthError(c, http.StatusTooManyRequests, "Too many failed login attempts. Try again in 15 minutes.")
 			return
 		}
-		if errors.Is(err, services.ErrInvalidCredentials) {
+		if errors.Is(err, services.ErrInvalidCredentials) ||
+			errors.Is(err, services.ErrUserInactive) ||
+			errors.Is(err, services.ErrSchoolInactive) {
+			// Keep disabled accounts and inactive schools indistinguishable from
+			// unknown usernames and wrong passwords at the public login boundary.
 			writeAuthError(c, http.StatusUnauthorized, "Invalid username or password")
-			return
-		}
-		if errors.Is(err, services.ErrUserInactive) || errors.Is(err, services.ErrSchoolInactive) {
-			writeAuthError(c, http.StatusForbidden, "Account or school is inactive")
 			return
 		}
 		writeAuthError(c, http.StatusInternalServerError, "Unable to log in")
