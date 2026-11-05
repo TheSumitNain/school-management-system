@@ -11,6 +11,7 @@ import (
 	"school-management-system/internal/services"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v4"
 )
 
 type fakeTokenValidator struct {
