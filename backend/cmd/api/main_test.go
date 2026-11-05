@@ -376,6 +376,55 @@ func TestStaffUpdateAndEnableRoutesEnforceLiveUsersUpdatePermission(t *testing.T
 	}
 }
 
+func TestStaffPasswordResetRouteRequiresDedicatedLivePermission(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	validator := fakeTokenValidator{claims: &services.TokenClaims{
+		RegisteredClaims: jwt.RegisteredClaims{Subject: "31"},
+		PrincipalType: "staff",
+		TokenVersion: 1,
+	}}
+	principal := &models.AuthPrincipal{
+		ID: 31, Type: "staff", Status: "active", TokenVersion: 1,
+		SchoolID: 8, Username: "school.admin",
+	}
+
+	request := func(permissions []string) *httptest.ResponseRecorder {
+		authHandler := handlers.NewAuthHandler(nil, nil, nil)
+		router, err := setupRouterWithHandlers(
+			fakeDatabase{}, authHandler, validator,
+			fakePrincipalLoader{principal: principal},
+			fakePermissionLoader{permissions: permissions},
+			nil, nil,
+		)
+		if err != nil {
+			t.Fatalf("setup password-reset router: %v", err)
+		}
+		req := httptest.NewRequest(
+			http.MethodPost,
+			"/school/staff/42/password/reset",
+			strings.NewReader(`{"new_password":"A-Strong-Temporary-Pass-123"}`),
+		)
+		req.Header.Set("Authorization", "Bearer valid-test-token")
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		return rec
+	}
+
+	if denied := request(nil); denied.Code != http.StatusForbidden {
+		t.Fatalf("password reset without permission: status=%d body=%s; want 403",
+			denied.Code, denied.Body.String())
+	}
+	if wrongPermission := request([]string{"users.update"}); wrongPermission.Code != http.StatusForbidden {
+		t.Fatalf("password reset with users.update only: status=%d body=%s; want 403",
+			wrongPermission.Code, wrongPermission.Body.String())
+	}
+	if allowed := request([]string{"users.password_reset"}); allowed.Code != http.StatusServiceUnavailable {
+		t.Fatalf("password reset with dedicated permission should reach unavailable handler: status=%d body=%s; want 503",
+			allowed.Code, allowed.Body.String())
+	}
+}
+
 func TestRoleAdministrationRoutesEnforceLivePermissions(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
