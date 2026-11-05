@@ -152,3 +152,33 @@ func TestMFAServiceRotatesCredentialToCurrentKey(t *testing.T) {
 		t.Fatalf("rotated secret = %q, want %q", decrypted, secret)
 	}
 }
+
+type mfaNonRotatingCredentialStore struct {
+	mfaCredentialStore
+}
+
+func TestMFAServiceFailsClosedWhenCredentialStoreCannotRotate(t *testing.T) {
+	oldKey := make([]byte, 32)
+	oldKey[0] = 2
+	currentKey := make([]byte, 32)
+	currentKey[0] = 3
+	secret := []byte("fail closed rotation test")
+	oldCiphertext, err := EncryptTOTPSecret(secret, oldKey)
+	if err != nil {
+		t.Fatalf("EncryptTOTPSecret(old): %v", err)
+	}
+
+	store := mfaNonRotatingCredentialStore{mfaCredentialStore: &mfaRotationTestStore{}}
+	service := &MFAService{
+		credentials: store,
+		encryptionKey: currentKey,
+		keyVersion: 2,
+	}
+	err = service.rotateCredential(context.Background(), 42, &repository.MFACredential{
+		Ciphertext: oldCiphertext,
+		KeyVersion: 1,
+	}, secret)
+	if err == nil {
+		t.Fatal("expected key rotation to fail when credential store lacks rotation support")
+	}
+}
