@@ -61,8 +61,8 @@ func TestMFAChallengeRepositoryPostgresIntegration(t *testing.T) {
 				t.Fatalf("fifth failure error = %v, want principal-wide MFA lockout", err)
 			}
 		}
-		if _, err := repo.Get(ctx, hash); !errors.Is(err, ErrMFALoginLocked) {
-			t.Fatalf("locked challenge should return principal-wide lockout, got %v", err)
+		if _, err := repo.Get(ctx, hash); !errors.Is(err, ErrMFAChallengeUnavailable) {
+			t.Fatalf("consumed challenge should be unavailable, got %v", err)
 		}
 		if err := repo.RecordFailure(ctx, hash); !errors.Is(err, ErrMFAChallengeUnavailable) {
 			t.Fatalf("sixth failure should be rejected, got %v", err)
@@ -70,6 +70,9 @@ func TestMFAChallengeRepositoryPostgresIntegration(t *testing.T) {
 		if err := repo.Create(ctx, principalID, tokenVersion, MFAChallengeLogin,
 			integrationTokenHash("mfa-challenge-after-lockout"), time.Now().Add(5*time.Minute)); !errors.Is(err, ErrMFALoginLocked) {
 			t.Fatalf("new challenge must not reset principal MFA lockout, got %v", err)
+		}
+		if _, err := pool.Exec(ctx, `DELETE FROM auth_login_attempts WHERE identifier_hash=$1`, attemptHash); err != nil {
+			t.Fatalf("reset principal MFA lockout between isolated subtests: %v", err)
 		}
 	})
 
