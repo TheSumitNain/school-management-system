@@ -3,6 +3,8 @@ package services
 import (
 	"encoding/hex"
 	"testing"
+
+	"school-management-system/internal/repository"
 )
 
 func TestGenerateRecoveryCodes(t *testing.T) {
@@ -51,5 +53,47 @@ func TestParseMFAChallengeTokenVersion(t *testing.T) {
 		} else if err == nil {
 			t.Fatalf("parseMFAChallengeTokenVersion(%q) unexpectedly accepted version %d", test.token, got)
 		}
+	}
+}
+
+func TestMFAServiceDecryptsPreviousEncryptionKeyVersions(t *testing.T) {
+	oldKey := make([]byte, 32)
+	oldKey[0] = 7
+	currentKey := make([]byte, 32)
+	currentKey[0] = 9
+	secret := []byte("a test authenticator secret")
+	ciphertext, err := EncryptTOTPSecret(secret, oldKey)
+	if err != nil {
+		t.Fatalf("EncryptTOTPSecret: %v", err)
+	}
+	service := &MFAService{
+		encryptionKey: currentKey,
+		keyVersion: 3,
+		previousEncryptionKeys: map[int][]byte{2: oldKey},
+	}
+	got, err := service.decryptCredential(&repository.MFACredential{
+		Ciphertext: ciphertext,
+		KeyVersion: 2,
+	})
+	if err != nil {
+		t.Fatalf("decryptCredential with previous key: %v", err)
+	}
+	if string(got) != string(secret) {
+		t.Fatalf("decrypted secret = %q, want %q", got, secret)
+	}
+}
+
+func TestMFAServiceRejectsUnavailablePreviousKeyVersion(t *testing.T) {
+	service := &MFAService{
+		encryptionKey: make([]byte, 32),
+		keyVersion: 3,
+		previousEncryptionKeys: map[int][]byte{2: make([]byte, 32)},
+	}
+	_, err := service.decryptCredential(&repository.MFACredential{
+		Ciphertext: make([]byte, 32),
+		KeyVersion: 1,
+	})
+	if err != ErrMFAKeyVersionUnavailable {
+		t.Fatalf("decryptCredential error = %v, want ErrMFAKeyVersionUnavailable", err)
 	}
 }
