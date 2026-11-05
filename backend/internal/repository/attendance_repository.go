@@ -63,6 +63,14 @@ func attendanceSectionAllowed(ctx context.Context, db repositoryDB, actorID, sch
 		JOIN users u ON u.principal_id=ap.id AND u.school_id=a.school_id
 		WHERE a.school_id=$1 AND a.section_id=$2 AND a.teacher_principal_id=$3
 		  AND a.revoked_at IS NULL AND ap.status='active' AND u.status='active'
+		  AND EXISTS (
+			SELECT 1 FROM principal_roles tpr
+			JOIN roles tr ON tr.id=tpr.role_id
+			WHERE tpr.principal_id=ap.id AND tpr.revoked_at IS NULL
+			  AND tr.school_id=a.school_id AND tr.scope_type='school'
+			  AND tr.principal_type='staff' AND tr.role_key='teacher'
+			  AND tr.is_system=TRUE
+		  )
 	)`,schoolID,sectionID,actorID).Scan(&allowed)
 	if err!=nil{return false,fmt.Errorf("check attendance section assignment: %w",err)}
 	if allowed{return true,nil}
