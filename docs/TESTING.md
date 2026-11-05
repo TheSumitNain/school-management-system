@@ -10,33 +10,23 @@ The project is in its initial development stage. Tests documented as future requ
 
 ## 2. Current Testing Status
 
-The backend has automated Go tests for selected packages and components.
+The backend has automated unit, handler, middleware, repository and PostgreSQL integration coverage for the current authentication/RBAC foundation and selected academic/guardian APIs.
 
 Current test areas include:
 
-- Password-service behavior, including staff current-password change and School Admin temporary-password reset.
-- Authentication-service behavior and temporary-password state propagation.
-- JWT access-token generation and validation.
-- Authentication HTTP handler behavior, including staff password change/reset.
-- Middleware enforcement for temporary-password staff sessions.
-- API server behavior and selected configuration validation.
-- Refresh-token session-service behavior and concurrency safeguards.
-- V15/V16 PostgreSQL integration coverage for password lifecycle and exact delegation revocation.
-- Router/middleware authorization tests for all 14 Platform Admin and school role-administration routes, including AND semantics for multi-permission routes.
-- HTTP/PostgreSQL integration coverage for database-backed staff identity, default-deny role authorization, and token-version revocation using the real Gin router and principal/permission repositories.
+- Password policy, compromised-password checking, staff password change/reset, and temporary-password restrictions.
+- Staff and Platform Admin login, username/email lockout, IP rate limiting, and fail-closed behavior when login-security controls are missing.
+- MFA enrollment, TOTP/recovery-code verification, replay protection, principal-wide lockout across replacement challenges and challenge purposes, failure auditing, and lockout reset after successful verification.
+- JWT generation/validation, principal identity/version checks, refresh rotation/replay/family revocation, concurrency protections, and 30-minute per-device admin idle timeout.
+- Principal/RBAC permission resolution, exact-delegation custom-role grants and ALLOW overrides, DENY precedence, role/permission HTTP routes, same-school target checks, and V22 self-escalation prevention at repository and database layers.
+- Staff account create/list/update/disable/re-enable/password lifecycle, token-version invalidation, refresh-session revocation, and audit events.
+- Student/enrollment/attendance/guardian repository integration, assigned-section teacher roster fields, parent guardian link checks, and inactive-school parent eligibility.
+- Real Gin router plus PostgreSQL-backed RBAC integration for default-deny and live authorization paths. Some integration harnesses use controlled token validators; this is not exhaustive end-to-end signature validation for every route.
 
-An earlier source-only CI run on commit `4351ce9` passed the unit suite and vet but did not enable PostgreSQL integration tests. The latest full database-backed verification is recorded immediately below.
+**Latest verified remote checkpoint:** GitHub Actions run [41960953660](https://github.com/TheSumitNain/school-management-system/actions/runs/41960953660), commit `1b942cab4ebd76f849c579d1aa3324e839fc2741`. It applied migrations V1–V22 to a fresh ephemeral PostgreSQL 18 database, ran the full backend suite with PostgreSQL integration enabled, and passed `go vet ./...`. CI does not migrate or modify the user's persistent `school_management_test` or `school_management` databases. Local verification must be repeated after pulling the latest branch.
 
-```bash
-go test -count=1 ./...
-go vet ./...
-```
+The current suite does not establish that every application behavior is tested or that the application is production-ready. Remaining gaps include broader resource/tenant/assignment/field-level tests across business modules, exhaustive HTTP tests with real JWT signature validation for every route, additional database failure/concurrency cases, migration rollback testing, deployment/least-privilege checks, and load testing.
 
-The latest GitHub Actions run `41773896580` on commit `808cc0600dc2ebdf63d34c8737d1244a6c74ec31` applied migrations V1–V16 to a fresh ephemeral PostgreSQL 18 database, ran the full suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and passed `go vet ./...`. It includes the real HTTP/PostgreSQL staff account creation, listing, duplicate-username conflict mapping, self-disable rejection, successful disable, token-version increment, refresh-session revocation, and audit-event assertions described in Section 27. The preceding run `41773701644` on `07f22dea` also passed the repository-level successful-disable refresh-session revocation assertion. The user's persistent `school_management_test` and `school_management` databases were not changed. Repeat the workflow after relevant code changes.
-
-The current test suite does not establish that every application behavior is tested or that the application is production-ready.
-
-Important remaining gaps include PostgreSQL coverage for repository paths outside the currently tested authentication, staff lifecycle, parent foundation, and role-administration workflows; additional concurrency/failure-mode testing; full HTTP-to-PostgreSQL end-to-end verification (the current 14-route tests use controlled token/principal/permission loaders); business-resource tenant/assignment isolation; migration/rollback testing; and tests for future school business modules.
 
 ## 3. Testing Principles
 
@@ -87,7 +77,7 @@ They should cover:
 
 Tests requiring PostgreSQL must use a dedicated test database or isolated test schema. They must never modify production data.
 
-The repository has opt-in PostgreSQL integration tests in `backend/internal/repository/`. They require `RUN_POSTGRES_INTEGRATION_TESTS=1` and must use the dedicated `school_management_test` database when run locally. Coverage includes V15 staff password defaults and transactional password-change invalidation, V16 exact-delegation revocation/regrant behavior, rollback-scoped role/delegation/custom-permission/staff-role/ALLOW-DENY override repository workflows, and staff account create/list/update/disable/re-enable lifecycle. GitHub Actions applies V1–V16 to a fresh ephemeral PostgreSQL 18 database and runs the full integration suite; commit `64acf1b` and run `41657762673` passed, including `go vet ./...`. The user's persistent `school_management_test` remains unchanged. Never point tests or migrations at `school_management`.
+The repository has opt-in PostgreSQL integration tests in `backend/internal/repository/`. They require `RUN_POSTGRES_INTEGRATION_TESTS=1` and must use the dedicated `school_management_test` database when run locally. Coverage includes staff password defaults and transactional password-change invalidation, exact-delegation revocation/regrant behavior, rollback-scoped role/delegation/custom-permission/staff-role/ALLOW-DENY override workflows, V22 direct-SQL self-escalation guards, staff account lifecycle, principal-wide MFA lockout across challenges, and parent/guardian active-school eligibility. GitHub Actions run 41960953660 applied V1–V22 to a fresh ephemeral PostgreSQL 18 database and passed the full integration suite and go vet. The user's persistent school_management_test remains unchanged. Never point tests or migrations at school_management.
 
 ### 4.3 HTTP tests
 
@@ -134,7 +124,7 @@ cd /d D:\school-management-system\backend
 Run all Go tests:
 
 ```bash
-go test -count=1 ./...
+go test -count=1 -p 1 ./...
 ```
 
 The `-count=1` flag disables reuse of cached test results for this run.
@@ -415,7 +405,7 @@ Whenever a bug is fixed or functionality changes:
 6. Keep completed testing evidence separate from planned work.
 
 
-## 15. Approved Phase 1 RBAC and Account-Security Test Plan (Not Yet Implemented)
+## 15. Additional Phase 1 RBAC and Account-Security Tests Still Needed
 
 Use `docs/PHASE1-RBAC.md` as the source of truth for the permission catalogue and default role matrix. These are required future tests, not evidence of current coverage.
 
@@ -675,3 +665,11 @@ The test uses the existing outer transaction and leaves no permanent staff, sess
 Verification: run `41773896580` on `808cc0600dc2ebdf63d34c8737d1244a6c74ec31` passed all V1–V16 migrations on ephemeral PostgreSQL 18, the full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and `go vet ./...`. Run `41773701644` on `07f22dea` also passed. No persistent user database was modified.
 
 Remaining staff-account coverage includes explicit School Admin target-protection assertions, a direct PostgreSQL test that the repository maps a global duplicate-username constraint violation to `ErrUsernameTaken`, and concurrent disable/refresh interleaving coverage. Cross-school and ordinary-staff authorization denial are already covered at repository level; the wider business-resource tenant boundaries remain separate future work.
+
+## 28. Latest authentication/RBAC hardening — 2026-11-05
+
+- V22 integration tests verify repository and direct-SQL rejection of self role assignment and self permission override creation/deletion.
+- MFA challenge integration tests verify the fifth cumulative failure across replacement challenges locks the principal, blocks other challenge purposes, writes five failure audit events, and successful MFA verification clears the counter.
+- Parent authentication and guardian matching tests verify that suspended/inactive-school-only links do not qualify a Parent for login or pre-account matching.
+- Staff login unit/handler tests verify fail-closed behavior when username lockout storage or IP rate limiting is not configured; the PostgreSQL-backed RBAC HTTP fixture explicitly wires test security controls.
+- Run 41960953660 on commit 1b942cab4ebd76f849c579d1aa3324e839fc2741 passed migrations V1–V22, all backend tests including PostgreSQL integration, and go vet ./... on ephemeral PostgreSQL 18. Persistent local databases were not changed by CI.
