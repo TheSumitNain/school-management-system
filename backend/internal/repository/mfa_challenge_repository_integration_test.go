@@ -71,8 +71,8 @@ func TestMFAChallengeRepositoryPostgresIntegration(t *testing.T) {
 				t.Fatalf("fifth cumulative failure error = %v, want principal-wide MFA lockout", err)
 			}
 		}
-		if _, err := repo.Get(ctx, secondHash); !errors.Is(err, ErrMFAChallengeUnavailable) {
-			t.Fatalf("consumed replacement challenge should be unavailable, got %v", err)
+		if _, err := repo.Get(ctx, secondHash); !errors.Is(err, ErrMFALoginLocked) {
+			t.Fatalf("active replacement challenge should be blocked by principal-wide lockout, got %v", err)
 		}
 		if err := repo.RecordFailure(ctx, secondHash); !errors.Is(err, ErrMFAChallengeUnavailable) {
 			t.Fatalf("additional failure should be rejected, got %v", err)
