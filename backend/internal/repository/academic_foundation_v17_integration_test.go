@@ -370,22 +370,6 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 		return err
 	})
 
-	// A class-in-charge assignment must not preserve attendance authority after
-	// the principal's system Teacher role has been revoked.
-	if _, err := tx.Exec(ctx, `
-		UPDATE principal_roles SET revoked_at = NOW()
-		 WHERE principal_id = $1 AND role_id = $2 AND revoked_at IS NULL
-	`, teacherPrincipalID, teacherRoleID); err != nil {
-		t.Fatalf("revoke Teacher role fixture: %v", err)
-	}
-	attendanceAllowed, err := attendanceSectionAllowed(ctx, tx, teacherPrincipalID, schoolID, section2)
-	if err != nil {
-		t.Fatalf("check attendance after Teacher role revocation: %v", err)
-	}
-	if attendanceAllowed {
-		t.Fatal("active class-in-charge assignment retained attendance access after Teacher role revocation")
-	}
-
 	expectRejected("class in-charge assignment identity rewrite", func() error {
 		_, err := tx.Exec(ctx, `UPDATE class_incharge_assignments SET assigned_by_principal_id = $1 WHERE school_id = $2 AND section_id = $3 AND teacher_principal_id = $4 AND revoked_at IS NULL`, platformAdminPrincipalID, schoolID, section2, teacherPrincipalID)
 		return err
@@ -507,6 +491,22 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 	var priorStatus string
 	if err := tx.QueryRow(ctx, `SELECT status FROM student_enrollments WHERE id=$1`, apiEnrollment.ID).Scan(&priorStatus); err != nil || priorStatus != "promoted" {
 		t.Fatalf("prior enrollment status=%q err=%v; want promoted", priorStatus, err)
+	}
+
+	// A class-in-charge assignment must not preserve attendance authority after
+	// the principal's system Teacher role has been revoked.
+	if _, err := tx.Exec(ctx, `
+		UPDATE principal_roles SET revoked_at = NOW()
+		 WHERE principal_id = $1 AND role_id = $2 AND revoked_at IS NULL
+	`, teacherPrincipalID, teacherRoleID); err != nil {
+		t.Fatalf("revoke Teacher role fixture: %v", err)
+	}
+	attendanceAllowed, err := attendanceSectionAllowed(ctx, tx, teacherPrincipalID, schoolID, section2)
+	if err != nil {
+		t.Fatalf("check attendance after Teacher role revocation: %v", err)
+	}
+	if attendanceAllowed {
+		t.Fatal("active class-in-charge assignment retained attendance access after Teacher role revocation")
 	}
 
 }
