@@ -68,21 +68,33 @@ func (r *AcademicRepository) ListStudentEnrollments(ctx context.Context, actorID
 				  AND r.principal_type='staff' AND r.role_key='school_admin'
 				  AND r.is_system=TRUE
 			)
-			OR EXISTS (
-				SELECT 1 FROM class_incharge_assignments cia
-				WHERE cia.school_id=e.school_id
-				  AND cia.academic_year_id=e.academic_year_id
-				  AND cia.section_id=e.section_id
-				  AND cia.teacher_principal_id=$4
-				  AND cia.revoked_at IS NULL
-			)
-			OR EXISTS (
-				SELECT 1 FROM teacher_subject_assignments tsa
-				WHERE tsa.school_id=e.school_id
-				  AND tsa.academic_year_id=e.academic_year_id
-				  AND tsa.section_id=e.section_id
-				  AND tsa.teacher_principal_id=$4
-				  AND tsa.revoked_at IS NULL
+			OR (
+				EXISTS (
+					SELECT 1 FROM principal_roles tpr
+					JOIN roles tr ON tr.id=tpr.role_id
+					WHERE tpr.principal_id=$4 AND tpr.revoked_at IS NULL
+					  AND tr.school_id=e.school_id AND tr.scope_type='school'
+					  AND tr.principal_type='staff' AND tr.role_key='teacher'
+					  AND tr.is_system=TRUE
+				)
+				AND (
+					EXISTS (
+						SELECT 1 FROM class_incharge_assignments cia
+						WHERE cia.school_id=e.school_id
+						  AND cia.academic_year_id=e.academic_year_id
+						  AND cia.section_id=e.section_id
+						  AND cia.teacher_principal_id=$4
+						  AND cia.revoked_at IS NULL
+					)
+					OR EXISTS (
+						SELECT 1 FROM teacher_subject_assignments tsa
+						WHERE tsa.school_id=e.school_id
+						  AND tsa.academic_year_id=e.academic_year_id
+						  AND tsa.section_id=e.section_id
+						  AND tsa.teacher_principal_id=$4
+						  AND tsa.revoked_at IS NULL
+					)
+				)
 			)
 		  )
 		ORDER BY e.enrolled_at DESC,e.id DESC`, schoolID, yearID, studentID, actorID)
