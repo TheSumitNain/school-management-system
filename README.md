@@ -112,11 +112,11 @@ Platform Admin uses POST /auth/platform-admin/login with email/password and must
 
 ## Database Migrations
 
-The repository includes additive migrations through V22. GitHub Actions run `41960953660` applied migrations V1–V22 to a fresh ephemeral PostgreSQL 18 database. This verifies the migration chain in CI only; it does not establish or change the version of either persistent local database. The one-time first Platform Admin bootstrap command is separate from migrations and must only be run deliberately by an authorized operator; no permanent Platform Admin account is created automatically. Never apply migrations to `school_management` without separate explicit approval.
+The repository includes additive migrations through V22. GitHub Actions run `41961583328` applied migrations V1–V22 to a fresh ephemeral PostgreSQL 18 database. This verifies the migration chain in CI only; it does not establish or change the version of either persistent local database. The one-time first Platform Admin bootstrap command is separate from migrations and must only be run deliberately by an authorized operator; no permanent Platform Admin account is created automatically. Never apply migrations to `school_management` without separate explicit approval.
 
 ## Verification
 
-Latest verified remote checkpoint: commit `1b942cab4ebd76f849c579d1aa3324e839fc2741`, GitHub Actions run [41960953660](https://github.com/TheSumitNain/school-management-system/actions/runs/41960953660). CI applied V1–V22 to ephemeral PostgreSQL 18, ran the complete backend suite including opt-in PostgreSQL integration tests, and passed `go vet ./...`. This does not verify the user's local working tree or migrate either persistent local database. Pull the latest branch and repeat local tests before relying on local verification.
+Latest verified remote checkpoint: commit `7071d7913ab62ff525637e2af0f4d3718b9f57b8`, GitHub Actions run [41961583328](https://github.com/TheSumitNain/school-management-system/actions/runs/41961583328). CI applied V1–V22 to ephemeral PostgreSQL 18, ran the complete backend suite including opt-in PostgreSQL integration tests, and passed `go vet ./...`. This does not verify the user's local working tree or migrate either persistent local database. Pull the latest branch and repeat local tests before relying on local verification.
 
 ## Not Yet Implemented
 
