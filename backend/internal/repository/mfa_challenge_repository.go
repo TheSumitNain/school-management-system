@@ -234,7 +234,7 @@ ON CONFLICT (identifier_hash) DO UPDATE SET
     END,
     last_attempt_at = NOW(),
     updated_at = NOW()
-RETURNING locked_until > NOW()`
+RETURNING COALESCE(locked_until > NOW(), FALSE)`
 		if err := tx.QueryRow(ctx, upsert, mfaLoginAttemptHash(principalID)).Scan(&principalLocked); err != nil {
 			return fmt.Errorf("record principal MFA login failure: %w", err)
 		}
