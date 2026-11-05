@@ -148,10 +148,30 @@ func TestAdminSessionActivityV21PostgresIntegration(t *testing.T) {
 		    (principal_id,method,secret_ciphertext,encryption_key_version,verified_at)
 		VALUES($1,'totp',decode('01','hex'),1,NOW())
 	`,staffPrincipalID); err != nil { t.Fatalf("create School Admin MFA fixture: %v",err) }
+	// Use the already-bootstrapped Platform Admin that actually holds the
+	// platform.school_admins.create grant as the assigning actor. The local
+	// principal above is deliberately a separate session-activity subject and
+	// must not be treated as an authorized provisioning actor.
+	var provisioningActorID int64
+	if err := pool.QueryRow(ctx,`
+		SELECT ap.id
+		FROM auth_principals ap
+		JOIN principal_roles pr ON pr.principal_id=ap.id AND pr.revoked_at IS NULL
+		JOIN roles r ON r.id=pr.role_id
+		JOIN role_permissions rp ON rp.role_id=r.id
+		JOIN permissions p ON p.id=rp.permission_id
+		WHERE ap.principal_type='platform_admin' AND ap.status='active'
+		  AND r.scope_type='platform' AND r.role_key='platform_admin'
+		  AND p.permission_key='platform.school_admins.create'
+		  AND p.scope_type='platform' AND p.is_active=TRUE
+		LIMIT 1
+	`).Scan(&provisioningActorID); err != nil {
+		t.Fatalf("load authorized Platform Admin provisioning actor: %v",err)
+	}
 	if _, err := pool.Exec(ctx,`
 		INSERT INTO principal_roles(principal_id,role_id,assigned_by)
 		VALUES($1,$2,$3)
-	`,staffPrincipalID,schoolAdminRoleID,principalID); err != nil { t.Fatalf("assign exact School Admin system role: %v",err) }
+	`,staffPrincipalID,schoolAdminRoleID,provisioningActorID); err != nil { t.Fatalf("assign exact School Admin system role: %v",err) }
 
 	schoolAdminTokenSum := sha256.Sum256([]byte("school-admin-idle-v21-"+suffix))
 	schoolAdminTokenHash := hex.EncodeToString(schoolAdminTokenSum[:])
