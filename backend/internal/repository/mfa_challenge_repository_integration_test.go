@@ -21,9 +21,13 @@ func TestMFAChallengeRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("load fixture token version: %v", err)
 	}
 	repo := NewMFAChallengeRepository(pool)
+	attemptHash := mfaLoginAttemptHash(principalID)
+	_, _ = pool.Exec(ctx, `DELETE FROM auth_login_attempts WHERE identifier_hash=$1`, attemptHash)
 	t.Cleanup(func() {
 		_, _ = pool.Exec(context.Background(),
 			`DELETE FROM auth_mfa_challenges WHERE principal_id = $1`, principalID)
+		_, _ = pool.Exec(context.Background(),
+			`DELETE FROM auth_login_attempts WHERE identifier_hash=$1`, attemptHash)
 	})
 
 	t.Run("new challenge supersedes previous challenge", func(t *testing.T) {
@@ -49,15 +53,23 @@ func TestMFAChallengeRepositoryPostgresIntegration(t *testing.T) {
 			t.Fatalf("create login challenge: %v", err)
 		}
 		for i := 1; i <= maxMFAChallengeAttempts; i++ {
-			if err := repo.RecordFailure(ctx, hash); err != nil {
+			err := repo.RecordFailure(ctx, hash)
+			if i < maxMFAChallengeAttempts && err != nil {
 				t.Fatalf("record failure %d: %v", i, err)
 			}
+			if i == maxMFAChallengeAttempts && !errors.Is(err, ErrMFALoginLocked) {
+				t.Fatalf("fifth failure error = %v, want principal-wide MFA lockout", err)
+			}
 		}
-		if _, err := repo.Get(ctx, hash); !errors.Is(err, ErrMFAChallengeUnavailable) {
-			t.Fatalf("locked challenge should be unavailable, got %v", err)
+		if _, err := repo.Get(ctx, hash); !errors.Is(err, ErrMFALoginLocked) {
+			t.Fatalf("locked challenge should return principal-wide lockout, got %v", err)
 		}
 		if err := repo.RecordFailure(ctx, hash); !errors.Is(err, ErrMFAChallengeUnavailable) {
 			t.Fatalf("sixth failure should be rejected, got %v", err)
+		}
+		if err := repo.Create(ctx, principalID, tokenVersion, MFAChallengeLogin,
+			integrationTokenHash("mfa-challenge-after-lockout"), time.Now().Add(5*time.Minute)); !errors.Is(err, ErrMFALoginLocked) {
+			t.Fatalf("new challenge must not reset principal MFA lockout, got %v", err)
 		}
 	})
 
@@ -87,12 +99,28 @@ func TestMFAChallengeRepositoryPostgresIntegration(t *testing.T) {
 			_, _ = pool.Exec(context.Background(), "DELETE FROM principal_mfa_credentials WHERE principal_id=$1", principalID)
 		})
 		mfaRepo := NewMFARepository(pool)
+		if _, err := pool.Exec(ctx, `
+			INSERT INTO auth_login_attempts
+			    (identifier_hash,failed_attempts,window_started_at,last_attempt_at,updated_at)
+			VALUES ($1,4,NOW(),NOW(),NOW())
+			ON CONFLICT (identifier_hash) DO UPDATE
+			SET failed_attempts=4,window_started_at=NOW(),locked_until=NULL,last_attempt_at=NOW(),updated_at=NOW()
+		`, attemptHash); err != nil {
+			t.Fatalf("seed pre-lockout MFA failures: %v", err)
+		}
 		first := integrationTokenHash("mfa-replay-first")
 		if err := repo.Create(ctx, principalID, tokenVersion, MFAChallengeLogin, first, time.Now().Add(5*time.Minute)); err != nil {
 			t.Fatal(err)
 		}
 		if err := mfaRepo.ConsumeLoginChallenge(ctx, principalID, first, tokenVersion, 12345); err != nil {
 			t.Fatalf("first TOTP use: %v", err)
+		}
+		var mfaFailuresRemain bool
+		if err := pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM auth_login_attempts WHERE identifier_hash=$1)`, attemptHash).Scan(&mfaFailuresRemain); err != nil {
+			t.Fatalf("check MFA failure reset after successful verification: %v", err)
+		}
+		if mfaFailuresRemain {
+			t.Fatal("successful MFA verification did not clear principal-wide MFA failures")
 		}
 		second := integrationTokenHash("mfa-replay-second")
 		if err := repo.Create(ctx, principalID, tokenVersion, MFAChallengeLogin, second, time.Now().Add(5*time.Minute)); err != nil {
