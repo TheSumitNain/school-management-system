@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-11-05
+
+- Added V22 database and repository protections against self role assignment and self permission override escalation/removal.
+- Added principal-wide MFA failure lockout across replacement challenges and challenge purposes, including 15-minute lockout, failure audit events, and reset after successful verification.
+- Made staff and Platform Admin HTTP login fail closed when the IP rate limiter is not wired; made staff authentication fail closed when the username lockout/security repository is missing.
+- Restricted Parent authentication, guardian matching and pre-account registration to active-school guardian/student links. Parent OTP/SMS delivery and Phase 2 Parent/Driver routes remain paused.
+- Added student name to the assigned-section teacher enrollment roster while retaining the approved minimal fields and assignment filtering.
+- Updated existing README, security, testing, Phase 1 RBAC and progress documentation with current implementation and verification status.
+- Latest green source checkpoint: commit 1b942cab4ebd76f849c579d1aa3324e839fc2741; GitHub Actions run 41960953660 passed migrations V1–V22, backend PostgreSQL integration tests, and go vet on ephemeral PostgreSQL 18.
+
+
 All notable changes to the School Management System are documented in this file.
 
 This project is under active development. Verification results describe the latest reported local checks and should be rerun whenever relevant code changes.
