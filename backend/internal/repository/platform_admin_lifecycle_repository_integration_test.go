@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func TestPlatformAdminLifecycleRepositoryPostgresIntegration(t *testing.T) {
@@ -96,10 +98,7 @@ WHERE action='platform.admin.deactivated' AND resource_id=$1 AND actor_principal
 
 // ensurePlatformAdminLifecycleActor reuses a live lifecycle-capable admin or
 // bootstraps the first one in the isolated PostgreSQL integration database.
-func ensurePlatformAdminLifecycleActor(t *testing.T, pool interface {
-	QueryRow(context.Context, string, ...any) interface{ Scan(...any) error }
-	Exec(context.Context, string, ...any) (interface{}, error)
-}) int64 {
+func ensurePlatformAdminLifecycleActor(t *testing.T, pool *pgxpool.Pool) int64 {
 	t.Helper()
 	ctx := context.Background()
 	var actorID int64
