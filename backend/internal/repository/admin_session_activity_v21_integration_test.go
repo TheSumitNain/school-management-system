@@ -23,32 +23,62 @@ func TestAdminSessionActivityV21PostgresIntegration(t *testing.T) {
 	if err != nil { t.Fatalf("begin admin fixture transaction: %v", err) }
 	defer func() { _ = tx.Rollback(ctx) }()
 
+	// Reuse an authorized administrator when the integration database already
+	// has one. On a clean database, bootstrap a temporary first administrator
+	// inside this rollback-scoped transaction; never leave a permanent account.
 	var principalID int64
 	if err := tx.QueryRow(ctx, `
-		INSERT INTO auth_principals (principal_type,status)
-		VALUES ('platform_admin','active') RETURNING id
-	`).Scan(&principalID); err != nil { t.Fatalf("create Platform Admin principal: %v", err) }
-	if _, err := tx.Exec(ctx, `
-		INSERT INTO platform_admin_accounts (principal_id,email,password_hash,must_change_password,mfa_enrolled_at)
-		VALUES ($1,$2,'integration-password-hash',FALSE,NOW())
-	`, principalID, "idle-v21-"+suffix+"@example.invalid"); err != nil { t.Fatalf("create Platform Admin account: %v", err) }
-	if _, err := tx.Exec(ctx, `
-		INSERT INTO principal_mfa_credentials
-			(principal_id,method,secret_ciphertext,encryption_key_version,verified_at)
-		VALUES ($1,'totp',decode('01','hex'),1,NOW())
-	`, principalID); err != nil { t.Fatalf("create verified MFA credential: %v", err) }
-	if err := tx.Commit(ctx); err != nil { t.Fatalf("commit Platform Admin fixture: %v", err) }
+		SELECT COALESCE((
+			SELECT ap.id
+			FROM auth_principals ap
+			JOIN principal_roles pr ON pr.principal_id=ap.id AND pr.revoked_at IS NULL
+			JOIN roles r ON r.id=pr.role_id
+			JOIN role_permissions rp ON rp.role_id=r.id
+			JOIN permissions p ON p.id=rp.permission_id
+			WHERE ap.principal_type='platform_admin' AND ap.status='active'
+			  AND r.scope_type='platform' AND r.role_key='platform_admin'
+			  AND p.permission_key='platform.school_admins.create'
+			  AND p.scope_type='platform' AND p.is_active=TRUE
+			LIMIT 1
+		), 0)
+	`).Scan(&principalID); err != nil {
+		t.Fatalf("resolve authorized Platform Admin fixture: %v", err)
+	}
+	if principalID == 0 {
+		var bootstrapExists bool
+		if err := tx.QueryRow(ctx, `
+			SELECT EXISTS (SELECT 1 FROM platform_admin_accounts)
+			    OR EXISTS (
+			        SELECT 1 FROM principal_roles pr
+			        JOIN roles r ON r.id=pr.role_id
+			        WHERE r.principal_type='platform_admin'
+			          AND r.scope_type='platform' AND r.role_key='platform_admin'
+			    )
+		`).Scan(&bootstrapExists); err != nil {
+			t.Fatalf("check Platform Admin bootstrap state: %v", err)
+		}
+		if bootstrapExists {
+			t.Skip("Platform Admin bootstrap exists but no active administrator has platform.school_admins.create")
+		}
+		var bootstrapErr error
+		principalID, bootstrapErr = NewPlatformAdminRepository(pool).bootstrapFirstInTx(
+			ctx, tx, "idle-v21-"+suffix+"@example.invalid", "integration-password-hash",
+		)
+		if bootstrapErr != nil {
+			t.Fatalf("create rollback-scoped Platform Admin fixture: %v", bootstrapErr)
+		}
+	}
 
 	// The production login issuance path must initialize the V21 activity
 	// timestamp on the first refresh-session row, not only after a rotation.
 	issuedTokenSum := sha256.Sum256([]byte("admin-idle-v21-issued-"+suffix))
 	issuedTokenHash := hex.EncodeToString(issuedTokenSum[:])
-	issuedFamily, err := NewPrincipalRefreshSessionRepository(pool).CreatePrincipalForVersionWithFamily(
+	issuedFamily, err := NewPrincipalRefreshSessionRepository(tx).CreatePrincipalForVersionWithFamily(
 		ctx, principalID, 1, issuedTokenHash, time.Now().Add(24*time.Hour),
 	)
 	if err != nil { t.Fatalf("create first session through production family issuer: %v",err) }
 	var activityInitialized bool
-	if err := pool.QueryRow(ctx,`
+	if err := tx.QueryRow(ctx,`
 		SELECT last_activity_at > clock_timestamp()-INTERVAL '1 minute'
 		FROM refresh_sessions WHERE token_hash=$1 AND family_id=$2::uuid
 	`,issuedTokenHash,issuedFamily).Scan(&activityInitialized); err != nil { t.Fatalf("verify initial activity timestamp: %v",err) }
@@ -70,12 +100,12 @@ func TestAdminSessionActivityV21PostgresIntegration(t *testing.T) {
 	expiredFamily := createFamily("expired")
 	activeFamily := createFamily("active")
 
-	tracker := NewPrincipalAuthorizationRepository(pool)
+	tracker := NewPrincipalAuthorizationRepository(tx)
 	isAdmin, valid, err := tracker.CheckAndTouchAdminSession(ctx, principalID, activeFamily)
 	if err != nil { t.Fatalf("touch active device family: %v", err) }
 	if !isAdmin || !valid { t.Fatalf("active admin family should pass: isAdmin=%v valid=%v",isAdmin,valid) }
 
-	if _, err := pool.Exec(ctx, `
+	if _, err := tx.Exec(ctx, `
 		UPDATE refresh_sessions SET last_activity_at=NOW()-INTERVAL '31 minutes'
 		WHERE family_id=$1::uuid AND revoked_at IS NULL
 	`, expiredFamily); err != nil { t.Fatalf("age expired device family: %v", err) }
@@ -131,12 +161,8 @@ func TestAdminSessionActivityV21PostgresIntegration(t *testing.T) {
 	var staffPrincipalID int64
 	if err := pool.QueryRow(ctx,`SELECT principal_id FROM users WHERE id=$1`,userID).Scan(&staffPrincipalID); err != nil { t.Fatalf("load integration staff principal: %v",err) }
 
-	// Promote this fixture staff account to the exact system School Admin role.
-	// The platform role assignment mirrors the one-time bootstrap path and is
-	// confined to this dedicated integration database.
-	// Platform Admin identity is established by its principal subtype and
-	// platform_admin_accounts row. Do not insert the protected bootstrap role
-	// here: its guard intentionally prevents creating a second bootstrap admin.
+	// Promote this fixture staff account to the exact system School Admin role
+	// using the authorized Platform Admin resolved above.
 	var schoolID, schoolAdminRoleID int64
 	if err := pool.QueryRow(ctx,`SELECT school_id FROM users WHERE id=$1`,userID).Scan(&schoolID); err != nil { t.Fatalf("load School Admin school: %v",err) }
 	if err := pool.QueryRow(ctx,`
@@ -148,26 +174,7 @@ func TestAdminSessionActivityV21PostgresIntegration(t *testing.T) {
 		    (principal_id,method,secret_ciphertext,encryption_key_version,verified_at)
 		VALUES($1,'totp',decode('01','hex'),1,NOW())
 	`,staffPrincipalID); err != nil { t.Fatalf("create School Admin MFA fixture: %v",err) }
-	// Use the already-bootstrapped Platform Admin that actually holds the
-	// platform.school_admins.create grant as the assigning actor. The local
-	// principal above is deliberately a separate session-activity subject and
-	// must not be treated as an authorized provisioning actor.
-	var provisioningActorID int64
-	if err := pool.QueryRow(ctx,`
-		SELECT ap.id
-		FROM auth_principals ap
-		JOIN principal_roles pr ON pr.principal_id=ap.id AND pr.revoked_at IS NULL
-		JOIN roles r ON r.id=pr.role_id
-		JOIN role_permissions rp ON rp.role_id=r.id
-		JOIN permissions p ON p.id=rp.permission_id
-		WHERE ap.principal_type='platform_admin' AND ap.status='active'
-		  AND r.scope_type='platform' AND r.role_key='platform_admin'
-		  AND p.permission_key='platform.school_admins.create'
-		  AND p.scope_type='platform' AND p.is_active=TRUE
-		LIMIT 1
-	`).Scan(&provisioningActorID); err != nil {
-		t.Fatalf("load authorized Platform Admin provisioning actor: %v",err)
-	}
+	provisioningActorID := principalID
 	if _, err := pool.Exec(ctx,`
 		INSERT INTO principal_roles(principal_id,role_id,assigned_by)
 		VALUES($1,$2,$3)
