@@ -107,6 +107,7 @@ func (s *MFAService) CompleteEnrollment(ctx context.Context, challengeToken, cod
 	if tokenErr != nil { return 0, 0, nil, ErrMFAInvalid }
 	hash := HashRefreshToken(strings.TrimSpace(challengeToken))
 	challenge, err := s.challenges.Get(ctx, hash)
+	if errors.Is(err, repository.ErrMFALoginLocked) { return 0, 0, nil, ErrLoginLocked }
 	if err != nil { return 0, 0, nil, ErrMFAInvalid }
 	principalID := challenge.PrincipalID
 	if challenge.Purpose != repository.MFAChallengeEnrollment { return 0, 0, nil, ErrMFAInvalid }
@@ -117,7 +118,11 @@ func (s *MFAService) CompleteEnrollment(ctx context.Context, challengeToken, cod
 	if err != nil { return 0, 0, nil, err }
 	step, valid := VerifyTOTPAndGetStep(secret, strings.TrimSpace(code), time.Now())
 	if !valid {
-		if err := s.challenges.RecordFailure(ctx, hash); err != nil && !errors.Is(err, repository.ErrMFAChallengeUnavailable) { return 0, 0, nil, err }
+		if recordErr := s.challenges.RecordFailure(ctx, hash); errors.Is(recordErr, repository.ErrMFALoginLocked) {
+			return 0, 0, nil, ErrLoginLocked
+		} else if recordErr != nil && !errors.Is(recordErr, repository.ErrMFAChallengeUnavailable) {
+			return 0, 0, nil, recordErr
+		}
 		return 0, 0, nil, ErrMFAInvalid
 	}
 	codes, hashes, err := GenerateRecoveryCodes(10)
@@ -190,6 +195,7 @@ func (s *MFAService) RegenerateRecoveryCodes(ctx context.Context, challengeToken
 	if tokenErr != nil { return nil, ErrMFAInvalid }
 	challengeHash := HashRefreshToken(strings.TrimSpace(challengeToken))
 	challenge, err := s.challenges.Get(ctx, challengeHash)
+	if errors.Is(err, repository.ErrMFALoginLocked) { return nil, ErrLoginLocked }
 	if err != nil || challenge.Purpose != repository.MFAChallengeRecoveryRegeneration { return nil, ErrMFAInvalid }
 	credential, err := s.credentials.GetCredential(ctx, challenge.PrincipalID)
 	if err != nil { return nil, err }
@@ -198,7 +204,11 @@ func (s *MFAService) RegenerateRecoveryCodes(ctx context.Context, challengeToken
 	if err != nil { return nil, err }
 	step, valid := VerifyTOTPAndGetStep(secret, strings.TrimSpace(code), time.Now())
 	if !valid {
-		if recordErr := s.challenges.RecordFailure(ctx, challengeHash); recordErr != nil && !errors.Is(recordErr, repository.ErrMFAChallengeUnavailable) { return nil, recordErr }
+		if recordErr := s.challenges.RecordFailure(ctx, challengeHash); errors.Is(recordErr, repository.ErrMFALoginLocked) {
+			return nil, ErrLoginLocked
+		} else if recordErr != nil && !errors.Is(recordErr, repository.ErrMFAChallengeUnavailable) {
+			return nil, recordErr
+		}
 		return nil, ErrMFAInvalid
 	}
 	codes, hashes, err := GenerateRecoveryCodes(10)
@@ -218,6 +228,7 @@ func (s *MFAService) newChallenge(ctx context.Context, principalID, tokenVersion
 	expires:=time.Now().Add(5*time.Minute)
 	if err:=s.challenges.Create(ctx,principalID,tokenVersion,purpose,HashRefreshToken(token),expires); err!=nil {
 		if errors.Is(err, repository.ErrPrincipalVersionChanged) { return "",time.Time{},ErrSessionPrincipalVersionChanged }
+		if errors.Is(err, repository.ErrMFALoginLocked) { return "",time.Time{},ErrLoginLocked }
 		return "",time.Time{},err
 	}
 	return token,expires,nil
