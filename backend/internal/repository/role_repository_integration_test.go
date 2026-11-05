@@ -324,6 +324,13 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 	}
 	assertPermission("students.read_basic", true)
 
+	// Revoking the exact delegation must immediately disable an already
+	// assigned custom-role permission, without waiting for role reassignment.
+	if err := repo.RevokeSchoolPermissionDelegation(ctx, platformAdminPrincipalID, roleDelegation.ID); err != nil {
+		t.Fatalf("revoke delegation backing an active custom-role grant: %v", err)
+	}
+	assertPermission("students.read_basic", false)
+
 	if err := repo.RevokeStaffRole(ctx, actorPrincipalID, schoolID, targetPrincipalID, customRole.ID); err != nil {
 		t.Fatalf("authorized staff role revocation failed: %v", err)
 	}
@@ -428,9 +435,6 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 		t.Fatalf("School A actor received School B permission overrides: %+v", crossSchoolOverrides)
 	}
 
-	if err := repo.RevokeSchoolPermissionDelegation(ctx, platformAdminPrincipalID, roleDelegation.ID); err != nil {
-		t.Fatalf("authorized role delegation revoke failed: %v", err)
-	}
 	if err := repo.RevokeSchoolPermissionDelegation(ctx, platformAdminPrincipalID, overrideDelegation.ID); err != nil {
 		t.Fatalf("authorized override delegation revoke failed: %v", err)
 	}
