@@ -14,6 +14,7 @@ type StudentEnrollment struct {
 	ID int64 `json:"id"`
 	SchoolID int64 `json:"school_id"`
 	StudentID int64 `json:"student_id"`
+	StudentName string `json:"student_name,omitempty"`
 	AcademicYearID int64 `json:"academic_year_id"`
 	ClassID int64 `json:"class_id"`
 	SectionID int64 `json:"section_id"`
@@ -36,6 +37,15 @@ func scanStudentEnrollment(row interface{ Scan(...any) error }) (*StudentEnrollm
 	return &v, nil
 }
 
+func scanStudentEnrollmentWithName(row interface{ Scan(...any) error }) (*StudentEnrollment, error) {
+	var v StudentEnrollment
+	err := row.Scan(&v.ID, &v.SchoolID, &v.StudentID, &v.AcademicYearID, &v.ClassID,
+		&v.SectionID, &v.RollNumber, &v.ClassNameSnapshot, &v.SectionNameSnapshot,
+		&v.Status, &v.EnrolledAt, &v.EndedAt, &v.CreatedAt, &v.UpdatedAt, &v.StudentName)
+	if err != nil { return nil, err }
+	return &v, nil
+}
+
 const enrollmentColumns = `id,school_id,student_id,academic_year_id,class_id,section_id,roll_number,
 	class_name_snapshot,section_name_snapshot,status,enrolled_at,ended_at,created_at,updated_at`
 
@@ -43,8 +53,10 @@ func (r *AcademicRepository) ListStudentEnrollments(ctx context.Context, actorID
 	if r == nil || r.db == nil { return nil, ErrAcademicAccessDenied }
 	if yearID < 0 || studentID < 0 { return nil, ErrInvalidAcademicInput }
 	if err := authorizeAcademic(ctx, r.db, actorID, schoolID, "students.read_basic"); err != nil { return nil, err }
-	rows, err := r.db.Query(ctx, `SELECT `+enrollmentColumns+`
+	rows, err := r.db.Query(ctx, `SELECT e.id,e.school_id,e.student_id,e.academic_year_id,e.class_id,e.section_id,e.roll_number,
+		e.class_name_snapshot,e.section_name_snapshot,e.status,e.enrolled_at,e.ended_at,e.created_at,e.updated_at,st.full_name
 		FROM student_enrollments e
+		JOIN students st ON st.id=e.student_id AND st.school_id=e.school_id
 		WHERE e.school_id=$1 AND ($2=0 OR e.academic_year_id=$2) AND ($3=0 OR e.student_id=$3)
 		  AND (
 			EXISTS (
@@ -78,7 +90,7 @@ func (r *AcademicRepository) ListStudentEnrollments(ctx context.Context, actorID
 	defer rows.Close()
 	items := make([]StudentEnrollment, 0)
 	for rows.Next() {
-		v, scanErr := scanStudentEnrollment(rows)
+		v, scanErr := scanStudentEnrollmentWithName(rows)
 		if scanErr != nil { return nil, fmt.Errorf("scan student enrollment: %w", scanErr) }
 		items = append(items, *v)
 	}
