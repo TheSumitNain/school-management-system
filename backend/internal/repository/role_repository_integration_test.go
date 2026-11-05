@@ -164,6 +164,9 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 	if !foundCustomRole {
 		t.Fatalf("custom role %d missing from school role listing", customRole.ID)
 	}
+	if _, err := repo.ListSchoolRoles(ctx, targetPrincipalID, schoolID); !errors.Is(err, ErrRolePermissionDenied) {
+		t.Fatalf("non-admin school role listing error = %v, want ErrRolePermissionDenied", err)
+	}
 
 	permissions, err := repo.ListSchoolPermissions(ctx)
 	if err != nil {
