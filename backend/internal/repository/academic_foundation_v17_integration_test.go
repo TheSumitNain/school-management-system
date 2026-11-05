@@ -366,9 +366,37 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 		t.Fatalf("revoked class-in-charge attendance update error = %v, want ErrAttendanceAccessDenied", err)
 	}
 
+	// A subject assignment alone grants the minimal roster for that section,
+	// but it must not grant class-in-charge attendance authority.
+	teacherAcademicRepo := NewAcademicRepository(tx)
+	subjectOnlyScope, err := tx.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin subject-only scope savepoint: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		UPDATE class_incharge_assignments SET revoked_at = NOW()
+		 WHERE school_id = $1 AND section_id = $2 AND teacher_principal_id = $3
+		   AND revoked_at IS NULL
+	`, schoolID, section2, teacherPrincipalID); err != nil {
+		_ = subjectOnlyScope.Rollback(ctx)
+		t.Fatalf("temporarily revoke class-in-charge assignment: %v", err)
+	}
+	subjectOnlyEnrollments, err := teacherAcademicRepo.ListStudentEnrollments(ctx, teacherPrincipalID, schoolID, year2, studentID)
+	if err != nil || len(subjectOnlyEnrollments) != 1 || subjectOnlyEnrollments[0].SectionID != section2 {
+		_ = subjectOnlyScope.Rollback(ctx)
+		t.Fatalf("subject-only teacher roster = %+v, err=%v; want assigned section %d", subjectOnlyEnrollments, err, section2)
+	}
+	attendanceAllowed, err := attendanceSectionAllowed(ctx, tx, teacherPrincipalID, schoolID, section2)
+	if err != nil || attendanceAllowed {
+		_ = subjectOnlyScope.Rollback(ctx)
+		t.Fatalf("subject-only teacher attendance access = %v, err=%v; want denied", attendanceAllowed, err)
+	}
+	if err := subjectOnlyScope.Rollback(ctx); err != nil {
+		t.Fatalf("restore class-in-charge assignment savepoint: %v", err)
+	}
+
 	// Basic enrollment reads must be constrained to the teacher's currently
 	// assigned sections, even when the teacher has school-level read_basic.
-	teacherAcademicRepo := NewAcademicRepository(tx)
 	teacherEnrollments, err := teacherAcademicRepo.ListStudentEnrollments(ctx, teacherPrincipalID, schoolID, 0, 0)
 	if err != nil {
 		t.Fatalf("list teacher's assigned-section enrollments: %v", err)
