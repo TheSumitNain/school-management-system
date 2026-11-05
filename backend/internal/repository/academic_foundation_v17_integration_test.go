@@ -306,6 +306,65 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 	`, schoolID, year2, section2, teacherPrincipalID, actorPrincipalID); err != nil {
 		t.Fatalf("assign class in-charge teacher: %v", err)
 	}
+	// Give the same teacher a separate current-year section so attendance
+	// behavior can be exercised against an enrollment whose date range includes
+	// the database's current date.
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO class_incharge_assignments
+			(school_id, academic_year_id, section_id,
+			 teacher_principal_id, assigned_by_principal_id)
+		VALUES ($1, $2, $3, $4, $5)
+	`, schoolID, year1, section1, teacherPrincipalID, actorPrincipalID); err != nil {
+		t.Fatalf("assign current-year class in-charge teacher: %v", err)
+	}
+	attendanceRepo := NewAcademicRepository(tx)
+	var attendanceDay time.Time
+	if err := tx.QueryRow(ctx, `SELECT CURRENT_DATE`).Scan(&attendanceDay); err != nil {
+		t.Fatalf("load PostgreSQL current date for attendance fixture: %v", err)
+	}
+	attendance, err := attendanceRepo.MarkAttendance(
+		ctx, teacherPrincipalID, schoolID, enrollment1, attendanceDay, "present", nil,
+	)
+	if err != nil {
+		t.Fatalf("class-in-charge teacher could not mark current-section attendance: %v", err)
+	}
+	if attendance == nil || attendance.Status != "present" || attendance.SectionName != "A" {
+		t.Fatalf("unexpected marked attendance record: %+v", attendance)
+	}
+	attendanceItems, err := attendanceRepo.ListAttendance(
+		ctx, teacherPrincipalID, schoolID, year1, section1, attendanceDay,
+	)
+	if err != nil || len(attendanceItems) != 1 || attendanceItems[0].ID != attendance.ID {
+		t.Fatalf("class-in-charge teacher attendance listing: items=%+v err=%v", attendanceItems, err)
+	}
+	updatedAttendance, err := attendanceRepo.UpdateAttendance(
+		ctx, teacherPrincipalID, schoolID, attendance.ID, "late", nil,
+	)
+	if err != nil || updatedAttendance == nil || updatedAttendance.Status != "late" {
+		t.Fatalf("class-in-charge teacher same-day attendance update: record=%+v err=%v", updatedAttendance, err)
+	}
+	if _, err := tx.Exec(ctx, `
+		UPDATE class_incharge_assignments SET revoked_at = NOW()
+		 WHERE school_id = $1 AND section_id = $2 AND teacher_principal_id = $3
+		   AND revoked_at IS NULL
+	`, schoolID, section1, teacherPrincipalID); err != nil {
+		t.Fatalf("revoke current-year class-in-charge assignment: %v", err)
+	}
+	if _, err := attendanceRepo.ListAttendance(
+		ctx, teacherPrincipalID, schoolID, year1, section1, attendanceDay,
+	); !errors.Is(err, ErrAttendanceAccessDenied) {
+		t.Fatalf("revoked class-in-charge attendance listing error = %v, want ErrAttendanceAccessDenied", err)
+	}
+	if _, err := attendanceRepo.MarkAttendance(
+		ctx, teacherPrincipalID, schoolID, enrollment1, attendanceDay, "present", nil,
+	); !errors.Is(err, ErrAttendanceAccessDenied) {
+		t.Fatalf("revoked class-in-charge attendance marking error = %v, want ErrAttendanceAccessDenied", err)
+	}
+	if _, err := attendanceRepo.UpdateAttendance(
+		ctx, teacherPrincipalID, schoolID, attendance.ID, "absent", nil,
+	); !errors.Is(err, ErrAttendanceAccessDenied) {
+		t.Fatalf("revoked class-in-charge attendance update error = %v, want ErrAttendanceAccessDenied", err)
+	}
 
 	// Basic enrollment reads must be constrained to the teacher's currently
 	// assigned sections, even when the teacher has school-level read_basic.
