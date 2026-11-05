@@ -201,6 +201,18 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 		t.Fatalf("authorized user-override delegation grant failed: %v", err)
 	}
 
+	// A School Admin cannot add delegated authority to their own principal,
+	// either through a role assignment or a direct permission override.
+	if err := repo.AssignStaffRole(ctx, actorPrincipalID, schoolID, actorPrincipalID, customRole.ID); !errors.Is(err, ErrRolePermissionDenied) {
+		t.Fatalf("self role assignment error = %v, want ErrRolePermissionDenied", err)
+	}
+	if err := repo.SetStaffPermissionOverride(
+		ctx, actorPrincipalID, schoolID, actorPrincipalID, overrideDelegation.ID,
+		"homework.create", "allow", "self-escalation prevention test",
+	); !errors.Is(err, ErrRolePermissionDenied) {
+		t.Fatalf("self permission override error = %v, want ErrRolePermissionDenied", err)
+	}
+
 	delegations, err := repo.ListSchoolPermissionDelegations(ctx, actorPrincipalID, schoolID)
 	if err != nil {
 		t.Fatalf("authorized school delegation listing failed: %v", err)
