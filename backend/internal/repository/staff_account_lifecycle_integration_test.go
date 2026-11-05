@@ -204,8 +204,7 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
 	// force a password change, invalidate access tokens, revoke refresh sessions,
 	// and record the actor/target audit event.
 	resetSessionHash := integrationTokenHash("staff-lifecycle-reset-" + suffix)
-	sessions := NewPrincipalRefreshSessionRepository(pool)
-	if err := sessions.CreatePrincipalInTx(ctx, tx, created.PrincipalID, resetSessionHash, time.Now().Add(time.Hour)); err != nil {
+	if err := NewPrincipalRefreshSessionRepository(pool).CreatePrincipalInTx(ctx, tx, created.PrincipalID, resetSessionHash, time.Now().Add(time.Hour)); err != nil {
 		t.Fatalf("create target refresh session before password reset: %v", err)
 	}
 	const resetPasswordHash = "school-admin-reset-temporary-password-hash"
