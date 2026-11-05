@@ -49,8 +49,8 @@ func TestMFAChallengeRepositoryPostgresIntegration(t *testing.T) {
 
 	t.Run("fifth failed attempt across replacement challenges locks principal", func(t *testing.T) {
 		firstHash := integrationTokenHash("mfa-challenge-first-two-failures")
-		if err := repo.Create(ctx, principalID, tokenVersion, MFAChallengeLogin, firstHash, time.Now().Add(5*time.Minute)); err != nil {
-			t.Fatalf("create first login challenge: %v", err)
+		if err := repo.Create(ctx, principalID, tokenVersion, MFAChallengeRecoveryRegeneration, firstHash, time.Now().Add(5*time.Minute)); err != nil {
+			t.Fatalf("create recovery-regeneration challenge: %v", err)
 		}
 		for i := 1; i <= 2; i++ {
 			if err := repo.RecordFailure(ctx, firstHash); err != nil {
@@ -73,6 +73,9 @@ func TestMFAChallengeRepositoryPostgresIntegration(t *testing.T) {
 		}
 		if _, err := repo.Get(ctx, secondHash); !errors.Is(err, ErrMFALoginLocked) {
 			t.Fatalf("active replacement challenge should be blocked by principal-wide lockout, got %v", err)
+		}
+		if _, err := repo.Get(ctx, firstHash); !errors.Is(err, ErrMFALoginLocked) {
+			t.Fatalf("other-purpose challenge should also be blocked by principal-wide lockout, got %v", err)
 		}
 		if err := repo.RecordFailure(ctx, secondHash); !errors.Is(err, ErrMFALoginLocked) {
 			t.Fatalf("additional failure during principal lockout should remain blocked, got %v", err)
