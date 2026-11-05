@@ -46,7 +46,7 @@ func TestGuardianRoutesRequireDedicatedPermissions(t *testing.T) {
 					fakeDatabase{}, nil, validator,
 					fakePrincipalLoader{principal: principal},
 					fakePermissionLoader{permissions: permissions},
-					nil, nil, nil, nil, handlers.NewGuardianHandler(nil),
+					nil, nil, nil, nil, handlers.NewGuardianHandler(nil), fakeAdminSessionActivityTracker{adminPrincipalID: -1, familyID: "00000000-0000-4000-8000-000000000031"},
 				)
 				if err != nil { t.Fatalf("setup router: %v", err) }
 				return router
