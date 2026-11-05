@@ -394,3 +394,42 @@ func TestRefreshAccessTokenFailureRevokesRotatedRefreshSession(t *testing.T) {
 		t.Fatalf("rotated refresh token was not revoked after access-token failure: got %q", sessionService.revokedToken)
 	}
 }
+
+func TestLoginDoesNotDiscloseInactiveAccountOrSchool(t *testing.T) {
+	cases := []struct {
+		name string
+		err  error
+	}{
+		{name: "invalid credentials", err: services.ErrInvalidCredentials},
+		{name: "inactive staff account", err: services.ErrUserInactive},
+		{name: "inactive school", err: services.ErrSchoolInactive},
+	}
+
+	var baseline string
+	for i, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			router := setupTestRouter(
+				fakeAuthService{err: tc.err},
+				fakeTokenService{},
+				&fakeSessionService{},
+			)
+			req := httptest.NewRequest(http.MethodPost, "/auth/login",
+				strings.NewReader(`{"username":"teacher.one","password":"WrongPassword123!"}`))
+			req.Header.Set("Content-Type", "application/json")
+			rec := httptest.NewRecorder()
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusUnauthorized {
+				t.Fatalf("login status = %d, want 401; body=%s", rec.Code, rec.Body.String())
+			}
+			if !strings.Contains(rec.Body.String(), "Invalid username or password") {
+				t.Fatalf("login response disclosed a different authentication state: %s", rec.Body.String())
+			}
+			if i == 0 {
+				baseline = rec.Body.String()
+			} else if rec.Body.String() != baseline {
+				t.Fatalf("authentication response differs from generic failure; got %q, want %q", rec.Body.String(), baseline)
+			}
+		})
+	}
+}
