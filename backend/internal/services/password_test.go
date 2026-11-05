@@ -65,6 +65,22 @@ func TestHashPasswordRejectsInvalidPasswords(t *testing.T) {
 	}
 }
 
+func TestHashPasswordUsesCharacterMinimumAndUTF8ByteMaximum(t *testing.T) {
+	if _, err := HashPassword("éééééé"); !errors.Is(err, ErrInvalidPassword) {
+		t.Fatalf("six multibyte characters should fail the 12-character minimum, got %v", err)
+	}
+	password := strings.Repeat("é", 12)
+	if len(password) <= minPasswordLength {
+		t.Fatal("test password must contain more bytes than characters")
+	}
+	if _, err := HashPassword(password); err != nil {
+		t.Fatalf("twelve Unicode characters should satisfy the minimum: %v", err)
+	}
+	if _, err := HashPassword(strings.Repeat("é", 37)); !errors.Is(err, ErrInvalidPassword) {
+		t.Fatal("password exceeding bcrypt's 72-byte limit must be rejected")
+	}
+}
+
 func TestCheckPasswordRejectsInvalidInput(t *testing.T) {
 	if CheckPassword("", "$2a$12$invalid") {
 		t.Fatal("empty password must be rejected")
