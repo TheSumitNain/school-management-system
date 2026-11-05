@@ -39,6 +39,10 @@ func TestAdminSessionActivityV21PostgresIntegration(t *testing.T) {
 			  AND r.scope_type='platform' AND r.role_key='platform_admin'
 			  AND p.permission_key='platform.school_admins.create'
 			  AND p.scope_type='platform' AND p.is_active=TRUE
+			  AND EXISTS (
+			      SELECT 1 FROM principal_mfa_credentials mc
+			       WHERE mc.principal_id=ap.id AND mc.method='totp' AND mc.verified_at IS NOT NULL
+			  )
 			LIMIT 1
 		), 0)
 	`).Scan(&principalID); err != nil {
@@ -66,6 +70,13 @@ func TestAdminSessionActivityV21PostgresIntegration(t *testing.T) {
 		)
 		if bootstrapErr != nil {
 			t.Fatalf("create rollback-scoped Platform Admin fixture: %v", bootstrapErr)
+		}
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO principal_mfa_credentials
+			    (principal_id,method,secret_ciphertext,encryption_key_version,verified_at)
+			VALUES ($1,'totp',decode('01','hex'),1,NOW())
+		`, principalID); err != nil {
+			t.Fatalf("create temporary verified Platform Admin MFA fixture: %v", err)
 		}
 	}
 
