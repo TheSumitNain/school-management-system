@@ -93,6 +93,9 @@ func (s *MFAService) BeginAuthentication(ctx context.Context, principal *models.
 		return result,nil
 	}
 	challenge,expiry,err:=s.newChallenge(ctx,principalID,tokenVersion,repository.MFAChallengeLogin)
+	if errors.Is(err, repository.ErrMFALoginLocked) {
+		return nil, ErrLoginLocked
+	}
 	if err!=nil { return nil,err }
 	result.ChallengeToken=challenge
 	result.ExpiresAt=expiry
@@ -133,6 +136,9 @@ func (s *MFAService) VerifyLoginChallenge(ctx context.Context, challengeToken, c
 	if tokenErr != nil { return 0, 0, ErrMFAInvalid }
 	hash := HashRefreshToken(strings.TrimSpace(challengeToken))
 	challenge, err := s.challenges.Get(ctx, hash)
+	if errors.Is(err, repository.ErrMFALoginLocked) {
+		return 0, 0, ErrLoginLocked
+	}
 	if err != nil { return 0, 0, ErrMFAInvalid }
 	if challenge.Purpose != repository.MFAChallengeLogin { return 0, 0, ErrMFAInvalid }
 	credential, err := s.credentials.GetCredential(ctx, challenge.PrincipalID)
@@ -156,7 +162,11 @@ func (s *MFAService) VerifyLoginChallenge(ctx context.Context, challengeToken, c
 	err = s.credentials.ConsumeLoginRecoveryCode(ctx, challenge.PrincipalID, hash, tokenVersion, recoveryHash)
 	if err == nil { return challenge.PrincipalID, tokenVersion, nil }
 	if !errors.Is(err, repository.ErrMFARecoveryCodeInvalid) && !errors.Is(err, repository.ErrMFAEnrollmentInvalid) { return 0, 0, err }
-	if recordErr := s.challenges.RecordFailure(ctx, hash); recordErr != nil && !errors.Is(recordErr, repository.ErrMFAChallengeUnavailable) { return 0, 0, recordErr }
+	if recordErr := s.challenges.RecordFailure(ctx, hash); errors.Is(recordErr, repository.ErrMFALoginLocked) {
+		return 0, 0, ErrLoginLocked
+	} else if recordErr != nil && !errors.Is(recordErr, repository.ErrMFAChallengeUnavailable) {
+		return 0, 0, recordErr
+	}
 	return 0, 0, ErrMFAInvalid
 }
 
