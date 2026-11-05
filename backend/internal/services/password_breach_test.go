@@ -1,6 +1,7 @@
 package services
 
 import (
+	"io"
 	"context"
 	"crypto/sha1"
 	"encoding/hex"
@@ -73,4 +74,23 @@ func TestHIBPPasswordBreachCheckerIgnoresZeroCountPadding(t *testing.T) {
 	compromised,err:=checker.IsCompromised(context.Background(),password)
 	if err!=nil { t.Fatalf("check zero-count padding entry: %v",err) }
 	if compromised { t.Fatal("zero-count padding entry must not be treated as a breached password") }
+}
+
+func TestHIBPPasswordBreachCheckerRejectsOversizedRangeResponse(t *testing.T) {
+	password := "Another-unique-password-For-Testing-2026!"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// A truncated range response must never be cached as a complete,
+		// clean result because the matching suffix could be beyond the limit.
+		_, _ = io.WriteString(w, strings.Repeat(strings.Repeat("A", 35)+":1\\n", 60000))
+	}))
+	defer server.Close()
+
+	checker := NewHIBPPasswordBreachChecker(server.Client())
+	checker.endpoint = server.URL
+	if compromised, err := checker.IsCompromised(context.Background(), password); err == nil {
+		t.Fatalf("expected oversized response to fail closed, compromised=%v", compromised)
+	}
+	if len(checker.cache) != 0 {
+		t.Fatal("oversized response must not be cached")
+	}
 }
