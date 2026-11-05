@@ -146,22 +146,22 @@ Each school-owned record must be associated with the correct school. Users must 
 
 Tenant isolation must be enforced in backend services and repository queries, not just in the frontend.
 
-**Current status:** Authentication middleware loads canonical school context from the database-backed principal and validates current status/token version. Complete tenant-isolation enforcement across business resources remains pending because the school business APIs and their resource-scope filters are not yet implemented. A school_id column or valid token alone does not prove tenant isolation.
+**Current status:** Authentication middleware loads canonical school context and live principal state. Implemented student/enrollment/attendance/guardian repositories enforce school and teacher-assignment scope on their supported routes, including an assigned-section teacher roster. Complete tenant-isolation enforcement across every business resource remains pending; a school_id column or valid token alone does not prove tenant isolation.
 
 ## 6. Authorization and Roles
 
-The core principal/RBAC schema, built-in role bundles, live permission resolver and RequirePermission middleware are implemented. V16 adds exact delegation-ID linkage for custom-role grants and user permission overrides; the resolver now accepts custom-role grants and ALLOW overrides only while the exact referenced delegation remains active. V16 migration and PostgreSQL behavior tests are committed and passed on a fresh ephemeral PostgreSQL 18 database in GitHub Actions. The user's dedicated `school_management_test` database has not been changed by CI and still requires a separately reviewed migration application. Full route/resource/tenant/assignment authorization remains pending. Phase 1 web roles are Platform Admin, School Admin and Teacher; Parent and Driver are Phase 2.
+The core principal/RBAC schema, built-in role bundles, live permission resolver and RequirePermission middleware are implemented. V16 binds custom-role grants and user ALLOW overrides to the exact active delegation ID. V22 adds repository and database guards against self role assignment, self permission overrides, and self-removal of DENY overrides. The role/delegation/override HTTP workflows, same-school staff role administration, and account lifecycle routes have PostgreSQL integration coverage. The latest GitHub Actions run 41960953660 on commit 1b942ca applied V1–V22 to ephemeral PostgreSQL 18, passed the backend suite including PostgreSQL integration, and passed go vet ./.... CI does not modify either persistent local database. Complete authorization for all future business resources and every assignment/field-level boundary remains pending. Phase 1 web roles are Platform Admin, School Admin and Teacher; Parent and Driver are Phase 2.
 
 The implementation must enforce:
 
 - One-school-only School Admin and staff accounts; separate accounts for a person employed by multiple schools.
 - Globally unique, case-insensitive staff usernames. The current principal-aware schema and username-only staff login enforce this boundary.
-- New staff rows default to a temporary-password state; authenticated first-login change and same-school School Admin reset are implemented. The complete School Admin staff-creation HTTP workflow remains pending.
+- New staff rows default to a temporary-password state; first-login change, same-school School Admin reset, staff create/list/update/disable/re-enable, token-version invalidation and audit logging are implemented.
 - Admin-initiated same-school staff password reset without old password, with session/access revocation, forced next-login change, and audit logging.
-- Custom-role grants are bound to the exact active delegation ID in V16; the database guard and live resolver enforce the ceiling. Role-management HTTP workflows remain pending.
-- Multiple roles per staff account and per-user allow/deny overrides are supported by the schema/resolver; ALLOW overrides require their exact active delegation, explicit DENY removes access, and default is deny. Management HTTP workflows remain pending.
-- Separate teacher teaching and class-in-charge assignments, field-level student data restrictions, and exact class/section scoping.
-- Parent OTP identity linked to verified children; parent can access multiple linked children across schools, with server-side link verification on every request.
+- Custom-role grants are bound to the exact active delegation ID; the database guard and live resolver enforce the delegation ceiling. Role/delegation/override HTTP workflows are implemented and covered by targeted integration tests.
+- Multiple roles per staff account and per-user allow/deny overrides are supported; ALLOW overrides require their exact active delegation, explicit DENY removes access, and default is deny. Self-targeted role/override changes are rejected at repository and database layers.
+- Teacher subject/class and class-in-charge assignments have separate scope checks. Enrollment roster returns only assigned sections and approved basic student fields; full field-level and resource coverage remains ongoing.
+- Parent data foundations preserve verified guardian-child links across schools. Parent auth/matching now requires active linked schools and active official relationships; production OTP/SMS and Phase 2 Parent endpoints remain paused.
 - Server-side permission evaluation on every protected request so changes apply to existing sessions on the next request.
 - Cross-school, cross-class, cross-subject, field-level, and parent-child access-denial tests.
 
@@ -169,7 +169,7 @@ The backend must enforce permissions independently of the frontend. Hiding a but
 
 The backend must enforce permissions independently of the frontend. Hiding a button or route in React is not an authorization control.
 
-The current authentication middleware establishes identity, enforces administrative session activity, and resolves live role/override permissions on each protected request. The registered school staff, role/delegation, academic, student/enrollment, guardian, attendance, onboarding, and password-reset routes use route-level `RequirePermission` checks. This does not prove that every resource, assignment, field-level, and tenant boundary is complete; repository-level scope checks and negative tests remain necessary.
+The current authentication middleware establishes identity, enforces administrative session activity and MFA enrollment, and resolves live role/override permissions on each protected request. Registered staff, role/delegation, academic, student/enrollment, guardian, attendance, onboarding and password-reset routes use route-level RequirePermission checks. Repository-level school and assignment filters exist for implemented resources, but full coverage across future modules and every field-level boundary remains necessary.
 
 ## 7. Database Security
 
@@ -223,7 +223,7 @@ Before production release:
 - Review file uploads, exports, and external integrations before exposing them.
 - Test authentication endpoints against brute-force attempts, replay attempts, and abuse scenarios.
 
-The existing HTTP timeouts, configuration validation, and graceful shutdown are only part of the broader security requirements. Identifier-based five-failure/15-minute lockout and IP-based login rate limiting are implemented in the current branch. Broader abuse monitoring and production alerting remain pending.
+The existing HTTP timeouts, configuration validation, and graceful shutdown are only part of the broader security requirements. Identifier-based five-failure/15-minute lockout, IP-based login rate limiting, fail-closed behavior when either control is unavailable, and principal-wide five-failure/15-minute MFA lockout across replacement challenges are implemented. MFA failures are audited. Broader abuse monitoring and production alerting remain pending.
 
 ## 10. Development Seed Command
 
@@ -318,7 +318,7 @@ Whenever security behavior changes:
 6. Reassess this checklist before each production release.
 
 
-## 15. Approved Phase 1 Account Security Rules (Implementation Pending)
+## 15. Approved Phase 1 Account Security Rules — Implementation Status
 
 ### Staff account isolation
 
@@ -336,7 +336,7 @@ Parent uses registered mobile + OTP and can access multiple officially linked ch
 
 ### Immediate enforcement
 
-Role/permission changes and staff password changes/resets take effect on subsequent protected requests through live database permission loading and `auth_principals.token_version` checks. Staff password changes/resets increment token version and revoke active refresh sessions. Account disabling and school suspension are rejected by the live principal loader; their complete administration workflows remain pending.
+Role/permission changes and staff password changes/resets take effect on subsequent protected requests through live database permission loading and `auth_principals.token_version` checks. Staff password changes/resets increment token version and revoke active refresh sessions. Account disabling and school suspension are rejected by the live principal loader. Staff disable/re-enable workflows are implemented; full school suspension operations and every business-resource response remain subject to continued audit.
 
 ## 2026-11-03 implementation update
 
@@ -356,3 +356,11 @@ Role/permission changes and staff password changes/resets take effect on subsequ
 - PostgreSQL integration coverage verifies per-device isolation, timeout revocation/audit, refresh-time idle expiry, and ordinary-staff exemption.
 - New staff initial passwords, staff re-enable temporary passwords, self-service password changes, School Admin resets, and first Platform Admin bootstrap passwords are checked against the Pwned Passwords range API. The implementation uses k-anonymity (only a five-character SHA-1 prefix is sent), ignores zero-count padding records, caches range responses, and fails closed with HTTP 503 when the provider is unavailable.
 - GitHub Actions at commit `2daefb4` applied migrations V1–V21 to an ephemeral PostgreSQL database, passed backend tests including PostgreSQL integration, and passed `go vet ./...`. This does not modify the user's local database or production database.
+## 2026-11-05 implementation update
+
+- V22 prevents a principal from assigning a role or granting/removing a permission override on their own principal through repository methods and database triggers. Direct-SQL integration assertions cover the trigger boundary.
+- Administrative MFA failure counters are principal-wide across replacement challenges and challenge purposes. Five failures in a rolling 15-minute window lock the principal for 15 minutes; failed attempts are appended to the audit trail, and successful MFA verification/enrollment/recovery reset clears the counter.
+- Staff login fails closed if the username lockout store is unavailable; staff and Platform Admin HTTP login also fail closed if the IP rate limiter is missing.
+- Parent mobile lookup, parent principal loading, guardian matching and pre-account registration exclude inactive/suspended schools. Parent OTP/SMS delivery and Phase 2 endpoints remain paused.
+- Teacher enrollment roster includes student name, roll number, class and section only within assigned teaching/class-in-charge sections.
+- GitHub Actions run 41960953660 on commit 1b942cab4ebd76f849c579d1aa3324e839fc2741 passed migrations V1–V22, the full backend suite including PostgreSQL integration, and go vet ./... on ephemeral PostgreSQL 18. No persistent user database was changed by CI.
