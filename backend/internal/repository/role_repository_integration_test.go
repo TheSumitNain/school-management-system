@@ -387,6 +387,20 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 		t.Fatalf("deleted staff override remains: %+v", overrides)
 	}
 
+	// An ALLOW override must also stop working immediately when the exact
+	// user-override delegation is revoked.
+	if err := repo.SetStaffPermissionOverride(
+		ctx, actorPrincipalID, schoolID, targetPrincipalID, overrideDelegation.ID,
+		"homework.create", "allow", "verify live override delegation revocation",
+	); err != nil {
+		t.Fatalf("recreate ALLOW override before delegation revocation: %v", err)
+	}
+	assertPermission("homework.create", true)
+	if err := repo.RevokeSchoolPermissionDelegation(ctx, platformAdminPrincipalID, overrideDelegation.ID); err != nil {
+		t.Fatalf("revoke delegation backing an active ALLOW override: %v", err)
+	}
+	assertPermission("homework.create", false)
+
 	// A School Admin from School A must not read or mutate School B's role
 	// administration state, even when supplied with School B identifiers.
 	var otherSchoolID int64
@@ -435,10 +449,7 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 		t.Fatalf("School A actor received School B permission overrides: %+v", crossSchoolOverrides)
 	}
 
-	if err := repo.RevokeSchoolPermissionDelegation(ctx, platformAdminPrincipalID, overrideDelegation.ID); err != nil {
-		t.Fatalf("authorized override delegation revoke failed: %v", err)
-	}
-	if err := repo.RevokeSchoolPermissionDelegation(ctx, platformAdminPrincipalID, roleDelegation.ID); !errors.Is(err, ErrDelegationNotFound) {
+	if err := repo.RevokeSchoolPermissionDelegation(ctx, platformAdminPrincipalID, overrideDelegation.ID); !errors.Is(err, ErrDelegationNotFound) {
 		t.Fatalf("duplicate delegation revoke error = %v, want ErrDelegationNotFound", err)
 	}
 	delegations, err = repo.ListSchoolPermissionDelegations(ctx, actorPrincipalID, schoolID)
