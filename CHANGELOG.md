@@ -8,7 +8,7 @@
 - Restricted Parent authentication, guardian matching and pre-account registration to active-school guardian/student links. Parent OTP/SMS delivery and Phase 2 Parent/Driver routes remain paused.
 - Added student name to the assigned-section teacher enrollment roster while retaining the approved minimal fields and assignment filtering.
 - Updated existing README, security, testing, Phase 1 RBAC and progress documentation with current implementation and verification status.
-- Latest green source checkpoint: commit 1b942cab4ebd76f849c579d1aa3324e839fc2741; GitHub Actions run 41960953660 passed migrations V1–V22, backend PostgreSQL integration tests, and go vet on ephemeral PostgreSQL 18.
+- Latest green source checkpoint: commit 7071d7913ab62ff525637e2af0f4d3718b9f57b8; GitHub Actions run 41961583328 passed migrations V1–V22, backend PostgreSQL integration tests, and go vet on ephemeral PostgreSQL 18.
 
 
 All notable changes to the School Management System are documented in this file.
