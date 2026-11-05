@@ -547,6 +547,15 @@ func TestAcademicRoutesEnforceResourcePermissions(t *testing.T) {
 		{http.MethodPost, "/school/enrollments", "students.create", `{"student_id":1,"academic_year_id":1,"section_id":1,"enrolled_at":"2028-04-01"}`},
 		{http.MethodGet, "/school/students/1/enrollments", "students.read_basic", ""},
 		{http.MethodPost, "/school/enrollments/1/promote", "students.update", `{"academic_year_id":2,"section_id":2,"enrolled_at":"2029-04-01"}`},
+		{http.MethodPatch, "/school/academic-years/1", "academic_years.manage", ""},
+		{http.MethodPatch, "/school/classes/1", "classes.manage", ""},
+		{http.MethodPatch, "/school/sections/1", "classes.manage", ""},
+		{http.MethodPatch, "/school/subjects/1", "subjects.manage", ""},
+		{http.MethodGet, "/school/students", "students.read_sensitive", ""},
+		{http.MethodPost, "/school/students", "students.create", `{"admission_number":"ADM-1","full_name":"Test Student"}`},
+		{http.MethodGet, "/school/students/1", "students.read_sensitive", ""},
+		{http.MethodPatch, "/school/students/1", "students.update", `{"full_name":"Updated Student"}`},
+		{http.MethodPost, "/school/students/1/archive", "students.archive", `{"reason":"left school"}`},
 	}
 	for _, test := range tests {
 		t.Run(test.method+" "+test.path, func(t *testing.T) {
