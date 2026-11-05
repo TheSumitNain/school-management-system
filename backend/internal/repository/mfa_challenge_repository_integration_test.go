@@ -81,6 +81,17 @@ func TestMFAChallengeRepositoryPostgresIntegration(t *testing.T) {
 			integrationTokenHash("mfa-challenge-after-lockout"), time.Now().Add(5*time.Minute)); !errors.Is(err, ErrMFALoginLocked) {
 			t.Fatalf("new challenge must not reset principal MFA lockout, got %v", err)
 		}
+		var failureAuditCount int
+		if err := pool.QueryRow(ctx, `
+			SELECT COUNT(*) FROM audit_events
+			WHERE actor_principal_id=$1 AND action='auth.mfa.challenge_failed'
+			  AND resource_type='principal' AND resource_id=$1::text
+		`, principalID).Scan(&failureAuditCount); err != nil {
+			t.Fatalf("count failed MFA audit events: %v", err)
+		}
+		if failureAuditCount != maxMFAChallengeAttempts {
+			t.Fatalf("failed MFA audit events = %d, want %d", failureAuditCount, maxMFAChallengeAttempts)
+		}
 		if _, err := pool.Exec(ctx, `DELETE FROM auth_login_attempts WHERE identifier_hash=$1`, attemptHash); err != nil {
 			t.Fatalf("reset principal MFA lockout between isolated subtests: %v", err)
 		}
