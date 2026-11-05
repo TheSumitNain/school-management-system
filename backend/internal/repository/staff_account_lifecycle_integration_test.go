@@ -200,7 +200,55 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
 		t.Fatalf("updated username = %q, want %q", updated.Username, renamedUsername)
 	}
 
-	// Seed a live refresh session in the same outer transaction before disable.
+	// A School Admin password reset must atomically replace the credential,
+	// force a password change, invalidate access tokens, revoke refresh sessions,
+	// and record the actor/target audit event.
+	resetSessionHash := integrationTokenHash("staff-lifecycle-reset-" + suffix)
+	sessions := NewPrincipalRefreshSessionRepository(pool)
+	if err := sessions.CreatePrincipalInTx(ctx, tx, created.PrincipalID, resetSessionHash, time.Now().Add(time.Hour)); err != nil {
+		t.Fatalf("create target refresh session before password reset: %v", err)
+	}
+	const resetPasswordHash = "school-admin-reset-temporary-password-hash"
+	if err := repo.ResetStaffPassword(ctx, actorPrincipalID, schoolID, created.PrincipalID, resetPasswordHash); err != nil {
+		t.Fatalf("authorized same-school staff password reset failed: %v", err)
+	}
+	var actualResetPasswordHash string
+	var resetMustChangePassword, resetSessionRevoked bool
+	var resetTokenVersion int64
+	if err := tx.QueryRow(ctx, `
+		SELECT u.password_hash, u.must_change_password, ap.token_version,
+		       EXISTS (
+		           SELECT 1 FROM refresh_sessions rs
+		            WHERE rs.token_hash = $2 AND rs.revoked_at IS NOT NULL
+	       )
+		  FROM users u
+		  JOIN auth_principals ap ON ap.id = u.principal_id
+		 WHERE u.principal_id = $1
+	`, created.PrincipalID, resetSessionHash).Scan(
+		&actualResetPasswordHash, &resetMustChangePassword, &resetTokenVersion, &resetSessionRevoked,
+	); err != nil {
+		t.Fatalf("read staff password reset state: %v", err)
+	}
+	if actualResetPasswordHash != resetPasswordHash || !resetMustChangePassword ||
+		resetTokenVersion != 3 || !resetSessionRevoked {
+		t.Fatalf("password reset state mismatch: hash=%q must_change=%v token_version=%d session_revoked=%v",
+			actualResetPasswordHash, resetMustChangePassword, resetTokenVersion, resetSessionRevoked)
+	}
+	var resetAuditCount int
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*)
+		  FROM audit_events
+		 WHERE actor_principal_id = $1 AND school_id = $2
+		   AND action = 'staff.password.reset' AND resource_type = 'staff_user'
+		   AND resource_id = $3 AND outcome = 'success'
+	`, actorPrincipalID, schoolID, fmt.Sprint(created.ID)).Scan(&resetAuditCount); err != nil {
+		t.Fatalf("count staff password reset audit events: %v", err)
+	}
+	if resetAuditCount != 1 {
+		t.Fatalf("expected exactly one staff password reset audit event, got %d", resetAuditCount)
+	}
+
+	// Seed a separate live refresh session in the same outer transaction before disable.
 	// The repository must serialize with refresh rotation and revoke this session
 	// atomically with principal deactivation.
 	sessionHash := integrationTokenHash("staff-lifecycle-disable-" + suffix)
@@ -258,7 +306,7 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
 	}
 	if finalUsername != renamedUsername || finalUserStatus != "active" ||
 		finalPrincipalStatus != "active" || finalPasswordHash != replacementPasswordHash ||
-		!mustChangePassword || tokenVersion != 4 {
+		!mustChangePassword || tokenVersion != 5 {
 		t.Fatalf("unexpected re-enabled staff state: username=%q user=%q principal=%q must_change=%v token_version=%d",
 			finalUsername, finalUserStatus, finalPrincipalStatus, mustChangePassword, tokenVersion)
 	}
