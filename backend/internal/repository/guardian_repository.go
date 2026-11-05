@@ -105,7 +105,7 @@ func guardianWriteError(err error) error {
 		case "23505": return ErrGuardianConflict
 		case "23503", "23514", "22001", "P0001":
 			message := strings.ToLower(pgErr.Message)
-			if strings.Contains(message, "guardian mobile cannot change while an active parent link exists") {
+			if strings.Contains(message, "active parent link") {
 				return ErrGuardianConflict
 			}
 			if strings.Contains(message, "revocation") || strings.Contains(message, "same-school") {
