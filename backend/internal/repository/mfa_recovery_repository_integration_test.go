@@ -126,3 +126,55 @@ ON CONFLICT (principal_id) DO UPDATE SET verified_at=NOW(),last_accepted_step=NU
 		t.Fatalf("concurrent uses succeeded %d times; want 1", successes.Load())
 	}
 }
+
+func TestMFARepositoryReencryptCredentialPostgresIntegration(t *testing.T) {
+	_, pool, userID := newPostgresIntegrationRepository(t)
+	ctx := context.Background()
+	var principalID int64
+	if err := pool.QueryRow(ctx, `SELECT principal_id FROM users WHERE id=$1`, userID).Scan(&principalID); err != nil {
+		t.Fatalf("load principal: %v", err)
+	}
+	oldCiphertext := make([]byte, 64)
+	newCiphertext := make([]byte, 64)
+	staleCiphertext := make([]byte, 64)
+	oldCiphertext[0], newCiphertext[0], staleCiphertext[0] = 1, 2, 3
+	if _, err := pool.Exec(ctx, `INSERT INTO principal_mfa_credentials
+(principal_id,method,secret_ciphertext,encryption_key_version,verified_at)
+VALUES($1,'totp',$2,1,NOW())
+ON CONFLICT (principal_id) DO UPDATE SET
+ secret_ciphertext=EXCLUDED.secret_ciphertext,
+ encryption_key_version=EXCLUDED.encryption_key_version,
+ verified_at=NOW()`, principalID, oldCiphertext); err != nil {
+		t.Fatalf("prepare MFA credential: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM auth_mfa_challenges WHERE principal_id=$1`, principalID)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM principal_mfa_credentials WHERE principal_id=$1`, principalID)
+	})
+
+	repo := NewMFARepository(pool)
+	if err := repo.ReencryptCredential(ctx, principalID, oldCiphertext, 1, newCiphertext, 2); err != nil {
+		t.Fatalf("rotate credential: %v", err)
+	}
+	var storedCiphertext []byte
+	var storedVersion int
+	if err := pool.QueryRow(ctx, `SELECT secret_ciphertext,encryption_key_version
+FROM principal_mfa_credentials WHERE principal_id=$1 AND method='totp'`, principalID).Scan(&storedCiphertext, &storedVersion); err != nil {
+		t.Fatalf("load rotated credential: %v", err)
+	}
+	if storedVersion != 2 || string(storedCiphertext) != string(newCiphertext) {
+		t.Fatalf("stored credential after rotation = version %d, ciphertext %v; want version 2 and new ciphertext", storedVersion, storedCiphertext)
+	}
+
+	// A stale concurrent worker must not overwrite the already-rotated value.
+	if err := repo.ReencryptCredential(ctx, principalID, oldCiphertext, 1, staleCiphertext, 3); err != nil {
+		t.Fatalf("stale compare-and-swap should be harmless: %v", err)
+	}
+	if err := pool.QueryRow(ctx, `SELECT secret_ciphertext,encryption_key_version
+FROM principal_mfa_credentials WHERE principal_id=$1 AND method='totp'`, principalID).Scan(&storedCiphertext, &storedVersion); err != nil {
+		t.Fatalf("reload rotated credential: %v", err)
+	}
+	if storedVersion != 2 || string(storedCiphertext) != string(newCiphertext) {
+		t.Fatalf("stale rotation overwrote credential: version %d", storedVersion)
+	}
+}

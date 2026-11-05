@@ -366,11 +366,16 @@ func run() error {
 	principalAuthorizationRepo := repository.NewPrincipalAuthorizationRepository(db)
 	mfaChallengeRepo := repository.NewMFAChallengeRepository(db)
 	mfaRepo := repository.NewMFARepository(db)
-	mfaService, err := services.NewMFAService(
+	previousTOTPKeys := make(map[int][]byte, len(cfg.TOTPEncryptionPreviousKeys))
+	for _, previousKey := range cfg.TOTPEncryptionPreviousKeys {
+		previousTOTPKeys[previousKey.Version] = previousKey.Key
+	}
+	mfaService, err := services.NewMFAServiceWithKeyRing(
 		mfaRepo,
 		mfaChallengeRepo,
 		cfg.TOTPEncryptionKey,
 		cfg.TOTPEncryptionKeyVersion,
+		previousTOTPKeys,
 		cfg.JWTIssuer,
 	)
 	if err != nil {

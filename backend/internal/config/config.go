@@ -10,6 +10,11 @@ import (
 	"github.com/joho/godotenv"
 )
 
+type TOTPEncryptionPreviousKey struct {
+	Version int
+	Key []byte
+}
+
 type Config struct {
 	AppEnv  string
 	AppPort string
@@ -30,6 +35,8 @@ type Config struct {
 	// It must never be logged or exposed in API responses.
 	TOTPEncryptionKey        []byte
 	TOTPEncryptionKeyVersion int
+	TOTPEncryptionPreviousKeys []TOTPEncryptionPreviousKey
+	TOTPEncryptionPreviousKeysError string
 
 	// ParentOTPHMACKey is independent secret material used only to derive
 	// keyed lookup and OTP hashes for the Parent portal.
@@ -94,6 +101,8 @@ func Load() Config {
 		}
 	}
 
+	previousKeys, previousKeysErr := parseTOTPEncryptionPreviousKeys(os.Getenv("TOTP_ENCRYPTION_PREVIOUS_KEYS"))
+
 	parentOTPHMACKey := []byte(nil)
 	if encoded := strings.TrimSpace(os.Getenv("PARENT_OTP_HMAC_KEY")); encoded != "" {
 		decoded, err := base64.StdEncoding.DecodeString(encoded)
@@ -117,6 +126,8 @@ func Load() Config {
 		RefreshTokenExpiryDays: refreshExpiryDays,
 		TOTPEncryptionKey:        totpEncryptionKey,
 		TOTPEncryptionKeyVersion: totpEncryptionKeyVersion,
+		TOTPEncryptionPreviousKeys: previousKeys,
+		TOTPEncryptionPreviousKeysError: previousKeysErr,
 		ParentOTPHMACKey:         parentOTPHMACKey,
 	}
 }
@@ -179,15 +190,47 @@ func (cfg Config) ValidateJWT() error {
 }
 
 
+// parseTOTPEncryptionPreviousKeys accepts comma-separated version:Base64 entries.
+func parseTOTPEncryptionPreviousKeys(raw string) ([]TOTPEncryptionPreviousKey, string) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" { return nil, "" }
+	seen := make(map[int]struct{})
+	keys := make([]TOTPEncryptionPreviousKey, 0)
+	for _, entry := range strings.Split(raw, ",") {
+		parts := strings.SplitN(strings.TrimSpace(entry), ":", 2)
+		if len(parts) != 2 { return nil, "TOTP_ENCRYPTION_PREVIOUS_KEYS entries must use version:Base64 format" }
+		version, err := strconv.Atoi(strings.TrimSpace(parts[0]))
+		if err != nil || version < 1 || version > 2147483647 { return nil, "TOTP_ENCRYPTION_PREVIOUS_KEYS contains an invalid key version" }
+		if _, exists := seen[version]; exists { return nil, "TOTP_ENCRYPTION_PREVIOUS_KEYS contains a duplicate key version" }
+		key, err := base64.StdEncoding.DecodeString(strings.TrimSpace(parts[1]))
+		if err != nil || len(key) != 32 { return nil, "each previous TOTP encryption key must be valid Base64 encoding of exactly 32 bytes" }
+		seen[version] = struct{}{}
+		keys = append(keys, TOTPEncryptionPreviousKey{Version: version, Key: key})
+	}
+	return keys, ""
+}
+
 // ValidateTOTPEncryption validates the key material required by the MFA
 // service. It is intentionally separate from ValidateJWT so deployments can
 // roll out the MFA capability without silently inventing a local key.
 func (cfg Config) ValidateTOTPEncryption() error {
+	if cfg.TOTPEncryptionPreviousKeysError != "" { return fmt.Errorf("%s", cfg.TOTPEncryptionPreviousKeysError) }
 	if len(cfg.TOTPEncryptionKey) != 32 {
 		return fmt.Errorf("TOTP_ENCRYPTION_KEY must be valid Base64 encoding of exactly 32 bytes")
 	}
 	if cfg.TOTPEncryptionKeyVersion < 1 || cfg.TOTPEncryptionKeyVersion > 2147483647 {
 		return fmt.Errorf("TOTP_ENCRYPTION_KEY_VERSION must be between 1 and 2147483647")
+	}
+	seen := make(map[int]struct{}, len(cfg.TOTPEncryptionPreviousKeys))
+	for _, previous := range cfg.TOTPEncryptionPreviousKeys {
+		if previous.Version < 1 || previous.Version > 2147483647 || len(previous.Key) != 32 {
+			return fmt.Errorf("previous TOTP encryption keys require a positive version and exactly 32 bytes")
+		}
+		if previous.Version == cfg.TOTPEncryptionKeyVersion {
+			return fmt.Errorf("previous TOTP encryption key version must differ from the current version")
+		}
+		if _, exists := seen[previous.Version]; exists { return fmt.Errorf("duplicate previous TOTP encryption key version") }
+		seen[previous.Version] = struct{}{}
 	}
 	return nil
 }

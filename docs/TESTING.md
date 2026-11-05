@@ -28,6 +28,12 @@ Current test areas include:
 The current suite does not establish that every application behavior is tested or that the application is production-ready. Remaining gaps include broader resource/tenant/assignment/field-level tests across business modules, exhaustive HTTP tests with real JWT signature validation for every route, additional database failure/concurrency cases, migration rollback testing, deployment/least-privilege checks, and load testing.
 
 
+### MFA encryption-key rotation regression coverage
+
+The MFA key-ring follow-up adds tests for previous-key decryption, re-encryption using the current key, malformed/duplicate/current-version previous-key configuration rejection, and PostgreSQL compare-and-swap behavior. The PostgreSQL test verifies that a stale concurrent rotation cannot overwrite a credential already moved to a newer key version.
+
+Latest key-rotation CI commit `47c472d4114fde69e7f5aa917d5965547be10abf` passed the full backend suite with PostgreSQL integration enabled and `go vet ./...`. The workflow applied the complete migration chain to an ephemeral PostgreSQL database. This does not run migrations against the user's persistent `school_management` or `school_management_test` databases.
+
 ## 3. Testing Principles
 
 - Test observable behavior rather than implementation details alone.

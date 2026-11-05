@@ -82,6 +82,34 @@ Authentication failures return `401 Unauthorized`. If the middleware has no toke
 
 Access JWTs issued through login, MFA completion, and refresh are bound to the refresh-session family using the `sid` claim. The V21 `last_activity_at` timestamp is maintained per family. Every protected request checks and touches only that device's active family for Platform Admin and active system-role School Admin principals. An idle family at or beyond 30 minutes is revoked and audited; another device's family remains independent. Refresh rotation checks the same timeout inside the existing family/principal-locked transaction and preserves the activity timestamp rather than resetting it. Ordinary staff and parent sessions are not subject to this administrative idle timeout. The middleware still does not replace resource-level tenant and assignment checks in each business repository.
 
+### TOTP encryption key storage and rotation
+
+TOTP authenticator secrets are encrypted at rest with AES-256-GCM. The active encryption key is supplied as Base64-encoded 32-byte material through `TOTP_ENCRYPTION_KEY`; `TOTP_ENCRYPTION_KEY_VERSION` is a positive version number stored alongside each encrypted credential. Do not reuse the JWT signing key or Parent OTP HMAC key for TOTP encryption.
+
+The versioned key ring supports:
+- The current key encrypts newly enrolled TOTP credentials.
+- `TOTP_ENCRYPTION_PREVIOUS_KEYS` optionally holds comma-separated `version:Base64` entries for old keys. Every previous key must decode to exactly 32 bytes and have a distinct positive version different from the current version.
+- A previous key is used only to decrypt credentials bearing its version. After a successful TOTP verification, the service encrypts the same secret with the current key and attempts an optimistic database update matching the principal, old key version, and old ciphertext. A concurrent update cannot be overwritten by a stale rotation.
+- Key rotation requires no schema migration. Existing credentials are upgraded lazily as administrators successfully complete MFA enrollment, login, or recovery-code regeneration. A credential that has not been used remains encrypted with its previous key.
+
+Operational rotation procedure:
+1. Generate a cryptographically random 32-byte key, Base64-encode it, and store it in the deployment secret manager. Never commit real key material.
+2. Increase `TOTP_ENCRYPTION_KEY_VERSION` and set the new `TOTP_ENCRYPTION_KEY`. Keep the old version/key in `TOTP_ENCRYPTION_PREVIOUS_KEYS`.
+3. Deploy the key-ring-capable application and the complete key configuration to every API instance as one coordinated rollout. Do not run old single-key application instances alongside instances that have started encrypting with the new key.
+4. Keep every previous key available while any stored credential still uses that version. Check progress with this read-only query:
+
+   ```sql
+   SELECT encryption_key_version, COUNT(*)
+   FROM principal_mfa_credentials
+   WHERE method = 'totp'
+   GROUP BY encryption_key_version
+   ORDER BY encryption_key_version;
+   ```
+
+5. Remove an old key only after its credential count is zero **and** backups that may contain credentials encrypted with that key have expired or have been re-encrypted under an approved backup process. Retain old keys securely for the required backup-retention period.
+
+If a required previous key is missing, affected administrators cannot complete TOTP verification with their authenticator secret. Do not delete or replace key material as a troubleshooting shortcut. Treat the key ring as production-critical secret material and test restore procedures before deployment.
+
 ### Refresh-token lifecycle
 
 The refresh-token HTTP lifecycle is implemented with the following behavior:
@@ -118,7 +146,7 @@ If cookies are used, configure appropriate `HttpOnly`, `Secure`, and `SameSite` 
 - Keep access tokens short-lived and document the configured lifetime.
 - Validate token signature, issuer, expiry, and relevant claims.
 - Keep signing keys and secrets outside source control.
-- Define a key-rotation strategy.
+- Define and follow the versioned TOTP encryption-key rotation and backup-retention procedure above.
 - Apply authentication middleware to every route requiring authentication.
 - Continue testing concurrent refresh/logout ordering and transaction behavior against PostgreSQL, including database failure cases. V21 integration tests now cover admin idle expiry during refresh, per-device family isolation, audit creation, and the ordinary-staff exemption.
 - Test refresh-token replay and logout independently through the HTTP API.
