@@ -316,6 +316,12 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 	if len(teacherEnrollments) != 1 || teacherEnrollments[0].SectionID != section2 {
 		t.Fatalf("teacher enrollment scope = %+v; want only assigned section %d", teacherEnrollments, section2)
 	}
+	if teacherEnrollments[0].StudentName != "V17 Promotion Student" ||
+		teacherEnrollments[0].RollNumber == nil || *teacherEnrollments[0].RollNumber != "01" ||
+		teacherEnrollments[0].ClassNameSnapshot != "UKG" ||
+		teacherEnrollments[0].SectionNameSnapshot != "A" {
+		t.Fatalf("teacher roster did not return the approved minimal student fields: %+v", teacherEnrollments[0])
+	}
 	unassignedHistory, err := teacherAcademicRepo.ListStudentEnrollments(ctx, teacherPrincipalID, schoolID, 0, studentID)
 	if err != nil {
 		t.Fatalf("read history for unassigned student section: %v", err)
