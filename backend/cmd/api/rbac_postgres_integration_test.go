@@ -28,11 +28,14 @@ import (
 	"github.com/joho/godotenv"
 )
 
-type rbacIntegrationAdminSessionTracker struct{}
+type rbacIntegrationAdminSessionTracker struct {
+	adminPrincipalIDs map[int64]struct{}
+}
 
-func (rbacIntegrationAdminSessionTracker) CheckAndTouchAdminSession(_ context.Context, principalID int64, familyID string) (bool, bool, error) {
+func (t *rbacIntegrationAdminSessionTracker) CheckAndTouchAdminSession(_ context.Context, principalID int64, familyID string) (bool, bool, error) {
 	const expectedFamily = "00000000-0000-4000-8000-000000000031"
-	return principalID > 0, familyID == expectedFamily, nil
+	_, isAdmin := t.adminPrincipalIDs[principalID]
+	return isAdmin, familyID == expectedFamily, nil
 }
 
 type rbacIntegrationPasswordBreachChecker struct{}
@@ -169,12 +172,13 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 		t.Fatalf("sign integration access token: %v", err)
 	}
 	principalRepo := repository.NewPrincipalAuthorizationRepository(tx)
+	adminTracker := &rbacIntegrationAdminSessionTracker{adminPrincipalIDs: make(map[int64]struct{})}
 	roleHandler := handlers.NewRoleHandler(services.NewRoleService(repository.NewRoleRepository(tx)))
 	staffHandler := handlers.NewStaffHandler(services.NewStaffAccountService(repository.NewUserRepository(tx), rbacIntegrationPasswordBreachChecker{}))
 	router, err := setupRouterWithHandlers(
 		fakeDatabase{}, nil, tokenService,
 		principalRepo, principalRepo,
-		nil, roleHandler, staffHandler, rbacIntegrationAdminSessionTracker{},
+		nil, roleHandler, staffHandler, adminTracker,
 	)
 	if err != nil {
 		t.Fatalf("setup PostgreSQL-backed API router: %v", err)
@@ -192,7 +196,7 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	loginRouter, err := setupRouterWithHandlers(
 		fakeDatabase{}, authHandler, tokenService,
 		principalRepo, principalRepo,
-		nil, roleHandler, staffHandler, rbacIntegrationAdminSessionTracker{},
+		nil, roleHandler, staffHandler, adminTracker,
 	)
 	if err != nil {
 		t.Fatalf("setup PostgreSQL-backed login router: %v", err)
@@ -370,6 +374,7 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	if err != nil {
 		t.Fatalf("resolve rollback-scoped Platform Admin actor: %v", err)
 	}
+	adminTracker.adminPrincipalIDs[platformAdminPrincipalID] = struct{}{}
 	// A newly bootstrapped test-only Platform Admin needs a verified MFA
 	// fixture to pass the same mandatory-MFA middleware as production users.
 	if _, err := tx.Exec(ctx, `
@@ -425,6 +430,7 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	`, principalID, schoolAdminRoleID, platformAdminPrincipalID); err != nil {
 		t.Fatalf("assign School Admin role through database authorization trigger: %v", err)
 	}
+	adminTracker.adminPrincipalIDs[principalID] = struct{}{}
 
 	// Exercise staff account creation, listing, and disable through the real
 	// Gin authentication middleware, live permission loader, handler, service,
