@@ -212,6 +212,11 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 	); !errors.Is(err, ErrRolePermissionDenied) {
 		t.Fatalf("self permission override error = %v, want ErrRolePermissionDenied", err)
 	}
+	if err := repo.DeleteStaffPermissionOverride(
+		ctx, actorPrincipalID, schoolID, actorPrincipalID, "homework.create",
+	); !errors.Is(err, ErrRolePermissionDenied) {
+		t.Fatalf("self permission override deletion error = %v, want ErrRolePermissionDenied", err)
+	}
 
 	delegations, err := repo.ListSchoolPermissionDelegations(ctx, actorPrincipalID, schoolID)
 	if err != nil {
