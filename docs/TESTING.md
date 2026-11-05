@@ -407,7 +407,7 @@ Whenever a bug is fixed or functionality changes:
 
 ## 15. Additional Phase 1 RBAC and Account-Security Tests Still Needed
 
-Use `docs/PHASE1-RBAC.md` as the source of truth for the permission catalogue and default role matrix. These are required future tests, not evidence of current coverage.
+Use `docs/PHASE1-RBAC.md` as the source of truth for the permission catalogue and default role matrix. This backlog contains both completed and still-needed cases; check Sections 2 and 28 for the latest verified coverage before treating any item as pending.
 
 ### 15.1 Staff identity and global username uniqueness
 
