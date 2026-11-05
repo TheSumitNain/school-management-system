@@ -54,24 +54,56 @@ func (r *RoleRepository) ListSchoolRoles(ctx context.Context, actorPrincipalID, 
 			FROM auth_principals ap
 			JOIN users u ON u.principal_id = ap.id
 			JOIN schools s ON s.id = u.school_id
-			JOIN principal_roles pr ON pr.principal_id = ap.id AND pr.revoked_at IS NULL
-			JOIN roles r ON r.id = pr.role_id
-			JOIN role_permissions rp ON rp.role_id = r.id
-			JOIN permissions p ON p.id = rp.permission_id
+			JOIN permissions p
+			  ON p.permission_key = 'roles.read'
+			 AND p.scope_type = 'school'
+			 AND p.is_active = TRUE
 			WHERE ap.id = $1
 			  AND ap.principal_type = 'staff'
 			  AND ap.status = 'active'
 			  AND u.status = 'active'
 			  AND u.school_id = $2
 			  AND s.status = 'active'
-			  AND r.school_id = $2
-			  AND r.scope_type = 'school'
-			  AND r.principal_type = 'staff'
-			  AND r.role_key = 'school_admin'
-			  AND r.is_system = TRUE
-			  AND p.permission_key = 'roles.read'
-			  AND p.scope_type = 'school'
-			  AND p.is_active = TRUE
+			  AND (
+			      EXISTS (
+			          SELECT 1
+			          FROM principal_roles pr
+			          JOIN roles assigned_role ON assigned_role.id = pr.role_id
+			          JOIN role_permissions rp ON rp.role_id = assigned_role.id
+			          WHERE pr.principal_id = ap.id
+			            AND pr.revoked_at IS NULL
+			            AND assigned_role.school_id = $2
+			            AND assigned_role.scope_type = 'school'
+			            AND assigned_role.principal_type = 'staff'
+			            AND rp.permission_id = p.id
+			            AND (
+			                rp.delegation_id IS NULL
+			                OR EXISTS (
+			                    SELECT 1
+			                    FROM role_permission_delegations d
+			                    WHERE d.id = rp.delegation_id
+			                      AND d.school_id = $2
+			                      AND d.permission_id = p.id
+			                      AND d.can_assign_to_roles = TRUE
+			                      AND d.revoked_at IS NULL
+			                )
+			            )
+			      )
+			      OR EXISTS (
+			          SELECT 1
+			          FROM user_permission_overrides allowed
+			          JOIN role_permission_delegations d
+			            ON d.id = allowed.delegation_id
+			           AND d.school_id = allowed.school_id
+			           AND d.permission_id = allowed.permission_id
+			           AND d.can_override_users = TRUE
+			           AND d.revoked_at IS NULL
+			          WHERE allowed.principal_id = ap.id
+			            AND allowed.school_id = $2
+			            AND allowed.permission_id = p.id
+			            AND allowed.effect = 'allow'
+			      )
+			  )
 			  AND NOT EXISTS (
 			      SELECT 1
 			      FROM user_permission_overrides denied
