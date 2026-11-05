@@ -22,7 +22,7 @@ The application is designed to support multiple schools. Student, parent, teache
 - Staff account creation, listing, update, disable/re-enable, current-password change, School Admin password reset, forced temporary-password change, token-version invalidation and audit events are implemented.
 - Academic foundations include school-scoped student/enrollment/attendance and guardian APIs. Teacher enrollment roster responses are restricted to assigned sections and approved basic fields (student name, roll number, class and section).
 - Parent authentication and guardian matching require active linked schools and official active guardian/student relationships. Parent OTP delivery and Phase 2 Parent/Driver workflows remain intentionally paused.
-- GitHub Actions run [41960953660](https://github.com/TheSumitNain/school-management-system/actions/runs/41960953660) on commit `1b942cab4ebd76f849c579d1aa3324e839fc2741` applied migrations V1–V22 to ephemeral PostgreSQL 18, passed the full backend suite including PostgreSQL integration tests, and passed `go vet ./...`. CI does not modify either persistent local database.
+- GitHub Actions run [41961583328](https://github.com/TheSumitNain/school-management-system/actions/runs/41961583328) on commit `7071d7913ab62ff525637e2af0f4d3718b9f57b8` applied migrations V1–V22 to ephemeral PostgreSQL 18, passed the full backend suite including PostgreSQL integration tests, and passed `go vet ./...`. CI does not modify either persistent local database.
 
 ### Not yet implemented or fully verified
 
@@ -150,7 +150,7 @@ Tenant isolation must be enforced in backend services and repository queries, no
 
 ## 6. Authorization and Roles
 
-The core principal/RBAC schema, built-in role bundles, live permission resolver and RequirePermission middleware are implemented. V16 binds custom-role grants and user ALLOW overrides to the exact active delegation ID. V22 adds repository and database guards against self role assignment, self permission overrides, and self-removal of DENY overrides. The role/delegation/override HTTP workflows, same-school staff role administration, and account lifecycle routes have PostgreSQL integration coverage. The latest GitHub Actions run 41960953660 on commit 1b942ca applied V1–V22 to ephemeral PostgreSQL 18, passed the backend suite including PostgreSQL integration, and passed go vet ./.... CI does not modify either persistent local database. Complete authorization for all future business resources and every assignment/field-level boundary remains pending. Phase 1 web roles are Platform Admin, School Admin and Teacher; Parent and Driver are Phase 2.
+The core principal/RBAC schema, built-in role bundles, live permission resolver and RequirePermission middleware are implemented. V16 binds custom-role grants and user ALLOW overrides to the exact active delegation ID. V22 adds repository and database guards against self role assignment, self permission overrides, and self-removal of DENY overrides. The role/delegation/override HTTP workflows, same-school staff role administration, and account lifecycle routes have PostgreSQL integration coverage. The latest GitHub Actions run 41961583328 on commit 1b942ca applied V1–V22 to ephemeral PostgreSQL 18, passed the backend suite including PostgreSQL integration, and passed go vet ./.... CI does not modify either persistent local database. Complete authorization for all future business resources and every assignment/field-level boundary remains pending. Phase 1 web roles are Platform Admin, School Admin and Teacher; Parent and Driver are Phase 2.
 
 The implementation must enforce:
 
@@ -363,4 +363,4 @@ Role/permission changes and staff password changes/resets take effect on subsequ
 - Staff login fails closed if the username lockout store is unavailable; staff and Platform Admin HTTP login also fail closed if the IP rate limiter is missing.
 - Parent mobile lookup, parent principal loading, guardian matching and pre-account registration exclude inactive/suspended schools. Parent OTP/SMS delivery and Phase 2 endpoints remain paused.
 - Teacher enrollment roster includes student name, roll number, class and section only within assigned teaching/class-in-charge sections.
-- GitHub Actions run 41960953660 on commit 1b942cab4ebd76f849c579d1aa3324e839fc2741 passed migrations V1–V22, the full backend suite including PostgreSQL integration, and go vet ./... on ephemeral PostgreSQL 18. No persistent user database was changed by CI.
+- GitHub Actions run 41961583328 on commit 7071d7913ab62ff525637e2af0f4d3718b9f57b8 passed migrations V1–V22, the full backend suite including PostgreSQL integration, and go vet ./... on ephemeral PostgreSQL 18. No persistent user database was changed by CI.
