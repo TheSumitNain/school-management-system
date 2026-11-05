@@ -257,7 +257,7 @@ func TestAuthMiddlewareRestrictsTemporaryPasswordStaff(t *testing.T) {
 	permissions := fakePermissionLoader{permissions: []string{"students.read_basic"}}
 	loader := fakePrincipalLoader{principal: principal}
 	router := gin.New()
-	auth := AuthMiddleware(validator, loader, permissions)
+	auth := AuthMiddleware(validator, loader, permissions, &fakeAdminSessionTracker{valid: true, familyID: validClaims().SessionID})
 
 	router.GET("/protected", auth, func(c *gin.Context) { c.Status(http.StatusOK) })
 	router.POST("/auth/password/change", auth, func(c *gin.Context) {
@@ -314,7 +314,7 @@ func TestAuthMiddlewareRequiresValidSessionForAdmins(t *testing.T) {
 	req:=httptest.NewRequest(http.MethodGet,"/protected",nil);req.Header.Set("Authorization","Bearer token")
 	rec:=httptest.NewRecorder();router.ServeHTTP(rec,req)
 	if rec.Code!=http.StatusUnauthorized { t.Fatalf("admin token without sid must be rejected, got %d",rec.Code) }
-	if tracker.called!=1 || tracker.principalID!=99 { t.Fatalf("tracker was not called for admin principal: %+v",tracker) }
+	if tracker.called != 0 { t.Fatalf("missing sid must be rejected before tracker lookup: %+v", tracker) }
 }
 
 func TestAuthMiddlewareAcceptsActiveAdminSessionFamily(t *testing.T) {
