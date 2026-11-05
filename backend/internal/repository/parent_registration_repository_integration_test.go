@@ -180,7 +180,6 @@ func TestParentRegistrationRepositoryPostgresIntegration(t *testing.T) {
 	}
 }
 
-
 // TestParentRegistrationConcurrentSameMobilePostgresIntegration proves that
 // concurrent verified registrations for one mobile produce exactly one
 // Parent account and one set of guardian links.
