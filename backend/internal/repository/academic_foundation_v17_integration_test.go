@@ -381,6 +381,18 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 		t.Fatalf("revoke class in-charge assignment: %v", err)
 	}
 
+	// Revoking both assignment types must immediately remove the teacher's
+	// minimal roster access, even while the Teacher role itself remains active.
+	rosterAfterAssignmentRevocation, err := teacherAcademicRepo.ListStudentEnrollments(
+		ctx, teacherPrincipalID, schoolID, year2, studentID,
+	)
+	if err != nil {
+		t.Fatalf("read roster after assignment revocation: %v", err)
+	}
+	if len(rosterAfterAssignmentRevocation) != 0 {
+		t.Fatalf("revoked assignments retained teacher roster access: %+v", rosterAfterAssignmentRevocation)
+	}
+
 	var otherSchoolID, foreignClassID int64
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO schools (name, code, status)
