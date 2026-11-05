@@ -382,6 +382,16 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 		teacherEnrollments[0].SectionNameSnapshot != "A" {
 		t.Fatalf("teacher roster did not return the approved minimal student fields: %+v", teacherEnrollments[0])
 	}
+
+	// A Teacher must never use the full student-profile endpoints, even when
+	// they have a valid basic-roster assignment. Those endpoints expose the
+	// school-sensitive student directory/profile and remain admin-only.
+	if _, err := teacherAcademicRepo.GetStudent(ctx, teacherPrincipalID, schoolID, studentID); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("teacher full student profile access error = %v, want ErrAcademicAccessDenied", err)
+	}
+	if _, _, err := teacherAcademicRepo.ListStudents(ctx, teacherPrincipalID, schoolID, "", "active", 10, 0); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("teacher full student directory access error = %v, want ErrAcademicAccessDenied", err)
+	}
 	unassignedHistory, err := teacherAcademicRepo.ListStudentEnrollments(ctx, teacherPrincipalID, schoolID, 0, studentID)
 	if err != nil {
 		t.Fatalf("read history for unassigned student section: %v", err)
