@@ -17,15 +17,18 @@ func TestParentGuardianAuthorizationV12PostgresIntegration(t *testing.T) {
 	_, pool, userID := newPostgresIntegrationRepository(t)
 	ctx := context.Background()
 
-	var hasV12 bool
+	var hasV23 bool
 	if err := pool.QueryRow(ctx, `
 		SELECT to_regclass('public.parent_guardian_links') IS NOT NULL
 		   AND to_regclass('public.parent_otp_rate_limits') IS NOT NULL
-	`).Scan(&hasV12); err != nil {
-		t.Fatalf("detect V12 schema: %v", err)
+		   AND to_regprocedure('public.guard_guardian_portal_eligibility()') IS NOT NULL
+		   AND pg_get_functiondef('public.guard_guardian_portal_eligibility()'::regprocedure)
+		       LIKE '%NEW.mobile_number IS DISTINCT FROM OLD.mobile_number%'
+	`).Scan(&hasV23); err != nil {
+		t.Fatalf("detect V12/V23 parent/guardian schema: %v", err)
 	}
-	if !hasV12 {
-		t.Fatal("V12 parent/guardian schema is missing; apply migrations to school_management_test first")
+	if !hasV23 {
+		t.Fatal("V12/V23 parent/guardian schema is missing or outdated; apply migrations to school_management_test first")
 	}
 
 	var schoolID, staffPrincipalID int64
