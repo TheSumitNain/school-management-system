@@ -117,29 +117,31 @@ VALUES($1,'totp',$2,1,NOW())`, raceAdmin.PrincipalID, make([]byte, 64)); err != 
 			t.Fatalf("create race-test refresh session: %v", err)
 		}
 
+		type operationResult struct {
+			name string
+			err  error
+		}
 		start := make(chan struct{})
-		results := make(chan error, 2)
+		results := make(chan operationResult, 2)
 		go func() {
 			<-start
 			_, err := sessionRepo.RotatePrincipal(ctx, oldHash, newHash, time.Now().Add(time.Hour))
-			results <- err
+			results <- operationResult{name: "refresh", err: err}
 		}()
 		go func() {
 			<-start
-			results <- repo.Deactivate(ctx, actorID, raceAdmin.PrincipalID)
+			results <- operationResult{name: "deactivate", err: repo.Deactivate(ctx, actorID, raceAdmin.PrincipalID)}
 		}()
 		close(start)
 
 		var refreshErr, deactivateErr error
 		for i := 0; i < 2; i++ {
 			select {
-			case err := <-results:
-				if i == 0 {
-					// The first completion is not tied to a specific goroutine;
-					// collect both results and validate them below.
-					refreshErr = err
+			case result := <-results:
+				if result.name == "refresh" {
+					refreshErr = result.err
 				} else {
-					deactivateErr = err
+					deactivateErr = result.err
 				}
 			case <-time.After(15 * time.Second):
 				t.Fatal("timed out waiting for concurrent refresh/deactivation")
@@ -151,8 +153,6 @@ VALUES($1,'totp',$2,1,NOW())`, raceAdmin.PrincipalID, make([]byte, 64)); err != 
 			t.Fatalf("unexpected concurrent refresh error: %v", refreshErr)
 		}
 		if deactivateErr != nil {
-			// The result channel is intentionally unordered; if the first result
-			// was deactivation, swap interpretation and validate accordingly.
 			t.Fatalf("concurrent Platform Admin deactivation failed: %v", deactivateErr)
 		}
 		var raceStatus string
