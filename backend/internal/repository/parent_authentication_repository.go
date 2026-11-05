@@ -60,7 +60,8 @@ SELECT ap.id, ap.principal_type, ap.status, ap.token_version,
          JOIN guardians g
            ON g.id = pgl.guardian_id
           AND g.school_id = pgl.school_id
-         JOIN student_guardians sg
+          JOIN schools linked_school ON linked_school.id = pgl.school_id AND linked_school.status = 'active'
+          JOIN student_guardians sg
            ON sg.guardian_id = g.id
           AND sg.school_id = g.school_id
          JOIN students s
