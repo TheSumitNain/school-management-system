@@ -157,6 +157,9 @@ WHERE challenge_hash=$1 AND principal_id=$2 AND consumed_at IS NULL
 	if tag.RowsAffected() != 1 {
 		return ErrMFAEnrollmentInvalid
 	}
+	if _, err = tx.Exec(ctx, `DELETE FROM auth_login_attempts WHERE identifier_hash=$1`, mfaLoginAttemptHash(principalID)); err != nil {
+		return fmt.Errorf("clear principal MFA login failures: %w", err)
+	}
 	if err = tx.Commit(ctx); err != nil {
 		return fmt.Errorf("commit MFA login verification: %w", err)
 	}
@@ -181,6 +184,9 @@ WHERE principal_id=$1 AND code_hash=$2 AND used_at IS NULL`, principalID, string
 WHERE challenge_hash=$1 AND principal_id=$2 AND consumed_at IS NULL AND expires_at>NOW() AND attempts<5`, challengeHash, principalID)
 	if err != nil { return fmt.Errorf("consume recovery-code challenge: %w", err) }
 	if tag.RowsAffected() != 1 { return ErrMFAEnrollmentInvalid }
+	if _, err = tx.Exec(ctx, `DELETE FROM auth_login_attempts WHERE identifier_hash=$1`, mfaLoginAttemptHash(principalID)); err != nil {
+		return fmt.Errorf("clear principal MFA login failures after recovery code: %w", err)
+	}
 	if _, err = tx.Exec(ctx, `INSERT INTO audit_events(actor_principal_id,action,resource_type,resource_id,outcome,metadata)
 VALUES($1,'auth.mfa.recovery_code_used','principal',$1::bigint::text,'success','{}'::jsonb)`, principalID); err != nil {
 		return fmt.Errorf("audit recovery-code use: %w", err)
