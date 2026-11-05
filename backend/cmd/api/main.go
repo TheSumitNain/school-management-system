@@ -240,9 +240,9 @@ func setupRouterWithHandlers(
 	if attendanceHandler != nil {
 		attendanceAuth := authMiddleware()
 		router.GET("/school/attendance", attendanceAuth, middleware.RequirePermission("attendance.read"), attendanceHandler.List)
-		router.POST("/school/attendance", attendanceAuth, middleware.RequirePermission("attendance.mark"), attendanceHandler.Mark)
-		router.PATCH("/school/attendance/:attendanceID", attendanceAuth, middleware.RequirePermission("attendance.update_same_day"), attendanceHandler.Update)
-		router.PATCH("/school/attendance/:attendanceID/correct", attendanceAuth, middleware.RequirePermission("attendance.correct_past"), attendanceHandler.Update)
+		router.POST("/school/attendance", attendanceAuth, middleware.RequireAnyPermission("attendance.mark", "attendance.correct_past"), attendanceHandler.Mark)
+		router.PATCH("/school/attendance/:attendanceID", attendanceAuth, middleware.RequireAnyPermission("attendance.update_same_day", "attendance.correct_past"), attendanceHandler.Update)
+		router.PATCH("/school/attendance/:attendanceID/correct", attendanceAuth, middleware.RequireAnyPermission("attendance.update_same_day", "attendance.correct_past"), attendanceHandler.Update)
 	}
 
 	if guardianHandler != nil {
