@@ -23,7 +23,7 @@ Current test areas include:
 - Student/enrollment/attendance/guardian repository integration, assigned-section teacher roster fields, parent guardian link checks, and inactive-school parent eligibility.
 - Real Gin router plus PostgreSQL-backed RBAC integration for default-deny and live authorization paths. Some integration harnesses use controlled token validators; this is not exhaustive end-to-end signature validation for every route.
 
-**Latest verified remote checkpoint:** GitHub Actions run [41960953660](https://github.com/TheSumitNain/school-management-system/actions/runs/41960953660), commit `1b942cab4ebd76f849c579d1aa3324e839fc2741`. It applied migrations V1–V22 to a fresh ephemeral PostgreSQL 18 database, ran the full backend suite with PostgreSQL integration enabled, and passed `go vet ./...`. CI does not migrate or modify the user's persistent `school_management_test` or `school_management` databases. Local verification must be repeated after pulling the latest branch.
+**Latest verified remote checkpoint:** GitHub Actions run [41961824586](https://github.com/TheSumitNain/school-management-system/actions/runs/41961824586), commit `8baae105e0dd435b7dd80e1e9258378567dce518`. It applied migrations V1–V22 to a fresh ephemeral PostgreSQL 18 database, ran the full backend suite with PostgreSQL integration enabled, and passed `go vet ./...`. This checkpoint includes the Unicode password-policy regression tests. Documentation-only commits have followed this tested code checkpoint; the newest branch head is undergoing its own CI run. CI does not migrate or modify the user's persistent `school_management_test` or `school_management` databases. Local verification must be repeated after pulling the latest branch.
 
 The current suite does not establish that every application behavior is tested or that the application is production-ready. Remaining gaps include broader resource/tenant/assignment/field-level tests across business modules, exhaustive HTTP tests with real JWT signature validation for every route, additional database failure/concurrency cases, migration rollback testing, deployment/least-privilege checks, and load testing.
 
@@ -152,7 +152,7 @@ Verify:
 - Valid passwords can be hashed.
 - Password verification succeeds for the matching password.
 - An incorrect password fails verification.
-- Passwords outside the supported byte-length range are rejected.
+- Passwords with fewer than 12 Unicode characters, invalid UTF-8, or more than 72 UTF-8 bytes are rejected.
 - Whitespace-only passwords are rejected.
 - The original password is not stored as plaintext.
 - Password hashes are not exposed in API responses.
