@@ -112,6 +112,9 @@ WHERE principal_id=$1 AND revoked_at IS NULL`,principalID); err!=nil {
 	if err = insertRecoveryCodeHashes(ctx, tx, principalID, recoveryHashes); err != nil {
 		return fmt.Errorf("store initial recovery codes: %w", err)
 	}
+	if _, err = tx.Exec(ctx, `DELETE FROM auth_login_attempts WHERE identifier_hash=$1`, mfaPrincipalAttemptHash(principalID)); err != nil {
+		return fmt.Errorf("clear principal MFA failures after enrollment: %w", err)
+	}
 	if _,err=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,action,resource_type,resource_id,outcome,metadata)
 VALUES($1,'auth.mfa.enrollment_completed','principal',$1::bigint::text,'success','{}'::jsonb)`,principalID); err!=nil {
 		return fmt.Errorf("audit MFA enrollment: %w",err)
@@ -157,7 +160,7 @@ WHERE challenge_hash=$1 AND principal_id=$2 AND consumed_at IS NULL
 	if tag.RowsAffected() != 1 {
 		return ErrMFAEnrollmentInvalid
 	}
-	if _, err = tx.Exec(ctx, `DELETE FROM auth_login_attempts WHERE identifier_hash=$1`, mfaLoginAttemptHash(principalID)); err != nil {
+	if _, err = tx.Exec(ctx, `DELETE FROM auth_login_attempts WHERE identifier_hash=$1`, mfaPrincipalAttemptHash(principalID)); err != nil {
 		return fmt.Errorf("clear principal MFA login failures: %w", err)
 	}
 	if err = tx.Commit(ctx); err != nil {
@@ -184,7 +187,7 @@ WHERE principal_id=$1 AND code_hash=$2 AND used_at IS NULL`, principalID, string
 WHERE challenge_hash=$1 AND principal_id=$2 AND consumed_at IS NULL AND expires_at>NOW() AND attempts<5`, challengeHash, principalID)
 	if err != nil { return fmt.Errorf("consume recovery-code challenge: %w", err) }
 	if tag.RowsAffected() != 1 { return ErrMFAEnrollmentInvalid }
-	if _, err = tx.Exec(ctx, `DELETE FROM auth_login_attempts WHERE identifier_hash=$1`, mfaLoginAttemptHash(principalID)); err != nil {
+	if _, err = tx.Exec(ctx, `DELETE FROM auth_login_attempts WHERE identifier_hash=$1`, mfaPrincipalAttemptHash(principalID)); err != nil {
 		return fmt.Errorf("clear principal MFA login failures after recovery code: %w", err)
 	}
 	if _, err = tx.Exec(ctx, `INSERT INTO audit_events(actor_principal_id,action,resource_type,resource_id,outcome,metadata)
@@ -216,6 +219,9 @@ WHERE principal_id=$1 AND used_at IS NULL`, principalID); err != nil {
 		return fmt.Errorf("invalidate previous recovery codes: %w", err)
 	}
 	if err = insertRecoveryCodeHashes(ctx, tx, principalID, hashes); err != nil { return fmt.Errorf("store replacement recovery codes: %w", err) }
+	if _, err = tx.Exec(ctx, `DELETE FROM auth_login_attempts WHERE identifier_hash=$1`, mfaPrincipalAttemptHash(principalID)); err != nil {
+		return fmt.Errorf("clear principal MFA failures after recovery regeneration: %w", err)
+	}
 	tag, err = tx.Exec(ctx, `UPDATE auth_mfa_challenges SET consumed_at=NOW()
 WHERE challenge_hash=$1 AND principal_id=$2 AND consumed_at IS NULL AND expires_at>NOW() AND attempts<5`, challengeHash, principalID)
 	if err != nil { return fmt.Errorf("consume recovery regeneration challenge: %w", err) }
