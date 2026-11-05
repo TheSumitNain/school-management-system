@@ -172,4 +172,18 @@ func TestParentAuthenticationRepositoryPostgresIntegration(t *testing.T) {
 	if activeSessions != 0 {
 		t.Fatalf("active Parent refresh sessions after link revocation = %d, want 0", activeSessions)
 	}
+
+	// A Parent linked only through an inactive school must not authenticate.
+	if _, err := pool.Exec(ctx, `UPDATE schools SET status='inactive' WHERE id=$1`, schoolID); err != nil {
+		t.Fatalf("disable linked school for Parent eligibility test: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `UPDATE schools SET status='active' WHERE id=$1`, schoolID)
+	})
+	if _, err := repo.FindActiveParentByMobile(ctx, mobile); !errors.Is(err, models.ErrPrincipalNotAuthenticated) {
+		t.Fatalf("Parent mobile lookup with only inactive-school links = %v, want not authenticated", err)
+	}
+	if _, err := authorizationRepo.LoadPrincipalForAuthentication(ctx, principalID); !errors.Is(err, models.ErrPrincipalNotAuthenticated) {
+		t.Fatalf("Parent principal load with only inactive-school links = %v, want not authenticated", err)
+	}
 }
