@@ -12,43 +12,29 @@ The application is designed to support multiple schools. Student, parent, teache
 
 ### Implemented foundation
 
-- PostgreSQL database connection uses application configuration and a connection pool.
-- User records store password hashes rather than plaintext passwords.
-- Password hashing uses Go's bcrypt implementation with cost 12.
-- Password creation rejects passwords shorter than 12 bytes, longer than 72 bytes, whitespace-only values, and entries in the local common-password denylist; it also checks the Have I Been Pwned Pwned Passwords range service using k-anonymity (only the first five SHA-1 hash characters leave the application).
-- Password verification is implemented.
-- Authentication service logic checks whether the associated school and user are active.
-- JWT access-token generation and validation are implemented.
-- JWT configuration includes issuer and expiry settings, with signing-secret validation.
-- `POST /auth/login` is implemented.
-- Successful login returns an access token, a refresh token, and a limited user DTO.
-- Invalid credentials return a generic unauthorized response.
-- JWT authentication middleware validates Bearer access tokens.
-- `GET /auth/me` is protected by authentication middleware and returns the authenticated user's ID and school ID.
-- Refresh-session database migrations include token hashes, expiry, revocation, and refresh-token family metadata.
-- Login issues an opaque, cryptographically random refresh token and stores only its SHA-256 hash.
-- `POST /auth/refresh` rotates refresh tokens.
-- Reuse of a revoked refresh token triggers revocation of active sessions in its token family.
-- `POST /auth/logout` revokes all active refresh sessions in the supplied token family; repeated logout is idempotent and unknown tokens are a no-op.
-- HTTP server timeouts, graceful shutdown, health checks, and readiness checks are implemented.
-- Automated tests cover the implemented authentication foundation and service-level token lifecycle behavior.
-
-These features establish an initial authentication foundation. They do not mean the complete application has been security-certified or is ready for production use.
+- PostgreSQL access uses application configuration and a connection pool; schema changes are versioned through additive migrations.
+- Passwords are bcrypt-hashed (cost 12), require at least 12 bytes, reject whitespace-only and local common-password entries, and are checked against the Have I Been Pwned Pwned Passwords range service using k-anonymity.
+- Staff usernames are globally unique and case-insensitive. Staff and Platform Admin login use database-backed five-failure/15-minute lockout and atomic IP rate limiting. Login fails closed if the login-security store or IP limiter is unavailable.
+- Platform Admin and School Admin require TOTP MFA. MFA failure accounting is principal-wide across replacement challenges and challenge purposes: five failures trigger a 15-minute lockout, failures are audited, and successful MFA verification resets the counter.
+- Access JWTs carry canonical principal identity, token version and refresh-family ID. Protected requests reload principal status, current MFA enrollment state, school status and live permissions from PostgreSQL.
+- Refresh sessions use opaque random tokens stored as SHA-256 hashes, rotation, replay/family revocation, per-family and per-principal transaction locking, and per-device 30-minute administrative idle timeout for Platform Admin and School Admin.
+- Live RBAC includes system roles, custom roles, exact-delegation-bound custom-role grants, user ALLOW/DENY overrides, staff role assignment/revocation and route-level `RequirePermission` enforcement. V22 adds database and repository protections against self role/permission escalation.
+- Staff account creation, listing, update, disable/re-enable, current-password change, School Admin password reset, forced temporary-password change, token-version invalidation and audit events are implemented.
+- Academic foundations include school-scoped student/enrollment/attendance and guardian APIs. Teacher enrollment roster responses are restricted to assigned sections and approved basic fields (student name, roll number, class and section).
+- Parent authentication and guardian matching require active linked schools and official active guardian/student relationships. Parent OTP delivery and Phase 2 Parent/Driver workflows remain intentionally paused.
+- GitHub Actions run [41960953660](https://github.com/TheSumitNain/school-management-system/actions/runs/41960953660) on commit `1b942cab4ebd76f849c579d1aa3324e839fc2741` applied migrations V1–V22 to ephemeral PostgreSQL 18, passed the full backend suite including PostgreSQL integration tests, and passed `go vet ./...`. CI does not modify either persistent local database.
 
 ### Not yet implemented or fully verified
 
-- Complete tenant/resource/assignment/field-level enforcement across school business services and repository queries.
-- Comprehensive production abuse monitoring and alerting.
-- Complete current-user profile retrieval from `GET /auth/me`.
-- Staff invitation workflows and production provisioning controls.
-- Comprehensive security audit logging and monitoring.
-- Production TLS and deployment-specific security configuration.
-- Migrations V1–V21, the full backend test suite (including opt-in PostgreSQL integration tests), and `go vet` pass in GitHub Actions against an ephemeral PostgreSQL 18 database. CI does not migrate any developer or production database.
-- Additional concurrent refresh-token rotation edge cases and broader race-condition testing.
-- A clean, independent end-to-end logout and refresh-after-logout verification.
-- Full production security testing, deployment review, and incident-response procedures.
+- Complete tenant/resource/assignment/field-level enforcement across every current and future school business module. Implemented endpoints have targeted scope checks, but the entire product surface is not yet complete.
+- Complete current-user profile retrieval beyond the identity context returned by `GET /auth/me`.
+- Immediate revocation of already-issued ordinary-staff access JWTs on family logout; refresh sessions are revoked and access tokens otherwise expire naturally. Token-version changes invalidate access tokens on subsequent requests.
+- Exhaustive end-to-end HTTP tests using real JWT signature validation for every protected route, plus additional concurrency and database-failure cases.
+- Production database least-privilege grants, TLS/proxy/deployment hardening, monitoring, alerting, backup and recovery procedures.
+- Production penetration testing, capacity/load testing and incident-response readiness.
 
-All currently registered protected business/API routes use the shared authentication middleware and route-level `RequirePermission` checks where an operation permission is required. The middleware also enforces per-device 30-minute idle timeout for Platform Admin and active School Admin sessions. Future routes must follow the same pattern.
+All registered protected routes use the shared authentication middleware and route-level `RequirePermission` checks where an operation permission is required. The middleware enforces per-device 30-minute idle timeout for Platform Admin and active School Admin sessions. Future routes must follow the same pattern.
+
 
 ## 3. Password Security
 
