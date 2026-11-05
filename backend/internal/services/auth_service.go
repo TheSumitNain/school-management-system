@@ -16,6 +16,7 @@ var (
 	ErrUserInactive        = errors.New("user is not active")
 	ErrInvalidRegistration = errors.New("invalid registration data")
 	ErrLoginLocked         = errors.New("login temporarily locked")
+	ErrLoginSecurityUnavailable = errors.New("login security controls are unavailable")
 )
 
 type authUserRepository interface {
@@ -162,6 +163,9 @@ func (s *AuthService) AuthenticateStaff(ctx context.Context, username, password 
 	username = strings.TrimSpace(username)
 	if username == "" || password == "" {
 		return nil, ErrInvalidCredentials
+	}
+	if s == nil || s.users == nil || s.loginSecurity == nil {
+		return nil, ErrLoginSecurityUnavailable
 	}
 	if s.loginSecurity != nil {
 		release, err := s.loginSecurity.AcquireAttemptLock(ctx, username)
