@@ -88,35 +88,22 @@ func AuthMiddleware(tokenService AccessTokenValidator, principals PrincipalLoade
 			return
 		}
 
-		// Admin sessions are bound to one refresh-token family. Each request
-		// touches only that device's family; a missing, revoked, or idle family
-		// is rejected before the handler runs.
+		// Every access token is bound to its refresh-session family. Logout,
+		// revocation, expiry, or principal mismatch invalidates access immediately.
+		// The tracker applies the 30-minute idle policy only to administrators.
 		requiresAdminSession := principal.Type == "platform_admin" || principal.RequiresAdminSessionActivity
-		if activityTracker == nil {
-			// Platform Admin status is intrinsic; School Admin status is resolved
-			// from the exact active system-role assignment by the principal loader.
-			// Do not silently bypass the idle policy when router wiring omits it.
-			if requiresAdminSession {
-				c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Administrative session security is unavailable"})
-				return
-			}
-		} else {
-			isAdmin, valid, trackErr := activityTracker.CheckAndTouchAdminSession(c.Request.Context(), principal.ID, claims.SessionID)
-			if trackErr != nil {
-				c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"status":"error","message":"Unable to validate administrative session"})
-				return
-			}
-			// The principal loader and session tracker must agree about the
-			// current admin status. A mismatch is an authorization-state failure:
-			// never let it silently skip the administrative idle-session policy.
-			if isAdmin != requiresAdminSession {
-				unauthorized(c)
-				return
-			}
-			if requiresAdminSession && (!valid || claims.SessionID == "") {
-				unauthorized(c)
-				return
-			}
+		if claims.SessionID == "" || activityTracker == nil {
+			c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Session security is unavailable"})
+			return
+		}
+		isAdmin, valid, trackErr := activityTracker.CheckAndTouchAdminSession(c.Request.Context(), principal.ID, claims.SessionID)
+		if trackErr != nil {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unable to validate session"})
+			return
+		}
+		if isAdmin != requiresAdminSession || !valid {
+			unauthorized(c)
+			return
 		}
 
 		c.Set(ContextPrincipalIDKey, principal.ID)
