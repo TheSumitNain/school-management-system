@@ -160,7 +160,7 @@ func (r *MFAChallengeRepository) Get(
 				WHERE identifier_hash=$1 AND locked_until > NOW()
 			)
 		`, mfaPrincipalAttemptHash(challenge.PrincipalID)).Scan(&locked); err != nil {
-			return nil, fmt.Errorf("check principal MFA login lockout: %w", err)
+			return nil, fmt.Errorf("check principal MFA lockout: %w", err)
 		}
 		if locked {
 			return nil, ErrMFALoginLocked
@@ -176,11 +176,10 @@ func (r *MFAChallengeRepository) RecordFailure(ctx context.Context, challengeHas
 		return ErrMFAChallengeUnavailable
 	}
 	var principalID int64
-	var purpose MFAChallengePurpose
 	if err := r.db.QueryRow(ctx,
-		`SELECT principal_id, purpose FROM auth_mfa_challenges WHERE challenge_hash=$1`,
+		`SELECT principal_id FROM auth_mfa_challenges WHERE challenge_hash=$1`,
 		challengeHash,
-	).Scan(&principalID, &purpose); err != nil {
+	).Scan(&principalID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrMFAChallengeUnavailable
 		}
@@ -214,7 +213,7 @@ func (r *MFAChallengeRepository) RecordFailure(ctx context.Context, challengeHas
 	}
 
 	principalLocked := false
-	if purpose == MFAChallengeLogin {
+	{
 		const upsert = `
 INSERT INTO auth_login_attempts
     (identifier_hash, failed_attempts, window_started_at, last_attempt_at, updated_at)
