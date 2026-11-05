@@ -1,3 +1,21 @@
+> **2026-11-05 current checkpoint — Auth/RBAC and backend security hardening:** source-code checkpoint `1b942cab4ebd76f849c579d1aa3324e839fc2741` passed GitHub Actions run [41960953660](https://github.com/TheSumitNain/school-management-system/actions/runs/41960953660): migrations V1–V22 on fresh ephemeral PostgreSQL 18, full backend tests including PostgreSQL integration, and `go vet ./...`. The current branch head is `d9973da17cd3b53ac473b92fca2b283e8faf3d5e`; commits after the green source checkpoint are documentation-only updates.
+>
+> **Implemented since the older checkpoints below:**
+> - V22 repository and database guards prevent self role assignment, self permission override creation, and self-removal of DENY overrides.
+> - MFA failure counting is principal-wide across replacement challenges and challenge purposes. Five cumulative failures lock MFA for 15 minutes; failed attempts are audited; successful MFA verification/enrollment/recovery clears the counter.
+> - Staff login fails closed if username lockout storage is unavailable; staff and Platform Admin HTTP login fail closed if the IP rate limiter is missing.
+> - Parent authentication, guardian matching and pre-account registration require active school links. Parent OTP/SMS and Phase 2 Parent/Driver routes remain intentionally paused.
+> - Assigned-section teacher roster includes only student name, roll number, class and section; existing student-sensitive/profile routes remain unavailable to Teacher.
+> - Existing staff account lifecycle and RBAC role/delegation/override workflows have PostgreSQL integration coverage.
+>
+> **Repository workflow:** active branch `fix/v4-auth-security-hardening`; Draft PR #1 remains open and unmerged. `main` remains untouched. Do not merge without explicit approval.
+>
+> **Local verification and database safety:** the latest green run is remote CI on an ephemeral database. The user's Windows working tree must pull the branch and rerun `go test -count=1 -p 1 ./...` and `go vet ./...`. CI has not changed `school_management_test` or `school_management`; do not apply migrations to `school_management` without separate explicit approval. No persistent local DB version is inferred here.
+>
+> **Product boundary:** no frontend has been started. Continue backend hardening and verification first; begin the React frontend only when explicitly requested. Parent OTP/SMS provider remains paused.
+>
+> Historical checkpoints and notes follow; their commit IDs, migration versions and test results describe the dates stated and are not current status.
+>
 > **2026-11-04 latest verified Guardian Management checkpoint:** commit `3eca810623e5920f40e938e6ed6f9c227605a01d` adds school-scoped Guardian Management APIs and V19 controlled delegation for `guardians.read` / `guardians.manage`. Draft PR CI run [41800105405](https://github.com/TheSumitNain/school-management-system/actions/runs/41800105405) passed all migrations V1–V19 on ephemeral PostgreSQL 18, the complete backend suite including PostgreSQL integration tests, and `go vet ./...`. The new guardian route tests verify dedicated permissions and deny access through the Teacher's `students.read_basic` permission. V19 restores the V4 permission-catalogue immutability trigger immediately after the migration-only delegability change. No persistent user database was changed. The React frontend is still not present in the repository; the next product work must make these workflows simple in the web UI.
 
 > **2026-11-04 latest verified RBAC HTTP checkpoint:** `d5e0c8d` adds a real-router PostgreSQL integration success path. Push run `41764671472` and Draft PR run `41764679462` both passed V1–V16 migrations on ephemeral PostgreSQL 18, the full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and `go vet ./...`. The test verifies 200 for active identity, 403 with no grants, 200 after a database-authorized School Admin role grant, and 401 after token-version revocation. It uses a controlled token validator, not real JWT signature validation. All test writes, including a possible temporary first Platform Admin bootstrap, are rolled back.
