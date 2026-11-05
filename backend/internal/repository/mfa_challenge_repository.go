@@ -26,7 +26,7 @@ var (
 	ErrMFALoginLocked = errors.New("MFA login is locked for this principal")
 )
 
-func mfaLoginAttemptHash(principalID int64) string {
+// mfaPrincipalAttemptHash keeps MFA failures shared across replacement challenges and purposes.\nfunc mfaPrincipalAttemptHash(principalID int64) string {
 	sum := sha256.Sum256([]byte(fmt.Sprintf("mfa-login:%d", principalID)))
 	return hex.EncodeToString(sum[:])
 }
@@ -94,7 +94,7 @@ func (r *MFAChallengeRepository) Create(
 				SELECT 1 FROM auth_login_attempts
 				WHERE identifier_hash=$1 AND locked_until > NOW()
 			)
-		`, mfaLoginAttemptHash(principalID)).Scan(&locked); err != nil {
+		`, mfaPrincipalAttemptHash(principalID)).Scan(&locked); err != nil {
 			return fmt.Errorf("check principal MFA login lockout: %w", err)
 		}
 		if locked {
@@ -158,7 +158,7 @@ func (r *MFAChallengeRepository) Get(
 				SELECT 1 FROM auth_login_attempts
 				WHERE identifier_hash=$1 AND locked_until > NOW()
 			)
-		`, mfaLoginAttemptHash(challenge.PrincipalID)).Scan(&locked); err != nil {
+		`, mfaPrincipalAttemptHash(challenge.PrincipalID)).Scan(&locked); err != nil {
 			return nil, fmt.Errorf("check principal MFA login lockout: %w", err)
 		}
 		if locked {
@@ -235,7 +235,7 @@ ON CONFLICT (identifier_hash) DO UPDATE SET
     last_attempt_at = NOW(),
     updated_at = NOW()
 RETURNING COALESCE(locked_until > NOW(), FALSE)`
-		if err := tx.QueryRow(ctx, upsert, mfaLoginAttemptHash(principalID)).Scan(&principalLocked); err != nil {
+		if err := tx.QueryRow(ctx, upsert, mfaPrincipalAttemptHash(principalID)).Scan(&principalLocked); err != nil {
 			return fmt.Errorf("record principal MFA login failure: %w", err)
 		}
 	}
