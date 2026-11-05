@@ -270,6 +270,19 @@ func TestAuthenticateRejectsUnknownUser(t *testing.T) {
 	}
 }
 
+func TestAuthenticateStaffFailsClosedWithoutLoginSecurity(t *testing.T) {
+	users := &fakeUserRepository{}
+	service := NewAuthService(users, &fakeSchoolRepository{})
+
+	_, err := service.AuthenticateStaff(context.Background(), "teacher.one", "StrongPass123!")
+	if !errors.Is(err, ErrLoginSecurityUnavailable) {
+		t.Fatalf("missing login security error = %v, want ErrLoginSecurityUnavailable", err)
+	}
+	if users.principal != nil {
+		t.Fatal("credential lookup must not proceed when login security controls are unavailable")
+	}
+}
+
 func TestAuthenticateStaffRequiresMatchingPrincipalIdentity(t *testing.T) {
 	hash, err := HashPassword("StrongPass123!")
 	if err != nil { t.Fatal(err) }
@@ -278,7 +291,8 @@ func TestAuthenticateStaffRequiresMatchingPrincipalIdentity(t *testing.T) {
 		user: &models.User{ID: 100, PrincipalID: 999, SchoolID: 7, Username: "teacher.one", PasswordHash: hash, Status: "active"},
 		principal: &models.AuthPrincipal{ID: 42, Type: "staff", Status: "active", TokenVersion: 1, SchoolID: 7, Username: "teacher.one"},
 	}
-	service := NewAuthService(users, &fakeSchoolRepository{})
+	security := &fakeStaffLoginSecurity{}
+	service := NewAuthService(users, &fakeSchoolRepository{}, security)
 
 	_, err = service.AuthenticateStaff(context.Background(), "teacher.one", "StrongPass123!")
 	if !errors.Is(err, ErrInvalidCredentials) {
@@ -294,7 +308,8 @@ func TestAuthenticateStaffAcceptsMatchingPrincipalIdentity(t *testing.T) {
 		user: &models.User{ID: 100, PrincipalID: 42, SchoolID: 7, Username: "teacher.one", PasswordHash: hash, Status: "active"},
 		principal: &models.AuthPrincipal{ID: 42, Type: "staff", Status: "active", TokenVersion: 1, SchoolID: 7, Username: "teacher.one"},
 	}
-	service := NewAuthService(users, &fakeSchoolRepository{})
+	security := &fakeStaffLoginSecurity{}
+	service := NewAuthService(users, &fakeSchoolRepository{}, security)
 
 	principal, err := service.AuthenticateStaff(context.Background(), "teacher.one", "StrongPass123!")
 	if err != nil {
