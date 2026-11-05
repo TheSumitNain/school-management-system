@@ -79,6 +79,47 @@ func TestAuthMiddlewareValidToken(t *testing.T) {
 	}
 }
 
+func TestAuthMiddlewareRejectsRevokedSessionFamily(t *testing.T) {
+	claims := validClaims()
+	tracker := &fakeAdminSessionTracker{valid: false, familyID: claims.SessionID}
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	principal := &models.AuthPrincipal{ID: 10, Type: "staff", Status: "active", TokenVersion: 1, SchoolID: 2}
+	router.GET("/protected", AuthMiddleware(
+		&fakeTokenValidator{claims: claims},
+		fakePrincipalLoader{principal: principal},
+		fakePermissionLoader{},
+		tracker,
+	), func(c *gin.Context) { c.Status(http.StatusOK) })
+
+	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
+	req.Header.Set("Authorization", "Bearer valid-token")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("revoked session family must be rejected, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestAuthMiddlewareRequiresSessionTrackerForOrdinaryStaff(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	principal := &models.AuthPrincipal{ID: 10, Type: "staff", Status: "active", TokenVersion: 1, SchoolID: 2}
+	router := gin.New()
+	router.GET("/protected", AuthMiddleware(
+		&fakeTokenValidator{claims: validClaims()},
+		fakePrincipalLoader{principal: principal},
+		fakePermissionLoader{},
+	), func(c *gin.Context) { c.Status(http.StatusOK) })
+
+	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
+	req.Header.Set("Authorization", "Bearer valid-token")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("missing session tracker must fail closed for ordinary staff, got %d", rec.Code)
+	}
+}
+
 func TestAuthMiddlewareMissingAuthorization(t *testing.T) {
 	router := setupMiddlewareRouter(&fakeTokenValidator{})
 	rec := httptest.NewRecorder()
