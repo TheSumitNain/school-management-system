@@ -13,7 +13,7 @@ The application is designed to support multiple schools. Student, parent, teache
 ### Implemented foundation
 
 - PostgreSQL access uses application configuration and a connection pool; schema changes are versioned through additive migrations.
-- Passwords are bcrypt-hashed (cost 12), require at least 12 bytes, reject whitespace-only and local common-password entries, and are checked against the Have I Been Pwned Pwned Passwords range service using k-anonymity.
+- Passwords are bcrypt-hashed (cost 12), require at least 12 Unicode characters and at most 72 UTF-8 bytes, reject invalid UTF-8, whitespace-only and local common-password entries, and are checked against the Have I Been Pwned Pwned Passwords range service using k-anonymity.
 - Staff usernames are globally unique and case-insensitive. Staff and Platform Admin login use database-backed five-failure/15-minute lockout and atomic IP rate limiting. Login fails closed if the login-security store or IP limiter is unavailable.
 - Platform Admin and School Admin require TOTP MFA. MFA failure accounting is principal-wide across replacement challenges and challenge purposes: five failures trigger a 15-minute lockout, failures are audited, and successful MFA verification resets the counter.
 - Access JWTs carry canonical principal identity, token version and refresh-family ID. Protected requests reload principal status, current MFA enrollment state, school status and live permissions from PostgreSQL.
@@ -51,7 +51,6 @@ Bcrypt has a 72-byte input limit. Any future password-policy change must handle 
 Before public production deployment:
 
 - Finalize and document the password policy.
-- Enforce the intended minimum of 12 characters for administrator accounts, with clearly defined Unicode and byte-length handling.
 - Maintain the k-anonymity breached-password check and monitor its availability; retain a clear, fail-closed recovery path for temporary provider outages.
 - Never log plaintext passwords or expose them in error messages.
 - Never store plaintext passwords.
@@ -59,7 +58,7 @@ Before public production deployment:
 - Implement a safe migration and rehash strategy if the hashing algorithm or policy changes.
 - Revoke appropriate sessions after password changes and password resets.
 
-The current minimum is 12 bytes and maximum is 72 bytes. School onboarding, staff account creation/re-enable, staff self-service password changes, same-school School Admin password resets, and the one-time Platform Admin bootstrap all run the breached-password check before persistence. New staff accounts default to a temporary-password state; the next authenticated request is restricted to password change and identity inspection until replacement. Password changes/resets increment the principal token version and revoke all refresh sessions in the same transaction.
+The current minimum is 12 Unicode code points (characters) and maximum is 72 UTF-8 bytes to respect bcrypt's input limit. Invalid UTF-8 is rejected. School onboarding, staff account creation/re-enable, staff self-service password changes, same-school School Admin password resets, and the one-time Platform Admin bootstrap all run the breached-password check before persistence. New staff accounts default to a temporary-password state; the next authenticated request is restricted to password change and identity inspection until replacement. Password changes/resets increment the principal token version and revoke all refresh sessions in the same transaction.
 
 ## 4. Authentication and Token Security
 
