@@ -624,6 +624,13 @@ Use `backend/.env.example` as the reference for environment variables.
 
 Create and maintain a local `backend/.env` for development configuration. Keep local secrets out of Git and public documentation.
 
+The API requires the TOTP encryption settings documented in `backend/.env.example`:
+- `TOTP_ENCRYPTION_KEY`: Base64 encoding of exactly 32 random bytes.
+- `TOTP_ENCRYPTION_KEY_VERSION`: positive integer identifying the current key.
+- `TOTP_ENCRYPTION_PREVIOUS_KEYS`: optional comma-separated `version:Base64` pairs used only during key rotation.
+
+New TOTP credentials use the current key. Credentials encrypted with a configured previous key are transparently re-encrypted after successful TOTP verification. Keep old keys configured until no credential rows and no retained backups require them. See [Security Documentation](SECURITY.md) for the coordinated rollout and retirement procedure. Never place production key material in this document or in Git.
+
 ### 8.2 Start the API
 
 From the backend directory:
