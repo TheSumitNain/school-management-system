@@ -180,6 +180,37 @@ func RequirePermission(permission string) gin.HandlerFunc {
 	}
 }
 
+// RequireAnyPermission allows a route to accept one of several permissions.
+// Use this when the repository performs a more precise resource-dependent check
+// (for example, same-day attendance marking versus past-date correction).
+func RequireAnyPermission(permissions ...string) gin.HandlerFunc {
+	allowed := make(map[string]struct{}, len(permissions))
+	for _, permission := range permissions {
+		if permission = strings.TrimSpace(permission); permission != "" {
+			allowed[permission] = struct{}{}
+		}
+	}
+	return func(c *gin.Context) {
+		if len(allowed) == 0 {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Authorization policy unavailable"})
+			return
+		}
+		value, exists := c.Get(ContextPermissionsKey)
+		granted, ok := value.(map[string]struct{})
+		if !exists || !ok {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Authorization context unavailable"})
+			return
+		}
+		for permission := range allowed {
+			if _, ok := granted[permission]; ok {
+				c.Next()
+				return
+			}
+		}
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"status": "error", "message": "Permission denied"})
+	}
+}
+
 func validCurrentPrincipal(p *models.AuthPrincipal) bool {
 	if p == nil || p.ID <= 0 || p.TokenVersion <= 0 || p.Status != "active" {
 		return false
