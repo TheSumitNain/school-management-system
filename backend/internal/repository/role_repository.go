@@ -815,6 +815,11 @@ func (r *RoleRepository) DeleteStaffPermissionOverride(
 	if r == nil || r.db == nil || actorPrincipalID <= 0 || schoolID <= 0 || targetPrincipalID <= 0 || permissionKey == "" {
 		return ErrRolePermissionDenied
 	}
+	// Removing a DENY override from one's own principal can restore authority,
+	// so self-targeted override deletion is also prohibited.
+	if actorPrincipalID == targetPrincipalID {
+		return ErrRolePermissionDenied
+	}
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("begin staff permission override deletion: %w", err)
