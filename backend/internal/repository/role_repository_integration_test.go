@@ -218,6 +218,45 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 		t.Fatalf("self permission override deletion error = %v, want ErrRolePermissionDenied", err)
 	}
 
+	// Database triggers must also reject direct SQL self-escalation attempts,
+	// not only calls that pass through RoleRepository.
+	roleSavepoint, err := tx.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin direct self-role-assignment guard savepoint: %v", err)
+	}
+	_, directRoleErr := roleSavepoint.Exec(ctx, `
+		INSERT INTO principal_roles (principal_id, role_id, assigned_by)
+		VALUES ($1, $2, $1)
+	`, actorPrincipalID, customRole.ID)
+	if directRoleErr == nil {
+		_ = roleSavepoint.Rollback(ctx)
+		t.Fatal("database allowed a principal to assign a role to itself")
+	}
+	if rollbackErr := roleSavepoint.Rollback(ctx); rollbackErr != nil {
+		t.Fatalf("rollback direct self-role-assignment savepoint: %v", rollbackErr)
+	}
+
+	overrideSavepoint, err := tx.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin direct self-override guard savepoint: %v", err)
+	}
+	_, directOverrideErr := overrideSavepoint.Exec(ctx, `
+		INSERT INTO user_permission_overrides
+		    (principal_id, school_id, permission_id, effect, reason, granted_by, delegation_id)
+		SELECT $1, $2, p.id, 'allow', 'direct SQL self-escalation test', $1, d.id
+		FROM permissions p
+		JOIN role_permission_delegations d
+		  ON d.id = $3 AND d.school_id = $2 AND d.permission_id = p.id
+		WHERE p.permission_key = 'homework.create'
+	`, actorPrincipalID, schoolID, overrideDelegation.ID)
+	if directOverrideErr == nil {
+		_ = overrideSavepoint.Rollback(ctx)
+		t.Fatal("database allowed a principal to grant a permission override to itself")
+	}
+	if rollbackErr := overrideSavepoint.Rollback(ctx); rollbackErr != nil {
+		t.Fatalf("rollback direct self-override guard savepoint: %v", rollbackErr)
+	}
+
 	delegations, err := repo.ListSchoolPermissionDelegations(ctx, actorPrincipalID, schoolID)
 	if err != nil {
 		t.Fatalf("authorized school delegation listing failed: %v", err)
