@@ -8,15 +8,15 @@ LANGUAGE plpgsql
 SET search_path = pg_catalog, public
 AS $$
 BEGIN
-    IF TG_TABLE_NAME = 'principal_roles'
-       AND NEW.assigned_by IS NOT NULL
-       AND NEW.assigned_by = NEW.principal_id THEN
-        RAISE EXCEPTION 'principals cannot assign roles to themselves';
-    END IF;
-
-    IF TG_TABLE_NAME = 'user_permission_overrides'
-       AND NEW.granted_by = NEW.principal_id THEN
-        RAISE EXCEPTION 'principals cannot grant permission overrides to themselves';
+    IF TG_TABLE_NAME = 'principal_roles' THEN
+        IF NEW.assigned_by IS NOT NULL
+           AND NEW.assigned_by = NEW.principal_id THEN
+            RAISE EXCEPTION 'principals cannot assign roles to themselves';
+        END IF;
+    ELSIF TG_TABLE_NAME = 'user_permission_overrides' THEN
+        IF NEW.granted_by = NEW.principal_id THEN
+            RAISE EXCEPTION 'principals cannot grant permission overrides to themselves';
+        END IF;
     END IF;
 
     RETURN NEW;
