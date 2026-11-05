@@ -60,8 +60,53 @@ func (f fakeTokenValidator) ValidateAccessToken(
 	if tokenString != "valid-test-token" {
 		return nil, errors.New("invalid token")
 	}
-
+	if f.claims != nil && f.claims.SessionID == "" {
+		f.claims.SessionID = "00000000-0000-4000-8000-000000000031"
+	}
 	return f.claims, f.err
+}
+
+func setupTestRouterWithHandlers(
+	db databasePinger,
+	authHandler *handlers.AuthHandler,
+	tokenService middleware.AccessTokenValidator,
+	principalLoader middleware.PrincipalLoader,
+	permissionLoader middleware.PermissionLoader,
+	schoolOnboardingHandler *handlers.SchoolOnboardingHandler,
+	roleHandler *handlers.RoleHandler,
+	optionalHandlers ...any,
+) (*gin.Engine, error) {
+	hasTracker := false
+	for _, optional := range optionalHandlers {
+		if _, ok := optional.(middleware.AdminSessionActivityTracker); ok {
+			hasTracker = true
+			break
+		}
+	}
+	if !hasTracker {
+		optionalHandlers = append(optionalHandlers, fakeAdminSessionActivityTracker{
+			adminPrincipalID: -1,
+			familyID: "00000000-0000-4000-8000-000000000031",
+		})
+	}
+	return setupRouterWithHandlers(db, authHandler, tokenService, principalLoader, permissionLoader,
+		schoolOnboardingHandler, roleHandler, optionalHandlers...)
+}
+
+func setupTestRouter(
+	db databasePinger,
+	authHandler *handlers.AuthHandler,
+	tokenService middleware.AccessTokenValidator,
+	principalLoader middleware.PrincipalLoader,
+	permissionLoader middleware.PermissionLoader,
+	schoolOnboardingHandlers ...*handlers.SchoolOnboardingHandler,
+) (*gin.Engine, error) {
+	var schoolHandler *handlers.SchoolOnboardingHandler
+	if len(schoolOnboardingHandlers) > 0 {
+		schoolHandler = schoolOnboardingHandlers[0]
+	}
+	return setupTestRouterWithHandlers(db, authHandler, tokenService, principalLoader,
+		permissionLoader, schoolHandler, nil)
 }
 
 func (f fakeDatabase) Ping(ctx context.Context) error {
@@ -71,7 +116,7 @@ func (f fakeDatabase) Ping(ctx context.Context) error {
 func TestHealthEndpoint(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	router, err := setupRouter(fakeDatabase{}, nil, nil, nil, nil)
+	router, err := setupTestRouter(fakeDatabase{}, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("failed to setup router: %v", err)
 	}
@@ -105,7 +150,7 @@ func TestHealthEndpoint(t *testing.T) {
 func TestReadyEndpointWhenDatabaseIsAvailable(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	router, err := setupRouter(fakeDatabase{}, nil, nil, nil, nil)
+	router, err := setupTestRouter(fakeDatabase{}, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("failed to setup router: %v", err)
 	}
@@ -132,7 +177,7 @@ func TestReadyEndpointWhenDatabaseIsAvailable(t *testing.T) {
 func TestReadyEndpointWhenDatabaseFails(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	router, err := setupRouter(fakeDatabase{
+	router, err := setupTestRouter(fakeDatabase{
 		err: errors.New("database unavailable"),
 	}, nil, nil, nil, nil)
 
@@ -176,7 +221,7 @@ func TestAuthMeWithValidToken(t *testing.T) {
 		},
 	}
 
-	router, err := setupRouter(fakeDatabase{}, nil, validator, fakePrincipalLoader{principal: &models.AuthPrincipal{ID: 10, Type: "staff", Status: "active", TokenVersion: 1, SchoolID: 2, Username: "tester"}}, fakePermissionLoader{})
+	router, err := setupTestRouter(fakeDatabase{}, nil, validator, fakePrincipalLoader{principal: &models.AuthPrincipal{ID: 10, Type: "staff", Status: "active", TokenVersion: 1, SchoolID: 2, Username: "tester"}}, fakePermissionLoader{})
 	if err != nil {
 		t.Fatalf("failed to setup router: %v", err)
 	}
@@ -201,7 +246,7 @@ func TestAuthMeWithValidToken(t *testing.T) {
 func TestAuthMeWithoutToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	router, err := setupRouter(fakeDatabase{}, nil, fakeTokenValidator{}, fakePrincipalLoader{}, fakePermissionLoader{})
+	router, err := setupTestRouter(fakeDatabase{}, nil, fakeTokenValidator{}, fakePrincipalLoader{}, fakePermissionLoader{})
 	if err != nil {
 		t.Fatalf("failed to setup router: %v", err)
 	}
@@ -219,7 +264,7 @@ func TestAuthMeWithoutToken(t *testing.T) {
 func TestAuthMeWithInvalidToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	router, err := setupRouter(fakeDatabase{}, nil, fakeTokenValidator{}, fakePrincipalLoader{}, fakePermissionLoader{})
+	router, err := setupTestRouter(fakeDatabase{}, nil, fakeTokenValidator{}, fakePrincipalLoader{}, fakePermissionLoader{})
 	if err != nil {
 		t.Fatalf("failed to setup router: %v", err)
 	}
@@ -245,7 +290,7 @@ func TestAuthMeForParentOmitsStaffOnlyFields(t *testing.T) {
 			TokenVersion: 1,
 		},
 	}
-	router, err := setupRouter(
+	router, err := setupTestRouter(
 		fakeDatabase{},
 		nil,
 		validator,
@@ -282,7 +327,7 @@ func TestSchoolStaffListingRouteEnforcesLiveUsersReadPermission(t *testing.T) {
 	principal := &models.AuthPrincipal{ID: 31, Type: "staff", Status: "active", TokenVersion: 1, SchoolID: 8, Username: "school.admin"}
 	staffHandler := handlers.NewStaffHandler(nil)
 
-	deniedRouter, err := setupRouterWithHandlers(
+	deniedRouter, err := setupTestRouterWithHandlers(
 		fakeDatabase{}, nil, validator,
 		fakePrincipalLoader{principal: principal},
 		fakePermissionLoader{permissions: []string{}},
@@ -299,7 +344,7 @@ func TestSchoolStaffListingRouteEnforcesLiveUsersReadPermission(t *testing.T) {
 		t.Fatalf("missing users.read permission: status=%d body=%s", deniedRec.Code, deniedRec.Body.String())
 	}
 
-	allowedRouter, err := setupRouterWithHandlers(
+	allowedRouter, err := setupTestRouterWithHandlers(
 		fakeDatabase{}, nil, validator,
 		fakePrincipalLoader{principal: principal},
 		fakePermissionLoader{permissions: []string{"users.read"}},
@@ -336,7 +381,7 @@ func TestStaffUpdateAndEnableRoutesEnforceLiveUsersUpdatePermission(t *testing.T
 		{method: http.MethodPatch, path: "/school/staff/42", body: `{"username":"new.teacher"}`},
 		{method: http.MethodPost, path: "/school/staff/42/enable", body: `{"temporary_password":"A-Strong-Temporary-Pass-123"}`},
 	} {
-		deniedRouter, err := setupRouterWithHandlers(
+		deniedRouter, err := setupTestRouterWithHandlers(
 			fakeDatabase{}, nil, validator,
 			fakePrincipalLoader{principal: principal},
 			fakePermissionLoader{permissions: []string{}},
@@ -355,7 +400,7 @@ func TestStaffUpdateAndEnableRoutesEnforceLiveUsersUpdatePermission(t *testing.T
 				test.method, test.path, deniedRec.Code, deniedRec.Body.String())
 		}
 
-		allowedRouter, err := setupRouterWithHandlers(
+		allowedRouter, err := setupTestRouterWithHandlers(
 			fakeDatabase{}, nil, validator,
 			fakePrincipalLoader{principal: principal},
 			fakePermissionLoader{permissions: []string{"users.update"}},
@@ -390,7 +435,7 @@ func TestStaffPasswordResetRouteRequiresDedicatedLivePermission(t *testing.T) {
 
 	request := func(permissions []string) *httptest.ResponseRecorder {
 		authHandler := handlers.NewAuthHandler(nil, nil, nil)
-		router, err := setupRouterWithHandlers(
+		router, err := setupTestRouterWithHandlers(
 			fakeDatabase{}, authHandler, validator,
 			fakePrincipalLoader{principal: principal},
 			fakePermissionLoader{permissions: permissions},
@@ -467,7 +512,7 @@ func TestRoleAdministrationRoutesEnforceLivePermissions(t *testing.T) {
 			TokenVersion: 1,
 			SessionID: "00000000-0000-4000-8000-000000000031",
 		}}
-		router, err := setupRouterWithHandlers(
+		router, err := setupTestRouterWithHandlers(
 			fakeDatabase{}, nil, validator,
 			fakePrincipalLoader{principal: principal},
 			fakePermissionLoader{permissions: permissions},
@@ -559,7 +604,7 @@ func TestAcademicRoutesEnforceResourcePermissions(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.method+" "+test.path, func(t *testing.T) {
-			deniedRouter, err := setupRouterWithHandlers(
+			deniedRouter, err := setupTestRouterWithHandlers(
 				fakeDatabase{}, nil, validator, fakePrincipalLoader{principal: principal},
 				fakePermissionLoader{}, nil, nil, nil, handler,
 			)
@@ -571,7 +616,7 @@ func TestAcademicRoutesEnforceResourcePermissions(t *testing.T) {
 			deniedRouter.ServeHTTP(rec, req)
 			if rec.Code != http.StatusForbidden { t.Fatalf("missing %s: status=%d body=%s", test.permission, rec.Code, rec.Body.String()) }
 
-			allowedRouter, err := setupRouterWithHandlers(
+			allowedRouter, err := setupTestRouterWithHandlers(
 				fakeDatabase{}, nil, validator, fakePrincipalLoader{principal: principal},
 				fakePermissionLoader{permissions: []string{test.permission}}, nil, nil, nil, handler,
 			)
@@ -612,7 +657,7 @@ func TestGuardianRoutesEnforceDedicatedLivePermissions(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.method+" "+test.path, func(t *testing.T) {
 			buildRouter := func(permissions []string) *gin.Engine {
-				router, err := setupRouterWithHandlers(
+				router, err := setupTestRouterWithHandlers(
 					fakeDatabase{}, nil, validator,
 					fakePrincipalLoader{principal: principal},
 					fakePermissionLoader{permissions: permissions},
@@ -659,7 +704,7 @@ func TestAttendanceRoutesEnforceReadAndMarkPermissions(t *testing.T) {
 	for _,test:=range tests {
 		t.Run(test.method+" "+test.path,func(t *testing.T){
 			request:=func(perms []string)*httptest.ResponseRecorder{
-				router,err:=setupRouterWithHandlers(fakeDatabase{},nil,validator,
+				router,err:=setupTestRouterWithHandlers(fakeDatabase{},nil,validator,
 					fakePrincipalLoader{principal:principal},fakePermissionLoader{permissions:perms},
 					nil,nil,nil,nil,nil,handlers.NewAttendanceHandler(nil))
 				if err!=nil{t.Fatalf("setup router: %v",err)}
@@ -680,7 +725,7 @@ func TestAttendanceCorrectionRouteEnforcesDedicatedPermission(t *testing.T) {
 	validator:=fakeTokenValidator{claims:&services.TokenClaims{RegisteredClaims:jwt.RegisteredClaims{Subject:"31"},PrincipalType:"staff",TokenVersion:1}}
 	principal:=&models.AuthPrincipal{ID:31,Type:"staff",Status:"active",TokenVersion:1,SchoolID:8,Username:"school.staff"}
 	routerFor:=func(perms []string)*gin.Engine{
-		router,err:=setupRouterWithHandlers(fakeDatabase{},nil,validator,fakePrincipalLoader{principal:principal},
+		router,err:=setupTestRouterWithHandlers(fakeDatabase{},nil,validator,fakePrincipalLoader{principal:principal},
 			fakePermissionLoader{permissions:perms},nil,nil,nil,nil,nil,handlers.NewAttendanceHandler(nil))
 		if err!=nil{t.Fatalf("setup router: %v",err)}
 		return router
@@ -707,7 +752,7 @@ func TestAttendanceSameDayUpdateRouteRequiresDedicatedPermission(t *testing.T) {
 		SchoolID: 8, Username: "school.staff",
 	}
 	request := func(permissions []string) *httptest.ResponseRecorder {
-		router, err := setupRouterWithHandlers(
+		router, err := setupTestRouterWithHandlers(
 			fakeDatabase{}, nil, validator,
 			fakePrincipalLoader{principal: principal},
 			fakePermissionLoader{permissions: permissions},
@@ -745,7 +790,7 @@ func TestAttendanceSameDayUpdateRouteRequiresDedicatedPermission(t *testing.T) {
 func TestMFARecoveryCodeRegenerationRequiresAuthenticatedSession(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	authHandler := handlers.NewAuthHandler(nil, nil, nil)
-	router, err := setupRouter(
+	router, err := setupTestRouter(
 		fakeDatabase{},
 		authHandler,
 		fakeTokenValidator{},
@@ -787,7 +832,7 @@ func TestPlatformSchoolCreationRouteRequiresBothDedicatedPermissions(t *testing.
 		SessionID: sessionID,
 	}}
 	request := func(permissions []string) *httptest.ResponseRecorder {
-		router, err := setupRouterWithHandlers(
+		router, err := setupTestRouterWithHandlers(
 			fakeDatabase{}, nil, validator,
 			fakePrincipalLoader{principal: principal},
 			fakePermissionLoader{permissions: permissions},
