@@ -134,17 +134,10 @@ func TestAdminSessionActivityV21PostgresIntegration(t *testing.T) {
 	// Promote this fixture staff account to the exact system School Admin role.
 	// The platform role assignment mirrors the one-time bootstrap path and is
 	// confined to this dedicated integration database.
-	var platformRoleID, schoolID, schoolAdminRoleID int64
-	if err := pool.QueryRow(ctx,`
-		SELECT id FROM roles
-		WHERE principal_type='platform_admin' AND scope_type='platform'
-		  AND role_key='platform_admin' AND is_system=TRUE
-	`).Scan(&platformRoleID); err != nil { t.Fatalf("load Platform Admin system role: %v",err) }
-	if _, err := pool.Exec(ctx,`
-		INSERT INTO principal_roles(principal_id,role_id,assigned_by)
-		VALUES($1,$2,NULL)
-		ON CONFLICT (principal_id,role_id) WHERE revoked_at IS NULL DO NOTHING
-	`,principalID,platformRoleID); err != nil { t.Fatalf("assign Platform Admin system role fixture: %v",err) }
+	// Platform Admin identity is established by its principal subtype and
+	// platform_admin_accounts row. Do not insert the protected bootstrap role
+	// here: its guard intentionally prevents creating a second bootstrap admin.
+	var schoolID, schoolAdminRoleID int64
 	if err := pool.QueryRow(ctx,`SELECT school_id FROM users WHERE id=$1`,userID).Scan(&schoolID); err != nil { t.Fatalf("load School Admin school: %v",err) }
 	if err := pool.QueryRow(ctx,`
 		SELECT id FROM roles WHERE school_id=$1 AND principal_type='staff'
