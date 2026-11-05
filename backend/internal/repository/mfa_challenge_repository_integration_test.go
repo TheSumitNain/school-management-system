@@ -21,7 +21,7 @@ func TestMFAChallengeRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("load fixture token version: %v", err)
 	}
 	repo := NewMFAChallengeRepository(pool)
-	attemptHash := mfaLoginAttemptHash(principalID)
+	attemptHash := mfaPrincipalAttemptHash(principalID)
 	_, _ = pool.Exec(ctx, `DELETE FROM auth_login_attempts WHERE identifier_hash=$1`, attemptHash)
 	t.Cleanup(func() {
 		_, _ = pool.Exec(context.Background(),
