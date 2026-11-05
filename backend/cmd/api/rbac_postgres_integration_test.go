@@ -717,9 +717,12 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	disabledStaffLogin.Header.Set("Content-Type", "application/json")
 	disabledStaffLoginRecorder := httptest.NewRecorder()
 	loginRouter.ServeHTTP(disabledStaffLoginRecorder, disabledStaffLogin)
-	if disabledStaffLoginRecorder.Code != http.StatusForbidden {
-		t.Fatalf("disabled staff account must be rejected by the real login endpoint: status=%d body=%s; want 403",
+	if disabledStaffLoginRecorder.Code != http.StatusUnauthorized {
+		t.Fatalf("disabled staff account must be rejected without disclosing account state: status=%d body=%s; want 401",
 			disabledStaffLoginRecorder.Code, disabledStaffLoginRecorder.Body.String())
+	}
+	if got := disabledStaffLoginRecorder.Body.String(); !strings.Contains(got, "Invalid username or password") {
+		t.Fatalf("disabled staff login must use the generic credential error: body=%s", got)
 	}
 	var staffAuditCount int
 	if err := tx.QueryRow(ctx, `
