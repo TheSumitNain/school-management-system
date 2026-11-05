@@ -145,6 +145,10 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 	principal, err := h.authService.AuthenticateStaff(c.Request.Context(), req.Username, req.Password)
 	if err != nil {
+		if errors.Is(err, services.ErrLoginSecurityUnavailable) {
+			writeAuthError(c, http.StatusServiceUnavailable, "Login security controls are unavailable")
+			return
+		}
 		if errors.Is(err, services.ErrLoginLocked) {
 			c.Header("Retry-After", "900")
 			writeAuthError(c, http.StatusTooManyRequests, "Too many failed login attempts. Try again in 15 minutes.")
