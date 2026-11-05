@@ -177,6 +177,15 @@ func TestParentGuardianAuthorizationV12PostgresIntegration(t *testing.T) {
 		return err
 	})
 
+	// The school-visible contact and the canonical E.164 portal mobile must
+	// remain aligned while a Parent identity owns this guardian link.
+	expectFailure("change guardian contact mobile while Parent link is active", func() error {
+		_, err := tx.Exec(ctx, `
+			UPDATE guardians SET mobile_number = $1 WHERE id = $2 AND school_id = $3
+		`, mobile+"1", guardianID, schoolID)
+		return err
+	})
+
 	// A guardian contact can have only one active parent link.
 	expectFailure("duplicate active parent guardian link", func() error {
 		_, err := tx.Exec(ctx, `
