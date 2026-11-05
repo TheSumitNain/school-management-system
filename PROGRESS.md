@@ -330,4 +330,4 @@ C1–C16 are source-level changes only. They have not been executed or integrati
 - [ ] Validate migration parsing and clean v3-to-v4 upgrade on a disposable PostgreSQL 18 database
 - [ ] Run trigger behavior and failure-case integration tests against the disposable database
 
-C17 changes only SQL function-body delimiters; function logic is unchanged. Static verification does not establish PostgreSQL execution success. Migration V4 remains unapplied and must not be applied without explicit user approval.
+C17 changes only SQL function-body delimiters; function logic is unchanged. Static verification does not establish PostgreSQL execution success. Migration V4 remains unapplied and must not be applied without explicit user approval. ANd
