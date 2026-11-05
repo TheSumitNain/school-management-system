@@ -760,3 +760,61 @@ func TestMFARecoveryCodeRegenerationRequiresAuthenticatedSession(t *testing.T) {
 		t.Fatalf("recovery-code regeneration without access token must be rejected, got %d: %s", rec.Code, rec.Body.String())
 	}
 }
+
+func TestPlatformSchoolCreationRouteRequiresBothDedicatedPermissions(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	const (
+		principalID = int64(32)
+		sessionID = "00000000-0000-4000-8000-000000000031"
+	)
+	principal := &models.AuthPrincipal{
+		ID: principalID, Type: "platform_admin", Status: "active", TokenVersion: 1,
+	}
+	validator := fakeTokenValidator{claims: &services.TokenClaims{
+		RegisteredClaims: jwt.RegisteredClaims{Subject: strconv.FormatInt(principalID, 10)},
+		PrincipalType: "platform_admin",
+		TokenVersion: 1,
+		SessionID: sessionID,
+	}}
+	request := func(permissions []string) *httptest.ResponseRecorder {
+		router, err := setupRouterWithHandlers(
+			fakeDatabase{}, nil, validator,
+			fakePrincipalLoader{principal: principal},
+			fakePermissionLoader{permissions: permissions},
+			handlers.NewSchoolOnboardingHandler(nil), nil,
+			fakeAdminSessionActivityTracker{adminPrincipalID: principalID, familyID: sessionID},
+		)
+		if err != nil {
+			t.Fatalf("setup platform school onboarding router: %v", err)
+		}
+		req := httptest.NewRequest(
+			http.MethodPost,
+			"/platform/schools",
+			strings.NewReader(`{"name":"Test School","code":"TEST","school_admin_username":"test.admin","school_admin_initial_password":"A-Strong-Temporary-Pass-123"}`),
+		)
+		req.Header.Set("Authorization", "Bearer valid-test-token")
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		return rec
+	}
+
+	if denied := request(nil); denied.Code != http.StatusForbidden {
+		t.Fatalf("without platform school permissions: status=%d body=%s; want 403",
+			denied.Code, denied.Body.String())
+	}
+	if partial := request([]string{"platform.schools.create"}); partial.Code != http.StatusForbidden {
+		t.Fatalf("with platform.schools.create only: status=%d body=%s; want 403",
+			partial.Code, partial.Body.String())
+	}
+	if partial := request([]string{"platform.school_admins.create"}); partial.Code != http.StatusForbidden {
+		t.Fatalf("with platform.school_admins.create only: status=%d body=%s; want 403",
+			partial.Code, partial.Body.String())
+	}
+	if allowed := request([]string{"platform.schools.create", "platform.school_admins.create"}); allowed.Code != http.StatusServiceUnavailable {
+		t.Fatalf("with both dedicated permissions request should reach unavailable onboarding handler: status=%d body=%s; want 503",
+			allowed.Code, allowed.Body.String())
+	}
+}
+
