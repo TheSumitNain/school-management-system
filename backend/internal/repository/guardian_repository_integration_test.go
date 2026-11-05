@@ -141,6 +141,37 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 	}
 
 	repo := NewAcademicRepository(tx)
+
+	// Even if a Platform Admin delegates guardian permissions to a custom
+	// role, a Teacher-only principal must not gain family/contact access.
+	var teacherRoleID, teacherPrincipalID int64
+	if err := tx.QueryRow(ctx, `
+		SELECT id FROM roles
+		 WHERE school_id=$1 AND principal_type='staff' AND scope_type='school'
+		   AND role_key='teacher' AND is_system=TRUE
+	`, schoolID).Scan(&teacherRoleID); err != nil {
+		t.Fatalf("load Teacher system role: %v", err)
+	}
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO users (school_id, username, password_hash, status)
+		VALUES ($1, $2, 'integration-password-hash', 'active')
+		RETURNING principal_id
+	`, schoolID, "tguard-"+suffix).Scan(&teacherPrincipalID); err != nil {
+		t.Fatalf("create Teacher boundary fixture: %v", err)
+	}
+	if err := roleRepo.AssignStaffRole(ctx, actorPrincipalID, schoolID, teacherPrincipalID, teacherRoleID); err != nil {
+		t.Fatalf("assign Teacher system role: %v", err)
+	}
+	if err := roleRepo.AssignStaffRole(ctx, actorPrincipalID, schoolID, teacherPrincipalID, customRole.ID); err != nil {
+		t.Fatalf("assign guardian custom role to Teacher: %v", err)
+	}
+	if _, err := repo.ListGuardians(ctx, teacherPrincipalID, schoolID, "", "active", 10, 0); !errors.Is(err, ErrGuardianAccessDenied) {
+		t.Fatalf("Teacher with delegated guardians.read must be denied; got %v", err)
+	}
+	if err := authorizeAcademic(ctx, tx, teacherPrincipalID, schoolID, "students.read_sensitive"); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("Teacher with a custom role must not read sensitive student profiles; got %v", err)
+	}
+
 	mobile := "+911234567890"
 	email := "guardian-" + suffix + "@example.invalid"
 	guardian, err := repo.SaveGuardian(ctx, targetPrincipalID, schoolID, 0,
