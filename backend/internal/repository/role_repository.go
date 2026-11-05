@@ -47,24 +47,44 @@ func (r *RoleRepository) ListSchoolRoles(ctx context.Context, actorPrincipalID, 
 	if r == nil || r.db == nil || actorPrincipalID <= 0 || schoolID <= 0 {
 		return nil, ErrRolePermissionDenied
 	}
-	var active bool
+	var authorized bool
 	if err := r.db.QueryRow(ctx, `
 		SELECT EXISTS (
 			SELECT 1
 			FROM auth_principals ap
 			JOIN users u ON u.principal_id = ap.id
 			JOIN schools s ON s.id = u.school_id
+			JOIN principal_roles pr ON pr.principal_id = ap.id AND pr.revoked_at IS NULL
+			JOIN roles r ON r.id = pr.role_id
+			JOIN role_permissions rp ON rp.role_id = r.id
+			JOIN permissions p ON p.id = rp.permission_id
 			WHERE ap.id = $1
 			  AND ap.principal_type = 'staff'
 			  AND ap.status = 'active'
 			  AND u.status = 'active'
 			  AND u.school_id = $2
 			  AND s.status = 'active'
+			  AND r.school_id = $2
+			  AND r.scope_type = 'school'
+			  AND r.principal_type = 'staff'
+			  AND r.role_key = 'school_admin'
+			  AND r.is_system = TRUE
+			  AND p.permission_key = 'roles.read'
+			  AND p.scope_type = 'school'
+			  AND p.is_active = TRUE
+			  AND NOT EXISTS (
+			      SELECT 1
+			      FROM user_permission_overrides denied
+			      WHERE denied.principal_id = ap.id
+			        AND denied.school_id = $2
+			        AND denied.permission_id = p.id
+			        AND denied.effect = 'deny'
+			  )
 		)
-	`, actorPrincipalID, schoolID).Scan(&active); err != nil {
-		return nil, fmt.Errorf("validate school role list actor: %w", err)
+	`, actorPrincipalID, schoolID).Scan(&authorized); err != nil {
+		return nil, fmt.Errorf("authorize school role listing: %w", err)
 	}
-	if !active {
+	if !authorized {
 		return nil, ErrRolePermissionDenied
 	}
 
