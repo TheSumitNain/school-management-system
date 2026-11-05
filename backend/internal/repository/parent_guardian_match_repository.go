@@ -53,6 +53,9 @@ func findPortalEligibleGuardiansByMobile(
 		SELECT g.id, g.school_id, g.full_name,
 		       COUNT(DISTINCT s.id)::BIGINT AS active_student_count
 		  FROM guardians g
+		  JOIN schools linked_school
+		    ON linked_school.id = g.school_id
+		   AND linked_school.status = 'active'
 		  JOIN student_guardians sg
 		    ON sg.guardian_id = g.id
 		   AND sg.school_id = g.school_id
