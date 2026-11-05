@@ -395,7 +395,7 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
 	}
 	if protectedUserStatus != "active" || protectedPrincipalStatus != "active" ||
 		protectedTokenVersion != 1 || protectedPasswordHash != "protected-admin-password-hash" ||
-		protectedMustChangePassword || !protectedSessionActive {
+		!protectedMustChangePassword || !protectedSessionActive {
 		t.Fatalf("rejected School Admin lifecycle operation changed target state: user=%q principal=%q token_version=%d password_changed=%v must_change=%v session_active=%v",
 			protectedUserStatus, protectedPrincipalStatus, protectedTokenVersion,
 			protectedPasswordHash != "protected-admin-password-hash", protectedMustChangePassword, protectedSessionActive)
