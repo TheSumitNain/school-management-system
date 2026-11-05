@@ -2,10 +2,13 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"testing"
 	"time"
+
+	"school-management-system/internal/models"
 )
 
 // TestParentGuardianAuthorizationV12PostgresIntegration verifies the V12
@@ -203,6 +206,10 @@ func TestParentGuardianAuthorizationV12PostgresIntegration(t *testing.T) {
 	if visibleChildren != 1 {
 		t.Fatalf("expected one linked child, got %d", visibleChildren)
 	}
+	authorizationRepo := NewPrincipalAuthorizationRepository(tx)
+	if _, err := authorizationRepo.LoadPrincipalForAuthentication(ctx, parentPrincipalID); err != nil {
+		t.Fatalf("Parent with an active official relationship should authenticate: %v", err)
+	}
 
 	// Revoke the official relationship and prove the historical pair can be
 	// re-established as a new row without reactivating old history.
@@ -225,6 +232,9 @@ func TestParentGuardianAuthorizationV12PostgresIntegration(t *testing.T) {
 	}
 	if visibleChildren != 0 {
 		t.Fatalf("expected revoked official relationship to hide child immediately, got %d", visibleChildren)
+	}
+	if _, err := authorizationRepo.LoadPrincipalForAuthentication(ctx, parentPrincipalID); !errors.Is(err, models.ErrPrincipalNotAuthenticated) {
+		t.Fatalf("Parent authentication after official relationship revocation = %v, want not authenticated", err)
 	}
 
 	matches, err = findPortalEligibleGuardiansByMobile(ctx, tx, mobile)
