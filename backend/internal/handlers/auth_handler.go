@@ -116,7 +116,11 @@ func (h *AuthHandler) SetMFAService(mfa MFAService, loader MFAPrincipalLoader) {
 }
 
 func (h *AuthHandler) Login(c *gin.Context) {
-	if h.ipRateLimiter != nil {
+	if h.ipRateLimiter == nil {
+		writeAuthError(c, http.StatusServiceUnavailable, "Login rate limiting is unavailable")
+		return
+	}
+	{
 		allowed, err := h.ipRateLimiter.AllowIPAttempt(c.Request.Context(), c.ClientIP())
 		if err != nil {
 			writeAuthError(c, http.StatusInternalServerError, "Unable to process login")
@@ -219,10 +223,14 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 
 func (h *AuthHandler) PlatformAdminLogin(c *gin.Context) {
-	if h.ipRateLimiter!=nil {
-		allowed,err:=h.ipRateLimiter.AllowIPAttempt(c.Request.Context(),c.ClientIP())
-		if err!=nil { writeAuthError(c,http.StatusInternalServerError,"Unable to process login"); return }
-		if !allowed { c.Header("Retry-After","900"); writeAuthError(c,http.StatusTooManyRequests,"Too many login requests from this network. Try again in 15 minutes."); return }
+	if h.ipRateLimiter == nil {
+		writeAuthError(c, http.StatusServiceUnavailable, "Login rate limiting is unavailable")
+		return
+	}
+	{
+		allowed, err := h.ipRateLimiter.AllowIPAttempt(c.Request.Context(), c.ClientIP())
+		if err != nil { writeAuthError(c, http.StatusInternalServerError, "Unable to process login"); return }
+		if !allowed { c.Header("Retry-After", "900"); writeAuthError(c, http.StatusTooManyRequests, "Too many login requests from this network. Try again in 15 minutes."); return }
 	}
 	var req platformAdminLoginRequest
 	if err:=c.ShouldBindJSON(&req); err!=nil { writeAuthError(c,http.StatusBadRequest,"Invalid request body"); return }
