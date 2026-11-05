@@ -70,10 +70,21 @@ func (r *AcademicRepository) CreateTeacherSubjectAssignment(ctx context.Context,
 		VALUES($1,$2,'school.teacher_subject_assignment.created','teacher_subject_assignment',$3,'success',
 		jsonb_build_object('academic_year_id',$4::bigint,'section_id',$5::bigint,'subject_id',$6::bigint,'teacher_principal_id',$7::bigint))`,
 		actorID,schoolID,fmt.Sprint(id),yearID,sectionID,subjectID,teacherID);err!=nil{return nil,fmt.Errorf("audit teacher subject assignment: %w",err)}
+	var item TeacherSubjectAssignment
+	err=tx.QueryRow(ctx,`SELECT a.id,a.school_id,a.academic_year_id,a.section_id,s.name,c.name,
+		a.subject_id,sub.name,a.teacher_principal_id,u.username,a.assigned_by_principal_id,a.assigned_at,a.revoked_at
+		FROM teacher_subject_assignments a
+		JOIN sections s ON s.id=a.section_id AND s.school_id=a.school_id
+		JOIN classes c ON c.id=s.class_id AND c.school_id=s.school_id
+		JOIN subjects sub ON sub.id=a.subject_id AND sub.school_id=a.school_id
+		JOIN users u ON u.principal_id=a.teacher_principal_id AND u.school_id=a.school_id
+		WHERE a.id=$1 AND a.school_id=$2`,id,schoolID).Scan(
+		&item.ID,&item.SchoolID,&item.AcademicYearID,&item.SectionID,&item.SectionName,&item.ClassName,
+		&item.SubjectID,&item.SubjectName,&item.TeacherPrincipalID,&item.TeacherUsername,
+		&item.AssignedByPrincipalID,&item.AssignedAt,&item.RevokedAt)
+	if err!=nil{return nil,fmt.Errorf("load created teacher subject assignment: %w",err)}
 	if err=tx.Commit(ctx);err!=nil{return nil,fmt.Errorf("commit teacher subject assignment: %w",err)}
-	items,err:=r.ListTeacherSubjectAssignments(ctx,actorID,schoolID,yearID,sectionID);if err!=nil{return nil,err}
-	for i:=range items{if items[i].ID==id{return &items[i],nil}}
-	return nil,ErrAcademicNotFound
+	return &item,nil
 }
 
 func (r *AcademicRepository) RevokeTeacherSubjectAssignment(ctx context.Context,actorID,schoolID,assignmentID int64)error{
@@ -126,10 +137,19 @@ func (r *AcademicRepository) CreateClassInchargeAssignment(ctx context.Context,a
 		VALUES($1,$2,'school.class_incharge_assignment.created','class_incharge_assignment',$3,'success',
 		jsonb_build_object('academic_year_id',$4::bigint,'section_id',$5::bigint,'teacher_principal_id',$6::bigint))`,
 		actorID,schoolID,fmt.Sprint(id),yearID,sectionID,teacherID);err!=nil{return nil,fmt.Errorf("audit class in-charge assignment: %w",err)}
+	var item ClassInchargeAssignment
+	err=tx.QueryRow(ctx,`SELECT a.id,a.school_id,a.academic_year_id,a.section_id,s.name,c.name,
+		a.teacher_principal_id,u.username,a.assigned_by_principal_id,a.assigned_at,a.revoked_at
+		FROM class_incharge_assignments a
+		JOIN sections s ON s.id=a.section_id AND s.school_id=a.school_id
+		JOIN classes c ON c.id=s.class_id AND c.school_id=s.school_id
+		JOIN users u ON u.principal_id=a.teacher_principal_id AND u.school_id=a.school_id
+		WHERE a.id=$1 AND a.school_id=$2`,id,schoolID).Scan(
+		&item.ID,&item.SchoolID,&item.AcademicYearID,&item.SectionID,&item.SectionName,&item.ClassName,
+		&item.TeacherPrincipalID,&item.TeacherUsername,&item.AssignedByPrincipalID,&item.AssignedAt,&item.RevokedAt)
+	if err!=nil{return nil,fmt.Errorf("load created class in-charge assignment: %w",err)}
 	if err=tx.Commit(ctx);err!=nil{return nil,fmt.Errorf("commit class in-charge assignment: %w",err)}
-	items,err:=r.ListClassInchargeAssignments(ctx,actorID,schoolID,yearID);if err!=nil{return nil,err}
-	for i:=range items{if items[i].ID==id{return &items[i],nil}}
-	return nil,ErrAcademicNotFound
+	return &item,nil
 }
 
 func (r *AcademicRepository) RevokeClassInchargeAssignment(ctx context.Context,actorID,schoolID,assignmentID int64)error{
