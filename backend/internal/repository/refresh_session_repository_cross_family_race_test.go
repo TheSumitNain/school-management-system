@@ -21,10 +21,13 @@ func TestRefreshSessionRepositoryCrossFamilyInactiveRace(t *testing.T) {
 
 	repo, pool, userID := newPostgresIntegrationRepository(t)
 
-	familyAOld := integrationTokenHash("cross-family-race-a-old")
-	familyANew := integrationTokenHash("cross-family-race-a-new")
-	familyBOld := integrationTokenHash("cross-family-race-b-old")
-	familyBNew := integrationTokenHash("cross-family-race-b-new")
+	// Keep token hashes unique across repeated runs. A prior interrupted
+	// integration run may have left rows behind in the dedicated test DB.
+	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
+	familyAOld := integrationTokenHash("cross-family-race-a-old-" + suffix)
+	familyANew := integrationTokenHash("cross-family-race-a-new-" + suffix)
+	familyBOld := integrationTokenHash("cross-family-race-b-old-" + suffix)
+	familyBNew := integrationTokenHash("cross-family-race-b-new-" + suffix)
 
 	expiresAt := time.Now().Add(time.Hour)
 
@@ -36,7 +39,6 @@ func TestRefreshSessionRepositoryCrossFamilyInactiveRace(t *testing.T) {
 		t.Fatalf("create family B session: %v", err)
 	}
 
-	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
 	functionName := "test_refresh_insert_barrier_fn_" + suffix
 	triggerName := "test_refresh_insert_barrier_" + suffix
 
