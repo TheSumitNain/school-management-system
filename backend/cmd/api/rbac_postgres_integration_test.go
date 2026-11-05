@@ -41,6 +41,21 @@ func (rbacIntegrationPasswordBreachChecker) IsCompromised(context.Context, strin
 	return false, nil
 }
 
+type rbacIntegrationLoginSecurity struct{}
+
+func (rbacIntegrationLoginSecurity) AcquireAttemptLock(context.Context, string) (func(), error) {
+	return func() {}, nil
+}
+func (rbacIntegrationLoginSecurity) IsLocked(context.Context, string) (bool, error) { return false, nil }
+func (rbacIntegrationLoginSecurity) RecordFailure(context.Context, string) error { return nil }
+func (rbacIntegrationLoginSecurity) RecordSuccess(context.Context, string, int64) error { return nil }
+
+type rbacIntegrationIPRateLimiter struct{}
+
+func (rbacIntegrationIPRateLimiter) AllowIPAttempt(context.Context, string) (bool, error) {
+	return true, nil
+}
+
 type rbacIntegrationSessionService struct{}
 
 func (rbacIntegrationSessionService) Issue(context.Context, *models.AuthPrincipal) (string, error) {
@@ -167,8 +182,8 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 
 	// A second router wires the real staff authentication service as well.
 	// Its login route is used below to prove a disabled account cannot log in.
-	authService := services.NewAuthService(repository.NewUserRepository(tx), nil)
-	authHandler := handlers.NewAuthHandler(authService, tokenService, rbacIntegrationSessionService{})
+	authService := services.NewAuthService(repository.NewUserRepository(tx), nil, rbacIntegrationLoginSecurity{})
+	authHandler := handlers.NewAuthHandler(authService, tokenService, rbacIntegrationSessionService{}, rbacIntegrationIPRateLimiter{})
 	staffPasswordService, err := services.NewStaffPasswordService(repository.NewUserRepository(tx), rbacIntegrationPasswordBreachChecker{})
 	if err != nil {
 		t.Fatalf("create PostgreSQL-backed staff password service: %v", err)
