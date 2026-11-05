@@ -174,7 +174,7 @@ func TestParentAuthenticationRepositoryPostgresIntegration(t *testing.T) {
 	}
 
 	// A Parent linked only through an inactive school must not authenticate.
-	if _, err := pool.Exec(ctx, `UPDATE schools SET status='inactive' WHERE id=$1`, schoolID); err != nil {
+	if _, err := pool.Exec(ctx, `UPDATE schools SET status='suspended' WHERE id=$1`, schoolID); err != nil {
 		t.Fatalf("disable linked school for Parent eligibility test: %v", err)
 	}
 	t.Cleanup(func() {
