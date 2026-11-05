@@ -91,11 +91,12 @@ func AuthMiddleware(tokenService AccessTokenValidator, principals PrincipalLoade
 		// Admin sessions are bound to one refresh-token family. Each request
 		// touches only that device's family; a missing, revoked, or idle family
 		// is rejected before the handler runs.
+		requiresAdminSession := principal.Type == "platform_admin" || principal.RequiresAdminSessionActivity
 		if activityTracker == nil {
 			// Platform Admin status is intrinsic; School Admin status is resolved
 			// from the exact active system-role assignment by the principal loader.
 			// Do not silently bypass the idle policy when router wiring omits it.
-			if principal.Type == "platform_admin" || principal.RequiresAdminSessionActivity {
+			if requiresAdminSession {
 				c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Administrative session security is unavailable"})
 				return
 			}
@@ -105,7 +106,14 @@ func AuthMiddleware(tokenService AccessTokenValidator, principals PrincipalLoade
 				c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"status":"error","message":"Unable to validate administrative session"})
 				return
 			}
-			if isAdmin && (!valid || claims.SessionID == "") {
+			// The principal loader and session tracker must agree about the
+			// current admin status. A mismatch is an authorization-state failure:
+			// never let it silently skip the administrative idle-session policy.
+			if isAdmin != requiresAdminSession {
+				unauthorized(c)
+				return
+			}
+			if requiresAdminSession && (!valid || claims.SessionID == "") {
 				unauthorized(c)
 				return
 			}
