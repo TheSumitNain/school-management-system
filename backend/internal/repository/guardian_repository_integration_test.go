@@ -128,14 +128,22 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 	); err != nil {
 		t.Fatalf("grant guardians.manage to custom role: %v", err)
 	}
-	if err := roleRepo.AssignStaffRole(ctx, actorPrincipalID, schoolID, actorPrincipalID, customRole.ID); err != nil {
-		t.Fatalf("assign guardian integration role to actor: %v", err)
+	var targetPrincipalID int64
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO users (school_id, username, password_hash, status)
+		VALUES ($1, $2, 'integration-password-hash', 'active')
+		RETURNING principal_id
+	`, schoolID, "guardian-target-"+suffix).Scan(&targetPrincipalID); err != nil {
+		t.Fatalf("create guardian permission target staff: %v", err)
+	}
+	if err := roleRepo.AssignStaffRole(ctx, actorPrincipalID, schoolID, targetPrincipalID, customRole.ID); err != nil {
+		t.Fatalf("assign guardian integration role to target staff: %v", err)
 	}
 
 	repo := NewAcademicRepository(tx)
 	mobile := "+911234567890"
 	email := "guardian-" + suffix + "@example.invalid"
-	guardian, err := repo.SaveGuardian(ctx, actorPrincipalID, schoolID, 0,
+	guardian, err := repo.SaveGuardian(ctx, targetPrincipalID, schoolID, 0,
 		"  Guardian One  ", &mobile, &email, "active")
 	if err != nil {
 		t.Fatalf("create guardian contact: %v", err)
@@ -147,7 +155,7 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("unexpected created guardian: %+v", guardian)
 	}
 
-	updated, err := repo.SaveGuardian(ctx, actorPrincipalID, schoolID, guardian.ID,
+	updated, err := repo.SaveGuardian(ctx, targetPrincipalID, schoolID, guardian.ID,
 		"Guardian One Updated", &mobile, &email, "inactive")
 	if err != nil {
 		t.Fatalf("update guardian contact: %v", err)
@@ -155,17 +163,17 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 	if updated.ID != guardian.ID || updated.FullName != "Guardian One Updated" || updated.Status != "inactive" {
 		t.Fatalf("unexpected updated guardian: %+v", updated)
 	}
-	updated, err = repo.SaveGuardian(ctx, actorPrincipalID, schoolID, guardian.ID,
+	updated, err = repo.SaveGuardian(ctx, targetPrincipalID, schoolID, guardian.ID,
 		"Guardian One Updated", &mobile, &email, "active")
 	if err != nil {
 		t.Fatalf("reactivate guardian contact: %v", err)
 	}
 
-	got, err := repo.GetGuardian(ctx, actorPrincipalID, schoolID, guardian.ID)
+	got, err := repo.GetGuardian(ctx, targetPrincipalID, schoolID, guardian.ID)
 	if err != nil || got.ID != guardian.ID || got.FullName != "Guardian One Updated" {
 		t.Fatalf("get guardian: guardian=%+v err=%v", got, err)
 	}
-	guardians, total, err := repo.ListGuardians(ctx, actorPrincipalID, schoolID,
+	guardians, total, err := repo.ListGuardians(ctx, targetPrincipalID, schoolID,
 		"Guardian One Updated", "active", 10, 0)
 	if err != nil || total != 1 || len(guardians) != 1 || guardians[0].ID != guardian.ID {
 		t.Fatalf("search guardians: total=%d items=%+v err=%v", total, guardians, err)
@@ -191,15 +199,15 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 	`, otherSchoolID, "FOREIGN-"+suffix).Scan(&foreignStudentID); err != nil {
 		t.Fatalf("create foreign-school student fixture: %v", err)
 	}
-	if _, err := repo.GetGuardian(ctx, actorPrincipalID, otherSchoolID, guardian.ID); !errors.Is(err, ErrGuardianAccessDenied) {
+	if _, err := repo.GetGuardian(ctx, targetPrincipalID, otherSchoolID, guardian.ID); !errors.Is(err, ErrGuardianAccessDenied) {
 		t.Fatalf("cross-school guardian read error = %v, want access denied", err)
 	}
-	if _, err := repo.LinkStudentGuardian(ctx, actorPrincipalID, schoolID,
+	if _, err := repo.LinkStudentGuardian(ctx, targetPrincipalID, schoolID,
 		foreignStudentID, guardian.ID, "father", true, true); !errors.Is(err, ErrGuardianNotFound) {
 		t.Fatalf("cross-school student link error = %v, want not found", err)
 	}
 
-	firstLink, err := repo.LinkStudentGuardian(ctx, actorPrincipalID, schoolID,
+	firstLink, err := repo.LinkStudentGuardian(ctx, targetPrincipalID, schoolID,
 		studentID, guardian.ID, "father", true, true)
 	if err != nil {
 		t.Fatalf("link guardian to student: %v", err)
@@ -210,12 +218,12 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 	}
 
 	secondMobile := "+919876543210"
-	secondGuardian, err := repo.SaveGuardian(ctx, actorPrincipalID, schoolID, 0,
+	secondGuardian, err := repo.SaveGuardian(ctx, targetPrincipalID, schoolID, 0,
 		"Guardian Two", &secondMobile, nil, "active")
 	if err != nil {
 		t.Fatalf("create second guardian contact: %v", err)
 	}
-	secondLink, err := repo.LinkStudentGuardian(ctx, actorPrincipalID, schoolID,
+	secondLink, err := repo.LinkStudentGuardian(ctx, targetPrincipalID, schoolID,
 		studentID, secondGuardian.ID, "mother", true, false)
 	if err != nil {
 		t.Fatalf("link second primary guardian: %v", err)
@@ -224,7 +232,7 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("second link should be primary: %+v", secondLink)
 	}
 
-	history, err := repo.ListStudentGuardians(ctx, actorPrincipalID, schoolID, studentID, true)
+	history, err := repo.ListStudentGuardians(ctx, targetPrincipalID, schoolID, studentID, true)
 	if err != nil || len(history) != 2 {
 		t.Fatalf("list complete student guardian history: count=%d err=%v", len(history), err)
 	}
@@ -233,20 +241,20 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 			t.Fatal("previous primary contact was not cleared when new primary was selected")
 		}
 	}
-	active, err := repo.ListStudentGuardians(ctx, actorPrincipalID, schoolID, studentID, false)
+	active, err := repo.ListStudentGuardians(ctx, targetPrincipalID, schoolID, studentID, false)
 	if err != nil || len(active) != 2 {
 		t.Fatalf("list active student guardian links: count=%d err=%v", len(active), err)
 	}
 
-	if err := repo.RevokeStudentGuardianLink(ctx, actorPrincipalID, schoolID,
+	if err := repo.RevokeStudentGuardianLink(ctx, targetPrincipalID, schoolID,
 		firstLink.ID, "relationship ended"); err != nil {
 		t.Fatalf("revoke student guardian link: %v", err)
 	}
-	active, err = repo.ListStudentGuardians(ctx, actorPrincipalID, schoolID, studentID, false)
+	active, err = repo.ListStudentGuardians(ctx, targetPrincipalID, schoolID, studentID, false)
 	if err != nil || len(active) != 1 || active[0].ID != secondLink.ID {
 		t.Fatalf("active links after revocation: items=%+v err=%v", active, err)
 	}
-	history, err = repo.ListStudentGuardians(ctx, actorPrincipalID, schoolID, studentID, true)
+	history, err = repo.ListStudentGuardians(ctx, targetPrincipalID, schoolID, studentID, true)
 	if err != nil || len(history) != 2 {
 		t.Fatalf("historical links after revocation: count=%d err=%v", len(history), err)
 	}
@@ -259,7 +267,7 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 	if !revokedFound {
 		t.Fatalf("revoked link missing from immutable history: %+v", history)
 	}
-	if err := repo.RevokeStudentGuardianLink(ctx, actorPrincipalID, schoolID,
+	if err := repo.RevokeStudentGuardianLink(ctx, targetPrincipalID, schoolID,
 		firstLink.ID, "duplicate revoke"); !errors.Is(err, ErrGuardianNotFound) {
 		t.Fatalf("duplicate link revocation error = %v, want not found", err)
 	}
@@ -277,7 +285,7 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 		    (resource_type = 'guardian' AND resource_id IN ($3, $4))
 		    OR resource_type = 'student_guardian_link'
 		  )
-	`, schoolID, actorPrincipalID, fmt.Sprint(guardian.ID),
+	`, schoolID, targetPrincipalID, fmt.Sprint(guardian.ID),
 		fmt.Sprint(secondGuardian.ID)).Scan(
 		&guardianAuditCount, &linkCreateAuditCount, &linkRevokeAuditCount,
 	); err != nil {
@@ -289,7 +297,7 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 	}
 
 	target := &models.AuthPrincipal{
-		ID: actorPrincipalID, Type: "staff", Status: "active",
+		ID: targetPrincipalID, Type: "staff", Status: "active",
 		TokenVersion: 1, SchoolID: schoolID,
 	}
 	effective, err := loadEffectivePermissions(ctx, tx, target)
