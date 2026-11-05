@@ -324,3 +324,56 @@ func TestAuthMiddlewareFailsClosedWhenAdminIdleTrackerMissing(t *testing.T) {
 		t.Fatalf("School Admin request without idle tracker must fail closed, got %d", rec.Code)
 	}
 }
+
+
+func TestAuthMiddlewareRejectsAdminSessionTrackerMismatch(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	tests := []struct {
+		name      string
+		principal *models.AuthPrincipal
+		claims    *services.TokenClaims
+		tracker   *fakeAdminSessionTracker
+	}{
+		{
+			name:      "Platform Admin not recognized by tracker",
+			principal: &models.AuthPrincipal{ID: 99, Type: "platform_admin", Status: "active", TokenVersion: 4},
+			claims:    &services.TokenClaims{RegisteredClaims: jwt.RegisteredClaims{Subject: "99"}, PrincipalType: "platform_admin", TokenVersion: 4, SessionID: "a1b2c3d4-e5f6-4789-8123-abcdef012345"},
+			tracker:   &fakeAdminSessionTracker{isAdmin: false, valid: true},
+		},
+		{
+			name:      "School Admin not recognized by tracker",
+			principal: &models.AuthPrincipal{ID: 10, Type: "staff", Status: "active", TokenVersion: 1, SchoolID: 2, RequiresAdminSessionActivity: true},
+			claims:    &services.TokenClaims{RegisteredClaims: jwt.RegisteredClaims{Subject: "10"}, PrincipalType: "staff", TokenVersion: 1, SessionID: "a1b2c3d4-e5f6-4789-8123-abcdef012345"},
+			tracker:   &fakeAdminSessionTracker{isAdmin: false, valid: true},
+		},
+		{
+			name:      "ordinary staff unexpectedly recognized as admin",
+			principal: &models.AuthPrincipal{ID: 10, Type: "staff", Status: "active", TokenVersion: 1, SchoolID: 2},
+			claims:    validClaims(),
+			tracker:   &fakeAdminSessionTracker{isAdmin: true, valid: true},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			router := gin.New()
+			router.GET("/protected", AuthMiddleware(
+				&fakeTokenValidator{claims: tt.claims},
+				fakePrincipalLoader{principal: tt.principal},
+				fakePermissionLoader{permissions: []string{"students.read_basic"}},
+				tt.tracker,
+			), func(c *gin.Context) { c.Status(http.StatusOK) })
+
+			req := httptest.NewRequest(http.MethodGet, "/protected", nil)
+			req.Header.Set("Authorization", "Bearer valid-token")
+			rec := httptest.NewRecorder()
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusUnauthorized {
+				t.Fatalf("admin classification mismatch must fail closed: status=%d body=%s; want 401",
+					rec.Code, rec.Body.String())
+			}
+		})
+	}
+}
