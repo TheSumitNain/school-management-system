@@ -239,6 +239,14 @@ RETURNING COALESCE(locked_until > NOW(), FALSE)`
 			return fmt.Errorf("record principal MFA failure: %w", err)
 		}
 	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO audit_events
+		    (actor_principal_id, action, resource_type, resource_id, outcome, metadata)
+		VALUES ($1, 'auth.mfa.challenge_failed', 'principal', $1::text, 'failure',
+		        jsonb_build_object('challenge_attempts', $2::integer, 'principal_locked', $3::boolean))
+	`, principalID, attempts, principalLocked); err != nil {
+		return fmt.Errorf("audit failed MFA challenge: %w", err)
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("commit MFA challenge failure: %w", err)
 	}
