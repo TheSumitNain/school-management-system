@@ -494,8 +494,8 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 		fmt.Sprint(targetPrincipalID)).Scan(&schoolAdminAuditCount, &platformAdminAuditCount); err != nil {
 		t.Fatalf("count role administration audit events: %v", err)
 	}
-	if schoolAdminAuditCount != 9 || platformAdminAuditCount != 4 {
-		t.Fatalf("role administration audit counts = School Admin %d, Platform Admin %d; want 9 and 4",
+	if schoolAdminAuditCount != 10 || platformAdminAuditCount != 4 {
+		t.Fatalf("role administration audit counts = School Admin %d, Platform Admin %d; want 10 and 4",
 			schoolAdminAuditCount, platformAdminAuditCount)
 	}
 }
