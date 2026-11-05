@@ -192,6 +192,19 @@ func (r *MFAChallengeRepository) RecordFailure(ctx context.Context, challengeHas
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
+	var alreadyLocked bool
+	if err := tx.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM auth_login_attempts
+			WHERE identifier_hash=$1 AND locked_until > NOW()
+		)
+	`, mfaPrincipalAttemptHash(principalID)).Scan(&alreadyLocked); err != nil {
+		return fmt.Errorf("check principal MFA lockout before recording failure: %w", err)
+	}
+	if alreadyLocked {
+		return ErrMFALoginLocked
+	}
+
 	var attempts int
 	err = tx.QueryRow(ctx,
 		`UPDATE auth_mfa_challenges
