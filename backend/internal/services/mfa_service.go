@@ -284,7 +284,9 @@ func (s *MFAService) decryptCredential(c *repository.MFACredential) ([]byte,erro
 func (s *MFAService) rotateCredential(ctx context.Context, principalID int64, c *repository.MFACredential, secret []byte) error {
 	if c == nil || c.KeyVersion == s.keyVersion { return nil }
 	rotator, ok := s.credentials.(mfaCredentialRotator)
-	if !ok { return nil }
+	if !ok {
+		return fmt.Errorf("MFA credential store does not support encryption key rotation")
+	}
 	ciphertext, err := EncryptTOTPSecret(secret, s.encryptionKey)
 	if err != nil { return fmt.Errorf("encrypt rotated MFA credential: %w", err) }
 	return rotator.ReencryptCredential(ctx, principalID, c.Ciphertext, c.KeyVersion, ciphertext, s.keyVersion)
