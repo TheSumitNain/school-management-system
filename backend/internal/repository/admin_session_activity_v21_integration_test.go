@@ -89,7 +89,7 @@ func TestAdminSessionActivityV21PostgresIntegration(t *testing.T) {
 		var familyID string
 		tokenSum := sha256.Sum256([]byte("admin-idle-v21-" + suffix + "-" + label))
 		tokenHash := hex.EncodeToString(tokenSum[:])
-		err := pool.QueryRow(ctx, `
+		err := tx.QueryRow(ctx, `
 			INSERT INTO refresh_sessions (principal_id,token_hash,expires_at)
 			VALUES ($1,$2,NOW()+INTERVAL '1 day')
 			RETURNING family_id::text
@@ -115,7 +115,7 @@ func TestAdminSessionActivityV21PostgresIntegration(t *testing.T) {
 	if !isAdmin || valid { t.Fatalf("idle family must be rejected: isAdmin=%v valid=%v",isAdmin,valid) }
 
 	var expiredActive, otherActive int
-	if err := pool.QueryRow(ctx, `
+	if err := tx.QueryRow(ctx, `
 		SELECT COUNT(*) FILTER (WHERE family_id=$1::uuid AND revoked_at IS NULL),
 		       COUNT(*) FILTER (WHERE family_id=$2::uuid AND revoked_at IS NULL)
 		FROM refresh_sessions WHERE principal_id=$3
@@ -127,7 +127,7 @@ func TestAdminSessionActivityV21PostgresIntegration(t *testing.T) {
 	}
 
 	var auditCount int
-	if err := pool.QueryRow(ctx, `
+	if err := tx.QueryRow(ctx, `
 		SELECT COUNT(*) FROM audit_events
 		WHERE actor_principal_id=$1 AND action='auth.admin_session_idle_timeout'
 		  AND resource_id=$2
@@ -141,41 +141,41 @@ func TestAdminSessionActivityV21PostgresIntegration(t *testing.T) {
 	newTokenSum := sha256.Sum256([]byte("admin-idle-v21-refresh-replacement-" + suffix))
 	newTokenHash := hex.EncodeToString(newTokenSum[:])
 	var refreshFamily string
-	if err := pool.QueryRow(ctx, `
+	if err := tx.QueryRow(ctx, `
 		INSERT INTO refresh_sessions (principal_id,token_hash,expires_at)
 		VALUES ($1,$2,NOW()+INTERVAL '1 day') RETURNING family_id::text
 	`, principalID, refreshTokenHash).Scan(&refreshFamily); err != nil { t.Fatalf("create refresh-expiry family: %v",err) }
-	if _, err := pool.Exec(ctx, `
+	if _, err := tx.Exec(ctx, `
 		UPDATE refresh_sessions SET last_activity_at=NOW()-INTERVAL '31 minutes'
 		WHERE family_id=$1::uuid AND revoked_at IS NULL
 	`, refreshFamily); err != nil { t.Fatalf("age refresh-expiry family: %v",err) }
-	refreshRepo := NewPrincipalRefreshSessionRepository(pool)
+	refreshRepo := NewPrincipalRefreshSessionRepository(tx)
 	if _, err := refreshRepo.RotatePrincipal(ctx,refreshTokenHash,newTokenHash,time.Now().Add(24*time.Hour)); !errors.Is(err,ErrAdminSessionIdleExpired) {
 		t.Fatalf("idle admin refresh must return ErrAdminSessionIdleExpired, got %v",err)
 	}
 	var refreshFamilyActive int
-	if err := pool.QueryRow(ctx,`SELECT COUNT(*) FROM refresh_sessions WHERE family_id=$1::uuid AND revoked_at IS NULL`,refreshFamily).Scan(&refreshFamilyActive); err != nil { t.Fatalf("verify idle refresh family revocation: %v",err) }
+	if err := tx.QueryRow(ctx,`SELECT COUNT(*) FROM refresh_sessions WHERE family_id=$1::uuid AND revoked_at IS NULL`,refreshFamily).Scan(&refreshFamilyActive); err != nil { t.Fatalf("verify idle refresh family revocation: %v",err) }
 	if refreshFamilyActive != 0 { t.Fatalf("idle refresh family still has %d active sessions",refreshFamilyActive) }
 
 	// Ordinary staff sessions do not use the administrative idle-timeout rule.
 	var staffPrincipalID int64
-	if err := pool.QueryRow(ctx,`SELECT principal_id FROM users WHERE id=$1`,userID).Scan(&staffPrincipalID); err != nil { t.Fatalf("load integration staff principal: %v",err) }
+	if err := tx.QueryRow(ctx,`SELECT principal_id FROM users WHERE id=$1`,userID).Scan(&staffPrincipalID); err != nil { t.Fatalf("load integration staff principal: %v",err) }
 
 	// Promote this fixture staff account to the exact system School Admin role
 	// using the authorized Platform Admin resolved above.
 	var schoolID, schoolAdminRoleID int64
-	if err := pool.QueryRow(ctx,`SELECT school_id FROM users WHERE id=$1`,userID).Scan(&schoolID); err != nil { t.Fatalf("load School Admin school: %v",err) }
-	if err := pool.QueryRow(ctx,`
+	if err := tx.QueryRow(ctx,`SELECT school_id FROM users WHERE id=$1`,userID).Scan(&schoolID); err != nil { t.Fatalf("load School Admin school: %v",err) }
+	if err := tx.QueryRow(ctx,`
 		SELECT id FROM roles WHERE school_id=$1 AND principal_type='staff'
 		  AND scope_type='school' AND role_key='school_admin' AND is_system=TRUE
 	`,schoolID).Scan(&schoolAdminRoleID); err != nil { t.Fatalf("load School Admin system role: %v",err) }
-	if _, err := pool.Exec(ctx,`
+	if _, err := tx.Exec(ctx,`
 		INSERT INTO principal_mfa_credentials
 		    (principal_id,method,secret_ciphertext,encryption_key_version,verified_at)
 		VALUES($1,'totp',decode('01','hex'),1,NOW())
 	`,staffPrincipalID); err != nil { t.Fatalf("create School Admin MFA fixture: %v",err) }
 	provisioningActorID := principalID
-	if _, err := pool.Exec(ctx,`
+	if _, err := tx.Exec(ctx,`
 		INSERT INTO principal_roles(principal_id,role_id,assigned_by)
 		VALUES($1,$2,$3)
 	`,staffPrincipalID,schoolAdminRoleID,provisioningActorID); err != nil { t.Fatalf("assign exact School Admin system role: %v",err) }
@@ -183,11 +183,11 @@ func TestAdminSessionActivityV21PostgresIntegration(t *testing.T) {
 	schoolAdminTokenSum := sha256.Sum256([]byte("school-admin-idle-v21-"+suffix))
 	schoolAdminTokenHash := hex.EncodeToString(schoolAdminTokenSum[:])
 	var schoolAdminFamily string
-	if err := pool.QueryRow(ctx,`
+	if err := tx.QueryRow(ctx,`
 		INSERT INTO refresh_sessions(user_id,principal_id,token_hash,expires_at)
 		VALUES($1,$2,$3,NOW()+INTERVAL '1 day') RETURNING family_id::text
 	`,userID,staffPrincipalID,schoolAdminTokenHash).Scan(&schoolAdminFamily); err != nil { t.Fatalf("create School Admin family: %v",err) }
-	if _, err := pool.Exec(ctx,`
+	if _, err := tx.Exec(ctx,`
 		UPDATE refresh_sessions SET last_activity_at=NOW()-INTERVAL '31 minutes'
 		WHERE family_id=$1::uuid AND revoked_at IS NULL
 	`,schoolAdminFamily); err != nil { t.Fatalf("age School Admin family: %v",err) }
@@ -199,11 +199,11 @@ func TestAdminSessionActivityV21PostgresIntegration(t *testing.T) {
 	schoolAdminRefreshReplacementSum := sha256.Sum256([]byte("school-admin-refresh-idle-v21-replacement-"+suffix))
 	schoolAdminRefreshReplacementHash := hex.EncodeToString(schoolAdminRefreshReplacementSum[:])
 	var schoolAdminRefreshFamily string
-	if err := pool.QueryRow(ctx,`
+	if err := tx.QueryRow(ctx,`
 		INSERT INTO refresh_sessions(user_id,principal_id,token_hash,expires_at)
 		VALUES($1,$2,$3,NOW()+INTERVAL '1 day') RETURNING family_id::text
 	`,userID,staffPrincipalID,schoolAdminRefreshHash).Scan(&schoolAdminRefreshFamily); err != nil { t.Fatalf("create School Admin refresh family: %v",err) }
-	if _, err := pool.Exec(ctx,`
+	if _, err := tx.Exec(ctx,`
 		UPDATE refresh_sessions SET last_activity_at=NOW()-INTERVAL '31 minutes'
 		WHERE family_id=$1::uuid AND revoked_at IS NULL
 	`,schoolAdminRefreshFamily); err != nil { t.Fatalf("age School Admin refresh family: %v",err) }
@@ -211,7 +211,7 @@ func TestAdminSessionActivityV21PostgresIntegration(t *testing.T) {
 		t.Fatalf("School Admin refresh must enforce idle timeout: %v",err)
 	}
 	var ordinaryUserID, ordinaryStaffPrincipalID int64
-	if err := pool.QueryRow(ctx,`
+	if err := tx.QueryRow(ctx,`
 		INSERT INTO users(school_id,username,password_hash,status)
 		VALUES($1,$2,'integration-password-hash','active')
 		RETURNING id,principal_id
@@ -223,11 +223,11 @@ func TestAdminSessionActivityV21PostgresIntegration(t *testing.T) {
 	staffReplacementSum := sha256.Sum256([]byte("staff-idle-v21-replacement-" + suffix))
 	staffReplacementHash := hex.EncodeToString(staffReplacementSum[:])
 	var staffFamily string
-	if err := pool.QueryRow(ctx,`
+	if err := tx.QueryRow(ctx,`
 		INSERT INTO refresh_sessions(user_id,principal_id,token_hash,expires_at)
 		VALUES($1,$2,$3,NOW()+INTERVAL '1 day') RETURNING family_id::text
 	`,ordinaryUserID,ordinaryStaffPrincipalID,staffTokenHash).Scan(&staffFamily); err != nil { t.Fatalf("create ordinary staff family: %v",err) }
-	if _, err := pool.Exec(ctx,`UPDATE refresh_sessions SET last_activity_at=NOW()-INTERVAL '31 minutes' WHERE family_id=$1::uuid AND revoked_at IS NULL`,staffFamily); err != nil { t.Fatalf("age ordinary staff family: %v",err) }
+	if _, err := tx.Exec(ctx,`UPDATE refresh_sessions SET last_activity_at=NOW()-INTERVAL '31 minutes' WHERE family_id=$1::uuid AND revoked_at IS NULL`,staffFamily); err != nil { t.Fatalf("age ordinary staff family: %v",err) }
 	rotatedPrincipal, err := refreshRepo.RotatePrincipal(ctx,staffTokenHash,staffReplacementHash,time.Now().Add(24*time.Hour))
 	if err != nil { t.Fatalf("ordinary staff refresh must not be subject to admin idle timeout: %v",err) }
 	if rotatedPrincipal == nil || rotatedPrincipal.ID != ordinaryStaffPrincipalID { t.Fatalf("ordinary staff refresh returned wrong principal: %+v",rotatedPrincipal) }
