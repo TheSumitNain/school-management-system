@@ -611,7 +611,7 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 	`, teacherPrincipalID, teacherRoleID); err != nil {
 		t.Fatalf("revoke Teacher role fixture: %v", err)
 	}
-	attendanceAllowed, err := attendanceSectionAllowed(ctx, tx, teacherPrincipalID, schoolID, section2)
+	attendanceAllowed, err = attendanceSectionAllowed(ctx, tx, teacherPrincipalID, schoolID, section2)
 	if err != nil {
 		t.Fatalf("check attendance after Teacher role revocation: %v", err)
 	}
