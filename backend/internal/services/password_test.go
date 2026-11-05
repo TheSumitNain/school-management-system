@@ -49,6 +49,7 @@ func TestHashPasswordRejectsInvalidPasswords(t *testing.T) {
 		{name: "eleven bytes", password: "Abcdef12345"},
 		{name: "whitespace only", password: "            "},
 		{name: "too long", password: strings.Repeat("a", 73)},
+		{name: "invalid UTF-8", password: string([]byte{0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8, 0xf7, 0xf6, 0xf5, 0xf4})},
 		{name: "common password", password: "Password1234"},
 		{name: "common password case insensitive", password: "PASSWORD1234"},
 		{name: "common password with symbol", password: "Password@123"},
