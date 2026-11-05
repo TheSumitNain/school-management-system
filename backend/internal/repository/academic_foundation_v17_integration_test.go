@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -523,10 +524,10 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 	rosterAfterTeacherRoleRevocation, err := teacherAcademicRepo.ListStudentEnrollments(
 		ctx, teacherPrincipalID, schoolID, year2, studentID,
 	)
-	if err != nil {
-		t.Fatalf("read roster after Teacher role revocation: %v", err)
+	if err != nil && !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("unexpected roster result after Teacher role revocation: %v", err)
 	}
-	if len(rosterAfterTeacherRoleRevocation) != 0 {
+	if err == nil && len(rosterAfterTeacherRoleRevocation) != 0 {
 		t.Fatalf("revoked Teacher role retained roster access: %+v", rosterAfterTeacherRoleRevocation)
 	}
 
