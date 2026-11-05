@@ -20,10 +20,10 @@ Current test areas include:
 - JWT generation/validation, principal identity/version checks, refresh rotation/replay/family revocation, concurrency protections, and 30-minute per-device admin idle timeout.
 - Principal/RBAC permission resolution, exact-delegation custom-role grants and ALLOW overrides, DENY precedence, role/permission HTTP routes, same-school target checks, and V22 self-escalation prevention at repository and database layers.
 - Staff account create/list/update/disable/re-enable/password lifecycle, token-version invalidation, refresh-session revocation, and audit events.
-- Student/enrollment/attendance/guardian repository integration, assigned-section teacher roster fields, parent guardian link checks, and inactive-school parent eligibility.
+- Student/enrollment/attendance/guardian repository integration, assigned-section teacher roster fields, Teacher custom-role bypass prevention for guardian and sensitive student data, parent guardian link checks, and inactive-school parent eligibility.
 - Real Gin router plus PostgreSQL-backed RBAC integration for default-deny and live authorization paths. Some integration harnesses use controlled token validators; this is not exhaustive end-to-end signature validation for every route.
 
-**Latest verified remote checkpoint:** GitHub Actions run [41961824586](https://github.com/TheSumitNain/school-management-system/actions/runs/41961824586), commit `8baae105e0dd435b7dd80e1e9258378567dce518`. It applied migrations V1–V22 to a fresh ephemeral PostgreSQL 18 database, ran the full backend suite with PostgreSQL integration enabled, and passed `go vet ./...`. This checkpoint includes the Unicode password-policy regression tests. Documentation-only commits have followed this tested code checkpoint; the newest branch head is undergoing its own CI run. CI does not migrate or modify the user's persistent `school_management_test` or `school_management` databases. Local verification must be repeated after pulling the latest branch.
+**Latest verified remote checkpoint:** GitHub Actions run [41962468469](https://github.com/TheSumitNain/school-management-system/actions/runs/41962468469), commit `41e6e1a3f51c19143977b50f1e24bc57efd6ab59`. It applied migrations V1–V22 to a fresh ephemeral PostgreSQL 18 database, ran the full backend suite with PostgreSQL integration enabled, and passed `go vet ./...`. This checkpoint includes the Unicode password-policy regression tests and Teacher custom-role boundary regression tests. Documentation-only commits have followed this tested code checkpoint. CI does not migrate or modify the user's persistent `school_management_test` or `school_management` databases. Local verification must be repeated after pulling the latest branch. CI does not migrate or modify the user's persistent `school_management_test` or `school_management` databases. Local verification must be repeated after pulling the latest branch.
 
 The current suite does not establish that every application behavior is tested or that the application is production-ready. Remaining gaps include broader resource/tenant/assignment/field-level tests across business modules, exhaustive HTTP tests with real JWT signature validation for every route, additional database failure/concurrency cases, migration rollback testing, deployment/least-privilege checks, and load testing.
 
@@ -434,7 +434,7 @@ Use `docs/PHASE1-RBAC.md` as the source of truth for the permission catalogue an
 - Class-in-charge can read that class's basic student details, timetable, homework, and applicable notices.
 - Class-in-charge cannot access another class, including another section in the same grade.
 - Past attendance correction is denied to teachers and allowed only to authorized School Admins.
-- Neither assignment grants guardian contacts, home address, fee/financial details, medical details, or other sensitive fields by default.
+- Neither assignment grants guardian contacts, home address, fee/financial details, medical details, or other sensitive fields by default. A Teacher with a delegated custom role containing guardian or sensitive student permissions is still denied those APIs unless the principal also holds the School Admin system role.
 - Manipulating client-supplied school/class/section/subject/student IDs never bypasses backend checks.
 
 ### 15.4 Custom roles and permission overrides
@@ -507,7 +507,7 @@ The School Admin fixture includes a verified MFA credential because the live pri
 
 The test uses the real `services.TokenService` rather than a fake validator. It generates an HS256 access token with the integration principal ID and current database token version, then passes that token through the actual authentication middleware. A request with one altered signature character must return `401 Unauthorized`; the unmodified token must authenticate successfully.
 
-Cross-school tenant/resource isolation, teacher class/section/subject assignment-scope authorization, and HTTP write-path coverage for delegation/override/role assignment remain explicit follow-up work.
+Complete cross-school tenant/resource isolation across every business route and exhaustive teacher class/section/subject assignment-scope coverage remain follow-up work. Targeted assigned-section roster/attendance tests and the Teacher custom-role sensitive-data boundary regression are now implemented. HTTP write-path coverage for delegation/override/role assignment is covered by the current role-handler and PostgreSQL-backed RBAC integration suites.
 
 Verification: push run `41765751785` and Draft PR run `41765745170` on `ec55ea4` both passed V1–V16 migrations on ephemeral PostgreSQL 18, the full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and `go vet ./...`. No persistent user database was modified.
 
@@ -524,7 +524,7 @@ The role-administration PostgreSQL integration test now provisions a second scho
 
 Verification: push run `41766408925` and Draft PR run `41766414685` on `c7dd5ce` both passed V1–V16 migrations on ephemeral PostgreSQL 18, the full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and `go vet ./...`.
 
-Scope limitation: these checks establish JWT signature validation and cross-school isolation for RBAC administration repositories/routes. They do not establish tenant isolation for future student, attendance, timetable, homework, fee, or other business-resource APIs. Teacher class/section/subject assignment scope remains untestable until the academic-domain model and corresponding APIs exist. All CI fixtures are transaction-scoped; no persistent user database is modified.
+Scope limitation: these checks establish JWT signature validation and cross-school isolation for RBAC administration repositories/routes. They do not establish tenant isolation for future student, attendance, timetable, homework, fee, or other business-resource APIs. Academic APIs now exist with targeted assigned-section roster and attendance checks; exhaustive assignment-scope testing across every academic route remains pending. All CI fixtures are transaction-scoped; no persistent user database is modified.
 
 
 ## 19. HTTP custom-role creation with live PostgreSQL authorization — 2026-11-04
