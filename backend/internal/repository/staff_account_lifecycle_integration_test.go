@@ -404,7 +404,8 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
 	if err := tx.QueryRow(ctx, `
 		SELECT COUNT(*) FROM audit_events
 		 WHERE actor_principal_id = $1 AND school_id = $2
-		   AND action = 'staff.account.disabled' AND resource_type = 'staff_user'
+		   AND action IN ('staff.account.disabled', 'staff.password.reset')
+		   AND resource_type = 'staff_user'
 		   AND resource_id = $3 AND outcome = 'success'
 	`, actorPrincipalID, schoolID, fmt.Sprint(protectedAdminUserID)).Scan(&protectedAuditCount); err != nil {
 		t.Fatalf("check rejected School Admin disable audit side effects: %v", err)
