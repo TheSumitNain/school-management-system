@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"strconv"
 	"testing"
 
 	"school-management-system/internal/handlers"
@@ -412,7 +413,7 @@ func TestRoleAdministrationRoutesEnforceLivePermissions(t *testing.T) {
 			principal.Username = ""
 		}
 		validator := fakeTokenValidator{claims: &services.TokenClaims{
-			RegisteredClaims: jwt.RegisteredClaims{Subject: "32"},
+			RegisteredClaims: jwt.RegisteredClaims{Subject: strconv.FormatInt(principal.ID, 10)},
 			PrincipalType: principalType,
 			TokenVersion: 1,
 			SessionID: "00000000-0000-4000-8000-000000000031",
