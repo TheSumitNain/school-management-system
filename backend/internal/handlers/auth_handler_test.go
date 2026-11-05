@@ -110,13 +110,33 @@ func setupTestRouter(authService AuthService, tokenService TokenService, session
 	gin.SetMode(gin.TestMode)
 
 	router := gin.New()
-	handler := NewAuthHandler(authService, tokenService, sessionService)
+	handler := NewAuthHandler(authService, tokenService, sessionService, &fakeLoginIPRateLimiter{allowed: true})
 	handler.SetMFAService(fakeMFAService{},fakeMFAPrincipalLoader{})
 	router.POST("/auth/login", handler.Login)
 	router.POST("/auth/refresh", handler.Refresh)
 	router.POST("/auth/logout", handler.Logout)
 
 	return router
+}
+
+func TestLoginFailsClosedWithoutIPRateLimiter(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	handler := NewAuthHandler(
+		fakeAuthService{principal: &models.AuthPrincipal{ID: 10, Type: "staff", Status: "active", TokenVersion: 1, SchoolID: 2, Username: "testuser"}},
+		fakeTokenService{token: "unused"},
+		&fakeSessionService{refreshToken: "unused"},
+	)
+	router.POST("/auth/login", handler.Login)
+
+	req := httptest.NewRequest(http.MethodPost, "/auth/login",
+		strings.NewReader(`{"username":"testuser","password":"StrongPass123"}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("missing IP rate limiter status = %d, want 503; body=%s", rec.Code, rec.Body.String())
+	}
 }
 
 func TestLoginSuccess(t *testing.T) {
