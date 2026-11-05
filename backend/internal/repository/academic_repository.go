@@ -68,6 +68,33 @@ type AcademicRepository struct { db repositoryDB }
 
 func NewAcademicRepository(db repositoryDB) *AcademicRepository { return &AcademicRepository{db: db} }
 
+func isTeacherWithoutSchoolAdmin(ctx context.Context, db repositoryDB, principalID, schoolID int64) (bool, error) {
+	var isTeacher, isSchoolAdmin bool
+	err := db.QueryRow(ctx, `
+		SELECT
+			EXISTS (
+				SELECT 1 FROM principal_roles pr
+				JOIN roles r ON r.id = pr.role_id
+				WHERE pr.principal_id = $1 AND pr.revoked_at IS NULL
+				  AND r.school_id = $2 AND r.scope_type = 'school'
+				  AND r.principal_type = 'staff' AND r.role_key = 'teacher'
+				  AND r.is_system = TRUE
+			),
+			EXISTS (
+				SELECT 1 FROM principal_roles pr
+				JOIN roles r ON r.id = pr.role_id
+				WHERE pr.principal_id = $1 AND pr.revoked_at IS NULL
+				  AND r.school_id = $2 AND r.scope_type = 'school'
+				  AND r.principal_type = 'staff' AND r.role_key = 'school_admin'
+				  AND r.is_system = TRUE
+			)
+	`, principalID, schoolID).Scan(&isTeacher, &isSchoolAdmin)
+	if err != nil {
+		return false, fmt.Errorf("check teacher role boundary: %w", err)
+	}
+	return isTeacher && !isSchoolAdmin, nil
+}
+
 func authorizeAcademic(ctx context.Context, db repositoryDB, actorID, schoolID int64, permission string) error {
 	if db == nil || actorID <= 0 || schoolID <= 0 || permission == "" {
 		return ErrAcademicAccessDenied
@@ -97,6 +124,15 @@ func authorizeAcademic(ctx context.Context, db repositoryDB, actorID, schoolID i
 	if principal.Type != "staff" || principal.Status != "active" ||
 		principal.SchoolID != schoolID || userStatus != "active" || schoolStatus != "active" {
 		return ErrAcademicAccessDenied
+	}
+	if strings.HasPrefix(permission, "students.") && permission != "students.read_basic" {
+		teacherOnly, roleErr := isTeacherWithoutSchoolAdmin(ctx, db, actorID, schoolID)
+		if roleErr != nil {
+			return fmt.Errorf("enforce teacher student-data boundary: %w", roleErr)
+		}
+		if teacherOnly {
+			return ErrAcademicAccessDenied
+		}
 	}
 
 	effective, err := loadEffectivePermissions(ctx, db, &principal)
