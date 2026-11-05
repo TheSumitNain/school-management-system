@@ -268,6 +268,35 @@ func TestParentGuardianAuthorizationV12PostgresIntegration(t *testing.T) {
 	`, parentPrincipalID, parentLinkID); err != nil {
 		t.Fatalf("revoke parent-guardian link: %v", err)
 	}
+
+	// Once the old Parent link is revoked, a school contact change is allowed
+	// but must invalidate the previously verified portal mobile and eligibility.
+	newContactMobile := mobile + "1"
+	if _, err := tx.Exec(ctx, `
+		UPDATE guardians SET mobile_number = $1 WHERE id = $2 AND school_id = $3
+	`, newContactMobile, guardianID, schoolID); err != nil {
+		t.Fatalf("change guardian mobile after Parent link revocation: %v", err)
+	}
+	var portalIdentityCleared bool
+	if err := tx.QueryRow(ctx, `
+		SELECT mobile_number_e164 IS NULL
+		   AND parent_portal_enabled_at IS NULL
+		   AND parent_portal_enabled_by IS NULL
+		  FROM guardians WHERE id = $1 AND school_id = $2
+	`, guardianID, schoolID).Scan(&portalIdentityCleared); err != nil {
+		t.Fatalf("check guardian portal identity after contact change: %v", err)
+	}
+	if !portalIdentityCleared {
+		t.Fatal("guardian contact change retained stale verified Parent portal identity")
+	}
+	staleMobileMatches, err := findPortalEligibleGuardiansByMobile(ctx, tx, mobile)
+	if err != nil {
+		t.Fatalf("check stale mobile after guardian contact change: %v", err)
+	}
+	if len(staleMobileMatches) != 0 {
+		t.Fatalf("stale verified mobile remained eligible after guardian contact change: %#v", staleMobileMatches)
+	}
+
 	expectFailure("reactivate revoked parent guardian link", func() error {
 		_, err := tx.Exec(ctx, `
 			UPDATE parent_guardian_links
