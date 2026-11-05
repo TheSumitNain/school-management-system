@@ -686,6 +686,53 @@ func TestAttendanceCorrectionRouteEnforcesDedicatedPermission(t *testing.T) {
 }
 
 
+func TestAttendanceSameDayUpdateRouteRequiresDedicatedPermission(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	validator := fakeTokenValidator{claims: &services.TokenClaims{
+		RegisteredClaims: jwt.RegisteredClaims{Subject: "31"},
+		PrincipalType: "staff",
+		TokenVersion: 1,
+	}}
+	principal := &models.AuthPrincipal{
+		ID: 31, Type: "staff", Status: "active", TokenVersion: 1,
+		SchoolID: 8, Username: "school.staff",
+	}
+	request := func(permissions []string) *httptest.ResponseRecorder {
+		router, err := setupRouterWithHandlers(
+			fakeDatabase{}, nil, validator,
+			fakePrincipalLoader{principal: principal},
+			fakePermissionLoader{permissions: permissions},
+			nil, nil, nil, nil, nil, handlers.NewAttendanceHandler(nil),
+		)
+		if err != nil {
+			t.Fatalf("setup attendance router: %v", err)
+		}
+		req := httptest.NewRequest(
+			http.MethodPatch,
+			"/school/attendance/7",
+			strings.NewReader(`{"status":"absent"}`),
+		)
+		req.Header.Set("Authorization", "Bearer valid-test-token")
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		return rec
+	}
+
+	if denied := request(nil); denied.Code != http.StatusForbidden {
+		t.Fatalf("same-day update without attendance.update_same_day: status=%d body=%s; want 403",
+			denied.Code, denied.Body.String())
+	}
+	if wrongPermission := request([]string{"attendance.mark"}); wrongPermission.Code != http.StatusForbidden {
+		t.Fatalf("same-day update with attendance.mark only: status=%d body=%s; want 403",
+			wrongPermission.Code, wrongPermission.Body.String())
+	}
+	if allowed := request([]string{"attendance.update_same_day"}); allowed.Code != http.StatusServiceUnavailable {
+		t.Fatalf("same-day update with dedicated permission should reach unavailable handler: status=%d body=%s; want 503",
+			allowed.Code, allowed.Body.String())
+	}
+}
+
 func TestMFARecoveryCodeRegenerationRequiresAuthenticatedSession(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	authHandler := handlers.NewAuthHandler(nil, nil, nil)
