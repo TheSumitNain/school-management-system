@@ -133,7 +133,7 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 		INSERT INTO users (school_id, username, password_hash, status)
 		VALUES ($1, $2, 'integration-password-hash', 'active')
 		RETURNING principal_id
-	`, schoolID, "guardian-target-"+suffix).Scan(&targetPrincipalID); err != nil {
+	`, schoolID, "gtrg-"+suffix).Scan(&targetPrincipalID); err != nil {
 		t.Fatalf("create guardian permission target staff: %v", err)
 	}
 	if err := roleRepo.AssignStaffRole(ctx, actorPrincipalID, schoolID, targetPrincipalID, customRole.ID); err != nil {
