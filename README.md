@@ -43,7 +43,7 @@ The database must be designed incrementally but with future compatibility in min
 
 ## Current Status
 
-**Stage:** Principal-aware authentication, RBAC, academic foundation, student admission/profile APIs, and school-scoped Guardian Management backend. The React frontend is not yet implemented, and most school business modules remain pending. Guardian permissions use explicit Platform Admin delegation; built-in School Admin and Teacher role bundles remain unchanged. Active branch: `fix/v4-auth-security-hardening`. This is not production-ready.
+**Stage (2026-11-05):** Principal-aware authentication, administrative MFA, refresh-family security, live RBAC/delegation/override workflows, staff account lifecycle, academic foundations, assigned-teacher enrollment roster, attendance foundations, and school-scoped Guardian Management APIs are implemented in the backend. The React frontend is not yet implemented and several school business modules remain pending. Parent OTP/SMS and Phase 2 Parent/Driver interfaces remain paused. Active branch: `fix/v4-auth-security-hardening`. This is not production-ready.
 
 ### Implemented
 
@@ -62,9 +62,17 @@ The database must be designed incrementally but with future compatibility in min
 - Database-backed principal status/token-version validation and effective system-role permission loading on protected requests.
 - RequirePermission middleware and authenticated /auth/me route.
 - Mandatory TOTP MFA enrollment/verification and recovery-code flows for Platform Admin and School Admin.
-- Failed-login lockout and login IP rate-limiting components.
-- Transactional Platform Admin school onboarding, with V13 automatic School Admin/Teacher system-role provisioning for new schools.
-- One-time first Platform Admin CLI bootstrap source in V14; migration and repository integration verification are still pending.
+- Five-failure/15-minute username lockout, atomic IP login rate limiting, and fail-closed behavior if either security control is unavailable.
+- Principal-wide five-failure/15-minute MFA lockout across replacement challenges and MFA challenge purposes, with append-only failure auditing and reset after successful verification.
+- Mandatory TOTP MFA for Platform Admin and School Admin; admin MFA enrollment is revalidated on protected requests.
+- Per-device 30-minute idle timeout for Platform Admin and School Admin sessions, bound to the refresh-session family.
+- Live RBAC administration: custom roles, exact-delegation-bound permission grants, user ALLOW/DENY overrides, staff role assignment/revocation, and route-level permission checks.
+- Database and repository guards against self-assignment, self-granted permission overrides, and self-removal of DENY overrides (V22).
+- Staff account creation, listing, update, disable/re-enable, password change/reset, forced temporary-password change, token-version invalidation, and audit events.
+- Teacher enrollment roster limited to assigned class/subject sections and the approved minimal fields: student name, roll number, class and section.
+- Parent authentication and guardian matching require an active linked school. Parent OTP delivery and Parent/Driver Phase 2 flows remain intentionally paused.
+- Transactional Platform Admin school onboarding, with automatic School Admin/Teacher system-role provisioning for new schools.
+- One-time first Platform Admin bootstrap CLI; it does not create a permanent Platform Admin account automatically.
 - `POST /auth/login` endpoint that issues access and refresh tokens.
 - `POST /auth/refresh` endpoint for refresh-token rotation and replay detection.
 - `POST /auth/logout` endpoint to revoke every active refresh session in the supplied token family.
@@ -104,28 +112,23 @@ Platform Admin uses POST /auth/platform-admin/login with email/password and must
 
 ## Database Migrations
 
-The repository includes migrations through V14. The V4 principal/RBAC schema and subsequent student/guardian, Parent–Guardian, school-role provisioning and other additive migrations are part of the current branch. The user confirmed school_management_test at cumulative version 13 with dirty=false; V13's school-role provisioning integration test passed. V14 first-Platform-Admin bootstrap is source-only and must not be applied until reviewed and explicitly approved. The state of school_management is not inferred; do not apply migrations there without separate explicit approval.
+The repository includes additive migrations through V22. GitHub Actions run `41960953660` applied migrations V1–V22 to a fresh ephemeral PostgreSQL 18 database. This verifies the migration chain in CI only; it does not establish or change the version of either persistent local database. The one-time first Platform Admin bootstrap command is separate from migrations and must only be run deliberately by an authorized operator; no permanent Platform Admin account is created automatically. Never apply migrations to `school_management` without separate explicit approval.
 
 ## Verification
 
-On commit bea184f, the user confirmed from backend: go test -count=1 -p 1 ./... passed with exit code 0, and go vet ./... passed with exit code 0. The focused TestPrincipalRefreshSessionCreateInTxPostgresIntegration assertions passed, although that single command reported a Windows temporary executable cleanup/lock exit code of 1. The subsequent full suite completed with exit code 0. Additional V14 bootstrap hardening/test commits have since been added; rerun the suite on the latest pulled commit before treating those changes as verified. PostgreSQL V14 execution remains pending.
+Latest verified remote checkpoint: commit `1b942cab4ebd76f849c579d1aa3324e839fc2741`, GitHub Actions run [41960953660](https://github.com/TheSumitNain/school-management-system/actions/runs/41960953660). CI applied V1–V22 to ephemeral PostgreSQL 18, ran the complete backend suite including opt-in PostgreSQL integration tests, and passed `go vet ./...`. This does not verify the user's local working tree or migrate either persistent local database. Pull the latest branch and repeat local tests before relying on local verification.
 
 ## Not Yet Implemented
 
-- Automated migration tests against a disposable test database.
-- Complete user-profile retrieval from `GET /auth/me`.
-- Access-token revocation enforcement.
-- Complete resource-level tenant isolation and assignment/field-level authorization for school business APIs; those APIs are not yet built.
-- Safe custom-role permission grants and user ALLOW overrides. They intentionally fail closed until every grant is linked to the exact delegation record that authorized it.
-- Staff password change/reset lifecycle, forced first-login password change, and immediate access-token invalidation after administrative security changes.
-- Complete role/permission administration workflows and route-level guards for the future business modules.
-- Final PostgreSQL V14 migration and end-to-end first Platform Admin bootstrap verification.
-- Complete HTTP end-to-end security tests and production database least-privilege grants.
-- Student, teacher, class, subject, and attendance APIs.
-- React frontend and Platform Admin, School Admin, and school-staff dashboards (Phase 1).
-- Parent/Driver mobile interfaces and Parent authentication flow (Phase 2; intentionally deferred).
-- Production deployment, monitoring, backup, and recovery procedures.
-- Comprehensive security, end-to-end, and load testing.
+- Complete user-profile retrieval beyond the identity context currently returned by `GET /auth/me`.
+- Immediate revocation of already-issued access JWTs on ordinary staff logout; refresh-family logout revokes refresh sessions, while already-issued access tokens otherwise expire naturally. Principal token-version changes do invalidate access tokens on subsequent requests.
+- Full resource-level tenant, assignment and field-level authorization across every current and future business endpoint; implemented student/enrollment/attendance/guardian scopes still need broader coverage.
+- Remaining school business modules such as fees, exams/results, timetable, homework, notices, transport and reporting.
+- Exhaustive HTTP end-to-end tests with real JWT signature validation across every protected route, plus additional race/failure-mode testing.
+- Production database least-privilege grants, deployment hardening, TLS/proxy configuration, monitoring, alerting, backup and recovery procedures.
+- React frontend and Platform Admin, School Admin, teacher and school-staff dashboards (Phase 1).
+- Parent/Driver mobile interfaces and production Parent OTP/SMS flow (Phase 2; intentionally deferred).
+- Comprehensive security review, penetration testing, capacity/load testing and operational readiness verification.
 
 **Important:** This project is under active development and is not production-ready. Authentication components have been implemented incrementally, but the complete authentication and authorization system has not yet been validated as production-ready.
 
