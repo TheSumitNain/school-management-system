@@ -96,6 +96,10 @@ func (r *PlatformAdminLifecycleRepository) Deactivate(ctx context.Context, actor
 	var allowed bool
 	if err=tx.QueryRow(ctx,platformAdminLifecycleActorQuery,actorID).Scan(&allowed); err!=nil { return fmt.Errorf("authorize Platform Admin deactivation: %w",err) }
 	if !allowed { return ErrPlatformAdminActorForbidden }
+	// Match the principal-level lock used by refresh-session creation and rotation.
+	// Acquiring it before touching auth_principals or refresh_sessions prevents a
+	// concurrent rotation from issuing a replacement token during deactivation.
+	if _,err=tx.Exec(ctx,`SELECT pg_advisory_xact_lock(hashtextextended('refresh-principal:' || $1::bigint::text,0))`,targetID); err!=nil { return fmt.Errorf("lock Platform Admin refresh sessions: %w",err) }
 	tag,err:=tx.Exec(ctx,`UPDATE auth_principals ap SET status='disabled',token_version=token_version+1,updated_at=NOW()
 WHERE ap.id=$1 AND ap.principal_type='platform_admin' AND ap.status='active'
 AND EXISTS(SELECT 1 FROM platform_admin_accounts pa WHERE pa.principal_id=ap.id)`,targetID)
