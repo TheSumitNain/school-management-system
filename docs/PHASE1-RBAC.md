@@ -45,7 +45,7 @@ This document is the detailed reference for Phase 1 web role scope, permission i
 
 ## 3. Permission catalogue
 
-Permission keys are stable identifiers in a platform-defined catalogue. School Admins may create custom roles from authorized catalogue entries; they cannot invent platform permissions or exceed their delegation authority. Custom-role grants and per-user overrides must carry the exact delegation ID that authorized them; V16 enforces this in database triggers and the live resolver ignores grants whose exact delegation has been revoked. V22 adds self-escalation guards at repository and database layers. GitHub Actions run 41960953660 applied V1–V22 and passed integration tests on ephemeral PostgreSQL 18; persistent local databases remain unchanged.
+Permission keys are stable identifiers in a platform-defined catalogue. School Admins may create custom roles from authorized catalogue entries; they cannot invent platform permissions or exceed their delegation authority. Custom-role grants and per-user overrides must carry the exact delegation ID that authorized them; V16 enforces this in database triggers and the live resolver ignores grants whose exact delegation has been revoked. V22 adds self-escalation guards at repository and database layers. GitHub Actions run 41961583328 applied V1–V22 and passed integration tests on ephemeral PostgreSQL 18; persistent local databases remain unchanged.
 
 ### 3.1 Platform and school administration
 
@@ -288,4 +288,4 @@ The following remain incomplete and must not be represented as finished:
 - Exhaustive end-to-end HTTP/security tests with real JWT signature validation across every protected route, plus additional race/failure-mode coverage.
 - Production DB least-privilege grants, deployment hardening, monitoring, backup/recovery, penetration testing and load testing.
 
-Latest verified remote checkpoint: commit 1b942cab4ebd76f849c579d1aa3324e839fc2741, GitHub Actions run 41960953660. It applied V1–V22 to a fresh ephemeral PostgreSQL 18 database, passed the full backend suite including PostgreSQL integration, and passed go vet ./.... This does not confirm the migration state of either persistent local database. Never apply migrations to school_management without separate explicit approval. Preserve refresh-token family locks, cross-family principal serialization, replay detection, and family revocation.
+Latest verified remote checkpoint: commit 7071d7913ab62ff525637e2af0f4d3718b9f57b8, GitHub Actions run 41961583328. It applied V1–V22 to a fresh ephemeral PostgreSQL 18 database, passed the full backend suite including PostgreSQL integration, and passed go vet ./.... This does not confirm the migration state of either persistent local database. Never apply migrations to school_management without separate explicit approval. Preserve refresh-token family locks, cross-family principal serialization, replay detection, and family revocation.
