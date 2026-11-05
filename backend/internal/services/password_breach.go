@@ -2,6 +2,7 @@ package services
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"crypto/sha1"
 	"encoding/hex"
@@ -87,9 +88,18 @@ func (c *HIBPPasswordBreachChecker) IsCompromised(ctx context.Context, password 
 		return false, fmt.Errorf("password range service returned HTTP %d", resp.StatusCode)
 	}
 
+	const maxPasswordRangeResponseBytes = 2 << 20
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxPasswordRangeResponseBytes+1))
+	if err != nil {
+		return false, fmt.Errorf("read password range response: %w", err)
+	}
+	if len(body) > maxPasswordRangeResponseBytes {
+		return false, fmt.Errorf("password range service response exceeds %d bytes", maxPasswordRangeResponseBytes)
+	}
+
 	suffixes := make(map[string]struct{})
-	scanner := bufio.NewScanner(io.LimitReader(resp.Body, 2<<20))
-	scanner.Buffer(make([]byte, 4096), 2<<20)
+	scanner := bufio.NewScanner(bytes.NewReader(body))
+	scanner.Buffer(make([]byte, 4096), maxPasswordRangeResponseBytes)
 	for scanner.Scan() {
 		parts := strings.SplitN(strings.TrimSpace(scanner.Text()), ":", 2)
 		if len(parts) != 2 || len(parts[0]) != 35 {
