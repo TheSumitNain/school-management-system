@@ -130,6 +130,19 @@ func TestParentGuardianAuthorizationV12PostgresIntegration(t *testing.T) {
 		matches[0].ActiveStudentCount != 1 {
 		t.Fatalf("unexpected official guardian matches: %#v", matches)
 	}
+	if _, err := tx.Exec(ctx, `UPDATE schools SET status='inactive' WHERE id=$1`, schoolID); err != nil {
+		t.Fatalf("disable school for guardian matching test: %v", err)
+	}
+	inactiveMatches, err := findPortalEligibleGuardiansByMobile(ctx, tx, mobile)
+	if err != nil {
+		t.Fatalf("match guardian from inactive school: %v", err)
+	}
+	if len(inactiveMatches) != 0 {
+		t.Fatalf("inactive school guardian remained portal-eligible: %#v", inactiveMatches)
+	}
+	if _, err := tx.Exec(ctx, `UPDATE schools SET status='active' WHERE id=$1`, schoolID); err != nil {
+		t.Fatalf("restore school after guardian matching test: %v", err)
+	}
 	otherMobileMatches, err := findPortalEligibleGuardiansByMobile(ctx, tx, mobile+"9")
 	if err != nil {
 		t.Fatalf("query non-matching guardian mobile: %v", err)
