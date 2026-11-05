@@ -47,25 +47,35 @@ func TestMFAChallengeRepositoryPostgresIntegration(t *testing.T) {
 		}
 	})
 
-	t.Run("fifth failed attempt consumes challenge", func(t *testing.T) {
-		hash := integrationTokenHash("mfa-challenge-five-failures")
-		if err := repo.Create(ctx, principalID, tokenVersion, MFAChallengeLogin, hash, time.Now().Add(5*time.Minute)); err != nil {
-			t.Fatalf("create login challenge: %v", err)
+	t.Run("fifth failed attempt across replacement challenges locks principal", func(t *testing.T) {
+		firstHash := integrationTokenHash("mfa-challenge-first-two-failures")
+		if err := repo.Create(ctx, principalID, tokenVersion, MFAChallengeLogin, firstHash, time.Now().Add(5*time.Minute)); err != nil {
+			t.Fatalf("create first login challenge: %v", err)
 		}
-		for i := 1; i <= maxMFAChallengeAttempts; i++ {
-			err := repo.RecordFailure(ctx, hash)
+		for i := 1; i <= 2; i++ {
+			if err := repo.RecordFailure(ctx, firstHash); err != nil {
+				t.Fatalf("record first-challenge failure %d: %v", i, err)
+			}
+		}
+
+		secondHash := integrationTokenHash("mfa-challenge-next-three-failures")
+		if err := repo.Create(ctx, principalID, tokenVersion, MFAChallengeLogin, secondHash, time.Now().Add(5*time.Minute)); err != nil {
+			t.Fatalf("create replacement login challenge: %v", err)
+		}
+		for i := 3; i <= maxMFAChallengeAttempts; i++ {
+			err := repo.RecordFailure(ctx, secondHash)
 			if i < maxMFAChallengeAttempts && err != nil {
-				t.Fatalf("record failure %d: %v", i, err)
+				t.Fatalf("record replacement-challenge failure %d: %v", i, err)
 			}
 			if i == maxMFAChallengeAttempts && !errors.Is(err, ErrMFALoginLocked) {
-				t.Fatalf("fifth failure error = %v, want principal-wide MFA lockout", err)
+				t.Fatalf("fifth cumulative failure error = %v, want principal-wide MFA lockout", err)
 			}
 		}
-		if _, err := repo.Get(ctx, hash); !errors.Is(err, ErrMFAChallengeUnavailable) {
-			t.Fatalf("consumed challenge should be unavailable, got %v", err)
+		if _, err := repo.Get(ctx, secondHash); !errors.Is(err, ErrMFAChallengeUnavailable) {
+			t.Fatalf("consumed replacement challenge should be unavailable, got %v", err)
 		}
-		if err := repo.RecordFailure(ctx, hash); !errors.Is(err, ErrMFAChallengeUnavailable) {
-			t.Fatalf("sixth failure should be rejected, got %v", err)
+		if err := repo.RecordFailure(ctx, secondHash); !errors.Is(err, ErrMFAChallengeUnavailable) {
+			t.Fatalf("additional failure should be rejected, got %v", err)
 		}
 		if err := repo.Create(ctx, principalID, tokenVersion, MFAChallengeLogin,
 			integrationTokenHash("mfa-challenge-after-lockout"), time.Now().Add(5*time.Minute)); !errors.Is(err, ErrMFALoginLocked) {
