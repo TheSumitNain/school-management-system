@@ -5,6 +5,23 @@ CREATE OR REPLACE FUNCTION guard_guardian_portal_eligibility()
 RETURNS trigger
 LANGUAGE plpgsql AS $v23$
 BEGIN
+    IF TG_OP = 'UPDATE'
+       AND NEW.mobile_number IS DISTINCT FROM OLD.mobile_number THEN
+        IF EXISTS (
+            SELECT 1 FROM parent_guardian_links pgl
+             WHERE pgl.guardian_id = NEW.id AND pgl.revoked_at IS NULL
+        ) THEN
+            RAISE EXCEPTION 'guardian mobile cannot change while an active Parent link exists; revoke the link first';
+        END IF;
+
+        -- A changed contact number is not automatically verified for Parent
+        -- portal use. Require explicit re-enablement after the new number is
+        -- confirmed by the school's approved workflow.
+        NEW.mobile_number_e164 := NULL;
+        NEW.parent_portal_enabled_at := NULL;
+        NEW.parent_portal_enabled_by := NULL;
+    END IF;
+
     IF NEW.parent_portal_enabled_at IS NOT NULL THEN
         IF NEW.status <> 'active' OR NEW.mobile_number_e164 IS NULL THEN
             RAISE EXCEPTION 'parent portal eligibility requires an active guardian with an E.164 mobile';
