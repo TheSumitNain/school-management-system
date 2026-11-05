@@ -114,8 +114,19 @@ func (r *AcademicRepository) ListAttendance(ctx context.Context,actorID,schoolID
 		       WHERE pr.principal_id=$5 AND pr.revoked_at IS NULL AND ro.school_id=$1
 		         AND ro.scope_type='school' AND ro.role_key='school_admin' AND ro.is_system=TRUE)
 		       OR EXISTS (SELECT 1 FROM class_incharge_assignments ci
+		       JOIN auth_principals cap ON cap.id=ci.teacher_principal_id
+		       JOIN users cu ON cu.principal_id=cap.id AND cu.school_id=ci.school_id
 		       WHERE ci.school_id=$1 AND ci.section_id=e.section_id
-		         AND ci.teacher_principal_id=$5 AND ci.revoked_at IS NULL))
+		         AND ci.teacher_principal_id=$5 AND ci.revoked_at IS NULL
+		         AND cap.status='active' AND cu.status='active'
+		         AND EXISTS (
+				SELECT 1 FROM principal_roles tpr
+				JOIN roles tr ON tr.id=tpr.role_id
+				WHERE tpr.principal_id=cap.id AND tpr.revoked_at IS NULL
+				  AND tr.school_id=ci.school_id AND tr.scope_type='school'
+				  AND tr.principal_type='staff' AND tr.role_key='teacher'
+				  AND tr.is_system=TRUE
+			 )))
 		ORDER BY a.attendance_date DESC,sec.display_order,e.section_id,e.roll_number,st.full_name,a.id
 		LIMIT 1000`,schoolID,yearID,sectionID,nullAttendanceDate(day),actorID)
 	if err!=nil{return nil,fmt.Errorf("list attendance: %w",err)}
