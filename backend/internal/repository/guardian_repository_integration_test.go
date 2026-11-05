@@ -165,7 +165,7 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 	if err := roleRepo.AssignStaffRole(ctx, actorPrincipalID, schoolID, teacherPrincipalID, customRole.ID); err != nil {
 		t.Fatalf("assign guardian custom role to Teacher: %v", err)
 	}
-	if _, err := repo.ListGuardians(ctx, teacherPrincipalID, schoolID, "", "active", 10, 0); !errors.Is(err, ErrGuardianAccessDenied) {
+	if _, _, err := repo.ListGuardians(ctx, teacherPrincipalID, schoolID, "", "active", 10, 0); !errors.Is(err, ErrGuardianAccessDenied) {
 		t.Fatalf("Teacher with delegated guardians.read must be denied; got %v", err)
 	}
 	if err := authorizeAcademic(ctx, tx, teacherPrincipalID, schoolID, "students.read_sensitive"); !errors.Is(err, ErrAcademicAccessDenied) {
