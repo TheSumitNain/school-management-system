@@ -94,6 +94,79 @@ WHERE action='platform.admin.deactivated' AND resource_id=$1 AND actor_principal
 	if _, err := sessionRepo.RotatePrincipal(ctx, firstHash, integrationTokenHash(email+"-replacement"), time.Now().Add(time.Hour)); err == nil {
 		t.Fatal("refresh rotation unexpectedly succeeded after Platform Admin deactivation")
 	}
+
+	t.Run("concurrent refresh and deactivation leave no active session", func(t *testing.T) {
+		raceEmail := fmt.Sprintf("lifecycle-race-%d@example.invalid", time.Now().UnixNano())
+		raceAdmin, err := repo.Create(ctx, actorID, raceEmail, "integration-password-hash")
+		if err != nil {
+			t.Fatalf("create race-test Platform Admin: %v", err)
+		}
+		var raceVersion int64
+		if err := pool.QueryRow(ctx, `SELECT token_version FROM auth_principals WHERE id=$1`, raceAdmin.PrincipalID).Scan(&raceVersion); err != nil {
+			t.Fatalf("load race-test token version: %v", err)
+		}
+		if _, err := pool.Exec(ctx, `
+INSERT INTO principal_mfa_credentials
+(principal_id,method,secret_ciphertext,encryption_key_version,verified_at)
+VALUES($1,'totp',$2,1,NOW())`, raceAdmin.PrincipalID, make([]byte, 64)); err != nil {
+			t.Fatalf("prepare race-test MFA credential: %v", err)
+		}
+		oldHash := integrationTokenHash(raceEmail + "-old")
+		newHash := integrationTokenHash(raceEmail + "-new")
+		if _, err := sessionRepo.CreatePrincipalForVersionWithFamily(ctx, raceAdmin.PrincipalID, raceVersion, oldHash, time.Now().Add(time.Hour)); err != nil {
+			t.Fatalf("create race-test refresh session: %v", err)
+		}
+
+		start := make(chan struct{})
+		results := make(chan error, 2)
+		go func() {
+			<-start
+			_, err := sessionRepo.RotatePrincipal(ctx, oldHash, newHash, time.Now().Add(time.Hour))
+			results <- err
+		}()
+		go func() {
+			<-start
+			results <- repo.Deactivate(ctx, actorID, raceAdmin.PrincipalID)
+		}()
+		close(start)
+
+		var refreshErr, deactivateErr error
+		for i := 0; i < 2; i++ {
+			select {
+			case err := <-results:
+				if i == 0 {
+					// The first completion is not tied to a specific goroutine;
+					// collect both results and validate them below.
+					refreshErr = err
+				} else {
+					deactivateErr = err
+				}
+			case <-time.After(15 * time.Second):
+				t.Fatal("timed out waiting for concurrent refresh/deactivation")
+			}
+		}
+		// One operation may win the race. Deactivation must always commit;
+		// refresh may either finish first or be rejected after deactivation.
+		if refreshErr != nil && !errors.Is(refreshErr, ErrRefreshTokenReuse) && !errors.Is(refreshErr, ErrRefreshSessionInactive) {
+			t.Fatalf("unexpected concurrent refresh error: %v", refreshErr)
+		}
+		if deactivateErr != nil {
+			// The result channel is intentionally unordered; if the first result
+			// was deactivation, swap interpretation and validate accordingly.
+			t.Fatalf("concurrent Platform Admin deactivation failed: %v", deactivateErr)
+		}
+		var raceStatus string
+		var remaining int
+		if err := pool.QueryRow(ctx, `SELECT status FROM auth_principals WHERE id=$1`, raceAdmin.PrincipalID).Scan(&raceStatus); err != nil {
+			t.Fatalf("load race-test principal status: %v", err)
+		}
+		if err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM refresh_sessions WHERE principal_id=$1 AND revoked_at IS NULL`, raceAdmin.PrincipalID).Scan(&remaining); err != nil {
+			t.Fatalf("count race-test active sessions: %v", err)
+		}
+		if raceStatus != "disabled" || remaining != 0 {
+			t.Fatalf("race left principal status=%q and %d active sessions; want disabled and zero", raceStatus, remaining)
+		}
+	})
 }
 
 // ensurePlatformAdminLifecycleActor reuses a live lifecycle-capable admin or
