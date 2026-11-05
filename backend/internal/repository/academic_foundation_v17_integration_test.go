@@ -520,5 +520,14 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 	if attendanceAllowed {
 		t.Fatal("active class-in-charge assignment retained attendance access after Teacher role revocation")
 	}
+	rosterAfterTeacherRoleRevocation, err := teacherAcademicRepo.ListStudentEnrollments(
+		ctx, teacherPrincipalID, schoolID, year2, studentID,
+	)
+	if err != nil {
+		t.Fatalf("read roster after Teacher role revocation: %v", err)
+	}
+	if len(rosterAfterTeacherRoleRevocation) != 0 {
+		t.Fatalf("revoked Teacher role retained roster access: %+v", rosterAfterTeacherRoleRevocation)
+	}
 
 }
