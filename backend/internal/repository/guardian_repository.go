@@ -76,6 +76,15 @@ func authorizeGuardian(ctx context.Context, db repositoryDB, actorID, schoolID i
 		principal.SchoolID != schoolID || userStatus != "active" || schoolStatus != "active" {
 		return ErrGuardianAccessDenied
 	}
+	if strings.HasPrefix(permission, "guardians.") {
+		teacherOnly, roleErr := isTeacherWithoutSchoolAdmin(ctx, db, actorID, schoolID)
+		if roleErr != nil {
+			return fmt.Errorf("enforce teacher guardian-data boundary: %w", roleErr)
+		}
+		if teacherOnly {
+			return ErrGuardianAccessDenied
+		}
+	}
 
 	effective, err := loadEffectivePermissions(ctx, db, &principal)
 	if err != nil {
