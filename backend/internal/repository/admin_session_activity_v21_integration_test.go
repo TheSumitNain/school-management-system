@@ -243,6 +243,20 @@ func TestAdminSessionActivityV21PostgresIntegration(t *testing.T) {
 	if err != nil { t.Fatalf("ordinary staff refresh must not be subject to admin idle timeout: %v",err) }
 	if rotatedPrincipal == nil || rotatedPrincipal.ID != ordinaryStaffPrincipalID { t.Fatalf("ordinary staff refresh returned wrong principal: %+v",rotatedPrincipal) }
 
+	// Ordinary staff are not subject to the admin idle timeout, but every
+	// protected request must still prove that its refresh-session family is
+	// active and belongs to the same principal.
+	isAdmin, valid, err = tracker.CheckAndTouchAdminSession(ctx, ordinaryStaffPrincipalID, staffFamily)
+	if err != nil { t.Fatalf("validate ordinary staff family: %v", err) }
+	if isAdmin || !valid { t.Fatalf("ordinary staff family should remain valid beyond admin idle window: isAdmin=%v valid=%v", isAdmin, valid) }
+	if _, err := tx.Exec(ctx, `UPDATE refresh_sessions SET revoked_at=NOW() WHERE family_id=$1::uuid AND revoked_at IS NULL`, staffFamily); err != nil {
+		t.Fatalf("revoke ordinary staff family: %v", err)
+	}
+	isAdmin, valid, err = tracker.CheckAndTouchAdminSession(ctx, ordinaryStaffPrincipalID, staffFamily)
+	if err != nil { t.Fatalf("validate revoked ordinary staff family: %v", err) }
+	if isAdmin || valid { t.Fatalf("revoked ordinary staff family must be rejected: isAdmin=%v valid=%v", isAdmin, valid) }
+
+
 	isAdmin, valid, err = tracker.CheckAndTouchAdminSession(ctx, principalID, activeFamily)
 	if err != nil { t.Fatalf("recheck other device family: %v", err) }
 	if !isAdmin || !valid { t.Fatalf("other device family must remain usable: isAdmin=%v valid=%v",isAdmin,valid) }
