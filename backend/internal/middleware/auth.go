@@ -92,7 +92,11 @@ func AuthMiddleware(tokenService AccessTokenValidator, principals PrincipalLoade
 		// revocation, expiry, or principal mismatch invalidates access immediately.
 		// The tracker applies the 30-minute idle policy only to administrators.
 		requiresAdminSession := principal.Type == "platform_admin" || principal.RequiresAdminSessionActivity
-		if claims.SessionID == "" || activityTracker == nil {
+		if claims.SessionID == "" {
+			unauthorized(c)
+			return
+		}
+		if activityTracker == nil {
 			c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Session security is unavailable"})
 			return
 		}
