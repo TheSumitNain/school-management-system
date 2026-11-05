@@ -10,16 +10,15 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var ErrPrincipalVersionChanged = errors.New("principal credentials changed during authentication")
 
 type PrincipalRefreshSessionRepository struct {
-	db *pgxpool.Pool
+	db repositoryDB
 }
 
-func NewPrincipalRefreshSessionRepository(db *pgxpool.Pool) *PrincipalRefreshSessionRepository {
+func NewPrincipalRefreshSessionRepository(db repositoryDB) *PrincipalRefreshSessionRepository {
 	return &PrincipalRefreshSessionRepository{db: db}
 }
 
