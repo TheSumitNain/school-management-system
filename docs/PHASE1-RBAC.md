@@ -1,8 +1,8 @@
 # Phase 1 Web RBAC — Roles, Permissions and Account Rules
 
-**Decision status:** Product and authorization requirements approved for the Phase 1 web application. Core principal/RBAC schema and authentication enforcement are present in the current branch; complete resource-level enforcement remains pending. Parent and Driver mobile experiences are Phase 2 and deferred.
+**Decision status (2026-11-05):** Product and authorization requirements approved for the Phase 1 web application. Principal-aware authentication, mandatory admin MFA, live RBAC/delegation/override workflows, staff account lifecycle, and foundational student/enrollment/attendance/guardian scope checks are implemented. Complete resource-level enforcement across all business modules remains pending. Parent and Driver mobile experiences are Phase 2 and deferred.
 
-This document is the detailed reference for Phase 1 web role scope, permission identifiers, account boundaries and teacher assignments. Parent-related sections are retained as future Phase 2 design requirements only; they are not active Phase 1 implementation scope. It describes approved requirements, not implemented functionality.
+This document is the detailed reference for Phase 1 web role scope, permission identifiers, account boundaries and teacher assignments. Parent-related sections are retained as future Phase 2 design requirements only; they are not active Phase 1 implementation scope. It distinguishes approved requirements from the backend functionality currently implemented; it is not a claim that the complete product is production-ready.
 
 ## 1. Authorization principles
 
@@ -27,7 +27,7 @@ This document is the detailed reference for Phase 1 web role scope, permission i
 - Every School Admin and staff account belongs to exactly one school. The same account must never access multiple schools.
 - If one person works at multiple schools, each school creates a separate account with independent username, password, and sessions.
 - Staff usernames are globally unique and case-insensitive across the platform. Login must resolve exactly one account; school selection is not used to disambiguate duplicate usernames.
-- New staff records default to `must_change_password=true`; School Admin provisioning must supply an initial temporary password. Temporary-password staff sessions can only change the password or inspect `/auth/me` until replacement. V15 source is committed; PostgreSQL application/verification remains pending.
+- New staff records default to `must_change_password=true`; School Admin provisioning supplies an initial temporary password. Temporary-password staff sessions can only change the password or inspect `/auth/me` until replacement. Staff creation and PostgreSQL integration verification are implemented.
 - Staff self-service password change requires the current password. The implemented endpoint is `POST /auth/password/change`; a successful change clears the temporary flag, increments token version, revokes refresh sessions, and writes an audit event.
 - School Admin can reset an active staff password only within the same active school, without knowing the old password. `POST /school/staff/:principalID/password/reset` requires `users.password_reset`; the repository independently checks the School Admin role and permission. Reset revokes refresh sessions and access tokens, requires a password change at next login, and creates an audit event.
 - School Admin accounts are provisioned by Platform Admin. A School Admin cannot create another School Admin or a Platform Admin.
@@ -45,7 +45,7 @@ This document is the detailed reference for Phase 1 web role scope, permission i
 
 ## 3. Permission catalogue
 
-Permission keys are stable identifiers in a platform-defined catalogue. School Admins may create custom roles from authorized catalogue entries; they cannot invent platform permissions or exceed their delegation authority. Custom-role grants and per-user overrides must carry the exact delegation ID that authorized them; V16 enforces this in database triggers and the live resolver ignores grants whose exact delegation has been revoked. Fresh PostgreSQL 18 migration and integration verification passed in GitHub Actions; the user's persistent `school_management_test` database remains unchanged.
+Permission keys are stable identifiers in a platform-defined catalogue. School Admins may create custom roles from authorized catalogue entries; they cannot invent platform permissions or exceed their delegation authority. Custom-role grants and per-user overrides must carry the exact delegation ID that authorized them; V16 enforces this in database triggers and the live resolver ignores grants whose exact delegation has been revoked. V22 adds self-escalation guards at repository and database layers. GitHub Actions run 41960953660 applied V1–V22 and passed integration tests on ephemeral PostgreSQL 18; persistent local databases remain unchanged.
 
 ### 3.1 Platform and school administration
 
@@ -266,24 +266,26 @@ Clerk, Manager, Librarian, Gate Keeper, Helper, Bus Conductor, Driver and other 
 
 ## 10. Implementation status and next work
 
-The approved Phase 1 requirements remain broader than the currently completed application. The active branch has completed principal-aware authentication, live permission resolution, mandatory admin MFA, staff password lifecycle controls, and the V1–V16 schema hardening. GitHub Actions verifies the complete migration chain and opt-in PostgreSQL integration suite on an ephemeral PostgreSQL 18 database. The latest run on commit `524d795` passed the full suite and `go vet ./...`.
+The approved Phase 1 requirements remain broader than the currently completed application. The active branch implements principal-aware authentication, mandatory Platform Admin/School Admin TOTP MFA, principal-wide MFA lockout, 5-failure/15-minute password lockout, IP rate limiting with fail-closed wiring, live permission resolution, refresh-family replay/concurrency protection, and 30-minute per-device administrative idle timeout.
 
-Implemented API foundations now include:
+Implemented API foundations include:
 - Platform Admin school onboarding and one-time first Platform Admin bootstrap.
 - School role and active permission-catalogue listing.
 - School Admin custom-role creation.
-- Platform Admin grant/revoke of school permission delegation ceilings, guarded by `platform.permissions.delegate`.
+- Platform Admin grant/revoke of school permission delegation ceilings, guarded by platform.permissions.delegate.
 - School Admin listing of active delegation IDs and custom-role permission grant/revoke using exact delegation IDs.
 - School Admin staff permission override list/set/remove using exact delegation IDs and explicit ALLOW/DENY effects.
-- Same-school staff role assignment list/assign/revoke; School Admin cannot assign or revoke the reserved `school_admin` role.
-- Same-school School Admin staff account creation with hashed initial password, forced first-login password change, and audit event.
-- Staff password change and same-school School Admin password reset, with token-version invalidation and audit events.
+- Same-school staff role assignment list/assign/revoke; School Admin cannot assign or revoke the reserved school_admin role and cannot assign roles or overrides to their own principal.
+- Database V22 triggers also reject direct-SQL self role/permission escalation attempts.
+- Same-school School Admin staff account creation/list/update/disable/re-enable, forced first-login password change, current-password self-change, administrative reset, token-version invalidation and audit events.
+- Teacher enrollment roster restricted to assigned sections and approved minimal fields (student name, roll number, class and section); attendance access is limited to class-in-charge assignments.
+- Parent authentication/matching data paths require active school and active official guardian/student links. Parent OTP/SMS and Phase 2 Parent/Driver endpoints remain intentionally paused.
 
 The following remain incomplete and must not be represented as finished:
-- Staff account listing, update, disable/re-enable, and full provisioning administration workflows. The initial `POST /school/staff` creation endpoint exists; staff role assignment is a separate audited operation.
+- Full resource/tenant/assignment/field-level authorization across every future school business API; implemented student/enrollment/attendance/guardian endpoints have targeted scope filters, but broader coverage remains.
+- Remaining business modules such as fees, exams/results, timetable, homework, notices, transport and reporting.
 - Platform Admin UI/workflow for reviewing all delegation history.
-- Full HTTP/security integration coverage for the new role/delegation/override endpoints and PostgreSQL repository paths.
-- Business API authorization, including tenant boundaries, class/section/subject assignment scope, class-in-charge scope, and field-level student/family/financial data controls.
-- Production DB least-privilege grants, deployment hardening, monitoring, and security review.
+- Exhaustive end-to-end HTTP/security tests with real JWT signature validation across every protected route, plus additional race/failure-mode coverage.
+- Production DB least-privilege grants, deployment hardening, monitoring, backup/recovery, penetration testing and load testing.
 
-V1–V16 have passed on a fresh ephemeral PostgreSQL 18 database in GitHub Actions. This does not alter or confirm the migration state of the user's persistent `school_management_test` database, and it says nothing about `school_management`. Never apply migrations to `school_management` without separate explicit approval. Preserve refresh-token family locks, cross-family principal serialization, replay detection, and family revocation.
+Latest verified remote checkpoint: commit 1b942cab4ebd76f849c579d1aa3324e839fc2741, GitHub Actions run 41960953660. It applied V1–V22 to a fresh ephemeral PostgreSQL 18 database, passed the full backend suite including PostgreSQL integration, and passed go vet ./.... This does not confirm the migration state of either persistent local database. Never apply migrations to school_management without separate explicit approval. Preserve refresh-token family locks, cross-family principal serialization, replay detection, and family revocation.
