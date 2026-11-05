@@ -142,6 +142,27 @@ func TestParentAuthenticationRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("create refresh session for eligible Parent: %v", err)
 	}
 
+	// A live guardian link in a suspended school must not qualify the
+	// Parent for OTP lookup or canonical principal authentication.
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `UPDATE schools SET status='active' WHERE id=$1`, schoolID)
+	})
+	if _, err := pool.Exec(ctx, `UPDATE schools SET status='suspended' WHERE id=$1`, schoolID); err != nil {
+		t.Fatalf("suspend linked school for Parent eligibility test: %v", err)
+	}
+	if _, err := repo.FindActiveParentByMobile(ctx, mobile); !errors.Is(err, models.ErrPrincipalNotAuthenticated) {
+		t.Fatalf("Parent mobile lookup with only inactive-school links = %v, want not authenticated", err)
+	}
+	if _, err := authorizationRepo.LoadPrincipalForAuthentication(ctx, principalID); !errors.Is(err, models.ErrPrincipalNotAuthenticated) {
+		t.Fatalf("Parent principal load with only inactive-school links = %v, want not authenticated", err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE schools SET status='active' WHERE id=$1`, schoolID); err != nil {
+		t.Fatalf("restore linked school after Parent eligibility test: %v", err)
+	}
+	if _, err := repo.FindActiveParentByMobile(ctx, mobile); err != nil {
+		t.Fatalf("Parent should authenticate again after linked school is reactivated: %v", err)
+	}
+
 	if _, err := pool.Exec(ctx, `
 		UPDATE parent_guardian_links
 		   SET revoked_at = NOW(),
@@ -173,17 +194,4 @@ func TestParentAuthenticationRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("active Parent refresh sessions after link revocation = %d, want 0", activeSessions)
 	}
 
-	// A Parent linked only through an inactive school must not authenticate.
-	if _, err := pool.Exec(ctx, `UPDATE schools SET status='suspended' WHERE id=$1`, schoolID); err != nil {
-		t.Fatalf("disable linked school for Parent eligibility test: %v", err)
-	}
-	t.Cleanup(func() {
-		_, _ = pool.Exec(context.Background(), `UPDATE schools SET status='active' WHERE id=$1`, schoolID)
-	})
-	if _, err := repo.FindActiveParentByMobile(ctx, mobile); !errors.Is(err, models.ErrPrincipalNotAuthenticated) {
-		t.Fatalf("Parent mobile lookup with only inactive-school links = %v, want not authenticated", err)
-	}
-	if _, err := authorizationRepo.LoadPrincipalForAuthentication(ctx, principalID); !errors.Is(err, models.ErrPrincipalNotAuthenticated) {
-		t.Fatalf("Parent principal load with only inactive-school links = %v, want not authenticated", err)
-	}
 }
