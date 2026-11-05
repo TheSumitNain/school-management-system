@@ -1,4 +1,4 @@
-# School Management System hiii
+# School Management System
 
 A commercial, multi-tenant School Management System built incrementally with production-oriented architecture, security practices, and automated testing.
 
