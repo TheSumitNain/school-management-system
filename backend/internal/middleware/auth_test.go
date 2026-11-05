@@ -419,3 +419,33 @@ func TestAuthMiddlewareRejectsAdminSessionTrackerMismatch(t *testing.T) {
 		})
 	}
 }
+
+
+func TestRequireAnyPermission(t *testing.T) {
+	tests := []struct {
+		name string
+		permissions []string
+		contextValue any
+		setContext bool
+		want int
+	}{
+		{name: "first permission granted", permissions: []string{"attendance.mark", "attendance.correct_past"}, contextValue: map[string]struct{}{"attendance.mark": {}}, setContext: true, want: http.StatusOK},
+		{name: "alternative permission granted", permissions: []string{"attendance.mark", "attendance.correct_past"}, contextValue: map[string]struct{}{"attendance.correct_past": {}}, setContext: true, want: http.StatusOK},
+		{name: "no matching permission", permissions: []string{"attendance.mark", "attendance.correct_past"}, contextValue: map[string]struct{}{"attendance.read": {}}, setContext: true, want: http.StatusForbidden},
+		{name: "missing authorization context", permissions: []string{"attendance.mark"}, want: http.StatusInternalServerError},
+		{name: "empty permission policy", contextValue: map[string]struct{}{"attendance.mark": {}}, setContext: true, want: http.StatusInternalServerError},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gin.SetMode(gin.TestMode)
+			router := gin.New()
+			router.POST("/protected", func(c *gin.Context) {
+				if tt.setContext { c.Set(ContextPermissionsKey, tt.contextValue) }
+				c.Next()
+			}, RequireAnyPermission(tt.permissions...), func(c *gin.Context) { c.Status(http.StatusOK) })
+			rec := httptest.NewRecorder()
+			router.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/protected", nil))
+			if rec.Code != tt.want { t.Fatalf("status=%d want=%d body=%s", rec.Code, tt.want, rec.Body.String()) }
+		})
+	}
+}
