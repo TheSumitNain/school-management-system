@@ -587,11 +587,17 @@ func TestRoleAdministrationRoutesEnforceLivePermissions(t *testing.T) {
 					denied.Code, denied.Body.String())
 			}
 
-			if len(test.permissions) > 1 {
-				partial := request(test.permissions[:1])
+			// Every permission in a multi-permission route is independently
+			// required. Exercise each missing-permission case rather than
+			// checking only the first permission in the slice.
+			for missingIndex := range test.permissions {
+				partialPermissions := make([]string, 0, len(test.permissions)-1)
+				partialPermissions = append(partialPermissions, test.permissions[:missingIndex]...)
+				partialPermissions = append(partialPermissions, test.permissions[missingIndex+1:]...)
+				partial := request(partialPermissions)
 				if partial.Code != http.StatusForbidden {
-					t.Fatalf("with only one of %v: status=%d body=%s; want 403",
-						test.permissions, partial.Code, partial.Body.String())
+					t.Fatalf("without required permission %q (remaining %v): status=%d body=%s; want 403",
+						test.permissions[missingIndex], partialPermissions, partial.Code, partial.Body.String())
 				}
 			}
 
