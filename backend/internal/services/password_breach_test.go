@@ -94,3 +94,31 @@ func TestHIBPPasswordBreachCheckerRejectsOversizedRangeResponse(t *testing.T) {
 		t.Fatal("oversized response must not be cached")
 	}
 }
+
+func TestHIBPPasswordBreachCheckerRetriesTransientServerErrors(t *testing.T) {
+	password := "A-retryable-password-check-2026!"
+	sum := sha1.Sum([]byte(password))
+	suffix := strings.ToUpper(hex.EncodeToString(sum[:]))[5:]
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if requests.Add(1) == 1 {
+			http.Error(w, "temporarily unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		_, _ = fmt.Fprintf(w, "%s:0\n", strings.Repeat("A", 35))
+	}))
+	defer server.Close()
+
+	checker := NewHIBPPasswordBreachChecker(server.Client())
+	checker.endpoint = server.URL
+	compromised, err := checker.IsCompromised(context.Background(), password)
+	if err != nil {
+		t.Fatalf("expected transient failure to be retried: %v", err)
+	}
+	if compromised {
+		t.Fatal("zero-count response must not mark password as compromised")
+	}
+	if got := requests.Load(); got != 2 {
+		t.Fatalf("expected exactly two requests after one transient failure, got %d", got)
+	}
+}
