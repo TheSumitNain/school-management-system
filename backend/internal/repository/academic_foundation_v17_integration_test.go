@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"testing"
@@ -386,6 +387,26 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 		_ = subjectOnlyScope.Rollback(ctx)
 		t.Fatalf("subject-only teacher roster = %+v, err=%v; want assigned section %d", subjectOnlyEnrollments, err, section2)
 	}
+	if !subjectOnlyEnrollments[0].basicRosterOnly {
+		_ = subjectOnlyScope.Rollback(ctx)
+		t.Fatal("subject-only teacher enrollment was not marked for minimal-field serialization")
+	}
+	encodedRoster, err := json.Marshal(subjectOnlyEnrollments[0])
+	if err != nil {
+		_ = subjectOnlyScope.Rollback(ctx)
+		t.Fatalf("marshal subject-only teacher roster: %v", err)
+	}
+	var rosterFields map[string]json.RawMessage
+	if err := json.Unmarshal(encodedRoster, &rosterFields); err != nil {
+		_ = subjectOnlyScope.Rollback(ctx)
+		t.Fatalf("decode subject-only teacher roster JSON: %v", err)
+	}
+	if len(rosterFields) != 4 || rosterFields["student_name"] == nil ||
+		rosterFields["roll_number"] == nil || rosterFields["class_name_snapshot"] == nil ||
+		rosterFields["section_name_snapshot"] == nil {
+		_ = subjectOnlyScope.Rollback(ctx)
+		t.Fatalf("subject-only teacher received fields outside the approved four-field roster: %s", encodedRoster)
+	}
 	attendanceAllowed, err := attendanceSectionAllowed(ctx, tx, teacherPrincipalID, schoolID, section2)
 	if err != nil || attendanceAllowed {
 		_ = subjectOnlyScope.Rollback(ctx)
@@ -403,6 +424,9 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 	}
 	if len(teacherEnrollments) != 1 || teacherEnrollments[0].SectionID != section2 {
 		t.Fatalf("teacher enrollment scope = %+v; want only assigned section %d", teacherEnrollments, section2)
+	}
+	if teacherEnrollments[0].basicRosterOnly {
+		t.Fatal("class-in-charge teacher was incorrectly restricted to the subject-only roster")
 	}
 	if teacherEnrollments[0].StudentName != "V17 Promotion Student" ||
 		teacherEnrollments[0].RollNumber == nil || *teacherEnrollments[0].RollNumber != "01" ||
