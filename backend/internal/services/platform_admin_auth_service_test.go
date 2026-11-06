@@ -5,7 +5,6 @@ import (
 	"errors"
 	"testing"
 
-	"school-management-system/internal/models"
 	"school-management-system/internal/repository"
 )
 
@@ -89,4 +88,3 @@ func TestPlatformAdminAuthenticateDoesNotRecordFailureWhenLocked(t *testing.T) {
 	}
 }
 
-var _ = (*models.AuthPrincipal)(nil)
