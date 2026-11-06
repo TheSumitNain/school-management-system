@@ -718,6 +718,18 @@ func (r *UserRepository) UpdateStaffAccount(
 		   AND target.status = 'active'
 		   AND target_principal.principal_type = 'staff'
 		   AND target_principal.status = 'active'
+		   AND NOT EXISTS (
+		       SELECT 1
+		         FROM principal_roles target_roles
+		         JOIN roles target_role ON target_role.id = target_roles.role_id
+		        WHERE target_roles.principal_id = target.principal_id
+		          AND target_roles.revoked_at IS NULL
+		          AND target_role.school_id = $2
+		          AND target_role.scope_type = 'school'
+		          AND target_role.principal_type = 'staff'
+		          AND target_role.role_key = 'school_admin'
+		          AND target_role.is_system = TRUE
+		   )
 		   AND EXISTS (
 		       SELECT 1
 		         FROM users actor
