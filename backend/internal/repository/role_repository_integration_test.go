@@ -273,6 +273,28 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 	); err != nil {
 		t.Fatalf("authorized custom-role permission grant failed: %v", err)
 	}
+
+	// The School Admin's custom-role update authority is checked independently
+	// from permissions.assign. Deactivating the catalogue permission inside
+	// this rollback-scoped transaction simulates missing effective authority
+	// without mutating the protected system-role permission bundle.
+	if _, err := tx.Exec(ctx, `
+		UPDATE permissions SET is_active = FALSE
+		 WHERE permission_key = 'roles.update_custom'
+	`); err != nil {
+		t.Fatalf("temporarily deactivate roles.update_custom: %v", err)
+	}
+	if err := repo.RevokeCustomRolePermission(
+		ctx, actorPrincipalID, schoolID, customRole.ID, "students.read_basic",
+	); !errors.Is(err, ErrRolePermissionDenied) {
+		t.Fatalf("custom-role permission revoke without active roles.update_custom error = %v, want ErrRolePermissionDenied", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		UPDATE permissions SET is_active = TRUE
+		 WHERE permission_key = 'roles.update_custom'
+	`); err != nil {
+		t.Fatalf("restore roles.update_custom after revoke authorization test: %v", err)
+	}
 	if err := repo.GrantCustomRolePermission(
 		ctx, actorPrincipalID, schoolID, customRole.ID, roleDelegation.ID, "students.read_basic",
 	); !errors.Is(err, ErrRolePermissionAlreadyGranted) {
@@ -320,6 +342,25 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 		t.Fatalf("authorized custom-role permission revoke failed: %v", err)
 	}
 	assertPermission("students.read_basic", false)
+
+	// Granting is subject to the same independent roles.update_custom gate.
+	if _, err := tx.Exec(ctx, `
+		UPDATE permissions SET is_active = FALSE
+		 WHERE permission_key = 'roles.update_custom'
+	`); err != nil {
+		t.Fatalf("temporarily deactivate roles.update_custom before grant test: %v", err)
+	}
+	if err := repo.GrantCustomRolePermission(
+		ctx, actorPrincipalID, schoolID, customRole.ID, roleDelegation.ID, "students.read_basic",
+	); !errors.Is(err, ErrRolePermissionDenied) {
+		t.Fatalf("custom-role permission grant without active roles.update_custom error = %v, want ErrRolePermissionDenied", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		UPDATE permissions SET is_active = TRUE
+		 WHERE permission_key = 'roles.update_custom'
+	`); err != nil {
+		t.Fatalf("restore roles.update_custom after grant authorization test: %v", err)
+	}
 	if err := repo.GrantCustomRolePermission(
 		ctx, actorPrincipalID, schoolID, customRole.ID, roleDelegation.ID, "students.read_basic",
 	); err != nil {
