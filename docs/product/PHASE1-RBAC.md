@@ -3,6 +3,12 @@
 **Decision status:** Approved product rules.  
 **Implementation status:** Authentication and core RBAC workflows are implemented; complete resource-level enforcement across every business module remains pending. See [Project Status](../project/STATUS.md).
 
+## Phase 1 delivery boundary
+
+Phase 1 is the school web application: Platform Admin, School Admin, Teachers and approved school staff. The immediate delivery priority is completing the school dashboard and its operational workflows.
+
+Parent is not an active Phase 1 login role. **Do not implement Parent OTP authentication, OTP/SMS delivery or parent-facing login flows now.** Parent authentication and interfaces are deferred to Phase 2, after the Phase 1 school web product is complete. Existing guardian relationship foundations may be retained without expanding this workstream.
+
 ## Authorization principles
 
 1. Default deny.
@@ -41,10 +47,11 @@
 ## Parent and student rules — Phase 2 only
 
 - No separate student login accounts or student passwords are part of Phase 1.
-- Parent identity is linked only after OTP verification and a matching official guardian relationship.
+- Parent OTP authentication and OTP/SMS delivery are deferred. Do not implement them during the current school-dashboard workstream.
+- Parent identity is intended to be linked only after OTP verification and a matching official guardian relationship when Phase 2 is approved.
 - One parent may have multiple linked children, including across schools; both parents may have separate verified accounts for one child.
 - Every parent request must re-check the current authenticated parent-child relationship server-side.
-- Parent OTP delivery and mobile interfaces remain paused.
+- Parent-facing interfaces and login workflows remain paused until Phase 1 school web delivery is complete.
 
 ## Permission catalogue and delegation
 
