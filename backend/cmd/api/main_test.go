@@ -12,6 +12,7 @@ import (
 	"school-management-system/internal/handlers"
 	"school-management-system/internal/models"
 	"school-management-system/internal/middleware"
+	"school-management-system/internal/repository"
 	"school-management-system/internal/services"
 
 	"github.com/gin-gonic/gin"
@@ -48,6 +49,18 @@ type fakeAdminSessionActivityTracker struct {
 func (f fakeAdminSessionActivityTracker) CheckAndTouchAdminSession(_ context.Context, principalID int64, familyID string) (bool, bool, error) {
 	isAdmin := principalID == f.adminPrincipalID
 	return isAdmin, !isAdmin || familyID == f.familyID, nil
+}
+
+type fakePlatformAdminLifecycleService struct {}
+
+func (fakePlatformAdminLifecycleService) List(context.Context, int64) ([]repository.PlatformAdminAccount, error) {
+	return nil, nil
+}
+func (fakePlatformAdminLifecycleService) Create(context.Context, int64, string, string) (*repository.PlatformAdminAccount, error) {
+	return nil, nil
+}
+func (fakePlatformAdminLifecycleService) Deactivate(context.Context, int64, int64) error {
+	return nil
 }
 
 type fakeTokenValidator struct {
@@ -870,6 +883,66 @@ func TestPlatformSchoolCreationRouteRequiresBothDedicatedPermissions(t *testing.
 	if allowed := request([]string{"platform.schools.create", "platform.school_admins.create"}); allowed.Code != http.StatusServiceUnavailable {
 		t.Fatalf("with both dedicated permissions request should reach unavailable onboarding handler: status=%d body=%s; want 503",
 			allowed.Code, allowed.Body.String())
+	}
+}
+
+func TestPlatformAdminLifecycleRoutesRequireDedicatedPermission(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	const (
+		principalID = int64(44)
+		sessionID = "00000000-0000-4000-8000-000000000044"
+	)
+	principal := &models.AuthPrincipal{
+		ID: principalID, Type: "platform_admin", Status: "active", TokenVersion: 1,
+	}
+	validator := fakeTokenValidator{claims: &services.TokenClaims{
+		RegisteredClaims: jwt.RegisteredClaims{Subject: strconv.FormatInt(principalID, 10)},
+		PrincipalType: "platform_admin", TokenVersion: 1, SessionID: sessionID,
+	}}
+
+	routes := []struct {
+		name, method, path, body string
+		wantStatus int
+	}{
+		{name: "list", method: http.MethodGet, path: "/platform/admins", wantStatus: http.StatusOK},
+		{name: "create", method: http.MethodPost, path: "/platform/admins", body: `{"email":"new.admin@example.test","password":"Strong-Temporary-Password-123"}`, wantStatus: http.StatusCreated},
+		{name: "deactivate", method: http.MethodPost, path: "/platform/admins/55/deactivate", wantStatus: http.StatusOK},
+	}
+
+	for _, route := range routes {
+		t.Run(route.name, func(t *testing.T) {
+			request := func(permissions []string) *httptest.ResponseRecorder {
+				router, err := setupTestRouterWithHandlers(
+					fakeDatabase{}, nil, validator,
+					fakePrincipalLoader{principal: principal},
+					fakePermissionLoader{permissions: permissions},
+					nil, nil,
+					handlers.NewPlatformAdminLifecycleHandler(fakePlatformAdminLifecycleService{}),
+					fakeAdminSessionActivityTracker{adminPrincipalID: principalID, familyID: sessionID},
+				)
+				if err != nil {
+					t.Fatalf("setup Platform Admin lifecycle router: %v", err)
+				}
+				req := httptest.NewRequest(route.method, route.path, strings.NewReader(route.body))
+				req.Header.Set("Authorization", "Bearer valid-test-token")
+				if route.body != "" {
+					req.Header.Set("Content-Type", "application/json")
+				}
+				rec := httptest.NewRecorder()
+				router.ServeHTTP(rec, req)
+				return rec
+			}
+
+			if denied := request(nil); denied.Code != http.StatusForbidden {
+				t.Fatalf("without platform.admins.manage: status=%d body=%s; want 403",
+					denied.Code, denied.Body.String())
+			}
+			if allowed := request([]string{"platform.admins.manage"}); allowed.Code != route.wantStatus {
+				t.Fatalf("with platform.admins.manage: status=%d body=%s; want %d",
+					allowed.Code, allowed.Body.String(), route.wantStatus)
+			}
+		})
 	}
 }
 
