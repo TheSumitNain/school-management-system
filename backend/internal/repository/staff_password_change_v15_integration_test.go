@@ -91,3 +91,48 @@ func TestChangeStaffPasswordPostgresIntegration(t *testing.T) {
 		t.Fatalf("password change audit count = %d, want 1", auditCount)
 	}
 }
+
+
+// TestStaffPasswordChangeRejectsInactiveSchoolPostgresIntegration verifies
+// that repository-level credential reads and writes reject a staff account
+// whose school is inactive, even when the principal itself remains active.
+func TestStaffPasswordChangeRejectsInactiveSchoolPostgresIntegration(t *testing.T) {
+	_, pool, userID := newPostgresIntegrationRepository(t)
+	ctx := context.Background()
+
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin inactive-school password test: %v", err)
+	}
+	defer func() { _ = tx.Rollback(context.Background()) }()
+
+	var principalID, schoolID int64
+	var originalHash string
+	if err := tx.QueryRow(ctx, `
+		SELECT principal_id, school_id, password_hash
+		  FROM users
+		 WHERE id = $1
+	`, userID).Scan(&principalID, &schoolID, &originalHash); err != nil {
+		t.Fatalf("load staff password fixture: %v", err)
+	}
+
+	if _, err := tx.Exec(ctx, "UPDATE schools SET status = 'inactive' WHERE id = $1", schoolID); err != nil {
+		t.Fatalf("deactivate fixture school: %v", err)
+	}
+
+	repo := NewUserRepository(tx)
+	if _, _, err := repo.GetStaffPasswordCredential(ctx, principalID); !errors.Is(err, ErrUserNotFound) {
+		t.Fatalf("credential lookup for inactive school error = %v, want ErrUserNotFound", err)
+	}
+	if err := repo.ChangeStaffPassword(ctx, principalID, originalHash, "must-not-be-stored"); !errors.Is(err, ErrStaffPasswordConflict) {
+		t.Fatalf("password change for inactive school error = %v, want ErrStaffPasswordConflict", err)
+	}
+
+	var storedHash string
+	if err := tx.QueryRow(ctx, "SELECT password_hash FROM users WHERE id = $1", userID).Scan(&storedHash); err != nil {
+		t.Fatalf("verify inactive-school password remained unchanged: %v", err)
+	}
+	if storedHash != originalHash {
+		t.Fatal("password change must not modify credentials for an inactive school")
+	}
+}
