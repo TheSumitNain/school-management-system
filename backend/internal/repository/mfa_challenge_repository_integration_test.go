@@ -2,6 +2,8 @@ package repository
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"testing"
 	"time"
@@ -10,6 +12,14 @@ import (
 func TestMFAChallengeRepositoryPostgresIntegration(t *testing.T) {
 	_, pool, userID := newPostgresIntegrationRepository(t)
 	ctx := context.Background()
+	// Challenge hashes are globally unique. Give each integration-test run a
+	// random namespace so reruns and parallel test processes cannot collide
+	// with rows left by interrupted runs or other fixtures.
+	var runID [16]byte
+	if _, err := rand.Read(runID[:]); err != nil {
+		t.Fatalf("generate integration test namespace: %v", err)
+	}
+	runPrefix := hex.EncodeToString(runID[:])
 	var principalID int64
 	if err := pool.QueryRow(ctx,
 		`SELECT principal_id FROM users WHERE id = $1`, userID,
@@ -31,8 +41,8 @@ func TestMFAChallengeRepositoryPostgresIntegration(t *testing.T) {
 	})
 
 	t.Run("new challenge supersedes previous challenge", func(t *testing.T) {
-		oldHash := integrationTokenHash("mfa-challenge-old")
-		newHash := integrationTokenHash("mfa-challenge-new")
+		oldHash := integrationTokenHash(runPrefix + "-mfa-challenge-old")
+		newHash := integrationTokenHash(runPrefix + "-mfa-challenge-new")
 		if err := repo.Create(ctx, principalID, tokenVersion, MFAChallengeEnrollment, oldHash, time.Now().Add(5*time.Minute)); err != nil {
 			t.Fatalf("create old challenge: %v", err)
 		}
@@ -48,7 +58,7 @@ func TestMFAChallengeRepositoryPostgresIntegration(t *testing.T) {
 	})
 
 	t.Run("fifth failed attempt across replacement challenges locks principal", func(t *testing.T) {
-		firstHash := integrationTokenHash("mfa-challenge-first-two-failures")
+		firstHash := integrationTokenHash(runPrefix + "-mfa-challenge-first-two-failures")
 		if err := repo.Create(ctx, principalID, tokenVersion, MFAChallengeRecoveryRegeneration, firstHash, time.Now().Add(5*time.Minute)); err != nil {
 			t.Fatalf("create recovery-regeneration challenge: %v", err)
 		}
@@ -58,7 +68,7 @@ func TestMFAChallengeRepositoryPostgresIntegration(t *testing.T) {
 			}
 		}
 
-		secondHash := integrationTokenHash("mfa-challenge-next-three-failures")
+		secondHash := integrationTokenHash(runPrefix + "-mfa-challenge-next-three-failures")
 		if err := repo.Create(ctx, principalID, tokenVersion, MFAChallengeLogin, secondHash, time.Now().Add(5*time.Minute)); err != nil {
 			t.Fatalf("create replacement login challenge: %v", err)
 		}
@@ -81,7 +91,7 @@ func TestMFAChallengeRepositoryPostgresIntegration(t *testing.T) {
 			t.Fatalf("additional failure during principal lockout should remain blocked, got %v", err)
 		}
 		if err := repo.Create(ctx, principalID, tokenVersion, MFAChallengeLogin,
-			integrationTokenHash("mfa-challenge-after-lockout"), time.Now().Add(5*time.Minute)); !errors.Is(err, ErrMFALoginLocked) {
+			integrationTokenHash(runPrefix + "-mfa-challenge-after-lockout"), time.Now().Add(5*time.Minute)); !errors.Is(err, ErrMFALoginLocked) {
 			t.Fatalf("new challenge must not reset principal MFA lockout, got %v", err)
 		}
 		var failureAuditCount int
@@ -101,7 +111,7 @@ func TestMFAChallengeRepositoryPostgresIntegration(t *testing.T) {
 	})
 
 	t.Run("challenge can be consumed exactly once", func(t *testing.T) {
-		hash := integrationTokenHash("mfa-challenge-consume-once")
+		hash := integrationTokenHash(runPrefix + "-mfa-challenge-consume-once")
 		if err := repo.Create(ctx, principalID, tokenVersion, MFAChallengeLogin, hash, time.Now().Add(5*time.Minute)); err != nil {
 			t.Fatalf("create challenge: %v", err)
 		}
@@ -135,7 +145,7 @@ func TestMFAChallengeRepositoryPostgresIntegration(t *testing.T) {
 		`, attemptHash); err != nil {
 			t.Fatalf("seed pre-lockout MFA failures: %v", err)
 		}
-		first := integrationTokenHash("mfa-replay-first")
+		first := integrationTokenHash(runPrefix + "-mfa-replay-first")
 		if err := repo.Create(ctx, principalID, tokenVersion, MFAChallengeLogin, first, time.Now().Add(5*time.Minute)); err != nil {
 			t.Fatal(err)
 		}
@@ -149,7 +159,7 @@ func TestMFAChallengeRepositoryPostgresIntegration(t *testing.T) {
 		if mfaFailuresRemain {
 			t.Fatal("successful MFA verification did not clear principal-wide MFA failures")
 		}
-		second := integrationTokenHash("mfa-replay-second")
+		second := integrationTokenHash(runPrefix + "-mfa-replay-second")
 		if err := repo.Create(ctx, principalID, tokenVersion, MFAChallengeLogin, second, time.Now().Add(5*time.Minute)); err != nil {
 			t.Fatal(err)
 		}
@@ -166,12 +176,12 @@ func TestMFAChallengeRepositoryPostgresIntegration(t *testing.T) {
 	})
 
 	t.Run("stale principal version cannot create or consume a challenge", func(t *testing.T) {
-		hash := integrationTokenHash("mfa-stale-principal-version")
+		hash := integrationTokenHash(runPrefix + "-mfa-stale-principal-version")
 		if err := repo.Create(ctx, principalID, tokenVersion+1, MFAChallengeLogin, hash, time.Now().Add(5*time.Minute)); !errors.Is(err, ErrPrincipalVersionChanged) {
 			t.Fatalf("stale challenge creation error = %v, want ErrPrincipalVersionChanged", err)
 		}
 		mfaRepo := NewMFARepository(pool)
-		liveHash := integrationTokenHash("mfa-live-challenge-wrong-version")
+		liveHash := integrationTokenHash(runPrefix + "-mfa-live-challenge-wrong-version")
 		if err := repo.Create(ctx, principalID, tokenVersion, MFAChallengeLogin, liveHash, time.Now().Add(5*time.Minute)); err != nil {
 			t.Fatalf("create live challenge: %v", err)
 		}
@@ -184,10 +194,10 @@ func TestMFAChallengeRepositoryPostgresIntegration(t *testing.T) {
 	})
 
 	t.Run("invalid purpose and expired expiry are rejected", func(t *testing.T) {
-		if err := repo.Create(ctx, principalID, tokenVersion, MFAChallengePurpose("other"), integrationTokenHash("mfa-invalid-purpose"), time.Now().Add(time.Minute)); err == nil {
+		if err := repo.Create(ctx, principalID, tokenVersion, MFAChallengePurpose("other"), integrationTokenHash(runPrefix + "-mfa-invalid-purpose"), time.Now().Add(time.Minute)); err == nil {
 			t.Fatal("expected invalid purpose to be rejected")
 		}
-		if err := repo.Create(ctx, principalID, tokenVersion, MFAChallengeLogin, integrationTokenHash("mfa-expired"), time.Now().Add(-time.Minute)); err == nil {
+		if err := repo.Create(ctx, principalID, tokenVersion, MFAChallengeLogin, integrationTokenHash(runPrefix + "-mfa-expired"), time.Now().Add(-time.Minute)); err == nil {
 			t.Fatal("expected expired challenge to be rejected")
 		}
 	})

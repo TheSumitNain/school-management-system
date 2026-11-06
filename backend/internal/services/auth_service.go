@@ -49,9 +49,10 @@ type staffLoginSecurity interface {
 }
 
 type AuthService struct {
-	users        authUserRepository
-	schools      authSchoolRepository
-	loginSecurity staffLoginSecurity
+	users               authUserRepository
+	schools             authSchoolRepository
+	loginSecurity       staffLoginSecurity
+	passwordBreachCheck PasswordBreachChecker
 }
 
 func NewAuthService(
@@ -59,11 +60,23 @@ func NewAuthService(
 	schools authSchoolRepository,
 	loginSecurity ...staffLoginSecurity,
 ) *AuthService {
-	s := &AuthService{users: users, schools: schools}
+	s := &AuthService{
+		users:               users,
+		schools:             schools,
+		passwordBreachCheck: defaultPasswordBreachChecker,
+	}
 	if len(loginSecurity) > 0 {
 		s.loginSecurity = loginSecurity[0]
 	}
 	return s
+}
+
+// SetPasswordBreachChecker allows tests and controlled deployments to provide
+// the breach intelligence dependency without bypassing password policy.
+func (s *AuthService) SetPasswordBreachChecker(checker PasswordBreachChecker) {
+	if s != nil && checker != nil {
+		s.passwordBreachCheck = checker
+	}
 }
 
 // CreateUser creates a user for an existing active school.
@@ -91,7 +104,7 @@ func (s *AuthService) CreateUser(
 		return nil, ErrSchoolInactive
 	}
 
-	passwordHash, err := HashPassword(password)
+	passwordHash, err := hashPasswordWithChecker(ctx, password, s.passwordBreachCheck)
 	if err != nil {
 		return nil, err
 	}

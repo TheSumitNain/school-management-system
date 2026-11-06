@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-06 — Authenticated session permissions for frontend bootstrap
+
+- `GET /auth/me` now returns the caller's current effective permission keys for Staff and Platform Admin principals, sorted deterministically.
+- Temporary-password staff receive an empty permission list while remaining restricted to identity inspection and password change.
+- Parent identity responses remain unchanged and Parent features remain outside the active Phase 1 scope.
+- The permission list is a frontend navigation hint only; server-side middleware and repository authorization remain authoritative.
+- Added route-level tests for staff and Platform Admin permission payloads and updated the API contract.
+
 ## 2026-11-05
 
 - Added V22 database and repository protections against self role assignment and self permission override escalation/removal.

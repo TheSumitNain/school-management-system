@@ -18,6 +18,7 @@ var (
 	ErrPlatformAdminNotFound          = errors.New("Platform Admin credentials not found")
 	ErrPlatformAdminAlreadyBootstrapped = errors.New("the first Platform Admin has already been bootstrapped")
 	ErrPlatformAdminEmailTaken        = errors.New("Platform Admin email already exists")
+	ErrPlatformAdminPasswordConflict = errors.New("Platform Admin password changed concurrently")
 )
 
 type PlatformAdminCredential struct {
@@ -197,4 +198,107 @@ func mapPlatformAdminBootstrapError(err error) error {
 		return ErrPlatformAdminEmailTaken
 	}
 	return fmt.Errorf("create initial Platform Admin account: %w", err)
+}
+
+
+// GetPasswordHashByPrincipalID returns the active Platform Admin's stored
+// password hash for an authenticated self-service password change.
+func (r *PlatformAdminRepository) GetPasswordHashByPrincipalID(ctx context.Context, principalID int64) (string, error) {
+	if r == nil || r.db == nil || principalID <= 0 {
+		return "", ErrPlatformAdminNotFound
+	}
+	var hash string
+	err := r.db.QueryRow(ctx, `
+		SELECT pa.password_hash
+		  FROM platform_admin_accounts pa
+		  JOIN auth_principals ap ON ap.id = pa.principal_id
+		 WHERE pa.principal_id = $1
+		   AND ap.principal_type = 'platform_admin'
+		   AND ap.status = 'active'
+	`, principalID).Scan(&hash)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", ErrPlatformAdminNotFound
+	}
+	if err != nil {
+		return "", fmt.Errorf("load Platform Admin password credential: %w", err)
+	}
+	return hash, nil
+}
+
+// ChangePassword atomically updates the Platform Admin credential, invalidates
+// all existing access/refresh sessions, and appends an immutable audit event.
+// The expected hash prevents a stale verification from overwriting a concurrent change.
+func (r *PlatformAdminRepository) ChangePassword(ctx context.Context, principalID int64, expectedHash, newHash string) error {
+	if r == nil || r.db == nil || principalID <= 0 || expectedHash == "" || newHash == "" {
+		return ErrPlatformAdminNotFound
+	}
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin Platform Admin password change: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if _, err := tx.Exec(ctx,
+		`SELECT pg_advisory_xact_lock(hashtextextended('refresh-principal:' || $1::bigint::text,0))`,
+		principalID,
+	); err != nil {
+		return fmt.Errorf("lock Platform Admin password change: %w", err)
+	}
+
+	tag, err := tx.Exec(ctx, `
+		UPDATE platform_admin_accounts
+		   SET password_hash = $3
+		 WHERE principal_id = $1
+		   AND password_hash = $2
+		   AND EXISTS (
+		       SELECT 1 FROM auth_principals ap
+		        WHERE ap.id = platform_admin_accounts.principal_id
+		          AND ap.principal_type = 'platform_admin'
+		          AND ap.status = 'active'
+		   )
+	`, principalID, expectedHash, newHash)
+	if err != nil {
+		return fmt.Errorf("update Platform Admin password: %w", err)
+	}
+	if tag.RowsAffected() != 1 {
+		return ErrPlatformAdminPasswordConflict
+	}
+
+	tag, err = tx.Exec(ctx, `
+		UPDATE auth_principals
+		   SET token_version = token_version + 1,
+		       updated_at = NOW()
+		 WHERE id = $1
+		   AND principal_type = 'platform_admin'
+		   AND status = 'active'
+	`, principalID)
+	if err != nil {
+		return fmt.Errorf("invalidate Platform Admin access tokens: %w", err)
+	}
+	if tag.RowsAffected() != 1 {
+		return ErrPlatformAdminNotFound
+	}
+
+	if _, err := tx.Exec(ctx, `
+		UPDATE refresh_sessions
+		   SET revoked_at = COALESCE(revoked_at, NOW())
+		 WHERE principal_id = $1
+		   AND revoked_at IS NULL
+	`, principalID); err != nil {
+		return fmt.Errorf("revoke Platform Admin refresh sessions: %w", err)
+	}
+
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO audit_events
+		    (actor_principal_id, action, resource_type, resource_id, outcome, metadata)
+		VALUES ($1, 'platform.admin.password.changed', 'platform_admin', $2, 'success',
+		        jsonb_build_object('sessions_revoked', TRUE))
+	`, principalID, strconv.FormatInt(principalID, 10)); err != nil {
+		return fmt.Errorf("audit Platform Admin password change: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit Platform Admin password change: %w", err)
+	}
+	return nil
 }

@@ -226,6 +226,7 @@ func TestCreateUserStoresHashNotPlainPassword(t *testing.T) {
 	}
 
 	service := NewAuthService(users, schools)
+	service.SetPasswordBreachChecker(fixedPasswordChecker{})
 
 	user, err := service.CreateUser(
 		context.Background(),
@@ -247,6 +248,36 @@ func TestCreateUserStoresHashNotPlainPassword(t *testing.T) {
 
 	if !CheckPassword("School@Secure2026", user.PasswordHash) {
 		t.Fatal("stored hash did not verify against original password")
+	}
+}
+
+func TestCreateUserRejectsCompromisedPassword(t *testing.T) {
+	users := &fakeUserRepository{createdID: 20}
+	schools := &fakeSchoolRepository{school: &repository.School{ID: 1, Status: "active"}}
+	service := NewAuthService(users, schools)
+	service.SetPasswordBreachChecker(fixedPasswordChecker{compromised: true})
+
+	_, err := service.CreateUser(context.Background(), 1, "sumit", "School@Secure2026")
+	if !errors.Is(err, ErrCompromisedPassword) {
+		t.Fatalf("CreateUser compromised-password error = %v, want ErrCompromisedPassword", err)
+	}
+	if users.createHash != "" {
+		t.Fatal("user must not be created with a compromised password")
+	}
+}
+
+func TestCreateUserFailsClosedWhenBreachCheckUnavailable(t *testing.T) {
+	users := &fakeUserRepository{createdID: 20}
+	schools := &fakeSchoolRepository{school: &repository.School{ID: 1, Status: "active"}}
+	service := NewAuthService(users, schools)
+	service.SetPasswordBreachChecker(fixedPasswordChecker{err: errors.New("offline")})
+
+	_, err := service.CreateUser(context.Background(), 1, "sumit", "School@Secure2026")
+	if !errors.Is(err, ErrPasswordBreachCheckUnavailable) {
+		t.Fatalf("CreateUser breach-check error = %v, want ErrPasswordBreachCheckUnavailable", err)
+	}
+	if users.createHash != "" {
+		t.Fatal("user must not be created when breach checking is unavailable")
 	}
 }
 

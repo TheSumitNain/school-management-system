@@ -322,11 +322,17 @@ func (r *UserRepository) GetStaffPasswordCredential(ctx context.Context, princip
 		SELECT id, password_hash
 		FROM users
 		WHERE principal_id = $1
+		  AND status = 'active'
 		  AND EXISTS (
 		      SELECT 1 FROM auth_principals ap
 		      WHERE ap.id = users.principal_id
 		        AND ap.principal_type = 'staff'
 		        AND ap.status = 'active'
+		  )
+		  AND EXISTS (
+		      SELECT 1 FROM schools s
+		      WHERE s.id = users.school_id
+		        AND s.status = 'active'
 		  )
 	`, principalID).Scan(&userID, &passwordHash)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -372,6 +378,20 @@ func (r *UserRepository) ChangeStaffPassword(
 		       updated_at = NOW()
 		 WHERE principal_id = $1
 		   AND password_hash = $2
+		   AND status = 'active'
+		   AND EXISTS (
+		       SELECT 1
+		         FROM auth_principals ap
+		        WHERE ap.id = users.principal_id
+		          AND ap.principal_type = 'staff'
+		          AND ap.status = 'active'
+		   )
+		   AND EXISTS (
+		       SELECT 1
+		         FROM schools s
+		        WHERE s.id = users.school_id
+		          AND s.status = 'active'
+		   )
 		RETURNING id, school_id
 	`, principalID, expectedPasswordHash, newPasswordHash).Scan(&userID, &schoolID)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -718,6 +738,18 @@ func (r *UserRepository) UpdateStaffAccount(
 		   AND target.status = 'active'
 		   AND target_principal.principal_type = 'staff'
 		   AND target_principal.status = 'active'
+		   AND NOT EXISTS (
+		       SELECT 1
+		         FROM principal_roles target_roles
+		         JOIN roles target_role ON target_role.id = target_roles.role_id
+		        WHERE target_roles.principal_id = target.principal_id
+		          AND target_roles.revoked_at IS NULL
+		          AND target_role.school_id = $2
+		          AND target_role.scope_type = 'school'
+		          AND target_role.principal_type = 'staff'
+		          AND target_role.role_key = 'school_admin'
+		          AND target_role.is_system = TRUE
+		   )
 		   AND EXISTS (
 		       SELECT 1
 		         FROM users actor

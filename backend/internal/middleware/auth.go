@@ -88,35 +88,26 @@ func AuthMiddleware(tokenService AccessTokenValidator, principals PrincipalLoade
 			return
 		}
 
-		// Admin sessions are bound to one refresh-token family. Each request
-		// touches only that device's family; a missing, revoked, or idle family
-		// is rejected before the handler runs.
+		// Every access token is bound to its refresh-session family. Logout,
+		// revocation, expiry, or principal mismatch invalidates access immediately.
+		// The tracker applies the 30-minute idle policy only to administrators.
 		requiresAdminSession := principal.Type == "platform_admin" || principal.RequiresAdminSessionActivity
+		if claims.SessionID == "" {
+			unauthorized(c)
+			return
+		}
 		if activityTracker == nil {
-			// Platform Admin status is intrinsic; School Admin status is resolved
-			// from the exact active system-role assignment by the principal loader.
-			// Do not silently bypass the idle policy when router wiring omits it.
-			if requiresAdminSession {
-				c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Administrative session security is unavailable"})
-				return
-			}
-		} else {
-			isAdmin, valid, trackErr := activityTracker.CheckAndTouchAdminSession(c.Request.Context(), principal.ID, claims.SessionID)
-			if trackErr != nil {
-				c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"status":"error","message":"Unable to validate administrative session"})
-				return
-			}
-			// The principal loader and session tracker must agree about the
-			// current admin status. A mismatch is an authorization-state failure:
-			// never let it silently skip the administrative idle-session policy.
-			if isAdmin != requiresAdminSession {
-				unauthorized(c)
-				return
-			}
-			if requiresAdminSession && (!valid || claims.SessionID == "") {
-				unauthorized(c)
-				return
-			}
+			c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Session security is unavailable"})
+			return
+		}
+		isAdmin, valid, trackErr := activityTracker.CheckAndTouchAdminSession(c.Request.Context(), principal.ID, claims.SessionID)
+		if trackErr != nil {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unable to validate session"})
+			return
+		}
+		if isAdmin != requiresAdminSession || !valid {
+			unauthorized(c)
+			return
 		}
 
 		c.Set(ContextPrincipalIDKey, principal.ID)
@@ -186,6 +177,37 @@ func RequirePermission(permission string) gin.HandlerFunc {
 			return
 		}
 		c.Next()
+	}
+}
+
+// RequireAnyPermission allows a route to accept one of several permissions.
+// Use this when the repository performs a more precise resource-dependent check
+// (for example, same-day attendance marking versus past-date correction).
+func RequireAnyPermission(permissions ...string) gin.HandlerFunc {
+	allowed := make(map[string]struct{}, len(permissions))
+	for _, permission := range permissions {
+		if permission = strings.TrimSpace(permission); permission != "" {
+			allowed[permission] = struct{}{}
+		}
+	}
+	return func(c *gin.Context) {
+		if len(allowed) == 0 {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Authorization policy unavailable"})
+			return
+		}
+		value, exists := c.Get(ContextPermissionsKey)
+		granted, ok := value.(map[string]struct{})
+		if !exists || !ok {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Authorization context unavailable"})
+			return
+		}
+		for permission := range allowed {
+			if _, ok := granted[permission]; ok {
+				c.Next()
+				return
+			}
+		}
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"status": "error", "message": "Permission denied"})
 	}
 }
 

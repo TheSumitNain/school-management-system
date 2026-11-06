@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sort"
 	"syscall"
 	"time"
 
@@ -56,6 +57,7 @@ func setupRouterWithHandlers(
 	var academicHandler *handlers.AcademicHandler
 	var guardianHandler *handlers.GuardianHandler
 	var attendanceHandler *handlers.AttendanceHandler
+	var platformAdminLifecycleHandler *handlers.PlatformAdminLifecycleHandler
 	var sessionActivityTracker middleware.AdminSessionActivityTracker
 	for _, optional := range optionalHandlers {
 		switch handler := optional.(type) {
@@ -67,6 +69,8 @@ func setupRouterWithHandlers(
 			guardianHandler = handler
 		case *handlers.AttendanceHandler:
 			attendanceHandler = handler
+		case *handlers.PlatformAdminLifecycleHandler:
+			platformAdminLifecycleHandler = handler
 		case middleware.AdminSessionActivityTracker:
 			sessionActivityTracker = handler
 		}
@@ -78,6 +82,13 @@ func setupRouterWithHandlers(
 
 	if err := router.SetTrustedProxies(nil); err != nil {
 		return nil, fmt.Errorf("configure trusted proxies: %w", err)
+	}
+
+	if platformAdminLifecycleHandler != nil {
+		platformAdminAuth := authMiddleware()
+		router.GET("/platform/admins", platformAdminAuth, middleware.RequirePermission("platform.admins.manage"), platformAdminLifecycleHandler.List)
+		router.POST("/platform/admins", platformAdminAuth, middleware.RequirePermission("platform.admins.manage"), platformAdminLifecycleHandler.Create)
+		router.POST("/platform/admins/:principalID/deactivate", platformAdminAuth, middleware.RequirePermission("platform.admins.manage"), platformAdminLifecycleHandler.Deactivate)
 	}
 
 	if schoolOnboardingHandler != nil {
@@ -230,9 +241,9 @@ func setupRouterWithHandlers(
 	if attendanceHandler != nil {
 		attendanceAuth := authMiddleware()
 		router.GET("/school/attendance", attendanceAuth, middleware.RequirePermission("attendance.read"), attendanceHandler.List)
-		router.POST("/school/attendance", attendanceAuth, middleware.RequirePermission("attendance.mark"), attendanceHandler.Mark)
-		router.PATCH("/school/attendance/:attendanceID", attendanceAuth, middleware.RequirePermission("attendance.update_same_day"), attendanceHandler.Update)
-		router.PATCH("/school/attendance/:attendanceID/correct", attendanceAuth, middleware.RequirePermission("attendance.correct_past"), attendanceHandler.Update)
+		router.POST("/school/attendance", attendanceAuth, middleware.RequireAnyPermission("attendance.mark", "attendance.correct_past"), attendanceHandler.Mark)
+		router.PATCH("/school/attendance/:attendanceID", attendanceAuth, middleware.RequireAnyPermission("attendance.update_same_day", "attendance.correct_past"), attendanceHandler.Update)
+		router.PATCH("/school/attendance/:attendanceID/correct", attendanceAuth, middleware.RequireAnyPermission("attendance.update_same_day", "attendance.correct_past"), attendanceHandler.Update)
 	}
 
 	if guardianHandler != nil {
@@ -260,6 +271,9 @@ func setupRouterWithHandlers(
 		router.POST("/auth/password/change",
 			authMiddleware(),
 			authHandler.ChangeStaffPassword)
+		router.POST("/auth/platform-admin/password/change",
+			authMiddleware(),
+			authHandler.ChangePlatformAdminPassword)
 		router.POST("/school/staff/:principalID/password/reset",
 			authMiddleware(),
 			middleware.RequirePermission("users.password_reset"),
@@ -277,6 +291,21 @@ func setupRouterWithHandlers(
 			"status":         "success",
 			"principal_id":   principalID,
 			"principal_type": principalType,
+		}
+		// Return only the caller's current effective permissions. These values
+		// help the frontend render role-aware navigation; every protected API
+		// request still enforces authorization independently on the server.
+		if principalType == "staff" || principalType == "platform_admin" {
+			permissionValues := make([]string, 0)
+			if value, exists := c.Get(middleware.ContextPermissionsKey); exists {
+				if granted, ok := value.(map[string]struct{}); ok {
+					for permission := range granted {
+						permissionValues = append(permissionValues, permission)
+					}
+				}
+			}
+			sort.Strings(permissionValues)
+			response["permissions"] = permissionValues
 		}
 		// Parent and Platform Admin identities are not school-scoped staff
 		// accounts. Do not serialize empty/zero staff-only fields for them.
@@ -366,11 +395,16 @@ func run() error {
 	principalAuthorizationRepo := repository.NewPrincipalAuthorizationRepository(db)
 	mfaChallengeRepo := repository.NewMFAChallengeRepository(db)
 	mfaRepo := repository.NewMFARepository(db)
-	mfaService, err := services.NewMFAService(
+	previousTOTPKeys := make(map[int][]byte, len(cfg.TOTPEncryptionPreviousKeys))
+	for _, previousKey := range cfg.TOTPEncryptionPreviousKeys {
+		previousTOTPKeys[previousKey.Version] = previousKey.Key
+	}
+	mfaService, err := services.NewMFAServiceWithKeyRing(
 		mfaRepo,
 		mfaChallengeRepo,
 		cfg.TOTPEncryptionKey,
 		cfg.TOTPEncryptionKeyVersion,
+		previousTOTPKeys,
 		cfg.JWTIssuer,
 	)
 	if err != nil {
@@ -407,10 +441,19 @@ func run() error {
 		return fmt.Errorf("initialize staff password service: %w", err)
 	}
 	authHandler.SetStaffPasswordService(staffPasswordService)
+	platformAdminPasswordService, err := services.NewPlatformAdminPasswordService(platformAdminRepo)
+	if err != nil {
+		return fmt.Errorf("initialize Platform Admin password service: %w", err)
+	}
+	authHandler.SetPlatformAdminPasswordService(platformAdminPasswordService)
 
 	schoolOnboardingRepo := repository.NewSchoolOnboardingRepository(db)
 	schoolOnboardingService := services.NewSchoolOnboardingService(schoolOnboardingRepo)
 	schoolOnboardingHandler := handlers.NewSchoolOnboardingHandler(schoolOnboardingService)
+
+	platformAdminLifecycleRepo := repository.NewPlatformAdminLifecycleRepository(db)
+	platformAdminLifecycleService := services.NewPlatformAdminLifecycleService(platformAdminLifecycleRepo)
+	platformAdminLifecycleHandler := handlers.NewPlatformAdminLifecycleHandler(platformAdminLifecycleService)
 
 	roleRepo := repository.NewRoleRepository(db)
 	roleService := services.NewRoleService(roleRepo)
@@ -427,7 +470,7 @@ func run() error {
 	staffAccountService := services.NewStaffAccountService(staffAccountRepo)
 	staffHandler := handlers.NewStaffHandler(staffAccountService)
 
-	router, err := setupRouterWithHandlers(db, authHandler, tokenService, principalAuthorizationRepo, principalAuthorizationRepo, schoolOnboardingHandler, roleHandler, staffHandler, academicHandler, guardianHandler, attendanceHandler, principalAuthorizationRepo)
+	router, err := setupRouterWithHandlers(db, authHandler, tokenService, principalAuthorizationRepo, principalAuthorizationRepo, schoolOnboardingHandler, roleHandler, staffHandler, academicHandler, guardianHandler, attendanceHandler, platformAdminLifecycleHandler, principalAuthorizationRepo)
 
 	if err != nil {
 		return fmt.Errorf("setup router: %w", err)

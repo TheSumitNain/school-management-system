@@ -64,6 +64,17 @@ FROM principal_mfa_credentials WHERE principal_id=$1 AND method='totp'`,principa
 	return &c,nil
 }
 
+// ReencryptCredential performs an optimistic key rotation. A concurrent credential
+// change wins; callers can safely continue because the stored value is then newer.
+func (r *MFARepository) ReencryptCredential(ctx context.Context, principalID int64, oldCiphertext []byte, oldVersion int, newCiphertext []byte, newVersion int) error {
+	if principalID <= 0 || len(oldCiphertext) < 28 || len(newCiphertext) < 28 || oldVersion < 1 || newVersion < 1 || oldVersion == newVersion {
+		return fmt.Errorf("invalid MFA credential re-encryption")
+	}
+	_, err := r.db.Exec(ctx, "UPDATE principal_mfa_credentials SET secret_ciphertext=$5,encryption_key_version=$4,updated_at=NOW() WHERE principal_id=$1 AND method='totp' AND encryption_key_version=$2 AND secret_ciphertext=$3", principalID, oldVersion, oldCiphertext, newVersion, newCiphertext)
+	if err != nil { return fmt.Errorf("rotate MFA credential encryption: %w", err) }
+	return nil
+}
+
 // SavePendingCredential never replaces an already verified authenticator.
 func (r *MFARepository) SavePendingCredential(ctx context.Context, principalID int64, ciphertext []byte, keyVersion int) error {
 	if principalID<=0 || len(ciphertext)<28 || keyVersion<1 { return fmt.Errorf("invalid pending MFA credential") }

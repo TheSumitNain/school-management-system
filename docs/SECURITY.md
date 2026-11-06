@@ -28,12 +28,12 @@ The application is designed to support multiple schools. Student, parent, teache
 
 - Complete tenant/resource/assignment/field-level enforcement across every current and future school business module. Implemented endpoints have targeted scope checks, but the entire product surface is not yet complete.
 - Complete current-user profile retrieval beyond the identity context returned by `GET /auth/me`.
-- Immediate revocation of already-issued ordinary-staff access JWTs on family logout; refresh sessions are revoked and access tokens otherwise expire naturally. Token-version changes invalidate access tokens on subsequent requests.
+- Exhaustive end-to-end HTTP tests using real JWT signature validation for every protected route, plus additional concurrency and database-failure cases.
 - Exhaustive end-to-end HTTP tests using real JWT signature validation for every protected route, plus additional concurrency and database-failure cases.
 - Production database least-privilege grants, TLS/proxy/deployment hardening, monitoring, alerting, backup and recovery procedures.
 - Production penetration testing, capacity/load testing and incident-response readiness.
 
-All registered protected routes use the shared authentication middleware and route-level `RequirePermission` checks where an operation permission is required. The middleware enforces per-device 30-minute idle timeout for Platform Admin and active School Admin sessions. Future routes must follow the same pattern.
+All registered protected routes use the shared authentication middleware and route-level `RequirePermission` checks where an operation permission is required. The middleware validates an active refresh-session family for every principal and enforces the per-device 30-minute idle timeout for Platform Admin and active School Admin sessions. Future routes must follow the same pattern.
 
 
 ## 3. Password Security
@@ -80,7 +80,35 @@ Authentication failures return `401 Unauthorized`. If the middleware has no toke
 
 `GET /auth/me` returns the authenticated principal ID/type and staff-only school/username context. Protected requests reload current principal status, token version and permissions. The endpoint does not provide a complete user profile or prove resource-level tenant isolation.
 
-Access JWTs issued through login, MFA completion, and refresh are bound to the refresh-session family using the `sid` claim. The V21 `last_activity_at` timestamp is maintained per family. Every protected request checks and touches only that device's active family for Platform Admin and active system-role School Admin principals. An idle family at or beyond 30 minutes is revoked and audited; another device's family remains independent. Refresh rotation checks the same timeout inside the existing family/principal-locked transaction and preserves the activity timestamp rather than resetting it. Ordinary staff and parent sessions are not subject to this administrative idle timeout. The middleware still does not replace resource-level tenant and assignment checks in each business repository.
+Access JWTs issued through login, MFA completion, and refresh are bound to the refresh-session family using the `sid` claim. The V21 `last_activity_at` timestamp is maintained per family. Every protected request validates that the `sid` family exists, is unrevoked, unexpired, and belongs to the authenticated principal. This applies to Platform Admin, School Admin, ordinary staff, and Parent sessions, so logout or family revocation immediately invalidates already-issued access JWTs on the next protected request. Only Platform Admin and active system-role School Admin sessions receive the additional per-device 30-minute idle timeout, activity touch, revocation, and audit event. Ordinary staff and Parent sessions are not subject to that idle timeout. Refresh rotation and the request-time family check serialize on the same PostgreSQL advisory family lock; refresh rotation preserves the admin activity timestamp rather than resetting it. The middleware still does not replace resource-level tenant and assignment checks in each business repository.
+
+### TOTP encryption key storage and rotation
+
+TOTP authenticator secrets are encrypted at rest with AES-256-GCM. The active encryption key is supplied as Base64-encoded 32-byte material through `TOTP_ENCRYPTION_KEY`; `TOTP_ENCRYPTION_KEY_VERSION` is a positive version number stored alongside each encrypted credential. Do not reuse the JWT signing key or Parent OTP HMAC key for TOTP encryption.
+
+The versioned key ring supports:
+- The current key encrypts newly enrolled TOTP credentials.
+- `TOTP_ENCRYPTION_PREVIOUS_KEYS` optionally holds comma-separated `version:Base64` entries for old keys. Every previous key must decode to exactly 32 bytes and have a distinct positive version different from the current version.
+- A previous key is used only to decrypt credentials bearing its version. After a successful TOTP verification, the service encrypts the same secret with the current key and attempts an optimistic database update matching the principal, old key version, and old ciphertext. A concurrent update cannot be overwritten by a stale rotation.
+- Key rotation requires no schema migration. Existing credentials are upgraded lazily as administrators successfully complete MFA enrollment, login, or recovery-code regeneration. A credential that has not been used remains encrypted with its previous key.
+
+Operational rotation procedure:
+1. Generate a cryptographically random 32-byte key, Base64-encode it, and store it in the deployment secret manager. Never commit real key material.
+2. Increase `TOTP_ENCRYPTION_KEY_VERSION` and set the new `TOTP_ENCRYPTION_KEY`. Keep the old version/key in `TOTP_ENCRYPTION_PREVIOUS_KEYS`.
+3. Deploy the key-ring-capable application and the complete key configuration to every API instance as one coordinated rollout. Do not run old single-key application instances alongside instances that have started encrypting with the new key.
+4. Keep every previous key available while any stored credential still uses that version. Check progress with this read-only query:
+
+   ```sql
+   SELECT encryption_key_version, COUNT(*)
+   FROM principal_mfa_credentials
+   WHERE method = 'totp'
+   GROUP BY encryption_key_version
+   ORDER BY encryption_key_version;
+   ```
+
+5. Remove an old key only after its credential count is zero **and** backups that may contain credentials encrypted with that key have expired or have been re-encrypted under an approved backup process. Retain old keys securely for the required backup-retention period.
+
+If a required previous key is missing, affected administrators cannot complete TOTP verification with their authenticator secret. Do not delete or replace key material as a troubleshooting shortcut. Treat the key ring as production-critical secret material and test restore procedures before deployment.
 
 ### Refresh-token lifecycle
 
@@ -101,9 +129,9 @@ The implemented service behavior and opt-in PostgreSQL repository integration te
 
 ### Logout limitations
 
-Logout revokes every active refresh session in the supplied token family. Repeated logout is idempotent and unknown tokens are a no-op. Logout alone does **not** immediately invalidate access JWTs that have already been issued. Staff password changes and administrator password resets do immediately invalidate existing access JWTs by incrementing the principal's database-backed token version; they also revoke every active refresh session for that principal.
+Logout revokes every active refresh session in the supplied token family. Repeated logout is idempotent and unknown tokens are a no-op. Logout immediately invalidates access JWTs associated with the logged-out family on the next protected request because middleware checks the active family state in PostgreSQL. Staff password changes and administrator password resets also invalidate existing access JWTs by incrementing the principal's database-backed token version and revoking every active refresh session for that principal.
 
-Before production deployment, decide whether short access-token lifetimes are sufficient or whether immediate revocation is required. Also define session invalidation behavior after password changes, account disabling, and administrative security events.
+Account disabling, password changes/resets, and administrative security events must continue to revoke the appropriate refresh families and/or increment token version; the middleware enforces those changes on subsequent protected requests.
 
 ### Client-side token handling
 
@@ -118,7 +146,7 @@ If cookies are used, configure appropriate `HttpOnly`, `Secure`, and `SameSite` 
 - Keep access tokens short-lived and document the configured lifetime.
 - Validate token signature, issuer, expiry, and relevant claims.
 - Keep signing keys and secrets outside source control.
-- Define a key-rotation strategy.
+- Define and follow the versioned TOTP encryption-key rotation and backup-retention procedure above.
 - Apply authentication middleware to every route requiring authentication.
 - Continue testing concurrent refresh/logout ordering and transaction behavior against PostgreSQL, including database failure cases. V21 integration tests now cover admin idle expiry during refresh, per-device family isolation, audit creation, and the ordinary-staff exemption.
 - Test refresh-token replay and logout independently through the HTTP API.
@@ -363,3 +391,20 @@ Role/permission changes and staff password changes/resets take effect on subsequ
 - Parent mobile lookup, parent principal loading, guardian matching and pre-account registration exclude inactive/suspended schools. Parent OTP/SMS delivery and Phase 2 endpoints remain paused.
 - Teacher enrollment roster includes student name, roll number, class and section only within assigned teaching/class-in-charge sections.
 - GitHub Actions run 41961583328 on commit 7071d7913ab62ff525637e2af0f4d3718b9f57b8 passed migrations V1–V22, the full backend suite including PostgreSQL integration, and go vet ./... on ephemeral PostgreSQL 18. No persistent user database was changed by CI.
+
+
+## 2026-11-05 access-token family revocation update
+
+- Protected-request middleware now requires a non-empty JWT `sid` and a configured session-family tracker for every principal. Missing session-security wiring fails closed; missing/invalid family claims are rejected.
+- The authorization repository verifies that the supplied family has an unrevoked, unexpired refresh-session row belonging to the same principal. A logged-out or otherwise revoked staff, Parent, School Admin, or Platform Admin family therefore cannot continue using an already-issued access JWT on subsequent protected requests.
+- The existing per-device 30-minute idle timeout, activity touch, family revocation, and audit event remain limited to Platform Admin and active system-role School Admin sessions. Ordinary staff and Parent families are checked for active status but are not subject to administrative idle expiry.
+- PostgreSQL integration coverage verifies that an ordinary staff family remains valid beyond 30 minutes and is rejected immediately after its family is revoked. Middleware tests cover revoked families and fail-closed behavior when the tracker is missing.
+
+
+## 2026-11-06 Platform Admin password-change update
+
+- Added authenticated self-service password change at `POST /auth/platform-admin/password/change`. The endpoint accepts only an authenticated `platform_admin` principal; staff and Parent principals are rejected.
+- The service verifies the current password, rejects unchanged or locally invalid passwords, and checks the replacement against the Pwned Passwords range API using the existing k-anonymity flow. Provider failures remain fail-closed.
+- The repository serializes the update with the same per-principal PostgreSQL advisory lock used by refresh-session operations. A compare-and-swap on the previously verified password hash prevents a stale request from overwriting a concurrent password change.
+- The password hash update, principal token-version increment, revocation of all active refresh sessions, and append-only `platform.admin.password.changed` audit event occur in one transaction. Existing access JWTs are rejected on subsequent protected requests through the live token-version/session-family checks.
+- The service has unit coverage for successful change, wrong current password, unchanged password, compromised password, breach-check outage, and concurrent-change conflict. A PostgreSQL integration test verifies the compare-and-swap conflict, token-version increment, refresh-session revocation, and audit event; CI verification is pending.

@@ -33,6 +33,10 @@ type mfaCredentialStore interface {
 	ReplaceRecoveryCodeHashes(context.Context,int64,string,int64,int64,[]string) error
 }
 
+type mfaCredentialRotator interface {
+	ReencryptCredential(context.Context, int64, []byte, int, []byte, int) error
+}
+
 type mfaChallengeStore interface {
 	Create(context.Context,int64,int64,repository.MFAChallengePurpose,string,time.Time) error
 	Get(context.Context,string) (*repository.MFAChallenge,error)
@@ -44,6 +48,7 @@ type MFAService struct {
 	challenges mfaChallengeStore
 	encryptionKey []byte
 	keyVersion int
+	previousEncryptionKeys map[int][]byte
 	issuer string
 }
 
@@ -57,10 +62,25 @@ type MFAStart struct {
 }
 
 func NewMFAService(credentials mfaCredentialStore, challenges mfaChallengeStore, key []byte, keyVersion int, issuer string) (*MFAService,error) {
+	return NewMFAServiceWithKeyRing(credentials, challenges, key, keyVersion, nil, issuer)
+}
+
+// NewMFAServiceWithKeyRing encrypts new credentials with the current key and
+// retains previous versions solely for decrypting and lazily re-encrypting
+// existing credentials after successful TOTP verification.
+func NewMFAServiceWithKeyRing(credentials mfaCredentialStore, challenges mfaChallengeStore, key []byte, keyVersion int, previous map[int][]byte, issuer string) (*MFAService,error) {
 	if credentials==nil || challenges==nil { return nil,fmt.Errorf("MFA repositories are required") }
 	if len(key)!=32 || keyVersion<1 { return nil,fmt.Errorf("valid 32-byte TOTP encryption key and positive version are required") }
 	if strings.TrimSpace(issuer)=="" { return nil,fmt.Errorf("MFA issuer is required") }
-	return &MFAService{credentials:credentials,challenges:challenges,encryptionKey:append([]byte(nil),key...),keyVersion:keyVersion,issuer:strings.TrimSpace(issuer)},nil
+	copied := make(map[int][]byte, len(previous))
+	for version, previousKey := range previous {
+		if version < 1 || version == keyVersion || len(previousKey) != 32 {
+			return nil, fmt.Errorf("previous TOTP encryption keys require distinct positive versions and exactly 32 bytes")
+		}
+		if _, exists := copied[version]; exists { return nil, fmt.Errorf("duplicate previous TOTP encryption key version") }
+		copied[version] = append([]byte(nil), previousKey...)
+	}
+	return &MFAService{credentials:credentials,challenges:challenges,encryptionKey:append([]byte(nil),key...),keyVersion:keyVersion,previousEncryptionKeys:copied,issuer:strings.TrimSpace(issuer)},nil
 }
 
 // BeginAuthentication returns a short-lived challenge for mandatory MFA.
@@ -125,6 +145,7 @@ func (s *MFAService) CompleteEnrollment(ctx context.Context, challengeToken, cod
 		}
 		return 0, 0, nil, ErrMFAInvalid
 	}
+	if err := s.rotateCredential(ctx, principalID, credential, secret); err != nil { return 0, 0, nil, err }
 	codes, hashes, err := GenerateRecoveryCodes(10)
 	if err != nil { return 0, 0, nil, err }
 	if err := s.credentials.ActivateEnrollment(ctx, principalID, hash, tokenVersion, step, hashes); err != nil {
@@ -154,6 +175,7 @@ func (s *MFAService) VerifyLoginChallenge(ctx context.Context, challengeToken, c
 	if decryptErr == nil {
 		step, valid := VerifyTOTPAndGetStep(secret, normalizedCode, time.Now())
 		if valid {
+			if err := s.rotateCredential(ctx, challenge.PrincipalID, credential, secret); err != nil { return 0, 0, err }
 			if err := s.credentials.ConsumeLoginChallenge(ctx, challenge.PrincipalID, hash, tokenVersion, step); err != nil {
 				if errors.Is(err, repository.ErrMFAEnrollmentInvalid) { return 0, 0, ErrMFAInvalid }
 				return 0, 0, err
@@ -211,6 +233,7 @@ func (s *MFAService) RegenerateRecoveryCodes(ctx context.Context, challengeToken
 		}
 		return nil, ErrMFAInvalid
 	}
+	if err := s.rotateCredential(ctx, challenge.PrincipalID, credential, secret); err != nil { return nil, err }
 	codes, hashes, err := GenerateRecoveryCodes(10)
 	if err != nil { return nil, err }
 	if err := s.credentials.ReplaceRecoveryCodeHashes(ctx, challenge.PrincipalID, challengeHash, tokenVersion, step, hashes); err != nil {
@@ -243,10 +266,30 @@ func parseMFAChallengeTokenVersion(token string) (int64,error) {
 }
 
 func (s *MFAService) decryptCredential(c *repository.MFACredential) ([]byte,error) {
-	if c.KeyVersion!=s.keyVersion { return nil,ErrMFAKeyVersionUnavailable }
-	secret,err:=DecryptTOTPSecret(c.Ciphertext,s.encryptionKey)
+	var key []byte
+	if c == nil { return nil, ErrMFAKeyVersionUnavailable }
+	if c.KeyVersion == s.keyVersion {
+		key = s.encryptionKey
+	} else {
+		key = s.previousEncryptionKeys[c.KeyVersion]
+	}
+	if len(key) != 32 { return nil,ErrMFAKeyVersionUnavailable }
+	secret,err:=DecryptTOTPSecret(c.Ciphertext,key)
 	if err!=nil { return nil,fmt.Errorf("decrypt stored MFA credential: %w",err) }
 	return secret,nil
+}
+
+// rotateCredential upgrades a successfully decrypted credential using an
+// optimistic compare-and-swap update. A concurrent rotation is harmless.
+func (s *MFAService) rotateCredential(ctx context.Context, principalID int64, c *repository.MFACredential, secret []byte) error {
+	if c == nil || c.KeyVersion == s.keyVersion { return nil }
+	rotator, ok := s.credentials.(mfaCredentialRotator)
+	if !ok {
+		return fmt.Errorf("MFA credential store does not support encryption key rotation")
+	}
+	ciphertext, err := EncryptTOTPSecret(secret, s.encryptionKey)
+	if err != nil { return fmt.Errorf("encrypt rotated MFA credential: %w", err) }
+	return rotator.ReencryptCredential(ctx, principalID, c.Ciphertext, c.KeyVersion, ciphertext, s.keyVersion)
 }
 
 // GenerateRecoveryCodes returns high-entropy one-time codes. The caller must

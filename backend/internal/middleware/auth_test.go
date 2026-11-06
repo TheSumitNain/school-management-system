@@ -47,7 +47,7 @@ func setupMiddlewareRouter(validator AccessTokenValidator) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	principal := &models.AuthPrincipal{ID: 10, Type: "staff", Status: "active", TokenVersion: 1, SchoolID: 2, Username: "tester"}
-	router.GET("/protected", AuthMiddleware(validator, fakePrincipalLoader{principal: principal}, fakePermissionLoader{permissions: []string{"students.read_basic"}}), func(c *gin.Context) {
+	router.GET("/protected", AuthMiddleware(validator, fakePrincipalLoader{principal: principal}, fakePermissionLoader{permissions: []string{"students.read_basic"}}, &fakeAdminSessionTracker{valid: true, familyID: "00000000-0000-4000-8000-000000000010"}), func(c *gin.Context) {
 		principalID, _ := c.Get(ContextPrincipalIDKey)
 		schoolID, _ := c.Get(ContextSchoolIDKey)
 		c.JSON(http.StatusOK, gin.H{"principal_id": principalID, "school_id": schoolID})
@@ -56,7 +56,7 @@ func setupMiddlewareRouter(validator AccessTokenValidator) *gin.Engine {
 }
 
 func validClaims() *services.TokenClaims {
-	claims := &services.TokenClaims{PrincipalType: "staff", TokenVersion: 1}
+	claims := &services.TokenClaims{PrincipalType: "staff", TokenVersion: 1, SessionID: "00000000-0000-4000-8000-000000000010"}
 	claims.Subject = "10"
 	return claims
 }
@@ -76,6 +76,47 @@ func TestAuthMiddlewareValidToken(t *testing.T) {
 	}
 	if rec.Body.String() != `{"principal_id":10,"school_id":2}` {
 		t.Fatalf("unexpected body: %s", rec.Body.String())
+	}
+}
+
+func TestAuthMiddlewareRejectsRevokedSessionFamily(t *testing.T) {
+	claims := validClaims()
+	tracker := &fakeAdminSessionTracker{valid: false, familyID: claims.SessionID}
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	principal := &models.AuthPrincipal{ID: 10, Type: "staff", Status: "active", TokenVersion: 1, SchoolID: 2}
+	router.GET("/protected", AuthMiddleware(
+		&fakeTokenValidator{claims: claims},
+		fakePrincipalLoader{principal: principal},
+		fakePermissionLoader{},
+		tracker,
+	), func(c *gin.Context) { c.Status(http.StatusOK) })
+
+	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
+	req.Header.Set("Authorization", "Bearer valid-token")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("revoked session family must be rejected, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestAuthMiddlewareRequiresSessionTrackerForOrdinaryStaff(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	principal := &models.AuthPrincipal{ID: 10, Type: "staff", Status: "active", TokenVersion: 1, SchoolID: 2}
+	router := gin.New()
+	router.GET("/protected", AuthMiddleware(
+		&fakeTokenValidator{claims: validClaims()},
+		fakePrincipalLoader{principal: principal},
+		fakePermissionLoader{},
+	), func(c *gin.Context) { c.Status(http.StatusOK) })
+
+	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
+	req.Header.Set("Authorization", "Bearer valid-token")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("missing session tracker must fail closed for ordinary staff, got %d", rec.Code)
 	}
 }
 
@@ -216,7 +257,7 @@ func TestAuthMiddlewareRestrictsTemporaryPasswordStaff(t *testing.T) {
 	permissions := fakePermissionLoader{permissions: []string{"students.read_basic"}}
 	loader := fakePrincipalLoader{principal: principal}
 	router := gin.New()
-	auth := AuthMiddleware(validator, loader, permissions)
+	auth := AuthMiddleware(validator, loader, permissions, &fakeAdminSessionTracker{valid: true, familyID: validClaims().SessionID})
 
 	router.GET("/protected", auth, func(c *gin.Context) { c.Status(http.StatusOK) })
 	router.POST("/auth/password/change", auth, func(c *gin.Context) {
@@ -273,7 +314,7 @@ func TestAuthMiddlewareRequiresValidSessionForAdmins(t *testing.T) {
 	req:=httptest.NewRequest(http.MethodGet,"/protected",nil);req.Header.Set("Authorization","Bearer token")
 	rec:=httptest.NewRecorder();router.ServeHTTP(rec,req)
 	if rec.Code!=http.StatusUnauthorized { t.Fatalf("admin token without sid must be rejected, got %d",rec.Code) }
-	if tracker.called!=1 || tracker.principalID!=99 { t.Fatalf("tracker was not called for admin principal: %+v",tracker) }
+	if tracker.called != 0 { t.Fatalf("missing sid must be rejected before tracker lookup: %+v", tracker) }
 }
 
 func TestAuthMiddlewareAcceptsActiveAdminSessionFamily(t *testing.T) {
@@ -375,6 +416,36 @@ func TestAuthMiddlewareRejectsAdminSessionTrackerMismatch(t *testing.T) {
 				t.Fatalf("admin classification mismatch must fail closed: status=%d body=%s; want 401",
 					rec.Code, rec.Body.String())
 			}
+		})
+	}
+}
+
+
+func TestRequireAnyPermission(t *testing.T) {
+	tests := []struct {
+		name string
+		permissions []string
+		contextValue any
+		setContext bool
+		want int
+	}{
+		{name: "first permission granted", permissions: []string{"attendance.mark", "attendance.correct_past"}, contextValue: map[string]struct{}{"attendance.mark": {}}, setContext: true, want: http.StatusOK},
+		{name: "alternative permission granted", permissions: []string{"attendance.mark", "attendance.correct_past"}, contextValue: map[string]struct{}{"attendance.correct_past": {}}, setContext: true, want: http.StatusOK},
+		{name: "no matching permission", permissions: []string{"attendance.mark", "attendance.correct_past"}, contextValue: map[string]struct{}{"attendance.read": {}}, setContext: true, want: http.StatusForbidden},
+		{name: "missing authorization context", permissions: []string{"attendance.mark"}, want: http.StatusInternalServerError},
+		{name: "empty permission policy", contextValue: map[string]struct{}{"attendance.mark": {}}, setContext: true, want: http.StatusInternalServerError},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gin.SetMode(gin.TestMode)
+			router := gin.New()
+			router.POST("/protected", func(c *gin.Context) {
+				if tt.setContext { c.Set(ContextPermissionsKey, tt.contextValue) }
+				c.Next()
+			}, RequireAnyPermission(tt.permissions...), func(c *gin.Context) { c.Status(http.StatusOK) })
+			rec := httptest.NewRecorder()
+			router.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/protected", nil))
+			if rec.Code != tt.want { t.Fatalf("status=%d want=%d body=%s", rec.Code, tt.want, rec.Body.String()) }
 		})
 	}
 }

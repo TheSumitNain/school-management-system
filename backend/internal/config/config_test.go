@@ -114,6 +114,7 @@ func TestLoadDefaults(t *testing.T) {
 	t.Setenv("REFRESH_TOKEN_EXPIRY_DAYS", "")
 	t.Setenv("TOTP_ENCRYPTION_KEY", "")
 	t.Setenv("TOTP_ENCRYPTION_KEY_VERSION", "")
+	t.Setenv("TOTP_ENCRYPTION_PREVIOUS_KEYS", "")
 	t.Setenv("PARENT_OTP_HMAC_KEY", "")
 
 	cfg := Load()
@@ -316,6 +317,43 @@ func TestParentOTPHMACKeyConfigurationRejectsMissingOrInvalidValues(t *testing.T
 		t.Setenv("PARENT_OTP_HMAC_KEY", encoded)
 		if err := Load().ValidateParentOTPHMAC(); err == nil {
 			t.Fatalf("expected invalid Parent OTP HMAC key %q to be rejected", encoded)
+		}
+	}
+}
+
+func TestTOTPPreviousEncryptionKeyConfiguration(t *testing.T) {
+	current := make([]byte, 32)
+	previous := make([]byte, 32)
+	previous[0] = 1
+	t.Setenv("TOTP_ENCRYPTION_KEY", base64.StdEncoding.EncodeToString(current))
+	t.Setenv("TOTP_ENCRYPTION_KEY_VERSION", "4")
+	t.Setenv("TOTP_ENCRYPTION_PREVIOUS_KEYS", "2:"+base64.StdEncoding.EncodeToString(previous))
+	cfg := Load()
+	if err := cfg.ValidateTOTPEncryption(); err != nil {
+		t.Fatalf("valid previous TOTP key rejected: %v", err)
+	}
+	if len(cfg.TOTPEncryptionPreviousKeys) != 1 || cfg.TOTPEncryptionPreviousKeys[0].Version != 2 {
+		t.Fatalf("previous keys not loaded correctly: %#v", cfg.TOTPEncryptionPreviousKeys)
+	}
+}
+
+func TestTOTPPreviousEncryptionKeyConfigurationRejectsMalformedEntries(t *testing.T) {
+	current := base64.StdEncoding.EncodeToString(make([]byte, 32))
+	t.Setenv("TOTP_ENCRYPTION_KEY", current)
+	t.Setenv("TOTP_ENCRYPTION_KEY_VERSION", "4")
+	validPrevious := make([]byte, 32)
+	encoded := base64.StdEncoding.EncodeToString(validPrevious)
+	for _, raw := range []string{
+		"broken",
+		"0:"+encoded,
+		"2:not-base64!",
+		"2:"+base64.StdEncoding.EncodeToString(make([]byte, 31)),
+		"2:"+encoded+",2:"+encoded,
+		"4:"+encoded,
+	} {
+		t.Setenv("TOTP_ENCRYPTION_PREVIOUS_KEYS", raw)
+		if err := Load().ValidateTOTPEncryption(); err == nil {
+			t.Errorf("expected previous key configuration %q to be rejected", raw)
 		}
 	}
 }
