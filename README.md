@@ -4,8 +4,8 @@ A multi-tenant School Management System being developed as a production-oriented
 
 ## Product scope
 
-- **Phase 1:** Web application for Platform Admin, School Admin and school staff.
-- **Phase 2:** Parent and Driver mobile experiences, planned after the Phase 1 web product. Parent OTP/SMS delivery and Parent/Driver interfaces are intentionally paused.
+- **Phase 1 priority:** Complete the web application and school dashboards for Platform Admin, School Admin and school staff. The immediate product priority is the school-facing dashboard and its operational workflows.
+- **Parent OTP is deferred:** Do not implement parent OTP login, OTP/SMS delivery or parent-facing workflows now. Parent access and Driver experiences remain Phase 2 work, after the Phase 1 web product is complete.
 - **Planning scale:** 25–30 schools, approximately 400–500 students per school. These are targets, not tested capacity limits.
 
 ## Technology
