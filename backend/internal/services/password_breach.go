@@ -21,6 +21,12 @@ var (
 	ErrPasswordBreachCheckUnavailable = errors.New("unable to verify password against known data breaches")
 )
 
+const (
+	passwordRangeMaxAttempts = 3
+	passwordRangeRetryDelay  = 300 * time.Millisecond
+	passwordRangeHTTPTimeout = 12 * time.Second
+)
+
 // PasswordBreachChecker uses a privacy-preserving check and must never receive
 // or transmit the cleartext password or its complete hash.
 type PasswordBreachChecker interface {
@@ -41,7 +47,7 @@ type HIBPPasswordBreachChecker struct {
 
 func NewHIBPPasswordBreachChecker(client *http.Client) *HIBPPasswordBreachChecker {
 	if client == nil {
-		client = &http.Client{Timeout: 4 * time.Second}
+		client = &http.Client{Timeout: passwordRangeHTTPTimeout}
 	}
 	return &HIBPPasswordBreachChecker{
 		client:   client,
@@ -78,7 +84,7 @@ func (c *HIBPPasswordBreachChecker) IsCompromised(ctx context.Context, password 
 	req.Header.Set("Add-Padding", "true")
 	req.Header.Set("User-Agent", "school-management-system-password-policy")
 
-	resp, err := c.client.Do(req)
+	resp, err := c.doRangeRequest(ctx, req)
 	if err != nil {
 		return false, fmt.Errorf("request password range: %w", err)
 	}
@@ -136,6 +142,43 @@ func (c *HIBPPasswordBreachChecker) IsCompromised(ctx context.Context, password 
 
 	_, found := suffixes[suffix]
 	return found, nil
+}
+
+// doRangeRequest retries only transient network failures, HTTP 429, and 5xx
+// responses. It never interprets an unavailable service as a clean password.
+func (c *HIBPPasswordBreachChecker) doRangeRequest(ctx context.Context, req *http.Request) (*http.Response, error) {
+	var lastErr error
+	for attempt := 0; attempt < passwordRangeMaxAttempts; attempt++ {
+		resp, err := c.client.Do(req.Clone(ctx))
+		if err == nil {
+			if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= http.StatusInternalServerError {
+				lastErr = fmt.Errorf("password range service returned HTTP %d", resp.StatusCode)
+				_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 64<<10))
+				_ = resp.Body.Close()
+			} else {
+				return resp, nil
+			}
+		} else {
+			lastErr = err
+		}
+
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		if attempt == passwordRangeMaxAttempts-1 {
+			break
+		}
+
+		delay := passwordRangeRetryDelay * time.Duration(attempt+1)
+		timer := time.NewTimer(delay)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return nil, ctx.Err()
+		case <-timer.C:
+		}
+	}
+	return nil, lastErr
 }
 
 var defaultPasswordBreachChecker PasswordBreachChecker = NewHIBPPasswordBreachChecker(nil)
