@@ -191,6 +191,106 @@ func (r *PlatformAdminRepository) bootstrapFirstInTx(
 	return principalID, nil
 }
 
+// RecoverPasswordByEmail resets an existing active Platform Admin credential for
+// a deliberate, interactive operator recovery workflow. It never creates an
+// account. The update, access-token invalidation, refresh-session revocation,
+// and audit record are committed atomically.
+func (r *PlatformAdminRepository) RecoverPasswordByEmail(ctx context.Context, email, newHash string) (int64, error) {
+	email = strings.TrimSpace(strings.ToLower(email))
+	if r == nil || r.db == nil || email == "" || len(email) > 254 || newHash == "" {
+		return 0, fmt.Errorf("invalid Platform Admin recovery input")
+	}
+
+	// Resolve the stable principal ID without taking a row lock. Password
+	// changes use this same principal-scoped advisory lock, so taking a row
+	// lock first here could otherwise introduce a lock-order inversion.
+	var principalID int64
+	err := r.db.QueryRow(ctx, `
+		SELECT pa.principal_id
+		  FROM platform_admin_accounts pa
+		  JOIN auth_principals ap ON ap.id = pa.principal_id
+		 WHERE LOWER(BTRIM(pa.email)) = $1
+		   AND ap.principal_type = 'platform_admin'
+		   AND ap.status = 'active'
+	`, email).Scan(&principalID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, ErrPlatformAdminNotFound
+	}
+	if err != nil {
+		return 0, fmt.Errorf("find Platform Admin for recovery: %w", err)
+	}
+
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("begin Platform Admin password recovery: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if _, err := tx.Exec(ctx,
+		`SELECT pg_advisory_xact_lock(hashtextextended('refresh-principal:' || $1::bigint::text,0))`,
+		principalID,
+	); err != nil {
+		return 0, fmt.Errorf("lock Platform Admin password recovery: %w", err)
+	}
+
+	tag, err := tx.Exec(ctx, `
+		UPDATE platform_admin_accounts
+		   SET password_hash = $3
+		 WHERE principal_id = $1
+		   AND LOWER(BTRIM(email)) = $2
+		   AND EXISTS (
+		       SELECT 1 FROM auth_principals ap
+		        WHERE ap.id = platform_admin_accounts.principal_id
+		          AND ap.principal_type = 'platform_admin'
+		          AND ap.status = 'active'
+		   )
+	`, principalID, email, newHash)
+	if err != nil {
+		return 0, fmt.Errorf("reset Platform Admin password: %w", err)
+	}
+	if tag.RowsAffected() != 1 {
+		return 0, ErrPlatformAdminNotFound
+	}
+
+	tag, err = tx.Exec(ctx, `
+		UPDATE auth_principals
+		   SET token_version = token_version + 1,
+		       updated_at = NOW()
+		 WHERE id = $1
+		   AND principal_type = 'platform_admin'
+		   AND status = 'active'
+	`, principalID)
+	if err != nil {
+		return 0, fmt.Errorf("invalidate Platform Admin access tokens: %w", err)
+	}
+	if tag.RowsAffected() != 1 {
+		return 0, ErrPlatformAdminNotFound
+	}
+
+	if _, err := tx.Exec(ctx, `
+		UPDATE refresh_sessions
+		   SET revoked_at = COALESCE(revoked_at, NOW())
+		 WHERE principal_id = $1
+		   AND revoked_at IS NULL
+	`, principalID); err != nil {
+		return 0, fmt.Errorf("revoke Platform Admin refresh sessions: %w", err)
+	}
+
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO audit_events
+		    (actor_principal_id, action, resource_type, resource_id, outcome, metadata)
+		VALUES (NULL, 'platform.admin.password.recovered', 'platform_admin', $1, 'success',
+		        jsonb_build_object('recovery_method', 'interactive_cli', 'sessions_revoked', TRUE))
+	`, strconv.FormatInt(principalID, 10)); err != nil {
+		return 0, fmt.Errorf("audit Platform Admin password recovery: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return 0, fmt.Errorf("commit Platform Admin password recovery: %w", err)
+	}
+	return principalID, nil
+}
+
 func mapPlatformAdminBootstrapError(err error) error {
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == "23505" &&
