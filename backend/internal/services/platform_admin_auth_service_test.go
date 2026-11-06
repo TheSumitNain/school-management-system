@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"school-management-system/internal/models"
 	"school-management-system/internal/repository"
 )
 
@@ -66,6 +67,35 @@ func TestPlatformAdminAuthenticateUsesPlatformAdminFailureAudit(t *testing.T) {
 	}
 	if security.staffFailures != 0 {
 		t.Fatalf("staff failure audit calls = %d, want 0", security.staffFailures)
+	}
+}
+
+func TestPlatformAdminAuthenticateRecordsWrongPasswordAsPlatformAdminFailure(t *testing.T) {
+	passwordHash, err := HashPassword("A-long-valid-password-2026")
+	if err != nil {
+		t.Fatalf("hash test password: %v", err)
+	}
+	security := &platformAdminLoginSecurityFake{}
+	credentials := platformAdminCredentialStoreFake{
+		record: &repository.PlatformAdminCredential{
+			Principal: &models.AuthPrincipal{ID: 42, Type: "platform_admin", Status: "active", TokenVersion: 1},
+			PasswordHash: passwordHash,
+		},
+	}
+	service, err := NewPlatformAdminAuthService(credentials, security)
+	if err != nil {
+		t.Fatalf("create Platform Admin auth service: %v", err)
+	}
+
+	_, err = service.Authenticate(context.Background(), "admin@example.com", "wrong-password")
+	if !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("Authenticate error = %v, want ErrInvalidCredentials", err)
+	}
+	if security.platformFailures != 1 {
+		t.Fatalf("Platform Admin failure audit calls = %d, want 1", security.platformFailures)
+	}
+	if security.failureEmail != "admin@example.com" {
+		t.Fatalf("failure audit email = %q, want normalized email", security.failureEmail)
 	}
 }
 
