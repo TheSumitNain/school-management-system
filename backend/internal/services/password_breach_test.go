@@ -97,8 +97,6 @@ func TestHIBPPasswordBreachCheckerRejectsOversizedRangeResponse(t *testing.T) {
 
 func TestHIBPPasswordBreachCheckerRetriesTransientServerErrors(t *testing.T) {
 	password := "A-retryable-password-check-2026!"
-	sum := sha1.Sum([]byte(password))
-	suffix := strings.ToUpper(hex.EncodeToString(sum[:]))[5:]
 	var requests atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if requests.Add(1) == 1 {
