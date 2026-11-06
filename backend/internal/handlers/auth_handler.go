@@ -19,6 +19,10 @@ import (
 type AuthService interface {
 	AuthenticateStaff(ctx context.Context, username, password string) (*models.AuthPrincipal, error)
 }
+type PlatformAdminPasswordService interface {
+	ChangePassword(ctx context.Context, principalID int64, currentPassword, newPassword string) error
+}
+
 type StaffPasswordService interface {
 	ChangePassword(ctx context.Context, principalID int64, currentPassword, newPassword string) error
 	ResetPassword(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64, newPassword string) error
@@ -61,6 +65,7 @@ type AuthHandler struct {
 	mfaService MFAService
 	principalLoader MFAPrincipalLoader
 	staffPasswordService StaffPasswordService
+	platformAdminPasswordService PlatformAdminPasswordService
 }
 
 func NewAuthHandler(authService AuthService, tokenService TokenService, sessionService SessionService, ipRateLimiters ...LoginIPRateLimiter) *AuthHandler {
@@ -104,6 +109,10 @@ type principalResponse struct {
 
 func (h *AuthHandler) SetStaffPasswordService(service StaffPasswordService) {
 	h.staffPasswordService = service
+}
+
+func (h *AuthHandler) SetPlatformAdminPasswordService(service PlatformAdminPasswordService) {
+	h.platformAdminPasswordService = service
 }
 
 func (h *AuthHandler) SetPlatformAdminAuthService(service PlatformAdminAuthService) {
@@ -415,6 +424,52 @@ func (h *AuthHandler) ChangeStaffPassword(c *gin.Context) {
 		writeAuthError(c, http.StatusConflict, "Password changed concurrently. Sign in again.")
 	default:
 		writeAuthError(c, http.StatusInternalServerError, "Unable to change password")
+	}
+}
+
+// ChangePlatformAdminPassword changes the authenticated Platform Admin's
+// password. The repository invalidates all existing sessions after the update.
+func (h *AuthHandler) ChangePlatformAdminPassword(c *gin.Context) {
+	if h.platformAdminPasswordService == nil {
+		writeAuthError(c, http.StatusServiceUnavailable, "Password change is unavailable")
+		return
+	}
+	value, exists := c.Get(middleware.ContextPrincipalIDKey)
+	principalID, ok := value.(int64)
+	if !exists || !ok || principalID <= 0 {
+		writeAuthError(c, http.StatusUnauthorized, "Authentication required")
+		return
+	}
+	principalType, _ := c.Get(middleware.ContextPrincipalTypeKey)
+	if principalType != "platform_admin" {
+		writeAuthError(c, http.StatusForbidden, "Only Platform Admin accounts can use this password-change endpoint")
+		return
+	}
+	var req changeStaffPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil ||
+		strings.TrimSpace(req.CurrentPassword) == "" ||
+		strings.TrimSpace(req.NewPassword) == "" {
+		writeAuthError(c, http.StatusBadRequest, "current_password and new_password are required")
+		return
+	}
+	err := h.platformAdminPasswordService.ChangePassword(c.Request.Context(), principalID, req.CurrentPassword, req.NewPassword)
+	switch {
+	case err == nil:
+		c.JSON(http.StatusOK, gin.H{"status": "success", "message": "Platform Admin password changed. All existing sessions were revoked; sign in again."})
+	case errors.Is(err, services.ErrInvalidCredentials):
+		writeAuthError(c, http.StatusUnauthorized, "Current password is incorrect")
+	case errors.Is(err, services.ErrInvalidPassword):
+		writeAuthError(c, http.StatusBadRequest, "New password must meet the password policy")
+	case errors.Is(err, services.ErrCompromisedPassword):
+		writeAuthError(c, http.StatusBadRequest, "This password has appeared in known data breaches. Choose a different password.")
+	case errors.Is(err, services.ErrPasswordBreachCheckUnavailable):
+		writeAuthError(c, http.StatusServiceUnavailable, "Password safety verification is temporarily unavailable. Try again shortly.")
+	case errors.Is(err, services.ErrPlatformAdminPasswordUnchanged):
+		writeAuthError(c, http.StatusBadRequest, "New password must differ from the current password")
+	case errors.Is(err, services.ErrPlatformAdminPasswordConflict):
+		writeAuthError(c, http.StatusConflict, "Password changed concurrently. Sign in again.")
+	default:
+		writeAuthError(c, http.StatusInternalServerError, "Unable to change Platform Admin password")
 	}
 }
 
