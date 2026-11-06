@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	"errors"
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"strings"
@@ -21,18 +21,30 @@ type ParentAuthenticationService interface {
 	VerifyOTP(ctx context.Context, mobileE164, code string) (*models.AuthPrincipal, error)
 }
 
-// ParentAuthHandler issues the same principal-based access and refresh
-// credentials used by staff and Platform Admin authentication.
+// ParentTokenService issues access tokens bound to the refresh-session family.
+type ParentTokenService interface {
+	GenerateAccessTokenForSession(principalID, tokenVersion int64, principalType, sessionID string) (string, error)
+}
+
+// ParentSessionService creates family-bound refresh sessions. Revoke is used
+// to clean up the refresh token if access-token signing fails after issuance.
+type ParentSessionService interface {
+	IssueWithFamily(ctx context.Context, principal *models.AuthPrincipal) (refreshToken, familyID string, err error)
+	Revoke(ctx context.Context, refreshToken string) error
+}
+
+// ParentAuthHandler issues the same principal-based, family-bound credentials
+// used by staff and Platform Admin authentication.
 type ParentAuthHandler struct {
 	authentication ParentAuthenticationService
-	tokens         TokenService
-	sessions       SessionService
+	tokens         ParentTokenService
+	sessions       ParentSessionService
 }
 
 func NewParentAuthHandler(
 	authentication ParentAuthenticationService,
-	tokens TokenService,
-	sessions SessionService,
+	tokens ParentTokenService,
+	sessions ParentSessionService,
 ) *ParentAuthHandler {
 	return &ParentAuthHandler{
 		authentication: authentication,
@@ -84,8 +96,8 @@ func (h *ParentAuthHandler) RequestOTP(c *gin.Context) {
 }
 
 // VerifyOTP consumes a one-time challenge and then issues the canonical
-// principal-based JWT and refresh session. All authentication failures share
-// one public response and never expose account or challenge state.
+// principal-based JWT and refresh session. Both credentials carry the same
+// immutable refresh-family ID so middleware can reject revoked sessions.
 func (h *ParentAuthHandler) VerifyOTP(c *gin.Context) {
 	var req parentOTPVerifyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -106,12 +118,8 @@ func (h *ParentAuthHandler) VerifyOTP(c *gin.Context) {
 		writeAuthError(c, http.StatusUnauthorized, "Invalid or expired OTP")
 		return
 	}
-	accessToken, err := h.tokens.GenerateAccessToken(principal.ID, principal.TokenVersion, principal.Type)
-	if err != nil {
-		writeAuthError(c, http.StatusInternalServerError, "Unable to complete authentication")
-		return
-	}
-	refreshToken, err := h.sessions.Issue(c.Request.Context(), principal)
+
+	refreshToken, familyID, err := h.sessions.IssueWithFamily(c.Request.Context(), principal)
 	if err != nil {
 		if errors.Is(err, services.ErrSessionPrincipalVersionChanged) ||
 			errors.Is(err, services.ErrRefreshSessionInactive) {
@@ -121,6 +129,17 @@ func (h *ParentAuthHandler) VerifyOTP(c *gin.Context) {
 		writeAuthError(c, http.StatusInternalServerError, "Unable to complete authentication")
 		return
 	}
+	accessToken, err := h.tokens.GenerateAccessTokenForSession(
+		principal.ID, principal.TokenVersion, principal.Type, familyID,
+	)
+	if err != nil {
+		// Avoid leaving an active refresh credential behind when its matching
+		// access token could not be created.
+		_ = h.sessions.Revoke(c.Request.Context(), refreshToken)
+		writeAuthError(c, http.StatusInternalServerError, "Unable to complete authentication")
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"status": "success",
 		"access_token": accessToken,
