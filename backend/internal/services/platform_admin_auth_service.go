@@ -17,7 +17,7 @@ type platformAdminCredentialStore interface {
 type platformAdminLoginSecurity interface {
 	AcquireAttemptLock(context.Context,string) (func(),error)
 	IsLocked(context.Context,string) (bool,error)
-	RecordFailure(context.Context,string) error
+	RecordPlatformAdminFailure(context.Context,string) error
 	RecordPlatformAdminSuccess(context.Context,string,int64) error
 }
 
@@ -43,7 +43,7 @@ func (s *PlatformAdminAuthService) Authenticate(ctx context.Context,email,passwo
 	record,err:=s.credentials.GetByEmail(ctx,email)
 	if err!=nil {
 		if errors.Is(err,repository.ErrPlatformAdminNotFound) {
-			if recordErr:=s.loginSecurity.RecordFailure(ctx,email); recordErr!=nil { return nil,recordErr }
+			if recordErr:=s.loginSecurity.RecordPlatformAdminFailure(ctx,email); recordErr!=nil { return nil,recordErr }
 			return nil,ErrInvalidCredentials
 		}
 		return nil,err
