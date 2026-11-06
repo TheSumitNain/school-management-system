@@ -556,6 +556,23 @@ func (r *RoleRepository) GrantCustomRolePermission(
 			        AND denied.permission_id = p.id
 			        AND denied.effect = 'deny'
 			  )
+			  AND EXISTS (
+			      SELECT 1
+			      FROM role_permissions update_rp
+			      JOIN permissions update_p ON update_p.id = update_rp.permission_id
+			      WHERE update_rp.role_id = r.id
+			        AND update_p.permission_key = 'roles.update_custom'
+			        AND update_p.scope_type = 'school'
+			        AND update_p.is_active = TRUE
+			        AND NOT EXISTS (
+			            SELECT 1
+			            FROM user_permission_overrides denied_update
+			            WHERE denied_update.principal_id = ap.id
+			              AND denied_update.school_id = $2
+			              AND denied_update.permission_id = update_p.id
+			              AND denied_update.effect = 'deny'
+			        )
+			  )
 		)
 	`, actorPrincipalID, schoolID).Scan(&authorized)
 	if err != nil {
@@ -651,6 +668,23 @@ func (r *RoleRepository) RevokeCustomRolePermission(
 			        AND denied.school_id = $2
 			        AND denied.permission_id = p.id
 			        AND denied.effect = 'deny'
+			  )
+			  AND EXISTS (
+			      SELECT 1
+			      FROM role_permissions update_rp
+			      JOIN permissions update_p ON update_p.id = update_rp.permission_id
+			      WHERE update_rp.role_id = r.id
+			        AND update_p.permission_key = 'roles.update_custom'
+			        AND update_p.scope_type = 'school'
+			        AND update_p.is_active = TRUE
+			        AND NOT EXISTS (
+			            SELECT 1
+			            FROM user_permission_overrides denied_update
+			            WHERE denied_update.principal_id = ap.id
+			              AND denied_update.school_id = $2
+			              AND denied_update.permission_id = update_p.id
+			              AND denied_update.effect = 'deny'
+			        )
 			  )
 		)
 	`, actorPrincipalID, schoolID).Scan(&authorized)
