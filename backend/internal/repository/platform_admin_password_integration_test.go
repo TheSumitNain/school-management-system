@@ -28,6 +28,14 @@ func TestPlatformAdminPasswordChangePostgresIntegration(t *testing.T) {
 	if err := pool.QueryRow(ctx, `SELECT token_version FROM auth_principals WHERE id=$1`, admin.PrincipalID).Scan(&tokenVersion); err != nil {
 		t.Fatalf("load initial token version: %v", err)
 	}
+	// Platform Admin refresh sessions require verified mandatory MFA. The
+	// integration fixture only needs the repository's verified-state predicate.
+	if _, err := pool.Exec(ctx, `
+INSERT INTO principal_mfa_credentials
+    (principal_id, method, secret_ciphertext, encryption_key_version, verified_at)
+VALUES ($1, 'totp', $2, 1, NOW())`, admin.PrincipalID, make([]byte, 64)); err != nil {
+		t.Fatalf("prepare verified Platform Admin MFA fixture: %v", err)
+	}
 
 	sessionRepo := NewPrincipalRefreshSessionRepository(pool)
 	sessionHash := integrationTokenHash(email + "-active-session")
