@@ -23,7 +23,6 @@ type platformAdminLoginSecurityFake struct {
 	failureEmail    string
 	successEmail    string
 	successID       int64
-	staffFailures   int
 	platformFailures int
 }
 
@@ -64,9 +63,6 @@ func TestPlatformAdminAuthenticateUsesPlatformAdminFailureAudit(t *testing.T) {
 	}
 	if security.failureEmail != "admin@example.com" {
 		t.Fatalf("failure audit email = %q, want normalized email", security.failureEmail)
-	}
-	if security.staffFailures != 0 {
-		t.Fatalf("staff failure audit calls = %d, want 0", security.staffFailures)
 	}
 }
 
