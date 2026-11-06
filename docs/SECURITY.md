@@ -12,48 +12,29 @@ The application is designed to support multiple schools. Student, parent, teache
 
 ### Implemented foundation
 
-- PostgreSQL database connection uses application configuration and a connection pool.
-- User records store password hashes rather than plaintext passwords.
-- Password hashing uses Go's bcrypt implementation with cost 12.
-- The current password implementation rejects passwords shorter than 8 bytes, longer than 72 bytes, or containing only whitespace.
-- Password verification is implemented.
-- Authentication service logic checks whether the associated school and user are active.
-- JWT access-token generation and validation are implemented.
-- JWT configuration includes issuer and expiry settings, with signing-secret validation.
-- `POST /auth/login` is implemented.
-- Successful login returns an access token, a refresh token, and a limited user DTO.
-- Invalid credentials return a generic unauthorized response.
-- JWT authentication middleware validates Bearer access tokens.
-- `GET /auth/me` is protected by authentication middleware and returns the authenticated user's ID and school ID.
-- Refresh-session database migrations include token hashes, expiry, revocation, and refresh-token family metadata.
-- Login issues an opaque, cryptographically random refresh token and stores only its SHA-256 hash.
-- `POST /auth/refresh` rotates refresh tokens.
-- Reuse of a revoked refresh token triggers revocation of active sessions in its token family.
-- `POST /auth/logout` revokes all active refresh sessions in the supplied token family; repeated logout is idempotent and unknown tokens are a no-op.
-- HTTP server timeouts, graceful shutdown, health checks, and readiness checks are implemented.
-- Automated tests cover the implemented authentication foundation and service-level token lifecycle behavior.
-
-These features establish an initial authentication foundation. They do not mean the complete application has been security-certified or is ready for production use.
+- PostgreSQL access uses application configuration and a connection pool; schema changes are versioned through additive migrations.
+- Passwords are bcrypt-hashed (cost 12), require at least 12 Unicode characters and at most 72 UTF-8 bytes, reject invalid UTF-8, whitespace-only and local common-password entries, and are checked against the Have I Been Pwned Pwned Passwords range service using k-anonymity.
+- Staff usernames are globally unique and case-insensitive. Staff and Platform Admin login use database-backed five-failure/15-minute lockout and atomic IP rate limiting. Login fails closed if the login-security store or IP limiter is unavailable.
+- Platform Admin and School Admin require TOTP MFA. MFA failure accounting is principal-wide across replacement challenges and challenge purposes: five failures trigger a 15-minute lockout, failures are audited, and successful MFA verification resets the counter.
+- Access JWTs carry canonical principal identity, token version and refresh-family ID. Protected requests reload principal status, current MFA enrollment state, school status and live permissions from PostgreSQL.
+- Refresh sessions use opaque random tokens stored as SHA-256 hashes, rotation, replay/family revocation, per-family and per-principal transaction locking, and per-device 30-minute administrative idle timeout for Platform Admin and School Admin.
+- Live RBAC includes system roles, custom roles, exact-delegation-bound custom-role grants, user ALLOW/DENY overrides, staff role assignment/revocation and route-level `RequirePermission` enforcement. V22 adds database and repository protections against self role/permission escalation.
+- Staff account creation, listing, update, disable/re-enable, current-password change, School Admin password reset, forced temporary-password change, token-version invalidation and audit events are implemented.
+- Academic foundations include school-scoped student/enrollment/attendance and guardian APIs. Teacher enrollment roster responses are restricted to assigned sections and approved basic fields (student name, roll number, class and section). Teacher-only principals cannot use custom roles or permission overrides to obtain sensitive student-profile or guardian-contact access; a principal who also holds the School Admin system role follows the School Admin authorization path.
+- Parent authentication and guardian matching require active linked schools and official active guardian/student relationships. Parent OTP delivery and Phase 2 Parent/Driver workflows remain intentionally paused.
+- GitHub Actions run [41961583328](https://github.com/TheSumitNain/school-management-system/actions/runs/41961583328) on commit `7071d7913ab62ff525637e2af0f4d3718b9f57b8` applied migrations V1–V22 to ephemeral PostgreSQL 18, passed the full backend suite including PostgreSQL integration tests, and passed `go vet ./...`. CI does not modify either persistent local database.
 
 ### Not yet implemented or fully verified
 
-- Immediate revocation of already-issued access JWTs.
-- Complete role-based access control (RBAC).
-- Complete tenant-isolation enforcement across business services and repository queries.
-- Authentication rate limiting and comprehensive abuse protection.
-- Mandatory multi-factor authentication (MFA) for Platform Admin and School Admin.
-- Production password policy, compromised-password checks, and complete password-reset workflows.
-- Session invalidation after password changes, password resets, or other administrative security events.
-- Complete current-user profile retrieval from `GET /auth/me`.
-- Secure school and user provisioning workflows.
-- Comprehensive security audit logging and monitoring.
-- Production TLS and deployment-specific security configuration.
-- Broader PostgreSQL repository integration tests beyond the existing refresh-session lifecycle coverage.
-- Additional concurrent refresh-token rotation edge cases and broader race-condition testing.
-- A clean, independent end-to-end logout and refresh-after-logout verification.
-- Full production security testing, deployment review, and incident-response procedures.
+- Complete tenant/resource/assignment/field-level enforcement across every current and future school business module. Implemented endpoints have targeted scope checks, but the entire product surface is not yet complete.
+- Complete current-user profile retrieval beyond the identity context returned by `GET /auth/me`.
+- Immediate revocation of already-issued ordinary-staff access JWTs on family logout; refresh sessions are revoked and access tokens otherwise expire naturally. Token-version changes invalidate access tokens on subsequent requests.
+- Exhaustive end-to-end HTTP tests using real JWT signature validation for every protected route, plus additional concurrency and database-failure cases.
+- Production database least-privilege grants, TLS/proxy/deployment hardening, monitoring, alerting, backup and recovery procedures.
+- Production penetration testing, capacity/load testing and incident-response readiness.
 
-The authentication middleware currently protects `GET /auth/me`. Every additional protected route must explicitly enforce authentication and authorization.
+All registered protected routes use the shared authentication middleware and route-level `RequirePermission` checks where an operation permission is required. The middleware enforces per-device 30-minute idle timeout for Platform Admin and active School Admin sessions. Future routes must follow the same pattern.
+
 
 ## 3. Password Security
 
@@ -61,7 +42,7 @@ The authentication middleware currently protects `GET /auth/me`. Every additiona
 
 The password service uses bcrypt with a cost factor of 12. Passwords are hashed before storage, and password verification compares a supplied password against the stored hash.
 
-The current implementation enforces an input range of 8–72 bytes and rejects whitespace-only passwords.
+The current implementation enforces an input range of 12–72 bytes, rejects whitespace-only passwords, checks a local common-password denylist, and checks the Pwned Passwords range API using k-anonymity. The check is applied to first School Admin passwords during school onboarding, new staff initial passwords, temporary passwords when re-enabling staff, self-service password changes, School Admin resets, and first Platform Admin bootstrap passwords. The application sends only the first five hexadecimal characters of the SHA-1 digest; the remaining suffix is compared locally. The complete password and complete hash are never sent. Range responses are cached in memory for one hour, and zero-count padding records are ignored. The check fails closed: if the service is unavailable, password creation/change/reset returns a temporary service-unavailable response instead of silently bypassing the policy.
 
 Bcrypt has a 72-byte input limit. Any future password-policy change must handle Unicode and byte length correctly and must not silently truncate passwords.
 
@@ -70,15 +51,14 @@ Bcrypt has a 72-byte input limit. Any future password-policy change must handle 
 Before public production deployment:
 
 - Finalize and document the password policy.
-- Enforce the intended minimum of 12 characters for administrator accounts, with clearly defined Unicode and byte-length handling.
-- Consider compromised-password checks and a secure password-reset workflow.
+- Maintain the k-anonymity breached-password check and monitor its availability; retain a clear, fail-closed recovery path for temporary provider outages.
 - Never log plaintext passwords or expose them in error messages.
 - Never store plaintext passwords.
 - Evaluate whether bcrypt remains appropriate or whether Argon2id is preferable for the deployment environment.
 - Implement a safe migration and rehash strategy if the hashing algorithm or policy changes.
 - Revoke appropriate sessions after password changes and password resets.
 
-The current minimum is 8 bytes. The proposed 12-character administrator policy is not yet fully implemented.
+The current minimum is 12 Unicode code points (characters) and maximum is 72 UTF-8 bytes to respect bcrypt's input limit. Invalid UTF-8 is rejected. School onboarding, staff account creation/re-enable, staff self-service password changes, same-school School Admin password resets, and the one-time Platform Admin bootstrap all run the breached-password check before persistence. New staff accounts default to a temporary-password state; the next authenticated request is restricted to password change and identity inspection until replacement. Password changes/resets increment the principal token version and revoke all refresh sessions in the same transaction.
 
 ## 4. Authentication and Token Security
 
@@ -91,16 +71,16 @@ The authentication middleware:
 1. Reads the `Authorization` header.
 2. Requires the Bearer authentication scheme and a token.
 3. Validates the token through the token-validation service.
-4. Extracts the user ID and school ID from validated claims.
-5. Rejects invalid identity identifiers.
-6. Places the validated identity in the Gin request context.
+4. Extracts the principal ID from the JWT subject.
+5. Reloads canonical principal subtype, status, token version, school/account state and effective permissions from PostgreSQL.
+6. Rejects inactive or mismatched identities and places canonical principal context and permissions in the Gin request context.
 7. Allows the request to continue only after successful authentication.
 
 Authentication failures return `401 Unauthorized`. If the middleware has no token validator configured, it returns `500 Internal Server Error` to indicate an internal configuration problem.
 
-`GET /auth/me` returns the authenticated user's ID and school ID from validated token claims. It does not yet provide a complete user profile or perform full role-based authorization.
+`GET /auth/me` returns the authenticated principal ID/type and staff-only school/username context. Protected requests reload current principal status, token version and permissions. The endpoint does not provide a complete user profile or prove resource-level tenant isolation.
 
-The middleware establishes token-based identity. It does not independently guarantee that a user remains active in the database on every request, that the user has permission to perform an operation, or that all database queries are restricted to the correct school.
+Access JWTs issued through login, MFA completion, and refresh are bound to the refresh-session family using the `sid` claim. The V21 `last_activity_at` timestamp is maintained per family. Every protected request checks and touches only that device's active family for Platform Admin and active system-role School Admin principals. An idle family at or beyond 30 minutes is revoked and audited; another device's family remains independent. Refresh rotation checks the same timeout inside the existing family/principal-locked transaction and preserves the activity timestamp rather than resetting it. Ordinary staff and parent sessions are not subject to this administrative idle timeout. The middleware still does not replace resource-level tenant and assignment checks in each business repository.
 
 ### Refresh-token lifecycle
 
@@ -121,7 +101,7 @@ The implemented service behavior and opt-in PostgreSQL repository integration te
 
 ### Logout limitations
 
-Logout revokes every active refresh session in the supplied token family. Repeated logout is idempotent and unknown tokens are a no-op. It does **not** immediately invalidate access JWTs that have already been issued. Those tokens remain valid until they expire unless an additional revocation mechanism is introduced.
+Logout revokes every active refresh session in the supplied token family. Repeated logout is idempotent and unknown tokens are a no-op. Logout alone does **not** immediately invalidate access JWTs that have already been issued. Staff password changes and administrator password resets do immediately invalidate existing access JWTs by incrementing the principal's database-backed token version; they also revoke every active refresh session for that principal.
 
 Before production deployment, decide whether short access-token lifetimes are sufficient or whether immediate revocation is required. Also define session invalidation behavior after password changes, account disabling, and administrative security events.
 
@@ -140,7 +120,7 @@ If cookies are used, configure appropriate `HttpOnly`, `Secure`, and `SameSite` 
 - Keep signing keys and secrets outside source control.
 - Define a key-rotation strategy.
 - Apply authentication middleware to every route requiring authentication.
-- Continue testing concurrent refresh/logout ordering and transaction behavior against PostgreSQL, including database failure cases.
+- Continue testing concurrent refresh/logout ordering and transaction behavior against PostgreSQL, including database failure cases. V21 integration tests now cover admin idle expiry during refresh, per-device family isolation, audit creation, and the ordinary-staff exemption.
 - Test refresh-token replay and logout independently through the HTTP API.
 - Define how disabled users, inactive schools, and revoked sessions affect already-issued access tokens.
 - Return generic authentication errors where detailed responses could reveal sensitive information.
@@ -165,22 +145,22 @@ Each school-owned record must be associated with the correct school. Users must 
 
 Tenant isolation must be enforced in backend services and repository queries, not just in the frontend.
 
-**Current status:** Authentication middleware extracts the school ID from validated token claims. Complete tenant-isolation enforcement across business resources is still pending. A `school_id` column, foreign key, or valid token alone does not prove that tenant isolation is complete.
+**Current status:** Authentication middleware loads canonical school context and live principal state. Implemented student/enrollment/attendance/guardian repositories enforce school and teacher-assignment scope on their supported routes, including an assigned-section teacher roster. Complete tenant-isolation enforcement across every business resource remains pending; a school_id column or valid token alone does not prove tenant isolation.
 
 ## 6. Authorization and Roles
 
-Complete role-based access control (RBAC) is not yet implemented. The Phase 1 requirements are approved and specified in `docs/PHASE1-RBAC.md`. Core roles are Platform Admin (global), School Admin (one school), Teacher (one school), and Parent (verified linked children). Operational roles such as Clerk/Manager, Librarian, Gate Keeper, Helper, and Bus Conductor are future scope.
+The core principal/RBAC schema, built-in role bundles, live permission resolver and RequirePermission middleware are implemented. V16 binds custom-role grants and user ALLOW overrides to the exact active delegation ID. V22 adds repository and database guards against self role assignment, self permission overrides, and self-removal of DENY overrides. The role/delegation/override HTTP workflows, same-school staff role administration, and account lifecycle routes have PostgreSQL integration coverage. GitHub Actions run [41962468469](https://github.com/TheSumitNain/school-management-system/actions/runs/41962468469) on commit `41e6e1a3f51c19143977b50f1e24bc57efd6ab59` applied V1–V22 to ephemeral PostgreSQL 18, passed the backend suite including PostgreSQL integration, and passed `go vet ./...`. The suite includes regression coverage proving a Teacher with a delegated guardian custom role is still denied guardian and sensitive student-profile access. CI does not modify either persistent local database. Complete authorization for all future business resources and every assignment/field-level boundary remains pending. Phase 1 web roles are Platform Admin, School Admin and Teacher; Parent and Driver are Phase 2.
 
 The implementation must enforce:
 
 - One-school-only School Admin and staff accounts; separate accounts for a person employed by multiple schools.
-- Globally unique, case-insensitive staff usernames. The current schema/login does not yet meet this target.
-- School Admin staff provisioning with temporary password and forced first-login change; staff self-change requires current password.
+- Globally unique, case-insensitive staff usernames. The current principal-aware schema and username-only staff login enforce this boundary.
+- New staff rows default to a temporary-password state; first-login change, same-school School Admin reset, staff create/list/update/disable/re-enable, token-version invalidation and audit logging are implemented.
 - Admin-initiated same-school staff password reset without old password, with session/access revocation, forced next-login change, and audit logging.
-- School Admin-created custom roles limited to the platform permission catalogue and an explicit delegation ceiling.
-- Multiple roles per staff account within its one school; per-user allow/deny overrides; explicit deny beats role allow; default deny.
-- Separate teacher teaching and class-in-charge assignments, field-level student data restrictions, and exact class/section scoping.
-- Parent OTP identity linked to verified children; parent can access multiple linked children across schools, with server-side link verification on every request.
+- Custom-role grants are bound to the exact active delegation ID; the database guard and live resolver enforce the delegation ceiling. Role/delegation/override HTTP workflows are implemented and covered by targeted integration tests.
+- Multiple roles per staff account and per-user allow/deny overrides are supported; ALLOW overrides require their exact active delegation, explicit DENY removes access, and default is deny. Self-targeted role/override changes are rejected at repository and database layers.
+- Teacher subject/class and class-in-charge assignments have separate scope checks. Enrollment roster returns only assigned sections and approved basic student fields. Teacher-only principals are blocked from guardian records and sensitive student profiles even if a custom role grants those permissions; complete field-level and resource coverage remains ongoing.
+- Parent data foundations preserve verified guardian-child links across schools. Parent auth/matching now requires active linked schools and active official relationships; production OTP/SMS and Phase 2 Parent endpoints remain paused.
 - Server-side permission evaluation on every protected request so changes apply to existing sessions on the next request.
 - Cross-school, cross-class, cross-subject, field-level, and parent-child access-denial tests.
 
@@ -188,7 +168,7 @@ The backend must enforce permissions independently of the frontend. Hiding a but
 
 The backend must enforce permissions independently of the frontend. Hiding a button or route in React is not an authorization control.
 
-The current authentication middleware establishes identity only. It does not prove that a user is authorized to perform every operation or access every resource within the user's school.
+The current authentication middleware establishes identity, enforces administrative session activity and MFA enrollment, and resolves live role/override permissions on each protected request. Registered staff, role/delegation, academic, student/enrollment, guardian, attendance, onboarding and password-reset routes use route-level RequirePermission checks. Repository-level school and assignment filters exist for implemented resources, but full coverage across future modules and every field-level boundary remains necessary.
 
 ## 7. Database Security
 
@@ -242,7 +222,7 @@ Before production release:
 - Review file uploads, exports, and external integrations before exposing them.
 - Test authentication endpoints against brute-force attempts, replay attempts, and abuse scenarios.
 
-The existing HTTP timeouts, configuration validation, and graceful shutdown are only part of the broader security requirements. Rate limiting and comprehensive authentication abuse protection remain pending.
+The existing HTTP timeouts, configuration validation, and graceful shutdown are only part of the broader security requirements. Identifier-based five-failure/15-minute lockout, IP-based login rate limiting, fail-closed behavior when either control is unavailable, and principal-wide five-failure/15-minute MFA lockout across replacement challenges are implemented. MFA failures are audited. Broader abuse monitoring and production alerting remain pending.
 
 ## 10. Development Seed Command
 
@@ -337,11 +317,11 @@ Whenever security behavior changes:
 6. Reassess this checklist before each production release.
 
 
-## 15. Approved Phase 1 Account Security Rules (Implementation Pending)
+## 15. Approved Phase 1 Account Security Rules — Implementation Status
 
 ### Staff account isolation
 
-Every School Admin/staff account is tied to exactly one school. A staff account cannot be reused across schools. If a person works at multiple schools, each school provisions a separate account with separate credentials and sessions. Staff usernames are globally unique and case-insensitive. The current schema's school-scoped username index and the current school-ID-based login do not satisfy this target yet.
+Every School Admin/staff account is tied to exactly one school. A staff account cannot be reused across schools. If a person works at multiple schools, each school provisions a separate account with separate credentials and sessions. Staff usernames are globally unique and case-insensitive. The current principal-aware schema enforces globally unique, case-insensitive staff usernames and the staff login resolves by username without a school ID.
 
 ### Password change and reset
 
@@ -355,4 +335,31 @@ Parent uses registered mobile + OTP and can access multiple officially linked ch
 
 ### Immediate enforcement
 
-Role/permission changes, staff password resets, account disabling, and school suspension must affect subsequent protected requests. The access-token revocation mechanism is not yet implemented; design it before claiming immediate invalidation. Do not rely on refresh-session revocation alone to invalidate an already-issued access JWT.
+Role/permission changes and staff password changes/resets take effect on subsequent protected requests through live database permission loading and `auth_principals.token_version` checks. Staff password changes/resets increment token version and revoke active refresh sessions. Account disabling and school suspension are rejected by the live principal loader. Staff disable/re-enable workflows are implemented; full school suspension operations and every business-resource response remain subject to continued audit.
+
+## 2026-11-03 implementation update
+
+- V15 adds `users.must_change_password`: existing staff accounts retain their current state, while new staff accounts default to a required first-login password change.
+- Staff password change verifies the current password and policy-checks the replacement. In one transaction it clears the temporary flag, increments `auth_principals.token_version`, revokes all active refresh sessions, and appends an audit event.
+- School Admin password reset is exposed at `POST /school/staff/:principalID/password/reset`. The route requires `users.password_reset`; the repository independently verifies an active same-school School Admin, an active target staff account in the same active school, and the non-denied permission grant. Reset sets `must_change_password=TRUE`, increments token version, revokes refresh sessions, and audits the action.
+- Temporary-password staff access is restricted on each protected request to `POST /auth/password/change` and `GET /auth/me`; refresh rotation does not remove the restriction because the flag is reloaded from PostgreSQL.
+- V16 binds custom-role permission grants and user permission overrides to exact delegation IDs. A revoked delegation cannot reactivate an old grant after a new delegation is issued; explicit rebinding to the new ID is required.
+- GitHub Actions on branch `fix/v4-auth-security-hardening`, commit `524d795`, applied V1–V16 to a fresh ephemeral PostgreSQL 18 database, passed `go test -count=1 -p 1 ./...` with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and passed `go vet ./...`. The user's dedicated `school_management_test` database was not modified.
+
+## 2026-11-04 implementation update
+
+- V21 adds `refresh_sessions.last_activity_at`, initializes existing rows from `created_at`, and defaults new refresh sessions to the database clock.
+- Access tokens issued by staff/Platform Admin login, MFA completion, and refresh include the stable refresh-family UUID in `sid`.
+- All registered protected API routes share the middleware wired to the principal authorization repository. Platform Admin and staff with an active system `school_admin` role are checked against the exact session family on every protected request.
+- The 30-minute administrative idle timeout is per device/session family. Activity updates and refresh rotation serialize on the same PostgreSQL advisory family lock. An expired family is revoked and recorded in `audit_events`; another device family remains active. Refresh rotation does not reset `last_activity_at`. Parent and ordinary staff sessions are exempt.
+- PostgreSQL integration coverage verifies per-device isolation, timeout revocation/audit, refresh-time idle expiry, and ordinary-staff exemption.
+- New staff initial passwords, staff re-enable temporary passwords, self-service password changes, School Admin resets, and first Platform Admin bootstrap passwords are checked against the Pwned Passwords range API. The implementation uses k-anonymity (only a five-character SHA-1 prefix is sent), ignores zero-count padding records, caches range responses, and fails closed with HTTP 503 when the provider is unavailable.
+- GitHub Actions at commit `2daefb4` applied migrations V1–V21 to an ephemeral PostgreSQL database, passed backend tests including PostgreSQL integration, and passed `go vet ./...`. This does not modify the user's local database or production database.
+## 2026-11-05 implementation update
+
+- V22 prevents a principal from assigning a role or granting/removing a permission override on their own principal through repository methods and database triggers. Direct-SQL integration assertions cover the trigger boundary.
+- Administrative MFA failure counters are principal-wide across replacement challenges and challenge purposes. Five failures in a rolling 15-minute window lock the principal for 15 minutes; failed attempts are appended to the audit trail, and successful MFA verification/enrollment/recovery reset clears the counter.
+- Staff login fails closed if the username lockout store is unavailable; staff and Platform Admin HTTP login also fail closed if the IP rate limiter is missing.
+- Parent mobile lookup, parent principal loading, guardian matching and pre-account registration exclude inactive/suspended schools. Parent OTP/SMS delivery and Phase 2 endpoints remain paused.
+- Teacher enrollment roster includes student name, roll number, class and section only within assigned teaching/class-in-charge sections.
+- GitHub Actions run 41961583328 on commit 7071d7913ab62ff525637e2af0f4d3718b9f57b8 passed migrations V1–V22, the full backend suite including PostgreSQL integration, and go vet ./... on ephemeral PostgreSQL 18. No persistent user database was changed by CI.

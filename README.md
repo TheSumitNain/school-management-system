@@ -30,9 +30,20 @@ These are planning targets, not verified capacity limits. Production capacity wi
 - Implement features incrementally and verify each milestone.
 - Keep implemented functionality clearly separated from planned functionality.
 
+## Approved Product Delivery Direction (2026-11-03)
+
+**Phase 1 is the complete web-based school management product.** It includes:
+- Platform Admin dashboard for platform operations and school onboarding.
+- School Admin dashboard for complete school administration.
+- Role-based dashboards and workflows for school staff, including teachers and future school-scoped operational roles as their modules are delivered.
+
+**Phase 2 follows after the web product is complete:** mobile applications/interfaces for Parents, Drivers and other approved user groups. Parent access is intended to be read-only initially; its authentication and OTP provider will be decided when Phase 2 is planned. Parent-specific implementation is paused in the meantime. Existing Parent/Guardian schema and OTP foundation must be preserved, not deleted or expanded during Phase 1 without a separately approved requirement.
+
+The database must be designed incrementally but with future compatibility in mind: stable student identity separate from academic enrollment, school-scoped ownership, extensible roles/permissions, guardian relationships, transport-ready concepts, audit history and API contracts reusable by web and mobile clients. Future-proofing does not authorize speculative tables or premature migrations. Every schema change requires source review, additive migration design, tests on the dedicated test database and explicit approval before applying migrations.
+
 ## Current Status
 
-**Stage:** Backend foundation and initial authentication, including JWT access tokens and refresh-token rotation/revocation. Phase 1 role, permission, staff-account, teacher-scope, and parent-access requirements are now approved and documented; RBAC implementation and complete tenant authorization remain pending.
+**Stage (2026-11-05):** Principal-aware authentication, administrative MFA, refresh-family security, live RBAC/delegation/override workflows, staff account lifecycle, academic foundations, assigned-teacher enrollment roster, attendance foundations, and school-scoped Guardian Management APIs are implemented in the backend. The React frontend is not yet implemented and several school business modules remain pending. Parent OTP/SMS and Phase 2 Parent/Driver interfaces remain paused. Active branch: `fix/v4-auth-security-hardening`. This is not production-ready.
 
 ### Implemented
 
@@ -41,28 +52,45 @@ These are planning targets, not verified capacity limits. Production capacity wi
 - PostgreSQL connection pool using pgxpool.
 - Health and database-readiness endpoints.
 - HTTP server timeouts and graceful shutdown handling.
-- Versioned migrations for `schools`, `users`, and `refresh_sessions`, including refresh-token family metadata.
+- Versioned PostgreSQL migrations for shared principals, RBAC, account subtypes, MFA/OTP foundations, audit history, student/guardian records and new-school system-role provisioning.
 - User and school repository operations.
 - bcrypt password hashing and verification, including password-length validation.
 - Authentication service operations for user creation and credential verification.
-- JWT access-token generation and validation, including issuer, expiry, and required-claim checks.
+- Principal-aware JWT access-token generation and validation; tokens carry principal identity/type and token version, while permissions are loaded live from PostgreSQL.
+- Staff login by globally unique username and a separate Platform Admin email login.
+- Principal-aware refresh sessions with rotation, replay/family revocation, and preserved transaction-lock concurrency protections.
+- Database-backed principal status/token-version validation and effective system-role permission loading on protected requests.
+- RequirePermission middleware and authenticated /auth/me route.
+- Mandatory TOTP MFA enrollment/verification and recovery-code flows for Platform Admin and School Admin.
+- Five-failure/15-minute username lockout, atomic IP login rate limiting, and fail-closed behavior if either security control is unavailable.
+- Principal-wide five-failure/15-minute MFA lockout across replacement challenges and MFA challenge purposes, with append-only failure auditing and reset after successful verification.
+- Mandatory TOTP MFA for Platform Admin and School Admin; admin MFA enrollment is revalidated on protected requests.
+- Per-device 30-minute idle timeout for Platform Admin and School Admin sessions, bound to the refresh-session family.
+- Live RBAC administration: custom roles, exact-delegation-bound permission grants, user ALLOW/DENY overrides, staff role assignment/revocation, and route-level permission checks.
+- Database and repository guards against self-assignment, self-granted permission overrides, and self-removal of DENY overrides (V22).
+- Staff account creation, listing, update, disable/re-enable, password change/reset, forced temporary-password change, token-version invalidation, and audit events.
+- Teacher enrollment roster limited to assigned class/subject sections and the approved minimal fields: student name, roll number, class and section.
+- Parent authentication and guardian matching require an active linked school. Parent OTP delivery and Parent/Driver Phase 2 flows remain intentionally paused.
+- Transactional Platform Admin school onboarding, with automatic School Admin/Teacher system-role provisioning for new schools.
+- One-time first Platform Admin bootstrap CLI; it does not create a permanent Platform Admin account automatically.
 - `POST /auth/login` endpoint that issues access and refresh tokens.
 - `POST /auth/refresh` endpoint for refresh-token rotation and replay detection.
 - `POST /auth/logout` endpoint to revoke every active refresh session in the supplied token family.
 - Generic unauthorized responses for invalid login credentials.
 - Login response DTO that excludes password hashes.
-- Authentication middleware that validates Bearer access tokens and extracts authenticated user and school IDs.
-- Protected `GET /auth/me` endpoint returning the authenticated user's ID and school ID.
+- Authentication middleware that validates Bearer access tokens, reloads principal status/token version and effective permissions, and places canonical principal context in the request.
+- Protected `GET /auth/me` endpoint returning principal ID/type and staff-only school/username context.
 - Unit and handler tests for implemented authentication behavior.
 - Authentication middleware and API route tests.
 - Development-only seed command with environment safeguards.
+- School-scoped Guardian Management APIs for guardian contacts and student relationships, including audited creation/update, primary/emergency contacts, history-preserving revocation, dedicated RBAC permissions, and V19 controlled delegation.
 - Documentation for requirements, architecture, database design, API behavior, security, testing, progress, and handoff.
 
 ### Authentication Endpoints
 
 #### `POST /auth/login`
 
-Accepts a school ID, username, and password. Successful authentication returns an access token, a refresh token, and basic user information. Invalid credentials return an unauthorized response.
+Accepts a globally unique staff username and password (no school ID). Privileged School Admin login requires TOTP MFA; successful authentication after MFA returns principal-based access and refresh tokens. Invalid credentials return a generic unauthorized response.
 
 #### `POST /auth/refresh`
 
@@ -76,52 +104,31 @@ Revokes all active refresh sessions in the token family associated with the supp
 
 #### `GET /auth/me`
 
-Requires an `Authorization: Bearer <access-token>` header. The middleware validates the token, and the endpoint returns the authenticated user's ID and school ID.
+Requires an `Authorization: Bearer <access-token>` header. The middleware validates the token, reloads current principal and authorization state, and returns principal ID/type plus staff-only school/username context.
 
-This endpoint currently returns identity IDs only; complete user-profile retrieval remains pending.
+This endpoint returns identity context only; complete user-profile retrieval and business-resource authorization remain pending.
 
-See `docs/API.md` for request and response contracts.
+Platform Admin uses POST /auth/platform-admin/login with email/password and must complete TOTP enrollment or verification through /auth/mfa/enroll/verify or /auth/mfa/verify. MFA recovery-code regeneration routes are also present. See docs/API.md for request and response contracts.
 
 ## Database Migrations
 
-The repository includes versioned migrations for:
-
-- **Version 1:** Schools.
-- **Version 2:** Users and refresh sessions.
-- **Version 3:** Refresh-token family metadata.
-
-According to the latest development verification, migration version 3 has been applied to the local development database, with the migration state reported as `dirty=false`. Verify the actual database state before running migrations or making further schema changes.
+The repository includes additive migrations through V22. GitHub Actions run `41961583328` applied migrations V1–V22 to a fresh ephemeral PostgreSQL 18 database. This verifies the migration chain in CI only; it does not establish or change the version of either persistent local database. The one-time first Platform Admin bootstrap command is separate from migrations and must only be run deliberately by an authorized operator; no permanent Platform Admin account is created automatically. Never apply migrations to `school_management` without separate explicit approval.
 
 ## Verification
 
-After the refresh-token implementation, the following commands were reported successful from the backend directory:
-
-```cmd
-go test -count=1 ./...
-go vet ./...
-```
-
-The reported test run covered the API, configuration, handlers, middleware, repositories, and services. The opt-in PostgreSQL repository integration tests must be enabled explicitly against the dedicated `school_management_test` database. Some packages have no test files.
-
-Manual checks also reportedly verified login, refresh-token rotation, replay-triggered family revocation, and rejection of a refresh token after logout. The automated repository integration tests separately cover refresh-session lifecycle behavior. Independent end-to-end HTTP verification should still be performed.
-
-These are previously reported results, not a guarantee that the current working tree has been reverified. Re-run the tests before committing.
+Latest verified remote checkpoint: commit `7071d7913ab62ff525637e2af0f4d3718b9f57b8`, GitHub Actions run [41961583328](https://github.com/TheSumitNain/school-management-system/actions/runs/41961583328). CI applied V1–V22 to ephemeral PostgreSQL 18, ran the complete backend suite including opt-in PostgreSQL integration tests, and passed `go vet ./...`. This does not verify the user's local working tree or migrate either persistent local database. Pull the latest branch and repeat local tests before relying on local verification.
 
 ## Not Yet Implemented
 
-- Automated migration tests against a disposable test database.
-- Complete user-profile retrieval from `GET /auth/me`.
-- Access-token revocation enforcement.
-- RBAC tables, role assignments, custom roles, permission overrides, and server-side permission enforcement (requirements approved; implementation pending).
-- Global case-insensitive username uniqueness for staff accounts and the corresponding login-contract migration (current code remains school-ID scoped).
-- Complete school/class/subject/parent-child resource authorization and cross-school/cross-class isolation tests.
-- Production school onboarding, invitations, and account activation workflows.
-- Mandatory MFA for Platform Admin and School Admin.
-- Password-reset workflows, login rate limiting, lockout enforcement, and security-event monitoring.
-- Student, teacher, class, subject, and attendance APIs.
-- React frontend, dashboards, and parent-facing interfaces.
-- Production deployment, monitoring, backup, and recovery procedures.
-- Comprehensive security, end-to-end, and load testing.
+- Complete user-profile retrieval beyond the identity context currently returned by `GET /auth/me`.
+- Immediate revocation of already-issued access JWTs on ordinary staff logout; refresh-family logout revokes refresh sessions, while already-issued access tokens otherwise expire naturally. Principal token-version changes do invalidate access tokens on subsequent requests.
+- Full resource-level tenant, assignment and field-level authorization across every current and future business endpoint; implemented student/enrollment/attendance/guardian scopes still need broader coverage.
+- Remaining school business modules such as fees, exams/results, timetable, homework, notices, transport and reporting.
+- Exhaustive HTTP end-to-end tests with real JWT signature validation across every protected route, plus additional race/failure-mode testing.
+- Production database least-privilege grants, deployment hardening, TLS/proxy configuration, monitoring, alerting, backup and recovery procedures.
+- React frontend and Platform Admin, School Admin, teacher and school-staff dashboards (Phase 1).
+- Parent/Driver mobile interfaces and production Parent OTP/SMS flow (Phase 2; intentionally deferred).
+- Comprehensive security review, penetration testing, capacity/load testing and operational readiness verification.
 
 **Important:** This project is under active development and is not production-ready. Authentication components have been implemented incrementally, but the complete authentication and authorization system has not yet been validated as production-ready.
 
@@ -135,7 +142,7 @@ These are previously reported results, not a guarantee that the current working 
 - `docs/SECURITY.md` — security requirements and implementation status.
 - `docs/TESTING.md` — testing strategy and verification.
 - `docs/HANDOFF.md` — handoff instructions for continuing in a new chat.
-- `docs/PHASE1-RBAC.md` — approved Phase 1 roles, permission catalogue, teacher scopes, staff account rules, and parent access model.
+- `docs/PHASE1-RBAC.md` — approved Phase 1 web roles, permission catalogue, teacher scopes, staff account rules, and future Parent mobile access model.
 - `CHANGELOG.md` — milestone history.
 
 ## Development

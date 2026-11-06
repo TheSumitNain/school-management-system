@@ -15,6 +15,8 @@ var (
 	ErrInvalidCredentials  = errors.New("invalid username or password")
 	ErrUserInactive        = errors.New("user is not active")
 	ErrInvalidRegistration = errors.New("invalid registration data")
+	ErrLoginLocked         = errors.New("login temporarily locked")
+	ErrLoginSecurityUnavailable = errors.New("login security controls are unavailable")
 )
 
 type authUserRepository interface {
@@ -39,19 +41,29 @@ type authSchoolRepository interface {
 	) (*repository.School, error)
 }
 
+type staffLoginSecurity interface {
+	AcquireAttemptLock(ctx context.Context, username string) (func(), error)
+	IsLocked(ctx context.Context, username string) (bool, error)
+	RecordFailure(ctx context.Context, username string) error
+	RecordSuccess(ctx context.Context, username string, principalID int64) error
+}
+
 type AuthService struct {
-	users   authUserRepository
-	schools authSchoolRepository
+	users        authUserRepository
+	schools      authSchoolRepository
+	loginSecurity staffLoginSecurity
 }
 
 func NewAuthService(
 	users authUserRepository,
 	schools authSchoolRepository,
+	loginSecurity ...staffLoginSecurity,
 ) *AuthService {
-	return &AuthService{
-		users:   users,
-		schools: schools,
+	s := &AuthService{users: users, schools: schools}
+	if len(loginSecurity) > 0 {
+		s.loginSecurity = loginSecurity[0]
 	}
+	return s
 }
 
 // CreateUser creates a user for an existing active school.
@@ -152,6 +164,24 @@ func (s *AuthService) AuthenticateStaff(ctx context.Context, username, password 
 	if username == "" || password == "" {
 		return nil, ErrInvalidCredentials
 	}
+	if s == nil || s.users == nil || s.loginSecurity == nil {
+		return nil, ErrLoginSecurityUnavailable
+	}
+	if s.loginSecurity != nil {
+		release, err := s.loginSecurity.AcquireAttemptLock(ctx, username)
+		if err != nil {
+			return nil, err
+		}
+		defer release()
+
+		locked, err := s.loginSecurity.IsLocked(ctx, username)
+		if err != nil {
+			return nil, err
+		}
+		if locked {
+			return nil, ErrLoginLocked
+		}
+	}
 
 	repo, ok := s.users.(staffPrincipalRepository)
 	if !ok {
@@ -162,6 +192,11 @@ func (s *AuthService) AuthenticateStaff(ctx context.Context, username, password 
 	if err != nil {
 		switch {
 		case errors.Is(err, repository.ErrUserNotFound):
+			if s.loginSecurity != nil {
+				if recordErr := s.loginSecurity.RecordFailure(ctx, username); recordErr != nil {
+					return nil, recordErr
+				}
+			}
 			return nil, ErrInvalidCredentials
 		case errors.Is(err, repository.ErrStaffInactive):
 			return nil, ErrUserInactive
@@ -177,12 +212,36 @@ func (s *AuthService) AuthenticateStaff(ctx context.Context, username, password 
 	user, err := s.users.GetUserByUsername(ctx, principal.SchoolID, principal.Username)
 	if err != nil {
 		if errors.Is(err, repository.ErrUserNotFound) {
+			if s.loginSecurity != nil {
+				if recordErr := s.loginSecurity.RecordFailure(ctx, username); recordErr != nil {
+					return nil, recordErr
+				}
+			}
 			return nil, ErrInvalidCredentials
 		}
 		return nil, err
 	}
-	if user.Status != "active" || !CheckPassword(password, user.PasswordHash) {
+	if user.PrincipalID != principal.ID {
+		if s.loginSecurity != nil {
+			if recordErr := s.loginSecurity.RecordFailure(ctx, username); recordErr != nil {
+				return nil, recordErr
+			}
+		}
 		return nil, ErrInvalidCredentials
+	}
+	if user.Status != "active" || !CheckPassword(password, user.PasswordHash) {
+		if s.loginSecurity != nil {
+			if recordErr := s.loginSecurity.RecordFailure(ctx, username); recordErr != nil {
+				return nil, recordErr
+			}
+		}
+		return nil, ErrInvalidCredentials
+	}
+	principal.MustChangePassword = user.MustChangePassword
+	if s.loginSecurity != nil {
+		if err := s.loginSecurity.RecordSuccess(ctx, username, principal.ID); err != nil {
+			return nil, err
+		}
 	}
 	return principal, nil
 }

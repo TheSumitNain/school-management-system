@@ -13,6 +13,7 @@ import (
 type fakeRefreshSessionRepository struct {
 	principal         *models.AuthPrincipal
 	createPrincipalID int64
+	expectedTokenVersion int64
 	createHash        string
 	createExpiry      time.Time
 	oldHash           string
@@ -26,6 +27,12 @@ type fakeRefreshSessionRepository struct {
 
 func (f *fakeRefreshSessionRepository) CreatePrincipal(_ context.Context, principalID int64, tokenHash string, expiresAt time.Time) error {
 	f.createPrincipalID, f.createHash, f.createExpiry = principalID, tokenHash, expiresAt
+	return f.createErr
+}
+
+func (f *fakeRefreshSessionRepository) CreatePrincipalForVersion(_ context.Context, principalID, expectedTokenVersion int64, tokenHash string, expiresAt time.Time) error {
+	f.createPrincipalID, f.createHash, f.createExpiry = principalID, tokenHash, expiresAt
+	f.expectedTokenVersion = expectedTokenVersion
 	return f.createErr
 }
 
@@ -58,7 +65,7 @@ func TestIssueStoresOnlyTokenHash(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	rawToken, err := service.Issue(context.Background(), 12)
+	rawToken, err := service.Issue(context.Background(), &models.AuthPrincipal{ID: 12, Type: "staff", Status: "active", TokenVersion: 1, SchoolID: 3})
 	if err != nil {
 		t.Fatalf("Issue() error: %v", err)
 	}
@@ -73,6 +80,43 @@ func TestIssueStoresOnlyTokenHash(t *testing.T) {
 	}
 	if !repo.createExpiry.After(time.Now().Add(6 * 24 * time.Hour)) {
 		t.Fatal("refresh token expiry should be approximately seven days away")
+	}
+}
+
+func TestIssueBindsExpectedTokenVersion(t *testing.T) {
+	repo := &fakeRefreshSessionRepository{}
+	service, err := NewSessionService(repo, 7)
+	if err != nil {
+		t.Fatal(err)
+	}
+	principal := &models.AuthPrincipal{ID: 42, Type: "staff", Status: "active", TokenVersion: 7, SchoolID: 3}
+	rawToken, err := service.Issue(context.Background(), principal)
+	if err != nil {
+		t.Fatalf("Issue() error: %v", err)
+	}
+	if rawToken == "" || repo.createPrincipalID != principal.ID ||
+		repo.expectedTokenVersion != principal.TokenVersion {
+		t.Fatalf("session issuance was not bound to authenticated principal version: token=%v principal=%d version=%d",
+			rawToken != "", repo.createPrincipalID, repo.expectedTokenVersion)
+	}
+	if repo.createHash != HashRefreshToken(rawToken) || repo.createHash == rawToken {
+		t.Fatal("repository must receive only the hashed refresh token")
+	}
+}
+
+func TestIssueRejectsMissingOrStaleIdentity(t *testing.T) {
+	service, err := NewSessionService(&fakeRefreshSessionRepository{}, 7)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, principal := range []*models.AuthPrincipal{
+		nil,
+		{ID: 1, Type: "staff", Status: "active", TokenVersion: 0, SchoolID: 2},
+		{ID: 1, Type: "staff", Status: "disabled", TokenVersion: 1, SchoolID: 2},
+	} {
+		if _, err := service.Issue(context.Background(), principal); err == nil {
+			t.Fatalf("Issue(%+v) should reject invalid principal", principal)
+		}
 	}
 }
 

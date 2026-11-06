@@ -1,6 +1,7 @@
 package services
 
 import (
+	"encoding/base64"
 	"strings"
 	"testing"
 	"time"
@@ -81,6 +82,34 @@ func TestPrincipalAccessTokenRoundTrip(t *testing.T) {
 				t.Error("expected token ID")
 			}
 		})
+	}
+}
+
+
+func TestGeneratedAccessTokenIDsAreCryptographicallyRandom(t *testing.T) {
+	service := newTestTokenService(t)
+	seen := make(map[string]struct{}, 2)
+
+	for i := 0; i < 2; i++ {
+		raw, err := service.GenerateAccessToken(42, 1, "staff")
+		if err != nil {
+			t.Fatalf("GenerateAccessToken() error = %v", err)
+		}
+		claims, err := service.ValidateAccessToken(raw)
+		if err != nil {
+			t.Fatalf("ValidateAccessToken() error = %v", err)
+		}
+		decoded, err := base64.RawURLEncoding.DecodeString(claims.ID)
+		if err != nil {
+			t.Fatalf("JWT ID is not base64url encoded: %v", err)
+		}
+		if len(decoded) != 16 {
+			t.Fatalf("JWT ID contains %d random bytes, want 16", len(decoded))
+		}
+		if _, exists := seen[claims.ID]; exists {
+			t.Fatal("two independently generated access tokens reused the same JWT ID")
+		}
+		seen[claims.ID] = struct{}{}
 	}
 }
 
@@ -268,5 +297,35 @@ func TestValidateAccessTokenRejectsEmptyToken(t *testing.T) {
 
 	if _, err := service.ValidateAccessToken(""); err == nil {
 		t.Fatal("expected empty token to be rejected")
+	}
+}
+
+
+func TestSessionBoundAccessTokenRoundTrip(t *testing.T) {
+	service := newTestTokenService(t)
+	familyID := "a1b2c3d4-e5f6-4789-8123-abcdef012345"
+	raw, err := service.GenerateAccessTokenForSession(42, 3, "platform_admin", familyID)
+	if err != nil { t.Fatalf("GenerateAccessTokenForSession() error = %v", err) }
+	claims, err := service.ValidateAccessToken(raw)
+	if err != nil { t.Fatalf("ValidateAccessToken() error = %v", err) }
+	if claims.SessionID != familyID { t.Fatalf("sid = %q, want %q", claims.SessionID, familyID) }
+}
+
+func TestSessionBoundAccessTokenRejectsMalformedFamilyID(t *testing.T) {
+	service := newTestTokenService(t)
+	for _, id := range []string{"not-a-uuid", "12345678-1234-1234-1234-1234567890123", " "} {
+		if _, err := service.GenerateAccessTokenForSession(42, 1, "staff", id); err == nil {
+			t.Errorf("expected malformed family ID %q to be rejected", id)
+		}
+	}
+}
+
+func TestValidateAccessTokenRejectsMalformedSessionClaim(t *testing.T) {
+	service := newTestTokenService(t)
+	claims := validTestClaims(service)
+	claims.SessionID = "invalid-family"
+	raw := signTestClaims(t, service, claims, jwt.SigningMethodHS256)
+	if _, err := service.ValidateAccessToken(raw); err == nil {
+		t.Fatal("expected malformed session claim to be rejected")
 	}
 }

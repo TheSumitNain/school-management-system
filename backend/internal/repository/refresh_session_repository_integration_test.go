@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"sync"
 	"testing"
@@ -29,7 +30,8 @@ func newPostgresIntegrationRepository(
 		t.Skip("set RUN_POSTGRES_INTEGRATION_TESTS=1 to run PostgreSQL integration tests")
 	}
 
-	if err := godotenv.Load("..\\..\\.env"); err != nil {
+	envPath := filepath.Join("..", "..", ".env")
+	if err := godotenv.Load(envPath); err != nil && !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("load backend .env file: %v", err)
 	}
 
@@ -96,24 +98,17 @@ func newPostgresIntegrationRepository(
 	}
 
 	var principalID int64
-	if hasV4Schema {
-		err = pool.QueryRow(ctx,
-			`INSERT INTO auth_principals (principal_type, status)
-			 VALUES ('staff', 'active') RETURNING id`,
-		).Scan(&principalID)
-		if err != nil {
-			_, _ = pool.Exec(ctx, `DELETE FROM schools WHERE id = $1`, schoolID)
-			t.Fatalf("create test principal: %v", err)
-		}
-	}
-
 	var userID int64
 	if hasV4Schema {
+		// Let the V4 compatibility trigger create the staff principal as part
+		// of the users INSERT. The deferred subtype constraint then validates
+		// both rows at the end of this statement's transaction.
 		err = pool.QueryRow(ctx,
-			`INSERT INTO users (school_id, principal_id, username, password_hash, status)
-			 VALUES ($1, $2, $3, $4, 'active') RETURNING id`,
-			schoolID, principalID, "test-user-"+suffix, "integration-test-password-hash",
-		).Scan(&userID)
+			`INSERT INTO users (school_id, username, password_hash, status)
+			 VALUES ($1, $2, $3, 'active')
+			 RETURNING id, principal_id`,
+			schoolID, "test-user-"+suffix, "integration-test-password-hash",
+		).Scan(&userID, &principalID)
 	} else {
 		err = pool.QueryRow(ctx,
 			`INSERT INTO users (school_id, username, password_hash, status)
@@ -122,10 +117,8 @@ func newPostgresIntegrationRepository(
 		).Scan(&userID)
 	}
 	if err != nil {
-		if hasV4Schema {
-			_, _ = pool.Exec(ctx, `DELETE FROM auth_principals WHERE id = $1`, principalID)
-		}
-		_, _ = pool.Exec(ctx, `DELETE FROM schools WHERE id = $1`, schoolID)
+		// School creation provisions immutable system roles, so the school
+		// fixture is retained in the dedicated test database.
 		t.Fatalf("create test user: %v", err)
 	}
 
@@ -135,19 +128,19 @@ func newPostgresIntegrationRepository(
 		)
 		defer cleanupCancel()
 
+		// V13 provisions immutable school system roles, and append-only audit
+		// events may retain actor references. Keep the minimal school/user/
+		// principal fixtures; remove only refresh credentials owned by this test.
 		if hasV4Schema {
-			_, _ = pool.Exec(cleanupCtx,
+			if _, err := pool.Exec(cleanupCtx,
 				`DELETE FROM refresh_sessions WHERE principal_id = $1 OR user_id = $2`,
-				principalID, userID)
-		} else {
-			_, _ = pool.Exec(cleanupCtx,
-				`DELETE FROM refresh_sessions WHERE user_id = $1`, userID)
+				principalID, userID); err != nil {
+				t.Errorf("clean up integration refresh sessions: %v", err)
+			}
+		} else if _, err := pool.Exec(cleanupCtx,
+			`DELETE FROM refresh_sessions WHERE user_id = $1`, userID); err != nil {
+			t.Errorf("clean up integration refresh sessions: %v", err)
 		}
-		_, _ = pool.Exec(cleanupCtx, `DELETE FROM users WHERE id = $1`, userID)
-		if hasV4Schema {
-			_, _ = pool.Exec(cleanupCtx, `DELETE FROM auth_principals WHERE id = $1`, principalID)
-		}
-		_, _ = pool.Exec(cleanupCtx, `DELETE FROM schools WHERE id = $1`, schoolID)
 	})
 	return NewRefreshSessionRepository(pool), pool, userID
 }

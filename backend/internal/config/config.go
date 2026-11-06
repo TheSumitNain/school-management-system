@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/base64"
 	"fmt"
 	"os"
 	"strconv"
@@ -24,6 +25,15 @@ type Config struct {
 	JWTIssuer              string
 	JWTAccessExpiryMinutes int
 	RefreshTokenExpiryDays int
+
+	// TOTPEncryptionKey is loaded from Base64-encoded secret material.
+	// It must never be logged or exposed in API responses.
+	TOTPEncryptionKey        []byte
+	TOTPEncryptionKeyVersion int
+
+	// ParentOTPHMACKey is independent secret material used only to derive
+	// keyed lookup and OTP hashes for the Parent portal.
+	ParentOTPHMACKey []byte
 }
 
 func Load() Config {
@@ -66,6 +76,32 @@ func Load() Config {
 		}
 	}
 
+	totpEncryptionKey := []byte(nil)
+	if encoded := strings.TrimSpace(os.Getenv("TOTP_ENCRYPTION_KEY")); encoded != "" {
+		decoded, err := base64.StdEncoding.DecodeString(encoded)
+		if err == nil {
+			totpEncryptionKey = decoded
+		}
+	}
+
+	totpEncryptionKeyVersion := 1
+	if value := strings.TrimSpace(os.Getenv("TOTP_ENCRYPTION_KEY_VERSION")); value != "" {
+		parsed, err := strconv.Atoi(value)
+		if err != nil {
+			totpEncryptionKeyVersion = 0
+		} else {
+			totpEncryptionKeyVersion = parsed
+		}
+	}
+
+	parentOTPHMACKey := []byte(nil)
+	if encoded := strings.TrimSpace(os.Getenv("PARENT_OTP_HMAC_KEY")); encoded != "" {
+		decoded, err := base64.StdEncoding.DecodeString(encoded)
+		if err == nil {
+			parentOTPHMACKey = decoded
+		}
+	}
+
 	return Config{
 		AppEnv:                 appEnv,
 		AppPort:                appPort,
@@ -79,6 +115,9 @@ func Load() Config {
 		JWTIssuer:              jwtIssuer,
 		JWTAccessExpiryMinutes: jwtAccessExpiry,
 		RefreshTokenExpiryDays: refreshExpiryDays,
+		TOTPEncryptionKey:        totpEncryptionKey,
+		TOTPEncryptionKeyVersion: totpEncryptionKeyVersion,
+		ParentOTPHMACKey:         parentOTPHMACKey,
 	}
 }
 
@@ -136,5 +175,28 @@ func (cfg Config) ValidateJWT() error {
 		return fmt.Errorf("REFRESH_TOKEN_EXPIRY_DAYS must be between 1 and 30")
 	}
 
+	return nil
+}
+
+
+// ValidateTOTPEncryption validates the key material required by the MFA
+// service. It is intentionally separate from ValidateJWT so deployments can
+// roll out the MFA capability without silently inventing a local key.
+func (cfg Config) ValidateTOTPEncryption() error {
+	if len(cfg.TOTPEncryptionKey) != 32 {
+		return fmt.Errorf("TOTP_ENCRYPTION_KEY must be valid Base64 encoding of exactly 32 bytes")
+	}
+	if cfg.TOTPEncryptionKeyVersion < 1 || cfg.TOTPEncryptionKeyVersion > 2147483647 {
+		return fmt.Errorf("TOTP_ENCRYPTION_KEY_VERSION must be between 1 and 2147483647")
+	}
+	return nil
+}
+
+// ValidateParentOTPHMAC validates the independent secret required by Parent
+// OTP. It is deliberately separate from TOTP encryption configuration.
+func (cfg Config) ValidateParentOTPHMAC() error {
+	if len(cfg.ParentOTPHMACKey) < 32 {
+		return fmt.Errorf("PARENT_OTP_HMAC_KEY must be valid Base64 encoding of at least 32 bytes")
+	}
 	return nil
 }

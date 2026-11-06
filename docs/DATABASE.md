@@ -14,17 +14,17 @@ The migration SQL files in `backend/migrations/` are the authoritative definitio
 
 ## 2. Current Implementation Status
 
-The initial migrations define the following tables:
+The versioned migrations define the current schema foundation:
 
-| Table | Purpose | Status |
+| Table / group | Purpose | Status |
 |---|---|---|
-| `schools` | Stores school records and their setup status | Created by migration v1 |
-| `users` | Stores user accounts associated with schools | Created by migration v2 |
-| `refresh_sessions` | Stores hashed refresh-token information and session metadata | Created by migration v2; token-family metadata added by migration v3 |
+| `schools` | School identity and setup status | Created by migration v1 |
+| `users`, `refresh_sessions` | School staff accounts and refresh sessions | Created by migration v2; token-family metadata added by v3 |
+| Principal, account-subtype, RBAC, MFA, OTP and audit tables | Shared identity, scoped roles/permissions, security challenges and audit history | Defined by migrations v4–v10; verify the target database's applied migration version independently |
+| `students` | Stable school-scoped student identity | V11 applied and PostgreSQL integration-tested on `school_management_test`; later cumulative migration state reported at version 12, `dirty=false` |
+| `guardians`, `student_guardians` | School-scoped guardian contacts, student relationships, and preserved revocation history | V11/V12 foundation; V19 controls explicit delegation of guardian permissions; latest cumulative migrations verified by ephemeral PostgreSQL CI |
 
-Functional tables for students, teachers, classes, subjects, attendance, transport, and other school modules are planned for future migrations.
-
-The existence of these authentication-related tables does not mean the complete school management data model has been implemented.
+V11 deliberately does not create academic-year enrollment, class/section placement, or authenticated parent-to-child links. Those require separate schema and authorization milestones. The complete school management data model and business APIs are not implemented by these foundation tables.
 
 ## 3. Database Migrations
 
@@ -73,7 +73,30 @@ The migration adds `family_id UUID NOT NULL DEFAULT gen_random_uuid()` and an in
 
 The family identifier supports refresh-token replay handling and family-wide logout. When a previously rotated or revoked token is presented again, the application revokes the remaining active sessions in that family. The repository uses a PostgreSQL transaction advisory lock derived from the family ID to serialize refresh rotation and logout operations for the same family. Rotation additionally acquires a per-user transaction advisory lock to serialize rotations across different families belonging to the same user. It performs a fresh `FOR UPDATE` lookup after acquiring both locks before making security decisions.
 
-### 3.4 Running Migrations
+### 3.4 Migration v11 — Student and Guardian Foundation
+
+**Purpose:** Add stable school-scoped student identities, school-scoped guardian contact records, and their many-to-many relationship.
+
+Files:
+
+- `000011_add_student_guardian_foundation.up.sql`
+- `000011_add_student_guardian_foundation.down.sql`
+
+The migration creates:
+
+- `students`: one stable identity per student within one school, with a school-unique admission number, full name, status, and timestamps.
+- `guardians`: school-owned contact records with name, optional mobile number, optional email address, status, and timestamps. Contact details are intentionally not unique; shared family contact details and separate family members must be representable.
+- `student_guardians`: a many-to-many link with a relationship label and primary/emergency-contact flags.
+
+Composite foreign keys require the student and guardian in each link to belong to the same school. Student and guardian school ownership is immutable after creation. All foreign keys use restrictive deletion behavior; the migration does not cascade-delete student or guardian records.
+
+**Separation from login identity:** A guardian contact row is not an authenticated parent account. V11 does not create credentials, verify a mobile number, grant the Parent role, or authorize access to a child. The parent-account-to-official-guardian relationship and its verification/revocation lifecycle are deferred to a later migration and must be checked on every parent data request.
+
+**Deliberately excluded:** academic-year enrollment, class/section placement, student academic history, parent login/session endpoints, and SMS/OTP delivery.
+
+The down migration refuses to run while any student, guardian, or student-guardian link exists. It is not a data-deletion mechanism.
+
+### 3.5 Running Migrations
 
 Run the migration command from the backend directory:
 
@@ -313,7 +336,7 @@ The following areas are planned and must be modeled through reviewed migrations:
 - Subjects and class-subject assignments.
 - Attendance.
 - Timetables.
-- Transport and bus tracking.
+- Transport administration (vehicles, routes, stops, driver/attendant assignments, trip records); live GPS tracking is a separate future decision.
 - Notifications and reporting.
 - Roles and permissions.
 - MFA and recovery mechanisms.
@@ -330,9 +353,11 @@ For senior classes where students can select different subjects, represent the r
 
 ### 9.2 Student and Parent Relationships
 
-Student identity should be separated from class placement or enrollment so that academic-year changes do not require creating a new student identity.
+Migration V11 establishes a stable `students` identity table separate from academic-year enrollment or class placement. Academic-year changes must not require creating a new student identity; enrollment and class/section history remain future schema work.
 
-A parent or guardian may be officially linked to multiple students. The model should support many-to-many relationships and enforce authorization for every linked child.
+V11 also creates school-scoped `guardians` contact records and the `student_guardians` many-to-many mapping. A guardian may be linked to multiple students in the same school, and a student may have multiple guardian contacts. Guardian records are school contact data, not login identities. Mobile numbers and email addresses are not unique constraints.
+
+The V4 Parent identity remains separate from school-owned guardian contact records. V11 does not automatically link a verified mobile account to a guardian record or grant child access. V12 source defines a future verified/revoked Parent-to-Guardian relationship but remains source-only until separately reviewed and approved. Parent authentication and mobile access are Phase 2; do not extend or apply Parent migrations as part of the current web-first work. The eventual model must support a Parent with children across schools and enforce the current relationship on every protected child-data request. Revoking one child link must not revoke other valid child links.
 
 ### 9.3 Fees and Payments
 
@@ -481,21 +506,94 @@ Teaching class/subject assignments and class-in-charge assignments must be separ
 
 ### 14.5 Safe migration requirements
 
-- Preserve existing `users.id` values and `refresh_sessions.user_id` relationships where possible.
-- Do not modify already-applied migrations; add new versioned migrations.
-- Plan rollback and forward-recovery behavior before applying schema changes.
-- Preserve refresh-token family/replay/concurrency protections during the identity refactor.
-- Add clean-database migration tests and upgrade tests from the current v3 schema.
+- Preserve existing principal IDs, user IDs, refresh-token hashes and token-family metadata.
+- Do not edit an already-applied migration; use an additive migration after compatibility review.
+- Before any migration, inspect the actual target database version and dirty flag.
+- Test upgrades from the actual supported prior schema on a disposable PostgreSQL database.
+- Keep audit history append-only and preserve the intended application-role privilege boundary.
+
+### 14.6 New-school system-role provisioning
+
+The V4 source migration seeds school-scoped `school_admin` and `teacher` system-role rows only for schools that exist when V4 executes. This gap is addressed in source by the new additive migration `000013_provision_school_system_roles.up.sql`: it provisions the exact 51-permission School Admin bundle and 7-permission Teacher bundle from the school-insert trigger, while direct runtime creation/mutation remains blocked. The matching integration test is `school_system_role_provisioning_v13_integration_test.go`.
+
+V13 is source-only at this checkpoint and has not been applied or PostgreSQL-tested. Its trigger function is `SECURITY DEFINER`; deployment must create it under a dedicated schema-owner/migration role, while the runtime application role must not own the schema/tables or have DDL privileges. The trigger function's direct EXECUTE privilege is revoked after trigger creation. Verify these role/privilege assumptions in a disposable PostgreSQL environment. V13 is a prerequisite for Platform Admin school onboarding. Do not implement the create-school/School Admin provisioning workflow as complete until V13 is reviewed, applied to `school_management_test`, and its integration test passes. V13 has a forward-only down migration; never edit V4 or another applied migration.
 
 
-## 15. V4 Identity and RBAC Migration Draft (Not Applied)
+
+## 15. V4 Identity and RBAC Migration (Applied in Dedicated Test Database)
 
 The user approved the V4 identity/RBAC schema direction. A draft migration is present at `backend/migrations/000004_add_principal_rbac_foundation.up.sql`, with an intentionally forward-only down migration. Its design and blockers are documented in `docs/V4-IMPLEMENTATION-NOTES.md`.
 
-The observed development database was at migration v3 with `dirty = false`: 1 school, 1 user, 4 refresh sessions, 0 active sessions, and 0 expired sessions. The user ran duplicate and canonical-username preflight checks; both returned no violations. The existing username index was `users_school_username_unique`; the refresh-session FK was `refresh_sessions_user_id_fkey` with `ON DELETE CASCADE`.
+The development database was historically observed at migration v3 with `dirty = false`: 1 school, 1 user, 4 refresh sessions, 0 active sessions, and 0 expired sessions. This is a historical pre-V4 observation, not the current test-database state. The user later directly reported `school_management_test.schema_migrations` at cumulative version `12`, `dirty = false` (2026-11-02), which means V4–V12 were applied in sequence on that dedicated test database. Do not infer that the same migrations are applied to `school_management`.
 
 The V4 draft adds shared principals, global username uniqueness, Platform Admin and Parent subtype tables, the permission catalogue, system roles, role permissions, principal-role assignments, per-user overrides, permission delegations, principal-bound refresh sessions, MFA/OTP storage, and append-only audit events. It preserves existing `users.id`, refresh-token hashes, and token families.
 
-Before the global username constraint is created, the migration now preflights `LOWER(BTRIM(username))` across all schools. It rejects values outside the canonical 3–32 character lowercase ASCII username format and reports sample user IDs for invalid rows or normalized collisions. Only if the full preflight passes does it lowercase and trim existing usernames; it never invents replacement usernames. This safeguard is part of the migration draft and has **not** been run or PostgreSQL-tested.
+Before the global username constraint is created, the migration now preflights `LOWER(BTRIM(username))` across all schools. It rejects values outside the canonical 3–32 character lowercase ASCII username format and reports sample user IDs for invalid rows or normalized collisions. Only if the full preflight passes does it lowercase and trim existing usernames; it never invents replacement usernames. This safeguard was part of the migration source and was included in the cumulative migration sequence reported at version 12 on `school_management_test`. The direct version query confirms migration state, not every individual edge-case assertion.
 
-**Important:** This migration has not been executed against PostgreSQL and must not yet be applied to the user's development database. The current Go code still issues user-ID JWT subjects and does not perform principal/token-version checks or RBAC evaluation. Complete and test the Go cutover plus migration tests against a disposable PostgreSQL 18 database first. The existing staff account's role must be explicitly confirmed; do not infer it from there being one user.
+**Current status:** V4 is included in the cumulative version-12 schema reported for `school_management_test`; it must not be reapplied there. The current Go code has principal-aware JWT subjects, live principal/token-version checks and permission resolution. The exact role assignment for any pre-existing staff account must still be verified; never infer it from account counts. The migration's full trigger/edge-case suite and production-database state must be verified independently.
+
+
+## 16. V12 Parent–Guardian Authorization Foundation
+
+Migration V12 is introduced by:
+
+- `backend/migrations/000012_add_parent_guardian_authorization.up.sql`
+- `backend/migrations/000012_add_parent_guardian_authorization.down.sql`
+
+The migration is additive and was reported applied on `school_management_test`; the direct cumulative migration status is version 12, `dirty=false`. A dedicated `TestParentGuardianAuthorizationV12PostgresIntegration` run was reported PASS. A later verbose attempt skipped integration tests because the opt-in environment flag was omitted, so rerun it with `RUN_POSTGRES_INTEGRATION_TESTS=1` after relevant changes. This does not authorize applying V12 to `school_management`.
+
+### 16.1 School-authorized guardian portal eligibility
+
+V12 adds `guardians.mobile_number_e164`, `parent_portal_enabled_at`, and `parent_portal_enabled_by`. Existing free-form V11 contact numbers are not silently normalized. A guardian must receive an explicitly populated canonical E.164 mobile and an explicit portal enablement action. The database requires the enabling actor to be active staff from the same school; the application must additionally enforce the live `guardians.manage` permission.
+
+### 16.2 Authenticated Parent-to-Guardian links
+
+`parent_guardian_links` connects a verified active Parent principal to a school-owned guardian record. A composite foreign key enforces the guardian's school. A guardian can have only one active Parent link at a time; a Parent may link multiple guardian records across schools. Link creation requires the Parent's verified mobile to exactly match the portal-enabled guardian's canonical E.164 mobile. A Parent mobile number cannot be changed or unverified while active guardian links exist; revoke links first. Link records are append-only in identity and have irreversible revocation history.
+
+### 16.3 Official Student–Guardian relationship revocation
+
+V12 adds revocation metadata to `student_guardians`, replaces the permanent pair uniqueness constraint with a partial unique index over active pairs, and preserves revoked rows. Revocation requires an active staff principal from the same school, an actor, and a reason. Re-establishing a relationship inserts a new row. Parent child-data queries must join both active relationship layers on the same school and must re-check student and guardian status on every request.
+
+### 16.4 Pre-account Parent OTP challenges and rate limits
+
+V12 makes `parent_otp_challenges.principal_id` nullable only for a pre-account challenge and adds `mobile_lookup_hash`. Such a challenge must contain a lowercase 64-character keyed HMAC of the normalized mobile; raw mobile numbers are not stored in the challenge or rate-limit table. Existing principal-bound challenges remain supported. Challenge hashes, identity and expiry remain immutable; attempts remain monotonic; challenges remain one-use and undeletable.
+
+`parent_otp_rate_limits` stores keyed mobile/IP subject hashes and time-window counters. Runtime service logic must enforce the approved operational defaults (six-digit OTP, five-minute expiry, five attempts, 60-second resend cooldown, and no more than three sends per mobile per 15 minutes) and appropriate IP throttling. The migration does not send OTPs or implement the service.
+
+### 16.5 Audit and rollback
+
+Parent link creation/revocation and official student–guardian revocation append audit events. V12 down migration refuses rollback after any Parent links, pre-account OTP/rate-limit history, portal configuration, or relationship revocation exists. Never edit V11 or V4 migrations to retrofit this functionality.
+
+
+## 17. Future-Ready Data Modeling and Phase Boundaries
+
+The schema should support the approved long-term product without prematurely implementing every future module.
+
+- **Identity versus role:** Keep a person's authentication identity separate from assigned roles and permissions. Do not create a new principal subtype for every job title. A future Driver may be represented by an appropriate school-scoped account/role and transport assignment if the approved requirements support that model; do not assume the final Driver account model before Phase 2 design.
+- **School ownership:** Every school-owned resource must carry enforceable school ownership. Cross-school Parent access, when implemented, must be explicit through verified relationships rather than by weakening tenant isolation.
+- **Student history:** Keep stable student identity separate from academic-year enrollment, class/section placement and promotion history. A class change must not overwrite historical enrollment.
+- **Guardian relationships:** Preserve school-owned guardian contact records and relationship history independently from authentication accounts. Do not treat a phone number as proof of identity or access.
+- **Transport readiness:** Before transport implementation, model vehicles, routes/stops, assignments, trips and any required driver/attendant relationships as explicit relational entities with school scope and auditability. Live GPS location/event retention requires a separate privacy, cost and retention review.
+- **Extensible authorization:** Use a platform-defined permission catalogue and bounded school-scoped role assignment. Avoid hard-coded database tables for each staff job title.
+- **Audit and lifecycle:** Important account, assignment, permission, enrollment and operational changes should retain actor/time/history as appropriate.
+- **Client independence:** Web and future mobile clients should use the same business APIs and backend authorization. Do not duplicate business rules in client applications.
+
+Each future schema change must have a reviewed data model, additive migration, foreign-key/check/index strategy, tenant-isolation tests, migration tests against the dedicated test database and explicit user approval before execution. Never modify an already-applied migration to change deployed schema.
+
+## 18. Migration v19 — Controlled Guardian Permission Delegation
+
+**Purpose:** Permit Platform Admins to explicitly delegate the existing school-scoped `guardians.read` and `guardians.manage` permissions to a specific school's custom staff roles.
+
+Files:
+
+- `000019_enable_guardian_permission_delegation.up.sql`
+- `000019_enable_guardian_permission_delegation.down.sql`
+
+V4 protects permission identity, scope, and delegability from runtime updates. V19 temporarily drops only the `trg_protect_permission_identity_scope` trigger inside the migration, changes the two reviewed permission-catalogue rows to `is_delegable=TRUE`, and immediately recreates the exact trigger. The protection remains active for all runtime SQL and API requests.
+
+This migration does not grant either permission to a school, staff member, or built-in role. A Platform Admin with `platform.permissions.delegate` must create a school-specific delegation with `can_assign_to_roles=TRUE`. A School Admin can then create a custom staff role, grant the required guardian permission using the exact active delegation ID, and assign the role to authorized staff. V16 binds the custom-role grant to that exact delegation row; revoking the delegation does not reactivate historical grants.
+
+The School Admin and Teacher system-role permission bundles remain immutable and unchanged. The Teacher's `students.read_basic` permission does not provide access to guardian contact records. The down migration refuses to proceed if any guardian delegation history exists, preserving append-only authorization history.
+
+The migration and complete backend test suite, including PostgreSQL integration tests and `go vet ./...`, passed in GitHub Actions run 41800105405 against an ephemeral PostgreSQL 18 database. This CI database is temporary and does not represent the user's local database migration state.
+

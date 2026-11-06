@@ -9,7 +9,7 @@
 - Constraint/index inspection: completed against the development database.
 - Migration v4 corrective review draft: `backend/migrations/000004_add_principal_rbac_foundation.up.sql`.
 - Down migration: intentionally refuses rollback because v4 data may include platform and parent identities, roles, audit events, and security credentials.
-- **Not applied. Not PostgreSQL-executed or integration-tested. Do not run yet.**
+- **Status update (2026-11-02):** The user later directly reported `school_management_test.schema_migrations` at cumulative `version=12`, `dirty=false`; V4 is therefore included in the applied V4–V12 sequence on that dedicated test database. Do not reapply V4 there. This does not prove every trigger edge case has a dedicated passing test, and it says nothing about the state of `school_management`.**
 
 ## Existing source behavior verified from the supplied archive
 
@@ -39,10 +39,10 @@ The draft migration:
 
 ## Important blockers before applying v4
 
-1. The SQL has not been run against PostgreSQL 18. Review and test it on a disposable database cloned from v3 before applying it to `school_management`.
-2. The application code has not yet been refactored. The current JWT and middleware remain user-ID based and do not enforce RBAC or `token_version`. The migration alone does not deliver the approved authorization model.
+1. The user later reported the cumulative migration state at version 12, `dirty=false` on `school_management_test`. Re-run the migration/trigger integration suite against a clean disposable PostgreSQL 18 database after any SQL changes; do not reapply V4 to the already migrated test database.
+2. The application code has since been refactored to principal-aware JWT claims, live principal/token-version checks and permission loading. `RequirePermission` exists, but business routes are not yet wired and custom-role grants/ALLOW overrides intentionally fail closed.
 3. The existing staff account's intended role is not established by the database counts. Do not assign `school_admin` or another role by assumption. Confirm the account's intended role and create its principal-role assignment through an audited bootstrap operation.
-4. The app's migration cutover must update login to globally unique username + password, principal-aware JWT claims, DB-backed principal/token-version checks, principal-aware session rotation/revocation, and permission evaluation before the system is treated as RBAC-protected.
+4. The principal-aware login/JWT/session cutover is present in the current branch. Remaining work includes business route guards, resource/tenant scope enforcement, safe role/custom-role management, and end-to-end verification.
 5. Database application-role grants for append-only `audit_events` must be configured. The application role must not own the audit table and must not have UPDATE/DELETE privileges.
 6. Parent-child links, teaching assignments, and class-in-charge assignments remain deferred until the academic/student schema exists.
 7. The down migration is intentionally forward-only. Use a verified backup/restore plan only if explicitly accepting loss of writes made after that backup.
@@ -159,4 +159,27 @@ A source-level syntax defect was found in five PL/pgSQL trigger functions: their
 - guard_parent_otp_challenge_history
 - guard_role_permission_delegation_history
 
-Only the delimiters changed; function logic was not modified. A complete source scan confirmed five corrected opening delimiters, five corrected closing delimiters, and no remaining instances of the malformed patterns. This is static source verification only: PostgreSQL 18 parsing, clean v3-to-v4 migration execution, and trigger integration tests remain pending. Migration V4 remains unapplied and must not be run without explicit approval.
+Only the delimiters changed; function logic was not modified. A complete source scan confirmed five corrected opening delimiters, five corrected closing delimiters, and no remaining instances of the malformed patterns. At the time of that source scan, PostgreSQL 18 parsing and migration execution had not yet been verified. The later user-reported cumulative test-database version 12 (`dirty=false`) supersedes the earlier 'V4 unapplied' status for `school_management_test`; dedicated trigger edge-case coverage still requires verification. Never apply migrations to `school_management` without separate explicit approval.
+
+
+## 2026-11-03 Current-Branch Reconciliation
+
+The historical source-behavior and blocker notes above describe an earlier pre-cutover snapshot. The current active branch now contains the principal-aware Go cutover:
+
+- Staff login resolves a globally unique username to a staff principal; Platform Admin has a separate login service.
+- Access JWTs carry principal identity/type and token version. Middleware reloads current principal state and effective permissions from PostgreSQL on every protected request.
+- `RequirePermission` is implemented and has fail-closed middleware tests.
+- Principal refresh-session repository/service code is wired into login, refresh and logout; the previously verified refresh-token concurrency/replay protections must remain covered.
+- Mandatory MFA flows and login lockout/IP rate-limit components are present in the current source.
+- The API router currently exposes authentication/MFA, `/auth/me`, `/health` and `/ready`; it does not yet expose Platform Admin school-onboarding or school business-module routes.
+- The permission resolver intentionally fails closed for custom-role grants and user ALLOW overrides until exact delegation linkage is safe. This is a known functional limitation, not a completed custom-role workflow.
+
+### Newly identified school-onboarding prerequisite
+
+The V4 migration seeds school-scoped system roles (`school_admin` and `teacher`) only for school rows that exist when V4 executes. This gap is now addressed in source by additive migration V13 (`000013_provision_school_system_roles.up.sql`), which creates the exact approved system roles and permission bundles from a school-insert trigger while keeping direct runtime system-role creation/mutation blocked. Integration coverage is added in `school_system_role_provisioning_v13_integration_test.go`.
+
+V13 is source-only and has not been applied or PostgreSQL-tested. **Do not implement the Platform Admin create-school/School Admin provisioning endpoint as complete until V13 is reviewed, applied to `school_management_test`, and its integration test passes.** V13 is forward-only; never edit an applied migration.
+
+### Migration-state reconciliation still required
+
+Migration-state clarification: the user directly reported `school_management_test.schema_migrations` at cumulative `version=12`, `dirty=false` on 2026-11-02. A dedicated V12 Parent–Guardian integration test run was reported PASS; a later verbose attempt skipped because the opt-in flag was omitted. This supersedes earlier statements in this document that V4/V12 were source-only at that time. Re-run integration tests with the required flag after relevant changes. Do not infer `school_management` state from the test database and do not apply migrations there without separate explicit approval.

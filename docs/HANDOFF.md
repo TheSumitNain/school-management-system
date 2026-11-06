@@ -1,14 +1,14 @@
-> **Newest handoff — 2026-11-01:** The V4 principal-auth Go cutover candidate has passed the user's Windows package tests (`go test -count=1 -p 1 ./...`) and `go vet ./...`. This does not verify PostgreSQL integration tests or Migration V4. Review `docs/CURRENT-BUILD-FIX-HANDOFF-20261101.md` for exact results and local Git status. Preserve all local modifications/untracked artifacts; Migration V4 has not been run and must not be run without explicit approval.
+> **Newest handoff — 2026-11-03:** Active branch `fix/v4-auth-security-hardening`, code checkpoint `c79b3a5959e0d125dae0326298b554f7b2f90133` before the latest documentation updates. User approved Phase 1 as the complete Platform Admin, School Admin and school-staff web product. Parent/Driver mobile experiences are Phase 2 after web completion. Parent-specific work is paused; preserve the existing Parent/Guardian and OTP foundation. The repository currently has no React frontend directory. Preserve all local modifications, untracked helper files and stashes. Do not run migrations against `school_management` or apply V12 without explicit approval.
 
 # School Management System — Project Handoff
 
 > **Purpose:** This document is the primary handoff reference for continuing the existing School Management System project. Keep it synchronized with the source code, tests, database migrations, and other project documentation.
 >
-> **Last confirmed pushed repository checkpoint:** `cb6af3b` — `docs: finalize phase 1 RBAC and account decisions`
+> **Latest source checkpoint before this docs update:** `c79b3a5959e0d125dae0326298b554f7b2f90133` — `test: cover fail-closed permission middleware` on `fix/v4-auth-security-hardening`.
 >
 > **Previous code/test milestone:** `a705f9a` — `test(auth): add PostgreSQL refresh session integration tests`
 >
-> **Branch:** `main`
+> **Active development branch:** `fix/v4-auth-security-hardening` (do not switch to or modify `main` without explicit approval).
 >
 > **Repository:** https://github.com/TheSumitNain/school-management-system
 >
@@ -16,7 +16,24 @@
 >
 > **Important:** These details describe the last reported state. Check the actual repository before assuming that no newer changes exist.
 
-## 0.1 Latest V4 Work (Current)
+## 0.1 Approved Product Delivery Direction (2026-11-03)
+
+- Phase 1: complete web application for Platform Admin, School Admin and all approved school staff workflows.
+- Phase 2: Parent, Driver and other approved mobile experiences after Phase 1 web completion. Parent access is intended to be read-only initially; Parent authentication/OTP provider is deferred.
+- Parent-specific implementation is paused. Preserve existing Parent/Guardian schema and OTP code; do not extend or delete it.
+- Database design must support future modules through stable identity/role boundaries, strict school ownership, student/enrollment history separation, guardian relationship history, transport extensibility, auditability and shared backend APIs. Do not create speculative schema or run migrations without review and explicit approval.
+- Current repository has no React frontend directory. First reconcile backend/database modules, then establish frontend/API foundation and deliver dashboards module by module.
+
+## 0.2 Latest V11 Verification (2026-11-02)
+
+- V11 student/guardian schema and V12 Parent–Guardian migration are included in `school_management_test`; direct cumulative status reported version `12`, `dirty = false`.
+- `go test -count=1 -p 1 ./...` passed with `DB_NAME=school_management_test` and `RUN_POSTGRES_INTEGRATION_TESTS=1`.
+- `go vet ./...` completed without diagnostics.
+- `TestMFARecoveryCodeRepositoryPostgresIntegration` passed twice consecutively after test fixtures were changed to use a cryptographically random per-run namespace. Recovery-code history remains append-only; no production schema constraint was weakened.
+- These are user-reported Windows results. The local helper/untracked files must be preserved, and the working tree must be checked before staging or committing.
+- V11 does not implement authenticated parent-to-guardian/student relationships, OTP delivery, academic enrollment, class/section placement, or parent data APIs. Those remain separate future milestones.
+
+## 0.3 Earlier V4 Work (Historical; verify against current source)
 
 The V4 principal-auth Go cutover candidate is now wired into the API: principal-based staff login, principal refresh sessions, live principal loading, conservative effective-permission resolution, and principal-aware `/auth/me` context. The detailed file-level scope and known limitations are documented in `docs/CURRENT-BUILD-FIX-HANDOFF-20261101.md`.
 
@@ -54,7 +71,8 @@ Migration `000004_add_principal_rbac_foundation.up.sql` remains unapplied and Po
 
 ### Next steps
 
-1. Finish documentation reconciliation and safe Git delivery without disturbing local artifacts.
+1. Reconcile the current backend/database design against the approved web-first module plan; keep Parent implementation paused.
+2. Finish documentation reconciliation and safe Git delivery without disturbing local artifacts.
 2. Continue source-level migration audit from C17, based on actual evidence.
 3. Add disposable PostgreSQL migration/integration tests before planning any V4 application.
 4. Request explicit user approval before applying V4 to any database.
@@ -75,11 +93,11 @@ Migration `000004_add_principal_rbac_foundation.up.sql` remains unapplied and Po
 
 The school and student counts are planning targets, not verified capacity limits.
 
-## 1.1 Approved Phase 1 Identity and RBAC Decisions (Important)
+## 1.1 Approved Phase 1 Web Identity and RBAC Decisions (Important)
 
 The user has finalized the Phase 1 role and account rules. The authoritative detailed matrix is `docs/PHASE1-RBAC.md`.
 
-- Core roles: Platform Admin (global), School Admin (exactly one school), Teacher (exactly one school), Parent (verified linked children; links may span schools). Student login accounts are excluded from Phase 1.
+- Phase 1 web roles: Platform Admin (global), School Admin (exactly one school), and school staff (exactly one school, including Teacher and approved school-scoped roles). Parent and Driver mobile experiences are Phase 2, after the web product is complete. Student login accounts are not included in Phase 1.
 - Every staff account is single-school. A person employed by multiple schools must receive separate accounts, credentials, and sessions at each school. Staff usernames are globally unique and case-insensitive. Current code does not yet meet global uniqueness; it currently requires school ID at login and has school-scoped username uniqueness.
 - School Admin provisions staff with a temporary initial password. Staff must change it at first login and provide the current password for self-service changes. School Admin may reset same-school staff passwords without old password; reset revokes sessions/access, forces password change at next login, and is audited.
 - Platform Admin provisions School Admin accounts. School Admin cannot create another School Admin or Platform Admin.
@@ -87,7 +105,7 @@ The user has finalized the Phase 1 role and account rules. The authoritative det
 - Staff may hold multiple roles only within their one school. Role permissions combine with per-user allow/deny overrides; explicit deny beats role allow, explicit authorized allow can add a permission, and default is deny. Permission changes apply on the next protected request.
 - Teaching assignments and class-in-charge assignments are separate. Subject teachers see only student name, roll number, class, and section for assigned class/subject, plus permitted teaching data. Teaching assignment alone does not grant attendance access.
 - Class-in-charge teachers may access attendance, same-day correction within the configured cutoff, basic student details, timetable, homework, and applicable notices only for their exact class/section. Past attendance correction is School Admin-only.
-- Parent uses registered mobile + OTP; one verified account can access all officially linked children across schools. Parent selects a child, but every API request verifies the relationship. Parent access is read-only; no student login in Phase 1.
+- Future Parent mobile target: read-only access to officially linked children across schools, with relationship verification on every API request. Parent authentication/OTP provider is undecided and all Parent-specific implementation is paused until Phase 2.
 
 These are approved requirements, not implemented functionality. Do not begin migrations by blindly dropping `users.school_id` or adding universal multi-school staff memberships. First design a safe model for global Platform Admin identity, strictly one-school staff accounts, globally unique usernames, and parent-child links across schools while preserving current user IDs and refresh sessions.
 
@@ -656,7 +674,7 @@ The product should support role-based defaults and configurable individual permi
 
 Invitation and parent OTP workflows are planned, not yet implemented.
 
-### 8.4 Parent Features — Initial Scope
+### 8.4 Future Parent Mobile Features — Phase 2 (Deferred)
 
 Planned parent features include:
 
@@ -667,7 +685,7 @@ Planned parent features include:
 - Notices and announcements.
 - Student profile and basic details.
 
-Parent-child authorization must be enforced by the backend before these features expose student data.
+These features are not part of the Phase 1 web delivery. Parent-child authorization must be enforced by the backend before Phase 2 mobile APIs expose student data. Preserve existing Parent/Guardian schema and OTP foundation; do not extend it while paused.
 
 ### 8.5 Academic Data Model Principles
 
@@ -938,7 +956,7 @@ After running `gofmt`, inspect the resulting diff to ensure formatting did not i
 
 ### 13.2 V4 Migration Draft and Application Cutover
 
-The supplied `cb6af3b` archive contains the current authentication source and the approved RBAC/account documentation. A V4 schema migration draft has now been added, with implementation notes in `docs/V4-IMPLEMENTATION-NOTES.md`. The migration is not applied or PostgreSQL-tested. The source application still uses user-ID JWT subjects and has no RBAC enforcement; do not treat the schema draft as a completed security feature.
+The supplied `cb6af3b` archive contains the current authentication source and the approved RBAC/account documentation. A V4 schema migration was included in the cumulative V4–V12 sequence reported at version `12`, `dirty = false` on `school_management_test`. The current source has principal-aware JWT subjects, live principal/token-version checks and permission resolution; business route enforcement and full tenant/resource authorization remain incomplete.
 
 Next engineering sequence:
 
@@ -952,14 +970,14 @@ Next engineering sequence:
 
 ### 13.3 Recommended Engineering Priorities
 
-1. Verify the actual local Git state and confirm it matches the supplied `cb6af3b` source checkpoint; preserve the untracked `APPLY-DOCS.txt`.
+1. Verify the actual local Git state and confirm it matches the active `fix/v4-auth-security-hardening` branch; preserve all reported untracked helper files and stashes.
 2. Review the V4 migration draft and complete Go principal-aware login, JWT claims, refresh-session rotation/revocation, principal status/token-version checks, and authorization middleware.
 3. Implement RBAC evaluation, custom roles, bounded permission overrides, and next-request permission updates with automated tests.
 4. Add migration integration tests against a disposable PostgreSQL 18 database. Do not apply V4 to the development database until those tests pass.
 5. Explicitly confirm the existing staff account's role and provision its principal-role assignment through a controlled, audited operation.
-6. Complete teacher teaching/class-in-charge assignment enforcement, parent-child linking and OTP, staff password lifecycle, mandatory admin MFA, login rate limiting, lockout, and audit workflows.
+6. Complete teacher teaching/class-in-charge assignment enforcement, staff password lifecycle, mandatory admin MFA, login rate limiting, lockout, and audit workflows. Keep Parent-child linking/OTP paused for Phase 2.
 7. Implement secure school onboarding, invitations, and password-reset workflows.
-8. Build academic, student, attendance, timetable, homework, results, and parent features only after authorization enforcement is in place.
+8. Build the complete Phase 1 web product: Platform Admin, School Admin and staff dashboards, then academic, student, attendance, timetable, homework, results, notices and reports. Plan Parent/Driver mobile features only after web completion.
 9. Perform production deployment, monitoring, backup, recovery, and security reviews.
 
 Do not reimplement refresh-token rotation from scratch. Inspect the existing code and extend it only where verification identifies a real gap.
@@ -1011,3 +1029,25 @@ The V4 C14 source checkpoint is ecaf9af211289f52a46f79ebffa0f41f62b06d5a — fix
 4. Add disposable PostgreSQL 18 migration tests from a v3 snapshot, including upgrade, constraint/trigger behavior, and rollback/forward-recovery checks.
 5. Only after the Go cutover and migration tests pass, plan a backed-up, controlled V4 application. The user must explicitly approve applying V4 to the development database.
 
+
+
+## 16. V12 Parent–Guardian Foundation — 2026-11-02
+
+The user explicitly approved the V12 schema. Source changes have been added to branch `fix/v4-auth-security-hardening`:
+
+- `backend/migrations/000012_add_parent_guardian_authorization.up.sql`
+- `backend/migrations/000012_add_parent_guardian_authorization.down.sql`
+- `backend/internal/repository/parent_guardian_authorization_v12_integration_test.go`
+- V12 sections in `docs/DATABASE.md`, `CHANGELOG.md`, and `PROGRESS.md`.
+
+V12 source design:
+- Guardian portal eligibility is explicit and school-scoped. Existing V11 free-form mobile numbers are not silently normalized; the school must set a canonical E.164 mobile and enable portal eligibility.
+- A verified active Parent principal can link to a guardian only when the Parent's verified mobile exactly matches the portal-enabled guardian mobile. One guardian has at most one active Parent link; one Parent may link multiple guardians across schools.
+- Parent–Guardian and Student–Guardian revocations are irreversible history records. A revoked official Student–Guardian relationship can be re-established only as a new row.
+- First-time OTP challenges can exist before a Parent principal, keyed by a lowercase 64-character mobile HMAC. Raw mobile numbers are not stored in challenge/rate-limit tables.
+- Persistent mobile/IP rate-limit buckets and append-only audit events support the OTP and relationship workflows.
+- The application must still enforce the live `guardians.manage` permission when enabling portal eligibility and must check both active relationship layers, school scope, account status, guardian/student status, and the requested Parent permission on every child-data request.
+
+**Verification status:** The user directly reported V12 applied in `school_management_test` (cumulative migration version `12`, `dirty = false`) and a dedicated `TestParentGuardianAuthorizationV12PostgresIntegration` run PASS. A later verbose attempt skipped integration tests because `RUN_POSTGRES_INTEGRATION_TESTS=1` was omitted; rerun with the flag after relevant changes. Do not claim Parent login or Parent child-data APIs are implemented. OTP delivery, OTP repository/service, Parent handlers/routes, and child-data APIs remain the next application-layer work. Apply only to `school_management_test` after reviewing the migration source and verifying the local branch; never apply to `school_management` without separate explicit approval.
+
+The V12 down migration is guarded and refuses rollback once Parent links, OTP/rate-limit history, portal settings, or relationship revocations exist. Do not modify the applied V11/V4 migrations.

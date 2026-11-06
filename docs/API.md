@@ -8,19 +8,18 @@ The backend uses Go, Gin, and PostgreSQL.
 
 ### Current Implementation Status
 
-- `GET /health` is implemented.
-- `GET /ready` is implemented.
-- `POST /auth/login` is implemented.
-- `POST /auth/refresh` is implemented.
-- `POST /auth/logout` is implemented.
-- JWT access-token generation and validation are implemented.
-- JWT authentication middleware protects `GET /auth/me`.
-- `GET /auth/me` returns the live authenticated principal ID/type and staff school/username context, not the full profile.
-- V4 JWT subjects identify `auth_principals.id`; current principal status and token version are reloaded on every protected request. Permissions are resolved live, but the current resolver is conservative and full RBAC remains incomplete.
-- Internal user creation is available through the service layer and a development seed command.
-- Public user registration is not implemented.
-- Refresh tokens use opaque random values, database-backed rotation and revocation, and token-family replay detection.
-- Role-Based Access Control (RBAC), complete tenant-isolation enforcement, MFA, login rate limiting, and account lockout are not yet complete.
+- GET /health and GET /ready are implemented.
+- Staff POST /auth/login resolves a globally unique username; no school ID is accepted.
+- Platform Admin POST /auth/platform-admin/login uses a separate email/password flow.
+- MFA enrollment, verification and recovery-code routes are implemented for privileged accounts.
+- POST /auth/refresh and POST /auth/logout use principal-bound refresh sessions with rotation and token-family replay/revocation protections.
+- GET /auth/me validates the JWT and reloads current principal identity, status, token version and effective permissions.
+- All registered protected API routes use the shared authentication middleware; school staff, role/delegation, academic, student/enrollment, guardian, attendance, onboarding, and password-reset operations enforce their live `RequirePermission` policies. Effective permissions are reloaded for every protected request.
+- Administrative access tokens bind to a per-device refresh-session family through the `sid` claim. Platform Admin and active School Admin sessions have a 30-minute per-device idle timeout, enforced on protected requests and refresh rotation.
+- POST /platform/schools creates a school and its first School Admin transactionally, protected by platform.schools.create and platform.school_admins.create.
+- V13 provisions the fixed School Admin and Teacher system roles for newly created schools.
+- V14 Platform Admin bootstrap schema/CLI and migrations V1–V21 are applied and tested by GitHub Actions against an ephemeral PostgreSQL database. No permanent Platform Admin account has been created by CI.
+- Academic Year, Class, Section, Subject, teacher-subject assignment, class-in-charge assignment, student admission/profile, enrollment, promotion, enrollment-history, guardian contact/link, and V20 attendance APIs are implemented with school-scoped repository authorization, audited writes, and PostgreSQL integration coverage. Timetable, examinations, results, notices, parent OTP/SMS provider integration, and frontend workflows remain pending.
 
 **Important:** An implemented authentication endpoint does not mean that the full authorization system or every production security control is implemented. Verify code and tests before treating a feature as complete.
 
@@ -62,7 +61,7 @@ The application is designed to support multiple schools within a shared PostgreS
 
 School-specific records are associated with a `school_id`.
 
-Future protected endpoints must verify that the authenticated user is authorized to access the requested school's data. A client-provided `school_id` must not, by itself, be treated as proof of authorization.
+Academic management endpoints derive the school from the authenticated staff principal and verify the matching live permission in PostgreSQL. They do not accept a client-provided school ID. Other resource families must follow the same rule before being considered complete.
 
 ## 3. Implemented Endpoints
 
@@ -182,6 +181,7 @@ The actual user ID and username depend on the authenticated account. The respons
 - A successful login returns an access token and an opaque refresh token.
 - Access-token expiry is controlled by the JWT configuration.
 - Refresh-token expiry is controlled by `REFRESH_TOKEN_EXPIRY_DAYS` (default: 7 days; allowed range: 1–30 days).
+- Access tokens include a `sid` claim containing the refresh-session family UUID. This is used internally for per-device administrative idle-timeout enforcement.
 - Refresh tokens are random opaque values; their SHA-256 hashes are persisted in PostgreSQL.
 - Login does not, by itself, establish that RBAC or complete tenant-isolation enforcement is implemented.
 
@@ -312,6 +312,187 @@ The IDs are illustrative examples.
 - The endpoint returns principal identity context, not the full user profile. Complete resource-level authorization and tenant isolation are not yet implemented.
 - The endpoint does not, by itself, prove complete tenant isolation for other resources.
 
+### 3.7 Academic Management
+
+All routes in this section require a Bearer access token for an active staff principal. The school ID is derived from the authenticated principal; clients must not send or choose a `school_id`. Each route enforces its live permission in middleware, and the repository independently checks the actor, permission, and school scope. Successful create/update/revoke operations write an audit event in the same database transaction.
+
+#### Academic years
+
+| Method | Endpoint | Permission |
+|---|---|---|
+| GET | `/school/academic-years` | `academic_years.read` |
+| POST | `/school/academic-years` | `academic_years.manage` |
+| PATCH | `/school/academic-years/:yearID` | `academic_years.manage` |
+
+Create/update request:
+
+```json
+{
+  "name": "2026-27",
+  "starts_on": "2026-04-01",
+  "ends_on": "2027-03-31",
+  "status": "active",
+  "is_current": true
+}
+```
+
+Dates use `YYYY-MM-DD`; status is `planned`, `active`, or `closed`. Only an active year can be current, and a school can have only one current year. Closed academic years cannot be edited or reopened through this API.
+
+#### Classes and sections
+
+| Method | Endpoint | Permission |
+|---|---|---|
+| GET | `/school/classes` | `classes.read` |
+| POST | `/school/classes` | `classes.manage` |
+| PATCH | `/school/classes/:classID` | `classes.manage` |
+| GET | `/school/sections` | `classes.read` |
+| POST | `/school/sections` | `classes.manage` |
+| PATCH | `/school/sections/:sectionID` | `classes.manage` |
+
+Class request:
+
+```json
+{
+  "name": "LKG",
+  "display_order": 10,
+  "is_active": true
+}
+```
+
+Class names are configurable school data, not a fixed enum. Names such as Pre-Nursery, Play Group, Nursery, LKG, UKG, Class 1–12, or future custom names are supported. Deactivation uses `is_active: false`; class rows are not physically deleted.
+
+Section request:
+
+```json
+{
+  "academic_year_id": 1,
+  "class_id": 1,
+  "name": "A",
+  "display_order": 1,
+  "is_active": true
+}
+```
+
+Sections are tied to one class and one academic year. The list endpoint optionally accepts `?academic_year_id=1`. Updates preserve the section's original class and academic-year identity. A new/reactivated section requires an active class and a non-closed academic year in the same school.
+
+#### Subjects
+
+| Method | Endpoint | Permission |
+|---|---|---|
+| GET | `/school/subjects` | `subjects.read` |
+| POST | `/school/subjects` | `subjects.manage` |
+| PATCH | `/school/subjects/:subjectID` | `subjects.manage` |
+
+Request:
+
+```json
+{
+  "name": "Mathematics",
+  "subject_code": "MATH",
+  "is_active": true
+}
+```
+
+Subject names and optional codes are unique within a school after trimming and case normalization. Deactivation is soft; historical assignment rows remain.
+
+#### Teacher-subject assignments
+
+| Method | Endpoint | Permission |
+|---|---|---|
+| GET | `/school/teacher-assignments` | `teacher_assignments.read` |
+| POST | `/school/teacher-assignments` | `teacher_assignments.manage` |
+| DELETE | `/school/teacher-assignments/:assignmentID` | `teacher_assignments.manage` |
+
+Create request:
+
+```json
+{
+  "academic_year_id": 1,
+  "section_id": 1,
+  "subject_id": 1,
+  "teacher_principal_id": 25
+}
+```
+
+The list endpoint optionally accepts `academic_year_id` and `section_id` query parameters. PostgreSQL verifies that the teacher is an active same-school staff principal with the Teacher system role, and that the section, class, subject, and academic year are eligible. DELETE revokes the assignment; it does not delete history or permit reactivation.
+
+#### Class-in-charge assignments
+
+| Method | Endpoint | Permission |
+|---|---|---|
+| GET | `/school/class-incharge-assignments` | `class_incharge_assignments.read` |
+| POST | `/school/class-incharge-assignments` | `class_incharge_assignments.manage` |
+| DELETE | `/school/class-incharge-assignments/:assignmentID` | `class_incharge_assignments.manage` |
+
+Create request:
+
+```json
+{
+  "academic_year_id": 1,
+  "section_id": 1,
+  "teacher_principal_id": 25
+}
+```
+
+The list endpoint optionally accepts `academic_year_id`. At most one active class-in-charge assignment can exist per section. PostgreSQL enforces the same-school active Teacher identity and non-closed academic-year constraints. DELETE performs a one-way revocation and preserves the assignment history.
+
+Academic create/update conflicts return `409 Conflict`; invalid input or database-enforced academic eligibility failures return `400 Bad Request`; missing school-scoped resources return `404 Not Found`; missing permissions or invalid assignment actors return `403 Forbidden`.
+
+
+#### Student enrollment, promotion, and history
+
+| Method | Endpoint | Permission |
+|---|---|---|
+| GET | `/school/enrollments` | `students.read_basic` |
+| POST | `/school/enrollments` | `students.create` |
+| GET | `/school/students/:studentID/enrollments` | `students.read_basic` |
+| POST | `/school/enrollments/:enrollmentID/promote` | `students.update` |
+
+List current/historical enrollment rows for the school, optionally filtered by `academic_year_id`:
+
+```http
+GET /school/enrollments?academic_year_id=1
+```
+
+Create an initial enrollment for an existing active student:
+
+```json
+{
+  "student_id": 42,
+  "academic_year_id": 1,
+  "section_id": 7,
+  "roll_number": "12",
+  "enrolled_at": "2028-04-01"
+}
+```
+
+The section determines its class; clients cannot supply a class ID or school ID. The student must be active and belong to the authenticated school. The academic year must be active, and the section must be active and belong to that year and school. Enrollment dates use `YYYY-MM-DD`. A student can have only one enrollment row per academic year; duplicate admission to the same year returns `409 Conflict`.
+
+Read a student's complete school-scoped enrollment history:
+
+```http
+GET /school/students/42/enrollments
+```
+
+Promote an actively enrolled student into a different active academic year and destination section:
+
+```http
+POST /school/enrollments/15/promote
+Content-Type: application/json
+
+{
+  "academic_year_id": 2,
+  "section_id": 9,
+  "roll_number": "08",
+  "enrolled_at": "2029-04-01"
+}
+```
+
+Promotion is one transaction: the source enrollment transitions from `active` to `promoted` with its end date, and a new enrollment row is inserted for the destination year. If either operation or its audit write fails, the entire transaction rolls back. Enrollment-time class and section names are snapshotted by PostgreSQL and are never rewritten when catalogue names later change. Enrollment history cannot be deleted or re-homed. A destination year must differ from the source year, and the promotion date cannot precede the original enrollment date.
+
+These endpoints manage placement for an existing student record. Student profile/admission creation and guardian contact/link management are provided by separate APIs; see the student profile and Guardian Contacts sections. No public student self-registration is provided.
+
+
 ## 4. HTTP Status Codes
 
 The following status codes are used by implemented endpoints or may be used by future endpoints.
@@ -337,24 +518,29 @@ Not every status code listed above is currently returned by an implemented endpo
 
 | Method | Endpoint | Purpose |
 |---|---|---|
-| `POST` | `/auth/login` | Authenticate a user and issue access and refresh tokens. |
-| `POST` | `/auth/refresh` | Rotate a refresh token and issue a new access token. |
-| `POST` | `/auth/logout` | Revoke all active refresh sessions in the supplied token family. |
-| `GET` | `/auth/me` | Return live principal identity context after token and database validation. |
+| Method | Endpoint | Purpose |
+|---|---|---|
+| POST | /auth/login | Staff username/password login; privileged staff continue through MFA. |
+| POST | /auth/platform-admin/login | Platform Admin email/password login; always starts mandatory MFA. |
+| POST | /auth/mfa/enroll/verify | Complete first-time TOTP enrollment using a challenge token and code. |
+| POST | /auth/mfa/verify | Verify a TOTP login challenge and issue the session. |
+| POST | /auth/mfa/recovery-codes/regenerate/start | Start authenticated recovery-code regeneration challenge. |
+| POST | /auth/mfa/recovery-codes/regenerate | Verify challenge/code and issue replacement recovery codes. |
+| POST | /auth/refresh | Rotate a principal-bound refresh token. |
+| POST | /auth/logout | Revoke active refresh sessions in the supplied token family. |
+| GET | /auth/me | Return live principal identity context after token and database validation. |
+| POST | /platform/schools | Create a school and its initial School Admin; requires both platform school-create permissions. |
 
-Internal user creation is available through the service layer and a development seed command. There is no public registration endpoint.
-
-RBAC and complete tenant-isolation enforcement are separate, pending capabilities.
+The one-time first Platform Admin bootstrap is a manually invoked CLI command, not a public HTTP endpoint. There is no public registration endpoint. RequirePermission and live permission resolution are implemented, but complete tenant/resource/assignment authorization and custom-role delegation remain incomplete.
 
 ### 5.2 Planned Authentication Endpoints and Controls
 
 | Endpoint or capability | Purpose | Status |
 |---|---|---|
-| `POST /auth/register` | Controlled user provisioning, if approved by the final onboarding policy. | Planned |
-| Password reset | Secure, one-use password reset workflow. | Planned |
-| MFA | Mandatory MFA for Platform Admin and School Admin. | Planned |
-| Login rate limiting and account lockout | Reduce brute-force login attempts. | Planned |
-| Immediate access-token revocation | Invalidate an access token before expiry. | Planned |
+| Staff password change/reset | Secure self-service and same-school administrative password lifecycle. | Pending |
+| Exact delegation linkage | Bind custom-role grants and user ALLOW overrides to the precise delegation record. | Pending |
+| Immediate access-token revocation | Invalidate already-issued access tokens after password reset, disablement or other security events. | Pending |
+| Business API route guards | Add authentication, permission and resource-scope checks to each school module route. | Pending |
 
 School and user provisioning must be restricted to authorized workflows. Do not expose unrestricted public registration.
 
@@ -376,9 +562,7 @@ The intended authorization header is:
 Authorization: Bearer <access-token>
 ```
 
-The authentication middleware currently protects `GET /auth/me`.
-
-The presence of middleware does not automatically protect other routes. Every protected route must explicitly apply the required middleware. Role-based authorization and complete tenant isolation remain pending.
+The authentication middleware protects GET /auth/me, the authenticated MFA recovery-code regeneration start route, and POST /platform/schools. The school-onboarding route applies both required live platform permissions. Every future protected route must explicitly add authentication, the relevant permission checks, and resource-scope enforcement. Complete tenant/resource/assignment authorization remains pending.
 
 ### 5.4 Refresh Token
 
@@ -390,11 +574,11 @@ Opt-in PostgreSQL repository integration tests cover refresh-session persistence
 
 ## 6. Authorization and Tenant Isolation
 
-RBAC and complete tenant-isolation enforcement are pending. The Phase 1 role list and permission requirements are now approved and documented in `docs/PHASE1-RBAC.md`; implementation is not yet present in the API.
+The core principal/RBAC schema and permission resolver are implemented in the current branch. Protected requests reload live principal state and permissions; RequirePermission is used on the Platform Admin school-onboarding route. Built-in system-role grants and explicit DENY overrides are resolved. Custom-role grants and user ALLOW overrides intentionally fail closed until exact delegation-ID linkage is added. Full tenant/resource/assignment/field-level authorization remains pending for the school business APIs.
 
-Approved Phase 1 roles are Platform Admin (global), School Admin (one school), Teacher (one school), and Parent (verified linked children). Student login and additional operational roles are not part of Phase 1.
+Approved Phase 1 roles are Platform Admin (global), School Admin (one school), and Teacher (one school). Parent and Driver are Phase 2 mobile roles; Parent-specific implementation is currently paused. Student login is not part of Phase 1.
 
-Current API behavior must be distinguished from the target contract: `POST /auth/login` still requires `school_id`, `username`, and `password`, and the current database enforces username uniqueness only within a school. The approved target for staff is a globally unique, case-insensitive username plus password, with one account per school. This requires coordinated schema, repository, service, handler, token-claim, and API migration; do not document the target as implemented until that work is complete. Parent mobile/OTP login is a separate planned flow.
+Staff login now accepts a globally unique, case-insensitive username and password; it does not accept school_id. Staff accounts remain tied to exactly one school. Platform Admin uses a separate email/password login followed by mandatory TOTP MFA. School Admin also requires TOTP MFA.
 
 ### Tenant-Isolation Requirements
 
@@ -415,12 +599,18 @@ The currently registered routes are:
 
 | Method | Endpoint | Authentication |
 |---|---|---|
-| `GET` | `/health` | Not required |
-| `GET` | `/ready` | Not required; checks database readiness |
-| `POST` | `/auth/login` | Not required |
-| `POST` | `/auth/refresh` | Refresh token in request body |
-| `POST` | `/auth/logout` | Refresh token in request body |
-| `GET` | `/auth/me` | Bearer access token required |
+| GET | /health | Not required |
+| GET | /ready | Not required; checks database readiness |
+| POST | /auth/login | Staff credentials; no token required |
+| POST | /auth/platform-admin/login | Platform Admin credentials; no token required; MFA follows |
+| POST | /auth/mfa/enroll/verify | One-time challenge token and TOTP code |
+| POST | /auth/mfa/verify | One-time challenge token and TOTP/recovery code |
+| POST | /auth/mfa/recovery-codes/regenerate/start | Bearer access token required |
+| POST | /auth/mfa/recovery-codes/regenerate | One-time challenge token and TOTP code |
+| POST | /auth/refresh | Refresh token in request body |
+| POST | /auth/logout | Refresh token in request body |
+| GET | /auth/me | Bearer access token required |
+| POST | /platform/schools | Bearer token plus platform.schools.create and platform.school_admins.create |
 
 The current routes do not use an `/api/v1` prefix. Versioned routes may be introduced through an explicit routing and migration decision.
 
@@ -541,6 +731,40 @@ Only functionality supported by the current code and relevant tests should be ma
 - Review database permissions, connection settings, migrations, logging, and deployment configuration before production release.
 - Do not treat the current authentication foundation as proof that the full application is production-ready.
 
+
+### 3.9 Guardian Contacts and Student Relationships
+
+Guardian records are school-scoped contact records, not authenticated Parent accounts. These APIs do not create parent principals, enable the parent portal, verify mobile ownership, send OTPs, or initiate SMS delivery.
+
+All guardian routes require the dedicated `guardians.read` or `guardians.manage` permission. Neither permission is included in the built-in School Admin or Teacher role. V19 makes these two permissions explicitly delegable; a Platform Admin must grant a school-specific delegation with `can_assign_to_roles=true`. The School Admin can then create a custom role such as **Guardian Manager**, grant only the required guardian permission(s) using the exact delegation ID, and assign that role to the designated staff. The system-role permission bundles remain immutable. Teacher's `students.read_basic` permission does not grant guardian access.
+
+| Method | Endpoint | Permission | Purpose |
+|---|---|---|---|
+| GET | `/school/guardians` | `guardians.read` | Search/list guardian contacts |
+| POST | `/school/guardians` | `guardians.manage` | Create a guardian contact |
+| GET | `/school/guardians/:guardianID` | `guardians.read` | Read one guardian contact |
+| PATCH | `/school/guardians/:guardianID` | `guardians.manage` | Update contact details/status |
+| GET | `/school/students/:studentID/guardians` | `guardians.read` | List linked guardians |
+| POST | `/school/students/:studentID/guardians` | `guardians.manage` | Link a guardian to a student |
+| POST | `/school/student-guardian-links/:linkID/revoke` | `guardians.manage` | Revoke a relationship with a reason |
+
+Guardian list supports `q`, `status`, `limit`, and `offset`; page size defaults to 50 and is capped at 100. Search matches name, mobile number, and email. Guardian creation accepts `full_name`, optional `mobile_number`, optional `email_address`, and optional `status` (defaults to active). Updates accept the same fields and require an explicit status. Guardian contact values are school-scoped and are not globally unique.
+
+Link request:
+
+```json
+{
+  "guardian_id": 42,
+  "relationship_type": "mother",
+  "is_primary_contact": true,
+  "is_emergency_contact": true
+}
+```
+
+A student can have multiple guardians and one guardian can be linked to multiple students in the same school. The API rejects inactive or cross-school records and duplicate active pairs. Selecting a new primary contact clears the previous active primary contact for that student within the same transaction. Relationship history is retained; it is never physically deleted or reactivated. Revocation requires a non-empty reason and is recorded in the audit trail.
+
+Use `GET /school/students/:studentID/guardians?include_history=true` to include revoked relationships. Without that query parameter, only active relationships are returned. All repository operations independently validate the authenticated staff principal, current permission, and school ownership; clients cannot submit a school ID.
+
 ## 11. Documentation Maintenance
 
 Update this document whenever an API endpoint, request or response schema, status code, authentication flow, or authorization rule changes.
@@ -585,3 +809,93 @@ Parent authentication uses registered mobile number + OTP. After successful OTP 
 Every protected operation must check the effective permission and resource scope. Teacher teaching assignments and class-in-charge assignments are distinct; teaching assignment alone does not grant attendance access. Subject teachers receive only basic student fields (name, roll number, class, section) for assigned class/subject. Class-in-charge teachers may access attendance, same-day corrections within cutoff, basic details, timetable, homework, and applicable notices only for their assigned class/section. Past attendance correction is School Admin-only. Parent endpoints verify child links on every request.
 
 School Admin may create school-scoped custom roles only from platform-defined permissions within an explicit delegation ceiling. Explicit user deny overrides role allow; explicit allow is valid only when the assigning admin can delegate that permission. Permission changes take effect on the next protected request, including existing sessions.
+
+
+## 6. Platform Admin onboarding and MFA routes
+
+### Platform Admin login
+
+POST /auth/platform-admin/login accepts email and password. On valid credentials it returns HTTP 202 with status=mfa_required and a short-lived challenge token. The client must complete TOTP enrollment or verification before a session is issued. A successful MFA completion returns the normal principal-based access/refresh token response. Platform Admin MFA cannot be bypassed by using the staff login route.
+
+### MFA verification
+
+POST /auth/mfa/enroll/verify and POST /auth/mfa/verify accept challenge_token and code. Enrollment completion returns recovery codes once; clients must display and securely store them because they are not returned again. Recovery-code regeneration first requires an authenticated start request, then POST /auth/mfa/recovery-codes/regenerate with challenge_token and code.
+
+### Platform Admin school onboarding
+
+POST /platform/schools requires a Bearer access token and both live permissions platform.schools.create and platform.school_admins.create. The JSON body contains name, code, school_admin_username and school_admin_initial_password. School, initial School Admin principal/account and role assignment are created transactionally. The endpoint returns the school and new School Admin principal ID/username, never the password or password hash.
+
+The initial Platform Admin itself is created separately by the one-time bootstrap CLI after the V14 migration has been reviewed and applied to the dedicated test database. Do not run that CLI against a database until the operator has explicitly selected and verified the target.
+
+
+### 3.8 Student Admission and Basic Profile
+
+Profile read routes require \`students.read_sensitive\`, not the Teacher role's limited \`students.read_basic\` permission. This prevents the basic teacher permission from exposing the full school student directory or unrestricted profile records. All routes require an authenticated staff principal and derive the school from that principal. No endpoint accepts a client-supplied `school_id`. Repository authorization independently checks the current permission and school ownership. Student identity is separate from academic-year enrollment: creating a student does not automatically place the student into a class or section. Use the enrollment endpoint after creating the profile.
+
+The current V11 schema stores only admission number, full name, status, and timestamps. This API intentionally does not invent date-of-birth, gender, address, medical, family, or other sensitive profile fields. Those require a separately reviewed schema and field-level permission design.
+
+| Method | Endpoint | Permission | Purpose |
+|---|---|---|---|
+| GET | `/school/students` | `students.read_sensitive` | Search/list school students |
+| POST | `/school/students` | `students.create` | Admit/create student identity |
+| GET | `/school/students/:studentID` | `students.read_sensitive` | Read one student |
+| PATCH | `/school/students/:studentID` | `students.update` | Update student name |
+| POST | `/school/students/:studentID/archive` | `students.archive` | Soft-archive student |
+
+Create request:
+
+```json
+{
+  "admission_number": "ADM-2026-001",
+  "full_name": "Student Name"
+}
+```
+
+The admission number is unique within its school after trimming and case-folding. The API returns `409 Conflict` for a duplicate. Names and admission numbers are trimmed and validated against the existing V11 column lengths.
+
+List supports optional `q`, `status`, `limit`, and `offset` query parameters. Search matches admission number or full name; status may be `active`, `inactive`, or `archived`. The default page size is 50 and the maximum is 100. The response includes a total count and pagination values. The basic directory does not join guardian contacts or sensitive student data.
+
+Update request:
+
+```json
+{
+  "full_name": "Updated Student Name"
+}
+```
+
+Admission number is immutable through the profile update endpoint to preserve the school's stable identity reference. Archived students cannot be updated or archived again. Archiving is a status transition, not physical deletion; enrollment and guardian relationship history is retained. Student creation, update, and archive each write an audit event in the same transaction as the data change.
+
+After admission, create the student's academic placement using `POST /school/enrollments`. Promotion creates a new enrollment row and preserves the previous academic-year history; it does not create another student identity.
+
+Guardian contact and student-guardian relationship APIs are implemented below. Parent account creation, OTP verification, and SMS delivery remain paused.
+
+
+## Student Attendance (V20)
+
+- GET `/school/attendance?academic_year_id=1&section_id=2&date=2026-11-04` lists attendance within the caller's permitted school and section scope. Filters are optional; results are capped at 1,000 records.
+- POST `/school/attendance` records one status for an enrollment and date. JSON: `{"enrollment_id":12,"attendance_date":"2026-11-04","status":"present","remarks":"optional"}`.
+- PATCH `/school/attendance/:attendanceID` updates same-day status/remarks and requires `attendance.update_same_day`.
+- PATCH `/school/attendance/:attendanceID/correct` corrects historical status/remarks and requires `attendance.correct_past`. JSON: `{"status":"late","remarks":"optional"}`.
+- Status values: `present`, `absent`, `late`, `excused`. Only one record is allowed per enrollment/date.
+- School Admin access is school-scoped. Teachers are restricted to sections with an active class-in-charge assignment; subject-only assignments do not grant attendance access.
+- Same-day changes require `attendance.update_same_day`; past-date entries/corrections require `attendance.correct_past`. Future dates and dates outside the enrollment period are rejected. Every write creates an audit event.
+
+
+## 3.9 Administrative Session Inactivity and Password Safety
+
+### Per-device administrative idle timeout
+
+- The access JWT `sid` claim identifies the refresh-session family for the device that signed in.
+- Platform Admin and staff with an active system `school_admin` role are subject to a 30-minute idle timeout. Ordinary staff and parent sessions are not.
+- Every protected request updates the activity timestamp for only the matching active family. At 30 minutes of inactivity, that family is revoked and an audit event is written; other device families remain independent.
+- `POST /auth/refresh` applies the same idle check inside the transactional refresh rotation. Refreshing a token does not itself reset the idle timestamp.
+- An idle-expired admin access token receives `401 Unauthorized` on protected routes. An idle-expired admin refresh token receives `401 Unauthorized` and must be replaced by signing in again.
+
+### Password breach check
+
+New staff initial passwords, re-enable temporary passwords, self-service password changes, School Admin password resets, and first Platform Admin bootstrap passwords are checked against the Pwned Passwords range API. The API receives only the first five SHA-1 hexadecimal characters; the remaining suffix is matched locally. Zero-count padding records are ignored and range responses are cached for one hour.
+
+| HTTP status | Meaning |
+|---|---|
+| `400 Bad Request` | Password fails local policy or has appeared in known data breaches. |
+| `503 Service Unavailable` | Password breach verification provider is temporarily unavailable; the password operation fails closed. |

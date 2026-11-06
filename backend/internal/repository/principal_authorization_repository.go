@@ -8,16 +8,20 @@ import (
 	"school-management-system/internal/models"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // PrincipalAuthorizationRepository loads live principal identity and a
 // conservative effective-permission set for each protected request.
-type PrincipalAuthorizationRepository struct {
-	db *pgxpool.Pool
+type principalAuthorizationDB interface {
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 }
 
-func NewPrincipalAuthorizationRepository(db *pgxpool.Pool) *PrincipalAuthorizationRepository {
+type PrincipalAuthorizationRepository struct {
+	db principalAuthorizationDB
+}
+
+func NewPrincipalAuthorizationRepository(db principalAuthorizationDB) *PrincipalAuthorizationRepository {
 	return &PrincipalAuthorizationRepository{db: db}
 }
 
@@ -32,9 +36,45 @@ func (r *PrincipalAuthorizationRepository) LoadPrincipalForAuthentication(
 	const query = `
 SELECT ap.id, ap.principal_type, ap.status, ap.token_version,
        COALESCE(u.school_id, 0), COALESCE(u.username, ''),
+       COALESCE(u.must_change_password, FALSE),
        COALESCE(u.status, ''), COALESCE(s.status, ''),
        (pa.principal_id IS NOT NULL),
        (parent.mobile_verified_at IS NOT NULL),
+       EXISTS (
+         SELECT 1
+         FROM parent_guardian_links pgl
+         JOIN guardians g ON g.id = pgl.guardian_id AND g.school_id = pgl.school_id
+          JOIN schools linked_school ON linked_school.id = pgl.school_id AND linked_school.status = 'active'
+          JOIN student_guardians sg ON sg.guardian_id = g.id AND sg.school_id = g.school_id
+         JOIN students st ON st.id = sg.student_id AND st.school_id = sg.school_id
+         WHERE pgl.principal_id = ap.id
+           AND pgl.revoked_at IS NULL
+           AND sg.revoked_at IS NULL
+           AND g.status = 'active'
+           AND st.status = 'active'
+           AND g.parent_portal_enabled_at IS NOT NULL
+       ),
+       CASE
+         WHEN ap.principal_type='platform_admin' OR
+              (ap.principal_type='staff' AND EXISTS (
+                SELECT 1 FROM principal_roles mpr JOIN roles mr ON mr.id=mpr.role_id
+                WHERE mpr.principal_id=ap.id AND mpr.revoked_at IS NULL
+                  AND mr.is_system=TRUE AND mr.role_key='school_admin'
+                  AND mr.principal_type='staff' AND mr.scope_type='school'
+                  AND mr.school_id=u.school_id
+              ))
+         THEN EXISTS (SELECT 1 FROM principal_mfa_credentials mc
+                      WHERE mc.principal_id=ap.id AND mc.method='totp' AND mc.verified_at IS NOT NULL)
+         ELSE TRUE
+       END,
+       (ap.principal_type='platform_admin' OR
+        (ap.principal_type='staff' AND EXISTS (
+          SELECT 1 FROM principal_roles apr JOIN roles ar ON ar.id=apr.role_id
+          WHERE apr.principal_id=ap.id AND apr.revoked_at IS NULL
+            AND ar.is_system=TRUE AND ar.role_key='school_admin'
+            AND ar.principal_type='staff' AND ar.scope_type='school'
+            AND ar.school_id=u.school_id
+        ))),
        (u.principal_id IS NOT NULL)::int +
        (pa.principal_id IS NOT NULL)::int +
        (parent.principal_id IS NOT NULL)::int
@@ -47,12 +87,13 @@ WHERE ap.id = $1`
 
 	var p models.AuthPrincipal
 	var staffStatus, schoolStatus string
-	var hasPlatformAccount, mobileVerified bool
+	var mustChangePassword bool
+	var hasPlatformAccount, mobileVerified, hasEligibleParentLink, mfaVerified, requiresAdminSessionActivity bool
 	var subtypeCount int
 	err := r.db.QueryRow(ctx, query, principalID).Scan(
 		&p.ID, &p.Type, &p.Status, &p.TokenVersion,
-		&p.SchoolID, &p.Username, &staffStatus, &schoolStatus,
-		&hasPlatformAccount, &mobileVerified, &subtypeCount,
+		&p.SchoolID, &p.Username, &mustChangePassword, &staffStatus, &schoolStatus,
+		&hasPlatformAccount, &mobileVerified, &hasEligibleParentLink, &mfaVerified, &requiresAdminSessionActivity, &subtypeCount,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, models.ErrPrincipalNotAuthenticated
@@ -61,7 +102,7 @@ WHERE ap.id = $1`
 		return nil, fmt.Errorf("load principal for authentication: %w", err)
 	}
 
-	if p.Status != "active" || p.TokenVersion <= 0 || subtypeCount != 1 {
+	if p.Status != "active" || p.TokenVersion <= 0 || subtypeCount != 1 || !mfaVerified {
 		return nil, models.ErrPrincipalNotAuthenticated
 	}
 	switch p.Type {
@@ -74,26 +115,39 @@ WHERE ap.id = $1`
 			return nil, models.ErrPrincipalNotAuthenticated
 		}
 	case "parent":
-		if !mobileVerified {
+		if !mobileVerified || !hasEligibleParentLink {
 			return nil, models.ErrPrincipalNotAuthenticated
 		}
 	default:
 		return nil, models.ErrPrincipalNotAuthenticated
 	}
 	p.MobileVerified = mobileVerified
+	p.MustChangePassword = p.Type == "staff" && mustChangePassword
+	p.RequiresAdminSessionActivity = requiresAdminSessionActivity
 	return &p, nil
 }
 
-// LoadEffectivePermissions intentionally fails closed for user-specific ALLOW
-// overrides and custom-role grants. The current V4 schema does not bind those
-// grants to the exact delegation that authorized them, so enabling them here
-// could revive stale privileges after a delegation is revoked and re-granted.
-// Built-in system-role grants and explicit DENY overrides are safe to resolve.
+// LoadEffectivePermissions resolves system-role grants, custom-role grants
+// bound to their exact active delegation, and user-specific overrides. A
+// revoked delegation cannot revive a grant after a later delegation is issued
+// for the same school/permission pair.
+type authorizationQueryer interface {
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+}
+
 func (r *PrincipalAuthorizationRepository) LoadEffectivePermissions(
 	ctx context.Context,
 	principal *models.AuthPrincipal,
 ) ([]string, error) {
-	if principal == nil || principal.ID <= 0 {
+	return loadEffectivePermissions(ctx, r.db, principal)
+}
+
+func loadEffectivePermissions(
+	ctx context.Context,
+	db authorizationQueryer,
+	principal *models.AuthPrincipal,
+) ([]string, error) {
+	if db == nil || principal == nil || principal.ID <= 0 {
 		return nil, fmt.Errorf("invalid principal")
 	}
 
@@ -103,10 +157,20 @@ FROM principal_roles pr
 JOIN roles r ON r.id = pr.role_id
 JOIN role_permissions rp ON rp.role_id = r.id
 JOIN permissions p ON p.id = rp.permission_id
+LEFT JOIN role_permission_delegations d
+  ON d.id = rp.delegation_id
+ AND d.school_id = r.school_id
+ AND d.permission_id = rp.permission_id
+ AND d.can_assign_to_roles = TRUE
+ AND d.revoked_at IS NULL
 WHERE pr.principal_id = $1
   AND pr.revoked_at IS NULL
-  AND r.is_system = TRUE
   AND p.is_active = TRUE
+  AND (
+      (r.is_system = TRUE AND rp.delegation_id IS NULL)
+      OR
+      (r.is_system = FALSE AND r.scope_type = 'school' AND d.id IS NOT NULL)
+  )
   AND r.principal_type = $2
   AND (
       ($2 = 'staff' AND r.scope_type = 'school' AND r.school_id = $3)
@@ -114,9 +178,9 @@ WHERE pr.principal_id = $1
       OR ($2 = 'parent' AND r.scope_type = 'global' AND r.school_id IS NULL)
   )`
 
-	rows, err := r.db.Query(ctx, roleQuery, principal.ID, principal.Type, nullableSchoolID(principal))
+	rows, err := db.Query(ctx, roleQuery, principal.ID, principal.Type, nullableSchoolID(principal))
 	if err != nil {
-		return nil, fmt.Errorf("load built-in role permissions: %w", err)
+		return nil, fmt.Errorf("load effective role permissions: %w", err)
 	}
 	set := make(map[string]struct{})
 	for rows.Next() {
@@ -140,13 +204,46 @@ WHERE pr.principal_id = $1
 	rows.Close()
 
 	if principal.Type == "staff" {
+		// ALLOW overrides are effective only while the exact delegation row
+		// that authorized them remains active. A later delegation for the same
+		// permission has a different ID and cannot revive this override.
+		const allowQuery = `
+SELECT p.permission_key
+FROM user_permission_overrides o
+JOIN permissions p ON p.id = o.permission_id
+JOIN role_permission_delegations d
+  ON d.id = o.delegation_id
+ AND d.school_id = o.school_id
+ AND d.permission_id = o.permission_id
+ AND d.can_override_users = TRUE
+ AND d.revoked_at IS NULL
+WHERE o.principal_id = $1 AND o.school_id = $2
+  AND o.effect = 'allow' AND p.is_active = TRUE`
+		rows, err := db.Query(ctx, allowQuery, principal.ID, principal.SchoolID)
+		if err != nil {
+			return nil, fmt.Errorf("load delegated permission allowances: %w", err)
+		}
+		for rows.Next() {
+			var key string
+			if err := rows.Scan(&key); err != nil {
+				rows.Close()
+				return nil, fmt.Errorf("scan delegated permission allowance: %w", err)
+			}
+			set[key] = struct{}{}
+		}
+		if err := rows.Err(); err != nil {
+			rows.Close()
+			return nil, fmt.Errorf("iterate delegated permission allowances: %w", err)
+		}
+		rows.Close()
+
 		const denyQuery = `
 SELECT p.permission_key
 FROM user_permission_overrides o
 JOIN permissions p ON p.id = o.permission_id
 WHERE o.principal_id = $1 AND o.school_id = $2
   AND o.effect = 'deny' AND p.is_active = TRUE`
-		rows, err := r.db.Query(ctx, denyQuery, principal.ID, principal.SchoolID)
+		rows, err = db.Query(ctx, denyQuery, principal.ID, principal.SchoolID)
 		if err != nil {
 			return nil, fmt.Errorf("load explicit permission denials: %w", err)
 		}
@@ -231,4 +328,75 @@ var approvedSchoolAdminPermissions = map[string]bool{
 	"permissions.read":                  true,
 	"permissions.assign":                true,
 	"permissions.override":              true,
+}
+
+
+// CheckAndTouchAdminSession enforces the 30-minute idle window independently
+// for each administrative refresh-session family. Expired families are
+// revoked and recorded in the append-only audit log.
+func (r *PrincipalAuthorizationRepository) CheckAndTouchAdminSession(ctx context.Context, principalID int64, familyID string) (bool, bool, error) {
+	if principalID <= 0 { return false, false, nil }
+	const query = `
+WITH admin_principal AS (
+    SELECT ap.id, COALESCE(u.school_id,0) AS school_id,
+           (ap.principal_type='platform_admin' OR
+            (ap.principal_type='staff' AND EXISTS (
+                SELECT 1 FROM principal_roles pr
+                JOIN roles ro ON ro.id=pr.role_id
+                WHERE pr.principal_id=ap.id AND pr.revoked_at IS NULL
+                  AND ro.is_system=TRUE AND ro.role_key='school_admin'
+                  AND ro.principal_type='staff' AND ro.scope_type='school'
+                  AND ro.school_id=u.school_id
+            ))) AS is_admin
+    FROM auth_principals ap
+    LEFT JOIN users u ON u.principal_id=ap.id
+    WHERE ap.id=$1
+),
+family_lock AS MATERIALIZED (
+    SELECT pg_advisory_xact_lock(hashtextextended($2,0))
+    FROM admin_principal
+    WHERE is_admin
+),
+family_state AS (
+    SELECT rs.family_id, rs.principal_id,
+           MAX(rs.last_activity_at) FILTER (WHERE rs.revoked_at IS NULL) AS last_activity
+    FROM refresh_sessions rs
+    CROSS JOIN family_lock
+    WHERE rs.family_id::text=$2
+    GROUP BY rs.family_id, rs.principal_id
+),
+touch AS (
+    UPDATE refresh_sessions rs
+       SET last_activity_at=clock_timestamp()
+      FROM admin_principal a, family_state f
+     WHERE a.is_admin AND f.principal_id=a.id AND f.family_id=rs.family_id
+       AND rs.revoked_at IS NULL AND rs.expires_at>NOW()
+       AND f.last_activity>clock_timestamp()-INTERVAL '30 minutes'
+    RETURNING rs.id
+),
+expired AS (
+    UPDATE refresh_sessions rs
+       SET revoked_at=COALESCE(rs.revoked_at,NOW())
+      FROM admin_principal a, family_state f
+     WHERE a.is_admin AND f.principal_id=a.id AND f.family_id=rs.family_id
+       AND rs.revoked_at IS NULL
+       AND f.last_activity<=clock_timestamp()-INTERVAL '30 minutes'
+    RETURNING rs.id
+),
+audit AS (
+    INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
+    SELECT a.id,NULLIF(a.school_id,0),'auth.admin_session_idle_timeout','refresh_session',$2,'success',
+           jsonb_build_object('idle_timeout_minutes',30)
+      FROM admin_principal a
+     WHERE a.is_admin AND EXISTS(SELECT 1 FROM expired)
+    RETURNING id
+)
+SELECT COALESCE((SELECT is_admin FROM admin_principal),FALSE),
+       EXISTS(SELECT 1 FROM touch),
+       EXISTS(SELECT 1 FROM expired)`
+	var isAdmin, touched, expired bool
+	err := r.db.QueryRow(ctx, query, principalID, familyID).Scan(&isAdmin,&touched,&expired)
+	if err != nil { return false,false,fmt.Errorf("check administrative session activity: %w",err) }
+	if !isAdmin { return false,true,nil }
+	return true, touched && !expired, nil
 }

@@ -1,10 +1,142 @@
 # Changelog
 
+## 2026-11-05
+
+- Added V22 database and repository protections against self role assignment and self permission override escalation/removal.
+- Added principal-wide MFA failure lockout across replacement challenges and challenge purposes, including 15-minute lockout, failure audit events, and reset after successful verification.
+- Made staff and Platform Admin HTTP login fail closed when the IP rate limiter is not wired; made staff authentication fail closed when the username lockout/security repository is missing.
+- Restricted Parent authentication, guardian matching and pre-account registration to active-school guardian/student links. Parent OTP/SMS delivery and Phase 2 Parent/Driver routes remain paused.
+- Added student name to the assigned-section teacher enrollment roster while retaining the approved minimal fields and assignment filtering.
+- Updated existing README, security, testing, Phase 1 RBAC and progress documentation with current implementation and verification status.
+- Latest green source checkpoint: commit 7071d7913ab62ff525637e2af0f4d3718b9f57b8; GitHub Actions run 41961583328 passed migrations V1–V22, backend PostgreSQL integration tests, and go vet on ephemeral PostgreSQL 18.
+
+
 All notable changes to the School Management System are documented in this file.
 
 This project is under active development. Verification results describe the latest reported local checks and should be rerun whenever relevant code changes.
 
 ## [Unreleased]
+
+### RBAC HTTP/PostgreSQL integration slice (2026-11-04)
+
+- Added `TestRBACHTTPAuthorizationUsesPostgresState`, which starts the real Gin API router with the PostgreSQL-backed principal and effective-permission repositories and the real role service/handler.
+- The test verifies that an active staff principal can inspect `/auth/me`, a staff principal with no role grants receives `403 Forbidden` on `/school/roles`, and advancing the database token version makes the existing access token receive `401 Unauthorized`.
+- The test uses the real `TokenService` to generate and validate an HS256 access token through the actual authentication middleware. An altered signature is rejected with `401 Unauthorized`; a valid token reaches the live PostgreSQL identity and permission checks.
+- The test verifies default-deny role listing (403), a database-trigger-authorized School Admin role grant reaching the real role handler (200), and immediate token-version invalidation (401).
+- Extended role-repository PostgreSQL integration coverage with a second school: a School A School Admin cannot list or create School B roles, inspect School B staff role assignments/overrides, assign a School A role to School B staff, or set a School A permission override on School B staff. Cross-school target lookups return no foreign records and mutation attempts are rejected.
+- Push run `41766408925` and Draft PR run `41766414685` on commit `c7dd5ce` both passed V1–V16 migrations on ephemeral PostgreSQL 18, the full Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and `go vet ./...`. All test fixtures are rolled back; no persistent user database was modified.
+- Extended the HTTP/PostgreSQL test with an authorized `POST /school/roles` request. The same real signed JWT, live database permission resolution, role handler, role service, and transaction-backed repository create a custom role and return 201; the created role is rolled back with the test transaction.
+- Draft PR run `41766719434` on commit `d5f8340` passed V1–V16 migrations, the full PostgreSQL integration-enabled Go suite, and `go vet ./...`.
+- Extended the same HTTP integration path: a real Platform Admin token (with a transaction-scoped verified-MFA fixture when bootstrapped for the test) grants a school permission delegation over `POST /platform/schools/:schoolID/permission-delegations`; the School Admin then consumes that exact delegation to grant `students.read_basic` to the custom role through `POST /school/roles/:roleID/permissions`. Both real HTTP write routes return 201 and all writes roll back.
+- Push run `41767168878` and Draft PR run `41767176542` on commit `6bf8ca5` passed V1–V16 migrations, the full PostgreSQL integration-enabled Go suite, and `go vet ./...`.
+- Added HTTP revocation checks: School Admin revokes the custom-role permission through `DELETE /school/roles/:roleID/permissions/:permissionKey` (200), then Platform Admin revokes the exact delegation through `POST /platform/permission-delegations/:delegationID/revoke` (200).
+- Push run `41767372453` and Draft PR run `41767378009` on commit `0b560fd` both passed V1–V16 migrations, the full PostgreSQL integration-enabled Go suite, and `go vet ./...`.
+- Extended the same HTTP integration flow to create a same-school target staff principal, assign the created custom role (201), list the staff role assignments (200), and revoke the assignment (200).
+- Added a separate exact delegation for `homework.create` with `can_override_users=true`; School Admin sets an ALLOW override (200), deletes it (200), and Platform Admin revokes the delegation (200).
+- Push run `41767598076` and Draft PR run `41767602833` on commit `d90ba9e` both passed V1–V16 migrations, the full PostgreSQL integration-enabled Go suite, and `go vet ./...`.
+- Added actual HTTP cross-school target checks with a second school and staff principal: School A's admin receives 404 when attempting to assign a School A custom role to School B staff, and receives 409 when attempting to apply a School A permission override to School B staff. No foreign-school assignment or override is created.
+- Push run `41767842024` and Draft PR run `41767846927` on commit `4bd8af4` both passed V1–V16 migrations, the full PostgreSQL integration-enabled Go suite, and `go vet ./...`.
+- This verifies tenant boundaries for RBAC administration operations only; business-resource tenant isolation remains pending until those resource APIs and repositories are implemented.
+
+
+### Role administration HTTP route authorization tests (2026-11-03)
+
+- Added `TestRoleAdministrationRoutesEnforceLivePermissions` covering all 14 registered Platform Admin and school role-administration endpoints.
+- Each route is tested with missing permission (403), and with all required live permissions (request passes authorization middleware and reaches the handler). Routes requiring two permissions also verify that only one grant is insufficient.
+- GitHub Actions push run `41658994787` and Draft PR run `41659008482` on commit `2c81dfc` both passed: V1–V16 migrations on ephemeral PostgreSQL 18, full Go integration suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and `go vet ./...`.
+- These are router/middleware authorization tests with controlled token/principal/permission loaders; they do not replace full HTTP-to-PostgreSQL end-to-end tests. The user's persistent databases were not modified.
+
+
+### Role administration PostgreSQL integration coverage (2026-11-03)
+
+- Added a shared transaction-aware repository database interface implemented by both `pgxpool.Pool` and `pgx.Tx`. Role administration methods can now participate in a caller-owned transaction, allowing all test writes and audit events to be rolled back safely.
+- Added `TestRoleRepositoryAdministrationPostgresIntegration` for custom-role creation/listing, permission catalogue listing, Platform Admin delegation grant/list/revoke, exact-delegation custom-role permission grant/revoke, staff role assignment/list/revoke, ALLOW/DENY override set/list/delete, duplicate rejection, authorization failures, and actor-attributed audit events.
+- Added explicit PostgreSQL parameter casts to role-administration JSONB audit metadata to avoid ambiguous parameter type inference.
+- GitHub Actions push workflow on commit `64acf1b` applied V1–V16 to ephemeral PostgreSQL 18, passed the complete Go suite with `RUN_POSTGRES_INTEGRATION_TESTS=1`, and passed `go vet ./...`. The user's persistent databases were not modified.
+
+### RBAC administration APIs (2026-11-03)
+
+- Added school role listing, custom school-role creation, and the active school permission catalogue endpoint.
+- Added Platform Admin grant/revoke endpoints for school permission delegation ceilings. Delegations require an active school and active delegable school permission and are audit logged.
+- Added School Admin listing of active delegation IDs and custom-role permission grant/revoke endpoints. Custom grants carry the exact active delegation ID enforced by V16.
+- Added School Admin staff permission override list/set/remove endpoints. ALLOW and DENY overrides both require the exact active override delegation ID, a same-school active target staff account, and an audit event.
+- Added same-school staff role assignment list/assign/revoke endpoints. School Admin can assign only active staff roles within the authenticated school and cannot assign or revoke the reserved `school_admin` role. Every assignment/revocation is audited.
+- Added `POST /school/staff` for same-school School Admin staff account creation. Usernames are canonicalized and globally unique, initial passwords are hashed under the shared policy, new accounts require first-login password change, and account creation is audited. Password material is never returned.
+- These are backend API foundations, not a completed role administration UI or complete RBAC rollout. Staff role assignment workflows and business-resource/tenant/teacher-scope authorization remain pending.
+- GitHub Actions commit `524d795` passed the V1–V16 PostgreSQL 18 migration/integration workflow and handler/service tests. Dedicated repository-method coverage was subsequently added and passed on commit `64acf1b` as recorded above. The user's persistent databases were not modified by GitHub Actions.
+
+### Authentication — staff password lifecycle (2026-11-03)
+
+- Added V15 `users.must_change_password` state. Existing staff rows retain the permanent-password state; newly inserted staff accounts default to requiring a first-login password change.
+- Added authenticated staff password change with current-password verification and the shared password policy.
+- Added same-school School Admin staff password reset, independently authorized in the repository and protected by the `users.password_reset` permission.
+- Password change/reset now atomically increment principal token version, revoke active refresh sessions, and append audit events. New/reset staff credentials require a change before normal protected access.
+- Added unit, handler, middleware and opt-in PostgreSQL integration tests. V15 integration tests passed on ephemeral PostgreSQL 18 in GitHub Actions; the user's persistent `school_management_test` remains unchanged.
+
+### Authorization — exact delegation linkage (2026-11-03)
+
+- Added V16 `delegation_id` linkage to custom-role permission grants and user permission overrides.
+- Database triggers require the exact active delegation and appropriate capability (`can_assign_to_roles` or `can_override_users`); legacy un-attributable custom grants/overrides cause a safe migration preflight failure rather than guessed backfill.
+- Live permission resolution now includes custom-role grants and ALLOW overrides only while the exact referenced delegation remains active. A later delegation for the same permission does not revive an old grant.
+- Added opt-in PostgreSQL integration tests for exact-delegation revocation and explicit rebinding. V16 migration and behavior tests passed on ephemeral PostgreSQL 18 in GitHub Actions; the user's persistent `school_management_test` remains unchanged.
+
+### Verification
+
+- GitHub Actions commit `fcffdbf` enabled `RUN_POSTGRES_INTEGRATION_TESTS=1`, applied V1–V16 to ephemeral PostgreSQL 18, passed `go test -count=1 -p 1 ./...`, and passed `go vet ./...`. The persistent user database was not touched.
+
+### Database — V13 new-school system-role provisioning (2026-11-03)
+
+- Added an additive V13 migration that provisions the fixed School Admin and Teacher system roles whenever a new school is inserted.
+- The School Admin role receives exactly the approved 51 permissions; the Teacher role receives exactly the approved 7 permissions.
+- Direct runtime creation of system roles and direct modification of system-role permission bundles remain blocked; only the nested school-insert trigger may provision the reserved roles.
+- Added PostgreSQL integration coverage for exact role bundles, rejection of direct system-role writes, and atomic rollback when a required permission is inactive.
+- User confirmed V13 is applied on school_management_test (cumulative migration version 13, dirty=false); the V13 school-system-role provisioning integration test passed. This does not establish the school_management state.
+
+### Database verification clarification — 2026-11-03
+
+- The user later confirmed `school_management_test.schema_migrations` at cumulative version 13, dirty=false. This supersedes the earlier version-12 checkpoint and does not establish the state of school_management.
+- A dedicated `TestParentGuardianAuthorizationV12PostgresIntegration` run was reported PASS. A later verbose attempt skipped integration tests because `RUN_POSTGRES_INTEGRATION_TESTS=1` was omitted; re-run with the flag after relevant changes.
+- Older changelog entries below retain the status as it was recorded at their original checkpoint.
+
+### Product direction — web-first delivery (2026-11-03)
+
+- Approved Phase 1 as the complete web application for Platform Admin, School Admin and school staff.
+- Deferred Parent and Driver mobile applications/interfaces until Phase 1 web completion. Parent access is intended to be read-only initially; authentication and OTP provider remain undecided for Phase 2.
+- Paused further Parent-specific implementation while preserving existing Parent/Guardian schema and OTP foundation.
+- Confirmed future-ready database principles: shared identity/role boundaries, strict school ownership, student/enrollment history separation, guardian relationship history, transport extensibility, auditability and shared backend APIs for web/mobile. No speculative schema or migration execution is authorized.
+- Set delivery order: reconcile existing backend/database foundation, establish frontend/API foundation, then deliver Platform Admin, School Admin and staff modules with server-side authorization and tests.
+
+
+### Parent OTP request and delivery foundation — 2026-11-02
+
+- Added a provider-independent Parent OTP request service with secure six-digit generation, keyed mobile/IP/OTP hashes, five-minute expiry, repository-enforced resend/rate limits, and delivery through an injected provider interface.
+- The service never returns or logs the OTP. Production must not use the test-only fake delivery provider; production SMS provider configuration and India TRAI/DLT registration remain deployment requirements.
+- If delivery fails, the pre-account challenge is invalidated without refunding the reserved mobile/IP rate-limit counters.
+- If challenge invalidation also fails, the service returns safe delivery/cleanup sentinels without exposing provider or database error details; unit tests cover this failure path.
+- User-confirmed verification on commit `c78e770`: Parent OTP focused unit tests, full `go test -count=1 -p 1 ./...`, and `go vet ./...` passed on Windows. Windows temporary test-executable cleanup warnings appeared after successful package results.
+- User-confirmed PostgreSQL integration test on commit `7105762`: pre-account challenge persistence, rate limits, failed-delivery invalidation, and non-refunded rate-limit counters passed on `school_management_test`.
+
+### Database — V12 Parent–Guardian authorization foundation
+
+- Added migration V12 for school-authorized guardian portal eligibility, authenticated Parent-to-Guardian links, and revocation history.
+- Added same-school and exact verified-mobile checks before a Parent principal can be linked to a guardian record.
+- Added irreversible revocation history for official student–guardian relationships while allowing a later re-link as a new row.
+- Extended Parent OTP storage to support pre-account challenges using a keyed mobile HMAC without creating or reserving an unauthenticated principal.
+- Added persistent keyed-HMAC mobile/IP OTP rate-limit buckets and append-only audit events for relationship changes.
+- Added PostgreSQL integration-test source for link validation, active relationship visibility, revocation, pre-account OTP uniqueness/immutability, and rate-limit storage.
+- V12 is source-only at this checkpoint. It has **not** been applied or PostgreSQL-tested. Parent OTP request/delivery service exists, but OTP verification, Parent account/session creation, Parent auth handlers/routes, and business-resource authorization remain pending.
+
+
+### Database — V11 student and guardian foundation
+
+- Added stable school-scoped student records with normalized, school-unique admission numbers.
+- Added separate school-scoped guardian contact records; contact mobile numbers and email addresses are intentionally not unique and do not authenticate a Parent account.
+- Added a many-to-many student/guardian mapping with same-school composite foreign keys, duplicate-link prevention, and immutable school ownership.
+- Added PostgreSQL integration coverage for multiple guardians per student, one guardian linked to multiple students, duplicate admission/link rejection, cross-school link rejection, and school-scope immutability.
+- Kept academic-year enrollment, class/section placement, and authenticated parent-to-guardian/child relationships out of V11.
+- User applied V11 to the dedicated `school_management_test` database; `schema_migrations` reported version `11`, `dirty = false`.
+- User ran `go test -count=1 -p 1 ./...` with `RUN_POSTGRES_INTEGRATION_TESTS=1`; all packages with tests passed. `go vet ./...` completed without diagnostics.
+- The MFA recovery-code PostgreSQL integration test passed twice consecutively after commit `79c2717` made its fixtures unique per run. Its append-only recovery-code history constraint remains intact.
 
 ### Database — V4 identity/RBAC migration draft
 
@@ -165,3 +297,29 @@ This project is under active development. Verification results describe the late
 - Corrected malformed PL/pgSQL dollar-quote delimiters in five trigger functions (delimiter-only change; no business logic changes).
 - Static full-file scan confirms all five opening/closing pairs are valid and no targeted malformed delimiters remain.
 - PostgreSQL 18 execution and integration verification are still pending; Migration V4 remains unapplied.
+
+
+### Authentication/RBAC hardening — 2026-11-03
+
+- Added a one-time first Platform Admin bootstrap path through a manually invoked CLI; no public registration endpoint is exposed.
+- Hardened bootstrap password entry to require an interactive terminal and read the password without echo. Plaintext is no longer accepted through an environment variable; the byte buffer is cleared immediately after hashing.
+- Refactored the repository bootstrap transaction body for rollback-based PostgreSQL integration testing. Added assertions for principal/account creation, the Platform Admin system-role assignment, the audit event, rejection of a second bootstrap attempt, and the V14 system-role-only trigger condition.
+- Tightened the V14 database exception to require the reserved Platform Admin role to be marked is_system = TRUE. Existing authenticated role-assignment rules remain in the replacement trigger.
+- V14 has not been applied to PostgreSQL. New Go changes and the V14 integration test must be run on the user's machine after pulling the latest branch; migration application to school_management_test requires explicit approval.
+
+
+### RBAC HTTP/PostgreSQL authorization success path — 2026-11-04
+
+- Extended the real-router PostgreSQL integration test to verify both default-deny and successful authorization after a School Admin system-role grant.
+- The test assigns the system role through the existing database authorization trigger, adds a verified-MFA fixture, and confirms the same authenticated request reaches the real role handler and returns the school role list.
+- Made principal authorization reads accept a caller-owned transaction, allowing the HTTP integration fixture and any temporary Platform Admin bootstrap to run inside one rollback boundary.
+- Exposed `PlatformAdminRepository.BootstrapFirstInTx` for caller-owned atomic workflows; the integration test uses it only when the ephemeral test database has never been bootstrapped, and rolls the created account and audit event back with the test transaction.
+- Push run `41764671472` and Draft PR run `41764679462` on commit `d5e0c8d` passed migrations V1–V16 on ephemeral PostgreSQL 18, the full Go suite with PostgreSQL integration enabled, and `go vet ./...`.
+- The HTTP test still uses a controlled token validator; real JWT signature verification, cross-school tenant/resource isolation, and teacher assignment-scope authorization remain pending.
+
+- Strengthened the real HTTP/PostgreSQL RBAC integration test to assert exactly one success audit event for custom-role creation, permission grant/revocation, both Platform Admin delegation grant/revocation pairs, staff role assignment/revocation, and staff permission override set/removal. It also verifies rejected cross-school role assignment and permission override attempts create neither data rows nor success audit events.
+- Push run `41768691764` and Draft PR run `41768696622` on commit `17808905` both passed V1–V16 migrations, the full PostgreSQL integration-enabled Go suite, and `go vet ./...`.
+- Extended the PostgreSQL-backed HTTP test to verify live permission refresh for a non-admin staff principal: without a role or override, `GET /school/roles` returns 403; after a delegated `roles.read` ALLOW override, the same signed token succeeds on the next request (200); after deleting the override, the next request is denied again (403). This confirms permission changes are read from current database state, not cached in the JWT.
+- Push run `41769118132` and Draft PR run `41769126077` on commit `b947cf2` both passed V1–V16 migrations, the full PostgreSQL integration-enabled Go suite, and `go vet ./...`.
+- Extended the same HTTP flow to verify DENY precedence over a role grant: the target first receives `roles.read` through a custom role (200), a delegated DENY override blocks the same permission on the next request (403), deleting the DENY restores role-based access (200), and revoking the role assignment removes access again (403). The same unchanged signed JWT is used throughout.
+- Push run `41769509298` and Draft PR run `41769515139` on commit `2f7a6d4` both passed V1–V16 migrations, the full PostgreSQL integration-enabled Go suite, and `go vet ./...`.

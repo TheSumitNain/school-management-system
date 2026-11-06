@@ -18,10 +18,12 @@ var (
 	ErrInvalidRefreshToken    = repository.ErrRefreshTokenInvalid
 	ErrRefreshTokenReuse      = repository.ErrRefreshTokenReuse
 	ErrRefreshSessionInactive = repository.ErrRefreshSessionInactive
+	ErrAdminSessionIdleExpired = repository.ErrAdminSessionIdleExpired
+	ErrSessionPrincipalVersionChanged = repository.ErrPrincipalVersionChanged
 )
 
 type refreshSessionRepository interface {
-	CreatePrincipal(ctx context.Context, principalID int64, tokenHash string, expiresAt time.Time) error
+	CreatePrincipalForVersion(ctx context.Context, principalID, expectedTokenVersion int64, tokenHash string, expiresAt time.Time) error
 	RotatePrincipal(ctx context.Context, oldTokenHash, newTokenHash string, newExpiresAt time.Time) (*models.AuthPrincipal, error)
 	RevokePrincipal(ctx context.Context, tokenHash string) error
 }
@@ -42,18 +44,58 @@ func NewSessionService(sessions refreshSessionRepository, refreshExpiryDays int)
 	return &SessionService{sessions: sessions, expiry: time.Duration(refreshExpiryDays) * 24 * time.Hour}, nil
 }
 
-func (s *SessionService) Issue(ctx context.Context, principalID int64) (string, error) {
-	if principalID <= 0 {
-		return "", fmt.Errorf("principal ID must be positive")
+// Issue binds session creation to the exact principal version
+// returned by password/MFA authentication. A concurrent credential reset or
+// account-security change therefore invalidates the in-flight login.
+func (s *SessionService) Issue(ctx context.Context, principal *models.AuthPrincipal) (string, error) {
+	if principal == nil || principal.ID <= 0 || principal.TokenVersion <= 0 || principal.Status != "active" {
+		return "", fmt.Errorf("valid authenticated principal is required")
 	}
 	raw, err := generateOpaqueRefreshToken()
 	if err != nil {
 		return "", err
 	}
-	if err := s.sessions.CreatePrincipal(ctx, principalID, HashRefreshToken(raw), time.Now().Add(s.expiry)); err != nil {
+	if err := s.sessions.CreatePrincipalForVersion(
+		ctx, principal.ID, principal.TokenVersion, HashRefreshToken(raw), time.Now().Add(s.expiry),
+	); err != nil {
 		return "", err
 	}
 	return raw, nil
+}
+
+type refreshSessionFamilyIssuer interface {
+	CreatePrincipalForVersionWithFamily(ctx context.Context, principalID, expectedTokenVersion int64, tokenHash string, expiresAt time.Time) (string, error)
+}
+
+// IssueWithFamily creates the refresh family before access-token issuance and
+// returns its stable UUID for the JWT sid claim.
+func (s *SessionService) IssueWithFamily(ctx context.Context, principal *models.AuthPrincipal) (string, string, error) {
+	if principal == nil || principal.ID <= 0 || principal.TokenVersion <= 0 || principal.Status != "active" {
+		return "", "", fmt.Errorf("valid authenticated principal is required")
+	}
+	repo, ok := s.sessions.(refreshSessionFamilyIssuer)
+	if !ok {
+		return "", "", fmt.Errorf("refresh repository does not support session-family binding")
+	}
+	raw, err := generateOpaqueRefreshToken()
+	if err != nil { return "", "", err }
+	familyID, err := repo.CreatePrincipalForVersionWithFamily(ctx, principal.ID, principal.TokenVersion, HashRefreshToken(raw), time.Now().Add(s.expiry))
+	if err != nil { return "", "", err }
+	if !validRefreshFamilyID(familyID) { return "", "", fmt.Errorf("refresh repository returned invalid family ID") }
+	return raw, familyID, nil
+}
+
+func validRefreshFamilyID(value string) bool {
+	if len(value) != 36 { return false }
+	for i, r := range value {
+		switch i {
+		case 8, 13, 18, 23:
+			if r != '-' { return false }
+		default:
+			if !((r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F')) { return false }
+		}
+	}
+	return true
 }
 
 func (s *SessionService) Rotate(ctx context.Context, rawToken string) (*models.AuthPrincipal, string, error) {
@@ -74,6 +116,39 @@ func (s *SessionService) Rotate(ctx context.Context, rawToken string) (*models.A
 		return nil, "", fmt.Errorf("refresh session repository returned invalid principal identity")
 	}
 	return principal, replacement, nil
+}
+
+type refreshSessionFamilyLookup interface {
+	FamilyIDForTokenHash(ctx context.Context, tokenHash string) (string, error)
+}
+
+// RotateWithFamily preserves the repository's transactional rotation/replay
+// protections, then resolves the immutable family UUID for the replacement.
+func (s *SessionService) RotateWithFamily(ctx context.Context, rawToken string) (*models.AuthPrincipal, string, string, error) {
+	if strings.TrimSpace(rawToken) == "" {
+		return nil, "", "", ErrInvalidRefreshToken
+	}
+	repo, ok := s.sessions.(refreshSessionFamilyLookup)
+	if !ok {
+		return nil, "", "", fmt.Errorf("refresh repository does not support session-family lookup")
+	}
+
+	// Resolve the immutable family ID before rotation commits. A post-commit
+	// lookup failure would otherwise strand an active replacement token that
+	// was never returned to the client.
+	familyID, err := repo.FamilyIDForTokenHash(ctx, HashRefreshToken(rawToken))
+	if err != nil {
+		return nil, "", "", err
+	}
+	if !validRefreshFamilyID(familyID) {
+		return nil, "", "", fmt.Errorf("refresh repository returned invalid family ID")
+	}
+
+	principal, replacement, err := s.Rotate(ctx, rawToken)
+	if err != nil {
+		return nil, "", "", err
+	}
+	return principal, replacement, familyID, nil
 }
 
 func (s *SessionService) Revoke(ctx context.Context, rawToken string) error {

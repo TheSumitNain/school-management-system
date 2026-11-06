@@ -77,6 +77,23 @@ This tree describes the intended organization. The actual repository contents re
 
 Handlers should not contain complex business logic or perform unnecessary direct database operations.
 
+## 3.1 Product Delivery Phases
+
+### Phase 1 — complete web application
+
+The first product milestone is a complete responsive web application with three audiences:
+1. **Platform Admin:** global platform operations, school onboarding/lifecycle and School Admin provisioning.
+2. **School Admin:** complete management of the Admin's own school.
+3. **School staff:** role- and assignment-scoped workflows, including Teacher functionality and additional approved school roles as their modules are implemented.
+
+The web product is not considered complete merely because dashboard shells exist. Each delivered module requires backend APIs, server-side permissions, tenant/resource isolation, validation, audit behavior where appropriate, automated tests and integrated UI.
+
+### Phase 2 — mobile applications
+
+Only after Phase 1 web completion will Parent, Driver and other approved user groups move to mobile interfaces. Parent access is intended to be read-only initially. Parent authentication/OTP and Driver account/assignment details remain deferred product decisions. Existing Parent/Guardian foundation must be preserved while the Parent workstream is paused.
+
+Web and mobile clients should consume the same backend business rules and APIs; client-specific presentation must not duplicate authorization or business logic.
+
 ## 4. High-Level Architecture
 
 ```text
@@ -272,20 +289,20 @@ The complete onboarding workflow, invitation security, mandatory administrator M
 
 The architecture is designed to accommodate these modules incrementally:
 
-1. Authentication and session management
-2. RBAC and authorization
-3. School onboarding and settings
-4. Academic years, classes, and sections
-5. Student profiles and enrollment
-6. Teacher profiles and assignments
-7. Attendance
-8. Timetable
-9. Homework and assignments
-10. Examinations and report cards
-11. Notices and announcements
-12. Parent accounts and linked children
-13. Fees and payments
-14. Additional operational modules based on finalized requirements
+1. Authentication, account lifecycle and session management
+2. RBAC, delegation and server-side authorization
+3. Platform Admin school onboarding and lifecycle
+4. School Admin settings and school configuration
+5. Staff accounts, roles and assignments
+6. Academic years, classes, sections and subjects
+7. Student identity, admission and academic enrollment/history
+8. Attendance
+9. Timetable
+10. Homework and assignments
+11. Examinations, marks and report cards
+12. Notices, announcements and reports
+13. Additional approved school web modules (for example transport administration)
+14. Phase 2 Parent/Driver mobile APIs and interfaces
 
 These are planned capabilities, not claims of current implementation.
 
@@ -395,13 +412,13 @@ Previously reported successful backend checks include `go test -count=1 ./...` a
 
 The project has an initial Go/Gin API foundation, PostgreSQL connectivity, initial database migrations, and a working foundation for authentication and refresh-session management.
 
-The next major implementation stages are:
+The approved delivery direction is web-first. The next major implementation stages are:
 
-1. Continue refresh-session verification for database failures and additional refresh/logout interleavings; independently verify the HTTP logout flow.
-2. Implement RBAC and enforce authorization on protected endpoints.
-3. Implement and test school-level tenant isolation.
-4. Complete secure school onboarding and administrator MFA.
-5. Continue into the academic and student-management modules.
+1. Reconcile the current principal/authentication/RBAC code and migration drafts against the approved Phase 1 web roles.
+2. Complete server-side permission enforcement, staff account lifecycle, tenant/resource isolation and school onboarding.
+3. Establish the React + TypeScript + Vite frontend foundation and API integration.
+4. Deliver Platform Admin, School Admin and staff workflows module by module, with tests and UI integration.
+5. Complete the web product's security, integration and operational verification before planning Phase 2 mobile apps.
 
 Refer to `PROGRESS.md`, `docs/HANDOFF.md`, and `docs/TESTING.md` for the latest recorded implementation status and continuation instructions.
 
@@ -425,9 +442,9 @@ A teaching assignment (class/section/subject) and a class-in-charge assignment a
 
 A subject teacher can read only the basic student fields (name, roll number, class, section) for the assigned class/section and permitted teaching-related data for the assigned subject/class. A class-in-charge teacher can access attendance, same-day corrections within the configured cutoff, basic student details, timetable, homework, and applicable notices only for the exact class/section in charge. Past attendance corrections are School Admin-only. Neither assignment grants access to other classes or sensitive student fields by default.
 
-### 18.3 Parent dashboard and authorization
+### 18.3 Future Parent mobile access (Phase 2)
 
-The parent dashboard lists all officially linked children. Parent selects one child to view the permitted profile, attendance, timetable, homework, published results/report cards, and applicable notices. Every child-data API request must verify the authenticated parent's current verified relationship to that child. Parent access is read-only in Phase 1. Father and mother may have separate verified mobile accounts linked to the same child; removing one child link must not affect other links.
+Parent mobile access is deferred until the Phase 1 web product is complete. The intended experience is read-only: a Parent may view officially linked children and permitted profile, attendance, timetable, homework, published results/report cards and notices. Every child-data API request must verify the current authenticated Parent-to-guardian/student relationship server-side. One Parent may have links across schools; separate guardians may have their own verified accounts. Authentication, OTP provider and recovery rules remain undecided. Existing schema and service foundations are preserved, but no further Parent implementation is in the active Phase 1 workstream.
 
 ### 18.4 Dynamic RBAC
 

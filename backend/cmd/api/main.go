@@ -33,32 +33,259 @@ func setupRouter(
 	tokenService middleware.AccessTokenValidator,
 	principalLoader middleware.PrincipalLoader,
 	permissionLoader middleware.PermissionLoader,
+	schoolOnboardingHandlers ...*handlers.SchoolOnboardingHandler,
 ) (*gin.Engine, error) {
+	var schoolOnboardingHandler *handlers.SchoolOnboardingHandler
+	if len(schoolOnboardingHandlers) > 0 {
+		schoolOnboardingHandler = schoolOnboardingHandlers[0]
+	}
+	return setupRouterWithHandlers(db, authHandler, tokenService, principalLoader, permissionLoader, schoolOnboardingHandler, nil)
+}
+
+func setupRouterWithHandlers(
+	db databasePinger,
+	authHandler *handlers.AuthHandler,
+	tokenService middleware.AccessTokenValidator,
+	principalLoader middleware.PrincipalLoader,
+	permissionLoader middleware.PermissionLoader,
+	schoolOnboardingHandler *handlers.SchoolOnboardingHandler,
+	roleHandler *handlers.RoleHandler,
+	optionalHandlers ...any,
+) (*gin.Engine, error) {
+	var staffHandler *handlers.StaffHandler
+	var academicHandler *handlers.AcademicHandler
+	var guardianHandler *handlers.GuardianHandler
+	var attendanceHandler *handlers.AttendanceHandler
+	var sessionActivityTracker middleware.AdminSessionActivityTracker
+	for _, optional := range optionalHandlers {
+		switch handler := optional.(type) {
+		case *handlers.StaffHandler:
+			staffHandler = handler
+		case *handlers.AcademicHandler:
+			academicHandler = handler
+		case *handlers.GuardianHandler:
+			guardianHandler = handler
+		case *handlers.AttendanceHandler:
+			attendanceHandler = handler
+		case middleware.AdminSessionActivityTracker:
+			sessionActivityTracker = handler
+		}
+	}
 	router := gin.Default()
+	authMiddleware := func() gin.HandlerFunc {
+		return middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader, sessionActivityTracker)
+	}
 
 	if err := router.SetTrustedProxies(nil); err != nil {
 		return nil, fmt.Errorf("configure trusted proxies: %w", err)
 	}
 
-	if authHandler != nil {
-		router.POST("/auth/login", authHandler.Login)
-		router.POST("/auth/refresh", authHandler.Refresh)
-		router.POST("/auth/logout", authHandler.Logout)
+	if schoolOnboardingHandler != nil {
+		router.POST("/platform/schools",
+			authMiddleware(),
+			middleware.RequirePermission("platform.schools.create"),
+			middleware.RequirePermission("platform.school_admins.create"),
+			schoolOnboardingHandler.Create,
+		)
 	}
 
-	router.GET("/auth/me", middleware.AuthMiddleware(tokenService, principalLoader, permissionLoader), func(c *gin.Context) {
+	if staffHandler != nil {
+		router.GET("/school/staff",
+			authMiddleware(),
+			middleware.RequirePermission("users.read"),
+			staffHandler.List,
+		)
+		router.POST("/school/staff",
+			authMiddleware(),
+			middleware.RequirePermission("users.create"),
+			staffHandler.Create,
+		)
+		router.DELETE("/school/staff/:principalID",
+			authMiddleware(),
+			middleware.RequirePermission("users.disable"),
+			staffHandler.Disable,
+		)
+		router.PATCH("/school/staff/:principalID",
+			authMiddleware(),
+			middleware.RequirePermission("users.update"),
+			staffHandler.Update,
+		)
+		router.POST("/school/staff/:principalID/enable",
+			authMiddleware(),
+			middleware.RequirePermission("users.update"),
+			staffHandler.Enable,
+		)
+	}
+
+	if roleHandler != nil {
+		platformAuth := authMiddleware()
+		router.POST("/platform/schools/:schoolID/permission-delegations",
+			platformAuth,
+			middleware.RequirePermission("platform.permissions.delegate"),
+			roleHandler.GrantSchoolPermissionDelegation,
+		)
+		router.POST("/platform/permission-delegations/:delegationID/revoke",
+			platformAuth,
+			middleware.RequirePermission("platform.permissions.delegate"),
+			roleHandler.RevokeSchoolPermissionDelegation,
+		)
+
+		roleAuth := authMiddleware()
+		router.GET("/school/roles",
+			roleAuth,
+			middleware.RequirePermission("roles.read"),
+			roleHandler.ListRoles,
+		)
+		router.POST("/school/roles",
+			roleAuth,
+			middleware.RequirePermission("roles.create_custom"),
+			roleHandler.CreateRole,
+		)
+		router.GET("/school/permissions",
+			roleAuth,
+			middleware.RequirePermission("permissions.read"),
+			roleHandler.ListPermissions,
+		)
+		router.GET("/school/permission-delegations",
+			roleAuth,
+			middleware.RequirePermission("permissions.assign"),
+			roleHandler.ListSchoolPermissionDelegations,
+		)
+		router.POST("/school/roles/:roleID/permissions",
+			roleAuth,
+			middleware.RequirePermission("permissions.assign"),
+			middleware.RequirePermission("roles.update_custom"),
+			roleHandler.GrantCustomRolePermission,
+		)
+		router.DELETE("/school/roles/:roleID/permissions/:permissionKey",
+			roleAuth,
+			middleware.RequirePermission("permissions.assign"),
+			middleware.RequirePermission("roles.update_custom"),
+			roleHandler.RevokeCustomRolePermission,
+		)
+		router.GET("/school/staff/:principalID/permission-overrides",
+			roleAuth,
+			middleware.RequirePermission("permissions.override"),
+			roleHandler.ListStaffPermissionOverrides,
+		)
+		router.POST("/school/staff/:principalID/permission-overrides",
+			roleAuth,
+			middleware.RequirePermission("permissions.override"),
+			roleHandler.SetStaffPermissionOverride,
+		)
+		router.DELETE("/school/staff/:principalID/permission-overrides/:permissionKey",
+			roleAuth,
+			middleware.RequirePermission("permissions.override"),
+			roleHandler.DeleteStaffPermissionOverride,
+		)
+		router.GET("/school/staff/:principalID/roles",
+			roleAuth,
+			middleware.RequirePermission("roles.read"),
+			roleHandler.ListStaffRoleAssignments,
+		)
+		router.POST("/school/staff/:principalID/roles/:roleID",
+			roleAuth,
+			middleware.RequirePermission("roles.assign"),
+			roleHandler.AssignStaffRole,
+		)
+		router.DELETE("/school/staff/:principalID/roles/:roleID",
+			roleAuth,
+			middleware.RequirePermission("roles.assign"),
+			roleHandler.RevokeStaffRole,
+		)
+	}
+
+	if academicHandler != nil {
+		academic := academicHandler
+		academicAuth := authMiddleware()
+		router.GET("/school/academic-years", academicAuth, middleware.RequirePermission("academic_years.read"), academic.ListAcademicYears)
+		router.POST("/school/academic-years", academicAuth, middleware.RequirePermission("academic_years.manage"), academic.SaveAcademicYear)
+		router.PATCH("/school/academic-years/:yearID", academicAuth, middleware.RequirePermission("academic_years.manage"), academic.SaveAcademicYear)
+		router.GET("/school/classes", academicAuth, middleware.RequirePermission("classes.read"), academic.ListClasses)
+		router.POST("/school/classes", academicAuth, middleware.RequirePermission("classes.manage"), academic.SaveClass)
+		router.PATCH("/school/classes/:classID", academicAuth, middleware.RequirePermission("classes.manage"), academic.SaveClass)
+		router.GET("/school/sections", academicAuth, middleware.RequirePermission("classes.read"), academic.ListSections)
+		router.POST("/school/sections", academicAuth, middleware.RequirePermission("classes.manage"), academic.SaveSection)
+		router.PATCH("/school/sections/:sectionID", academicAuth, middleware.RequirePermission("classes.manage"), academic.SaveSection)
+		router.GET("/school/subjects", academicAuth, middleware.RequirePermission("subjects.read"), academic.ListSubjects)
+		router.POST("/school/subjects", academicAuth, middleware.RequirePermission("subjects.manage"), academic.SaveSubject)
+		router.PATCH("/school/subjects/:subjectID", academicAuth, middleware.RequirePermission("subjects.manage"), academic.SaveSubject)
+		router.GET("/school/teacher-assignments", academicAuth, middleware.RequirePermission("teacher_assignments.read"), academic.ListTeacherSubjectAssignments)
+		router.POST("/school/teacher-assignments", academicAuth, middleware.RequirePermission("teacher_assignments.manage"), academic.CreateTeacherSubjectAssignment)
+		router.DELETE("/school/teacher-assignments/:assignmentID", academicAuth, middleware.RequirePermission("teacher_assignments.manage"), academic.RevokeTeacherSubjectAssignment)
+		router.GET("/school/class-incharge-assignments", academicAuth, middleware.RequirePermission("class_incharge_assignments.read"), academic.ListClassInchargeAssignments)
+		router.POST("/school/class-incharge-assignments", academicAuth, middleware.RequirePermission("class_incharge_assignments.manage"), academic.CreateClassInchargeAssignment)
+		router.DELETE("/school/class-incharge-assignments/:assignmentID", academicAuth, middleware.RequirePermission("class_incharge_assignments.manage"), academic.RevokeClassInchargeAssignment)
+		router.GET("/school/students", academicAuth, middleware.RequirePermission("students.read_sensitive"), academic.ListStudents)
+		router.POST("/school/students", academicAuth, middleware.RequirePermission("students.create"), academic.CreateStudent)
+		router.GET("/school/students/:studentID", academicAuth, middleware.RequirePermission("students.read_sensitive"), academic.GetStudent)
+		router.PATCH("/school/students/:studentID", academicAuth, middleware.RequirePermission("students.update"), academic.UpdateStudent)
+		router.POST("/school/students/:studentID/archive", academicAuth, middleware.RequirePermission("students.archive"), academic.ArchiveStudent)
+		router.GET("/school/enrollments", academicAuth, middleware.RequirePermission("students.read_basic"), academic.ListStudentEnrollments)
+		router.POST("/school/enrollments", academicAuth, middleware.RequirePermission("students.create"), academic.CreateStudentEnrollment)
+		router.GET("/school/students/:studentID/enrollments", academicAuth, middleware.RequirePermission("students.read_basic"), academic.ListStudentEnrollmentHistory)
+		router.POST("/school/enrollments/:enrollmentID/promote", academicAuth, middleware.RequirePermission("students.update"), academic.PromoteStudentEnrollment)
+	}
+
+	if attendanceHandler != nil {
+		attendanceAuth := authMiddleware()
+		router.GET("/school/attendance", attendanceAuth, middleware.RequirePermission("attendance.read"), attendanceHandler.List)
+		router.POST("/school/attendance", attendanceAuth, middleware.RequirePermission("attendance.mark"), attendanceHandler.Mark)
+		router.PATCH("/school/attendance/:attendanceID", attendanceAuth, middleware.RequirePermission("attendance.update_same_day"), attendanceHandler.Update)
+		router.PATCH("/school/attendance/:attendanceID/correct", attendanceAuth, middleware.RequirePermission("attendance.correct_past"), attendanceHandler.Update)
+	}
+
+	if guardianHandler != nil {
+		guardianAuth := authMiddleware()
+		router.GET("/school/guardians", guardianAuth, middleware.RequirePermission("guardians.read"), guardianHandler.ListGuardians)
+		router.POST("/school/guardians", guardianAuth, middleware.RequirePermission("guardians.manage"), guardianHandler.SaveGuardian)
+		router.GET("/school/guardians/:guardianID", guardianAuth, middleware.RequirePermission("guardians.read"), guardianHandler.GetGuardian)
+		router.PATCH("/school/guardians/:guardianID", guardianAuth, middleware.RequirePermission("guardians.manage"), guardianHandler.SaveGuardian)
+		router.GET("/school/students/:studentID/guardians", guardianAuth, middleware.RequirePermission("guardians.read"), guardianHandler.ListStudentGuardians)
+		router.POST("/school/students/:studentID/guardians", guardianAuth, middleware.RequirePermission("guardians.manage"), guardianHandler.LinkStudentGuardian)
+		router.POST("/school/student-guardian-links/:linkID/revoke", guardianAuth, middleware.RequirePermission("guardians.manage"), guardianHandler.RevokeStudentGuardianLink)
+	}
+
+	if authHandler != nil {
+		router.POST("/auth/login", authHandler.Login)
+		router.POST("/auth/platform-admin/login", authHandler.PlatformAdminLogin)
+		router.POST("/auth/mfa/enroll/verify", authHandler.CompleteMFAEnrollment)
+		router.POST("/auth/mfa/verify", authHandler.VerifyMFA)
+		router.POST("/auth/mfa/recovery-codes/regenerate/start",
+			authMiddleware(),
+			authHandler.BeginMFARecoveryCodeRegeneration)
+		router.POST("/auth/mfa/recovery-codes/regenerate", authMiddleware(), authHandler.RegenerateMFARecoveryCodes)
+		router.POST("/auth/refresh", authHandler.Refresh)
+		router.POST("/auth/logout", authHandler.Logout)
+		router.POST("/auth/password/change",
+			authMiddleware(),
+			authHandler.ChangeStaffPassword)
+		router.POST("/school/staff/:principalID/password/reset",
+			authMiddleware(),
+			middleware.RequirePermission("users.password_reset"),
+			authHandler.ResetStaffPassword)
+	}
+
+	router.GET("/auth/me", authMiddleware(), func(c *gin.Context) {
 		principalID, _ := c.Get(middleware.ContextPrincipalIDKey)
 		principalType, _ := c.Get(middleware.ContextPrincipalTypeKey)
 		schoolID, _ := c.Get(middleware.ContextSchoolIDKey)
 		username, _ := c.Get(middleware.ContextUsernameKey)
+		mustChangePassword, _ := c.Get(middleware.ContextMustChangePasswordKey)
 
-		c.JSON(http.StatusOK, gin.H{
+		response := gin.H{
 			"status":         "success",
 			"principal_id":   principalID,
 			"principal_type": principalType,
-			"school_id":      schoolID,
-			"username":       username,
-		})
+		}
+		// Parent and Platform Admin identities are not school-scoped staff
+		// accounts. Do not serialize empty/zero staff-only fields for them.
+		if principalType == "staff" {
+			response["school_id"] = schoolID
+			response["username"] = username
+			response["must_change_password"] = mustChangePassword
+		}
+		c.JSON(http.StatusOK, response)
 	})
 
 	router.GET("/health", func(c *gin.Context) {
@@ -106,6 +333,9 @@ func run() error {
 	if err := cfg.ValidateJWT(); err != nil {
 		return fmt.Errorf("invalid JWT configuration: %w", err)
 	}
+	if err := cfg.ValidateTOTPEncryption(); err != nil {
+		return fmt.Errorf("invalid TOTP encryption configuration: %w", err)
+	}
 
 	if cfg.AppEnv == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -125,9 +355,27 @@ func run() error {
 	userRepo := repository.NewUserRepository(db)
 	schoolRepo := repository.NewSchoolRepository(db)
 
-	authService := services.NewAuthService(userRepo, schoolRepo)
+	loginSecurityRepo := repository.NewStaffLoginSecurityRepository(db)
+	authService := services.NewAuthService(userRepo, schoolRepo, loginSecurityRepo)
+	platformAdminRepo := repository.NewPlatformAdminRepository(db)
+	platformAdminAuthService, err := services.NewPlatformAdminAuthService(platformAdminRepo, loginSecurityRepo)
+	if err != nil {
+		return fmt.Errorf("initialize Platform Admin authentication: %w", err)
+	}
 	refreshSessionRepo := repository.NewPrincipalRefreshSessionRepository(db)
 	principalAuthorizationRepo := repository.NewPrincipalAuthorizationRepository(db)
+	mfaChallengeRepo := repository.NewMFAChallengeRepository(db)
+	mfaRepo := repository.NewMFARepository(db)
+	mfaService, err := services.NewMFAService(
+		mfaRepo,
+		mfaChallengeRepo,
+		cfg.TOTPEncryptionKey,
+		cfg.TOTPEncryptionKeyVersion,
+		cfg.JWTIssuer,
+	)
+	if err != nil {
+		return fmt.Errorf("initialize MFA service: %w", err)
+	}
 
 	sessionService, err := services.NewSessionService(
 		refreshSessionRepo,
@@ -150,9 +398,36 @@ func run() error {
 		authService,
 		tokenService,
 		sessionService,
+		loginSecurityRepo,
 	)
+	authHandler.SetMFAService(mfaService, principalAuthorizationRepo)
+	authHandler.SetPlatformAdminAuthService(platformAdminAuthService)
+	staffPasswordService, err := services.NewStaffPasswordService(userRepo)
+	if err != nil {
+		return fmt.Errorf("initialize staff password service: %w", err)
+	}
+	authHandler.SetStaffPasswordService(staffPasswordService)
 
-	router, err := setupRouter(db, authHandler, tokenService, principalAuthorizationRepo, principalAuthorizationRepo)
+	schoolOnboardingRepo := repository.NewSchoolOnboardingRepository(db)
+	schoolOnboardingService := services.NewSchoolOnboardingService(schoolOnboardingRepo)
+	schoolOnboardingHandler := handlers.NewSchoolOnboardingHandler(schoolOnboardingService)
+
+	roleRepo := repository.NewRoleRepository(db)
+	roleService := services.NewRoleService(roleRepo)
+	roleHandler := handlers.NewRoleHandler(roleService)
+	academicRepo := repository.NewAcademicRepository(db)
+	academicService := services.NewAcademicService(academicRepo)
+	academicHandler := handlers.NewAcademicHandler(academicService)
+	guardianService := services.NewGuardianService(academicRepo)
+	guardianHandler := handlers.NewGuardianHandler(guardianService)
+	attendanceService := services.NewAttendanceService(academicRepo)
+	attendanceHandler := handlers.NewAttendanceHandler(attendanceService)
+
+	staffAccountRepo := repository.NewUserRepository(db)
+	staffAccountService := services.NewStaffAccountService(staffAccountRepo)
+	staffHandler := handlers.NewStaffHandler(staffAccountService)
+
+	router, err := setupRouterWithHandlers(db, authHandler, tokenService, principalAuthorizationRepo, principalAuthorizationRepo, schoolOnboardingHandler, roleHandler, staffHandler, academicHandler, guardianHandler, attendanceHandler, principalAuthorizationRepo)
 
 	if err != nil {
 		return fmt.Errorf("setup router: %w", err)

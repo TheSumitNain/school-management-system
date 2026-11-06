@@ -10,14 +10,15 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+var ErrPrincipalVersionChanged = errors.New("principal credentials changed during authentication")
+
 type PrincipalRefreshSessionRepository struct {
-	db *pgxpool.Pool
+	db repositoryDB
 }
 
-func NewPrincipalRefreshSessionRepository(db *pgxpool.Pool) *PrincipalRefreshSessionRepository {
+func NewPrincipalRefreshSessionRepository(db repositoryDB) *PrincipalRefreshSessionRepository {
 	return &PrincipalRefreshSessionRepository{db: db}
 }
 
@@ -29,20 +30,88 @@ func (r *PrincipalRefreshSessionRepository) CreatePrincipal(
 	tokenHash string,
 	expiresAt time.Time,
 ) error {
+	return r.createPrincipal(ctx, principalID, 0, tokenHash, expiresAt)
+}
+
+// CreatePrincipalForVersion creates a refresh session only if the principal's
+// current token version still matches the version observed during authentication.
+// This closes the login/password-change race between credential verification
+// and refresh-session persistence.
+func (r *PrincipalRefreshSessionRepository) CreatePrincipalForVersion(
+	ctx context.Context,
+	principalID, expectedTokenVersion int64,
+	tokenHash string,
+	expiresAt time.Time,
+) error {
+	if expectedTokenVersion <= 0 {
+		return fmt.Errorf("invalid expected principal token version")
+	}
+	return r.createPrincipal(ctx, principalID, expectedTokenVersion, tokenHash, expiresAt)
+}
+
+func (r *PrincipalRefreshSessionRepository) createPrincipal(
+	ctx context.Context,
+	principalID, expectedTokenVersion int64,
+	tokenHash string,
+	expiresAt time.Time,
+) error {
 	if principalID <= 0 || !isSHA256Hash(tokenHash) || !expiresAt.After(time.Now()) {
 		return fmt.Errorf("invalid refresh session data")
 	}
-
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("begin refresh-session creation: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	if err := r.createPrincipalInTx(ctx, tx, principalID, expectedTokenVersion, tokenHash, expiresAt); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit refresh-session creation: %w", err)
+	}
+	return nil
+}
 
-	// Use the same principal-level lock as refresh-token rotation.
-	if _, err = tx.Exec(
-		ctx,
-		`SELECT pg_advisory_xact_lock(hashtextextended('refresh-principal:' || $1::text,0))`,
+// CreatePrincipalInTx creates a principal-bound refresh session in a
+// caller-owned transaction. The caller controls commit and rollback so
+// provisioning and session issuance can be atomic.
+func (r *PrincipalRefreshSessionRepository) CreatePrincipalInTx(
+	ctx context.Context,
+	tx pgx.Tx,
+	principalID int64,
+	tokenHash string,
+	expiresAt time.Time,
+) error {
+	return r.createPrincipalInTx(ctx, tx, principalID, 0, tokenHash, expiresAt)
+}
+
+// CreatePrincipalForVersionInTx applies the same token-version check inside a
+// caller-owned transaction.
+func (r *PrincipalRefreshSessionRepository) CreatePrincipalForVersionInTx(
+	ctx context.Context,
+	tx pgx.Tx,
+	principalID, expectedTokenVersion int64,
+	tokenHash string,
+	expiresAt time.Time,
+) error {
+	if expectedTokenVersion <= 0 {
+		return fmt.Errorf("invalid expected principal token version")
+	}
+	return r.createPrincipalInTx(ctx, tx, principalID, expectedTokenVersion, tokenHash, expiresAt)
+}
+
+func (r *PrincipalRefreshSessionRepository) createPrincipalInTx(
+	ctx context.Context,
+	tx pgx.Tx,
+	principalID, expectedTokenVersion int64,
+	tokenHash string,
+	expiresAt time.Time,
+) error {
+	if tx == nil || principalID <= 0 || !isSHA256Hash(tokenHash) || !expiresAt.After(time.Now()) {
+		return fmt.Errorf("invalid refresh session data")
+	}
+	if _, err := tx.Exec(ctx,
+		`SELECT pg_advisory_xact_lock(hashtextextended('refresh-principal:' || $1::bigint::text,0))`,
 		principalID,
 	); err != nil {
 		return fmt.Errorf("lock principal refresh sessions: %w", err)
@@ -52,7 +121,33 @@ func (r *PrincipalRefreshSessionRepository) CreatePrincipal(
 SELECT ap.principal_type, ap.status, ap.token_version,
        u.id, COALESCE(u.school_id,0), COALESCE(u.username,''), COALESCE(s.status,''),
        (pa.principal_id IS NOT NULL),
-       COALESCE(parent.mobile_verified_at IS NOT NULL,FALSE)
+       COALESCE(parent.mobile_verified_at IS NOT NULL,FALSE),
+       EXISTS (
+         SELECT 1
+         FROM parent_guardian_links pgl
+         JOIN guardians g ON g.id = pgl.guardian_id AND g.school_id = pgl.school_id
+         JOIN student_guardians sg ON sg.guardian_id = g.id AND sg.school_id = g.school_id
+         JOIN students st ON st.id = sg.student_id AND st.school_id = sg.school_id
+         WHERE pgl.principal_id = ap.id
+           AND pgl.revoked_at IS NULL
+           AND sg.revoked_at IS NULL
+           AND g.status = 'active'
+           AND st.status = 'active'
+           AND g.parent_portal_enabled_at IS NOT NULL
+       ),
+       CASE
+         WHEN ap.principal_type='platform_admin' OR
+              (ap.principal_type='staff' AND EXISTS (
+                SELECT 1 FROM principal_roles mpr JOIN roles mr ON mr.id=mpr.role_id
+                WHERE mpr.principal_id=ap.id AND mpr.revoked_at IS NULL
+                  AND mr.is_system=TRUE AND mr.role_key='school_admin'
+                  AND mr.principal_type='staff' AND mr.scope_type='school'
+                  AND mr.school_id=u.school_id
+              ))
+         THEN EXISTS (SELECT 1 FROM principal_mfa_credentials mc
+                      WHERE mc.principal_id=ap.id AND mc.method='totp' AND mc.verified_at IS NOT NULL)
+         ELSE TRUE
+       END
 FROM auth_principals ap
 LEFT JOIN users u ON u.principal_id=ap.id
 LEFT JOIN schools s ON s.id=u.school_id
@@ -61,26 +156,13 @@ LEFT JOIN parent_accounts parent ON parent.principal_id=ap.id
 WHERE ap.id=$1
 FOR UPDATE OF ap`
 
-	var principalType string
-	var principalStatus string
-	var username string
-	var schoolStatus string
-	var tokenVersion int64
+	var principalType, principalStatus, username, schoolStatus string
+	var tokenVersion, schoolID int64
 	var userID pgtype.Int8
-	var schoolID int64
-	var hasPlatformAccount bool
-	var mobileVerified bool
-
-	err = tx.QueryRow(ctx, lookup, principalID).Scan(
-		&principalType,
-		&principalStatus,
-		&tokenVersion,
-		&userID,
-		&schoolID,
-		&username,
-		&schoolStatus,
-		&hasPlatformAccount,
-		&mobileVerified,
+	var hasPlatformAccount, mobileVerified, hasEligibleParentLink, mfaVerified bool
+	err := tx.QueryRow(ctx, lookup, principalID).Scan(
+		&principalType, &principalStatus, &tokenVersion, &userID, &schoolID,
+		&username, &schoolStatus, &hasPlatformAccount, &mobileVerified, &hasEligibleParentLink, &mfaVerified,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrRefreshSessionInactive
@@ -88,43 +170,150 @@ FOR UPDATE OF ap`
 	if err != nil {
 		return fmt.Errorf("load principal for refresh-session creation: %w", err)
 	}
+	if expectedTokenVersion > 0 && tokenVersion != expectedTokenVersion {
+		return ErrPrincipalVersionChanged
+	}
 
-	active := principalStatus == "active" && tokenVersion > 0
-
+	active := principalStatus == "active" && tokenVersion > 0 && mfaVerified
 	switch principalType {
 	case "staff":
-		active = active &&
-			schoolID > 0 &&
-			schoolStatus == "active" &&
-			username != ""
-
+		active = active && schoolID > 0 && schoolStatus == "active" && username != ""
 	case "platform_admin":
 		active = active && hasPlatformAccount
-
 	case "parent":
-		active = active && mobileVerified
-
+		active = active && mobileVerified && hasEligibleParentLink
 	default:
 		active = false
 	}
-
 	if !active {
 		return ErrRefreshSessionInactive
 	}
 
-	const insert = `
-INSERT INTO refresh_sessions (user_id, principal_id, token_hash, expires_at)
-VALUES ($1, $2, $3, $4)`
-
-	if _, err = tx.Exec(ctx, insert, nullableInt64(userID), principalID, tokenHash, expiresAt); err != nil {
+	if _, err := tx.Exec(ctx,
+		`INSERT INTO refresh_sessions (user_id, principal_id, token_hash, expires_at, last_activity_at)
+		 VALUES ($1, $2, $3, $4, clock_timestamp())`,
+		nullableInt64(userID), principalID, tokenHash, expiresAt,
+	); err != nil {
 		return fmt.Errorf("create refresh session: %w", err)
 	}
+	return nil
+}
 
-	if err = tx.Commit(ctx); err != nil {
-		return fmt.Errorf("commit refresh-session creation: %w", err)
+func (r *PrincipalRefreshSessionRepository) createPrincipalInTxWithFamily(
+	ctx context.Context,
+	tx pgx.Tx,
+	principalID, expectedTokenVersion int64,
+	tokenHash string,
+	expiresAt time.Time,
+) (string, error) {
+	if tx == nil || principalID <= 0 || !isSHA256Hash(tokenHash) || !expiresAt.After(time.Now()) {
+		return "", fmt.Errorf("invalid refresh session data")
+	}
+	if _, err := tx.Exec(ctx,
+		`SELECT pg_advisory_xact_lock(hashtextextended('refresh-principal:' || $1::bigint::text,0))`,
+		principalID,
+	); err != nil {
+		return "", fmt.Errorf("lock principal refresh sessions: %w", err)
 	}
 
-	return nil
+	const lookup = `
+SELECT ap.principal_type, ap.status, ap.token_version,
+       u.id, COALESCE(u.school_id,0), COALESCE(u.username,''), COALESCE(s.status,''),
+       (pa.principal_id IS NOT NULL),
+       COALESCE(parent.mobile_verified_at IS NOT NULL,FALSE),
+       EXISTS (
+         SELECT 1
+         FROM parent_guardian_links pgl
+         JOIN guardians g ON g.id = pgl.guardian_id AND g.school_id = pgl.school_id
+         JOIN student_guardians sg ON sg.guardian_id = g.id AND sg.school_id = g.school_id
+         JOIN students st ON st.id = sg.student_id AND st.school_id = sg.school_id
+         WHERE pgl.principal_id = ap.id
+           AND pgl.revoked_at IS NULL
+           AND sg.revoked_at IS NULL
+           AND g.status = 'active'
+           AND st.status = 'active'
+           AND g.parent_portal_enabled_at IS NOT NULL
+       ),
+       CASE
+         WHEN ap.principal_type='platform_admin' OR
+              (ap.principal_type='staff' AND EXISTS (
+                SELECT 1 FROM principal_roles mpr JOIN roles mr ON mr.id=mpr.role_id
+                WHERE mpr.principal_id=ap.id AND mpr.revoked_at IS NULL
+                  AND mr.is_system=TRUE AND mr.role_key='school_admin'
+                  AND mr.principal_type='staff' AND mr.scope_type='school'
+                  AND mr.school_id=u.school_id
+              ))
+         THEN EXISTS (SELECT 1 FROM principal_mfa_credentials mc
+                      WHERE mc.principal_id=ap.id AND mc.method='totp' AND mc.verified_at IS NOT NULL)
+         ELSE TRUE
+       END
+FROM auth_principals ap
+LEFT JOIN users u ON u.principal_id=ap.id
+LEFT JOIN schools s ON s.id=u.school_id
+LEFT JOIN platform_admin_accounts pa ON pa.principal_id=ap.id
+LEFT JOIN parent_accounts parent ON parent.principal_id=ap.id
+WHERE ap.id=$1
+FOR UPDATE OF ap`
+
+	var principalType, principalStatus, username, schoolStatus string
+	var tokenVersion, schoolID int64
+	var userID pgtype.Int8
+	var hasPlatformAccount, mobileVerified, hasEligibleParentLink, mfaVerified bool
+	err := tx.QueryRow(ctx, lookup, principalID).Scan(
+		&principalType, &principalStatus, &tokenVersion, &userID, &schoolID,
+		&username, &schoolStatus, &hasPlatformAccount, &mobileVerified, &hasEligibleParentLink, &mfaVerified,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", ErrRefreshSessionInactive
+	}
+	if err != nil {
+		return "", fmt.Errorf("load principal for refresh-session creation: %w", err)
+	}
+	if expectedTokenVersion > 0 && tokenVersion != expectedTokenVersion {
+		return "", ErrPrincipalVersionChanged
+	}
+
+	active := principalStatus == "active" && tokenVersion > 0 && mfaVerified
+	switch principalType {
+	case "staff":
+		active = active && schoolID > 0 && schoolStatus == "active" && username != ""
+	case "platform_admin":
+		active = active && hasPlatformAccount
+	case "parent":
+		active = active && mobileVerified && hasEligibleParentLink
+	default:
+		active = false
+	}
+	if !active {
+		return "", ErrRefreshSessionInactive
+	}
+
+	var familyID string
+	if err := tx.QueryRow(ctx,
+		`INSERT INTO refresh_sessions (user_id, principal_id, token_hash, expires_at, last_activity_at)
+		 VALUES ($1, $2, $3, $4, clock_timestamp())
+		 RETURNING family_id`,
+		nullableInt64(userID), principalID, tokenHash, expiresAt,
+	).Scan(&familyID); err != nil {
+		return "", fmt.Errorf("create refresh session: %w", err)
+	}
+	return familyID, nil
+}
+
+
+func (r *PrincipalRefreshSessionRepository) CreatePrincipalForVersionWithFamily(
+	ctx context.Context, principalID, expectedTokenVersion int64, tokenHash string, expiresAt time.Time,
+) (string, error) {
+	if expectedTokenVersion <= 0 || principalID <= 0 || !isSHA256Hash(tokenHash) || !expiresAt.After(time.Now()) {
+		return "", fmt.Errorf("invalid refresh session data")
+	}
+	tx, err := r.db.Begin(ctx)
+	if err != nil { return "", fmt.Errorf("begin refresh-session creation: %w", err) }
+	defer func() { _ = tx.Rollback(ctx) }()
+	familyID, err := r.createPrincipalInTxWithFamily(ctx, tx, principalID, expectedTokenVersion, tokenHash, expiresAt)
+	if err != nil { return "", err }
+	if err := tx.Commit(ctx); err != nil { return "", fmt.Errorf("commit refresh-session creation: %w", err) }
+	return familyID, nil
 }
 
 // Rotate preserves family replay detection and cross-family principal locking.
@@ -174,7 +363,7 @@ func (r *PrincipalRefreshSessionRepository) RotatePrincipal(
 
 	if _, err = tx.Exec(
 		ctx,
-		`SELECT pg_advisory_xact_lock(hashtextextended('refresh-principal:' || $1::text,0))`,
+		`SELECT pg_advisory_xact_lock(hashtextextended('refresh-principal:' || $1::bigint::text,0))`,
 		principalID,
 	); err != nil {
 		return nil, fmt.Errorf("lock principal refresh sessions: %w", err)
@@ -184,13 +373,50 @@ func (r *PrincipalRefreshSessionRepository) RotatePrincipal(
 SELECT rs.id, rs.family_id, rs.principal_id,
        (rs.expires_at > NOW()),
        (rs.revoked_at IS NOT NULL),
-       ap.principal_type, ap.status, ap.token_version,
+       (rs.last_activity_at <= clock_timestamp()-INTERVAL '30 minutes'),
+       ap.principal_type,
+       (ap.principal_type='platform_admin' OR
+        (ap.principal_type='staff' AND EXISTS (
+          SELECT 1 FROM principal_roles ar JOIN roles rr ON rr.id=ar.role_id
+          WHERE ar.principal_id=ap.id AND ar.revoked_at IS NULL
+            AND rr.is_system=TRUE AND rr.role_key='school_admin'
+            AND rr.principal_type='staff' AND rr.scope_type='school'
+            AND rr.school_id=u.school_id
+        ))),
+       ap.status, ap.token_version,
        u.id,
        COALESCE(u.school_id,0),
        COALESCE(u.username,''),
+       COALESCE(u.must_change_password,FALSE),
        COALESCE(s.status,''),
        (pa.principal_id IS NOT NULL),
-       COALESCE(parent.mobile_verified_at IS NOT NULL,FALSE)
+       COALESCE(parent.mobile_verified_at IS NOT NULL,FALSE),
+       EXISTS (
+         SELECT 1
+         FROM parent_guardian_links pgl
+         JOIN guardians g ON g.id = pgl.guardian_id AND g.school_id = pgl.school_id
+         JOIN student_guardians sg ON sg.guardian_id = g.id AND sg.school_id = g.school_id
+         JOIN students st ON st.id = sg.student_id AND st.school_id = sg.school_id
+         WHERE pgl.principal_id = ap.id
+           AND pgl.revoked_at IS NULL
+           AND sg.revoked_at IS NULL
+           AND g.status = 'active'
+           AND st.status = 'active'
+           AND g.parent_portal_enabled_at IS NOT NULL
+       ),
+       CASE
+         WHEN ap.principal_type='platform_admin' OR
+              (ap.principal_type='staff' AND EXISTS (
+                SELECT 1 FROM principal_roles mpr JOIN roles mr ON mr.id=mpr.role_id
+                WHERE mpr.principal_id=ap.id AND mpr.revoked_at IS NULL
+                  AND mr.is_system=TRUE AND mr.role_key='school_admin'
+                  AND mr.principal_type='staff' AND mr.scope_type='school'
+                  AND mr.school_id=u.school_id
+              ))
+         THEN EXISTS (SELECT 1 FROM principal_mfa_credentials mc
+                      WHERE mc.principal_id=ap.id AND mc.method='totp' AND mc.verified_at IS NOT NULL)
+         ELSE TRUE
+       END
 FROM refresh_sessions rs
 JOIN auth_principals ap ON ap.id=rs.principal_id
 LEFT JOIN users u ON u.principal_id=ap.id
@@ -198,22 +424,27 @@ LEFT JOIN schools s ON s.id=u.school_id
 LEFT JOIN platform_admin_accounts pa ON pa.principal_id=ap.id
 LEFT JOIN parent_accounts parent ON parent.principal_id=ap.id
 WHERE rs.token_hash=$1
-FOR UPDATE OF rs`
+FOR UPDATE OF rs, ap`
 
 	var sessionID int64
 	var currentFamily string
 	var currentPrincipal int64
 	var notExpired bool
 	var revoked bool
+	var adminSessionIdleExpired bool
 	var principalType string
+	var isAdminPrincipal bool
 	var principalStatus string
 	var username string
+	var mustChangePassword bool
 	var schoolStatus string
 	var tokenVersion int64
 	var userID pgtype.Int8
 	var schoolID int64
 	var hasPlatformAccount bool
 	var mobileVerified bool
+	var hasEligibleParentLink bool
+	var mfaVerified bool
 
 	err = tx.QueryRow(ctx, lookup, oldHash).Scan(
 		&sessionID,
@@ -221,15 +452,20 @@ FOR UPDATE OF rs`
 		&currentPrincipal,
 		&notExpired,
 		&revoked,
+		&adminSessionIdleExpired,
 		&principalType,
+		&isAdminPrincipal,
 		&principalStatus,
 		&tokenVersion,
 		&userID,
 		&schoolID,
 		&username,
+		&mustChangePassword,
 		&schoolStatus,
 		&hasPlatformAccount,
 		&mobileVerified,
+		&hasEligibleParentLink,
+		&mfaVerified,
 	)
 
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -266,7 +502,32 @@ FOR UPDATE OF rs`
 		return nil, ErrRefreshTokenInvalid
 	}
 
-	active := principalStatus == "active" && tokenVersion > 0
+	if isAdminPrincipal && adminSessionIdleExpired {
+		if _, err = tx.Exec(ctx, `UPDATE refresh_sessions SET revoked_at=COALESCE(revoked_at,NOW()) WHERE family_id=$1 AND revoked_at IS NULL`, familyID); err != nil {
+			return nil, fmt.Errorf("revoke idle administrative refresh family: %w", err)
+		}
+		if _, err = tx.Exec(ctx, `
+			INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
+			SELECT ap.id,NULLIF(u.school_id,0),'auth.admin_session_idle_timeout','refresh_session',$2,'success',
+			       jsonb_build_object('idle_timeout_minutes',30)
+			FROM auth_principals ap LEFT JOIN users u ON u.principal_id=ap.id
+			WHERE ap.id=$1 AND (
+			  ap.principal_type='platform_admin' OR
+			  (ap.principal_type='staff' AND EXISTS (
+			    SELECT 1 FROM principal_roles pr JOIN roles ro ON ro.id=pr.role_id
+			    WHERE pr.principal_id=ap.id AND pr.revoked_at IS NULL
+			      AND ro.is_system=TRUE AND ro.role_key='school_admin'
+			      AND ro.principal_type='staff' AND ro.scope_type='school'
+			      AND ro.school_id=u.school_id
+			  ))
+			)`, principalID, familyID); err != nil {
+			return nil, fmt.Errorf("audit idle administrative refresh family: %w", err)
+		}
+		if err = tx.Commit(ctx); err != nil { return nil, fmt.Errorf("commit idle administrative session revocation: %w", err) }
+		return nil, ErrAdminSessionIdleExpired
+	}
+
+	active := principalStatus == "active" && tokenVersion > 0 && mfaVerified
 
 	switch principalType {
 	case "staff":
@@ -279,7 +540,7 @@ FOR UPDATE OF rs`
 		active = active && hasPlatformAccount
 
 	case "parent":
-		active = active && mobileVerified
+		active = active && mobileVerified && hasEligibleParentLink
 
 	default:
 		active = false
@@ -321,13 +582,16 @@ FOR UPDATE OF rs`
 	if _, err = tx.Exec(
 		ctx,
 		`INSERT INTO refresh_sessions
-		 (user_id,principal_id,token_hash,expires_at,family_id)
-		 VALUES ($1,$2,$3,$4,$5)`,
+		 (user_id,principal_id,token_hash,expires_at,family_id,last_activity_at)
+		 SELECT $1,$2,$3,$4,$5,last_activity_at
+		 FROM refresh_sessions
+		 WHERE id=$6 AND family_id=$5`,
 		nullableInt64(userID),
 		principalID,
 		newHash,
 		newExpiry,
 		familyID,
+		sessionID,
 	); err != nil {
 		return nil, fmt.Errorf("store replacement refresh token: %w", err)
 	}
@@ -337,13 +601,14 @@ FOR UPDATE OF rs`
 	}
 
 	return &models.AuthPrincipal{
-		ID:             principalID,
-		Type:           principalType,
-		Status:         principalStatus,
-		TokenVersion:   tokenVersion,
-		SchoolID:       schoolID,
-		Username:       username,
-		MobileVerified: mobileVerified,
+		ID:                 principalID,
+		Type:               principalType,
+		Status:             principalStatus,
+		TokenVersion:       tokenVersion,
+		SchoolID:           schoolID,
+		Username:           username,
+		MobileVerified:     mobileVerified,
+		MustChangePassword: principalType == "staff" && mustChangePassword,
 	}, nil
 }
 
@@ -409,4 +674,14 @@ func nullableInt64(value pgtype.Int8) any {
 		return nil
 	}
 	return value.Int64
+}
+
+
+func (r *PrincipalRefreshSessionRepository) FamilyIDForTokenHash(ctx context.Context, tokenHash string) (string, error) {
+	if !isSHA256Hash(tokenHash) { return "", ErrRefreshTokenInvalid }
+	var familyID string
+	err := r.db.QueryRow(ctx, `SELECT family_id FROM refresh_sessions WHERE token_hash=$1`, tokenHash).Scan(&familyID)
+	if errors.Is(err, pgx.ErrNoRows) { return "", ErrRefreshTokenInvalid }
+	if err != nil { return "", fmt.Errorf("load refresh-session family: %w", err) }
+	return familyID, nil
 }

@@ -1,8 +1,8 @@
-# Phase 1 RBAC — Roles, Permissions and Account Rules
+# Phase 1 Web RBAC — Roles, Permissions and Account Rules
 
-**Decision status:** Product and authorization requirements approved for Phase 1. Database schema and implementation are pending.
+**Decision status (2026-11-05):** Product and authorization requirements approved for the Phase 1 web application. Principal-aware authentication, mandatory admin MFA, live RBAC/delegation/override workflows, staff account lifecycle, and foundational student/enrollment/attendance/guardian scope checks are implemented. Complete resource-level enforcement across all business modules remains pending. Parent and Driver mobile experiences are Phase 2 and deferred.
 
-This document is the detailed reference for Phase 1 role scope, permission identifiers, account boundaries, teacher assignments, and parent access. It describes approved requirements, not implemented functionality.
+This document is the detailed reference for Phase 1 web role scope, permission identifiers, account boundaries and teacher assignments. Parent-related sections are retained as future Phase 2 design requirements only; they are not active Phase 1 implementation scope. It distinguishes approved requirements from the backend functionality currently implemented; it is not a claim that the complete product is production-ready.
 
 ## 1. Authorization principles
 
@@ -20,19 +20,19 @@ This document is the detailed reference for Phase 1 role scope, permission ident
 | Platform Admin | Global platform | Authorized platform provisioning | Manages platform operations and provisions School Admins. Global role does not automatically expose school academic/student records. |
 | School Admin | Exactly one school | Platform Admin | Manages only that school. Cannot create/promote Platform Admins or another School Admin. |
 | Teacher | Exactly one school | School Admin | Access is limited by permissions and exact teaching/class-in-charge assignments. |
-| Parent | Officially linked children; links may span schools | First successful registered-mobile OTP verification after guardian matching | Read-only access to currently verified linked children only. |
+| Parent (Phase 2) | Officially linked children; links may span schools | To be decided during Phase 2 | Future read-only mobile access; not a Phase 1 web account/workstream. |
 
 ### 2.1 Staff account rules
 
 - Every School Admin and staff account belongs to exactly one school. The same account must never access multiple schools.
 - If one person works at multiple schools, each school creates a separate account with independent username, password, and sessions.
 - Staff usernames are globally unique and case-insensitive across the platform. Login must resolve exactly one account; school selection is not used to disambiguate duplicate usernames.
-- School Admin creates staff accounts and provides an initial temporary password. Staff must change it on first login.
-- Staff self-service password change requires the current password.
-- School Admin can reset a staff password without knowing the old password. Reset revokes the target account's sessions and outstanding access, requires a password change at next login, and creates an audit event.
+- New staff records default to `must_change_password=true`; School Admin provisioning supplies an initial temporary password. Temporary-password staff sessions can only change the password or inspect `/auth/me` until replacement. Staff creation and PostgreSQL integration verification are implemented.
+- Staff self-service password change requires the current password. The implemented endpoint is `POST /auth/password/change`; a successful change clears the temporary flag, increments token version, revokes refresh sessions, and writes an audit event.
+- School Admin can reset an active staff password only within the same active school, without knowing the old password. `POST /school/staff/:principalID/password/reset` requires `users.password_reset`; the repository independently checks the School Admin role and permission. Reset revokes refresh sessions and access tokens, requires a password change at next login, and creates an audit event.
 - School Admin accounts are provisioned by Platform Admin. A School Admin cannot create another School Admin or a Platform Admin.
 
-### 2.2 Parent and student account rules
+### 2.2 Future Parent and student account rules (Phase 2)
 
 - Parent signs in using a registered mobile number and OTP; there is no separate parent registration form in the normal flow.
 - A parent account is created or linked only after successful OTP verification and a matching officially recorded guardian relationship.
@@ -45,7 +45,7 @@ This document is the detailed reference for Phase 1 role scope, permission ident
 
 ## 3. Permission catalogue
 
-Permission keys are stable identifiers in a platform-defined catalogue. School Admins may create custom roles from authorized catalogue entries; they cannot invent platform permissions or exceed their delegation authority.
+Permission keys are stable identifiers in a platform-defined catalogue. School Admins may create custom roles from authorized catalogue entries; they cannot invent platform permissions or exceed their delegation authority. Custom-role grants and per-user overrides must carry the exact delegation ID that authorized them; V16 enforces this in database triggers and the live resolver ignores grants whose exact delegation has been revoked. V22 adds self-escalation guards at repository and database layers. GitHub Actions run 41961583328 applied V1–V22 and passed integration tests on ephemeral PostgreSQL 18; persistent local databases remain unchanged.
 
 ### 3.1 Platform and school administration
 
@@ -151,7 +151,7 @@ Teacher basic-field allowlist: **student name, roll number, class, and section**
 
 A School Admin cannot create, edit, or assign Platform Admin or School Admin privileges, platform permissions, or permissions outside the school's authorized delegation ceiling.
 
-### 3.9 Parent-only permissions
+### 3.9 Future Parent mobile permissions (Phase 2; not active in Phase 1)
 
 | Permission key | Meaning |
 |---|---|
@@ -163,13 +163,13 @@ A School Admin cannot create, edit, or assign Platform Admin or School Admin pri
 | `children.results.read` | Read published results/report cards of a linked child |
 | `children.notices.read` | Read notices applicable to a linked child |
 
-Parent permissions are read-only in Phase 1. No parent permission grants access to an unlinked child or staff-management functionality.
+These permissions describe the intended read-only Parent mobile experience in Phase 2. They are not a Phase 1 dashboard requirement and must not be exposed until Parent authentication, guardian matching and per-request relationship authorization are approved and implemented. No Parent permission grants access to an unlinked child or staff-management functionality.
 
 ## 4. Default role permission matrix
 
 The table describes default capabilities; every entry remains subject to resource scope and field filtering.
 
-| Capability | Platform Admin | School Admin | Teacher | Parent |
+| Capability | Platform Admin | School Admin | Teacher | Parent (Phase 2 target only) |
 |---|---|---|---|---|
 | Manage schools / lifecycle | Yes | No | No | No |
 | Provision School Admin | Yes | No | No | No |
@@ -240,7 +240,7 @@ Every request must validate authenticated user status, active school, effective 
 - Overrides never bypass tenant, assignment, parent-child, field-level, account-status, or school-status checks.
 - Default is deny.
 
-## 7. Parent access rules
+## 7. Future Parent mobile access rules (Phase 2)
 
 - Parent signs in using a registered mobile number and OTP.
 - Parent identity/account is created or linked only after successful OTP verification and a matching officially recorded guardian relationship.
@@ -249,7 +249,7 @@ Every request must validate authenticated user status, active school, effective 
 - Parent dashboard lists linked children; selecting a child shows that child's profile, attendance, timetable, homework, published results/report cards, and applicable notices.
 - Every child-data API request verifies the parent-child link on the backend; selecting a child in the UI is not authorization.
 - Removing one child link must not remove other valid child links.
-- Parent access is read-only in Phase 1; there are no student login accounts.
+- Parent access is intended to be read-only in Phase 2; there are no student login accounts in Phase 1.
 
 ## 8. Password and account lifecycle rules
 
@@ -262,12 +262,30 @@ Every request must validate authenticated user status, active school, effective 
 
 ## 9. Future roles
 
-Clerk, Manager, Librarian, Gate Keeper, Helper, Bus Conductor, and other operational roles are not implemented in Phase 1. The RBAC design must support adding them later without redesigning authentication.
+Clerk, Manager, Librarian, Gate Keeper, Helper, Bus Conductor, Driver and other operational roles are introduced only when their approved school web or Phase 2 mobile workflows are scheduled. The RBAC design must support adding them without creating a separate hard-coded authentication system for each job title. Driver identity, employment/contractor status, school scope and transport assignment require a dedicated Phase 2 requirements review.
 
 ## 10. Implementation status and next work
 
-The above decisions are approved requirements. They are **not yet implemented** in the current backend application. The current source still has school-scoped username uniqueness and school-ID + username + password login; the current JWT subject is `users.id`, and middleware does not yet enforce principal status/token version, RBAC, tenant/resource scope, teaching/class-in-charge assignments, or parent-child links.
+The approved Phase 1 requirements remain broader than the currently completed application. The active branch implements principal-aware authentication, mandatory Platform Admin/School Admin TOTP MFA, principal-wide MFA lockout, 5-failure/15-minute password lockout, IP rate limiting with fail-closed wiring, live permission resolution, refresh-family replay/concurrency protection, and 30-minute per-device administrative idle timeout.
 
-A draft additive migration now exists at `backend/migrations/000004_add_principal_rbac_foundation.up.sql`. It introduces the shared principal model, account subtype tables, global username uniqueness, permission catalogue, system roles, role permissions, principal-role assignments, overrides, delegation ceilings, principal-bound refresh sessions, MFA/OTP storage, and audit events. The existing `users.id` and refresh-token family design are preserved. See `docs/V4-IMPLEMENTATION-NOTES.md` for exact contents and blockers.
+Implemented API foundations include:
+- Platform Admin school onboarding and one-time first Platform Admin bootstrap.
+- School role and active permission-catalogue listing.
+- School Admin custom-role creation.
+- Platform Admin grant/revoke of school permission delegation ceilings, guarded by platform.permissions.delegate.
+- School Admin listing of active delegation IDs and custom-role permission grant/revoke using exact delegation IDs.
+- School Admin staff permission override list/set/remove using exact delegation IDs and explicit ALLOW/DENY effects.
+- Same-school staff role assignment list/assign/revoke; School Admin cannot assign or revoke the reserved school_admin role and cannot assign roles or overrides to their own principal.
+- Database V22 triggers also reject direct-SQL self role/permission escalation attempts.
+- Same-school School Admin staff account creation/list/update/disable/re-enable, forced first-login password change, current-password self-change, administrative reset, token-version invalidation and audit events.
+- Teacher enrollment roster restricted to assigned sections and approved minimal fields (student name, roll number, class and section); attendance access is limited to class-in-charge assignments.
+- Parent authentication/matching data paths require active school and active official guardian/student links. Parent OTP/SMS and Phase 2 Parent/Driver endpoints remain intentionally paused.
 
-**Migration v4 is not applied and has not been executed against PostgreSQL. Do not run it yet.** Complete the principal-aware Go authentication/session refactor, database-backed token-version checks, permission evaluation, migration tests on a disposable PostgreSQL 18 database, and explicit confirmation of the existing staff account's role first. Preserve refresh-token family locks, cross-family principal serialization, replay detection, and family revocation. Do not infer the existing account's role from database counts.
+The following remain incomplete and must not be represented as finished:
+- Full resource/tenant/assignment/field-level authorization across every future school business API; implemented student/enrollment/attendance/guardian endpoints have targeted scope filters, but broader coverage remains.
+- Remaining business modules such as fees, exams/results, timetable, homework, notices, transport and reporting.
+- Platform Admin UI/workflow for reviewing all delegation history.
+- Exhaustive end-to-end HTTP/security tests with real JWT signature validation across every protected route, plus additional race/failure-mode coverage.
+- Production DB least-privilege grants, deployment hardening, monitoring, backup/recovery, penetration testing and load testing.
+
+Latest verified remote checkpoint: commit 7071d7913ab62ff525637e2af0f4d3718b9f57b8, GitHub Actions run 41961583328. It applied V1–V22 to a fresh ephemeral PostgreSQL 18 database, passed the full backend suite including PostgreSQL integration, and passed go vet ./.... This does not confirm the migration state of either persistent local database. Never apply migrations to school_management without separate explicit approval. Preserve refresh-token family locks, cross-family principal serialization, replay detection, and family revocation.

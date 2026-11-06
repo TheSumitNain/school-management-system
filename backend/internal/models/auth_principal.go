@@ -19,4 +19,11 @@ type AuthPrincipal struct {
 
 	// False for a parent until the mobile number is verified.
 	MobileVerified bool `json:"-"`
+
+	// Staff-only flag set when a temporary password must be replaced.
+	MustChangePassword bool `json:"must_change_password,omitempty"`
+
+	// True for Platform Admin and active system School Admin identities.
+	// Protected requests for these principals require per-family idle tracking.
+	RequiresAdminSessionActivity bool `json:"-"`
 }
