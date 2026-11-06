@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sort"
 	"syscall"
 	"time"
 
@@ -290,6 +291,21 @@ func setupRouterWithHandlers(
 			"status":         "success",
 			"principal_id":   principalID,
 			"principal_type": principalType,
+		}
+		// Return only the caller's current effective permissions. These values
+		// help the frontend render role-aware navigation; every protected API
+		// request still enforces authorization independently on the server.
+		if principalType == "staff" || principalType == "platform_admin" {
+			permissionValues := make([]string, 0)
+			if value, exists := c.Get(middleware.ContextPermissionsKey); exists {
+				if granted, ok := value.(map[string]struct{}); ok {
+					for permission := range granted {
+						permissionValues = append(permissionValues, permission)
+					}
+				}
+			}
+			sort.Strings(permissionValues)
+			response["permissions"] = permissionValues
 		}
 		// Parent and Platform Admin identities are not school-scoped staff
 		// accounts. Do not serialize empty/zero staff-only fields for them.

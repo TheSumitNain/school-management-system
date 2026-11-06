@@ -235,7 +235,7 @@ func TestAuthMeWithValidToken(t *testing.T) {
 		},
 	}
 
-	router, err := setupTestRouter(fakeDatabase{}, nil, validator, fakePrincipalLoader{principal: &models.AuthPrincipal{ID: 10, Type: "staff", Status: "active", TokenVersion: 1, SchoolID: 2, Username: "tester"}}, fakePermissionLoader{})
+	router, err := setupTestRouter(fakeDatabase{}, nil, validator, fakePrincipalLoader{principal: &models.AuthPrincipal{ID: 10, Type: "staff", Status: "active", TokenVersion: 1, SchoolID: 2, Username: "tester"}}, fakePermissionLoader{permissions: []string{"users.read", "attendance.read"}})
 	if err != nil {
 		t.Fatalf("failed to setup router: %v", err)
 	}
@@ -251,7 +251,7 @@ func TestAuthMeWithValidToken(t *testing.T) {
 			http.StatusOK, rec.Code, rec.Body.String())
 	}
 
-	expectedBody := `{"must_change_password":false,"principal_id":10,"principal_type":"staff","school_id":2,"status":"success","username":"tester"}`
+	expectedBody := `{"must_change_password":false,"permissions":["attendance.read","users.read"],"principal_id":10,"principal_type":"staff","school_id":2,"status":"success","username":"tester"}`
 	if rec.Body.String() != expectedBody {
 		t.Fatalf("expected body %s, got %s", expectedBody, rec.Body.String())
 	}
@@ -291,6 +291,39 @@ func TestAuthMeWithInvalidToken(t *testing.T) {
 
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("expected status %d, got %d", http.StatusUnauthorized, rec.Code)
+	}
+}
+
+func TestAuthMeForPlatformAdminReturnsSortedLivePermissions(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	const principalID = int64(99)
+	const sessionID = "00000000-0000-4000-8000-000000000099"
+	validator := fakeTokenValidator{claims: &services.TokenClaims{
+		RegisteredClaims: jwt.RegisteredClaims{Subject: strconv.FormatInt(principalID, 10)},
+		PrincipalType: "platform_admin",
+		TokenVersion: 1,
+		SessionID: sessionID,
+	}}
+	router, err := setupTestRouterWithHandlers(
+		fakeDatabase{}, nil, validator,
+		fakePrincipalLoader{principal: &models.AuthPrincipal{ID: principalID, Type: "platform_admin", Status: "active", TokenVersion: 1}},
+		fakePermissionLoader{permissions: []string{"platform.schools.create", "platform.admins.manage"}},
+		nil, nil,
+		fakeAdminSessionActivityTracker{adminPrincipalID: principalID, familyID: sessionID},
+	)
+	if err != nil {
+		t.Fatalf("setup Platform Admin identity router: %v", err)
+	}
+	req := httptest.NewRequest(http.MethodGet, "/auth/me", nil)
+	req.Header.Set("Authorization", "Bearer valid-test-token")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d; body: %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	expected := `{"permissions":["platform.admins.manage","platform.schools.create"],"principal_id":99,"principal_type":"platform_admin","status":"success"}`
+	if rec.Body.String() != expected {
+		t.Fatalf("expected Platform Admin identity response %s, got %s", expected, rec.Body.String())
 	}
 }
 

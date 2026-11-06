@@ -264,13 +264,13 @@ Refresh rotation and logout use the same transaction-scoped PostgreSQL advisory 
 
 Existing stateless JWT access tokens are not immediately invalidated by logout and can remain usable until their configured expiry. Immediate access-token revocation is not implemented.
 
-### 3.6 Authenticated Identity
+### 3.6 Authenticated Identity and Effective Permissions
 
 **Endpoint:** `GET /auth/me`
 
-**Purpose:** Validates the Bearer access token and returns the authenticated user's identity identifiers.
+**Purpose:** Validates the Bearer access token and returns the current authenticated principal context for frontend session initialization.
 
-This endpoint uses JWT authentication middleware.
+This endpoint uses the shared authentication middleware. Principal status, token version, active school status, session-family validity, and effective permissions are reloaded from PostgreSQL on every request.
 
 #### Request header
 
@@ -278,9 +278,7 @@ This endpoint uses JWT authentication middleware.
 Authorization: Bearer <access-token>
 ```
 
-Use the access token returned by a successful login or refresh operation.
-
-#### Successful response
+#### Successful staff response
 
 **HTTP status:** `200 OK`
 
@@ -290,27 +288,36 @@ Use the access token returned by a successful login or refresh operation.
   "principal_id": 10,
   "principal_type": "staff",
   "school_id": 2,
-  "username": "devtest"
+  "username": "devtest",
+  "must_change_password": false,
+  "permissions": [
+    "attendance.read",
+    "students.read_basic",
+    "users.read"
+  ]
 }
 ```
 
-The IDs are illustrative examples.
+The `permissions` array contains only the caller's current effective permission keys, sorted alphabetically. A staff account that must change its temporary password receives an empty permissions array and remains restricted to `GET /auth/me` and `POST /auth/password/change`.
+
+#### Successful Platform Admin response
+
+Platform Admin responses contain `principal_id`, `principal_type`, and the current sorted `permissions` array. School-only fields such as `school_id` and `username` are omitted.
+
+Parent principals are not part of the active Phase 1 web scope; their response does not expose staff or Platform Admin fields.
+
+#### Authorization note
+
+The permissions array is intended for frontend navigation and capability hints only. It is **not** an authorization credential. Every protected API request independently reloads and enforces live permissions, and repository operations independently verify actor and resource scope. A hidden frontend control never replaces server-side authorization.
 
 #### Error responses
 
 | HTTP status | Meaning |
 |---|---|
-| `401 Unauthorized` | Authorization header is missing or malformed, token is invalid or expired, or identity claims are invalid. |
-| `500 Internal Server Error` | Authentication middleware has an internal configuration problem, such as a missing token validator. |
-
-#### Authentication notes
-
-- The middleware validates the access token and reloads current principal and permission state before the handler runs.
-- The principal ID is extracted from the token subject. The middleware reloads the current principal subtype, status, token version, and staff school from PostgreSQL.
-- The live principal type and token version must match the JWT claims.
-- Effective permissions are resolved from live RBAC tables on every protected request; the current resolver intentionally ignores custom-role grants and user ALLOW overrides until exact delegation linkage is implemented.
-- The endpoint returns principal identity context, not the full user profile. Complete resource-level authorization and tenant isolation are not yet implemented.
-- The endpoint does not, by itself, prove complete tenant isolation for other resources.
+| `401 Unauthorized` | Missing/malformed Authorization header, invalid/expired token, inactive principal/school, stale token version, revoked session family, or invalid identity claims. |
+| `403 Forbidden` | Not used for invalid identity; protected resource permission failures return 403. |
+| `500 Internal Server Error` | Unexpected principal/permission resolution failure. |
+| `503 Service Unavailable` | Session-family security tracking is unavailable. |
 
 ### 3.7 Academic Management
 
@@ -591,7 +598,7 @@ Staff login now accepts a globally unique, case-insensitive username and passwor
 
 These are required design rules, not evidence that complete tenant isolation is already implemented.
 
-The current `/auth/me` endpoint returns the school ID from validated token claims. This does not replace server-side ownership checks on school-specific resource endpoints.
+The `/auth/me` endpoint returns the current school ID from the live principal record and the current effective permission keys. These are frontend context only and do not replace server-side ownership checks on school-specific resources.
 
 ## 7. API Versioning and Route List
 
@@ -661,7 +668,7 @@ Send a `POST` request to:
 
 `http://localhost:8081/auth/login`
 
-Use a valid development user's `school_id`, `username`, and `password`.
+Use a valid development user's globally unique `username` and `password`. The client does not submit a school ID; the backend resolves the staff account's school.
 
 Do not put real passwords or access tokens into source files, documentation, Git commits, or public issue reports.
 
@@ -797,7 +804,7 @@ This section describes target API behavior only. Existing endpoints above remain
 
 ### 12.1 Staff login target
 
-Staff accounts use globally unique, case-insensitive usernames. The target login identifies one staff account using username + password; it must not require a school ID to disambiguate duplicate usernames because duplicates are prohibited globally. Each staff account remains tied to exactly one school. Current `POST /auth/login` still requires `school_id`; changing that contract is pending.
+Staff accounts use globally unique, case-insensitive usernames. The target login identifies one staff account using username + password; it must not require a school ID to disambiguate duplicate usernames because duplicates are prohibited globally. Each staff account remains tied to exactly one school. Current `POST /auth/login` accepts username and password only; the backend resolves the single globally unique staff account.
 
 ### 12.2 Staff password lifecycle target
 
