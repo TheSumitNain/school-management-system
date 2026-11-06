@@ -399,3 +399,12 @@ Role/permission changes and staff password changes/resets take effect on subsequ
 - The authorization repository verifies that the supplied family has an unrevoked, unexpired refresh-session row belonging to the same principal. A logged-out or otherwise revoked staff, Parent, School Admin, or Platform Admin family therefore cannot continue using an already-issued access JWT on subsequent protected requests.
 - The existing per-device 30-minute idle timeout, activity touch, family revocation, and audit event remain limited to Platform Admin and active system-role School Admin sessions. Ordinary staff and Parent families are checked for active status but are not subject to administrative idle expiry.
 - PostgreSQL integration coverage verifies that an ordinary staff family remains valid beyond 30 minutes and is rejected immediately after its family is revoked. Middleware tests cover revoked families and fail-closed behavior when the tracker is missing.
+
+
+## 2026-11-06 Platform Admin password-change update
+
+- Added authenticated self-service password change at `POST /auth/platform-admin/password/change`. The endpoint accepts only an authenticated `platform_admin` principal; staff and Parent principals are rejected.
+- The service verifies the current password, rejects unchanged or locally invalid passwords, and checks the replacement against the Pwned Passwords range API using the existing k-anonymity flow. Provider failures remain fail-closed.
+- The repository serializes the update with the same per-principal PostgreSQL advisory lock used by refresh-session operations. A compare-and-swap on the previously verified password hash prevents a stale request from overwriting a concurrent password change.
+- The password hash update, principal token-version increment, revocation of all active refresh sessions, and append-only `platform.admin.password.changed` audit event occur in one transaction. Existing access JWTs are rejected on subsequent protected requests through the live token-version/session-family checks.
+- The service has unit coverage for successful change, wrong current password, unchanged password, compromised password, breach-check outage, and concurrent-change conflict. PostgreSQL integration verification and full CI are pending.
