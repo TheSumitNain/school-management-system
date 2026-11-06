@@ -46,7 +46,7 @@ func run() error {
 		return fmt.Errorf("invalid database configuration: %w", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
 	db, err := database.Connect(ctx, cfg)
@@ -86,7 +86,7 @@ func run() error {
 		return fmt.Errorf("passwords did not match; no changes were made")
 	}
 
-	passwordCtx, passwordCancel := context.WithTimeout(ctx, 10*time.Second)
+	passwordCtx, passwordCancel := context.WithTimeout(ctx, 45*time.Second)
 	passwordHash, err := services.HashPasswordContext(passwordCtx, string(password))
 	passwordCancel()
 	if err != nil {
