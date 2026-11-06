@@ -979,3 +979,73 @@ func TestPlatformAdminLifecycleRoutesRequireDedicatedPermission(t *testing.T) {
 	}
 }
 
+func TestStaffCreateAndDisableRoutesEnforceDedicatedLivePermissions(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	validator := fakeTokenValidator{claims: &services.TokenClaims{
+		RegisteredClaims: jwt.RegisteredClaims{Subject: "31"},
+		PrincipalType: "staff",
+		TokenVersion: 1,
+	}}
+	principal := &models.AuthPrincipal{
+		ID: 31, Type: "staff", Status: "active", TokenVersion: 1,
+		SchoolID: 8, Username: "school.admin",
+	}
+	staffHandler := handlers.NewStaffHandler(nil)
+
+	tests := []struct {
+		name       string
+		method     string
+		path       string
+		body       string
+		permission string
+	}{
+		{
+			name: "staff creation",
+			method: http.MethodPost,
+			path: "/school/staff",
+			body: `{"username":"new.teacher","initial_password":"A-Strong-Initial-Pass-123"}`,
+			permission: "users.create",
+		},
+		{
+			name: "staff disable",
+			method: http.MethodDelete,
+			path: "/school/staff/42",
+			permission: "users.disable",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			request := func(permissions []string) *httptest.ResponseRecorder {
+				router, err := setupTestRouterWithHandlers(
+					fakeDatabase{}, nil, validator,
+					fakePrincipalLoader{principal: principal},
+					fakePermissionLoader{permissions: permissions},
+					nil, nil, staffHandler,
+				)
+				if err != nil {
+					t.Fatalf("setup %s router: %v", test.name, err)
+				}
+				req := httptest.NewRequest(test.method, test.path, strings.NewReader(test.body))
+				req.Header.Set("Authorization", "Bearer valid-test-token")
+				req.Header.Set("Content-Type", "application/json")
+				rec := httptest.NewRecorder()
+				router.ServeHTTP(rec, req)
+				return rec
+			}
+
+			if denied := request(nil); denied.Code != http.StatusForbidden {
+				t.Fatalf("%s without %s: status=%d body=%s; want 403",
+					test.name, test.permission, denied.Code, denied.Body.String())
+			}
+			if wrong := request([]string{"users.update"}); wrong.Code != http.StatusForbidden {
+				t.Fatalf("%s with users.update only: status=%d body=%s; want 403",
+					test.name, wrong.Code, wrong.Body.String())
+			}
+			if allowed := request([]string{test.permission}); allowed.Code != http.StatusServiceUnavailable {
+				t.Fatalf("%s with %s should reach the handler: status=%d body=%s; want 503",
+					test.name, test.permission, allowed.Code, allowed.Body.String())
+			}
+		})
+	}
+}
