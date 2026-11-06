@@ -1,0 +1,43 @@
+# Backend API Reference
+
+**Current status:** Selected backend APIs are implemented. This is not a complete product API catalogue; check the route registrations and handler tests in `backend/` before relying on an endpoint.
+
+## Authentication and identity
+
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `/auth/login` | Staff username/password login; administrator MFA flow is enforced. |
+| POST | `/auth/refresh` | Refresh-token rotation and replay/family protection. |
+| POST | `/auth/logout` | Revoke the supplied refresh-session family. |
+| GET | `/auth/me` | Current principal identity; Staff and Platform Admin also receive sorted effective permission keys for UI navigation. |
+| POST | `/auth/password/change` | Staff self-service password change. |
+| POST | `/auth/platform-admin/password/change` | Platform Admin self-service password change. |
+| POST | `/auth/mfa/*` | Administrator TOTP enrollment, verification and recovery workflows; consult source route registrations for exact subpaths. |
+
+## Administrative and school routes
+
+Implemented route groups include:
+- Platform Admin account lifecycle and school onboarding.
+- School staff account listing, creation, update, enable/disable and password reset.
+- Role, permission, delegation and user-override administration.
+- Academic year/class/section/subject and teacher assignment foundations.
+- Student admission/profile and enrollment/promotion/history foundations.
+- Assigned-section teacher enrollment roster.
+- Attendance listing, marking and correction.
+- Guardian management.
+
+The exact route paths, request/response DTOs, permission keys and status codes are defined by the current router and handlers under `backend/internal/`. Do not treat this summary as a substitute for source-level contract verification.
+
+## Authorization contract
+
+- Protected requests authenticate the principal and validate the active refresh-session family.
+- Effective permissions are loaded live from PostgreSQL.
+- Route-level permission middleware is combined with repository/resource checks.
+- School ownership, assignment scope and field-level restrictions must be enforced server-side.
+- `GET /auth/me.permissions` is a UI hint only; it is not an authorization credential.
+
+## Not yet delivered
+
+The API does not yet represent the complete school product. Timetable, examinations, results, the frontend and Parent/Driver Phase 2 workflows remain pending. Parent OTP/SMS delivery is paused.
+
+For implementation status and verification evidence, see [Project Status](../project/STATUS.md). For authorization requirements, see [Phase 1 RBAC](../product/PHASE1-RBAC.md).
