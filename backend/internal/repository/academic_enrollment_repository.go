@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -26,6 +27,22 @@ type StudentEnrollment struct {
 	EndedAt *time.Time `json:"ended_at,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+	basicRosterOnly bool
+}
+
+// MarshalJSON limits subject-only teachers to the approved minimal roster fields.
+// Administrators and class-in-charge teachers retain the complete enrollment view.
+func (v StudentEnrollment) MarshalJSON() ([]byte, error) {
+	if v.basicRosterOnly {
+		return json.Marshal(struct {
+			StudentName string `json:"student_name"`
+			RollNumber *string `json:"roll_number,omitempty"`
+			ClassNameSnapshot string `json:"class_name_snapshot"`
+			SectionNameSnapshot string `json:"section_name_snapshot"`
+		}{v.StudentName, v.RollNumber, v.ClassNameSnapshot, v.SectionNameSnapshot})
+	}
+	type enrollmentJSON StudentEnrollment
+	return json.Marshal(enrollmentJSON(v))
 }
 
 func scanStudentEnrollment(row interface{ Scan(...any) error }) (*StudentEnrollment, error) {
@@ -39,10 +56,13 @@ func scanStudentEnrollment(row interface{ Scan(...any) error }) (*StudentEnrollm
 
 func scanStudentEnrollmentWithName(row interface{ Scan(...any) error }) (*StudentEnrollment, error) {
 	var v StudentEnrollment
+	var isSchoolAdmin, isClassIncharge bool
 	err := row.Scan(&v.ID, &v.SchoolID, &v.StudentID, &v.AcademicYearID, &v.ClassID,
 		&v.SectionID, &v.RollNumber, &v.ClassNameSnapshot, &v.SectionNameSnapshot,
-		&v.Status, &v.EnrolledAt, &v.EndedAt, &v.CreatedAt, &v.UpdatedAt, &v.StudentName)
+		&v.Status, &v.EnrolledAt, &v.EndedAt, &v.CreatedAt, &v.UpdatedAt, &v.StudentName,
+		&isSchoolAdmin, &isClassIncharge)
 	if err != nil { return nil, err }
+	v.basicRosterOnly = !isSchoolAdmin && !isClassIncharge
 	return &v, nil
 }
 
@@ -54,7 +74,13 @@ func (r *AcademicRepository) ListStudentEnrollments(ctx context.Context, actorID
 	if yearID < 0 || studentID < 0 { return nil, ErrInvalidAcademicInput }
 	if err := authorizeAcademic(ctx, r.db, actorID, schoolID, "students.read_basic"); err != nil { return nil, err }
 	rows, err := r.db.Query(ctx, `SELECT e.id,e.school_id,e.student_id,e.academic_year_id,e.class_id,e.section_id,e.roll_number,
-		e.class_name_snapshot,e.section_name_snapshot,e.status,e.enrolled_at,e.ended_at,e.created_at,e.updated_at,st.full_name
+		e.class_name_snapshot,e.section_name_snapshot,e.status,e.enrolled_at,e.ended_at,e.created_at,e.updated_at,st.full_name,
+		EXISTS (SELECT 1 FROM principal_roles pr JOIN roles r ON r.id=pr.role_id
+		 WHERE pr.principal_id=$4 AND pr.revoked_at IS NULL AND r.school_id=e.school_id
+		 AND r.scope_type='school' AND r.principal_type='staff' AND r.role_key='school_admin' AND r.is_system=TRUE),
+		EXISTS (SELECT 1 FROM class_incharge_assignments cia
+		 WHERE cia.school_id=e.school_id AND cia.academic_year_id=e.academic_year_id
+		 AND cia.section_id=e.section_id AND cia.teacher_principal_id=$4 AND cia.revoked_at IS NULL)
 		FROM student_enrollments e
 		JOIN students st ON st.id=e.student_id AND st.school_id=e.school_id
 		WHERE e.school_id=$1 AND ($2=0 OR e.academic_year_id=$2) AND ($3=0 OR e.student_id=$3)
