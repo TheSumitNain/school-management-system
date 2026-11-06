@@ -3,14 +3,16 @@
 **Last reconciled:** 2026-11-06  
 **Repository:** `TheSumitNain/school-management-system`  
 **Default branch:** `main`  
-**Latest known merged commit:** `a164b68d19262387fdc51ff31a83165dfc455ebd`
+**Latest known merged commit before this documentation update:** `d5d015dc050e5b2806383a27bb90b4f387158f97`
 
 This file is the single current implementation-status reference. Older checkpoint notes must not override it.
 
-## Delivery scope
+## Delivery scope and current priority
 
 - **Phase 1:** Complete web product for Platform Admin, School Admin and school staff.
-- **Phase 2:** Parent and Driver mobile experiences after Phase 1 web completion. Parent OTP/SMS delivery and Parent/Driver workflows remain paused.
+- **Immediate priority:** Complete the school-facing dashboard and its end-to-end operational workflows.
+- **Phase 2:** Parent and Driver experiences after Phase 1 web delivery.
+- **Parent OTP/SMS:** Explicitly deferred. Do not implement parent OTP login, SMS delivery or parent-facing authentication now. Preserve existing guardian/parent relationship foundations without expanding this workstream until Phase 2 is approved.
 - **Scale target:** 25–30 schools and 400–500 students per school; capacity is not yet load-tested.
 
 ## Repository reality
@@ -45,10 +47,10 @@ This file is the single current implementation-status reference. Older checkpoin
 
 ## Not yet complete
 
-- React web frontend, dashboards, forms and end-to-end browser workflows.
+- React web frontend, school dashboards, forms and end-to-end browser workflows.
 - Complete tenant/resource/assignment/field-level authorization coverage across every business module and route.
 - Remaining academic/business modules, including timetable, examinations and results.
-- Parent OTP/SMS delivery and Parent/Driver Phase 2 interfaces.
+- Parent OTP/SMS delivery and Parent/Driver Phase 2 interfaces (deferred; not current work).
 - Exhaustive end-to-end HTTP coverage with real JWT signature validation for every protected route.
 - Production deployment hardening, least-privilege database grants, monitoring/alerting, backup/restore drills, penetration testing and load/capacity testing.
 
@@ -61,11 +63,11 @@ This file is the single current implementation-status reference. Older checkpoin
 
 ## Safe next sequence
 
-1. Finish documentation reconciliation so each document has one clear purpose and no stale checkpoint claims.
-2. Reconcile remaining backend authorization gaps against the actual route/repository surface; add tests for each fix.
-3. Complete remaining backend business modules and their tenant/assignment/field-level boundaries.
-4. Design and implement the React web foundation against the actual API contracts.
-5. Complete browser-level workflows, operational hardening and production readiness checks.
+1. Reconcile remaining backend authorization gaps against the actual route/repository surface; add tests for each fix.
+2. Complete remaining backend business modules and their tenant/assignment/field-level boundaries needed by the school web workflows.
+3. Establish the React web foundation and implement the school dashboard first, followed by Platform Admin and staff workflows, against the actual API contracts.
+4. Complete browser-level workflows, operational hardening and production readiness checks.
+5. Start Parent OTP/SMS and Parent/Driver Phase 2 work only after Phase 1 school web product completion and explicit reprioritization.
 
 ## Git and database safety
 
