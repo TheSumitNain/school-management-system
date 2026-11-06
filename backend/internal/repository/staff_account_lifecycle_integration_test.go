@@ -370,6 +370,10 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
 	); err != nil {
 		t.Fatalf("create protected School Admin refresh session: %v", err)
 	}
+	if _, err := repo.UpdateStaffAccount(ctx, actorPrincipalID, schoolID, protectedAdminPrincipalID,
+		"renamed-peer-admin-"+suffix[len(suffix)-8:]); !errors.Is(err, ErrUserNotFound) {
+		t.Fatalf("renaming another active School Admin error = %v, want ErrUserNotFound", err)
+	}
 	if err := repo.ResetStaffPassword(ctx, actorPrincipalID, schoolID, protectedAdminPrincipalID,
 		"attempted-admin-takeover-password-hash"); !errors.Is(err, ErrUserNotFound) {
 		t.Fatalf("resetting another active School Admin password error = %v, want ErrUserNotFound", err)
