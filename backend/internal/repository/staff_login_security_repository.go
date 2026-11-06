@@ -103,9 +103,21 @@ SELECT EXISTS (
 	return locked, nil
 }
 
-// RecordFailure atomically increments the rolling 15-minute counter and audits
-// the failure. The fifth failure starts a 15-minute lockout.
+// RecordFailure records a staff authentication failure.
 func (r *StaffLoginSecurityRepository) RecordFailure(ctx context.Context, username string) error {
+	return r.recordFailure(ctx, username, "auth.staff_login")
+}
+
+// RecordPlatformAdminFailure records a Platform Admin authentication failure
+// without misclassifying it as a staff login. Both identity types share the
+// same normalized-identifier lockout counter and rolling-window policy.
+func (r *StaffLoginSecurityRepository) RecordPlatformAdminFailure(ctx context.Context, email string) error {
+	return r.recordFailure(ctx, email, "auth.platform_admin_login")
+}
+
+// recordFailure atomically increments the rolling 15-minute counter and audits
+// the failure. The fifth failure starts a 15-minute lockout.
+func (r *StaffLoginSecurityRepository) recordFailure(ctx context.Context, username, action string) error {
 	if strings.TrimSpace(username) == "" {
 		return nil
 	}
@@ -146,7 +158,7 @@ RETURNING failed_attempts`
 	})
 	if _, err := tx.Exec(ctx, `
 INSERT INTO audit_events (action, resource_type, outcome, metadata)
-VALUES ('auth.staff_login', 'authentication', 'failure', $1::jsonb)`, string(metadata)); err != nil {
+VALUES ($2, 'authentication', 'failure', $1::jsonb)`, string(metadata), action); err != nil {
 		return fmt.Errorf("audit staff login failure: %w", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
