@@ -39,6 +39,37 @@ func (f *fakeParentAuthenticationService) VerifyOTP(_ context.Context, mobile, c
 	return f.principal, f.verifyErr
 }
 
+type parentFamilyTokenCapture struct {
+	token string
+	err error
+	sessionID string
+}
+
+func (f *parentFamilyTokenCapture) GenerateAccessTokenForSession(_ int64, _ int64, _ string, sessionID string) (string, error) {
+	f.sessionID = sessionID
+	return f.token, f.err
+}
+
+type parentFamilySessionCapture struct {
+	refreshToken string
+	familyID string
+	issuedPrincipalID int64
+	revokedToken string
+	err error
+}
+
+func (f *parentFamilySessionCapture) IssueWithFamily(_ context.Context, principal *models.AuthPrincipal) (string, string, error) {
+	if principal != nil {
+		f.issuedPrincipalID = principal.ID
+	}
+	return f.refreshToken, f.familyID, f.err
+}
+
+func (f *parentFamilySessionCapture) Revoke(_ context.Context, token string) error {
+	f.revokedToken = token
+	return nil
+}
+
 func parentAuthTestRouter(handler *ParentAuthHandler) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
@@ -102,12 +133,16 @@ func TestParentOTPVerifyIssuesPrincipalSession(t *testing.T) {
 			ID: 42, Type: "parent", Status: "active", TokenVersion: 3, MobileVerified: true,
 		},
 	}
-	sessions := &fakeSessionService{refreshToken: "parent-refresh"}
+	sessions := &parentFamilySessionCapture{
+		refreshToken: "parent-refresh",
+		familyID: "a1b2c3d4-e5f6-4789-8123-abcdef012345",
+	}
+	tokens := &parentFamilyTokenCapture{token: "parent-access"}
 	recorder := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodPost, "/auth/parent/otp/verify",
 		strings.NewReader(`{"mobile_e164":"+919876543210","code":"012345"}`))
 	request.Header.Set("Content-Type", "application/json")
-	parentAuthTestRouter(NewParentAuthHandler(service, fakeTokenService{token: "parent-access"}, sessions)).ServeHTTP(recorder, request)
+	parentAuthTestRouter(NewParentAuthHandler(service, tokens, sessions)).ServeHTTP(recorder, request)
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", recorder.Code, recorder.Body.String())
@@ -115,8 +150,11 @@ func TestParentOTPVerifyIssuesPrincipalSession(t *testing.T) {
 	if service.verifyCalls != 1 || service.verifyMobile != "+919876543210" || service.verifyCode != "012345" {
 		t.Fatalf("unexpected verification arguments: %+v", service)
 	}
-	if sessions.issuedUserID != 42 {
-		t.Fatalf("session issued for principal %d, want 42", sessions.issuedUserID)
+	if sessions.issuedPrincipalID != 42 {
+		t.Fatalf("session issued for principal %d, want 42", sessions.issuedPrincipalID)
+	}
+	if tokens.sessionID != sessions.familyID {
+		t.Fatalf("access token session ID = %q, want refresh family %q", tokens.sessionID, sessions.familyID)
 	}
 	body := recorder.Body.String()
 	for _, expected := range []string{`"access_token":"parent-access"`, `"refresh_token":"parent-refresh"`, `"principal_type":"parent"`} {
@@ -126,6 +164,32 @@ func TestParentOTPVerifyIssuesPrincipalSession(t *testing.T) {
 	}
 	if strings.Contains(body, "school_id") || strings.Contains(body, "username") {
 		t.Fatalf("Parent response must not expose staff-only fields: %s", body)
+	}
+}
+
+
+func TestParentOTPVerifyRevokesRefreshTokenWhenAccessTokenSigningFails(t *testing.T) {
+	service := &fakeParentAuthenticationService{
+		principal: &models.AuthPrincipal{
+			ID: 42, Type: "parent", Status: "active", TokenVersion: 3, MobileVerified: true,
+		},
+	}
+	sessions := &parentFamilySessionCapture{
+		refreshToken: "parent-refresh",
+		familyID: "a1b2c3d4-e5f6-4789-8123-abcdef012345",
+	}
+	tokens := &parentFamilyTokenCapture{err: errors.New("signing failed")}
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPost, "/auth/parent/otp/verify",
+		strings.NewReader(`{"mobile_e164":"+919876543210","code":"012345"}`))
+	request.Header.Set("Content-Type", "application/json")
+	parentAuthTestRouter(NewParentAuthHandler(service, tokens, sessions)).ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d: %s", recorder.Code, recorder.Body.String())
+	}
+	if sessions.revokedToken != "parent-refresh" {
+		t.Fatalf("refresh token cleanup = %q, want parent-refresh", sessions.revokedToken)
 	}
 }
 
