@@ -270,6 +270,9 @@ func setupRouterWithHandlers(
 		router.POST("/auth/password/change",
 			authMiddleware(),
 			authHandler.ChangeStaffPassword)
+		router.POST("/auth/platform-admin/password/change",
+			authMiddleware(),
+			authHandler.ChangePlatformAdminPassword)
 		router.POST("/school/staff/:principalID/password/reset",
 			authMiddleware(),
 			middleware.RequirePermission("users.password_reset"),
@@ -422,6 +425,11 @@ func run() error {
 		return fmt.Errorf("initialize staff password service: %w", err)
 	}
 	authHandler.SetStaffPasswordService(staffPasswordService)
+	platformAdminPasswordService, err := services.NewPlatformAdminPasswordService(platformAdminRepo)
+	if err != nil {
+		return fmt.Errorf("initialize Platform Admin password service: %w", err)
+	}
+	authHandler.SetPlatformAdminPasswordService(platformAdminPasswordService)
 
 	schoolOnboardingRepo := repository.NewSchoolOnboardingRepository(db)
 	schoolOnboardingService := services.NewSchoolOnboardingService(schoolOnboardingRepo)
