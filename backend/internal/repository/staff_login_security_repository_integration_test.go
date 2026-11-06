@@ -31,6 +31,10 @@ func TestStaffLoginSecurityRepositoryPostgresIntegration(t *testing.T) {
 	t.Cleanup(func() {
 		_, _ = pool.Exec(context.Background(),
 			`DELETE FROM auth_login_attempts WHERE identifier_hash = $1`, identifierHash)
+		_, _ = pool.Exec(context.Background(), `
+			DELETE FROM audit_events
+			 WHERE action IN ('auth.staff_login', 'auth.platform_admin_login')
+			   AND metadata->>'identifier_hash' = $1`, identifierHash)
 	})
 
 	t.Run("username advisory lock serializes database sessions", func(t *testing.T) {
@@ -138,6 +142,25 @@ UPDATE auth_login_attempts
 		}
 		if locked {
 			t.Fatal("expired lockout window must not remain active")
+		}
+	})
+
+	t.Run("Platform Admin failures use a distinct audit action", func(t *testing.T) {
+		if err := repo.RecordPlatformAdminFailure(ctx, username); err != nil {
+			t.Fatalf("record Platform Admin failure: %v", err)
+		}
+		var count int
+		if err := pool.QueryRow(ctx, `
+			SELECT COUNT(*)
+			  FROM audit_events
+			 WHERE action = 'auth.platform_admin_login'
+			   AND resource_type = 'authentication'
+			   AND outcome = 'failure'
+			   AND metadata->>'identifier_hash' = $1`, identifierHash).Scan(&count); err != nil {
+			t.Fatalf("count Platform Admin failure audit events: %v", err)
+		}
+		if count != 1 {
+			t.Fatalf("Platform Admin failure audit events = %d, want 1", count)
 		}
 	})
 
