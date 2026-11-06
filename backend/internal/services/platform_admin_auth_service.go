@@ -49,7 +49,7 @@ func (s *PlatformAdminAuthService) Authenticate(ctx context.Context,email,passwo
 		return nil,err
 	}
 	if record.Principal==nil || !CheckPassword(password,record.PasswordHash) {
-		if recordErr:=s.loginSecurity.RecordFailure(ctx,email); recordErr!=nil { return nil,recordErr }
+		if recordErr:=s.loginSecurity.RecordPlatformAdminFailure(ctx,email); recordErr!=nil { return nil,recordErr }
 		return nil,ErrInvalidCredentials
 	}
 	if err:=s.loginSecurity.RecordPlatformAdminSuccess(ctx,email,record.Principal.ID); err!=nil { return nil,err }
