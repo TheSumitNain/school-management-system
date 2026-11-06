@@ -57,6 +57,7 @@ func setupRouterWithHandlers(
 	var academicHandler *handlers.AcademicHandler
 	var guardianHandler *handlers.GuardianHandler
 	var attendanceHandler *handlers.AttendanceHandler
+	var parentAuthHandler *handlers.ParentAuthHandler
 	var platformAdminLifecycleHandler *handlers.PlatformAdminLifecycleHandler
 	var sessionActivityTracker middleware.AdminSessionActivityTracker
 	for _, optional := range optionalHandlers {
@@ -69,6 +70,8 @@ func setupRouterWithHandlers(
 			guardianHandler = handler
 		case *handlers.AttendanceHandler:
 			attendanceHandler = handler
+		case *handlers.ParentAuthHandler:
+			parentAuthHandler = handler
 		case *handlers.PlatformAdminLifecycleHandler:
 			platformAdminLifecycleHandler = handler
 		case middleware.AdminSessionActivityTracker:
@@ -278,6 +281,11 @@ func setupRouterWithHandlers(
 			authMiddleware(),
 			middleware.RequirePermission("users.password_reset"),
 			authHandler.ResetStaffPassword)
+	}
+
+	if parentAuthHandler != nil {
+		router.POST("/auth/parent/otp/request", parentAuthHandler.RequestOTP)
+		router.POST("/auth/parent/otp/verify", parentAuthHandler.VerifyOTP)
 	}
 
 	router.GET("/auth/me", authMiddleware(), func(c *gin.Context) {
