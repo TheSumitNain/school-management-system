@@ -6,20 +6,27 @@
 
 Build a commercial multi-tenant School Management System for an initial planning target of 25–30 schools with approximately 400–500 students per school. These are planning assumptions, not proven capacity limits.
 
-## Delivery phases
+## Delivery phases and immediate priority
 
-### Phase 1 — Web product
+### Phase 1 — School web application and dashboards (current priority)
 
-The complete web application is intended for:
+Complete the web application for:
 - Platform Admin: global platform operations and school onboarding.
-- School Admin: administration of exactly one school.
-- Teachers and approved school staff: role- and assignment-scoped workflows.
+- School Admin: administration and day-to-day operation of exactly one school.
+- Teachers and approved school staff: role- and assignment-scoped school workflows.
 
-Phase 1 includes the web dashboards and workflows needed to operate the approved school modules. The frontend has not yet been implemented.
+**The immediate implementation priority is the school-facing dashboard and its usable end-to-end workflows.** Build the dashboard on top of the existing backend contracts, completing the required school administration and staff workflows in a coherent, usable web product. Frontend implementation has not yet started.
 
-### Phase 2 — Mobile experiences
+Do not divert the current Phase 1 workstream into Parent OTP, SMS delivery or parent-facing login.
 
-Parent and Driver mobile experiences are deferred until the Phase 1 web product is complete. Parent access is intended to be read-only initially. Parent OTP/SMS delivery and Parent/Driver interfaces are paused; preserve existing schema and foundations without expanding the workstream absent approval.
+### Phase 2 — Parent and Driver experiences
+
+Parent and Driver mobile/web experiences are deferred until the Phase 1 web application and school dashboards are complete.
+
+- Parent OTP login and OTP/SMS delivery are explicitly **not to be implemented now**.
+- Parent-facing workflows and interfaces are Phase 2.
+- Preserve already-approved parent/guardian relationship foundations where they already exist; do not expand the OTP, SMS, parent-authentication or parent-interface workstream without a new explicit approval.
+- Parent access is intended to be read-only initially.
 
 ## Initial product boundaries
 
@@ -38,7 +45,7 @@ Parent and Driver mobile experiences are deferred until the Phase 1 web product 
 - Student admission, profiles, enrollment and promotion/history.
 - Attendance.
 - Planned next: timetable, examinations, results and remaining school workflows.
-- Guardian/parent relationship foundations are retained for Phase 2.
+- Guardian/parent relationship foundations are retained for Phase 2; parent OTP authentication and delivery are deferred.
 
 ## Non-functional requirements
 
