@@ -117,7 +117,7 @@ func TestStaffPasswordChangeRejectsInactiveSchoolPostgresIntegration(t *testing.
 		t.Fatalf("load staff password fixture: %v", err)
 	}
 
-	if _, err := tx.Exec(ctx, "UPDATE schools SET status = 'inactive' WHERE id = $1", schoolID); err != nil {
+	if _, err := tx.Exec(ctx, "UPDATE schools SET status = 'suspended' WHERE id = $1", schoolID); err != nil {
 		t.Fatalf("deactivate fixture school: %v", err)
 	}
 
