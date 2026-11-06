@@ -322,11 +322,17 @@ func (r *UserRepository) GetStaffPasswordCredential(ctx context.Context, princip
 		SELECT id, password_hash
 		FROM users
 		WHERE principal_id = $1
+		  AND status = 'active'
 		  AND EXISTS (
 		      SELECT 1 FROM auth_principals ap
 		      WHERE ap.id = users.principal_id
 		        AND ap.principal_type = 'staff'
 		        AND ap.status = 'active'
+		  )
+		  AND EXISTS (
+		      SELECT 1 FROM schools s
+		      WHERE s.id = users.school_id
+		        AND s.status = 'active'
 		  )
 	`, principalID).Scan(&userID, &passwordHash)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -372,6 +378,20 @@ func (r *UserRepository) ChangeStaffPassword(
 		       updated_at = NOW()
 		 WHERE principal_id = $1
 		   AND password_hash = $2
+		   AND status = 'active'
+		   AND EXISTS (
+		       SELECT 1
+		         FROM auth_principals ap
+		        WHERE ap.id = users.principal_id
+		          AND ap.principal_type = 'staff'
+		          AND ap.status = 'active'
+		   )
+		   AND EXISTS (
+		       SELECT 1
+		         FROM schools s
+		        WHERE s.id = users.school_id
+		          AND s.status = 'active'
+		   )
 		RETURNING id, school_id
 	`, principalID, expectedPasswordHash, newPasswordHash).Scan(&userID, &schoolID)
 	if errors.Is(err, pgx.ErrNoRows) {
