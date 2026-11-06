@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState, type FormEvent, type LucideIcon } from "react";
-import { BookOpen, CalendarDays, CircleHelp, GraduationCap, LayoutDashboard, LogOut, Menu, Search, ShieldCheck, Users, X } from "lucide-react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { BookOpen, CalendarDays, CircleHelp, GraduationCap, LayoutDashboard, LogOut, Menu, Search, ShieldCheck, Users, X, type LucideIcon } from "lucide-react";
 import { api, clearSession, completeMFA, getMe, hasSession, loginPlatformAdmin, loginStaff, logout, saveTokens, type AuthTokens, type AuthUser, type MFAChallenge } from "./lib/api";
 type Page="dashboard"|"staff"|"academics";
 type Metric={label:string;value:string;note:string;icon:LucideIcon;tone:string};
-function isMFA(value:AuthTokens|MFAChallenge):value is MFAChallenge{return value.status==="mfa_required";}
+function isMFA(value:AuthTokens|MFAChallenge):value is MFAChallenge{return "status" in value && value.status==="mfa_required";}
 function Login({onDone}:{onDone:(user:AuthUser)=>void}){
  const [kind,setKind]=useState<"staff"|"platform_admin">("staff"),[identity,setIdentity]=useState(""),[password,setPassword]=useState(""),[challenge,setChallenge]=useState<MFAChallenge|null>(null),[code,setCode]=useState(""),[error,setError]=useState(""),[busy,setBusy]=useState(false);
  async function accept(tokens:AuthTokens){saveTokens(tokens);onDone(await getMe());}
