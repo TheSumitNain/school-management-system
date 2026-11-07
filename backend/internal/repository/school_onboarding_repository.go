@@ -5,13 +5,25 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-var ErrSchoolCodeTaken = errors.New("school code already exists")
+var (
+	ErrSchoolCodeTaken = errors.New("school code already exists")
+	ErrPlatformSchoolListDenied = errors.New("platform school listing is not authorized")
+)
+
+type PlatformSchoolRecord struct {
+	ID int64 `json:"id"`
+	Name string `json:"name"`
+	Code string `json:"code"`
+	Status string `json:"status"`
+	CreatedAt time.Time `json:"created_at"`
+}
 
 type SchoolOnboardingResult struct {
 	SchoolID         int64
@@ -116,4 +128,61 @@ func mapSchoolOnboardingError(err error) error {
 		}
 	}
 	return fmt.Errorf("create school and initial administrator: %w", err)
+}
+
+
+// ListPlatformSchools returns school records only to an active Platform Admin
+// with the explicit platform.schools.read permission.
+func (r *SchoolOnboardingRepository) ListPlatformSchools(ctx context.Context, actorPrincipalID int64) ([]PlatformSchoolRecord, error) {
+	if r == nil || r.db == nil || actorPrincipalID <= 0 {
+		return nil, ErrPlatformSchoolListDenied
+	}
+	var authorized bool
+	if err := r.db.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM auth_principals ap
+			JOIN principal_roles pr ON pr.principal_id = ap.id AND pr.revoked_at IS NULL
+			JOIN roles role ON role.id = pr.role_id
+			JOIN role_permissions rp ON rp.role_id = role.id
+			JOIN permissions p ON p.id = rp.permission_id
+			WHERE ap.id = $1
+			  AND ap.principal_type = 'platform_admin'
+			  AND ap.status = 'active'
+			  AND role.scope_type = 'platform'
+			  AND role.school_id IS NULL
+			  AND role.principal_type = 'platform_admin'
+			  AND role.role_key = 'platform_admin'
+			  AND role.is_system = TRUE
+			  AND p.permission_key = 'platform.schools.read'
+			  AND p.scope_type = 'platform'
+			  AND p.is_active = TRUE
+		)
+	`, actorPrincipalID).Scan(&authorized); err != nil {
+		return nil, fmt.Errorf("authorize platform school listing: %w", err)
+	}
+	if !authorized {
+		return nil, ErrPlatformSchoolListDenied
+	}
+	rows, err := r.db.Query(ctx, `
+		SELECT id, name, code, status, created_at
+		FROM schools
+		ORDER BY LOWER(name), id
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("list platform schools: %w", err)
+	}
+	defer rows.Close()
+	schools := make([]PlatformSchoolRecord, 0)
+	for rows.Next() {
+		var school PlatformSchoolRecord
+		if err := rows.Scan(&school.ID, &school.Name, &school.Code, &school.Status, &school.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scan platform school: %w", err)
+		}
+		schools = append(schools, school)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate platform schools: %w", err)
+	}
+	return schools, nil
 }
