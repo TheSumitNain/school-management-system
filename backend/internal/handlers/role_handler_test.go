@@ -331,3 +331,20 @@ func TestRoleHandlerStaffRoleAssignmentLifecycle(t *testing.T) {
 		t.Fatalf("unexpected staff role revocation: status=%d service=%+v body=%s", rec.Code, service, rec.Body.String())
 	}
 }
+
+
+func TestRoleHandlerListsPlatformSchoolDelegationsForAuthenticatedPlatformAdmin(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	service := &fakeRoleManagementService{}
+	router := gin.New()
+	router.GET("/platform/schools/:schoolID/permission-delegations", func(c *gin.Context) {
+		c.Set("auth_principal_id", int64(99))
+		c.Next()
+	}, NewRoleHandler(service).ListPlatformSchoolPermissionDelegations)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/platform/schools/12/permission-delegations", nil))
+	if rec.Code != http.StatusOK || service.actorID != 99 || service.schoolID != 12 ||
+		!strings.Contains(rec.Body.String(), "attendance.read") {
+		t.Fatalf("unexpected platform delegation listing: status=%d service=%+v body=%s", rec.Code, service, rec.Body.String())
+	}
+}
