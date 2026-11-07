@@ -268,6 +268,17 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 		t.Fatalf("active delegation count = %d, want 2: %+v", len(delegations), delegations)
 	}
 
+	platformDelegations, err := repo.ListPlatformSchoolPermissionDelegations(ctx, platformAdminPrincipalID, schoolID)
+	if err != nil {
+		t.Fatalf("authorized Platform Admin delegation listing failed: %v", err)
+	}
+	if len(platformDelegations) != 2 {
+		t.Fatalf("Platform Admin active delegation count = %d, want 2: %+v", len(platformDelegations), platformDelegations)
+	}
+	if _, err := repo.ListPlatformSchoolPermissionDelegations(ctx, actorPrincipalID, schoolID); !errors.Is(err, ErrRolePermissionDenied) {
+		t.Fatalf("School Admin platform delegation listing error = %v, want ErrRolePermissionDenied", err)
+	}
+
 	if err := repo.GrantCustomRolePermission(
 		ctx, actorPrincipalID, schoolID, customRole.ID, roleDelegation.ID, "students.read_basic",
 	); err != nil {
