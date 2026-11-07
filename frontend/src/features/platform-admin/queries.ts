@@ -93,9 +93,8 @@ export function useGrantPlatformSchoolPermissionDelegationMutation() {
 
 export function useRevokePlatformSchoolPermissionDelegationMutation() {
   const queryClient = useQueryClient();
-  const queryClientAgain = useQueryClient();
   return useMutation({
     mutationFn: (input: { delegationID: number; schoolID: number }) => revokePlatformSchoolPermissionDelegation(input.delegationID),
-    onSuccess: (_result, variables) => queryClientAgain.invalidateQueries({ queryKey: platformAdminQueryKeys.delegations(variables.schoolID) }),
+    onSuccess: (_result, variables) => queryClient.invalidateQueries({ queryKey: platformAdminQueryKeys.delegations(variables.schoolID) }),
   });
 }
