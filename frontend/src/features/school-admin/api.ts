@@ -230,9 +230,10 @@ export function getSchoolAttendance(filters: { academicYearID: number; sectionID
   });
   return api<AttendanceListResponse>("/school/attendance?" + params.toString(), { signal });
 }
+export type AttendanceMutationResponse = { status: string; data: AttendanceRecord };
 export function markSchoolAttendance(input: { enrollment_id: number; attendance_date: string; status: string; remarks?: string | null }) {
-  return api<AttendanceListResponse>("/school/attendance", { method: "POST", body: JSON.stringify(input) });
+  return api<AttendanceMutationResponse>("/school/attendance", { method: "POST", body: JSON.stringify(input) });
 }
 export function updateSchoolAttendance(attendanceID: number, input: { status: string; remarks?: string | null }) {
-  return api<AttendanceListResponse>(`/school/attendance/${attendanceID}`, { method: "PATCH", body: JSON.stringify(input) });
+  return api<AttendanceMutationResponse>(`/school/attendance/${attendanceID}`, { method: "PATCH", body: JSON.stringify(input) });
 }
