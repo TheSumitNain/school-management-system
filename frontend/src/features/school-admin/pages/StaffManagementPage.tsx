@@ -119,7 +119,7 @@ export function StaffManagementPage({ permissions }: Props) {
               {item.status === "active" && canDisable && <button type="button" className="danger" onClick={() => void deactivate(item)} disabled={disable.isPending} title="Disable account" aria-label={`Disable ${item.username}`}><UserMinus size={15}/></button>}
               {item.status !== "active" && canUpdate && <button type="button" onClick={() => openAction("enable", item)} title="Enable account" aria-label={`Enable ${item.username}`}><UserCheck size={15}/></button>}
             </div></td></tr>
-            {rolesForPrincipal === item.principal_id && <tr className="staff-role-expanded-row"><td colSpan={5}><StaffRoleAssignments staff={item} canAssign={canAssignRoles}/></td></tr>}</Fragment>)})}
+            {rolesForPrincipal === item.principal_id && <tr className="staff-role-expanded-row"><td colSpan={5}><StaffRoleAssignments staff={item} canAssign={canAssignRoles}/></td></tr>}</Fragment>)}
           </tbody></table></div>}
       </section>
       <p className="staff-security-note"><ShieldCheck size={15}/> Every action is checked again by the server using your current school permissions.</p>
