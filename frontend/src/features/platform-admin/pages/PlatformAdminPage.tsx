@@ -36,11 +36,12 @@ export function PlatformAdminPage({ permissions }: Props) {
   const grantDelegation = useGrantPlatformSchoolPermissionDelegationMutation();
   const revokeDelegation = useRevokePlatformSchoolPermissionDelegationMutation();
   useEffect(() => {
-    if (selectedSchoolID === null && schoolsQuery.data?.schools.length) {
-      setSelectedSchoolID(schoolsQuery.data.schools[0].id);
+    if (selectedSchoolID === null && activeSchools.length) {
+      setSelectedSchoolID(activeSchools[0].id);
     }
-  }, [selectedSchoolID, schoolsQuery.data?.schools]);
+  }, [selectedSchoolID, activeSchools]);
   const delegablePermissions = (permissionQuery.data?.permissions ?? []).filter(item => item.is_delegable);
+  const activeSchools = (schoolsQuery.data?.schools ?? []).filter(school => school.status === "active");
 
   const adminsQuery = usePlatformAdminsQuery(canManageAdmins);
   const createAdmin = useCreatePlatformAdminMutation();
@@ -178,14 +179,16 @@ export function PlatformAdminPage({ permissions }: Props) {
             <div className="platform-form-title"><KeyRound size={19}/><div><h2>Delegate school permissions</h2><p>Only delegable permissions can be granted. Choose what the School Admin may assign to custom roles or individual staff.</p></div></div>
             {schoolsQuery.isPending ? <div className="table-message">Loading schools…</div>
               : schoolsQuery.error ? <div className="table-message error-text">{schoolsQuery.error instanceof Error ? schoolsQuery.error.message : "Unable to load schools."}<button className="platform-inline-button" onClick={() => void schoolsQuery.refetch()}>Retry</button></div>
-              : !schoolsQuery.data?.schools.length ? <div className="table-message">No schools have been onboarded yet.</div>
+              : !activeSchools.length ? <div className="table-message">No active schools are available for permission delegation.</div>
               : <>
                 <label className="platform-select-label">School
                   <select value={selectedSchoolID ?? ""} onChange={event => { setSelectedSchoolID(Number(event.target.value) || null); setFeedback(null); }}>
-                    {schoolsQuery.data.schools.map(school => <option key={school.id} value={school.id}>{school.name} · {school.code} · {school.status}</option>)}
+                    {activeSchools.map(school => <option key={school.id} value={school.id}>{school.name} · {school.code} · {school.status}</option>)}
                   </select>
                 </label>
-                <form onSubmit={grantPermission}>
+                {permissionQuery.isPending ? <div className="table-message">Loading delegable permissions…</div>
+                  : permissionQuery.error ? <div className="table-message error-text">{permissionQuery.error instanceof Error ? permissionQuery.error.message : "Unable to load permission catalogue."}<button className="platform-inline-button" onClick={() => void permissionQuery.refetch()}>Retry</button></div>
+                  : delegablePermissions.length === 0 ? <div className="table-message">No active school permissions are currently marked as delegable.</div> : <form onSubmit={grantPermission}>
                   <label>Permission
                     <select value={selectedPermission} onChange={event => setSelectedPermission(event.target.value)} required>
                       <option value="">Select a delegable permission</option>
@@ -200,7 +203,7 @@ export function PlatformAdminPage({ permissions }: Props) {
                   <button className="primary" type="submit" disabled={grantDelegation.isPending || !selectedPermission || (!canAssignToRoles && !canOverrideUsers)}>
                     {grantDelegation.isPending ? "Delegating…" : "Grant permission to school"}
                   </button>
-                </form>
+                </form>}
               </>}
           </section>
 
