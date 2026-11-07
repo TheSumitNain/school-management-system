@@ -60,3 +60,51 @@ export function assignStaffRole(principalID: number, roleID: number) {
 export function revokeStaffRole(principalID: number, roleID: number) {
   return api<{ message: string }>(`/school/staff/${principalID}/roles/${roleID}`, { method: "DELETE" });
 }
+
+export type SchoolPermission = {
+  permission_key: string;
+  description: string;
+  is_delegable: boolean;
+};
+export type SchoolPermissionDelegation = {
+  id: number;
+  school_id: number;
+  permission_key: string;
+  can_assign_to_roles: boolean;
+  can_override_users: boolean;
+  granted_by: number;
+  created_at: string;
+  revoked_at?: string;
+};
+export type StaffPermissionOverride = {
+  id: number;
+  principal_id: number;
+  permission_key: string;
+  effect: "allow" | "deny";
+  reason: string;
+  granted_by: number;
+  delegation_id: number;
+  created_at: string;
+};
+export type SchoolPermissionsResponse = { permissions: SchoolPermission[] };
+export type SchoolPermissionDelegationsResponse = { delegations: SchoolPermissionDelegation[] };
+export type StaffPermissionOverridesResponse = { overrides: StaffPermissionOverride[] };
+
+export function getSchoolPermissions(signal?: AbortSignal) {
+  return api<SchoolPermissionsResponse>("/school/permissions", { signal });
+}
+export function getSchoolPermissionDelegations(signal?: AbortSignal) {
+  return api<SchoolPermissionDelegationsResponse>("/school/permission-delegations", { signal });
+}
+export function getStaffPermissionOverrides(principalID: number, signal?: AbortSignal) {
+  return api<StaffPermissionOverridesResponse>(`/school/staff/${principalID}/permission-overrides`, { signal });
+}
+export function setStaffPermissionOverride(
+  principalID: number,
+  input: { permission_key: string; effect: "allow" | "deny"; reason: string; delegation_id: number },
+) {
+  return api<{ message: string }>(`/school/staff/${principalID}/permission-overrides`, { method: "POST", body: JSON.stringify(input) });
+}
+export function deleteStaffPermissionOverride(principalID: number, permissionKey: string) {
+  return api<{ message: string }>(`/school/staff/${principalID}/permission-overrides/${encodeURIComponent(permissionKey)}`, { method: "DELETE" });
+}
