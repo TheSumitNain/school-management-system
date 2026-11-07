@@ -24,14 +24,15 @@ export function PlatformAdminPage({ permissions }: Props) {
 
   async function submitAdmin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     setFeedback(null);
     try {
       const result = await createAdmin.mutateAsync({
         email: String(form.get("email") ?? "").trim(),
         password: String(form.get("password") ?? ""),
       });
-      event.currentTarget.reset();
+      formElement.reset();
       setFeedback({
         kind: "success",
         message: `Platform Admin ${result.admin.email} created. MFA enrollment is required at first sign-in.`,
