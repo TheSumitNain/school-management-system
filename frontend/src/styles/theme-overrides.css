@@ -57,3 +57,178 @@
 .fatal-error { min-height: 100vh; display: grid; align-content: center; justify-items: center; gap: 12px; padding: 24px; background: var(--color-background); color: var(--color-text); text-align: center; }
 .fatal-error p { max-width: 440px; color: var(--color-text-muted); }
 .fatal-error button { min-height: 40px; padding: 0 16px; border: 0; border-radius: 8px; background: var(--color-primary); color: white; }
+
+/* Midnight Navy + Teal visual system */
+.brand-mark {
+  background: #ccfbf1;
+  color: #0f766e;
+}
+.login-brand {
+  background: #172554;
+}
+.login-brand .brand-mark {
+  background: #134e4a;
+  color: #99f6e4;
+}
+.login-brand h1 em {
+  color: #5eead4;
+}
+.primary {
+  background: var(--color-action);
+  color: #ffffff;
+}
+.primary:hover {
+  background: var(--color-action-hover);
+}
+.text-button {
+  color: var(--color-action);
+}
+.login-card input:focus,
+.form-panel input:focus {
+  border-color: var(--color-focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-focus) 16%, transparent);
+}
+.account-switch button.selected {
+  color: var(--color-action);
+}
+.sidebar {
+  background: #172554;
+  border-right-color: #263b68;
+  color: #e2e8f0;
+}
+.side-brand b {
+  color: #f8fafc;
+}
+.side-brand small,
+.side-label {
+  color: #a8b8d3;
+}
+.sidebar .brand-mark {
+  background: #134e4a;
+  color: #99f6e4;
+}
+.nav-item {
+  color: #cbd5e1;
+}
+.nav-item:hover,
+.nav-item.active {
+  background: #0f766e;
+  color: #ffffff;
+}
+.help {
+  color: #bdc9dc;
+  border-bottom-color: #33486f;
+}
+.user-mini b {
+  color: #f8fafc;
+}
+.user-mini small {
+  color: #b5c3d8;
+}
+.avatar {
+  background: #ccfbf1;
+  color: #115e59;
+}
+.logout,
+.mobile-close,
+.mobile-menu {
+  color: inherit;
+}
+.welcome {
+  background: #ecfdf5;
+  border-color: #ccfbf1;
+}
+.welcome h2 {
+  color: #172554;
+}
+.welcome p {
+  color: #475569;
+}
+.welcome-icon {
+  background: #ccfbf1;
+  color: #0f766e;
+  box-shadow: 0 0 0 16px rgb(15 118 110 / 8%);
+}
+.stat-icon.blue {
+  background: #dbeafe;
+  color: #1e40af;
+}
+.stat-icon.violet {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+.stat-icon.amber {
+  background: #fef3c7;
+  color: #a16207;
+}
+.stat-icon.green {
+  background: #ccfbf1;
+  color: #0f766e;
+}
+.pill.active {
+  background: #ccfbf1;
+  color: #115e59;
+}
+.theme-toggle {
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+.theme-toggle:hover {
+  border-color: var(--color-focus);
+  color: var(--color-text);
+}
+:root[data-theme="dark"] .sidebar {
+  background: #101d3d;
+  border-right-color: #263b68;
+}
+:root[data-theme="dark"] .nav-item:hover,
+:root[data-theme="dark"] .nav-item.active {
+  background: #0f766e;
+  color: #ffffff;
+}
+:root[data-theme="dark"] .welcome {
+  background: #123b3b;
+  border-color: #245b58;
+}
+:root[data-theme="dark"] .welcome h2 {
+  color: #e6fffb;
+}
+:root[data-theme="dark"] .welcome p {
+  color: #b5d8d3;
+}
+:root[data-theme="dark"] .welcome-icon {
+  background: #1b5550;
+  color: #99f6e4;
+  box-shadow: 0 0 0 16px rgb(94 234 212 / 7%);
+}
+:root[data-theme="dark"] .brand-mark {
+  background: #134e4a;
+  color: #99f6e4;
+}
+:root[data-theme="dark"] .primary {
+  background: #0f766e;
+  color: #ffffff;
+}
+:root[data-theme="dark"] .primary:hover {
+  background: #0d9488;
+}
+:root[data-theme="dark"] .pill.active {
+  background: #134e4a;
+  color: #99f6e4;
+}
+:root[data-theme="dark"] .stat-icon.blue {
+  background: #1e3a5f;
+  color: #bfdbfe;
+}
+:root[data-theme="dark"] .stat-icon.violet {
+  background: #382d5b;
+  color: #ddd6fe;
+}
+:root[data-theme="dark"] .stat-icon.amber {
+  background: #49391d;
+  color: #fde68a;
+}
+:root[data-theme="dark"] .stat-icon.green {
+  background: #134e4a;
+  color: #99f6e4;
+}
+
