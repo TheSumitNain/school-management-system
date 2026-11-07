@@ -41,7 +41,9 @@ Current foundation:
 - Zustand stores the small global theme preference (Light, Dark or System).
 - Semantic design tokens and theme overrides are centralized under `src/styles/`.
 - Shared theme toggle, dashboard skeleton and application error boundary are available.
-- School staff data is the first feature migrated to a feature API module and TanStack Query hook.
+- Platform Admin management and school onboarding are wired only to endpoints currently registered by the backend.
+- Platform Admin page code is split into a separate lazy-loaded chunk.
+- School staff data is migrated to a feature API module and TanStack Query hook.
 
 The existing dashboard and academic screens are being migrated incrementally. Do not bypass the existing authentication/session client or duplicate it in feature modules.
 
