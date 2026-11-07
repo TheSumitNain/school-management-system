@@ -60,6 +60,24 @@ frontend/src/
 - Clear user-scoped query cache on logout/account changes.
 - Do not add a dependency without a concrete need and bundle-size consideration.
 
+## Authentication and navigation invariants
+
+- Keep session bootstrap separate from route rendering. The app must remain in a neutral loading state until the server has validated any existing session.
+- Implement public-only routes (such as sign-in) and protected routes with explicit guards. An authenticated user visiting a public-only sign-in route is redirected to their authorized landing page; an unauthenticated user visiting a protected route is redirected to sign-in.
+- Route guards are a user-experience mechanism only. Backend middleware and permission checks remain the security boundary.
+- Centralize access-token renewal, refresh-session rotation, retry limits and concurrent refresh coordination in the API client. Never implement independent refresh logic in individual pages.
+- On terminal authentication failure, clear tokens, query cache and all user-scoped client state together. On identity change, do the same before rendering the new account.
+- Preserve an authorized deep-link destination across login, MFA and mandatory password-change gates. Re-check authorization before returning to it.
+- Do not persist passwords, OTPs, MFA secrets or recovery codes. Keep authentication challenges short-lived and handle them only through the backend contract.
+
+## Shared interaction conventions
+
+- All mutations use a consistent pending/disabled state, prevent duplicate submission and provide accessible success/error feedback.
+- Forms preserve safe values after recoverable errors, validate inline, support autofill/password managers and include accessible show/hide controls for password fields.
+- Destructive actions require explicit confirmation with a clear explanation. Unsaved changes must not be silently lost.
+- Every page implements loading, empty, error, offline/retry, permission-denied and success states using shared components.
+- Common navigation, page headers, form controls, alerts, dialogs and responsive patterns must be shared rather than recreated per role.
+- User-facing copy is concise, action-oriented and non-technical. Avoid unnecessary screens, repeated prompts and redundant confirmation steps.
 ## Current migration status
 
 The current frontend already contains working sign-in/MFA/session handling and an initial dashboard. The foundation is being introduced incrementally: QueryClient and Zustand theme preference are wired at the root; shared theme tokens, theme control, dashboard skeleton and error boundary have been added. Platform Admin management and school onboarding are implemented against the currently registered backend endpoints, with the Platform Admin page code-split. School staff data is the first School Admin query migrated to TanStack Query. Existing pages and legacy CSS must be migrated in small verified steps rather than rewritten all at once.
