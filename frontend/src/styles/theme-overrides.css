@@ -1,0 +1,57 @@
+:root[data-theme="dark"] body,
+:root[data-theme="dark"] .login-layout { background: var(--color-background); color: var(--color-text); }
+:root[data-theme="dark"] .login-panel,
+:root[data-theme="dark"] .login-card,
+:root[data-theme="dark"] .sidebar,
+:root[data-theme="dark"] .topbar,
+:root[data-theme="dark"] .stat,
+:root[data-theme="dark"] .panel,
+:root[data-theme="dark"] .table-panel,
+:root[data-theme="dark"] .form-panel,
+:root[data-theme="dark"] .date-chip { background: var(--color-surface); color: var(--color-text); border-color: var(--color-border); }
+:root[data-theme="dark"] .login-card h2,
+:root[data-theme="dark"] .heading h1,
+:root[data-theme="dark"] .stat strong,
+:root[data-theme="dark"] .toolbar h2,
+:root[data-theme="dark"] .user-mini b,
+:root[data-theme="dark"] td b { color: var(--color-text); }
+:root[data-theme="dark"] .login-card label,
+:root[data-theme="dark"] .heading p,
+:root[data-theme="dark"] .stat-top,
+:root[data-theme="dark"] td,
+:root[data-theme="dark"] .muted,
+:root[data-theme="dark"] .user-mini small { color: var(--color-text-muted); }
+:root[data-theme="dark"] .login-card input,
+:root[data-theme="dark"] .form-panel input,
+:root[data-theme="dark"] .search input { background: var(--color-surface-muted); color: var(--color-text); border-color: var(--color-border); }
+:root[data-theme="dark"] .welcome { background: #202f48; border-color: var(--color-border); }
+:root[data-theme="dark"] .welcome h2 { color: #e8eef7; }
+:root[data-theme="dark"] .welcome p { color: #b1bfd3; }
+:root[data-theme="dark"] th { background: var(--color-surface-muted); color: var(--color-text-muted); }
+:root[data-theme="dark"] td,
+:root[data-theme="dark"] .list-row,
+:root[data-theme="dark"] .help,
+:root[data-theme="dark"] .main footer { border-color: var(--color-border); }
+:root[data-theme="dark"] .list-row b { color: var(--color-text); }
+:root[data-theme="dark"] .nav-item { color: var(--color-text-muted); }
+:root[data-theme="dark"] .nav-item:hover,
+:root[data-theme="dark"] .nav-item.active { background: var(--color-accent); color: var(--color-primary); }
+:root[data-theme="dark"] .account-switch { background: var(--color-surface-muted); }
+:root[data-theme="dark"] .account-switch button.selected { background: var(--color-surface); color: var(--color-primary); }
+:root[data-theme="dark"] .primary { background: #456bc2; color: white; }
+:root[data-theme="dark"] .skeleton { background: linear-gradient(90deg, #253449 25%, #30415a 38%, #253449 62%); background-size: 400% 100%; }
+.theme-toggle { display: inline-flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); color: var(--color-text-muted); font-size: 10px; }
+.skeleton { display: block; background: linear-gradient(90deg, #edf0f5 25%, #f7f8fa 38%, #edf0f5 62%); background-size: 400% 100%; animation: skeleton-shimmer 1.35s ease infinite; }
+.dashboard-skeleton { display: grid; gap: 20px; }
+.skeleton-heading { display: flex; justify-content: space-between; align-items: center; gap: 20px; }
+.skeleton-heading > div { display: grid; gap: 10px; }
+.skeleton-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.skeleton-card, .skeleton-feature { display: grid; gap: 12px; padding: 20px; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); }
+.skeleton-feature { min-height: 160px; align-content: center; }
+@keyframes skeleton-shimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+@media (max-width: 1050px) { .skeleton-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .skeleton-stats { grid-template-columns: 1fr; } .skeleton-heading { align-items: flex-start; flex-direction: column; } }
+@media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
+.fatal-error { min-height: 100vh; display: grid; align-content: center; justify-items: center; gap: 12px; padding: 24px; background: var(--color-background); color: var(--color-text); text-align: center; }
+.fatal-error p { max-width: 440px; color: var(--color-text-muted); }
+.fatal-error button { min-height: 40px; padding: 0 16px; border: 0; border-radius: 8px; background: var(--color-primary); color: white; }
