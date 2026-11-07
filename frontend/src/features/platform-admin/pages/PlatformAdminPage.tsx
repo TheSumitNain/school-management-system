@@ -35,13 +35,14 @@ export function PlatformAdminPage({ permissions }: Props) {
   const delegationsQuery = usePlatformSchoolDelegationsQuery(selectedSchoolID, canDelegate);
   const grantDelegation = useGrantPlatformSchoolPermissionDelegationMutation();
   const revokeDelegation = useRevokePlatformSchoolPermissionDelegationMutation();
+  const delegablePermissions = (permissionQuery.data?.permissions ?? []).filter(item => item.is_delegable);
+  const activeSchools = (schoolsQuery.data?.schools ?? []).filter(school => school.status === "active");
+
   useEffect(() => {
     if (selectedSchoolID === null && activeSchools.length) {
       setSelectedSchoolID(activeSchools[0].id);
     }
   }, [selectedSchoolID, activeSchools]);
-  const delegablePermissions = (permissionQuery.data?.permissions ?? []).filter(item => item.is_delegable);
-  const activeSchools = (schoolsQuery.data?.schools ?? []).filter(school => school.status === "active");
 
   const adminsQuery = usePlatformAdminsQuery(canManageAdmins);
   const createAdmin = useCreatePlatformAdminMutation();
