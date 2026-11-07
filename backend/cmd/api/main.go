@@ -165,6 +165,11 @@ func setupRouterWithHandlers(
 			middleware.RequirePermission("permissions.assign"),
 			roleHandler.ListSchoolPermissionDelegations,
 		)
+		router.GET("/school/roles/:roleID/permissions",
+			roleAuth,
+			middleware.RequirePermission("roles.read"),
+			roleHandler.ListCustomRolePermissions,
+		)
 		router.POST("/school/roles/:roleID/permissions",
 			roleAuth,
 			middleware.RequirePermission("permissions.assign"),
