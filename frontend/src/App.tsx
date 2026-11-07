@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState, type FormEvent } from "react";
-import { BookOpen, Building2, CalendarDays, CircleHelp, GraduationCap, LayoutDashboard, LogOut, Menu, Search, ShieldCheck, Users, X, type LucideIcon } from "lucide-react";
+import { BookOpen, Building2, CalendarDays, CircleHelp, GraduationCap, LayoutDashboard, LogOut, Menu, ShieldCheck, Users, X, type LucideIcon } from "lucide-react";
 import { ThemeToggle } from "./shared/components/ThemeToggle";
 import { DashboardSkeleton } from "./shared/components/Skeleton";
 import { queryClient } from "./app/providers";
