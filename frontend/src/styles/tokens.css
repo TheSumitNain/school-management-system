@@ -5,22 +5,27 @@
   font-family: var(--font-family);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-  --color-primary: #315fc5;
-  --color-primary-hover: #284fa8;
-  --color-secondary: #52647d;
-  --color-accent: #eaf0ff;
-  --color-background: #f5f7fb;
+
+  /* Midnight Navy + Teal — light theme */
+  --color-primary: #172554;
+  --color-primary-hover: #1e3a8a;
+  --color-secondary: #475569;
+  --color-accent: #ccfbf1;
+  --color-background: #f8fafc;
   --color-surface: #ffffff;
-  --color-surface-muted: #fafbfd;
-  --color-text: #182638;
-  --color-text-muted: #8290a2;
-  --color-border: #e8edf3;
-  --color-success: #328665;
-  --color-warning: #916b2b;
-  --color-danger: #a84646;
-  --color-focus: #7794e1;
-  --shadow-sm: 0 1px 3px rgb(24 38 56 / 7%);
-  --shadow-md: 0 8px 24px rgb(24 38 56 / 9%);
+  --color-surface-muted: #f1f5f9;
+  --color-text: #172033;
+  --color-text-muted: #64748b;
+  --color-border: #e2e8f0;
+  --color-success: #0f766e;
+  --color-warning: #a16207;
+  --color-danger: #b42318;
+  --color-focus: #14b8a6;
+  --color-action: #0f766e;
+  --color-action-hover: #115e59;
+
+  --shadow-sm: 0 1px 3px rgb(15 23 42 / 7%);
+  --shadow-md: 0 8px 24px rgb(15 23 42 / 9%);
   --radius-sm: 6px;
   --radius-md: 9px;
   --radius-lg: 12px;
@@ -43,20 +48,23 @@
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --color-primary: #8ba9ff;
-  --color-primary-hover: #a8bcff;
-  --color-secondary: #a7b4c7;
-  --color-accent: #243453;
-  --color-background: #101722;
-  --color-surface: #182333;
-  --color-surface-muted: #202d3f;
-  --color-text: #e8eef7;
-  --color-text-muted: #a2afc1;
-  --color-border: #2b3a4e;
-  --color-success: #78c9a6;
-  --color-warning: #e5bd72;
-  --color-danger: #f09a9a;
-  --color-focus: #9bb5ff;
-  --shadow-sm: 0 1px 3px rgb(0 0 0 / 20%);
-  --shadow-md: 0 8px 24px rgb(0 0 0 / 28%);
+  /* Balanced dark surfaces with a readable teal action colour */
+  --color-primary: #5eead4;
+  --color-primary-hover: #99f6e4;
+  --color-secondary: #cbd5e1;
+  --color-accent: #134e4a;
+  --color-background: #0b1220;
+  --color-surface: #111c2e;
+  --color-surface-muted: #1b2a3f;
+  --color-text: #e5edf7;
+  --color-text-muted: #a3b1c4;
+  --color-border: #2a3a50;
+  --color-success: #5eead4;
+  --color-warning: #facc15;
+  --color-danger: #fca5a5;
+  --color-focus: #5eead4;
+  --color-action: #0f766e;
+  --color-action-hover: #0d9488;
+  --shadow-sm: 0 1px 3px rgb(0 0 0 / 22%);
+  --shadow-md: 0 8px 24px rgb(0 0 0 / 30%);
 }
