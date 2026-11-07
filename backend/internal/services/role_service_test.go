@@ -44,6 +44,10 @@ func (f *fakeRoleRepository) ListSchoolPermissionDelegations(context.Context, in
 func (f *fakeRoleRepository) GrantCustomRolePermission(context.Context, int64, int64, int64, int64, string) error {
 	return nil
 }
+func (f *fakeRoleRepository) ListCustomRolePermissions(context.Context, int64, int64, int64) ([]repository.CustomRolePermission, error) {
+	return nil, nil
+}
+
 func (f *fakeRoleRepository) RevokeCustomRolePermission(context.Context, int64, int64, int64, string) error {
 	return nil
 }
