@@ -14,7 +14,11 @@ type fakeSchoolOnboardingRepository struct {
 	called bool
 	name, code, username, passwordHash string
 	actorID int64
+	schools []repository.PlatformSchoolRecord
+	listErr error
 }
+
+func (f *fakeSchoolOnboardingRepository) ListPlatformSchools(_ context.Context, actorID int64) ([]repository.PlatformSchoolRecord, error) { f.actorID = actorID; return f.schools, f.listErr }
 
 func (f *fakeSchoolOnboardingRepository) CreateSchoolWithAdmin(_ context.Context, actorID int64, name, code, username, passwordHash string) (*repository.SchoolOnboardingResult, error) {
 	f.called = true
@@ -98,4 +102,13 @@ func TestSchoolOnboardingFailsClosedWhenBreachCheckUnavailable(t *testing.T) {
 	if !errors.Is(err, ErrPasswordBreachCheckUnavailable) || repo.called {
 		t.Fatalf("School Admin onboarding must fail closed before repository call, err=%v called=%v", err, repo.called)
 	}
+}
+
+
+func TestSchoolOnboardingServiceListsPlatformSchoolsForActor(t *testing.T) {
+	repo := &fakeSchoolOnboardingRepository{schools: []repository.PlatformSchoolRecord{{ID: 4, Name: "North School", Code: "NORTH", Status: "active"}}}
+	service := NewSchoolOnboardingService(repo, alwaysClearPasswordChecker{})
+	schools, err := service.ListPlatformSchools(context.Background(), 19)
+	if err != nil { t.Fatalf("ListPlatformSchools returned error: %v", err) }
+	if repo.actorID != 19 || len(schools) != 1 || schools[0].ID != 4 { t.Fatalf("unexpected school listing: actor=%d schools=%+v", repo.actorID, schools) }
 }
