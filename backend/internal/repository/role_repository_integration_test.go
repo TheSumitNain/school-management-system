@@ -385,6 +385,15 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 	}
 	assertPermission("students.read_basic", false)
 
+	staleRolePermissions, err := repo.ListCustomRolePermissions(ctx, actorPrincipalID, schoolID, customRole.ID)
+	if err != nil {
+		t.Fatalf("list custom-role permissions after delegation revocation: %v", err)
+	}
+	if len(staleRolePermissions) != 1 || staleRolePermissions[0].DelegationActive ||
+		staleRolePermissions[0].DelegationID != roleDelegation.ID {
+		t.Fatalf("revoked delegation grant should remain visible as stale: %+v", staleRolePermissions)
+	}
+
 	if err := repo.RevokeStaffRole(ctx, actorPrincipalID, schoolID, targetPrincipalID, customRole.ID); err != nil {
 		t.Fatalf("authorized staff role revocation failed: %v", err)
 	}
