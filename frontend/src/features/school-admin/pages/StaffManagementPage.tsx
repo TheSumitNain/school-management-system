@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { Fragment, useMemo, useState, type FormEvent } from "react";
 import { KeyRound, Pencil, Plus, Search, Shield, ShieldCheck, UserCheck, UserMinus, X } from "lucide-react";
 import { StaffRoleAssignments } from "../components/StaffRoleAssignments";
 import {
@@ -112,14 +112,14 @@ export function StaffManagementPage({ permissions }: Props) {
           : query.isError ? <div className="table-message error-text">{query.error instanceof Error ? query.error.message : "Unable to load staff accounts."}<button className="staff-retry-button" type="button" onClick={() => void query.refetch()}>Try again</button></div>
           : filtered.length === 0 ? <div className="table-message">{search ? "No staff match this search." : "No staff accounts yet. Add the first staff account to get started."}</div>
           : <div className="table-scroll"><table><thead><tr><th>Username</th><th>Status</th><th>Password</th><th>Created</th><th>Actions</th></tr></thead><tbody>
-            {filtered.map(item => <tr key={item.principal_id}><td><b>{item.username}</b><small className="staff-id">Principal #{item.principal_id}</small></td><td><span className={`pill ${item.status === "active" ? "active" : "inactive"}`}>{item.status}</span></td><td>{item.must_change_password ? <span className="staff-password-required">Change required</span> : "—"}</td><td>{item.created_at ? new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(new Date(item.created_at)) : "—"}</td><td><div className="staff-row-actions">
+            {filtered.map(item => <Fragment key={item.principal_id}><tr><td><b>{item.username}</b><small className="staff-id">Principal #{item.principal_id}</small></td><td><span className={`pill ${item.status === "active" ? "active" : "inactive"}`}>{item.status}</span></td><td>{item.must_change_password ? <span className="staff-password-required">Change required</span> : "—"}</td><td>{item.created_at ? new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(new Date(item.created_at)) : "—"}</td><td><div className="staff-row-actions">
               {canUpdate && <button type="button" onClick={() => openAction("edit", item)} title="Edit username" aria-label={`Edit ${item.username}`}><Pencil size={15}/></button>}
               {canReset && item.status === "active" && <button type="button" onClick={() => openAction("reset", item)} title="Reset password" aria-label={`Reset password for ${item.username}`}><KeyRound size={15}/></button>}
               {canReadRoles && item.status === "active" && <button type="button" className={rolesForPrincipal === item.principal_id ? "selected" : ""} onClick={() => setRolesForPrincipal(current => current === item.principal_id ? null : item.principal_id)} title="Manage roles" aria-label={`Manage roles for ${item.username}`} aria-expanded={rolesForPrincipal === item.principal_id}><Shield size={15}/></button>}
               {item.status === "active" && canDisable && <button type="button" className="danger" onClick={() => void deactivate(item)} disabled={disable.isPending} title="Disable account" aria-label={`Disable ${item.username}`}><UserMinus size={15}/></button>}
               {item.status !== "active" && canUpdate && <button type="button" onClick={() => openAction("enable", item)} title="Enable account" aria-label={`Enable ${item.username}`}><UserCheck size={15}/></button>}
             </div></td></tr>
-            {rolesForPrincipal === item.principal_id && <tr className="staff-role-expanded-row"><td colSpan={5}><StaffRoleAssignments staff={item} canAssign={canAssignRoles}/></td></tr>})}
+            {rolesForPrincipal === item.principal_id && <tr className="staff-role-expanded-row"><td colSpan={5}><StaffRoleAssignments staff={item} canAssign={canAssignRoles}/></td></tr>}</Fragment>)})}
           </tbody></table></div>}
       </section>
       <p className="staff-security-note"><ShieldCheck size={15}/> Every action is checked again by the server using your current school permissions.</p>
