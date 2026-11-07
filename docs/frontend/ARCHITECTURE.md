@@ -62,4 +62,4 @@ frontend/src/
 
 ## Current migration status
 
-The current frontend already contains working sign-in/MFA/session handling and an initial dashboard. The foundation is being introduced incrementally: QueryClient and Zustand theme preference are wired at the root; shared theme tokens, theme control, skeleton and error boundary have been added. Existing pages and legacy CSS must be migrated in small verified steps rather than rewritten all at once.
+The current frontend already contains working sign-in/MFA/session handling and an initial dashboard. The foundation is being introduced incrementally: QueryClient and Zustand theme preference are wired at the root; shared theme tokens, theme control, dashboard skeleton and error boundary have been added. Platform Admin management and school onboarding are implemented against the currently registered backend endpoints, with the Platform Admin page code-split. School staff data is the first School Admin query migrated to TanStack Query. Existing pages and legacy CSS must be migrated in small verified steps rather than rewritten all at once.
