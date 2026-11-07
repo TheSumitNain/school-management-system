@@ -44,7 +44,7 @@ export function useResetSchoolStaffPasswordMutation() {
 import {
   archiveSchoolStudent, createSchoolStudent, createSchoolStudentEnrollment,
   getSchoolAcademicYears, getSchoolSections, getSchoolStudentEnrollments, getSchoolStudents,
-  updateSchoolStudent, type StudentEnrollment, type StudentProfile,
+  updateSchoolStudent,
 } from "./api";
 
 export const schoolStudentQueryKeys = {
