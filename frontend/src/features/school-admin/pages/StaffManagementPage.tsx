@@ -1,6 +1,7 @@
 import { Fragment, useMemo, useState, type FormEvent } from "react";
-import { KeyRound, Pencil, Plus, Search, Shield, ShieldCheck, UserCheck, UserMinus, X } from "lucide-react";
+import { KeyRound, LockKeyhole, Pencil, Plus, Search, Shield, ShieldCheck, UserCheck, UserMinus, X } from "lucide-react";
 import { StaffRoleAssignments } from "../components/StaffRoleAssignments";
+import { StaffPermissionOverrides } from "../components/StaffPermissionOverrides";
 import {
   useCreateSchoolStaffMutation, useDisableSchoolStaffMutation, useEnableSchoolStaffMutation,
   useResetSchoolStaffPasswordMutation, useSchoolStaffQuery, useUpdateSchoolStaffMutation,
@@ -18,6 +19,7 @@ export function StaffManagementPage({ permissions }: Props) {
   const canReset = permissions.includes("users.password_reset");
   const canReadRoles = permissions.includes("roles.read");
   const canAssignRoles = permissions.includes("roles.assign");
+  const canManageOverrides = permissions.includes("permissions.override");
   const query = useSchoolStaffQuery();
   const create = useCreateSchoolStaffMutation();
   const update = useUpdateSchoolStaffMutation();
@@ -30,6 +32,7 @@ export function StaffManagementPage({ permissions }: Props) {
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [rolesForPrincipal, setRolesForPrincipal] = useState<number | null>(null);
+  const [overridesForPrincipal, setOverridesForPrincipal] = useState<number | null>(null);
 
   const staff = query.data?.staff ?? [];
   const filtered = useMemo(() => {
@@ -116,10 +119,11 @@ export function StaffManagementPage({ permissions }: Props) {
               {canUpdate && <button type="button" onClick={() => openAction("edit", item)} title="Edit username" aria-label={`Edit ${item.username}`}><Pencil size={15}/></button>}
               {canReset && item.status === "active" && <button type="button" onClick={() => openAction("reset", item)} title="Reset password" aria-label={`Reset password for ${item.username}`}><KeyRound size={15}/></button>}
               {canReadRoles && item.status === "active" && <button type="button" className={rolesForPrincipal === item.principal_id ? "selected" : ""} onClick={() => setRolesForPrincipal(current => current === item.principal_id ? null : item.principal_id)} title="Manage roles" aria-label={`Manage roles for ${item.username}`} aria-expanded={rolesForPrincipal === item.principal_id}><Shield size={15}/></button>}
+              {canManageOverrides && item.status === "active" && <button type="button" className={overridesForPrincipal === item.principal_id ? "selected" : ""} onClick={() => setOverridesForPrincipal(current => current === item.principal_id ? null : item.principal_id)} title="Manage permission overrides" aria-label={`Manage permission overrides for ${item.username}`} aria-expanded={overridesForPrincipal === item.principal_id}><LockKeyhole size={15}/></button>}
               {item.status === "active" && canDisable && <button type="button" className="danger" onClick={() => void deactivate(item)} disabled={disable.isPending} title="Disable account" aria-label={`Disable ${item.username}`}><UserMinus size={15}/></button>}
               {item.status !== "active" && canUpdate && <button type="button" onClick={() => openAction("enable", item)} title="Enable account" aria-label={`Enable ${item.username}`}><UserCheck size={15}/></button>}
             </div></td></tr>
-            {rolesForPrincipal === item.principal_id && <tr className="staff-role-expanded-row"><td colSpan={5}><StaffRoleAssignments staff={item} canAssign={canAssignRoles}/></td></tr>}</Fragment>)}
+            {(rolesForPrincipal === item.principal_id || overridesForPrincipal === item.principal_id) && <tr className="staff-role-expanded-row"><td colSpan={5}>{rolesForPrincipal === item.principal_id && canReadRoles && <StaffRoleAssignments staff={item} canAssign={canAssignRoles}/ >}{overridesForPrincipal === item.principal_id && canManageOverrides && <StaffPermissionOverrides staff={item}/>}</td></tr>}</Fragment>)}
           </tbody></table></div>}
       </section>
       <p className="staff-security-note"><ShieldCheck size={15}/> Every action is checked again by the server using your current school permissions.</p>
