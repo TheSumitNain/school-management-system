@@ -19,7 +19,7 @@ export function PlatformAdminPage({ permissions }: Props) {
   const canManageAdmins = permissions.includes("platform.admins.manage");
   const canOnboardSchool = permissions.includes("platform.schools.create") &&
     permissions.includes("platform.school_admins.create");
-  const canDelegate = permissions.includes("platform.permissions.delegate");
+  const canDelegate = permissions.includes("platform.permissions.delegate") && permissions.includes("platform.schools.read");
   const firstTab = canManageAdmins ? "admins" : canOnboardSchool ? "school" : "delegations";
   const [activeTab, setActiveTab] = useState<"admins" | "school" | "delegations">(firstTab);
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
