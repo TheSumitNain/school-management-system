@@ -97,3 +97,35 @@ export function useArchiveSchoolStudentMutation() {
 export function useCreateSchoolStudentEnrollmentMutation() {
   return useStudentMutation(createSchoolStudentEnrollment);
 }
+
+
+import {
+  getSchoolAttendance, markSchoolAttendance, updateSchoolAttendance,
+} from "./api";
+
+export const schoolAttendanceQueryKeys = {
+  all: [...schoolAdminQueryKeys.all, "attendance"] as const,
+  list: (filters: { academicYearID: number; sectionID: number; date: string }) => [...schoolAttendanceQueryKeys.all, filters] as const,
+};
+export function useSchoolAttendanceQuery(filters: { academicYearID: number; sectionID: number; date: string }, enabled = true) {
+  return useQuery({
+    queryKey: schoolAttendanceQueryKeys.list(filters),
+    queryFn: ({ signal }) => getSchoolAttendance(filters, signal),
+    enabled,
+    staleTime: 10_000,
+  });
+}
+function useAttendanceMutation<TInput>(mutationFn: (input: TInput) => Promise<unknown>) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn,
+    onSuccess: () => client.invalidateQueries({ queryKey: schoolAttendanceQueryKeys.all }),
+  });
+}
+export function useMarkSchoolAttendanceMutation() {
+  return useAttendanceMutation(markSchoolAttendance);
+}
+export function useUpdateSchoolAttendanceMutation() {
+  return useAttendanceMutation(({ attendanceID, status, remarks }: { attendanceID: number; status: string; remarks?: string | null }) =>
+    updateSchoolAttendance(attendanceID, { status, remarks }));
+}
