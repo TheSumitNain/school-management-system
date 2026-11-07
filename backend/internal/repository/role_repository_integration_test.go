@@ -274,6 +274,16 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 		t.Fatalf("authorized custom-role permission grant failed: %v", err)
 	}
 
+	rolePermissions, err := repo.ListCustomRolePermissions(ctx, actorPrincipalID, schoolID, customRole.ID)
+	if err != nil {
+		t.Fatalf("authorized custom-role permission listing failed: %v", err)
+	}
+	if len(rolePermissions) != 1 || rolePermissions[0].PermissionKey != "students.read_basic" ||
+		rolePermissions[0].DelegationID != roleDelegation.ID || !rolePermissions[0].DelegationActive ||
+		!rolePermissions[0].PermissionActive {
+		t.Fatalf("unexpected custom-role permission listing: %+v", rolePermissions)
+	}
+
 	// The School Admin's custom-role update authority is checked independently
 	// from permissions.assign. Deactivating the catalogue permission inside
 	// this rollback-scoped transaction simulates missing effective authority
