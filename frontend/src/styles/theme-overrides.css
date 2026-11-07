@@ -40,6 +40,8 @@
 :root[data-theme="dark"] .account-switch button.selected { background: var(--color-surface); color: var(--color-primary); }
 :root[data-theme="dark"] .primary { background: #456bc2; color: white; }
 :root[data-theme="dark"] .skeleton { background: linear-gradient(90deg, #253449 25%, #30415a 38%, #253449 62%); background-size: 400% 100%; }
+.login-panel { position: relative; }
+.login-theme { position: absolute; top: 20px; right: 24px; }
 .theme-toggle { display: inline-flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); color: var(--color-text-muted); font-size: 10px; }
 .skeleton { display: block; background: linear-gradient(90deg, #edf0f5 25%, #f7f8fa 38%, #edf0f5 62%); background-size: 400% 100%; animation: skeleton-shimmer 1.35s ease infinite; }
 .dashboard-skeleton { display: grid; gap: 20px; }
