@@ -70,7 +70,7 @@ export function AcademicStructurePage({permissions}:Props) {
       :action.kind==="section"?"/school/sections"+(id?"/"+id:"")
       :"/school/subjects"+(id?"/"+id:"");
     let body:Record<string,unknown>;
-    if(action.kind==="year")body={name:String(form.get("name")??"").trim(),starts_on:String(form.get("starts_on")??""),ends_on:String(form.get("ends_on")??""),status:String(form.get("status")??"planned"),is_current:form.get("is_current")==="on"&&form.get("status")==="active"};
+    if(action.kind==="year"){const startsOn=String(form.get("starts_on")??"");const endsOn=String(form.get("ends_on")??"");const status=String(form.get("status")??"planned");const isCurrent=form.get("is_current")==="on";if(endsOn<=startsOn){setFeedback({kind:"error",message:"The end date must be later than the start date."});return;}if(isCurrent&&status!=="active"){setFeedback({kind:"error",message:"Only an active academic year can be marked as current."});return;}body={name:String(form.get("name")??"").trim(),starts_on:startsOn,ends_on:endsOn,status,is_current:isCurrent};}
     else if(action.kind==="class")body={name:String(form.get("name")??"").trim(),display_order:Number(form.get("display_order")??0),is_active:form.get("is_active")==="on"};
     else if(action.kind==="section")body={academic_year_id:Number(form.get("academic_year_id")),class_id:Number(form.get("class_id")),name:String(form.get("name")??"").trim(),display_order:Number(form.get("display_order")??0),is_active:form.get("is_active")==="on"};
     else body={name:String(form.get("name")??"").trim(),subject_code:String(form.get("subject_code")??"").trim()||null,is_active:form.get("is_active")==="on"};
