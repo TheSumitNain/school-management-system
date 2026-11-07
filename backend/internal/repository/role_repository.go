@@ -728,6 +728,83 @@ func (r *RoleRepository) RevokeCustomRolePermission(
 	return nil
 }
 
+type CustomRolePermission struct {
+	PermissionKey    string    `json:"permission_key"`
+	Description      string    `json:"description"`
+	DelegationID     int64     `json:"delegation_id"`
+	DelegationActive bool      `json:"delegation_active"`
+	PermissionActive bool      `json:"permission_active"`
+	CreatedAt        time.Time `json:"created_at"`
+}
+
+// ListCustomRolePermissions returns current and stale grants for one custom role.
+// Stale grants remain visible so an administrator can explicitly remove them
+// before granting the permission under a newly issued delegation.
+func (r *RoleRepository) ListCustomRolePermissions(
+	ctx context.Context,
+	actorPrincipalID, schoolID, roleID int64,
+) ([]CustomRolePermission, error) {
+	if r == nil || r.db == nil || actorPrincipalID <= 0 || schoolID <= 0 || roleID <= 0 {
+		return nil, ErrRolePermissionDenied
+	}
+
+	roles, err := r.ListSchoolRoles(ctx, actorPrincipalID, schoolID)
+	if err != nil {
+		return nil, err
+	}
+	foundCustomRole := false
+	for _, role := range roles {
+		if role.ID == roleID && !role.IsSystem {
+			foundCustomRole = true
+			break
+		}
+	}
+	if !foundCustomRole {
+		return nil, ErrRoleNotFound
+	}
+
+	rows, err := r.db.Query(ctx, `
+		SELECT p.permission_key, p.description,
+		       COALESCE(rp.delegation_id, 0),
+		       COALESCE(d.id IS NOT NULL AND d.can_assign_to_roles AND d.revoked_at IS NULL, FALSE),
+		       p.is_active,
+		       rp.created_at
+		FROM role_permissions rp
+		JOIN roles target ON target.id = rp.role_id
+		JOIN permissions p ON p.id = rp.permission_id
+		LEFT JOIN role_permission_delegations d
+		  ON d.id = rp.delegation_id
+		 AND d.school_id = target.school_id
+		 AND d.permission_id = rp.permission_id
+		WHERE target.id = $1
+		  AND target.school_id = $2
+		  AND target.scope_type = 'school'
+		  AND target.principal_type = 'staff'
+		  AND target.is_system = FALSE
+		ORDER BY p.permission_key
+	`, roleID, schoolID)
+	if err != nil {
+		return nil, fmt.Errorf("list custom role permissions: %w", err)
+	}
+	defer rows.Close()
+
+	items := make([]CustomRolePermission, 0)
+	for rows.Next() {
+		var item CustomRolePermission
+		if err := rows.Scan(
+			&item.PermissionKey, &item.Description, &item.DelegationID,
+			&item.DelegationActive, &item.PermissionActive, &item.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan custom role permission: %w", err)
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate custom role permissions: %w", err)
+	}
+	return items, nil
+}
+
 type StaffPermissionOverride struct {
 	ID int64 `json:"id"`
 	PrincipalID int64 `json:"principal_id"`
