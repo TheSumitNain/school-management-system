@@ -70,6 +70,11 @@ func (f *fakeRoleManagementService) GrantCustomRolePermission(_ context.Context,
 	f.actorID, f.schoolID, f.roleID, f.grantedDelegationID, f.grantPermissionKey = actorID, schoolID, roleID, delegationID, permissionKey
 	return f.err
 }
+func (f *fakeRoleManagementService) ListCustomRolePermissions(_ context.Context, actorID, schoolID, roleID int64) ([]repository.CustomRolePermission, error) {
+	f.actorID, f.schoolID, f.roleID = actorID, schoolID, roleID
+	return []repository.CustomRolePermission{{PermissionKey: "attendance.read", DelegationID: 73, DelegationActive: true, PermissionActive: true}}, f.err
+}
+
 func (f *fakeRoleManagementService) RevokeCustomRolePermission(_ context.Context, actorID, schoolID, roleID int64, permissionKey string) error {
 	f.actorID, f.schoolID, f.roleID, f.grantPermissionKey = actorID, schoolID, roleID, permissionKey
 	return f.err
@@ -198,6 +203,24 @@ func TestRoleHandlerDelegationRejectsInvalidRequests(t *testing.T) {
 	router.ServeHTTP(rec, req)
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("expected invalid delegation to be rejected, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestRoleHandlerListsCustomRolePermissionsWithinAuthenticatedSchool(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	service := &fakeRoleManagementService{}
+	router := gin.New()
+	router.GET("/school/roles/:roleID/permissions", func(c *gin.Context) {
+		c.Set("auth_principal_id", int64(31))
+		c.Set("auth_school_id", int64(8))
+		c.Next()
+	}, NewRoleHandler(service).ListCustomRolePermissions)
+
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/school/roles/14/permissions", nil))
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "attendance.read") ||
+		service.actorID != 31 || service.schoolID != 8 || service.roleID != 14 {
+		t.Fatalf("unexpected custom role permission listing: status=%d service=%+v body=%s", rec.Code, service, rec.Body.String())
 	}
 }
 
