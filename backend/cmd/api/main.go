@@ -139,6 +139,7 @@ func setupRouterWithHandlers(
 			middleware.RequirePermission("platform.permissions.delegate"),
 			roleHandler.ListPlatformSchoolPermissionDelegations,
 		)
+		router.GET("/platform/permissions/delegable", platformAuth, middleware.RequirePermission("platform.permissions.delegate"), roleHandler.ListPermissions)
 		router.POST("/platform/schools/:schoolID/permission-delegations",
 			platformAuth,
 			middleware.RequirePermission("platform.permissions.delegate"),
