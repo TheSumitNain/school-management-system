@@ -14,6 +14,7 @@ import (
 
 type SchoolOnboardingService interface {
 	CreateSchoolWithAdmin(ctx context.Context, actorPrincipalID int64, input services.SchoolOnboardingInput) (*services.SchoolOnboardingResult, error)
+	ListPlatformSchools(ctx context.Context, actorPrincipalID int64) ([]repository.PlatformSchoolRecord, error)
 }
 
 type SchoolOnboardingHandler struct {
@@ -88,4 +89,28 @@ func (h *SchoolOnboardingHandler) Create(c *gin.Context) {
 			"username": result.AdminUsername,
 		},
 	})
+}
+
+
+func (h *SchoolOnboardingHandler) List(c *gin.Context) {
+	if h == nil || h.service == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status":"error","message":"School listing is unavailable"})
+		return
+	}
+	actorValue, exists := c.Get(middleware.ContextPrincipalIDKey)
+	actorID, ok := actorValue.(int64)
+	if !exists || !ok || actorID <= 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"status":"error","message":"Platform Admin authentication required"})
+		return
+	}
+	schools, err := h.service.ListPlatformSchools(c.Request.Context(), actorID)
+	if errors.Is(err, repository.ErrPlatformSchoolListDenied) {
+		c.JSON(http.StatusForbidden, gin.H{"status":"error","message":"School listing is not authorized"})
+		return
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status":"error","message":"Unable to list schools"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status":"success","schools":schools})
 }
