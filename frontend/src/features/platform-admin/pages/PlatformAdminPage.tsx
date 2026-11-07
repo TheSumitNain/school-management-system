@@ -15,7 +15,9 @@ export function PlatformAdminPage({ permissions }: Props) {
   const canOnboardSchool = permissions.includes("platform.schools.create") &&
     permissions.includes("platform.school_admins.create");
   const [activeTab, setActiveTab] = useState<"admins" | "school">(canManageAdmins ? "admins" : "school");
-  const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);\n  const [showAdminPassword, setShowAdminPassword] = useState(false);\n  const [showSchoolAdminPassword, setShowSchoolAdminPassword] = useState(false);
+  const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
+  const [showSchoolAdminPassword, setShowSchoolAdminPassword] = useState(false);
 
   const adminsQuery = usePlatformAdminsQuery(canManageAdmins);
   const createAdmin = useCreatePlatformAdminMutation();
