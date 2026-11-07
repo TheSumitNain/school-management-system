@@ -2,7 +2,7 @@ name: Frontend CI
 
 on:
   pull_request:
-    branches: [main, feature/school-academic-structure-management]
+    branches: [main, feature/school-academic-structure-management, feature/school-student-management]
     paths:
       - "frontend/**"
       - ".github/workflows/frontend-ci.yml"
