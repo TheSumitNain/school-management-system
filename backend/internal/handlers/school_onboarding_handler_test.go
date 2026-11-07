@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"school-management-system/internal/middleware"
+	"school-management-system/internal/repository"
 	"school-management-system/internal/services"
 
 	"github.com/gin-gonic/gin"
@@ -20,7 +21,11 @@ type fakeSchoolOnboardingService struct {
 	actorID int64
 	input services.SchoolOnboardingInput
 	calls int
+	schools []repository.PlatformSchoolRecord
+	listErr error
 }
+
+func (f *fakeSchoolOnboardingService) ListPlatformSchools(_ context.Context, actorID int64) ([]repository.PlatformSchoolRecord, error) { f.actorID = actorID; return f.schools, f.listErr }
 
 func (f *fakeSchoolOnboardingService) CreateSchoolWithAdmin(_ context.Context, actorID int64, input services.SchoolOnboardingInput) (*services.SchoolOnboardingResult, error) {
 	f.calls++
@@ -108,4 +113,15 @@ func TestSchoolOnboardingCreateMapsValidationAndConflictErrors(t *testing.T) {
 			}
 		})
 	}
+}
+
+
+func TestSchoolOnboardingListRequiresAuthenticatedPlatformActor(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	service := &fakeSchoolOnboardingService{schools: []repository.PlatformSchoolRecord{{ID: 8, Name: "Central", Code: "CENTRAL", Status: "active"}}}
+	router := gin.New()
+	router.GET("/platform/schools", func(c *gin.Context) { c.Set(middleware.ContextPrincipalIDKey, int64(5)); c.Next() }, NewSchoolOnboardingHandler(service).List)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/platform/schools", nil))
+	if rec.Code != http.StatusOK || service.actorID != 5 || !strings.Contains(rec.Body.String(), "CENTRAL") { t.Fatalf("unexpected school listing response: %d %s", rec.Code, rec.Body.String()) }
 }

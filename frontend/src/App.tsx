@@ -41,7 +41,7 @@ export default function App(){
   const all:[Page,string,LucideIcon,string?][]=[["dashboard","Dashboard",LayoutDashboard],["platform-admin","Platform Admin",Building2],["staff","Staff",Users,"users.read"],["roles","Roles & permissions",ShieldCheck,"roles.read"],["academics","Academics",BookOpen,"classes.read"]];
   if(!user)return [];
   if(user.principal_type==="platform_admin"){
-   const canOpenPlatformAdmin=user.permissions.includes("platform.admins.manage")||(user.permissions.includes("platform.schools.create")&&user.permissions.includes("platform.school_admins.create"));
+   const canOpenPlatformAdmin=user.permissions.includes("platform.admins.manage")||(user.permissions.includes("platform.schools.create")&&user.permissions.includes("platform.school_admins.create"))||(user.permissions.includes("platform.permissions.delegate")&&user.permissions.includes("platform.schools.read"));
    return all.filter(item=>item[0]==="dashboard"||(item[0]==="platform-admin"&&canOpenPlatformAdmin));
   }
   return all.filter(item=>item[0]!=="platform-admin"&&(!item[3]||user.permissions.includes(item[3])));

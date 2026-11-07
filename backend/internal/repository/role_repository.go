@@ -514,6 +514,59 @@ func (r *RoleRepository) ListSchoolPermissionDelegations(
 	return delegations, nil
 }
 
+
+func (r *RoleRepository) ListPlatformSchoolPermissionDelegations(ctx context.Context, actorPrincipalID, schoolID int64) ([]SchoolPermissionDelegation, error) {
+	if r == nil || r.db == nil || actorPrincipalID <= 0 || schoolID <= 0 {
+		return nil, ErrRolePermissionDenied
+	}
+	var authorized bool
+	err := r.db.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM auth_principals ap
+			JOIN principal_roles pr ON pr.principal_id = ap.id AND pr.revoked_at IS NULL
+			JOIN roles role ON role.id = pr.role_id
+			JOIN role_permissions rp ON rp.role_id = role.id
+			JOIN permissions p ON p.id = rp.permission_id
+			JOIN schools s ON s.id = $2 AND s.status = 'active'
+			WHERE ap.id = $1
+			  AND ap.principal_type = 'platform_admin'
+			  AND ap.status = 'active'
+			  AND role.scope_type = 'platform'
+			  AND role.school_id IS NULL
+			  AND role.principal_type = 'platform_admin'
+			  AND role.role_key = 'platform_admin'
+			  AND role.is_system = TRUE
+			  AND p.permission_key = 'platform.permissions.delegate'
+			  AND p.scope_type = 'platform'
+			  AND p.is_active = TRUE
+		)
+	`, actorPrincipalID, schoolID).Scan(&authorized)
+	if err != nil { return nil, fmt.Errorf("authorize platform delegation listing: %w", err) }
+	if !authorized { return nil, ErrRolePermissionDenied }
+	rows, err := r.db.Query(ctx, `
+		SELECT d.id, d.school_id, p.permission_key, d.can_assign_to_roles,
+		       d.can_override_users, d.granted_by, d.created_at, d.revoked_at
+		FROM role_permission_delegations d
+		JOIN permissions p ON p.id = d.permission_id
+		WHERE d.school_id = $1 AND d.revoked_at IS NULL
+		ORDER BY p.permission_key, d.id
+	`, schoolID)
+	if err != nil { return nil, fmt.Errorf("list platform school permission delegations: %w", err) }
+	defer rows.Close()
+	items := make([]SchoolPermissionDelegation, 0)
+	for rows.Next() {
+		var item SchoolPermissionDelegation
+		if err := rows.Scan(&item.ID, &item.SchoolID, &item.PermissionKey, &item.CanAssignToRoles,
+			&item.CanOverrideUsers, &item.GrantedBy, &item.CreatedAt, &item.RevokedAt); err != nil {
+			return nil, fmt.Errorf("scan platform school permission delegation: %w", err)
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil { return nil, fmt.Errorf("iterate platform school permission delegations: %w", err) }
+	return items, nil
+}
+
 func (r *RoleRepository) GrantCustomRolePermission(
 	ctx context.Context,
 	actorPrincipalID, schoolID, roleID, delegationID int64,
