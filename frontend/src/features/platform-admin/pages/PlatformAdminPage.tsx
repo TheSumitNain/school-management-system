@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Building2, ShieldCheck, UserPlus, Users } from "lucide-react";
+import { Building2, Eye, EyeOff, ShieldCheck, UserPlus, Users } from "lucide-react";
 import {
   useCreatePlatformAdminMutation,
   useDeactivatePlatformAdminMutation,
@@ -15,7 +15,7 @@ export function PlatformAdminPage({ permissions }: Props) {
   const canOnboardSchool = permissions.includes("platform.schools.create") &&
     permissions.includes("platform.school_admins.create");
   const [activeTab, setActiveTab] = useState<"admins" | "school">(canManageAdmins ? "admins" : "school");
-  const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
+  const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);\n  const [showAdminPassword, setShowAdminPassword] = useState(false);\n  const [showSchoolAdminPassword, setShowSchoolAdminPassword] = useState(false);
 
   const adminsQuery = usePlatformAdminsQuery(canManageAdmins);
   const createAdmin = useCreatePlatformAdminMutation();
@@ -106,7 +106,7 @@ export function PlatformAdminPage({ permissions }: Props) {
             <div className="platform-form-title"><UserPlus size={19}/><div><h2>Create Platform Admin</h2><p>New accounts must enroll MFA on first sign-in.</p></div></div>
             <form onSubmit={submitAdmin}>
               <label>Email address<input name="email" type="email" autoComplete="email" maxLength={254} required /></label>
-              <label>Initial password<input name="password" type="password" autoComplete="new-password" minLength={12} required /><small>At least 12 characters. The server also checks password safety.</small></label>
+              <label>Initial password<div className="password-input-wrap"><input name="password" type={showAdminPassword ? "text" : "password"} autoComplete="new-password" minLength={12} required /><button className="password-visibility" type="button" aria-label={showAdminPassword ? "Hide initial password" : "Show initial password"} aria-pressed={showAdminPassword} onClick={() => setShowAdminPassword(value => !value)}>{showAdminPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div><small>At least 12 characters. The server also checks password safety.</small></label>
               <button className="primary" type="submit" disabled={createAdmin.isPending}>{createAdmin.isPending ? "Creating account…" : "Create Platform Admin"}</button>
             </form>
           </section>
@@ -118,10 +118,10 @@ export function PlatformAdminPage({ permissions }: Props) {
           <div className="platform-form-title"><Building2 size={19}/><div><h2>Onboard a new school</h2><p>Create the school and its first School Admin account together.</p></div></div>
           <form onSubmit={submitSchool}>
             <div className="platform-form-fields">
-              <label>School name<input name="name" autoComplete="organization" maxLength={160} required /></label>
-              <label>School code<input name="code" autoCapitalize="characters" maxLength={32} required /></label>
-              <label>School Admin username<input name="school_admin_username" autoComplete="username" maxLength={80} required /></label>
-              <label>Initial password<input name="school_admin_initial_password" type="password" autoComplete="new-password" minLength={12} required /><small>At least 12 characters. The School Admin must change it after signing in.</small></label>
+              <label>School name<input name="name" autoComplete="organization" maxLength={150} required /></label>
+              <label>School code<input name="code" autoCapitalize="characters" minLength={2} maxLength={50} pattern="[A-Za-z0-9][A-Za-z0-9_-]{1,49}" title="Use 2–50 letters, numbers, underscores or hyphens; start with a letter or number." required /></label>
+              <label>School Admin username<input name="school_admin_username" autoComplete="username" autoCapitalize="none" minLength={3} maxLength={32} pattern="[A-Za-z0-9][A-Za-z0-9._-]{2,31}" title="Use 3–32 letters, numbers, dots, underscores or hyphens; start with a letter or number." required /></label>
+              <label>Initial password<div className="password-input-wrap"><input name="school_admin_initial_password" type={showSchoolAdminPassword ? "text" : "password"} autoComplete="new-password" minLength={12} required /><button className="password-visibility" type="button" aria-label={showSchoolAdminPassword ? "Hide initial password" : "Show initial password"} aria-pressed={showSchoolAdminPassword} onClick={() => setShowSchoolAdminPassword(value => !value)}>{showSchoolAdminPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div><small>At least 12 characters. The School Admin must change it after signing in.</small></label>
             </div>
             <button className="primary" type="submit" disabled={onboardSchool.isPending}>{onboardSchool.isPending ? "Creating school…" : "Create school and School Admin"}</button>
           </form>
