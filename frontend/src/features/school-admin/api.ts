@@ -199,3 +199,40 @@ export function createSchoolStudentEnrollment(input: {
 }) {
   return api<{ enrollment: StudentEnrollment }>("/school/enrollments", { method: "POST", body: JSON.stringify(input) });
 }
+
+
+export type AttendanceRecord = {
+  id: number;
+  school_id: number;
+  enrollment_id: number;
+  student_id: number;
+  admission_number: string;
+  student_name: string;
+  academic_year_id: number;
+  class_name: string;
+  section_name: string;
+  roll_number?: string | null;
+  attendance_date: string;
+  status: "present" | "absent" | "late" | "excused" | string;
+  remarks?: string | null;
+  marked_by_principal_id: number;
+  updated_by_principal_id: number;
+  created_at: string;
+  updated_at: string;
+};
+export type AttendanceListResponse = { status: string; data: AttendanceRecord[] };
+
+export function getSchoolAttendance(filters: { academicYearID: number; sectionID: number; date: string }, signal?: AbortSignal) {
+  const params = new URLSearchParams({
+    academic_year_id: String(filters.academicYearID),
+    section_id: String(filters.sectionID),
+    date: filters.date,
+  });
+  return api<AttendanceListResponse>("/school/attendance?" + params.toString(), { signal });
+}
+export function markSchoolAttendance(input: { enrollment_id: number; attendance_date: string; status: string; remarks?: string | null }) {
+  return api<AttendanceListResponse>("/school/attendance", { method: "POST", body: JSON.stringify(input) });
+}
+export function updateSchoolAttendance(attendanceID: number, input: { status: string; remarks?: string | null }) {
+  return api<AttendanceListResponse>(`/school/attendance/${attendanceID}`, { method: "PATCH", body: JSON.stringify(input) });
+}
