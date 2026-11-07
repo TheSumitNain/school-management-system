@@ -21,6 +21,7 @@ type RoleManagementService interface {
 	RevokeSchoolPermissionDelegation(ctx context.Context, actorPrincipalID, delegationID int64) error
 	ListSchoolPermissionDelegations(ctx context.Context, actorPrincipalID, schoolID int64) ([]repository.SchoolPermissionDelegation, error)
 	GrantCustomRolePermission(ctx context.Context, actorPrincipalID, schoolID, roleID, delegationID int64, permissionKey string) error
+	ListCustomRolePermissions(ctx context.Context, actorPrincipalID, schoolID, roleID int64) ([]repository.CustomRolePermission, error)
 	RevokeCustomRolePermission(ctx context.Context, actorPrincipalID, schoolID, roleID int64, permissionKey string) error
 	ListStaffPermissionOverrides(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64) ([]repository.StaffPermissionOverride, error)
 	SetStaffPermissionOverride(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID, delegationID int64, permissionKey, effect, reason string) error
@@ -213,6 +214,34 @@ func (h *RoleHandler) ListSchoolPermissionDelegations(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "success", "delegations": items})
+}
+
+func (h *RoleHandler) ListCustomRolePermissions(c *gin.Context) {
+	actorID, schoolID, ok := roleActorContext(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "School staff authentication required"})
+		return
+	}
+	if h == nil || h.service == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Role permission management is unavailable"})
+		return
+	}
+	roleID, err := strconv.ParseInt(c.Param("roleID"), 10, 64)
+	if err != nil || roleID <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid role ID"})
+		return
+	}
+	items, err := h.service.ListCustomRolePermissions(c.Request.Context(), actorID, schoolID, roleID)
+	switch {
+	case err == nil:
+		c.JSON(http.StatusOK, gin.H{"status": "success", "permissions": items})
+	case errors.Is(err, repository.ErrRolePermissionDenied):
+		c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": "Custom role permission access is not authorized"})
+	case errors.Is(err, repository.ErrRoleNotFound):
+		c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": "Custom school role not found"})
+	default:
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unable to list custom role permissions"})
+	}
 }
 
 func (h *RoleHandler) GrantCustomRolePermission(c *gin.Context) {
