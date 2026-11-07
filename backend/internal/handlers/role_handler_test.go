@@ -63,8 +63,10 @@ func (f *fakeRoleManagementService) RevokeSchoolPermissionDelegation(_ context.C
 	return f.err
 }
 
-func (f *fakeRoleManagementService) ListSchoolPermissionDelegations(context.Context, int64, int64) ([]repository.SchoolPermissionDelegation, error) {
-	return []repository.SchoolPermissionDelegation{}, nil
+func (f *fakeRoleManagementService) ListSchoolPermissionDelegations(context.Context, int64, int64) ([]repository.SchoolPermissionDelegation, error) { return []repository.SchoolPermissionDelegation{}, nil }
+func (f *fakeRoleManagementService) ListPlatformSchoolPermissionDelegations(_ context.Context, actorID, schoolID int64) ([]repository.SchoolPermissionDelegation, error) {
+	f.actorID, f.schoolID = actorID, schoolID
+	return []repository.SchoolPermissionDelegation{{ID: 18, SchoolID: schoolID, PermissionKey: "attendance.read", CanAssignToRoles: true}}, f.err
 }
 func (f *fakeRoleManagementService) GrantCustomRolePermission(_ context.Context, actorID, schoolID, roleID, delegationID int64, permissionKey string) error {
 	f.actorID, f.schoolID, f.roleID, f.grantedDelegationID, f.grantPermissionKey = actorID, schoolID, roleID, delegationID, permissionKey
