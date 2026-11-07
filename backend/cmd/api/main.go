@@ -95,6 +95,7 @@ func setupRouterWithHandlers(
 	}
 
 	if schoolOnboardingHandler != nil {
+		router.GET("/platform/schools", authMiddleware(), middleware.RequirePermission("platform.schools.read"), schoolOnboardingHandler.List)
 		router.POST("/platform/schools",
 			authMiddleware(),
 			middleware.RequirePermission("platform.schools.create"),
