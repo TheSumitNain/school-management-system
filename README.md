@@ -15,16 +15,16 @@ A multi-tenant School Management System being developed as a production-oriented
 | Backend API | Go, Gin | Implemented and actively developed |
 | Database | PostgreSQL, pgx/pgxpool | Implemented |
 | Migrations | golang-migrate | Versioned migration chain |
-| Web frontend | React, TypeScript, Vite | Planned; frontend source is not yet present |
+| Web frontend | React 19, TypeScript, Vite | Foundation and initial Platform Admin workflows in progress |
 | Mobile apps | To be decided | Phase 2 |
 
 ## Current repository status
 
-**As of 2026-11-06:** the backend includes principal-aware authentication, refresh-session family validation and rotation, mandatory administrator TOTP MFA, MFA recovery and encryption-key rotation, live database-backed RBAC, delegation and permission overrides, staff and Platform Admin account lifecycle, school onboarding, and selected academic, attendance and guardian APIs.
+**As of 2026-11-07:** the backend includes principal-aware authentication, refresh-session family validation and rotation, mandatory administrator TOTP MFA, MFA recovery and encryption-key rotation, live database-backed RBAC, delegation and permission overrides, staff and Platform Admin account lifecycle, school onboarding, and selected academic, attendance and guardian APIs.
 
 The latest merged backend milestone also exposes the caller's current effective permission keys through `GET /auth/me` for frontend navigation bootstrap. Those keys are informational only; every protected operation is still authorized by the backend.
 
-The backend is **not yet the complete school product and is not production-ready**. Full resource/tenant/assignment/field-level authorization across all modules, remaining academic/business modules, deployment hardening, and the web frontend remain to be completed.
+The backend is **not yet the complete school product and is not production-ready**. Full resource/tenant/assignment/field-level authorization across all modules, remaining academic/business modules and deployment hardening remain to be completed. The existing React frontend is being extended incrementally; see the frontend architecture and implementation notes.
 
 ## Documentation map
 
@@ -57,4 +57,4 @@ PostgreSQL integration tests are opt-in and require a dedicated test database. F
 
 ## Getting started
 
-See [backend/README.md](backend/README.md) for configuration and API startup. The frontend is not yet implemented, so there is currently no frontend development server to run.
+See [backend/README.md](backend/README.md) for configuration and API startup. The frontend development server is available. See [frontend/README.md](frontend/README.md) for Windows setup, dependency installation, development and production-build verification.
