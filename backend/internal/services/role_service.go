@@ -19,6 +19,7 @@ type roleRepository interface {
 	RevokeSchoolPermissionDelegation(ctx context.Context, actorPrincipalID, delegationID int64) error
 	ListSchoolPermissionDelegations(ctx context.Context, actorPrincipalID, schoolID int64) ([]repository.SchoolPermissionDelegation, error)
 	GrantCustomRolePermission(ctx context.Context, actorPrincipalID, schoolID, roleID, delegationID int64, permissionKey string) error
+	ListCustomRolePermissions(ctx context.Context, actorPrincipalID, schoolID, roleID int64) ([]repository.CustomRolePermission, error)
 	RevokeCustomRolePermission(ctx context.Context, actorPrincipalID, schoolID, roleID int64, permissionKey string) error
 	ListStaffPermissionOverrides(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64) ([]repository.StaffPermissionOverride, error)
 	SetStaffPermissionOverride(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID, delegationID int64, permissionKey, effect, reason string) error
@@ -124,6 +125,15 @@ func (s *RoleService) ListSchoolPermissionDelegations(ctx context.Context, actor
 		return nil, ErrInvalidCustomRole
 	}
 	return s.repository.ListSchoolPermissionDelegations(ctx, actorPrincipalID, schoolID)
+}
+
+func (s *RoleService) ListCustomRolePermissions(
+	ctx context.Context, actorPrincipalID, schoolID, roleID int64,
+) ([]repository.CustomRolePermission, error) {
+	if s == nil || s.repository == nil || actorPrincipalID <= 0 || schoolID <= 0 || roleID <= 0 {
+		return nil, ErrInvalidCustomRole
+	}
+	return s.repository.ListCustomRolePermissions(ctx, actorPrincipalID, schoolID, roleID)
 }
 
 func (s *RoleService) GrantCustomRolePermission(ctx context.Context, actorPrincipalID, schoolID, roleID, delegationID int64, permissionKey string) error {
