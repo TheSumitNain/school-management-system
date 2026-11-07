@@ -4,7 +4,7 @@ import { useThemeStore } from "../../features/theme/theme-store";
 export function ThemeToggle() {
   const preference = useThemeStore((state) => state.preference);
   const setPreference = useThemeStore((state) => state.setPreference);
-  const isDark = document.documentElement.dataset.theme === "dark";
+  const isDark = preference === "dark" || (preference === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
 
   return (
     <button
