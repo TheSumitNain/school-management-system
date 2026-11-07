@@ -4,8 +4,9 @@ import { ThemeToggle } from "./shared/components/ThemeToggle";
 import { DashboardSkeleton } from "./shared/components/Skeleton";
 import { useSchoolStaffQuery } from "./features/school-admin/queries";
 import { queryClient } from "./app/providers";
-const PlatformAdminPage = lazy(() => import("./features/platform-admin/pages/PlatformAdminPage").then(module => ({ default: module.PlatformAdminPage })));
 import { api, clearSession, completeMFA, getMe, hasSession, loginPlatformAdmin, loginStaff, logout, saveTokens, type AuthTokens, type AuthUser, type MFAChallenge } from "./lib/api";
+
+const PlatformAdminPage = lazy(() => import("./features/platform-admin/pages/PlatformAdminPage").then(module => ({ default: module.PlatformAdminPage })));
 type Page="dashboard"|"staff"|"academics"|"platform-admin";
 type Metric={label:string;value:string;note:string;icon:LucideIcon;tone:string};
 function isMFA(value:AuthTokens|MFAChallenge):value is MFAChallenge{return "status" in value && value.status==="mfa_required";}
@@ -42,7 +43,15 @@ function PasswordChange({onDone,principalType}:{onDone:()=>void;principalType:"s
 export default function App(){
  const [user,setUser]=useState<AuthUser|null>(null),[page,setPage]=useState<Page>("dashboard"),[loading,setLoading]=useState(hasSession()),[mobile,setMobile]=useState(false),[message,setMessage]=useState("");
  useEffect(()=>{let alive=true;if(!hasSession()){setLoading(false);return;}getMe().then(x=>{if(alive)setUser(x);}).catch(()=>{clearSession();queryClient.clear();}).finally(()=>{if(alive)setLoading(false);});return()=>{alive=false;};},[]);
- const nav=useMemo(()=>{const all:[Page,string,LucideIcon,string?][]=[["dashboard","Dashboard",LayoutDashboard],["platform-admin","Platform Admin",Building2],["staff","Staff",Users,"users.read"],["academics","Academics",BookOpen,"classes.read"]];if(!user)return [];if(user.principal_type==="platform_admin")return all.filter(x=>x[0]==="dashboard"||(x[0]==="platform-admin"&&(user.permissions.includes("platform.admins.manage")||(user.permissions.includes("platform.schools.create")&&user.permissions.includes("platform.school_admins.create"))))));return all.filter(x=>x[0]!=="platform-admin"&&(!x[3]||user.permissions.includes(x[3])));},[user]);
+ const nav=useMemo(()=>{
+  const all:[Page,string,LucideIcon,string?][]=[["dashboard","Dashboard",LayoutDashboard],["platform-admin","Platform Admin",Building2],["staff","Staff",Users,"users.read"],["academics","Academics",BookOpen,"classes.read"]];
+  if(!user)return [];
+  if(user.principal_type==="platform_admin"){
+   const canOpenPlatformAdmin=user.permissions.includes("platform.admins.manage")||(user.permissions.includes("platform.schools.create")&&user.permissions.includes("platform.school_admins.create"));
+   return all.filter(item=>item[0]==="dashboard"||(item[0]==="platform-admin"&&canOpenPlatformAdmin));
+  }
+  return all.filter(item=>item[0]!=="platform-admin"&&(!item[3]||user.permissions.includes(item[3])));
+ },[user]);
  async function signOut(){try{await logout();}catch{clearSession();}queryClient.clear();setUser(null);setPage("dashboard");}
  if(loading)return <div className="app-loading"><GraduationCap size={28}/>Preparing your workspace…</div>;
  if(!user)return <><Login onDone={setUser}/>{message&&<div className="toast">{message}</div>}</>;
