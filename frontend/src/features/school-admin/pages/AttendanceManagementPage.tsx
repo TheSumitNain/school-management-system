@@ -58,7 +58,7 @@ export function AttendanceManagementPage({ permissions }: Props) {
 
   const enrollments = (enrollmentsQuery.data?.enrollments ?? [])
     .filter(item => item.section_id === sectionID && item.status === "active")
-    .sort((a, b) => (a.roll_number ?? "").localeCompare(b.roll_number ?? "", undefined, { numeric: true }) || a.student_name.localeCompare(b.student_name));
+    .sort((a, b) => (a.roll_number ?? "").localeCompare(b.roll_number ?? "", undefined, { numeric: true }) || (a.student_name ?? "").localeCompare(b.student_name ?? ""));
   const attendance = attendanceQuery.data?.data ?? [];
   const attendanceByEnrollment = useMemo(() => new Map<number, AttendanceRecord>(attendance.map(item => [item.enrollment_id, item])), [attendance]);
   const today = localDateValue();
@@ -151,7 +151,7 @@ export function AttendanceManagementPage({ permissions }: Props) {
                 {enrollments.map(enrollment => {
                   const existing = attendanceByEnrollment.get(enrollment.id);
                   const draft = draftFor(enrollment.id);
-                  const canSave = !isFuture && (isPast ? canCorrectPast : existing ? (canUpdateSameDay || canCorrectPast) : canMark);
+                  const canSave = !isFuture && (isPast ? canCorrectPast : existing ? canUpdateSameDay : canMark);
                   return <tr key={enrollment.id}>
                     <td><b>{enrollment.student_name || "Student"}</b><small>{enrollment.class_name_snapshot} · {enrollment.section_name_snapshot}</small></td>
                     <td>{enrollment.roll_number || "—"}</td>
