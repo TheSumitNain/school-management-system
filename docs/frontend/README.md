@@ -57,6 +57,51 @@ Do not claim that crashes or delays can be made impossible. Instead, engineer fo
 - Never put credentials, MFA secrets, recovery codes or access tokens in source control, logs or user-visible diagnostics.
 - Clear user-specific cached server data on logout and account/session changes; do not persist sensitive API responses unnecessarily.
 
+## Product-wide UX and session rules (mandatory)
+
+These rules apply to every role and every screen. Treat them as acceptance criteria, not optional polish.
+
+### Authentication, routing and session continuity
+- A successfully authenticated user with a server-valid session must not be shown the login screen again just because they open or manually type the login URL. Redirect them to their permitted authenticated landing page.
+- Apply the same behavior to Platform Admin, School Admin, Teacher and Parent when their respective login flows are in scope. Role differences must not create inconsistent session behavior.
+- On initial load or browser refresh, show a lightweight branded loading/skeleton state while validating the existing session with the backend. Never flash the login page before session validation finishes.
+- A token stored in the browser is not proof of authentication. Validate identity/session with the backend before rendering protected content.
+- Handle access-token expiry centrally. If the supported refresh-session flow can renew the session, renew it once safely and replay eligible requests without asking the user to log in. Prevent concurrent requests from causing multiple refresh races.
+- If the refresh session is expired, revoked, replay-invalidated or otherwise rejected, clear user-scoped state and send the user to login with a clear, non-technical message.
+- Logout must revoke the server session where possible, clear tokens and user-scoped caches, and return to login. Account switching must never show the previous user's cached data.
+- Protected deep links must return the user to the originally requested page after successful login, only if that page is authorized. Otherwise route to a safe permitted page and explain access denial.
+- Browser back/forward, reload and opening a protected URL in a new tab must preserve correct authentication and authorization behavior.
+- Mandatory MFA, MFA enrollment and temporary-password change are authentication gates. Do not bypass them through direct URLs, refreshes or client-side state manipulation.
+- Never log, display in diagnostics, or ask users to share passwords, access/refresh tokens, MFA secrets, OTPs or recovery codes.
+
+### Low-friction interaction rules
+- Do not make users repeat information already provided in the current workflow. Preserve safe, non-secret form values after validation or recoverable server errors; clear password fields when appropriate.
+- Prevent accidental duplicate submissions. Disable the relevant submit action while a request is in progress and show a concise progress label.
+- Every action must provide clear success or failure feedback in plain language. Keep feedback near the affected form or item; do not rely only on color or transient toast messages.
+- Ask for confirmation before destructive or high-impact actions (deactivation, deletion, suspension, bulk changes). Explain the consequence before confirmation.
+- Use sensible defaults and inline validation. Validate on blur/submit without interrupting typing; show exactly what needs correction.
+- Password inputs must provide accessible show/hide controls. Use password managers and browser autofill correctly; never block paste or password managers.
+- Make primary actions obvious, keep secondary actions visually quieter, and avoid unnecessary steps, repeated confirmations or modal chains.
+- Provide search, filters, pagination and bulk actions only where they materially reduce work. Preserve filter/search state when navigating back where practical.
+- Use plain, concise language. Avoid technical error codes and backend implementation details in normal user-facing messages. Provide a recovery action when possible.
+- Destructive or irreversible actions must never be triggered by a single ambiguous click. Do not silently discard unsaved changes.
+- All controls must have labels, keyboard operation, visible focus, accessible names and touch-friendly targets. Respect reduced-motion preferences.
+- Keep navigation and common actions consistent across roles; show only actions the current user can access, while the backend remains authoritative.
+
+### Universal page-state and quality checklist
+Every page and asynchronous operation must deliberately handle: initial loading, background refresh, empty data, validation errors, API/server errors, network/offline failure, permission denied, success, pending mutation and session expiry. Never leave users at a blank screen or an unexplained spinner.
+
+Before marking a workflow complete, verify:
+- Desktop, tablet and mobile layouts; no clipped controls or accidental horizontal scrolling.
+- Light, Dark and System theme behavior, including focus, hover, disabled, validation, error, success and skeleton states.
+- Keyboard-only use, screen-reader labels and adequate contrast.
+- Browser refresh, direct URL entry, back/forward navigation and session expiry/recovery.
+- Slow network, failed request, retry and duplicate-click behavior.
+- Production build, relevant automated tests and real backend API contract.
+- No mock success states, fake data presented as real, or frontend-only authorization.
+
+Do not ask the user for repeated screenshots or uploads when command output, logs, existing repository code or a concise description can establish the same fact. Request an image only when visual evidence is genuinely necessary.
+
 ## Work required before and during frontend implementation
 
 1. Confirm the existing frontend source structure and preserve the current application rather than creating a parallel frontend.
