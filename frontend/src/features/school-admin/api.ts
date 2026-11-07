@@ -86,9 +86,32 @@ export type StaffPermissionOverride = {
   delegation_id: number;
   created_at: string;
 };
+export type CustomRolePermission = {
+  permission_key: string;
+  description: string;
+  delegation_id: number;
+  delegation_active: boolean;
+  permission_active: boolean;
+  created_at: string;
+};
+export type CustomRolePermissionsResponse = { permissions: CustomRolePermission[] };
+
 export type SchoolPermissionsResponse = { permissions: SchoolPermission[] };
 export type SchoolPermissionDelegationsResponse = { delegations: SchoolPermissionDelegation[] };
 export type StaffPermissionOverridesResponse = { overrides: StaffPermissionOverride[] };
+
+export function createSchoolRole(name: string) {
+  return api<{ role: SchoolRole }>("/school/roles", { method: "POST", body: JSON.stringify({ name }) });
+}
+export function getCustomRolePermissions(roleID: number, signal?: AbortSignal) {
+  return api<CustomRolePermissionsResponse>(`/school/roles/${roleID}/permissions`, { signal });
+}
+export function grantCustomRolePermission(roleID: number, input: { permission_key: string; delegation_id: number }) {
+  return api<{ message: string }>(`/school/roles/${roleID}/permissions`, { method: "POST", body: JSON.stringify(input) });
+}
+export function revokeCustomRolePermission(roleID: number, permissionKey: string) {
+  return api<{ message: string }>(`/school/roles/${roleID}/permissions/${encodeURIComponent(permissionKey)}`, { method: "DELETE" });
+}
 
 export function getSchoolPermissions(signal?: AbortSignal) {
   return api<SchoolPermissionsResponse>("/school/permissions", { signal });
