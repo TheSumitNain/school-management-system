@@ -4,8 +4,10 @@
 
 - bcrypt password hashing and password policy checks, including common/breached-password checks.
 - Principal-aware authentication and database-backed token-version/status validation.
-- Short-lived JWT access tokens and opaque refresh tokens stored as hashes.
+- Short-lived JWT access tokens held in browser memory and opaque refresh tokens stored as hashes in the database.
+- Refresh tokens are delivered only through a persistent HttpOnly, SameSite=Lax cookie (Secure in production); they are not stored in browser JavaScript storage.
 - Refresh-token rotation, replay/family revocation and transaction-lock concurrency protections.
+- Cross-tab refresh serialization and logout/session-expiry notifications; every protected API request still validates the active server-side session family.
 - Protected-request validation of active refresh-session families.
 - Mandatory TOTP MFA for Platform Admin and School Admin, recovery codes, failure lockout and audit events.
 - Versioned AES-GCM TOTP secret encryption with previous-key support and lazy re-encryption after successful verification.
@@ -13,6 +15,8 @@
 - Live database-backed RBAC, scoped delegation, ALLOW/DENY overrides and route-level permission checks.
 - Staff and Platform Admin password lifecycle, account status changes and session/token invalidation.
 - Per-device 30-minute idle timeout for Platform Admin and active system-role School Admin sessions.
+- Browser refresh cookies have the configured refresh-token lifetime (default seven days); administrative idle timeout remains independently enforced server-side.
+- The browser refresh cookie is scoped to `/api/auth`, uses `SameSite=Lax`, and is `Secure` in production. Reverse proxies must preserve the `/api/auth` browser-facing path.
 
 ## Authorization requirements
 

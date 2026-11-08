@@ -448,6 +448,7 @@ func run() error {
 		sessionService,
 		loginSecurityRepo,
 	)
+	authHandler.SetRefreshCookiePolicy(cfg.RefreshTokenExpiryDays, cfg.AppEnv == "production")
 	authHandler.SetMFAService(mfaService, principalAuthorizationRepo)
 	authHandler.SetPlatformAdminAuthService(platformAdminAuthService)
 	staffPasswordService, err := services.NewStaffPasswordService(userRepo)

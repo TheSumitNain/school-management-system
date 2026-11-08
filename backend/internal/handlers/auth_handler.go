@@ -56,6 +56,9 @@ type MFAService interface {
 type MFAPrincipalLoader interface {
 	LoadPrincipalForAuthentication(ctx context.Context, principalID int64) (*models.AuthPrincipal, error)
 }
+const refreshCookieName = "sms_refresh"
+const refreshCookiePath = "/api/auth"
+
 type AuthHandler struct {
 	authService AuthService
 	platformAdminAuthService PlatformAdminAuthService
@@ -66,10 +69,15 @@ type AuthHandler struct {
 	principalLoader MFAPrincipalLoader
 	staffPasswordService StaffPasswordService
 	platformAdminPasswordService PlatformAdminPasswordService
+	refreshCookieMaxAge int
+	refreshCookieSecure bool
 }
 
 func NewAuthHandler(authService AuthService, tokenService TokenService, sessionService SessionService, ipRateLimiters ...LoginIPRateLimiter) *AuthHandler {
-	h := &AuthHandler{authService: authService, tokenService: tokenService, sessionService: sessionService}
+	h := &AuthHandler{
+		authService: authService, tokenService: tokenService, sessionService: sessionService,
+		refreshCookieMaxAge: 7 * 24 * 60 * 60,
+	}
 	if len(ipRateLimiters) > 0 {
 		h.ipRateLimiter = ipRateLimiters[0]
 	}
@@ -105,6 +113,30 @@ type principalResponse struct {
 	SchoolID int64  `json:"school_id,omitempty"`
 	Username string `json:"username,omitempty"`
 	MustChangePassword bool `json:"must_change_password,omitempty"`
+}
+
+// SetRefreshCookiePolicy configures the persistent, HttpOnly refresh cookie.
+func (h *AuthHandler) SetRefreshCookiePolicy(expiryDays int, secure bool) {
+	if expiryDays < 1 { expiryDays = 7 }
+	h.refreshCookieMaxAge = expiryDays * 24 * 60 * 60
+	h.refreshCookieSecure = secure
+}
+
+func (h *AuthHandler) setRefreshCookie(c *gin.Context, token string) {
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie(refreshCookieName, token, h.refreshCookieMaxAge, refreshCookiePath, "", h.refreshCookieSecure, true)
+}
+
+func (h *AuthHandler) clearRefreshCookie(c *gin.Context) {
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie(refreshCookieName, "", -1, refreshCookiePath, "", h.refreshCookieSecure, true)
+}
+
+func refreshTokenFromRequest(c *gin.Context, bodyToken string) string {
+	if cookie, err := c.Request.Cookie(refreshCookieName); err == nil && strings.TrimSpace(cookie.Value) != "" {
+		return strings.TrimSpace(cookie.Value)
+	}
+	return strings.TrimSpace(bodyToken)
 }
 
 func (h *AuthHandler) SetStaffPasswordService(service StaffPasswordService) {
@@ -223,8 +255,9 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
+	h.setRefreshCookie(c, refreshToken)
 	c.JSON(http.StatusOK, gin.H{
-		"status": "success", "access_token": accessToken, "refresh_token": refreshToken,
+		"status": "success", "access_token": accessToken,
 		"token_type": "Bearer", "principal": toPrincipalResponse(principal),
 	})
 }
@@ -352,7 +385,8 @@ func (h *AuthHandler) issueMFASession(c *gin.Context, principalID, expectedToken
 		writeAuthError(c,http.StatusInternalServerError,"Unable to complete authentication")
 		return
 	}
-	response := gin.H{"status":"success","access_token":accessToken,"refresh_token":refreshToken,"token_type":"Bearer","principal":toPrincipalResponse(principal)}
+	h.setRefreshCookie(c, refreshToken)
+	response := gin.H{"status":"success","access_token":accessToken,"token_type":"Bearer","principal":toPrincipalResponse(principal)}
 	if len(recoveryCodes) > 0 { response["recovery_codes"] = recoveryCodes }
 	c.JSON(http.StatusOK, response)
 }
@@ -527,9 +561,20 @@ func (h *AuthHandler) ResetStaffPassword(c *gin.Context) {
 
 // Refresh rotates the opaque refresh token and issues a principal-subject JWT.
 func (h *AuthHandler) Refresh(c *gin.Context) {
+	// The HttpOnly cookie is the primary credential. The JSON body remains
+	// accepted only to migrate existing browser sessions and older API clients.
 	var req refreshRequest
-	if err := c.ShouldBindJSON(&req); err != nil || strings.TrimSpace(req.RefreshToken) == "" {
-		writeAuthError(c, http.StatusBadRequest, "refresh_token is required")
+	if c.Request.ContentLength != 0 {
+		if err := c.ShouldBindJSON(&req); err != nil {
+			writeAuthError(c, http.StatusBadRequest, "Invalid refresh request")
+			return
+		}
+	}
+	legacyBodyToken := strings.TrimSpace(req.RefreshToken)
+	refreshToken := refreshTokenFromRequest(c, legacyBodyToken)
+	if refreshToken == "" {
+		h.clearRefreshCookie(c)
+		writeAuthError(c, http.StatusUnauthorized, "Authentication required")
 		return
 	}
 	if h.sessionService == nil || h.tokenService == nil {
@@ -537,13 +582,14 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		return
 	}
 
-	principal, replacement, familyID, err := rotateSessionTokens(c.Request.Context(), h.sessionService, strings.TrimSpace(req.RefreshToken))
+	principal, replacement, familyID, err := rotateSessionTokens(c.Request.Context(), h.sessionService, refreshToken)
 	if err != nil {
+		h.clearRefreshCookie(c)
 		switch {
 		case errors.Is(err, services.ErrInvalidRefreshToken), errors.Is(err, services.ErrRefreshTokenReuse):
 			writeAuthError(c, http.StatusUnauthorized, "Invalid or expired refresh token")
-		case errors.Is(err, services.ErrRefreshSessionInactive):
-			writeAuthError(c, http.StatusForbidden, "Account or school is inactive")
+		case errors.Is(err, services.ErrRefreshSessionInactive), errors.Is(err, services.ErrAdminSessionIdleExpired):
+			writeAuthError(c, http.StatusUnauthorized, "Your session has expired. Please sign in again.")
 		default:
 			writeAuthError(c, http.StatusInternalServerError, "Unable to refresh session")
 		}
@@ -551,40 +597,52 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	}
 	if !validPrincipal(principal) {
 		_ = h.sessionService.Revoke(c.Request.Context(), replacement)
+		h.clearRefreshCookie(c)
 		writeAuthError(c, http.StatusInternalServerError, "Unable to refresh session")
 		return
 	}
 	accessToken, err := generateSessionAccessToken(h.tokenService, principal, familyID)
 	if err != nil {
-		// Rotation has already committed. Revoke the replacement so a failed
-		// access-token issue cannot leave an undisclosed usable refresh token.
 		_ = h.sessionService.Revoke(c.Request.Context(), replacement)
+		h.clearRefreshCookie(c)
 		writeAuthError(c, http.StatusInternalServerError, "Unable to refresh session")
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"status": "success", "access_token": accessToken, "refresh_token": replacement,
+	h.setRefreshCookie(c, replacement)
+	response := gin.H{
+		"status": "success", "access_token": accessToken,
 		"token_type": "Bearer", "principal": toPrincipalResponse(principal),
-	})
+	}
+	// Older clients that still submit a body token receive the rotated value
+	// during the compatibility window. The current frontend never stores it.
+	if legacyBodyToken != "" {
+		response["refresh_token"] = replacement
+	}
+	c.JSON(http.StatusOK, response)
 }
 
-// Logout is idempotent at the session repository boundary. It revokes the
-// refresh-token family; access tokens are rejected after expiry or when the
-// principal token_version is incremented.
+// Logout revokes the refresh-token family and expires the shared browser
+// cookie. The endpoint is idempotent when the cookie is already absent.
 func (h *AuthHandler) Logout(c *gin.Context) {
 	var req refreshRequest
-	if err := c.ShouldBindJSON(&req); err != nil || strings.TrimSpace(req.RefreshToken) == "" {
-		writeAuthError(c, http.StatusBadRequest, "refresh_token is required")
-		return
+	if c.Request.ContentLength != 0 {
+		if err := c.ShouldBindJSON(&req); err != nil {
+			writeAuthError(c, http.StatusBadRequest, "Invalid logout request")
+			return
+		}
 	}
+	refreshToken := refreshTokenFromRequest(c, req.RefreshToken)
 	if h.sessionService == nil {
 		writeAuthError(c, http.StatusInternalServerError, "Authentication service unavailable")
 		return
 	}
-	if err := h.sessionService.Revoke(c.Request.Context(), strings.TrimSpace(req.RefreshToken)); err != nil {
-		writeAuthError(c, http.StatusInternalServerError, "Unable to log out")
-		return
+	if refreshToken != "" {
+		if err := h.sessionService.Revoke(c.Request.Context(), refreshToken); err != nil {
+			writeAuthError(c, http.StatusInternalServerError, "Unable to log out")
+			return
+		}
 	}
+	h.clearRefreshCookie(c)
 	c.JSON(http.StatusOK, gin.H{"status": "success", "message": "Logged out successfully"})
 }
 
