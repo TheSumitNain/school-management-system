@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"school-management-system/internal/models"
@@ -347,6 +348,7 @@ func (r *PrincipalRefreshSessionRepository) RotatePrincipal(
 	).Scan(&familyID, &principalID)
 
 	if errors.Is(err, pgx.ErrNoRows) {
+		log.Printf("refresh token rejected: reason=token_not_found")
 		return nil, ErrRefreshTokenInvalid
 	}
 	if err != nil {
@@ -469,6 +471,7 @@ FOR UPDATE OF rs, ap`
 	)
 
 	if errors.Is(err, pgx.ErrNoRows) {
+		log.Printf("refresh token rejected: reason=token_missing_after_lock")
 		return nil, ErrRefreshTokenInvalid
 	}
 	if err != nil {
@@ -481,6 +484,7 @@ FOR UPDATE OF rs, ap`
 
 	// A previously revoked token being reused revokes its entire family.
 	if revoked {
+		log.Printf("refresh token rejected: reason=revoked_token_reuse")
 		if _, err = tx.Exec(
 			ctx,
 			`UPDATE refresh_sessions
@@ -499,6 +503,7 @@ FOR UPDATE OF rs, ap`
 	}
 
 	if !notExpired {
+		log.Printf("refresh token rejected: reason=token_expired")
 		return nil, ErrRefreshTokenInvalid
 	}
 
