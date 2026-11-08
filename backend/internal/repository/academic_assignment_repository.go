@@ -182,7 +182,9 @@ func (r *AcademicRepository) ListEligibleTeachers(ctx context.Context, actorID, 
 		return nil, ErrAcademicAccessDenied
 	}
 	if err := authorizeAcademic(ctx, r.db, actorID, schoolID, "teacher_assignments.read"); err != nil {
-		return nil, err
+		if inchargeErr := authorizeAcademic(ctx, r.db, actorID, schoolID, "class_incharge_assignments.read"); inchargeErr != nil {
+			return nil, err
+		}
 	}
 	rows, err := r.db.Query(ctx, `
 		SELECT ap.id, u.username
