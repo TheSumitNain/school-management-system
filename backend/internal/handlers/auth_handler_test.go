@@ -386,6 +386,23 @@ func TestRefreshRejectsInvalidToken(t *testing.T) {
 	}
 }
 
+func TestRefreshPreservesCookieOnTransientFailure(t *testing.T) {
+	sessions := &fakeSessionService{err: errors.New("database temporarily unavailable")}
+	router := setupTestRouter(fakeAuthService{}, fakeTokenService{}, sessions)
+	req := httptest.NewRequest(http.MethodPost, "/auth/refresh", nil)
+	req.AddCookie(&http.Cookie{Name: refreshCookieName, Value: "still-valid-cookie"})
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("transient refresh failure status=%d, want 500; body=%s", rec.Code, rec.Body.String())
+	}
+	for _, cookie := range rec.Result().Cookies() {
+		if cookie.Name == refreshCookieName && cookie.MaxAge < 0 {
+			t.Fatal("transient refresh failure must not clear the user's refresh cookie")
+		}
+	}
+}
+
 func TestLogoutRevokesRefreshToken(t *testing.T) {
 	sessions := &fakeSessionService{}
 	router := setupTestRouter(fakeAuthService{}, fakeTokenService{}, sessions)
