@@ -3,7 +3,7 @@
 **Last reconciled:** 2026-11-08  
 **Repository:** `TheSumitNain/school-management-system`  
 **Reviewed branch:** `feature/school-attendance-management`  
-**Reviewed branch HEAD:** `9e1337ebc43e00726af735708d827c387cc8ef14`
+**Reviewed branch HEAD before this status reconciliation:** `d6f048c7b228fa1677a2972a7db7ffa4edfba475`
 
 This file is the current implementation-status reference. Older checkpoint notes must not override it. Verification statements below distinguish repository inspection, user-reported local checks and real browser/database operations.
 
@@ -62,8 +62,9 @@ The presence of a page or API client does not mean its full browser workflow has
 - Full backend: `go test -count=1 -p 1 ./...` passed.
 - Backend static analysis: `go vet ./...` passed.
 - School onboarding handler tests: `go test -count=1 ./internal/handlers` passed after the latest pull. Windows printed a temporary test executable cleanup warning (`go: unlinkat ... handlers.test.exe`); the test package itself passed.
-- Frontend production build passed after the latest pull.
+- Frontend production build passed after the latest pull, including the student-search enrollment updates (Vite 7.3.7; 1,657 modules transformed).
 - School onboarding UI required-field checks were manually exercised for school name, school code minimum length, username minimum length and password minimum length.
+- Student enrollment selection now uses server-side search (name/admission number) instead of loading only the first 100 students; a student must be selected before submission. The user pulled these changes and confirmed the production build passes.
 - Platform Admin login and MFA verification succeeded against the user's `school_management` database.
 
 ### Scope and limitations of that verification
