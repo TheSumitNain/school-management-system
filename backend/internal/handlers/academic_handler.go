@@ -23,6 +23,7 @@ type AcademicManagementService interface {
 	SaveSection(context.Context,int64,int64,int64,int64,int64,string,int,bool)(*repository.AcademicSection,error)
 	ListSubjects(context.Context,int64,int64)([]repository.AcademicSubject,error)
 	SaveSubject(context.Context,int64,int64,int64,string,*string,bool)(*repository.AcademicSubject,error)
+	ListEligibleTeachers(context.Context,int64,int64)([]repository.EligibleTeacher,error)
 	ListTeacherSubjectAssignments(context.Context,int64,int64,int64,int64)([]repository.TeacherSubjectAssignment,error)
 	CreateTeacherSubjectAssignment(context.Context,int64,int64,int64,int64,int64,int64)(*repository.TeacherSubjectAssignment,error)
 	RevokeTeacherSubjectAssignment(context.Context,int64,int64,int64)error
@@ -108,6 +109,14 @@ func(h *AcademicHandler) SaveSubject(c *gin.Context){
 
 func queryPositiveID(c *gin.Context,key string)(int64,bool){
 	raw:=c.Query(key);if raw==""{return 0,true};v,err:=strconv.ParseInt(raw,10,64);return v,err==nil&&v>0
+}
+
+func(h *AcademicHandler) ListEligibleTeachers(c *gin.Context) {
+	a, s, ok := h.ready(c)
+	if !ok { return }
+	items, err := h.service.ListEligibleTeachers(c.Request.Context(), a, s)
+	if err != nil { academicError(c, err, "Teacher"); return }
+	c.JSON(http.StatusOK, gin.H{"status": "success", "teachers": items})
 }
 
 func(h *AcademicHandler) ListTeacherSubjectAssignments(c *gin.Context){
