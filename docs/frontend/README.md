@@ -69,7 +69,10 @@ These rules apply to every role and every screen. Treat them as acceptance crite
 - Handle access-token expiry centrally. If the supported refresh-session flow can renew the session, renew it once safely and replay eligible requests without asking the user to log in. Prevent concurrent requests and browser tabs from racing refresh-token rotation; coordinate rotation with the browser's cross-tab lock where supported.
 - Use a same-origin persistent HttpOnly, SameSite=Lax refresh cookie (Secure in production). Keep short-lived access tokens in memory only; never persist refresh tokens in localStorage or sessionStorage. The refresh cookie is scoped to the browser-facing `/api/auth` path and follows the configured refresh-token lifetime (seven days by default).
 - On app startup, reload and validate the session through the backend before showing login. A new tab in the same browser profile must reuse a valid session without asking the user to sign in again.
-- Broadcast logout and server-confirmed session expiry across tabs. A logout in any tab must revoke the server-side session family, expire the shared refresh cookie, clear user-scoped caches in every open tab and return every tab to login.
+- Broadcast logout, account changes and server-confirmed session expiry across tabs. A logout in any tab must revoke the server-side session family, expire the shared refresh cookie, clear user-scoped caches in every open tab and return every tab to login.
+- Enforce one active account per browser profile, not one account per physical device. All tabs in the same browser profile share the same authenticated principal; a successful sign-in as another account replaces the active account in every tab. Each tab must clear the previous user's access token and cached data, then revalidate the shared HttpOnly refresh cookie with the backend before rendering the new account.
+- Account-change notifications must contain no credentials or tokens. Serialize login, MFA completion, refresh-token rotation and logout with the same cross-tab lock where supported, so an older refresh response cannot overwrite a newly established session. If cross-tab locking is unavailable, retain server-side refresh replay protections and fail safely.
+- Different browser profiles and different devices maintain independent sessions; users may sign in on multiple devices.
 - If the refresh session is expired, revoked, replay-invalidated or otherwise rejected, clear user-scoped state and send the user to login with a clear, non-technical message. Platform Admin and School Admin sessions also retain the server-enforced 30-minute inactivity timeout.
 - Logout must revoke the server session, clear the shared cookie, in-memory access token and user-scoped caches, and return to login. Account switching must never show the previous user's cached data.
 - Protected deep links must return the user to the originally requested page after successful login, only if that page is authorized. Otherwise route to a safe permitted page and explain access denial.
@@ -98,7 +101,7 @@ Before marking a workflow complete, verify:
 - Desktop, tablet and mobile layouts; no clipped controls or accidental horizontal scrolling.
 - Light, Dark and System theme behavior, including focus, hover, disabled, validation, error, success and skeleton states.
 - Keyboard-only use, screen-reader labels and adequate contrast.
-- Browser refresh, direct URL entry, back/forward navigation and session expiry/recovery.
+- Browser refresh, direct URL entry, back/forward navigation, account switching from another tab and session expiry/recovery.
 - Slow network, failed request, retry and duplicate-click behavior.
 - Production build, relevant automated tests and real backend API contract.
 - No mock success states, fake data presented as real, or frontend-only authorization.

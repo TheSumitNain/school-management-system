@@ -10,8 +10,9 @@ const SESSION_EVENT_KEY = "sms.auth.event";
 let accessToken = "";
 let refreshInFlight: Promise<boolean> | null = null;
 
-type SessionEvent = { type: "ended"; id: string };
+type SessionEvent = { type: "ended" | "changed"; id: string };
 const authChannel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("sms-auth") : null;
+let lastRemoteSessionEventId = "";
 
 function dispatchSessionEnded() {
   window.dispatchEvent(new Event("sms:session-ended"));
@@ -22,22 +23,35 @@ function clearSession() {
   sessionStorage.removeItem(LEGACY_REFRESH_KEY);
   localStorage.removeItem(ACTIVE_SESSION_KEY);
 }
-function receiveRemoteSessionEnd() {
+function receiveRemoteSessionEvent(event: SessionEvent) {
+  if (!event?.id || event.id === lastRemoteSessionEventId) return;
+  lastRemoteSessionEventId = event.id;
   clearSession();
-  dispatchSessionEnded();
+  if (event.type === "ended") dispatchSessionEnded();
+  else window.dispatchEvent(new Event("sms:session-changed"));
 }
 authChannel?.addEventListener("message", (event: MessageEvent<SessionEvent>) => {
-  if (event.data?.type === "ended") receiveRemoteSessionEnd();
+  if (event.data?.type === "ended" || event.data?.type === "changed") receiveRemoteSessionEvent(event.data);
 });
 window.addEventListener("storage", event => {
-  if (event.key === SESSION_EVENT_KEY && event.newValue) receiveRemoteSessionEnd();
+  if (event.key !== SESSION_EVENT_KEY || !event.newValue) return;
+  try {
+    const sessionEvent = JSON.parse(event.newValue) as SessionEvent;
+    if (sessionEvent.type === "ended" || sessionEvent.type === "changed") receiveRemoteSessionEvent(sessionEvent);
+  } catch { /* Ignore malformed cross-tab notifications. */ }
 });
-function broadcastSessionEnd() {
-  clearSession();
-  const event: SessionEvent = { type: "ended", id: String(Date.now()) };
+function publishSessionEvent(type: SessionEvent["type"]) {
+  const event: SessionEvent = { type, id: `${Date.now()}-${Math.random().toString(36).slice(2)}` };
   authChannel?.postMessage(event);
   try { localStorage.setItem(SESSION_EVENT_KEY, JSON.stringify(event)); } catch { /* BroadcastChannel remains available. */ }
+}
+function broadcastSessionEnd() {
+  clearSession();
+  publishSessionEvent("ended");
   dispatchSessionEnded();
+}
+export function announceSessionChanged() {
+  publishSessionEvent("changed");
 }
 export function saveTokens(tokens: AuthTokens) {
   accessToken = tokens.access_token;
@@ -76,16 +90,17 @@ async function performRefresh(): Promise<boolean> {
   saveTokens(body as AuthTokens);
   return true;
 }
+async function withSessionLock<T>(operation: () => Promise<T>): Promise<T> {
+  if (navigator.locks?.request) return navigator.locks.request("sms-auth-refresh", operation);
+  return operation();
+}
 async function refreshSession(): Promise<boolean> {
   if (refreshInFlight) return refreshInFlight;
   refreshInFlight = (async () => {
     try {
-      // Serialize token rotation across tabs; replay detection remains enabled
-      // on the server and must never be bypassed.
-      if (navigator.locks?.request) {
-        return await navigator.locks.request("sms-auth-refresh", () => performRefresh());
-      }
-      return await performRefresh();
+      // Serialize refresh, login/MFA completion and logout across tabs so a
+      // stale refresh cannot overwrite a newly authenticated browser session.
+      return await withSessionLock(() => performRefresh());
     } finally {
       refreshInFlight = null;
     }
@@ -119,11 +134,11 @@ export async function api<T>(path:string,options:RequestOptions={}):Promise<T>{
   }
   return payload as T;
 }
-export function loginStaff(username:string,password:string){return api<AuthTokens|MFAChallenge>("/auth/login",{method:"POST",auth:false,body:JSON.stringify({username,password})});}
-export function loginPlatformAdmin(email:string,password:string){return api<AuthTokens|MFAChallenge>("/auth/platform-admin/login",{method:"POST",auth:false,body:JSON.stringify({email,password})});}
-export function completeMFA(challenge_token:string,code:string,enrollment:boolean){return api<AuthTokens>(enrollment?"/auth/mfa/enroll/verify":"/auth/mfa/verify",{method:"POST",auth:false,body:JSON.stringify({challenge_token,code})});}
+export function loginStaff(username:string,password:string){return withSessionLock(()=>api<AuthTokens|MFAChallenge>("/auth/login",{method:"POST",auth:false,body:JSON.stringify({username,password})}));}
+export function loginPlatformAdmin(email:string,password:string){return withSessionLock(()=>api<AuthTokens|MFAChallenge>("/auth/platform-admin/login",{method:"POST",auth:false,body:JSON.stringify({email,password})}));}
+export function completeMFA(challenge_token:string,code:string,enrollment:boolean){return withSessionLock(()=>api<AuthTokens>(enrollment?"/auth/mfa/enroll/verify":"/auth/mfa/verify",{method:"POST",auth:false,body:JSON.stringify({challenge_token,code})}));}
 export function getMe(){return api<AuthUser>("/auth/me");}
 export async function logout(){
-  await api("/auth/logout",{method:"POST",auth:false,retry:false});
+  await withSessionLock(()=>api("/auth/logout",{method:"POST",auth:false,retry:false}));
   broadcastSessionEnd();
 }

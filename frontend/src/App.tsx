@@ -3,7 +3,7 @@ import { BookOpen, Building2, CalendarDays, CircleHelp, GraduationCap, LayoutDas
 import { ThemeToggle } from "./shared/components/ThemeToggle";
 import { DashboardSkeleton } from "./shared/components/Skeleton";
 import { queryClient } from "./app/providers";
-import { api, clearLocalSession, completeMFA, getMe, loginPlatformAdmin, loginStaff, logout, restoreSession, saveTokens, type AuthTokens, type AuthUser, type MFAChallenge } from "./lib/api";
+import { announceSessionChanged, api, clearLocalSession, completeMFA, getMe, loginPlatformAdmin, loginStaff, logout, restoreSession, saveTokens, type AuthTokens, type AuthUser, type MFAChallenge } from "./lib/api";
 
 const PlatformAdminPage = lazy(() => import("./features/platform-admin/pages/PlatformAdminPage").then(module => ({ default: module.PlatformAdminPage })));
 const StaffManagementPage = lazy(() => import("./features/school-admin/pages/StaffManagementPage").then(module => ({ default: module.StaffManagementPage })));
@@ -16,7 +16,7 @@ type Metric={label:string;value:string;note:string;icon:LucideIcon;tone:string};
 function isMFA(value:AuthTokens|MFAChallenge):value is MFAChallenge{return "status" in value && value.status==="mfa_required";}
 function Login({onDone}:{onDone:(user:AuthUser)=>void}){
  const [kind,setKind]=useState<"staff"|"platform_admin">("staff"),[identity,setIdentity]=useState(""),[password,setPassword]=useState(""),[challenge,setChallenge]=useState<MFAChallenge|null>(null),[code,setCode]=useState(""),[error,setError]=useState(""),[busy,setBusy]=useState(false);
- async function accept(tokens:AuthTokens){saveTokens(tokens);onDone(await getMe());}
+ async function accept(tokens:AuthTokens){queryClient.clear();saveTokens(tokens);const authenticatedUser=await getMe();announceSessionChanged();onDone(authenticatedUser);}
  async function submit(e:FormEvent){e.preventDefault();setBusy(true);setError("");try{const result=kind==="staff"?await loginStaff(identity.trim(),password):await loginPlatformAdmin(identity.trim(),password);if(isMFA(result))setChallenge(result);else await accept(result);}catch(err){setError(err instanceof Error?err.message:"Sign in failed.");}finally{setBusy(false);}}
  async function verify(e:FormEvent){e.preventDefault();if(!challenge)return;setBusy(true);setError("");try{await accept(await completeMFA(challenge.challenge_token,code.trim(),challenge.enrollment_required));}catch(err){setError(err instanceof Error?err.message:"MFA verification failed.");}finally{setBusy(false);}}
  return <main className="login-layout"><section className="login-brand"><div className="brand-mark"><GraduationCap size={28}/></div><span className="eyebrow">SCHOOL OPERATIONS PLATFORM</span><h1>Run your school.<br/><em>With clarity.</em></h1><p>One workspace for the people, academics and daily work that keep your school moving.</p><div className="login-footnote"><ShieldCheck size={16}/> Secure, role-based access</div></section><section className="login-panel"><div className="login-theme"><ThemeToggle/></div><div className="login-card"><div className="mobile-brand"><div className="brand-mark"><GraduationCap size={23}/></div><b>SchoolDesk</b></div><span className="eyebrow">WELCOME BACK</span><h2>{challenge?"Verify your identity":"Sign in to your workspace"}</h2><p className="muted">{challenge?"Enter the current code from your authenticator app.":"Use your school or platform administrator account."}</p>{!challenge?<form onSubmit={submit}><div className="account-switch"><button type="button" className={kind==="staff"?"selected":""} onClick={()=>setKind("staff")}>School staff</button><button type="button" className={kind==="platform_admin"?"selected":""} onClick={()=>setKind("platform_admin")}>Platform admin</button></div><label>{kind==="staff"?"Username":"Email address"}<input autoComplete="username" value={identity} onChange={e=>setIdentity(e.target.value)} required/></label><label>Password<input type="password" autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)} required/></label>{error&&<div className="alert error">{error}</div>}<button className="primary full" disabled={busy}>{busy?"Signing in…":"Continue"} <span>→</span></button></form>:<form onSubmit={verify}>{challenge.enrollment_required&&<div className="alert info">Set up your authenticator using this secret, then enter its current code: <b>{challenge.secret}</b></div>}<label>Authenticator code<input inputMode="numeric" autoComplete="one-time-code" maxLength={10} value={code} onChange={e=>setCode(e.target.value)} required/></label>{error&&<div className="alert error">{error}</div>}<button className="primary full" disabled={busy||!code.trim()}>{busy?"Verifying…":"Verify and continue"}</button><button type="button" className="text-button" onClick={()=>{setChallenge(null);setCode("");setError("");}}>Back to sign in</button></form>}<div className="login-security"><ShieldCheck size={15}/> Your access is protected by assigned permissions.</div></div></section></main>;
@@ -42,11 +42,18 @@ export default function App(){
  useEffect(()=>{
   let alive=true;
   const onSessionEnded=()=>{queryClient.clear();setUser(null);setPage("dashboard");setMessage("You have been signed out. Please sign in again.");};
+  const onSessionChanged=()=>{
+   queryClient.clear();setUser(null);setPage("dashboard");setSessionError("");setMessage("Your account changed in another tab. Updating this workspace…");setLoading(true);
+   restoreSession().then(restored=>restored?getMe():null).then(x=>{if(alive){setUser(x);setMessage(x?"":"You have been signed out. Please sign in again.");}})
+    .catch(()=>{if(alive)setSessionError("We couldn’t verify your sign-in. Check your internet connection and try again.");})
+    .finally(()=>{if(alive)setLoading(false);});
+  };
   window.addEventListener("sms:session-ended",onSessionEnded);
+  window.addEventListener("sms:session-changed",onSessionChanged);
   restoreSession().then(restored=>restored?getMe():null).then(x=>{if(alive)setUser(x);})
    .catch(()=>{if(alive)setSessionError("We couldn’t verify your sign-in. Check your internet connection and try again.");})
    .finally(()=>{if(alive)setLoading(false);});
-  return()=>{alive=false;window.removeEventListener("sms:session-ended",onSessionEnded);};
+  return()=>{alive=false;window.removeEventListener("sms:session-ended",onSessionEnded);window.removeEventListener("sms:session-changed",onSessionChanged);};
  },[]);
  const nav=useMemo(()=>{
   const all:[Page,string,LucideIcon,string?][]=[["dashboard","Dashboard",LayoutDashboard],["platform-admin","Platform Admin",Building2],["staff","Staff",Users,"users.read"],["roles","Roles & permissions",ShieldCheck,"roles.read"],["academics","Academics",BookOpen,"classes.read|academic_years.read|subjects.read|teacher_assignments.read|class_incharge_assignments.read"],["students","Students",GraduationCap,"students.read_sensitive|students.read_basic"],["attendance","Attendance",CalendarDays,"attendance.read"]];
