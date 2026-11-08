@@ -41,7 +41,7 @@ export default function App(){
  const [user,setUser]=useState<AuthUser|null>(null),[page,setPage]=useState<Page>("dashboard"),[loading,setLoading]=useState(hasSession()),[mobile,setMobile]=useState(false),[message,setMessage]=useState("");
  useEffect(()=>{let alive=true;if(!hasSession()){setLoading(false);return;}getMe().then(x=>{if(alive)setUser(x);}).catch(()=>{clearSession();queryClient.clear();}).finally(()=>{if(alive)setLoading(false);});return()=>{alive=false;};},[]);
  const nav=useMemo(()=>{
-  const all:[Page,string,LucideIcon,string?][]=[["dashboard","Dashboard",LayoutDashboard],["platform-admin","Platform Admin",Building2],["staff","Staff",Users,"users.read"],["roles","Roles & permissions",ShieldCheck,"roles.read"],["academics","Academics",BookOpen,"classes.read|academic_years.read|subjects.read"],["students","Students",GraduationCap,"students.read_sensitive|students.read_basic"],["attendance","Attendance",CalendarDays,"attendance.read"]];
+  const all:[Page,string,LucideIcon,string?][]=[["dashboard","Dashboard",LayoutDashboard],["platform-admin","Platform Admin",Building2],["staff","Staff",Users,"users.read"],["roles","Roles & permissions",ShieldCheck,"roles.read"],["academics","Academics",BookOpen,"classes.read|academic_years.read|subjects.read|teacher_assignments.read|class_incharge_assignments.read"],["students","Students",GraduationCap,"students.read_sensitive|students.read_basic"],["attendance","Attendance",CalendarDays,"attendance.read"]];
   if(!user)return [];
   if(user.principal_type==="platform_admin"){
    const canOpenPlatformAdmin=user.permissions.includes("platform.admins.manage")||(user.permissions.includes("platform.schools.create")&&user.permissions.includes("platform.school_admins.create"));
