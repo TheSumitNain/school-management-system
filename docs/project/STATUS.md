@@ -1,24 +1,24 @@
 # Project Status
 
-**Last reconciled:** 2026-11-06  
+**Last reconciled:** 2026-11-08  
 **Repository:** `TheSumitNain/school-management-system`  
-**Default branch:** `main`  
-**Latest known merged commit before this documentation update:** `d5d015dc050e5b2806383a27bb90b4f387158f97`
+**Reviewed branch:** `feature/school-attendance-management`  
+**Reviewed branch HEAD:** `9e1337ebc43e00726af735708d827c387cc8ef14`
 
-This file is the single current implementation-status reference. Older checkpoint notes must not override it.
+This file is the current implementation-status reference. Older checkpoint notes must not override it. Verification statements below distinguish repository inspection, user-reported local checks and real browser/database operations.
 
 ## Delivery scope and current priority
 
 - **Phase 1:** Complete web product for Platform Admin, School Admin and school staff.
-- **Immediate priority:** Complete the school-facing dashboard and its end-to-end operational workflows.
-- **Phase 2:** Parent and Driver experiences after Phase 1 web delivery.
+- **Immediate priority:** Complete the School Admin workspace and verify its end-to-end operational workflows.
+- **Phase 2:** Parent and Driver experiences only after Phase 1 school web delivery.
 - **Parent OTP/SMS:** Explicitly deferred. Do not implement parent OTP login, SMS delivery or parent-facing authentication now. Preserve existing guardian/parent relationship foundations without expanding this workstream until Phase 2 is approved.
 - **Scale target:** 25–30 schools and 400–500 students per school; capacity is not yet load-tested.
 
 ## Repository reality
 
 - Backend: Go + Gin, PostgreSQL + pgx/pgxpool.
-- Frontend: React + TypeScript + Vite is the intended stack, but no frontend source tree exists yet.
+- Frontend: React + TypeScript + Vite. A working frontend source tree exists, including the shared application shell, session-aware login/MFA flow, theme support, Platform Admin screens and School Admin feature pages.
 - Deployment: production deployment architecture and operational controls are not yet complete.
 
 ## Implemented backend capabilities
@@ -36,42 +36,66 @@ This file is the single current implementation-status reference. Older checkpoin
 - System/custom roles, scoped delegation, exact-delegation-bound grants, user ALLOW/DENY overrides and audit events.
 - Route-level permission middleware and repository/database guards against self-escalation.
 - Platform Admin lifecycle and transactional school onboarding with school system-role provisioning.
-- `GET /auth/me` returns sorted current permission keys for Staff and Platform Admin principals as a frontend navigation hint; server authorization remains authoritative.
+- `GET /auth/me` returns current effective permission keys for Staff and Platform Admin principals as a frontend navigation hint; server authorization remains authoritative.
 
 ### Selected school workflows
-- School-scoped student, enrollment, promotion/history, class, section and subject foundations.
-- Teacher-subject and class-in-charge assignments.
-- Teacher enrollment roster restricted to assigned sections and minimal approved fields.
+- School-scoped staff account lifecycle and password reset.
+- School-scoped system/custom role management, permission delegation and staff permission overrides.
+- Academic years, classes, sections, subjects, teacher-subject assignments and class-in-charge assignments.
+- Student records, enrollment, promotion/history and teacher roster restrictions.
 - Attendance APIs with targeted permission and scope checks.
 - School-scoped guardian management APIs and parent/guardian eligibility foundations.
 
+## Frontend implementation present on the reviewed branch
+
+- Shared login and authenticated application shell with role/permission-aware navigation.
+- Platform Admin account list and school onboarding form.
+- School Admin pages for staff accounts, roles/permissions, academic structure, students/enrollments and attendance.
+- Separate page CSS, shared design tokens and Light/Dark theme foundations.
+- Typed API modules and TanStack Query-based server state for school administration.
+
+The presence of a page or API client does not mean its full browser workflow has been accepted. Continue testing against the real local API and verify every permission boundary. Do not present mock data or frontend-only checks as completed backend workflows.
+
+## Recent verification evidence
+
+### User-reported local checks
+- Full backend: `go test -count=1 -p 1 ./...` passed.
+- Backend static analysis: `go vet ./...` passed.
+- School onboarding handler tests: `go test -count=1 ./internal/handlers` passed after the latest pull. Windows printed a temporary test executable cleanup warning (`go: unlinkat ... handlers.test.exe`); the test package itself passed.
+- Frontend production build passed after the latest pull.
+- School onboarding UI required-field checks were manually exercised for school name, school code minimum length, username minimum length and password minimum length.
+- Platform Admin login and MFA verification succeeded against the user's `school_management` database.
+
+### Scope and limitations of that verification
+- No school was created during onboarding UI validation. A successful real onboarding transaction and live duplicate-code/username checks have not been demonstrated in this workflow.
+- The onboarding handler/service tests cover success/error mapping and validation paths, but do not by themselves prove a real database transaction in the user's persistent database.
+- The initial Platform Admin list request returned one HTTP 500 followed by HTTP 200; the page subsequently loaded, but the first response's cause has not been established.
+- These checks do not prove production readiness, exhaustive authorization coverage or load capacity.
+- Never infer the migration version or contents of the user's persistent databases from disposable CI environments.
+
 ## Not yet complete
 
-- React web frontend, school dashboards, forms and end-to-end browser workflows.
+- End-to-end browser verification of all School Admin workflows, including staff creation/role assignment, academic setup, student enrollment and attendance.
+- Full browser verification of Platform Admin onboarding, lifecycle and delegation workflows.
 - Complete tenant/resource/assignment/field-level authorization coverage across every business module and route.
 - Remaining academic/business modules, including timetable, examinations and results.
-- Parent OTP/SMS delivery and Parent/Driver Phase 2 interfaces (deferred; not current work).
-- Exhaustive end-to-end HTTP coverage with real JWT signature validation for every protected route.
+- Teacher/staff-specific operational screens and assignment-limited browser workflows.
+- Exhaustive HTTP coverage with real JWT signature validation for every protected route.
 - Production deployment hardening, least-privilege database grants, monitoring/alerting, backup/restore drills, penetration testing and load/capacity testing.
-
-## Verification evidence
-
-- User-reported local Windows checks on the merged backend: `go test -count=1 -p 1 ./...` passed and `go vet ./...` passed.
-- Latest known GitHub Actions verification for the merged backend applied the migration chain to an ephemeral PostgreSQL database, ran backend tests including PostgreSQL integration tests, and ran `go vet ./...` successfully.
-- These checks do not prove production readiness or load capacity.
-- CI uses disposable infrastructure; do not infer the migration version of the user's persistent `school_management` or `school_management_test` databases from CI.
+- Parent OTP/SMS delivery and Parent/Driver Phase 2 interfaces remain deferred and are not current work.
 
 ## Safe next sequence
 
-1. Reconcile remaining backend authorization gaps against the actual route/repository surface; add tests for each fix.
-2. Complete remaining backend business modules and their tenant/assignment/field-level boundaries needed by the school web workflows.
-3. Establish the React web foundation and implement the school dashboard first, followed by Platform Admin and staff workflows, against the actual API contracts.
-4. Complete browser-level workflows, operational hardening and production readiness checks.
-5. Start Parent OTP/SMS and Parent/Driver Phase 2 work only after Phase 1 school web product completion and explicit reprioritization.
+1. Continue reviewing and completing the School Admin browser workflows against the existing API contracts.
+2. Fix verified frontend/backend integration defects and add regression tests for each fix.
+3. Reconcile remaining backend authorization gaps against the actual route/repository surface.
+4. Complete the remaining school business modules and teacher/staff workflows needed for Phase 1.
+5. Complete browser-level, responsive, accessibility, theme, session-recovery and operational verification.
+6. Start Parent OTP/SMS and Parent/Driver Phase 2 work only after Phase 1 school web product completion and explicit reprioritization.
 
 ## Git and database safety
 
-- Continue on `main` unless a separately agreed workflow requires otherwise.
+- Prefer the agreed primary development branch workflow; do not create unnecessary branches or merge a pull request without explicit approval.
 - Do not stage unrelated helper files or commit secrets.
 - Do not run migrations against persistent databases without explicit approval.
 - Keep `.env`, passwords, JWT secrets, TOTP encryption keys and real student data out of Git.
