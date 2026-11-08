@@ -75,7 +75,7 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
         case "incharges": setIncharges((data.assignments as ClassInchargeAssignment[]) ?? []); break;
       }
     });
-    setFeedback(errors.length ? { kind: "error", message: errors.join(" · ") } : null);
+    if (errors.length) setFeedback({ kind: "error", message: errors.join(" · ") });
     setLoading(false);
   }, [canReadYears, canReadClasses, canReadSubjects, canReadTeacherAssignments, canReadIncharges]);
 
