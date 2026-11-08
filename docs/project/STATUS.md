@@ -3,7 +3,7 @@
 **Last reconciled:** 2026-11-08  
 **Repository:** `TheSumitNain/school-management-system`  
 **Reviewed branch:** `feature/school-attendance-management`  
-**Reviewed branch HEAD before this status reconciliation:** `d6f048c7b228fa1677a2972a7db7ffa4edfba475`
+**Reviewed branch HEAD before this status reconciliation:** `4112ac549fc46e19bd9cbb1ef2865a48b9119675`
 
 This file is the current implementation-status reference. Older checkpoint notes must not override it. Verification statements below distinguish repository inspection, user-reported local checks and real browser/database operations.
 
@@ -50,7 +50,7 @@ This file is the current implementation-status reference. Older checkpoint notes
 
 - Shared login and authenticated application shell with role/permission-aware navigation.
 - Platform Admin account list and school onboarding form.
-- School Admin pages for staff accounts, roles/permissions, academic structure, students/enrollments and attendance.
+- School Admin pages for staff accounts, roles/permissions, academic structure (including teacher-subject and class-in-charge assignment management), students/enrollments and attendance.
 - Separate page CSS, shared design tokens and Light/Dark theme foundations.
 - Typed API modules and TanStack Query-based server state for school administration.
 
@@ -80,7 +80,7 @@ The presence of a page or API client does not mean its full browser workflow has
 - Full browser verification of Platform Admin onboarding, lifecycle and delegation workflows.
 - Complete tenant/resource/assignment/field-level authorization coverage across every business module and route.
 - Remaining academic/business modules, including timetable, examinations and results.
-- Teacher/staff-specific operational screens and assignment-limited browser workflows.
+- Teacher/staff-specific operational screens and assignment-limited browser workflows beyond the new School Admin assignment-management screen.
 - Exhaustive HTTP coverage with real JWT signature validation for every protected route.
 - Production deployment hardening, least-privilege database grants, monitoring/alerting, backup/restore drills, penetration testing and load/capacity testing.
 - Parent OTP/SMS delivery and Parent/Driver Phase 2 interfaces remain deferred and are not current work.
