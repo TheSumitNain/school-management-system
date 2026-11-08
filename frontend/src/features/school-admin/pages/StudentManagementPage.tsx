@@ -143,7 +143,7 @@ export function StudentManagementPage({ permissions }: Props) {
         <label>Roll number<input name="roll_number" maxLength={30}/></label>
         <label>Enrollment date<input name="enrolled_at" type="date" defaultValue={new Date().toISOString().slice(0, 10)} required/></label>
         {sectionsQuery.isError && <div className="student-feedback error" role="alert">{sectionsQuery.error.message}</div>}
-        <div className="student-form-actions"><button type="button" className="student-secondary" onClick={() => setShowEnrollment(false)}>Cancel</button><button className="primary" disabled={busy || activeYears.length === 0 || sections.length === 0}>{busy ? "Enrolling…" : "Create enrollment"}</button></div>
+        <div className="student-form-actions"><button type="button" className="student-secondary" onClick={() => setShowEnrollment(false)}>Cancel</button><button className="primary" disabled={busy || !selectedStudentID || studentOptionsQuery.isLoading || studentOptionsQuery.isError || activeYears.length === 0 || sections.length === 0}>{busy ? "Enrolling…" : "Create enrollment"}</button></div>
       </form>}
     </section>}
     {tab === "students" && canReadStudents && <>
