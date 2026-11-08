@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { CalendarDays, BookOpen, Layers3, FlaskConical, Pencil, Plus, RefreshCw, X } from "lucide-react";
+import { CalendarDays, BookOpen, Layers3, FlaskConical, Pencil, Plus, RefreshCw, UsersRound, X } from "lucide-react";
+import { TeacherAssignmentsPage } from "./TeacherAssignmentsPage";
 import { api } from "../../../lib/api";
 import "./AcademicStructurePage.css";
 
@@ -7,8 +8,9 @@ type Year = { id:number; name:string; starts_on:string; ends_on:string; status:"
 type SchoolClass = { id:number; name:string; display_order:number; is_active:boolean };
 type Section = { id:number; academic_year_id:number; class_id:number; name:string; display_order:number; is_active:boolean };
 type Subject = { id:number; name:string; subject_code?:string; is_active:boolean };
-type Kind = "year"|"class"|"section"|"subject";
-type Action = { kind:Kind; record?: Year|SchoolClass|Section|Subject } | null;
+type Kind = "year"|"class"|"section"|"subject"|"assignments";
+type EditableKind = Exclude<Kind, "assignments">;
+type Action = { kind:EditableKind; record?: Year|SchoolClass|Section|Subject } | null;
 type Props = { permissions:string[] };
 
 export function AcademicStructurePage({permissions}:Props) {
@@ -18,6 +20,7 @@ export function AcademicStructurePage({permissions}:Props) {
   const canManageClasses=permissions.includes("classes.manage");
   const canReadSubjects=permissions.includes("subjects.read");
   const canManageSubjects=permissions.includes("subjects.manage");
+  const canReadAssignments=permissions.includes("teacher_assignments.read")||permissions.includes("class_incharge_assignments.read");
   const [years,setYears]=useState<Year[]>([]);
   const [classes,setClasses]=useState<SchoolClass[]>([]);
   const [sections,setSections]=useState<Section[]>([]);
@@ -56,9 +59,10 @@ export function AcademicStructurePage({permissions}:Props) {
   if(canReadYears)availableTabs.push("year");
   if(canReadClasses)availableTabs.push("class","section");
   if(canReadSubjects)availableTabs.push("subject");
+  if(canReadAssignments)availableTabs.push("assignments");
   useEffect(()=>{if(!availableTabs.includes(tab)&&availableTabs.length)setTab(availableTabs[0]??"year");},[tab,canReadYears,canReadClasses,canReadSubjects]);
 
-  function begin(kind:Kind,record?:Year|SchoolClass|Section|Subject){setAction({kind,record});setFeedback(null);}
+  function begin(kind:EditableKind,record?:Year|SchoolClass|Section|Subject){setAction({kind,record});setFeedback(null);}
   function close(){setAction(null);}
   async function submit(event:FormEvent<HTMLFormElement>){
     event.preventDefault();if(!action)return;
@@ -80,14 +84,14 @@ export function AcademicStructurePage({permissions}:Props) {
     finally{setSaving(false);}
   }
 
-  const titles:Record<Kind,string>={year:"Academic years",class:"Classes",section:"Sections",subject:"Subjects"};
+  const titles:Record<Kind,string>={year:"Academic years",class:"Classes",section:"Sections",subject:"Subjects",assignments:"Teacher assignments"};
   const currentRecord=action?.record as Year|SchoolClass|Section|Subject|undefined;
   const sectionRows=sections.filter(item=>!filterYear||String(item.academic_year_id)===filterYear);
   return <div className="content academic-page">
     <div className="heading"><div><span className="eyebrow">SCHOOL SETUP</span><h1>Academic structure</h1><p>Configure academic years, classes, sections and subjects for this school.</p></div><button type="button" className="academic-refresh" onClick={()=>void load()} disabled={loading}><RefreshCw size={15}/> Refresh</button></div>
     <div className="academic-tabs" role="tablist" aria-label="Academic structure">
       {availableTabs.map(item=><button key={item} type="button" role="tab" aria-selected={tab===item} className={tab===item?"selected":""} onClick={()=>{setTab(item);setAction(null);setFeedback(null);}}>
-        {item==="year"?<CalendarDays size={16}/>:item==="class"?<BookOpen size={16}/>:item==="section"?<Layers3 size={16}/>:<FlaskConical size={16}/>} {titles[item]}
+        {item==="year"?<CalendarDays size={16}/>:item==="class"?<BookOpen size={16}/>:item==="section"?<Layers3 size={16}/>:item==="assignments"?<UsersRound size={16}/>:<FlaskConical size={16}/>} {titles[item]}
       </button>)}
     </div>
     {feedback&&<div className={"academic-feedback "+feedback.kind} role="status">{feedback.message}</div>}
@@ -107,6 +111,7 @@ export function AcademicStructurePage({permissions}:Props) {
     {loading?<div className="table-message">Loading academic structure…</div>:tab==="year"?<section className="table-panel"><div className="toolbar"><div><h2>Academic years</h2><small>{years.length} records</small></div>{canManageYears&&<button className="primary academic-add" type="button" onClick={()=>begin("year")}><Plus size={15}/> Add academic year</button>}</div>{years.length===0?<div className="table-message">No academic years configured yet.</div>:<div className="table-scroll"><table><thead><tr><th>Name</th><th>Period</th><th>Status</th><th>Current</th>{canManageYears&&<th>Action</th>}</tr></thead><tbody>{years.map(item=><tr key={item.id}><td><b>{item.name}</b></td><td>{item.starts_on.slice(0,10)} – {item.ends_on.slice(0,10)}</td><td><span className={"pill "+(item.status==="active"?"active":item.status==="closed"?"inactive":"")}>{item.status}</span></td><td>{item.is_current?"Yes":"—"}</td>{canManageYears&&<td><button type="button" className="academic-edit" disabled={item.status==="closed"} onClick={()=>begin("year",item)} aria-label={"Edit "+item.name}><Pencil size={15}/></button></td>}</tr>)}</tbody></table></div>}</section>
     :tab==="class"?<section className="table-panel"><div className="toolbar"><div><h2>Classes</h2><small>{classes.length} records</small></div>{canManageClasses&&<button className="primary academic-add" type="button" onClick={()=>begin("class")}><Plus size={15}/> Add class</button>}</div>{classes.length===0?<div className="table-message">No classes configured yet.</div>:<div className="table-scroll"><table><thead><tr><th>Class</th><th>Order</th><th>Status</th>{canManageClasses&&<th>Action</th>}</tr></thead><tbody>{classes.map(item=><tr key={item.id}><td><b>{item.name}</b></td><td>{item.display_order}</td><td><span className={"pill "+(item.is_active?"active":"inactive")}>{item.is_active?"Active":"Inactive"}</span></td>{canManageClasses&&<td><button type="button" className="academic-edit" onClick={()=>begin("class",item)} aria-label={"Edit "+item.name}><Pencil size={15}/></button></td>}</tr>)}</tbody></table></div>}</section>
     :tab==="section"?<section className="table-panel"><div className="toolbar"><div><h2>Sections</h2><small>{sectionRows.length} records</small></div><div className="academic-toolbar-actions">{years.length>0&&<select aria-label="Filter sections by academic year" value={filterYear} onChange={e=>setFilterYear(e.target.value)}><option value="">All academic years</option>{years.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select>}{canManageClasses&&canReadYears&&<button className="primary academic-add" type="button" onClick={()=>begin("section")} disabled={!years.some(x=>x.status!=="closed")||!classes.some(x=>x.is_active)}><Plus size={15}/> Add section</button>}</div></div>{sectionRows.length===0?<div className="table-message">No sections configured for this selection.</div>:<div className="table-scroll"><table><thead><tr><th>Section</th><th>Class</th><th>Academic year</th><th>Status</th>{canManageClasses&&canReadYears&&<th>Action</th>}</tr></thead><tbody>{sectionRows.map(item=><tr key={item.id}><td><b>{item.name}</b></td><td>{classes.find(x=>x.id===item.class_id)?.name??"—"}</td><td>{years.find(x=>x.id===item.academic_year_id)?.name??"—"}</td><td>{item.is_active?"Active":"Inactive"}</td>{canManageClasses&&canReadYears&&<td><button type="button" className="academic-edit" onClick={()=>begin("section",item)} aria-label={"Edit "+item.name}><Pencil size={15}/></button></td>}</tr>)}</tbody></table></div>}</section>
+    :tab==="assignments"?<TeacherAssignmentsPage permissions={permissions}/>
     :<section className="table-panel"><div className="toolbar"><div><h2>Subjects</h2><small>{subjects.length} records</small></div>{canManageSubjects&&<button className="primary academic-add" type="button" onClick={()=>begin("subject")}><Plus size={15}/> Add subject</button>}</div>{subjects.length===0?<div className="table-message">No subjects configured yet.</div>:<div className="table-scroll"><table><thead><tr><th>Subject</th><th>Code</th><th>Status</th>{canManageSubjects&&<th>Action</th>}</tr></thead><tbody>{subjects.map(item=><tr key={item.id}><td><b>{item.name}</b></td><td>{item.subject_code??"—"}</td><td>{item.is_active?"Active":"Inactive"}</td>{canManageSubjects&&<td><button type="button" className="academic-edit" onClick={()=>begin("subject",item)} aria-label={"Edit "+item.name}><Pencil size={15}/></button></td>}</tr>)}</tbody></table></div>}</section>}
   </div>;
 }
