@@ -17,6 +17,7 @@ type academicRepository interface {
 	SaveSection(context.Context,int64,int64,int64,int64,int64,string,int,bool)(*repository.AcademicSection,error)
 	ListSubjects(context.Context,int64,int64)([]repository.AcademicSubject,error)
 	SaveSubject(context.Context,int64,int64,int64,string,*string,bool)(*repository.AcademicSubject,error)
+	ListEligibleTeachers(context.Context,int64,int64)([]repository.EligibleTeacher,error)
 	ListTeacherSubjectAssignments(context.Context,int64,int64,int64,int64)([]repository.TeacherSubjectAssignment,error)
 	CreateTeacherSubjectAssignment(context.Context,int64,int64,int64,int64,int64,int64)(*repository.TeacherSubjectAssignment,error)
 	RevokeTeacherSubjectAssignment(context.Context,int64,int64,int64)error
@@ -72,6 +73,13 @@ func (s *AcademicService) SaveSubject(ctx context.Context,actorID,schoolID,id in
 	return s.repository.SaveSubject(ctx,actorID,schoolID,id,name,code,active)
 }
 
+
+func (s *AcademicService) ListEligibleTeachers(ctx context.Context, actorID, schoolID int64) ([]repository.EligibleTeacher, error) {
+	if s == nil || s.repository == nil {
+		return nil, repository.ErrAcademicAccessDenied
+	}
+	return s.repository.ListEligibleTeachers(ctx, actorID, schoolID)
+}
 
 func (s *AcademicService) ListTeacherSubjectAssignments(ctx context.Context,actorID,schoolID,yearID,sectionID int64)([]repository.TeacherSubjectAssignment,error){
 	if s==nil||s.repository==nil{return nil,repository.ErrAcademicAccessDenied}
