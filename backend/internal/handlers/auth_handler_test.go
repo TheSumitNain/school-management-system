@@ -409,6 +409,25 @@ func TestLogoutRevokesRefreshToken(t *testing.T) {
 }
 
 
+func TestLogoutRevokesSessionFromHttpOnlyCookie(t *testing.T) {
+	sessions := &fakeSessionService{}
+	router := setupTestRouter(fakeAuthService{}, fakeTokenService{}, sessions)
+	req := httptest.NewRequest(http.MethodPost, "/auth/logout", nil)
+	req.AddCookie(&http.Cookie{Name: refreshCookieName, Value: "cookie-refresh-token"})
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("cookie logout status=%d, want 200; body=%s", rec.Code, rec.Body.String())
+	}
+	if sessions.revokedToken != "cookie-refresh-token" {
+		t.Fatalf("logout did not revoke the cookie session: %q", sessions.revokedToken)
+	}
+	cookies := rec.Result().Cookies()
+	if len(cookies) == 0 || cookies[0].Name != refreshCookieName || cookies[0].MaxAge >= 0 {
+		t.Fatalf("logout did not expire the shared refresh cookie: %+v", cookies)
+	}
+}
+
 func TestRefreshAccessTokenFailureRevokesRotatedRefreshSession(t *testing.T) {
 	principal := &models.AuthPrincipal{ID: 10, Type: "staff", Status: "active", TokenVersion: 1, SchoolID: 2, Username: "testuser"}
 	tokenService := fakeTokenService{err: errors.New("signing unavailable")}
