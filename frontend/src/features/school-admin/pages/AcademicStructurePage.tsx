@@ -60,7 +60,7 @@ export function AcademicStructurePage({permissions}:Props) {
   if(canReadClasses)availableTabs.push("class","section");
   if(canReadSubjects)availableTabs.push("subject");
   if(canReadAssignments)availableTabs.push("assignments");
-  useEffect(()=>{if(!availableTabs.includes(tab)&&availableTabs.length)setTab(availableTabs[0]??"year");},[tab,canReadYears,canReadClasses,canReadSubjects]);
+  useEffect(()=>{if(!availableTabs.includes(tab)&&availableTabs.length)setTab(availableTabs[0]??"year");},[tab,canReadYears,canReadClasses,canReadSubjects,canReadAssignments]);
 
   function begin(kind:EditableKind,record?:Year|SchoolClass|Section|Subject){setAction({kind,record});setFeedback(null);}
   function close(){setAction(null);}
