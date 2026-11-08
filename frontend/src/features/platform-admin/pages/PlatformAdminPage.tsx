@@ -46,7 +46,8 @@ export function PlatformAdminPage({ permissions }: Props) {
 
   async function submitSchool(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     setFeedback(null);
     try {
       const result = await onboardSchool.mutateAsync({
@@ -55,7 +56,7 @@ export function PlatformAdminPage({ permissions }: Props) {
         school_admin_username: String(form.get("school_admin_username") ?? "").trim(),
         school_admin_initial_password: String(form.get("school_admin_initial_password") ?? ""),
       });
-      event.currentTarget.reset();
+      formElement.reset();
       setFeedback({
         kind: "success",
         message: `School ${result.school.name} (${result.school.code}) created. School Admin username: ${result.school_admin.username}. They must change the initial password after sign-in.`,
