@@ -28,12 +28,15 @@ export function StudentManagementPage({ permissions }: Props) {
   const [action, setAction] = useState<StudentAction>(null);
   const [selected, setSelected] = useState<StudentProfile | null>(null);
   const [showEnrollment, setShowEnrollment] = useState(false);
+  const [studentSearch, setStudentSearch] = useState("");
+  const deferredStudentSearch = useDeferredValue(studentSearch.trim());
+  const [selectedStudentID, setSelectedStudentID] = useState("");
   const [academicYearID, setAcademicYearID] = useState(0);
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
 
   const filters = useMemo(() => ({ q: deferredSearch, status, limit: 20, offset }), [deferredSearch, status, offset]);
   const studentsQuery = useSchoolStudentsQuery(filters, canReadStudents && tab === "students");
-  const studentOptionsQuery = useSchoolStudentsQuery({ q: "", status: "active", limit: 100, offset: 0 }, canReadStudents && showEnrollment);
+  const studentOptionsQuery = useSchoolStudentsQuery({ q: deferredStudentSearch, status: "active", limit: 20, offset: 0 }, canReadStudents && showEnrollment);
   const enrollmentQuery = useSchoolStudentEnrollmentsQuery(academicYearID, canReadEnrollments && tab === "enrollments");
   const yearsQuery = useSchoolStudentAcademicYearsQuery(canReadYears && (canReadEnrollments || showEnrollment));
   const sectionsQuery = useSchoolStudentSectionsQuery(academicYearID, showEnrollment && canReadSections);
@@ -99,6 +102,8 @@ export function StudentManagementPage({ permissions }: Props) {
         enrolled_at: String(form.get("enrolled_at") ?? ""),
       });
       setShowEnrollment(false);
+      setStudentSearch("");
+      setSelectedStudentID("");
       setFeedback({ kind: "success", message: "Student enrolled successfully." });
     } catch (error) {
       setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to create the enrollment." });
@@ -131,7 +136,8 @@ export function StudentManagementPage({ permissions }: Props) {
       <div className="student-form-heading"><div><h2>Enroll student</h2><p>Choose an active academic year and a section belonging to that year.</p></div><button type="button" onClick={() => setShowEnrollment(false)} aria-label="Close form"><X size={18}/></button></div>
       {!canReadStudents ? <div className="student-feedback error">Student directory permission is required to select a student for enrollment.</div> :
       <form onSubmit={submitEnrollment}>
-        <label>Student<select name="student_id" defaultValue="" required><option value="" disabled>Select student</option>{(studentOptionsQuery.data?.students ?? []).filter(item => item.status === "active").map(item => <option key={item.id} value={item.id}>{item.full_name} · {item.admission_number}</option>)}</select></label>
+        <label>Find student<input type="search" value={studentSearch} onChange={event => { setStudentSearch(event.target.value); setSelectedStudentID(""); }} placeholder="Search name or admission number" autoComplete="off" aria-label="Search active students by name or admission number"/></label>
+        {studentOptionsQuery.isLoading ? <div className="student-state">Searching students…</div> : studentOptionsQuery.isError ? <div className="student-feedback error" role="alert">{studentOptionsQuery.error.message}<button type="button" className="student-secondary" onClick={() => void studentOptionsQuery.refetch()}>Try again</button></div> : <label>Student<select name="student_id" value={selectedStudentID} onChange={event => setSelectedStudentID(event.target.value)} required disabled={(studentOptionsQuery.data?.students.length ?? 0) === 0}><option value="" disabled>{deferredStudentSearch ? "Select a matching student" : "Search to find a student"}</option>{(studentOptionsQuery.data?.students ?? []).map(item => <option key={item.id} value={item.id}>{item.full_name} · {item.admission_number}</option>)}</select><small>{studentOptionsQuery.data?.pagination.total ?? 0} matching active students. Refine your search if needed.</small></label>}
         <label>Academic year<select name="academic_year_id" value={academicYearID || ""} onChange={event => setAcademicYearID(Number(event.target.value))} required><option value="" disabled>Select active year</option>{activeYears.map(year => <option key={year.id} value={year.id}>{year.name}{year.is_current ? " · Current" : ""}</option>)}</select></label>
         <label>Section<select name="section_id" defaultValue="" required disabled={!academicYearID || sectionsQuery.isLoading}><option value="" disabled>Select section</option>{sections.map(section => <option key={section.id} value={section.id}>{section.name}</option>)}</select></label>
         <label>Roll number<input name="roll_number" maxLength={30}/></label>
