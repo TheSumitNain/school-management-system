@@ -237,3 +237,15 @@ export function markSchoolAttendance(input: { enrollment_id: number; attendance_
 export function updateSchoolAttendance(attendanceID: number, input: { status: string; remarks?: string | null }) {
   return api<AttendanceMutationResponse>(`/school/attendance/${attendanceID}`, { method: "PATCH", body: JSON.stringify(input) });
 }
+
+
+export type EligibleSchoolTeacher = { principal_id: number; username: string };
+export type TeacherSubjectAssignment = { id: number; academic_year_id: number; section_id: number; section_name: string; class_name: string; subject_id: number; subject_name: string; teacher_principal_id: number; teacher_username: string; revoked_at?: string | null };
+export type ClassInchargeAssignment = { id: number; academic_year_id: number; section_id: number; section_name: string; class_name: string; teacher_principal_id: number; teacher_username: string; revoked_at?: string | null };
+export function getEligibleSchoolTeachers(signal?: AbortSignal) { return api<{ teachers: EligibleSchoolTeacher[] }>("/school/eligible-teachers", { signal }); }
+export function getTeacherSubjectAssignments(filters: { academicYearID?: number; sectionID?: number } = {}, signal?: AbortSignal) { const params = new URLSearchParams(); if (filters.academicYearID) params.set("academic_year_id", String(filters.academicYearID)); if (filters.sectionID) params.set("section_id", String(filters.sectionID)); const query = params.toString(); return api<{ assignments: TeacherSubjectAssignment[] }>("/school/teacher-assignments" + (query ? "?" + query : ""), { signal }); }
+export function createTeacherSubjectAssignment(input: { academic_year_id: number; section_id: number; subject_id: number; teacher_principal_id: number }) { return api<{ assignment: TeacherSubjectAssignment }>("/school/teacher-assignments", { method: "POST", body: JSON.stringify(input) }); }
+export function revokeTeacherSubjectAssignment(assignmentID: number) { return api<{ message: string }>("/school/teacher-assignments/" + assignmentID, { method: "DELETE" }); }
+export function getClassInchargeAssignments(academicYearID?: number, signal?: AbortSignal) { const query = academicYearID ? "?academic_year_id=" + academicYearID : ""; return api<{ assignments: ClassInchargeAssignment[] }>("/school/class-incharge-assignments" + query, { signal }); }
+export function createClassInchargeAssignment(input: { academic_year_id: number; section_id: number; teacher_principal_id: number }) { return api<{ assignment: ClassInchargeAssignment }>("/school/class-incharge-assignments", { method: "POST", body: JSON.stringify(input) }); }
+export function revokeClassInchargeAssignment(assignmentID: number) { return api<{ message: string }>("/school/class-incharge-assignments/" + assignmentID, { method: "DELETE" }); }
