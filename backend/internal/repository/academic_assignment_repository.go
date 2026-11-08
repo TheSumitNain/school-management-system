@@ -169,3 +169,52 @@ func (r *AcademicRepository) RevokeClassInchargeAssignment(ctx context.Context,a
 	if err=tx.Commit(ctx);err!=nil{return fmt.Errorf("commit class in-charge assignment revocation: %w",err)}
 	return nil
 }
+
+
+// EligibleTeacher is an active, same-school staff principal with the system Teacher role.
+type EligibleTeacher struct {
+	PrincipalID int64 `json:"principal_id"`
+	Username    string `json:"username"`
+}
+
+func (r *AcademicRepository) ListEligibleTeachers(ctx context.Context, actorID, schoolID int64) ([]EligibleTeacher, error) {
+	if r == nil || r.db == nil {
+		return nil, ErrAcademicAccessDenied
+	}
+	if err := authorizeAcademic(ctx, r.db, actorID, schoolID, "teacher_assignments.read"); err != nil {
+		return nil, err
+	}
+	rows, err := r.db.Query(ctx, `
+		SELECT ap.id, u.username
+		  FROM users u
+		  JOIN auth_principals ap ON ap.id = u.principal_id
+		  JOIN principal_roles pr ON pr.principal_id = ap.id AND pr.revoked_at IS NULL
+		  JOIN roles r ON r.id = pr.role_id
+		 WHERE u.school_id = $1
+		   AND u.status = 'active'
+		   AND ap.principal_type = 'staff'
+		   AND ap.status = 'active'
+		   AND r.school_id = $1
+		   AND r.scope_type = 'school'
+		   AND r.principal_type = 'staff'
+		   AND r.role_key = 'teacher'
+		   AND r.is_system = TRUE
+		 ORDER BY LOWER(u.username), ap.id
+	`, schoolID)
+	if err != nil {
+		return nil, fmt.Errorf("list eligible school teachers: %w", err)
+	}
+	defer rows.Close()
+	items := make([]EligibleTeacher, 0)
+	for rows.Next() {
+		var item EligibleTeacher
+		if err := rows.Scan(&item.PrincipalID, &item.Username); err != nil {
+			return nil, fmt.Errorf("scan eligible school teacher: %w", err)
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate eligible school teachers: %w", err)
+	}
+	return items, nil
+}
