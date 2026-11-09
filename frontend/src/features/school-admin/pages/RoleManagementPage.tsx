@@ -131,7 +131,7 @@ export function RoleManagementPage({ permissions }: Props) {
         <div className="role-page-count"><ShieldCheck size={16}/>{roles.length} roles</div>
       </div>
 
-      {canCreate && <section className="role-create-panel"><div><h2>Create a custom role</h2><p>Use a clear name that describes the staff responsibility.</p></div><button type="button" className="primary" onClick={() => {setName("");setNameError("");setCreateDialogOpen(true);}}><Plus size={15}/> Create role</button></section>}
+      {canCreate && <section className="role-create-panel"><div><h2>Create a custom role</h2><p>Use a clear name that describes the staff responsibility.</p></div><button type="button" className="primary" onClick={() => {create.reset();setFeedback("");setName("");setNameError("");setCreateDialogOpen(true);}}><Plus size={15}/> Create role</button></section>}
 
       <section className="role-list-panel">
         <div className="role-section-heading"><div><h2>School roles</h2><p>Select a custom role to review its permission grants.</p></div><button type="button" className="role-refresh" onClick={() => void rolesQuery.refetch()} disabled={rolesQuery.isFetching} aria-label="Refresh roles"><RefreshCw size={15}/></button></div>
@@ -171,7 +171,7 @@ export function RoleManagementPage({ permissions }: Props) {
           {canManagePermissions ? (
             <div className="role-grant-form">
               <p>Only active permissions explicitly delegated by the Platform Admin can be assigned to this role.</p>
-              <button type="button" className="primary" onClick={() => {setPermissionKey("");setGrantFieldError("");setGrantDialogOpen(true);}} disabled={availableDelegations.length===0 || delegationsQuery.isLoading}><Plus size={15}/> Add delegated permission</button>
+              <button type="button" className="primary" onClick={() => {grant.reset();setFeedback("");setPermissionKey("");setGrantFieldError("");setGrantDialogOpen(true);}} disabled={availableDelegations.length===0 || delegationsQuery.isLoading}><Plus size={15}/> Add delegated permission</button>
               {!delegationsQuery.isPending && !delegationsQuery.isError && availableDelegations.length===0 && <small>No unused permissions have an active Platform Admin delegation for this school.</small>}
             </div>
           ) : <p className="role-readonly-note"><AlertTriangle size={15}/> You can view permissions but do not have both permissions required to change this role.</p>}
