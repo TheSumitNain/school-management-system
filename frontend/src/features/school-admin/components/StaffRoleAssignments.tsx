@@ -31,6 +31,7 @@ export function StaffRoleAssignments({ staff, canAssign }: Props) {
     mutationFn: () => assignStaffRole(staff.principal_id, Number(roleID)),
     onSuccess: async () => {
       setRoleID("");
+      setRoleError("");
       setFeedback("Role assigned. New permissions apply on the next protected request.");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["school-admin", "staff-roles", staff.principal_id] }),
@@ -69,7 +70,7 @@ export function StaffRoleAssignments({ staff, canAssign }: Props) {
             {canAssign && item.role_key !== "school_admin" && <button type="button" disabled={busy} aria-label={`Remove ${item.name} role`} title="Remove role" onClick={() => {revoke.reset();setRoleToRevoke({id:item.role_id,name:item.name});}}><Trash2 size={15}/></button>}
           </li>)}</ul> : <p className="staff-role-message">No additional roles assigned.</p>}
           {canAssign && <form className="staff-role-assign" onSubmit={submitAssign}>
-            <label htmlFor={`role-select-${staff.principal_id}`}>Assign a role</label>
+            <label>Assign a role</label>
             <div><Select ariaLabel={`Role to assign to ${staff.username}`} value={roleID} onChange={value=>{setRoleID(value);setRoleError("");}} disabled={busy||availableRoles.length===0} placeholder="Choose an available role" options={availableRoles.map(role=>({value:String(role.id),label:role.name+(role.is_system?" (system)":" (custom)")}))}/>{roleError&&<small className="app-field-error" id={`role-select-error-${staff.principal_id}`} role="alert">{roleError}</small>}<button className="primary" type="submit" disabled={busy||availableRoles.length===0}><Check size={15}/>{assign.isPending?"Assigning…":"Assign"}</button></div>
             {availableRoles.length === 0 && <small>There are no other assignable roles available.</small>}
           </form>}
