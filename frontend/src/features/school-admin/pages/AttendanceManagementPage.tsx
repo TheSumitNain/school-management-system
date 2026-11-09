@@ -95,14 +95,13 @@ export function AttendanceManagementPage({ permissions }: Props) {
   }
 
   if (!canRead) {
-    return <section className="attendance-page"><div className="attendance-state"><b>Attendance access unavailable</b><span>Your account does not have attendance.read permission.</span></div></section>;
+    return <section className="content attendance-page"><div className="attendance-state"><b>Attendance access unavailable</b><span>Your account does not have attendance.read permission.</span></div></section>;
   }
 
   return (
     <section className="attendance-page">
-      <div className="attendance-heading">
-        <div><span className="attendance-eyebrow">SCHOOL OPERATIONS</span><h1>Attendance</h1><p>Review the class roster and record daily attendance.</p></div>
-        <div className="attendance-heading-icon"><CalendarDays size={22}/></div>
+      <div className="heading">
+        <div><span className="eyebrow">SCHOOL OPERATIONS</span><h1>Attendance</h1><p>Review the class roster and record daily attendance.</p></div>
       </div>
 
       <div className="attendance-filters">
