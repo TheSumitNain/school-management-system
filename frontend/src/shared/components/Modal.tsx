@@ -18,6 +18,8 @@ export function Modal({ open, title, description, onClose, children, closeDisabl
   const descriptionID = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!open) return;
@@ -31,7 +33,7 @@ export function Modal({ open, title, description, onClose, children, closeDisabl
       first?.focus();
     });
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !closeDisabled) onClose();
+      if (event.key === "Escape" && !closeDisabled) onCloseRef.current();
       if (event.key !== "Tab" || !dialogRef.current) return;
       const items = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(
         "a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])",
@@ -49,7 +51,7 @@ export function Modal({ open, title, description, onClose, children, closeDisabl
       document.body.style.overflow = previousOverflow;
       previousFocus.current?.focus();
     };
-  }, [open, onClose, closeDisabled]);
+  }, [open, closeDisabled]);
 
   if (!open) return null;
   return createPortal(
