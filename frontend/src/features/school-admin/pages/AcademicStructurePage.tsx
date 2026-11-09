@@ -108,7 +108,7 @@ export function AcademicStructurePage({permissions}:Props) {
         {item==="year"?<CalendarDays size={16}/>:item==="class"?<BookOpen size={16}/>:item==="section"?<Layers3 size={16}/>:item==="assignments"?<UsersRound size={16}/>:<FlaskConical size={16}/>} {titles[item]}
       </button>)}
     </div>
-    {feedback&&<div className={"academic-feedback "+feedback.kind} role="status">{feedback.message}</div>}
+    {feedback&&!(action&&feedback.kind==="error")&&<div className={"academic-feedback "+feedback.kind} role="status">{feedback.message}</div>}
     {error&&<div className="academic-feedback error" role="alert">{error}</div>}
     <Modal open={Boolean(action)} title={action ? (currentRecord?"Edit":"Add")+" "+(action.kind==="year"?"academic year":action.kind==="class"?"class":action.kind==="section"?"section":"subject") : ""} description="Enter the details carefully. Required fields are marked by the form controls." onClose={close} closeDisabled={saving}>
       {action && <>
