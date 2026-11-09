@@ -12,11 +12,13 @@ type Props = {
   disabled?: boolean;
   ariaLabel: string;
   className?: string;
+  invalid?: boolean;
+  describedBy?: string;
 };
 
 export function Select({
   value, options, onChange, placeholder = "Select an option", disabled = false,
-  ariaLabel, className = "",
+  ariaLabel, className = "", invalid = false, describedBy,
 }: Props) {
   const generatedID = useId();
   const [open, setOpen] = useState(false);
@@ -102,6 +104,8 @@ export function Select({
         type="button"
         className="app-select-trigger"
         aria-label={ariaLabel}
+        aria-invalid={invalid || undefined}
+        aria-describedby={describedBy}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={generatedID}
