@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import "./DatePicker.css";
 
@@ -20,6 +20,7 @@ const fromISO = (value: string) => {
 
 export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = false }: Props) {
   const selected = fromISO(value);
+  const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [visibleMonth, setVisibleMonth] = useState(() => {
     const initial = selected ?? new Date();
@@ -34,6 +35,22 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
   ], [firstWeekday, daysInMonth]);
   const today = toISO(new Date());
 
+  useEffect(() => {
+    if (!open) return;
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (event.target instanceof Node && !rootRef.current?.contains(event.target)) setOpen(false);
+    };
+    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePointer);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
   function changeMonth(offset: number) {
     setVisibleMonth(current => new Date(current.getFullYear(), current.getMonth() + offset, 1));
   }
@@ -46,7 +63,7 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
   }
 
   return (
-    <div className="app-date-picker">
+    <div ref={rootRef} className="app-date-picker">
       <button
         type="button"
         className="app-date-trigger"
@@ -69,7 +86,7 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
         <div className="app-date-popover" role="dialog" aria-label={`Choose ${ariaLabel.toLowerCase()}`}>
           <div className="app-date-header">
             <button type="button" onClick={() => changeMonth(-1)} aria-label="Previous month"><ChevronLeft size={17}/></button>
-            <strong>{monthLabel}</strong>
+            <strong aria-live="polite">{monthLabel}</strong>
             <button type="button" onClick={() => changeMonth(1)} aria-label="Next month"><ChevronRight size={17}/></button>
           </div>
           <div className="app-date-grid" role="grid" aria-label={monthLabel}>
