@@ -97,6 +97,7 @@ export function StaffManagementPage({ permissions }: Props) {
       setStaffToDisable(null);
       setFeedback({ kind: "success", message: `${item.username} has been disabled and active sessions revoked.` });
     } catch (error) {
+      setStaffToDisable(null);
       setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to disable this account." });
     }
   }
