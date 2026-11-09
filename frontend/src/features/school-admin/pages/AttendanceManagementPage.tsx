@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, Check, RefreshCw } from "lucide-react";
+import { Check, RefreshCw } from "lucide-react";
 import {
   useSchoolAttendanceQuery, useMarkSchoolAttendanceMutation, useUpdateSchoolAttendanceMutation,
   useSchoolStudentAcademicYearsQuery, useSchoolStudentEnrollmentsQuery, useSchoolStudentSectionsQuery,
