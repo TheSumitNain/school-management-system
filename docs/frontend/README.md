@@ -28,6 +28,20 @@ These requirements apply to every frontend page and shared component:
 - **Polished alignment and interaction:** maintain consistent grids, spacing, alignment, responsive behavior, transitions and interaction feedback. Avoid layout shifts, clipped content, overlapping elements, flicker and inconsistent page-to-page behavior.
 - **Accessibility:** provide keyboard navigation, visible focus indicators, sufficient contrast in every theme, semantic controls and labels, and reduced-motion support. Do not communicate status by color alone.
 
+## Cross-browser and cross-device UI consistency (mandatory)
+
+The application must present one coherent, theme-matched interface across supported browsers and devices, including Chrome, Edge, Firefox, Safari and Apple platforms. Treat browser/OS defaults as implementation differences to manage, not as the product design.
+
+- **Normalize native controls centrally:** define shared CSS for select, option/optgroup, date/time inputs, checkbox, radio, range, buttons, text inputs, textarea, placeholder, focus, autofill, text selection and scrollbars. Use semantic theme tokens for surfaces, text, borders, accent/checked states and focus indicators. Do not rely on browser-default blue selection, focus or accent colors.
+- **Avoid per-page browser fixes:** shared control normalization belongs in the global theme layer. Page CSS may set layout and dimensions, but must not reintroduce platform-default control colors or inconsistent control chrome.
+- **Select menus:** style the closed select control and option colors where the browser permits. Native OS select popups may ignore some CSS and can still differ by browser/OS. If a workflow requires fully controlled option hover/selected states and consistent popup appearance, use a shared accessible custom select/listbox component with keyboard navigation, screen-reader semantics, focus management and touch support.
+- **Date/time pickers:** style the input field and supported calendar indicator, but do not assume CSS can theme the native calendar popup consistently. If identical calendar UI is a product requirement, build or adopt one shared accessible date-picker component rather than depending on the OS-native popup.
+- **Custom controls must preserve behavior:** do not remove native semantics, keyboard support, labels, validation, form submission, autofill or accessibility merely to make controls look alike. Prefer native controls when their visual differences are acceptable; use custom components only where cross-platform visual parity is necessary.
+- **Browser rendering limits:** identical pixel rendering cannot be guaranteed across different OS font rasterizers, system fonts, device pixel ratios and browser engines. Use bundled/consistent typography where licensing permits, explicit sizing/line-height, CSS normalization and responsive acceptance tests to keep the experience materially consistent.
+- **Test real engines and devices:** verify Chromium, Firefox and WebKit/Safari, including iOS/iPadOS Safari and macOS Safari where supported. Check light/dark themes, keyboard and touch interaction, zoom, reduced motion, forced-colors/high-contrast mode, autofill, native popup behavior and narrow viewports. Record unavoidable native UI differences and replace them with app-owned components only when needed.
+
+Acceptance criterion: no unintentional browser-default colors or control styling may leak into the product UI. Any remaining native popup difference must be documented and explicitly accepted, or replaced by a shared accessible custom component.
+
 ## Performance, loading and reliability requirements
 
 The application must feel fast and remain lightweight. Performance is a product requirement, not a later optimization:
