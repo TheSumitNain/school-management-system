@@ -189,7 +189,7 @@ export function RoleManagementPage({ permissions }: Props) {
           <input id="custom-role-name" value={name} onChange={event => {setName(event.target.value);if(event.target.value.trim().length>=2)setNameError("");}} minLength={2} maxLength={120} placeholder="e.g. Library Coordinator" required aria-invalid={Boolean(nameError)} aria-describedby={nameError ? "custom-role-name-error" : "custom-role-name-help"}/>
           <small id="custom-role-name-help">Use a name that clearly explains what this staff role is responsible for.</small>
           {nameError && <small className="app-field-error" id="custom-role-name-error">{nameError}</small>}
-          <div className="app-modal-actions"><button type="button" className="app-modal-cancel" onClick={() => setCreateDialogOpen(false)} disabled={create.isPending}>Cancel</button><button className="primary" type="submit" disabled={create.isPending || name.trim().length<2}>{create.isPending?"Creating…":"Create role"}</button></div>
+          <div className="app-modal-actions"><button type="button" className="app-modal-cancel" onClick={() => setCreateDialogOpen(false)} disabled={create.isPending}>Cancel</button><button className="primary" type="submit" disabled={create.isPending}>{create.isPending?"Creating…":"Create role"}</button></div>
         </form>
       </Modal>
       <Modal open={grantDialogOpen} title="Grant a delegated permission" description={selectedRole ? `Choose a permission to add to the ${selectedRole.name} role. Only active delegations that allow role assignment are available.` : ""} onClose={()=>setGrantDialogOpen(false)} closeDisabled={grant.isPending}>
