@@ -6,6 +6,7 @@ import {
   useOnboardSchoolMutation,
   usePlatformAdminsQuery,
 } from "../queries";
+import { Modal } from "../../../shared/components/Modal";
 import "./PlatformAdminPage.css";
 
 type Props = { permissions: string[] };
@@ -18,6 +19,9 @@ export function PlatformAdminPage({ permissions }: Props) {
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
   const [showAdminPassword, setShowAdminPassword] = useState(false);
   const [showSchoolAdminPassword, setShowSchoolAdminPassword] = useState(false);
+  const [adminDialogOpen, setAdminDialogOpen] = useState(false);
+  const [schoolDialogOpen, setSchoolDialogOpen] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const adminsQuery = usePlatformAdminsQuery(canManageAdmins);
   const createAdmin = useCreatePlatformAdminMutation();
@@ -28,13 +32,19 @@ export function PlatformAdminPage({ permissions }: Props) {
     event.preventDefault();
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
+    const email = String(form.get("email") ?? "").trim();
+    const password = String(form.get("password") ?? "");
+    const errors: Record<string, string> = {};
+    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) errors.email = "Enter a valid email address.";
+    if (password.length < 12) errors.password = "Password must contain at least 12 characters.";
+    setFieldErrors(errors);
+    if (Object.keys(errors).length) return;
     setFeedback(null);
     try {
-      const result = await createAdmin.mutateAsync({
-        email: String(form.get("email") ?? "").trim(),
-        password: String(form.get("password") ?? ""),
+      const result = await createAdmin.mutateAsync({ email, password,
       });
       formElement.reset();
+      setAdminDialogOpen(false);
       setFeedback({
         kind: "success",
         message: `Platform Admin ${result.admin.email} created. MFA enrollment is required at first sign-in.`,
@@ -48,15 +58,25 @@ export function PlatformAdminPage({ permissions }: Props) {
     event.preventDefault();
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
+    const name = String(form.get("name") ?? "").trim();
+    const code = String(form.get("code") ?? "").trim();
+    const username = String(form.get("school_admin_username") ?? "").trim();
+    const password = String(form.get("school_admin_initial_password") ?? "");
+    const errors: Record<string, string> = {};
+    if (!name) errors.name = "Enter the school name.";
+    if (!/^[A-Za-z0-9][A-Za-z0-9_-]{1,49}$/.test(code)) errors.code = "Use 2–50 letters, numbers, underscores or hyphens; start with a letter or number.";
+    if (!/^[A-Za-z0-9][A-Za-z0-9._-]{2,31}$/.test(username)) errors.school_admin_username = "Use 3–32 letters, numbers, dots, underscores or hyphens.";
+    if (password.length < 12) errors.school_admin_initial_password = "Password must contain at least 12 characters.";
+    setFieldErrors(errors);
+    if (Object.keys(errors).length) return;
     setFeedback(null);
     try {
       const result = await onboardSchool.mutateAsync({
-        name: String(form.get("name") ?? "").trim(),
-        code: String(form.get("code") ?? "").trim(),
-        school_admin_username: String(form.get("school_admin_username") ?? "").trim(),
-        school_admin_initial_password: String(form.get("school_admin_initial_password") ?? ""),
+        name, code, school_admin_username: username,
+        school_admin_initial_password: password,
       });
       formElement.reset();
+      setSchoolDialogOpen(false);
       setFeedback({
         kind: "success",
         message: `School ${result.school.name} (${result.school.code}) created. School Admin username: ${result.school_admin.username}. They must change the initial password after sign-in.`,
@@ -105,31 +125,27 @@ export function PlatformAdminPage({ permissions }: Props) {
               : <div className="table-message">No Platform Admin accounts found.</div>}
           </section>
 
-          <section className="form-panel platform-form-panel">
-            <div className="platform-form-title"><UserPlus size={19}/><div><h2>Create Platform Admin</h2><p>New accounts must enroll MFA on first sign-in.</p></div></div>
-            <form onSubmit={submitAdmin}>
-              <label>Email address<input name="email" type="email" autoComplete="email" maxLength={254} required /></label>
-              <label>Initial password<div className="password-input-wrap"><input name="password" type={showAdminPassword ? "text" : "password"} autoComplete="new-password" minLength={12} required /><button className="password-visibility" type="button" aria-label={showAdminPassword ? "Hide initial password" : "Show initial password"} aria-pressed={showAdminPassword} onClick={() => setShowAdminPassword(value => !value)}>{showAdminPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div><small>At least 12 characters. The server also checks password safety.</small></label>
-              <button className="primary" type="submit" disabled={createAdmin.isPending}>{createAdmin.isPending ? "Creating account…" : "Create Platform Admin"}</button>
-            </form>
-          </section>
+          <div className="platform-create-action"><p>Create an additional global administrator account. New accounts must enroll MFA on first sign-in.</p><button type="button" className="primary" onClick={() => {setFieldErrors({});setAdminDialogOpen(true);}}><UserPlus size={16}/> Create Platform Admin</button></div>
         </div>
       )}
 
-      {activeTab === "school" && canOnboardSchool && (
-        <section className="form-panel platform-form-panel platform-school-form">
-          <div className="platform-form-title"><Building2 size={19}/><div><h2>Onboard a new school</h2><p>Create the school and its first School Admin account together.</p></div></div>
-          <form onSubmit={submitSchool}>
-            <div className="platform-form-fields">
-              <label>School name<input name="name" autoComplete="organization" maxLength={150} required /></label>
-              <label>School code<input name="code" autoCapitalize="characters" minLength={2} maxLength={50} pattern="[A-Za-z0-9][A-Za-z0-9_-]{1,49}" title="Use 2–50 letters, numbers, underscores or hyphens; start with a letter or number." required /></label>
-              <label>School Admin username<input name="school_admin_username" autoComplete="username" autoCapitalize="none" minLength={3} maxLength={32} pattern="[A-Za-z0-9][A-Za-z0-9._-]{2,31}" title="Use 3–32 letters, numbers, dots, underscores or hyphens; start with a letter or number." required /></label>
-              <label>Initial password<div className="password-input-wrap"><input name="school_admin_initial_password" type={showSchoolAdminPassword ? "text" : "password"} autoComplete="new-password" minLength={12} required /><button className="password-visibility" type="button" aria-label={showSchoolAdminPassword ? "Hide initial password" : "Show initial password"} aria-pressed={showSchoolAdminPassword} onClick={() => setShowSchoolAdminPassword(value => !value)}>{showSchoolAdminPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div><small>At least 12 characters. The School Admin must change it after signing in.</small></label>
-            </div>
-            <button className="primary" type="submit" disabled={onboardSchool.isPending}>{onboardSchool.isPending ? "Creating school…" : "Create school and School Admin"}</button>
-          </form>
-        </section>
-      )}
+      {activeTab === "school" && canOnboardSchool && <section className="platform-create-action"><p>Create a school and its first School Admin account together.</p><button type="button" className="primary" onClick={() => {setFieldErrors({});setSchoolDialogOpen(true);}}><Building2 size={16}/> Onboard a new school</button></section>}
+      <Modal open={adminDialogOpen} title="Create Platform Admin" description="The new administrator must enroll multi-factor authentication on first sign-in." onClose={() => setAdminDialogOpen(false)} closeDisabled={createAdmin.isPending}>
+        <form onSubmit={submitAdmin} noValidate>
+          <label>Email address<input name="email" type="email" autoComplete="email" maxLength={254} required aria-invalid={Boolean(fieldErrors.email)}/>{fieldErrors.email && <small className="app-field-error">{fieldErrors.email}</small>}</label>
+          <label>Initial password<div className="password-input-wrap"><input name="password" type={showAdminPassword ? "text" : "password"} autoComplete="new-password" minLength={12} required aria-invalid={Boolean(fieldErrors.password)}/><button className="password-visibility" type="button" aria-label={showAdminPassword ? "Hide initial password" : "Show initial password"} aria-pressed={showAdminPassword} onClick={() => setShowAdminPassword(value => !value)}>{showAdminPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div><small>At least 12 characters. The server also checks password safety.</small>{fieldErrors.password && <small className="app-field-error">{fieldErrors.password}</small>}</label>
+          <div className="app-modal-actions"><button type="button" className="platform-inline-button" onClick={() => setAdminDialogOpen(false)} disabled={createAdmin.isPending}>Cancel</button><button className="primary" type="submit" disabled={createAdmin.isPending}>{createAdmin.isPending ? "Creating account…" : "Create Platform Admin"}</button></div>
+        </form>
+      </Modal>
+      <Modal open={schoolDialogOpen} title="Onboard a new school" description="Create the school and its first School Admin account together. The admin must change the initial password after signing in." onClose={() => setSchoolDialogOpen(false)} closeDisabled={onboardSchool.isPending}>
+        <form onSubmit={submitSchool} noValidate>
+          <label>School name<input name="name" autoComplete="organization" maxLength={150} required aria-invalid={Boolean(fieldErrors.name)}/>{fieldErrors.name && <small className="app-field-error">{fieldErrors.name}</small>}</label>
+          <label>School code<input name="code" autoCapitalize="characters" minLength={2} maxLength={50} pattern="[A-Za-z0-9][A-Za-z0-9_-]{1,49}" required aria-invalid={Boolean(fieldErrors.code)}/><small>Use 2–50 letters, numbers, underscores or hyphens; start with a letter or number.</small>{fieldErrors.code && <small className="app-field-error">{fieldErrors.code}</small>}</label>
+          <label>School Admin username<input name="school_admin_username" autoComplete="username" autoCapitalize="none" minLength={3} maxLength={32} pattern="[A-Za-z0-9][A-Za-z0-9._-]{2,31}" required aria-invalid={Boolean(fieldErrors.school_admin_username)}/><small>Use 3–32 letters, numbers, dots, underscores or hyphens.</small>{fieldErrors.school_admin_username && <small className="app-field-error">{fieldErrors.school_admin_username}</small>}</label>
+          <label>Initial password<div className="password-input-wrap"><input name="school_admin_initial_password" type={showSchoolAdminPassword ? "text" : "password"} autoComplete="new-password" minLength={12} required aria-invalid={Boolean(fieldErrors.school_admin_initial_password)}/><button className="password-visibility" type="button" aria-label={showSchoolAdminPassword ? "Hide initial password" : "Show initial password"} aria-pressed={showSchoolAdminPassword} onClick={() => setShowSchoolAdminPassword(value => !value)}>{showSchoolAdminPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div><small>At least 12 characters. The School Admin must change it after signing in.</small>{fieldErrors.school_admin_initial_password && <small className="app-field-error">{fieldErrors.school_admin_initial_password}</small>}</label>
+          <div className="app-modal-actions"><button type="button" className="platform-inline-button" onClick={() => setSchoolDialogOpen(false)} disabled={onboardSchool.isPending}>Cancel</button><button className="primary" type="submit" disabled={onboardSchool.isPending}>{onboardSchool.isPending ? "Creating school…" : "Create school and School Admin"}</button></div>
+        </form>
+      </Modal>
     </div>
   );
 }
