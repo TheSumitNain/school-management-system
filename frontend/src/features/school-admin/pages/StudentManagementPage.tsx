@@ -7,6 +7,7 @@ import {
 } from "../queries";
 import type { StudentProfile } from "../api";
 import { Select } from "../../../shared/components/Select";
+import { DatePicker } from "../../../shared/components/DatePicker";
 import { Modal } from "../../../shared/components/Modal";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import "./StudentManagementPage.css";
@@ -40,6 +41,8 @@ export function StudentManagementPage({ permissions }: Props) {
   const deferredStudentSearch = useDeferredValue(studentSearch.trim());
   const [selectedStudentID, setSelectedStudentID] = useState("");
   const [academicYearID, setAcademicYearID] = useState(0);
+  const [selectedSectionID, setSelectedSectionID] = useState("");
+  const [enrolledAt, setEnrolledAt] = useState(localDateValue);
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [studentToArchive, setStudentToArchive] = useState<StudentProfile | null>(null);
@@ -126,13 +129,15 @@ export function StudentManagementPage({ permissions }: Props) {
       await createEnrollment.mutateAsync({
         student_id: Number(form.get("student_id")),
         academic_year_id: Number(form.get("academic_year_id")),
-        section_id: Number(form.get("section_id")),
+        section_id: Number(selectedSectionID),
         roll_number: String(form.get("roll_number") ?? "").trim() || null,
-        enrolled_at: String(form.get("enrolled_at") ?? ""),
+        enrolled_at: enrolledAt,
       });
       setShowEnrollment(false);
       setStudentSearch("");
       setSelectedStudentID("");
+      setSelectedSectionID("");
+      setEnrolledAt(localDateValue());
       setFeedback({ kind: "success", message: "Student enrolled successfully." });
     } catch (error) {
       setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to create the enrollment." });
@@ -145,7 +150,7 @@ export function StudentManagementPage({ permissions }: Props) {
       <div><span className="eyebrow">PEOPLE & LEARNING</span><h1>Students</h1><p>Manage student records and school-year enrollments.</p></div>
       <div className="student-heading-actions">
         {canCreate && canReadStudents && tab === "students" && <button className="primary" type="button" onClick={() => openStudent("create")}><Plus size={16}/> Add student</button>}
-        {canCreate && canReadStudents && canReadEnrollments && canReadYears && canReadSections && tab === "enrollments" && <button className="primary" type="button" onClick={() => setShowEnrollment(true)}><Plus size={16}/> Enroll student</button>}
+        {canCreate && canReadStudents && canReadEnrollments && canReadYears && canReadSections && tab === "enrollments" && <button className="primary" type="button" onClick={() => {setFieldErrors({});setFeedback(null);setStudentSearch("");setSelectedStudentID("");setAcademicYearID(activeYears.find(year=>year.is_current)?.id??activeYears[0]?.id??0);setSelectedSectionID("");setEnrolledAt(localDateValue());setShowEnrollment(true);}}><Plus size={16}/> Enroll student</button>}
       </div>
     </div>
     <div className="student-tabs" role="tablist" aria-label="Student management">
@@ -166,13 +171,13 @@ export function StudentManagementPage({ permissions }: Props) {
       {!canReadStudents ? <div className="student-feedback error">Student directory permission is required to select a student for enrollment.</div> :
       <form onSubmit={submitEnrollment} noValidate>
         <label>Find student<input type="search" value={studentSearch} onChange={event => { setStudentSearch(event.target.value); setSelectedStudentID(""); setFieldErrors(current => ({...current, student_id: ""})); }} placeholder="Search name or admission number" autoComplete="off" aria-label="Search active students by name or admission number"/></label>
-        {studentOptionsQuery.isLoading ? <div className="student-state">Searching students…</div> : studentOptionsQuery.isError ? <div className="student-feedback error" role="alert">{studentOptionsQuery.error.message}<button type="button" className="student-secondary" onClick={() => void studentOptionsQuery.refetch()}>Try again</button></div> : <label>Student<select name="student_id" value={selectedStudentID} onChange={event => {setSelectedStudentID(event.target.value);setFieldErrors(current=>({...current,student_id:""}));}} required disabled={(studentOptionsQuery.data?.students.length ?? 0) === 0} aria-invalid={Boolean(fieldErrors.student_id)}><option value="" disabled>{deferredStudentSearch ? "Select a matching student" : "Search to find a student"}</option>{(studentOptionsQuery.data?.students ?? []).map(item => <option key={item.id} value={item.id}>{item.full_name} · {item.admission_number}</option>)}</select><small>{studentOptionsQuery.data?.pagination.total ?? 0} matching active students. Refine your search if needed.</small>{fieldErrors.student_id && <small className="app-field-error">{fieldErrors.student_id}</small>}</label>}
-        <label>Academic year<select name="academic_year_id" value={academicYearID || ""} onChange={event => {setAcademicYearID(Number(event.target.value));setFieldErrors(current=>({...current,academic_year_id:"",section_id:""}));}} required aria-invalid={Boolean(fieldErrors.academic_year_id)}><option value="" disabled>Select active year</option>{activeYears.map(year => <option key={year.id} value={year.id}>{year.name}{year.is_current ? " · Current" : ""}</option>)}</select>{fieldErrors.academic_year_id && <small className="app-field-error">{fieldErrors.academic_year_id}</small>}</label>
-        <label>Section<select name="section_id" defaultValue="" required disabled={!academicYearID || sectionsQuery.isLoading} aria-invalid={Boolean(fieldErrors.section_id)} onChange={() => setFieldErrors(current=>({...current,section_id:""}))}><option value="" disabled>Select section</option>{sections.map(section => <option key={section.id} value={section.id}>{section.name}</option>)}</select>{fieldErrors.section_id && <small className="app-field-error">{fieldErrors.section_id}</small>}</label>
+        {studentOptionsQuery.isLoading ? <div className="student-state">Searching students…</div> : studentOptionsQuery.isError ? <div className="student-feedback error" role="alert">{studentOptionsQuery.error.message}<button type="button" className="student-secondary" onClick={() => void studentOptionsQuery.refetch()}>Try again</button></div> : <label>Student<Select ariaLabel="Student" value={selectedStudentID} onChange={value => {setSelectedStudentID(value);setFieldErrors(current=>({...current,student_id:""}));}} placeholder={deferredStudentSearch ? "Select a matching student" : "Search to find a student"} disabled={(studentOptionsQuery.data?.students.length ?? 0) === 0} options={(studentOptionsQuery.data?.students ?? []).map(item=>({value:String(item.id),label:`${item.full_name} · ${item.admission_number}`}))}/><small>{studentOptionsQuery.data?.pagination.total ?? 0} matching active students. Refine your search if needed.</small>{fieldErrors.student_id && <small className="app-field-error" role="alert">{fieldErrors.student_id}</small>}</label>}
+        <label>Academic year<Select ariaLabel="Enrollment academic year" value={String(academicYearID||"")} onChange={value=>{setAcademicYearID(Number(value));setSelectedSectionID("");setFieldErrors(current=>({...current,academic_year_id:"",section_id:""}));}} placeholder="Select active year" options={activeYears.map(year=>({value:String(year.id),label:year.name+(year.is_current?" · Current":"")}))}/>{fieldErrors.academic_year_id&&<small className="app-field-error" role="alert">{fieldErrors.academic_year_id}</small>}</label>
+        <label>Section<Select ariaLabel="Enrollment section" value={selectedSectionID} onChange={value=>{setSelectedSectionID(value);setFieldErrors(current=>({...current,section_id:""}));}} placeholder="Select section" disabled={!academicYearID||sectionsQuery.isLoading||sections.length===0} options={sections.map(section=>({value:String(section.id),label:section.name}))}/>{fieldErrors.section_id&&<small className="app-field-error" role="alert">{fieldErrors.section_id}</small>}</label>
         <label>Roll number<input name="roll_number" maxLength={30}/><small>Optional. Leave blank if roll numbers have not been assigned yet.</small></label>
-        <label>Enrollment date<input name="enrolled_at" type="date" defaultValue={localDateValue()} required aria-invalid={Boolean(fieldErrors.enrolled_at)}/>{fieldErrors.enrolled_at && <small className="app-field-error">{fieldErrors.enrolled_at}</small>}</label>
+        <label>Enrollment date<DatePicker ariaLabel="Enrollment date" value={enrolledAt} onChange={value=>{setEnrolledAt(value);setFieldErrors(current=>({...current,enrolled_at:""}));}} max={localDateValue()}/>{fieldErrors.enrolled_at&&<small className="app-field-error" role="alert">{fieldErrors.enrolled_at}</small>}</label>
         {sectionsQuery.isError && <div className="student-feedback error" role="alert">{sectionsQuery.error.message}</div>}
-        <div className="app-modal-actions"><button type="button" className="student-secondary" onClick={() => setShowEnrollment(false)} disabled={busy}>Cancel</button><button className="primary" disabled={busy || !selectedStudentID || studentOptionsQuery.isLoading || studentOptionsQuery.isError || activeYears.length === 0 || sections.length === 0}>{busy ? "Enrolling…" : "Create enrollment"}</button></div>
+        <div className="app-modal-actions"><button type="button" className="student-secondary" onClick={() => setShowEnrollment(false)} disabled={busy}>Cancel</button><button className="primary" disabled={busy || studentOptionsQuery.isLoading || studentOptionsQuery.isError || activeYears.length === 0 || sectionsQuery.isLoading || sectionsQuery.isError}>{busy ? "Enrolling…" : "Create enrollment"}</button></div>
       </form>}
     </Modal>
     <ConfirmDialog open={Boolean(studentToArchive)} title="Archive student?" description={studentToArchive ? `Archive ${studentToArchive.full_name}? The record will be retained, but it cannot be used for a new enrollment.` : ""} confirmLabel="Archive student" pending={archiveStudent.isPending} onCancel={() => setStudentToArchive(null)} onConfirm={() => void confirmArchive()}/>
