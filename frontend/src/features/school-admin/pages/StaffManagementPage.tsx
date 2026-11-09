@@ -114,7 +114,7 @@ export function StaffManagementPage({ permissions }: Props) {
         {canCreate && <button className="primary staff-create-button" type="button" onClick={() => openAction("create")}><Plus size={16}/> Add staff</button>}
       </div>
 
-      {feedback && <div className={`staff-feedback ${feedback.kind}`} role="status">{feedback.message}</div>}
+      {feedback && (action === null || feedback.kind === "success") && <div className={`staff-feedback ${feedback.kind}`} role="status">{feedback.message}</div>}
 
       <Modal
         open={action !== null}
