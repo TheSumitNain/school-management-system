@@ -7,6 +7,7 @@ import {
   usePlatformAdminsQuery,
 } from "../queries";
 import { Modal } from "../../../shared/components/Modal";
+import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import "./PlatformAdminPage.css";
 
 type Props = { permissions: string[] };
@@ -22,6 +23,7 @@ export function PlatformAdminPage({ permissions }: Props) {
   const [adminDialogOpen, setAdminDialogOpen] = useState(false);
   const [schoolDialogOpen, setSchoolDialogOpen] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [adminToDeactivate, setAdminToDeactivate] = useState<{ principalID: number; email: string } | null>(null);
 
   const adminsQuery = usePlatformAdminsQuery(canManageAdmins);
   const createAdmin = useCreatePlatformAdminMutation();
@@ -35,7 +37,7 @@ export function PlatformAdminPage({ permissions }: Props) {
     const email = String(form.get("email") ?? "").trim();
     const password = String(form.get("password") ?? "");
     const errors: Record<string, string> = {};
-    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) errors.email = "Enter a valid email address.";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = "Enter a valid email address.";
     if (password.length < 12) errors.password = "Password must contain at least 12 characters.";
     setFieldErrors(errors);
     if (Object.keys(errors).length) return;
@@ -86,13 +88,17 @@ export function PlatformAdminPage({ permissions }: Props) {
     }
   }
 
-  async function deactivate(principalID: number, email: string) {
-    if (!window.confirm(`Deactivate Platform Admin ${email}? Their active refresh sessions will be revoked.`)) return;
+  function deactivate(principalID: number, email: string) { setAdminToDeactivate({ principalID, email }); }
+  async function confirmDeactivate() {
+    if (!adminToDeactivate) return;
+    const target = adminToDeactivate;
     setFeedback(null);
     try {
-      await deactivateAdmin.mutateAsync(principalID);
-      setFeedback({ kind: "success", message: `${email} was deactivated.` });
+      await deactivateAdmin.mutateAsync(target.principalID);
+      setAdminToDeactivate(null);
+      setFeedback({ kind: "success", message: `${target.email} was deactivated and their active sessions were revoked.` });
     } catch (error) {
+      setAdminToDeactivate(null);
       setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to deactivate Platform Admin." });
     }
   }
@@ -148,6 +154,7 @@ export function PlatformAdminPage({ permissions }: Props) {
           <div className="app-modal-actions"><button type="button" className="platform-inline-button" onClick={() => setSchoolDialogOpen(false)} disabled={onboardSchool.isPending}>Cancel</button><button className="primary" type="submit" disabled={onboardSchool.isPending}>{onboardSchool.isPending ? "Creating school…" : "Create school and School Admin"}</button></div>
         </form>
       </Modal>
+      <ConfirmDialog open={Boolean(adminToDeactivate)} title="Deactivate Platform Admin?" description={adminToDeactivate ? `Deactivate ${adminToDeactivate.email}? Their active sessions will be revoked and they will no longer be able to access platform administration.` : ""} confirmLabel="Deactivate account" pending={deactivateAdmin.isPending} onCancel={() => setAdminToDeactivate(null)} onConfirm={() => void confirmDeactivate()}/>
     </div>
   );
 }
