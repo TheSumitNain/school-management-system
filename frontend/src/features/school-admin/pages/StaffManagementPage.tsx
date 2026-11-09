@@ -7,6 +7,7 @@ import {
   useResetSchoolStaffPasswordMutation, useSchoolStaffQuery, useUpdateSchoolStaffMutation,
 } from "../queries";
 import type { StaffRecord } from "../api";
+import { Modal } from "../../../shared/components/Modal";
 import "./StaffManagementPage.css";
 
 type Action = "create" | "edit" | "reset" | "enable" | null;
@@ -31,6 +32,7 @@ export function StaffManagementPage({ permissions }: Props) {
   const [selected, setSelected] = useState<StaffRecord | null>(null);
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [rolesForPrincipal, setRolesForPrincipal] = useState<number | null>(null);
   const [overridesForPrincipal, setOverridesForPrincipal] = useState<number | null>(null);
 
@@ -44,29 +46,38 @@ export function StaffManagementPage({ permissions }: Props) {
     setSelected(item);
     setAction(next);
     setShowPassword(false);
+    setFieldErrors({});
     setFeedback(null);
   }
   function closeAction() {
     setAction(null);
     setSelected(null);
     setShowPassword(false);
+    setFieldErrors({});
   }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    const nextErrors: Record<string, string> = {};
+    const username = String(form.get("username") ?? "").trim();
+    const password = String(form.get("password") ?? "");
+    if ((action === "create" || action === "edit") && !/^[a-z0-9._-]{3,32}$/.test(username)) nextErrors.username = "Use 3–32 lowercase letters, numbers, dots, underscores or hyphens.";
+    if (action !== "edit" && password.length < 12) nextErrors.password = "Password must contain at least 12 characters.";
+    setFieldErrors(nextErrors);
+    if (Object.keys(nextErrors).length) return;
     setFeedback(null);
     try {
       if (action === "create") {
-        await create.mutateAsync({ username: String(form.get("username") ?? "").trim(), initial_password: String(form.get("password") ?? "") });
+        await create.mutateAsync({ username, initial_password: password });
         setFeedback({ kind: "success", message: "Staff account created. The staff member must change the initial password after signing in." });
       } else if (action === "edit" && selected) {
-        await update.mutateAsync({ principalID: selected.principal_id, username: String(form.get("username") ?? "").trim() });
+        await update.mutateAsync({ principalID: selected.principal_id, username });
         setFeedback({ kind: "success", message: "Staff username updated. Their active sessions have been revoked." });
       } else if (action === "reset" && selected) {
-        await reset.mutateAsync({ principalID: selected.principal_id, newPassword: String(form.get("password") ?? "") });
+        await reset.mutateAsync({ principalID: selected.principal_id, newPassword: password });
         setFeedback({ kind: "success", message: "Password reset. The staff member must change it at next sign-in." });
       } else if (action === "enable" && selected) {
-        await enable.mutateAsync({ principalID: selected.principal_id, temporaryPassword: String(form.get("password") ?? "") });
+        await enable.mutateAsync({ principalID: selected.principal_id, temporaryPassword: password });
         setFeedback({ kind: "success", message: "Staff account enabled. A password change is required at next sign-in." });
       }
       closeAction();
@@ -98,16 +109,20 @@ export function StaffManagementPage({ permissions }: Props) {
 
       {feedback && <div className={`staff-feedback ${feedback.kind}`} role="status">{feedback.message}</div>}
 
-      {action && (
-        <section className="staff-action-panel" aria-labelledby="staff-action-title">
-          <div className="staff-action-heading"><div><h2 id="staff-action-title">{formTitle}</h2><p>{selected ? `Account: ${selected.username}` : "Staff usernames must be unique across the platform."}</p></div><button type="button" className="staff-icon-button" onClick={closeAction} aria-label="Close form"><X size={18}/></button></div>
-          <form onSubmit={submit}>
-            {(action === "create" || action === "edit") && <label>Username<input name="username" defaultValue={selected?.username ?? ""} minLength={3} maxLength={32} pattern="[a-z0-9._-]{3,32}" title="Use 3–32 lowercase letters, numbers, dots, underscores or hyphens." autoComplete="off" required/><small>3–32 lowercase letters, numbers, dots, underscores or hyphens.</small></label>}
-            {action !== "edit" && <label>{passwordLabel}<div className="staff-password-field"><input name="password" type={showPassword ? "text" : "password"} minLength={12} autoComplete="new-password" required/><button type="button" onClick={() => setShowPassword(value => !value)} aria-label={showPassword ? "Hide password" : "Show password"}>{showPassword ? "Hide" : "Show"}</button></div><small>At least 12 characters. The server also checks password safety and compromised-password status.</small></label>}
-            <div className="staff-form-actions"><button className="primary" type="submit" disabled={pending}>{pending ? "Saving…" : "Save changes"}</button><button className="staff-secondary-button" type="button" onClick={closeAction} disabled={pending}>Cancel</button></div>
-          </form>
-        </section>
-      )}
+      <Modal
+        open={action !== null}
+        title={formTitle}
+        description={selected ? `Account: ${selected.username}. Check the account carefully before making this change.` : "Staff usernames must be unique across the platform."}
+        onClose={closeAction}
+        closeDisabled={pending}
+      >
+        {feedback?.kind === "error" && <p className="staff-feedback error" role="alert">{feedback.message}</p>}
+        <form onSubmit={submit} noValidate>
+          {(action === "create" || action === "edit") && <label>Username<input name="username" defaultValue={selected?.username ?? ""} minLength={3} maxLength={32} pattern="[a-z0-9._-]{3,32}" autoComplete="off" required aria-invalid={Boolean(fieldErrors.username)} aria-describedby={fieldErrors.username ? "staff-username-error" : "staff-username-help"}/><small id="staff-username-help">3–32 lowercase letters, numbers, dots, underscores or hyphens.</small>{fieldErrors.username && <small className="app-field-error" id="staff-username-error">{fieldErrors.username}</small>}</label>}
+          {action !== "edit" && <label>{passwordLabel}<div className="staff-password-field"><input name="password" type={showPassword ? "text" : "password"} minLength={12} autoComplete="new-password" required aria-invalid={Boolean(fieldErrors.password)} aria-describedby={fieldErrors.password ? "staff-password-error" : "staff-password-help"}/><button type="button" onClick={() => setShowPassword(value => !value)} aria-label={showPassword ? "Hide password" : "Show password"}>{showPassword ? "Hide" : "Show"}</button></div><small id="staff-password-help">At least 12 characters. The server also checks password safety and compromised-password status.</small>{fieldErrors.password && <small className="app-field-error" id="staff-password-error">{fieldErrors.password}</small>}</label>}
+          <div className="staff-form-actions"><button className="primary" type="submit" disabled={pending}>{pending ? "Saving…" : action === "reset" ? "Reset password" : action === "enable" ? "Enable account" : "Save changes"}</button><button className="staff-secondary-button" type="button" onClick={closeAction} disabled={pending}>Cancel</button></div>
+        </form>
+      </Modal>
 
       <section className="table-panel">
         <div className="toolbar"><div><h2>All staff</h2><small>{staff.length} accounts</small></div><div className="search"><Search size={16}/><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search username or status" aria-label="Search staff"/></div></div>
