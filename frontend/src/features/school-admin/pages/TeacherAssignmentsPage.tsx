@@ -9,6 +9,7 @@ import {
 } from "../api";
 import { Select } from "../../../shared/components/Select";
 import { Modal } from "../../../shared/components/Modal";
+import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import "./TeacherAssignmentsPage.css";
 
 type Year = { id: number; name: string; status: string };
@@ -46,6 +47,8 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
   const [subjectDialogOpen,setSubjectDialogOpen]=useState(false);
   const [inchargeDialogOpen,setInchargeDialogOpen]=useState(false);
   const [fieldErrors,setFieldErrors]=useState<Record<string,string>>({});
+  const [subjectToRevoke,setSubjectToRevoke]=useState<TeacherSubjectAssignment|null>(null);
+  const [inchargeToRevoke,setInchargeToRevoke]=useState<ClassInchargeAssignment|null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -138,20 +141,34 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
     } finally { setSaving(false); }
   }
 
-  async function revokeSubject(item: TeacherSubjectAssignment) {
-    if (!window.confirm("Revoke this teacher's subject assignment? The assignment history will be retained.")) return;
+  async function confirmRevokeSubject() {
+    if (!subjectToRevoke) return;
+    const target = subjectToRevoke;
     setSaving(true); setFeedback(null);
-    try { await revokeTeacherSubjectAssignment(item.id); setFeedback({ kind: "success", message: "Subject assignment revoked." }); await load(); }
-    catch (error) { setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to revoke assignment." }); }
-    finally { setSaving(false); }
+    try {
+      await revokeTeacherSubjectAssignment(target.id);
+      setSubjectToRevoke(null);
+      setFeedback({ kind: "success", message: "Subject assignment revoked. Its history has been retained." });
+      await load();
+    } catch (error) {
+      setSubjectToRevoke(null);
+      setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to revoke assignment. Please try again." });
+    } finally { setSaving(false); }
   }
 
-  async function revokeIncharge(item: ClassInchargeAssignment) {
-    if (!window.confirm("Revoke this class in-charge assignment? The assignment history will be retained.")) return;
+  async function confirmRevokeIncharge() {
+    if (!inchargeToRevoke) return;
+    const target = inchargeToRevoke;
     setSaving(true); setFeedback(null);
-    try { await revokeClassInchargeAssignment(item.id); setFeedback({ kind: "success", message: "Class in-charge assignment revoked." }); await load(); }
-    catch (error) { setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to revoke assignment." }); }
-    finally { setSaving(false); }
+    try {
+      await revokeClassInchargeAssignment(target.id);
+      setInchargeToRevoke(null);
+      setFeedback({ kind: "success", message: "Class in-charge assignment revoked. Its history has been retained." });
+      await load();
+    } catch (error) {
+      setInchargeToRevoke(null);
+      setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to revoke assignment. Please try again." });
+    } finally { setSaving(false); }
   }
 
   return <div className="teacher-assignments">
@@ -161,12 +178,12 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
       {canReadTeacherAssignments && <section className="table-panel assignment-panel">
         <div className="toolbar"><div><h3>Subject teachers</h3><small>{assignments.filter(item => !item.revoked_at).length} active assignments</small></div></div>
         {canManageTeacherAssignments && <button type="button" className="primary assignment-open-dialog" onClick={()=>{setFieldErrors({});setSubjectDialogOpen(true);}}><Plus size={15}/> Assign subject teacher</button>}
-        {assignments.length === 0 ? <div className="table-message">No subject teacher assignments yet.</div> : <div className="table-scroll"><table><thead><tr><th>Class / section</th><th>Subject</th><th>Teacher</th><th>Status</th>{canManageTeacherAssignments && <th>Action</th>}</tr></thead><tbody>{assignments.map(item => <tr key={item.id}><td>{item.class_name} · {item.section_name}</td><td>{item.subject_name}</td><td>{item.teacher_username}</td><td>{item.revoked_at ? "Revoked" : "Active"}</td>{canManageTeacherAssignments && <td>{!item.revoked_at && <button className="assignment-revoke" type="button" onClick={() => void revokeSubject(item)} disabled={saving}><UserRoundX size={14}/> Revoke</button>}</td>}</tr>)}</tbody></table></div>}
+        {assignments.length === 0 ? <div className="table-message">No subject teacher assignments yet.</div> : <div className="table-scroll"><table><thead><tr><th>Class / section</th><th>Subject</th><th>Teacher</th><th>Status</th>{canManageTeacherAssignments && <th>Action</th>}</tr></thead><tbody>{assignments.map(item => <tr key={item.id}><td>{item.class_name} · {item.section_name}</td><td>{item.subject_name}</td><td>{item.teacher_username}</td><td>{item.revoked_at ? "Revoked" : "Active"}</td>{canManageTeacherAssignments && <td>{!item.revoked_at && <button className="assignment-revoke" type="button" onClick={() => setSubjectToRevoke(item)} disabled={saving}><UserRoundX size={14}/> Revoke</button>}</td>}</tr>)}</tbody></table></div>}
       </section>}
       {canReadIncharges && <section className="table-panel assignment-panel">
         <div className="toolbar"><div><h3>Class in-charge</h3><small>{incharges.filter(item => !item.revoked_at).length} active assignments</small></div></div>
         {canManageIncharges && <button type="button" className="primary assignment-open-dialog" onClick={()=>{setFieldErrors({});setInchargeDialogOpen(true);}}><Plus size={15}/> Assign class in-charge</button>}
-        {incharges.length === 0 ? <div className="table-message">No class in-charge assignments yet.</div> : <div className="table-scroll"><table><thead><tr><th>Class / section</th><th>Teacher</th><th>Status</th>{canManageIncharges && <th>Action</th>}</tr></thead><tbody>{incharges.map(item => <tr key={item.id}><td>{item.class_name} · {item.section_name}</td><td>{item.teacher_username}</td><td>{item.revoked_at ? "Revoked" : "Active"}</td>{canManageIncharges && <td>{!item.revoked_at && <button className="assignment-revoke" type="button" onClick={() => void revokeIncharge(item)} disabled={saving}><UserRoundX size={14}/> Revoke</button>}</td>}</tr>)}</tbody></table></div>}
+        {incharges.length === 0 ? <div className="table-message">No class in-charge assignments yet.</div> : <div className="table-scroll"><table><thead><tr><th>Class / section</th><th>Teacher</th><th>Status</th>{canManageIncharges && <th>Action</th>}</tr></thead><tbody>{incharges.map(item => <tr key={item.id}><td>{item.class_name} · {item.section_name}</td><td>{item.teacher_username}</td><td>{item.revoked_at ? "Revoked" : "Active"}</td>{canManageIncharges && <td>{!item.revoked_at && <button className="assignment-revoke" type="button" onClick={() => setInchargeToRevoke(item)} disabled={saving}><UserRoundX size={14}/> Revoke</button>}</td>}</tr>)}</tbody></table></div>}
       </section>}
     </>}
       <Modal open={subjectDialogOpen} title="Assign a subject teacher" description="Choose the academic year, section, subject and active teacher for this assignment." onClose={()=>setSubjectDialogOpen(false)} closeDisabled={saving}>
@@ -188,5 +205,7 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
           <div className="app-modal-actions"><button type="button" className="app-modal-cancel" onClick={()=>setInchargeDialogOpen(false)} disabled={saving}>Cancel</button><button className="primary" type="submit" disabled={saving||!teachers.length||!activeYears.length}>{saving?"Assigning…":"Assign in-charge"}</button></div>
         </form>
       </Modal>
+      <ConfirmDialog open={subjectToRevoke !== null} title="Revoke subject assignment?" description={subjectToRevoke ? `Revoke ${subjectToRevoke.teacher_username}'s ${subjectToRevoke.subject_name} assignment for ${subjectToRevoke.class_name} · ${subjectToRevoke.section_name}? The assignment history will be retained.` : ""} confirmLabel="Revoke assignment" pending={saving} onCancel={() => setSubjectToRevoke(null)} onConfirm={() => void confirmRevokeSubject()}/>
+      <ConfirmDialog open={inchargeToRevoke !== null} title="Revoke class in-charge?" description={inchargeToRevoke ? `Remove ${inchargeToRevoke.teacher_username} as class in-charge for ${inchargeToRevoke.class_name} · ${inchargeToRevoke.section_name}? The assignment history will be retained.` : ""} confirmLabel="Revoke assignment" pending={saving} onCancel={() => setInchargeToRevoke(null)} onConfirm={() => void confirmRevokeIncharge()}/>
   </div>;
 }
