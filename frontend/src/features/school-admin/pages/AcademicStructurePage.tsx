@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { CalendarDays, BookOpen, Layers3, FlaskConical, Pencil, Plus, RefreshCw, UsersRound, X } from "lucide-react";
+import { CalendarDays, BookOpen, Layers3, FlaskConical, Pencil, Plus, RefreshCw, UsersRound } from "lucide-react";
 import { TeacherAssignmentsPage } from "./TeacherAssignmentsPage";
 import { api } from "../../../lib/api";
 import { Select } from "../../../shared/components/Select";
