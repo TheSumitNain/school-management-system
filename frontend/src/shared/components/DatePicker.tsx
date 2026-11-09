@@ -32,8 +32,6 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
     ...Array.from({ length: firstWeekday }, () => null),
     ...Array.from({ length: daysInMonth }, (_, index) => index + 1),
   ], [firstWeekday, daysInMonth]);
-  const minimum = min ? fromISO(min) : null;
-  const maximum = max ? fromISO(max) : null;
   const today = toISO(new Date());
 
   function changeMonth(offset: number) {
