@@ -7,6 +7,7 @@ import {
 } from "../queries";
 import type { StudentProfile } from "../api";
 import { Select } from "../../../shared/components/Select";
+import { Modal } from "../../../shared/components/Modal";
 import "./StudentManagementPage.css";
 
 type Props = { permissions: string[] };
@@ -34,6 +35,7 @@ export function StudentManagementPage({ permissions }: Props) {
   const [selectedStudentID, setSelectedStudentID] = useState("");
   const [academicYearID, setAcademicYearID] = useState(0);
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const filters = useMemo(() => ({ q: deferredSearch, status, limit: 20, offset }), [deferredSearch, status, offset]);
   const studentsQuery = useSchoolStudentsQuery(filters, canReadStudents && tab === "students");
@@ -57,21 +59,29 @@ export function StudentManagementPage({ permissions }: Props) {
   function openStudent(next: StudentAction, student: StudentProfile | null = null) {
     setSelected(student);
     setAction(next);
+    setFieldErrors({});
     setFeedback(null);
   }
   async function submitStudent(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    const admissionNumber = String(form.get("admission_number") ?? "").trim();
+    const fullName = String(form.get("full_name") ?? "").trim();
+    const errors: Record<string, string> = {};
+    if (action === "create" && !admissionNumber) errors.admission_number = "Enter the student admission number.";
+    if (!fullName) errors.full_name = "Enter the student full name.";
+    setFieldErrors(errors);
+    if (Object.keys(errors).length) return;
     setFeedback(null);
     try {
       if (action === "create") {
         await createStudent.mutateAsync({
-          admission_number: String(form.get("admission_number") ?? "").trim(),
-          full_name: String(form.get("full_name") ?? "").trim(),
+          admission_number: admissionNumber,
+          full_name: fullName,
         });
         setFeedback({ kind: "success", message: "Student record created. Enroll the student into an academic year and section next." });
       } else if (action === "edit" && selected) {
-        await updateStudent.mutateAsync({ studentID: selected.id, fullName: String(form.get("full_name") ?? "").trim() });
+        await updateStudent.mutateAsync({ studentID: selected.id, fullName });
         setFeedback({ kind: "success", message: "Student details updated." });
       }
       setAction(null);
@@ -93,6 +103,13 @@ export function StudentManagementPage({ permissions }: Props) {
   async function submitEnrollment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    const errors: Record<string, string> = {};
+    if (!selectedStudentID) errors.student_id = "Search for and select a student.";
+    if (!academicYearID) errors.academic_year_id = "Select an active academic year.";
+    if (!String(form.get("section_id") ?? "")) errors.section_id = "Select a section for this academic year.";
+    if (!String(form.get("enrolled_at") ?? "")) errors.enrolled_at = "Choose the enrollment date.";
+    setFieldErrors(errors);
+    if (Object.keys(errors).length) return;
     setFeedback(null);
     try {
       await createEnrollment.mutateAsync({
@@ -125,28 +142,28 @@ export function StudentManagementPage({ permissions }: Props) {
       {canReadEnrollments && <button type="button" role="tab" aria-selected={tab === "enrollments"} className={tab === "enrollments" ? "selected" : ""} onClick={() => { setTab("enrollments"); setAction(null); setFeedback(null); }}>Enrollments</button>}
     </div>
     {feedback && <div className={"student-feedback " + feedback.kind} role="status">{feedback.message}</div>}
-    {action && <section className="student-form-panel">
-      <div className="student-form-heading"><div><h2>{action === "create" ? "Add student" : "Edit student"}</h2><p>Only the approved student identity fields are collected in this workflow.</p></div><button type="button" onClick={() => openStudent(null)} aria-label="Close form"><X size={18}/></button></div>
-      <form onSubmit={submitStudent}>
-        {action === "create" && <label>Admission number<input name="admission_number" maxLength={50} autoComplete="off" required/></label>}
-        <label>Student full name<input name="full_name" defaultValue={selected?.full_name ?? ""} maxLength={200} autoComplete="name" required/></label>
-        <div className="student-form-actions"><button type="button" className="student-secondary" onClick={() => openStudent(null)}>Cancel</button><button className="primary" disabled={busy}>{busy ? "Saving…" : "Save student"}</button></div>
+    <Modal open={action !== null} title={action === "create" ? "Add student" : "Edit student"} description="Enter the student's official details. You can enroll the student into a class section after creating the record." onClose={() => openStudent(null)} closeDisabled={busy}>
+      {feedback?.kind === "error" && <p className="student-feedback error" role="alert">{feedback.message}</p>}
+      <form onSubmit={submitStudent} noValidate>
+        {action === "create" && <label>Admission number<input name="admission_number" maxLength={50} autoComplete="off" required aria-invalid={Boolean(fieldErrors.admission_number)} aria-describedby={fieldErrors.admission_number ? "student-admission-error" : undefined}/>{fieldErrors.admission_number && <small className="app-field-error" id="student-admission-error">{fieldErrors.admission_number}</small>}</label>}
+        <label>Student full name<input name="full_name" defaultValue={selected?.full_name ?? ""} maxLength={200} autoComplete="name" required aria-invalid={Boolean(fieldErrors.full_name)} aria-describedby={fieldErrors.full_name ? "student-name-error" : undefined}/>{fieldErrors.full_name && <small className="app-field-error" id="student-name-error">{fieldErrors.full_name}</small>}</label>
+        <div className="app-modal-actions"><button type="button" className="student-secondary" onClick={() => openStudent(null)} disabled={busy}>Cancel</button><button className="primary" disabled={busy}>{busy ? "Saving…" : "Save student"}</button></div>
       </form>
-    </section>}
-    {showEnrollment && <section className="student-form-panel">
-      <div className="student-form-heading"><div><h2>Enroll student</h2><p>Choose an active academic year and a section belonging to that year.</p></div><button type="button" onClick={() => setShowEnrollment(false)} aria-label="Close form"><X size={18}/></button></div>
+    </Modal>
+    <Modal open={showEnrollment} title="Enroll student" description="Select an active student, academic year and section. The section must belong to the selected academic year." onClose={() => setShowEnrollment(false)} closeDisabled={busy}>
+      {feedback?.kind === "error" && <p className="student-feedback error" role="alert">{feedback.message}</p>}
       {!canReadStudents ? <div className="student-feedback error">Student directory permission is required to select a student for enrollment.</div> :
-      <form onSubmit={submitEnrollment}>
-        <label>Find student<input type="search" value={studentSearch} onChange={event => { setStudentSearch(event.target.value); setSelectedStudentID(""); }} placeholder="Search name or admission number" autoComplete="off" aria-label="Search active students by name or admission number"/></label>
-        {studentOptionsQuery.isLoading ? <div className="student-state">Searching students…</div> : studentOptionsQuery.isError ? <div className="student-feedback error" role="alert">{studentOptionsQuery.error.message}<button type="button" className="student-secondary" onClick={() => void studentOptionsQuery.refetch()}>Try again</button></div> : <label>Student<select name="student_id" value={selectedStudentID} onChange={event => setSelectedStudentID(event.target.value)} required disabled={(studentOptionsQuery.data?.students.length ?? 0) === 0}><option value="" disabled>{deferredStudentSearch ? "Select a matching student" : "Search to find a student"}</option>{(studentOptionsQuery.data?.students ?? []).map(item => <option key={item.id} value={item.id}>{item.full_name} · {item.admission_number}</option>)}</select><small>{studentOptionsQuery.data?.pagination.total ?? 0} matching active students. Refine your search if needed.</small></label>}
-        <label>Academic year<select name="academic_year_id" value={academicYearID || ""} onChange={event => setAcademicYearID(Number(event.target.value))} required><option value="" disabled>Select active year</option>{activeYears.map(year => <option key={year.id} value={year.id}>{year.name}{year.is_current ? " · Current" : ""}</option>)}</select></label>
-        <label>Section<select name="section_id" defaultValue="" required disabled={!academicYearID || sectionsQuery.isLoading}><option value="" disabled>Select section</option>{sections.map(section => <option key={section.id} value={section.id}>{section.name}</option>)}</select></label>
-        <label>Roll number<input name="roll_number" maxLength={30}/></label>
-        <label>Enrollment date<input name="enrolled_at" type="date" defaultValue={new Date().toISOString().slice(0, 10)} required/></label>
+      <form onSubmit={submitEnrollment} noValidate>
+        <label>Find student<input type="search" value={studentSearch} onChange={event => { setStudentSearch(event.target.value); setSelectedStudentID(""); setFieldErrors(current => ({...current, student_id: ""})); }} placeholder="Search name or admission number" autoComplete="off" aria-label="Search active students by name or admission number"/></label>
+        {studentOptionsQuery.isLoading ? <div className="student-state">Searching students…</div> : studentOptionsQuery.isError ? <div className="student-feedback error" role="alert">{studentOptionsQuery.error.message}<button type="button" className="student-secondary" onClick={() => void studentOptionsQuery.refetch()}>Try again</button></div> : <label>Student<select name="student_id" value={selectedStudentID} onChange={event => {setSelectedStudentID(event.target.value);setFieldErrors(current=>({...current,student_id:""}));}} required disabled={(studentOptionsQuery.data?.students.length ?? 0) === 0} aria-invalid={Boolean(fieldErrors.student_id)}><option value="" disabled>{deferredStudentSearch ? "Select a matching student" : "Search to find a student"}</option>{(studentOptionsQuery.data?.students ?? []).map(item => <option key={item.id} value={item.id}>{item.full_name} · {item.admission_number}</option>)}</select><small>{studentOptionsQuery.data?.pagination.total ?? 0} matching active students. Refine your search if needed.</small>{fieldErrors.student_id && <small className="app-field-error">{fieldErrors.student_id}</small>}</label>}
+        <label>Academic year<select name="academic_year_id" value={academicYearID || ""} onChange={event => {setAcademicYearID(Number(event.target.value));setFieldErrors(current=>({...current,academic_year_id:"",section_id:""}));}} required aria-invalid={Boolean(fieldErrors.academic_year_id)}><option value="" disabled>Select active year</option>{activeYears.map(year => <option key={year.id} value={year.id}>{year.name}{year.is_current ? " · Current" : ""}</option>)}</select>{fieldErrors.academic_year_id && <small className="app-field-error">{fieldErrors.academic_year_id}</small>}</label>
+        <label>Section<select name="section_id" defaultValue="" required disabled={!academicYearID || sectionsQuery.isLoading} aria-invalid={Boolean(fieldErrors.section_id)} onChange={() => setFieldErrors(current=>({...current,section_id:""}))}><option value="" disabled>Select section</option>{sections.map(section => <option key={section.id} value={section.id}>{section.name}</option>)}</select>{fieldErrors.section_id && <small className="app-field-error">{fieldErrors.section_id}</small>}</label>
+        <label>Roll number<input name="roll_number" maxLength={30}/><small>Optional. Leave blank if roll numbers have not been assigned yet.</small></label>
+        <label>Enrollment date<input name="enrolled_at" type="date" defaultValue={new Date().toISOString().slice(0, 10)} required aria-invalid={Boolean(fieldErrors.enrolled_at)}/>{fieldErrors.enrolled_at && <small className="app-field-error">{fieldErrors.enrolled_at}</small>}</label>
         {sectionsQuery.isError && <div className="student-feedback error" role="alert">{sectionsQuery.error.message}</div>}
-        <div className="student-form-actions"><button type="button" className="student-secondary" onClick={() => setShowEnrollment(false)}>Cancel</button><button className="primary" disabled={busy || !selectedStudentID || studentOptionsQuery.isLoading || studentOptionsQuery.isError || activeYears.length === 0 || sections.length === 0}>{busy ? "Enrolling…" : "Create enrollment"}</button></div>
+        <div className="app-modal-actions"><button type="button" className="student-secondary" onClick={() => setShowEnrollment(false)} disabled={busy}>Cancel</button><button className="primary" disabled={busy || !selectedStudentID || studentOptionsQuery.isLoading || studentOptionsQuery.isError || activeYears.length === 0 || sections.length === 0}>{busy ? "Enrolling…" : "Create enrollment"}</button></div>
       </form>}
-    </section>}
+    </Modal>
     {tab === "students" && canReadStudents && <>
       <div className="student-toolbar">
         <label className="student-search"><Search size={16}/><input aria-label="Search students" placeholder="Search name or admission number" value={search} onChange={event => { setSearch(event.target.value); setOffset(0); }}/></label>
