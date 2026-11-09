@@ -131,6 +131,7 @@ export function PlatformAdminPage({ permissions }: Props) {
 
       {activeTab === "school" && canOnboardSchool && <section className="platform-create-action"><p>Create a school and its first School Admin account together.</p><button type="button" className="primary" onClick={() => {setFieldErrors({});setSchoolDialogOpen(true);}}><Building2 size={16}/> Onboard a new school</button></section>}
       <Modal open={adminDialogOpen} title="Create Platform Admin" description="The new administrator must enroll multi-factor authentication on first sign-in." onClose={() => setAdminDialogOpen(false)} closeDisabled={createAdmin.isPending}>
+        {feedback?.kind === "error" && <p className="platform-feedback error" role="alert">{feedback.message}</p>}
         <form onSubmit={submitAdmin} noValidate>
           <label>Email address<input name="email" type="email" autoComplete="email" maxLength={254} required aria-invalid={Boolean(fieldErrors.email)}/>{fieldErrors.email && <small className="app-field-error">{fieldErrors.email}</small>}</label>
           <label>Initial password<div className="password-input-wrap"><input name="password" type={showAdminPassword ? "text" : "password"} autoComplete="new-password" minLength={12} required aria-invalid={Boolean(fieldErrors.password)}/><button className="password-visibility" type="button" aria-label={showAdminPassword ? "Hide initial password" : "Show initial password"} aria-pressed={showAdminPassword} onClick={() => setShowAdminPassword(value => !value)}>{showAdminPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div><small>At least 12 characters. The server also checks password safety.</small>{fieldErrors.password && <small className="app-field-error">{fieldErrors.password}</small>}</label>
@@ -138,6 +139,7 @@ export function PlatformAdminPage({ permissions }: Props) {
         </form>
       </Modal>
       <Modal open={schoolDialogOpen} title="Onboard a new school" description="Create the school and its first School Admin account together. The admin must change the initial password after signing in." onClose={() => setSchoolDialogOpen(false)} closeDisabled={onboardSchool.isPending}>
+        {feedback?.kind === "error" && <p className="platform-feedback error" role="alert">{feedback.message}</p>}
         <form onSubmit={submitSchool} noValidate>
           <label>School name<input name="name" autoComplete="organization" maxLength={150} required aria-invalid={Boolean(fieldErrors.name)}/>{fieldErrors.name && <small className="app-field-error">{fieldErrors.name}</small>}</label>
           <label>School code<input name="code" autoCapitalize="characters" minLength={2} maxLength={50} pattern="[A-Za-z0-9][A-Za-z0-9_-]{1,49}" required aria-invalid={Boolean(fieldErrors.code)}/><small>Use 2–50 letters, numbers, underscores or hyphens; start with a letter or number.</small>{fieldErrors.code && <small className="app-field-error">{fieldErrors.code}</small>}</label>
