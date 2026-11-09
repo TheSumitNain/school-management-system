@@ -4,6 +4,8 @@
 
 The web stack is React + TypeScript + Vite.
 
+The mandatory cross-project usability contract is documented in [Product UX and Usability Standards](../product/UX-STANDARDS.md). Every frontend change must comply with it.
+
 ## Phase 1 users and delivery priority
 
 The first frontend delivery must complete both administrator workspaces:
