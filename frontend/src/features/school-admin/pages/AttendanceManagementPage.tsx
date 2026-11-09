@@ -6,6 +6,7 @@ import {
 } from "../queries";
 import type { AttendanceRecord } from "../api";
 import { Select } from "../../../shared/components/Select";
+import { DatePicker } from "../../../shared/components/DatePicker";
 import "./AttendanceManagementPage.css";
 
 type Props = { permissions: string[] };
@@ -113,7 +114,7 @@ export function AttendanceManagementPage({ permissions }: Props) {
           <Select ariaLabel="Class / section" value={String(sectionID || "")} placeholder="Select section" onChange={value => { setSectionID(Number(value)); setDrafts({}); }} disabled={!canReadSections || !effectiveYearID || sectionsQuery.isLoading} options={sections.map(section => ({ value: String(section.id), label: `Section ${section.name} · Class #${section.class_id}` }))} />
         </label>
         <label>Attendance date
-          <input type="date" value={date} max={today} onChange={event => { setDate(event.target.value); setDrafts({}); }} />
+          <DatePicker ariaLabel="Attendance date" value={date} max={today} onChange={value => { setDate(value); setDrafts({}); }} />
         </label>
         <button type="button" className="attendance-refresh" onClick={() => { void enrollmentsQuery.refetch(); void attendanceQuery.refetch(); }} disabled={!sectionID || busy}><RefreshCw size={15}/> Refresh</button>
       </div>
