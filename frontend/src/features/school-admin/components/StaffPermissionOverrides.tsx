@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import "./StaffPermissionOverrides.css";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { LockKeyhole, Trash2 } from "lucide-react";
@@ -60,7 +60,7 @@ export function StaffPermissionOverrides({ staff }: Props) {
   const busy = save.isPending || remove.isPending;
   const loading = permissionsQuery.isPending || delegationsQuery.isPending || overridesQuery.isPending;
   const error = permissionsQuery.error ?? delegationsQuery.error ?? overridesQuery.error;
-  function submitOverride(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); const errors:Record<string,string>={}; if(!permissionKey||!selectedDelegation)errors.permissionKey="Choose a permission delegated for individual overrides."; if(!reason.trim())errors.reason="Explain why this permission exception is needed."; setFieldErrors(errors); if(Object.keys(errors).length)return;setFeedback("");save.mutate(); }
+  function submitOverride(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const errors:Record<string,string>={}; if(!permissionKey||!selectedDelegation)errors.permissionKey="Choose a permission delegated for individual overrides."; if(!reason.trim())errors.reason="Explain why this permission exception is needed."; setFieldErrors(errors); if(Object.keys(errors).length)return;setFeedback("");save.mutate(); }
 
   return (
     <section className="staff-override-panel" aria-label={`Permission overrides for ${staff.username}`}>
