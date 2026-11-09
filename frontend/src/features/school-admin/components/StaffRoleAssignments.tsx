@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import "./StaffRoleAssignments.css";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Shield, Trash2 } from "lucide-react";
@@ -51,7 +51,7 @@ export function StaffRoleAssignments({ staff, canAssign }: Props) {
     [rolesQuery.data?.roles, assignments],
   );
   const busy = assign.isPending || revoke.isPending;
-  function submitAssign(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); if(!roleID){setRoleError("Choose a role to assign.");return;} setRoleError("");setFeedback("");assign.mutate(); }
+  function submitAssign(event: FormEvent<HTMLFormElement>) { event.preventDefault(); if(!roleID){setRoleError("Choose a role to assign.");return;} setRoleError("");setFeedback("");assign.mutate(); }
 
   return (
     <section className="staff-role-panel" aria-label={`Roles for ${staff.username}`}>
