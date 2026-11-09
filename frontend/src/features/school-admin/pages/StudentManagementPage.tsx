@@ -46,6 +46,7 @@ export function StudentManagementPage({ permissions }: Props) {
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [studentToArchive, setStudentToArchive] = useState<StudentProfile | null>(null);
+  const [archiveError, setArchiveError] = useState("");
 
   const filters = useMemo(() => ({ q: deferredSearch, status, limit: 20, offset }), [deferredSearch, status, offset]);
   const studentsQuery = useSchoolStudentsQuery(filters, canReadStudents && tab === "students");
@@ -100,18 +101,18 @@ export function StudentManagementPage({ permissions }: Props) {
       setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to save the student record." });
     }
   }
-  function archive(item: StudentProfile) { setStudentToArchive(item); }
+  function archive(item: StudentProfile) { setArchiveError(""); setStudentToArchive(item); }
   async function confirmArchive() {
     if (!studentToArchive) return;
     const item = studentToArchive;
+    setArchiveError("");
     setFeedback(null);
     try {
       await archiveStudent.mutateAsync(item.id);
       setStudentToArchive(null);
       setFeedback({ kind: "success", message: `${item.full_name} has been archived.` });
     } catch (error) {
-      setStudentToArchive(null);
-      setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to archive this student." });
+      setArchiveError(error instanceof Error ? error.message : "Unable to archive this student. Please try again.");
     }
   }
   async function submitEnrollment(event: FormEvent<HTMLFormElement>) {
@@ -180,7 +181,7 @@ export function StudentManagementPage({ permissions }: Props) {
         <div className="app-modal-actions"><button type="button" className="student-secondary" onClick={() => setShowEnrollment(false)} disabled={busy}>Cancel</button><button className="primary" disabled={busy || studentOptionsQuery.isLoading || studentOptionsQuery.isError || activeYears.length === 0 || sectionsQuery.isLoading || sectionsQuery.isError}>{busy ? "Enrolling…" : "Create enrollment"}</button></div>
       </form>}
     </Modal>
-    <ConfirmDialog open={Boolean(studentToArchive)} title="Archive student?" description={studentToArchive ? `Archive ${studentToArchive.full_name}? The record will be retained, but it cannot be used for a new enrollment.` : ""} confirmLabel="Archive student" pending={archiveStudent.isPending} onCancel={() => setStudentToArchive(null)} onConfirm={() => void confirmArchive()}/>
+    <ConfirmDialog open={Boolean(studentToArchive)} title="Archive student?" description={studentToArchive ? `Archive ${studentToArchive.full_name}? The record will be retained, but it cannot be used for a new enrollment.` : ""} confirmLabel="Archive student" pending={archiveStudent.isPending} error={archiveError || undefined} onCancel={() => {setStudentToArchive(null);setArchiveError("");}} onConfirm={() => void confirmArchive()}/>
     {tab === "students" && canReadStudents && <>
       <div className="student-toolbar">
         <label className="student-search"><Search size={16}/><input aria-label="Search students" placeholder="Search name or admission number" value={search} onChange={event => { setSearch(event.target.value); setOffset(0); }}/></label>
