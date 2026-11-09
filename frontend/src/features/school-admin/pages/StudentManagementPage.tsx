@@ -6,6 +6,7 @@ import {
   useSchoolStudentsQuery, useUpdateSchoolStudentMutation,
 } from "../queries";
 import type { StudentProfile } from "../api";
+import { Select } from "../../../shared/components/Select";
 import "./StudentManagementPage.css";
 
 type Props = { permissions: string[] };
@@ -149,7 +150,7 @@ export function StudentManagementPage({ permissions }: Props) {
     {tab === "students" && canReadStudents && <>
       <div className="student-toolbar">
         <label className="student-search"><Search size={16}/><input aria-label="Search students" placeholder="Search name or admission number" value={search} onChange={event => { setSearch(event.target.value); setOffset(0); }}/></label>
-        <select aria-label="Filter by student status" value={status} onChange={event => { setStatus(event.target.value); setOffset(0); }}><option value="">All statuses</option><option value="active">Active</option><option value="inactive">Inactive</option><option value="archived">Archived</option></select>
+        <Select ariaLabel="Filter by student status" value={status} onChange={value => { setStatus(value); setOffset(0); }} placeholder="All statuses" options={[{value:"",label:"All statuses"},{value:"active",label:"Active"},{value:"inactive",label:"Inactive"},{value:"archived",label:"Archived"}]} />
         <button type="button" className="student-secondary" onClick={() => void studentsQuery.refetch()} disabled={studentsQuery.isFetching}><RefreshCw size={15}/> Refresh</button>
       </div>
       {studentsQuery.isLoading ? <div className="student-state">Loading student records…</div> :
