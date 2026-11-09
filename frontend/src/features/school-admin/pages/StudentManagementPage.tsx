@@ -102,6 +102,7 @@ export function StudentManagementPage({ permissions }: Props) {
       setStudentToArchive(null);
       setFeedback({ kind: "success", message: `${item.full_name} has been archived.` });
     } catch (error) {
+      setStudentToArchive(null);
       setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to archive this student." });
     }
   }
