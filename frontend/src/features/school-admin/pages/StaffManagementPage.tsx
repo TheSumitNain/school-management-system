@@ -37,6 +37,7 @@ export function StaffManagementPage({ permissions }: Props) {
   const [rolesForPrincipal, setRolesForPrincipal] = useState<number | null>(null);
   const [overridesForPrincipal, setOverridesForPrincipal] = useState<number | null>(null);
   const [staffToDisable, setStaffToDisable] = useState<StaffRecord | null>(null);
+  const [disableError, setDisableError] = useState("");
 
   const staff = query.data?.staff ?? [];
   const filtered = useMemo(() => {
@@ -87,18 +88,18 @@ export function StaffManagementPage({ permissions }: Props) {
       setFeedback({ kind: "error", message: error instanceof Error ? error.message : "The request could not be completed." });
     }
   }
-  function deactivate(item: StaffRecord) { setStaffToDisable(item); }
+  function deactivate(item: StaffRecord) { setDisableError(""); setStaffToDisable(item); }
   async function confirmDeactivate() {
     if (!staffToDisable) return;
     const item = staffToDisable;
+    setDisableError("");
     setFeedback(null);
     try {
       await disable.mutateAsync(item.principal_id);
       setStaffToDisable(null);
       setFeedback({ kind: "success", message: `${item.username} has been disabled and active sessions revoked.` });
     } catch (error) {
-      setStaffToDisable(null);
-      setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to disable this account." });
+      setDisableError(error instanceof Error ? error.message : "Unable to disable this account. Please try again.");
     }
   }
 
@@ -150,7 +151,7 @@ export function StaffManagementPage({ permissions }: Props) {
       {rolesForPrincipal !== null && canReadRoles && (() => { const target=staff.find(item=>item.principal_id===rolesForPrincipal); return target ? <Modal open title={`Access roles · ${target.username}`} description="Review the roles assigned to this staff account. Add or remove roles here; changes take effect on the next protected request." onClose={()=>setRolesForPrincipal(null)}><StaffRoleAssignments staff={target} canAssign={canAssignRoles}/></Modal> : null; })()}
       {overridesForPrincipal !== null && canManageOverrides && (() => { const target=staff.find(item=>item.principal_id===overridesForPrincipal); return target ? <Modal open title={`Permission overrides · ${target.username}`} description="Review individual access exceptions. Use an override only when the staff member's role permissions need a documented exception." onClose={()=>setOverridesForPrincipal(null)}><StaffPermissionOverrides staff={target}/></Modal> : null; })()}
       <p className="staff-security-note"><ShieldCheck size={15}/> Every action is checked again by the server using your current school permissions.</p>
-      <ConfirmDialog open={Boolean(staffToDisable)} title="Disable staff account?" description={staffToDisable ? `Disable ${staffToDisable.username}? Their active sessions will be revoked and they will no longer be able to sign in.` : ""} confirmLabel="Disable account" pending={disable.isPending} onCancel={() => setStaffToDisable(null)} onConfirm={() => void confirmDeactivate()}/>
+      <ConfirmDialog open={Boolean(staffToDisable)} title="Disable staff account?" description={staffToDisable ? `Disable ${staffToDisable.username}? Their active sessions will be revoked and they will no longer be able to sign in.` : ""} confirmLabel="Disable account" pending={disable.isPending} error={disableError || undefined} onCancel={() => {setStaffToDisable(null);setDisableError("");}} onConfirm={() => void confirmDeactivate()}/>
     </div>
   );
 }
