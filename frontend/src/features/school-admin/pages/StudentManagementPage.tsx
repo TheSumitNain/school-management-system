@@ -15,6 +15,11 @@ type Props = { permissions: string[] };
 type StudentAction = "create" | "edit" | null;
 type Tab = "students" | "enrollments";
 
+function localDateValue() {
+  const now = new Date();
+  return [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-");
+}
+
 export function StudentManagementPage({ permissions }: Props) {
   const canReadStudents = permissions.includes("students.read_sensitive");
   const canReadEnrollments = permissions.includes("students.read_basic");
@@ -165,7 +170,7 @@ export function StudentManagementPage({ permissions }: Props) {
         <label>Academic year<select name="academic_year_id" value={academicYearID || ""} onChange={event => {setAcademicYearID(Number(event.target.value));setFieldErrors(current=>({...current,academic_year_id:"",section_id:""}));}} required aria-invalid={Boolean(fieldErrors.academic_year_id)}><option value="" disabled>Select active year</option>{activeYears.map(year => <option key={year.id} value={year.id}>{year.name}{year.is_current ? " · Current" : ""}</option>)}</select>{fieldErrors.academic_year_id && <small className="app-field-error">{fieldErrors.academic_year_id}</small>}</label>
         <label>Section<select name="section_id" defaultValue="" required disabled={!academicYearID || sectionsQuery.isLoading} aria-invalid={Boolean(fieldErrors.section_id)} onChange={() => setFieldErrors(current=>({...current,section_id:""}))}><option value="" disabled>Select section</option>{sections.map(section => <option key={section.id} value={section.id}>{section.name}</option>)}</select>{fieldErrors.section_id && <small className="app-field-error">{fieldErrors.section_id}</small>}</label>
         <label>Roll number<input name="roll_number" maxLength={30}/><small>Optional. Leave blank if roll numbers have not been assigned yet.</small></label>
-        <label>Enrollment date<input name="enrolled_at" type="date" defaultValue={new Date().toISOString().slice(0, 10)} required aria-invalid={Boolean(fieldErrors.enrolled_at)}/>{fieldErrors.enrolled_at && <small className="app-field-error">{fieldErrors.enrolled_at}</small>}</label>
+        <label>Enrollment date<input name="enrolled_at" type="date" defaultValue={localDateValue()} required aria-invalid={Boolean(fieldErrors.enrolled_at)}/>{fieldErrors.enrolled_at && <small className="app-field-error">{fieldErrors.enrolled_at}</small>}</label>
         {sectionsQuery.isError && <div className="student-feedback error" role="alert">{sectionsQuery.error.message}</div>}
         <div className="app-modal-actions"><button type="button" className="student-secondary" onClick={() => setShowEnrollment(false)} disabled={busy}>Cancel</button><button className="primary" disabled={busy || !selectedStudentID || studentOptionsQuery.isLoading || studentOptionsQuery.isError || activeYears.length === 0 || sections.length === 0}>{busy ? "Enrolling…" : "Create enrollment"}</button></div>
       </form>}
