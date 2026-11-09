@@ -44,6 +44,7 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
+  const [loadError, setLoadError] = useState("");
   const [subjectDialogOpen,setSubjectDialogOpen]=useState(false);
   const [inchargeDialogOpen,setInchargeDialogOpen]=useState(false);
   const [fieldErrors,setFieldErrors]=useState<Record<string,string>>({});
@@ -54,6 +55,7 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError("");
     const jobs: Promise<unknown>[] = [];
     const keys: string[] = [];
     if (canReadYears) { keys.push("years"); jobs.push(api<{ academic_years: Year[] }>("/school/academic-years")); }
@@ -85,7 +87,7 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
         case "incharges": setIncharges((data.assignments as ClassInchargeAssignment[]) ?? []); break;
       }
     });
-    if (errors.length) setFeedback({ kind: "error", message: errors.join(" · ") });
+    if (errors.length) setLoadError(errors.join(" · "));
     setLoading(false);
   }, [canReadYears, canReadClasses, canReadSubjects, canReadTeacherAssignments, canReadIncharges]);
 
@@ -176,15 +178,16 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
   return <div className="teacher-assignments">
     <div className="assignment-heading"><div><h2>Teacher assignments</h2><p>Assign active Teachers to subjects, sections and class in-charge responsibilities.</p></div><button type="button" onClick={() => void load()} disabled={loading}><RefreshCw size={15}/> Refresh</button></div>
     {feedback && !((subjectDialogOpen||inchargeDialogOpen)&&feedback.kind==="error") && <div className={"academic-feedback " + feedback.kind} role="status">{feedback.message}</div>}
+    {loadError && <div className="academic-feedback error" role="alert">{loadError} <button type="button" onClick={() => void load()} disabled={loading}>Try again</button></div>}
     {loading ? <div className="table-message">Loading teacher assignments…</div> : <>
       {canReadTeacherAssignments && <section className="table-panel assignment-panel">
         <div className="toolbar"><div><h3>Subject teachers</h3><small>{assignments.filter(item => !item.revoked_at).length} active assignments</small></div></div>
-        {canManageTeacherAssignments && <button type="button" className="primary assignment-open-dialog" onClick={()=>{setFieldErrors({});setSubjectDialogOpen(true);}}><Plus size={15}/> Assign subject teacher</button>}
+        {canManageTeacherAssignments && <button type="button" className="primary assignment-open-dialog" onClick={()=>{setFieldErrors({});setFeedback(null);setSubjectDialogOpen(true);}}><Plus size={15}/> Assign subject teacher</button>}
         {assignments.length === 0 ? <div className="table-message">No subject teacher assignments yet.</div> : <div className="table-scroll"><table><thead><tr><th>Class / section</th><th>Subject</th><th>Teacher</th><th>Status</th>{canManageTeacherAssignments && <th>Action</th>}</tr></thead><tbody>{assignments.map(item => <tr key={item.id}><td>{item.class_name} · {item.section_name}</td><td>{item.subject_name}</td><td>{item.teacher_username}</td><td>{item.revoked_at ? "Revoked" : "Active"}</td>{canManageTeacherAssignments && <td>{!item.revoked_at && <button className="assignment-revoke" type="button" onClick={() => setSubjectToRevoke(item)} disabled={saving}><UserRoundX size={14}/> Revoke</button>}</td>}</tr>)}</tbody></table></div>}
       </section>}
       {canReadIncharges && <section className="table-panel assignment-panel">
         <div className="toolbar"><div><h3>Class in-charge</h3><small>{incharges.filter(item => !item.revoked_at).length} active assignments</small></div></div>
-        {canManageIncharges && <button type="button" className="primary assignment-open-dialog" onClick={()=>{setFieldErrors({});setInchargeDialogOpen(true);}}><Plus size={15}/> Assign class in-charge</button>}
+        {canManageIncharges && <button type="button" className="primary assignment-open-dialog" onClick={()=>{setFieldErrors({});setFeedback(null);setInchargeDialogOpen(true);}}><Plus size={15}/> Assign class in-charge</button>}
         {incharges.length === 0 ? <div className="table-message">No class in-charge assignments yet.</div> : <div className="table-scroll"><table><thead><tr><th>Class / section</th><th>Teacher</th><th>Status</th>{canManageIncharges && <th>Action</th>}</tr></thead><tbody>{incharges.map(item => <tr key={item.id}><td>{item.class_name} · {item.section_name}</td><td>{item.teacher_username}</td><td>{item.revoked_at ? "Revoked" : "Active"}</td>{canManageIncharges && <td>{!item.revoked_at && <button className="assignment-revoke" type="button" onClick={() => setInchargeToRevoke(item)} disabled={saving}><UserRoundX size={14}/> Revoke</button>}</td>}</tr>)}</tbody></table></div>}
       </section>}
     </>}
