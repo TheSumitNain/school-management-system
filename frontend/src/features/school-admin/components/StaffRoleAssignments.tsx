@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import "./StaffRoleAssignments.css";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Shield, Trash2 } from "lucide-react";
+import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import {
   assignStaffRole, getSchoolRoles, getStaffRoleAssignments, revokeStaffRole,
   type StaffRecord,
@@ -13,6 +14,7 @@ export function StaffRoleAssignments({ staff, canAssign }: Props) {
   const queryClient = useQueryClient();
   const [roleID, setRoleID] = useState("");
   const [feedback, setFeedback] = useState("");
+  const [roleToRevoke, setRoleToRevoke] = useState<{id:number;name:string}|null>(null);
   const rolesQuery = useQuery({
     queryKey: ["school-admin", "roles"],
     queryFn: ({ signal }) => getSchoolRoles(signal),
@@ -60,12 +62,7 @@ export function StaffRoleAssignments({ staff, canAssign }: Props) {
         : <>
           {assignments.length ? <ul className="staff-role-list">{assignments.map(item => <li key={item.role_id}>
             <span><b>{item.name}</b><small>{item.is_system ? "System role" : "Custom role"} · {item.role_key}</small></span>
-            {canAssign && item.role_key !== "school_admin" && <button type="button" disabled={busy} aria-label={`Remove ${item.name} role`} title="Remove role" onClick={() => {
-              if (window.confirm(`Remove the ${item.name} role from ${staff.username}?`)) {
-                setFeedback("");
-                revoke.mutate(item.role_id);
-              }
-            }}><Trash2 size={15}/></button>}
+            {canAssign && item.role_key !== "school_admin" && <button type="button" disabled={busy} aria-label={`Remove ${item.name} role`} title="Remove role" onClick={() => setRoleToRevoke({id:item.role_id,name:item.name})}><Trash2 size={15}/></button>}
           </li>)}</ul> : <p className="staff-role-message">No additional roles assigned.</p>}
           {canAssign && <form className="staff-role-assign" onSubmit={event => { event.preventDefault(); setFeedback(""); assign.mutate(); }}>
             <label htmlFor={`role-select-${staff.principal_id}`}>Assign a role</label>
@@ -81,6 +78,7 @@ export function StaffRoleAssignments({ staff, canAssign }: Props) {
           : revoke.isError ? (revoke.error instanceof Error ? revoke.error.message : "Unable to remove role.") : feedback}
       </p>}
       {!canAssign && <p className="staff-role-message">You can view assigned roles but cannot change them.</p>}
+      <ConfirmDialog open={roleToRevoke !== null} title="Remove staff role?" description={roleToRevoke ? `Remove the ${roleToRevoke.name} role from ${staff.username}? Their effective permissions will update on the next protected request.` : ""} confirmLabel="Remove role" pending={revoke.isPending} onCancel={() => setRoleToRevoke(null)} onConfirm={() => {if(roleToRevoke){setFeedback("");revoke.mutate(roleToRevoke.id);setRoleToRevoke(null);}}}/>
     </section>
   );
 }
