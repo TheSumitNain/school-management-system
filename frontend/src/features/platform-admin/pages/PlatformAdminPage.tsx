@@ -24,6 +24,7 @@ export function PlatformAdminPage({ permissions }: Props) {
   const [schoolDialogOpen, setSchoolDialogOpen] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [adminToDeactivate, setAdminToDeactivate] = useState<{ principalID: number; email: string } | null>(null);
+  const [deactivateError, setDeactivateError] = useState("");
 
   const adminsQuery = usePlatformAdminsQuery(canManageAdmins);
   const createAdmin = useCreatePlatformAdminMutation();
@@ -88,18 +89,18 @@ export function PlatformAdminPage({ permissions }: Props) {
     }
   }
 
-  function deactivate(principalID: number, email: string) { setAdminToDeactivate({ principalID, email }); }
+  function deactivate(principalID: number, email: string) { setDeactivateError(""); setAdminToDeactivate({ principalID, email }); }
   async function confirmDeactivate() {
     if (!adminToDeactivate) return;
     const target = adminToDeactivate;
+    setDeactivateError("");
     setFeedback(null);
     try {
       await deactivateAdmin.mutateAsync(target.principalID);
       setAdminToDeactivate(null);
       setFeedback({ kind: "success", message: `${target.email} was deactivated and their active sessions were revoked.` });
     } catch (error) {
-      setAdminToDeactivate(null);
-      setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to deactivate Platform Admin." });
+      setDeactivateError(error instanceof Error ? error.message : "Unable to deactivate Platform Admin. Please try again.");
     }
   }
 
@@ -154,7 +155,7 @@ export function PlatformAdminPage({ permissions }: Props) {
           <div className="app-modal-actions"><button type="button" className="platform-inline-button" onClick={() => setSchoolDialogOpen(false)} disabled={onboardSchool.isPending}>Cancel</button><button className="primary" type="submit" disabled={onboardSchool.isPending}>{onboardSchool.isPending ? "Creating school…" : "Create school and School Admin"}</button></div>
         </form>
       </Modal>
-      <ConfirmDialog open={Boolean(adminToDeactivate)} title="Deactivate Platform Admin?" description={adminToDeactivate ? `Deactivate ${adminToDeactivate.email}? Their active sessions will be revoked and they will no longer be able to access platform administration.` : ""} confirmLabel="Deactivate account" pending={deactivateAdmin.isPending} onCancel={() => setAdminToDeactivate(null)} onConfirm={() => void confirmDeactivate()}/>
+      <ConfirmDialog open={Boolean(adminToDeactivate)} title="Deactivate Platform Admin?" description={adminToDeactivate ? `Deactivate ${adminToDeactivate.email}? Their active sessions will be revoked and they will no longer be able to access platform administration.` : ""} confirmLabel="Deactivate account" pending={deactivateAdmin.isPending} error={deactivateError || undefined} onCancel={() => {setAdminToDeactivate(null);setDeactivateError("");}} onConfirm={() => void confirmDeactivate()}/>
     </div>
   );
 }
