@@ -120,15 +120,15 @@ export function StudentManagementPage({ permissions }: Props) {
     const errors: Record<string, string> = {};
     if (!selectedStudentID) errors.student_id = "Search for and select a student.";
     if (!academicYearID) errors.academic_year_id = "Select an active academic year.";
-    if (!String(form.get("section_id") ?? "")) errors.section_id = "Select a section for this academic year.";
-    if (!String(form.get("enrolled_at") ?? "")) errors.enrolled_at = "Choose the enrollment date.";
+    if (!selectedSectionID) errors.section_id = "Select a section for this academic year.";
+    if (!enrolledAt) errors.enrolled_at = "Choose the enrollment date.";
     setFieldErrors(errors);
     if (Object.keys(errors).length) return;
     setFeedback(null);
     try {
       await createEnrollment.mutateAsync({
-        student_id: Number(form.get("student_id")),
-        academic_year_id: Number(form.get("academic_year_id")),
+        student_id: Number(selectedStudentID),
+        academic_year_id: academicYearID,
         section_id: Number(selectedSectionID),
         roll_number: String(form.get("roll_number") ?? "").trim() || null,
         enrolled_at: enrolledAt,
