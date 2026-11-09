@@ -176,7 +176,7 @@ export function RoleManagementPage({ permissions }: Props) {
             </div>
           ) : <p className="role-readonly-note"><AlertTriangle size={15}/> You can view permissions but do not have both permissions required to change this role.</p>}
 
-          {(feedback || grant.isError || revoke.isError) && <p className={grant.isError || revoke.isError ? "role-feedback role-error" : "role-feedback"} role="status">
+          {(feedback || ((!grantDialogOpen && permissionToRevoke === null) && (grant.isError || revoke.isError))) && <p className={grant.isError || revoke.isError ? "role-feedback role-error" : "role-feedback"} role="status">
             {grant.isError ? (grant.error instanceof Error ? grant.error.message : "Unable to grant permission.")
               : revoke.isError ? (revoke.error instanceof Error ? revoke.error.message : "Unable to remove permission.")
               : feedback}
