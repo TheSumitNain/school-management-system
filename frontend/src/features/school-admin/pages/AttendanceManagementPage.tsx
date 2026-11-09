@@ -5,6 +5,7 @@ import {
   useSchoolStudentAcademicYearsQuery, useSchoolStudentEnrollmentsQuery, useSchoolStudentSectionsQuery,
 } from "../queries";
 import type { AttendanceRecord } from "../api";
+import { Select } from "../../../shared/components/Select";
 import "./AttendanceManagementPage.css";
 
 type Props = { permissions: string[] };
@@ -106,16 +107,10 @@ export function AttendanceManagementPage({ permissions }: Props) {
 
       <div className="attendance-filters">
         <label>Academic year
-          <select value={effectiveYearID || ""} onChange={event => { setAcademicYearID(Number(event.target.value)); setSectionID(0); setDrafts({}); }} disabled={!canReadYears || yearsQuery.isLoading}>
-            <option value="">Select academic year</option>
-            {activeYears.map(year => <option key={year.id} value={year.id}>{year.name}{year.is_current ? " · Current" : ""}</option>)}
-          </select>
+          <Select ariaLabel="Academic year" value={String(effectiveYearID || "")} placeholder="Select academic year" onChange={value => { setAcademicYearID(Number(value)); setSectionID(0); setDrafts({}); }} disabled={!canReadYears || yearsQuery.isLoading} options={activeYears.map(year => ({ value: String(year.id), label: year.name + (year.is_current ? " · Current" : "") }))} />
         </label>
         <label>Class / section
-          <select value={sectionID || ""} onChange={event => { setSectionID(Number(event.target.value)); setDrafts({}); }} disabled={!canReadSections || !effectiveYearID || sectionsQuery.isLoading}>
-            <option value="">Select section</option>
-            {sections.map(section => <option key={section.id} value={section.id}>Section {section.name} · Class #{section.class_id}</option>)}
-          </select>
+          <Select ariaLabel="Class / section" value={String(sectionID || "")} placeholder="Select section" onChange={value => { setSectionID(Number(value)); setDrafts({}); }} disabled={!canReadSections || !effectiveYearID || sectionsQuery.isLoading} options={sections.map(section => ({ value: String(section.id), label: `Section ${section.name} · Class #${section.class_id}` }))} />
         </label>
         <label>Attendance date
           <input type="date" value={date} max={today} onChange={event => { setDate(event.target.value); setDrafts({}); }} />
@@ -154,9 +149,7 @@ export function AttendanceManagementPage({ permissions }: Props) {
                   return <tr key={enrollment.id}>
                     <td><b>{enrollment.student_name || "Student"}</b><small>{enrollment.class_name_snapshot} · {enrollment.section_name_snapshot}</small></td>
                     <td>{enrollment.roll_number || "—"}</td>
-                    <td><select aria-label={"Attendance status for " + (enrollment.student_name || "student")} value={draft.status} onChange={event => changeDraft(enrollment.id, { status: event.target.value })} disabled={!canSave || busy}>
-                      <option value="">Select status</option>{statuses.map(status => <option key={status.value} value={status.value}>{status.label}</option>)}
-                    </select></td>
+                    <td><Select ariaLabel={"Attendance status for " + (enrollment.student_name || "student")} value={draft.status} placeholder="Select status" onChange={value => changeDraft(enrollment.id, { status: value })} disabled={!canSave || busy} options={statuses} /></td>
                     <td><input aria-label={"Remarks for " + (enrollment.student_name || "student")} value={draft.remarks} maxLength={500} onChange={event => changeDraft(enrollment.id, { remarks: event.target.value })} placeholder="Optional" disabled={!canSave || busy}/></td>
                     <td><button type="button" className="attendance-save" onClick={() => void save(enrollment.id)} disabled={!canSave || !draft.status || busy}><Check size={14}/>{existing ? "Update" : "Save"}</button></td>
                   </tr>;
