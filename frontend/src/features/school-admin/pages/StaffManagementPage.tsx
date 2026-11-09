@@ -8,6 +8,7 @@ import {
 } from "../queries";
 import type { StaffRecord } from "../api";
 import { Modal } from "../../../shared/components/Modal";
+import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import "./StaffManagementPage.css";
 
 type Action = "create" | "edit" | "reset" | "enable" | null;
@@ -35,6 +36,7 @@ export function StaffManagementPage({ permissions }: Props) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [rolesForPrincipal, setRolesForPrincipal] = useState<number | null>(null);
   const [overridesForPrincipal, setOverridesForPrincipal] = useState<number | null>(null);
+  const [staffToDisable, setStaffToDisable] = useState<StaffRecord | null>(null);
 
   const staff = query.data?.staff ?? [];
   const filtered = useMemo(() => {
@@ -85,11 +87,14 @@ export function StaffManagementPage({ permissions }: Props) {
       setFeedback({ kind: "error", message: error instanceof Error ? error.message : "The request could not be completed." });
     }
   }
-  async function deactivate(item: StaffRecord) {
-    if (!window.confirm(`Disable staff account "${item.username}"? Their active sessions will be revoked.`)) return;
+  function deactivate(item: StaffRecord) { setStaffToDisable(item); }
+  async function confirmDeactivate() {
+    if (!staffToDisable) return;
+    const item = staffToDisable;
     setFeedback(null);
     try {
       await disable.mutateAsync(item.principal_id);
+      setStaffToDisable(null);
       setFeedback({ kind: "success", message: `${item.username} has been disabled and active sessions revoked.` });
     } catch (error) {
       setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to disable this account." });
@@ -142,6 +147,7 @@ export function StaffManagementPage({ permissions }: Props) {
           </tbody></table></div>}
       </section>
       <p className="staff-security-note"><ShieldCheck size={15}/> Every action is checked again by the server using your current school permissions.</p>
+      <ConfirmDialog open={Boolean(staffToDisable)} title="Disable staff account?" description={staffToDisable ? `Disable ${staffToDisable.username}? Their active sessions will be revoked and they will no longer be able to sign in.` : ""} confirmLabel="Disable account" pending={disable.isPending} onCancel={() => setStaffToDisable(null)} onConfirm={() => void confirmDeactivate()}/>
     </div>
   );
 }
