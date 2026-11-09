@@ -81,7 +81,7 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
               const date = toISO(new Date(visibleMonth.getFullYear(), visibleMonth.getMonth(), day));
               const unavailable = Boolean((min && date < min) || (max && date > max));
               const isSelected = date === value;
-              return <button key={date} type="button" role="gridcell" aria-selected={isSelected} aria-current={date === today ? "date" : undefined} disabled={unavailable} className="app-date-day" onClick={() => chooseDay(day)}>{day}</button>;
+              return <button key={date} type="button" aria-pressed={isSelected} aria-current={date === today ? "date" : undefined} disabled={unavailable} className="app-date-day" onClick={() => chooseDay(day)}>{day}</button>;
             })}
           </div>
           <div className="app-date-footer">
