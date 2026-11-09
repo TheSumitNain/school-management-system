@@ -13,6 +13,7 @@ import {
 } from "../api";
 import { Select } from "../../../shared/components/Select";
 import { Modal } from "../../../shared/components/Modal";
+import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import "./RoleManagementPage.css";
 
 type Props = { permissions: string[] };
@@ -28,6 +29,7 @@ export function RoleManagementPage({ permissions }: Props) {
   const [feedback, setFeedback] = useState("");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [nameError, setNameError] = useState("");
+  const [permissionToRevoke, setPermissionToRevoke] = useState<string | null>(null);
 
   const rolesQuery = useQuery({
     queryKey: ["school-admin", "roles"],
@@ -155,12 +157,7 @@ export function RoleManagementPage({ permissions }: Props) {
               const effective = item.delegation_active && item.permission_active;
               return <li key={item.permission_key}>
                 <div className="role-grant-copy"><b>{item.permission_key}</b>{item.description && <small>{item.description}</small>}<span className={effective ? "role-grant-status active" : "role-grant-status inactive"}>{effective ? "Active grant" : "Inactive · delegation revoked or permission disabled"}</span></div>
-                {canManagePermissions && <button type="button" className="role-remove-button" disabled={revoke.isPending} onClick={() => {
-                  if (window.confirm(`Remove ${item.permission_key} from ${selectedRole.name}?`)) {
-                    setFeedback("");
-                    revoke.mutate(item.permission_key);
-                  }
-                }} aria-label={`Remove ${item.permission_key}`}><Trash2 size={15}/></button>}
+                {canManagePermissions && <button type="button" className="role-remove-button" disabled={revoke.isPending} onClick={() => setPermissionToRevoke(item.permission_key)} aria-label={`Remove ${item.permission_key}`}><Trash2 size={15}/></button>}
               </li>;
             })}</ul>}
 
@@ -195,6 +192,7 @@ export function RoleManagementPage({ permissions }: Props) {
           <div className="app-modal-actions"><button type="button" className="app-modal-cancel" onClick={() => setCreateDialogOpen(false)} disabled={create.isPending}>Cancel</button><button className="primary" type="submit" disabled={create.isPending || name.trim().length<2}>{create.isPending?"Creating…":"Create role"}</button></div>
         </form>
       </Modal>
+      <ConfirmDialog open={permissionToRevoke !== null} title="Remove permission grant?" description={permissionToRevoke ? `Remove ${permissionToRevoke} from ${selectedRole?.name ?? "this role"}? The role will no longer receive this permission through this grant.` : ""} confirmLabel="Remove permission" pending={revoke.isPending} onCancel={() => setPermissionToRevoke(null)} onConfirm={() => { if(permissionToRevoke){setFeedback("");revoke.mutate(permissionToRevoke);setPermissionToRevoke(null);} }}/>
     </div>
   );
 }
