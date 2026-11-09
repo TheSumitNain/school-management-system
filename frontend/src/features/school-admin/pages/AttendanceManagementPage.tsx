@@ -99,7 +99,7 @@ export function AttendanceManagementPage({ permissions }: Props) {
   }
 
   return (
-    <section className="attendance-page">
+    <section className="content attendance-page">
       <div className="heading">
         <div><span className="eyebrow">SCHOOL OPERATIONS</span><h1>Attendance</h1><p>Review the class roster and record daily attendance.</p></div>
       </div>
