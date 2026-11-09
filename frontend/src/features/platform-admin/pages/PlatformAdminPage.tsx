@@ -120,7 +120,7 @@ export function PlatformAdminPage({ permissions }: Props) {
         {canOnboardSchool && <button type="button" role="tab" aria-selected={activeTab === "school"} className={activeTab === "school" ? "selected" : ""} onClick={() => { setActiveTab("school"); setFeedback(null); }}><Building2 size={16}/> Onboard school</button>}
       </div>
 
-      {feedback && <div className={`platform-feedback ${feedback.kind}`} role="status">{feedback.message}</div>}
+      {feedback && ((!adminDialogOpen && !schoolDialogOpen) || feedback.kind === "success") && <div className={`platform-feedback ${feedback.kind}`} role="status">{feedback.message}</div>}
 
       {activeTab === "admins" && canManageAdmins && (
         <div className="platform-grid">
