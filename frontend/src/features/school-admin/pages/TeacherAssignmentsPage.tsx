@@ -8,6 +8,7 @@ import {
   type ClassInchargeAssignment, type EligibleSchoolTeacher, type TeacherSubjectAssignment,
 } from "../api";
 import { Select } from "../../../shared/components/Select";
+import { Modal } from "../../../shared/components/Modal";
 import "./TeacherAssignmentsPage.css";
 
 type Year = { id: number; name: string; status: string };
@@ -42,6 +43,9 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
+  const [subjectDialogOpen,setSubjectDialogOpen]=useState(false);
+  const [inchargeDialogOpen,setInchargeDialogOpen]=useState(false);
+  const [fieldErrors,setFieldErrors]=useState<Record<string,string>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -89,10 +93,13 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
 
   async function submitSubject(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!yearID || !sectionID || !subjectID || !teacherID) {
-      setFeedback({ kind: "error", message: "Select an academic year, section, subject and teacher." });
-      return;
-    }
+    const errors:Record<string,string>={};
+    if(!yearID)errors.yearID="Select an academic year.";
+    if(!sectionID)errors.sectionID="Select a section.";
+    if(!subjectID)errors.subjectID="Select a subject.";
+    if(!teacherID)errors.teacherID="Select a teacher.";
+    setFieldErrors(errors);
+    if(Object.keys(errors).length)return;
     setSaving(true); setFeedback(null);
     try {
       await createTeacherSubjectAssignment({
@@ -100,7 +107,8 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
         subject_id: Number(subjectID), teacher_principal_id: Number(teacherID),
       });
       setFeedback({ kind: "success", message: "Teacher assigned to the subject and section." });
-      setSubjectID(""); setTeacherID("");
+      setSubjectDialogOpen(false);
+      setSubjectID(""); setTeacherID(""); setFieldErrors({});
       await load();
     } catch (error) {
       setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to create teacher assignment." });
@@ -109,10 +117,12 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
 
   async function submitIncharge(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!inchargeYearID || !inchargeSectionID || !inchargeTeacherID) {
-      setFeedback({ kind: "error", message: "Select an academic year, section and teacher." });
-      return;
-    }
+    const errors:Record<string,string>={};
+    if(!inchargeYearID)errors.inchargeYearID="Select an academic year.";
+    if(!inchargeSectionID)errors.inchargeSectionID="Select a section.";
+    if(!inchargeTeacherID)errors.inchargeTeacherID="Select a teacher.";
+    setFieldErrors(errors);
+    if(Object.keys(errors).length)return;
     setSaving(true); setFeedback(null);
     try {
       await createClassInchargeAssignment({
@@ -120,7 +130,8 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
         teacher_principal_id: Number(inchargeTeacherID),
       });
       setFeedback({ kind: "success", message: "Class in-charge assigned successfully." });
-      setInchargeTeacherID("");
+      setInchargeDialogOpen(false);
+      setInchargeTeacherID(""); setFieldErrors({});
       await load();
     } catch (error) {
       setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to assign class in-charge." });
@@ -149,25 +160,33 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
     {loading ? <div className="table-message">Loading teacher assignments…</div> : <>
       {canReadTeacherAssignments && <section className="table-panel assignment-panel">
         <div className="toolbar"><div><h3>Subject teachers</h3><small>{assignments.filter(item => !item.revoked_at).length} active assignments</small></div></div>
-        {canManageTeacherAssignments && <form className="assignment-form" onSubmit={submitSubject}>
-          <label>Academic year<Select ariaLabel="Subject assignment academic year" value={yearID} onChange={value => { setYearID(value); setSectionID(""); }} placeholder="Select year" options={activeYears.map(item => ({value:String(item.id),label:item.name}))} /></label>
-          <label>Section<Select ariaLabel="Subject assignment section" value={sectionID} onChange={setSectionID} placeholder="Select section" disabled={!yearID} options={subjectSections.filter(item => String(item.academic_year_id) === yearID).map(item => ({value:String(item.id),label:`${classes.find(c => c.id === item.class_id)?.name ?? "Class"} · ${item.name}`}))} /></label>
-          <label>Subject<Select ariaLabel="Subject" value={subjectID} onChange={setSubjectID} placeholder="Select subject" options={subjects.filter(item => item.is_active).map(item => ({value:String(item.id),label:item.name}))} /></label>
-          <label>Teacher<Select ariaLabel="Subject assignment teacher" value={teacherID} onChange={setTeacherID} placeholder="Select Teacher" options={teachers.map(item => ({value:String(item.principal_id),label:item.username}))} /></label>
-          <button className="primary" type="submit" disabled={saving || !teachers.length || !activeYears.length}><Plus size={15}/> Assign subject</button>
-        </form>}
+        {canManageTeacherAssignments && <button type="button" className="primary assignment-open-dialog" onClick={()=>{setFieldErrors({});setSubjectDialogOpen(true);}}><Plus size={15}/> Assign subject teacher</button>}
         {assignments.length === 0 ? <div className="table-message">No subject teacher assignments yet.</div> : <div className="table-scroll"><table><thead><tr><th>Class / section</th><th>Subject</th><th>Teacher</th><th>Status</th>{canManageTeacherAssignments && <th>Action</th>}</tr></thead><tbody>{assignments.map(item => <tr key={item.id}><td>{item.class_name} · {item.section_name}</td><td>{item.subject_name}</td><td>{item.teacher_username}</td><td>{item.revoked_at ? "Revoked" : "Active"}</td>{canManageTeacherAssignments && <td>{!item.revoked_at && <button className="assignment-revoke" type="button" onClick={() => void revokeSubject(item)} disabled={saving}><UserRoundX size={14}/> Revoke</button>}</td>}</tr>)}</tbody></table></div>}
       </section>}
       {canReadIncharges && <section className="table-panel assignment-panel">
         <div className="toolbar"><div><h3>Class in-charge</h3><small>{incharges.filter(item => !item.revoked_at).length} active assignments</small></div></div>
-        {canManageIncharges && <form className="assignment-form" onSubmit={submitIncharge}>
-          <label>Academic year<Select ariaLabel="Class in-charge academic year" value={inchargeYearID} onChange={value => { setInchargeYearID(value); setInchargeSectionID(""); }} placeholder="Select year" options={activeYears.map(item => ({value:String(item.id),label:item.name}))} /></label>
-          <label>Section<Select ariaLabel="Class in-charge section" value={inchargeSectionID} onChange={setInchargeSectionID} placeholder="Select section" disabled={!inchargeYearID} options={inchargeSections.filter(item => String(item.academic_year_id) === inchargeYearID).map(item => ({value:String(item.id),label:`${classes.find(c => c.id === item.class_id)?.name ?? "Class"} · ${item.name}`}))} /></label>
-          <label>Teacher<Select ariaLabel="Class in-charge teacher" value={inchargeTeacherID} onChange={setInchargeTeacherID} placeholder="Select Teacher" options={teachers.map(item => ({value:String(item.principal_id),label:item.username}))} /></label>
-          <button className="primary" type="submit" disabled={saving || !teachers.length || !activeYears.length}><Plus size={15}/> Assign in-charge</button>
-        </form>}
+        {canManageIncharges && <button type="button" className="primary assignment-open-dialog" onClick={()=>{setFieldErrors({});setInchargeDialogOpen(true);}}><Plus size={15}/> Assign class in-charge</button>}
         {incharges.length === 0 ? <div className="table-message">No class in-charge assignments yet.</div> : <div className="table-scroll"><table><thead><tr><th>Class / section</th><th>Teacher</th><th>Status</th>{canManageIncharges && <th>Action</th>}</tr></thead><tbody>{incharges.map(item => <tr key={item.id}><td>{item.class_name} · {item.section_name}</td><td>{item.teacher_username}</td><td>{item.revoked_at ? "Revoked" : "Active"}</td>{canManageIncharges && <td>{!item.revoked_at && <button className="assignment-revoke" type="button" onClick={() => void revokeIncharge(item)} disabled={saving}><UserRoundX size={14}/> Revoke</button>}</td>}</tr>)}</tbody></table></div>}
       </section>}
     </>}
+      <Modal open={subjectDialogOpen} title="Assign a subject teacher" description="Choose the academic year, section, subject and active teacher for this assignment." onClose={()=>setSubjectDialogOpen(false)} closeDisabled={saving}>
+        {feedback?.kind==="error"&&<p className="academic-feedback error" role="alert">{feedback.message}</p>}
+        <form className="assignment-form" onSubmit={submitSubject} noValidate>
+          <label>Academic year<Select ariaLabel="Subject assignment academic year" value={yearID} onChange={value=>{setYearID(value);setSectionID("");setFieldErrors(current=>({...current,yearID:"",sectionID:""}));}} placeholder="Select year" options={activeYears.map(item=>({value:String(item.id),label:item.name}))}/>{fieldErrors.yearID&&<small className="app-field-error">{fieldErrors.yearID}</small>}</label>
+          <label>Section<Select ariaLabel="Subject assignment section" value={sectionID} onChange={value=>{setSectionID(value);setFieldErrors(current=>({...current,sectionID:""}));}} placeholder="Select section" disabled={!yearID} options={subjectSections.filter(item=>String(item.academic_year_id)===yearID).map(item=>({value:String(item.id),label:`${classes.find(c=>c.id===item.class_id)?.name??"Class"} · ${item.name}`}))}/>{fieldErrors.sectionID&&<small className="app-field-error">{fieldErrors.sectionID}</small>}</label>
+          <label>Subject<Select ariaLabel="Subject" value={subjectID} onChange={value=>{setSubjectID(value);setFieldErrors(current=>({...current,subjectID:""}));}} placeholder="Select subject" options={subjects.filter(item=>item.is_active).map(item=>({value:String(item.id),label:item.name}))}/>{fieldErrors.subjectID&&<small className="app-field-error">{fieldErrors.subjectID}</small>}</label>
+          <label>Teacher<Select ariaLabel="Subject assignment teacher" value={teacherID} onChange={value=>{setTeacherID(value);setFieldErrors(current=>({...current,teacherID:""}));}} placeholder="Select teacher" options={teachers.map(item=>({value:String(item.principal_id),label:item.username}))}/>{fieldErrors.teacherID&&<small className="app-field-error">{fieldErrors.teacherID}</small>}</label>
+          <div className="app-modal-actions"><button type="button" className="app-modal-cancel" onClick={()=>setSubjectDialogOpen(false)} disabled={saving}>Cancel</button><button className="primary" type="submit" disabled={saving||!teachers.length||!activeYears.length}>{saving?"Assigning…":"Assign subject"}</button></div>
+        </form>
+      </Modal>
+      <Modal open={inchargeDialogOpen} title="Assign class in-charge" description="Choose an academic year, section and active teacher responsible for the class." onClose={()=>setInchargeDialogOpen(false)} closeDisabled={saving}>
+        {feedback?.kind==="error"&&<p className="academic-feedback error" role="alert">{feedback.message}</p>}
+        <form className="assignment-form" onSubmit={submitIncharge} noValidate>
+          <label>Academic year<Select ariaLabel="Class in-charge academic year" value={inchargeYearID} onChange={value=>{setInchargeYearID(value);setInchargeSectionID("");setFieldErrors(current=>({...current,inchargeYearID:"",inchargeSectionID:""}));}} placeholder="Select year" options={activeYears.map(item=>({value:String(item.id),label:item.name}))}/>{fieldErrors.inchargeYearID&&<small className="app-field-error">{fieldErrors.inchargeYearID}</small>}</label>
+          <label>Section<Select ariaLabel="Class in-charge section" value={inchargeSectionID} onChange={value=>{setInchargeSectionID(value);setFieldErrors(current=>({...current,inchargeSectionID:""}));}} placeholder="Select section" disabled={!inchargeYearID} options={inchargeSections.filter(item=>String(item.academic_year_id)===inchargeYearID).map(item=>({value:String(item.id),label:`${classes.find(c=>c.id===item.class_id)?.name??"Class"} · ${item.name}`}))}/>{fieldErrors.inchargeSectionID&&<small className="app-field-error">{fieldErrors.inchargeSectionID}</small>}</label>
+          <label>Teacher<Select ariaLabel="Class in-charge teacher" value={inchargeTeacherID} onChange={value=>{setInchargeTeacherID(value);setFieldErrors(current=>({...current,inchargeTeacherID:""}));}} placeholder="Select teacher" options={teachers.map(item=>({value:String(item.principal_id),label:item.username}))}/>{fieldErrors.inchargeTeacherID&&<small className="app-field-error">{fieldErrors.inchargeTeacherID}</small>}</label>
+          <div className="app-modal-actions"><button type="button" className="app-modal-cancel" onClick={()=>setInchargeDialogOpen(false)} disabled={saving}>Cancel</button><button className="primary" type="submit" disabled={saving||!teachers.length||!activeYears.length}>{saving?"Assigning…":"Assign in-charge"}</button></div>
+        </form>
+      </Modal>
   </div>;
 }
