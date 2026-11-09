@@ -12,6 +12,7 @@ import {
   type SchoolRole,
 } from "../api";
 import { Select } from "../../../shared/components/Select";
+import { Modal } from "../../../shared/components/Modal";
 import "./RoleManagementPage.css";
 
 type Props = { permissions: string[] };
@@ -25,6 +26,8 @@ export function RoleManagementPage({ permissions }: Props) {
   const [selectedRoleID, setSelectedRoleID] = useState<number | null>(null);
   const [permissionKey, setPermissionKey] = useState("");
   const [feedback, setFeedback] = useState("");
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [nameError, setNameError] = useState("");
 
   const rolesQuery = useQuery({
     queryKey: ["school-admin", "roles"],
@@ -57,6 +60,8 @@ export function RoleManagementPage({ permissions }: Props) {
     mutationFn: () => createSchoolRole(name.trim()),
     onSuccess: async result => {
       setName("");
+      setCreateDialogOpen(false);
+      setNameError("");
       setFeedback("Custom role created. Add only the permissions delegated to this school.");
       await queryClient.invalidateQueries({ queryKey: ["school-admin", "roles"] });
       setSelectedRoleID(result.role.id);
@@ -92,6 +97,8 @@ export function RoleManagementPage({ permissions }: Props) {
 
   function submitCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (name.trim().length < 2) { setNameError("Enter a role name with at least 2 characters."); return; }
+    setNameError("");
     setFeedback("");
     create.mutate();
   }
@@ -116,20 +123,7 @@ export function RoleManagementPage({ permissions }: Props) {
         <div className="role-page-count"><ShieldCheck size={16}/>{roles.length} roles</div>
       </div>
 
-      {canCreate && (
-        <section className="role-create-panel">
-          <div><h2>Create a custom role</h2><p>Use a clear name that describes the staff responsibility.</p></div>
-          <form onSubmit={submitCreate}>
-            <label htmlFor="custom-role-name">Role name</label>
-            <div className="role-create-controls">
-              <input id="custom-role-name" value={name} onChange={event => setName(event.target.value)} minLength={2} maxLength={120} placeholder="e.g. Library Coordinator" required/>
-              <button className="primary" type="submit" disabled={create.isPending || name.trim().length < 2}><Plus size={15}/>{create.isPending ? "Creating…" : "Create role"}</button>
-            </div>
-            <small>Custom roles belong only to this school. Built-in system roles cannot be edited here.</small>
-          </form>
-          {create.isError && <p className="role-error" role="alert">{create.error instanceof Error ? create.error.message : "Unable to create this role."}</p>}
-        </section>
-      )}
+      {canCreate && <section className="role-create-panel"><div><h2>Create a custom role</h2><p>Use a clear name that describes the staff responsibility.</p></div><button type="button" className="primary" onClick={() => {setName("");setNameError("");setCreateDialogOpen(true);}}><Plus size={15}/> Create role</button></section>}
 
       <section className="role-list-panel">
         <div className="role-section-heading"><div><h2>School roles</h2><p>Select a custom role to review its permission grants.</p></div><button type="button" className="role-refresh" onClick={() => void rolesQuery.refetch()} disabled={rolesQuery.isFetching} aria-label="Refresh roles"><RefreshCw size={15}/></button></div>
@@ -191,6 +185,16 @@ export function RoleManagementPage({ permissions }: Props) {
           </p>}
         </section>
       )}
+      <Modal open={createDialogOpen} title="Create a custom role" description="Choose a clear name that describes the staff responsibility. Custom roles belong only to this school." onClose={() => setCreateDialogOpen(false)} closeDisabled={create.isPending}>
+        {create.isError && <p className="role-error" role="alert">{create.error instanceof Error ? create.error.message : "Unable to create this role. Check the details and try again."}</p>}
+        <form onSubmit={submitCreate} noValidate>
+          <label htmlFor="custom-role-name">Role name</label>
+          <input id="custom-role-name" value={name} onChange={event => {setName(event.target.value);if(event.target.value.trim().length>=2)setNameError("");}} minLength={2} maxLength={120} placeholder="e.g. Library Coordinator" required aria-invalid={Boolean(nameError)} aria-describedby={nameError ? "custom-role-name-error" : "custom-role-name-help"}/>
+          <small id="custom-role-name-help">Use a name that clearly explains what this staff role is responsible for.</small>
+          {nameError && <small className="app-field-error" id="custom-role-name-error">{nameError}</small>}
+          <div className="app-modal-actions"><button type="button" className="app-modal-cancel" onClick={() => setCreateDialogOpen(false)} disabled={create.isPending}>Cancel</button><button className="primary" type="submit" disabled={create.isPending || name.trim().length<2}>{create.isPending?"Creating…":"Create role"}</button></div>
+        </form>
+      </Modal>
     </div>
   );
 }
