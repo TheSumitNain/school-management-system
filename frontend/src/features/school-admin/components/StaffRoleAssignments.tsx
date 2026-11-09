@@ -3,6 +3,7 @@ import "./StaffRoleAssignments.css";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Shield, Trash2 } from "lucide-react";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
+import { Select } from "../../../shared/components/Select";
 import {
   assignStaffRole, getSchoolRoles, getStaffRoleAssignments, revokeStaffRole,
   type StaffRecord,
@@ -69,10 +70,7 @@ export function StaffRoleAssignments({ staff, canAssign }: Props) {
           </li>)}</ul> : <p className="staff-role-message">No additional roles assigned.</p>}
           {canAssign && <form className="staff-role-assign" onSubmit={submitAssign}>
             <label htmlFor={`role-select-${staff.principal_id}`}>Assign a role</label>
-            <div><select id={`role-select-${staff.principal_id}`} value={roleID} onChange={event => {setRoleID(event.target.value);setRoleError("");}} disabled={busy || availableRoles.length === 0} required aria-invalid={Boolean(roleError)} aria-describedby={roleError?`role-select-error-${staff.principal_id}`:undefined}>
-              <option value="">Choose an available role</option>
-              {availableRoles.map(role => <option key={role.id} value={role.id}>{role.name}{role.is_system ? " (system)" : " (custom)"}</option>)}
-            </select>{roleError&&<small className="app-field-error" id={`role-select-error-${staff.principal_id}`} role="alert">{roleError}</small>}<button className="primary" type="submit" disabled={busy || availableRoles.length === 0}><Check size={15}/>{assign.isPending ? "Assigning…" : "Assign"}</button></div>
+            <div><Select ariaLabel={`Role to assign to ${staff.username}`} value={roleID} onChange={value=>{setRoleID(value);setRoleError("");}} disabled={busy||availableRoles.length===0} placeholder="Choose an available role" options={availableRoles.map(role=>({value:String(role.id),label:role.name+(role.is_system?" (system)":" (custom)")}))}/>{roleError&&<small className="app-field-error" id={`role-select-error-${staff.principal_id}`} role="alert">{roleError}</small>}<button className="primary" type="submit" disabled={busy||availableRoles.length===0}><Check size={15}/>{assign.isPending?"Assigning…":"Assign"}</button></div>
             {availableRoles.length === 0 && <small>There are no other assignable roles available.</small>}
           </form>}
         </>}
