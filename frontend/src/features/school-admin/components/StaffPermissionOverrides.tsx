@@ -53,6 +53,7 @@ export function StaffPermissionOverrides({ staff }: Props) {
   const remove = useMutation({
     mutationFn: (key: string) => deleteStaffPermissionOverride(staff.principal_id, key),
     onSuccess: async () => {
+      setOverrideToRemove(null);
       setFeedback("Permission override removed. Effective permissions update on the next protected request.");
       await queryClient.invalidateQueries({ queryKey: ["school-admin", "staff-overrides", staff.principal_id] });
     },
@@ -72,7 +73,7 @@ export function StaffPermissionOverrides({ staff }: Props) {
         : <>
           {overrides.length ? <ul className="staff-override-list">{overrides.map(item => <li key={item.id}>
             <span><b>{item.permission_key}</b><small className={item.effect === "allow" ? "override-allow" : "override-deny"}>{item.effect.toUpperCase()} · {item.reason}</small></span>
-            <button type="button" disabled={busy} title="Remove override" aria-label={`Remove ${item.permission_key} override`} onClick={() => setOverrideToRemove({key:item.permission_key,effect:item.effect})}><Trash2 size={15}/></button>
+            <button type="button" disabled={busy} title="Remove override" aria-label={`Remove ${item.permission_key} override`} onClick={() => {remove.reset();setOverrideToRemove({key:item.permission_key,effect:item.effect});}}><Trash2 size={15}/></button>
           </li>)}</ul> : <p className="staff-override-message">No individual permission overrides are configured.</p>}
           <form className="staff-override-form" onSubmit={submitOverride} noValidate>
             <label htmlFor={`override-permission-${staff.principal_id}`}>Delegated permission</label>
@@ -97,7 +98,7 @@ export function StaffPermissionOverrides({ staff }: Props) {
         {save.isError ? (save.error instanceof Error ? save.error.message : "Unable to save permission override.")
           : remove.isError ? (remove.error instanceof Error ? remove.error.message : "Unable to remove permission override.") : feedback}
       </p>}
-      <ConfirmDialog open={overrideToRemove !== null} title="Remove permission override?" description={overrideToRemove ? `Remove the ${overrideToRemove.effect.toUpperCase()} override for ${overrideToRemove.key} from ${staff.username}? Effective access will be recalculated on the next protected request.` : ""} confirmLabel="Remove override" pending={remove.isPending} onCancel={() => setOverrideToRemove(null)} onConfirm={() => {if(overrideToRemove){setFeedback("");remove.mutate(overrideToRemove.key);setOverrideToRemove(null);}}}/>
+      <ConfirmDialog open={overrideToRemove !== null} title="Remove permission override?" description={overrideToRemove ? `Remove the ${overrideToRemove.effect.toUpperCase()} override for ${overrideToRemove.key} from ${staff.username}? Effective access will be recalculated on the next protected request.` : ""} confirmLabel="Remove override" pending={remove.isPending} error={remove.isError?(remove.error instanceof Error?remove.error.message:"Unable to remove this override. Please try again."):undefined} onCancel={() => setOverrideToRemove(null)} onConfirm={() => {if(overrideToRemove){setFeedback("");remove.mutate(overrideToRemove.key);}}}/>
     </section>
   );
 }
