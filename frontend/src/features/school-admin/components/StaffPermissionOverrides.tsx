@@ -47,6 +47,7 @@ export function StaffPermissionOverrides({ staff }: Props) {
     }),
     onSuccess: async () => {
       setReason("");
+      setFieldErrors({});
       setFeedback("Permission override saved. It takes effect on the next protected request.");
       await queryClient.invalidateQueries({ queryKey: ["school-admin", "staff-overrides", staff.principal_id] });
     },
@@ -77,10 +78,10 @@ export function StaffPermissionOverrides({ staff }: Props) {
             <button type="button" disabled={busy} title="Remove override" aria-label={`Remove ${item.permission_key} override`} onClick={() => {remove.reset();setOverrideToRemove({key:item.permission_key,effect:item.effect});}}><Trash2 size={15}/></button>
           </li>)}</ul> : <p className="staff-override-message">No individual permission overrides are configured.</p>}
           <form className="staff-override-form" onSubmit={submitOverride} noValidate>
-            <label htmlFor={`override-permission-${staff.principal_id}`}>Delegated permission</label>
+            <label>Delegated permission</label>
             <Select ariaLabel={`Delegated permission override for ${staff.username}`} value={permissionKey} onChange={value=>{setPermissionKey(value);setFieldErrors(current=>({...current,permissionKey:""}));}} disabled={busy||availablePermissions.length===0} placeholder="Choose a delegated permission" options={availablePermissions.map(item=>({value:item.permission_key,label:item.permission_key+" — "+item.description}))}/>
             {fieldErrors.permissionKey&&<small className="app-field-error" id={`override-permission-error-${staff.principal_id}`} role="alert">{fieldErrors.permissionKey}</small>}
-            <label htmlFor={`override-effect-${staff.principal_id}`}>Effect</label>
+            <label>Effect</label>
             <Select ariaLabel="Permission override effect" value={effect} onChange={value=>setEffect(value as "allow"|"deny")} disabled={busy} options={[{value:"deny",label:"Deny — remove effective access"},{value:"allow",label:"Allow — grant delegated access"}]}/>
             <label htmlFor={`override-reason-${staff.principal_id}`}>Reason (required)</label>
             <textarea id={`override-reason-${staff.principal_id}`} value={reason} onChange={event => {setReason(event.target.value);setFieldErrors(current=>({...current,reason:""}));}} maxLength={1000} rows={2} placeholder="Explain why this exception is needed" required disabled={busy} aria-invalid={Boolean(fieldErrors.reason)} aria-describedby={fieldErrors.reason?`override-reason-error-${staff.principal_id}`:undefined}/>
