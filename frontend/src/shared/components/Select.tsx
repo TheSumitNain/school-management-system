@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import "./Select.css";
 
@@ -62,7 +62,7 @@ export function Select({
     if (enabledOptions[next]) setActiveIndex(enabledOptions[next].index);
   }
 
-  function handleTriggerKeyDown(event: React.KeyboardEvent<HTMLButtonElement>) {
+  function handleTriggerKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
     if (disabled) return;
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
