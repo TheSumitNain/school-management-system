@@ -85,6 +85,7 @@ export function RoleManagementPage({ permissions }: Props) {
   const revoke = useMutation({
     mutationFn: (key: string) => revokeCustomRolePermission(selectedRoleID!, key),
     onSuccess: async () => {
+      setPermissionToRevoke(null);
       setFeedback("Permission grant removed.");
       await queryClient.invalidateQueries({ queryKey: ["school-admin", "role-permissions", selectedRoleID] });
     },
@@ -162,7 +163,7 @@ export function RoleManagementPage({ permissions }: Props) {
               const effective = item.delegation_active && item.permission_active;
               return <li key={item.permission_key}>
                 <div className="role-grant-copy"><b>{item.permission_key}</b>{item.description && <small>{item.description}</small>}<span className={effective ? "role-grant-status active" : "role-grant-status inactive"}>{effective ? "Active grant" : "Inactive · delegation revoked or permission disabled"}</span></div>
-                {canManagePermissions && <button type="button" className="role-remove-button" disabled={revoke.isPending} onClick={() => setPermissionToRevoke(item.permission_key)} aria-label={`Remove ${item.permission_key}`}><Trash2 size={15}/></button>}
+                {canManagePermissions && <button type="button" className="role-remove-button" disabled={revoke.isPending} onClick={() => {revoke.reset();setPermissionToRevoke(item.permission_key);}} aria-label={`Remove ${item.permission_key}`}><Trash2 size={15}/></button>}
               </li>;
             })}</ul>}
 
@@ -203,7 +204,7 @@ export function RoleManagementPage({ permissions }: Props) {
           <div className="app-modal-actions"><button type="button" className="app-modal-cancel" onClick={()=>setGrantDialogOpen(false)} disabled={grant.isPending}>Cancel</button><button className="primary" type="submit" disabled={grant.isPending||availableDelegations.length===0}>{grant.isPending?"Granting…":"Grant permission"}</button></div>
         </form>
       </Modal>
-      <ConfirmDialog open={permissionToRevoke !== null} title="Remove permission grant?" description={permissionToRevoke ? `Remove ${permissionToRevoke} from ${selectedRole?.name ?? "this role"}? The role will no longer receive this permission through this grant.` : ""} confirmLabel="Remove permission" pending={revoke.isPending} onCancel={() => setPermissionToRevoke(null)} onConfirm={() => { if(permissionToRevoke){setFeedback("");revoke.mutate(permissionToRevoke);setPermissionToRevoke(null);} }}/>
+      <ConfirmDialog open={permissionToRevoke !== null} title="Remove permission grant?" description={permissionToRevoke ? `Remove ${permissionToRevoke} from ${selectedRole?.name ?? "this role"}? The role will no longer receive this permission through this grant.` : ""} confirmLabel="Remove permission" pending={revoke.isPending} error={revoke.isError?(revoke.error instanceof Error?revoke.error.message:"Unable to remove this permission. Please try again."):undefined} onCancel={() => setPermissionToRevoke(null)} onConfirm={() => { if(permissionToRevoke){setFeedback("");revoke.mutate(permissionToRevoke);} }}/>
     </div>
   );
 }
