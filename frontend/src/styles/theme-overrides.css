@@ -232,3 +232,174 @@
   color: #99f6e4;
 }
 
+
+
+/* Cross-browser form-control normalization. Keep app-owned control chrome theme-driven. */
+:where(button, input, select, textarea) {
+  font: inherit;
+  color: var(--color-text);
+}
+
+:where(input, select, textarea) {
+  accent-color: var(--color-action);
+}
+
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+       select,
+       textarea) {
+  color-scheme: light;
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+:root[data-theme="dark"] :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+       select,
+       textarea) {
+  color-scheme: dark;
+}
+
+:where(select) {
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: var(--control-height);
+  padding-inline-end: 2.5rem;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--color-text-muted) 50%),
+    linear-gradient(135deg, var(--color-text-muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - 17px) 50%,
+    calc(100% - 12px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+
+:where(select option, select optgroup) {
+  background-color: var(--color-surface);
+  color: var(--color-text);
+}
+
+:where(input[type="checkbox"], input[type="radio"]) {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-grid;
+  place-content: center;
+  width: 17px;
+  height: 17px;
+  min-width: 17px;
+  margin: 0;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-action);
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+:where(input[type="checkbox"]) { border-radius: 4px; }
+:where(input[type="radio"]) { border-radius: 50%; }
+
+:where(input[type="checkbox"]):checked,
+:where(input[type="radio"]):checked {
+  border-color: var(--color-action);
+  background-color: var(--color-action);
+}
+
+:where(input[type="checkbox"]):checked::before {
+  content: "";
+  width: 8px;
+  height: 4px;
+  border: solid #fff;
+  border-width: 0 0 2px 2px;
+  transform: rotate(-45deg) translateY(-1px);
+}
+
+:where(input[type="radio"]):checked::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+:where(input[type="checkbox"], input[type="radio"]):disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+:where(input[type="date"], input[type="datetime-local"], input[type="time"]) {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] :where(input[type="date"], input[type="datetime-local"], input[type="time"]) {
+  color-scheme: dark;
+}
+
+:where(input[type="date"], input[type="datetime-local"], input[type="time"])::-webkit-calendar-picker-indicator {
+  opacity: .75;
+  cursor: pointer;
+  filter: var(--calendar-icon-filter, none);
+}
+
+:root[data-theme="dark"] :where(input[type="date"], input[type="datetime-local"], input[type="time"])::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(1.5);
+}
+
+:where(input, select, textarea, button):focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+:where(input, select, textarea)::placeholder {
+  color: var(--color-text-muted);
+  opacity: .8;
+}
+
+:where(input):-webkit-autofill,
+:where(input):-webkit-autofill:hover,
+:where(input):-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--color-text);
+  caret-color: var(--color-text);
+  box-shadow: 0 0 0 1000px var(--color-surface) inset;
+  transition: background-color 99999s ease-out;
+}
+
+::selection {
+  color: var(--color-text);
+  background: var(--color-accent);
+}
+
+:where(*) {
+  scrollbar-color: var(--color-border) transparent;
+  scrollbar-width: thin;
+}
+
+:where(*)::-webkit-scrollbar { width: 9px; height: 9px; }
+:where(*)::-webkit-scrollbar-track { background: transparent; }
+:where(*)::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 99px;
+  background: var(--color-border);
+  background-clip: padding-box;
+}
+:where(*)::-webkit-scrollbar-thumb:hover { background: var(--color-text-muted); background-clip: padding-box; }
+
+@media (forced-colors: active) {
+  :where(input[type="checkbox"], input[type="radio"]) {
+    forced-color-adjust: auto;
+    border: 1px solid ButtonText;
+  }
+  :where(input[type="checkbox"]):checked,
+  :where(input[type="radio"]):checked {
+    background: Highlight;
+    border-color: Highlight;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
