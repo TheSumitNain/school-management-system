@@ -11,6 +11,7 @@ import {
   revokeCustomRolePermission,
   type SchoolRole,
 } from "../api";
+import { Select } from "../../../shared/components/Select";
 import "./RoleManagementPage.css";
 
 type Props = { permissions: string[] };
@@ -173,10 +174,7 @@ export function RoleManagementPage({ permissions }: Props) {
             <form className="role-grant-form" onSubmit={submitGrant}>
               <label htmlFor="role-permission-select">Add a delegated permission</label>
               <div className="role-grant-controls">
-                <select id="role-permission-select" value={permissionKey} onChange={event => setPermissionKey(event.target.value)} disabled={grant.isPending || availableDelegations.length === 0}>
-                  <option value="">Choose an available permission</option>
-                  {availableDelegations.map(item => <option key={item.id} value={item.permission_key}>{item.permission_key}{permissionDescription(item.permission_key) ? ` — ${permissionDescription(item.permission_key)}` : ""}</option>)}
-                </select>
+                <Select ariaLabel="Add a delegated permission" value={permissionKey} placeholder="Choose an available permission" onChange={setPermissionKey} disabled={grant.isPending || availableDelegations.length === 0} options={availableDelegations.map(item => ({ value: item.permission_key, label: item.permission_key + (permissionDescription(item.permission_key) ? ` — ${permissionDescription(item.permission_key)}` : "") }))} />
                 <button className="primary" type="submit" disabled={grant.isPending || !activeDelegationForSelection}><Check size={15}/>{grant.isPending ? "Granting…" : "Grant permission"}</button>
               </div>
               {delegationsQuery.isPending && <small>Loading Platform Admin delegations…</small>}
