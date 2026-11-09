@@ -198,8 +198,8 @@ export function RoleManagementPage({ permissions }: Props) {
         {grant.isError&&<p className="role-error" role="alert">{grant.error instanceof Error?grant.error.message:"Unable to grant this permission. Please try again."}</p>}
         <form className="role-grant-form" onSubmit={submitGrant} noValidate>
           <label htmlFor="role-permission-select">Permission</label>
-          <Select ariaLabel="Permission to grant" value={permissionKey} placeholder="Choose an available permission" onChange={value=>{setPermissionKey(value);setGrantFieldError("");}} disabled={grant.isPending||availableDelegations.length===0} options={availableDelegations.map(item=>({value:item.permission_key,label:item.permission_key+(permissionDescription(item.permission_key)?` — ${permissionDescription(item.permission_key)}`:"")}))}/>
-          {grantFieldError&&<small className="app-field-error" role="alert">{grantFieldError}</small>}
+          <Select ariaLabel="Permission to grant" invalid={Boolean(grantFieldError)} describedBy={grantFieldError?"role-grant-error":undefined} value={permissionKey} placeholder="Choose an available permission" onChange={value=>{setPermissionKey(value);setGrantFieldError("");}} disabled={grant.isPending||availableDelegations.length===0} options={availableDelegations.map(item=>({value:item.permission_key,label:item.permission_key+(permissionDescription(item.permission_key)?` — ${permissionDescription(item.permission_key)}`:"")}))}/>
+          {grantFieldError&&<small className="app-field-error" id="role-grant-error" role="alert">{grantFieldError}</small>}
           {delegationsQuery.isPending&&<small>Loading Platform Admin delegations…</small>}
           {delegationsQuery.isError&&<small className="role-error">{delegationsQuery.error instanceof Error?delegationsQuery.error.message:"Unable to load active delegations."}</small>}
           <small>The backend revalidates the exact delegation before saving.</small>
