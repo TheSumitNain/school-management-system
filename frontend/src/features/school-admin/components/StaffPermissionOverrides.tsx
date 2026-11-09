@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import "./StaffPermissionOverrides.css";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { LockKeyhole, Trash2 } from "lucide-react";
+import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import {
   deleteStaffPermissionOverride, getSchoolPermissionDelegations, getSchoolPermissions,
   getStaffPermissionOverrides, setStaffPermissionOverride, type StaffRecord,
@@ -15,6 +16,7 @@ export function StaffPermissionOverrides({ staff }: Props) {
   const [effect, setEffect] = useState<"allow" | "deny">("deny");
   const [reason, setReason] = useState("");
   const [feedback, setFeedback] = useState("");
+  const [overrideToRemove, setOverrideToRemove] = useState<{key:string;effect:string}|null>(null);
   const permissionsQuery = useQuery({
     queryKey: ["school-admin", "permissions"],
     queryFn: ({ signal }) => getSchoolPermissions(signal),
@@ -68,12 +70,7 @@ export function StaffPermissionOverrides({ staff }: Props) {
         : <>
           {overrides.length ? <ul className="staff-override-list">{overrides.map(item => <li key={item.id}>
             <span><b>{item.permission_key}</b><small className={item.effect === "allow" ? "override-allow" : "override-deny"}>{item.effect.toUpperCase()} · {item.reason}</small></span>
-            <button type="button" disabled={busy} title="Remove override" aria-label={`Remove ${item.permission_key} override`} onClick={() => {
-              if (window.confirm(`Remove the ${item.effect} override for ${item.permission_key}?`)) {
-                setFeedback("");
-                remove.mutate(item.permission_key);
-              }
-            }}><Trash2 size={15}/></button>
+            <button type="button" disabled={busy} title="Remove override" aria-label={`Remove ${item.permission_key} override`} onClick={() => setOverrideToRemove({key:item.permission_key,effect:item.effect})}><Trash2 size={15}/></button>
           </li>)}</ul> : <p className="staff-override-message">No individual permission overrides are configured.</p>}
           <form className="staff-override-form" onSubmit={event => { event.preventDefault(); setFeedback(""); save.mutate(); }}>
             <label htmlFor={`override-permission-${staff.principal_id}`}>Delegated permission</label>
@@ -96,6 +93,7 @@ export function StaffPermissionOverrides({ staff }: Props) {
         {save.isError ? (save.error instanceof Error ? save.error.message : "Unable to save permission override.")
           : remove.isError ? (remove.error instanceof Error ? remove.error.message : "Unable to remove permission override.") : feedback}
       </p>}
+      <ConfirmDialog open={overrideToRemove !== null} title="Remove permission override?" description={overrideToRemove ? `Remove the ${overrideToRemove.effect.toUpperCase()} override for ${overrideToRemove.key} from ${staff.username}? Effective access will be recalculated on the next protected request.` : ""} confirmLabel="Remove override" pending={remove.isPending} onCancel={() => setOverrideToRemove(null)} onConfirm={() => {if(overrideToRemove){setFeedback("");remove.mutate(overrideToRemove.key);setOverrideToRemove(null);}}}/>
     </section>
   );
 }
