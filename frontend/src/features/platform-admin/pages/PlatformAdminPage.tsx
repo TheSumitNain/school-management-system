@@ -132,11 +132,11 @@ export function PlatformAdminPage({ permissions }: Props) {
               : <div className="table-message">No Platform Admin accounts found.</div>}
           </section>
 
-          <div className="platform-create-action"><p>Create an additional global administrator account. New accounts must enroll MFA on first sign-in.</p><button type="button" className="primary" onClick={() => {setFieldErrors({});setAdminDialogOpen(true);}}><UserPlus size={16}/> Create Platform Admin</button></div>
+          <div className="platform-create-action"><p>Create an additional global administrator account. New accounts must enroll MFA on first sign-in.</p><button type="button" className="primary" onClick={() => {setFeedback(null);setFieldErrors({});setShowAdminPassword(false);setAdminDialogOpen(true);}}><UserPlus size={16}/> Create Platform Admin</button></div>
         </div>
       )}
 
-      {activeTab === "school" && canOnboardSchool && <section className="platform-create-action"><p>Create a school and its first School Admin account together.</p><button type="button" className="primary" onClick={() => {setFieldErrors({});setSchoolDialogOpen(true);}}><Building2 size={16}/> Onboard a new school</button></section>}
+      {activeTab === "school" && canOnboardSchool && <section className="platform-create-action"><p>Create a school and its first School Admin account together.</p><button type="button" className="primary" onClick={() => {setFeedback(null);setFieldErrors({});setShowSchoolAdminPassword(false);setSchoolDialogOpen(true);}}><Building2 size={16}/> Onboard a new school</button></section>}
       <Modal open={adminDialogOpen} title="Create Platform Admin" description="The new administrator must enroll multi-factor authentication on first sign-in." onClose={() => setAdminDialogOpen(false)} closeDisabled={createAdmin.isPending}>
         {feedback?.kind === "error" && <p className="platform-feedback error" role="alert">{feedback.message}</p>}
         <form onSubmit={submitAdmin} noValidate>
