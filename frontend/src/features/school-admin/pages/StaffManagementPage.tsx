@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState, type FormEvent } from "react";
-import { KeyRound, LockKeyhole, Pencil, Plus, Search, Shield, ShieldCheck, UserCheck, UserMinus, X } from "lucide-react";
+import { KeyRound, LockKeyhole, Pencil, Plus, Search, Shield, ShieldCheck, UserCheck, UserMinus } from "lucide-react";
 import { StaffRoleAssignments } from "../components/StaffRoleAssignments";
 import { StaffPermissionOverrides } from "../components/StaffPermissionOverrides";
 import {
