@@ -9,6 +9,8 @@ type Props = {
   max?: string;
   min?: string;
   disabled?: boolean;
+  invalid?: boolean;
+  describedBy?: string;
 };
 
 const pad = (value: number) => String(value).padStart(2, "0");
@@ -18,7 +20,7 @@ const fromISO = (value: string) => {
   return year && month && day ? new Date(year, month - 1, day) : null;
 };
 
-export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = false }: Props) {
+export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = false, invalid = false, describedBy }: Props) {
   const selected = fromISO(value);
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
@@ -68,6 +70,8 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
         type="button"
         className="app-date-trigger"
         aria-label={ariaLabel}
+        aria-invalid={invalid || undefined}
+        aria-describedby={describedBy}
         aria-haspopup="dialog"
         aria-expanded={open}
         disabled={disabled}
