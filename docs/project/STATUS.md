@@ -15,6 +15,18 @@ This file is the current implementation-status reference. Older checkpoint notes
 - **Parent OTP/SMS:** Explicitly deferred. Do not implement parent OTP login, SMS delivery or parent-facing authentication now. Preserve existing guardian/parent relationship foundations without expanding this workstream until Phase 2 is approved.
 - **Scale target:** 25–30 schools and 400–500 students per school; capacity is not yet load-tested.
 
+## Next scheduled task — persistent authenticated sessions (planned, not implemented)
+
+The next security task is to revise session persistence while preserving the existing authentication and authorization safeguards. This work has **not started** and must not be reported as complete until code, tests and documentation are updated and verified.
+
+- Keep users signed in across browser close/reopen and laptop shutdown/restart, subject to the browser retaining its persistent cookie. Renew the persistent refresh cookie during successful token refresh; do not promise persistence beyond browser-enforced cookie policies.
+- Platform Admin and School Admin must complete mandatory MFA on every fresh login. MFA must not be repeated during background access-token refresh or restoration of an existing valid session.
+- Remove the current 30-minute administrative idle timeout and the current server-side absolute refresh-session expiry, without weakening session-family validation.
+- A session remains valid until the user manually logs out or a security/account event requires revocation (for example, password/security reset, account disablement or confirmed compromise).
+- Manual logout must revoke the session family. Preserve opaque refresh-token rotation, replay detection/family revocation, transaction/concurrency protections, HttpOnly + Secure cookie policy, cross-tab logout synchronization, principal token-version checks and live database-backed RBAC authorization.
+- Update backend and frontend behavior, regression/integration tests, and the relevant security/session documentation. Verify fresh-login MFA separately from background refresh and browser session restoration.
+- Work on the existing `feature/school-attendance-management` branch. Do not create a new branch or merge PR #6; neither is part of this task.
+
 ## Future product direction (documented, not current implementation scope)
 
 - **Self-service school registration is deferred until the School Admin dashboard and the Phase 1 school web experience are complete and stable.** Do not build public registration, email-verification onboarding, or self-service tenant creation during the current workstream.
