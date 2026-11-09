@@ -154,6 +154,7 @@ export function RoleManagementPage({ permissions }: Props) {
       </section>
 
       {selectedRole && !selectedRole.is_system && (
+        <Modal open title={`Manage permissions · ${selectedRole.name}`} description="Review and update this custom role’s delegated permissions. Changes are checked against the Platform Admin’s active delegation." onClose={() => {setSelectedRoleID(null);setPermissionKey("");setFeedback("");}}>
         <section className="role-permission-panel">
           <div className="role-section-heading"><div><span className="eyebrow">CUSTOM ROLE</span><h2>{selectedRole.name}</h2><p>Current permission grants and their exact delegation status.</p></div></div>
           {rolePermissionsQuery.isPending ? <div className="role-state">Loading permissions…</div>
@@ -181,6 +182,7 @@ export function RoleManagementPage({ permissions }: Props) {
               : feedback}
           </p>}
         </section>
+        </Modal>
       )}
       <Modal open={createDialogOpen} title="Create a custom role" description="Choose a clear name that describes the staff responsibility. Custom roles belong only to this school." onClose={() => setCreateDialogOpen(false)} closeDisabled={create.isPending}>
         {create.isError && <p className="role-error" role="alert">{create.error instanceof Error ? create.error.message : "Unable to create this role. Check the details and try again."}</p>}
