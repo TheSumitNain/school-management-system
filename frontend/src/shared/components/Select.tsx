@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import "./Select.css";
 
@@ -34,7 +34,7 @@ export function Select({
     const closeOnOutsidePointer = (event: PointerEvent) => {
       if (event.target instanceof Node && !rootRef.current?.contains(event.target)) setOpen(false);
     };
-    const closeOnEscape = (event: KeyboardEvent) => {
+    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
     };
     document.addEventListener("pointerdown", closeOnOutsidePointer);
@@ -62,7 +62,7 @@ export function Select({
     if (enabledOptions[next]) setActiveIndex(enabledOptions[next].index);
   }
 
-  function handleTriggerKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+  function handleTriggerKeyDown(event: ReactKeyboardEvent<HTMLButtonElement>) {
     if (disabled) return;
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
