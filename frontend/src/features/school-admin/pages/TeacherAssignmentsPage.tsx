@@ -48,7 +48,9 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
   const [inchargeDialogOpen,setInchargeDialogOpen]=useState(false);
   const [fieldErrors,setFieldErrors]=useState<Record<string,string>>({});
   const [subjectToRevoke,setSubjectToRevoke]=useState<TeacherSubjectAssignment|null>(null);
+  const [subjectRevokeError,setSubjectRevokeError]=useState("");
   const [inchargeToRevoke,setInchargeToRevoke]=useState<ClassInchargeAssignment|null>(null);
+  const [inchargeRevokeError,setInchargeRevokeError]=useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -148,11 +150,11 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
     try {
       await revokeTeacherSubjectAssignment(target.id);
       setSubjectToRevoke(null);
+      setSubjectRevokeError("");
       setFeedback({ kind: "success", message: "Subject assignment revoked. Its history has been retained." });
       await load();
     } catch (error) {
-      setSubjectToRevoke(null);
-      setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to revoke assignment. Please try again." });
+      setSubjectRevokeError(error instanceof Error ? error.message : "Unable to revoke assignment. Please try again.");
     } finally { setSaving(false); }
   }
 
@@ -163,11 +165,11 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
     try {
       await revokeClassInchargeAssignment(target.id);
       setInchargeToRevoke(null);
+      setInchargeRevokeError("");
       setFeedback({ kind: "success", message: "Class in-charge assignment revoked. Its history has been retained." });
       await load();
     } catch (error) {
-      setInchargeToRevoke(null);
-      setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to revoke assignment. Please try again." });
+      setInchargeRevokeError(error instanceof Error ? error.message : "Unable to revoke assignment. Please try again.");
     } finally { setSaving(false); }
   }
 
@@ -205,7 +207,7 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
           <div className="app-modal-actions"><button type="button" className="app-modal-cancel" onClick={()=>setInchargeDialogOpen(false)} disabled={saving}>Cancel</button><button className="primary" type="submit" disabled={saving||!teachers.length||!activeYears.length}>{saving?"Assigning…":"Assign in-charge"}</button></div>
         </form>
       </Modal>
-      <ConfirmDialog open={subjectToRevoke !== null} title="Revoke subject assignment?" description={subjectToRevoke ? `Revoke ${subjectToRevoke.teacher_username}'s ${subjectToRevoke.subject_name} assignment for ${subjectToRevoke.class_name} · ${subjectToRevoke.section_name}? The assignment history will be retained.` : ""} confirmLabel="Revoke assignment" pending={saving} onCancel={() => setSubjectToRevoke(null)} onConfirm={() => void confirmRevokeSubject()}/>
-      <ConfirmDialog open={inchargeToRevoke !== null} title="Revoke class in-charge?" description={inchargeToRevoke ? `Remove ${inchargeToRevoke.teacher_username} as class in-charge for ${inchargeToRevoke.class_name} · ${inchargeToRevoke.section_name}? The assignment history will be retained.` : ""} confirmLabel="Revoke assignment" pending={saving} onCancel={() => setInchargeToRevoke(null)} onConfirm={() => void confirmRevokeIncharge()}/>
+      <ConfirmDialog open={subjectToRevoke !== null} title="Revoke subject assignment?" description={subjectToRevoke ? `Revoke ${subjectToRevoke.teacher_username}'s ${subjectToRevoke.subject_name} assignment for ${subjectToRevoke.class_name} · ${subjectToRevoke.section_name}? The assignment history will be retained.` : ""} confirmLabel="Revoke assignment" pending={saving} error={subjectRevokeError || undefined} onCancel={() => {setSubjectToRevoke(null);setSubjectRevokeError("");}} onConfirm={() => void confirmRevokeSubject()}/>
+      <ConfirmDialog open={inchargeToRevoke !== null} title="Revoke class in-charge?" description={inchargeToRevoke ? `Remove ${inchargeToRevoke.teacher_username} as class in-charge for ${inchargeToRevoke.class_name} · ${inchargeToRevoke.section_name}? The assignment history will be retained.` : ""} confirmLabel="Revoke assignment" pending={saving} error={inchargeRevokeError || undefined} onCancel={() => {setInchargeToRevoke(null);setInchargeRevokeError("");}} onConfirm={() => void confirmRevokeIncharge()}/>
   </div>;
 }
