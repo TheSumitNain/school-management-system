@@ -15,6 +15,7 @@ export function StaffRoleAssignments({ staff, canAssign }: Props) {
   const [roleID, setRoleID] = useState("");
   const [feedback, setFeedback] = useState("");
   const [roleToRevoke, setRoleToRevoke] = useState<{id:number;name:string}|null>(null);
+  const [roleError, setRoleError] = useState("");
   const rolesQuery = useQuery({
     queryKey: ["school-admin", "roles"],
     queryFn: ({ signal }) => getSchoolRoles(signal),
@@ -50,6 +51,7 @@ export function StaffRoleAssignments({ staff, canAssign }: Props) {
     [rolesQuery.data?.roles, assignments],
   );
   const busy = assign.isPending || revoke.isPending;
+  function submitAssign(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); if(!roleID){setRoleError("Choose a role to assign.");return;} setRoleError("");setFeedback("");assign.mutate(); }
 
   return (
     <section className="staff-role-panel" aria-label={`Roles for ${staff.username}`}>
@@ -64,12 +66,12 @@ export function StaffRoleAssignments({ staff, canAssign }: Props) {
             <span><b>{item.name}</b><small>{item.is_system ? "System role" : "Custom role"} · {item.role_key}</small></span>
             {canAssign && item.role_key !== "school_admin" && <button type="button" disabled={busy} aria-label={`Remove ${item.name} role`} title="Remove role" onClick={() => setRoleToRevoke({id:item.role_id,name:item.name})}><Trash2 size={15}/></button>}
           </li>)}</ul> : <p className="staff-role-message">No additional roles assigned.</p>}
-          {canAssign && <form className="staff-role-assign" onSubmit={event => { event.preventDefault(); setFeedback(""); assign.mutate(); }}>
+          {canAssign && <form className="staff-role-assign" onSubmit={submitAssign}>
             <label htmlFor={`role-select-${staff.principal_id}`}>Assign a role</label>
-            <div><select id={`role-select-${staff.principal_id}`} value={roleID} onChange={event => setRoleID(event.target.value)} disabled={busy || availableRoles.length === 0}>
+            <div><select id={`role-select-${staff.principal_id}`} value={roleID} onChange={event => {setRoleID(event.target.value);setRoleError("");}} disabled={busy || availableRoles.length === 0} required aria-invalid={Boolean(roleError)} aria-describedby={roleError?`role-select-error-${staff.principal_id}`:undefined}>
               <option value="">Choose an available role</option>
               {availableRoles.map(role => <option key={role.id} value={role.id}>{role.name}{role.is_system ? " (system)" : " (custom)"}</option>)}
-            </select><button className="primary" type="submit" disabled={busy || !roleID}><Check size={15}/>{assign.isPending ? "Assigning…" : "Assign"}</button></div>
+            </select>{roleError&&<small className="app-field-error" id={`role-select-error-${staff.principal_id}`} role="alert">{roleError}</small>}<button className="primary" type="submit" disabled={busy || availableRoles.length === 0}><Check size={15}/>{assign.isPending ? "Assigning…" : "Assign"}</button></div>
             {availableRoles.length === 0 && <small>There are no other assignable roles available.</small>}
           </form>}
         </>}
