@@ -84,6 +84,7 @@ export function AcademicStructurePage({permissions}:Props) {
     else if(action.kind==="class")body={name,display_order:Number(form.get("display_order")??0),is_active:form.get("is_active")==="on"};
     else if(action.kind==="section"){if(!Number(form.get("academic_year_id")))errors.academic_year_id="Select an academic year.";if(!Number(form.get("class_id")))errors.class_id="Select a class.";if(Object.keys(errors).length){setFieldErrors(errors);return;}body={academic_year_id:Number(form.get("academic_year_id")),class_id:Number(form.get("class_id")),name,display_order:Number(form.get("display_order")??0),is_active:form.get("is_active")==="on"};}
     else body={name,subject_code:String(form.get("subject_code")??"").trim()||null,is_active:form.get("is_active")==="on"};
+    if(Object.keys(errors).length){setFieldErrors(errors);return;}
     setFieldErrors({});setSaving(true);setFeedback(null);
     try{await api(path,{method,body:JSON.stringify(body)});setAction(null);setFeedback({kind:"success",message:"Academic information saved successfully."});await load();}
     catch(e){setFeedback({kind:"error",message:e instanceof Error?e.message:"Unable to save academic information."});}
