@@ -1,6 +1,6 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Check, Plus, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
+import { AlertTriangle, Plus, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
 import {
   createSchoolRole,
   getCustomRolePermissions,
