@@ -30,6 +30,8 @@ export function RoleManagementPage({ permissions }: Props) {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [nameError, setNameError] = useState("");
   const [permissionToRevoke, setPermissionToRevoke] = useState<string | null>(null);
+  const [grantDialogOpen, setGrantDialogOpen] = useState(false);
+  const [grantFieldError, setGrantFieldError] = useState("");
 
   const rolesQuery = useQuery({
     queryKey: ["school-admin", "roles"],
@@ -74,6 +76,8 @@ export function RoleManagementPage({ permissions }: Props) {
       grantCustomRolePermission(selectedRoleID!, input),
     onSuccess: async () => {
       setPermissionKey("");
+      setGrantDialogOpen(false);
+      setGrantFieldError("");
       setFeedback("Permission granted. It is effective only while its exact delegation remains active.");
       await queryClient.invalidateQueries({ queryKey: ["school-admin", "role-permissions", selectedRoleID] });
     },
@@ -106,7 +110,8 @@ export function RoleManagementPage({ permissions }: Props) {
   }
   function submitGrant(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!activeDelegationForSelection || !selectedRoleID) return;
+    if (!permissionKey || !activeDelegationForSelection || !selectedRoleID) { setGrantFieldError("Choose a permission that has an active delegation for this school."); return; }
+    setGrantFieldError("");
     setFeedback("");
     grant.mutate({
       permission_key: activeDelegationForSelection.permission_key,
@@ -162,17 +167,11 @@ export function RoleManagementPage({ permissions }: Props) {
             })}</ul>}
 
           {canManagePermissions ? (
-            <form className="role-grant-form" onSubmit={submitGrant}>
-              <label htmlFor="role-permission-select">Add a delegated permission</label>
-              <div className="role-grant-controls">
-                <Select ariaLabel="Add a delegated permission" value={permissionKey} placeholder="Choose an available permission" onChange={setPermissionKey} disabled={grant.isPending || availableDelegations.length === 0} options={availableDelegations.map(item => ({ value: item.permission_key, label: item.permission_key + (permissionDescription(item.permission_key) ? ` — ${permissionDescription(item.permission_key)}` : "") }))} />
-                <button className="primary" type="submit" disabled={grant.isPending || !activeDelegationForSelection}><Check size={15}/>{grant.isPending ? "Granting…" : "Grant permission"}</button>
-              </div>
-              {delegationsQuery.isPending && <small>Loading Platform Admin delegations…</small>}
-              {delegationsQuery.isError && <small className="role-error">{delegationsQuery.error instanceof Error ? delegationsQuery.error.message : "Unable to load active delegations."}</small>}
-              {!delegationsQuery.isPending && !delegationsQuery.isError && availableDelegations.length === 0 && <small>No unused permissions have an active Platform Admin delegation for this school. A revoked grant must be removed before it can be granted again under a new delegation.</small>}
-              <small>Only active permissions explicitly delegated with “assign to roles” can be granted. The backend validates the exact delegation ID.</small>
-            </form>
+            <div className="role-grant-form">
+              <p>Only active permissions explicitly delegated by the Platform Admin can be assigned to this role.</p>
+              <button type="button" className="primary" onClick={() => {setPermissionKey("");setGrantFieldError("");setGrantDialogOpen(true);}} disabled={availableDelegations.length===0 || delegationsQuery.isLoading}><Plus size={15}/> Add delegated permission</button>
+              {!delegationsQuery.isPending && !delegationsQuery.isError && availableDelegations.length===0 && <small>No unused permissions have an active Platform Admin delegation for this school.</small>}
+            </div>
           ) : <p className="role-readonly-note"><AlertTriangle size={15}/> You can view permissions but do not have both permissions required to change this role.</p>}
 
           {(feedback || grant.isError || revoke.isError) && <p className={grant.isError || revoke.isError ? "role-feedback role-error" : "role-feedback"} role="status">
@@ -190,6 +189,18 @@ export function RoleManagementPage({ permissions }: Props) {
           <small id="custom-role-name-help">Use a name that clearly explains what this staff role is responsible for.</small>
           {nameError && <small className="app-field-error" id="custom-role-name-error">{nameError}</small>}
           <div className="app-modal-actions"><button type="button" className="app-modal-cancel" onClick={() => setCreateDialogOpen(false)} disabled={create.isPending}>Cancel</button><button className="primary" type="submit" disabled={create.isPending || name.trim().length<2}>{create.isPending?"Creating…":"Create role"}</button></div>
+        </form>
+      </Modal>
+      <Modal open={grantDialogOpen} title="Grant a delegated permission" description={selectedRole ? `Choose a permission to add to the ${selectedRole.name} role. Only active delegations that allow role assignment are available.` : ""} onClose={()=>setGrantDialogOpen(false)} closeDisabled={grant.isPending}>
+        {grant.isError&&<p className="role-error" role="alert">{grant.error instanceof Error?grant.error.message:"Unable to grant this permission. Please try again."}</p>}
+        <form className="role-grant-form" onSubmit={submitGrant} noValidate>
+          <label htmlFor="role-permission-select">Permission</label>
+          <Select ariaLabel="Permission to grant" value={permissionKey} placeholder="Choose an available permission" onChange={value=>{setPermissionKey(value);setGrantFieldError("");}} disabled={grant.isPending||availableDelegations.length===0} options={availableDelegations.map(item=>({value:item.permission_key,label:item.permission_key+(permissionDescription(item.permission_key)?` — ${permissionDescription(item.permission_key)}`:"")}))}/>
+          {grantFieldError&&<small className="app-field-error" role="alert">{grantFieldError}</small>}
+          {delegationsQuery.isPending&&<small>Loading Platform Admin delegations…</small>}
+          {delegationsQuery.isError&&<small className="role-error">{delegationsQuery.error instanceof Error?delegationsQuery.error.message:"Unable to load active delegations."}</small>}
+          <small>The backend revalidates the exact delegation before saving.</small>
+          <div className="app-modal-actions"><button type="button" className="app-modal-cancel" onClick={()=>setGrantDialogOpen(false)} disabled={grant.isPending}>Cancel</button><button className="primary" type="submit" disabled={grant.isPending||availableDelegations.length===0}>{grant.isPending?"Granting…":"Grant permission"}</button></div>
         </form>
       </Modal>
       <ConfirmDialog open={permissionToRevoke !== null} title="Remove permission grant?" description={permissionToRevoke ? `Remove ${permissionToRevoke} from ${selectedRole?.name ?? "this role"}? The role will no longer receive this permission through this grant.` : ""} confirmLabel="Remove permission" pending={revoke.isPending} onCancel={() => setPermissionToRevoke(null)} onConfirm={() => { if(permissionToRevoke){setFeedback("");revoke.mutate(permissionToRevoke);setPermissionToRevoke(null);} }}/>
