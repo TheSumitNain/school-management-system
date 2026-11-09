@@ -3,6 +3,7 @@ import "./StaffPermissionOverrides.css";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { LockKeyhole, Trash2 } from "lucide-react";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
+import { Select } from "../../../shared/components/Select";
 import {
   deleteStaffPermissionOverride, getSchoolPermissionDelegations, getSchoolPermissions,
   getStaffPermissionOverrides, setStaffPermissionOverride, type StaffRecord,
@@ -77,16 +78,10 @@ export function StaffPermissionOverrides({ staff }: Props) {
           </li>)}</ul> : <p className="staff-override-message">No individual permission overrides are configured.</p>}
           <form className="staff-override-form" onSubmit={submitOverride} noValidate>
             <label htmlFor={`override-permission-${staff.principal_id}`}>Delegated permission</label>
-            <select id={`override-permission-${staff.principal_id}`} value={permissionKey} onChange={event => {setPermissionKey(event.target.value);setFieldErrors(current=>({...current,permissionKey:""}));}} disabled={busy || availablePermissions.length === 0} required aria-invalid={Boolean(fieldErrors.permissionKey)} aria-describedby={fieldErrors.permissionKey?`override-permission-error-${staff.principal_id}`:undefined}>
-              <option value="">Choose a delegated permission</option>
-              {availablePermissions.map(item => <option key={item.permission_key} value={item.permission_key}>{item.permission_key} — {item.description}</option>)}
-            </select>
+            <Select ariaLabel={`Delegated permission override for ${staff.username}`} value={permissionKey} onChange={value=>{setPermissionKey(value);setFieldErrors(current=>({...current,permissionKey:""}));}} disabled={busy||availablePermissions.length===0} placeholder="Choose a delegated permission" options={availablePermissions.map(item=>({value:item.permission_key,label:item.permission_key+" — "+item.description}))}/>
             {fieldErrors.permissionKey&&<small className="app-field-error" id={`override-permission-error-${staff.principal_id}`} role="alert">{fieldErrors.permissionKey}</small>}
             <label htmlFor={`override-effect-${staff.principal_id}`}>Effect</label>
-            <select id={`override-effect-${staff.principal_id}`} value={effect} onChange={event => setEffect(event.target.value as "allow" | "deny")} disabled={busy}>
-              <option value="deny">Deny — remove effective access</option>
-              <option value="allow">Allow — grant delegated access</option>
-            </select>
+            <Select ariaLabel="Permission override effect" value={effect} onChange={value=>setEffect(value as "allow"|"deny")} disabled={busy} options={[{value:"deny",label:"Deny — remove effective access"},{value:"allow",label:"Allow — grant delegated access"}]}/>
             <label htmlFor={`override-reason-${staff.principal_id}`}>Reason (required)</label>
             <textarea id={`override-reason-${staff.principal_id}`} value={reason} onChange={event => {setReason(event.target.value);setFieldErrors(current=>({...current,reason:""}));}} maxLength={1000} rows={2} placeholder="Explain why this exception is needed" required disabled={busy} aria-invalid={Boolean(fieldErrors.reason)} aria-describedby={fieldErrors.reason?`override-reason-error-${staff.principal_id}`:undefined}/>
             {fieldErrors.reason&&<small className="app-field-error" id={`override-reason-error-${staff.principal_id}`} role="alert">{fieldErrors.reason}</small>}
