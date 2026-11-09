@@ -32,7 +32,7 @@ export function Modal({ open, title, description, onClose, children, closeDisabl
     document.body.style.overflow = "hidden";
     const frame = window.requestAnimationFrame(() => {
       const first = dialogRef.current?.querySelector<HTMLElement>(
-        "input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]):not(.app-modal-close), [tabindex]:not([tabindex='-1'])",
+        "input:not([disabled]):not([type='hidden']), select:not([disabled]), textarea:not([disabled]), button:not([disabled]):not(.app-modal-close), [tabindex]:not([tabindex='-1'])",
       ) ?? dialogRef.current?.querySelector<HTMLElement>(".app-modal-close");
       first?.focus();
     });
@@ -41,7 +41,7 @@ export function Modal({ open, title, description, onClose, children, closeDisabl
       if (event.key === "Escape" && !closeDisabled) { event.preventDefault(); onCloseRef.current(); }
       if (event.key !== "Tab" || !dialogRef.current) return;
       const items = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(
-        "a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])",
+        "a[href], button:not([disabled]), input:not([disabled]):not([type='hidden']), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])",
       ));
       if (!items.length) return;
       const first = items[0];
