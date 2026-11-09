@@ -1,5 +1,5 @@
 import { useDeferredValue, useMemo, useState, type FormEvent } from "react";
-import { Archive, GraduationCap, Pencil, Plus, RefreshCw, Search, Users, X } from "lucide-react";
+import { Archive, GraduationCap, Pencil, Plus, RefreshCw, Search, Users } from "lucide-react";
 import {
   useArchiveSchoolStudentMutation, useCreateSchoolStudentEnrollmentMutation, useCreateSchoolStudentMutation,
   useSchoolStudentAcademicYearsQuery, useSchoolStudentEnrollmentsQuery, useSchoolStudentSectionsQuery,
