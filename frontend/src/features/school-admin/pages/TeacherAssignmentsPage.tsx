@@ -175,7 +175,7 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
 
   return <div className="teacher-assignments">
     <div className="assignment-heading"><div><h2>Teacher assignments</h2><p>Assign active Teachers to subjects, sections and class in-charge responsibilities.</p></div><button type="button" onClick={() => void load()} disabled={loading}><RefreshCw size={15}/> Refresh</button></div>
-    {feedback && <div className={"academic-feedback " + feedback.kind} role="status">{feedback.message}</div>}
+    {feedback && !((subjectDialogOpen||inchargeDialogOpen)&&feedback.kind==="error") && <div className={"academic-feedback " + feedback.kind} role="status">{feedback.message}</div>}
     {loading ? <div className="table-message">Loading teacher assignments…</div> : <>
       {canReadTeacherAssignments && <section className="table-panel assignment-panel">
         <div className="toolbar"><div><h3>Subject teachers</h3><small>{assignments.filter(item => !item.revoked_at).length} active assignments</small></div></div>
