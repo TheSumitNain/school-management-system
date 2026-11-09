@@ -158,7 +158,7 @@ export function StudentManagementPage({ permissions }: Props) {
       {canReadStudents && <button type="button" role="tab" aria-selected={tab === "students"} className={tab === "students" ? "selected" : ""} onClick={() => { setTab("students"); setShowEnrollment(false); setFeedback(null); }}>Student directory</button>}
       {canReadEnrollments && <button type="button" role="tab" aria-selected={tab === "enrollments"} className={tab === "enrollments" ? "selected" : ""} onClick={() => { setTab("enrollments"); setAction(null); setFeedback(null); }}>Enrollments</button>}
     </div>
-    {feedback && <div className={"student-feedback " + feedback.kind} role="status">{feedback.message}</div>}
+    {feedback && !((action!==null||showEnrollment)&&feedback.kind==="error") && <div className={"student-feedback " + feedback.kind} role="status">{feedback.message}</div>}
     <Modal open={action !== null} title={action === "create" ? "Add student" : "Edit student"} description="Enter the student's official details. You can enroll the student into a class section after creating the record." onClose={() => openStudent(null)} closeDisabled={busy}>
       {feedback?.kind === "error" && <p className="student-feedback error" role="alert">{feedback.message}</p>}
       <form onSubmit={submitStudent} noValidate>
