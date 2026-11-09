@@ -116,14 +116,22 @@ export function AttendanceManagementPage({ permissions }: Props) {
         <label>Attendance date
           <DatePicker ariaLabel="Attendance date" value={date} max={today} onChange={value => { setDate(value); setDrafts({}); }} />
         </label>
-        <button type="button" className="attendance-refresh" onClick={() => { void enrollmentsQuery.refetch(); void attendanceQuery.refetch(); }} disabled={!sectionID || busy}><RefreshCw size={15}/> Refresh</button>
+        <button type="button" className="attendance-refresh" onClick={() => { void yearsQuery.refetch(); if (effectiveYearID) void sectionsQuery.refetch(); if (sectionID) { void enrollmentsQuery.refetch(); void attendanceQuery.refetch(); } }} disabled={busy}><RefreshCw size={15}/> Refresh</button>
       </div>
 
       {feedback && <div className={"attendance-feedback " + feedback.kind} role="status">{feedback.message}</div>}
       {!canReadYears || !canReadSections || !canReadRoster ? (
         <div className="attendance-state"><b>Additional permissions required</b><span>To load the roster, your account needs academic_years.read, classes.read and students.read_basic.</span></div>
+      ) : yearsQuery.isLoading ? (
+        <div className="attendance-state"><span className="attendance-spinner"/>Loading academic years…</div>
+      ) : yearsQuery.isError ? (
+        <div className="attendance-state error"><b>Could not load academic years</b><span>{errorMessage(yearsQuery.error)}</span><button type="button" onClick={() => void yearsQuery.refetch()}>Try again</button></div>
       ) : !effectiveYearID ? (
         <div className="attendance-state"><b>No active academic year</b><span>Create or activate an academic year before recording attendance.</span></div>
+      ) : sectionsQuery.isLoading ? (
+        <div className="attendance-state"><span className="attendance-spinner"/>Loading sections…</div>
+      ) : sectionsQuery.isError ? (
+        <div className="attendance-state error"><b>Could not load sections</b><span>{errorMessage(sectionsQuery.error)}</span><button type="button" onClick={() => void sectionsQuery.refetch()}>Try again</button></div>
       ) : !sectionID ? (
         <div className="attendance-state"><b>Select a section</b><span>Choose an academic year and section to load its enrolled students.</span></div>
       ) : enrollmentsQuery.isLoading || attendanceQuery.isLoading ? (
