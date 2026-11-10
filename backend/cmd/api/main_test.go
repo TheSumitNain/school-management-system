@@ -1055,3 +1055,52 @@ func TestStaffCreateAndDisableRoutesEnforceDedicatedLivePermissions(t *testing.T
 		})
 	}
 }
+
+
+func TestEligibleTeacherRouteAcceptsEitherAssignmentReadPermission(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	validator := fakeTokenValidator{claims: &services.TokenClaims{
+		RegisteredClaims: jwt.RegisteredClaims{Subject: "31"},
+		PrincipalType: "staff",
+		TokenVersion: 1,
+	}}
+	principal := &models.AuthPrincipal{
+		ID: 31, Type: "staff", Status: "active", TokenVersion: 1,
+		SchoolID: 8, Username: "school.admin",
+	}
+
+	request := func(permissions []string) *httptest.ResponseRecorder {
+		router, err := setupTestRouterWithHandlers(
+			fakeDatabase{}, nil, validator,
+			fakePrincipalLoader{principal: principal},
+			fakePermissionLoader{permissions: permissions},
+			nil, nil, nil, handlers.NewAcademicHandler(nil),
+		)
+		if err != nil {
+			t.Fatalf("setup eligible-teacher router: %v", err)
+		}
+		req := httptest.NewRequest(http.MethodGet, "/school/eligible-teachers", nil)
+		req.Header.Set("Authorization", "Bearer valid-test-token")
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		return rec
+	}
+
+	if denied := request(nil); denied.Code != http.StatusForbidden {
+		t.Fatalf("without either assignment read permission: status=%d body=%s; want 403",
+			denied.Code, denied.Body.String())
+	}
+
+	for _, permission := range []string{
+		"teacher_assignments.read",
+		"class_incharge_assignments.read",
+	} {
+		t.Run(permission, func(t *testing.T) {
+			allowed := request([]string{permission})
+			if allowed.Code != http.StatusServiceUnavailable {
+				t.Fatalf("with %s request should pass route authorization and reach unavailable handler: status=%d body=%s; want 503",
+					permission, allowed.Code, allowed.Body.String())
+			}
+		})
+	}
+}
