@@ -76,7 +76,7 @@
  */
 :root,
 :root[data-palette="navy"] {
-  --color-brand: #0f766e;
+  --color-brand: #0f766e;\n  --color-focus: #0f766e;
   --color-brand-hover: #115e59;
   --color-brand-soft: #ccfbf1;
   --color-on-brand: #ffffff;
@@ -89,7 +89,7 @@
 }
 
 :root[data-palette="green"] {
-  --color-brand: #059669;
+  --color-brand: #059669;\n  --color-focus: #059669;
   --color-brand-hover: #047857;
   --color-brand-soft: #d1fae5;
   --color-on-brand: #ffffff;
@@ -102,7 +102,7 @@
 }
 
 :root[data-palette="purple"] {
-  --color-brand: #6366f1;
+  --color-brand: #6366f1;\n  --color-focus: #6366f1;
   --color-brand-hover: #4f46e5;
   --color-brand-soft: #e0e7ff;
   --color-on-brand: #ffffff;
@@ -115,7 +115,7 @@
 }
 
 :root[data-palette="teal"] {
-  --color-brand: #0891b2;
+  --color-brand: #0891b2;\n  --color-focus: #0891b2;
   --color-brand-hover: #0e7490;
   --color-brand-soft: #cffafe;
   --color-on-brand: #ffffff;
