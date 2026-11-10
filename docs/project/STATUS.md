@@ -1,9 +1,9 @@
 # Project Status
 
-**Last reconciled:** 2026-11-08  
+**Last reconciled:** 2026-11-10  
 **Repository:** `TheSumitNain/school-management-system`  
 **Reviewed branch:** `feature/school-attendance-management`  
-**Reviewed branch HEAD before this status reconciliation:** `4112ac549fc46e19bd9cbb1ef2865a48b9119675`
+**Reviewed branch HEAD before this status reconciliation:** `8529b9ac40be404ab6198a09d1e03913be298b21`
 
 This file is the current implementation-status reference. Older checkpoint notes must not override it. Verification statements below distinguish repository inspection, user-reported local checks and real browser/database operations.
 
@@ -15,9 +15,11 @@ This file is the current implementation-status reference. Older checkpoint notes
 - **Parent OTP/SMS:** Explicitly deferred. Do not implement parent OTP login, SMS delivery or parent-facing authentication now. Preserve existing guardian/parent relationship foundations without expanding this workstream until Phase 2 is approved.
 - **Scale target:** 25–30 schools and 400–500 students per school; capacity is not yet load-tested.
 
-## Current in-progress task — persistent authenticated sessions (implementation underway)
+## Current verification task — persistent authenticated sessions (implementation pushed; local acceptance pending)
 
-The next security task is to revise session persistence while preserving the existing authentication and authorization safeguards. Backend implementation is underway. Do not report this task as complete until frontend restoration, database migration behavior, regression/integration tests and documentation are all verified.
+The persistent-session/MFA policy has been implemented on this branch and pushed to GitHub. Backend GitHub Actions passed on commit `050cad829dc12543dfd141f9ec1053e4a6a49965`, including application of all migrations to an ephemeral PostgreSQL database, backend tests with PostgreSQL integration, and `go vet`. Frontend CI also passed on that commit.
+
+The frontend already restores a session at app startup by calling the refresh endpoint with the same-origin HttpOnly cookie; this was verified by source inspection, not by a fresh browser close/reopen test. Do not mark the task fully accepted until the user pulls the branch, reviews/applies migration V25 to the intended local database after a backup, and manually verifies browser restart/session restoration, fresh-login MFA, background refresh, cross-tab account/logout behavior and security revocation.
 
 - Keep users signed in across browser close/reopen and laptop shutdown/restart, subject to the browser retaining its persistent cookie. Renew the persistent refresh cookie during successful token refresh; do not promise persistence beyond browser-enforced cookie policies.
 - Platform Admin and School Admin must complete mandatory MFA on every fresh login. MFA must not be repeated during background access-token refresh or restoration of an existing valid session.
