@@ -425,10 +425,7 @@ func run() error {
 		return fmt.Errorf("initialize MFA service: %w", err)
 	}
 
-	sessionService, err := services.NewSessionService(
-		refreshSessionRepo,
-		cfg.RefreshTokenExpiryDays,
-	)
+	sessionService, err := services.NewSessionService(refreshSessionRepo)
 	if err != nil {
 		return fmt.Errorf("initialize refresh session service: %w", err)
 	}
@@ -448,7 +445,7 @@ func run() error {
 		sessionService,
 		loginSecurityRepo,
 	)
-	authHandler.SetRefreshCookiePolicy(cfg.RefreshTokenExpiryDays, cfg.AppEnv == "production")
+	authHandler.SetRefreshCookiePolicy(cfg.AppEnv == "production")
 	authHandler.SetMFAService(mfaService, principalAuthorizationRepo)
 	authHandler.SetPlatformAdminAuthService(platformAdminAuthService)
 	staffPasswordService, err := services.NewStaffPasswordService(userRepo)
