@@ -56,9 +56,11 @@ type MFAService interface {
 type MFAPrincipalLoader interface {
 	LoadPrincipalForAuthentication(ctx context.Context, principalID int64) (*models.AuthPrincipal, error)
 }
-const refreshCookieName = "sms_refresh"
-const refreshCookiePath = "/api/auth"
+const (
+	refreshCookieName = "sms_refresh"
+	refreshCookiePath = "/api/auth"
 	persistentRefreshCookieMaxAge = 400 * 24 * 60 * 60
+)
 
 type AuthHandler struct {
 	authService AuthService
