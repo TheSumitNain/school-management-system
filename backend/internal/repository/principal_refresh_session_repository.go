@@ -56,7 +56,7 @@ func (r *PrincipalRefreshSessionRepository) createPrincipal(
 	tokenHash string,
 	expiresAt time.Time,
 ) error {
-	if principalID <= 0 || !isSHA256Hash(tokenHash) || !expiresAt.After(time.Now()) {
+	if principalID <= 0 || !isSHA256Hash(tokenHash) {
 		return fmt.Errorf("invalid refresh session data")
 	}
 	tx, err := r.db.Begin(ctx)
@@ -192,8 +192,8 @@ FOR UPDATE OF ap`
 
 	if _, err := tx.Exec(ctx,
 		`INSERT INTO refresh_sessions (user_id, principal_id, token_hash, expires_at, last_activity_at)
-		 VALUES ($1, $2, $3, $4, clock_timestamp())`,
-		nullableInt64(userID), principalID, tokenHash, expiresAt,
+		 VALUES ($1, $2, $3, 'infinity'::timestamptz, clock_timestamp())`,
+		nullableInt64(userID), principalID, tokenHash,
 	); err != nil {
 		return fmt.Errorf("create refresh session: %w", err)
 	}
@@ -327,8 +327,7 @@ func (r *PrincipalRefreshSessionRepository) RotatePrincipal(
 ) (*models.AuthPrincipal, error) {
 	if !isSHA256Hash(oldHash) ||
 		!isSHA256Hash(newHash) ||
-		oldHash == newHash ||
-		!newExpiry.After(time.Now()) {
+		oldHash == newHash {
 		return nil, ErrRefreshTokenInvalid
 	}
 
@@ -375,16 +374,7 @@ func (r *PrincipalRefreshSessionRepository) RotatePrincipal(
 SELECT rs.id, rs.family_id, rs.principal_id,
        (rs.expires_at > NOW()),
        (rs.revoked_at IS NOT NULL),
-       (rs.last_activity_at <= clock_timestamp()-INTERVAL '30 minutes'),
        ap.principal_type,
-       (ap.principal_type='platform_admin' OR
-        (ap.principal_type='staff' AND EXISTS (
-          SELECT 1 FROM principal_roles ar JOIN roles rr ON rr.id=ar.role_id
-          WHERE ar.principal_id=ap.id AND ar.revoked_at IS NULL
-            AND rr.is_system=TRUE AND rr.role_key='school_admin'
-            AND rr.principal_type='staff' AND rr.scope_type='school'
-            AND rr.school_id=u.school_id
-        ))),
        ap.status, ap.token_version,
        u.id,
        COALESCE(u.school_id,0),
@@ -433,9 +423,7 @@ FOR UPDATE OF rs, ap`
 	var currentPrincipal int64
 	var notExpired bool
 	var revoked bool
-	var adminSessionIdleExpired bool
 	var principalType string
-	var isAdminPrincipal bool
 	var principalStatus string
 	var username string
 	var mustChangePassword bool
@@ -454,9 +442,7 @@ FOR UPDATE OF rs, ap`
 		&currentPrincipal,
 		&notExpired,
 		&revoked,
-		&adminSessionIdleExpired,
 		&principalType,
-		&isAdminPrincipal,
 		&principalStatus,
 		&tokenVersion,
 		&userID,
@@ -505,31 +491,6 @@ FOR UPDATE OF rs, ap`
 	if !notExpired {
 		log.Printf("refresh token rejected: reason=token_expired")
 		return nil, ErrRefreshTokenInvalid
-	}
-
-	if isAdminPrincipal && adminSessionIdleExpired {
-		if _, err = tx.Exec(ctx, `UPDATE refresh_sessions SET revoked_at=COALESCE(revoked_at,NOW()) WHERE family_id=$1 AND revoked_at IS NULL`, familyID); err != nil {
-			return nil, fmt.Errorf("revoke idle administrative refresh family: %w", err)
-		}
-		if _, err = tx.Exec(ctx, `
-			INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
-			SELECT ap.id,NULLIF(u.school_id,0),'auth.admin_session_idle_timeout','refresh_session',$2,'success',
-			       jsonb_build_object('idle_timeout_minutes',30)
-			FROM auth_principals ap LEFT JOIN users u ON u.principal_id=ap.id
-			WHERE ap.id=$1 AND (
-			  ap.principal_type='platform_admin' OR
-			  (ap.principal_type='staff' AND EXISTS (
-			    SELECT 1 FROM principal_roles pr JOIN roles ro ON ro.id=pr.role_id
-			    WHERE pr.principal_id=ap.id AND pr.revoked_at IS NULL
-			      AND ro.is_system=TRUE AND ro.role_key='school_admin'
-			      AND ro.principal_type='staff' AND ro.scope_type='school'
-			      AND ro.school_id=u.school_id
-			  ))
-			)`, principalID, familyID); err != nil {
-			return nil, fmt.Errorf("audit idle administrative refresh family: %w", err)
-		}
-		if err = tx.Commit(ctx); err != nil { return nil, fmt.Errorf("commit idle administrative session revocation: %w", err) }
-		return nil, ErrAdminSessionIdleExpired
 	}
 
 	active := principalStatus == "active" && tokenVersion > 0 && mfaVerified
@@ -588,13 +549,12 @@ FOR UPDATE OF rs, ap`
 		ctx,
 		`INSERT INTO refresh_sessions
 		 (user_id,principal_id,token_hash,expires_at,family_id,last_activity_at)
-		 SELECT $1,$2,$3,$4,$5,last_activity_at
+		 SELECT $1,$2,$3,'infinity'::timestamptz,$4,last_activity_at
 		 FROM refresh_sessions
-		 WHERE id=$6 AND family_id=$5`,
+		 WHERE id=$5 AND family_id=$4`,
 		nullableInt64(userID),
 		principalID,
 		newHash,
-		newExpiry,
 		familyID,
 		sessionID,
 	); err != nil {
