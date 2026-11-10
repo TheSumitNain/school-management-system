@@ -590,7 +590,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		case errors.Is(err, services.ErrInvalidRefreshToken), errors.Is(err, services.ErrRefreshTokenReuse):
 			h.clearRefreshCookie(c)
 			writeAuthError(c, http.StatusUnauthorized, "Invalid or expired refresh token")
-		case errors.Is(err, services.ErrRefreshSessionInactive), errors.Is(err, services.ErrAdminSessionIdleExpired):
+		case errors.Is(err, services.ErrRefreshSessionInactive):
 			h.clearRefreshCookie(c)
 			writeAuthError(c, http.StatusUnauthorized, "Your session has expired. Please sign in again.")
 		default:
