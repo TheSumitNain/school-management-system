@@ -111,7 +111,6 @@ func TestLoadDefaults(t *testing.T) {
 	t.Setenv("DB_NAME", "")
 	t.Setenv("DB_PASSWORD", "")
 	t.Setenv("DB_SSLMODE", "")
-	t.Setenv("REFRESH_TOKEN_EXPIRY_DAYS", "")
 	t.Setenv("TOTP_ENCRYPTION_KEY", "")
 	t.Setenv("TOTP_ENCRYPTION_KEY_VERSION", "")
 	t.Setenv("TOTP_ENCRYPTION_PREVIOUS_KEYS", "")
@@ -129,9 +128,6 @@ func TestLoadDefaults(t *testing.T) {
 
 	if cfg.DBSSLMode != "disable" {
 		t.Errorf("DBSSLMode = %q, want disable", cfg.DBSSLMode)
-	}
-	if cfg.RefreshTokenExpiryDays != 7 {
-		t.Errorf("RefreshTokenExpiryDays = %d, want 7", cfg.RefreshTokenExpiryDays)
 	}
 	if cfg.TOTPEncryptionKeyVersion != 1 {
 		t.Errorf("TOTPEncryptionKeyVersion = %d, want default 1", cfg.TOTPEncryptionKeyVersion)
@@ -187,7 +183,6 @@ func validJWTTestConfig() Config {
 		JWTSecret:              "test-secret-with-at-least-32-characters",
 		JWTIssuer:              "school-management-system",
 		JWTAccessExpiryMinutes: 15,
-		RefreshTokenExpiryDays: 7,
 	}
 }
 
@@ -226,20 +221,6 @@ func TestValidateJWT(t *testing.T) {
 			name: "expiry too high",
 			modify: func(cfg *Config) {
 				cfg.JWTAccessExpiryMinutes = 61
-			},
-			wantErr: true,
-		},
-		{
-			name: "refresh expiry too low",
-			modify: func(cfg *Config) {
-				cfg.RefreshTokenExpiryDays = 0
-			},
-			wantErr: true,
-		},
-		{
-			name: "refresh expiry too high",
-			modify: func(cfg *Config) {
-				cfg.RefreshTokenExpiryDays = 31
 			},
 			wantErr: true,
 		},
