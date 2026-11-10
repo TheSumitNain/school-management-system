@@ -1,5 +1,4 @@
-import { Moon, Sun } from "lucide-react";
-import { useThemeStore, type ThemePalette } from "../../features/theme/theme-store";
+import { useThemeStore, type ThemePalette, type ThemePreference } from "../../features/theme/theme-store";
 
 const paletteOptions: { value: ThemePalette; label: string }[] = [
   { value: "navy", label: "Classic Navy" },
@@ -8,15 +7,17 @@ const paletteOptions: { value: ThemePalette; label: string }[] = [
   { value: "teal", label: "Ocean Teal" },
 ];
 
+const appearanceOptions: { value: ThemePreference; label: string }[] = [
+  { value: "system", label: "System" },
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
+];
+
 export function ThemeToggle() {
   const preference = useThemeStore((state) => state.preference);
   const setPreference = useThemeStore((state) => state.setPreference);
   const palette = useThemeStore((state) => state.palette);
   const setPalette = useThemeStore((state) => state.setPalette);
-  const isDark = preference === "dark" || (
-    preference === "system" &&
-    window.matchMedia("(prefers-color-scheme: dark)").matches
-  );
 
   return (
     <div className="theme-controls" aria-label="Appearance settings">
@@ -32,16 +33,18 @@ export function ThemeToggle() {
           ))}
         </select>
       </label>
-      <button
-        type="button"
-        className="theme-toggle"
-        onClick={() => setPreference(isDark ? "light" : "dark")}
-        aria-label={`Switch to ${isDark ? "light" : "dark"} theme`}
-        title={`Switch to ${isDark ? "light" : "dark"} appearance (current preference: ${preference})`}
-      >
-        {isDark ? <Sun size={16} /> : <Moon size={16} />}
-        <span className="theme-toggle-label">{isDark ? "Light" : "Dark"}</span>
-      </button>
+      <label className="theme-mode-control">
+        <span className="sr-only">Appearance mode</span>
+        <select
+          aria-label="Appearance mode"
+          value={preference}
+          onChange={(event) => setPreference(event.target.value as ThemePreference)}
+        >
+          {appearanceOptions.map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </select>
+      </label>
     </div>
   );
 }
