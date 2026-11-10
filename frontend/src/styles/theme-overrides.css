@@ -376,3 +376,18 @@
   .theme-palette-control select { max-width: 118px; }
   .theme-mode-control select { max-width: 90px; }
 }
+
+
+/* Higher-specificity dark-mode rules must also respect the selected palette. */
+.login-brand .brand-mark,
+:root[data-theme="dark"] .brand-mark {
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
+}
+:root[data-theme="dark"] .primary {
+  background: var(--color-brand);
+  color: var(--color-on-brand);
+}
+:root[data-theme="dark"] .primary:hover {
+  background: var(--color-brand-hover);
+}
