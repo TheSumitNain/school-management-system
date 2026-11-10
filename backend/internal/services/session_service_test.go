@@ -139,6 +139,9 @@ func TestRotateHashesBothTokensAndReturnsReplacement(t *testing.T) {
 	if repo.newHash != HashRefreshToken(replacement) || repo.newHash == replacement {
 		t.Fatal("repository must receive only the replacement token hash")
 	}
+	if !repo.newExpiry.IsZero() {
+		t.Fatal("session service must not impose an absolute expiry during token rotation")
+	}
 }
 
 func TestRotateRejectsEmptyToken(t *testing.T) {
