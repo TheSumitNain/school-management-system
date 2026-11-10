@@ -2,10 +2,13 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"testing"
+
+	"github.com/jackc/pgx/v5"
 	"time"
 )
 
@@ -34,7 +37,7 @@ func TestPersistentAdminSessionsV25PostgresIntegration(t *testing.T) {
 		LIMIT 1
 	`).Scan(&platformAdminID)
 	if err != nil {
-		if err.Error() != "no rows in result set" {
+		if !errors.Is(err, pgx.ErrNoRows) {
 			t.Fatalf("find active Platform Admin fixture: %v", err)
 		}
 		var anyPlatformAdmin bool
