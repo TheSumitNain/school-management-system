@@ -331,9 +331,9 @@ var approvedSchoolAdminPermissions = map[string]bool{
 }
 
 
-// CheckAndTouchAdminSession validates that the access token's family is
-// active and belongs to the principal. Only administrators receive the
-// additional 30-minute idle timeout and per-request activity touch.
+// CheckAndTouchAdminSession retains its historical interface name. It now
+// validates only the active refresh-session family; no idle activity timeout
+// is applied to administrators or other principals.
 func (r *PrincipalAuthorizationRepository) CheckAndTouchAdminSession(ctx context.Context, principalID int64, familyID string) (bool, bool, error) {
 	if principalID <= 0 || familyID == "" {
 		return false, false, nil
@@ -358,51 +358,20 @@ family_lock AS MATERIALIZED (
     SELECT pg_advisory_xact_lock(hashtextextended($2,0))
     FROM principal_state
 ),
-family_state AS (
-    SELECT rs.family_id, rs.principal_id,
-           MAX(rs.last_activity_at) FILTER (WHERE rs.revoked_at IS NULL) AS last_activity,
-           BOOL_OR(rs.revoked_at IS NULL AND rs.expires_at>NOW()) AS has_active_session
-    FROM refresh_sessions rs
-    CROSS JOIN family_lock
-    WHERE rs.family_id::text=$2
-    GROUP BY rs.family_id, rs.principal_id
-),
-touch AS (
-    UPDATE refresh_sessions rs
-       SET last_activity_at=clock_timestamp()
-      FROM principal_state p, family_state f
-     WHERE p.is_admin AND f.principal_id=p.id AND f.family_id=rs.family_id
-       AND rs.revoked_at IS NULL AND rs.expires_at>NOW()
-       AND f.last_activity>clock_timestamp()-INTERVAL '30 minutes'
-    RETURNING rs.id
-),
-expired AS (
-    UPDATE refresh_sessions rs
-       SET revoked_at=COALESCE(rs.revoked_at,NOW())
-      FROM principal_state p, family_state f
-     WHERE p.is_admin AND f.principal_id=p.id AND f.family_id=rs.family_id
-       AND rs.revoked_at IS NULL
-       AND f.last_activity<=clock_timestamp()-INTERVAL '30 minutes'
-    RETURNING rs.id
-),
-audit AS (
-    INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
-    SELECT p.id,NULLIF(p.school_id,0),'auth.admin_session_idle_timeout','refresh_session',$2,'success',
-           jsonb_build_object('idle_timeout_minutes',30)
-      FROM principal_state p
-     WHERE p.is_admin AND EXISTS(SELECT 1 FROM expired)
-    RETURNING id
+valid_family AS (
+    SELECT EXISTS (
+        SELECT 1
+        FROM refresh_sessions rs
+        CROSS JOIN family_lock
+        WHERE rs.family_id::text=$2
+          AND rs.principal_id=$1
+          AND rs.revoked_at IS NULL
+          AND rs.expires_at>NOW()
+    ) AS is_valid
 )
 SELECT COALESCE((SELECT is_admin FROM principal_state),FALSE),
-       CASE
-         WHEN COALESCE((SELECT is_admin FROM principal_state),FALSE)
-           THEN EXISTS(SELECT 1 FROM touch) AND NOT EXISTS(SELECT 1 FROM expired)
-         ELSE EXISTS (
-             SELECT 1 FROM family_state f
-             JOIN principal_state p ON p.id=f.principal_id
-             WHERE f.has_active_session=TRUE
-         )
-       END`
+       COALESCE((SELECT is_valid FROM valid_family),FALSE)
+`
 	var isAdmin, valid bool
 	if err := r.db.QueryRow(ctx, query, principalID, familyID).Scan(&isAdmin, &valid); err != nil {
 		return false, false, fmt.Errorf("validate refresh-session family: %w", err)
