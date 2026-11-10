@@ -66,3 +66,9 @@ Before a page or workflow is considered complete, review every user action and f
 
 Inline controls remain appropriate for high-frequency, low-complexity actions such as attendance status selection per student, search, filters, pagination and quick reversible toggles. Do not force users through a modal for every click. The goal is clarity and predictable behavior, not maximizing modal usage.
 
+## 8. Button and icon alignment
+
+- Primary action buttons use a shared inline-flex layout with centered cross-axis alignment and a consistent icon-to-label gap. Icons must not sit on the text baseline or shift the label vertically.
+- Decorative/action icons inside buttons must not shrink; icon-only buttons use a fixed, centered hit area with an accessible name.
+- Buttons that combine an icon and text must use a consistent inline-flex alignment, spacing, height, typography and focus treatment. Do not fix alignment on one page with arbitrary icon margins or transforms when a shared button rule is appropriate.
+- Before shipping a page, compare its primary, secondary, refresh, row-action and destructive buttons with equivalent actions elsewhere. Keep visual differences intentional and documented.

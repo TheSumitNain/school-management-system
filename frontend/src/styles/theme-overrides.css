@@ -463,3 +463,17 @@
 }
 
 :where(progress, meter) { accent-color: var(--color-action); }
+
+/* Keep icons and labels optically aligned in every primary action button. */
+.primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  line-height: 1.2;
+  vertical-align: middle;
+}
+.primary > svg {
+  display: block;
+  flex: 0 0 auto;
+}
