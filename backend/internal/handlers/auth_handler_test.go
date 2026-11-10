@@ -177,7 +177,7 @@ func TestLoginSuccess(t *testing.T) {
 		t.Fatalf("refresh token must not be exposed in JSON, got %s", rec.Body.String())
 	}
 	cookies := rec.Result().Cookies()
-	if len(cookies) == 0 || cookies[0].Name != refreshCookieName || cookies[0].Value != "test-refresh-token" || !cookies[0].HttpOnly || cookies[0].SameSite != http.SameSiteLaxMode || cookies[0].Path != refreshCookiePath {
+	if len(cookies) == 0 || cookies[0].Name != refreshCookieName || cookies[0].Value != "test-refresh-token" || !cookies[0].HttpOnly || cookies[0].SameSite != http.SameSiteLaxMode || cookies[0].Path != refreshCookiePath || cookies[0].MaxAge != persistentRefreshCookieMaxAge {
 		t.Fatalf("login did not set the expected HttpOnly refresh cookie: %+v", cookies)
 	}
 
@@ -363,7 +363,7 @@ func TestRefreshUsesHttpOnlyCookieWithoutReturningRefreshToken(t *testing.T) {
 		t.Fatalf("cookie refresh exposed replacement token in JSON: %s", rec.Body.String())
 	}
 	cookies := rec.Result().Cookies()
-	if len(cookies) == 0 || cookies[0].Value != "replacement-refresh-token" || !cookies[0].HttpOnly {
+	if len(cookies) == 0 || cookies[0].Value != "replacement-refresh-token" || !cookies[0].HttpOnly || cookies[0].MaxAge != persistentRefreshCookieMaxAge {
 		t.Fatalf("refresh did not rotate the HttpOnly cookie: %+v", cookies)
 	}
 }
