@@ -31,6 +31,15 @@ These standards exist so school owners, administrators, teachers and other in-sc
 - Prevent dismissal or duplicate submissions while a mutation is pending if doing so could leave an ambiguous result.
 - Respect light/dark themes, keyboard-only interaction, screen readers, touch targets and reduced motion.
 
+### Dialog action order and visual consistency (mandatory)
+
+- Whenever a dialog provides both a secondary dismissal action and a primary task action, render **Cancel first and the primary action second**. This is the consistent left-to-right order on desktop and the consistent first-to-last order on narrow screens and in keyboard navigation.
+- Cancel must always use the shared neutral/secondary dialog-button treatment: theme-matched surface, text and border tokens, consistent height, padding, radius, typography, hover and visible focus states. It must not look like a primary or destructive action.
+- Save, Create, Update, Assign and other task-completion actions use the shared primary button treatment and remain visually more prominent than Cancel.
+- A destructive confirmation action (for example Delete or Disable) remains second but uses the shared danger treatment. Its consequence must be explained before confirmation.
+- Use the shared `.app-modal-actions` container and shared modal styles. Page-specific CSS must not redefine dialog Cancel button colors, dimensions or interaction states. Do not reverse action order to accommodate a page-specific layout.
+- Keep action spacing, alignment, disabled/pending behavior and responsive sizing consistent across Platform Admin, School Admin and all future role-based workflows.
+
 ## 4. Guidance and recovery
 
 - Every page explains its purpose and primary next action in plain language.
