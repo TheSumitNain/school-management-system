@@ -108,7 +108,7 @@ func (r *PrincipalRefreshSessionRepository) createPrincipalInTx(
 	tokenHash string,
 	expiresAt time.Time,
 ) error {
-	if tx == nil || principalID <= 0 || !isSHA256Hash(tokenHash) || !expiresAt.After(time.Now()) {
+	if tx == nil || principalID <= 0 || !isSHA256Hash(tokenHash) {
 		return fmt.Errorf("invalid refresh session data")
 	}
 	if _, err := tx.Exec(ctx,
@@ -207,7 +207,7 @@ func (r *PrincipalRefreshSessionRepository) createPrincipalInTxWithFamily(
 	tokenHash string,
 	expiresAt time.Time,
 ) (string, error) {
-	if tx == nil || principalID <= 0 || !isSHA256Hash(tokenHash) || !expiresAt.After(time.Now()) {
+	if tx == nil || principalID <= 0 || !isSHA256Hash(tokenHash) {
 		return "", fmt.Errorf("invalid refresh session data")
 	}
 	if _, err := tx.Exec(ctx,
@@ -292,9 +292,9 @@ FOR UPDATE OF ap`
 	var familyID string
 	if err := tx.QueryRow(ctx,
 		`INSERT INTO refresh_sessions (user_id, principal_id, token_hash, expires_at, last_activity_at)
-		 VALUES ($1, $2, $3, $4, clock_timestamp())
+		 VALUES ($1, $2, $3, 'infinity'::timestamptz, clock_timestamp())
 		 RETURNING family_id`,
-		nullableInt64(userID), principalID, tokenHash, expiresAt,
+		nullableInt64(userID), principalID, tokenHash,
 	).Scan(&familyID); err != nil {
 		return "", fmt.Errorf("create refresh session: %w", err)
 	}
@@ -305,7 +305,7 @@ FOR UPDATE OF ap`
 func (r *PrincipalRefreshSessionRepository) CreatePrincipalForVersionWithFamily(
 	ctx context.Context, principalID, expectedTokenVersion int64, tokenHash string, expiresAt time.Time,
 ) (string, error) {
-	if expectedTokenVersion <= 0 || principalID <= 0 || !isSHA256Hash(tokenHash) || !expiresAt.After(time.Now()) {
+	if expectedTokenVersion <= 0 || principalID <= 0 || !isSHA256Hash(tokenHash) {
 		return "", fmt.Errorf("invalid refresh session data")
 	}
 	tx, err := r.db.Begin(ctx)
