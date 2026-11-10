@@ -3,7 +3,7 @@
 **Last reconciled:** 2026-11-10  
 **Repository:** `TheSumitNain/school-management-system`  
 **Reviewed branch:** `feature/school-attendance-management`  
-**Reviewed branch HEAD before this status reconciliation:** `8529b9ac40be404ab6198a09d1e03913be298b21`
+**Reviewed branch HEAD before this status reconciliation:** `6541584154c554e6ea662bdb9c78ac1ce27206a1`
 
 This file is the current implementation-status reference. Older checkpoint notes must not override it. Verification statements below distinguish repository inspection, user-reported local checks and real browser/database operations.
 
@@ -17,7 +17,7 @@ This file is the current implementation-status reference. Older checkpoint notes
 
 ## Current verification task — persistent authenticated sessions (implementation pushed; local acceptance pending)
 
-The persistent-session/MFA policy has been implemented on this branch and pushed to GitHub. Backend GitHub Actions passed on commit `050cad829dc12543dfd141f9ec1053e4a6a49965`, including application of all migrations to an ephemeral PostgreSQL database, backend tests with PostgreSQL integration, and `go vet`. Frontend CI also passed on that commit.
+The persistent-session/MFA policy has been implemented on this branch and pushed to GitHub. Backend GitHub Actions passed on code/test commit `b3af5904bd6e862aa261ee519a22effcacf2377a`, including application of all migrations to an ephemeral PostgreSQL database, backend tests with PostgreSQL integration, and `go vet`. Frontend CI passed on commit `6541584154c554e6ea662bdb9c78ac1ce27206a1`.
 
 The frontend already restores a session at app startup by calling the refresh endpoint with the same-origin HttpOnly cookie; this was verified by source inspection, not by a fresh browser close/reopen test. Do not mark the task fully accepted until the user pulls the branch, reviews/applies migration V25 to the intended local database after a backup, and manually verifies browser restart/session restoration, fresh-login MFA, background refresh, cross-tab account/logout behavior and security revocation.
 
