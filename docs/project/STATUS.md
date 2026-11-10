@@ -21,12 +21,12 @@ The persistent-session/MFA policy has been implemented on this branch and pushed
 
 The frontend already restores a session at app startup by calling the refresh endpoint with the same-origin HttpOnly cookie; this was verified by source inspection, not by a fresh browser close/reopen test. Do not mark the task fully accepted until the user pulls the branch, reviews/applies migration V25 to the intended local database after a backup, and manually verifies browser restart/session restoration, fresh-login MFA, background refresh, cross-tab account/logout behavior and security revocation.
 
-- Keep users signed in across browser close/reopen and laptop shutdown/restart, subject to the browser retaining its persistent cookie. Renew the persistent refresh cookie during successful token refresh; do not promise persistence beyond browser-enforced cookie policies.
+- The refresh cookie is persistent with a 400-day Max-Age and is renewed on each successful refresh. Browser close/reopen and laptop restart restore the session while the browser retains the cookie; browser-enforced retention limits still apply.
 - Platform Admin and School Admin must complete mandatory MFA on every fresh login. MFA must not be repeated during background access-token refresh or restoration of an existing valid session.
-- Remove the current 30-minute administrative idle timeout and the current server-side absolute refresh-session expiry, without weakening session-family validation.
+- The 30-minute administrative idle timeout and server-side absolute refresh-session expiry have been removed. Protected requests and refresh continue to validate the active session family.
 - A session remains valid until the user manually logs out or a security/account event requires revocation (for example, password/security reset, account disablement or confirmed compromise).
 - Manual logout must revoke the session family. Preserve opaque refresh-token rotation, replay detection/family revocation, transaction/concurrency protections, HttpOnly + Secure cookie policy, cross-tab logout synchronization, principal token-version checks and live database-backed RBAC authorization.
-- Update backend and frontend behavior, regression/integration tests, and the relevant security/session documentation. Verify fresh-login MFA separately from background refresh and browser session restoration.
+- Backend session lifecycle, persistent-cookie policy, regression/integration tests and backend/frontend security documentation have been updated. Automated browser close/reopen and interactive MFA acceptance remain pending locally.
 - Work on the existing `feature/school-attendance-management` branch. Do not create a new branch or merge PR #6; neither is part of this task.
 
 ## Future product direction (documented, not current implementation scope)
