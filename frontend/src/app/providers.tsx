@@ -20,13 +20,15 @@ const queryClient = new QueryClient({
 });
 
 function ThemeController({ children }: PropsWithChildren) {
-  const preference = useThemeStore((state) => state.preference);\n  const palette = useThemeStore((state) => state.palette);
+  const preference = useThemeStore((state) => state.preference);
+  const palette = useThemeStore((state) => state.palette);
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const apply = () => {
       const theme = resolveTheme(preference);
-      document.documentElement.dataset.theme = theme;\n      document.documentElement.dataset.palette = palette;
+      document.documentElement.dataset.theme = theme;
+      document.documentElement.dataset.palette = palette;
       document.documentElement.style.colorScheme = theme;
     };
     apply();
