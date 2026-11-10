@@ -331,7 +331,7 @@ func TestAuthMiddlewareAcceptsActiveAdminSessionFamily(t *testing.T) {
 	if tracker.familyID!=claims.SessionID { t.Fatalf("tracker family = %q, want %q",tracker.familyID,claims.SessionID) }
 }
 
-func TestAuthMiddlewareRejectsExpiredAdminSessionFamily(t *testing.T) {
+func TestAuthMiddlewareRejectsRevokedAdminSessionFamily(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	principal:=&models.AuthPrincipal{ID:99,Type:"platform_admin",Status:"active",TokenVersion:4}
 	tracker:=&fakeAdminSessionTracker{isAdmin:true,valid:false}
@@ -345,7 +345,7 @@ func TestAuthMiddlewareRejectsExpiredAdminSessionFamily(t *testing.T) {
 }
 
 
-func TestAuthMiddlewareFailsClosedWhenAdminIdleTrackerMissing(t *testing.T) {
+func TestAuthMiddlewareFailsClosedWhenSessionFamilyTrackerMissing(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	principal := &models.AuthPrincipal{
 		ID: 10, Type: "staff", Status: "active", TokenVersion: 1, SchoolID: 2,
