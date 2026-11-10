@@ -18,7 +18,6 @@ var (
 	ErrInvalidRefreshToken    = repository.ErrRefreshTokenInvalid
 	ErrRefreshTokenReuse      = repository.ErrRefreshTokenReuse
 	ErrRefreshSessionInactive = repository.ErrRefreshSessionInactive
-	ErrAdminSessionIdleExpired = repository.ErrAdminSessionIdleExpired
 	ErrSessionPrincipalVersionChanged = repository.ErrPrincipalVersionChanged
 )
 
@@ -31,17 +30,13 @@ type refreshSessionRepository interface {
 // SessionService stores only SHA-256 hashes of opaque, principal-bound tokens.
 type SessionService struct {
 	sessions refreshSessionRepository
-	expiry   time.Duration
 }
 
-func NewSessionService(sessions refreshSessionRepository, refreshExpiryDays int) (*SessionService, error) {
+func NewSessionService(sessions refreshSessionRepository) (*SessionService, error) {
 	if sessions == nil {
 		return nil, fmt.Errorf("refresh session repository is required")
 	}
-	if refreshExpiryDays < 1 || refreshExpiryDays > 30 {
-		return nil, fmt.Errorf("refresh token expiry must be between 1 and 30 days")
-	}
-	return &SessionService{sessions: sessions, expiry: time.Duration(refreshExpiryDays) * 24 * time.Hour}, nil
+	return &SessionService{sessions: sessions}, nil
 }
 
 // Issue binds session creation to the exact principal version
@@ -56,7 +51,7 @@ func (s *SessionService) Issue(ctx context.Context, principal *models.AuthPrinci
 		return "", err
 	}
 	if err := s.sessions.CreatePrincipalForVersion(
-		ctx, principal.ID, principal.TokenVersion, HashRefreshToken(raw), time.Now().Add(s.expiry),
+		ctx, principal.ID, principal.TokenVersion, HashRefreshToken(raw), time.Time{},
 	); err != nil {
 		return "", err
 	}
@@ -79,7 +74,7 @@ func (s *SessionService) IssueWithFamily(ctx context.Context, principal *models.
 	}
 	raw, err := generateOpaqueRefreshToken()
 	if err != nil { return "", "", err }
-	familyID, err := repo.CreatePrincipalForVersionWithFamily(ctx, principal.ID, principal.TokenVersion, HashRefreshToken(raw), time.Now().Add(s.expiry))
+	familyID, err := repo.CreatePrincipalForVersionWithFamily(ctx, principal.ID, principal.TokenVersion, HashRefreshToken(raw), time.Time{})
 	if err != nil { return "", "", err }
 	if !validRefreshFamilyID(familyID) { return "", "", fmt.Errorf("refresh repository returned invalid family ID") }
 	return raw, familyID, nil
@@ -106,7 +101,7 @@ func (s *SessionService) Rotate(ctx context.Context, rawToken string) (*models.A
 	if err != nil {
 		return nil, "", err
 	}
-	principal, err := s.sessions.RotatePrincipal(ctx, HashRefreshToken(rawToken), HashRefreshToken(replacement), time.Now().Add(s.expiry))
+	principal, err := s.sessions.RotatePrincipal(ctx, HashRefreshToken(rawToken), HashRefreshToken(replacement), time.Time{})
 	if err != nil {
 		return nil, "", err
 	}
