@@ -39,7 +39,7 @@ frontend/src/
 │   └── theme-overrides.css     # Theme-specific presentation
 ├── App.tsx                     # Transitional entry; migrate after routes are verified
 ├── main.tsx
-└── styles.css                  # Existing styles; migrate incrementally to shared tokens
+└── styles.css                  # Base layout and shared component styles using semantic tokens
 ```
 
 ## State ownership
@@ -55,7 +55,7 @@ frontend/src/
 - Keep query keys centralized within their feature and invalidate the narrowest affected keys after mutations.
 - Keep authorization on the API. Client permissions only control presentation/navigation.
 - Lazy-load route pages, not tiny shared primitives. Keep login, session bootstrap and the authenticated shell responsive.
-- Use shared semantic design tokens for colors, typography, spacing, radii, shadows and control sizing. Appearance mode (Light/Dark/System) and brand palette (Navy/Green/Purple/Teal) are independent preferences. Components must consume tokens instead of hardcoding brand colors. Persist preferences and verify every shared component in every supported combination. Use shared loading/error/empty components; do not duplicate one-off page styling.
+- Use shared semantic design tokens for colors, typography, spacing, radii, shadows and control sizing. Appearance mode (Light/Dark/System) and brand palette (Navy/Green/Purple/Teal) are independent preferences. `styles/tokens.css` is the only source of literal color values; component styles must use semantic CSS variables and must not introduce hex, RGB/HSL or named color literals. Run `npm run check:styles` and verify every shared component in all supported combinations. Persist preferences. Use shared loading/error/empty components; do not duplicate one-off page styling.
 - Every feature should define loading, empty, error, success and permission-denied behavior.
 - Clear user-scoped query cache on logout/account changes.
 - Do not add a dependency without a concrete need and bundle-size consideration.
@@ -80,4 +80,4 @@ frontend/src/
 - User-facing copy is concise, action-oriented and non-technical. Avoid unnecessary screens, repeated prompts and redundant confirmation steps.
 ## Current migration status
 
-The current frontend already contains working sign-in/MFA/session handling and an initial dashboard. The foundation is being introduced incrementally: QueryClient and Zustand theme preference are wired at the root; shared theme tokens, theme control, dashboard skeleton and error boundary have been added. Platform Admin management and school onboarding are implemented against the currently registered backend endpoints, with the Platform Admin page code-split. School staff data is the first School Admin query migrated to TanStack Query. Existing pages and legacy CSS must be migrated in small verified steps rather than rewritten all at once.
+The current frontend already contains working sign-in/MFA/session handling and an initial dashboard. The foundation is being introduced incrementally: QueryClient and Zustand appearance/palette preferences are wired at the root; centralized semantic tokens, four color palettes, Light/Dark/System controls, token-based shared styles, a CSS token guard, dashboard skeleton and error boundary have been added. Platform Admin management and school onboarding are implemented against the currently registered backend endpoints, with the Platform Admin page code-split. School staff data is the first School Admin query migrated to TanStack Query. Existing pages and legacy CSS must be migrated in small verified steps rather than rewritten all at once.
