@@ -229,7 +229,11 @@ func setupRouterWithHandlers(
 		router.GET("/school/subjects", academicAuth, middleware.RequirePermission("subjects.read"), academic.ListSubjects)
 		router.POST("/school/subjects", academicAuth, middleware.RequirePermission("subjects.manage"), academic.SaveSubject)
 		router.PATCH("/school/subjects/:subjectID", academicAuth, middleware.RequirePermission("subjects.manage"), academic.SaveSubject)
-		router.GET("/school/eligible-teachers", academicAuth, academic.ListEligibleTeachers)
+		router.GET("/school/eligible-teachers",
+			academicAuth,
+			middleware.RequireAnyPermission("teacher_assignments.read", "class_incharge_assignments.read"),
+			academic.ListEligibleTeachers,
+		)
 		router.GET("/school/teacher-assignments", academicAuth, middleware.RequirePermission("teacher_assignments.read"), academic.ListTeacherSubjectAssignments)
 		router.POST("/school/teacher-assignments", academicAuth, middleware.RequirePermission("teacher_assignments.manage"), academic.CreateTeacherSubjectAssignment)
 		router.DELETE("/school/teacher-assignments/:assignmentID", academicAuth, middleware.RequirePermission("teacher_assignments.manage"), academic.RevokeTeacherSubjectAssignment)
