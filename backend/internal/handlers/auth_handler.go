@@ -247,8 +247,6 @@ func (h *AuthHandler) Login(c *gin.Context) {
 			writeAuthError(c, http.StatusUnauthorized, "Credentials changed during sign-in. Please sign in again.")
 		case errors.Is(err, services.ErrRefreshSessionInactive):
 			writeAuthError(c, http.StatusForbidden, "Account or school is inactive")
-		case errors.Is(err, services.ErrAdminSessionIdleExpired):
-			writeAuthError(c, http.StatusUnauthorized, "Administrative session expired due to inactivity. Sign in again.")
 		default:
 			writeAuthError(c, http.StatusInternalServerError, "Unable to log in")
 		}
