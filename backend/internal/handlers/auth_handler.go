@@ -58,6 +58,7 @@ type MFAPrincipalLoader interface {
 }
 const refreshCookieName = "sms_refresh"
 const refreshCookiePath = "/api/auth"
+	persistentRefreshCookieMaxAge = 400 * 24 * 60 * 60
 
 type AuthHandler struct {
 	authService AuthService
@@ -76,7 +77,7 @@ type AuthHandler struct {
 func NewAuthHandler(authService AuthService, tokenService TokenService, sessionService SessionService, ipRateLimiters ...LoginIPRateLimiter) *AuthHandler {
 	h := &AuthHandler{
 		authService: authService, tokenService: tokenService, sessionService: sessionService,
-		refreshCookieMaxAge: 7 * 24 * 60 * 60,
+		refreshCookieMaxAge: persistentRefreshCookieMaxAge,
 	}
 	if len(ipRateLimiters) > 0 {
 		h.ipRateLimiter = ipRateLimiters[0]
@@ -116,9 +117,10 @@ type principalResponse struct {
 }
 
 // SetRefreshCookiePolicy configures the persistent, HttpOnly refresh cookie.
-func (h *AuthHandler) SetRefreshCookiePolicy(expiryDays int, secure bool) {
-	if expiryDays < 1 { expiryDays = 7 }
-	h.refreshCookieMaxAge = expiryDays * 24 * 60 * 60
+func (h *AuthHandler) SetRefreshCookiePolicy(secure bool) {
+	// Browsers commonly cap persistent cookies at 400 days. Successful refreshes
+	// renew this cookie; the server-side session itself has no absolute expiry.
+	h.refreshCookieMaxAge = persistentRefreshCookieMaxAge
 	h.refreshCookieSecure = secure
 }
 
