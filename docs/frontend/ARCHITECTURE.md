@@ -39,7 +39,7 @@ frontend/src/
 │   └── theme-overrides.css     # Theme-specific presentation
 ├── App.tsx                     # Transitional entry; migrate after routes are verified
 ├── main.tsx
-└── styles.css                  # Base layout and shared component styles using semantic tokens
+└── styles.css                  # Base layout and shared component styles; colors use semantic tokens
 ```
 
 ## State ownership
@@ -80,4 +80,4 @@ frontend/src/
 - User-facing copy is concise, action-oriented and non-technical. Avoid unnecessary screens, repeated prompts and redundant confirmation steps.
 ## Current migration status
 
-The current frontend already contains working sign-in/MFA/session handling and an initial dashboard. The foundation is being introduced incrementally: QueryClient and Zustand appearance/palette preferences are wired at the root; centralized semantic tokens, four color palettes, Light/Dark/System controls, token-based shared styles, a CSS token guard, dashboard skeleton and error boundary have been added. Platform Admin management and school onboarding are implemented against the currently registered backend endpoints, with the Platform Admin page code-split. School staff data is the first School Admin query migrated to TanStack Query. Existing pages and legacy CSS must be migrated in small verified steps rather than rewritten all at once.
+The current frontend already contains working sign-in/MFA/session handling and an initial dashboard. The foundation is being introduced incrementally: QueryClient and Zustand appearance/palette preferences are wired at the root; centralized semantic tokens, four color palettes, Light/Dark/System controls, token-based shared styles, a CSS token guard, dashboard skeleton and error boundary have been added. Platform Admin management and school onboarding are implemented against the currently registered backend endpoints, with the Platform Admin page code-split. School staff data is the first School Admin query migrated to TanStack Query. Shared component colors have been migrated to semantic tokens and are guarded by `npm run check:styles`; remaining legacy layout dimensions should be migrated in small verified steps rather than rewritten all at once.
