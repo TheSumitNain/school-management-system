@@ -349,3 +349,30 @@
   .theme-controls { gap: 5px; }
   .theme-palette-control select { max-width: 118px; }
 }
+
+/* Brand marks and appearance controls use the active palette. */
+.brand-mark {
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
+}
+.theme-palette-control select,
+.theme-mode-control select {
+  max-width: 142px;
+  min-height: 34px;
+  padding: 6px 25px 6px 9px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 10px;
+}
+.theme-palette-control select:focus-visible,
+.theme-mode-control select:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--color-focus) 35%, transparent);
+  outline-offset: 2px;
+}
+@media (max-width: 740px) {
+  .theme-palette-control select { max-width: 118px; }
+  .theme-mode-control select { max-width: 90px; }
+}
