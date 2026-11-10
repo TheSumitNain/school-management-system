@@ -37,7 +37,11 @@ export function Select({
       if (event.target instanceof Node && !rootRef.current?.contains(event.target)) setOpen(false);
     };
     const closeOnEscape = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setOpen(false);
+        rootRef.current?.querySelector<HTMLButtonElement>(".app-select-trigger")?.focus();
+      }
     };
     document.addEventListener("pointerdown", closeOnOutsidePointer);
     document.addEventListener("keydown", closeOnEscape);
