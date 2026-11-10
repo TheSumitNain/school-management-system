@@ -15,9 +15,9 @@ This file is the current implementation-status reference. Older checkpoint notes
 - **Parent OTP/SMS:** Explicitly deferred. Do not implement parent OTP login, SMS delivery or parent-facing authentication now. Preserve existing guardian/parent relationship foundations without expanding this workstream until Phase 2 is approved.
 - **Scale target:** 25–30 schools and 400–500 students per school; capacity is not yet load-tested.
 
-## Next scheduled task — persistent authenticated sessions (planned, not implemented)
+## Current in-progress task — persistent authenticated sessions (implementation underway)
 
-The next security task is to revise session persistence while preserving the existing authentication and authorization safeguards. This work has **not started** and must not be reported as complete until code, tests and documentation are updated and verified.
+The next security task is to revise session persistence while preserving the existing authentication and authorization safeguards. Backend implementation is underway. Do not report this task as complete until frontend restoration, database migration behavior, regression/integration tests and documentation are all verified.
 
 - Keep users signed in across browser close/reopen and laptop shutdown/restart, subject to the browser retaining its persistent cookie. Renew the persistent refresh cookie during successful token refresh; do not promise persistence beyond browser-enforced cookie policies.
 - Platform Admin and School Admin must complete mandatory MFA on every fresh login. MFA must not be repeated during background access-token refresh or restoration of an existing valid session.
@@ -51,7 +51,7 @@ The next security task is to revise session persistence while preserving the exi
 - Opaque refresh tokens, rotation, replay/family revocation, transaction-lock concurrency protections, and protected-request refresh-family validation.
 - Mandatory TOTP MFA for Platform Admin and School Admin, recovery-code workflows, attempt lockout/auditing, and versioned TOTP encryption-key rotation.
 - Staff and Platform Admin password lifecycle, temporary-password enforcement, token-version invalidation and session revocation.
-- Login lockout, IP rate limiting, breached-password checks and administrative idle timeout.
+- Login lockout, IP rate limiting and breached-password checks.
 
 ### RBAC and platform administration
 - Live database-backed permission resolution on protected requests.
@@ -109,7 +109,7 @@ The presence of a page or API client does not mean its full browser workflow has
 
 ## Safe next sequence
 
-1. Implement and verify the planned persistent-session/MFA policy described above, including backend/frontend changes, regression tests and security documentation.
+1. Complete and verify the persistent-session/MFA policy described above, including backend/frontend behavior, migration, regression tests and security documentation.
 2. Continue reviewing and completing the School Admin browser workflows against the existing API contracts.
 3. Fix verified frontend/backend integration defects and add regression tests for each fix.
 4. Reconcile remaining backend authorization gaps against the actual route/repository surface.
