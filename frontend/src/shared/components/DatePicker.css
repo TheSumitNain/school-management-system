@@ -14,8 +14,8 @@
 .app-date-empty{min-height:32px}
 .app-date-day{display:grid;min-height:32px;place-items:center;padding:0;border:1px solid transparent;border-radius:7px;background:transparent;color:var(--color-text);font:inherit;font-size:12px;cursor:pointer}
 .app-date-day:hover:not(:disabled){background:var(--color-surface-muted)}
-.app-date-day[aria-selected="true"]{border-color:var(--color-action);background:var(--color-action);color:#fff;font-weight:700}
-.app-date-day[aria-current="date"]:not([aria-selected="true"]){border-color:var(--color-focus);color:var(--color-primary);font-weight:700}
+.app-date-day[aria-pressed="true"]{border-color:var(--color-action);background:var(--color-action);color:#fff;font-weight:700}
+.app-date-day[aria-current="date"]:not([aria-pressed="true"]){border-color:var(--color-focus);color:var(--color-primary);font-weight:700}
 .app-date-day:disabled{opacity:.28;cursor:not-allowed}
 .app-date-footer{display:flex;justify-content:space-between;gap:8px;margin-top:10px;padding-top:9px;border-top:1px solid var(--color-border)}
 .app-date-footer button{font-size:11px}
