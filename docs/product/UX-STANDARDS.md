@@ -72,3 +72,13 @@ Inline controls remain appropriate for high-frequency, low-complexity actions su
 - Decorative/action icons inside buttons must not shrink; icon-only buttons use a fixed, centered hit area with an accessible name.
 - Buttons that combine an icon and text must use a consistent inline-flex alignment, spacing, height, typography and focus treatment. Do not fix alignment on one page with arbitrary icon margins or transforms when a shared button rule is appropriate.
 - Before shipping a page, compare its primary, secondary, refresh, row-action and destructive buttons with equivalent actions elsewhere. Keep visual differences intentional and documented.
+
+## 9. Date picker accessibility and keyboard behavior
+
+- A calendar exposed as an ARIA grid must use the complete grid structure: one weekday-header row, week rows, and grid cells containing the date controls. Do not apply `role="grid"` to a loose collection of buttons.
+- Use roving tab focus so the calendar contributes one tab stop, not one tab stop per date. The active date control must remain visible and focusable; unavailable dates must be disabled and excluded from roving focus.
+- Support Arrow keys for one-day/one-week movement, Home/End for the start/end of the displayed week, Page Up/Down for previous/next month, and Shift+Page Up/Down for previous/next year.
+- Keep keyboard navigation within configured minimum/maximum dates. Month navigation controls must be disabled when the adjacent month contains no selectable date.
+- Give each date control an accessible full-date name. Expose the selected date on its grid cell and distinguish today without relying on color alone.
+- Escape closes the calendar and restores focus to its trigger. Selecting a date, clearing it or choosing Today also returns focus to the trigger. Clicking outside closes the calendar without stealing focus from the outside target.
+- Verify keyboard-only operation, screen-reader announcements, focus visibility, date bounds, narrow screens and both themes before considering a date-picker workflow complete.
