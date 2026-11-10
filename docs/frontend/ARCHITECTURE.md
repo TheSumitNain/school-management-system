@@ -45,7 +45,7 @@ frontend/src/
 ## State ownership
 
 - **TanStack Query:** API/server state, caching, request cancellation, invalidation and retry policy.
-- **Zustand:** small cross-page client preferences such as theme and selected UI preferences. Do not mirror API data into Zustand.
+- **Zustand:** small cross-page client preferences such as appearance mode and color palette. Do not mirror API data into Zustand.
 - **React state:** local transient UI state (open dialog, active tab, input text).
 - **React Hook Form + Zod:** introduce when building substantial validated forms; do not add them to simple read-only screens.
 
@@ -55,7 +55,7 @@ frontend/src/
 - Keep query keys centralized within their feature and invalidate the narrowest affected keys after mutations.
 - Keep authorization on the API. Client permissions only control presentation/navigation.
 - Lazy-load route pages, not tiny shared primitives. Keep login, session bootstrap and the authenticated shell responsive.
-- Use shared design tokens and shared loading/error/empty components. Do not duplicate one-off page styling.
+- Use shared semantic design tokens for colors, typography, spacing, radii, shadows and control sizing. Appearance mode (Light/Dark/System) and brand palette (Navy/Green/Purple/Teal) are independent preferences. Components must consume tokens instead of hardcoding brand colors. Persist preferences and verify every shared component in every supported combination. Use shared loading/error/empty components; do not duplicate one-off page styling.
 - Every feature should define loading, empty, error, success and permission-denied behavior.
 - Clear user-scoped query cache on logout/account changes.
 - Do not add a dependency without a concrete need and bundle-size consideration.
