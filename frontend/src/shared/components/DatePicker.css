@@ -5,19 +5,20 @@
 .app-date-trigger:disabled{opacity:.55;cursor:not-allowed}
 .app-date-trigger svg{flex:none;color:var(--color-text-muted)}
 .app-date-placeholder{color:var(--color-text-muted)}
-.app-date-popover{position:absolute;z-index:60;top:calc(100% + 5px);left:0;width: min(296px,calc(100vw - 32px));padding:12px;border:1px solid var(--color-border);border-radius:var(--radius-lg,12px);background:var(--color-surface);color:var(--color-text);box-shadow:var(--shadow-md)}
+.app-date-popover{position:absolute;z-index:60;top:calc(100% + 5px);left:0;width:min(296px,calc(100vw - 32px));padding:12px;border:1px solid var(--color-border);border-radius:var(--radius-lg,12px);background:var(--color-surface);color:var(--color-text);box-shadow:var(--shadow-md)}
 .app-date-header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
 .app-date-header strong{font-size:13px;font-weight:700}
 .app-date-header button,.app-date-footer button{display:inline-flex;align-items:center;justify-content:center;min-width:32px;min-height:30px;padding:5px 8px;border:1px solid var(--color-border);border-radius:7px;background:var(--color-surface-muted);color:var(--color-text);font:inherit;cursor:pointer}
-.app-date-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
+.app-date-header button:disabled,.app-date-footer button:disabled{opacity:.4;cursor:not-allowed}
+.app-date-grid{display:flex;flex-direction:column;gap:3px}
+.app-date-row{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
 .app-date-weekday{display:grid;min-height:27px;place-items:center;color:var(--color-text-muted);font-size:10px;font-weight:700}
-.app-date-empty{min-height:32px}
-.app-date-day{display:grid;min-height:32px;place-items:center;padding:0;border:1px solid transparent;border-radius:7px;background:transparent;color:var(--color-text);font:inherit;font-size:12px;cursor:pointer}
+.app-date-empty,.app-date-row>[role="gridcell"]{display:grid;min-width:0;min-height:32px;place-items:stretch}
+.app-date-day{display:grid;width:100%;min-height:32px;place-items:center;padding:0;border:1px solid transparent;border-radius:7px;background:transparent;color:var(--color-text);font:inherit;font-size:12px;cursor:pointer}
 .app-date-day:hover:not(:disabled){background:var(--color-surface-muted)}
-.app-date-day[aria-pressed="true"]{border-color:var(--color-action);background:var(--color-action);color:#fff;font-weight:700}
-.app-date-day[aria-current="date"]:not([aria-pressed="true"]){border-color:var(--color-focus);color:var(--color-primary);font-weight:700}
+.app-date-day[aria-current="date"]:not([aria-disabled="true"]){border-color:var(--color-focus);color:var(--color-primary);font-weight:700}
 .app-date-day:disabled{opacity:.28;cursor:not-allowed}
+.app-date-row [aria-selected="true"]>.app-date-day{border-color:var(--color-action);background:var(--color-action);color:#fff;font-weight:700}
 .app-date-footer{display:flex;justify-content:space-between;gap:8px;margin-top:10px;padding-top:9px;border-top:1px solid var(--color-border)}
 .app-date-footer button{font-size:11px}
-.app-date-footer button:disabled{opacity:.4;cursor:not-allowed}
 @media(prefers-reduced-motion:reduce){.app-date-trigger{transition:none}}
