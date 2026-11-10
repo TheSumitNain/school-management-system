@@ -68,3 +68,61 @@
   --shadow-sm: 0 1px 3px rgb(0 0 0 / 22%);
   --shadow-md: 0 8px 24px rgb(0 0 0 / 30%);
 }
+
+
+/*
+ * Theme palette tokens are intentionally separate from light/dark surface
+ * tokens. Changing a palette must never change the selected appearance mode.
+ */
+:root,
+:root[data-palette="navy"] {
+  --color-brand: #0f766e;
+  --color-brand-hover: #115e59;
+  --color-brand-soft: #ccfbf1;
+  --color-on-brand: #ffffff;
+  --color-sidebar-bg: #172554;
+  --color-sidebar-border: #263b68;
+  --color-sidebar-text: #e2e8f0;
+  --color-sidebar-muted: #a8b8d3;
+  --color-sidebar-active: #0f766e;
+  --color-sidebar-active-text: #ffffff;
+}
+
+:root[data-palette="green"] {
+  --color-brand: #059669;
+  --color-brand-hover: #047857;
+  --color-brand-soft: #d1fae5;
+  --color-on-brand: #ffffff;
+  --color-sidebar-bg: #064e3b;
+  --color-sidebar-border: #065f46;
+  --color-sidebar-text: #ecfdf5;
+  --color-sidebar-muted: #a7f3d0;
+  --color-sidebar-active: #047857;
+  --color-sidebar-active-text: #ffffff;
+}
+
+:root[data-palette="purple"] {
+  --color-brand: #6366f1;
+  --color-brand-hover: #4f46e5;
+  --color-brand-soft: #e0e7ff;
+  --color-on-brand: #ffffff;
+  --color-sidebar-bg: #312e81;
+  --color-sidebar-border: #4338ca;
+  --color-sidebar-text: #eef2ff;
+  --color-sidebar-muted: #c7d2fe;
+  --color-sidebar-active: #4f46e5;
+  --color-sidebar-active-text: #ffffff;
+}
+
+:root[data-palette="teal"] {
+  --color-brand: #0891b2;
+  --color-brand-hover: #0e7490;
+  --color-brand-soft: #cffafe;
+  --color-on-brand: #ffffff;
+  --color-sidebar-bg: #164e63;
+  --color-sidebar-border: #155e75;
+  --color-sidebar-text: #ecfeff;
+  --color-sidebar-muted: #a5f3fc;
+  --color-sidebar-active: #0e7490;
+  --color-sidebar-active-text: #ffffff;
+}
