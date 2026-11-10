@@ -27,7 +27,7 @@ The backend is organized around HTTP handlers, services, repositories, models, m
 
 ## Session security
 
-The backend uses short-lived JWT access tokens and opaque refresh tokens stored as hashes. Refresh rotation and replay detection are transactionally protected. Protected requests validate the active refresh-session family. Platform Admin and School Admin sessions additionally have a per-device idle timeout. Administrator MFA uses TOTP with recovery codes and versioned encryption keys.
+The backend uses short-lived JWT access tokens and opaque refresh tokens stored as hashes. Refresh rotation and replay detection are transactionally protected. Protected requests validate the active refresh-session family. Refresh sessions have no server-side idle timeout or absolute expiry and remain valid until manual logout or security/account revocation. The persistent HttpOnly refresh cookie uses a 400-day Max-Age and is renewed on successful refresh, subject to browser cookie-retention policies. Platform Admin and School Admin must complete TOTP MFA on every fresh login; background refresh of an existing session does not repeat MFA. Recovery codes and versioned TOTP encryption keys remain in use.
 
 ## Database change policy
 
