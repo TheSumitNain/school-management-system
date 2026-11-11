@@ -7,9 +7,9 @@ const modes: { value: ThemePreference; label: string; description: string; icon:
   { value: "system", label: "System", description: "Follow your device appearance setting.", icon: Monitor },
 ];
 const palettes: { value: ThemePalette; label: string }[] = [
-  { value: "ruby", label: "Ruby Red" },
+  { value: "midnight", label: "Midnight Blue" },
   { value: "green", label: "Forest Green" },
-  { value: "copper", label: "Sunset Copper" },
+  { value: "graphite", label: "Graphite Black" },
   { value: "teal", label: "Ocean Teal" },
   { value: "rose", label: "Rose Blush" },
   { value: "sky", label: "Sky Blue" },
