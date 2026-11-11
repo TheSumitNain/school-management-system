@@ -105,13 +105,12 @@
   --color-brand-hover: #047857;
   --color-brand-soft: #d1fae5;
   --color-on-brand: #ffffff;
-  /* Light sage sidebar keeps the green palette airy in light mode. */
-  --color-sidebar-bg: #f0fdf4;
-  --color-sidebar-border: #dcfce7;
-  --color-sidebar-text: #14532d;
-  --color-sidebar-muted: #4b8060;
-  --color-sidebar-active: #d1fae5;
-  --color-sidebar-active-text: #065f46;
+  --color-sidebar-bg: #064e3b;
+  --color-sidebar-border: #065f46;
+  --color-sidebar-text: #ecfdf5;
+  --color-sidebar-muted: #a7f3d0;
+  --color-sidebar-active: #047857;
+  --color-sidebar-active-text: #ffffff;
 }
 
 :root[data-palette="purple"] {
@@ -144,15 +143,90 @@
   --color-brand-hover: #0e7490;
   --color-brand-soft: #cffafe;
   --color-on-brand: #ffffff;
-  /* Soft cyan sidebar gives the teal palette a lighter navigation option. */
-  --color-sidebar-bg: #ecfeff;
-  --color-sidebar-border: #cffafe;
-  --color-sidebar-text: #164e63;
-  --color-sidebar-muted: #527b87;
-  --color-sidebar-active: #cffafe;
-  --color-sidebar-active-text: #155e75;
+  --color-sidebar-bg: #164e63;
+  --color-sidebar-border: #155e75;
+  --color-sidebar-text: #ecfeff;
+  --color-sidebar-muted: #a5f3fc;
+  --color-sidebar-active: #0e7490;
+  --color-sidebar-active-text: #ffffff;
 }
 
+
+:root[data-palette="rose"] {
+  --color-brand: #e11d48;
+  --color-primary: #e11d48;
+  --color-primary-hover: #be123c;
+  --color-action: #e11d48;
+  --color-action-hover: #be123c;
+  --color-accent: #ffe4e6;
+  --color-focus: #e11d48;
+  --color-brand-hover: #be123c;
+  --color-brand-soft: #ffe4e6;
+  --color-on-brand: #ffffff;
+  --color-sidebar-bg: #fff1f2;
+  --color-sidebar-border: #ffe4e6;
+  --color-sidebar-text: #881337;
+  --color-sidebar-muted: #9f5368;
+  --color-sidebar-active: #ffe4e6;
+  --color-sidebar-active-text: #9f1239;
+}
+
+:root[data-palette="sky"] {
+  --color-brand: #0284c7;
+  --color-primary: #0284c7;
+  --color-primary-hover: #0369a1;
+  --color-action: #0284c7;
+  --color-action-hover: #0369a1;
+  --color-accent: #e0f2fe;
+  --color-focus: #0284c7;
+  --color-brand-hover: #0369a1;
+  --color-brand-soft: #e0f2fe;
+  --color-on-brand: #ffffff;
+  --color-sidebar-bg: #f0f9ff;
+  --color-sidebar-border: #e0f2fe;
+  --color-sidebar-text: #0c4a6e;
+  --color-sidebar-muted: #527c96;
+  --color-sidebar-active: #e0f2fe;
+  --color-sidebar-active-text: #075985;
+}
+
+:root[data-palette="amber"] {
+  --color-brand: #d97706;
+  --color-primary: #d97706;
+  --color-primary-hover: #b45309;
+  --color-action: #d97706;
+  --color-action-hover: #b45309;
+  --color-accent: #fef3c7;
+  --color-focus: #d97706;
+  --color-brand-hover: #b45309;
+  --color-brand-soft: #fef3c7;
+  --color-on-brand: #ffffff;
+  --color-sidebar-bg: #fffbeb;
+  --color-sidebar-border: #fef3c7;
+  --color-sidebar-text: #78350f;
+  --color-sidebar-muted: #98734a;
+  --color-sidebar-active: #fef3c7;
+  --color-sidebar-active-text: #92400e;
+}
+
+:root[data-palette="slate"] {
+  --color-brand: #475569;
+  --color-primary: #475569;
+  --color-primary-hover: #334155;
+  --color-action: #475569;
+  --color-action-hover: #334155;
+  --color-accent: #e2e8f0;
+  --color-focus: #64748b;
+  --color-brand-hover: #334155;
+  --color-brand-soft: #e2e8f0;
+  --color-on-brand: #ffffff;
+  --color-sidebar-bg: #f8fafc;
+  --color-sidebar-border: #e2e8f0;
+  --color-sidebar-text: #1e293b;
+  --color-sidebar-muted: #64748b;
+  --color-sidebar-active: #e2e8f0;
+  --color-sidebar-active-text: #334155;
+}
 
 /* Semantic component tokens: use these instead of literal colors in components. */
 :root {
@@ -227,27 +301,13 @@
   --shadow-sidebar: 12px 0 40px rgb(0 0 0 / 28%);
 }
 
-/* Keep the two light-sidebar palettes dark-surface friendly in dark mode. */
-:root[data-theme="dark"][data-palette="green"] {
-  --color-sidebar-bg: #064e3b;
-  --color-sidebar-border: #065f46;
-  --color-sidebar-text: #ecfdf5;
-  --color-sidebar-muted: #a7f3d0;
-  --color-sidebar-active: #047857;
-  --color-sidebar-active-text: #ffffff;
-}
-:root[data-theme="dark"][data-palette="teal"] {
-  --color-sidebar-bg: #164e63;
-  --color-sidebar-border: #155e75;
-  --color-sidebar-text: #ecfeff;
-  --color-sidebar-muted: #a5f3fc;
-  --color-sidebar-active: #0e7490;
-  --color-sidebar-active-text: #ffffff;
-}
-
 /* Stable palette preview swatches used by the Settings appearance picker. */
 :root,
 :root[data-palette="navy"] { --palette-preview-1: #0f766e; }
 :root[data-palette="green"] { --palette-preview-2: #059669; }
 :root[data-palette="purple"] { --palette-preview-3: #6366f1; }
 :root[data-palette="teal"] { --palette-preview-4: #0891b2; }
+:root[data-palette="rose"] { --palette-preview-5: #e11d48; }
+:root[data-palette="sky"] { --palette-preview-6: #0284c7; }
+:root[data-palette="amber"] { --palette-preview-7: #d97706; }
+:root[data-palette="slate"] { --palette-preview-8: #475569; }
