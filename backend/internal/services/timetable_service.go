@@ -7,6 +7,7 @@ import (
 )
 
 type timetableRepository interface {
+	GetCurrentTimetableYear(context.Context,int64,int64)(*repository.AcademicYear,error)
 	ListTimetablePeriods(context.Context,int64,int64,int64)([]repository.TimetablePeriod,error)
 	SaveTimetablePeriod(context.Context,int64,int64,int64,int64,int,string,string,string,bool)(*repository.TimetablePeriod,error)
 	ListTimetableEntries(context.Context,int64,int64,int64,int64)([]repository.TimetableEntry,error)
@@ -18,6 +19,10 @@ type TimetableService struct { repository timetableRepository }
 
 func NewTimetableService(repo timetableRepository)*TimetableService{return &TimetableService{repository:repo}}
 
+func(s *TimetableService) CurrentYear(ctx context.Context,actorID,schoolID int64)(*repository.AcademicYear,error){
+	if s==nil||s.repository==nil{return nil,repository.ErrTimetableAccessDenied}
+	return s.repository.GetCurrentTimetableYear(ctx,actorID,schoolID)
+}
 func(s *TimetableService) ListPeriods(ctx context.Context,actorID,schoolID,yearID int64)([]repository.TimetablePeriod,error){
 	if s==nil||s.repository==nil{return nil,repository.ErrTimetableAccessDenied}
 	return s.repository.ListTimetablePeriods(ctx,actorID,schoolID,yearID)
