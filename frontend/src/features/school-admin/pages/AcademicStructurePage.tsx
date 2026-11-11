@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { CalendarDays, BookOpen, Layers3, FlaskConical, Pencil, Plus, RefreshCw, UsersRound } from "lucide-react";
 import { TeacherAssignmentsPage } from "./TeacherAssignmentsPage";
 import { api } from "../../../lib/api";
@@ -33,6 +33,8 @@ export function AcademicStructurePage({permissions}:Props) {
   const [error,setError]=useState("");
   const [feedback,setFeedback]=useState<{kind:"success"|"error";message:string}|null>(null);
   const [tab,setTab]=useState<Kind>("year");
+  const tabsRef=useRef<HTMLDivElement>(null);
+  const [tabsHidden,setTabsHidden]=useState(false);
   const [action,setAction]=useState<Action>(null);
   const [filterYear,setFilterYear]=useState("");
   const [fieldErrors,setFieldErrors]=useState<Record<string,string>>({});
@@ -71,6 +73,28 @@ export function AcademicStructurePage({permissions}:Props) {
   if(canReadSubjects)availableTabs.push("subject");
   if(canReadAssignments)availableTabs.push("assignments");
   useEffect(()=>{if(!availableTabs.includes(tab)&&availableTabs.length)setTab(availableTabs[0]??"year");},[tab,canReadYears,canReadClasses,canReadSubjects,canReadAssignments]);
+  useEffect(()=>{
+    let previousY=window.scrollY;
+    let accumulated=0;
+    let previousDirection=0;
+    const onScroll=()=>{
+      const currentY=Math.max(0,window.scrollY);
+      const delta=currentY-previousY;
+      previousY=currentY;
+      if(currentY<=8){accumulated=0;previousDirection=0;setTabsHidden(false);return;}
+      if(Math.abs(delta)<1)return;
+      const direction=delta>0?1:-1;
+      if(direction!==previousDirection){accumulated=0;previousDirection=direction;}
+      accumulated+=Math.abs(delta);
+      if(accumulated<10)return;
+      const tabsTop=tabsRef.current?.getBoundingClientRect().top??Number.POSITIVE_INFINITY;
+      if(direction>0&&tabsTop<=72)setTabsHidden(true);
+      else if(direction<0)setTabsHidden(false);
+      accumulated=0;
+    };
+    window.addEventListener("scroll",onScroll,{passive:true});
+    return()=>window.removeEventListener("scroll",onScroll);
+  },[]);
 
   function begin(kind:EditableKind,record?:Year|SchoolClass|Section|Subject){setAction({kind,record});setFieldErrors({});setFeedback(null);setStartsOn(kind==="year"&&record?(record as Year).starts_on.slice(0,10):"");setEndsOn(kind==="year"&&record?(record as Year).ends_on.slice(0,10):"");setYearStatus(kind==="year"&&record?(record as Year).status:"planned");setSectionYearID(kind==="section"&&record?String((record as Section).academic_year_id):kind==="section"?filterYear:"");setSectionClassID(kind==="section"&&record?String((record as Section).class_id):"");setSectionStatus(kind==="section"&&record?((record as Section).is_active?"active":"inactive"):"active");}
   function close(){setAction(null);setFieldErrors({});}
@@ -104,7 +128,7 @@ export function AcademicStructurePage({permissions}:Props) {
   const sectionRows=sections.filter(item=>!filterYear||String(item.academic_year_id)===filterYear);
   return <div className="content academic-page">
     <div className="heading"><div><span className="eyebrow">SCHOOL SETUP</span><h1>Academic structure</h1><p>Configure academic years, classes, sections and subjects for this school.</p></div><button type="button" className="academic-refresh" onClick={()=>void load()} disabled={loading}><RefreshCw size={15}/> Refresh</button></div>
-    <div className="academic-tabs" role="tablist" aria-label="Academic structure">
+    <div ref={tabsRef} className={`academic-tabs${tabsHidden?" is-hidden":""}`} role="tablist" aria-label="Academic structure" onFocusCapture={()=>setTabsHidden(false)}>
       {availableTabs.map(item=><button key={item} type="button" role="tab" aria-selected={tab===item} className={tab===item?"selected":""} onClick={()=>{setTab(item);setAction(null);setFeedback(null);}}>
         {item==="year"?<CalendarDays size={16}/>:item==="class"?<BookOpen size={16}/>:item==="section"?<Layers3 size={16}/>:item==="assignments"?<UsersRound size={16}/>:<FlaskConical size={16}/>} {titles[item]}
       </button>)}
