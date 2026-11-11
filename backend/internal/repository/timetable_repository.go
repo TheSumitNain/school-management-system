@@ -137,6 +137,11 @@ func (r *AcademicRepository) SaveTimetablePeriod(ctx context.Context, actorID, s
 	return &v, nil
 }
 
+const timetableEntryColumns = `te.id,te.school_id,te.academic_year_id,te.section_id,s.name,c.name,
+	te.subject_id,sub.name,te.teacher_principal_id,u.username,te.teacher_subject_assignment_id,
+	te.period_id,p.period_number,p.name,to_char(p.starts_at,'HH24:MI'),to_char(p.ends_at,'HH24:MI'),
+	te.day_of_week,te.room,te.created_by_principal_id,te.updated_by_principal_id,te.created_at,te.updated_at`
+
 func (r *AcademicRepository) ListTimetableEntries(ctx context.Context, actorID, schoolID, yearID, sectionID int64) ([]TimetableEntry, error) {
 	if r == nil || r.db == nil || yearID <= 0 || sectionID < 0 { return nil, ErrInvalidTimetableInput }
 	if err := timetableAuthorize(ctx, r.db, actorID, schoolID, "timetable.read"); err != nil { return nil, err }
