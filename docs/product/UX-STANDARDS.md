@@ -16,6 +16,11 @@ These standards exist so school owners, administrators, teachers and other in-sc
 ## 2. Field-level validation
 
 - Every field has a visible, specific label and clear required/optional indication.
+- Every editable text, email, password, search, number and other value-entry field must provide a meaningful placeholder that shows the expected kind or format of data (use realistic, non-sensitive examples such as `e.g. ADM-2026-001`). Do not use placeholders as labels or repeat generic text such as `Enter value`.
+- Required dropdowns must show a task-specific prompt such as `Select class` or `Choose teacher`; optional filters must clearly communicate their unfiltered state (for example, `All statuses`).
+- Date controls must explain what date is expected through a contextual prompt or adjacent helper text. For native date/time/number controls where browsers may hide or ignore placeholders, provide visible helper text with a concrete format/example.
+- Optional fields must say they are optional in the label or nearby helper text and, where useful, show an example placeholder.
+- Keep placeholders concise and context-specific, preserve persistent labels, and ensure placeholder/helper contrast is readable in every theme. Existing values, validation messages and accessible descriptions must remain visible and must not depend on placeholder text.
 - Provide examples and helper text for non-obvious formats, length limits and constraints.
 - On submit, validate all fields and display every detected error together directly below its corresponding field.
 - A generic top/bottom error box must never be the only indication of field validation errors.
