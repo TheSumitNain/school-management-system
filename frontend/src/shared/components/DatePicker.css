@@ -18,7 +18,7 @@
 .app-date-day:hover:not(:disabled){background:var(--color-surface-muted)}
 .app-date-day[aria-current="date"]:not(:disabled){border-color:var(--color-focus);color:var(--color-primary);font-weight:700}
 .app-date-day:disabled{opacity:.28;cursor:not-allowed}
-.app-date-row [aria-selected="true"]>.app-date-day{border-color:var(--color-action);background:var(--color-action);color:#fff;font-weight:700}
+.app-date-row [aria-selected="true"]>.app-date-day{border-color:var(--color-action);background:var(--color-action);color:var(--color-on-brand);font-weight:700}
 .app-date-footer{display:flex;justify-content:space-between;gap:8px;margin-top:10px;padding-top:9px;border-top:1px solid var(--color-border)}
 .app-date-footer button{font-size:11px}
 @media(prefers-reduced-motion:reduce){.app-date-trigger{transition:none}}
