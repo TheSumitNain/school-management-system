@@ -112,3 +112,48 @@ COMMENT ON TABLE timetable_periods IS
 'School and academic-year-specific ordered timetable periods; break periods are represented explicitly.';
 COMMENT ON TABLE timetable_entries IS
 'Weekly section timetable entries bound to an active teacher-subject assignment; unique indexes prevent class and teacher double-booking.';
+
+CREATE OR REPLACE FUNCTION public.validate_v26_timetable_entry()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public
+AS $v26$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+          FROM public.teacher_subject_assignments a
+          JOIN public.academic_years ay
+            ON ay.id = a.academic_year_id AND ay.school_id = a.school_id
+          JOIN public.sections s
+            ON s.id = a.section_id AND s.school_id = a.school_id
+           AND s.academic_year_id = a.academic_year_id
+          JOIN public.subjects sub
+            ON sub.id = a.subject_id AND sub.school_id = a.school_id
+          JOIN public.timetable_periods p
+            ON p.id = NEW.period_id AND p.school_id = NEW.school_id
+           AND p.academic_year_id = NEW.academic_year_id
+          JOIN public.users u
+            ON u.principal_id = a.teacher_principal_id AND u.school_id = a.school_id
+         WHERE a.id = NEW.teacher_subject_assignment_id
+           AND a.school_id = NEW.school_id
+           AND a.academic_year_id = NEW.academic_year_id
+           AND a.section_id = NEW.section_id
+           AND a.subject_id = NEW.subject_id
+           AND a.teacher_principal_id = NEW.teacher_principal_id
+           AND a.revoked_at IS NULL
+           AND ay.status <> 'closed'
+           AND s.is_active = TRUE
+           AND sub.is_active = TRUE
+           AND u.status = 'active'
+           AND p.is_break = FALSE
+    ) THEN
+        RAISE EXCEPTION 'timetable entries require an active teacher assignment, section, subject, teacher, year, and teaching period';
+    END IF;
+    RETURN NEW;
+END;
+$v26$;
+
+CREATE TRIGGER trg_validate_v26_timetable_entry
+BEFORE INSERT OR UPDATE ON public.timetable_entries
+FOR EACH ROW EXECUTE FUNCTION public.validate_v26_timetable_entry();
+
