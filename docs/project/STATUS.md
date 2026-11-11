@@ -119,13 +119,11 @@ The presence of a page or API client does not mean its full browser workflow has
 
 ## Safe next sequence
 
-1. Complete and verify the persistent-session/MFA policy described above, including backend/frontend behavior, migration, regression tests and security documentation.
-2. Continue reviewing and completing the School Admin browser workflows against the existing API contracts.
-3. Fix verified frontend/backend integration defects and add regression tests for each fix.
-4. Reconcile remaining backend authorization gaps against the actual route/repository surface.
-5. Complete the remaining school business modules and teacher/staff workflows needed for Phase 1.
-6. Complete browser-level, responsive, accessibility, theme, session-recovery and operational verification.
-7. Start Parent OTP/SMS and Parent/Driver Phase 2 work only after Phase 1 school web product completion and explicit reprioritization.
+Follow the mandatory [Phase 1 School Operations task-by-task build order](../product/PHASE1-WORKFLOW-ORDER.md). The immediate operational sequence is: verify school/academic foundations → complete/verify subject catalogue → create teacher/staff accounts → assign teachers to subjects/classes/sections → create students and enroll them → finish timetable acceptance using real data → complete attendance → examinations/results → notices and dashboard integration.
+
+This sequence does not imply that existing modules must be rebuilt. Inspect current code and close missing implementation or acceptance gaps in place. Subject management already belongs to Academic Structure; do not create a duplicate subject module. Timetable implementation already exists and must be preserved while its real-data browser/role acceptance is completed. Student and teacher profile creation may be prepared in parallel after academic foundations, but downstream workflows must respect the dependency gates in the roadmap.
+
+Before new business-module work, keep the current persistent-session/MFA acceptance task visible and complete its pending local verification. Fix verified integration defects with regression tests, reconcile remaining authorization gaps against actual routes/repositories, and record browser, responsive, accessibility, theme and session acceptance. Parent OTP/SMS and Parent/Driver Phase 2 work remain deferred until Phase 1 school web completion and explicit reprioritization.
 
 ## Git and database safety
 
