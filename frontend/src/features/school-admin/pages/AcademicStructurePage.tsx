@@ -44,6 +44,7 @@ export function AcademicStructurePage({permissions}:Props) {
   const [sectionYearID,setSectionYearID]=useState("");
   const [sectionClassID,setSectionClassID]=useState("");
   const [sectionStatus,setSectionStatus]=useState<"active"|"inactive">("active");
+  const [recordStatus,setRecordStatus]=useState<"active"|"inactive">("active");
 
   async function load() {
     setLoading(true); setError("");
@@ -96,7 +97,7 @@ export function AcademicStructurePage({permissions}:Props) {
     return()=>window.removeEventListener("scroll",onScroll);
   },[]);
 
-  function begin(kind:EditableKind,record?:Year|SchoolClass|Section|Subject){setAction({kind,record});setFieldErrors({});setFeedback(null);setStartsOn(kind==="year"&&record?(record as Year).starts_on.slice(0,10):"");setEndsOn(kind==="year"&&record?(record as Year).ends_on.slice(0,10):"");setYearStatus(kind==="year"&&record?(record as Year).status:"planned");setSectionYearID(kind==="section"&&record?String((record as Section).academic_year_id):kind==="section"?filterYear:"");setSectionClassID(kind==="section"&&record?String((record as Section).class_id):"");setSectionStatus(kind==="section"&&record?((record as Section).is_active?"active":"inactive"):"active");}
+  function begin(kind:EditableKind,record?:Year|SchoolClass|Section|Subject){setAction({kind,record});setFieldErrors({});setFeedback(null);setStartsOn(kind==="year"&&record?(record as Year).starts_on.slice(0,10):"");setEndsOn(kind==="year"&&record?(record as Year).ends_on.slice(0,10):"");setYearStatus(kind==="year"&&record?(record as Year).status:"planned");setSectionYearID(kind==="section"&&record?String((record as Section).academic_year_id):kind==="section"?filterYear:"");setSectionClassID(kind==="section"&&record?String((record as Section).class_id):"");setSectionStatus(kind==="section"&&record?((record as Section).is_active?"active":"inactive"):"active");setRecordStatus((kind==="class"||kind==="subject")&&record?((record as SchoolClass|Subject).is_active?"active":"inactive"):"active");}
   function close(){setAction(null);setFieldErrors({});}
   async function submit(event:FormEvent<HTMLFormElement>){
     event.preventDefault();if(!action)return;
@@ -113,9 +114,9 @@ export function AcademicStructurePage({permissions}:Props) {
     if(!name)errors.name="Enter a name for this academic record.";
     if(action.kind==="class"||action.kind==="section"){const order=Number(form.get("display_order")??0);if(!Number.isInteger(order)||order<0)errors.display_order="Enter a whole number of zero or greater."; }
     if(action.kind==="year"){const startsOn=String(form.get("starts_on")??"");const endsOn=String(form.get("ends_on")??"");const status=String(form.get("status")??"planned");const isCurrent=form.get("is_current")==="on";if(!startsOn)errors.starts_on="Choose the academic year start date.";if(!endsOn)errors.ends_on="Choose the academic year end date.";else if(startsOn&&endsOn<=startsOn)errors.ends_on="The end date must be later than the start date.";if(isCurrent&&status!=="active")errors.status="Only an active academic year can be marked as current.";if(Object.keys(errors).length){setFieldErrors(errors);return;}body={name,starts_on:startsOn,ends_on:endsOn,status,is_current:isCurrent};}
-    else if(action.kind==="class")body={name,display_order:Number(form.get("display_order")??0),is_active:form.get("is_active")==="on"};
+    else if(action.kind==="class")body={name,display_order:Number(form.get("display_order")??0),is_active:form.get("is_active")==="true"};
     else if(action.kind==="section"){if(!Number(form.get("academic_year_id")))errors.academic_year_id="Select an academic year.";if(!Number(form.get("class_id")))errors.class_id="Select a class.";if(Object.keys(errors).length){setFieldErrors(errors);return;}body={academic_year_id:Number(form.get("academic_year_id")),class_id:Number(form.get("class_id")),name,display_order:Number(form.get("display_order")??0),is_active:form.get("is_active")==="true"};}
-    else body={name,subject_code:String(form.get("subject_code")??"").trim()||null,is_active:form.get("is_active")==="on"};
+    else body={name,subject_code:String(form.get("subject_code")??"").trim()||null,is_active:form.get("is_active")==="true"};
     if(Object.keys(errors).length){setFieldErrors(errors);return;}
     setFieldErrors({});setSaving(true);setFeedback(null);
     try{await api(path,{method,body:JSON.stringify(body)});setAction(null);setFeedback({kind:"success",message:"Academic information saved successfully."});await load();}
@@ -145,7 +146,7 @@ export function AcademicStructurePage({permissions}:Props) {
         {action.kind==="section"&&<><label>Academic year<input type="hidden" name="academic_year_id" value={sectionYearID}/><Select ariaLabel="Section academic year" invalid={Boolean(fieldErrors.academic_year_id)} describedBy={fieldErrors.academic_year_id?"section-year-error":undefined} value={sectionYearID} onChange={value=>{setSectionYearID(value);setFieldErrors(current=>({...current,academic_year_id:""}));}} placeholder="Select academic year" disabled={Boolean(currentRecord)} options={years.filter(x=>x.status!=="closed").map(x=>({value:String(x.id),label:x.name}))}/>{fieldErrors.academic_year_id&&<small className="app-field-error" id="section-year-error" role="alert">{fieldErrors.academic_year_id}</small>}</label><label>Class<input type="hidden" name="class_id" value={sectionClassID}/><Select ariaLabel="Section class" invalid={Boolean(fieldErrors.class_id)} describedBy={fieldErrors.class_id?"section-class-error":undefined} value={sectionClassID} onChange={value=>{setSectionClassID(value);setFieldErrors(current=>({...current,class_id:""}));}} placeholder="Select class" disabled={Boolean(currentRecord)} options={classes.filter(x=>x.is_active).map(x=>({value:String(x.id),label:x.name}))}/>{fieldErrors.class_id&&<small className="app-field-error" id="section-class-error" role="alert">{fieldErrors.class_id}</small>}</label></>}
         {action.kind==="subject"&&<label>Subject code<input name="subject_code" placeholder="e.g. MATH or ENG" defaultValue={(currentRecord as Subject|undefined)?.subject_code??""} maxLength={40}/><small>Optional. Must be unique within this school when provided.</small></label>}
         {action.kind==="section"&&<label>Status<input type="hidden" name="is_active" value={sectionStatus==="active"?"true":"false"}/><Select ariaLabel="Section status" value={sectionStatus} onChange={value=>setSectionStatus(value as "active"|"inactive")} options={[{value:"active",label:"Active"},{value:"inactive",label:"Inactive"}]}/></label>}
-        {action.kind!=="year"&&action.kind!=="section"&&<label className="academic-check"><input name="is_active" type="checkbox" defaultChecked={(currentRecord as SchoolClass|Subject|undefined)?.is_active??true}/> Active</label>}
+        {(action.kind==="class"||action.kind==="subject")&&<label>Status<input type="hidden" name="is_active" value={recordStatus==="active"?"true":"false"}/><Select ariaLabel="Record status" value={recordStatus} onChange={value=>setRecordStatus(value as "active"|"inactive")} options={[{value:"active",label:"Active"},{value:"inactive",label:"Inactive"}]}/></label>}
         <div className="app-modal-actions"><button type="button" className="app-modal-cancel" onClick={close} disabled={saving}>Cancel</button><button className="primary" type="submit" disabled={saving}>{saving?"Saving…":"Save changes"}</button></div>
       </form>
       </>}
