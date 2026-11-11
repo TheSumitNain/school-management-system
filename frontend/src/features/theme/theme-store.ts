@@ -29,12 +29,15 @@ export const useThemeStore = create<ThemeState>()(
       }),
       version: 1,
       migrate: (persistedState) => {
-        const state = persistedState as Partial<ThemeState>;
-        const palette = state.palette === "navy"
+        const state = persistedState as { preference?: ThemePreference; palette?: string };
+        const validPalettes: ThemePalette[] = ["ruby", "green", "copper", "teal", "rose", "sky", "amber", "slate"];
+        const palette: ThemePalette = state.palette === "navy"
           ? "ruby"
           : state.palette === "purple"
             ? "copper"
-            : state.palette ?? "ruby";
+            : validPalettes.includes(state.palette as ThemePalette)
+              ? state.palette as ThemePalette
+              : "ruby";
         return { ...state, palette };
       },
     },
