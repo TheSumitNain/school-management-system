@@ -159,7 +159,7 @@ export function AttendanceManagementPage({ permissions }: Props) {
                     <td><b>{enrollment.student_name || "Student"}</b><small>{enrollment.class_name_snapshot} · {enrollment.section_name_snapshot}</small></td>
                     <td>{enrollment.roll_number || "—"}</td>
                     <td><Select ariaLabel={"Attendance status for " + (enrollment.student_name || "student")} value={draft.status} placeholder="Select status" onChange={value => changeDraft(enrollment.id, { status: value })} disabled={!canSave || busy} options={statuses} /></td>
-                    <td><input aria-label={"Remarks for " + (enrollment.student_name || "student")} value={draft.remarks} maxLength={500} onChange={event => changeDraft(enrollment.id, { remarks: event.target.value })} placeholder="Optional" disabled={!canSave || busy}/></td>
+                    <td><input aria-label={"Remarks for " + (enrollment.student_name || "student")} value={draft.remarks} maxLength={500} onChange={event => changeDraft(enrollment.id, { remarks: event.target.value })} placeholder="e.g. Arrived 15 minutes late (optional)" disabled={!canSave || busy}/></td>
                     <td><button type="button" className="attendance-save" onClick={() => void save(enrollment.id)} disabled={!canSave || !draft.status || busy}><Check size={14}/>{existing ? "Update" : "Save"}</button></td>
                   </tr>;
                 })}
