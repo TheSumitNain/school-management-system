@@ -829,10 +829,10 @@ td b {
   font-weight: 600;
 }
 .palette-swatch { width: 18px; height: 18px; border-radius: 6px; flex: none; background: var(--color-brand); }
-.palette-swatch-navy { background: var(--palette-preview-navy); }
-.palette-swatch-green { background: var(--palette-preview-green); }
-.palette-swatch-purple { background: var(--palette-preview-purple); }
-.palette-swatch-teal { background: var(--palette-preview-teal); }
+.palette-swatch-navy { background: var(--palette-preview-1); }
+.palette-swatch-green { background: var(--palette-preview-2); }
+.palette-swatch-purple { background: var(--palette-preview-3); }
+.palette-swatch-teal { background: var(--palette-preview-4); }
 @media (max-width: 640px) {
   .appearance-options { grid-template-columns: 1fr; }
   .palette-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
