@@ -74,7 +74,8 @@ func timetableWriteError(err error) error {
 
 func timetableAuthorize(ctx context.Context, db repositoryDB, actorID, schoolID int64, permission string) error {
 	if err := authorizeAcademic(ctx, db, actorID, schoolID, permission); err != nil {
-		return ErrTimetableAccessDenied
+		if errors.Is(err, ErrAcademicAccessDenied) { return ErrTimetableAccessDenied }
+		return err
 	}
 	return nil
 }
@@ -108,19 +109,20 @@ func (r *AcademicRepository) SaveTimetablePeriod(ctx context.Context, actorID, s
 	if r == nil || r.db == nil { return nil, ErrTimetableAccessDenied }
 	if err := timetableAuthorize(ctx, r.db, actorID, schoolID, "timetable.manage"); err != nil { return nil, err }
 	name = strings.TrimSpace(name)
-	if yearID <= 0 || number <= 0 || name == "" || len([]rune(name)) > 80 {
-		return nil, ErrInvalidTimetableInput
-	}
+	if yearID <= 0 || number <= 0 || name == "" || len([]rune(name)) > 80 { return nil, ErrInvalidTimetableInput }
+
+	tx, err := r.db.Begin(ctx)
+	if err != nil { return nil, fmt.Errorf("begin timetable period save: %w", err) }
+	defer func() { _ = tx.Rollback(ctx) }()
 	var v TimetablePeriod
-	var err error
 	if id == 0 {
-		err = r.db.QueryRow(ctx, `INSERT INTO timetable_periods
+		err = tx.QueryRow(ctx, `INSERT INTO timetable_periods
 			(school_id,academic_year_id,period_number,name,starts_at,ends_at,is_break)
 			VALUES($1,$2,$3,$4,$5::time,$6::time,$7)
 			RETURNING id,school_id,academic_year_id,period_number,name,to_char(starts_at,'HH24:MI'),to_char(ends_at,'HH24:MI'),is_break,created_at,updated_at`,
 			schoolID,yearID,number,name,startsAt,endsAt,isBreak).Scan(&v.ID,&v.SchoolID,&v.AcademicYearID,&v.PeriodNumber,&v.Name,&v.StartsAt,&v.EndsAt,&v.IsBreak,&v.CreatedAt,&v.UpdatedAt)
 	} else {
-		err = r.db.QueryRow(ctx, `UPDATE timetable_periods SET period_number=$4,name=$5,starts_at=$6::time,ends_at=$7::time,is_break=$8,updated_at=NOW()
+		err = tx.QueryRow(ctx, `UPDATE timetable_periods SET period_number=$4,name=$5,starts_at=$6::time,ends_at=$7::time,is_break=$8,updated_at=NOW()
 			WHERE id=$1 AND school_id=$2 AND academic_year_id=$3
 			RETURNING id,school_id,academic_year_id,period_number,name,to_char(starts_at,'HH24:MI'),to_char(ends_at,'HH24:MI'),is_break,created_at,updated_at`,
 			id,schoolID,yearID,number,name,startsAt,endsAt,isBreak).Scan(&v.ID,&v.SchoolID,&v.AcademicYearID,&v.PeriodNumber,&v.Name,&v.StartsAt,&v.EndsAt,&v.IsBreak,&v.CreatedAt,&v.UpdatedAt)
@@ -128,16 +130,12 @@ func (r *AcademicRepository) SaveTimetablePeriod(ctx context.Context, actorID, s
 	if err != nil { return nil, timetableWriteError(err) }
 	action := "school.timetable.period.created"
 	if id != 0 { action = "school.timetable.period.updated" }
-	if _, err := r.db.Exec(ctx, `INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
+	if _, err := tx.Exec(ctx, `INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
 		VALUES($1,$2,$3,'timetable_period',$4,'success',jsonb_build_object('academic_year_id',$5::bigint,'period_number',$6::integer))`,
 		actorID,schoolID,action,fmt.Sprint(v.ID),yearID,number); err != nil { return nil, fmt.Errorf("audit timetable period: %w", err) }
+	if err := tx.Commit(ctx); err != nil { return nil, fmt.Errorf("commit timetable period: %w", err) }
 	return &v, nil
 }
-
-const timetableEntryColumns = `te.id,te.school_id,te.academic_year_id,te.section_id,s.name,c.name,
-	te.subject_id,sub.name,te.teacher_principal_id,u.username,te.teacher_subject_assignment_id,
-	te.period_id,p.period_number,p.name,to_char(p.starts_at,'HH24:MI'),to_char(p.ends_at,'HH24:MI'),
-	te.day_of_week,te.room,te.created_by_principal_id,te.updated_by_principal_id,te.created_at,te.updated_at`
 
 func (r *AcademicRepository) ListTimetableEntries(ctx context.Context, actorID, schoolID, yearID, sectionID int64) ([]TimetableEntry, error) {
 	if r == nil || r.db == nil || yearID <= 0 || sectionID < 0 { return nil, ErrInvalidTimetableInput }
@@ -176,33 +174,40 @@ func (r *AcademicRepository) SaveTimetableEntry(ctx context.Context, actorID, sc
 	if err:=timetableAuthorize(ctx,r.db,actorID,schoolID,"timetable.manage");err!=nil{return nil,err}
 	if yearID<=0||sectionID<=0||subjectID<=0||teacherID<=0||assignmentID<=0||periodID<=0||day<1||day>7{return nil,ErrInvalidTimetableInput}
 	if room!=nil { v:=strings.TrimSpace(*room);if len([]rune(v))>80{return nil,ErrInvalidTimetableInput};if v==""{room=nil}else{room=&v} }
+
+	tx,err:=r.db.Begin(ctx);if err!=nil{return nil,fmt.Errorf("begin timetable entry save: %w",err)}
+	defer func(){_=tx.Rollback(ctx)}()
 	var v TimetableEntry
-	var err error
 	if id==0 {
-		err=r.db.QueryRow(ctx,`INSERT INTO timetable_entries
+		err=tx.QueryRow(ctx,`INSERT INTO timetable_entries
 			(school_id,academic_year_id,section_id,subject_id,teacher_principal_id,teacher_subject_assignment_id,period_id,day_of_week,room,created_by_principal_id,updated_by_principal_id)
-			VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$10)
-			RETURNING id`,schoolID,yearID,sectionID,subjectID,teacherID,assignmentID,periodID,day,room,actorID).Scan(&v.ID)
+			VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$10) RETURNING id`,
+			schoolID,yearID,sectionID,subjectID,teacherID,assignmentID,periodID,day,room,actorID).Scan(&v.ID)
 	} else {
-		err=r.db.QueryRow(ctx,`UPDATE timetable_entries SET section_id=$3,subject_id=$4,teacher_principal_id=$5,teacher_subject_assignment_id=$6,period_id=$7,day_of_week=$8,room=$9,updated_by_principal_id=$10,updated_at=NOW()
+		err=tx.QueryRow(ctx,`UPDATE timetable_entries SET section_id=$3,subject_id=$4,teacher_principal_id=$5,teacher_subject_assignment_id=$6,period_id=$7,day_of_week=$8,room=$9,updated_by_principal_id=$10,updated_at=NOW()
 			WHERE id=$1 AND school_id=$2 AND academic_year_id=$11 RETURNING id`,
 			id,schoolID,sectionID,subjectID,teacherID,assignmentID,periodID,day,room,actorID,yearID).Scan(&v.ID)
 	}
 	if err!=nil{return nil,timetableWriteError(err)}
-	if _,err=r.db.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
+	action:="school.timetable.entry.created";if id!=0{action="school.timetable.entry.updated"}
+	if _,err=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
 		VALUES($1,$2,$3,'timetable_entry',$4,'success',jsonb_build_object('academic_year_id',$5::bigint,'section_id',$6::bigint,'day_of_week',$7::integer,'period_id',$8::bigint))`,
-		actorID,schoolID,map[bool]string{true:"school.timetable.entry.created",false:"school.timetable.entry.updated"}[id==0],fmt.Sprint(v.ID),yearID,sectionID,day,periodID);err!=nil{return nil,fmt.Errorf("audit timetable entry: %w",err)}
+		actorID,schoolID,action,fmt.Sprint(v.ID),yearID,sectionID,day,periodID);err!=nil{return nil,fmt.Errorf("audit timetable entry: %w",err)}
+	if err=tx.Commit(ctx);err!=nil{return nil,fmt.Errorf("commit timetable entry: %w",err)}
 	return r.getTimetableEntry(ctx,schoolID,yearID,v.ID)
 }
 
 func (r *AcademicRepository) DeleteTimetableEntry(ctx context.Context,actorID,schoolID,yearID,id int64)error{
 	if r==nil||r.db==nil{return ErrTimetableAccessDenied}
 	if err:=timetableAuthorize(ctx,r.db,actorID,schoolID,"timetable.manage");err!=nil{return err}
-	tag,err:=r.db.Exec(ctx,`DELETE FROM timetable_entries WHERE id=$1 AND school_id=$2 AND academic_year_id=$3`,id,schoolID,yearID)
+	tx,err:=r.db.Begin(ctx);if err!=nil{return fmt.Errorf("begin timetable entry deletion: %w",err)}
+	defer func(){_=tx.Rollback(ctx)}()
+	tag,err:=tx.Exec(ctx,`DELETE FROM timetable_entries WHERE id=$1 AND school_id=$2 AND academic_year_id=$3`,id,schoolID,yearID)
 	if err!=nil{return fmt.Errorf("delete timetable entry: %w",err)}
 	if tag.RowsAffected()==0{return ErrTimetableNotFound}
-	if _,err=r.db.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome)
+	if _,err=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome)
 		VALUES($1,$2,'school.timetable.entry.deleted','timetable_entry',$3,'success')`,actorID,schoolID,fmt.Sprint(id));err!=nil{return fmt.Errorf("audit timetable entry deletion: %w",err)}
+	if err=tx.Commit(ctx);err!=nil{return fmt.Errorf("commit timetable entry deletion: %w",err)}
 	return nil
 }
 
