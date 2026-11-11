@@ -18,7 +18,7 @@ The initial deployment direction is one shared database and schema with strict s
 
 ## Domain areas represented in the schema
 
-The migration history includes schools and identity/principal foundations, refresh sessions, RBAC/delegation/overrides, MFA and audit records, staff lifecycle, academic structure, student/enrollment history, attendance and guardian relationships.
+The migration history includes schools and identity/principal foundations, refresh sessions, RBAC/delegation/overrides, MFA and audit records, staff lifecycle, academic structure, student/enrollment history, attendance, timetable periods and weekly schedules, and guardian relationships.
 
 The authoritative schema is the ordered SQL migration chain in `backend/migrations/`, not copied SQL excerpts in documentation. For current feature status, see [Project Status](../project/STATUS.md).
 
