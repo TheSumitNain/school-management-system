@@ -143,10 +143,12 @@ export function TimetableManagementPage({ permissions }: Props) {
     const errors: Record<string, string> = {};
     const number = Number(periodDraft.period_number);
     if (!Number.isInteger(number) || number <= 0) errors.period_number = "Enter a positive whole period number.";
+    else if (periods.some(period => period.period_number === number)) errors.period_number = "This period number is already in use for the selected year.";
     if (!periodDraft.name.trim()) errors.name = "Enter a period name.";
     if (!periodDraft.starts_at) errors.starts_at = "Choose a start time.";
     if (!periodDraft.ends_at) errors.ends_at = "Choose an end time.";
     else if (periodDraft.starts_at && periodDraft.ends_at <= periodDraft.starts_at) errors.ends_at = "End time must be later than start time.";
+    else if (periodDraft.starts_at && periods.some(period => period.starts_at < periodDraft.ends_at && period.ends_at > periodDraft.starts_at)) { errors.starts_at = "This period overlaps an existing period."; errors.ends_at = "Choose a time range that does not overlap another period."; }
     if (Object.keys(errors).length) { setFieldErrors(errors); return; }
     setSaving(true); setFeedback(null);
     try {
@@ -169,6 +171,10 @@ export function TimetableManagementPage({ permissions }: Props) {
     if (!assignment) errors.assignment_id = "Select an active teacher-subject assignment.";
     if (!period || period.is_break) errors.period_id = "Select a teaching period, not a break.";
     if (!Number(entryDraft.day_of_week)) errors.day_of_week = "Select a weekday.";
+    if (section && assignment && period && Number(entryDraft.day_of_week)) {
+      if (entries.some(item => item.section_id === section.id && item.day_of_week === Number(entryDraft.day_of_week) && item.period_id === period.id)) errors.period_id = "This section already has a class in that period and day.";
+      if (entries.some(item => item.teacher_principal_id === assignment.teacher_principal_id && item.day_of_week === Number(entryDraft.day_of_week) && item.period_id === period.id)) errors.assignment_id = "This teacher is already scheduled in that period and day.";
+    }
     if (Object.keys(errors).length) { setFieldErrors(errors); return; }
     if (!assignment || !section || !period) return;
     setSaving(true); setFeedback(null);
