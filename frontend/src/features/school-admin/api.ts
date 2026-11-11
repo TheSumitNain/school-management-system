@@ -284,3 +284,7 @@ export function createTimetableEntry(input: {
 export function deleteTimetableEntry(entryID: number, academicYearID: number) {
   return api<{ message: string }>(`/school/timetable/entries/${entryID}?academic_year_id=${academicYearID}`, { method: "DELETE" });
 }
+
+export function getCurrentTimetableYear(signal?: AbortSignal) {
+  return api<{ academic_year: StudentAcademicYear }>("/school/timetable/current-year", { signal });
+}
