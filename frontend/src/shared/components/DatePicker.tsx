@@ -11,6 +11,7 @@ type Props = {
   disabled?: boolean;
   invalid?: boolean;
   describedBy?: string;
+  placeholder?: string;
 };
 
 const pad = (value: number) => String(value).padStart(2, "0");
@@ -41,7 +42,7 @@ const monthHasAvailableDate = (month: Date, min?: string, max?: string) => {
   return (!min || last >= min) && (!max || first <= max);
 };
 
-export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = false, invalid = false, describedBy }: Props) {
+export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = false, invalid = false, describedBy, placeholder = "Choose date" }: Props) {
   const selected = fromISO(value);
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -160,7 +161,7 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
         disabled={disabled}
         onClick={() => open ? setOpen(false) : openCalendar()}
       >
-        <span className={selected ? "" : "app-date-placeholder"}>{selected ? selected.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" }) : "Choose date"}</span>
+        <span className={selected ? "" : "app-date-placeholder"}>{selected ? selected.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" }) : placeholder}</span>
         <CalendarDays size={16} aria-hidden="true" />
       </button>
       {open && (
