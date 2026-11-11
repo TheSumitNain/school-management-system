@@ -7,15 +7,15 @@ const modes: { value: ThemePreference; label: string; description: string; icon:
   { value: "system", label: "System", description: "Follow your device appearance setting.", icon: Monitor },
 ];
 const palettes: { value: ThemePalette; label: string }[] = [
+  { value: "royal", label: "Classic Royal Blue" },
+  { value: "teal", label: "Ocean Teal" },
   { value: "midnight", label: "Midnight Blue" },
   { value: "green", label: "Forest Green" },
   { value: "indigo", label: "Indigo" },
-  { value: "teal", label: "Ocean Teal" },
-  { value: "rose", label: "Rose Blush" },
   { value: "sky", label: "Sky Blue" },
-  { value: "amber", label: "Warm Amber" },
   { value: "mint", label: "Mint Green" },
-  { value: "royal", label: "Classic Royal Blue" },
+  { value: "rose", label: "Rose Blush" },
+  { value: "amber", label: "Warm Amber" },
   { value: "pearl", label: "Pearl & Gold" },
 ];
 
