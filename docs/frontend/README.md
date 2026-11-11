@@ -13,7 +13,7 @@ The first frontend delivery must complete both administrator workspaces:
 1. **Platform Admin workspace** — global platform operations, school onboarding, Platform Admin lifecycle, permission delegation and audit visibility where supported by backend APIs.
 2. **School Admin workspace** — school operations, staff, roles and permissions, academic setup, students, attendance, timetable and guardians, subject to available backend APIs and authorization.
 
-The current timetable page also supports the Teacher read-only workflow using the current academic year and the teacher's own scheduled entries. Continue with the remaining Teacher/staff workflows after administrator workspaces are usable. Parent OTP login, OTP/SMS delivery, parent dashboards and Parent/Driver mobile interfaces are Phase 2 and remain deferred.
+The current timetable page also supports the Teacher read-only workflow using the current academic year and the teacher's own scheduled entries. Build and verify school operations in the dependency order documented in [Phase 1 School Operations — Task-by-Task Build Order](../product/PHASE1-WORKFLOW-ORDER.md): academic foundations → subjects → teacher/staff accounts → teacher assignments → student admission/enrollment → timetable → attendance → examinations/results → notices/dashboard integration. Reuse existing pages and APIs; do not duplicate Subject Management or rebuild the existing timetable. Parent OTP login, OTP/SMS delivery, parent dashboards and Parent/Driver mobile interfaces are Phase 2 and remain deferred.
 
 ## Frontend UI and styling requirements
 
