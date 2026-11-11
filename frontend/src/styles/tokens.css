@@ -75,22 +75,22 @@
  * tokens. Changing a palette must never change the selected appearance mode.
  */
 :root,
-:root[data-palette="ruby"] {
-  --color-brand: #b91c1c;
-  --color-primary: #b91c1c;
-  --color-primary-hover: #991b1b;
-  --color-action: #b91c1c;
-  --color-action-hover: #991b1b;
-  --color-accent: #fee2e2;
-  --color-focus: #b91c1c;
-  --color-brand-hover: #991b1b;
-  --color-brand-soft: #fee2e2;
+:root[data-palette="midnight"] {
+  --color-brand: #2563eb;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-action: #2563eb;
+  --color-action-hover: #1d4ed8;
+  --color-accent: #dbeafe;
+  --color-focus: #2563eb;
+  --color-brand-hover: #1d4ed8;
+  --color-brand-soft: #dbeafe;
   --color-on-brand: #ffffff;
-  --color-sidebar-bg: #450a0a;
-  --color-sidebar-border: #7f1d1d;
-  --color-sidebar-text: #fef2f2;
-  --color-sidebar-muted: #fecaca;
-  --color-sidebar-active: #991b1b;
+  --color-sidebar-bg: #0b1f3a;
+  --color-sidebar-border: #18365d;
+  --color-sidebar-text: #eff6ff;
+  --color-sidebar-muted: #bfdbfe;
+  --color-sidebar-active: #1d4ed8;
   --color-sidebar-active-text: #ffffff;
 }
 
@@ -113,22 +113,22 @@
   --color-sidebar-active-text: #ffffff;
 }
 
-:root[data-palette="copper"] {
-  --color-brand: #c2410c;
-  --color-primary: #c2410c;
-  --color-primary-hover: #9a3412;
-  --color-action: #c2410c;
-  --color-action-hover: #9a3412;
-  --color-accent: #ffedd5;
-  --color-focus: #c2410c;
-  --color-brand-hover: #9a3412;
-  --color-brand-soft: #ffedd5;
+:root[data-palette="graphite"] {
+  --color-brand: #475569;
+  --color-primary: #475569;
+  --color-primary-hover: #334155;
+  --color-action: #475569;
+  --color-action-hover: #334155;
+  --color-accent: #e2e8f0;
+  --color-focus: #64748b;
+  --color-brand-hover: #334155;
+  --color-brand-soft: #e2e8f0;
   --color-on-brand: #ffffff;
-  --color-sidebar-bg: #431407;
-  --color-sidebar-border: #7c2d12;
-  --color-sidebar-text: #fff7ed;
-  --color-sidebar-muted: #fed7aa;
-  --color-sidebar-active: #9a3412;
+  --color-sidebar-bg: #111827;
+  --color-sidebar-border: #273449;
+  --color-sidebar-text: #f8fafc;
+  --color-sidebar-muted: #cbd5e1;
+  --color-sidebar-active: #334155;
   --color-sidebar-active-text: #ffffff;
 }
 
@@ -337,9 +337,9 @@
 
 /* Stable palette preview swatches used by the Settings appearance picker. */
 :root,
-:root[data-palette="ruby"] { --palette-preview-1: #b91c1c; }
+:root[data-palette="midnight"] { --palette-preview-1: #2563eb; }
 :root[data-palette="green"] { --palette-preview-2: #059669; }
-:root[data-palette="copper"] { --palette-preview-3: #c2410c; }
+:root[data-palette="graphite"] { --palette-preview-3: #475569; }
 :root[data-palette="teal"] { --palette-preview-4: #0891b2; }
 :root[data-palette="rose"] { --palette-preview-5: #e11d48; }
 :root[data-palette="sky"] { --palette-preview-6: #0284c7; }
