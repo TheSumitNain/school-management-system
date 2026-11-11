@@ -11,9 +11,9 @@ The mandatory cross-project usability contract is documented in [Product UX and 
 The first frontend delivery must complete both administrator workspaces:
 
 1. **Platform Admin workspace** — global platform operations, school onboarding, Platform Admin lifecycle, permission delegation and audit visibility where supported by backend APIs.
-2. **School Admin workspace** — school operations, staff, roles and permissions, academic setup, students, attendance and guardians, subject to available backend APIs and authorization.
+2. **School Admin workspace** — school operations, staff, roles and permissions, academic setup, students, attendance, timetable and guardians, subject to available backend APIs and authorization.
 
-After both administrator workspaces are usable, continue with Teacher/staff workflows. Parent OTP login, OTP/SMS delivery, parent dashboards and Parent/Driver mobile interfaces are Phase 2 and remain deferred.
+The current timetable page also supports the Teacher read-only workflow using the current academic year and the teacher's own scheduled entries. Continue with the remaining Teacher/staff workflows after administrator workspaces are usable. Parent OTP login, OTP/SMS delivery, parent dashboards and Parent/Driver mobile interfaces are Phase 2 and remain deferred.
 
 ## Frontend UI and styling requirements
 
