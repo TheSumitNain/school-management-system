@@ -57,6 +57,7 @@ func setupRouterWithHandlers(
 	var academicHandler *handlers.AcademicHandler
 	var guardianHandler *handlers.GuardianHandler
 	var attendanceHandler *handlers.AttendanceHandler
+	var timetableHandler *handlers.TimetableHandler
 	var parentAuthHandler *handlers.ParentAuthHandler
 	var platformAdminLifecycleHandler *handlers.PlatformAdminLifecycleHandler
 	var sessionActivityTracker middleware.AdminSessionActivityTracker
@@ -70,6 +71,8 @@ func setupRouterWithHandlers(
 			guardianHandler = handler
 		case *handlers.AttendanceHandler:
 			attendanceHandler = handler
+		case *handlers.TimetableHandler:
+			timetableHandler = handler
 		case *handlers.ParentAuthHandler:
 			parentAuthHandler = handler
 		case *handlers.PlatformAdminLifecycleHandler:
@@ -257,6 +260,17 @@ func setupRouterWithHandlers(
 		router.POST("/school/attendance", attendanceAuth, middleware.RequireAnyPermission("attendance.mark", "attendance.correct_past"), attendanceHandler.Mark)
 		router.PATCH("/school/attendance/:attendanceID", attendanceAuth, middleware.RequireAnyPermission("attendance.update_same_day", "attendance.correct_past"), attendanceHandler.Update)
 		router.PATCH("/school/attendance/:attendanceID/correct", attendanceAuth, middleware.RequireAnyPermission("attendance.update_same_day", "attendance.correct_past"), attendanceHandler.Update)
+	}
+
+	if timetableHandler != nil {
+		timetableAuth := authMiddleware()
+		router.GET("/school/timetable/periods", timetableAuth, middleware.RequirePermission("timetable.read"), timetableHandler.ListPeriods)
+		router.POST("/school/timetable/periods", timetableAuth, middleware.RequirePermission("timetable.manage"), timetableHandler.SavePeriod)
+		router.PATCH("/school/timetable/periods/:periodID", timetableAuth, middleware.RequirePermission("timetable.manage"), timetableHandler.SavePeriod)
+		router.GET("/school/timetable/entries", timetableAuth, middleware.RequirePermission("timetable.read"), timetableHandler.ListEntries)
+		router.POST("/school/timetable/entries", timetableAuth, middleware.RequirePermission("timetable.manage"), timetableHandler.SaveEntry)
+		router.PATCH("/school/timetable/entries/:entryID", timetableAuth, middleware.RequirePermission("timetable.manage"), timetableHandler.SaveEntry)
+		router.DELETE("/school/timetable/entries/:entryID", timetableAuth, middleware.RequirePermission("timetable.manage"), timetableHandler.DeleteEntry)
 	}
 
 	if guardianHandler != nil {
@@ -481,12 +495,14 @@ func run() error {
 	guardianHandler := handlers.NewGuardianHandler(guardianService)
 	attendanceService := services.NewAttendanceService(academicRepo)
 	attendanceHandler := handlers.NewAttendanceHandler(attendanceService)
+	timetableService := services.NewTimetableService(academicRepo)
+	timetableHandler := handlers.NewTimetableHandler(timetableService)
 
 	staffAccountRepo := repository.NewUserRepository(db)
 	staffAccountService := services.NewStaffAccountService(staffAccountRepo)
 	staffHandler := handlers.NewStaffHandler(staffAccountService)
 
-	router, err := setupRouterWithHandlers(db, authHandler, tokenService, principalAuthorizationRepo, principalAuthorizationRepo, schoolOnboardingHandler, roleHandler, staffHandler, academicHandler, guardianHandler, attendanceHandler, platformAdminLifecycleHandler, principalAuthorizationRepo)
+	router, err := setupRouterWithHandlers(db, authHandler, tokenService, principalAuthorizationRepo, principalAuthorizationRepo, schoolOnboardingHandler, roleHandler, staffHandler, academicHandler, guardianHandler, attendanceHandler, timetableHandler, platformAdminLifecycleHandler, principalAuthorizationRepo)
 
 	if err != nil {
 		return fmt.Errorf("setup router: %w", err)
