@@ -87,3 +87,11 @@ Inline controls remain appropriate for high-frequency, low-complexity actions su
 - Give each date control an accessible full-date name. Expose the selected date on its grid cell and distinguish today without relying on color alone.
 - Escape closes the calendar and restores focus to its trigger. Selecting a date, clearing it or choosing Today also returns focus to the trigger. Clicking outside closes the calendar without stealing focus from the outside target.
 - Verify keyboard-only operation, screen-reader announcements, focus visibility, date bounds, narrow screens and both themes before considering a date-picker workflow complete.
+
+## 10. Scroll-aware secondary navigation
+
+- On long pages with a secondary tab/navigation row, keep the row available without permanently consuming viewport space: hide it after meaningful downward scrolling once it reaches the top navigation area, and reveal it when the user scrolls upward.
+- Keep the primary application header above the secondary navigation; use theme-aware opaque surfaces and appropriate stacking so content never bleeds through the navigation.
+- Do not change the user's scroll position when showing or hiding navigation. Reveal the navigation when keyboard focus enters it, and keep it visible at the top of the page.
+- Ignore tiny scroll movements to prevent flicker, support narrow screens with horizontally scrollable tabs where needed, and respect reduced-motion preferences.
+- Apply this pattern consistently to long tabbed workflows where it improves navigation; do not add it to short pages that do not need it.
