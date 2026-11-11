@@ -9,12 +9,12 @@ const modes: { value: ThemePreference; label: string; description: string; icon:
 const palettes: { value: ThemePalette; label: string }[] = [
   { value: "midnight", label: "Midnight Blue" },
   { value: "green", label: "Forest Green" },
-  { value: "graphite", label: "Graphite Black" },
+  { value: "indigo", label: "Indigo" },
   { value: "teal", label: "Ocean Teal" },
   { value: "rose", label: "Rose Blush" },
   { value: "sky", label: "Sky Blue" },
   { value: "amber", label: "Warm Amber" },
-  { value: "slate", label: "Soft Slate" },
+  { value: "mint", label: "Mint Green" },
 ];
 
 export function SettingsPage() {
