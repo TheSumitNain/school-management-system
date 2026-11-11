@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
 export type ThemePreference = "light" | "dark" | "system";
-export type ThemePalette = "navy" | "green" | "purple" | "teal";
+export type ThemePalette = "navy" | "green" | "purple" | "teal" | "rose" | "sky" | "amber" | "slate";
 
 type ThemeState = {
   preference: ThemePreference;
