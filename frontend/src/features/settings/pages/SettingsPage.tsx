@@ -11,6 +11,10 @@ const palettes: { value: ThemePalette; label: string }[] = [
   { value: "green", label: "Forest Green" },
   { value: "purple", label: "Royal Purple" },
   { value: "teal", label: "Ocean Teal" },
+  { value: "rose", label: "Rose Blush" },
+  { value: "sky", label: "Sky Blue" },
+  { value: "amber", label: "Warm Amber" },
+  { value: "slate", label: "Soft Slate" },
 ];
 
 export function SettingsPage() {
