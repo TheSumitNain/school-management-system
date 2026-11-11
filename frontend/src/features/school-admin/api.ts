@@ -249,3 +249,38 @@ export function revokeTeacherSubjectAssignment(assignmentID: number) { return ap
 export function getClassInchargeAssignments(academicYearID?: number, signal?: AbortSignal) { const query = academicYearID ? "?academic_year_id=" + academicYearID : ""; return api<{ assignments: ClassInchargeAssignment[] }>("/school/class-incharge-assignments" + query, { signal }); }
 export function createClassInchargeAssignment(input: { academic_year_id: number; section_id: number; teacher_principal_id: number }) { return api<{ assignment: ClassInchargeAssignment }>("/school/class-incharge-assignments", { method: "POST", body: JSON.stringify(input) }); }
 export function revokeClassInchargeAssignment(assignmentID: number) { return api<{ message: string }>("/school/class-incharge-assignments/" + assignmentID, { method: "DELETE" }); }
+
+
+export type TimetablePeriod = {
+  id: number; school_id: number; academic_year_id: number; period_number: number;
+  name: string; starts_at: string; ends_at: string; is_break: boolean;
+};
+export type TimetableEntry = {
+  id: number; school_id: number; academic_year_id: number; section_id: number;
+  section_name: string; class_name: string; subject_id: number; subject_name: string;
+  teacher_principal_id: number; teacher_username: string; teacher_subject_assignment_id: number;
+  period_id: number; period_number: number; period_name: string; starts_at: string; ends_at: string;
+  day_of_week: number; room?: string | null;
+};
+export function getTimetablePeriods(academicYearID: number, signal?: AbortSignal) {
+  return api<{ periods: TimetablePeriod[] }>(`/school/timetable/periods?academic_year_id=${academicYearID}`, { signal });
+}
+export function saveTimetablePeriod(input: {
+  academic_year_id: number; period_number: number; name: string; starts_at: string; ends_at: string; is_break: boolean;
+}) {
+  return api<{ period: TimetablePeriod }>("/school/timetable/periods", { method: "POST", body: JSON.stringify(input) });
+}
+export function getTimetableEntries(academicYearID: number, sectionID = 0, signal?: AbortSignal) {
+  const params = new URLSearchParams({ academic_year_id: String(academicYearID) });
+  if (sectionID > 0) params.set("section_id", String(sectionID));
+  return api<{ entries: TimetableEntry[] }>(`/school/timetable/entries?${params.toString()}`, { signal });
+}
+export function createTimetableEntry(input: {
+  academic_year_id: number; section_id: number; subject_id: number; teacher_principal_id: number;
+  teacher_subject_assignment_id: number; period_id: number; day_of_week: number; room?: string | null;
+}) {
+  return api<{ entry: TimetableEntry }>("/school/timetable/entries", { method: "POST", body: JSON.stringify(input) });
+}
+export function deleteTimetableEntry(entryID: number, academicYearID: number) {
+  return api<{ message: string }>(`/school/timetable/entries/${entryID}?academic_year_id=${academicYearID}`, { method: "DELETE" });
+}
