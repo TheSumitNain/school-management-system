@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { CalendarClock, Plus, RefreshCw, Trash2 } from "lucide-react";
-import { api } from "../../../lib/api";
 import { Modal } from "../../../shared/components/Modal";
 import { Select } from "../../../shared/components/Select";
 import {
@@ -41,7 +40,6 @@ export function TimetableManagementPage({ permissions }: Props) {
 
   const activeYears = useMemo(() => years.filter(year => year.status !== "closed"), [years]);
   const selectedYear = activeYears.find(year => year.id === yearID);
-  const selectedSection = sections.find(section => section.id === sectionID);
   const visibleEntries = useMemo(
     () => sectionID ? entries.filter(entry => entry.section_id === sectionID) : entries,
     [entries, sectionID],
