@@ -162,3 +162,11 @@ Do not ask the user for repeated screenshots or uploads when command output, log
 - Driver mobile experience.
 
 Do not create frontend routes, forms, mock authentication or placeholder flows for these deferred features as part of the current Phase 1 scope.
+
+
+### Appearance controls
+
+- Keep the authenticated header appearance control compact: it only switches between Light and Dark mode. Do not place palette selection or a multi-option appearance menu in the header.
+- Put detailed appearance preferences in the authenticated Settings page: Light/Dark/System mode and the available brand palettes.
+- Reuse the existing persisted Zustand theme store (`schooldesk.theme`). Moving controls must not reset saved mode or palette preferences.
+- Keep the compact Light/Dark toggle accessible by keyboard and provide a clear accessible name describing the mode it will switch to.
