@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
 export type ThemePreference = "light" | "dark" | "system";
-export type ThemePalette = "ruby" | "green" | "copper" | "teal" | "rose" | "sky" | "amber" | "slate";
+export type ThemePalette = "midnight" | "green" | "graphite" | "teal" | "rose" | "sky" | "amber" | "slate";
 
 type ThemeState = {
   preference: ThemePreference;
@@ -15,7 +15,7 @@ export const useThemeStore = create<ThemeState>()(
   persist(
     (set) => ({
       preference: "system",
-      palette: "ruby",
+      palette: "midnight",
       setPreference: (preference) => set({ preference }),
       setPalette: (palette) => set({ palette }),
     }),
@@ -30,14 +30,14 @@ export const useThemeStore = create<ThemeState>()(
       version: 1,
       migrate: (persistedState) => {
         const state = persistedState as { preference?: ThemePreference; palette?: string };
-        const validPalettes: ThemePalette[] = ["ruby", "green", "copper", "teal", "rose", "sky", "amber", "slate"];
-        const palette: ThemePalette = state.palette === "navy"
-          ? "ruby"
-          : state.palette === "purple"
-            ? "copper"
+        const validPalettes: ThemePalette[] = ["midnight", "green", "graphite", "teal", "rose", "sky", "amber", "slate"];
+        const palette: ThemePalette = state.palette === "navy" || state.palette === "ruby"
+          ? "midnight"
+          : state.palette === "purple" || state.palette === "copper"
+            ? "graphite"
             : validPalettes.includes(state.palette as ThemePalette)
               ? state.palette as ThemePalette
-              : "ruby";
+              : "midnight";
         return { ...state, palette };
       },
     },
