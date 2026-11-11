@@ -264,6 +264,7 @@ func setupRouterWithHandlers(
 
 	if timetableHandler != nil {
 		timetableAuth := authMiddleware()
+		router.GET("/school/timetable/current-year", timetableAuth, middleware.RequirePermission("timetable.read"), timetableHandler.CurrentYear)
 		router.GET("/school/timetable/periods", timetableAuth, middleware.RequirePermission("timetable.read"), timetableHandler.ListPeriods)
 		router.POST("/school/timetable/periods", timetableAuth, middleware.RequirePermission("timetable.manage"), timetableHandler.SavePeriod)
 		router.PATCH("/school/timetable/periods/:periodID", timetableAuth, middleware.RequirePermission("timetable.manage"), timetableHandler.SavePeriod)
