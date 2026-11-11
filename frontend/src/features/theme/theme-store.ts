@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
 export type ThemePreference = "light" | "dark" | "system";
-export type ThemePalette = "midnight" | "green" | "indigo" | "teal" | "rose" | "sky" | "amber" | "mint";
+export type ThemePalette = "midnight" | "green" | "indigo" | "teal" | "rose" | "sky" | "amber" | "mint" | "royal" | "pearl";
 
 type ThemeState = {
   preference: ThemePreference;
@@ -27,10 +27,10 @@ export const useThemeStore = create<ThemeState>()(
         preference: state.preference,
         palette: state.palette,
       }),
-      version: 2,
+      version: 3,
       migrate: (persistedState) => {
         const state = persistedState as { preference?: ThemePreference; palette?: string };
-        const validPalettes: ThemePalette[] = ["midnight", "green", "indigo", "teal", "rose", "sky", "amber", "mint"];
+        const validPalettes: ThemePalette[] = ["midnight", "green", "indigo", "teal", "rose", "sky", "amber", "mint", "royal", "pearl"];
         const palette: ThemePalette = state.palette === "navy" || state.palette === "ruby"
           ? "midnight"
           : state.palette === "purple" || state.palette === "copper" || state.palette === "graphite"
