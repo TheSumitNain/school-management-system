@@ -831,12 +831,12 @@ td b {
 .palette-swatch { width: 18px; height: 18px; border-radius: 6px; flex: none; background: var(--color-brand); }
 .palette-swatch-midnight { background: var(--palette-preview-1); }
 .palette-swatch-green { background: var(--palette-preview-2); }
-.palette-swatch-graphite { background: var(--palette-preview-3); }
+.palette-swatch-indigo { background: var(--palette-preview-3); }
 .palette-swatch-teal { background: var(--palette-preview-4); }
 .palette-swatch-rose { background: var(--palette-preview-5); }
 .palette-swatch-sky { background: var(--palette-preview-6); }
 .palette-swatch-amber { background: var(--palette-preview-7); }
-.palette-swatch-slate { background: var(--palette-preview-8); }
+.palette-swatch-mint { background: var(--palette-preview-8); }
 @media (max-width: 640px) {
   .appearance-options { grid-template-columns: 1fr; }
   .palette-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
