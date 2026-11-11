@@ -157,3 +157,33 @@ CREATE TRIGGER trg_validate_v26_timetable_entry
 BEFORE INSERT OR UPDATE ON public.timetable_entries
 FOR EACH ROW EXECUTE FUNCTION public.validate_v26_timetable_entry();
 
+
+CREATE OR REPLACE FUNCTION public.prevent_v26_timetable_period_overlap()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public
+AS $v26$
+BEGIN
+    PERFORM pg_advisory_xact_lock(
+        hashtextextended(NEW.school_id::text || ':' || NEW.academic_year_id::text, 0)
+    );
+    IF EXISTS (
+        SELECT 1
+          FROM public.timetable_periods p
+         WHERE p.school_id = NEW.school_id
+           AND p.academic_year_id = NEW.academic_year_id
+           AND p.id <> COALESCE(NEW.id, 0)
+           AND p.starts_at < NEW.ends_at
+           AND p.ends_at > NEW.starts_at
+    ) THEN
+        RAISE EXCEPTION 'timetable periods cannot overlap within an academic year';
+    END IF;
+    RETURN NEW;
+END;
+$v26$;
+
+CREATE TRIGGER trg_prevent_v26_timetable_period_overlap
+BEFORE INSERT OR UPDATE OF school_id, academic_year_id, starts_at, ends_at
+ON public.timetable_periods
+FOR EACH ROW EXECUTE FUNCTION public.prevent_v26_timetable_period_overlap();
+
