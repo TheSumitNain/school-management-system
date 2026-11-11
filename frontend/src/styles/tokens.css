@@ -228,6 +228,44 @@
   --color-sidebar-active-text: #047857;
 }
 
+:root[data-palette="royal"] {
+  --color-brand: #315b91;
+  --color-primary: #315b91;
+  --color-primary-hover: #24466f;
+  --color-action: #315b91;
+  --color-action-hover: #24466f;
+  --color-accent: #dbe7f5;
+  --color-focus: #315b91;
+  --color-brand-hover: #24466f;
+  --color-brand-soft: #dbe7f5;
+  --color-on-brand: #ffffff;
+  --color-sidebar-bg: #17365d;
+  --color-sidebar-border: #254a78;
+  --color-sidebar-text: #f3f7fc;
+  --color-sidebar-muted: #c5d5e8;
+  --color-sidebar-active: #315b91;
+  --color-sidebar-active-text: #ffffff;
+}
+
+:root[data-palette="pearl"] {
+  --color-brand: #8a6d3b;
+  --color-primary: #8a6d3b;
+  --color-primary-hover: #70572f;
+  --color-action: #8a6d3b;
+  --color-action-hover: #70572f;
+  --color-accent: #f3ead8;
+  --color-focus: #9a7841;
+  --color-brand-hover: #70572f;
+  --color-brand-soft: #f3ead8;
+  --color-on-brand: #ffffff;
+  --color-sidebar-bg: #fffdf7;
+  --color-sidebar-border: #eee6d5;
+  --color-sidebar-text: #51452f;
+  --color-sidebar-muted: #897b62;
+  --color-sidebar-active: #f3ead8;
+  --color-sidebar-active-text: #70572f;
+}
+
 /* Light-sidebar palettes use coordinated darker navigation in dark mode. */
 :root[data-theme="dark"][data-palette="rose"] {
   --color-sidebar-bg: #881337;
@@ -267,6 +305,14 @@
   --color-sidebar-text: #ecfdf5;
   --color-sidebar-muted: #a7f3d0;
   --color-sidebar-active: #047857;
+  --color-sidebar-active-text: #ffffff;
+}
+:root[data-theme="dark"][data-palette="pearl"] {
+  --color-sidebar-bg: #51452f;
+  --color-sidebar-border: #66583d;
+  --color-sidebar-text: #fffdf7;
+  --color-sidebar-muted: #e7dcc6;
+  --color-sidebar-active: #70572f;
   --color-sidebar-active-text: #ffffff;
 }
 
@@ -353,3 +399,5 @@
 :root[data-palette="sky"] { --palette-preview-6: #0284c7; }
 :root[data-palette="amber"] { --palette-preview-7: #d97706; }
 :root[data-palette="mint"] { --palette-preview-8: #10b981; }
+:root[data-palette="royal"] { --palette-preview-9: #315b91; }
+:root[data-palette="pearl"] { --palette-preview-10: #8a6d3b; }
