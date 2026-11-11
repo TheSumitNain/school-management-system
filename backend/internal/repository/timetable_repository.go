@@ -80,6 +80,17 @@ func timetableAuthorize(ctx context.Context, db repositoryDB, actorID, schoolID 
 	return nil
 }
 
+func (r *AcademicRepository) GetCurrentTimetableYear(ctx context.Context, actorID, schoolID int64) (*AcademicYear, error) {
+	if r == nil || r.db == nil { return nil, ErrTimetableAccessDenied }
+	if err := timetableAuthorize(ctx, r.db, actorID, schoolID, "timetable.read"); err != nil { return nil, err }
+	var year AcademicYear
+	err := r.db.QueryRow(ctx, `SELECT id,school_id,name,starts_on,ends_on,status,is_current,created_at,updated_at
+		FROM academic_years WHERE school_id=$1 AND is_current=TRUE AND status='active'`, schoolID).Scan(
+		&year.ID,&year.SchoolID,&year.Name,&year.StartsOn,&year.EndsOn,&year.Status,&year.IsCurrent,&year.CreatedAt,&year.UpdatedAt)
+	if err != nil { return nil, timetableWriteError(err) }
+	return &year,nil
+}
+
 func (r *AcademicRepository) ListTimetablePeriods(ctx context.Context, actorID, schoolID, yearID int64) ([]TimetablePeriod, error) {
 	if r == nil || r.db == nil || yearID <= 0 {
 		return nil, ErrInvalidTimetableInput
