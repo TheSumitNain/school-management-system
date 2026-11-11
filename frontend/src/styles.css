@@ -829,9 +829,9 @@ td b {
   font-weight: 600;
 }
 .palette-swatch { width: 18px; height: 18px; border-radius: 6px; flex: none; background: var(--color-brand); }
-.palette-swatch-ruby { background: var(--palette-preview-1); }
+.palette-swatch-midnight { background: var(--palette-preview-1); }
 .palette-swatch-green { background: var(--palette-preview-2); }
-.palette-swatch-copper { background: var(--palette-preview-3); }
+.palette-swatch-graphite { background: var(--palette-preview-3); }
 .palette-swatch-teal { background: var(--palette-preview-4); }
 .palette-swatch-rose { background: var(--palette-preview-5); }
 .palette-swatch-sky { background: var(--palette-preview-6); }
