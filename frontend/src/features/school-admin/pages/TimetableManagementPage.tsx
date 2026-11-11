@@ -3,7 +3,7 @@ import { CalendarClock, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { Modal } from "../../../shared/components/Modal";
 import { Select } from "../../../shared/components/Select";
 import {
-  getSchoolAcademicYears, getSchoolSections, getTeacherSubjectAssignments,
+  getSchoolAcademicYears, getCurrentTimetableYear, getSchoolSections, getTeacherSubjectAssignments,
   getTimetablePeriods, getTimetableEntries, saveTimetablePeriod, createTimetableEntry, deleteTimetableEntry,
   type StudentAcademicYear, type StudentSection, type TeacherSubjectAssignment,
   type TimetablePeriod, type TimetableEntry,
@@ -71,11 +71,12 @@ export function TimetableManagementPage({ permissions }: Props) {
   useEffect(() => {
     let alive = true;
     async function loadYears() {
-      if (!canRead || !canReadYears) { setLoading(false); return; }
+      if (!canRead) { setLoading(false); return; }
       try {
-        const result = await getSchoolAcademicYears();
+        const result = canReadYears ? await getSchoolAcademicYears() : null;
+        const current = canReadYears ? null : await getCurrentTimetableYear();
         if (!alive) return;
-        const available = (result.academic_years ?? []).filter(year => year.status !== "closed");
+        const available = (result?.academic_years ?? (current?.academic_year ? [current.academic_year] : [])).filter(year => year.status !== "closed");
         setYears(available);
         const initial = available.find(year => year.is_current)?.id ?? available[0]?.id ?? 0;
         setYearID(current => current || initial);
@@ -198,7 +199,6 @@ export function TimetableManagementPage({ permissions }: Props) {
   }
 
   if (!canRead) return <section className="content timetable-page"><div className="timetable-state"><b>Timetable access unavailable</b><span>Your account does not have timetable.read permission.</span></div></section>;
-  if (!canReadYears) return <section className="content timetable-page"><div className="timetable-state"><b>Academic year access required</b><span>Your account needs academic_years.read to choose the timetable year.</span></div></section>;
 
   return (
     <section className="content timetable-page">
