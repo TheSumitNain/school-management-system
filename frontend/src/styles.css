@@ -837,6 +837,8 @@ td b {
 .palette-swatch-sky { background: var(--palette-preview-6); }
 .palette-swatch-amber { background: var(--palette-preview-7); }
 .palette-swatch-mint { background: var(--palette-preview-8); }
+.palette-swatch-royal { background: var(--palette-preview-9); }
+.palette-swatch-pearl { background: var(--palette-preview-10); }
 @media (max-width: 640px) {
   .appearance-options { grid-template-columns: 1fr; }
   .palette-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
