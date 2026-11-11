@@ -163,7 +163,7 @@ export type StudentEnrollment = {
 };
 export type StudentEnrollmentListResponse = { enrollments: StudentEnrollment[] };
 export type StudentAcademicYear = { id: number; name: string; status: string; is_current: boolean };
-export type StudentSection = { id: number; academic_year_id: number; class_id: number; name: string; is_active: boolean };
+export type StudentSection = { id: number; academic_year_id: number; class_id: number; class_name: string; name: string; is_active: boolean };
 export type StudentClass = { id: number; name: string; is_active: boolean };
 
 export function getSchoolStudents(filters: { q?: string; status?: string; limit?: number; offset?: number }, signal?: AbortSignal) {
