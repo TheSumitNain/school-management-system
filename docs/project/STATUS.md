@@ -1,9 +1,9 @@
 # Project Status
 
-**Last reconciled:** 2026-11-10  
+**Last reconciled:** 2026-11-11  
 **Repository:** `TheSumitNain/school-management-system`  
 **Reviewed branch:** `feature/school-attendance-management`  
-**Reviewed branch HEAD before this status reconciliation:** `a263fae148a1653228ad1a065d527be03f1f897a`
+**Reviewed branch HEAD before this status reconciliation:** `b52513d51c2bc8ba26d54f13c914ddac78bc371b`
 
 This file is the current implementation-status reference. Older checkpoint notes must not override it. Verification statements below distinguish repository inspection, user-reported local checks and real browser/database operations.
 
@@ -68,6 +68,7 @@ The frontend already restores a session at app startup by calling the refresh en
 - Academic years, classes, sections, subjects, teacher-subject assignments and class-in-charge assignments.
 - Student records, enrollment, promotion/history and teacher roster restrictions.
 - Attendance APIs with targeted permission and scope checks.
+- Timetable period definitions and weekly section schedules, including active teacher-assignment validation, period-overlap prevention, class/teacher double-booking constraints, teacher-scoped reads and atomic audit writes.
 - School-scoped guardian management APIs and parent/guardian eligibility foundations.
 
 ## Frontend implementation present on the reviewed branch
@@ -81,6 +82,13 @@ The frontend already restores a session at app startup by calling the refresh en
 The presence of a page or API client does not mean its full browser workflow has been accepted. Continue testing against the real local API and verify every permission boundary. Do not present mock data or frontend-only checks as completed backend workflows.
 
 ## Recent verification evidence
+
+### Timetable backend — implementation pushed; frontend pending
+- Migration V26 adds school/academic-year-scoped timetable periods and weekly section entries. Composite foreign keys prevent cross-school/year mismatches; database triggers require an active teacher-subject assignment and reject break-period scheduling.
+- Database safeguards prevent overlapping period definitions, duplicate section slots and teacher double-booking. A teacher assignment cannot be revoked while timetable entries still depend on it.
+- Timetable period and entry APIs enforce live `timetable.read` / `timetable.manage` permissions, restrict Teacher reads to their own scheduled entries, and write audit records atomically with mutations.
+- PostgreSQL integration tests verify the V26 schema and overlapping-period rejection. GitHub Actions backend run for `b52513d51c2bc8ba26d54f13c914ddac78bc371b` passed migration application, the full backend test suite including PostgreSQL integration, and `go vet`. Frontend CI also passed; no timetable frontend page has been implemented yet.
+
 
 ### User-reported local checks
 - Full backend: `go test -count=1 -p 1 ./...` passed.
