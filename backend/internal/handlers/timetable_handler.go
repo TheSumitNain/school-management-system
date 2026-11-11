@@ -14,6 +14,7 @@ import (
 )
 
 type TimetableManagementService interface {
+	CurrentYear(context.Context,int64,int64)(*repository.AcademicYear,error)
 	ListPeriods(context.Context,int64,int64,int64)([]repository.TimetablePeriod,error)
 	SavePeriod(context.Context,int64,int64,int64,int64,int,string,string,string,bool)(*repository.TimetablePeriod,error)
 	ListEntries(context.Context,int64,int64,int64,int64)([]repository.TimetableEntry,error)
@@ -43,6 +44,12 @@ func timetableError(c *gin.Context,err error,resource string){
 	}
 }
 
+func(h *TimetableHandler) CurrentYear(c *gin.Context){
+	a,s,ok:=h.ready(c);if !ok{return}
+	year,err:=h.service.CurrentYear(c.Request.Context(),a,s)
+	if err!=nil{timetableError(c,err,"Current academic year");return}
+	c.JSON(http.StatusOK,gin.H{"status":"success","academic_year":year})
+}
 func(h *TimetableHandler) ListPeriods(c *gin.Context){
 	a,s,ok:=h.ready(c);if !ok{return};year,valid:=timetableQueryID(c,"academic_year_id");if !valid{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"academic_year_id is required"});return}
 	items,err:=h.service.ListPeriods(c.Request.Context(),a,s,year);if err!=nil{timetableError(c,err,"Timetable period");return}
