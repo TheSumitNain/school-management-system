@@ -3,7 +3,7 @@
 **Last reconciled:** 2026-11-11  
 **Repository:** `TheSumitNain/school-management-system`  
 **Reviewed branch:** `feature/school-attendance-management`  
-**Reviewed branch HEAD before this status reconciliation:** `b52513d51c2bc8ba26d54f13c914ddac78bc371b`
+**Reviewed branch HEAD before this status reconciliation:** `f448a871b574a60a6cc8da810adf9d2e648a3495`
 
 This file is the current implementation-status reference. Older checkpoint notes must not override it. Verification statements below distinguish repository inspection, user-reported local checks and real browser/database operations.
 
@@ -68,14 +68,14 @@ The frontend already restores a session at app startup by calling the refresh en
 - Academic years, classes, sections, subjects, teacher-subject assignments and class-in-charge assignments.
 - Student records, enrollment, promotion/history and teacher roster restrictions.
 - Attendance APIs with targeted permission and scope checks.
-- Timetable period definitions and weekly section schedules, including active teacher-assignment validation, period-overlap prevention, class/teacher double-booking constraints, teacher-scoped reads and atomic audit writes.
+- Timetable current-year lookup, period definitions and weekly section schedules, including active teacher-assignment validation, period-overlap prevention, class/teacher double-booking constraints, Teacher-scoped reads and atomic audit writes.
 - School-scoped guardian management APIs and parent/guardian eligibility foundations.
 
 ## Frontend implementation present on the reviewed branch
 
 - Shared login and authenticated application shell with role/permission-aware navigation.
 - Platform Admin account list and school onboarding form.
-- School Admin pages for staff accounts, roles/permissions, academic structure (including teacher-subject and class-in-charge assignment management), students/enrollments and attendance.
+- School Admin pages for staff accounts, roles/permissions, academic structure (including teacher-subject and class-in-charge assignment management), students/enrollments, attendance and timetable period/schedule management. Teacher accounts with `timetable.read` can view their own entries for the current academic year without being granted broad `academic_years.read` access.
 - Separate page CSS, shared design tokens and Light/Dark theme foundations.
 - Typed API modules and TanStack Query-based server state for school administration.
 
@@ -87,7 +87,7 @@ The presence of a page or API client does not mean its full browser workflow has
 - Migration V26 adds school/academic-year-scoped timetable periods and weekly section entries. Composite foreign keys prevent cross-school/year mismatches; database triggers require an active teacher-subject assignment and reject break-period scheduling.
 - Database safeguards prevent overlapping period definitions, duplicate section slots and teacher double-booking. A teacher assignment cannot be revoked while timetable entries still depend on it.
 - Timetable period and entry APIs enforce live `timetable.read` / `timetable.manage` permissions, restrict Teacher reads to their own scheduled entries, and write audit records atomically with mutations.
-- PostgreSQL integration tests verify the V26 schema and overlapping-period rejection. GitHub Actions backend run for `b52513d51c2bc8ba26d54f13c914ddac78bc371b` passed migration application, the full backend test suite including PostgreSQL integration, and `go vet`. Frontend CI also passed; no timetable frontend page has been implemented yet.
+- PostgreSQL integration tests verify the V26 schema and overlapping-period rejection. GitHub Actions backend run for `b52513d51c2bc8ba26d54f13c914ddac78bc371b` passed migration application, the full backend test suite including PostgreSQL integration, and `go vet` on commit `b52513d51c2bc8ba26d54f13c914ddac78bc371b`. The timetable current-year endpoint and frontend workspace have since been added; frontend TypeScript/Vite CI passed on commit `f448a871b574a60a6cc8da810adf9d2e648a3495`. The latest backend CI for the current-year endpoint is still running. Manual browser/role acceptance remains pending.
 
 
 ### User-reported local checks
