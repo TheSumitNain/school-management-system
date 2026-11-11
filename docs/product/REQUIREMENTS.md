@@ -15,7 +15,7 @@ Complete the web application for:
 - School Admin: administration and day-to-day operation of exactly one school.
 - Teachers and approved school staff: role- and assignment-scoped school workflows.
 
-**The immediate implementation priority is the school-facing dashboard and its usable end-to-end workflows.** Build the dashboard on top of the existing backend contracts, completing the required school administration and staff workflows in a coherent, usable web product. Frontend implementation has not yet started.
+**The immediate implementation priority is a usable School Admin workspace backed by real school data.** Follow the exact dependency-driven sequence in [Phase 1 School Operations — Task-by-Task Build Order](PHASE1-WORKFLOW-ORDER.md). Existing frontend implementation is in progress; do not treat a page's presence as acceptance.
 
 Do not divert the current Phase 1 workstream into Parent OTP, SMS delivery or parent-facing login.
 
@@ -55,6 +55,10 @@ Parent and Driver mobile/web experiences are deferred until the Phase 1 web appl
 - Version-controlled additive migrations with disposable PostgreSQL integration testing.
 - No secrets or real student data in source control.
 - Test and load-test against realistic target scale before production capacity claims.
+
+## Implementation sequence
+
+Use [Phase 1 School Operations — Task-by-Task Build Order](PHASE1-WORKFLOW-ORDER.md) for the mandatory task-by-task creation order and dependency gates. Use [Project Status](../project/STATUS.md) for actual implementation and verification status; requirements and roadmap items are not evidence of completed code.
 
 ## Source of truth
 
