@@ -105,12 +105,13 @@
   --color-brand-hover: #047857;
   --color-brand-soft: #d1fae5;
   --color-on-brand: #ffffff;
-  --color-sidebar-bg: #064e3b;
-  --color-sidebar-border: #065f46;
-  --color-sidebar-text: #ecfdf5;
-  --color-sidebar-muted: #a7f3d0;
-  --color-sidebar-active: #047857;
-  --color-sidebar-active-text: #ffffff;
+  /* Light sage sidebar keeps the green palette airy in light mode. */
+  --color-sidebar-bg: #f0fdf4;
+  --color-sidebar-border: #dcfce7;
+  --color-sidebar-text: #14532d;
+  --color-sidebar-muted: #4b8060;
+  --color-sidebar-active: #d1fae5;
+  --color-sidebar-active-text: #065f46;
 }
 
 :root[data-palette="purple"] {
@@ -143,12 +144,13 @@
   --color-brand-hover: #0e7490;
   --color-brand-soft: #cffafe;
   --color-on-brand: #ffffff;
-  --color-sidebar-bg: #164e63;
-  --color-sidebar-border: #155e75;
-  --color-sidebar-text: #ecfeff;
-  --color-sidebar-muted: #a5f3fc;
-  --color-sidebar-active: #0e7490;
-  --color-sidebar-active-text: #ffffff;
+  /* Soft cyan sidebar gives the teal palette a lighter navigation option. */
+  --color-sidebar-bg: #ecfeff;
+  --color-sidebar-border: #cffafe;
+  --color-sidebar-text: #164e63;
+  --color-sidebar-muted: #527b87;
+  --color-sidebar-active: #cffafe;
+  --color-sidebar-active-text: #155e75;
 }
 
 
@@ -223,6 +225,24 @@
   --color-overlay: rgb(0 0 0 / 45%);
   --shadow-xs: 0 1px 5px rgb(0 0 0 / 24%);
   --shadow-sidebar: 12px 0 40px rgb(0 0 0 / 28%);
+}
+
+/* Keep the two light-sidebar palettes dark-surface friendly in dark mode. */
+:root[data-theme="dark"][data-palette="green"] {
+  --color-sidebar-bg: #064e3b;
+  --color-sidebar-border: #065f46;
+  --color-sidebar-text: #ecfdf5;
+  --color-sidebar-muted: #a7f3d0;
+  --color-sidebar-active: #047857;
+  --color-sidebar-active-text: #ffffff;
+}
+:root[data-theme="dark"][data-palette="teal"] {
+  --color-sidebar-bg: #164e63;
+  --color-sidebar-border: #155e75;
+  --color-sidebar-text: #ecfeff;
+  --color-sidebar-muted: #a5f3fc;
+  --color-sidebar-active: #0e7490;
+  --color-sidebar-active-text: #ffffff;
 }
 
 /* Stable palette preview swatches used by the Settings appearance picker. */
