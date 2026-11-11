@@ -357,14 +357,14 @@ button:disabled {
   align-items: center;
 }
 .top-right span,
-.top-right button {
+.top-right button:not(.theme-mode-toggle) {
   display: flex;
   gap: 6px;
   align-items: center;
   color: var(--color-success);
   font-size: 10px;
 }
-.top-right button {
+.top-right button:not(.theme-mode-toggle) {
   border: 0;
   background: transparent;
   color: var(--color-text-muted);
