@@ -767,3 +767,74 @@ td b {
     width: 100%;
   }
 }
+
+
+/* Appearance controls */
+.theme-mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 7px 11px;
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+}
+.theme-mode-toggle:hover { background: var(--color-surface-muted); color: var(--color-text); }
+.theme-mode-toggle:focus-visible { outline: 3px solid var(--color-brand-border); outline-offset: 2px; }
+.appearance-page { max-width: 920px; }
+.appearance-section {
+  margin-top: 22px;
+  padding: 22px;
+  border: 1px solid var(--color-border);
+  border-radius: 13px;
+  background: var(--color-surface);
+}
+.appearance-section h2 { margin: 0 0 7px; font-size: 16px; }
+.appearance-section > p { margin: 0 0 18px; color: var(--color-text-muted); font-size: 12px; line-height: 1.6; }
+.appearance-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.appearance-option {
+  display: grid;
+  gap: 7px;
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  text-align: left;
+}
+.appearance-option[aria-pressed="true"], .palette-option[aria-pressed="true"] {
+  border-color: var(--color-brand);
+  background: var(--color-brand-soft);
+  box-shadow: 0 0 0 1px var(--color-brand);
+}
+.appearance-option strong { font-size: 12px; }
+.appearance-option small { color: var(--color-text-muted); font-size: 10px; line-height: 1.5; }
+.palette-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.palette-option {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 48px;
+  padding: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 11px;
+  font-weight: 600;
+}
+.palette-swatch { width: 18px; height: 18px; border-radius: 6px; flex: none; background: var(--color-brand); }
+.palette-swatch-navy { background: var(--color-brand); }
+.palette-swatch-green { background: var(--color-brand); }
+.palette-swatch-purple { background: var(--color-brand); }
+.palette-swatch-teal { background: var(--color-brand); }
+@media (max-width: 640px) {
+  .appearance-options { grid-template-columns: 1fr; }
+  .palette-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .appearance-section { padding: 16px; }
+}
