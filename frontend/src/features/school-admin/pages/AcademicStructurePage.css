@@ -7,3 +7,10 @@
 .academic-page .academic-status-badge.status-inactive,.academic-page .academic-status-badge.status-closed{border-color:color-mix(in srgb,var(--color-text-muted) 30%,transparent);background:color-mix(in srgb,var(--color-text-muted) 11%,var(--color-surface));color:var(--color-text-muted)}
 .academic-page .academic-status-badge.status-planned{border-color:color-mix(in srgb,var(--color-focus) 30%,transparent);background:color-mix(in srgb,var(--color-focus) 10%,var(--color-surface));color:var(--color-primary)}
 @media(prefers-reduced-motion:no-preference){.academic-page .table-scroll tbody tr{transition:background-color .12s ease}}
+
+/* Direction-aware secondary navigation stays out of the way while scrolling down. */
+.academic-page>.academic-tabs{position:sticky;top:68px;z-index:9;margin-top:-18px;padding:10px 0;background:var(--color-background);transition:transform .18s ease;}
+.academic-page>.academic-tabs.is-hidden{transform:translateY(calc(-100% - 12px));}
+.academic-page>.academic-tabs:focus-within{transform:translateY(0);}
+@media(max-width:740px){.academic-page>.academic-tabs{top:60px;}}
+@media(prefers-reduced-motion:reduce){.academic-page>.academic-tabs{transition:none;}}
