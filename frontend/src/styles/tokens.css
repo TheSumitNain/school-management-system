@@ -228,6 +228,40 @@
   --color-sidebar-active-text: #334155;
 }
 
+/* Light-sidebar palettes use coordinated darker navigation in dark mode. */
+:root[data-theme="dark"][data-palette="rose"] {
+  --color-sidebar-bg: #881337;
+  --color-sidebar-border: #9f1239;
+  --color-sidebar-text: #fff1f2;
+  --color-sidebar-muted: #fecdd3;
+  --color-sidebar-active: #be123c;
+  --color-sidebar-active-text: #ffffff;
+}
+:root[data-theme="dark"][data-palette="sky"] {
+  --color-sidebar-bg: #0c4a6e;
+  --color-sidebar-border: #075985;
+  --color-sidebar-text: #f0f9ff;
+  --color-sidebar-muted: #bae6fd;
+  --color-sidebar-active: #0369a1;
+  --color-sidebar-active-text: #ffffff;
+}
+:root[data-theme="dark"][data-palette="amber"] {
+  --color-sidebar-bg: #78350f;
+  --color-sidebar-border: #92400e;
+  --color-sidebar-text: #fffbeb;
+  --color-sidebar-muted: #fde68a;
+  --color-sidebar-active: #b45309;
+  --color-sidebar-active-text: #ffffff;
+}
+:root[data-theme="dark"][data-palette="slate"] {
+  --color-sidebar-bg: #1e293b;
+  --color-sidebar-border: #334155;
+  --color-sidebar-text: #f8fafc;
+  --color-sidebar-muted: #cbd5e1;
+  --color-sidebar-active: #475569;
+  --color-sidebar-active-text: #ffffff;
+}
+
 /* Semantic component tokens: use these instead of literal colors in components. */
 :root {
   --color-surface-raised: #ffffff;
