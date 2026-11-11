@@ -15,6 +15,8 @@ const palettes: { value: ThemePalette; label: string }[] = [
   { value: "sky", label: "Sky Blue" },
   { value: "amber", label: "Warm Amber" },
   { value: "mint", label: "Mint Green" },
+  { value: "royal", label: "Classic Royal Blue" },
+  { value: "pearl", label: "Pearl & Gold" },
 ];
 
 export function SettingsPage() {
