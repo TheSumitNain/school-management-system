@@ -47,6 +47,7 @@ type AcademicSection struct {
 	SchoolID int64 `json:"school_id"`
 	AcademicYearID int64 `json:"academic_year_id"`
 	ClassID int64 `json:"class_id"`
+	ClassName string `json:"class_name,omitempty"`
 	Name string `json:"name"`
 	DisplayOrder int `json:"display_order"`
 	IsActive bool `json:"is_active"`
@@ -239,8 +240,11 @@ func (r *AcademicRepository) SaveClass(ctx context.Context, actorID, schoolID, i
 func (r *AcademicRepository) ListSections(ctx context.Context,actorID,schoolID,yearID int64)([]AcademicSection,error){
 	if r == nil || r.db == nil { return nil, ErrAcademicAccessDenied }
 	if err:=authorizeAcademic(ctx,r.db,actorID,schoolID,"classes.read");err!=nil{return nil,err}
-	rows,err:=r.db.Query(ctx,`SELECT id,school_id,academic_year_id,class_id,name,display_order,is_active,created_at,updated_at FROM sections WHERE school_id=$1 AND ($2=0 OR academic_year_id=$2) ORDER BY academic_year_id,class_id,display_order,id`,schoolID,yearID);if err!=nil{return nil,fmt.Errorf("list sections: %w",err)};defer rows.Close()
-	items:=make([]AcademicSection,0);for rows.Next(){var v AcademicSection;if err:=rows.Scan(&v.ID,&v.SchoolID,&v.AcademicYearID,&v.ClassID,&v.Name,&v.DisplayOrder,&v.IsActive,&v.CreatedAt,&v.UpdatedAt);err!=nil{return nil,fmt.Errorf("scan section: %w",err)};items=append(items,v)};if err:=rows.Err();err!=nil{return nil,fmt.Errorf("iterate sections: %w",err)};return items,nil
+	rows,err:=r.db.Query(ctx,`SELECT s.id,s.school_id,s.academic_year_id,s.class_id,c.name,s.name,s.display_order,s.is_active,s.created_at,s.updated_at
+		FROM sections s JOIN classes c ON c.id=s.class_id AND c.school_id=s.school_id
+		WHERE s.school_id=$1 AND ($2=0 OR s.academic_year_id=$2)
+		ORDER BY s.academic_year_id,c.display_order,c.id,s.display_order,s.id`,schoolID,yearID);if err!=nil{return nil,fmt.Errorf("list sections: %w",err)};defer rows.Close()
+	items:=make([]AcademicSection,0);for rows.Next(){var v AcademicSection;if err:=rows.Scan(&v.ID,&v.SchoolID,&v.AcademicYearID,&v.ClassID,&v.ClassName,&v.Name,&v.DisplayOrder,&v.IsActive,&v.CreatedAt,&v.UpdatedAt);err!=nil{return nil,fmt.Errorf("scan section: %w",err)};items=append(items,v)};if err:=rows.Err();err!=nil{return nil,fmt.Errorf("iterate sections: %w",err)};return items,nil
 }
 func (r *AcademicRepository) SaveSection(ctx context.Context, actorID, schoolID, id, yearID, classID int64, name string, order int, active bool) (*AcademicSection, error) {
 	if r == nil || r.db == nil { return nil, ErrAcademicAccessDenied }
