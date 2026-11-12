@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"school-management-system/internal/middleware"
 	"school-management-system/internal/models"
@@ -21,6 +22,10 @@ type StaffAccountManagementService interface {
 	Disable(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64) error
 	Update(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64, username string) (*models.User, error)
 	Enable(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64, temporaryPassword string) error
+}
+
+type staffProfileCreateService interface {
+	CreateWithProfile(ctx context.Context, actorPrincipalID, schoolID int64, username, initialPassword string, profile models.StaffProfile) (*models.User, error)
 }
 
 type StaffHandler struct {
@@ -47,12 +52,43 @@ func (h *StaffHandler) Create(c *gin.Context) {
 	var request struct {
 		Username string `json:"username"`
 		InitialPassword string `json:"initial_password"`
+        EmployeeCode string `json:"employee_code"`
+        FullName string `json:"full_name"`
+        Designation string `json:"designation"`
+        MobileNumber string `json:"mobile_number"`
+        Email string `json:"email"`
+        JoiningDate string `json:"joining_date"`
 	}
 	if err := c.ShouldBindJSON(&request); err != nil || strings.TrimSpace(request.Username) == "" || request.InitialPassword == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "username and initial_password are required"})
 		return
 	}
-	user, err := h.service.Create(c.Request.Context(), actorID, schoolID, request.Username, request.InitialPassword)
+    var user *models.User
+    var err error
+    hasProfile := strings.TrimSpace(request.EmployeeCode) != "" || strings.TrimSpace(request.FullName) != "" ||
+        strings.TrimSpace(request.Designation) != "" || strings.TrimSpace(request.MobileNumber) != "" ||
+        strings.TrimSpace(request.Email) != "" || strings.TrimSpace(request.JoiningDate) != ""
+    if hasProfile {
+        profileService, ok := h.service.(staffProfileCreateService)
+        if !ok {
+            c.JSON(http.StatusServiceUnavailable, gin.H{"status":"error","message":"Employee profile creation is unavailable"})
+            return
+        }
+        var joiningDate *time.Time
+        if strings.TrimSpace(request.JoiningDate) != "" {
+            parsed, parseErr := time.Parse("2006-01-02", request.JoiningDate)
+            if parseErr != nil {
+                c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"joining_date must use YYYY-MM-DD"})
+                return
+            }
+            joiningDate = &parsed
+        }
+        profile := models.StaffProfile{EmployeeCode:request.EmployeeCode, FullName:request.FullName, Designation:request.Designation,
+            MobileNumber:request.MobileNumber, Email:request.Email, JoiningDate:joiningDate, EmploymentStatus:"active"}
+        user, err = profileService.CreateWithProfile(c.Request.Context(), actorID, schoolID, request.Username, request.InitialPassword, profile)
+    } else {
+        user, err = h.service.Create(c.Request.Context(), actorID, schoolID, request.Username, request.InitialPassword)
+    }
 	switch {
 	case err == nil:
 		c.JSON(http.StatusCreated, gin.H{
@@ -64,6 +100,9 @@ func (h *StaffHandler) Create(c *gin.Context) {
 				"username": user.Username,
 				"status": user.Status,
 				"must_change_password": user.MustChangePassword,
+                "employee_code": user.EmployeeCode, "full_name": user.FullName, "designation": user.Designation,
+                "mobile_number": user.MobileNumber, "email": user.Email, "joining_date": user.JoiningDate,
+                "employment_status": user.EmploymentStatus, "profile_complete": user.ProfileComplete,
 			},
 		})
 	case errors.Is(err, services.ErrInvalidStaffAccount):
@@ -74,6 +113,8 @@ func (h *StaffHandler) Create(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "This password has appeared in known data breaches. Choose a different password."})
 	case errors.Is(err, services.ErrPasswordBreachCheckUnavailable):
 		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Password safety verification is temporarily unavailable. Try again shortly."})
+    case errors.Is(err, repository.ErrEmployeeCodeTaken):
+        c.JSON(http.StatusConflict, gin.H{"status":"error","message":"This employee code is already used in this school"})
 	case errors.Is(err, repository.ErrUsernameTaken):
 		c.JSON(http.StatusConflict, gin.H{"status": "error", "message": "This username is already in use"})
 	case errors.Is(err, repository.ErrRolePermissionDenied):
@@ -116,6 +157,9 @@ func (h *StaffHandler) List(c *gin.Context) {
 			"must_change_password": user.MustChangePassword,
 			"created_at": user.CreatedAt,
 			"updated_at": user.UpdatedAt,
+            "employee_code": user.EmployeeCode, "full_name": user.FullName, "designation": user.Designation,
+            "mobile_number": user.MobileNumber, "email": user.Email, "joining_date": user.JoiningDate,
+            "employment_status": user.EmploymentStatus, "profile_complete": user.ProfileComplete,
 		})
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "success", "staff": staff})

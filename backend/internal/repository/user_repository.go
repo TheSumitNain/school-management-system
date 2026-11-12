@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"school-management-system/internal/models"
 
@@ -19,6 +20,7 @@ var (
 	ErrInvalidUser    = errors.New("invalid user data")
 	ErrStaffInactive  = errors.New("staff account is inactive")
 	ErrSchoolInactive = errors.New("school is inactive")
+    ErrEmployeeCodeTaken = errors.New("employee code already exists in this school")
 )
 
 type UserRepository struct {
@@ -63,11 +65,16 @@ func (r *UserRepository) ListStaffAccounts(ctx context.Context, actorPrincipalID
 		return nil, ErrRolePermissionDenied
 	}
 	rows, err := r.db.Query(ctx, `
-		SELECT id, principal_id, school_id, username, status,
-		       must_change_password, created_at, updated_at
-		FROM users
-		WHERE school_id = $1
-		ORDER BY LOWER(username), id
+		SELECT u.id, u.principal_id, u.school_id, u.username, u.status,
+		       u.must_change_password, u.created_at, u.updated_at,
+               COALESCE(sp.employee_code, ''), COALESCE(sp.full_name, ''),
+               COALESCE(sp.designation, ''), COALESCE(sp.mobile_number, ''),
+               COALESCE(sp.email, ''), sp.joining_date,
+               COALESCE(sp.employment_status, ''), (sp.principal_id IS NOT NULL)
+		FROM users u
+        LEFT JOIN staff_profiles sp ON sp.principal_id = u.principal_id AND sp.school_id = u.school_id
+		WHERE u.school_id = $1
+		ORDER BY LOWER(u.username), u.id
 	`, schoolID)
 	if err != nil {
 		return nil, fmt.Errorf("list school staff accounts: %w", err)
@@ -76,10 +83,14 @@ func (r *UserRepository) ListStaffAccounts(ctx context.Context, actorPrincipalID
 	users := make([]models.User, 0)
 	for rows.Next() {
 		var user models.User
+        var joiningDate *time.Time
 		if err := rows.Scan(&user.ID, &user.PrincipalID, &user.SchoolID, &user.Username,
-			&user.Status, &user.MustChangePassword, &user.CreatedAt, &user.UpdatedAt); err != nil {
+			&user.Status, &user.MustChangePassword, &user.CreatedAt, &user.UpdatedAt,
+            &user.EmployeeCode, &user.FullName, &user.Designation, &user.MobileNumber,
+            &user.Email, &joiningDate, &user.EmploymentStatus, &user.ProfileComplete); err != nil {
 			return nil, fmt.Errorf("scan school staff account: %w", err)
 		}
+        user.JoiningDate = joiningDate
 		users = append(users, user)
 	}
 	if err := rows.Err(); err != nil {
@@ -150,6 +161,105 @@ func (r *UserRepository) CreateStaffAccount(
 		}
 		return nil, fmt.Errorf("insert staff account: %w", err)
 	}
+
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO audit_events
+		    (actor_principal_id, school_id, action, resource_type, resource_id, outcome, metadata)
+		VALUES ($1, $2, 'staff.account.created', 'staff_user', $3, 'success',
+		        jsonb_build_object('principal_id', $4::bigint, 'username', $5::text, 'must_change_password', $6::boolean))
+	`, actorPrincipalID, schoolID, fmt.Sprint(user.ID), user.PrincipalID, user.Username, user.MustChangePassword); err != nil {
+		return nil, fmt.Errorf("audit staff account creation: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit staff account creation: %w", err)
+	}
+	return &user, nil
+}
+
+
+func (r *UserRepository) CreateStaffAccountWithProfile(
+	ctx context.Context,
+	actorPrincipalID, schoolID int64,
+	username, passwordHash string,
+	profile models.StaffProfile,
+) (*models.User, error) {
+	username = strings.TrimSpace(strings.ToLower(username))
+	if r == nil || r.db == nil || actorPrincipalID <= 0 || schoolID <= 0 || username == "" || passwordHash == "" {
+		return nil, ErrInvalidUser
+	}
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin staff account creation: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	var authorized bool
+	err = tx.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM auth_principals ap
+			JOIN users actor ON actor.principal_id = ap.id
+			JOIN schools s ON s.id = actor.school_id
+			JOIN principal_roles pr ON pr.principal_id = ap.id AND pr.revoked_at IS NULL
+			JOIN roles r ON r.id = pr.role_id
+			JOIN role_permissions rp ON rp.role_id = r.id
+			JOIN permissions p ON p.id = rp.permission_id
+			WHERE ap.id = $1 AND ap.principal_type = 'staff' AND ap.status = 'active'
+			  AND actor.status = 'active' AND actor.school_id = $2 AND s.status = 'active'
+			  AND r.school_id = $2 AND r.scope_type = 'school'
+			  AND r.principal_type = 'staff' AND r.role_key = 'school_admin' AND r.is_system = TRUE
+			  AND p.permission_key = 'users.create' AND p.scope_type = 'school' AND p.is_active = TRUE
+			  AND NOT EXISTS (
+			      SELECT 1 FROM user_permission_overrides denied
+			      WHERE denied.principal_id = ap.id AND denied.school_id = $2
+			        AND denied.permission_id = p.id AND denied.effect = 'deny'
+			  )
+		)
+	`, actorPrincipalID, schoolID).Scan(&authorized)
+	if err != nil {
+		return nil, fmt.Errorf("authorize staff account creation: %w", err)
+	}
+	if !authorized {
+		return nil, ErrRolePermissionDenied
+	}
+
+	var user models.User
+	err = tx.QueryRow(ctx, `
+		INSERT INTO users (school_id, username, password_hash, status)
+		VALUES ($1, $2, $3, 'active')
+		RETURNING id, principal_id, school_id, username, status,
+		          must_change_password, created_at, updated_at
+	`, schoolID, username, passwordHash).Scan(
+		&user.ID, &user.PrincipalID, &user.SchoolID, &user.Username,
+		&user.Status, &user.MustChangePassword, &user.CreatedAt, &user.UpdatedAt,
+	)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "ux_users_username_global" {
+			return nil, ErrUsernameTaken
+		}
+		return nil, fmt.Errorf("insert staff account: %w", err)
+	}
+
+    if _, err := tx.Exec(ctx, `
+        INSERT INTO staff_profiles
+            (principal_id, school_id, employee_code, full_name, designation, mobile_number, email, joining_date, employment_status)
+        VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7, ''), $8, 'active')
+    `, user.PrincipalID, schoolID, profile.EmployeeCode, profile.FullName, profile.Designation, profile.MobileNumber, profile.Email, profile.JoiningDate); err != nil {
+        var pgErr *pgconn.PgError
+        if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "ux_staff_profiles_school_employee_code" {
+            return nil, ErrEmployeeCodeTaken
+        }
+        return nil, fmt.Errorf("insert staff employee profile: %w", err)
+    }
+    user.EmployeeCode = profile.EmployeeCode
+    user.FullName = profile.FullName
+    user.Designation = profile.Designation
+    user.MobileNumber = profile.MobileNumber
+    user.Email = profile.Email
+    user.JoiningDate = profile.JoiningDate
+    user.EmploymentStatus = "active"
+    user.ProfileComplete = true
 
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO audit_events
