@@ -4,15 +4,19 @@
 
 - bcrypt password hashing and password policy checks, including common/breached-password checks.
 - Principal-aware authentication and database-backed token-version/status validation.
-- Short-lived JWT access tokens and opaque refresh tokens stored as hashes.
+- Short-lived JWT access tokens held in browser memory and opaque refresh tokens stored as hashes in the database.
+- Refresh tokens are delivered only through a persistent HttpOnly, SameSite=Lax cookie (Secure in production); they are not stored in browser JavaScript storage.
 - Refresh-token rotation, replay/family revocation and transaction-lock concurrency protections.
-- Protected-request validation of active refresh-session families.
-- Mandatory TOTP MFA for Platform Admin and School Admin, recovery codes, failure lockout and audit events.
+- Cross-tab refresh serialization and logout/session-expiry notifications; every protected API request still validates the active server-side session family.
+- Protected-request validation of active refresh-session families; revoked families and principal/token-version mismatches are rejected immediately.
+- Mandatory TOTP MFA for Platform Admin and School Admin on every fresh login; background access-token refresh and restoration of an existing session do not repeat MFA. Recovery codes, failure lockout and audit events remain enabled.
 - Versioned AES-GCM TOTP secret encryption with previous-key support and lazy re-encryption after successful verification.
 - Login lockout, IP rate limiting and fail-closed behavior when required security controls are unavailable.
 - Live database-backed RBAC, scoped delegation, ALLOW/DENY overrides and route-level permission checks.
 - Staff and Platform Admin password lifecycle, account status changes and session/token invalidation.
-- Per-device 30-minute idle timeout for Platform Admin and active system-role School Admin sessions.
+- Refresh sessions have no server-side idle timeout or absolute lifetime. They remain valid until manual logout or a security/account event revokes them.
+- The persistent HttpOnly refresh cookie uses a 400-day Max-Age and is renewed on every successful refresh. Browsers may enforce stricter cookie-retention limits; persistence across browser/device restarts is therefore subject to browser policy.
+- The browser refresh cookie is scoped to `/api/auth`, uses `SameSite=Lax`, and is `Secure` in production. Reverse proxies must preserve the `/api/auth` browser-facing path.
 
 ## Authorization requirements
 

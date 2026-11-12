@@ -437,7 +437,7 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	// and PostgreSQL repository. All rows remain inside the outer rollback.
 	staffUsername := "http-staff-" + suffix
 	staffCreate := postJSON("/school/staff", accessToken,
-		fmt.Sprintf(`{"username":%q,"initial_password":"A-Strong-Initial-Pass-123"}`, staffUsername))
+		fmt.Sprintf(`{"username":%q,"initial_password":"A-Strong-Initial-Pass-123","full_name":"HTTP Integration Teacher","employee_code":%q,"designation":"Teacher","mobile_number":"9876543210"}`, staffUsername, "HTTP-"+suffix))
 	if staffCreate.Code != http.StatusCreated {
 		t.Fatalf("School Admin staff creation should return 201: status=%d body=%s",
 			staffCreate.Code, staffCreate.Body.String())
@@ -505,7 +505,7 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	}
 
 	duplicateStaff := postJSON("/school/staff", accessToken,
-		fmt.Sprintf(`{"username":%q,"initial_password":"A-Strong-Initial-Pass-123"}`, staffUsername))
+		fmt.Sprintf(`{"username":%q,"initial_password":"A-Strong-Initial-Pass-123","full_name":"HTTP Duplicate Teacher","employee_code":%q,"designation":"Teacher","mobile_number":"9876543210"}`, staffUsername, "HTTP-DUP-"+suffix))
 	if duplicateStaff.Code != http.StatusConflict {
 		t.Fatalf("globally duplicate staff username should map to HTTP 409: status=%d body=%s",
 			duplicateStaff.Code, duplicateStaff.Body.String())

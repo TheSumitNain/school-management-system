@@ -47,7 +47,9 @@ type AcademicSection struct {
 	SchoolID int64 `json:"school_id"`
 	AcademicYearID int64 `json:"academic_year_id"`
 	ClassID int64 `json:"class_id"`
+	ClassName string `json:"class_name,omitempty"`
 	Name string `json:"name"`
+	Medium *string `json:"medium,omitempty"`
 	DisplayOrder int `json:"display_order"`
 	IsActive bool `json:"is_active"`
 	CreatedAt time.Time `json:"created_at"`
@@ -239,32 +241,39 @@ func (r *AcademicRepository) SaveClass(ctx context.Context, actorID, schoolID, i
 func (r *AcademicRepository) ListSections(ctx context.Context,actorID,schoolID,yearID int64)([]AcademicSection,error){
 	if r == nil || r.db == nil { return nil, ErrAcademicAccessDenied }
 	if err:=authorizeAcademic(ctx,r.db,actorID,schoolID,"classes.read");err!=nil{return nil,err}
-	rows,err:=r.db.Query(ctx,`SELECT id,school_id,academic_year_id,class_id,name,display_order,is_active,created_at,updated_at FROM sections WHERE school_id=$1 AND ($2=0 OR academic_year_id=$2) ORDER BY academic_year_id,class_id,display_order,id`,schoolID,yearID);if err!=nil{return nil,fmt.Errorf("list sections: %w",err)};defer rows.Close()
-	items:=make([]AcademicSection,0);for rows.Next(){var v AcademicSection;if err:=rows.Scan(&v.ID,&v.SchoolID,&v.AcademicYearID,&v.ClassID,&v.Name,&v.DisplayOrder,&v.IsActive,&v.CreatedAt,&v.UpdatedAt);err!=nil{return nil,fmt.Errorf("scan section: %w",err)};items=append(items,v)};if err:=rows.Err();err!=nil{return nil,fmt.Errorf("iterate sections: %w",err)};return items,nil
+	rows,err:=r.db.Query(ctx,`SELECT s.id,s.school_id,s.academic_year_id,s.class_id,c.name,s.name,s.medium,s.display_order,s.is_active,s.created_at,s.updated_at
+		FROM sections s JOIN classes c ON c.id=s.class_id AND c.school_id=s.school_id
+		WHERE s.school_id=$1 AND ($2=0 OR s.academic_year_id=$2)
+		ORDER BY s.academic_year_id,c.display_order,c.id,s.display_order,s.id`,schoolID,yearID);if err!=nil{return nil,fmt.Errorf("list sections: %w",err)};defer rows.Close()
+	items:=make([]AcademicSection,0);for rows.Next(){var v AcademicSection;if err:=rows.Scan(&v.ID,&v.SchoolID,&v.AcademicYearID,&v.ClassID,&v.ClassName,&v.Name,&v.Medium,&v.DisplayOrder,&v.IsActive,&v.CreatedAt,&v.UpdatedAt);err!=nil{return nil,fmt.Errorf("scan section: %w",err)};items=append(items,v)};if err:=rows.Err();err!=nil{return nil,fmt.Errorf("iterate sections: %w",err)};return items,nil
 }
 func (r *AcademicRepository) SaveSection(ctx context.Context, actorID, schoolID, id, yearID, classID int64, name string, order int, active bool) (*AcademicSection, error) {
+	return r.SaveSectionWithMedium(ctx,actorID,schoolID,id,yearID,classID,name,nil,order,active)
+}
+func (r *AcademicRepository) SaveSectionWithMedium(ctx context.Context, actorID, schoolID, id, yearID, classID int64, name string, medium *string, order int, active bool) (*AcademicSection, error) {
 	if r == nil || r.db == nil { return nil, ErrAcademicAccessDenied }
 	name = strings.TrimSpace(name)
+	if medium != nil { value:=strings.ToLower(strings.TrimSpace(*medium)); if value=="" { medium=nil } else if value!="hindi" && value!="english" { return nil,ErrInvalidAcademicInput } else { medium=&value } }
 	if name == "" || len(name) > 40 || order < 0 || yearID <= 0 || classID <= 0 { return nil, ErrInvalidAcademicInput }
 	tx, err := r.db.Begin(ctx); if err != nil { return nil, fmt.Errorf("begin section save: %w",err) }
 	defer func(){ _ = tx.Rollback(ctx) }()
 	if err=authorizeAcademic(ctx,tx,actorID,schoolID,"classes.manage"); err!=nil { return nil,err }
 	var v AcademicSection
 	if id==0 {
-		err=tx.QueryRow(ctx,`INSERT INTO sections(school_id,academic_year_id,class_id,name,display_order,is_active)
-			VALUES($1,$2,$3,$4,$5,$6) RETURNING id,school_id,academic_year_id,class_id,name,display_order,is_active,created_at,updated_at`,
-			schoolID,yearID,classID,name,order,active).Scan(&v.ID,&v.SchoolID,&v.AcademicYearID,&v.ClassID,&v.Name,&v.DisplayOrder,&v.IsActive,&v.CreatedAt,&v.UpdatedAt)
+		err=tx.QueryRow(ctx,`INSERT INTO sections(school_id,academic_year_id,class_id,name,medium,display_order,is_active)
+			VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id,school_id,academic_year_id,class_id,name,medium,display_order,is_active,created_at,updated_at`,
+			schoolID,yearID,classID,name,medium,order,active).Scan(&v.ID,&v.SchoolID,&v.AcademicYearID,&v.ClassID,&v.Name,&v.Medium,&v.DisplayOrder,&v.IsActive,&v.CreatedAt,&v.UpdatedAt)
 	} else {
-		err=tx.QueryRow(ctx,`UPDATE sections SET name=$4,display_order=$5,is_active=$6,updated_at=NOW()
-			WHERE school_id=$1 AND id=$2 AND academic_year_id=$3 AND class_id=$7
-			RETURNING id,school_id,academic_year_id,class_id,name,display_order,is_active,created_at,updated_at`,
-			schoolID,id,yearID,name,order,active,classID).Scan(&v.ID,&v.SchoolID,&v.AcademicYearID,&v.ClassID,&v.Name,&v.DisplayOrder,&v.IsActive,&v.CreatedAt,&v.UpdatedAt)
+		err=tx.QueryRow(ctx,`UPDATE sections SET name=$4,medium=$5,display_order=$6,is_active=$7,updated_at=NOW()
+			WHERE school_id=$1 AND id=$2 AND academic_year_id=$3 AND class_id=$8
+			RETURNING id,school_id,academic_year_id,class_id,name,medium,display_order,is_active,created_at,updated_at`,
+			schoolID,id,yearID,name,medium,order,active,classID).Scan(&v.ID,&v.SchoolID,&v.AcademicYearID,&v.ClassID,&v.Name,&v.Medium,&v.DisplayOrder,&v.IsActive,&v.CreatedAt,&v.UpdatedAt)
 	}
 	if err!=nil { return nil,academicWriteError(err) }
 	action:="school.section.updated";if id==0{action="school.section.created"}
 	if _,err=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
-		VALUES($1,$2,$3,'section',$4,'success',jsonb_build_object('name',$5::text,'is_active',$6::boolean))`,
-		actorID,schoolID,action,fmt.Sprint(v.ID),v.Name,v.IsActive);err!=nil{return nil,fmt.Errorf("audit section save: %w",err)}
+		VALUES($1,$2,$3,'section',$4,'success',jsonb_build_object('name',$5::text,'medium',$6::text,'is_active',$7::boolean))`,
+		actorID,schoolID,action,fmt.Sprint(v.ID),v.Name,v.Medium,v.IsActive);err!=nil{return nil,fmt.Errorf("audit section save: %w",err)}
 	if err=tx.Commit(ctx);err!=nil{return nil,fmt.Errorf("commit section save: %w",err)}
 	return &v,nil
 }

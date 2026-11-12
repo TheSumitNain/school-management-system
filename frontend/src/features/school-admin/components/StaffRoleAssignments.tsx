@@ -1,7 +1,9 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import "./StaffRoleAssignments.css";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Shield, Trash2 } from "lucide-react";
+import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
+import { Select } from "../../../shared/components/Select";
 import {
   assignStaffRole, getSchoolRoles, getStaffRoleAssignments, revokeStaffRole,
   type StaffRecord,
@@ -13,6 +15,8 @@ export function StaffRoleAssignments({ staff, canAssign }: Props) {
   const queryClient = useQueryClient();
   const [roleID, setRoleID] = useState("");
   const [feedback, setFeedback] = useState("");
+  const [roleToRevoke, setRoleToRevoke] = useState<{id:number;name:string}|null>(null);
+  const [roleError, setRoleError] = useState("");
   const rolesQuery = useQuery({
     queryKey: ["school-admin", "roles"],
     queryFn: ({ signal }) => getSchoolRoles(signal),
@@ -27,6 +31,7 @@ export function StaffRoleAssignments({ staff, canAssign }: Props) {
     mutationFn: () => assignStaffRole(staff.principal_id, Number(roleID)),
     onSuccess: async () => {
       setRoleID("");
+      setRoleError("");
       setFeedback("Role assigned. New permissions apply on the next protected request.");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["school-admin", "staff-roles", staff.principal_id] }),
@@ -37,6 +42,7 @@ export function StaffRoleAssignments({ staff, canAssign }: Props) {
   const revoke = useMutation({
     mutationFn: (id: number) => revokeStaffRole(staff.principal_id, id),
     onSuccess: async () => {
+      setRoleToRevoke(null);
       setFeedback("Role removed. Updated permissions apply on the next protected request.");
       await queryClient.invalidateQueries({ queryKey: ["school-admin", "staff-roles", staff.principal_id] });
     },
@@ -48,6 +54,7 @@ export function StaffRoleAssignments({ staff, canAssign }: Props) {
     [rolesQuery.data?.roles, assignments],
   );
   const busy = assign.isPending || revoke.isPending;
+  function submitAssign(event: FormEvent<HTMLFormElement>) { event.preventDefault(); if(!roleID){setRoleError("Choose a role to assign.");return;} setRoleError("");setFeedback("");assign.mutate(); }
 
   return (
     <section className="staff-role-panel" aria-label={`Roles for ${staff.username}`}>
@@ -60,19 +67,11 @@ export function StaffRoleAssignments({ staff, canAssign }: Props) {
         : <>
           {assignments.length ? <ul className="staff-role-list">{assignments.map(item => <li key={item.role_id}>
             <span><b>{item.name}</b><small>{item.is_system ? "System role" : "Custom role"} · {item.role_key}</small></span>
-            {canAssign && item.role_key !== "school_admin" && <button type="button" disabled={busy} aria-label={`Remove ${item.name} role`} title="Remove role" onClick={() => {
-              if (window.confirm(`Remove the ${item.name} role from ${staff.username}?`)) {
-                setFeedback("");
-                revoke.mutate(item.role_id);
-              }
-            }}><Trash2 size={15}/></button>}
+            {canAssign && item.role_key !== "school_admin" && <button type="button" disabled={busy} aria-label={`Remove ${item.name} role`} title="Remove role" onClick={() => {revoke.reset();setRoleToRevoke({id:item.role_id,name:item.name});}}><Trash2 size={15}/></button>}
           </li>)}</ul> : <p className="staff-role-message">No additional roles assigned.</p>}
-          {canAssign && <form className="staff-role-assign" onSubmit={event => { event.preventDefault(); setFeedback(""); assign.mutate(); }}>
-            <label htmlFor={`role-select-${staff.principal_id}`}>Assign a role</label>
-            <div><select id={`role-select-${staff.principal_id}`} value={roleID} onChange={event => setRoleID(event.target.value)} disabled={busy || availableRoles.length === 0}>
-              <option value="">Choose an available role</option>
-              {availableRoles.map(role => <option key={role.id} value={role.id}>{role.name}{role.is_system ? " (system)" : " (custom)"}</option>)}
-            </select><button className="primary" type="submit" disabled={busy || !roleID}><Check size={15}/>{assign.isPending ? "Assigning…" : "Assign"}</button></div>
+          {canAssign && <form className="staff-role-assign" onSubmit={submitAssign}>
+            <label>Assign a role</label>
+            <div><Select ariaLabel={`Role to assign to ${staff.username}`} invalid={Boolean(roleError)} describedBy={roleError?`role-select-error-${staff.principal_id}`:undefined} value={roleID} onChange={value=>{setRoleID(value);setRoleError("");}} disabled={busy||availableRoles.length===0} placeholder="Choose an available role" options={availableRoles.map(role=>({value:String(role.id),label:role.name+(role.is_system?" (system)":" (custom)")}))}/>{roleError&&<small className="app-field-error" id={`role-select-error-${staff.principal_id}`} role="alert">{roleError}</small>}<button className="primary" type="submit" disabled={busy||availableRoles.length===0}><Check size={15}/>{assign.isPending?"Assigning…":"Assign"}</button></div>
             {availableRoles.length === 0 && <small>There are no other assignable roles available.</small>}
           </form>}
         </>}
@@ -81,6 +80,7 @@ export function StaffRoleAssignments({ staff, canAssign }: Props) {
           : revoke.isError ? (revoke.error instanceof Error ? revoke.error.message : "Unable to remove role.") : feedback}
       </p>}
       {!canAssign && <p className="staff-role-message">You can view assigned roles but cannot change them.</p>}
+      <ConfirmDialog open={roleToRevoke !== null} title="Remove staff role?" description={roleToRevoke ? `Remove the ${roleToRevoke.name} role from ${staff.username}? Their effective permissions will update on the next protected request.` : ""} confirmLabel="Remove role" pending={revoke.isPending} error={revoke.isError?(revoke.error instanceof Error?revoke.error.message:"Unable to remove this role. Please try again."):undefined} onCancel={() => setRoleToRevoke(null)} onConfirm={() => {if(roleToRevoke){setFeedback("");revoke.mutate(roleToRevoke.id);}}}/>
     </section>
   );
 }

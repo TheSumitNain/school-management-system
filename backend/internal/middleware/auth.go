@@ -26,7 +26,6 @@ const (
 )
 
 
-var ErrAdminSessionIdleExpired = errors.New("administrative session idle timeout expired")
 
 type AdminSessionActivityTracker interface {
 	CheckAndTouchAdminSession(ctx context.Context, principalID int64, familyID string) (isAdmin bool, valid bool, err error)
@@ -90,7 +89,7 @@ func AuthMiddleware(tokenService AccessTokenValidator, principals PrincipalLoade
 
 		// Every access token is bound to its refresh-session family. Logout,
 		// revocation, expiry, or principal mismatch invalidates access immediately.
-		// The tracker applies the 30-minute idle policy only to administrators.
+		// The tracker verifies that the token's session family remains active.
 		requiresAdminSession := principal.Type == "platform_admin" || principal.RequiresAdminSessionActivity
 		if claims.SessionID == "" {
 			unauthorized(c)

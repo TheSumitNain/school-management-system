@@ -1,28 +1,114 @@
 export type Principal = { principal_id: number; principal_type: "staff" | "platform_admin"; status: string; school_id?: number; username?: string; must_change_password?: boolean };
 export type AuthUser = { principal_id: number; principal_type: "staff" | "platform_admin"; school_id?: number; username?: string; must_change_password?: boolean; permissions: string[] };
-export type AuthTokens = { access_token: string; refresh_token: string; token_type: "Bearer"; principal: Principal };
+export type AuthTokens = { access_token: string; refresh_token?: string; token_type: "Bearer"; principal: Principal };
 export type MFAChallenge = { status: "mfa_required"; challenge_token: string; enrollment_required: boolean; secret?: string; provisioning_uri?: string; expires_at?: string };
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
-const ACCESS_KEY = "sms.access";
-const REFRESH_KEY = "sms.refresh";
-let accessToken = sessionStorage.getItem(ACCESS_KEY) || "";
-let refreshToken = sessionStorage.getItem(REFRESH_KEY) || "";
+const LEGACY_ACCESS_KEY = "sms.access";
+const LEGACY_REFRESH_KEY = "sms.refresh";
+const ACTIVE_SESSION_KEY = "sms.auth.active";
+const SESSION_EVENT_KEY = "sms.auth.event";
+let accessToken = "";
 let refreshInFlight: Promise<boolean> | null = null;
-export function hasSession() { return Boolean(accessToken && refreshToken); }
-export function saveTokens(tokens: AuthTokens) { accessToken=tokens.access_token; refreshToken=tokens.refresh_token; sessionStorage.setItem(ACCESS_KEY,accessToken); sessionStorage.setItem(REFRESH_KEY,refreshToken); }
-export function clearSession() { accessToken=""; refreshToken=""; sessionStorage.removeItem(ACCESS_KEY); sessionStorage.removeItem(REFRESH_KEY); }
+
+type SessionEvent = { type: "ended" | "changed"; id: string };
+const authChannel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("sms-auth") : null;
+let lastRemoteSessionEventId = "";
+
+function dispatchSessionEnded() {
+  window.dispatchEvent(new Event("sms:session-ended"));
+}
+function clearSession() {
+  accessToken = "";
+  sessionStorage.removeItem(LEGACY_ACCESS_KEY);
+  sessionStorage.removeItem(LEGACY_REFRESH_KEY);
+  localStorage.removeItem(ACTIVE_SESSION_KEY);
+}
+function receiveRemoteSessionEvent(event: SessionEvent) {
+  if (!event?.id || event.id === lastRemoteSessionEventId) return;
+  lastRemoteSessionEventId = event.id;
+  clearSession();
+  if (event.type === "ended") dispatchSessionEnded();
+  else window.dispatchEvent(new Event("sms:session-changed"));
+}
+authChannel?.addEventListener("message", (event: MessageEvent<SessionEvent>) => {
+  if (event.data?.type === "ended" || event.data?.type === "changed") receiveRemoteSessionEvent(event.data);
+});
+window.addEventListener("storage", event => {
+  if (event.key !== SESSION_EVENT_KEY || !event.newValue) return;
+  try {
+    const sessionEvent = JSON.parse(event.newValue) as SessionEvent;
+    if (sessionEvent.type === "ended" || sessionEvent.type === "changed") receiveRemoteSessionEvent(sessionEvent);
+  } catch { /* Ignore malformed cross-tab notifications. */ }
+});
+function publishSessionEvent(type: SessionEvent["type"]) {
+  const event: SessionEvent = { type, id: `${Date.now()}-${Math.random().toString(36).slice(2)}` };
+  authChannel?.postMessage(event);
+  try { localStorage.setItem(SESSION_EVENT_KEY, JSON.stringify(event)); } catch { /* BroadcastChannel remains available. */ }
+}
+function broadcastSessionEnd() {
+  clearSession();
+  publishSessionEvent("ended");
+  dispatchSessionEnded();
+}
+export function announceSessionChanged() {
+  publishSessionEvent("changed");
+}
+export function saveTokens(tokens: AuthTokens) {
+  accessToken = tokens.access_token;
+  // This marker contains no credential; it only lets tabs distinguish an
+  // expired shared session from a visitor who has never signed in.
+  localStorage.setItem(ACTIVE_SESSION_KEY, "1");
+  sessionStorage.removeItem(LEGACY_ACCESS_KEY);
+  sessionStorage.removeItem(LEGACY_REFRESH_KEY);
+}
+export function clearLocalSession() { broadcastSessionEnd(); }
+
+async function performRefresh(): Promise<boolean> {
+  const legacyRefreshToken = sessionStorage.getItem(LEGACY_REFRESH_KEY) || "";
+  const response = await fetch(API_BASE + "/auth/refresh", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: legacyRefreshToken ? { "Content-Type": "application/json" } : undefined,
+    body: legacyRefreshToken ? JSON.stringify({ refresh_token: legacyRefreshToken }) : undefined,
+  });
+  if (!response.ok) {
+    const hadSession = localStorage.getItem(ACTIVE_SESSION_KEY) === "1" || Boolean(legacyRefreshToken);
+    if (response.status === 401 || response.status === 403) {
+      clearSession();
+      if (hadSession) broadcastSessionEnd();
+      return false;
+    }
+    throw new Error("Unable to verify your sign-in. Check your connection and try again.");
+  }
+  const body = await response.json() as Partial<AuthTokens>;
+  if (!body.access_token) {
+    const hadSession = localStorage.getItem(ACTIVE_SESSION_KEY) === "1";
+    clearSession();
+    if (hadSession) broadcastSessionEnd();
+    return false;
+  }
+  saveTokens(body as AuthTokens);
+  return true;
+}
+async function withSessionLock<T>(operation: () => Promise<T>): Promise<T> {
+  if (navigator.locks?.request) return navigator.locks.request("sms-auth-refresh", operation);
+  return operation();
+}
 async function refreshSession(): Promise<boolean> {
-  if (!refreshToken) return false;
   if (refreshInFlight) return refreshInFlight;
-  refreshInFlight=(async()=>{ try {
-    const response=await fetch(API_BASE+"/auth/refresh",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({refresh_token:refreshToken})});
-    if(!response.ok){clearSession();return false;}
-    const body=await response.json() as AuthTokens;
-    if(!body.access_token||!body.refresh_token){clearSession();return false;}
-    saveTokens(body);return true;
-  } catch { return false; } finally { refreshInFlight=null; } })();
+  refreshInFlight = (async () => {
+    try {
+      // Serialize refresh, login/MFA completion and logout across tabs so a
+      // stale refresh cannot overwrite a newly authenticated browser session.
+      return await withSessionLock(() => performRefresh());
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
   return refreshInFlight;
 }
+export function restoreSession() { return refreshSession(); }
+
 type RequestOptions = RequestInit & { auth?: boolean; retry?: boolean };
 export class ApiError extends Error { constructor(public status:number,message:string){super(message);this.name="ApiError";} }
 export async function api<T>(path:string,options:RequestOptions={}):Promise<T>{
@@ -30,11 +116,16 @@ export async function api<T>(path:string,options:RequestOptions={}):Promise<T>{
   const requestHeaders=new Headers(headers);
   if(init.body && !(init.body instanceof FormData)) requestHeaders.set("Content-Type","application/json");
   if(auth&&accessToken) requestHeaders.set("Authorization","Bearer "+accessToken);
-  let response=await fetch(API_BASE+path,{...init,headers:requestHeaders});
+  let response=await fetch(API_BASE+path,{...init,credentials:"same-origin",headers:requestHeaders});
   const canRefresh=auth&&retry&&path!=="/auth/refresh"&&path!=="/auth/login"&&path!=="/auth/platform-admin/login"&&path!=="/auth/mfa/verify"&&path!=="/auth/mfa/enroll/verify";
-  if(response.status===401&&canRefresh&&await refreshSession()){
-    requestHeaders.set("Authorization","Bearer "+accessToken);
-    response=await fetch(API_BASE+path,{...init,headers:requestHeaders});
+  if(response.status===401&&canRefresh){
+    const refreshed = await refreshSession();
+    if(refreshed){
+      requestHeaders.set("Authorization","Bearer "+accessToken);
+      response=await fetch(API_BASE+path,{...init,credentials:"same-origin",headers:requestHeaders});
+    } else if (localStorage.getItem(ACTIVE_SESSION_KEY) === "1") {
+      broadcastSessionEnd();
+    }
   }
   const payload=await response.json().catch(()=>({}));
   if(!response.ok){
@@ -43,8 +134,11 @@ export async function api<T>(path:string,options:RequestOptions={}):Promise<T>{
   }
   return payload as T;
 }
-export function loginStaff(username:string,password:string){return api<AuthTokens|MFAChallenge>("/auth/login",{method:"POST",auth:false,body:JSON.stringify({username,password})});}
-export function loginPlatformAdmin(email:string,password:string){return api<AuthTokens|MFAChallenge>("/auth/platform-admin/login",{method:"POST",auth:false,body:JSON.stringify({email,password})});}
-export function completeMFA(challenge_token:string,code:string,enrollment:boolean){return api<AuthTokens>(enrollment?"/auth/mfa/enroll/verify":"/auth/mfa/verify",{method:"POST",auth:false,body:JSON.stringify({challenge_token,code})});}
+export function loginStaff(username:string,password:string){return withSessionLock(()=>api<AuthTokens|MFAChallenge>("/auth/login",{method:"POST",auth:false,body:JSON.stringify({username,password})}));}
+export function loginPlatformAdmin(email:string,password:string){return withSessionLock(()=>api<AuthTokens|MFAChallenge>("/auth/platform-admin/login",{method:"POST",auth:false,body:JSON.stringify({email,password})}));}
+export function completeMFA(challenge_token:string,code:string,enrollment:boolean){return withSessionLock(()=>api<AuthTokens>(enrollment?"/auth/mfa/enroll/verify":"/auth/mfa/verify",{method:"POST",auth:false,body:JSON.stringify({challenge_token,code})}));}
 export function getMe(){return api<AuthUser>("/auth/me");}
-export async function logout(){const token=refreshToken;try{await api("/auth/logout",{method:"POST",body:JSON.stringify({refresh_token:token}),retry:false});}finally{clearSession();}}
+export async function logout(){
+  await withSessionLock(()=>api("/auth/logout",{method:"POST",auth:false,retry:false}));
+  broadcastSessionEnd();
+}

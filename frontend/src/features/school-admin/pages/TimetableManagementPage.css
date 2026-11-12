@@ -1,0 +1,54 @@
+.timetable-page{display:flex;flex-direction:column;gap:20px;min-width:0}
+.timetable-page .heading{align-items:flex-start}
+.timetable-actions{display:flex;gap:9px;flex-wrap:wrap}
+.timetable-primary,.timetable-secondary,.timetable-refresh{min-height:40px;border-radius:var(--radius-md);padding:0 13px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:600 13px var(--font-family);cursor:pointer;transition:background .15s,border-color .15s,transform .15s}
+.timetable-primary{border:1px solid var(--color-brand);background:var(--color-brand);color:var(--color-on-brand)}
+.timetable-primary:hover:not(:disabled){background:var(--color-brand-hover);border-color:var(--color-brand-hover)}
+.timetable-secondary,.timetable-refresh{border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text)}
+.timetable-secondary:hover:not(:disabled),.timetable-refresh:hover:not(:disabled){border-color:var(--color-brand-border);background:var(--color-brand-subtle)}
+.timetable-primary:disabled,.timetable-secondary:disabled,.timetable-refresh:disabled{opacity:.55;cursor:not-allowed}
+.timetable-filters{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;padding:16px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm)}
+.timetable-filters label{display:flex;flex-direction:column;gap:7px;min-width:210px;color:var(--color-text);font-size:12px;font-weight:650}
+.timetable-filters .app-select{width:100%}
+.timetable-refresh{margin-left:auto}
+.timetable-feedback{padding:11px 14px;border-radius:var(--radius-md);font-size:13px}
+.timetable-feedback.success{background:var(--color-success-soft);border:1px solid var(--color-success);color:var(--color-success)}
+.timetable-feedback.error,.timetable-state.error{background:var(--color-danger-soft);border:1px solid var(--color-danger-border);color:var(--color-danger)}
+.timetable-state{min-height:190px;padding:30px 20px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);color:var(--color-text-muted)}
+.timetable-state b{color:var(--color-text);font-size:15px}
+.timetable-state span{font-size:13px;max-width:520px}
+.timetable-state button{border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text);border-radius:var(--radius-sm);padding:7px 12px;cursor:pointer}
+.timetable-spinner{width:22px;height:22px;border:2px solid var(--color-border);border-top-color:var(--color-brand);border-radius:50%;animation:timetable-spin .8s linear infinite}
+@keyframes timetable-spin{to{transform:rotate(360deg)}}
+.timetable-table-wrap{max-width:100%;overflow:auto;border:1px solid var(--color-border);border-radius:var(--radius-lg);background:var(--color-surface);box-shadow:var(--shadow-sm)}
+.timetable-grid{width:100%;min-width:980px;border-collapse:separate;border-spacing:0;table-layout:fixed}
+.timetable-grid th,.timetable-grid td{padding:10px;border-right:1px solid var(--color-border);border-bottom:1px solid var(--color-border);vertical-align:top}
+.timetable-grid tr:last-child th,.timetable-grid tr:last-child td{border-bottom:0}
+.timetable-grid th:last-child,.timetable-grid td:last-child{border-right:0}
+.timetable-grid thead th{position:sticky;top:0;z-index:1;background:var(--color-surface-muted);color:var(--color-text);font-size:11px;font-weight:750;text-align:center}
+.timetable-grid thead th:first-child{width:142px;text-align:left}
+.timetable-grid tbody th{background:var(--color-surface-muted);text-align:left}
+.timetable-grid tbody th b{display:block;color:var(--color-text);font-size:12px}
+.timetable-grid tbody th span{display:block;margin-top:5px;color:var(--color-text-muted);font-size:10px;font-weight:500}
+.timetable-grid td{height:92px;background:var(--color-surface)}
+.timetable-entry{position:relative;display:flex;flex-direction:column;gap:4px;margin:0 0 6px;padding:8px 24px 8px 9px;border:1px solid var(--color-brand-border);border-left:3px solid var(--color-brand);border-radius:var(--radius-sm);background:var(--color-brand-subtle);text-align:left}
+.timetable-entry:last-child{margin-bottom:0}
+.timetable-entry b{color:var(--color-text);font-size:11px;line-height:1.35}
+.timetable-entry span,.timetable-entry small{color:var(--color-text-muted);font-size:10px;line-height:1.35}
+.timetable-entry button{position:absolute;top:6px;right:5px;width:22px;height:22px;display:grid;place-items:center;border:0;border-radius:5px;background:transparent;color:var(--color-danger);cursor:pointer}
+.timetable-entry button:hover{background:var(--color-danger-soft)}
+.timetable-grid .break-row td,.timetable-grid .break-row th{background:var(--color-surface-muted)}
+.break-label{display:block;padding:8px;text-align:center;color:var(--color-text-muted);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.timetable-note{padding:11px 14px;border-left:3px solid var(--color-brand);background:var(--color-brand-subtle);color:var(--color-text-muted);font-size:12px;line-height:1.5}
+.timetable-form{display:flex;flex-direction:column;gap:14px}
+.timetable-form label{display:flex;flex-direction:column;gap:6px;color:var(--color-text);font-size:12px;font-weight:650}
+.timetable-form input:not([type=checkbox]){width:100%;min-height:40px;padding:9px 11px;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-input-bg);color:var(--color-text);font:400 13px var(--font-family)}
+.timetable-form input:focus{outline:2px solid var(--color-focus);outline-offset:1px}
+.timetable-form input[aria-invalid=true]{border-color:var(--color-danger)}
+.timetable-form label small{color:var(--color-danger);font-size:11px;font-weight:500}
+.timetable-time-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.timetable-checkbox{display:flex!important;flex-direction:row!important;align-items:center;gap:9px!important}
+.timetable-checkbox input{width:16px;height:16px;accent-color:var(--color-brand)}
+.timetable-form-actions{display:flex;justify-content:flex-end;gap:9px;padding-top:8px;border-top:1px solid var(--color-border)}
+.timetable-form .app-select{width:100%}
+@media(max-width:760px){.timetable-page .heading{flex-direction:column;align-items:stretch}.timetable-actions{width:100%}.timetable-actions button{flex:1}.timetable-filters{align-items:stretch}.timetable-filters label{min-width:100%;}.timetable-refresh{margin-left:0;width:100%}.timetable-time-fields{grid-template-columns:1fr}}

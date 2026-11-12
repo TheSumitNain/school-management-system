@@ -46,21 +46,18 @@ func (f *fakeRefreshSessionRepository) RevokePrincipal(_ context.Context, tokenH
 	return f.revokeErr
 }
 
-func TestNewSessionServiceValidatesExpiry(t *testing.T) {
-	repo := &fakeRefreshSessionRepository{}
-	for _, days := range []int{0, 31} {
-		if _, err := NewSessionService(repo, days); err == nil {
-			t.Errorf("expected expiry %d to be rejected", days)
-		}
+func TestNewSessionServiceRequiresRepository(t *testing.T) {
+	if _, err := NewSessionService(nil); err == nil {
+		t.Fatal("expected a missing refresh repository to be rejected")
 	}
-	if _, err := NewSessionService(repo, 7); err != nil {
-		t.Fatalf("expected valid expiry, got %v", err)
+	if _, err := NewSessionService(&fakeRefreshSessionRepository{}); err != nil {
+		t.Fatalf("expected valid repository, got %v", err)
 	}
 }
 
 func TestIssueStoresOnlyTokenHash(t *testing.T) {
 	repo := &fakeRefreshSessionRepository{}
-	service, err := NewSessionService(repo, 7)
+	service, err := NewSessionService(repo)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,14 +75,14 @@ func TestIssueStoresOnlyTokenHash(t *testing.T) {
 	if repo.createHash != HashRefreshToken(rawToken) || repo.createHash == rawToken {
 		t.Fatal("repository must receive only the token hash")
 	}
-	if !repo.createExpiry.After(time.Now().Add(6 * 24 * time.Hour)) {
-		t.Fatal("refresh token expiry should be approximately seven days away")
+	if !repo.createExpiry.IsZero() {
+		t.Fatal("session service must not impose an absolute refresh-token expiry")
 	}
 }
 
 func TestIssueBindsExpectedTokenVersion(t *testing.T) {
 	repo := &fakeRefreshSessionRepository{}
-	service, err := NewSessionService(repo, 7)
+	service, err := NewSessionService(repo)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +102,7 @@ func TestIssueBindsExpectedTokenVersion(t *testing.T) {
 }
 
 func TestIssueRejectsMissingOrStaleIdentity(t *testing.T) {
-	service, err := NewSessionService(&fakeRefreshSessionRepository{}, 7)
+	service, err := NewSessionService(&fakeRefreshSessionRepository{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +121,7 @@ func TestRotateHashesBothTokensAndReturnsReplacement(t *testing.T) {
 	repo := &fakeRefreshSessionRepository{
 		principal: &models.AuthPrincipal{ID: 12, Type: "staff", Status: "active", TokenVersion: 1, SchoolID: 3, Username: "user"},
 	}
-	service, err := NewSessionService(repo, 7)
+	service, err := NewSessionService(repo)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,10 +139,13 @@ func TestRotateHashesBothTokensAndReturnsReplacement(t *testing.T) {
 	if repo.newHash != HashRefreshToken(replacement) || repo.newHash == replacement {
 		t.Fatal("repository must receive only the replacement token hash")
 	}
+	if !repo.newExpiry.IsZero() {
+		t.Fatal("session service must not impose an absolute expiry during token rotation")
+	}
 }
 
 func TestRotateRejectsEmptyToken(t *testing.T) {
-	service, err := NewSessionService(&fakeRefreshSessionRepository{}, 7)
+	service, err := NewSessionService(&fakeRefreshSessionRepository{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,7 +156,7 @@ func TestRotateRejectsEmptyToken(t *testing.T) {
 
 func TestRotatePropagatesReuseDetection(t *testing.T) {
 	repo := &fakeRefreshSessionRepository{rotateErr: repository.ErrRefreshTokenReuse}
-	service, err := NewSessionService(repo, 7)
+	service, err := NewSessionService(repo)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +168,7 @@ func TestRotatePropagatesReuseDetection(t *testing.T) {
 
 func TestRevokeStoresOnlyTokenHash(t *testing.T) {
 	repo := &fakeRefreshSessionRepository{}
-	service, err := NewSessionService(repo, 7)
+	service, err := NewSessionService(repo)
 	if err != nil {
 		t.Fatal(err)
 	}

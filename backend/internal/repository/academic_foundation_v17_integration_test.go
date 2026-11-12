@@ -146,6 +146,21 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 		t.Fatalf("assign Teacher role to fixture: %v", err)
 	}
 
+	eligibleTeachers, err := NewAcademicRepository(tx).ListEligibleTeachers(ctx, actorPrincipalID, schoolID)
+	if err != nil {
+		t.Fatalf("list eligible same-school Teachers: %v", err)
+	}
+	foundEligibleTeacher := false
+	for _, teacher := range eligibleTeachers {
+		if teacher.PrincipalID == teacherPrincipalID {
+			foundEligibleTeacher = true
+			break
+		}
+	}
+	if !foundEligibleTeacher {
+		t.Fatalf("eligible teacher list did not include active Teacher principal %d: %+v", teacherPrincipalID, eligibleTeachers)
+	}
+
 	var year1, year2, classLKG, classUKG, section1, section2, subjectID, subjectAltID, studentID int64
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO academic_years (school_id, name, starts_on, ends_on, status, is_current)

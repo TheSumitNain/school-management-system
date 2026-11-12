@@ -117,6 +117,14 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
 		t.Fatalf("unexpected created staff account: %+v", created)
 	}
 
+    if _, err := tx.Exec(ctx, `
+        INSERT INTO staff_profiles
+            (principal_id, school_id, employee_code, full_name, designation, mobile_number, employment_status)
+        VALUES ($1, $2, $3, 'Lifecycle Teacher', 'Teacher', '9876543210', 'active')
+    `, created.PrincipalID, schoolID, "LIFE-"+suffix); err != nil {
+        t.Fatalf("create active employee profile for lifecycle fixture: %v", err)
+    }
+
 	// Force the audit write to fail and prove the user/principal insert rolls
 	// back with it. This guards the all-or-nothing account provisioning contract.
 	auditFailureSuffix := suffix[len(suffix)-8:]

@@ -29,7 +29,6 @@ type Config struct {
 	JWTSecret              string
 	JWTIssuer              string
 	JWTAccessExpiryMinutes int
-	RefreshTokenExpiryDays int
 
 	// TOTPEncryptionKey is loaded from Base64-encoded secret material.
 	// It must never be logged or exposed in API responses.
@@ -76,12 +75,6 @@ func Load() Config {
 		}
 	}
 
-	refreshExpiryDays := 7
-	if value := strings.TrimSpace(os.Getenv("REFRESH_TOKEN_EXPIRY_DAYS")); value != "" {
-		if parsed, err := strconv.Atoi(value); err == nil {
-			refreshExpiryDays = parsed
-		}
-	}
 
 	totpEncryptionKey := []byte(nil)
 	if encoded := strings.TrimSpace(os.Getenv("TOTP_ENCRYPTION_KEY")); encoded != "" {
@@ -123,7 +116,6 @@ func Load() Config {
 		JWTSecret:              os.Getenv("JWT_SECRET"),
 		JWTIssuer:              jwtIssuer,
 		JWTAccessExpiryMinutes: jwtAccessExpiry,
-		RefreshTokenExpiryDays: refreshExpiryDays,
 		TOTPEncryptionKey:        totpEncryptionKey,
 		TOTPEncryptionKeyVersion: totpEncryptionKeyVersion,
 		TOTPEncryptionPreviousKeys: previousKeys,
@@ -182,9 +174,6 @@ func (cfg Config) ValidateJWT() error {
 		)
 	}
 
-	if cfg.RefreshTokenExpiryDays < 1 || cfg.RefreshTokenExpiryDays > 30 {
-		return fmt.Errorf("REFRESH_TOKEN_EXPIRY_DAYS must be between 1 and 30")
-	}
 
 	return nil
 }

@@ -94,7 +94,11 @@ func TestSchoolOnboardingCreateMapsValidationAndConflictErrors(t *testing.T) {
 	}{
 		{name: "invalid input", err: services.ErrInvalidSchoolOnboarding, want: http.StatusBadRequest},
 		{name: "invalid password", err: services.ErrInvalidPassword, want: http.StatusBadRequest},
-		{name: "service failure", err: errors.New("internal"), want: http.StatusInternalServerError},
+		{name: "compromised password", err: services.ErrCompromisedPassword, want: http.StatusBadRequest},
+		{name: "password breach checker unavailable", err: services.ErrPasswordBreachCheckUnavailable, want: http.StatusServiceUnavailable},
+		{name: "duplicate school code", err: repository.ErrSchoolCodeTaken, want: http.StatusConflict},
+		{name: "duplicate username", err: repository.ErrUsernameTaken, want: http.StatusConflict},
+		{name: "service failure", err: errors.New("sensitive internal database detail"), want: http.StatusInternalServerError},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -110,6 +114,9 @@ func TestSchoolOnboardingCreateMapsValidationAndConflictErrors(t *testing.T) {
 			router.ServeHTTP(rec, req)
 			if rec.Code != test.want {
 				t.Fatalf("expected %d, got %d: %s", test.want, rec.Code, rec.Body.String())
+			}
+			if strings.Contains(rec.Body.String(), "sensitive internal database detail") {
+				t.Fatalf("internal error details must not be exposed: %s", rec.Body.String())
 			}
 		})
 	}

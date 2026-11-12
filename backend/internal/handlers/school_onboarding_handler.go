@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"errors"
+	"log"
 	"net/http"
 
 	"school-management-system/internal/middleware"
@@ -71,6 +72,9 @@ func (h *SchoolOnboardingHandler) Create(c *gin.Context) {
 		case errors.Is(err, repository.ErrUsernameTaken):
 			c.JSON(http.StatusConflict, gin.H{"status": "error", "message": "School Admin username is already in use"})
 		default:
+			// Keep internal database/service details out of the HTTP response, but log
+			// the wrapped error so operators can diagnose failed onboarding attempts.
+			log.Printf("School onboarding failed (actor_principal_id=%d): %v", actorPrincipalID, err)
 			c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unable to create school"})
 		}
 		return

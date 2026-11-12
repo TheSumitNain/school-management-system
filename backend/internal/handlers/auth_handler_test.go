@@ -173,8 +173,12 @@ func TestLoginSuccess(t *testing.T) {
 	if !strings.Contains(rec.Body.String(), `"token_type":"Bearer"`) {
 		t.Fatalf("expected Bearer token type, got %s", rec.Body.String())
 	}
-	if !strings.Contains(rec.Body.String(), `"refresh_token":"test-refresh-token"`) {
-		t.Fatalf("expected refresh token in response, got %s", rec.Body.String())
+	if strings.Contains(rec.Body.String(), "test-refresh-token") {
+		t.Fatalf("refresh token must not be exposed in JSON, got %s", rec.Body.String())
+	}
+	cookies := rec.Result().Cookies()
+	if len(cookies) == 0 || cookies[0].Name != refreshCookieName || cookies[0].Value != "test-refresh-token" || !cookies[0].HttpOnly || cookies[0].SameSite != http.SameSiteLaxMode || cookies[0].Path != refreshCookiePath || cookies[0].MaxAge != persistentRefreshCookieMaxAge {
+		t.Fatalf("login did not set the expected HttpOnly refresh cookie: %+v", cookies)
 	}
 
 	if strings.Contains(rec.Body.String(), "PasswordHash") {
@@ -339,6 +343,31 @@ func TestRefreshSuccess(t *testing.T) {
 	}
 }
 
+func TestRefreshUsesHttpOnlyCookieWithoutReturningRefreshToken(t *testing.T) {
+	sessions := &fakeSessionService{
+		refreshToken: "replacement-refresh-token",
+		principal: &models.AuthPrincipal{ID: 10, Type: "staff", Status: "active", TokenVersion: 1, SchoolID: 2, Username: "testuser"},
+	}
+	router := setupTestRouter(fakeAuthService{}, fakeTokenService{token: "new-access-token"}, sessions)
+	req := httptest.NewRequest(http.MethodPost, "/auth/refresh", nil)
+	req.AddCookie(&http.Cookie{Name: refreshCookieName, Value: "cookie-refresh-token"})
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("cookie refresh status=%d, want 200; body=%s", rec.Code, rec.Body.String())
+	}
+	if sessions.rotatedToken != "cookie-refresh-token" {
+		t.Fatalf("refresh did not use the HttpOnly cookie: %q", sessions.rotatedToken)
+	}
+	if strings.Contains(rec.Body.String(), "replacement-refresh-token") {
+		t.Fatalf("cookie refresh exposed replacement token in JSON: %s", rec.Body.String())
+	}
+	cookies := rec.Result().Cookies()
+	if len(cookies) == 0 || cookies[0].Value != "replacement-refresh-token" || !cookies[0].HttpOnly || cookies[0].MaxAge != persistentRefreshCookieMaxAge {
+		t.Fatalf("refresh did not rotate the HttpOnly cookie: %+v", cookies)
+	}
+}
+
 func TestRefreshRejectsInvalidToken(t *testing.T) {
 	router := setupTestRouter(
 		fakeAuthService{},
@@ -354,6 +383,23 @@ func TestRefreshRejectsInvalidToken(t *testing.T) {
 
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("expected status %d, got %d; body: %s", http.StatusUnauthorized, rec.Code, rec.Body.String())
+	}
+}
+
+func TestRefreshPreservesCookieOnTransientFailure(t *testing.T) {
+	sessions := &fakeSessionService{err: errors.New("database temporarily unavailable")}
+	router := setupTestRouter(fakeAuthService{}, fakeTokenService{}, sessions)
+	req := httptest.NewRequest(http.MethodPost, "/auth/refresh", nil)
+	req.AddCookie(&http.Cookie{Name: refreshCookieName, Value: "still-valid-cookie"})
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("transient refresh failure status=%d, want 500; body=%s", rec.Code, rec.Body.String())
+	}
+	for _, cookie := range rec.Result().Cookies() {
+		if cookie.Name == refreshCookieName && cookie.MaxAge < 0 {
+			t.Fatal("transient refresh failure must not clear the user's refresh cookie")
+		}
 	}
 }
 
@@ -373,8 +419,31 @@ func TestLogoutRevokesRefreshToken(t *testing.T) {
 	if sessions.revokedToken != "test-refresh-token" {
 		t.Fatalf("expected logout to revoke the supplied token, got %q", sessions.revokedToken)
 	}
+	cookies := rec.Result().Cookies()
+	if len(cookies) == 0 || cookies[0].Name != refreshCookieName || cookies[0].MaxAge >= 0 || !cookies[0].HttpOnly {
+		t.Fatalf("logout did not expire the HttpOnly refresh cookie: %+v", cookies)
+	}
 }
 
+
+func TestLogoutRevokesSessionFromHttpOnlyCookie(t *testing.T) {
+	sessions := &fakeSessionService{}
+	router := setupTestRouter(fakeAuthService{}, fakeTokenService{}, sessions)
+	req := httptest.NewRequest(http.MethodPost, "/auth/logout", nil)
+	req.AddCookie(&http.Cookie{Name: refreshCookieName, Value: "cookie-refresh-token"})
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("cookie logout status=%d, want 200; body=%s", rec.Code, rec.Body.String())
+	}
+	if sessions.revokedToken != "cookie-refresh-token" {
+		t.Fatalf("logout did not revoke the cookie session: %q", sessions.revokedToken)
+	}
+	cookies := rec.Result().Cookies()
+	if len(cookies) == 0 || cookies[0].Name != refreshCookieName || cookies[0].MaxAge >= 0 {
+		t.Fatalf("logout did not expire the shared refresh cookie: %+v", cookies)
+	}
+}
 
 func TestRefreshAccessTokenFailureRevokesRotatedRefreshSession(t *testing.T) {
 	principal := &models.AuthPrincipal{ID: 10, Type: "staff", Status: "active", TokenVersion: 1, SchoolID: 2, Username: "testuser"}

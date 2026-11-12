@@ -36,7 +36,7 @@ Never point integration tests at production or a persistent user database withou
 - Complete cross-school/resource/assignment/field-level authorization tests across all modules.
 - Additional database outage, concurrency and rollback cases.
 - Migration rollback/forward-recovery verification.
-- Browser end-to-end tests (frontend not yet implemented).
+- Automated browser end-to-end tests (frontend exists, but no browser test harness is currently configured).
 - Load, penetration, deployment and disaster-recovery testing.
 
 ## Verification evidence

@@ -19,14 +19,17 @@
 Implemented route groups include:
 - Platform Admin account lifecycle and school onboarding.
 - School staff account listing, creation, update, enable/disable and password reset.
+- Staff account creation requires an employee profile in the same transaction: `full_name`, school-unique `employee_code`, `designation`, and exactly one required `mobile_number`, plus the login `username` and `initial_password`. `email` and `joining_date` are optional. The profile is stored separately from login credentials. `GET /school/staff` includes profile fields and `profile_complete`; legacy accounts without profile rows remain visible as incomplete.
+- `PATCH /school/staff/:principalID` accepts employee profile fields and `employment_status` (`active` or `inactive`). Inactive employment disables the login and revokes sessions; returning employment to Active does not automatically re-enable the login. Explicit account enablement with a temporary password is required after the profile is complete and Active; the database rejects login activation for inactive or profile-incomplete employees.
 - Role, permission, delegation and user-override administration.
-- Academic year/class/section/subject and teacher assignment foundations.
+- Academic year/class/section/subject and teacher assignment foundations. Section create/update accepts optional `medium` (`hindi` or `english`); section names remain school-defined and independent of medium.
 - Student admission/profile and enrollment/promotion/history foundations.
 - Assigned-section teacher enrollment roster.
 - Attendance listing, marking and correction.
+- Timetable current-year lookup, period definitions and weekly section schedules.
 - Guardian management.
 
-The exact route paths, request/response DTOs, permission keys and status codes are defined by the current router and handlers under `backend/internal/`. Do not treat this summary as a substitute for source-level contract verification.
+Timetable routes use `academic_year_id` on list requests. Period writes accept `period_number`, `name`, `starts_at` and `ends_at` (`HH:MM`), plus `is_break`. Entry writes accept `academic_year_id`, `section_id`, `subject_id`, `teacher_principal_id`, `teacher_subject_assignment_id`, `period_id`, `day_of_week` (1 = Monday through 7 = Sunday) and optional `room`. Break periods are defined in the period catalogue and cannot receive class entries. Period definitions cannot overlap within the same school and academic year. Entry writes require an active teacher-subject assignment matching the same school, year, section, subject and teacher. Teacher reads are restricted to the teacher's own scheduled entries.\n\nThe exact route paths, request/response DTOs, permission keys and status codes are defined by the current router and handlers under `backend/internal/`. Do not treat this summary as a substitute for source-level contract verification.
 
 ## Authorization contract
 
@@ -38,6 +41,8 @@ The exact route paths, request/response DTOs, permission keys and status codes a
 
 ## Not yet delivered
 
-The API does not yet represent the complete school product. Timetable, examinations, results, the frontend and Parent/Driver Phase 2 workflows remain pending. Parent OTP/SMS delivery is paused.
+The API does not yet represent the complete school product. Examinations, results, the frontend and Parent/Driver Phase 2 workflows remain pending. Parent OTP/SMS delivery is paused.
 
 For implementation status and verification evidence, see [Project Status](../project/STATUS.md). For authorization requirements, see [Phase 1 RBAC](../product/PHASE1-RBAC.md).
+
+The `GET /school/timetable/current-year` endpoint returns the active current academic year to any timetable reader. This allows Teachers, whose standard role does not include `academic_years.read`, to view their current timetable without granting broader academic-year listing access.

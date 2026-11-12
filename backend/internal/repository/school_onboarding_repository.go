@@ -105,7 +105,7 @@ func (r *SchoolOnboardingRepository) CreateSchoolWithAdmin(
 		INSERT INTO audit_events
 			(actor_principal_id, school_id, action, resource_type, resource_id, outcome, metadata)
 		VALUES ($1, $2, 'platform.school.created', 'school', $3, 'success',
-		        jsonb_build_object('school_code', $4, 'school_admin_principal_id', $5))
+		        jsonb_build_object('school_code', $4::text, 'school_admin_principal_id', $5::bigint))
 	`, actorPrincipalID, result.SchoolID, strconv.FormatInt(result.SchoolID, 10), result.SchoolCode, result.AdminPrincipalID)
 	if err != nil {
 		return nil, fmt.Errorf("write school onboarding audit event: %w", err)
