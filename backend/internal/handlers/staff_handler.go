@@ -109,7 +109,7 @@ func (h *StaffHandler) Create(c *gin.Context) {
 			},
 		})
 	case errors.Is(err, services.ErrInvalidStaffAccount):
-		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Username must be 3–32 lowercase letters, digits, dots, underscores, or hyphens"})
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Enter valid employee details and a username containing 3–32 lowercase letters, digits, dots, underscores, or hyphens"})
 	case errors.Is(err, services.ErrInvalidPassword):
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Initial password must meet the password policy"})
 	case errors.Is(err, services.ErrCompromisedPassword):

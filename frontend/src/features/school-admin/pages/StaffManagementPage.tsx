@@ -100,7 +100,13 @@ export function StaffManagementPage({ permissions }: Props) {
       }
       closeAction();
     } catch (error) {
-      setFeedback({ kind: "error", message: error instanceof Error ? error.message : "The request could not be completed." });
+      const message = error instanceof Error ? error.message : "The request could not be completed.";
+      if (message.toLowerCase().includes("employee code")) {
+        setFieldErrors(current => ({ ...current, employee_code: "This employee code is already used in this school." }));
+        setFeedback(null);
+      } else {
+        setFeedback({ kind: "error", message });
+      }
     }
   }
   function deactivate(item: StaffRecord) { setDisableError(""); setStaffToDisable(item); }
