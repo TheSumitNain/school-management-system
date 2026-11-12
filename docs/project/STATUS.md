@@ -2,8 +2,8 @@
 
 **Last reconciled:** 2026-11-12  
 **Repository:** `TheSumitNain/school-management-system`  
-**Reviewed branch:** `feature/school-attendance-management`  
-**Reviewed branch HEAD before this status reconciliation:** `a16fda5ee8b1d2264801997f6ead96e346953993`
+**Reviewed branch:** `work`  
+**Reviewed commit:** `32a8af1` (same source tree as `main` at the time of review)
 
 ## Staff Management — employee profile workflow implemented
 
@@ -37,7 +37,7 @@ This file is the current implementation-status reference. Older checkpoint notes
 
 The persistent-session/MFA policy has been implemented on this branch and pushed to GitHub. Backend GitHub Actions passed on code/test commit `b3af5904bd6e862aa261ee519a22effcacf2377a`, including application of all migrations to an ephemeral PostgreSQL database, backend tests with PostgreSQL integration, and `go vet`. Frontend CI passed on commit `6541584154c554e6ea662bdb9c78ac1ce27206a1`.
 
-The frontend already restores a session at app startup by calling the refresh endpoint with the same-origin HttpOnly cookie; this was verified by source inspection, not by a fresh browser close/reopen test. Do not mark the task fully accepted until the user pulls the branch, reviews/applies migration V25 to the intended local database after a backup, and manually verifies browser restart/session restoration, fresh-login MFA, background refresh, cross-tab account/logout behavior and security revocation.
+The frontend already restores a session at app startup by calling the refresh endpoint with the same-origin HttpOnly cookie; this was verified by source inspection, not by a fresh browser close/reopen test. Do not mark the task fully accepted until the user has reviewed and explicitly approved applying the pending migrations (V25–V30 at the time of this reconciliation) to the intended local database after a verified backup, and manually verified browser restart/session restoration, fresh-login MFA, background refresh, cross-tab account/logout behavior and security revocation. Disposable CI migrations do not change the user's local database.
 
 - The refresh cookie is persistent with a 400-day Max-Age and is renewed on each successful refresh. Browser close/reopen and laptop restart restore the session while the browser retains the cookie; browser-enforced retention limits still apply.
 - Platform Admin and School Admin must complete mandatory MFA on every fresh login. MFA must not be repeated during background access-token refresh or restoration of an existing valid session.
@@ -45,7 +45,7 @@ The frontend already restores a session at app startup by calling the refresh en
 - A session remains valid until the user manually logs out or a security/account event requires revocation (for example, password/security reset, account disablement or confirmed compromise).
 - Manual logout must revoke the session family. Preserve opaque refresh-token rotation, replay detection/family revocation, transaction/concurrency protections, HttpOnly + Secure cookie policy, cross-tab logout synchronization, principal token-version checks and live database-backed RBAC authorization.
 - Backend session lifecycle, persistent-cookie policy, regression/integration tests and backend/frontend security documentation have been updated. Automated browser close/reopen and interactive MFA acceptance remain pending locally.
-- Work on the existing `feature/school-attendance-management` branch. Do not create a new branch or merge PR #6; neither is part of this task.
+- Continue development on the agreed `work` branch; keep `main` stable and merge only a completed, verified feature.
 
 ## Future product direction (documented, not current implementation scope)
 
@@ -129,7 +129,7 @@ The presence of a page or API client does not mean its full browser workflow has
 - End-to-end browser verification of all School Admin workflows, including staff creation/role assignment, academic setup, student enrollment and attendance.
 - Full browser verification of Platform Admin onboarding, lifecycle and delegation workflows.
 - Complete tenant/resource/assignment/field-level authorization coverage across every business module and route.
-- Remaining academic/business modules, including timetable, examinations and results.
+- Timetable implementation exists; real-data browser and role acceptance remains pending. Examinations and results have no delivered schema, API routes or frontend workflow yet; see [Examinations and Results — Domain Design Proposal](../product/EXAMINATIONS-RESULTS-DESIGN.md).
 - Teacher/staff-specific operational screens and assignment-limited browser workflows beyond the new School Admin assignment-management screen.
 - Exhaustive HTTP coverage with real JWT signature validation for every protected route.
 - Production deployment hardening, least-privilege database grants, monitoring/alerting, backup/restore drills, penetration testing and load/capacity testing.
@@ -137,15 +137,15 @@ The presence of a page or API client does not mean its full browser workflow has
 
 ## Safe next sequence
 
-Follow the mandatory [Phase 1 School Operations task-by-task build order](../product/PHASE1-WORKFLOW-ORDER.md). The immediate operational sequence is: verify school/academic foundations → complete/verify subject catalogue → create teacher/staff accounts → assign teachers to subjects/classes/sections → create students and enroll them → finish timetable acceptance using real data → complete attendance → examinations/results → notices and dashboard integration.
+Follow the mandatory [Phase 1 School Operations task-by-task build order](../product/PHASE1-WORKFLOW-ORDER.md). The immediate operational sequence is: verify school/academic foundations → complete/verify subject catalogue → create teacher/staff accounts → assign teachers to subjects/classes/sections → create students and enroll them → finish timetable acceptance using real data → complete attendance → design and implement examinations/results → notices and dashboard integration.
 
 This sequence does not imply that existing modules must be rebuilt. Inspect current code and close missing implementation or acceptance gaps in place. Subject management already belongs to Academic Structure; do not create a duplicate subject module. Timetable implementation already exists and must be preserved while its real-data browser/role acceptance is completed. Student and teacher profile creation may be prepared in parallel after academic foundations, but downstream workflows must respect the dependency gates in the roadmap.
 
-Before new business-module work, keep the current persistent-session/MFA acceptance task visible and complete its pending local verification. Fix verified integration defects with regression tests, reconcile remaining authorization gaps against actual routes/repositories, and record browser, responsive, accessibility, theme and session acceptance. Parent OTP/SMS and Parent/Driver Phase 2 work remain deferred until Phase 1 school web completion and explicit reprioritization.
+Before production acceptance, complete the pending persistent-session/MFA browser verification and local database adoption only after explicit approval. For each new business module, reconcile authorization against actual routes/repositories and record browser, responsive, accessibility, theme and session acceptance. Parent OTP/SMS and Parent/Driver Phase 2 work remain deferred until Phase 1 school web completion and explicit reprioritization.
 
 ## Git and database safety
 
-- Prefer the agreed primary development branch workflow; do not create unnecessary branches or merge a pull request without explicit approval.
+- Develop on the single ongoing `work` branch. Keep `main` stable; merge from `work` only after feature completion and verification, then synchronize `work` from `main`.
 - Do not stage unrelated helper files or commit secrets.
 - Do not run migrations against persistent databases without explicit approval.
 - Keep `.env`, passwords, JWT secrets, TOTP encryption keys and real student data out of Git.
