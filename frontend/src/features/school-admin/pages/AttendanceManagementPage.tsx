@@ -111,7 +111,7 @@ export function AttendanceManagementPage({ permissions }: Props) {
           <Select ariaLabel="Academic year" value={String(effectiveYearID || "")} placeholder="Select academic year" onChange={value => { setAcademicYearID(Number(value)); setSectionID(0); setDrafts({}); }} disabled={!canReadYears || yearsQuery.isLoading} options={activeYears.map(year => ({ value: String(year.id), label: year.name + (year.is_current ? " · Current" : "") }))} />
         </label>
         <label>Class / section
-          <Select ariaLabel="Class / section" value={String(sectionID || "")} placeholder="Select section" onChange={value => { setSectionID(Number(value)); setDrafts({}); }} disabled={!canReadSections || !effectiveYearID || sectionsQuery.isLoading} options={sections.map(section => ({ value: String(section.id), label: `Section ${section.name} · Class #${section.class_id}` }))} />
+          <Select ariaLabel="Class / section" value={String(sectionID || "")} placeholder="Select section" onChange={value => { setSectionID(Number(value)); setDrafts({}); }} disabled={!canReadSections || !effectiveYearID || sectionsQuery.isLoading} options={sections.map(section => ({ value: String(section.id), label: `${section.class_name} · Section ${section.name}` }))} />
         </label>
         <label>Attendance date
           <DatePicker ariaLabel="Attendance date" placeholder="Choose the attendance date" value={date} max={today} onChange={value => { setDate(value); setDrafts({}); }} />
