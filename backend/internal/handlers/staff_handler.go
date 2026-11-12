@@ -55,43 +55,39 @@ func (h *StaffHandler) Create(c *gin.Context) {
 	var request struct {
 		Username string `json:"username"`
 		InitialPassword string `json:"initial_password"`
-        EmployeeCode string `json:"employee_code"`
-        FullName string `json:"full_name"`
-        Designation string `json:"designation"`
-        MobileNumber string `json:"mobile_number"`
-        Email string `json:"email"`
-        JoiningDate string `json:"joining_date"`
+		EmployeeCode string `json:"employee_code"`
+		FullName string `json:"full_name"`
+		Designation string `json:"designation"`
+		MobileNumber string `json:"mobile_number"`
+		Email string `json:"email"`
+		JoiningDate string `json:"joining_date"`
 	}
-	if err := c.ShouldBindJSON(&request); err != nil || strings.TrimSpace(request.Username) == "" || request.InitialPassword == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "username and initial_password are required"})
+	if err := c.ShouldBindJSON(&request); err != nil ||
+		strings.TrimSpace(request.Username) == "" || request.InitialPassword == "" ||
+		strings.TrimSpace(request.EmployeeCode) == "" || strings.TrimSpace(request.FullName) == "" ||
+		strings.TrimSpace(request.Designation) == "" || strings.TrimSpace(request.MobileNumber) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "username, initial_password, full_name, employee_code, designation and mobile_number are required"})
 		return
 	}
-    var user *models.User
-    var err error
-    hasProfile := strings.TrimSpace(request.EmployeeCode) != "" || strings.TrimSpace(request.FullName) != "" ||
-        strings.TrimSpace(request.Designation) != "" || strings.TrimSpace(request.MobileNumber) != "" ||
-        strings.TrimSpace(request.Email) != "" || strings.TrimSpace(request.JoiningDate) != ""
-    if hasProfile {
-        profileService, ok := h.service.(staffProfileCreateService)
-        if !ok {
-            c.JSON(http.StatusServiceUnavailable, gin.H{"status":"error","message":"Employee profile creation is unavailable"})
-            return
-        }
-        var joiningDate *time.Time
-        if strings.TrimSpace(request.JoiningDate) != "" {
-            parsed, parseErr := time.Parse("2006-01-02", request.JoiningDate)
-            if parseErr != nil {
-                c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"joining_date must use YYYY-MM-DD"})
-                return
-            }
-            joiningDate = &parsed
-        }
-        profile := models.StaffProfile{EmployeeCode:request.EmployeeCode, FullName:request.FullName, Designation:request.Designation,
-            MobileNumber:request.MobileNumber, Email:request.Email, JoiningDate:joiningDate, EmploymentStatus:"active"}
-        user, err = profileService.CreateWithProfile(c.Request.Context(), actorID, schoolID, request.Username, request.InitialPassword, profile)
-    } else {
-        user, err = h.service.Create(c.Request.Context(), actorID, schoolID, request.Username, request.InitialPassword)
-    }
+	var joiningDate *time.Time
+	if strings.TrimSpace(request.JoiningDate) != "" {
+		parsed, parseErr := time.Parse("2006-01-02", request.JoiningDate)
+		if parseErr != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "joining_date must use YYYY-MM-DD"})
+			return
+		}
+		joiningDate = &parsed
+	}
+	profileService, ok := h.service.(staffProfileCreateService)
+	if !ok {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Employee profile creation is unavailable"})
+		return
+	}
+	profile := models.StaffProfile{EmployeeCode: request.EmployeeCode, FullName: request.FullName,
+		Designation: request.Designation, MobileNumber: request.MobileNumber, Email: request.Email,
+		JoiningDate: joiningDate, EmploymentStatus: "active"}
+	user, err := profileService.CreateWithProfile(c.Request.Context(), actorID, schoolID,
+		request.Username, request.InitialPassword, profile)
 	switch {
 	case err == nil:
 		c.JSON(http.StatusCreated, gin.H{

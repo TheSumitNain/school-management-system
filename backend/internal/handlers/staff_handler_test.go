@@ -31,6 +31,12 @@ func (f *fakeStaffAccountService) Create(_ context.Context, actorID, schoolID in
 	return f.user, f.err
 }
 
+func (f *fakeStaffAccountService) CreateWithProfile(_ context.Context, actorID, schoolID int64, username, password string, _ models.StaffProfile) (*models.User, error) {
+	f.calls++
+	f.actorID, f.schoolID, f.username, f.password = actorID, schoolID, username, password
+	return f.user, f.err
+}
+
 func (f *fakeStaffAccountService) List(context.Context, int64, int64) ([]models.User, error) {
 	return []models.User{{ID: 15, PrincipalID: 27, SchoolID: 8, Username: "teacher.one", Status: "active", MustChangePassword: true}}, f.err
 }
@@ -60,7 +66,7 @@ func TestStaffHandlerCreateSuccessDoesNotExposePassword(t *testing.T) {
 		c.Next()
 	}, NewStaffHandler(service).Create)
 	req := httptest.NewRequest(http.MethodPost, "/school/staff",
-		strings.NewReader(`{"username":"teacher.one","initial_password":"A-Strong-Initial-Pass-123"}`))
+		strings.NewReader(`{"username":"teacher.one","initial_password":"A-Strong-Initial-Pass-123","full_name":"Rahul Sharma","employee_code":"EMP-001","designation":"Teacher","mobile_number":"9876543210"}`))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -109,12 +115,13 @@ func TestStaffHandlerCreateRejectsMissingAuthMalformedAndServiceErrors(t *testin
 		{err: services.ErrInvalidStaffAccount, want: http.StatusBadRequest},
 		{err: services.ErrInvalidPassword, want: http.StatusBadRequest},
 		{err: repository.ErrUsernameTaken, want: http.StatusConflict},
+        {err: repository.ErrEmployeeCodeTaken, want: http.StatusConflict},
 		{err: repository.ErrRolePermissionDenied, want: http.StatusForbidden},
 		{err: errors.New("internal"), want: http.StatusInternalServerError},
 	} {
 		service.err = test.err
 		req = httptest.NewRequest(http.MethodPost, "/school/staff",
-			strings.NewReader(`{"username":"teacher.one","initial_password":"A-Strong-Initial-Pass-123"}`))
+			strings.NewReader(`{"username":"teacher.one","initial_password":"A-Strong-Initial-Pass-123","full_name":"Rahul Sharma","employee_code":"EMP-001","designation":"Teacher","mobile_number":"9876543210"}`))
 		req.Header.Set("Content-Type", "application/json")
 		rec = httptest.NewRecorder()
 		router.ServeHTTP(rec, req)
