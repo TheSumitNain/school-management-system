@@ -144,4 +144,14 @@ func TestStaffProfileRepositoryPostgresIntegration(t *testing.T) {
     if finalStatus != "active" || !mustChange {
         t.Fatalf("explicit enable did not activate temporary-password account: status=%q must_change=%v", finalStatus, mustChange)
     }
+
+    legacy, err := repo.CreateStaffAccount(ctx, actorPrincipalID, schoolID,
+        "legacy-"+suffix, "integration-test-password-hash")
+    if err != nil { t.Fatalf("create profile-incomplete legacy account: %v", err) }
+    if err := repo.DisableStaffAccount(ctx, actorPrincipalID, schoolID, legacy.PrincipalID); err != nil {
+        t.Fatalf("disable profile-incomplete legacy account: %v", err)
+    }
+    if err := repo.EnableStaffAccount(ctx, actorPrincipalID, schoolID, legacy.PrincipalID, "legacy-temporary-password-hash"); !errors.Is(err, ErrStaffProfileIncomplete) {
+        t.Fatalf("profile-incomplete login enable error = %v, want ErrStaffProfileIncomplete", err)
+    }
 }
