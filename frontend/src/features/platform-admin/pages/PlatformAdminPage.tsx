@@ -144,17 +144,6 @@ export function PlatformAdminPage({ permissions }: Props) {
     }
   }
 
-  async function revokePermission(delegationID: number, permissionKey: string) {
-    if (selectedSchoolID === null || !window.confirm(`Revoke ${permissionKey} from this school? Existing role grants and user overrides tied to this delegation will stop authorizing access.`)) return;
-    setFeedback(null);
-    try {
-      await revokeDelegation.mutateAsync({ delegationID, schoolID: selectedSchoolID });
-      setFeedback({ kind: "success", message: `${permissionKey} delegation revoked.` });
-    } catch (error) {
-      setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to revoke permission." });
-    }
-  }
-
   function deactivate(principalID: number, email: string) { setDeactivateError(""); setAdminToDeactivate({ principalID, email }); }
   async function confirmDeactivate() {
     if (!adminToDeactivate) return;
@@ -183,7 +172,8 @@ export function PlatformAdminPage({ permissions }: Props) {
 
       <div className="platform-tabs" role="tablist" aria-label="Platform administration sections">
         {canManageAdmins && <button type="button" role="tab" aria-selected={activeTab === "admins"} className={activeTab === "admins" ? "selected" : ""} onClick={() => { setActiveTab("admins"); setFeedback(null); }}><Users size={16}/> Platform Admins</button>}
-        {canOnboardSchool && <button type="button" role="tab" aria-selected={activeTab === "school"} className={activeTab === "school" ? "selected" : ""} onClick={() => { setActiveTab("school"); setFeedback(null); }}><Building2 size={16}/> Onboard school</button>}        {canDelegate && <button type="button" role="tab" aria-selected={activeTab === "delegations"} className={activeTab === "delegations" ? "selected" : ""} onClick={() => { setActiveTab("delegations"); setFeedback(null); }}><KeyRound size={16}/> School permissions</button>}
+        {canOnboardSchool && <button type="button" role="tab" aria-selected={activeTab === "school"} className={activeTab === "school" ? "selected" : ""} onClick={() => { setActiveTab("school"); setFeedback(null); }}><Building2 size={16}/> Onboard school</button>}
+        {canDelegate && <button type="button" role="tab" aria-selected={activeTab === "delegations"} className={activeTab === "delegations" ? "selected" : ""} onClick={() => { setActiveTab("delegations"); setFeedback(null); }}><KeyRound size={16}/> School permissions</button>}
 
       </div>
 
