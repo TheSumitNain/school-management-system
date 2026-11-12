@@ -27,15 +27,25 @@ func TestStaffProfileInactiveLoginGuardPostgresIntegration(t *testing.T) {
         INSERT INTO users (school_id, username, password_hash, status)
         VALUES ($1, $2, 'integration-test-hash', 'active')
         RETURNING id, principal_id
-    `, schoolID, "profile-guard-"+suffix).Scan(&userID, &principalID); err != nil {
+    `, schoolID, "pg-"+suffix).Scan(&userID, &principalID); err != nil {
         t.Fatalf("create staff account fixture: %v", err)
     }
     t.Cleanup(func() {
         cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 10*time.Second)
         defer cleanupCancel()
-        _, _ = pool.Exec(cleanupCtx, `DELETE FROM staff_profiles WHERE principal_id = $1`, principalID)
-        _, _ = pool.Exec(cleanupCtx, `DELETE FROM users WHERE id = $1`, userID)
-        _, _ = pool.Exec(cleanupCtx, `DELETE FROM auth_principals WHERE id = $1`, principalID)
+        tx, err := pool.Begin(cleanupCtx)
+        if err != nil { t.Errorf("begin staff profile fixture cleanup: %v", err); return }
+        defer func() { _ = tx.Rollback(cleanupCtx) }()
+        if _, err := tx.Exec(cleanupCtx, `DELETE FROM staff_profiles WHERE principal_id = $1`, principalID); err != nil {
+            t.Errorf("delete staff profile fixture: %v", err); return
+        }
+        if _, err := tx.Exec(cleanupCtx, `DELETE FROM users WHERE id = $1`, userID); err != nil {
+            t.Errorf("delete staff user fixture: %v", err); return
+        }
+        if _, err := tx.Exec(cleanupCtx, `DELETE FROM auth_principals WHERE id = $1`, principalID); err != nil {
+            t.Errorf("delete staff principal fixture: %v", err); return
+        }
+        if err := tx.Commit(cleanupCtx); err != nil { t.Errorf("commit staff profile fixture cleanup: %v", err) }
     })
 
     if _, err := pool.Exec(ctx, `
