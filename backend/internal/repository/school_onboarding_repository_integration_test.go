@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"strings"
-	"github.com/jackc/pgx/v5"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 )
 
 // TestSchoolOnboardingAuditMetadataPostgresIntegration guards the explicit
