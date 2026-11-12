@@ -1,10 +1,15 @@
-import { useState, type FormEvent } from "react";
-import { Building2, Eye, EyeOff, ShieldCheck, UserPlus, Users } from "lucide-react";
+import { useEffect, useState, type FormEvent } from "react";
+import { Building2, Eye, EyeOff, KeyRound, ShieldCheck, UserPlus, Users } from "lucide-react";
 import {
   useCreatePlatformAdminMutation,
   useDeactivatePlatformAdminMutation,
   useOnboardSchoolMutation,
   usePlatformAdminsQuery,
+  usePlatformSchoolsQuery,
+  useDelegableSchoolPermissionsQuery,
+  usePlatformSchoolDelegationsQuery,
+  useGrantPlatformSchoolPermissionDelegationMutation,
+  useRevokePlatformSchoolPermissionDelegationMutation,
 } from "../queries";
 import { Modal } from "../../../shared/components/Modal";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
@@ -16,7 +21,9 @@ export function PlatformAdminPage({ permissions }: Props) {
   const canManageAdmins = permissions.includes("platform.admins.manage");
   const canOnboardSchool = permissions.includes("platform.schools.create") &&
     permissions.includes("platform.school_admins.create");
-  const [activeTab, setActiveTab] = useState<"admins" | "school">(canManageAdmins ? "admins" : "school");
+  const canDelegate = permissions.includes("platform.permissions.delegate") && permissions.includes("platform.schools.read");
+  const firstTab = canManageAdmins ? "admins" : canOnboardSchool ? "school" : "delegations";
+  const [activeTab, setActiveTab] = useState<"admins" | "school" | "delegations">(firstTab);
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
   const [showAdminPassword, setShowAdminPassword] = useState(false);
   const [showSchoolAdminPassword, setShowSchoolAdminPassword] = useState(false);
@@ -25,6 +32,23 @@ export function PlatformAdminPage({ permissions }: Props) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [adminToDeactivate, setAdminToDeactivate] = useState<{ principalID: number; email: string } | null>(null);
   const [deactivateError, setDeactivateError] = useState("");
+  const [selectedSchoolID, setSelectedSchoolID] = useState<number | null>(null);
+  const [selectedPermission, setSelectedPermission] = useState("");
+  const [canAssignToRoles, setCanAssignToRoles] = useState(true);
+  const [canOverrideUsers, setCanOverrideUsers] = useState(false);
+
+  const schoolsQuery = usePlatformSchoolsQuery(canDelegate);
+  const permissionQuery = useDelegableSchoolPermissionsQuery(canDelegate);
+  const delegationsQuery = usePlatformSchoolDelegationsQuery(selectedSchoolID, canDelegate);
+  const grantDelegation = useGrantPlatformSchoolPermissionDelegationMutation();
+  const revokeDelegation = useRevokePlatformSchoolPermissionDelegationMutation();
+  const delegablePermissions = (permissionQuery.data?.permissions ?? []).filter(item => item.is_delegable);
+  const activeSchools = (schoolsQuery.data?.schools ?? []).filter(school => school.status === "active");
+
+  useEffect(() => {
+    if (selectedSchoolID === null && activeSchools.length) setSelectedSchoolID(activeSchools[0].id);
+  }, [selectedSchoolID, activeSchools]);
+
 
   const adminsQuery = usePlatformAdminsQuery(canManageAdmins);
   const createAdmin = useCreatePlatformAdminMutation();
@@ -89,6 +113,48 @@ export function PlatformAdminPage({ permissions }: Props) {
     }
   }
 
+  async function grantPermission(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (selectedSchoolID === null || !selectedPermission || (!canAssignToRoles && !canOverrideUsers)) {
+      setFeedback({ kind: "error", message: "Choose a school, permission and at least one delegation capability." });
+      return;
+    }
+    setFeedback(null);
+    try {
+      await grantDelegation.mutateAsync({
+        schoolID: selectedSchoolID,
+        permission_key: selectedPermission,
+        can_assign_to_roles: canAssignToRoles,
+        can_override_users: canOverrideUsers,
+      });
+      setFeedback({ kind: "success", message: "Permission delegated to the selected school." });
+    } catch (error) {
+      setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to delegate permission." });
+    }
+  }
+
+  async function revokePermission(delegationID: number, permissionKey: string) {
+    if (selectedSchoolID === null || !window.confirm(`Revoke ${permissionKey} from this school? Existing role grants and user overrides tied to this delegation will stop authorizing access.`)) return;
+    setFeedback(null);
+    try {
+      await revokeDelegation.mutateAsync({ delegationID, schoolID: selectedSchoolID });
+      setFeedback({ kind: "success", message: `${permissionKey} delegation revoked.` });
+    } catch (error) {
+      setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to revoke permission." });
+    }
+  }
+
+  async function revokePermission(delegationID: number, permissionKey: string) {
+    if (selectedSchoolID === null || !window.confirm(`Revoke ${permissionKey} from this school? Existing role grants and user overrides tied to this delegation will stop authorizing access.`)) return;
+    setFeedback(null);
+    try {
+      await revokeDelegation.mutateAsync({ delegationID, schoolID: selectedSchoolID });
+      setFeedback({ kind: "success", message: `${permissionKey} delegation revoked.` });
+    } catch (error) {
+      setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to revoke permission." });
+    }
+  }
+
   function deactivate(principalID: number, email: string) { setDeactivateError(""); setAdminToDeactivate({ principalID, email }); }
   async function confirmDeactivate() {
     if (!adminToDeactivate) return;
@@ -117,7 +183,8 @@ export function PlatformAdminPage({ permissions }: Props) {
 
       <div className="platform-tabs" role="tablist" aria-label="Platform administration sections">
         {canManageAdmins && <button type="button" role="tab" aria-selected={activeTab === "admins"} className={activeTab === "admins" ? "selected" : ""} onClick={() => { setActiveTab("admins"); setFeedback(null); }}><Users size={16}/> Platform Admins</button>}
-        {canOnboardSchool && <button type="button" role="tab" aria-selected={activeTab === "school"} className={activeTab === "school" ? "selected" : ""} onClick={() => { setActiveTab("school"); setFeedback(null); }}><Building2 size={16}/> Onboard school</button>}
+        {canOnboardSchool && <button type="button" role="tab" aria-selected={activeTab === "school"} className={activeTab === "school" ? "selected" : ""} onClick={() => { setActiveTab("school"); setFeedback(null); }}><Building2 size={16}/> Onboard school</button>}        {canDelegate && <button type="button" role="tab" aria-selected={activeTab === "delegations"} className={activeTab === "delegations" ? "selected" : ""} onClick={() => { setActiveTab("delegations"); setFeedback(null); }}><KeyRound size={16}/> School permissions</button>}
+
       </div>
 
       {feedback && ((!adminDialogOpen && !schoolDialogOpen) || feedback.kind === "success") && <div className={`platform-feedback ${feedback.kind}`} role="status">{feedback.message}</div>}
@@ -133,6 +200,55 @@ export function PlatformAdminPage({ permissions }: Props) {
           </section>
 
           <div className="platform-create-action"><p>Create an additional global administrator account. New accounts must enroll MFA on first sign-in.</p><button type="button" className="primary" onClick={() => {setFeedback(null);setFieldErrors({});setShowAdminPassword(false);setAdminDialogOpen(true);}}><UserPlus size={16}/> Create Platform Admin</button></div>
+        </div>
+      )}
+
+      {activeTab === "delegations" && canDelegate && (
+        <div className="platform-delegations">
+          <section className="form-panel platform-form-panel">
+            <div className="platform-form-title"><KeyRound size={19}/><div><h2>Delegate school permissions</h2><p>Only delegable permissions can be granted. Choose what the School Admin may assign to custom roles or individual staff.</p></div></div>
+            {schoolsQuery.isPending ? <div className="table-message">Loading schools…</div>
+              : schoolsQuery.error ? <div className="table-message error-text">{schoolsQuery.error instanceof Error ? schoolsQuery.error.message : "Unable to load schools."}<button className="platform-inline-button" onClick={() => void schoolsQuery.refetch()}>Retry</button></div>
+              : !activeSchools.length ? <div className="table-message">No active schools are available for permission delegation.</div>
+              : <>
+                <label className="platform-select-label">School
+                  <select value={selectedSchoolID ?? ""} onChange={event => { setSelectedSchoolID(Number(event.target.value) || null); setFeedback(null); }}>
+                    {activeSchools.map(school => <option key={school.id} value={school.id}>{school.name} · {school.code} · {school.status}</option>)}
+                  </select>
+                </label>
+                {permissionQuery.isPending ? <div className="table-message">Loading delegable permissions…</div>
+                  : permissionQuery.error ? <div className="table-message error-text">{permissionQuery.error instanceof Error ? permissionQuery.error.message : "Unable to load permission catalogue."}<button className="platform-inline-button" onClick={() => void permissionQuery.refetch()}>Retry</button></div>
+                  : delegablePermissions.length === 0 ? <div className="table-message">No active school permissions are currently marked as delegable.</div> : <form onSubmit={grantPermission}>
+                  <label>Permission
+                    <select value={selectedPermission} onChange={event => setSelectedPermission(event.target.value)} required>
+                      <option value="">Select a delegable permission</option>
+                      {delegablePermissions.map(permission => <option key={permission.permission_key} value={permission.permission_key}>{permission.permission_key}</option>)}
+                    </select>
+                  </label>
+                  {selectedPermission && <p className="platform-permission-description">{delegablePermissions.find(item => item.permission_key === selectedPermission)?.description}</p>}
+                  <div className="platform-delegation-options">
+                    <label><input type="checkbox" checked={canAssignToRoles} onChange={event => setCanAssignToRoles(event.target.checked)}/> School Admin can assign it to custom roles</label>
+                    <label><input type="checkbox" checked={canOverrideUsers} onChange={event => setCanOverrideUsers(event.target.checked)}/> School Admin can grant individual user overrides</label>
+                  </div>
+                  <button className="primary" type="submit" disabled={grantDelegation.isPending || !selectedPermission || (!canAssignToRoles && !canOverrideUsers)}>
+                    {grantDelegation.isPending ? "Delegating…" : "Grant permission to school"}
+                  </button>
+                </form>}
+              </>}
+          </section>
+
+          <section className="table-panel">
+            <div className="toolbar"><div><h2>Active delegations</h2><small>{selectedSchoolID === null ? "Select a school to view its permissions" : "Permissions currently delegated to this school"}</small></div><span className="platform-count">{delegationsQuery.data?.delegations.length ?? 0} active</span></div>
+            {selectedSchoolID === null ? <div className="table-message">Select a school to continue.</div>
+              : delegationsQuery.isPending ? <div className="table-message">Loading delegated permissions…</div>
+              : delegationsQuery.error ? <div className="table-message error-text">{delegationsQuery.error instanceof Error ? delegationsQuery.error.message : "Unable to load delegations."}<button className="platform-inline-button" onClick={() => void delegationsQuery.refetch()}>Retry</button></div>
+              : delegationsQuery.data?.delegations.length ? <div className="platform-delegation-list">
+                {delegationsQuery.data.delegations.map(item => <article className="platform-delegation-item" key={item.id}>
+                  <div><b>{item.permission_key}</b><small>{item.can_assign_to_roles ? "Custom roles" : ""}{item.can_assign_to_roles && item.can_override_users ? " · " : ""}{item.can_override_users ? "Individual overrides" : ""}</small></div>
+                  <button type="button" className="platform-danger-button" disabled={revokeDelegation.isPending} onClick={() => void revokePermission(item.id, item.permission_key)}>Revoke</button>
+                </article>)}
+              </div> : <div className="table-message">No active permission delegations for this school.</div>}
+          </section>
         </div>
       )}
 
