@@ -81,4 +81,36 @@ func TestStaffProfileInactiveLoginGuardPostgresIntegration(t *testing.T) {
     `, principalID); err == nil {
         t.Fatal("database allowed reactivation while employee profile is inactive")
     }
+
+    // A legacy account without an employee profile may keep an existing active
+    // login, but a disabled legacy login must not be reactivated until profile
+    // completion. Verify the same invariant for direct SQL updates.
+    legacyTx, err := pool.Begin(ctx)
+    if err != nil { t.Fatalf("begin legacy profile-less activation test: %v", err) }
+    var legacyPrincipalID int64
+    if err := legacyTx.QueryRow(ctx, `
+        INSERT INTO users (school_id, username, password_hash, status)
+        VALUES ($1, $2, 'integration-test-hash', 'active')
+        RETURNING principal_id
+    `, schoolID, "legacy-"+suffix).Scan(&legacyPrincipalID); err != nil {
+        _ = legacyTx.Rollback(ctx)
+        t.Fatalf("create legacy profile-less staff fixture: %v", err)
+    }
+    if _, err := legacyTx.Exec(ctx, `
+        UPDATE auth_principals SET status = 'disabled', token_version = token_version + 1
+        WHERE id = $1
+    `, legacyPrincipalID); err != nil {
+        _ = legacyTx.Rollback(ctx)
+        t.Fatalf("disable legacy profile-less fixture: %v", err)
+    }
+    if _, err := legacyTx.Exec(ctx, `
+        UPDATE auth_principals SET status = 'active', token_version = token_version + 1
+        WHERE id = $1
+    `, legacyPrincipalID); err == nil {
+        _ = legacyTx.Rollback(ctx)
+        t.Fatal("database allowed reactivation of a profile-incomplete legacy account")
+    }
+    if err := legacyTx.Rollback(ctx); err != nil {
+        t.Fatalf("rollback legacy profile-less activation test: %v", err)
+    }
 }
