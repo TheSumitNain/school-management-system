@@ -108,6 +108,15 @@ func TestStaffHandlerCreateRejectsMissingAuthMalformedAndServiceErrors(t *testin
 		t.Fatalf("malformed body status=%d calls=%d", rec.Code, service.calls)
 	}
 
+    req = httptest.NewRequest(http.MethodPost, "/school/staff",
+        strings.NewReader(`{"username":"teacher.one","initial_password":"A-Strong-Initial-Pass-123"}`))
+    req.Header.Set("Content-Type", "application/json")
+    rec = httptest.NewRecorder()
+    router.ServeHTTP(rec, req)
+    if rec.Code != http.StatusBadRequest || service.calls != 0 {
+        t.Fatalf("missing employee profile status=%d calls=%d body=%s", rec.Code, service.calls, rec.Body.String())
+    }
+
 	for _, test := range []struct {
 		err error
 		want int
