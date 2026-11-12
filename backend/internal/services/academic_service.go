@@ -64,6 +64,15 @@ func (s *AcademicService) SaveSection(ctx context.Context,actorID,schoolID,id,ye
 	if s==nil||s.repository==nil{return nil,repository.ErrAcademicAccessDenied}
 	return s.repository.SaveSection(ctx,actorID,schoolID,id,yearID,classID,name,order,active)
 }
+func (s *AcademicService) SaveSectionWithMedium(ctx context.Context,actorID,schoolID,id,yearID,classID int64,name string,medium *string,order int,active bool)(*repository.AcademicSection,error){
+	if s==nil||s.repository==nil{return nil,repository.ErrAcademicAccessDenied}
+	type sectionMediumRepository interface {
+		SaveSectionWithMedium(context.Context,int64,int64,int64,int64,int64,string,*string,int,bool)(*repository.AcademicSection,error)
+	}
+	if repo,ok:=s.repository.(sectionMediumRepository);ok{return repo.SaveSectionWithMedium(ctx,actorID,schoolID,id,yearID,classID,name,medium,order,active)}
+	if medium!=nil&&strings.TrimSpace(*medium)!=""{return nil,repository.ErrInvalidAcademicInput}
+	return s.repository.SaveSection(ctx,actorID,schoolID,id,yearID,classID,name,order,active)
+}
 func (s *AcademicService) ListSubjects(ctx context.Context,actorID,schoolID int64)([]repository.AcademicSubject,error){
 	if s==nil||s.repository==nil{return nil,repository.ErrAcademicAccessDenied}
 	return s.repository.ListSubjects(ctx,actorID,schoolID)
