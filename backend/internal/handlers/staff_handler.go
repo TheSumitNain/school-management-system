@@ -331,6 +331,10 @@ func (h *StaffHandler) Enable(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "This password has appeared in known data breaches. Choose a different password."})
 	case errors.Is(err, services.ErrPasswordBreachCheckUnavailable):
 		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Password safety verification is temporarily unavailable. Try again shortly."})
+    case errors.Is(err, repository.ErrStaffProfileIncomplete):
+        c.JSON(http.StatusConflict, gin.H{"status":"error","message":"Complete the employee profile before enabling this login account"})
+    case errors.Is(err, repository.ErrStaffProfileInactive):
+        c.JSON(http.StatusConflict, gin.H{"status":"error","message":"Reactivate the employee profile before enabling this login account"})
 	case errors.Is(err, repository.ErrUserNotFound):
 		c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": "Disabled staff account not found in this school"})
 	case errors.Is(err, repository.ErrRolePermissionDenied):

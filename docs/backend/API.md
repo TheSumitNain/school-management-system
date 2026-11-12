@@ -19,7 +19,7 @@
 Implemented route groups include:
 - Platform Admin account lifecycle and school onboarding.
 - School staff account listing, creation, update, enable/disable and password reset.
-- Staff account creation accepts an employee profile in the same transaction: `full_name`, school-unique `employee_code`, `designation`, one required `mobile_number`, optional `email` and `joining_date`, plus the initial login `username` and `initial_password`. The profile is stored separately from login credentials. `GET /school/staff` includes profile fields and `profile_complete`; legacy accounts without profile rows remain visible as incomplete.
+- Staff account creation requires an employee profile in the same transaction: `full_name`, school-unique `employee_code`, `designation`, and exactly one required `mobile_number`, plus the login `username` and `initial_password`. `email` and `joining_date` are optional. The profile is stored separately from login credentials. `GET /school/staff` includes profile fields and `profile_complete`; legacy accounts without profile rows remain visible as incomplete.
 - `PATCH /school/staff/:principalID` accepts employee profile fields and `employment_status` (`active` or `inactive`). Inactive employment disables the login and revokes sessions; returning employment to Active does not automatically re-enable the login. Explicit account enablement with a temporary password is required, and the database rejects login activation while the profile is inactive.
 - Role, permission, delegation and user-override administration.
 - Academic year/class/section/subject and teacher assignment foundations. Section create/update accepts optional `medium` (`hindi` or `english`); section names remain school-defined and independent of medium.

@@ -21,6 +21,8 @@ var (
 	ErrStaffInactive  = errors.New("staff account is inactive")
 	ErrSchoolInactive = errors.New("school is inactive")
     ErrEmployeeCodeTaken = errors.New("employee code already exists in this school")
+    ErrStaffProfileInactive = errors.New("staff employee profile is inactive")
+    ErrStaffProfileIncomplete = errors.New("staff employee profile is incomplete")
 )
 
 type UserRepository struct {
@@ -265,8 +267,9 @@ func (r *UserRepository) CreateStaffAccountWithProfile(
 		INSERT INTO audit_events
 		    (actor_principal_id, school_id, action, resource_type, resource_id, outcome, metadata)
 		VALUES ($1, $2, 'staff.account.created', 'staff_user', $3, 'success',
-		        jsonb_build_object('principal_id', $4::bigint, 'username', $5::text, 'must_change_password', $6::boolean))
-	`, actorPrincipalID, schoolID, fmt.Sprint(user.ID), user.PrincipalID, user.Username, user.MustChangePassword); err != nil {
+		        jsonb_build_object('principal_id', $4::bigint, 'username', $5::text, 'must_change_password', $6::boolean,
+                    'employee_code', $7::text, 'employment_status', 'active'))
+	`, actorPrincipalID, schoolID, fmt.Sprint(user.ID), user.PrincipalID, user.Username, user.MustChangePassword, profile.EmployeeCode); err != nil {
 		return nil, fmt.Errorf("audit staff account creation: %w", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -1151,6 +1154,21 @@ func (r *UserRepository) EnableStaffAccount(
 	if err != nil {
 		return fmt.Errorf("authorize same-school staff account re-enable: %w", err)
 	}
+
+    var employmentStatus string
+    err = tx.QueryRow(ctx, `
+        SELECT employment_status FROM staff_profiles
+         WHERE principal_id = $1 AND school_id = $2
+    `, targetPrincipalID, schoolID).Scan(&employmentStatus)
+    if errors.Is(err, pgx.ErrNoRows) {
+        return ErrStaffProfileIncomplete
+    }
+    if err != nil {
+        return fmt.Errorf("check staff employment status before login enable: %w", err)
+    }
+    if employmentStatus != "active" {
+        return ErrStaffProfileInactive
+    }
 
 	// Reactivate the canonical principal first. The V4 status-sync trigger
 	// updates users.status atomically; the credential update below then sets

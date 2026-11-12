@@ -120,6 +120,9 @@ func TestStaffProfileRepositoryPostgresIntegration(t *testing.T) {
     if updated.Status != "disabled" || updated.EmploymentStatus != "inactive" {
         t.Fatalf("inactive employee did not disable login: %+v", updated)
     }
+    if err := repo.EnableStaffAccount(ctx, actorPrincipalID, schoolID, user.PrincipalID, "must-not-enable-hash"); !errors.Is(err, ErrStaffProfileInactive) {
+        t.Fatalf("inactive employee login enable error = %v, want ErrStaffProfileInactive", err)
+    }
 
     profile.EmploymentStatus = "active"
     updated, err = repo.UpdateStaffProfile(ctx, actorPrincipalID, schoolID, user.PrincipalID, profile)
