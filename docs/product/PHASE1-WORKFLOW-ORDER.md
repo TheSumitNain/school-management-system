@@ -129,6 +129,8 @@ A task is not complete merely because a database table, API route or frontend pa
 
 **Depends on:** Tasks 0, 1, 3, 4 and 5.
 
+**Design reference:** [Examinations and Results — Domain Design Proposal](EXAMINATIONS-RESULTS-DESIGN.md). This is a proposal, not an approved grading policy or permission to add schema. Resolve the listed product decisions before creating migrations.
+
 **Actions**
 1. Configure exam types/terms and examination sessions for an academic year.
 2. Define exam schedule and class/subject applicability.
