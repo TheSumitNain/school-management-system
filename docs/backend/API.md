@@ -20,7 +20,7 @@ Implemented route groups include:
 - Platform Admin account lifecycle and school onboarding.
 - School staff account listing, creation, update, enable/disable and password reset.
 - Role, permission, delegation and user-override administration.
-- Academic year/class/section/subject and teacher assignment foundations.
+- Academic year/class/section/subject and teacher assignment foundations. Section create/update accepts optional `medium` (`hindi` or `english`); section names remain school-defined and independent of medium.
 - Student admission/profile and enrollment/promotion/history foundations.
 - Assigned-section teacher enrollment roster.
 - Attendance listing, marking and correction.
