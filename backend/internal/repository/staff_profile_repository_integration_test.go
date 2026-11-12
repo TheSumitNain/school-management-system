@@ -114,12 +114,23 @@ func TestStaffProfileRepositoryPostgresIntegration(t *testing.T) {
     }
     if duplicateCount != 0 { t.Fatalf("failed profile creation left %d orphan login accounts", duplicateCount) }
 
+    profileSessionHash := integrationTokenHash("staff-profile-inactive-" + suffix)
+    sessions := NewPrincipalRefreshSessionRepository(tx)
+    if err := sessions.CreatePrincipalInTx(ctx, tx, user.PrincipalID, profileSessionHash, time.Now().Add(time.Hour)); err != nil {
+        t.Fatalf("create refresh session before profile deactivation: %v", err)
+    }
+
     profile.EmploymentStatus = "inactive"
     updated, err := repo.UpdateStaffProfile(ctx, actorPrincipalID, schoolID, user.PrincipalID, profile)
     if err != nil { t.Fatalf("mark employee profile inactive: %v", err) }
     if updated.Status != "disabled" || updated.EmploymentStatus != "inactive" {
         t.Fatalf("inactive employee did not disable login: %+v", updated)
     }
+    var profileSessionRevoked bool
+    if err := tx.QueryRow(ctx, `SELECT revoked_at IS NOT NULL FROM refresh_sessions WHERE token_hash = $1`, profileSessionHash).Scan(&profileSessionRevoked); err != nil {
+        t.Fatalf("read refresh session after employee inactivation: %v", err)
+    }
+    if !profileSessionRevoked { t.Fatal("inactivating employee profile did not revoke active refresh sessions") }
     if err := repo.EnableStaffAccount(ctx, actorPrincipalID, schoolID, user.PrincipalID, "must-not-enable-hash"); !errors.Is(err, ErrStaffProfileInactive) {
         t.Fatalf("inactive employee login enable error = %v, want ErrStaffProfileInactive", err)
     }
