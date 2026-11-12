@@ -34,6 +34,7 @@ type SchoolOnboardingResult struct {
 
 type schoolOnboardingRepository interface {
 	CreateSchoolWithAdmin(ctx context.Context, actorPrincipalID int64, name, code, adminUsername, passwordHash string) (*repository.SchoolOnboardingResult, error)
+	ListPlatformSchools(ctx context.Context, actorPrincipalID int64) ([]repository.PlatformSchoolRecord, error)
 }
 
 type SchoolOnboardingService struct {
@@ -82,4 +83,13 @@ func (s *SchoolOnboardingService) CreateSchoolWithAdmin(ctx context.Context, act
 		AdminPrincipalID: created.AdminPrincipalID,
 		AdminUsername: created.AdminUsername,
 	}, nil
+}
+
+
+// ListPlatformSchools returns platform-wide school records after repository authorization.
+func (s *SchoolOnboardingService) ListPlatformSchools(ctx context.Context, actorPrincipalID int64) ([]repository.PlatformSchoolRecord, error) {
+	if s == nil || s.repository == nil || actorPrincipalID <= 0 {
+		return nil, repository.ErrPlatformSchoolListDenied
+	}
+	return s.repository.ListPlatformSchools(ctx, actorPrincipalID)
 }

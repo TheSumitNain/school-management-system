@@ -50,3 +50,53 @@ export function onboardSchool(input: CreateSchoolInput) {
     body: JSON.stringify(input),
   });
 }
+
+
+export type PlatformSchool = {
+  id: number;
+  name: string;
+  code: string;
+  status: "pending_setup" | "active" | "suspended" | string;
+  created_at: string;
+};
+export type PlatformSchoolsResponse = { schools: PlatformSchool[] };
+export type DelegableSchoolPermission = {
+  permission_key: string;
+  description: string;
+  is_delegable: boolean;
+};
+export type DelegableSchoolPermissionsResponse = { permissions: DelegableSchoolPermission[] };
+export type PlatformSchoolPermissionDelegation = {
+  id: number;
+  school_id: number;
+  permission_key: string;
+  can_assign_to_roles: boolean;
+  can_override_users: boolean;
+  granted_by: number;
+  created_at: string;
+  revoked_at?: string;
+};
+export type PlatformSchoolPermissionDelegationsResponse = { delegations: PlatformSchoolPermissionDelegation[] };
+
+export function getPlatformSchools(signal?: AbortSignal) {
+  return api<PlatformSchoolsResponse>("/platform/schools", { signal });
+}
+export function getDelegableSchoolPermissions(signal?: AbortSignal) {
+  return api<DelegableSchoolPermissionsResponse>("/platform/permissions/delegable", { signal });
+}
+export function getPlatformSchoolPermissionDelegations(schoolID: number, signal?: AbortSignal) {
+  return api<PlatformSchoolPermissionDelegationsResponse>(`/platform/schools/${schoolID}/permission-delegations`, { signal });
+}
+export function grantPlatformSchoolPermissionDelegation(schoolID: number, input: {
+  permission_key: string;
+  can_assign_to_roles: boolean;
+  can_override_users: boolean;
+}) {
+  return api<{ delegation: PlatformSchoolPermissionDelegation; message: string }>(
+    `/platform/schools/${schoolID}/permission-delegations`,
+    { method: "POST", body: JSON.stringify(input) },
+  );
+}
+export function revokePlatformSchoolPermissionDelegation(delegationID: number) {
+  return api<{ message: string }>(`/platform/permission-delegations/${delegationID}/revoke`, { method: "POST" });
+}
