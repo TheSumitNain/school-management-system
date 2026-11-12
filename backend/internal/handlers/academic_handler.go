@@ -92,9 +92,16 @@ func(h *AcademicHandler) ListSections(c *gin.Context){
 }
 func(h *AcademicHandler) SaveSection(c *gin.Context){
 	a,s,ok:=h.ready(c);if !ok{return};var id int64;if c.Param("sectionID")!=""{var valid bool;id,valid=academicID(c,"sectionID");if !valid{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid section ID"});return}}
-	var req struct{AcademicYearID int64 `json:"academic_year_id"`;ClassID int64 `json:"class_id"`;Name string `json:"name"`;DisplayOrder int `json:"display_order"`;IsActive *bool `json:"is_active"`}
+	var req struct{AcademicYearID int64 `json:"academic_year_id"`;ClassID int64 `json:"class_id"`;Name string `json:"name"`;Medium *string `json:"medium"`;DisplayOrder int `json:"display_order"`;IsActive *bool `json:"is_active"`}
 	if c.ShouldBindJSON(&req)!=nil{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid request body"});return};active:=true;if req.IsActive!=nil{active=*req.IsActive}
-	v,err:=h.service.SaveSection(c.Request.Context(),a,s,id,req.AcademicYearID,req.ClassID,req.Name,req.DisplayOrder,active);if err!=nil{academicError(c,err,"Section");return};code:=http.StatusOK;if id==0{code=http.StatusCreated};c.JSON(code,gin.H{"status":"success","section":v})
+	var v *repository.AcademicSection
+	var err error
+	if saver,ok:=h.service.(interface{SaveSectionWithMedium(context.Context,int64,int64,int64,int64,int64,string,*string,int,bool)(*repository.AcademicSection,error)});ok{
+		v,err=saver.SaveSectionWithMedium(c.Request.Context(),a,s,id,req.AcademicYearID,req.ClassID,req.Name,req.Medium,req.DisplayOrder,active)
+	}else if req.Medium==nil||strings.TrimSpace(*req.Medium)==""{
+		v,err=h.service.SaveSection(c.Request.Context(),a,s,id,req.AcademicYearID,req.ClassID,req.Name,req.DisplayOrder,active)
+	}else{err=repository.ErrInvalidAcademicInput}
+	if err!=nil{academicError(c,err,"Section");return};code:=http.StatusOK;if id==0{code=http.StatusCreated};c.JSON(code,gin.H{"status":"success","section":v})
 }
 func(h *AcademicHandler) ListSubjects(c *gin.Context){
 	a,s,ok:=h.ready(c);if !ok{return};items,err:=h.service.ListSubjects(c.Request.Context(),a,s);if err!=nil{academicError(c,err,"Subject");return};c.JSON(http.StatusOK,gin.H{"status":"success","subjects":items})
