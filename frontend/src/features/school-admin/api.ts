@@ -5,6 +5,14 @@ export type StaffRecord = {
   principal_id: number;
   school_id: number;
   username: string;
+  employee_code?: string;
+  full_name?: string;
+  designation?: string;
+  mobile_number?: string;
+  email?: string;
+  joining_date?: string | null;
+  employment_status?: "active" | "inactive" | string;
+  profile_complete?: boolean;
   status: string;
   must_change_password: boolean;
   created_at?: string;
@@ -15,10 +23,10 @@ export type StaffListResponse = { staff: StaffRecord[] };
 export function getSchoolStaff(signal?: AbortSignal) {
   return api<StaffListResponse>("/school/staff", { signal });
 }
-export function createSchoolStaff(input: { username: string; initial_password: string }) {
+export function createSchoolStaff(input: { username: string; initial_password: string } & { employee_code: string; full_name: string; designation: string; mobile_number: string; email?: string; joining_date?: string; employment_status?: "active" | "inactive" }) {
   return api<{ staff: StaffRecord }>("/school/staff", { method: "POST", body: JSON.stringify(input) });
 }
-export function updateSchoolStaff(principalID: number, input: { username: string }) {
+export function updateSchoolStaff(principalID: number, input: { username: string } & { employee_code: string; full_name: string; designation: string; mobile_number: string; email?: string; joining_date?: string; employment_status?: "active" | "inactive" }) {
   return api<{ staff: StaffRecord; message: string }>(`/school/staff/${principalID}`, { method: "PATCH", body: JSON.stringify(input) });
 }
 export function disableSchoolStaff(principalID: number) {

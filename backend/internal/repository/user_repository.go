@@ -275,6 +275,101 @@ func (r *UserRepository) CreateStaffAccountWithProfile(
 	return &user, nil
 }
 
+
+// UpdateStaffProfile updates employee metadata for an existing same-school staff account.
+func (r *UserRepository) UpdateStaffProfile(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64, profile models.StaffProfile) (*models.User, error) {
+    if r == nil || r.db == nil || actorPrincipalID <= 0 || schoolID <= 0 || targetPrincipalID <= 0 {
+        return nil, ErrInvalidUser
+    }
+    tx, err := r.db.Begin(ctx)
+    if err != nil { return nil, fmt.Errorf("begin staff profile update: %w", err) }
+    defer func() { _ = tx.Rollback(ctx) }()
+
+    var targetUserID int64
+    err = tx.QueryRow(ctx, `
+        SELECT target.id
+          FROM users target
+          JOIN auth_principals target_principal ON target_principal.id = target.principal_id
+         WHERE target.principal_id = $1
+           AND target.school_id = $2
+           AND target_principal.principal_type = 'staff'
+           AND EXISTS (
+               SELECT 1
+                 FROM users actor
+                 JOIN auth_principals actor_principal ON actor_principal.id = actor.principal_id
+                 JOIN principal_roles pr ON pr.principal_id = actor.principal_id AND pr.revoked_at IS NULL
+                 JOIN roles role ON role.id = pr.role_id
+                 JOIN role_permissions rp ON rp.role_id = role.id
+                 JOIN permissions perm ON perm.id = rp.permission_id
+                 JOIN schools actor_school ON actor_school.id = actor.school_id AND actor_school.status = 'active'
+                WHERE actor.principal_id = $3 AND actor.school_id = $2 AND actor.status = 'active'
+                  AND actor_principal.principal_type = 'staff' AND actor_principal.status = 'active'
+                  AND role.school_id = $2 AND role.scope_type = 'school'
+                  AND role.principal_type = 'staff' AND role.role_key = 'school_admin' AND role.is_system = TRUE
+                  AND perm.permission_key = 'users.update' AND perm.scope_type = 'school' AND perm.is_active = TRUE
+                  AND NOT EXISTS (
+                      SELECT 1 FROM user_permission_overrides denied
+                       WHERE denied.principal_id = actor.principal_id
+                         AND denied.school_id = $2
+                         AND denied.permission_id = perm.id
+                         AND denied.effect = 'deny'
+                  )
+           )
+         FOR UPDATE OF target, target_principal
+    `, targetPrincipalID, schoolID, actorPrincipalID).Scan(&targetUserID)
+    if errors.Is(err, pgx.ErrNoRows) { return nil, ErrUserNotFound }
+    if err != nil { return nil, fmt.Errorf("authorize staff profile update: %w", err) }
+
+    _, err = tx.Exec(ctx, `
+        INSERT INTO staff_profiles
+            (principal_id, school_id, employee_code, full_name, designation, mobile_number, email, joining_date, employment_status)
+        VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7, ''), $8, $9)
+        ON CONFLICT (principal_id) DO UPDATE SET
+            employee_code = EXCLUDED.employee_code,
+            full_name = EXCLUDED.full_name,
+            designation = EXCLUDED.designation,
+            mobile_number = EXCLUDED.mobile_number,
+            email = EXCLUDED.email,
+            joining_date = EXCLUDED.joining_date,
+            employment_status = EXCLUDED.employment_status,
+            updated_at = NOW()
+    `, targetPrincipalID, schoolID, profile.EmployeeCode, profile.FullName, profile.Designation,
+        profile.MobileNumber, profile.Email, profile.JoiningDate, profile.EmploymentStatus)
+    if err != nil {
+        var pgErr *pgconn.PgError
+        if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "ux_staff_profiles_school_employee_code" {
+            return nil, ErrEmployeeCodeTaken
+        }
+        return nil, fmt.Errorf("upsert staff profile: %w", err)
+    }
+
+    if _, err := tx.Exec(ctx, `
+        INSERT INTO audit_events (actor_principal_id, school_id, action, resource_type, resource_id, outcome, metadata)
+        VALUES ($1, $2, 'staff.profile.updated', 'staff_user', $3, 'success',
+                jsonb_build_object('employee_code', $4::text, 'employment_status', $5::text))
+    `, actorPrincipalID, schoolID, fmt.Sprint(targetUserID), profile.EmployeeCode, profile.EmploymentStatus); err != nil {
+        return nil, fmt.Errorf("audit staff profile update: %w", err)
+    }
+
+    var user models.User
+    var joiningDate *time.Time
+    err = tx.QueryRow(ctx, `
+        SELECT u.id, u.principal_id, u.school_id, u.username, u.status, u.must_change_password, u.created_at, u.updated_at,
+               sp.employee_code, sp.full_name, sp.designation, sp.mobile_number, COALESCE(sp.email, ''),
+               sp.joining_date, sp.employment_status
+          FROM users u
+          JOIN staff_profiles sp ON sp.principal_id = u.principal_id AND sp.school_id = u.school_id
+         WHERE u.id = $1
+    `, targetUserID).Scan(&user.ID, &user.PrincipalID, &user.SchoolID, &user.Username, &user.Status,
+        &user.MustChangePassword, &user.CreatedAt, &user.UpdatedAt, &user.EmployeeCode, &user.FullName,
+        &user.Designation, &user.MobileNumber, &user.Email, &joiningDate, &user.EmploymentStatus)
+    if err != nil { return nil, fmt.Errorf("read updated staff profile: %w", err) }
+    user.JoiningDate = joiningDate
+    user.ProfileComplete = true
+    if err := tx.Commit(ctx); err != nil { return nil, fmt.Errorf("commit staff profile update: %w", err) }
+    return &user, nil
+}
+
 func (r *UserRepository) GetUserByUsername(
 	ctx context.Context,
 	schoolID int64,

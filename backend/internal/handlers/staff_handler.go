@@ -27,6 +27,9 @@ type StaffAccountManagementService interface {
 type staffProfileCreateService interface {
 	CreateWithProfile(ctx context.Context, actorPrincipalID, schoolID int64, username, initialPassword string, profile models.StaffProfile) (*models.User, error)
 }
+type staffProfileUpdateService interface {
+    UpdateProfile(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64, profile models.StaffProfile) (*models.User, error)
+}
 
 type StaffHandler struct {
 	service StaffAccountManagementService
@@ -220,12 +223,48 @@ func (h *StaffHandler) Update(c *gin.Context) {
 	}
 	var request struct {
 		Username string `json:"username"`
+        EmployeeCode string `json:"employee_code"`
+        FullName string `json:"full_name"`
+        Designation string `json:"designation"`
+        MobileNumber string `json:"mobile_number"`
+        Email string `json:"email"`
+        JoiningDate string `json:"joining_date"`
+        EmploymentStatus string `json:"employment_status"`
 	}
-	if err := c.ShouldBindJSON(&request); err != nil || strings.TrimSpace(request.Username) == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "username is required"})
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid staff update request"})
 		return
 	}
-	user, err := h.service.Update(c.Request.Context(), actorID, schoolID, targetID, request.Username)
+    hasProfile := strings.TrimSpace(request.EmployeeCode) != "" || strings.TrimSpace(request.FullName) != "" ||
+        strings.TrimSpace(request.Designation) != "" || strings.TrimSpace(request.MobileNumber) != "" ||
+        strings.TrimSpace(request.Email) != "" || strings.TrimSpace(request.JoiningDate) != "" ||
+        strings.TrimSpace(request.EmploymentStatus) != ""
+    var user *models.User
+    if hasProfile {
+        updater, ok := h.service.(staffProfileUpdateService)
+        if !ok {
+            c.JSON(http.StatusServiceUnavailable, gin.H{"status":"error","message":"Employee profile update is unavailable"})
+            return
+        }
+        var joiningDate *time.Time
+        if strings.TrimSpace(request.JoiningDate) != "" {
+            parsed, parseErr := time.Parse("2006-01-02", request.JoiningDate)
+            if parseErr != nil {
+                c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"joining_date must use YYYY-MM-DD"})
+                return
+            }
+            joiningDate = &parsed
+        }
+        profile := models.StaffProfile{EmployeeCode:request.EmployeeCode, FullName:request.FullName, Designation:request.Designation,
+            MobileNumber:request.MobileNumber, Email:request.Email, JoiningDate:joiningDate, EmploymentStatus:request.EmploymentStatus}
+        user, err = updater.UpdateProfile(c.Request.Context(), actorID, schoolID, targetID, profile)
+    } else {
+        if strings.TrimSpace(request.Username) == "" {
+            c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"username or employee profile fields are required"})
+            return
+        }
+        user, err = h.service.Update(c.Request.Context(), actorID, schoolID, targetID, request.Username)
+    }
 	switch {
 	case err == nil:
 		c.JSON(http.StatusOK, gin.H{
@@ -242,6 +281,8 @@ func (h *StaffHandler) Update(c *gin.Context) {
 		})
 	case errors.Is(err, services.ErrInvalidStaffAccount):
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid staff account update request"})
+    case errors.Is(err, repository.ErrEmployeeCodeTaken):
+        c.JSON(http.StatusConflict, gin.H{"status":"error","message":"This employee code is already used in this school"})
 	case errors.Is(err, repository.ErrUsernameTaken):
 		c.JSON(http.StatusConflict, gin.H{"status": "error", "message": "This username is already in use"})
 	case errors.Is(err, repository.ErrUserNotFound):

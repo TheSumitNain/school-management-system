@@ -23,6 +23,9 @@ type staffAccountRepository interface {
 type staffProfileCreator interface {
 	CreateStaffAccountWithProfile(ctx context.Context, actorPrincipalID, schoolID int64, username, passwordHash string, profile models.StaffProfile) (*models.User, error)
 }
+type staffProfileUpdater interface {
+    UpdateStaffProfile(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64, profile models.StaffProfile) (*models.User, error)
+}
 
 type StaffAccountService struct {
 	repository staffAccountRepository
@@ -105,6 +108,28 @@ func (s *StaffAccountService) Disable(ctx context.Context, actorPrincipalID, sch
 	return s.repository.DisableStaffAccount(ctx, actorPrincipalID, schoolID, targetPrincipalID)
 }
 
+
+
+// UpdateProfile validates and persists an employee profile without re-enabling
+// a disabled login. An inactive profile remains blocked by the database guard.
+func (s *StaffAccountService) UpdateProfile(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64, profile models.StaffProfile) (*models.User, error) {
+    profile.EmployeeCode = strings.TrimSpace(profile.EmployeeCode)
+    profile.FullName = strings.TrimSpace(profile.FullName)
+    profile.Designation = strings.TrimSpace(profile.Designation)
+    profile.MobileNumber = strings.TrimSpace(profile.MobileNumber)
+    profile.Email = strings.TrimSpace(profile.Email)
+    if profile.EmploymentStatus == "" { profile.EmploymentStatus = "active" }
+    if s == nil || s.repository == nil || actorPrincipalID <= 0 || schoolID <= 0 || targetPrincipalID <= 0 ||
+       !staffEmployeeCodePattern.MatchString(profile.EmployeeCode) || profile.FullName == "" || len(profile.FullName) > 160 ||
+       profile.Designation == "" || len(profile.Designation) > 100 || !staffMobilePattern.MatchString(profile.MobileNumber) ||
+       (profile.Email != "" && (!strings.Contains(profile.Email, "@") || len(profile.Email) > 254)) ||
+       (profile.EmploymentStatus != "active" && profile.EmploymentStatus != "inactive") {
+        return nil, ErrInvalidStaffAccount
+    }
+    updater, ok := s.repository.(staffProfileUpdater)
+    if !ok { return nil, ErrInvalidStaffAccount }
+    return updater.UpdateStaffProfile(ctx, actorPrincipalID, schoolID, targetPrincipalID, profile)
+}
 
 // Update changes the username of an active same-school staff account.
 func (s *StaffAccountService) Update(
