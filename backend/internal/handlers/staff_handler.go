@@ -191,7 +191,7 @@ func (h *StaffHandler) Disable(c *gin.Context) {
 	case errors.Is(err, repository.ErrRolePermissionDenied):
 		c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": "Staff account disable is not authorized"})
 	case errors.Is(err, repository.ErrUserNotFound):
-		c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": "Active staff account not found in this school"})
+		c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": "Staff account not found in this school"})
 	default:
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unable to disable staff account"})
 	}
@@ -263,6 +263,8 @@ func (h *StaffHandler) Update(c *gin.Context) {
     }
 	switch {
 	case err == nil:
+        message := "Employee profile updated. Login access follows the employment status."
+        if !hasProfile { message = "Staff username updated; active sessions revoked" }
 		c.JSON(http.StatusOK, gin.H{
 			"status": "success",
 			"staff": gin.H{
@@ -272,8 +274,16 @@ func (h *StaffHandler) Update(c *gin.Context) {
 				"username": user.Username,
 				"status": user.Status,
 				"must_change_password": user.MustChangePassword,
+                "employee_code": user.EmployeeCode,
+                "full_name": user.FullName,
+                "designation": user.Designation,
+                "mobile_number": user.MobileNumber,
+                "email": user.Email,
+                "joining_date": user.JoiningDate,
+                "employment_status": user.EmploymentStatus,
+                "profile_complete": user.ProfileComplete,
 			},
-			"message": "Staff username updated; active sessions revoked",
+			"message": message,
 		})
 	case errors.Is(err, services.ErrInvalidStaffAccount):
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid staff account update request"})
