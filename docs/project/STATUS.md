@@ -5,6 +5,14 @@
 **Reviewed branch:** `feature/school-attendance-management`  
 **Reviewed branch HEAD before this status reconciliation:** `f448a871b574a60a6cc8da810adf9d2e648a3495`
 
+## Staff Management — employee profile foundation in progress
+
+- Migration V28 introduces a separate `staff_profiles` table with school-scoped unique employee codes, required full name/designation/mobile, optional email/joining date, and Active/Inactive employment status.
+- V29 enforces the login safety invariant at the database identity boundary: inactive employee profiles disable the canonical staff principal, increment its token version and revoke active refresh sessions; a principal cannot be reactivated until the employee profile is Active.
+- Backend work now supports profile-aware account creation in one transaction and profile-aware listing/update. The frontend Staff Management form and table expose the employee details, account status and employment status.
+- Existing staff accounts are preserved without fabricated employee data and are shown as profile-incomplete until updated. Academic history and assignments are not deleted by profile changes.
+- Latest implementation commit and CI must be reconciled after the current workflow run completes. Do not apply V28/V29 to a persistent local database until the user explicitly approves after a verified backup.
+
 This file is the current implementation-status reference. Older checkpoint notes must not override it. Verification statements below distinguish repository inspection, user-reported local checks and real browser/database operations.
 
 ## Latest academic UI correction — section medium and date selection

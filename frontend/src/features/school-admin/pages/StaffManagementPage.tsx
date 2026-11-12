@@ -62,7 +62,7 @@ export function StaffManagementPage({ permissions }: Props) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const nextErrors: Record<string, string> = {};
-    const username = String(form.get("username") ?? "").trim();
+    const username = action === "edit" ? (selected?.username ?? "") : String(form.get("username") ?? "").trim();
     const password = String(form.get("password") ?? "");
     const fullName = String(form.get("full_name") ?? "").trim();
     const employeeCode = String(form.get("employee_code") ?? "").trim();
@@ -140,7 +140,8 @@ export function StaffManagementPage({ permissions }: Props) {
       >
         {feedback?.kind === "error" && <p className="staff-feedback error" role="alert">{feedback.message}</p>}
         <form onSubmit={submit} noValidate>
-          {(action === "create" || action === "edit") && <label>Username<input name="username" placeholder="e.g. rahul.sharma" defaultValue={selected?.username ?? ""} minLength={3} maxLength={32} pattern="[a-z0-9._-]{3,32}" autoComplete="off" required aria-invalid={Boolean(fieldErrors.username)} aria-describedby={fieldErrors.username ? "staff-username-error" : "staff-username-help"} onChange={()=>setFieldErrors(current=>({...current,username:""}))}/><small id="staff-username-help">3–32 lowercase letters, numbers, dots, underscores or hyphens.</small>{fieldErrors.username && <small className="app-field-error" id="staff-username-error">{fieldErrors.username}</small>}</label>}
+          {action === "create" && <label>Login username<input name="username" placeholder="e.g. rahul.sharma" minLength={3} maxLength={32} pattern="[a-z0-9._-]{3,32}" autoComplete="off" required aria-invalid={Boolean(fieldErrors.username)} aria-describedby={fieldErrors.username ? "staff-username-error" : "staff-username-help"} onChange={()=>setFieldErrors(current=>({...current,username:""}))}/><small id="staff-username-help">3–32 lowercase letters, numbers, dots, underscores or hyphens. Unique across the platform.</small>{fieldErrors.username && <small className="app-field-error" id="staff-username-error">{fieldErrors.username}</small>}</label>}
+          {action === "edit" && <label>Login username<input value={selected?.username ?? ""} disabled/><small>Login identity is managed separately from employee details.</small></label>}
           {(action === "create" || action === "edit") && <>
             <label>Full name<input name="full_name" placeholder="e.g. Rahul Sharma" defaultValue={selected?.full_name ?? ""} maxLength={160} required aria-invalid={Boolean(fieldErrors.full_name)} onChange={()=>setFieldErrors(current=>({...current,full_name:""}))}/>{fieldErrors.full_name && <small className="app-field-error">{fieldErrors.full_name}</small>}</label>
             <label>Employee code<input name="employee_code" placeholder="e.g. EMP-001" defaultValue={selected?.employee_code ?? ""} maxLength={32} required aria-invalid={Boolean(fieldErrors.employee_code)} onChange={()=>setFieldErrors(current=>({...current,employee_code:""}))}/><small>Must be unique within this school.</small>{fieldErrors.employee_code && <small className="app-field-error">{fieldErrors.employee_code}</small>}</label>

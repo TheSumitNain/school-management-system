@@ -15,6 +15,10 @@ The first frontend delivery must complete both administrator workspaces:
 
 The current timetable page also supports the Teacher read-only workflow using the current academic year and the teacher's own scheduled entries. Build and verify school operations in the dependency order documented in [Phase 1 School Operations — Task-by-Task Build Order](../product/PHASE1-WORKFLOW-ORDER.md): academic foundations → subjects → teacher/staff accounts → teacher assignments → student admission/enrollment → timetable → attendance → examinations/results → notices/dashboard integration. Reuse existing pages and APIs; do not duplicate Subject Management or rebuild the existing timetable. Parent OTP login, OTP/SMS delivery, parent dashboards and Parent/Driver mobile interfaces are Phase 2 and remain deferred.
 
+## Staff Management
+
+The School Admin Staff Management page maintains employee details separately from login credentials. Employee full name, employee code, designation and one mobile number are required; email and joining date are optional. Employee codes are unique within a school. Employment status is Active/Inactive and is distinct from login-account status. Creating a staff member creates the employee profile and login account in one backend transaction. Inactive employment disables login access; reactivating employment does not automatically enable a disabled account. Existing staff accounts without profile data remain visible as incomplete and must be completed by an administrator.
+
 ## Frontend UI and styling requirements
 
 These requirements apply to every frontend page and shared component:
