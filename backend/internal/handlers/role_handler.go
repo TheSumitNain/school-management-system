@@ -20,6 +20,7 @@ type RoleManagementService interface {
 	GrantSchoolPermissionDelegation(ctx context.Context, actorPrincipalID, schoolID int64, permissionKey string, canAssignToRoles, canOverrideUsers bool) (*repository.SchoolPermissionDelegation, error)
 	RevokeSchoolPermissionDelegation(ctx context.Context, actorPrincipalID, delegationID int64) error
 	ListSchoolPermissionDelegations(ctx context.Context, actorPrincipalID, schoolID int64) ([]repository.SchoolPermissionDelegation, error)
+	ListPlatformSchoolPermissionDelegations(ctx context.Context, actorPrincipalID, schoolID int64) ([]repository.SchoolPermissionDelegation, error)
 	GrantCustomRolePermission(ctx context.Context, actorPrincipalID, schoolID, roleID, delegationID int64, permissionKey string) error
 	ListCustomRolePermissions(ctx context.Context, actorPrincipalID, schoolID, roleID int64) ([]repository.CustomRolePermission, error)
 	RevokeCustomRolePermission(ctx context.Context, actorPrincipalID, schoolID, roleID int64, permissionKey string) error
@@ -192,6 +193,35 @@ func (h *RoleHandler) RevokeSchoolPermissionDelegation(c *gin.Context) {
 	default:
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unable to revoke permission delegation"})
 	}
+}
+
+
+func (h *RoleHandler) ListPlatformSchoolPermissionDelegations(c *gin.Context) {
+	actorValue, exists := c.Get(middleware.ContextPrincipalIDKey)
+	actorID, ok := actorValue.(int64)
+	if !exists || !ok || actorID <= 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"status":"error","message":"Platform Admin authentication required"})
+		return
+	}
+	if h == nil || h.service == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status":"error","message":"Permission delegation is unavailable"})
+		return
+	}
+	schoolID, err := strconv.ParseInt(c.Param("schoolID"), 10, 64)
+	if err != nil || schoolID <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid school ID"})
+		return
+	}
+	items, err := h.service.ListPlatformSchoolPermissionDelegations(c.Request.Context(), actorID, schoolID)
+	if errors.Is(err, repository.ErrRolePermissionDenied) {
+		c.JSON(http.StatusForbidden, gin.H{"status":"error","message":"Permission delegation access is not authorized"})
+		return
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status":"error","message":"Unable to list permission delegations"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status":"success","delegations":items})
 }
 
 func (h *RoleHandler) ListSchoolPermissionDelegations(c *gin.Context) {

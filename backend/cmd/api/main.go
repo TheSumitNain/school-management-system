@@ -95,6 +95,7 @@ func setupRouterWithHandlers(
 	}
 
 	if schoolOnboardingHandler != nil {
+		router.GET("/platform/schools", authMiddleware(), middleware.RequirePermission("platform.schools.read"), schoolOnboardingHandler.List)
 		router.POST("/platform/schools",
 			authMiddleware(),
 			middleware.RequirePermission("platform.schools.create"),
@@ -133,6 +134,12 @@ func setupRouterWithHandlers(
 
 	if roleHandler != nil {
 		platformAuth := authMiddleware()
+		router.GET("/platform/schools/:schoolID/permission-delegations",
+			platformAuth,
+			middleware.RequirePermission("platform.permissions.delegate"),
+			roleHandler.ListPlatformSchoolPermissionDelegations,
+		)
+		router.GET("/platform/permissions/delegable", platformAuth, middleware.RequirePermission("platform.permissions.delegate"), roleHandler.ListPermissions)
 		router.POST("/platform/schools/:schoolID/permission-delegations",
 			platformAuth,
 			middleware.RequirePermission("platform.permissions.delegate"),
