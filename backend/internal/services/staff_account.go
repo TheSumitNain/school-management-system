@@ -55,7 +55,7 @@ func (s *StaffAccountService) Create(
 }
 
 var staffEmployeeCodePattern = regexp.MustCompile("^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$")
-var staffMobilePattern = regexp.MustCompile("^\\\\+?[0-9]{10,15}$")
+var staffMobilePattern = regexp.MustCompile("^\\+?[0-9]{10,15}$")
 
 // CreateWithProfile creates a login account and employee profile in one repository transaction.
 func (s *StaffAccountService) CreateWithProfile(ctx context.Context, actorPrincipalID, schoolID int64, username, initialPassword string, profile models.StaffProfile) (*models.User, error) {
