@@ -61,7 +61,7 @@ export default function App(){
   const all:[Page,string,LucideIcon,string?][]=[["dashboard","Dashboard",LayoutDashboard],["platform-admin","Platform Admin",Building2],["staff","Staff",Users,"users.read"],["roles","Roles & permissions",ShieldCheck,"roles.read"],["academics","Academics",BookOpen,"classes.read|academic_years.read|subjects.read|teacher_assignments.read|class_incharge_assignments.read"],["students","Students",GraduationCap,"students.read_sensitive|students.read_basic"],["attendance","Attendance",CalendarDays,"attendance.read"],["timetable","Timetable",CalendarClock,"timetable.read"],["settings","Settings",Settings]];
   if(!user)return [];
   if(user.principal_type==="platform_admin"){
-   const canOpenPlatformAdmin=user.permissions.includes("platform.admins.manage")||(user.permissions.includes("platform.schools.create")&&user.permissions.includes("platform.school_admins.create"));
+   const canOpenPlatformAdmin=user.permissions.includes("platform.admins.manage")||(user.permissions.includes("platform.permissions.delegate")&&user.permissions.includes("platform.schools.read"))||(user.permissions.includes("platform.schools.create")&&user.permissions.includes("platform.school_admins.create"));
    return all.filter(item=>item[0]==="dashboard"||item[0]==="settings"||(item[0]==="platform-admin"&&canOpenPlatformAdmin));
   }
   return all.filter(item=>item[0]!=="platform-admin"&&(!item[3]||item[3].split("|").some(permission=>user.permissions.includes(permission))));
