@@ -1,17 +1,20 @@
 # Project Status
 
-**Last reconciled:** 2026-11-11  
+**Last reconciled:** 2026-11-12  
 **Repository:** `TheSumitNain/school-management-system`  
 **Reviewed branch:** `feature/school-attendance-management`  
-**Reviewed branch HEAD before this status reconciliation:** `f448a871b574a60a6cc8da810adf9d2e648a3495`
+**Reviewed branch HEAD before this status reconciliation:** `a16fda5ee8b1d2264801997f6ead96e346953993`
 
-## Staff Management — employee profile foundation in progress
+## Staff Management — employee profile workflow implemented
 
-- Migration V28 introduces a separate `staff_profiles` table with school-scoped unique employee codes, required full name/designation/mobile, optional email/joining date, and Active/Inactive employment status.
-- V29 enforces the login safety invariant at the database identity boundary: inactive employee profiles disable the canonical staff principal, increment its token version and revoke active refresh sessions; a principal cannot be reactivated until the employee profile is Active.
-- Backend work now supports profile-aware account creation in one transaction and profile-aware listing/update. The frontend Staff Management form and table expose the employee details, account status and employment status.
-- Existing staff accounts are preserved without fabricated employee data and are shown as profile-incomplete until updated. Academic history and assignments are not deleted by profile changes.
-- Latest implementation commit and CI must be reconciled after the current workflow run completes. Do not apply V28/V29 to a persistent local database until the user explicitly approves after a verified backup.
+- V28 adds the separate `staff_profiles` table. Full name, employee code, designation and one mobile number are required; email and joining date are optional. Employee codes are case-insensitively unique within each school.
+- V29 makes employee inactivation disable the canonical staff principal, increment its token version and revoke active refresh sessions. V30 prevents any staff-login reactivation unless a complete employee profile exists with Active employment status.
+- New staff creation requires employee details and creates the login account plus profile in one database transaction. Employee-code conflicts and profile failures cannot leave orphan login accounts.
+- Staff listing includes employee details and a `profile_complete` indicator. Existing staff accounts remain intact and are shown as incomplete without fabricated profile data.
+- Employee profiles can be edited independently of login credentials. Inactive employment disables login; returning employment to Active does not automatically enable the account. Explicit enablement with a temporary password requires a complete Active profile.
+- The Staff Management UI provides the employee form, field-level validation, employee/profile listing, separate employment/login statuses, and hides login enablement for incomplete or inactive profiles.
+- Profile changes do not delete academic assignments, attendance, timetable records or other history. No staff profile deletion operation is provided.
+- Backend CI (fresh PostgreSQL migrations, full Go tests including PostgreSQL integration, and `go vet`) and frontend CI (TypeScript and Vite production build) are verified on the latest implementation commit. CI uses an ephemeral database; no persistent local database has been migrated by this work.
 
 This file is the current implementation-status reference. Older checkpoint notes must not override it. Verification statements below distinguish repository inspection, user-reported local checks and real browser/database operations.
 
