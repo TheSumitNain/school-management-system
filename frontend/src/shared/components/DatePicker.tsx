@@ -161,7 +161,7 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
         disabled={disabled}
         onClick={() => open ? setOpen(false) : openCalendar()}
       >
-        <span className={selected ? "" : "app-date-placeholder"}>{selected ? selected.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" }) : placeholder}</span>
+        <span className={selected ? "" : "app-date-placeholder"}>{selected ? selected.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : placeholder}</span>
         <CalendarDays size={16} aria-hidden="true" />
       </button>
       {open && (
