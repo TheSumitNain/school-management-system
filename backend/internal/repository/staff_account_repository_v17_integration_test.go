@@ -222,6 +222,14 @@ func TestStaffAccountUpdateAndEnableAuthorizationPostgresIntegration(t *testing.
 	`, schoolID, "active-"+suffix).Scan(&activeUserID, &activePrincipalID); err != nil {
 		t.Fatalf("create active target account: %v", err)
 	}
+
+    if _, err := pool.Exec(ctx, `
+        INSERT INTO staff_profiles
+            (principal_id, school_id, employee_code, full_name, designation, mobile_number, employment_status)
+        VALUES ($1, $2, $3, 'Status Sync Teacher', 'Teacher', '9876543210', 'active')
+    `, activePrincipalID, schoolID, "SYNC-"+suffix); err != nil {
+        t.Fatalf("create active profile for principal status-sync check: %v", err)
+    }
 	if err := pool.QueryRow(ctx, `
 		INSERT INTO users (school_id, username, password_hash, status)
 		VALUES ($1, $2, 'disabled-test-hash', 'disabled')
