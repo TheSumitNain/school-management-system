@@ -136,14 +136,33 @@ func TestStudentEnrollmentAdmissionV31SchemaPostgresIntegration(t *testing.T) {
 		t.Fatalf("reuse admission number in a different academic year: %v", err)
 	}
 
+	// PostgreSQL marks the current transaction aborted after a constraint
+	// violation. Isolate each expected failure behind a savepoint so later
+	// assertions can continue in the same rollback-scoped fixture transaction.
+	assertConstraintViolation := func(label, expectedCode string, insert func() error) {
+		t.Helper()
+		if _, err := tx.Exec(ctx, `SAVEPOINT v31_expected_constraint_failure`); err != nil {
+			t.Fatalf("%s: create savepoint: %v", label, err)
+		}
+		insertErr := insert()
+		if _, err := tx.Exec(ctx, `ROLLBACK TO SAVEPOINT v31_expected_constraint_failure`); err != nil {
+			t.Fatalf("%s: rollback to savepoint: %v", label, err)
+		}
+		if _, err := tx.Exec(ctx, `RELEASE SAVEPOINT v31_expected_constraint_failure`); err != nil {
+			t.Fatalf("%s: release savepoint: %v", label, err)
+		}
+		var pgErr *pgconn.PgError
+		if !errors.As(insertErr, &pgErr) || pgErr.Code != expectedCode {
+			t.Fatalf("%s error = %v, want SQLSTATE %s", label, insertErr, expectedCode)
+		}
+	}
+
 	// Case/whitespace normalization must reject a duplicate in the same
 	// school/year, even when it belongs to a different student.
 	duplicate := "adm-v31-" + suffix
-	err = createEnrollment(studentTwo, yearOne, classID, sectionOne, &duplicate, &admissionDate)
-	var pgErr *pgconn.PgError
-	if !errors.As(err, &pgErr) || pgErr.Code != "23505" {
-		t.Fatalf("same-year normalized duplicate error = %v, want unique violation (23505)", err)
-	}
+	assertConstraintViolation("same-year normalized duplicate", "23505", func() error {
+		return createEnrollment(studentTwo, yearOne, classID, sectionOne, &duplicate, &admissionDate)
+	})
 
 	// Historical rows without proven year-specific admission identity remain
 	// representable as NULL/NULL during the expand-and-contract migration.
@@ -153,14 +172,12 @@ func TestStudentEnrollmentAdmissionV31SchemaPostgresIntegration(t *testing.T) {
 
 	// The number and date are an atomic pair; neither half may be stored alone.
 	dateWithoutNumber := "2026-04-02"
-	err = createEnrollment(studentTwo, yearTwo, classID, sectionTwo, nil, &dateWithoutNumber)
-	if !errors.As(err, &pgErr) || pgErr.Code != "23514" {
-		t.Fatalf("date without admission number error = %v, want check violation (23514)", err)
-	}
+	assertConstraintViolation("date without admission number", "23514", func() error {
+		return createEnrollment(studentTwo, yearTwo, classID, sectionTwo, nil, &dateWithoutNumber)
+	})
 	emptyNumber := "   "
-	err = createEnrollment(studentTwo, yearTwo, classID, sectionTwo, &emptyNumber, &admissionDate)
-	if !errors.As(err, &pgErr) || pgErr.Code != "23514" {
-		t.Fatalf("blank admission number error = %v, want check violation (23514)", err)
-	}
+	assertConstraintViolation("blank admission number", "23514", func() error {
+		return createEnrollment(studentTwo, yearTwo, classID, sectionTwo, &emptyNumber, &admissionDate)
+	})
 
 }
