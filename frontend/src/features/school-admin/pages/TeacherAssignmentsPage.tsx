@@ -12,7 +12,7 @@ import { Modal } from "../../../shared/components/Modal";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import "./TeacherAssignmentsPage.css";
 
-type Year = { id: number; name: string; status: string };
+type Year = { id: number; name: string; status: string; is_current: boolean };
 type Section = { id: number; academic_year_id: number; class_id: number; name: string; is_active: boolean };
 type SchoolClass = { id: number; name: string; is_active: boolean };
 type Subject = { id: number; name: string; is_active: boolean };
@@ -41,6 +41,7 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
   const [inchargeYearID, setInchargeYearID] = useState("");
   const [inchargeSectionID, setInchargeSectionID] = useState("");
   const [inchargeTeacherID, setInchargeTeacherID] = useState("");
+  const [assignmentYearID, setAssignmentYearID] = useState("current");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
@@ -94,6 +95,11 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
   useEffect(() => { void load(); }, [load]);
 
   const activeYears = useMemo(() => years.filter(item => item.status !== "closed"), [years]);
+  const currentYearID = String(activeYears.find(item => item.is_current)?.id ?? "");
+  const listYearSelection = assignmentYearID === "current" && !currentYearID ? "all" : assignmentYearID;
+  const selectedListYearID = listYearSelection === "current" ? currentYearID : listYearSelection === "all" ? "" : listYearSelection;
+  const visibleAssignments = assignments.filter(item => !selectedListYearID || String(item.academic_year_id) === selectedListYearID);
+  const visibleIncharges = incharges.filter(item => !selectedListYearID || String(item.academic_year_id) === selectedListYearID);
   const activeSections = useMemo(() => sections.filter(item => item.is_active), [sections]);
   const subjectSections = activeSections.filter(item => !yearID || String(item.academic_year_id) === yearID);
   const inchargeSections = activeSections.filter(item => !inchargeYearID || String(item.academic_year_id) === inchargeYearID);
@@ -177,18 +183,19 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
 
   return <div className="teacher-assignments">
     <div className="assignment-heading"><div><h2>Teacher assignments</h2><p>Assign active Teachers to subjects, sections and class in-charge responsibilities.</p></div><button type="button" onClick={() => void load()} disabled={loading}><RefreshCw size={15}/> Refresh</button></div>
+    {(canReadTeacherAssignments || canReadIncharges) && <div className="toolbar assignment-year-filter"><label>Academic year <Select ariaLabel="Filter assignments by academic year" value={listYearSelection} onChange={setAssignmentYearID} options={[{value:"current",label:currentYearID ? "Current academic year" : "Current year (not set)"},{value:"all",label:"All academic years"},...years.map(item=>({value:String(item.id),label:item.name}))]} /></label></div>}
     {feedback && !((subjectDialogOpen||inchargeDialogOpen)&&feedback.kind==="error") && <div className={"academic-feedback " + feedback.kind} role="status">{feedback.message}</div>}
     {loadError && <div className="academic-feedback error" role="alert">{loadError} <button type="button" onClick={() => void load()} disabled={loading}>Try again</button></div>}
     {loading ? <div className="table-message">Loading teacher assignments…</div> : <>
       {canReadTeacherAssignments && <section className="table-panel assignment-panel">
-        <div className="toolbar"><div><h3>Subject teachers</h3><small>{assignments.filter(item => !item.revoked_at).length} active assignments</small></div></div>
-        {canManageTeacherAssignments && <button type="button" className="primary assignment-open-dialog" onClick={()=>{setFieldErrors({});setFeedback(null);setSubjectDialogOpen(true);}}><Plus size={15}/> Assign subject teacher</button>}
-        {assignments.length === 0 ? <div className="table-message">No subject teacher assignments yet.</div> : <div className="table-scroll"><table><thead><tr><th>Class / section</th><th>Subject</th><th>Teacher</th><th>Status</th>{canManageTeacherAssignments && <th>Action</th>}</tr></thead><tbody>{assignments.map(item => <tr key={item.id}><td>{item.class_name} · {item.section_name}</td><td>{item.subject_name}</td><td>{item.teacher_username}</td><td>{item.revoked_at ? "Revoked" : "Active"}</td>{canManageTeacherAssignments && <td>{!item.revoked_at && <button className="assignment-revoke" type="button" onClick={() => setSubjectToRevoke(item)} disabled={saving}><UserRoundX size={14}/> Revoke</button>}</td>}</tr>)}</tbody></table></div>}
+        <div className="toolbar"><div><h3>Subject teachers</h3><small>{visibleAssignments.filter(item => !item.revoked_at).length} active assignments</small></div></div>
+        {canManageTeacherAssignments && <button type="button" className="primary assignment-open-dialog" onClick={()=>{setYearID(currentYearID);setSectionID("");setFieldErrors({});setFeedback(null);setSubjectDialogOpen(true);}}><Plus size={15}/> Assign subject teacher</button>}
+        {visibleAssignments.length === 0 ? <div className="table-message">No subject teacher assignments for this academic year.</div> : <div className="table-scroll"><table><thead><tr><th>Class / section</th><th>Subject</th><th>Teacher</th><th>Status</th>{canManageTeacherAssignments && <th>Action</th>}</tr></thead><tbody>{visibleAssignments.map(item => <tr key={item.id}><td>{item.class_name} · {item.section_name}</td><td>{item.subject_name}</td><td>{item.teacher_username}</td><td>{item.revoked_at ? "Revoked" : "Active"}</td>{canManageTeacherAssignments && <td>{!item.revoked_at && <button className="assignment-revoke" type="button" onClick={() => setSubjectToRevoke(item)} disabled={saving}><UserRoundX size={14}/> Revoke</button>}</td>}</tr>)}</tbody></table></div>}
       </section>}
       {canReadIncharges && <section className="table-panel assignment-panel">
-        <div className="toolbar"><div><h3>Class in-charge</h3><small>{incharges.filter(item => !item.revoked_at).length} active assignments</small></div></div>
-        {canManageIncharges && <button type="button" className="primary assignment-open-dialog" onClick={()=>{setFieldErrors({});setFeedback(null);setInchargeDialogOpen(true);}}><Plus size={15}/> Assign class in-charge</button>}
-        {incharges.length === 0 ? <div className="table-message">No class in-charge assignments yet.</div> : <div className="table-scroll"><table><thead><tr><th>Class / section</th><th>Teacher</th><th>Status</th>{canManageIncharges && <th>Action</th>}</tr></thead><tbody>{incharges.map(item => <tr key={item.id}><td>{item.class_name} · {item.section_name}</td><td>{item.teacher_username}</td><td>{item.revoked_at ? "Revoked" : "Active"}</td>{canManageIncharges && <td>{!item.revoked_at && <button className="assignment-revoke" type="button" onClick={() => setInchargeToRevoke(item)} disabled={saving}><UserRoundX size={14}/> Revoke</button>}</td>}</tr>)}</tbody></table></div>}
+        <div className="toolbar"><div><h3>Class in-charge</h3><small>{visibleIncharges.filter(item => !item.revoked_at).length} active assignments</small></div></div>
+        {canManageIncharges && <button type="button" className="primary assignment-open-dialog" onClick={()=>{setInchargeYearID(currentYearID);setInchargeSectionID("");setFieldErrors({});setFeedback(null);setInchargeDialogOpen(true);}}><Plus size={15}/> Assign class in-charge</button>}
+        {visibleIncharges.length === 0 ? <div className="table-message">No class in-charge assignments for this academic year.</div> : <div className="table-scroll"><table><thead><tr><th>Class / section</th><th>Teacher</th><th>Status</th>{canManageIncharges && <th>Action</th>}</tr></thead><tbody>{visibleIncharges.map(item => <tr key={item.id}><td>{item.class_name} · {item.section_name}</td><td>{item.teacher_username}</td><td>{item.revoked_at ? "Revoked" : "Active"}</td>{canManageIncharges && <td>{!item.revoked_at && <button className="assignment-revoke" type="button" onClick={() => setInchargeToRevoke(item)} disabled={saving}><UserRoundX size={14}/> Revoke</button>}</td>}</tr>)}</tbody></table></div>}
       </section>}
     </>}
       <Modal open={subjectDialogOpen} title="Assign a subject teacher" description="Choose the academic year, section, subject and active teacher for this assignment." onClose={()=>setSubjectDialogOpen(false)} closeDisabled={saving}>
