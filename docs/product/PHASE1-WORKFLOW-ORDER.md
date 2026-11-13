@@ -1,7 +1,7 @@
 # Phase 1 School Operations — Task-by-Task Build Order
 
 **Status:** Approved implementation sequence  
-**Last reconciled:** 2026-11-11  
+**Last reconciled:** 2026-11-13  
 **Scope:** School Admin and assignment-scoped Teacher workflows in the Phase 1 web application.
 
 This is the execution checklist for creating school data in the order that makes later workflows usable. It is a dependency order, not a claim that every listed item is still unimplemented. Before starting a task, inspect the current backend, frontend, migrations, tests and browser behavior; complete or verify existing work instead of rebuilding it.
@@ -71,31 +71,32 @@ A task is not complete merely because a database table, API route or frontend pa
 
 **Gate:** The School Admin can see an accurate assignment list, and a Teacher's API responses are restricted to their own assigned classes/subjects and permitted operations.
 
-### Task 4 — Create student records (admission)
+### Task 4 — Combined student admission and first enrollment
 
-**Depends on:** Task 0. Teacher assignments may be completed before or after student data entry, but student enrollment must precede operational class workflows.
+**Depends on:** Task 0. Teacher assignments may be completed before or after student admission, but a valid enrollment must exist before operational class workflows.
 
 **Actions**
-1. Create a student profile with the approved minimum personal, contact and admission information.
-2. Generate or validate a school-unique admission number; prevent duplicates.
-3. Capture guardian/contact details as student relationship data where required for school administration. This does not enable parent login, OTP or SMS.
-4. Support profile updates, search, status and safe correction of admission details.
-5. Protect sensitive student information with school-, role- and field-level authorization.
+1. Use the combined guided admission workflow to create the permanent student identity and first academic-year enrollment in one backend transaction.
+2. Require only the minimum basic identity fields needed to create the student; allow address, guardian, medical, physical and document sections to be completed later.
+3. Assign an admission number to the enrollment for the selected academic year. Do not treat admission number as a permanent student identity or enforce school-wide uniqueness across all years.
+4. Capture guardian/contact details as student relationship data where needed for school administration. This does not enable parent login, OTP or SMS.
+5. Support student search, profile sections, academic history and school-/role-/field-level authorization.
 
-**Gate:** A student record can be created, found and updated by authorized staff, without accidentally enrolling the student in an unrelated class or academic year.
+**Gate:** Combined admission either creates both the student and first enrollment or neither; the profile can be completed incrementally; year-specific admission-number uniqueness is enforced.
 
-### Task 5 — Enroll students into academic year, class and section
+### Task 5 — Returning-student enrollment, promotion and transfer
 
 **Depends on:** Tasks 0 and 4.
 
 **Actions**
-1. Select the academic year, class and section for each student.
-2. Enforce one valid active enrollment per student for the applicable academic period according to the domain rules.
-3. Validate that the selected section belongs to the selected class, school and academic year.
-4. Support transfer between sections/classes and promotion/history without rewriting historical enrollment records.
-5. Ensure class rosters and teacher roster endpoints show only the correctly enrolled students and only within the caller's assignment scope.
+1. Find the existing permanent student identity and select the destination academic year, class and section.
+2. Create a new enrollment with a new admission number for that academic year; never create a duplicate student profile for a returning student.
+3. Enforce one enrollment per student per academic year and validate that the selected section belongs to the selected class, school and year.
+4. Preserve prior enrollment, attendance and subject-selection history. Promotion creates a new year record and closes the source enrollment through the approved lifecycle.
+5. Design within-year section/class transfer explicitly; do not rewrite immutable historical enrollment identity.
+6. Ensure class rosters and teacher roster endpoints show only correctly enrolled students within the caller's assignment scope.
 
-**Gate:** School Admin sees accurate class/section rosters; assigned Teachers see only permitted rosters; historical enrollment remains intact.
+**Gate:** Returning students retain one permanent identity, receive a new admission number each academic year, and historical enrollments remain intact.
 
 ### Task 6 — Finish and accept the timetable workflow
 
