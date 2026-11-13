@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strconv"
 	"testing"
 	"time"
@@ -164,8 +163,4 @@ func TestStudentEnrollmentAdmissionV31SchemaPostgresIntegration(t *testing.T) {
 		t.Fatalf("blank admission number error = %v, want check violation (23514)", err)
 	}
 
-	// Ensure test fixture setup remains tied to the expected school scope.
-	if _, err := tx.Exec(ctx, `SELECT $1::bigint`, fmt.Sprint(schoolID)); err != nil {
-		t.Fatalf("confirm fixture school scope: %v", err)
-	}
 }
