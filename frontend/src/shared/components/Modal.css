@@ -11,3 +11,9 @@
 /* Checkbox controls must not inherit the full-width text-input treatment. */
 .app-modal-content input[type="checkbox"]{width:16px;height:16px;min-height:16px;flex:0 0 16px;margin:0;padding:0;border:1px solid var(--color-border);border-radius:4px;accent-color:var(--color-primary)}
 .app-modal-content form>label.academic-check{display:flex;align-items:center;gap:9px;min-height:38px}
+
+/* Accessible custom checkbox control used by academic-year forms. */
+.app-modal-content .academic-check{display:flex;align-items:center;gap:9px;min-height:38px;color:var(--color-text);font-size:12px;font-weight:600}
+.app-modal-content .academic-check-control{display:grid;place-items:center;flex:0 0 18px;width:18px;height:18px;min-height:18px;margin:0;padding:0;border:1px solid var(--color-border);border-radius:4px;background:var(--color-surface);color:var(--color-on-brand);font-size:13px;font-weight:800;line-height:1;cursor:pointer}
+.app-modal-content .academic-check-control[aria-checked=true]{border-color:var(--color-brand);background:var(--color-brand)}
+.app-modal-content .academic-check-control:focus-visible{outline:3px solid color-mix(in srgb,var(--color-focus) 28%,transparent);outline-offset:2px}
