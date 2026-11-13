@@ -667,4 +667,80 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 		t.Fatalf("revoked Teacher role retained roster access: %+v", rosterAfterTeacherRoleRevocation)
 	}
 
+	// Switching the Current Year must clear the previous flag atomically
+	// without rewriting or deleting the student's historical enrollment.
+	var historicalYearID, historicalSectionID int64
+	var historicalStatus string
+	if err := tx.QueryRow(ctx, `
+		SELECT academic_year_id, section_id, status
+		  FROM student_enrollments
+		 WHERE id = $1
+	`, apiEnrollment.ID).Scan(&historicalYearID, &historicalSectionID, &historicalStatus); err != nil {
+		t.Fatalf("snapshot historical enrollment before Current Year switch: %v", err)
+	}
+	if historicalYearID != apiYear.ID || historicalSectionID != apiSection.ID || historicalStatus != "promoted" {
+		t.Fatalf("unexpected historical enrollment before switch: year=%d section=%d status=%q",
+			historicalYearID, historicalSectionID, historicalStatus)
+	}
+
+	switchYear, err := academicRepo.SaveAcademicYear(ctx, actorPrincipalID, schoolID, 0,
+		"API Current Switch "+suffix, time.Date(2030, 4, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2031, 3, 31, 0, 0, 0, 0, time.UTC), "active", true)
+	if err != nil || switchYear == nil || !switchYear.IsCurrent {
+		t.Fatalf("create replacement Current Year through repository: year=%+v err=%v", switchYear, err)
+	}
+	var currentCount int
+	var previousYearCurrent bool
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*) FILTER (WHERE is_current),
+		       COALESCE(BOOL_OR(is_current) FILTER (WHERE id = $2), FALSE)
+		  FROM academic_years
+		 WHERE school_id = $1
+	`, schoolID, apiYear.ID).Scan(&currentCount, &previousYearCurrent); err != nil {
+		t.Fatalf("verify Current Year switch flags: %v", err)
+	}
+	if currentCount != 1 || previousYearCurrent {
+		t.Fatalf("Current Year switch flags: current_count=%d previous_year_current=%v; want 1 and false",
+			currentCount, previousYearCurrent)
+	}
+	var afterYearID, afterSectionID int64
+	var afterStatus string
+	if err := tx.QueryRow(ctx, `
+		SELECT academic_year_id, section_id, status
+		  FROM student_enrollments
+		 WHERE id = $1
+	`, apiEnrollment.ID).Scan(&afterYearID, &afterSectionID, &afterStatus); err != nil {
+		t.Fatalf("read historical enrollment after Current Year switch: %v", err)
+	}
+	if afterYearID != historicalYearID || afterSectionID != historicalSectionID || afterStatus != historicalStatus {
+		t.Fatalf("Current Year switch changed historical enrollment: before=(%d,%d,%q) after=(%d,%d,%q)",
+			historicalYearID, historicalSectionID, historicalStatus,
+			afterYearID, afterSectionID, afterStatus)
+	}
+
+	// A closed year is terminal: attempting to reactivate it as Current must
+	// fail, and the failed operation must leave the existing Current Year intact.
+	closedYear, err := academicRepo.SaveAcademicYear(ctx, actorPrincipalID, schoolID, 0,
+		"API Closed Year "+suffix, time.Date(2031, 4, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2032, 3, 31, 0, 0, 0, 0, time.UTC), "closed", false)
+	if err != nil || closedYear == nil {
+		t.Fatalf("create closed academic year fixture: year=%+v err=%v", closedYear, err)
+	}
+	_, err = academicRepo.SaveAcademicYear(ctx, actorPrincipalID, schoolID, closedYear.ID,
+		closedYear.Name, closedYear.StartsOn, closedYear.EndsOn, "active", true)
+	if !errors.Is(err, ErrAcademicNotFound) {
+		t.Fatalf("reactivate closed academic year error = %v, want ErrAcademicNotFound", err)
+	}
+	var currentAfterClosedAttempt int64
+	if err := tx.QueryRow(ctx, `
+		SELECT id FROM academic_years
+		 WHERE school_id = $1 AND is_current = TRUE
+	`, schoolID).Scan(&currentAfterClosedAttempt); err != nil {
+		t.Fatalf("verify Current Year after rejected closed-year update: %v", err)
+	}
+	if currentAfterClosedAttempt != switchYear.ID {
+		t.Fatalf("rejected closed-year update changed Current Year to %d; want %d",
+			currentAfterClosedAttempt, switchYear.ID)
+	}
+
 }
