@@ -28,12 +28,24 @@ function Dashboard({user}:{user:AuthUser}){
  const [metrics,setMetrics]=useState<Metric[]>([]),[loading,setLoading]=useState(true),[errors,setErrors]=useState<string[]>([]);
  useEffect(()=>{let alive=true;async function load(){setLoading(true);const jobs=[
   {p:"users.read",url:"/school/staff",key:"staff",label:"Staff accounts",note:"People in your school",icon:Users,tone:"blue"},
-  {p:"classes.read",url:"/school/classes",key:"classes",label:"Classes",note:"Academic structure",icon:BookOpen,tone:"violet"},
-  {p:"academic_years.read",url:"/school/academic-years",key:"academic_years",label:"Academic years",note:"School calendar",icon:CalendarDays,tone:"amber"},
-  {p:"students.read_basic",url:"/school/enrollments",key:"enrollments",label:"Enrollments",note:"Student learning groups",icon:GraduationCap,tone:"green"}
+  {p:"classes.read",url:"/school/classes",key:"classes",label:"Classes",note:"Academic structure",icon:BookOpen,tone:"violet"}
  ].filter(x=>user.permissions.includes(x.p));
  const results=await Promise.all(jobs.map(async j=>{try{const d=await api<Record<string,unknown>>(j.url);const v=d[j.key];return {metric:{label:j.label,value:String(Array.isArray(v)?v.length:0),note:j.note,icon:j.icon,tone:j.tone} as Metric,error:""};}catch(e){return {metric:null,error:j.label+": "+(e instanceof Error?e.message:"Unavailable")};}}));
- if(!alive)return;setMetrics(results.flatMap(x=>x.metric?[x.metric]:[]));setErrors(results.flatMap(x=>x.error?[x.error]:[]));setLoading(false);}
+ const nextMetrics=results.flatMap(x=>x.metric?[x.metric]:[]);const nextErrors=results.flatMap(x=>x.error?[x.error]:[]);
+ if(user.permissions.includes("academic_years.read")){
+  try{
+   const yearsResponse=await api<{academic_years:Array<{id:number;is_current:boolean;status:string}>}>("/school/academic-years");
+   nextMetrics.push({label:"Academic years",value:String(yearsResponse.academic_years.length),note:"School calendar",icon:CalendarDays,tone:"amber"});
+   if(user.permissions.includes("students.read_basic")){
+    const currentYear=yearsResponse.academic_years.find(year=>year.is_current&&year.status==="active");
+    if(currentYear){
+     try{const enrollmentResponse=await api<{enrollments:unknown[]}>(`/school/enrollments?academic_year_id=${currentYear.id}`);nextMetrics.push({label:"Current-year enrollments",value:String(enrollmentResponse.enrollments.length),note:"Students enrolled in the current academic year",icon:GraduationCap,tone:"green"});}
+     catch(e){nextErrors.push("Current-year enrollments: "+(e instanceof Error?e.message:"Unavailable"));}
+    }else{nextMetrics.push({label:"Current-year enrollments",value:"—",note:"Set an active current academic year to view this count",icon:GraduationCap,tone:"green"});}
+   }
+  }catch(e){nextErrors.push("Academic years: "+(e instanceof Error?e.message:"Unavailable"));}
+ }
+ if(!alive)return;setMetrics(nextMetrics);setErrors(nextErrors);setLoading(false);}
  void load();return()=>{alive=false;};},[user.permissions]);
  return <div className="content"><div className="heading"><div><span className="eyebrow">OVERVIEW</span><h1>Good {greeting()}, {user.username||"Administrator"}</h1><p>Here’s what’s happening in your school workspace.</p></div><div className="date-chip"><CalendarDays size={16}/>{new Intl.DateTimeFormat("en-IN",{dateStyle:"medium"}).format(new Date())}</div></div>{loading?<DashboardSkeleton/>:<><div className="stats">{metrics.length?metrics.map(m=><article className="stat" key={m.label}><div className="stat-top"><span>{m.label}</span><span className={"stat-icon "+m.tone}><m.icon size={18}/></span></div><strong>{m.value}</strong><small>{m.note}</small></article>):<div className="panel">No overview metrics are available for this account’s permissions.</div>}</div>{errors.length>0&&<div className="notice"><CircleHelp size={17}/><span>{errors.join(" · ")}</span></div>}<section className="welcome"><span className="eyebrow">YOUR WORKSPACE</span><h2>Everything starts with a clear picture.</h2><p>Use the navigation to manage the school areas your account is permitted to access. The API checks authorization again for every operation.</p><div className="welcome-icon"><GraduationCap size={48}/></div></section></>}</div>;
 }
