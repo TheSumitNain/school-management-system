@@ -1,6 +1,6 @@
 # Product Requirements and Delivery Scope
 
-**Status:** Approved product direction, reconciled 2026-11-06. This document describes intended product scope; it is not an implementation checklist.
+**Status:** Approved product direction, reconciled 2026-11-13. This document describes intended product scope; it is not an implementation checklist.
 
 ## Product goal
 
@@ -42,7 +42,9 @@ Parent and Driver mobile/web experiences are deferred until the Phase 1 web appl
 - Staff accounts, roles and permissions.
 - Academic years, classes, sections and subjects.
 - Teacher-subject and class-in-charge assignments.
-- Student admission, profiles, enrollment and promotion/history.
+- Student admission, profiles, enrollment and promotion/history. A permanent school-scoped student identity is separate from academic-year enrollment; each academic year receives a new enrollment-specific admission number. Initial admission creates the student and first enrollment transactionally; returning students receive a new yearly enrollment without duplicate student identities. Student profile fields are organized into independently editable sections and may be completed incrementally.
+- Student addresses use reusable hierarchical locations with separate current/permanent address support. Guardian relationships reuse the existing school-scoped foundation; medical, physical and document sections require dedicated data handling and field-level authorization.
+- Class/year curriculum defines applicable compulsory and optional subjects; student subject choices are stored against the specific academic-year enrollment so historical selections remain stable.
 - Attendance.
 - Planned next: timetable, examinations, results and remaining school workflows.
 - Guardian/parent relationship foundations are retained for Phase 2; parent OTP authentication and delivery are deferred.
