@@ -397,16 +397,6 @@ func (r *AcademicRepository) PromoteStudentEnrollment(ctx context.Context, actor
 	if err = tx.Commit(ctx); err != nil { return nil, fmt.Errorf("commit student promotion: %w", err) }
 	return v, nil
 }
-`, schoolID, sectionID).Scan(&value)
-	if err != nil {
-		return nil, fmt.Errorf("allocate next section roll number: %w", err)
-	}
-	if len(value) > 30 {
-		return nil, ErrInvalidAcademicInput
-	}
-	return &value, nil
-}
-
 const enrollmentColumns = `id,school_id,student_id,academic_year_id,class_id,section_id,roll_number,
 	class_name_snapshot,section_name_snapshot,admission_number,admission_date,status,enrolled_at,ended_at,created_at,updated_at`
 
