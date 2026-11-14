@@ -226,6 +226,43 @@ func TestStudentAddressLocationV34PostgresIntegration(t *testing.T) {
 	if !foundCurrent {
 		t.Fatalf("current address did not preserve saved address and inactive locality: %+v", addresses)
 	}
+
+	updatedLine1 := "Updated House 22"
+	updatedArea := "Updated Main Mohalla"
+	updatedPostal := "134003"
+	savedAddress, err := repository.SaveStudentAddress(ctx, actorPrincipalID, schoolID, studentID,
+		"current", &updatedLine1, nil, &updatedArea, nil, &updatedPostal, nil, false)
+	if err != nil {
+		t.Fatalf("save current student address through repository: %v", err)
+	}
+	if savedAddress.AddressLine1 == nil || *savedAddress.AddressLine1 != updatedLine1 ||
+		savedAddress.AreaMohalla == nil || *savedAddress.AreaMohalla != updatedArea ||
+		savedAddress.PostalCode == nil || *savedAddress.PostalCode != updatedPostal ||
+		savedAddress.AddressType != "current" || savedAddress.SameAsCurrent {
+		t.Fatalf("unexpected saved current address: %+v", savedAddress)
+	}
+	var permanentSameAsCurrent bool
+	if err := tx.QueryRow(ctx, `
+		SELECT same_as_current FROM student_addresses
+		 WHERE school_id=$1 AND student_id=$2 AND address_type='permanent'
+	`, schoolID, studentID).Scan(&permanentSameAsCurrent); err != nil {
+		t.Fatalf("verify permanent address remained independent: %v", err)
+	}
+	if !permanentSameAsCurrent {
+		t.Fatal("saving current address unexpectedly changed permanent same-as-current setting")
+	}
+	var updateAuditCount int
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*) FROM audit_events
+		 WHERE school_id=$1 AND actor_principal_id=$2
+		   AND action='school.student.address.updated'
+		   AND resource_id=$3
+	`, schoolID, actorPrincipalID, fmt.Sprint(savedAddress.ID)).Scan(&updateAuditCount); err != nil {
+		t.Fatalf("inspect address update audit: %v", err)
+	}
+	if updateAuditCount != 1 {
+		t.Fatalf("address update audit count = %d, want 1", updateAuditCount)
+	}
 	var readAuditCount int
 	var readAuditMetadata string
 	if err := tx.QueryRow(ctx, `
