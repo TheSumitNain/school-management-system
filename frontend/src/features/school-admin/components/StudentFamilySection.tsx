@@ -175,7 +175,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
     event.preventDefault();
     setGuardianSelectError("");
     setRelationshipError("");
-    if (!canManage) return;
+    if (!canManage || linksQuery.isLoading || linksQuery.isError || guardiansQuery.isLoading || guardiansQuery.isError) return;
     if (!selectedGuardianID) setGuardianSelectError("Choose a guardian.");
     if (!relationshipType.trim()) setRelationshipError("Enter the relationship to this student.");
     if (!selectedGuardianID || !relationshipType.trim()) return;
@@ -290,7 +290,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
                 <label><input type="checkbox" checked={emergencyContact} onChange={event => setEmergencyContact(event.target.checked)}/> <StudentFieldLabel label="Emergency contact" hint="Optional. Mark this guardian as an emergency contact." /></label>
               </div>
               
-              <button type="submit" className="primary" disabled={busy}>{linkGuardian.isPending ? "Linking…" : "Link guardian"}</button>
+              <button type="submit" className="primary" disabled={busy || linksQuery.isLoading || linksQuery.isError || guardiansQuery.isLoading || guardiansQuery.isError}>{linkGuardian.isPending ? "Linking…" : "Link guardian"}</button>
               <button type="button" className="student-link-button" onClick={() => { setShowCreateGuardian(value => !value); setNewGuardianNameError(""); setNewGuardianEmailError(""); }}>Create a new guardian contact</button>
             </form>
             {showCreateGuardian && (
