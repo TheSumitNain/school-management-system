@@ -1,9 +1,10 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Modal } from "../../../shared/components/Modal";
 import { Select } from "../../../shared/components/Select";
-import type { StudentProfile } from "../api";
+import type { StudentLocation, StudentProfile } from "../api";
 import {
   useCreateSchoolStudentLocationMutation,
+  useDeactivateSchoolStudentLocationMutation,
   useSaveSchoolStudentAddressMutation,
   useSchoolStudentAddressesQuery,
   useSchoolStudentLocationsQuery,
@@ -38,6 +39,7 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
   const [subdistrictSearch, setSubdistrictSearch] = useState("");
   const [localitySearch, setLocalitySearch] = useState("");
   const [showLocationCreator, setShowLocationCreator] = useState(false);
+  const [pendingDeactivate, setPendingDeactivate] = useState<StudentLocation | null>(null);
   const [newLocationName, setNewLocationName] = useState("");
   const [newLocalityType, setNewLocalityType] = useState("village");
   const [countryCode, setCountryCode] = useState("IN");
@@ -54,6 +56,7 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
   const localitiesQuery = useSchoolStudentLocationsQuery({ parentID: subdistrictID || undefined, level: "locality", q: localitySearch }, subdistrictID > 0);
   const saveAddress = useSaveSchoolStudentAddressMutation();
   const createLocation = useCreateSchoolStudentLocationMutation();
+  const deactivateLocation = useDeactivateSchoolStudentLocationMutation();
 
   useEffect(() => {
     setLine1(textValue(selectedAddress?.address_line_1));
@@ -81,7 +84,11 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
     nextLocationLevel === "district" ? "District" :
     nextLocationLevel === "subdistrict" ? "Block / Tehsil" : "Village / City";
   const nextParentID = !stateID ? undefined : !districtID ? stateID : !subdistrictID ? districtID : subdistrictID;
-  const busy = saveAddress.isPending || createLocation.isPending;
+  const selectedLocation = localityID ? localities.find(item => item.id === localityID) :
+    subdistrictID ? subdistricts.find(item => item.id === subdistrictID) :
+    districtID ? districts.find(item => item.id === districtID) :
+    stateID ? states.find(item => item.id === stateID) : undefined;
+  const busy = saveAddress.isPending || createLocation.isPending || deactivateLocation.isPending;
 
   function resetChildren(level: "state" | "district" | "subdistrict") {
     if (level === "state") {
@@ -134,6 +141,28 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
       setFeedback({ kind: "success", message: addressType === "current" ? "Current address saved." : "Permanent address saved." });
     } catch (error) {
       setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Address could not be saved." });
+    }
+  }
+
+  async function confirmDeactivateLocation() {
+    if (!canUpdate || !pendingDeactivate) return;
+    try {
+      await deactivateLocation.mutateAsync(pendingDeactivate.id);
+      const deactivated = pendingDeactivate;
+      setPendingDeactivate(null);
+      if (deactivated.level === "state") {
+        setStateID(0);
+        resetChildren("state");
+      } else if (deactivated.level === "district") {
+        setDistrictID(0);
+        resetChildren("district");
+      } else if (deactivated.level === "subdistrict") {
+        setSubdistrictID(0);
+        resetChildren("subdistrict");
+      }
+      setFeedback({ kind: "success", message: deactivated.name + " was deactivated. Existing address records are retained." });
+    } catch (error) {
+      setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Location could not be deactivated." });
     }
   }
 
@@ -219,6 +248,11 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
               {fieldError && <small className="app-field-error">{fieldError}</small>}
               {canUpdate && canAddLocation && <button type="button" className="student-link-button" onClick={() => { setShowLocationCreator(value => !value); setFieldError(""); }}>Add missing {nextLocationLabel.toLowerCase()}</button>}
               {canUpdate && hasAnyLocation && <button type="button" className="student-link-button" onClick={() => { setStateID(0); resetChildren("state"); }}>Clear location selection</button>}
+              {canUpdate && selectedLocation?.school_id && <button type="button" className="student-link-button" onClick={() => setPendingDeactivate(selectedLocation)}>Deactivate selected school location</button>}
+              {pendingDeactivate && <div className="student-location-confirm" role="alertdialog" aria-label="Confirm location deactivation">
+                <p>Deactivate <strong>{pendingDeactivate.name}</strong>? It will disappear from new selections. Existing student addresses will keep their saved location.</p>
+                <div><button type="button" className="app-modal-cancel" onClick={() => setPendingDeactivate(null)} disabled={busy}>Cancel</button><button type="button" className="secondary" onClick={() => void confirmDeactivateLocation()} disabled={busy}>{deactivateLocation.isPending ? "Deactivating…" : "Confirm deactivation"}</button></div>
+              </div>}
               {(statesQuery.isError || districtsQuery.isError || subdistrictsQuery.isError || localitiesQuery.isError) && <small className="app-field-error" role="alert">Location options could not be loaded. Close and reopen this section to retry.</small>}
               {showLocationCreator && canUpdate && canAddLocation && (
                 <div className="student-location-create">
