@@ -55,6 +55,11 @@ func (f *fakeGuardianManagementService) LinkStudentGuardian(_ context.Context, a
 	f.relationship, f.primary, f.emergency = relationship, primary, emergency
 	return f.link, f.err
 }
+func (f *fakeGuardianManagementService) UpdateStudentGuardianLink(_ context.Context, actor, school, link int64, relationship string, primary, emergency bool) (*repository.StudentGuardian, error) {
+	f.calls++; f.actorID, f.schoolID, f.linkID = actor, school, link
+	f.relationship, f.primary, f.emergency = relationship, primary, emergency
+	return f.link, f.err
+}
 func (f *fakeGuardianManagementService) RevokeStudentGuardianLink(_ context.Context, actor, school, link int64, reason string) error {
 	f.calls++; f.actorID, f.schoolID, f.linkID, f.reason = actor, school, link, reason
 	return f.err
@@ -151,6 +156,7 @@ func TestGuardianHandlerGetAndStudentRelationshipLifecycle(t *testing.T) {
 	router.GET("/guardians/:guardianID", guardianTestAuth, h.GetGuardian)
 	router.GET("/students/:studentID/guardians", guardianTestAuth, h.ListStudentGuardians)
 	router.POST("/students/:studentID/guardians", guardianTestAuth, h.LinkStudentGuardian)
+	router.PATCH("/links/:linkID", guardianTestAuth, h.UpdateStudentGuardianLink)
 	router.POST("/links/:linkID/revoke", guardianTestAuth, h.RevokeStudentGuardianLink)
 
 	rec := httptest.NewRecorder()
@@ -166,6 +172,12 @@ func TestGuardianHandlerGetAndStudentRelationshipLifecycle(t *testing.T) {
 	if rec.Code != http.StatusCreated || service.studentID != 22 || service.guardianID != 9 ||
 		service.relationship != "mother" || !service.primary || !service.emergency {
 		t.Fatalf("link status=%d service=%+v body=%s", rec.Code, service, rec.Body.String())
+	}
+
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/links/14", strings.NewReader(`{"relationship_type":"mother","is_primary_contact":true,"is_emergency_contact":false}`)))
+	if rec.Code != http.StatusOK || service.linkID != 14 || service.relationship != "mother" || !service.primary || service.emergency {
+		t.Fatalf("update link status=%d service=%+v body=%s", rec.Code, service, rec.Body.String())
 	}
 
 	rec = httptest.NewRecorder()
