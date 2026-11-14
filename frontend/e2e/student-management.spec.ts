@@ -45,6 +45,7 @@ test("student admission, profile navigation and parent details render without br
     emergency_medical_notes: null, history: [],
   };
   const addresses: Record<string, unknown>[] = [];
+  const failNextStudentRead: Record<string, boolean> = { "basic-details": false, addresses: false, "contact-details": false };
   const locationRows = [
     { id: 11, school_id: null, parent_id: null, country_code: "IN", level: "state", name: "Haryana", is_active: true },
     { id: 21, school_id: null, parent_id: 11, country_code: "IN", level: "district", name: "Ambala", is_active: true },
@@ -57,6 +58,14 @@ test("student admission, profile navigation and parent details render without br
     const url = new URL(request.url());
     const path = url.pathname.replace(/^\/api/, "");
     const method = request.method();
+
+    for (const resource of Object.keys(failNextStudentRead)) {
+      if (failNextStudentRead[resource] && method === "GET" && path.endsWith(`/students/1/${resource}`)) {
+        failNextStudentRead[resource] = false;
+        await route.fulfill({ status: 429, json: { message: `Temporary ${resource} read failure.` } });
+        return;
+      }
+    }
 
     if (path === "/auth/refresh") {
       await route.fulfill({ status: 401, json: { message: "No active session" } });
@@ -318,15 +327,7 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Academic history", exact: true })).toBeVisible();
 
-  let failBasicDetailsRead = true;
-  await page.route("**/api/school/students/*/basic-details", async route => {
-    if (failBasicDetailsRead && route.request().method() === "GET") {
-      failBasicDetailsRead = false;
-      await route.fulfill({ status: 429, json: { message: "Temporary basic-details read failure." } });
-      return;
-    }
-    await route.fallback();
-  });
+  failNextStudentRead["basic-details"] = true;
   await page.getByRole("button", { name: /Basic details/ }).click();
   await expect(page.getByRole("dialog", { name: "Basic Details" })).toBeVisible();
   const basicSave = page.getByRole("button", { name: "Save basic details" });
@@ -430,15 +431,7 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("button", { name: "Close dialog" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
 
-  let failAddressRead = true;
-  await page.route("**/api/school/students/*/addresses", async route => {
-    if (failAddressRead && route.request().method() === "GET") {
-      failAddressRead = false;
-      await route.fulfill({ status: 429, json: { message: "Temporary address read failure." } });
-      return;
-    }
-    await route.fallback();
-  });
+  failNextStudentRead.addresses = true;
   await page.getByRole("button", { name: /Address & communication/ }).click();
   await expect(page.getByRole("dialog", { name: "Address & Communication" })).toBeVisible();
   const addressSave = page.getByRole("button", { name: "Save address" });
@@ -489,15 +482,7 @@ test("student admission, profile navigation and parent details render without br
   expect(addresses.find(item => item.address_type === "permanent")).toMatchObject({ same_as_current: true });
   await expect(page.getByText("Permanent address saved.")).toBeVisible();
 
-  let failContactDetailsRead = true;
-  await page.route("**/api/school/students/*/contact-details", async route => {
-    if (failContactDetailsRead && route.request().method() === "GET") {
-      failContactDetailsRead = false;
-      await route.fulfill({ status: 429, json: { message: "Temporary contact-details read failure." } });
-      return;
-    }
-    await route.fallback();
-  });
+  failNextStudentRead["contact-details"] = true;
   await page.getByRole("button", { name: "Contact details", exact: true }).click();
   const contactSave = page.getByRole("button", { name: "Save contact details" });
   await expect(page.getByRole("alert")).toBeVisible();
