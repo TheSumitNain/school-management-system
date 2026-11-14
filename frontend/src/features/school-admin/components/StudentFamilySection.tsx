@@ -1,0 +1,216 @@
+import { useDeferredValue, useState, type FormEvent } from "react";
+import { Modal } from "../../../shared/components/Modal";
+import { Select } from "../../../shared/components/Select";
+import type { StudentProfile } from "../api";
+import {
+  useCreateSchoolGuardianMutation,
+  useLinkSchoolStudentGuardianMutation,
+  useRevokeSchoolStudentGuardianMutation,
+  useSchoolGuardiansQuery,
+  useSchoolStudentGuardiansQuery,
+  useSchoolStudentRelatedStudentsQuery,
+} from "../queries";
+
+type Props = {
+  student: StudentProfile;
+  canManage: boolean;
+  onClose: () => void;
+};
+
+export function StudentFamilySection({ student, canManage, onClose }: Props) {
+  const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search.trim());
+  const [selectedGuardianID, setSelectedGuardianID] = useState(0);
+  const [relationshipType, setRelationshipType] = useState("father");
+  const [primaryContact, setPrimaryContact] = useState(true);
+  const [emergencyContact, setEmergencyContact] = useState(true);
+  const [includeHistory, setIncludeHistory] = useState(false);
+  const [showCreateGuardian, setShowCreateGuardian] = useState(false);
+  const [newGuardianName, setNewGuardianName] = useState("");
+  const [newGuardianMobile, setNewGuardianMobile] = useState("");
+  const [newGuardianEmail, setNewGuardianEmail] = useState("");
+  const [pendingRevokeID, setPendingRevokeID] = useState(0);
+  const [revokeReason, setRevokeReason] = useState("");
+  const [fieldError, setFieldError] = useState("");
+  const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
+
+  const linksQuery = useSchoolStudentGuardiansQuery(student.id, true);
+  const guardiansQuery = useSchoolGuardiansQuery({ q: deferredSearch, status: "active" });
+  const relatedQuery = useSchoolStudentRelatedStudentsQuery(student.id);
+  const createGuardian = useCreateSchoolGuardianMutation();
+  const linkGuardian = useLinkSchoolStudentGuardianMutation();
+  const revokeLink = useRevokeSchoolStudentGuardianMutation();
+
+  const allLinks = linksQuery.data?.student_guardians ?? [];
+  const visibleLinks = includeHistory ? allLinks : allLinks.filter(link => !link.revoked_at);
+  const linkedGuardianIDs = new Set(allLinks.map(link => link.guardian_id));
+  const guardianOptions = (guardiansQuery.data?.guardians ?? [])
+    .filter(guardian => !linkedGuardianIDs.has(guardian.id))
+    .map(guardian => ({
+      value: String(guardian.id),
+      label: guardian.full_name + (guardian.mobile_number ? " · " + guardian.mobile_number : guardian.email_address ? " · " + guardian.email_address : ""),
+    }));
+  const relatedStudents = relatedQuery.data?.related_students ?? [];
+  const busy = createGuardian.isPending || linkGuardian.isPending || revokeLink.isPending;
+
+  async function saveGuardian(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setFieldError("");
+    if (!canManage) return;
+    if (!newGuardianName.trim()) {
+      setFieldError("Guardian name is required.");
+      return;
+    }
+    try {
+      const result = await createGuardian.mutateAsync({
+        full_name: newGuardianName.trim(),
+        mobile_number: newGuardianMobile.trim() || null,
+        email_address: newGuardianEmail.trim() || null,
+        status: "active",
+      }) as { guardian?: { id: number } };
+      const guardianID = result.guardian?.id;
+      if (!guardianID) throw new Error("The guardian record was not returned by the server.");
+      setSelectedGuardianID(guardianID);
+      setSearch(newGuardianName.trim());
+      setNewGuardianName("");
+      setNewGuardianMobile("");
+      setNewGuardianEmail("");
+      setShowCreateGuardian(false);
+      setFeedback({ kind: "success", message: "Guardian contact created. Select the relationship details and link it to this student." });
+    } catch (error) {
+      setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Guardian contact could not be saved." });
+    }
+  }
+
+  async function linkSelectedGuardian(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setFieldError("");
+    if (!canManage) return;
+    if (!selectedGuardianID || !relationshipType.trim()) {
+      setFieldError("Choose a guardian and enter the relationship.");
+      return;
+    }
+    try {
+      await linkGuardian.mutateAsync({
+        studentID: student.id,
+        input: {
+          guardian_id: selectedGuardianID,
+          relationship_type: relationshipType.trim(),
+          is_primary_contact: primaryContact,
+          is_emergency_contact: emergencyContact,
+        },
+      });
+      setSelectedGuardianID(0);
+      setFeedback({ kind: "success", message: "Guardian linked to this student." });
+    } catch (error) {
+      setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Guardian could not be linked." });
+    }
+  }
+
+  async function confirmRevoke() {
+    if (!canManage || pendingRevokeID <= 0) return;
+    if (!revokeReason.trim()) {
+      setFieldError("A reason is required to revoke a guardian relationship.");
+      return;
+    }
+    try {
+      await revokeLink.mutateAsync({ linkID: pendingRevokeID, reason: revokeReason.trim() });
+      setPendingRevokeID(0);
+      setRevokeReason("");
+      setFieldError("");
+      setFeedback({ kind: "success", message: "Guardian relationship revoked. Its history is preserved." });
+    } catch (error) {
+      setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Guardian relationship could not be revoked." });
+    }
+  }
+
+  return (
+    <Modal
+      open
+      title="Parents & Siblings"
+      description={student.full_name + " · Staff-managed guardian records only; this does not create a parent login account."}
+      onClose={onClose}
+      closeDisabled={busy}
+    >
+      {feedback && <p className={feedback.kind === "error" ? "student-feedback error" : "student-feedback success"} role={feedback.kind === "error" ? "alert" : "status"}>{feedback.message}</p>}
+      <section className="student-family-section">
+        <div className="student-family-heading">
+          <div><h3>Parents / guardians</h3><p>Link existing school contacts or create a new guardian contact. Phone and email values may be shared by family members.</p></div>
+          <label className="student-address-same"><input type="checkbox" checked={includeHistory} onChange={event => setIncludeHistory(event.target.checked)}/> Show revoked history</label>
+        </div>
+        {linksQuery.isLoading ? <p className="student-address-note">Loading guardian relationships…</p> :
+          linksQuery.isError ? <p className="student-feedback error" role="alert">{linksQuery.error.message}</p> :
+          visibleLinks.length === 0 ? <p className="student-address-note">No guardian relationships are linked to this student yet.</p> :
+          <div className="student-family-list">
+            {visibleLinks.map(link => (
+              <article className="student-family-card" key={link.id}>
+                <div>
+                  <strong>{link.guardian_name}</strong>
+                  <span>{link.relationship_type}{link.is_primary_contact ? " · Primary contact" : ""}{link.is_emergency_contact ? " · Emergency contact" : ""}</span>
+                  <span>{link.mobile_number || "No phone"}{link.email_address ? " · " + link.email_address : ""}</span>
+                  {link.revoked_at && <small>Revoked {new Date(link.revoked_at).toLocaleDateString()}</small>}
+                </div>
+                {canManage && !link.revoked_at && <button type="button" className="student-link-button" onClick={() => { setPendingRevokeID(link.id); setRevokeReason(""); setFieldError(""); }}>Revoke link</button>}
+              </article>
+            ))}
+          </div>
+        }
+        {canManage && (
+          <>
+            <form className="student-family-link-form" onSubmit={linkSelectedGuardian} noValidate>
+              <h4>Link a guardian</h4>
+              <label>Search active guardian contacts<input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search by name, phone or email"/></label>
+              <Select ariaLabel="Select guardian" value={String(selectedGuardianID || "")} onChange={value => setSelectedGuardianID(Number(value))} placeholder="Choose a guardian" options={guardianOptions} disabled={guardiansQuery.isLoading}/>
+              <label>Relationship to student<input value={relationshipType} maxLength={40} onChange={event => setRelationshipType(event.target.value)} placeholder="Father, Mother, Guardian…"/></label>
+              <div className="student-family-checks">
+                <label><input type="checkbox" checked={primaryContact} onChange={event => setPrimaryContact(event.target.checked)}/> Primary contact</label>
+                <label><input type="checkbox" checked={emergencyContact} onChange={event => setEmergencyContact(event.target.checked)}/> Emergency contact</label>
+              </div>
+              {fieldError && !pendingRevokeID && <small className="app-field-error">{fieldError}</small>}
+              <button type="submit" className="primary" disabled={busy || !selectedGuardianID}>{linkGuardian.isPending ? "Linking…" : "Link guardian"}</button>
+              <button type="button" className="student-link-button" onClick={() => { setShowCreateGuardian(value => !value); setFieldError(""); }}>Create a new guardian contact</button>
+            </form>
+            {showCreateGuardian && (
+              <form className="student-family-create-form" onSubmit={saveGuardian} noValidate>
+                <h4>New guardian contact</h4>
+                <label>Full name<input value={newGuardianName} maxLength={200} onChange={event => setNewGuardianName(event.target.value)} placeholder="Guardian full name"/></label>
+                <label>Mobile number<input value={newGuardianMobile} maxLength={30} onChange={event => setNewGuardianMobile(event.target.value)} placeholder="Mobile number"/></label>
+                <label>Email address<input type="email" value={newGuardianEmail} maxLength={254} onChange={event => setNewGuardianEmail(event.target.value)} placeholder="guardian@example.com"/></label>
+                {fieldError && <small className="app-field-error">{fieldError}</small>}
+                <button type="submit" className="secondary" disabled={busy}>{createGuardian.isPending ? "Saving…" : "Save guardian contact"}</button>
+              </form>
+            )}
+            {pendingRevokeID > 0 && (
+              <div className="student-location-confirm" role="alertdialog" aria-label="Revoke guardian relationship">
+                <label>Reason for revocation<input value={revokeReason} maxLength={500} onChange={event => setRevokeReason(event.target.value)} placeholder="Explain why this link is being revoked"/></label>
+                {fieldError && <small className="app-field-error">{fieldError}</small>}
+                <div><button type="button" className="app-modal-cancel" onClick={() => { setPendingRevokeID(0); setFieldError(""); }} disabled={busy}>Cancel</button><button type="button" className="secondary" onClick={() => void confirmRevoke()} disabled={busy}>{revokeLink.isPending ? "Revoking…" : "Confirm revoke"}</button></div>
+              </div>
+            )}
+          </>
+        )}
+        {!canManage && <p className="student-address-note">View-only access. Guardian management permission is required to create, link or revoke guardian records.</p>}
+      </section>
+
+      <section className="student-family-section">
+        <div className="student-family-heading"><div><h3>Other students sharing a guardian</h3><p>This is derived from active guardian links. It does not assume a biological sibling relationship.</p></div></div>
+        {relatedQuery.isLoading ? <p className="student-address-note">Loading related students…</p> :
+          relatedQuery.isError ? <p className="student-feedback error" role="alert">{relatedQuery.error.message}</p> :
+          relatedStudents.length === 0 ? <p className="student-address-note">No other students share an active guardian with this student.</p> :
+          <div className="student-family-list">
+            {relatedStudents.map(item => (
+              <article className="student-family-card" key={item.student_id}>
+                <div>
+                  <strong>{item.full_name}</strong>
+                  <span>{item.admission_number || "No current-year admission number"}{item.class_name ? " · " + item.class_name : ""}{item.section_name ? " · " + item.section_name : ""}</span>
+                  <small>Shared guardian: {item.shared_guardian_names.join(", ")}</small>
+                </div>
+              </article>
+            ))}
+          </div>
+        }
+      </section>
+      <div className="app-modal-actions"><button type="button" className="app-modal-cancel" onClick={onClose} disabled={busy}>Close</button></div>
+    </Modal>
+  );
+}
