@@ -49,7 +49,7 @@ import {
   getSchoolStudentMedicalDetails, getSchoolStudentPhysicalDetails,
   getSchoolStudentEnrollments, getSchoolStudentEnrollmentHistory, getSchoolStudentLocations, getSchoolStudentRelatedStudents,
   getSchoolStudentGuardians, getSchoolStudents, getSchoolGuardians, linkSchoolStudentGuardian,
-  revokeSchoolStudentGuardianLink, createSchoolGuardian, updateSchoolGuardian, saveSchoolStudentAddress,
+  revokeSchoolStudentGuardianLink, updateSchoolStudentGuardianLink, createSchoolGuardian, updateSchoolGuardian, saveSchoolStudentAddress,
   saveSchoolStudentContactDetails, saveSchoolStudentMedicalDetails, saveSchoolStudentPhysicalDetails, updateSchoolStudent,
 } from "./api";
 
@@ -263,6 +263,11 @@ export function useLinkSchoolStudentGuardianMutation() {
   return useGuardianMutation(({ studentID, input }: {
     studentID: number; input: { guardian_id: number; relationship_type: string; is_primary_contact: boolean; is_emergency_contact: boolean };
   }) => linkSchoolStudentGuardian(studentID, input));
+}
+export function useUpdateSchoolStudentGuardianMutation() {
+  return useGuardianMutation(({ linkID, input }: {
+    linkID: number; input: { relationship_type: string; is_primary_contact: boolean; is_emergency_contact: boolean };
+  }) => updateSchoolStudentGuardianLink(linkID, input));
 }
 export function useRevokeSchoolStudentGuardianMutation() {
   return useGuardianMutation(({ linkID, reason }: { linkID: number; reason: string }) => revokeSchoolStudentGuardianLink(linkID, reason));
