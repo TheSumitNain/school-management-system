@@ -216,6 +216,46 @@ export function createSchoolStudentEnrollment(input: {
   return api<{ enrollment: StudentEnrollment }>("/school/enrollments", { method: "POST", body: JSON.stringify(input) });
 }
 
+export type StudentLocation = {
+  id: number; school_id?: number | null; parent_id?: number | null; country_code: string;
+  level: "state" | "district" | "subdistrict" | "locality" | string; name: string;
+  locality_type?: "village" | "city" | "town" | "other" | null; is_active: boolean;
+};
+export type StudentAddress = {
+  id: number; school_id: number; student_id: number; address_type: "current" | "permanent";
+  address_line_1?: string | null; address_line_2?: string | null; area_mohalla?: string | null;
+  landmark?: string | null; postal_code?: string | null; location_id?: number | null;
+  location_name?: string | null; location_level?: string | null; locality_type?: string | null;
+  same_as_current: boolean;
+};
+export function getSchoolStudentLocations(filters: { parentID?: number; level?: string; q?: string } = {}, signal?: AbortSignal) {
+  const params = new URLSearchParams();
+  if (filters.parentID) params.set("parent_id", String(filters.parentID));
+  if (filters.level) params.set("level", filters.level);
+  if (filters.q) params.set("q", filters.q);
+  const query = params.toString();
+  return api<{ locations: StudentLocation[] }>("/school/locations" + (query ? "?" + query : ""), { signal });
+}
+export function createSchoolStudentLocation(input: {
+  parent_id?: number | null; country_code?: string; level: string; name: string; locality_type?: string | null;
+}) {
+  return api<{ location: StudentLocation }>("/school/locations", { method: "POST", body: JSON.stringify(input) });
+}
+export function deactivateSchoolStudentLocation(locationID: number) {
+  return api<{ location: StudentLocation }>(`/school/locations/${locationID}/deactivate`, { method: "POST" });
+}
+export function getSchoolStudentAddresses(studentID: number, signal?: AbortSignal) {
+  return api<{ addresses: StudentAddress[] }>(`/school/students/${studentID}/addresses`, { signal });
+}
+export function saveSchoolStudentAddress(studentID: number, addressType: "current" | "permanent", input: {
+  address_line_1?: string | null; address_line_2?: string | null; area_mohalla?: string | null;
+  landmark?: string | null; postal_code?: string | null; location_id?: number | null; same_as_current?: boolean;
+}) {
+  return api<{ address: StudentAddress }>(`/school/students/${studentID}/addresses/${addressType}`, {
+    method: "PUT", body: JSON.stringify(input),
+  });
+}
+
 
 export type AttendanceRecord = {
   id: number;
