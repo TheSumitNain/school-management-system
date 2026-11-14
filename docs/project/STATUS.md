@@ -194,3 +194,10 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - Added PostgreSQL integration coverage for full address hierarchy read-back after locality deactivation.
 - The design document now records the acceptance checklist and confirms Aadhaar remains intentionally excluded from the default profile; document upload/download remains deferred pending secure private storage and dedicated access controls.
 - These changes are committed on `work`; run backend PostgreSQL integration tests, `go vet`, frontend typecheck and production build locally before browser acceptance. Do not apply migrations to the persistent application database for this work.
+
+
+## Student Management reference inventory update — 2026-11-14
+
+- Recorded the complete November 13 MySmartSchool reference field inventory: combined admission/enrollment fields; Basic/Personal (including optional Aadhaar number and SR number); Address & Communication; Parents & Siblings; Medical; Physical; Class & Subject; Transport; App Permissions; Documents.
+- Aadhaar card image/PDF and other document uploads remain deferred. Aadhaar number itself is intended as an optional field only; implementation is blocked until dedicated application-level encryption/key rotation, masked responses, least-privilege access and audit behavior are implemented. Never store or return the full number in plaintext; Aadhaar must not be mandatory for admission.
+- Fixed the stale `updateStudent` reference in StudentManagementPage's busy state after removal of the legacy name-only edit modal. Local frontend typecheck/build must be rerun after pulling this fix.
