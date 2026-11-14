@@ -123,6 +123,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
       occupation: link.occupation ?? "",
       education: link.education ?? "",
       workplace_name: link.workplace_name ?? "",
+      status: link.guardian_status,
     });
     setEditGuardianError("");
   }
@@ -152,7 +153,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
           occupation: editGuardianForm.occupation.trim() || null,
           education: editGuardianForm.education.trim() || null,
           workplace_name: editGuardianForm.workplace_name.trim() || null,
-          status: "active",
+          status: editGuardianForm.status,
         },
       });
       setEditingGuardianID(0);
