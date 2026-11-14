@@ -43,6 +43,7 @@ The authoritative schema is the ordered SQL migration chain in `backend/migratio
 - V34 rollback refuses to drop either table when address or location records exist. Do not seed guessed geography; import canonical reference data only from a reviewed authoritative source.
 - V35 adds optional student phone/email contact details in a separate one-row-per-student table. Phone/email values are not unique, shared household contact values are allowed, changes are audited without copying the PII values into audit metadata, and hard deletion is refused.
 - V35 rollback refuses to drop contact rows. Contact details use the same `students.read_sensitive` / `students.update` live permission checks as the address section.
+- V36 changes student/guardian uniqueness to one active link per pair while preserving multiple revoked relationship periods. Its down migration refuses rollback if any pair has more than one historical row.
 
 ## Local database configuration
 
