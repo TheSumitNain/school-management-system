@@ -44,7 +44,9 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
 
   const allLinks = linksQuery.data?.student_guardians ?? [];
   const visibleLinks = includeHistory ? allLinks : allLinks.filter(link => !link.revoked_at);
-  const linkedGuardianIDs = new Set(allLinks.map(link => link.guardian_id));
+  // A revoked relationship is history, not a permanent ban on re-linking.
+  // V12 keeps history rows while its partial unique index protects active pairs.
+  const linkedGuardianIDs = new Set(allLinks.filter(link => !link.revoked_at).map(link => link.guardian_id));
   const guardianOptions = (guardiansQuery.data?.guardians ?? [])
     .filter(guardian => !linkedGuardianIDs.has(guardian.id))
     .map(guardian => ({
