@@ -71,6 +71,30 @@ func scanStudentEnrollmentWithName(row interface{ Scan(...any) error }) (*Studen
 const enrollmentColumns = `id,school_id,student_id,academic_year_id,class_id,section_id,roll_number,
 	class_name_snapshot,section_name_snapshot,admission_number,admission_date,status,enrolled_at,ended_at,created_at,updated_at`
 
+type StudentAdmissionResult struct {
+	Student StudentProfile `json:"student"`
+	Enrollment StudentEnrollment `json:"enrollment"`
+}
+
+func normalizeEnrollmentAdmission(number string, admissionDate time.Time) (string, error) {
+	number = strings.TrimSpace(number)
+	if number == "" || len(number) > 50 || admissionDate.IsZero() {
+		return "", ErrInvalidAcademicInput
+	}
+	return number, nil
+}
+
+func validateEnrollmentDateRange(admissionDate, enrolledAt, yearStartsOn, yearEndsOn time.Time) error {
+	within := func(value time.Time) bool {
+		date := value.Format("2006-01-02")
+		return date >= yearStartsOn.Format("2006-01-02") && date <= yearEndsOn.Format("2006-01-02")
+	}
+	if !within(admissionDate) || !within(enrolledAt) {
+		return ErrInvalidAcademicInput
+	}
+	return nil
+}
+
 func (r *AcademicRepository) ListStudentEnrollments(ctx context.Context, actorID, schoolID, yearID, studentID int64) ([]StudentEnrollment, error) {
 	if r == nil || r.db == nil { return nil, ErrAcademicAccessDenied }
 	if yearID < 0 || studentID < 0 { return nil, ErrInvalidAcademicInput }
@@ -143,9 +167,11 @@ func (r *AcademicRepository) ListStudentEnrollments(ctx context.Context, actorID
 	return items, nil
 }
 
-func (r *AcademicRepository) CreateStudentEnrollment(ctx context.Context, actorID, schoolID, studentID, yearID, sectionID int64, rollNumber *string, enrolledAt time.Time) (*StudentEnrollment, error) {
+func (r *AcademicRepository) CreateStudentEnrollment(ctx context.Context, actorID, schoolID, studentID, yearID, sectionID int64, rollNumber *string, admissionNumber string, admissionDate, enrolledAt time.Time) (*StudentEnrollment, error) {
 	if r == nil || r.db == nil { return nil, ErrAcademicAccessDenied }
 	if studentID <= 0 || yearID <= 0 || sectionID <= 0 || enrolledAt.IsZero() { return nil, ErrInvalidAcademicInput }
+	admissionNumber, err := normalizeEnrollmentAdmission(admissionNumber, admissionDate)
+	if err != nil { return nil, err }
 	if rollNumber != nil {
 		value := strings.TrimSpace(*rollNumber)
 		if value == "" { rollNumber = nil } else if len(value) > 30 { return nil, ErrInvalidAcademicInput } else { rollNumber = &value }
@@ -160,32 +186,36 @@ func (r *AcademicRepository) CreateStudentEnrollment(ctx context.Context, actorI
 		return nil, fmt.Errorf("load student for enrollment: %w", err)
 	}
 	if !studentActive { return nil, ErrInvalidAcademicInput }
-	if err = tx.QueryRow(ctx, `SELECT status='active' FROM academic_years WHERE id=$1 AND school_id=$2`, yearID, schoolID).Scan(&yearActive); err != nil {
+	var yearStartsOn, yearEndsOn time.Time
+	if err = tx.QueryRow(ctx, `SELECT status='active',starts_on,ends_on FROM academic_years WHERE id=$1 AND school_id=$2`, yearID, schoolID).Scan(&yearActive, &yearStartsOn, &yearEndsOn); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) { return nil, ErrAcademicNotFound }
 		return nil, fmt.Errorf("load enrollment academic year: %w", err)
 	}
 	if !yearActive { return nil, ErrInvalidAcademicInput }
+	if err = validateEnrollmentDateRange(admissionDate, enrolledAt, yearStartsOn, yearEndsOn); err != nil { return nil, err }
 	var classID int64
 	if err = tx.QueryRow(ctx, `SELECT class_id FROM sections WHERE id=$1 AND school_id=$2 AND academic_year_id=$3 AND is_active=TRUE`, sectionID, schoolID, yearID).Scan(&classID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) { return nil, ErrAcademicNotFound }
 		return nil, fmt.Errorf("load enrollment section: %w", err)
 	}
 	v, err := scanStudentEnrollment(tx.QueryRow(ctx, `INSERT INTO student_enrollments
-		(school_id,student_id,academic_year_id,class_id,section_id,roll_number,enrolled_at)
-		VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING `+enrollmentColumns,
-		schoolID, studentID, yearID, classID, sectionID, rollNumber, enrolledAt))
+		(school_id,student_id,academic_year_id,class_id,section_id,roll_number,admission_number,admission_date,enrolled_at)
+		VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING `+enrollmentColumns,
+		schoolID, studentID, yearID, classID, sectionID, rollNumber, admissionNumber, admissionDate, enrolledAt))
 	if err != nil { return nil, academicWriteError(err) }
 	if _, err = tx.Exec(ctx, `INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
 		VALUES($1,$2,'school.student.enrolled','student_enrollment',$3,'success',
-		jsonb_build_object('student_id',$4::bigint,'academic_year_id',$5::bigint,'class_id',$6::bigint,'section_id',$7::bigint))`,
-		actorID, schoolID, fmt.Sprint(v.ID), studentID, yearID, classID, sectionID); err != nil { return nil, fmt.Errorf("audit student enrollment: %w", err) }
+		jsonb_build_object('student_id',$4::bigint,'academic_year_id',$5::bigint,'class_id',$6::bigint,'section_id',$7::bigint,'admission_number',$8::text,'admission_date',$9::date))`,
+		actorID, schoolID, fmt.Sprint(v.ID), studentID, yearID, classID, sectionID, admissionNumber, admissionDate.Format("2006-01-02")); err != nil { return nil, fmt.Errorf("audit student enrollment: %w", err) }
 	if err = tx.Commit(ctx); err != nil { return nil, fmt.Errorf("commit student enrollment: %w", err) }
 	return v, nil
 }
 
-func (r *AcademicRepository) PromoteStudentEnrollment(ctx context.Context, actorID, schoolID, sourceEnrollmentID, destinationYearID, destinationSectionID int64, rollNumber *string, enrolledAt time.Time) (*StudentEnrollment, error) {
+func (r *AcademicRepository) PromoteStudentEnrollment(ctx context.Context, actorID, schoolID, sourceEnrollmentID, destinationYearID, destinationSectionID int64, rollNumber *string, admissionNumber string, admissionDate, enrolledAt time.Time) (*StudentEnrollment, error) {
 	if r == nil || r.db == nil { return nil, ErrAcademicAccessDenied }
 	if sourceEnrollmentID <= 0 || destinationYearID <= 0 || destinationSectionID <= 0 || enrolledAt.IsZero() { return nil, ErrInvalidAcademicInput }
+	admissionNumber, err := normalizeEnrollmentAdmission(admissionNumber, admissionDate)
+	if err != nil { return nil, err }
 	if rollNumber != nil {
 		value := strings.TrimSpace(*rollNumber)
 		if value == "" { rollNumber = nil } else if len(value) > 30 { return nil, ErrInvalidAcademicInput } else { rollNumber = &value }
@@ -204,11 +234,13 @@ func (r *AcademicRepository) PromoteStudentEnrollment(ctx context.Context, actor
 	}
 	if sourceYearID == destinationYearID || enrolledAt.Before(sourceEnrolledAt) { return nil, ErrInvalidAcademicInput }
 	var yearActive bool
-	if err = tx.QueryRow(ctx, `SELECT status='active' FROM academic_years WHERE id=$1 AND school_id=$2`, destinationYearID, schoolID).Scan(&yearActive); err != nil {
+	var yearStartsOn, yearEndsOn time.Time
+	if err = tx.QueryRow(ctx, `SELECT status='active',starts_on,ends_on FROM academic_years WHERE id=$1 AND school_id=$2`, destinationYearID, schoolID).Scan(&yearActive, &yearStartsOn, &yearEndsOn); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) { return nil, ErrAcademicNotFound }
 		return nil, fmt.Errorf("load destination academic year: %w", err)
 	}
 	if !yearActive { return nil, ErrInvalidAcademicInput }
+	if err = validateEnrollmentDateRange(admissionDate, enrolledAt, yearStartsOn, yearEndsOn); err != nil { return nil, err }
 	var classID int64
 	if err = tx.QueryRow(ctx, `SELECT class_id FROM sections WHERE id=$1 AND school_id=$2 AND academic_year_id=$3 AND is_active=TRUE`, destinationSectionID, schoolID, destinationYearID).Scan(&classID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) { return nil, ErrAcademicNotFound }
@@ -217,14 +249,14 @@ func (r *AcademicRepository) PromoteStudentEnrollment(ctx context.Context, actor
 	if _, err = tx.Exec(ctx, `UPDATE student_enrollments SET status='promoted',ended_at=$3,updated_at=NOW()
 		WHERE id=$1 AND school_id=$2 AND status='active'`, sourceEnrollmentID, schoolID, enrolledAt); err != nil { return nil, academicWriteError(err) }
 	v, err := scanStudentEnrollment(tx.QueryRow(ctx, `INSERT INTO student_enrollments
-		(school_id,student_id,academic_year_id,class_id,section_id,roll_number,enrolled_at)
-		VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING `+enrollmentColumns,
-		schoolID, studentID, destinationYearID, classID, destinationSectionID, rollNumber, enrolledAt))
+		(school_id,student_id,academic_year_id,class_id,section_id,roll_number,admission_number,admission_date,enrolled_at)
+		VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING `+enrollmentColumns,
+		schoolID, studentID, destinationYearID, classID, destinationSectionID, rollNumber, admissionNumber, admissionDate, enrolledAt))
 	if err != nil { return nil, academicWriteError(err) }
 	if _, err = tx.Exec(ctx, `INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
 		VALUES($1,$2,'school.student.promoted','student_enrollment',$3,'success',
-		jsonb_build_object('student_id',$4::bigint,'source_enrollment_id',$5::bigint,'source_academic_year_id',$6::bigint,'destination_academic_year_id',$7::bigint,'destination_class_id',$8::bigint,'destination_section_id',$9::bigint))`,
-		actorID, schoolID, fmt.Sprint(v.ID), studentID, sourceEnrollmentID, sourceYearID, destinationYearID, classID, destinationSectionID); err != nil { return nil, fmt.Errorf("audit student promotion: %w", err) }
+		jsonb_build_object('student_id',$4::bigint,'source_enrollment_id',$5::bigint,'source_academic_year_id',$6::bigint,'destination_academic_year_id',$7::bigint,'destination_class_id',$8::bigint,'destination_section_id',$9::bigint,'admission_number',$10::text,'admission_date',$11::date))`,
+		actorID, schoolID, fmt.Sprint(v.ID), studentID, sourceEnrollmentID, sourceYearID, destinationYearID, classID, destinationSectionID, admissionNumber, admissionDate.Format("2006-01-02")); err != nil { return nil, fmt.Errorf("audit student promotion: %w", err) }
 	if err = tx.Commit(ctx); err != nil { return nil, fmt.Errorf("commit student promotion: %w", err) }
 	return v, nil
 }
