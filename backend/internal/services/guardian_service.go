@@ -15,6 +15,7 @@ type guardianRepository interface {
 	GetGuardian(context.Context,int64,int64,int64)(*repository.Guardian,error)
 	SaveGuardian(context.Context,int64,int64,int64,string,*string,*string,string)(*repository.Guardian,error)
 	ListStudentGuardians(context.Context,int64,int64,int64,bool)([]repository.StudentGuardian,error)
+	ListStudentRelatedStudents(context.Context,int64,int64,int64)([]repository.StudentRelatedStudent,error)
 	LinkStudentGuardian(context.Context,int64,int64,int64,int64,string,bool,bool)(*repository.StudentGuardian,error)
 	RevokeStudentGuardianLink(context.Context,int64,int64,int64,string)error
 }
@@ -38,6 +39,10 @@ func(s *GuardianService) SaveGuardian(ctx context.Context,actor,school,id int64,
 func(s *GuardianService) ListStudentGuardians(ctx context.Context,actor,school,student int64,history bool)([]repository.StudentGuardian,error){
 	if s==nil||s.repository==nil{return nil,repository.ErrGuardianAccessDenied}
 	return s.repository.ListStudentGuardians(ctx,actor,school,student,history)
+}
+func(s *GuardianService) ListStudentRelatedStudents(ctx context.Context,actor,school,student int64)([]repository.StudentRelatedStudent,error){
+	if s==nil||s.repository==nil{return nil,repository.ErrGuardianAccessDenied}
+	return s.repository.ListStudentRelatedStudents(ctx,actor,school,student)
 }
 func(s *GuardianService) LinkStudentGuardian(ctx context.Context,actor,school,student,guardian int64,relation string,primary,emergency bool)(*repository.StudentGuardian,error){
 	if s==nil||s.repository==nil{return nil,repository.ErrGuardianAccessDenied}
