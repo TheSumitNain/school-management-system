@@ -340,7 +340,7 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 			t.Fatal("previous primary contact was not cleared when new primary was selected")
 		}
 	}
-	active, err := repo.ListStudentGuardians(ctx, targetPrincipalID, schoolID, studentID, false)
+	active, err = repo.ListStudentGuardians(ctx, targetPrincipalID, schoolID, studentID, false)
 	if err != nil || len(active) != 2 {
 		t.Fatalf("list active student guardian links: count=%d err=%v", len(active), err)
 	}
