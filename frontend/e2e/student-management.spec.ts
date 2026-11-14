@@ -230,6 +230,13 @@ test("student admission, profile navigation and parent details render without br
         return;
       }
     }
+    const guardianRevokeMatch = path.match(/^\/school\/student-guardian-links\/(\d+)\/revoke$/);
+    if (guardianRevokeMatch && method === "POST") {
+      const input = request.postDataJSON() as { reason: string };
+      Object.assign(guardianLink, { revoked_at: "2026-11-14T12:00:00.000Z", revocation_reason: input.reason });
+      await route.fulfill({ json: { message: "Guardian relationship revoked." } });
+      return;
+    }
     const guardianLinkMatch = path.match(/^\/school\/student-guardian-links\/(\d+)$/);
     if (guardianLinkMatch && method === "PATCH") {
       const input = request.postDataJSON() as {
@@ -360,6 +367,20 @@ test("student admission, profile navigation and parent details render without br
   await expect.poll(() => guardianLink.mobile_number).toBe("9999912345");
   expect(guardianLink).toMatchObject({ relationship_type: "Legal Guardian", is_primary_contact: true, is_emergency_contact: true });
   await expect(page.getByText("Guardian profile updated. Changes apply to every student linked to this guardian.")).toBeVisible();
+
+  await page.getByRole("button", { name: "Revoke link" }).click();
+  const revokeDialog = page.getByRole("alertdialog", { name: "Revoke guardian relationship" });
+  await expect(revokeDialog).toBeVisible();
+  await revokeDialog.getByRole("button", { name: "Confirm revoke" }).click();
+  await expect(revokeDialog.getByText("A reason is required to revoke this relationship.")).toBeVisible();
+  await revokeDialog.getByPlaceholder("Explain why this link is being revoked").fill("Family requested removal of this contact link.");
+  await revokeDialog.getByRole("button", { name: "Confirm revoke" }).click();
+  await expect.poll(() => guardianLink.revoked_at).toBe("2026-11-14T12:00:00.000Z");
+  await expect(page.getByText("Guardian relationship revoked. Its history is preserved.")).toBeVisible();
+  await expect(page.getByText("Ramesh Sharma")).toHaveCount(0);
+  await page.getByLabel("Show revoked history").check();
+  await expect(page.getByText("Ramesh Sharma")).toBeVisible();
+  await expect(page.getByText(/Revoked/)).toBeVisible();
 
   await page.getByRole("button", { name: "Close dialog" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
