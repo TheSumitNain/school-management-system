@@ -308,6 +308,10 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 	if err != nil || len(active) != 1 || active[0].ID != secondLink.ID {
 		t.Fatalf("active links after revocation: items=%+v err=%v", active, err)
 	}
+	relatedStudents, err = repo.ListStudentRelatedStudents(ctx, targetPrincipalID, schoolID, studentID)
+	if err != nil || len(relatedStudents) != 0 {
+		t.Fatalf("related students after shared guardian revocation: items=%+v err=%v", relatedStudents, err)
+	}
 	history, err = repo.ListStudentGuardians(ctx, targetPrincipalID, schoolID, studentID, true)
 	if err != nil || len(history) != 2 {
 		t.Fatalf("historical links after revocation: count=%d err=%v", len(history), err)
