@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -36,9 +37,23 @@ func TestStudentContactDetailsV35PostgresIntegration(t *testing.T) {
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	var schoolID int64
-	if err := tx.QueryRow(ctx, `SELECT school_id FROM users WHERE id=$1`, userID).Scan(&schoolID); err != nil {
-		t.Fatalf("load integration school: %v", err)
+	var schoolID, actorPrincipalID int64
+	if err := tx.QueryRow(ctx, `SELECT school_id,principal_id FROM users WHERE id=$1`, userID).Scan(&schoolID, &actorPrincipalID); err != nil {
+		t.Fatalf("load integration school actor: %v", err)
+	}
+	platformAdminPrincipalID := ensurePlatformAdminLifecycleActor(t, pool)
+	var schoolAdminRoleID int64
+	if err := tx.QueryRow(ctx, `
+		SELECT id FROM roles WHERE school_id=$1 AND principal_type='staff'
+		  AND scope_type='school' AND role_key='school_admin' AND is_system=TRUE
+	`, schoolID).Scan(&schoolAdminRoleID); err != nil {
+		t.Fatalf("load School Admin role: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO principal_roles(principal_id,role_id,assigned_by)
+		VALUES($1,$2,$3)
+	`, actorPrincipalID, schoolAdminRoleID, platformAdminPrincipalID); err != nil {
+		t.Fatalf("assign School Admin fixture role: %v", err)
 	}
 	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
 
@@ -71,6 +86,27 @@ func TestStudentContactDetailsV35PostgresIntegration(t *testing.T) {
 		VALUES($1,$2,$3)
 	`, schoolID, studentTwo, phone); err != nil {
 		t.Fatalf("allow shared household contact number: %v", err)
+	}
+
+	repository := NewAcademicRepository(tx)
+	contact, err := repository.GetStudentContactDetails(ctx, actorPrincipalID, schoolID, studentTwo)
+	if err != nil || contact.StudentID != studentTwo || contact.PrimaryPhone == nil || *contact.PrimaryPhone != phone {
+		t.Fatalf("read student contact details through repository: item=%+v err=%v", contact, err)
+	}
+	var readAuditCount int
+	var readAuditMetadata string
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*),COALESCE(string_agg(metadata::text,' '),'')
+		  FROM audit_events
+		 WHERE school_id=$1 AND actor_principal_id=$2
+		   AND action='school.student.contact_details.read'
+		   AND resource_id=$3
+	`, schoolID, actorPrincipalID, fmt.Sprint(studentTwo)).Scan(&readAuditCount, &readAuditMetadata); err != nil {
+		t.Fatalf("inspect contact read audit: %v", err)
+	}
+	if readAuditCount != 1 || !strings.Contains(readAuditMetadata, "contact_details") ||
+		strings.Contains(readAuditMetadata, phone) || strings.Contains(readAuditMetadata, email) {
+		t.Fatalf("contact read audit must contain section only: count=%d metadata=%s", readAuditCount, readAuditMetadata)
 	}
 
 	assertRejected := func(label, query string, args ...any) {
