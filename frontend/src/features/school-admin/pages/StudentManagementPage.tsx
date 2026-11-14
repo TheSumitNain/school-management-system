@@ -186,9 +186,9 @@ export function StudentManagementPage({ permissions }: Props) {
         {canCreate && canReadStudents && canReadEnrollments && canReadYears && canReadSections && tab === "enrollments" && <button className="primary" type="button" onClick={() => {setFieldErrors({});setFeedback(null);setStudentSearch("");setSelectedStudentID("");setAcademicYearID(activeYears.find(year=>year.is_current)?.id??activeYears[0]?.id??0);setSelectedSectionID("");setEnrolledAt(localDateValue());setShowEnrollment(true);}}><Plus size={16}/> Enroll student</button>}
       </div>
     </div>
-    <div className="student-tabs" role="tablist" aria-label="Student management">
-      {canReadStudents && <button type="button" role="tab" aria-selected={tab === "students"} className={tab === "students" ? "selected" : ""} onClick={() => { setTab("students"); setShowEnrollment(false); setFeedback(null); }}>Student directory</button>}
-      {canReadEnrollments && <button type="button" role="tab" aria-selected={tab === "enrollments"} className={tab === "enrollments" ? "selected" : ""} onClick={() => { setTab("enrollments"); setAction(null); setFeedback(null); }}>Enrollments</button>}
+    <div className="student-tabs" role="group" aria-label="Student management views">
+      {canReadStudents && <button type="button" aria-pressed={tab === "students"} className={tab === "students" ? "selected" : ""} onClick={() => { setTab("students"); setShowEnrollment(false); setFeedback(null); }}>Student directory</button>}
+      {canReadEnrollments && <button type="button" aria-pressed={tab === "enrollments"} className={tab === "enrollments" ? "selected" : ""} onClick={() => { setTab("enrollments"); setAction(null); setFeedback(null); }}>Enrollments</button>}
     </div>
     {feedback && !((action!==null||showEnrollment)&&feedback.kind==="error") && <div className={"student-feedback " + feedback.kind} role="status">{feedback.message}</div>}
     <Modal open={action !== null} title="New student admission" description="Create the permanent student record and first academic-year enrollment together." onClose={() => openStudent(null)} closeDisabled={busy}>
