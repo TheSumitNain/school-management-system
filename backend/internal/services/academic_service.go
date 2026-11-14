@@ -28,6 +28,11 @@ type academicRepository interface {
 	CreateStudentEnrollment(context.Context,int64,int64,int64,int64,int64,*string,string,time.Time,time.Time)(*repository.StudentEnrollment,error)
 	PromoteStudentEnrollment(context.Context,int64,int64,int64,int64,int64,*string,string,time.Time,time.Time)(*repository.StudentEnrollment,error)
 	CreateStudentAdmission(context.Context,int64,int64,string,string,int64,int64,*string,time.Time)(*repository.StudentAdmissionResult,error)
+	ListStudentLocations(context.Context,int64,int64,*int64,string,string)([]repository.StudentLocation,error)
+	CreateStudentLocation(context.Context,int64,int64,*int64,string,string,string,*string)(*repository.StudentLocation,error)
+	DeactivateStudentLocation(context.Context,int64,int64,int64)(*repository.StudentLocation,error)
+	ListStudentAddresses(context.Context,int64,int64,int64)([]repository.StudentAddress,error)
+	SaveStudentAddress(context.Context,int64,int64,int64,string,*string,*string,*string,*string,*string,*int64,bool)(*repository.StudentAddress,error)
 
 	ListStudents(context.Context,int64,int64,string,string,int,int)([]repository.StudentProfile,int64,error)
 	GetStudent(context.Context,int64,int64,int64)(*repository.StudentProfile,error)
@@ -145,6 +150,27 @@ func (s *AcademicService) CreateStudent(ctx context.Context, actorID, schoolID i
 	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
 	return s.repository.CreateStudent(ctx, actorID, schoolID, admissionNumber, fullName)
 }
+func (s *AcademicService) ListStudentLocations(ctx context.Context, actorID, schoolID int64, parentID *int64, level, search string) ([]repository.StudentLocation, error) {
+	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
+	return s.repository.ListStudentLocations(ctx, actorID, schoolID, parentID, level, search)
+}
+func (s *AcademicService) CreateStudentLocation(ctx context.Context, actorID, schoolID int64, parentID *int64, countryCode, level, name string, localityType *string) (*repository.StudentLocation, error) {
+	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
+	return s.repository.CreateStudentLocation(ctx, actorID, schoolID, parentID, countryCode, level, name, localityType)
+}
+func (s *AcademicService) DeactivateStudentLocation(ctx context.Context, actorID, schoolID, locationID int64) (*repository.StudentLocation, error) {
+	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
+	return s.repository.DeactivateStudentLocation(ctx, actorID, schoolID, locationID)
+}
+func (s *AcademicService) ListStudentAddresses(ctx context.Context, actorID, schoolID, studentID int64) ([]repository.StudentAddress, error) {
+	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
+	return s.repository.ListStudentAddresses(ctx, actorID, schoolID, studentID)
+}
+func (s *AcademicService) SaveStudentAddress(ctx context.Context, actorID, schoolID, studentID int64, addressType string, line1, line2, areaMohalla, landmark, postalCode *string, locationID *int64, sameAsCurrent bool) (*repository.StudentAddress, error) {
+	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
+	return s.repository.SaveStudentAddress(ctx, actorID, schoolID, studentID, addressType, line1, line2, areaMohalla, landmark, postalCode, locationID, sameAsCurrent)
+}
+
 func (s *AcademicService) UpdateStudent(ctx context.Context, actorID, schoolID, studentID int64, fullName string) (*repository.StudentProfile, error) {
 	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
 	return s.repository.UpdateStudent(ctx, actorID, schoolID, studentID, fullName)
