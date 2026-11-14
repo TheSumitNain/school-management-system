@@ -108,6 +108,11 @@ func TestStudentMedicalPhysicalDetailsV36PostgresIntegration(t *testing.T) {
 		&invalidHeight, nil, nil, nil, nil); !errors.Is(err, ErrInvalidAcademicInput) {
 		t.Fatalf("invalid height error = %v, want invalid input", err)
 	}
+	invalidPrecision := 132.555
+	if _, err := repo.SaveStudentPhysicalDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
+		&invalidPrecision, nil, nil, nil, nil); !errors.Is(err, ErrInvalidAcademicInput) {
+		t.Fatalf("measurement precision error = %v, want invalid input", err)
+	}
 	otherSchoolID := schoolID + 999999
 	if _, err := repo.GetStudentMedicalDetails(ctx, actorPrincipalID, otherSchoolID, studentID); !errors.Is(err, ErrAcademicAccessDenied) {
 		t.Fatalf("cross-school medical read error = %v, want access denied", err)
