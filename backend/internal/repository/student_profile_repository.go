@@ -10,9 +10,10 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// StudentProfile contains only fields currently represented by the approved
-// V11 student identity schema. Sensitive profile fields are intentionally not
-// fabricated or exposed until their schema and permissions are approved.
+// StudentProfile contains the permanent student identity and the admission
+// number presented for the current academic year. The number is sourced from
+// the current-year enrollment; a legacy student-level value is used only when
+// the student has no current-year enrollment.
 type StudentProfile struct {
 	ID              int64     `json:"id"`
 	SchoolID        int64     `json:"school_id"`
