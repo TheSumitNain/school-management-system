@@ -6,7 +6,9 @@ import {
   useCreateSchoolStudentLocationMutation,
   useDeactivateSchoolStudentLocationMutation,
   useSaveSchoolStudentAddressMutation,
+  useSaveSchoolStudentContactDetailsMutation,
   useSchoolStudentAddressesQuery,
+  useSchoolStudentContactDetailsQuery,
   useSchoolStudentLocationsQuery,
 } from "../queries";
 
@@ -24,6 +26,10 @@ function textValue(value?: string | null) {
 
 export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
   const [addressType, setAddressType] = useState<AddressType>("current");
+  const [showContactDetails, setShowContactDetails] = useState(false);
+  const [primaryPhone, setPrimaryPhone] = useState("");
+  const [alternatePhone, setAlternatePhone] = useState("");
+  const [emailAddress, setEmailAddress] = useState("");
   const [line1, setLine1] = useState("");
   const [line2, setLine2] = useState("");
   const [areaMohalla, setAreaMohalla] = useState("");
@@ -46,7 +52,8 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
   const [fieldError, setFieldError] = useState("");
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
 
-  const addressesQuery = useSchoolStudentAddressesQuery(student.id);
+  const addressesQuery = useSchoolStudentAddressesQuery(student.id, !showContactDetails);
+  const contactQuery = useSchoolStudentContactDetailsQuery(student.id, showContactDetails);
   const addresses = addressesQuery.data?.addresses ?? [];
   const currentAddress = addresses.find(address => address.address_type === "current");
   const selectedAddress = addresses.find(address => address.address_type === addressType);
@@ -55,10 +62,12 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
   const subdistrictsQuery = useSchoolStudentLocationsQuery({ parentID: districtID || undefined, level: "subdistrict", q: subdistrictSearch }, districtID > 0);
   const localitiesQuery = useSchoolStudentLocationsQuery({ parentID: subdistrictID || undefined, level: "locality", q: localitySearch }, subdistrictID > 0);
   const saveAddress = useSaveSchoolStudentAddressMutation();
+  const saveContact = useSaveSchoolStudentContactDetailsMutation();
   const createLocation = useCreateSchoolStudentLocationMutation();
   const deactivateLocation = useDeactivateSchoolStudentLocationMutation();
 
   useEffect(() => {
+    if (showContactDetails) return;
     setLine1(textValue(selectedAddress?.address_line_1));
     setLine2(textValue(selectedAddress?.address_line_2));
     setAreaMohalla(textValue(selectedAddress?.area_mohalla));
@@ -70,7 +79,15 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
     setSubdistrictID(selectedAddress?.subdistrict_location_id ?? 0);
     setLocalityID(selectedAddress?.location_id ?? 0);
     setFieldError("");
-  }, [addressType, addressesQuery.data?.addresses]);
+  }, [showContactDetails, addressType, addressesQuery.data?.addresses]);
+
+  useEffect(() => {
+    if (!showContactDetails) return;
+    const details = contactQuery.data?.contact_details;
+    setPrimaryPhone(textValue(details?.primary_phone));
+    setAlternatePhone(textValue(details?.alternate_phone));
+    setEmailAddress(textValue(details?.email_address));
+  }, [showContactDetails, contactQuery.data?.contact_details]);
 
   const states = statesQuery.data?.locations ?? [];
   const districts = districtsQuery.data?.locations ?? [];
@@ -88,7 +105,7 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
     subdistrictID ? subdistricts.find(item => item.id === subdistrictID) :
     districtID ? districts.find(item => item.id === districtID) :
     stateID ? states.find(item => item.id === stateID) : undefined;
-  const busy = saveAddress.isPending || createLocation.isPending || deactivateLocation.isPending;
+  const busy = saveAddress.isPending || saveContact.isPending || createLocation.isPending || deactivateLocation.isPending;
 
   function resetChildren(level: "state" | "district" | "subdistrict") {
     if (level === "state") {
@@ -141,6 +158,24 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
       setFeedback({ kind: "success", message: addressType === "current" ? "Current address saved." : "Permanent address saved." });
     } catch (error) {
       setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Address could not be saved." });
+    }
+  }
+
+  async function submitContact(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!canUpdate) return;
+    try {
+      await saveContact.mutateAsync({
+        studentID: student.id,
+        input: {
+          primary_phone: primaryPhone.trim() || null,
+          alternate_phone: alternatePhone.trim() || null,
+          email_address: emailAddress.trim() || null,
+        },
+      });
+      setFeedback({ kind: "success", message: "Student contact details saved." });
+    } catch (error) {
+      setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Contact details could not be saved." });
     }
   }
 
@@ -215,10 +250,26 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
     >
       {addressesQuery.isError && <p className="student-feedback error" role="alert">{addressesQuery.error.message}</p>}
       {feedback && <p className={feedback.kind === "error" ? "student-feedback error" : "student-feedback success"} role={feedback.kind === "error" ? "alert" : "status"}>{feedback.message}</p>}
-      <div className="student-address-tabs" role="group" aria-label="Address type">
-        <button type="button" className={addressType === "current" ? "active" : ""} aria-pressed={addressType === "current"} onClick={() => { setAddressType("current"); setFeedback(null); }}>Current address</button>
-        <button type="button" className={addressType === "permanent" ? "active" : ""} aria-pressed={addressType === "permanent"} onClick={() => { setAddressType("permanent"); setFeedback(null); }}>Permanent address</button>
+      <div className="student-address-tabs" role="group" aria-label="Student profile section">
+        <button type="button" className={!showContactDetails && addressType === "current" ? "active" : ""} aria-pressed={!showContactDetails && addressType === "current"} onClick={() => { setShowContactDetails(false); setAddressType("current"); setFeedback(null); }}>Current address</button>
+        <button type="button" className={!showContactDetails && addressType === "permanent" ? "active" : ""} aria-pressed={!showContactDetails && addressType === "permanent"} onClick={() => { setShowContactDetails(false); setAddressType("permanent"); setFeedback(null); }}>Permanent address</button>
+        <button type="button" className={showContactDetails ? "active" : ""} aria-pressed={showContactDetails} onClick={() => { setShowContactDetails(true); setFeedback(null); }}>Contact details</button>
       </div>
+      {showContactDetails ? (
+        <form className="student-address-form" onSubmit={submitContact} noValidate>
+          {contactQuery.isError && <p className="student-feedback error" role="alert">{contactQuery.error.message}</p>}
+          <div className="student-address-grid">
+            <label>Primary phone<input disabled={!canUpdate} value={primaryPhone} maxLength={30} onChange={event => setPrimaryPhone(event.target.value)} placeholder="Primary contact number"/></label>
+            <label>Alternate phone<input disabled={!canUpdate} value={alternatePhone} maxLength={30} onChange={event => setAlternatePhone(event.target.value)} placeholder="Alternate contact number"/></label>
+            <label>Email address<input disabled={!canUpdate} type="email" value={emailAddress} maxLength={254} onChange={event => setEmailAddress(event.target.value)} placeholder="student@example.com"/></label>
+          </div>
+          {!canUpdate && <p className="student-address-note">View-only access. Student update permission is required to edit contact details.</p>}
+          <div className="app-modal-actions">
+            <button type="button" className="app-modal-cancel" onClick={onClose} disabled={busy}>Close</button>
+            {canUpdate && <button className="primary" disabled={busy || contactQuery.isLoading || contactQuery.isError}>{saveContact.isPending ? "Saving…" : "Save contact details"}</button>}
+          </div>
+        </form>
+      ) : (
       <form className="student-address-form" onSubmit={submit} noValidate>
         {addressType === "permanent" && (
           <label className="student-address-same">
@@ -274,6 +325,7 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
           {canUpdate && <button className="primary" disabled={busy || addressesQuery.isLoading || addressesQuery.isError}>{saveAddress.isPending ? "Saving…" : "Save address"}</button>}
         </div>
       </form>
+      )}
     </Modal>
   );
 }
