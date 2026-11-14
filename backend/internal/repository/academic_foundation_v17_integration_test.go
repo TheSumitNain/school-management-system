@@ -644,6 +644,25 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 		t.Fatalf("promote enrollment through repository: enrollment=%+v err=%v", promoted, err)
 	}
 
+	var promotionAuditJSON []byte
+	if err := pool.QueryRow(ctx, `SELECT metadata FROM audit_events
+		WHERE action='school.student.promoted' AND resource_id=$1`, fmt.Sprint(promoted.ID)).Scan(&promotionAuditJSON); err != nil {
+		t.Fatalf("read student promotion audit metadata: %v", err)
+	}
+	var promotionAudit map[string]any
+	if err := json.Unmarshal(promotionAuditJSON, &promotionAudit); err != nil {
+		t.Fatalf("decode student promotion audit metadata: %v", err)
+	}
+	if promotionAudit["has_admission_number"] != true || promotionAudit["has_admission_date"] != true {
+		t.Fatalf("promotion audit presence flags = %+v; want admission number/date presence only", promotionAudit)
+	}
+	if _, exists := promotionAudit["admission_number"]; exists {
+		t.Fatalf("promotion audit must not store the raw admission number: %+v", promotionAudit)
+	}
+	if _, exists := promotionAudit["admission_date"]; exists {
+		t.Fatalf("promotion audit must not store the raw admission date: %+v", promotionAudit)
+	}
+
 	// A first-time admission creates the permanent student and first yearly
 	// enrollment in one transaction, with no legacy student-level admission ID.
 	combinedName := "Combined Admission Student " + suffix
