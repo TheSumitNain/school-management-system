@@ -27,6 +27,13 @@ test("student admission, profile navigation and parent details render without br
     relationship_type: "Father", is_primary_contact: true, is_emergency_contact: true,
     created_at: "2026-11-14T00:00:00.000Z", revoked_at: null,
   };
+  const contactDetails: Record<string, unknown> = {
+    id: 601, school_id: 10, student_id: 1, primary_phone: null, alternate_phone: null, email_address: null,
+  };
+  const physicalDetails: Record<string, unknown> = {
+    id: 0, school_id: 10, student_id: 1, height_cm: null, weight_kg: null, measured_on: null,
+    vision_notes: null, physical_notes: null, history: [],
+  };
 
   await page.route("**/api/**", async route => {
     const request = route.request();
@@ -146,15 +153,33 @@ test("student admission, profile navigation and parent details render without br
         return;
       }
       if (subpath === "contact-details") {
-        await route.fulfill({ json: { contact_details: { id: 0, school_id: 10, student_id: studentID } } });
+        if (method === "PUT") {
+          Object.assign(contactDetails, request.postDataJSON() as Record<string, unknown>);
+        }
+        await route.fulfill({ json: { contact_details: contactDetails } });
         return;
       }
       if (subpath === "medical-details") {
-        await route.fulfill({ json: { medical_details: { id: 0, school_id: 10, student_id: studentID, version_number: 0, history: [] } } });
+        await route.fulfill({
+          json: { medical_details: {
+            id: 0, school_id: 10, student_id: studentID, version_number: 0,
+            blood_group: null, allergies: null, known_conditions: null,
+            ongoing_medications: null, emergency_medical_notes: null, history: [],
+          } },
+        });
         return;
       }
       if (subpath === "physical-details") {
-        await route.fulfill({ json: { physical_details: { id: 0, school_id: 10, student_id: studentID, history: [] } } });
+        if (method === "PUT") {
+          const input = request.postDataJSON() as Record<string, unknown>;
+          Object.assign(physicalDetails, input, { id: 701, school_id: 10, student_id: studentID });
+          physicalDetails.history = [{
+            id: 701, height_cm: physicalDetails.height_cm, weight_kg: physicalDetails.weight_kg,
+            measured_on: physicalDetails.measured_on, vision_notes: physicalDetails.vision_notes,
+            physical_notes: physicalDetails.physical_notes, created_at: "2026-11-14T00:00:00.000Z",
+          }];
+        }
+        await route.fulfill({ json: { physical_details: physicalDetails } });
         return;
       }
     }
@@ -245,6 +270,47 @@ test("student admission, profile navigation and parent details render without br
   await expect.poll(() => guardianLink.relationship_type).toBe("Legal Guardian");
   await expect(page.getByText("Legal Guardian · Primary contact · Emergency contact")).toBeVisible();
 
+  await page.getByRole("button", { name: "Close dialog" }).click();
+  await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
+
+  await page.getByRole("button", { name: /Address & communication/ }).click();
+  await expect(page.getByRole("dialog", { name: "Address & Communication" })).toBeVisible();
+  await page.getByRole("button", { name: "Contact details", exact: true }).click();
+  await page.getByPlaceholder("Primary contact number").fill("9876501234");
+  const contactSaveButton = page.getByRole("button", { name: "Save contact details" });
+  await contactSaveButton.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Contact save button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect.poll(() => contactDetails.primary_phone).toBe("9876501234");
+  await expect(page.getByText("Student contact details saved.")).toBeVisible();
+  await page.getByRole("button", { name: "Close dialog" }).click();
+  await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
+
+  await page.getByRole("button", { name: /Medical & physical/ }).click();
+  await expect(page.getByRole("dialog", { name: "Medical & Physical Details" })).toBeVisible();
+  await expect(page.getByText(/Teachers do not have access to these records/)).toBeVisible();
+  await page.getByRole("button", { name: "Physical details" }).click();
+  await page.getByPlaceholder("e.g. 132.5").fill("500");
+  const physicalSaveButton = page.getByRole("button", { name: "Save physical details" });
+  await physicalSaveButton.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Physical save button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect(page.getByText("Height must be between 20 and 250 cm.")).toBeVisible();
+  await expect(page.getByText("Measurement date is required.")).toBeVisible();
+  await page.getByPlaceholder("e.g. 132.5").fill("132.5");
+  await page.getByRole("button", { name: "Measurement date" }).click();
+  await page.getByRole("button", { name: "Today" }).click();
+  await physicalSaveButton.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Physical save button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect.poll(() => physicalDetails.height_cm).toBe(132.5);
+  await expect(page.getByText("Physical details saved.")).toBeVisible();
   await page.getByRole("button", { name: "Close dialog" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
 
