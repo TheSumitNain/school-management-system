@@ -169,6 +169,9 @@ func (r *AcademicRepository) CreateStudentAdmission(
 	if err != nil {
 		return nil, academicWriteError(err)
 	}
+	// The API's admission_number is the first enrollment's year-scoped value;
+	// the legacy students column intentionally remains NULL.
+	student.AdmissionNumber = admissionNumber
 	if _, err = tx.Exec(ctx, `INSERT INTO audit_events
 		(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
 		VALUES($1,$2,'school.student.created','student',$3,'success',
