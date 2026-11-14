@@ -78,8 +78,8 @@ function isValidPrincipal(value: unknown): value is Principal {
 export function saveTokens(tokens: AuthTokens) {
   if (!isValidPrincipal(tokens.principal)) throw new Error("The sign-in response did not include a valid account identity.");
   accessToken = tokens.access_token;
-  // Pin the identity for this browser tab. A refresh cookie must never silently
-  // replace the account that explicitly signed in to this tab.
+  // Pin the identity for this browser profile. A refresh cookie must never silently
+  // replace the account that explicitly signed in.
   localStorage.setItem(SESSION_PRINCIPAL_KEY, principalIdentity(tokens.principal));
   // This marker contains no credential; it only lets tabs distinguish an
   // expired shared session from a visitor who has never signed in.
@@ -173,6 +173,8 @@ export function loginPlatformAdmin(email:string,password:string){return withSess
 export function completeMFA(challenge_token:string,code:string,enrollment:boolean){return withSessionLock(async()=>{const tokens=await api<AuthTokens>(enrollment?"/auth/mfa/enroll/verify":"/auth/mfa/verify",{method:"POST",auth:false,body:JSON.stringify({challenge_token,code})});saveTokens(tokens);return tokens;});}
 export function getMe(){return api<AuthUser>("/auth/me");}
 export async function logout(){
-  await withSessionLock(()=>api("/auth/logout",{method:"POST",auth:false,retry:false}));
-  broadcastSessionEnd();
+  await withSessionLock(async()=>{
+    await api("/auth/logout",{method:"POST",auth:false,retry:false});
+    broadcastSessionEnd();
+  });
 }
