@@ -149,3 +149,58 @@
 @media(prefers-reduced-motion:reduce){
  .student-page *{scroll-behavior:auto!important;transition:none!important}
 }
+
+/* Shared section tabs used by address/contact and medical/physical student forms. */
+.student-address-tabs{
+  display:flex;
+  flex-wrap:wrap;
+  gap:5px;
+  padding:5px;
+  margin:0 0 16px;
+  border:1px solid var(--color-border);
+  border-radius:11px;
+  background:var(--color-surface-subtle);
+}
+.student-address-tabs button{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:36px;
+  padding:8px 13px;
+  border:1px solid transparent;
+  border-radius:8px;
+  background:transparent;
+  color:var(--color-text-muted,var(--muted));
+  font:inherit;
+  font-size:11px;
+  font-weight:650;
+  line-height:1.35;
+  cursor:pointer;
+  transition:background-color .15s ease,color .15s ease,border-color .15s ease,box-shadow .15s ease;
+}
+.student-address-tabs button:hover{
+  background:var(--color-surface);
+  color:var(--color-text);
+}
+.student-address-tabs button.active{
+  border-color:var(--color-border);
+  background:var(--color-surface);
+  color:var(--color-text);
+  box-shadow:var(--shadow-sm);
+}
+.student-address-tabs button:focus-visible{
+  outline:2px solid var(--color-primary);
+  outline-offset:2px;
+}
+.student-address-tabs button:disabled{
+  opacity:.55;
+  cursor:not-allowed;
+}
+@media(max-width:520px){
+  .student-address-tabs{display:grid;grid-template-columns:1fr;gap:4px}
+  .student-address-tabs button{width:100%;justify-content:flex-start}
+}
+@media(prefers-reduced-motion:reduce){
+  .student-address-tabs button{transition:none}
+}
+
