@@ -30,6 +30,10 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
   const [newGuardianName, setNewGuardianName] = useState("");
   const [newGuardianMobile, setNewGuardianMobile] = useState("");
   const [newGuardianEmail, setNewGuardianEmail] = useState("");
+  const [newGuardianAlternateMobile, setNewGuardianAlternateMobile] = useState("");
+  const [newGuardianOccupation, setNewGuardianOccupation] = useState("");
+  const [newGuardianEducation, setNewGuardianEducation] = useState("");
+  const [newGuardianWorkplace, setNewGuardianWorkplace] = useState("");
   const [pendingRevokeID, setPendingRevokeID] = useState(0);
   const [revokeReason, setRevokeReason] = useState("");
   const [guardianSelectError, setGuardianSelectError] = useState("");
@@ -77,6 +81,10 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
         full_name: newGuardianName.trim(),
         mobile_number: newGuardianMobile.trim() || null,
         email_address: newGuardianEmail.trim() || null,
+        alternate_mobile_number: newGuardianAlternateMobile.trim() || null,
+        occupation: newGuardianOccupation.trim() || null,
+        education: newGuardianEducation.trim() || null,
+        workplace_name: newGuardianWorkplace.trim() || null,
         status: "active",
       }) as { guardian?: { id: number } };
       const guardianID = result.guardian?.id;
@@ -86,6 +94,10 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
       setNewGuardianName("");
       setNewGuardianMobile("");
       setNewGuardianEmail("");
+      setNewGuardianAlternateMobile("");
+      setNewGuardianOccupation("");
+      setNewGuardianEducation("");
+      setNewGuardianWorkplace("");
       setShowCreateGuardian(false);
       setFeedback({ kind: "success", message: "Guardian contact created. Select the relationship details and link it to this student." });
     } catch (error) {
@@ -163,7 +175,8 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
                 <div>
                   <strong>{link.guardian_name}</strong>
                   <span>{link.relationship_type}{link.is_primary_contact ? " · Primary contact" : ""}{link.is_emergency_contact ? " · Emergency contact" : ""}</span>
-                  <span>{link.mobile_number || "No phone"}{link.email_address ? " · " + link.email_address : ""}</span>
+                  <span>{link.mobile_number || "No phone"}{link.alternate_mobile_number ? " · Alt: " + link.alternate_mobile_number : ""}{link.email_address ? " · " + link.email_address : ""}</span>
+                  {(link.occupation || link.education || link.workplace_name) && <small>{[link.occupation, link.education, link.workplace_name].filter(Boolean).join(" · ")}</small>}
                   {link.revoked_at && <small>Revoked {new Date(link.revoked_at).toLocaleDateString()}</small>}
                 </div>
                 {canManage && !link.revoked_at && <button type="button" className="student-link-button" onClick={() => { setPendingRevokeID(link.id); setRevokeReason(""); setRevokeReasonError(""); }}>Revoke link</button>}
@@ -196,6 +209,10 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
                 <label>Full name<input name="guardian_full_name" disabled={busy} value={newGuardianName} maxLength={200} aria-invalid={Boolean(newGuardianNameError)} aria-describedby={newGuardianNameError ? "student-guardian-name-error" : undefined} onChange={event => { setNewGuardianName(event.target.value); setNewGuardianNameError(""); }} placeholder="Guardian full name"/>{newGuardianNameError && <small id="student-guardian-name-error" className="app-field-error">{newGuardianNameError}</small>}</label>
                 <label>Mobile number<input disabled={busy} value={newGuardianMobile} maxLength={30} onChange={event => setNewGuardianMobile(event.target.value)} placeholder="Mobile number"/></label>
                 <label>Email address<input name="guardian_email_address" disabled={busy} type="email" value={newGuardianEmail} maxLength={254} aria-invalid={Boolean(newGuardianEmailError)} aria-describedby={newGuardianEmailError ? "student-guardian-email-error" : undefined} onChange={event => { setNewGuardianEmail(event.target.value); setNewGuardianEmailError(""); }} placeholder="guardian@example.com"/>{newGuardianEmailError && <small id="student-guardian-email-error" className="app-field-error">{newGuardianEmailError}</small>}</label>
+                <label>Alternate mobile number<input disabled={busy} value={newGuardianAlternateMobile} maxLength={30} onChange={event => setNewGuardianAlternateMobile(event.target.value)} placeholder="Optional alternate number"/></label>
+                <label>Occupation<input disabled={busy} value={newGuardianOccupation} maxLength={120} onChange={event => setNewGuardianOccupation(event.target.value)} placeholder="e.g. Teacher, Business owner"/></label>
+                <label>Education<input disabled={busy} value={newGuardianEducation} maxLength={120} onChange={event => setNewGuardianEducation(event.target.value)} placeholder="Highest education (optional)"/></label>
+                <label>Workplace / organization<input disabled={busy} value={newGuardianWorkplace} maxLength={160} onChange={event => setNewGuardianWorkplace(event.target.value)} placeholder="Organization name (optional)"/></label>
                 
                 <button type="submit" className="secondary" disabled={busy}>{createGuardian.isPending ? "Saving…" : "Save guardian contact"}</button>
               </form>
