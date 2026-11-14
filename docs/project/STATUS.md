@@ -431,3 +431,10 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - All `/api` calls in this browser test are intercepted with in-memory fixtures. It does not connect to or mutate the local/persistent school database; backend PostgreSQL integration tests remain the source of truth for persistence, tenant isolation and audit behavior.
 - Failure screenshots and traces are retained as a seven-day GitHub Actions artifact. No generated test output is committed to the repository.
 - Browser coverage is now in CI; manual acceptance against the user's configured local API/database remains a separate final verification step.
+
+### Parent relationship browser coverage follow-up
+
+- Expanded the Playwright test to return an existing linked guardian and verify the guardian name, relationship, primary-contact and emergency-contact labels render.
+- The test edits the relationship from `Father` to `Legal Guardian`, verifies the PATCH payload updates only that student's relationship record, and confirms the updated label renders after query refresh.
+- Frontend CI run `43599397403` passed for commit `43ea1aef0f5663053b806a393c2f3aec811cfcba`, including the expanded parent relationship browser flow.
+- Guardian profile shared-field editing (which affects every linked student) remains separately protected by its confirmation flow; this smoke test deliberately does not mutate shared guardian details.
