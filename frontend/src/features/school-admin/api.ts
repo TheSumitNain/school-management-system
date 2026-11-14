@@ -312,7 +312,7 @@ export function getSchoolStudentPhysicalDetails(studentID: number, signal?: Abor
   return api<{ physical_details: StudentPhysicalDetails }>(`/school/students/${studentID}/physical-details`, { signal });
 }
 export function saveSchoolStudentPhysicalDetails(studentID: number, input: {
-  height_cm?: number | null; weight_kg?: number | null; measured_on?: string | null;
+  height_cm?: number | null; weight_kg?: number | null; measured_on: string;
   vision_notes?: string | null; physical_notes?: string | null;
 }) {
   return api<{ physical_details: StudentPhysicalDetails }>(`/school/students/${studentID}/physical-details`, {
