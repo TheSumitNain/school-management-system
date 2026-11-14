@@ -94,7 +94,7 @@
 .student-tabs button.selected{background:var(--color-surface);color:var(--color-primary);box-shadow:var(--shadow-sm);border:0}
 .student-toolbar{gap:12px;margin:20px 0 14px}
 .student-search{min-height:44px;border-radius:11px;border-color:var(--color-border);background:var(--color-surface);box-shadow:var(--shadow-xs)}
-.student-search:focus-within{border-color:var(--color-primary);box-shadow:0 0 0 3px var(--color-focus-ring)}
+.student-search:focus-within{border-color:var(--color-primary);box-shadow:0 0 0 3px var(--color-focus)}
 .student-toolbar select{min-height:44px;border-radius:10px}
 .student-table-wrap{border-color:var(--color-border);border-radius:14px;box-shadow:var(--shadow-sm)}
 .student-table{font-size:13px}
@@ -132,7 +132,7 @@
 .student-profile-enrollment{border-color:var(--color-border);border-radius:12px;padding:15px}
 .student-health-privacy-note{border-radius:11px}
 .student-health-history{border-color:var(--color-border);border-radius:12px}
-.student-page button:focus-visible,.student-page input:focus-visible,.student-page select:focus-visible,.student-page textarea:focus-visible{outline:3px solid var(--color-focus-ring);outline-offset:2px}
+.student-page button:focus-visible,.student-page input:focus-visible,.student-page select:focus-visible,.student-page textarea:focus-visible{outline:3px solid var(--color-focus);outline-offset:2px}
 @media(max-width:720px){
  .student-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible}
  .student-tabs button{white-space:normal;padding-inline:8px}
