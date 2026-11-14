@@ -255,9 +255,6 @@ func (r *AcademicRepository) SaveStudentPhysicalDetails(
 	if weightKG != nil && (*weightKG < 1 || *weightKG > 300) {
 		return nil, ErrInvalidAcademicInput
 	}
-	if measuredOn != nil && measuredOn.After(time.Now().Add(24*time.Hour)) {
-		return nil, ErrInvalidAcademicInput
-	}
 	var err error
 	if visionNotes, err = normalizeAddressText(visionNotes, 1000); err != nil {
 		return nil, err
