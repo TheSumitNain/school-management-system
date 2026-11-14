@@ -131,7 +131,6 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
       await revokeLink.mutateAsync({ linkID: pendingRevokeID, reason: revokeReason.trim() });
       setPendingRevokeID(0);
       setRevokeReason("");
-      setFieldError("");
       setFeedback({ kind: "success", message: "Guardian relationship revoked. Its history is preserved." });
     } catch (error) {
       setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Guardian relationship could not be revoked." });
