@@ -29,6 +29,12 @@ Every protected operation must enforce:
 
 A route permission alone is not sufficient. Repositories must not trust client-supplied school IDs or resource ownership.
 
+### Administrator scope
+
+- School Admin is the full administrator for its own school. Its system role receives the approved school-operation permission bundle, including guardian/parent/sibling relationship management. Repository checks still bind every operation to the authenticated staff principal's school.
+- Teacher and other limited roles do not inherit School Admin permissions. Guardian access is not granted to the Teacher system role.
+- Platform Admin is a global platform principal, not a school-scoped staff principal. Existing platform routes authorize platform-level operations, while school business APIs currently require an authenticated school context. Do not bypass tenant checks or treat a Platform Admin token as a School Admin token. A reviewed selected-school administrative context is required before Platform Admin can operate on school business records across tenants; this is an explicit remaining implementation gap.
+
 ## Known coverage gap
 
 The complete tenant/resource/assignment/field-level authorization model has not yet been implemented and verified across every business module. Selected academic, attendance and guardian routes have targeted checks and tests. New routes must not be treated as secure until their negative cross-school, unassigned-resource and sensitive-field cases are covered.
