@@ -275,15 +275,27 @@ export function saveSchoolStudentContactDetails(studentID: number, input: {
   });
 }
 
+export type StudentMedicalDetailsVersion = {
+  id: number; version_number: number; blood_group?: string | null; allergies?: string | null;
+  known_conditions?: string | null; ongoing_medications?: string | null;
+  emergency_medical_notes?: string | null; changed_by_principal_id: number; changed_at: string;
+};
 export type StudentMedicalDetails = {
-  id: number; school_id: number; student_id: number; blood_group?: string | null;
-  allergies?: string | null; known_conditions?: string | null;
+  id: number; school_id: number; student_id: number; version_number: number;
+  blood_group?: string | null; allergies?: string | null; known_conditions?: string | null;
   ongoing_medications?: string | null; emergency_medical_notes?: string | null;
+  history: StudentMedicalDetailsVersion[];
+};
+export type StudentPhysicalMeasurement = {
+  id: number; height_cm?: number | null; weight_kg?: number | null; measured_on: string;
+  vision_notes?: string | null; physical_notes?: string | null;
+  recorded_by_principal_id: number; created_at: string;
 };
 export type StudentPhysicalDetails = {
-  id: number; school_id: number; student_id: number; height_cm?: number | null;
-  weight_kg?: number | null; measured_on?: string | null;
-  vision_notes?: string | null; physical_notes?: string | null;
+  school_id: number; student_id: number; id: number; height_cm?: number | null;
+  weight_kg?: number | null; measured_on?: string | null; vision_notes?: string | null;
+  physical_notes?: string | null; recorded_by_principal_id?: number; created_at?: string;
+  history: StudentPhysicalMeasurement[];
 };
 export function getSchoolStudentMedicalDetails(studentID: number, signal?: AbortSignal) {
   return api<{ medical_details: StudentMedicalDetails }>(`/school/students/${studentID}/medical-details`, { signal });
