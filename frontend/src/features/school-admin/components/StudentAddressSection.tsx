@@ -136,8 +136,7 @@ export function StudentAddressSection({ student, onClose }: Props) {
     }
   }
 
-  async function addLocation(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function addLocation() {
     setFieldError("");
     if (!newLocationName.trim()) {
       setFieldError("Enter the new location name.");
@@ -217,13 +216,13 @@ export function StudentAddressSection({ student, onClose }: Props) {
               {fieldError && <small className="app-field-error">{fieldError}</small>}
               {canAddLocation && <button type="button" className="student-link-button" onClick={() => { setShowLocationCreator(value => !value); setFieldError(""); }}>Add missing {nextLocationLabel.toLowerCase()}</button>}
               {showLocationCreator && canAddLocation && (
-                <form className="student-location-create" onSubmit={addLocation} noValidate>
+                <div className="student-location-create">
                   <strong>Add {nextLocationLabel.toLowerCase()} for this school</strong>
                   <label>Location name<input value={newLocationName} maxLength={120} onChange={event => setNewLocationName(event.target.value)} placeholder={"Enter " + nextLocationLabel.toLowerCase()}/></label>
                   {nextLocationLevel === "state" && <label>Country code<input value={countryCode} maxLength={2} onChange={event => setCountryCode(event.target.value.toUpperCase())} placeholder="IN"/></label>}
                   {nextLocationLevel === "locality" && <label>Locality type<Select ariaLabel="Locality type" value={newLocalityType} onChange={setNewLocalityType} options={[{value:"village",label:"Village"},{value:"city",label:"City"},{value:"town",label:"Town"},{value:"other",label:"Other"}]}/></label>}
-                  <button type="submit" className="secondary" disabled={createLocation.isPending}>{createLocation.isPending ? "Adding…" : "Add location"}</button>
-                </form>
+                  <button type="button" className="secondary" disabled={createLocation.isPending} onClick={() => void addLocation()}>{createLocation.isPending ? "Adding…" : "Add location"}</button>
+                </div>
               )}
             </section>
           </>
