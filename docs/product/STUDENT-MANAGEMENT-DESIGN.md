@@ -1,10 +1,10 @@
 # Student Management — Domain and Database Design
 
-**Status:** Approved design baseline; implementation not yet complete  
-**Last reconciled:** 2026-11-13  
+**Status:** Approved design baseline; V31–V34 schema and first admission/address workflows implemented, full profile still in progress  
+**Last reconciled:** 2026-11-14  
 **Scope:** Phase 1 School Admin student admission, profiles, academic-year enrollment, curriculum selection and related school workflows.
 
-This document defines the intended domain model and safe implementation sequence. It is not evidence that the schema, API or UI has already been implemented. The ordered migration chain and automated tests remain authoritative for actual implementation.
+This document defines the intended domain model and safe implementation sequence. Implementation notes below distinguish completed code paths from work still awaiting local verification or future phases. The ordered migration chain and automated tests remain authoritative for actual implementation.
 
 ## 1. Product decisions
 
@@ -25,18 +25,18 @@ The reviewed `work` branch at `d38ae1ecc0f47384aabdcee8816319d39df1df9e` contain
 
 | Area | Existing state | Required evolution |
 |---|---|---|
-| Student identity | V11 `students` stores `admission_number` and `full_name`; admission number is unique per school | Keep stable student identity; phase admission number out of the permanent identity |
+| Student identity | V11 `students` stores `full_name`; V32 makes the legacy `admission_number` nullable and removes school-wide uniqueness while preserving old values | Keep stable student identity; current-year display admission number is projected from enrollment |
 | Guardian relationships | V11 `guardians` and `student_guardians` with same-school composite foreign keys | Reuse; add profile workflow and field-level permissions without enabling parent authentication |
 | Academic year/class/section | V17 school-scoped years, classes and year-specific sections | Preserve existing model and constraints |
-| Enrollment | V17 `student_enrollments` is unique per student/year and preserves class/section snapshots; it has no admission number | Add year-specific admission number/date and safe legacy transition |
-| Promotion | Repository creates destination enrollment and closes source enrollment transactionally | Extend to capture destination admission number; preserve source row |
-| Attendance | V20 records reference enrollment; repository currently reads `students.admission_number` | Read admission number from the matching enrollment |
+| Enrollment | V31 adds year-specific `admission_number`/`admission_date` and normalized school+year uniqueness; V33 makes both immutable | Preserve one enrollment per student/year and keep legacy unknown rows NULL/NULL |
+| Promotion | Repository creates destination enrollment with a new year-specific admission number/date and closes source transactionally | Add full UI flow and verify local acceptance |
+| Attendance | V20 records reference enrollment; attendance projections now read `student_enrollments.admission_number` | Keep year-scoped display and historical NULL compatibility |
 | Subjects | School-level `subjects`; teacher assignments currently validate active subject/section/year | Add class/year curriculum and student enrollment subject selection |
 | Student profile | Repository exposes only name, admission number and status | Add independently stored profile sections |
-| Addresses/locations | No dedicated student address/location hierarchy found in reviewed migrations | Add normalized address and reusable hierarchical location model |
+| Addresses/locations | V34 adds `student_addresses` and tenant-aware `student_locations`, with parent-level, ownership, duplicate and deactivate-not-delete rules | Complete local verification; add reviewed canonical geography data only when sourced authoritatively |
 | Medical/physical/documents | No dedicated student profile tables found in reviewed migrations | Add separate, permission-restricted profile sections |
 
-The current student list search and attendance projection also read admission number from `students`. All such readers and writers must be migrated together; changing only the table definition would break existing behavior.
+Student directory/profile search now uses the current academic year's enrollment admission number; attendance projections use the matching enrollment. New student creation and first enrollment share one transaction. Legacy student-level values remain available only as compatibility data when there is no current-year enrollment; no ambiguous value has been copied into an enrollment.
 
 ## 3. Target domain model
 
@@ -88,17 +88,16 @@ A section may be absent or incomplete. Its absence must not prevent basic studen
 
 Use normalized location records with a parent relationship and a controlled location type, allowing a hierarchy such as State → District → Block/Tehsil → Village/City. Do not hard-code a fixed list of Indian states or assume every deployment uses the same geography.
 
-The design must support:
+V34 implements the first address/location foundation:
 
-- School-owned location additions where canonical reference data is unavailable.
-- Parent/child validation and duplicate prevention within the appropriate owner and parent scope.
-- Active/inactive status; referenced locations are deactivated, never hard-deleted.
-- Searchable, dependent selectors with server-side validation.
-- Free-text house/building, street, locality/mohalla, landmark and PIN/postal code fields.
-- Separate current and permanent addresses, with an explicit same-as-current option.
-- School-scoped reporting by village/city.
+- `student_locations` supports shared canonical rows (`school_id IS NULL`) and school-owned additions, with State → District → Subdistrict (Block/Tehsil) → Locality (Village/City) parent validation.
+- Normalized duplicate checks apply within owner/parent scope, and active canonical entries cannot be duplicated by school-owned additions (or vice versa).
+- Ownership and hierarchy cannot be rewritten. Locations are deactivated rather than deleted; parents with active descendants cannot be deactivated.
+- `student_addresses` stores current and permanent addresses separately, supports same-as-current without copying data, and enforces same-school/global location ownership.
+- Searchable dependent selectors and school-owned additions are available in the Address & Communication UI. Free-text house/street, area/mohalla, landmark and PIN/postal code are stored separately.
+- A saved address can retain a previously selected inactive locality; it cannot be newly selected for another address.
 
-Canonical shared reference data may be introduced later only with a reliable source, update/maintenance strategy and explicit ownership rules. Do not seed a guessed or incomplete geography catalogue.
+No national geography has been guessed or seeded. Canonical shared reference data may be imported later only from a reliable source with an update/maintenance strategy and explicit ownership rules. Contact phone/email fields are still pending within this section.
 
 ### 3.5 Curriculum and student subject selection
 
