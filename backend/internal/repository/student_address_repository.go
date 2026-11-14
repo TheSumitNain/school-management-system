@@ -123,7 +123,7 @@ func (r *AcademicRepository) ListStudentLocations(
 // CreateStudentLocation creates a school-owned addition. Shared canonical
 // rows are provisioned only through reviewed reference-data migrations.
 func (r *AcademicRepository) CreateStudentLocation(
-	ctx context.Context, actorID, schoolID int64, parentID *int64, level, name string, localityType *string,
+	ctx context.Context, actorID, schoolID int64, parentID *int64, countryCode, level, name string, localityType *string,
 ) (*StudentLocation, error) {
 	if r == nil || r.db == nil {
 		return nil, ErrAcademicAccessDenied
@@ -160,18 +160,24 @@ func (r *AcademicRepository) CreateStudentLocation(
 		return nil, err
 	}
 
-	countryCode := "IN"
+	countryCode = strings.ToUpper(strings.TrimSpace(countryCode))
 	if parentID == nil {
 		if level != "state" {
 			return nil, ErrInvalidAcademicInput
 		}
+		if countryCode == "" {
+			countryCode = "IN"
+		}
+		if len(countryCode) != 2 {
+			return nil, ErrInvalidAcademicInput
+		}
 	} else {
-		var parentLevel string
+		var parentLevel, parentCountryCode string
 		if err := tx.QueryRow(ctx, `
 			SELECT level, country_code
 			  FROM student_locations
 			 WHERE id = $1 AND (school_id IS NULL OR school_id = $2) AND is_active = TRUE
-		`, *parentID, schoolID).Scan(&parentLevel, &countryCode); err != nil {
+		`, *parentID, schoolID).Scan(&parentLevel, &parentCountryCode); err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				return nil, ErrAcademicNotFound
 			}
@@ -180,6 +186,10 @@ func (r *AcademicRepository) CreateStudentLocation(
 		if nextStudentLocationLevel(parentLevel) != level {
 			return nil, ErrInvalidAcademicInput
 		}
+		if countryCode != "" && countryCode != parentCountryCode {
+			return nil, ErrInvalidAcademicInput
+		}
+		countryCode = parentCountryCode
 	}
 
 	var item StudentLocation
