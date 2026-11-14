@@ -287,6 +287,7 @@ The latest screen/code review found two concrete UX gaps and records the current
 - [ ] Directory View and Edit actions open the correct profile workflow; no legacy name-only edit route remains reachable.
 - [ ] Basic Details: existing values hydrate, each field validates, save/reopen retains values, and archived students are read-only.
 - [ ] Basic Details sensitive reads require `students.read_sensitive` and create a transactional audit event containing only the section name and student reference; no personal field values are copied into read-audit metadata.
+- [ ] Address & Communication sensitive reads require `students.read_sensitive` and create transactional, section-only audit events for address and contact details; audit metadata must never contain phone numbers, email addresses or address text.
 - [ ] Address & Communication: current/permanent/contact tabs hydrate independently; every address text field and all four location levels load; inactive saved locations remain visible; same-as-current works; save/reopen retains values.
 - [ ] Parents & Siblings: section visibility follows guardians.read; create/edit/link/revoke follows guardians.manage; revoked history is retained; related students require basic-read permission.
 - [ ] Medical & Physical: read/write permissions, version/measurement history, loading/error states and archived-state behavior are verified.
