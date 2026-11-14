@@ -66,3 +66,13 @@
 .student-health-grid .wide{grid-column:1/-1}
 .student-health-grid textarea{width:100%;resize:vertical}
 @media(max-width:720px){.student-health-grid{grid-template-columns:1fr}.student-health-grid .wide{grid-column:auto}}
+
+.student-health-history{padding:11px;border:1px solid var(--line);border-radius:10px;background:var(--color-surface)}
+.student-health-history>summary{cursor:pointer;color:var(--color-text);font-size:11px;font-weight:750}
+.student-health-history-list{display:grid;gap:10px;margin-top:10px}
+.student-health-history-list article{display:grid;gap:8px;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--color-background)}
+.student-health-history-list article>strong{font-size:11px;color:var(--color-text)}
+.student-health-history-list dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px;margin:0}
+.student-health-history-list dt{font-size:10px;color:var(--muted)}
+.student-health-history-list dd{margin:2px 0 0;font-size:11px;color:var(--color-text);overflow-wrap:anywhere}
+@media(max-width:600px){.student-health-history-list dl{grid-template-columns:1fr}}
