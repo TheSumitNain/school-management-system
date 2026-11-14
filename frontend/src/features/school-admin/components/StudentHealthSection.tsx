@@ -78,6 +78,15 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
   async function submitMedical(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canUpdate || medicalQuery.isLoading) return;
+    const current = medicalQuery.data?.medical_details;
+    if (current && (current.blood_group ?? "") === bloodGroup &&
+      (current.allergies ?? "") === allergies.trim() &&
+      (current.known_conditions ?? "") === knownConditions.trim() &&
+      (current.ongoing_medications ?? "") === ongoingMedications.trim() &&
+      (current.emergency_medical_notes ?? "") === emergencyNotes.trim()) {
+      setFeedback({ kind: "success", message: "No changes to save." });
+      return;
+    }
     try {
       await saveMedical.mutateAsync({
         studentID: student.id,
@@ -116,6 +125,16 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
     else if (!measuredOn) errors.measuredOn = "Measurement date is required.";
     setPhysicalErrors(errors);
     if (Object.keys(errors).length > 0) return;
+    const current = physicalQuery.data?.physical_details;
+    if (current && current.id > 0 &&
+      (current.height_cm ?? null) === height &&
+      (current.weight_kg ?? null) === weight &&
+      (current.measured_on ?? "").slice(0, 10) === measuredOn &&
+      (current.vision_notes ?? "") === visionNotes.trim() &&
+      (current.physical_notes ?? "") === physicalNotes.trim()) {
+      setFeedback({ kind: "success", message: "No changes to save. A new measurement is recorded only when details or date change." });
+      return;
+    }
     try {
       await savePhysical.mutateAsync({
         studentID: student.id,
