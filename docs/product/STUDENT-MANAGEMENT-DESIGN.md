@@ -34,7 +34,7 @@ The reviewed `work` branch at `d38ae1ecc0f47384aabdcee8816319d39df1df9e` contain
 | Attendance | V20 records reference enrollment; attendance projections now read `student_enrollments.admission_number` | Keep year-scoped display and historical NULL compatibility |
 | Subjects | School-level `subjects`; teacher assignments currently validate active subject/section/year | Add class/year curriculum and student enrollment subject selection |
 | Student profile | V37 adds optional one-to-one `student_basic_details` for date/place of birth, gender, nationality, religion, social category, EWS status and school registration number; reads are restricted and updates audited | Continue section workflow and complete local verification |
-| Addresses/locations | V34 adds `student_addresses` and tenant-aware `student_locations`, with parent-level, ownership, duplicate and deactivate-not-delete rules | Complete local verification; add reviewed canonical geography data only when sourced authoritatively |
+| Addresses/locations | V34 adds `student_addresses` and tenant-aware `student_locations`, with parent-level, ownership, duplicate and deactivate-not-delete rules | Complete local verification; extend the reviewed IGOD State/UT snapshot with an authoritative LGD import for districts/subdistricts/localities |
 | Medical/physical/documents | No dedicated student profile tables found in reviewed migrations | Add separate, permission-restricted profile sections |
 
 Student directory/profile search now uses the current academic year's enrollment admission number; attendance projections use the matching enrollment. New student creation and first enrollment share one transaction. Legacy student-level values remain available only as compatibility data when there is no current-year enrollment; no ambiguous value has been copied into an enrollment.
@@ -106,7 +106,7 @@ V34 implements the first address/location foundation:
 
 V35 adds optional student primary phone, alternate phone and email in a separate one-row-per-student contact table. Phone/email values are not unique because households may share contact channels; updates are audited without putting the values into audit metadata.
 
-No national geography has been guessed or seeded. Canonical shared reference data may be imported later only from a reliable source with an update/maintenance strategy and explicit ownership rules.
+The frontend does not hard-code geography options. V40 adds a database-backed snapshot of all 36 India State/UT entries from the Government of India's IGOD State/UT directory (source codes are retained as source_system=IGOD/source_code). District, Block/Tehsil and Village/City rows are not fabricated or seeded from an unverified list; they remain school-addable while a versioned import from the Ministry of Panchayati Raj Local Government Directory (LGD) is designed. Any future bulk import must retain source codes, source date, parent relationships and a repeatable update strategy.
 
 ### 3.5 Curriculum and student subject selection
 
