@@ -588,6 +588,16 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("button", { name: "Close dialog" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
 
+  await page.getByRole("button", { name: /Medical & physical/ }).click();
+  await expect(page.getByRole("dialog", { name: "Medical & Physical Details" })).toBeVisible();
+  await expect(page.getByPlaceholder("Record known allergies, if any")).toHaveValue("Peanuts");
+  await expect(page.getByPlaceholder("Record school-relevant conditions, if any")).toHaveValue("No other known conditions");
+  await page.getByRole("button", { name: "Physical details" }).click();
+  await expect(page.getByPlaceholder("e.g. 132.5")).toHaveValue("132.5");
+  await expect(page.getByText(/Measured/)).toBeVisible();
+  await page.getByRole("button", { name: "Close dialog" }).click();
+  await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
+
   expect(browserErrors).toEqual([]);
 });
 
