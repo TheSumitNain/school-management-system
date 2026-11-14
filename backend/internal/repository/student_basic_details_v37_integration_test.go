@@ -38,6 +38,21 @@ func TestStudentBasicDetailsV37PostgresIntegration(t *testing.T) {
 		Scan(&schoolID, &actorPrincipalID); err != nil {
 		t.Fatalf("load V37 school actor: %v", err)
 	}
+	platformAdminPrincipalID := ensurePlatformAdminLifecycleActor(t, pool)
+	var schoolAdminRoleID int64
+	if err := tx.QueryRow(ctx, `
+		SELECT id FROM roles WHERE school_id=$1 AND principal_type='staff'
+		  AND scope_type='school' AND role_key='school_admin' AND is_system=TRUE
+	`, schoolID).Scan(&schoolAdminRoleID); err != nil {
+		t.Fatalf("load School Admin role: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO principal_roles(principal_id,role_id,assigned_by)
+		VALUES($1,$2,$3)
+	`, actorPrincipalID, schoolAdminRoleID, platformAdminPrincipalID); err != nil {
+		t.Fatalf("assign School Admin fixture role: %v", err)
+	}
+
 	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
 	var studentID, secondStudentID int64
 	for _, target := range []struct {
@@ -76,6 +91,46 @@ func TestStudentBasicDetailsV37PostgresIntegration(t *testing.T) {
 	}
 	if savedRegistration != registration || gender != "female" {
 		t.Fatalf("unexpected basic details readback: registration=%q gender=%q", savedRegistration, gender)
+	}
+
+	repository := NewAcademicRepository(tx)
+	birthDate := time.Date(2018, 4, 12, 0, 0, 0, 0, time.UTC)
+	placeOfBirth := "Ambala"
+	nationality := "Indian"
+	religion := "Not specified"
+	category := "general"
+	ews := false
+	repoRegistration := "SR-API-" + suffix
+	basic, err := repository.SaveStudentBasicDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
+		&birthDate, &placeOfBirth, ptrString("female"), &nationality, &religion, &category, &ews, &repoRegistration)
+	if err != nil {
+		t.Fatalf("save student basic details through repository: %v", err)
+	}
+	if basic.DateOfBirth == nil || basic.DateOfBirth.Format("2006-01-02") != "2018-04-12" ||
+		basic.Gender == nil || *basic.Gender != "female" || basic.EWSStatus == nil || *basic.EWSStatus ||
+		basic.SchoolRegistrationNumber == nil || *basic.SchoolRegistrationNumber != repoRegistration {
+		t.Fatalf("unexpected repository basic details: %+v", basic)
+	}
+	loadedBasic, err := repository.GetStudentBasicDetails(ctx, actorPrincipalID, schoolID, secondStudentID)
+	if err != nil || loadedBasic.ID != basic.ID || loadedBasic.Nationality == nil || *loadedBasic.Nationality != nationality {
+		t.Fatalf("read student basic details through repository: item=%+v err=%v", loadedBasic, err)
+	}
+	var auditCount int
+	var auditMetadata string
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*),COALESCE(string_agg(metadata::text,' '),'')
+		  FROM audit_events
+		 WHERE school_id=$1 AND actor_principal_id=$2
+		   AND action='school.student.basic_details.updated'
+		   AND resource_id=$3
+	`, schoolID, actorPrincipalID, fmt.Sprint(basic.ID)).Scan(&auditCount, &auditMetadata); err != nil {
+		t.Fatalf("inspect basic profile audit: %v", err)
+	}
+	if auditCount != 1 || strings.Contains(auditMetadata, placeOfBirth) || strings.Contains(auditMetadata, nationality) {
+		t.Fatalf("basic profile audit must record field presence only: count=%d metadata=%s", auditCount, auditMetadata)
+	}
+	if _, err := repository.GetStudentBasicDetails(ctx, actorPrincipalID, schoolID+999999, secondStudentID); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("cross-school basic details read error = %v, want access denied", err)
 	}
 
 	assertRejected := func(label, query string, args ...any) {
