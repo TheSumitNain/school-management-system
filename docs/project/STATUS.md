@@ -3,7 +3,7 @@
 **Last reconciled:** 2026-11-14  
 **Repository:** `TheSumitNain/school-management-system`  
 **Reviewed branch:** `work`  
-**Reviewed through:** `599d021` (`work` branch; subsequent application verification pending)
+**Reviewed through:** `076c752` (`work` branch; local verification pending)
 
 ## Student Management — approved yearly admission model (V31/V32 schema transition; application cutover in progress)
 
@@ -11,8 +11,12 @@
 - V31 adds nullable `admission_number` and `admission_date` to `student_enrollments`, a paired-nullability check, a non-empty/length check, and a normalized unique index scoped to school + academic year. Historical enrollments may remain NULL/NULL when their original identity cannot be proven.
 - V32 decouples permanent student identity from the legacy school-wide admission number: `students.admission_number` becomes nullable, its school-wide unique index is replaced with a non-unique legacy lookup index, and existing values remain untouched. Its down migration refuses rollback if null or duplicate legacy identities exist.
 - The enrollment repository read model now exposes year-specific admission number/date. Attendance projections now read admission number from the enrollment and return an empty value for historical NULL rows. Student-profile reads safely tolerate a NULL legacy number.
-- **User-reported local verification:** V31 focused behavioral test, related repository regression tests, full backend `go test -count=1 -p 1 ./...`, and `go vet ./...` passed against the disposable `school_management_test` database before the latest V32/read-model commits. The V32 migration and its new integration test still require local execution after pulling.
-- **Application cutover remains incomplete:** new-student + first-enrollment atomic creation, required year-wise admission number/date on new enrollment and promotion writes, year-aware student directory search, frontend combined admission workflow, and end-to-end regression tests remain to be implemented and verified.
+- New enrollment and promotion repository writes now require an admission number and admission date, validate both dates against the selected academic year, and write those values with audit metadata. Promotion preserves the prior enrollment and creates the destination-year identity.
+- New student creation now has one transactional repository operation that creates the permanent student identity (legacy admission number NULL), its first year-specific enrollment, and both audit events. The `POST /school/students` route now uses this combined operation; an enrollment uniqueness conflict rolls back the student insert.
+- Student directory/profile reads now display and search the current academic year's enrollment admission number. If a student has a current-year enrollment with unknown legacy admission identity, the directory deliberately shows no number rather than incorrectly carrying forward an unverified old-year value. Attendance and enrollment lists also expose the enrollment-level number.
+- The Student Management page now uses a guided first-admission form (student name, admission number, academic year, section, optional roll number and admission date) and requires year-specific admission number/date when enrolling an existing student.
+- **User-reported local verification:** V31 focused behavioral test, related repository regression tests, full backend `go test -count=1 -p 1 ./...`, and `go vet ./...` passed against the disposable `school_management_test` database before the latest V32/application changes. The V32 migration, new combined-admission integration coverage, and frontend TypeScript/build checks still require local execution after pulling.
+- **Application cutover remains in verification:** no local run has yet confirmed the latest V32 migration, transaction behavior, repository/API integration, and frontend build together. The permanent student profile sections beyond the currently implemented name field (address/contact, parent/sibling, medical/physical and documents) remain future implementation work.
 - The persistent `school_management` application database has not been migrated by this work. Do not apply V32 or any pending migration to it without explicit approval and a verified backup.
 
 ## Staff Management — employee profile workflow implemented
