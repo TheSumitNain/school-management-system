@@ -159,6 +159,8 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
       } else if (deactivated.level === "subdistrict") {
         setSubdistrictID(0);
         resetChildren("subdistrict");
+      } else if (deactivated.level === "locality" && selectedAddress?.location_id !== deactivated.id) {
+        setLocalityID(0);
       }
       setFeedback({ kind: "success", message: deactivated.name + " was deactivated. Existing address records are retained." });
     } catch (error) {
