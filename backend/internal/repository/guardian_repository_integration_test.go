@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -305,6 +306,33 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 	}
 	if !secondLink.IsPrimaryContact {
 		t.Fatalf("second link should be primary: %+v", secondLink)
+	}
+
+	// The database itself must reject a second active primary contact even
+	// when a writer bypasses the repository's per-student serialization.
+	var thirdGuardianID int64
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO guardians (school_id, full_name)
+		VALUES ($1, 'Guardian Three') RETURNING id
+	`, schoolID).Scan(&thirdGuardianID); err != nil {
+		t.Fatalf("create third guardian for primary-contact constraint test: %v", err)
+	}
+	savepoint, err := tx.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin primary-contact constraint savepoint: %v", err)
+	}
+	_, duplicatePrimaryErr := savepoint.Exec(ctx, `
+		INSERT INTO student_guardians (
+			school_id, student_id, guardian_id, relationship_type,
+			is_primary_contact, is_emergency_contact
+		) VALUES ($1, $2, $3, 'guardian', TRUE, FALSE)
+	`, schoolID, studentID, thirdGuardianID)
+	if duplicatePrimaryErr == nil || !strings.Contains(duplicatePrimaryErr.Error(), "ux_student_guardians_active_primary_per_student") {
+		_ = savepoint.Rollback(ctx)
+		t.Fatalf("duplicate active primary contact error = %v, want unique index violation", duplicatePrimaryErr)
+	}
+	if err := savepoint.Rollback(ctx); err != nil {
+		t.Fatalf("rollback primary-contact constraint savepoint: %v", err)
 	}
 
 	editedLink, err := repo.UpdateStudentGuardianLink(ctx, targetPrincipalID, schoolID,
