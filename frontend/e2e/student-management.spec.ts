@@ -239,6 +239,12 @@ test("student admission, profile navigation and parent details render without br
       await route.fulfill({ json: { student_guardian: guardianLink } });
       return;
     }
+    const guardianProfileMatch = path.match(/^\/school\/guardians\/(\d+)$/);
+    if (guardianProfileMatch && method === "PATCH") {
+      Object.assign(guardianLink, request.postDataJSON() as Record<string, unknown>);
+      await route.fulfill({ json: { guardian: guardianLink } });
+      return;
+    }
     if (path === "/school/guardians") {
       await route.fulfill({ json: { guardians: [], total: 0 } });
       return;
@@ -329,6 +335,21 @@ test("student admission, profile navigation and parent details render without br
   });
   await expect.poll(() => guardianLink.relationship_type).toBe("Legal Guardian");
   await expect(page.getByText("Legal Guardian · Primary contact · Emergency contact")).toBeVisible();
+  await page.getByRole("button", { name: "Edit shared guardian details" }).click();
+  await expect(page.getByRole("heading", { name: "Edit shared guardian profile" })).toBeVisible();
+  await expect(page.getByText("These contact and profile details are shared across all students linked to this guardian.")).toBeVisible();
+  await page.getByPlaceholder("Mobile number").fill("9999912345");
+  const saveGuardianDetails = page.getByRole("button", { name: "Save guardian details" });
+  await saveGuardianDetails.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Guardian details submit button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect(page.getByRole("alertdialog", { name: "Update shared guardian profile?" })).toBeVisible();
+  await page.getByRole("button", { name: "Update all linked records" }).click();
+  await expect.poll(() => guardianLink.mobile_number).toBe("9999912345");
+  expect(guardianLink).toMatchObject({ relationship_type: "Legal Guardian", is_primary_contact: true, is_emergency_contact: true });
+  await expect(page.getByText("Guardian profile updated. Changes apply to every student linked to this guardian.")).toBeVisible();
 
   await page.getByRole("button", { name: "Close dialog" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
