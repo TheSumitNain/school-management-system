@@ -714,6 +714,26 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 		"current", &line1, nil, &area, nil, &postal, &village.ID, false); err != nil {
 		t.Fatalf("update existing address while retaining its deactivated location: %v", err)
 	}
+
+	primaryPhone := "+91 98765 43210"
+	alternatePhone := "0172-555-0101"
+	contactEmail := "student-" + suffix + "@example.test"
+	contact, err := academicRepo.SaveStudentContactDetails(ctx, actorPrincipalID, schoolID,
+		combined.Student.ID, &primaryPhone, &alternatePhone, &contactEmail)
+	if err != nil || contact == nil || contact.PrimaryPhone == nil ||
+		*contact.PrimaryPhone != primaryPhone || contact.EmailAddress == nil || *contact.EmailAddress != contactEmail {
+		t.Fatalf("save student contact details: contact=%+v err=%v", contact, err)
+	}
+	loadedContact, err := academicRepo.GetStudentContactDetails(ctx, actorPrincipalID, schoolID, combined.Student.ID)
+	if err != nil || loadedContact == nil || loadedContact.AlternatePhone == nil ||
+		*loadedContact.AlternatePhone != alternatePhone {
+		t.Fatalf("read student contact details: contact=%+v err=%v", loadedContact, err)
+	}
+	invalidEmail := "not-an-email"
+	if _, err := academicRepo.SaveStudentContactDetails(ctx, actorPrincipalID, schoolID,
+		combined.Student.ID, &primaryPhone, nil, &invalidEmail); !errors.Is(err, ErrInvalidAcademicInput) {
+		t.Fatalf("invalid student email error = %v, want invalid input", err)
+	}
 	var legacyAdmissionIsNull bool
 	if err := tx.QueryRow(ctx, `SELECT admission_number IS NULL FROM students WHERE id=$1`,
 		combined.Student.ID).Scan(&legacyAdmissionIsNull); err != nil || !legacyAdmissionIsNull {
