@@ -86,6 +86,25 @@ func TestStudentProfileRepositoryPostgresIntegration(t *testing.T) {
 	if student.AdmissionNumber != "ADM-"+suffix || student.FullName != "Student One" || student.Status != "active" {
 		t.Fatalf("unexpected created student: %+v", student)
 	}
+	var createdAuditCount int
+	var createdAuditHasAdmissionFlag bool
+	var createdAuditLeaksStudentData bool
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*),
+		       COALESCE(BOOL_OR(metadata->>'has_admission_number'='true'),FALSE),
+		       COALESCE(BOOL_OR(metadata::text ILIKE '%'||$3||'%' OR metadata::text ILIKE '%'||$4||'%'),FALSE)
+		  FROM audit_events
+		 WHERE school_id=$1 AND actor_principal_id=$2
+		   AND action='school.student.created' AND resource_id=$5
+	`, schoolID, actorID, student.FullName, student.AdmissionNumber, fmt.Sprint(student.ID)).Scan(
+		&createdAuditCount, &createdAuditHasAdmissionFlag, &createdAuditLeaksStudentData,
+	); err != nil {
+		t.Fatalf("inspect student-created audit metadata: %v", err)
+	}
+	if createdAuditCount != 1 || !createdAuditHasAdmissionFlag || createdAuditLeaksStudentData {
+		t.Fatalf("student-created audit count=%d has_admission_number=%v leaks_student_data=%v",
+			createdAuditCount, createdAuditHasAdmissionFlag, createdAuditLeaksStudentData)
+	}
 	duplicateLegacy, err := repo.CreateStudent(ctx, actorID, schoolID, "adm-"+suffix, "Duplicate Legacy Admission")
 	if err != nil || duplicateLegacy == nil || duplicateLegacy.AdmissionNumber != "adm-"+suffix {
 		t.Fatalf("duplicate legacy student-level admission value should be retained without a conflict: student=%+v err=%v", duplicateLegacy, err)
