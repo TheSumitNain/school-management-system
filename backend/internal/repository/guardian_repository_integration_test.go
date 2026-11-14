@@ -259,7 +259,11 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("link guardian to student: %v", err)
 	}
 	if firstLink.ID <= 0 || !firstLink.IsPrimaryContact || !firstLink.IsEmergencyContact ||
-		firstLink.RelationshipType != "father" || firstLink.GuardianName != "Guardian One Updated" {
+		firstLink.RelationshipType != "father" || firstLink.GuardianName != "Guardian One Updated" ||
+		firstLink.AlternateMobileNumber == nil || *firstLink.AlternateMobileNumber != alternateMobile ||
+		firstLink.Occupation == nil || *firstLink.Occupation != occupation ||
+		firstLink.Education == nil || *firstLink.Education != education ||
+		firstLink.WorkplaceName == nil || *firstLink.WorkplaceName != workplace {
 		t.Fatalf("unexpected first student-guardian link: %+v", firstLink)
 	}
 
