@@ -39,6 +39,8 @@ The authoritative schema is the ordered SQL migration chain in `backend/migratio
 - V33 extends the existing immutable-history trigger: admission number/date cannot be changed after enrollment creation, even while active. The active-to-terminal status transition remains valid when identity fields are unchanged.
 - New student creation and its first enrollment must be one transaction. Returning-student enrollment and promotion create only a new year-specific enrollment; promotion closes the previous enrollment without rewriting its identity.
 - The V32 down migration refuses rollback when null or duplicate legacy student admission values exist. The V31 down migration refuses rollback once year-specific enrollment identities have been written.
+- V34 adds a hierarchical `student_locations` catalogue with shared canonical rows and school-owned additions, normalized duplicate checks, parent-level and tenant-scope guards, and deactivate-not-delete lifecycle. `student_addresses` stores current/permanent address sections separately, supports same-as-current without copying values, and prevents cross-school location references.
+- V34 rollback refuses to drop either table when address or location records exist. Do not seed guessed geography; import canonical reference data only from a reviewed authoritative source.
 
 ## Local database configuration
 
