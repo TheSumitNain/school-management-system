@@ -23,3 +23,19 @@
 .student-location-confirm{display:grid;gap:10px;padding:12px;border:1px solid var(--color-warning);border-radius:10px;background:var(--color-warning-soft)}
 .student-location-confirm p{margin:0;color:var(--color-text);font-size:12px}
 .student-location-confirm>div{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+
+.student-family-section{display:grid;gap:12px;padding:14px 0;border-bottom:1px solid var(--line)}
+.student-family-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.student-family-heading h3,.student-family-link-form h4,.student-family-create-form h4{margin:0 0 4px;font-size:13px;color:var(--color-text)}
+.student-family-heading p{margin:0;color:var(--muted);font-size:11px;line-height:1.5}
+.student-family-list{display:grid;gap:8px}
+.student-family-card{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px;border:1px solid var(--line);border-radius:10px;background:var(--color-surface)}
+.student-family-card>div{display:grid;gap:3px;min-width:0}
+.student-family-card strong{font-size:12px;color:var(--color-text)}
+.student-family-card span,.student-family-card small{font-size:11px;color:var(--muted);overflow-wrap:anywhere}
+.student-family-link-form,.student-family-create-form{display:grid;gap:10px;padding:12px;border:1px solid var(--line);border-radius:10px}
+.student-family-link-form label,.student-family-create-form label{display:grid;gap:6px;font-size:12px;font-weight:600;color:var(--color-text)}
+.student-family-link-form input,.student-family-create-form input{width:100%;min-height:38px}
+.student-family-checks{display:flex;gap:16px;flex-wrap:wrap}
+.student-family-checks label{display:flex;align-items:center;grid-template-columns:auto 1fr;gap:7px}
+.student-family-checks input{width:16px;height:16px;min-height:16px}
