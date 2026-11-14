@@ -455,3 +455,14 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - The test still intercepts every API request and uses in-memory fixtures. It verifies frontend interaction and request/response handling only; it does not prove live database persistence or replace backend PostgreSQL integration tests.
 - Frontend CI passed for commit f0267654b18c904359c12b2cdaf0ff45ba8f57d7 (workflow run 43600789669), including design-token checks, TypeScript, production build and Playwright Chromium.
 - Backend CI for the same commit was still running at the time of this entry. Persistent database migration/adoption and manual browser acceptance against the configured local API remain pending.
+
+## Student Management guardian permissions and promotion browser coverage — 2026-11-14
+
+- Expanded guardian browser coverage for shared-profile editing: invalid email is rejected without saving; valid edits require explicit confirmation because contact/profile data affect all linked students; student-specific relationship, primary-contact and emergency-contact flags remain unchanged.
+- Added guardian revocation browser coverage: a reason is mandatory, the active relationship disappears after revocation, and the revoked relationship remains available in history.
+- Added view-only permission coverage: staff with student read and guardian read permissions but without update/archive/guardian-management permissions can view the student and linked guardian, but cannot see edit, archive, link or revoke actions. The test verifies no write request is sent.
+- Added promotion browser coverage for required admission number validation, destination academic year/section selection, blank roll-number auto-assignment path, and preservation of the prior enrollment with promoted status alongside the new enrollment.
+- Frontend CI passed for commit `e8b907abbb20` (run `43602032049`), including shared guardian update and revocation/history coverage.
+- Frontend and Backend CI passed for commit `288a70a25440` (runs `43602633101` and `43602632967`), including student and guardian view-only permission coverage.
+- Frontend and Backend CI passed for commit `1d739fcb0169` (runs `43603172771` and `43603172772`), including promotion validation and preserved enrollment history.
+- Browser tests intercept all API requests and use in-memory fixtures; they do not write to the local or persistent school database. Backend PostgreSQL integration tests run separately against the ephemeral CI database. No persistent database migration was run.
