@@ -236,11 +236,12 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 	}
 
 	var enrollment1, enrollment2 int64
+	yearOneAdmissionNumber := "V17-ENR-" + suffix
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO student_enrollments
-			(school_id, student_id, academic_year_id, class_id, section_id, roll_number)
-		VALUES ($1, $2, $3, $4, $5, '01') RETURNING id
-	`, schoolID, studentID, year1, classLKG, section1).Scan(&enrollment1); err != nil {
+			(school_id, student_id, academic_year_id, class_id, section_id, roll_number, admission_number, admission_date)
+		VALUES ($1, $2, $3, $4, $5, '01', $6, DATE '2026-04-01') RETURNING id
+	`, schoolID, studentID, year1, classLKG, section1, yearOneAdmissionNumber).Scan(&enrollment1); err != nil {
 		t.Fatalf("enroll student in LKG: %v", err)
 	}
 	var historicalClassName, historicalSectionName string
@@ -344,8 +345,9 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 	if err != nil {
 		t.Fatalf("class-in-charge teacher could not mark current-section attendance: %v", err)
 	}
-	if attendance == nil || attendance.Status != "present" || attendance.SectionName != "A" {
-		t.Fatalf("unexpected marked attendance record: %+v", attendance)
+	if attendance == nil || attendance.Status != "present" || attendance.SectionName != "A" ||
+		attendance.AdmissionNumber != yearOneAdmissionNumber {
+		t.Fatalf("unexpected marked attendance record or year-scoped admission projection: %+v", attendance)
 	}
 	attendanceItems, err := attendanceRepo.ListAttendance(
 		ctx, teacherPrincipalID, schoolID, year1, section1, attendanceDay,
@@ -650,6 +652,14 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 		combined.Student.AdmissionNumber != combinedNumber || combined.Enrollment.StudentID != combined.Student.ID ||
 		combined.Enrollment.AdmissionNumber == nil || *combined.Enrollment.AdmissionNumber != combinedNumber {
 		t.Fatalf("create combined student admission: result=%+v err=%v", combined, err)
+	}
+	directoryMatches, directoryTotal, err := academicRepo.ListStudents(
+		ctx, actorPrincipalID, schoolID, combinedNumber, "active", 20, 0,
+	)
+	if err != nil || directoryTotal != 1 || len(directoryMatches) != 1 ||
+		directoryMatches[0].ID != combined.Student.ID || directoryMatches[0].AdmissionNumber != combinedNumber {
+		t.Fatalf("current-year student directory admission search: total=%d items=%+v err=%v",
+			directoryTotal, directoryMatches, err)
 	}
 	var legacyAdmissionIsNull bool
 	if err := tx.QueryRow(ctx, `SELECT admission_number IS NULL FROM students WHERE id=$1`,
