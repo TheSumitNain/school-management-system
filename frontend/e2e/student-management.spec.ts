@@ -774,14 +774,14 @@ test("student archive confirmation keeps the record on conflict and refreshes st
   await dialog.getByRole("button", { name: "Cancel" }).click();
   await expect(dialog).toHaveCount(0);
   expect(archiveAttempts).toBe(0);
-  await expect(page.getByText("Archive Retry Student")).toBeVisible();
+  await expect(page.getByText("Archive Retry Student", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Archive Archive Retry Student" }).click();
   dialog = page.getByRole("dialog", { name: "Archive student?" });
   await dialog.getByRole("button", { name: "Archive student", exact: true }).click();
   await expect(dialog.getByRole("alert")).toHaveText("Student has an active enrollment and cannot be archived.");
   await expect(dialog).toBeVisible();
-  await expect(page.getByText("Archive Retry Student")).toBeVisible();
+  await expect(page.getByText("Archive Retry Student", { exact: true })).toBeVisible();
   expect(archiveAttempts).toBe(1);
 
   await dialog.getByRole("button", { name: "Archive student", exact: true }).click();
