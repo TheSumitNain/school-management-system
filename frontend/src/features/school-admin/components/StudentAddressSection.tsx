@@ -30,6 +30,7 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
   const [primaryPhone, setPrimaryPhone] = useState("");
   const [alternatePhone, setAlternatePhone] = useState("");
   const [emailAddress, setEmailAddress] = useState("");
+  const [contactErrors, setContactErrors] = useState<{ primaryPhone?: string; alternatePhone?: string; emailAddress?: string }>({});
   const [line1, setLine1] = useState("");
   const [line2, setLine2] = useState("");
   const [areaMohalla, setAreaMohalla] = useState("");
@@ -163,7 +164,16 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
 
   async function submitContact(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!canUpdate) return;
+    if (!canUpdate || contactQuery.isLoading) return;
+    const errors: { primaryPhone?: string; alternatePhone?: string; emailAddress?: string } = {};
+    if (primaryPhone.trim().length > 30) errors.primaryPhone = "Phone number must be 30 characters or fewer.";
+    if (alternatePhone.trim().length > 30) errors.alternatePhone = "Phone number must be 30 characters or fewer.";
+    const emailInput = event.currentTarget.elements.namedItem("student_email_address") as HTMLInputElement | null;
+    if (emailAddress.trim() && emailInput && !emailInput.checkValidity()) {
+      errors.emailAddress = "Enter a valid email address.";
+    }
+    setContactErrors(errors);
+    if (Object.keys(errors).length > 0) return;
     try {
       await saveContact.mutateAsync({
         studentID: student.id,
@@ -253,15 +263,15 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
       <div className="student-address-tabs" role="group" aria-label="Student profile section">
         <button type="button" className={!showContactDetails && addressType === "current" ? "active" : ""} aria-pressed={!showContactDetails && addressType === "current"} onClick={() => { setShowContactDetails(false); setAddressType("current"); setFeedback(null); }}>Current address</button>
         <button type="button" className={!showContactDetails && addressType === "permanent" ? "active" : ""} aria-pressed={!showContactDetails && addressType === "permanent"} onClick={() => { setShowContactDetails(false); setAddressType("permanent"); setFeedback(null); }}>Permanent address</button>
-        <button type="button" className={showContactDetails ? "active" : ""} aria-pressed={showContactDetails} onClick={() => { setShowContactDetails(true); setFeedback(null); }}>Contact details</button>
+        <button type="button" className={showContactDetails ? "active" : ""} aria-pressed={showContactDetails} onClick={() => { setShowContactDetails(true); setFeedback(null); setContactErrors({}); }}>Contact details</button>
       </div>
       {showContactDetails ? (
         <form className="student-address-form" onSubmit={submitContact} noValidate>
           {contactQuery.isError && <p className="student-feedback error" role="alert">{contactQuery.error.message}</p>}
           <div className="student-address-grid">
-            <label>Primary phone<input disabled={!canUpdate} value={primaryPhone} maxLength={30} onChange={event => setPrimaryPhone(event.target.value)} placeholder="Primary contact number"/></label>
-            <label>Alternate phone<input disabled={!canUpdate} value={alternatePhone} maxLength={30} onChange={event => setAlternatePhone(event.target.value)} placeholder="Alternate contact number"/></label>
-            <label>Email address<input disabled={!canUpdate} type="email" value={emailAddress} maxLength={254} onChange={event => setEmailAddress(event.target.value)} placeholder="student@example.com"/></label>
+            <label>Primary phone<input disabled={!canUpdate || contactQuery.isLoading || busy} value={primaryPhone} maxLength={30} onChange={event => { setPrimaryPhone(event.target.value); setContactErrors(current => ({ ...current, primaryPhone: undefined })); }} placeholder="Primary contact number"/>{contactErrors.primaryPhone && <small className="app-field-error">{contactErrors.primaryPhone}</small>}</label>
+            <label>Alternate phone<input disabled={!canUpdate || contactQuery.isLoading || busy} value={alternatePhone} maxLength={30} onChange={event => { setAlternatePhone(event.target.value); setContactErrors(current => ({ ...current, alternatePhone: undefined })); }} placeholder="Alternate contact number"/>{contactErrors.alternatePhone && <small className="app-field-error">{contactErrors.alternatePhone}</small>}</label>
+            <label>Email address<input name="student_email_address" disabled={!canUpdate || contactQuery.isLoading || busy} type="email" value={emailAddress} maxLength={254} aria-invalid={Boolean(contactErrors.emailAddress)} aria-describedby={contactErrors.emailAddress ? "student-contact-email-error" : undefined} onChange={event => { setEmailAddress(event.target.value); setContactErrors(current => ({ ...current, emailAddress: undefined })); }} placeholder="student@example.com"/>{contactErrors.emailAddress && <small id="student-contact-email-error" className="app-field-error">{contactErrors.emailAddress}</small>}</label>
           </div>
           {!canUpdate && <p className="student-address-note">View-only access. Student update permission is required to edit contact details.</p>}
           <div className="app-modal-actions">
