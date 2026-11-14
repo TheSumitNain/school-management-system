@@ -6,6 +6,7 @@ const API_BASE = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, ""
 const LEGACY_ACCESS_KEY = "sms.access";
 const LEGACY_REFRESH_KEY = "sms.refresh";
 const ACTIVE_SESSION_KEY = "sms.auth.active";
+const SESSION_PRINCIPAL_KEY = "sms.auth.principal";
 const SESSION_EVENT_KEY = "sms.auth.event";
 let accessToken = "";
 let refreshInFlight: Promise<boolean> | null = null;
@@ -21,6 +22,7 @@ function clearSession() {
   accessToken = "";
   sessionStorage.removeItem(LEGACY_ACCESS_KEY);
   sessionStorage.removeItem(LEGACY_REFRESH_KEY);
+  sessionStorage.removeItem(SESSION_PRINCIPAL_KEY);
   localStorage.removeItem(ACTIVE_SESSION_KEY);
 }
 function receiveRemoteSessionEvent(event: SessionEvent) {
@@ -53,8 +55,23 @@ function broadcastSessionEnd() {
 export function announceSessionChanged() {
   publishSessionEvent("changed");
 }
+function principalIdentity(principal: Principal): string {
+  return JSON.stringify([principal.principal_id, principal.principal_type, principal.school_id ?? null]);
+}
+function isValidPrincipal(value: unknown): value is Principal {
+  if (!value || typeof value !== "object") return false;
+  const principal = value as Partial<Principal>;
+  return Number.isSafeInteger(principal.principal_id) && Number(principal.principal_id) > 0 &&
+    (principal.principal_type === "staff" || principal.principal_type === "platform_admin") &&
+    typeof principal.status === "string" &&
+    (principal.principal_type !== "staff" || (Number.isSafeInteger(principal.school_id) && Number(principal.school_id) > 0));
+}
 export function saveTokens(tokens: AuthTokens) {
+  if (!isValidPrincipal(tokens.principal)) throw new Error("The sign-in response did not include a valid account identity.");
   accessToken = tokens.access_token;
+  // Pin the identity for this browser tab. A refresh cookie must never silently
+  // replace the account that explicitly signed in to this tab.
+  sessionStorage.setItem(SESSION_PRINCIPAL_KEY, principalIdentity(tokens.principal));
   // This marker contains no credential; it only lets tabs distinguish an
   // expired shared session from a visitor who has never signed in.
   localStorage.setItem(ACTIVE_SESSION_KEY, "1");
@@ -81,10 +98,18 @@ async function performRefresh(): Promise<boolean> {
     throw new Error("Unable to verify your sign-in. Check your connection and try again.");
   }
   const body = await response.json() as Partial<AuthTokens>;
-  if (!body.access_token) {
+  if (!body.access_token || !isValidPrincipal(body.principal)) {
     const hadSession = localStorage.getItem(ACTIVE_SESSION_KEY) === "1";
     clearSession();
     if (hadSession) broadcastSessionEnd();
+    return false;
+  }
+  const expectedIdentity = sessionStorage.getItem(SESSION_PRINCIPAL_KEY);
+  if (expectedIdentity && expectedIdentity !== principalIdentity(body.principal)) {
+    // The shared HttpOnly cookie now represents a different account. Do not
+    // accept it in this tab; require an explicit sign-in instead.
+    clearSession();
+    dispatchSessionEnded();
     return false;
   }
   saveTokens(body as AuthTokens);
