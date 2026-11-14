@@ -9,6 +9,8 @@ import { useSchoolStudentSectionsQuery, usePromoteSchoolStudentEnrollmentMutatio
 type Props = {
   enrollment: StudentEnrollment;
   academicYears: StudentAcademicYear[];
+  academicYearsError?: string;
+  onRetryAcademicYears?: () => void;
   onClose: () => void;
   onPromoted: () => void;
 };
@@ -18,7 +20,7 @@ function localDateValue() {
   return [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-");
 }
 
-export function StudentPromotionDialog({ enrollment, academicYears, onClose, onPromoted }: Props) {
+export function StudentPromotionDialog({ enrollment, academicYears, academicYearsError, onRetryAcademicYears, onClose, onPromoted }: Props) {
   const availableYears = academicYears.filter(year => year.status === "active" && year.id !== enrollment.academic_year_id);
   const [academicYearID, setAcademicYearID] = useState(0);
   const [sectionID, setSectionID] = useState("");
@@ -45,6 +47,7 @@ export function StudentPromotionDialog({ enrollment, academicYears, onClose, onP
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (academicYearsError || sectionsQuery.isLoading || sectionsQuery.isError) return;
     const next: Record<string, string> = {};
     if (!academicYearID) next.academic_year_id = "Select the destination academic year.";
     if (!sectionID) next.section_id = "Select a destination class and section.";
@@ -79,7 +82,9 @@ export function StudentPromotionDialog({ enrollment, academicYears, onClose, onP
       <form className="student-promotion-form" onSubmit={submit} noValidate>
         <p className="student-address-note">The current enrollment will be closed as promoted and a new academic-year enrollment will be created. Previous academic history remains unchanged.</p>
         {feedback && <p className="student-feedback error" role="alert">{feedback}</p>}
-        {availableYears.length === 0 ? (
+        {academicYearsError ? (
+          <div className="student-feedback error" role="alert"><p>{academicYearsError}</p><button type="button" className="student-secondary" onClick={onRetryAcademicYears} disabled={!onRetryAcademicYears}>Retry loading academic years</button></div>
+        ) : availableYears.length === 0 ? (
           <p className="student-feedback error" role="alert">No other active academic year is available. Create or activate the destination academic year first.</p>
         ) : <>
           <label><StudentFieldLabel label="Destination academic year" required hint="Choose an active academic year different from the student’s current enrollment year." />
@@ -90,11 +95,11 @@ export function StudentPromotionDialog({ enrollment, academicYears, onClose, onP
           </label>
           <label><StudentFieldLabel label="Destination class / section" required hint="Choose a section that belongs to the selected destination academic year." />
             <Select ariaLabel="Destination class and section" value={sectionID} invalid={Boolean(errors.section_id)} describedBy={errors.section_id ? "promotion-section-error" : undefined}
-              onChange={value => { setSectionID(value); clearError("section_id"); }} disabled={!academicYearID || sectionsQuery.isLoading || sections.length === 0}
+              onChange={value => { setSectionID(value); clearError("section_id"); }} disabled={!academicYearID || sectionsQuery.isLoading || sectionsQuery.isError || sections.length === 0}
               options={sections.map(section => ({ value: String(section.id), label: section.class_name + " · " + section.name }))} placeholder="Select section" />
             {errors.section_id && <small id="promotion-section-error" className="app-field-error">{errors.section_id}</small>}
             {sectionsQuery.isLoading && <small>Loading destination sections…</small>}
-            {sectionsQuery.isError && <small className="app-field-error" role="alert">{sectionsQuery.error.message}</small>}
+            {sectionsQuery.isLoading && <small>Loading destination sections…</small>}{sectionsQuery.isError && <div className="student-feedback error" role="alert"><p>{sectionsQuery.error.message}</p><button type="button" className="student-secondary" onClick={() => void sectionsQuery.refetch()} disabled={sectionsQuery.isFetching}>Retry loading destination sections</button></div>}
             {academicYearID > 0 && !sectionsQuery.isLoading && !sectionsQuery.isError && sections.length === 0 && <small>No active sections are available in this academic year.</small>}
           </label>
           <label><StudentFieldLabel label="New admission number" required hint="Enter the student’s admission number for the destination academic year. Maximum 50 characters; unique within the school and year." />
@@ -115,7 +120,7 @@ export function StudentPromotionDialog({ enrollment, academicYears, onClose, onP
         </>}
         <div className="app-modal-actions">
           <button type="button" className="app-modal-cancel" onClick={onClose} disabled={busy}>Cancel</button>
-          <button type="submit" className="primary" disabled={busy || availableYears.length === 0 || sectionsQuery.isLoading || sectionsQuery.isError || sections.length === 0}>
+          <button type="submit" className="primary" disabled={busy || Boolean(academicYearsError) || availableYears.length === 0 || sectionsQuery.isLoading || sectionsQuery.isError || sections.length === 0}>
             {busy ? "Promoting…" : "Promote student"}
           </button>
         </div>
