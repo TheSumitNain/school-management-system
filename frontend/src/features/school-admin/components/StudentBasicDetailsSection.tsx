@@ -22,10 +22,20 @@ const emptyValues: Values = {
 export function StudentBasicDetailsSection({ student, canUpdate, onClose }: Props) {
   const query = useSchoolStudentBasicDetailsQuery(student.id);
   const save = useSaveSchoolStudentBasicDetailsMutation();
+  const updateStudent = useUpdateSchoolStudentMutation();
+  const [fullName, setFullName] = useState(student.full_name);
+  const [nameError, setNameError] = useState("");
+  const [nameFeedback, setNameFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
   const [values, setValues] = useState<Values>(emptyValues);
   const [errors, setErrors] = useState<Partial<Record<keyof Values, string>>>({});
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
   const busy = save.isPending || updateStudent.isPending;
+
+  useEffect(() => {
+    setFullName(student.full_name);
+    setNameError("");
+    setNameFeedback(null);
+  }, [student.id, student.full_name]);
 
   useEffect(() => {
     const item = query.data?.basic_details;
@@ -51,6 +61,11 @@ export function StudentBasicDetailsSection({ student, canUpdate, onClose }: Prop
     }
     if (trimmed.length > 200) {
       setNameError("Student name must be 200 characters or fewer.");
+      return;
+    }
+    if (trimmed === student.full_name) {
+      setNameError("");
+      setNameFeedback(null);
       return;
     }
     setNameError("");
@@ -106,8 +121,15 @@ export function StudentBasicDetailsSection({ student, canUpdate, onClose }: Prop
     <Modal open title="Basic Details" description={student.full_name + " · Optional personal details can be completed later."} onClose={onClose} closeDisabled={busy}>
       {query.isLoading && <p className="student-address-note">Loading basic details…</p>}
       {query.isError && <p className="student-feedback error" role="alert">{query.error.message}</p>}
+      {nameFeedback && <p className={nameFeedback.kind === "error" ? "student-feedback error" : "student-feedback success"} role={nameFeedback.kind === "error" ? "alert" : "status"}>{nameFeedback.message}</p>}
       {feedback && <p className={feedback.kind === "error" ? "student-feedback error" : "student-feedback success"} role={feedback.kind === "error" ? "alert" : "status"}>{feedback.message}</p>}
       <form className="student-basic-details-form" onSubmit={submit} noValidate>
+        <label>Student name <span aria-hidden="true">*</span>
+          <input value={fullName} maxLength={200} disabled={!canUpdate || busy} aria-invalid={Boolean(nameError)} aria-describedby={nameError ? "student-basic-name-error" : undefined}
+            onChange={event => { setFullName(event.target.value); setNameError(""); setNameFeedback(null); }} placeholder="Enter student's full name" />
+          {nameError && <small id="student-basic-name-error" className="app-field-error" role="alert">{nameError}</small>}
+          {canUpdate && <button type="button" className="student-link-button" onClick={() => void saveStudentName()} disabled={busy || fullName.trim() === student.full_name}>Save student name</button>}
+        </label>
         <label>Date of birth<DatePicker ariaLabel="Date of birth" value={values.date_of_birth} max={localDateValue()} onChange={value => update("date_of_birth", value)} placeholder="Choose date of birth" disabled={!canUpdate}/></label>
         <label>Place of birth<input value={values.place_of_birth} maxLength={120} disabled={!canUpdate} onChange={event => update("place_of_birth", event.target.value)} placeholder="City, district or place"/>{fieldError("place_of_birth")}</label>
         <label>Gender<Select ariaLabel="Gender" value={values.gender} disabled={!canUpdate} onChange={value => update("gender", value)} placeholder="Not specified" options={[{value:"female",label:"Female"},{value:"male",label:"Male"},{value:"other",label:"Other"},{value:"not_specified",label:"Prefer not to say"}]}/></label>
@@ -119,7 +141,7 @@ export function StudentBasicDetailsSection({ student, canUpdate, onClose }: Prop
         {!canUpdate && <p className="student-address-note">View-only access. Student update permission is required to edit these details.</p>}
         <div className="app-modal-actions">
           <button type="button" className="app-modal-cancel" onClick={onClose} disabled={busy}>Close</button>
-          {canUpdate && <button type="submit" className="primary" disabled={busy || query.isLoading || query.isError}>{busy ? "Saving…" : "Save basic details"}</button>}
+          {canUpdate && <button type="submit" className="primary" disabled={busy || query.isLoading || query.isError}>{save.isPending ? "Saving…" : "Save basic details"}</button>}
         </div>
       </form>
     </Modal>
