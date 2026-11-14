@@ -43,6 +43,7 @@ export function useResetSchoolStaffPasswordMutation() {
 
 import {
   archiveSchoolStudent, createSchoolStudentAdmission, createSchoolStudentEnrollment,
+  getSchoolStudentBasicDetails, saveSchoolStudentBasicDetails,
   createSchoolStudentLocation, deactivateSchoolStudentLocation, getSchoolAcademicYears,
   getSchoolSections, getSchoolStudentAddresses, getSchoolStudentContactDetails,
   getSchoolStudentMedicalDetails, getSchoolStudentPhysicalDetails,
@@ -99,6 +100,14 @@ export function useSchoolStudentAddressesQuery(studentID: number, enabled = true
   return useQuery({
     queryKey: schoolStudentQueryKeys.addresses(studentID),
     queryFn: ({ signal }) => getSchoolStudentAddresses(studentID, signal),
+    enabled: enabled && studentID > 0,
+    staleTime: 15_000,
+  });
+}
+export function useSchoolStudentBasicDetailsQuery(studentID: number, enabled = true) {
+  return useQuery({
+    queryKey: [...schoolStudentQueryKeys.all, "basic-details", studentID] as const,
+    queryFn: ({ signal }) => getSchoolStudentBasicDetails(studentID, signal),
     enabled: enabled && studentID > 0,
     staleTime: 15_000,
   });
@@ -196,6 +205,13 @@ export function useSaveSchoolStudentAddressMutation() {
     input: { address_line_1?: string | null; address_line_2?: string | null; area_mohalla?: string | null;
       landmark?: string | null; postal_code?: string | null; location_id?: number | null; same_as_current?: boolean };
   }) => saveSchoolStudentAddress(studentID, addressType, input));
+}
+export function useSaveSchoolStudentBasicDetailsMutation() {
+  return useStudentMutation(({ studentID, input }: {
+    studentID: number; input: { date_of_birth?: string | null; place_of_birth?: string | null;
+      gender?: string | null; nationality?: string | null; religion?: string | null;
+      social_category?: string | null; ews_status?: boolean | null; school_registration_number?: string | null };
+  }) => saveSchoolStudentBasicDetails(studentID, input));
 }
 export function useSaveSchoolStudentContactDetailsMutation() {
   return useStudentMutation(({ studentID, input }: {
