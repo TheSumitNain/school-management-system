@@ -1,6 +1,6 @@
 # Student Management — Domain and Database Design
 
-**Status:** Approved design baseline; V31–V35 schema and first admission/address/contact/guardian workflows implemented, full profile still in progress  
+**Status:** Approved design baseline; V31–V37 schema and first admission/profile workflows implemented, full profile still in progress  
 **Last reconciled:** 2026-11-14  
 **Scope:** Phase 1 School Admin student admission, profiles, academic-year enrollment, curriculum selection and related school workflows.
 
@@ -32,7 +32,7 @@ The reviewed `work` branch at `d38ae1ecc0f47384aabdcee8816319d39df1df9e` contain
 | Promotion | Repository creates destination enrollment with a new year-specific admission number/date and closes source transactionally | Add full UI flow and verify local acceptance |
 | Attendance | V20 records reference enrollment; attendance projections now read `student_enrollments.admission_number` | Keep year-scoped display and historical NULL compatibility |
 | Subjects | School-level `subjects`; teacher assignments currently validate active subject/section/year | Add class/year curriculum and student enrollment subject selection |
-| Student profile | Repository exposes only name, admission number and status | Add independently stored profile sections |
+| Student profile | V37 adds optional one-to-one `student_basic_details` for date/place of birth, gender, nationality, religion, social category, EWS status and school registration number; reads are restricted and updates audited | Continue section workflow and complete local verification |
 | Addresses/locations | V34 adds `student_addresses` and tenant-aware `student_locations`, with parent-level, ownership, duplicate and deactivate-not-delete rules | Complete local verification; add reviewed canonical geography data only when sourced authoritatively |
 | Medical/physical/documents | No dedicated student profile tables found in reviewed migrations | Add separate, permission-restricted profile sections |
 
@@ -75,12 +75,13 @@ Admission number and academic placement must not be rewritten on a closed histor
 
 Keep independently maintained profile sections separate from the enrollment record:
 
-- Basic identity: name, date of birth, gender and approved optional demographic fields.
+- Basic identity: permanent student name plus an independently editable optional basic-details record containing date/place of birth, gender, nationality, religion, social category, EWS status and school registration number. These fields are not required for initial admission.
+- Aadhaar is intentionally not part of the default student profile and must not be added as a required field. Any future national-ID collection needs a separately approved purpose, legal/privacy review, least-privilege access and retention policy.
 - Address and communication: current and permanent address, phone/email where appropriate, and same-as-current behavior.
 - Parents/guardians: reuse the existing guardian and relationship model; support multiple guardians and relationship/contact flags.
 - Medical details: one optional restricted current profile with blood group, allergies, known medical conditions, ongoing medication notes and emergency medical notes. Every change snapshots the previous version into append-only history. These are school-entered facts, not diagnoses or automated health assessments.
 - Physical details: dated append-only measurement records for height (cm), weight (kg) and concise vision/physical notes. New measurements never overwrite earlier measurements; the profile shows the latest record and retains prior records. The system must not infer health status from measurements.
-- Medical and physical reads use the existing restricted `students.read_sensitive` permission; updates use `students.update`. These permissions are not delegated to Teacher roles. Read and write operations are audited, while audit metadata must not contain health values or notes.
+- Basic, address/contact and medical/physical profile reads use the existing restricted `students.read_sensitive` permission; basic/address/contact/medical/physical updates use `students.update`. Basic-profile audit metadata records field-presence flags only, never demographic values. - Medical and physical reads use the existing restricted `students.read_sensitive` permission; updates use `students.update`. These permissions are not delegated to Teacher roles. Read and write operations are audited, while audit metadata must not contain health values or notes.
 - Documents: metadata, document type, issue/expiry dates where relevant, verification status and an opaque secure-storage reference. Do not store public file URLs or filesystem paths in API responses. Document upload/download stays deferred until private storage and document-specific access controls are reviewed.
 
 A section may be absent or incomplete. Its absence must not prevent basic student creation or ordinary student directory use.
