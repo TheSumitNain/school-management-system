@@ -3,7 +3,7 @@
 **Last reconciled:** 2026-11-14  
 **Repository:** `TheSumitNain/school-management-system`  
 **Reviewed branch:** `work`  
-**Reviewed through:** `d4fcf7e0` on `work`; V32–V38 were locally verified in the user's disposable `school_management_test` database; the latest completed backend CI (including PostgreSQL integration and `go vet`) passed on `2a0ced44`; the frontend production build passed on `d4fcf7e0`; backend CI for the latest frontend styling commit is pending; local V39–V41 database application and browser acceptance remain pending
+**Reviewed through:** `32a8af14777ecabcfd5daaf3d5d2dce002778411` on `work`; historical local verification remains limited to the exact versions and disposable database runs recorded below; latest branch additions include staff lifecycle, timetable, teacher assignments, attendance, and Student Management/Academic Structure UX updates. CI status for the latest `work` tip has not yet been independently confirmed in this review; local V39+ database application and live browser acceptance remain pending
 
 ## Administrator access correction — School Admin guardian permissions (V39; local verification pending)
 
@@ -483,3 +483,15 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - Added a browser assertion for the name update, success feedback, and profile description after returning from Basic Details.
 - Frontend CI passed for commit `f5b9a2ff7396` (run `43604393646`).
 - Browser test uses mocked API fixtures; this is not yet a live local-PostgreSQL/browser acceptance test.
+
+
+## Latest branch reconciliation — 2026-11-14
+
+- Reconciled this status document with the current `work` branch tip `32a8af14777ecabcfd5daaf3d5d2dce002778411`; the previous header stopped at `d4fcf7e0` and was stale.
+- Branch history since the previous status checkpoint includes `3dcbb84e` (staff, timetable, attendance and teacher-assignment workflows plus backend foundations), followed by Student Management and Academic Structure UI refinements through `32a8af14`.
+- Source review of the current Student Management page confirms the combined admission payload includes the academic year, section, admission number/date and optional roll number; profile sections continue to keep Basic Details, Parent Details, Address/Contact and Health separate. Parent OTP remains deferred.
+- Source review of Academic Structure confirms section medium is optional, section year/class are immutable during section edit, and status values are submitted through controlled hidden inputs. No confirmed regression was found in these paths during this read-only review.
+- The current browser suite remains explicitly mocked at the API boundary. It must not be described as live local-API or persistent-PostgreSQL browser acceptance.
+- CI status for the latest branch tip was not available from the checks inspected during this reconciliation; do not infer a pass from earlier commits. Run/inspect the exact tip's frontend and backend workflows before marking it verified.
+- No source code, database migration, local database, or backup was modified as part of this reconciliation. The persistent `school_management` database must remain untouched unless separately approved with a verified backup.
+- Remaining acceptance work: verify Staff, Teacher Assignments, Timetable and Attendance flows end-to-end; expand browser tests beyond Student Management; run fresh-database and upgrade-path integration checks for migrations V25 onward in a disposable PostgreSQL database; then perform live local API/browser acceptance.
