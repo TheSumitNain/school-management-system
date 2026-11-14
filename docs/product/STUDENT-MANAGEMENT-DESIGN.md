@@ -290,6 +290,7 @@ The latest screen/code review found two concrete UX gaps and records the current
 - [ ] Address & Communication sensitive reads require `students.read_sensitive` and create transactional, section-only audit events for address and contact details; audit metadata must never contain phone numbers, email addresses or address text.
 - [ ] Address & Communication: current/permanent/contact tabs hydrate independently; every address text field and all four location levels load; inactive saved locations remain visible; same-as-current works; save/reopen retains values.
 - [ ] Parents & Siblings: section visibility follows guardians.read; create/edit/link/revoke follows guardians.manage; revoked history is retained; related students require basic-read permission.
+- [ ] Parents & Siblings reads (guardian directory, guardian profile, student guardian links/history, and students sharing a guardian) require the applicable live permissions and write transactional audit events containing only section/result-count metadata; no guardian contact values, names or relationship values are copied into read-audit metadata.
 - [ ] Medical & Physical: read/write permissions, version/measurement history, loading/error states and archived-state behavior are verified.
 - [ ] All list/profile/API actions enforce live permissions and same-school isolation; frontend visibility is never treated as authorization.
 - [ ] Responsive layout, keyboard/focus behavior, loading/empty/error states, field-level validation and save feedback are checked at desktop and narrow viewport sizes.
