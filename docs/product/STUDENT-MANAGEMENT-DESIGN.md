@@ -16,6 +16,7 @@ The following decisions are approved:
 - A student has one permanent school-scoped identity. Each academic year has its own enrollment record and its own admission number.
 - A returning student is not created again. A new academic year creates a new enrollment for the existing student.
 - Admission number is an attribute of an academic-year enrollment, not the permanent student identity.
+- Roll numbers are scoped to an active section/enrollment, not the permanent student identity. The system assigns the next available numeric roll number automatically by default; an authorized School Admin may override it manually. Allocation must be transaction-safe under concurrent admissions, and active duplicate roll numbers in the same section must be rejected. Returning students and section changes receive a destination-section roll number; historical enrollment roll numbers remain preserved.
 - Historical enrollments, attendance, guardian relationships and student IDs must be preserved.
 - Parent OTP, SMS delivery, parent login and parent-facing applications remain Phase 2 and are not part of this implementation.
 
@@ -129,7 +130,7 @@ The exact rules for optional groups (minimum/maximum choices, mutually exclusive
 
 1. Open the guided admission workflow.
 2. Enter the minimum basic identity details.
-3. Select the academic year, class and section; capture the admission number/date and optional roll number.
+3. Select the academic year, class and section; capture the admission number/date. The system assigns the next available numeric roll number in that section by default; an authorized School Admin may enter a manual override.
 4. Optionally complete address, guardian, medical, physical and document sections.
 5. Review and submit.
 
@@ -141,7 +142,7 @@ The minimum required fields should be small and documented. Optional sections ca
 
 1. Find the existing student using identity/profile search and prior enrollment history.
 2. Select the destination academic year, class and section.
-3. assign a new admission number for that academic year and capture its admission date.
+3. Assign a new admission number for that academic year and capture its admission date. Assign the next available numeric roll number in the destination section by default, with an authorized School Admin manual override.
 4. Create a new enrollment; do not create a second student identity.
 5. Preserve prior enrollment, attendance and subject-selection history.
 
