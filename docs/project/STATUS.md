@@ -377,4 +377,5 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - Guardian relationship revocation now resolves the owning student and locks that student row inside the same transaction before revoking the active link.
 - This uses the same per-student serialization point as link creation and relationship edits, preventing revocation from racing with primary-contact selection.
 - The lock intentionally does not require the student to remain active, preserving the existing ability to revoke a relationship for an inactive student.
-- Backend CI for this change is pending; existing PostgreSQL integration coverage already exercises link creation, primary-contact updates, revocation, re-linking, history and audit counts. A dedicated inactive-student revocation case is still a useful follow-up.
+- Added a PostgreSQL integration regression case that links a guardian, deactivates the student, revokes the relationship, and verifies the revoked relationship remains visible in history.
+- Backend CI for commit `f902940b68` is running; the final result will determine whether this concurrency hardening is verified.
