@@ -81,7 +81,7 @@ export function StudentManagementPage({ permissions }: Props) {
       setAcademicYearID(activeYears.find(year => year.is_current)?.id ?? activeYears[0].id);
     }
   }, [action, showEnrollment, academicYearID, activeYears]);
-  const busy = createStudent.isPending || updateStudent.isPending || archiveStudent.isPending || createEnrollment.isPending;
+  const busy = createStudent.isPending || archiveStudent.isPending || createEnrollment.isPending;
 
   function openStudent(next: StudentAction) {
     setAction(next);
