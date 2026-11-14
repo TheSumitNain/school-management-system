@@ -196,6 +196,13 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - These changes are committed on `work`; run backend PostgreSQL integration tests, `go vet`, frontend typecheck and production build locally before browser acceptance. Do not apply migrations to the persistent application database for this work.
 
 
+## Student Basic Details sensitive-read audit — 2026-11-14
+
+- Basic Details GET now runs its authorization, student lookup, sensitive-profile read and audit insert in one transaction. A successful read records `school.student.basic_details.read` with the student reference and section name only; profile values are never copied into read-audit metadata.
+- Added PostgreSQL integration assertions for the read audit event and for absence of personal values in its metadata. Local execution is pending; do not mark verified until the user runs the integration suite.
+- This closes the read-audit gap for Basic Details only. Other sensitive profile sections still require their own read-audit review.
+- Aadhaar remains excluded from the UI/API until its dedicated encryption/key-rotation implementation is complete.
+
 ## Student Management reference inventory update — 2026-11-14
 
 - Recorded the complete November 13 MySmartSchool reference field inventory: combined admission/enrollment fields; Basic/Personal (including optional Aadhaar number and SR number); Address & Communication; Parents & Siblings; Medical; Physical; Class & Subject; Transport; App Permissions; Documents.
