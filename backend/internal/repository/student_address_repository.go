@@ -37,6 +37,9 @@ type StudentAddress struct {
 	LocationName *string   `json:"location_name,omitempty"`
 	LocationLevel *string   `json:"location_level,omitempty"`
 	LocalityType *string   `json:"locality_type,omitempty"`
+	StateLocationID *int64 `json:"state_location_id,omitempty"`
+	DistrictLocationID *int64 `json:"district_location_id,omitempty"`
+	SubdistrictLocationID *int64 `json:"subdistrict_location_id,omitempty"`
 	SameAsCurrent bool      `json:"same_as_current"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
@@ -268,9 +271,13 @@ const studentAddressSelect = `
 	SELECT sa.id,sa.school_id,sa.student_id,sa.address_type,
 	       sa.address_line_1,sa.address_line_2,sa.area_mohalla,sa.landmark,
 	       sa.postal_code,sa.location_id,l.name,l.level,l.locality_type,
+	       state_location.id,district_location.id,subdistrict_location.id,
 	       sa.same_as_current,sa.created_at,sa.updated_at
 	  FROM student_addresses sa
 	  LEFT JOIN student_locations l ON l.id=sa.location_id
+	  LEFT JOIN student_locations subdistrict_location ON subdistrict_location.id=l.parent_id
+	  LEFT JOIN student_locations district_location ON district_location.id=subdistrict_location.parent_id
+	  LEFT JOIN student_locations state_location ON state_location.id=district_location.parent_id
 	 WHERE sa.school_id=$1 AND sa.student_id=$2
 `
 
@@ -279,7 +286,8 @@ func scanStudentAddress(row interface{ Scan(...any) error }) (*StudentAddress, e
 	if err := row.Scan(&item.ID,&item.SchoolID,&item.StudentID,&item.AddressType,
 		&item.AddressLine1,&item.AddressLine2,&item.AreaMohalla,&item.Landmark,
 		&item.PostalCode,&item.LocationID,&item.LocationName,&item.LocationLevel,
-		&item.LocalityType,&item.SameAsCurrent,&item.CreatedAt,&item.UpdatedAt); err != nil {
+		&item.LocalityType,&item.StateLocationID,&item.DistrictLocationID,&item.SubdistrictLocationID,
+		&item.SameAsCurrent,&item.CreatedAt,&item.UpdatedAt); err != nil {
 		return nil, err
 	}
 	return &item, nil
