@@ -156,8 +156,20 @@ func TestStudentAddressLocationV34PostgresIntegration(t *testing.T) {
 		`INSERT INTO student_addresses(school_id,student_id,address_type,location_id)
 		 VALUES($1,$2,'current',$3)`, otherSchoolID, otherStudentID, localityID)
 
-	// Referenced locations cannot be hard-deleted; deactivation remains the
-	// supported lifecycle operation for future repository/API implementation.
+	// Parent locations with active descendants cannot be deactivated; leaf
+	// locations can be deactivated, but referenced address history is retained.
+	assertRejected("deactivate parent with active children",
+		`UPDATE student_locations SET is_active=FALSE WHERE id=$1`, stateID)
+	if _, err := tx.Exec(ctx, `UPDATE student_locations SET is_active=FALSE WHERE id=$1`, localityID); err != nil {
+		t.Fatalf("deactivate referenced leaf location: %v", err)
+	}
+	assertRejected("reuse inactive location",
+		`INSERT INTO student_addresses(school_id,student_id,address_type,location_id)
+		 VALUES($1,$2,'permanent',$3)`, schoolID, studentID, localityID)
+	assertRejected("delete address history",
+		`DELETE FROM student_addresses WHERE school_id=$1 AND student_id=$2 AND address_type='current'`,
+		schoolID, studentID)
+	// Referenced locations cannot be hard-deleted; deactivation is the supported lifecycle.
 	assertRejected("delete referenced location",
 		`DELETE FROM student_locations WHERE id=$1`, localityID)
 
