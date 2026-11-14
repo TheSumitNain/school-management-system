@@ -374,4 +374,18 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 			t.Fatalf("expected live delegated permission %q, got %v", key, effective)
 		}
 	}
+
+	relinked, err := repo.LinkStudentGuardian(ctx, targetPrincipalID, schoolID,
+		studentID, guardian.ID, "father", false, false)
+	if err != nil || relinked == nil || relinked.ID == firstLink.ID {
+		t.Fatalf("re-establish revoked guardian relationship: link=%+v err=%v", relinked, err)
+	}
+	history, err = repo.ListStudentGuardians(ctx, targetPrincipalID, schoolID, studentID, true)
+	if err != nil || len(history) != 3 {
+		t.Fatalf("guardian relationship history after re-link: count=%d items=%+v err=%v", len(history), history, err)
+	}
+	relatedStudents, err = repo.ListStudentRelatedStudents(ctx, targetPrincipalID, schoolID, studentID)
+	if err != nil || len(relatedStudents) != 1 || relatedStudents[0].StudentID != relatedStudentID {
+		t.Fatalf("related students after guardian relationship re-link: items=%+v err=%v", relatedStudents, err)
+	}
 }
