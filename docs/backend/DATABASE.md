@@ -41,6 +41,8 @@ The authoritative schema is the ordered SQL migration chain in `backend/migratio
 - The V32 down migration refuses rollback when null or duplicate legacy student admission values exist. The V31 down migration refuses rollback once year-specific enrollment identities have been written.
 - V34 adds a hierarchical `student_locations` catalogue with shared canonical rows and school-owned additions, normalized duplicate checks, parent-level and tenant-scope guards, and deactivate-not-delete lifecycle. `student_addresses` stores current/permanent address sections separately, supports same-as-current without copying values, and prevents cross-school location references.
 - V34 rollback refuses to drop either table when address or location records exist. Do not seed guessed geography; import canonical reference data only from a reviewed authoritative source.
+- V35 adds optional student phone/email contact details in a separate one-row-per-student table. Phone/email values are not unique, shared household contact values are allowed, changes are audited without copying the PII values into audit metadata, and hard deletion is refused.
+- V35 rollback refuses to drop contact rows. Contact details use the same `students.read_sensitive` / `students.update` live permission checks as the address section.
 
 ## Local database configuration
 
