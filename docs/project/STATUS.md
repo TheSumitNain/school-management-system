@@ -379,3 +379,13 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - The lock intentionally does not require the student to remain active, preserving the existing ability to revoke a relationship for an inactive student.
 - Added a PostgreSQL integration regression case that links a guardian, deactivates the student, revokes the relationship, and verifies the revoked relationship remains visible in history.
 - Backend CI for commit `f902940b68` is running; the final result will determine whether this concurrency hardening is verified.
+
+
+## Guardian relationship database invariants — 2026-11-14
+
+- Backend CI for revocation serialization commit `f902940b68` passed: full migration chain, PostgreSQL integration tests (including inactive-student revocation/history), and `go vet`.
+- Audit found that the application serialized primary-contact changes but PostgreSQL did not independently enforce the one-active-primary-per-student rule.
+- Added V43 partial unique index `ux_student_guardians_active_primary_per_student`; migration preflights existing active primary duplicates and fails rather than silently changing records.
+- Added PostgreSQL integration coverage proving a direct duplicate-primary insert is rejected, while existing repository behavior can safely transfer primary status.
+- Multiple emergency contacts remain allowed intentionally. The V43 down migration drops only the index and preserves all relationship data.
+- V43 migration and new constraint test are awaiting Backend CI. Persistent databases have not been migrated.
