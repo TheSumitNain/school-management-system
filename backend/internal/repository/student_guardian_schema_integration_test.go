@@ -12,9 +12,14 @@ import (
 func TestStudentGuardianFoundationPostgresIntegration(t *testing.T) {
 	_, pool, userID := newPostgresIntegrationRepository(t)
 	ctx := context.Background()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin guardian schema integration transaction: %v", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	var hasV11Schema bool
-	if err := pool.QueryRow(ctx,
+	if err := tx.QueryRow(ctx,
 		`SELECT to_regclass('public.student_guardians') IS NOT NULL`,
 	).Scan(&hasV11Schema); err != nil {
 		t.Fatalf("detect V11 schema: %v", err)
@@ -24,7 +29,7 @@ func TestStudentGuardianFoundationPostgresIntegration(t *testing.T) {
 	}
 
 	var schoolID1 int64
-	if err := pool.QueryRow(ctx,
+	if err := tx.QueryRow(ctx,
 		`SELECT school_id FROM users WHERE id = $1`, userID,
 	).Scan(&schoolID1); err != nil {
 		t.Fatalf("load helper school: %v", err)
@@ -32,7 +37,7 @@ func TestStudentGuardianFoundationPostgresIntegration(t *testing.T) {
 
 	suffix := strconv.FormatInt(time.Now().UnixNano(), 10)
 	var schoolID2 int64
-	if err := pool.QueryRow(ctx,
+	if err := tx.QueryRow(ctx,
 		`INSERT INTO schools (name, code, status)
 		 VALUES ($1, $2, 'active') RETURNING id`,
 		"V11 Cross-School Test "+suffix,
@@ -42,24 +47,7 @@ func TestStudentGuardianFoundationPostgresIntegration(t *testing.T) {
 	}
 
 	// This cleanup runs before the shared helper removes its school/user.
-	t.Cleanup(func() {
-		cleanupCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		_, _ = pool.Exec(cleanupCtx,
-			`DELETE FROM student_guardians WHERE school_id = $1 OR school_id = $2`,
-			schoolID1, schoolID2,
-		)
-		_, _ = pool.Exec(cleanupCtx,
-			`DELETE FROM guardians WHERE school_id = $1 OR school_id = $2`,
-			schoolID1, schoolID2,
-		)
-		_, _ = pool.Exec(cleanupCtx,
-			`DELETE FROM students WHERE school_id = $1 OR school_id = $2`,
-			schoolID1, schoolID2,
-		)
-		_, _ = pool.Exec(cleanupCtx,
-			`DELETE FROM schools WHERE id = $1`, schoolID2)
-	})
+
 
 	admission := "V11-" + suffix
 	var student1, student2, otherSchoolStudent int64
@@ -72,7 +60,7 @@ func TestStudentGuardianFoundationPostgresIntegration(t *testing.T) {
 		{schoolID1, "Student Two", &student2},
 		{schoolID2, "Other School Student", &otherSchoolStudent},
 	} {
-		if err := pool.QueryRow(ctx,
+		if err := tx.QueryRow(ctx,
 			`INSERT INTO students (school_id, admission_number, full_name)
 			 VALUES ($1, $2, $3) RETURNING id`,
 			target.schoolID, admission+"-"+target.name, target.name,
@@ -91,7 +79,7 @@ func TestStudentGuardianFoundationPostgresIntegration(t *testing.T) {
 		{"Guardian One", &guardian1},
 		{"Guardian Two", &guardian2},
 	} {
-		if err := pool.QueryRow(ctx,
+		if err := tx.QueryRow(ctx,
 			`INSERT INTO guardians (school_id, full_name, mobile_number)
 			 VALUES ($1, $2, $3) RETURNING id`,
 			schoolID1, target.name, "+911234567890",
@@ -111,7 +99,7 @@ func TestStudentGuardianFoundationPostgresIntegration(t *testing.T) {
 		{student1, guardian2, "mother"},
 		{student2, guardian1, "father"},
 	} {
-		if _, err := pool.Exec(ctx,
+		if _, err := tx.Exec(ctx,
 			`INSERT INTO student_guardians
 			 (school_id, student_id, guardian_id, relationship_type)
 			 VALUES ($1, $2, $3, $4)`,
@@ -121,7 +109,7 @@ func TestStudentGuardianFoundationPostgresIntegration(t *testing.T) {
 		}
 	}
 
-	if _, err := pool.Exec(ctx,
+	if _, err := tx.Exec(ctx,
 		`INSERT INTO student_guardians
 		 (school_id, student_id, guardian_id, relationship_type)
 		 VALUES ($1, $2, $3, 'father')`,
@@ -130,7 +118,7 @@ func TestStudentGuardianFoundationPostgresIntegration(t *testing.T) {
 		t.Fatal("expected duplicate student-guardian pair to be rejected")
 	}
 
-	if _, err := pool.Exec(ctx,
+	if _, err := tx.Exec(ctx,
 		`INSERT INTO student_guardians
 		 (school_id, student_id, guardian_id, relationship_type)
 		 VALUES ($1, $2, $3, 'guardian')`,
@@ -142,7 +130,7 @@ func TestStudentGuardianFoundationPostgresIntegration(t *testing.T) {
 	// V32 makes the student-level admission value legacy-only and non-unique.
 	// Year-specific uniqueness is enforced by student_enrollments (V31).
 	var duplicateLegacyStudentID int64
-	if err := pool.QueryRow(ctx,
+	if err := tx.QueryRow(ctx,
 		`INSERT INTO students (school_id, admission_number, full_name)
 		 VALUES ($1, $2, 'Duplicate Legacy Admission') RETURNING id`,
 		schoolID1, "  "+admission+"-Student One  ",
@@ -150,13 +138,13 @@ func TestStudentGuardianFoundationPostgresIntegration(t *testing.T) {
 		t.Fatalf("same legacy admission value should be allowed on another permanent student: %v", err)
 	}
 
-	if _, err := pool.Exec(ctx,
+	if _, err := tx.Exec(ctx,
 		`UPDATE students SET school_id = $1 WHERE id = $2`,
 		schoolID2, student1,
 	); err == nil {
 		t.Fatal("expected student school ownership to be immutable")
 	}
-	if _, err := pool.Exec(ctx,
+	if _, err := tx.Exec(ctx,
 		`UPDATE guardians SET school_id = $1 WHERE id = $2`,
 		schoolID2, guardian1,
 	); err == nil {
@@ -164,7 +152,7 @@ func TestStudentGuardianFoundationPostgresIntegration(t *testing.T) {
 	}
 
 	var linkCount int
-	if err := pool.QueryRow(ctx,
+	if err := tx.QueryRow(ctx,
 		`SELECT COUNT(*) FROM student_guardians
 		 WHERE school_id = $1 AND student_id IN ($2, $3)`,
 		schoolID1, student1, student2,
