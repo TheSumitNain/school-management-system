@@ -38,7 +38,7 @@ type AttendanceRecord struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-const attendanceColumns = `a.id,a.school_id,a.enrollment_id,e.student_id,st.admission_number,st.full_name,
+const attendanceColumns = `a.id,a.school_id,a.enrollment_id,e.student_id,COALESCE(e.admission_number,''),st.full_name,
 	e.academic_year_id,e.class_name_snapshot,e.section_name_snapshot,e.roll_number,
 	a.attendance_date,a.status,a.remarks,a.marked_by_principal_id,a.updated_by_principal_id,a.created_at,a.updated_at`
 
