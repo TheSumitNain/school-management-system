@@ -294,3 +294,25 @@ The latest screen/code review found two concrete UX gaps and records the current
 - [ ] Backend PostgreSQL integration tests, frontend typecheck/build, and manual browser acceptance all pass.
 
 Until these checks are completed, Student Management remains **in progress**, not production-ready.
+
+
+## 10. MySmartSchool reference field inventory and Aadhaar handling
+
+The November 13, 2026 reference-screen review captured the following target inventory. Preserve the combined admission workflow and section-based profile layout already approved:
+
+- **Combined admission / yearly enrollment:** academic session, class, section, optional roll number (auto-assign when blank if the section policy supports it), admission number, admission date; link to permanent student identity.
+- **Basic / personal details:** student full name, date of birth, gender, nationality, place of birth, religion, social category, EWS status, Aadhaar number (optional), school SR/registration number, student photo (photo upload deferred with documents).
+- **Address & communication:** correspondence/current address, permanent address, same-as-current, phone/mobile and email.
+- **Parents & siblings:** father and mother names, guardian relationships and contact details, sibling links.
+- **Medical details** and **Physical details** as separate profile sections.
+- **Class & subject:** year-specific class/section/roll, compulsory and optional subject selections, academic history.
+- **Transport**, **App permissions**, and **Documents** as separately permission-controlled sections; document uploads are deferred to the secure document-storage phase.
+
+### Aadhaar number field requirements
+
+- Aadhaar is optional and must never block admission, enrollment, school services, or profile completion. UIDAI says school admission cannot be denied for want of Aadhaar and its official mythbusters state Aadhaar is not mandatory for school admission or CBSE examinations.
+- Do not store the 12-digit number as plaintext, return it in ordinary student profile responses, include it in audit metadata/logs, or expose it to roles that only need ordinary student details.
+- Before enabling entry, implement dedicated application-level authenticated encryption using a separately managed key (not the TOTP/MFA key), key versioning/rotation, strict input validation, last-four-only display, explicit reveal only if justified and separately permission-gated, audited access, and clear/delete behavior. The field must be blankable and never required.
+- Until that backend/key-management work and its permission/integration tests are complete, do not ship a frontend field that transmits or persists the full number insecurely.
+
+Official references: UIDAI circular, 5 September 2018, “No denial of admission in schools for want of Aadhaar”; UIDAI Aadhaar Mythbusters, question on school admission.
