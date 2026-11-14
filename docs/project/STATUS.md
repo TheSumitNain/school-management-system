@@ -121,6 +121,7 @@ The frontend already restores a session at app startup by calling the refresh en
 - School Admin pages for staff accounts, roles/permissions, academic structure (including teacher-subject and class-in-charge assignment management), students/enrollments, attendance and timetable period/schedule management. Teacher accounts with `timetable.read` can view their own entries for the current academic year without being granted broad `academic_years.read` access.
 - Separate page CSS, shared design tokens and Light/Dark theme foundations.
 - Typed API modules and TanStack Query-based server state for school administration.
+- Student profile summary is read-only; permanent student name editing is placed in the Basic Details section alongside date of birth, gender and other optional personal details. The former standalone “Edit student name” profile action has been removed; this UI adjustment awaits fresh local verification.
 
 The presence of a page or API client does not mean its full browser workflow has been accepted. Continue testing against the real local API and verify every permission boundary. Do not present mock data or frontend-only checks as completed backend workflows.
 
