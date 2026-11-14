@@ -203,6 +203,32 @@ func TestStudentMedicalPhysicalDetailsV36PostgresIntegration(t *testing.T) {
 		t.Fatal("health profile audit metadata must not contain medical values or notes")
 	}
 
+	var teacherRoleID int64
+	if err := tx.QueryRow(ctx, `
+		SELECT id FROM roles WHERE school_id=$1 AND principal_type='staff'
+		  AND scope_type='school' AND role_key='teacher' AND is_system=TRUE
+	`, schoolID).Scan(&teacherRoleID); err != nil {
+		t.Fatalf("load Teacher role for restricted health access test: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO principal_roles(principal_id,role_id,assigned_by)
+		VALUES($1,$2,$3)
+	`, actorPrincipalID, teacherRoleID, platformAdminPrincipalID); err != nil {
+		t.Fatalf("assign Teacher role for restricted health access test: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		UPDATE principal_roles SET revoked_at=NOW()
+		 WHERE principal_id=$1 AND role_id=$2 AND revoked_at IS NULL
+	`, actorPrincipalID, schoolAdminRoleID); err != nil {
+		t.Fatalf("revoke School Admin role for restricted health access test: %v", err)
+	}
+	if _, err := repo.GetStudentMedicalDetails(ctx, actorPrincipalID, schoolID, studentID); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("Teacher medical read error = %v, want access denied", err)
+	}
+	if _, err := repo.GetStudentPhysicalDetails(ctx, actorPrincipalID, schoolID, studentID); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("Teacher physical read error = %v, want access denied", err)
+	}
+
 	// Ensure no unexpected open transaction state remains after nested repository operations.
 	if err := tx.QueryRow(ctx, `SELECT 1`).Scan(new(int)); err != nil {
 		t.Fatalf("outer transaction is unusable after health operations: %v", err)
