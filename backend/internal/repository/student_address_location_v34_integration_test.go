@@ -134,6 +134,9 @@ func TestStudentAddressLocationV34PostgresIntegration(t *testing.T) {
 	assertRejected("global child under school-owned parent",
 		`INSERT INTO student_locations(school_id,parent_id,level,name)
 		 VALUES(NULL,$1,'district','V34 Invalid Global Child')`, stateID)
+	assertRejected("canonical location duplicates active school location",
+		`INSERT INTO student_locations(school_id,level,name)
+		 VALUES(NULL,'state',$1)`, "V34 State "+suffix)
 	assertRejected("duplicate normalized location",
 		`INSERT INTO student_locations(school_id,parent_id,level,name)
 		 VALUES($1,$2,'district',$3)`, schoolID, stateID, "  v34 DISTRICT "+suffix+"  ")
