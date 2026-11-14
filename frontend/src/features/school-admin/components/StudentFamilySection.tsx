@@ -38,7 +38,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
   const [editingGuardianID, setEditingGuardianID] = useState(0);
   const [editGuardianForm, setEditGuardianForm] = useState({
     full_name: "", mobile_number: "", email_address: "", alternate_mobile_number: "",
-    occupation: "", education: "", workplace_name: "",
+    occupation: "", education: "", workplace_name: "", status: "active" as "active" | "inactive" | "archived",
   });
   const [editGuardianError, setEditGuardianError] = useState("");
   const [pendingRevokeID, setPendingRevokeID] = useState(0);
