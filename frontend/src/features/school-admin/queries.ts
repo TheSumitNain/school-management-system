@@ -210,7 +210,7 @@ export function useSaveSchoolStudentMedicalDetailsMutation() {
 }
 export function useSaveSchoolStudentPhysicalDetailsMutation() {
   return useStudentMutation(({ studentID, input }: {
-    studentID: number; input: { height_cm?: number | null; weight_kg?: number | null; measured_on?: string | null;
+    studentID: number; input: { height_cm?: number | null; weight_kg?: number | null; measured_on: string;
       vision_notes?: string | null; physical_notes?: string | null };
   }) => saveSchoolStudentPhysicalDetails(studentID, input));
 }
