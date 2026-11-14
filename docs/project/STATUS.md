@@ -280,3 +280,9 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 
 - The Date of birth picker now enforces both ends of the same range as the backend: no future date and no date earlier than 130 years before today. This prevents users from selecting values that the save API will reject and makes the field guidance actionable at entry time.
 - Frontend CI must verify this follow-up; browser interaction and local environment acceptance remain pending.
+
+## Student Parents & Siblings editability audit — 2026-11-14
+
+- The student profile exposes Parents & Siblings as a dedicated section in the same student-record workflow. It loads guardian relationships and related students, supports creating/linking guardians, editing shared guardian profile fields with an all-linked-students confirmation, and revoking links with a required reason while preserving history. Parent OTP/login remains out of scope.
+- A remaining functional gap was identified: once a guardian is linked, the student-specific relationship type and the Primary contact / Emergency contact flags are displayed but have no edit operation. These values belong to the student–guardian relationship, not the shared guardian profile. Add a separately authorized, audited relationship-update operation and UI before calling Parent Details editability complete. Do not work around this by editing the shared guardian profile or revoking/recreating the link, because that would unnecessarily alter history.
+- The relationship-update gap is recorded for implementation; current browser acceptance of the Parents & Siblings workflow remains pending.
