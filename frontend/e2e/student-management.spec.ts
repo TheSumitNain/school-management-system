@@ -337,6 +337,7 @@ test("student admission, profile navigation and parent details render without br
   const dobCalendar = page.getByRole("dialog", { name: "Choose date of birth" });
   await expect(dobCalendar.getByRole("button", { name: dobLabels.tomorrow })).toBeDisabled();
   await dobCalendar.getByRole("button", { name: dobLabels.yesterday }).click();
+  await expect(dobCalendar).toBeHidden();
   await expect(page.getByRole("button", { name: "Date of birth", exact: true })).toContainText(/\d{2} [A-Za-z]{3} \d{4}/);
   await page.getByPlaceholder("City, district or place").fill("Ambala, Haryana");
   await page.getByPlaceholder("e.g. Indian").fill("Indian");
