@@ -19,6 +19,19 @@ func TestStudentLocationSourceReferencesV42PostgresIntegration(t *testing.T) {
 		t.Fatalf("begin rollback-scoped V42 integration test: %v", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	expectRejected := func(query string, args ...any) error {
+		if _, err := tx.Exec(ctx, `SAVEPOINT expected_source_rejection`); err != nil {
+			t.Fatalf("create expected-rejection savepoint: %v", err)
+		}
+		_, writeErr := tx.Exec(ctx, query, args...)
+		if _, err := tx.Exec(ctx, `ROLLBACK TO SAVEPOINT expected_source_rejection`); err != nil {
+			t.Fatalf("rollback expected-rejection savepoint: %v", err)
+		}
+		if _, err := tx.Exec(ctx, `RELEASE SAVEPOINT expected_source_rejection`); err != nil {
+			t.Fatalf("release expected-rejection savepoint: %v", err)
+		}
+		return writeErr
+	}
 
 	var seeded int
 	if err := tx.QueryRow(ctx, `
@@ -79,14 +92,14 @@ func TestStudentLocationSourceReferencesV42PostgresIntegration(t *testing.T) {
 		t.Fatalf("insert replacement LGD source identifier while retaining history: %v", err)
 	}
 
-	if _, err := tx.Exec(ctx, `
+	if err := expectRejected(`
 		UPDATE student_location_source_references
 		   SET source_code = '999'
 		 WHERE id = $1
 	`, replacementID); err == nil {
 		t.Fatal("source identifier update succeeded; source snapshots must be immutable")
 	}
-	if _, err := tx.Exec(ctx, `
+	if err := expectRejected(`
 		DELETE FROM student_location_source_references WHERE id = $1
 	`, replacementID); err == nil {
 		t.Fatal("source reference delete succeeded; source history must be append-only")
