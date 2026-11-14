@@ -184,9 +184,6 @@ export function getSchoolStudents(filters: { q?: string; status?: string; limit?
   params.set("offset", String(filters.offset ?? 0));
   return api<StudentListResponse>("/school/students?" + params.toString(), { signal });
 }
-export function createSchoolStudent(input: { admission_number: string; full_name: string }) {
-  return api<{ student: StudentProfile }>("/school/students", { method: "POST", body: JSON.stringify(input) });
-}
 export function createSchoolStudentAdmission(input: {
   full_name: string; admission_number: string; academic_year_id: number; section_id: number;
   roll_number?: string | null; admission_date: string;
