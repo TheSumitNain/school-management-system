@@ -11,6 +11,7 @@ import { DatePicker } from "../../../shared/components/DatePicker";
 import { Modal } from "../../../shared/components/Modal";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { StudentAddressSection } from "../components/StudentAddressSection";
+import { StudentFamilySection } from "../components/StudentFamilySection";
 import "./StudentManagementPage.css";
 
 type Props = { permissions: string[] };
@@ -25,6 +26,8 @@ function localDateValue() {
 export function StudentManagementPage({ permissions }: Props) {
   const canReadStudents = permissions.includes("students.read_sensitive");
   const canReadEnrollments = permissions.includes("students.read_basic");
+  const canReadGuardians = permissions.includes("guardians.read");
+  const canManageGuardians = permissions.includes("guardians.manage");
   const canCreate = permissions.includes("students.create");
   const canUpdate = permissions.includes("students.update");
   const canArchive = permissions.includes("students.archive");
@@ -39,6 +42,7 @@ export function StudentManagementPage({ permissions }: Props) {
   const [selected, setSelected] = useState<StudentProfile | null>(null);
   const [showEnrollment, setShowEnrollment] = useState(false);
   const [addressStudent, setAddressStudent] = useState<StudentProfile | null>(null);
+  const [familyStudent, setFamilyStudent] = useState<StudentProfile | null>(null);
   const [studentSearch, setStudentSearch] = useState("");
   const deferredStudentSearch = useDeferredValue(studentSearch.trim());
   const [selectedStudentID, setSelectedStudentID] = useState("");
@@ -224,7 +228,7 @@ export function StudentManagementPage({ permissions }: Props) {
        studentsQuery.isError ? <div className="student-state error" role="alert"><p>{studentsQuery.error.message}</p><button className="student-secondary" onClick={() => void studentsQuery.refetch()}>Try again</button></div> :
        students.length === 0 ? <div className="student-state"><Users size={28}/><b>No students found</b><span>{search || status ? "Try changing the search or status filter." : "Add the first student record to get started."}</span></div> :
        <section className="student-table-wrap"><table className="student-table"><thead><tr><th>Student</th><th>Admission no.</th><th>Status</th><th>Actions</th></tr></thead><tbody>
-        {students.map(item => <tr key={item.id}><td data-label="Student"><b>{item.full_name}</b><small>Student ID #{item.id}</small></td><td data-label="Admission no.">{item.admission_number}</td><td data-label="Status"><span className={"student-status " + item.status}>{item.status}</span></td><td data-label="Actions"><div className="student-row-actions">{canReadStudents && <button type="button" title="Address & communication" aria-label={`Address and communication for ${item.full_name}`} onClick={() => setAddressStudent(item)}><MapPin size={15}/></button>}{canUpdate && item.status !== "archived" && <button type="button" title="Edit student" aria-label={`Edit ${item.full_name}`} onClick={() => openStudent("edit", item)}><Pencil size={15}/></button>}{canArchive && item.status !== "archived" && <button type="button" className="archive" title="Archive student" aria-label={`Archive ${item.full_name}`} onClick={() => void archive(item)}><Archive size={15}/></button>}</div></td></tr>)}
+        {students.map(item => <tr key={item.id}><td data-label="Student"><b>{item.full_name}</b><small>Student ID #{item.id}</small></td><td data-label="Admission no.">{item.admission_number}</td><td data-label="Status"><span className={"student-status " + item.status}>{item.status}</span></td><td data-label="Actions"><div className="student-row-actions">{canReadStudents && <button type="button" title="Address & communication" aria-label={`Address and communication for ${item.full_name}`} onClick={() => setAddressStudent(item)}><MapPin size={15}/></button>}{canReadGuardians && <button type="button" title="Parents & siblings" aria-label={`Parents and siblings for ${item.full_name}`} onClick={() => setFamilyStudent(item)}><Users size={15}/></button>}{canUpdate && item.status !== "archived" && <button type="button" title="Edit student" aria-label={`Edit ${item.full_name}`} onClick={() => openStudent("edit", item)}><Pencil size={15}/></button>}{canArchive && item.status !== "archived" && <button type="button" className="archive" title="Archive student" aria-label={`Archive ${item.full_name}`} onClick={() => void archive(item)}><Archive size={15}/></button>}</div></td></tr>)}
        </tbody></table></section>}
       {total > 0 && <div className="student-pagination"><span>{`Showing ${offset + 1}–${Math.min(offset + 20, total)} of ${total}`}</span>{pageCount > 1 && <div><button type="button" className="student-secondary" disabled={offset === 0 || studentsQuery.isFetching} onClick={() => setOffset(Math.max(0, offset - 20))}>Previous</button><span>Page {Math.floor(offset / 20) + 1} of {pageCount}</span><button type="button" className="student-secondary" disabled={offset + 20 >= total || studentsQuery.isFetching} onClick={() => setOffset(offset + 20)}>Next</button></div>}</div>}
     </>}
@@ -238,5 +242,6 @@ export function StudentManagementPage({ permissions }: Props) {
        </tbody></table></section>}
     </>}
     {addressStudent && <StudentAddressSection student={addressStudent} canUpdate={canUpdate && addressStudent.status !== "archived"} onClose={() => setAddressStudent(null)} />}
+    {familyStudent && <StudentFamilySection student={familyStudent} canManage={canManageGuardians && familyStudent.status !== "archived"} canReadRelatedStudents={canReadEnrollments} onClose={() => setFamilyStudent(null)} />}
   </div>;
 }
