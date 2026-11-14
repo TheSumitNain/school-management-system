@@ -225,3 +225,10 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - Added transactional audit events for student directory reads (section and result count only) and individual student profile reads (section only). The list count query, result query, authorization and audit insert share one transaction.
 - Added PostgreSQL integration assertions that both read actions are recorded and that student names/admission numbers do not appear in read-audit metadata.
 - User verified `TestStudentProfileRepositoryPostgresIntegration`, the full backend test suite (`go test -count=1 -p 1 ./...`) and `go vet ./...` against `school_management_test`; all passed. A Windows temporary executable unlink warning appeared after the targeted test, but the test itself returned success.
+
+## Student create-event audit data minimization — local verification pending
+
+- Review found that the student-created audit event stored the raw admission number in JSON metadata. Changed it to record only the boolean `has_admission_number`; the student ID remains the audit resource reference.
+- Added a PostgreSQL integration assertion that the create event exists, records the presence flag, and contains neither the student's name nor admission number.
+- Pull the latest `work` branch and run the targeted Student Profile integration test, full backend suite and `go vet ./...` against `school_management_test` before marking this hardening verified.
+
