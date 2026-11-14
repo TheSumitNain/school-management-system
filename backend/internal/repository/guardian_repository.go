@@ -144,11 +144,11 @@ func (r *AcademicRepository) ListGuardians(ctx context.Context, actorID, schoolI
 	if status != "" && status != "active" && status != "inactive" && status != "archived" { return nil, 0, ErrInvalidGuardianInput }
 	var total int64
 	if err := r.db.QueryRow(ctx, `SELECT COUNT(*) FROM guardians WHERE school_id=$1 AND ($2='' OR status=$2)
-		AND ($3='' OR full_name ILIKE '%'||$3||'%' OR COALESCE(mobile_number,'') ILIKE '%'||$3||'%' OR COALESCE(email_address,'') ILIKE '%'||$3||'%')`,
+		AND ($3='' OR full_name ILIKE '%'||$3||'%' OR COALESCE(mobile_number,'') ILIKE '%'||$3||'%' OR COALESCE(alternate_mobile_number,'') ILIKE '%'||$3||'%' OR COALESCE(email_address,'') ILIKE '%'||$3||'%')`,
 		schoolID, status, search).Scan(&total); err != nil { return nil, 0, fmt.Errorf("count guardians: %w", err) }
 	rows, err := r.db.Query(ctx, `SELECT id,school_id,full_name,mobile_number,email_address,alternate_mobile_number,occupation,education,workplace_name,status,created_at,updated_at
 		FROM guardians WHERE school_id=$1 AND ($2='' OR status=$2)
-		AND ($3='' OR full_name ILIKE '%'||$3||'%' OR COALESCE(mobile_number,'') ILIKE '%'||$3||'%' OR COALESCE(email_address,'') ILIKE '%'||$3||'%')
+		AND ($3='' OR full_name ILIKE '%'||$3||'%' OR COALESCE(mobile_number,'') ILIKE '%'||$3||'%' OR COALESCE(alternate_mobile_number,'') ILIKE '%'||$3||'%' OR COALESCE(email_address,'') ILIKE '%'||$3||'%')
 		ORDER BY LOWER(full_name),id LIMIT $4 OFFSET $5`, schoolID,status,search,limit,offset)
 	if err != nil { return nil, 0, fmt.Errorf("list guardians: %w", err) }; defer rows.Close()
 	items:=make([]Guardian,0)
