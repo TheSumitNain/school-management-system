@@ -3,7 +3,7 @@ import { Archive, Eye, GraduationCap, Pencil, Plus, RefreshCw, Search, Users } f
 import {
   useArchiveSchoolStudentMutation, useCreateSchoolStudentEnrollmentMutation, useCreateSchoolStudentMutation,
   useSchoolStudentAcademicYearsQuery, useSchoolStudentEnrollmentsQuery, useSchoolStudentSectionsQuery,
-  useSchoolStudentsQuery, useUpdateSchoolStudentMutation,
+  useSchoolStudentsQuery,
 } from "../queries";
 import type { StudentProfile } from "../api";
 import { Select } from "../../../shared/components/Select";
@@ -18,7 +18,7 @@ import { StudentHealthSection } from "../components/StudentHealthSection";
 import "./StudentManagementPage.css";
 
 type Props = { permissions: string[] };
-type StudentAction = "create" | "edit" | null;
+type StudentAction = "create" | null;
 type Tab = "students" | "enrollments";
 
 function localDateValue() {
@@ -42,7 +42,6 @@ export function StudentManagementPage({ permissions }: Props) {
   const [status, setStatus] = useState("");
   const [offset, setOffset] = useState(0);
   const [action, setAction] = useState<StudentAction>(null);
-  const [selected, setSelected] = useState<StudentProfile | null>(null);
   const [showEnrollment, setShowEnrollment] = useState(false);
   const [addressStudent, setAddressStudent] = useState<StudentProfile | null>(null);
   const [basicDetailsStudent, setBasicDetailsStudent] = useState<StudentProfile | null>(null);
@@ -67,7 +66,6 @@ export function StudentManagementPage({ permissions }: Props) {
   const yearsQuery = useSchoolStudentAcademicYearsQuery(canReadYears && (canReadEnrollments || showEnrollment || action === "create"));
   const sectionsQuery = useSchoolStudentSectionsQuery(academicYearID, (showEnrollment || action === "create") && canReadSections);
   const createStudent = useCreateSchoolStudentMutation();
-  const updateStudent = useUpdateSchoolStudentMutation();
   const archiveStudent = useArchiveSchoolStudentMutation();
   const createEnrollment = useCreateSchoolStudentEnrollmentMutation();
 
@@ -85,8 +83,7 @@ export function StudentManagementPage({ permissions }: Props) {
   }, [action, showEnrollment, academicYearID, activeYears]);
   const busy = createStudent.isPending || updateStudent.isPending || archiveStudent.isPending || createEnrollment.isPending;
 
-  function openStudent(next: StudentAction, student: StudentProfile | null = null) {
-    setSelected(student);
+  function openStudent(next: StudentAction) {
     setAction(next);
     setFieldErrors({});
     setFeedback(null);
@@ -121,12 +118,8 @@ export function StudentManagementPage({ permissions }: Props) {
           admission_date: enrolledAt,
         });
         setFeedback({ kind: "success", message: "Student admitted and enrolled for the selected academic year." });
-      } else if (action === "edit" && selected) {
-        await updateStudent.mutateAsync({ studentID: selected.id, fullName });
-        setFeedback({ kind: "success", message: "Student details updated." });
       }
       setAction(null);
-      setSelected(null);
     } catch (error) {
       setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to save the student record." });
     }
@@ -193,10 +186,10 @@ export function StudentManagementPage({ permissions }: Props) {
       {canReadEnrollments && <button type="button" role="tab" aria-selected={tab === "enrollments"} className={tab === "enrollments" ? "selected" : ""} onClick={() => { setTab("enrollments"); setAction(null); setFeedback(null); }}>Enrollments</button>}
     </div>
     {feedback && !((action!==null||showEnrollment)&&feedback.kind==="error") && <div className={"student-feedback " + feedback.kind} role="status">{feedback.message}</div>}
-    <Modal open={action !== null} title={action === "create" ? "New student admission" : "Edit student"} description={action === "create" ? "Create the permanent student record and first academic-year enrollment together." : "Update the student's permanent profile details."} onClose={() => openStudent(null)} closeDisabled={busy}>
+    <Modal open={action !== null} title="New student admission" description="Create the permanent student record and first academic-year enrollment together." onClose={() => openStudent(null)} closeDisabled={busy}>
       {feedback?.kind === "error" && <p className="student-feedback error" role="alert">{feedback.message}</p>}
       <form onSubmit={submitStudent} noValidate>
-        <label>Student full name<input name="full_name" placeholder="e.g. Aarav Sharma" defaultValue={selected?.full_name ?? ""} maxLength={200} autoComplete="name" required aria-invalid={Boolean(fieldErrors.full_name)} aria-describedby={fieldErrors.full_name ? "student-name-error" : undefined} onChange={()=>setFieldErrors(current=>({...current,full_name:""}))}/>{fieldErrors.full_name && <small className="app-field-error" id="student-name-error">{fieldErrors.full_name}</small>}</label>
+        <label>Student full name<input name="full_name" placeholder="e.g. Aarav Sharma" defaultValue="" maxLength={200} autoComplete="name" required aria-invalid={Boolean(fieldErrors.full_name)} aria-describedby={fieldErrors.full_name ? "student-name-error" : undefined} onChange={()=>setFieldErrors(current=>({...current,full_name:""}))}/>{fieldErrors.full_name && <small className="app-field-error" id="student-name-error">{fieldErrors.full_name}</small>}</label>
         {action === "create" && <>
           <label>Admission number<input name="admission_number" placeholder="e.g. ADM-2026-001" maxLength={50} autoComplete="off" required aria-invalid={Boolean(fieldErrors.admission_number)} aria-describedby={fieldErrors.admission_number ? "student-admission-error" : undefined} onChange={()=>setFieldErrors(current=>({...current,admission_number:""}))}/>{fieldErrors.admission_number && <small className="app-field-error" id="student-admission-error">{fieldErrors.admission_number}</small>}</label>
           <label>Academic year<Select ariaLabel="Admission academic year" invalid={Boolean(fieldErrors.academic_year_id)} describedBy={fieldErrors.academic_year_id?"new-admission-year-error":undefined} value={String(academicYearID||"")} onChange={value=>{setAcademicYearID(Number(value));setSelectedSectionID("");setFieldErrors(current=>({...current,academic_year_id:"",section_id:""}));}} placeholder="Select active year" options={activeYears.map(year=>({value:String(year.id),label:year.name+(year.is_current?" · Current":"")}))}/>{fieldErrors.academic_year_id&&<small className="app-field-error" id="new-admission-year-error">{fieldErrors.academic_year_id}</small>}{activeYears.length===0&&<small>No active academic year is available. Activate an academic year before admitting students.</small>}</label>
@@ -205,7 +198,7 @@ export function StudentManagementPage({ permissions }: Props) {
           <label>Admission date<DatePicker ariaLabel="Admission date" placeholder="Choose the admission date" invalid={Boolean(fieldErrors.admission_date)} describedBy={fieldErrors.admission_date?"new-admission-date-error":undefined} value={enrolledAt} onChange={value=>{setEnrolledAt(value);setFieldErrors(current=>({...current,admission_date:""}));}}/>{fieldErrors.admission_date&&<small className="app-field-error" id="new-admission-date-error">{fieldErrors.admission_date}</small>}</label>
           {sectionsQuery.isError && <div className="student-feedback error" role="alert">{sectionsQuery.error.message}</div>}
         </>}
-        <div className="app-modal-actions"><button type="button" className="app-modal-cancel" onClick={() => openStudent(null)} disabled={busy}>Cancel</button><button className="primary" disabled={busy || (action === "create" && (yearsQuery.isLoading || sectionsQuery.isLoading || sectionsQuery.isError || activeYears.length === 0 || sections.length === 0))}>{busy ? "Saving…" : action === "create" ? "Admit student" : "Save changes"}</button></div>
+        <div className="app-modal-actions"><button type="button" className="app-modal-cancel" onClick={() => openStudent(null)} disabled={busy}>Cancel</button><button className="primary" disabled={busy || (action === "create" && (yearsQuery.isLoading || sectionsQuery.isLoading || sectionsQuery.isError || activeYears.length === 0 || sections.length === 0))}>{busy ? "Saving…" : "Admit student"}</button></div>
       </form>
     </Modal>
     <Modal open={showEnrollment} title="Enroll student" description="Select an active student, academic year and section. The section must belong to the selected academic year." onClose={() => setShowEnrollment(false)} closeDisabled={busy}>
