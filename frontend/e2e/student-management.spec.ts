@@ -216,7 +216,7 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
 
   await page.getByRole("button", { name: /Parents & Siblings/i }).click();
-  await expect(page.getByRole("dialog", { name: /Parents & siblings/ })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: /Parents & Siblings/i })).toBeVisible();
   await expect(page.getByText("Other students sharing a guardian")).toBeVisible();
   await page.getByRole("button", { name: "Close dialog" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
