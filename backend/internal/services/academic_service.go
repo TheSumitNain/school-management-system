@@ -25,8 +25,9 @@ type academicRepository interface {
 	CreateClassInchargeAssignment(context.Context,int64,int64,int64,int64,int64)(*repository.ClassInchargeAssignment,error)
 	RevokeClassInchargeAssignment(context.Context,int64,int64,int64)error
 	ListStudentEnrollments(context.Context,int64,int64,int64,int64)([]repository.StudentEnrollment,error)
-	CreateStudentEnrollment(context.Context,int64,int64,int64,int64,int64,*string,time.Time)(*repository.StudentEnrollment,error)
-	PromoteStudentEnrollment(context.Context,int64,int64,int64,int64,int64,*string,time.Time)(*repository.StudentEnrollment,error)
+	CreateStudentEnrollment(context.Context,int64,int64,int64,int64,int64,*string,string,time.Time,time.Time)(*repository.StudentEnrollment,error)
+	PromoteStudentEnrollment(context.Context,int64,int64,int64,int64,int64,*string,string,time.Time,time.Time)(*repository.StudentEnrollment,error)
+	CreateStudentAdmission(context.Context,int64,int64,string,string,int64,int64,*string,time.Time)(*repository.StudentAdmissionResult,error)
 
 	ListStudents(context.Context,int64,int64,string,string,int,int)([]repository.StudentProfile,int64,error)
 	GetStudent(context.Context,int64,int64,int64)(*repository.StudentProfile,error)
@@ -119,13 +120,17 @@ func (s *AcademicService) ListStudentEnrollments(ctx context.Context, actorID, s
 	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
 	return s.repository.ListStudentEnrollments(ctx, actorID, schoolID, yearID, studentID)
 }
-func (s *AcademicService) CreateStudentEnrollment(ctx context.Context, actorID, schoolID, studentID, yearID, sectionID int64, rollNumber *string, enrolledAt time.Time) (*repository.StudentEnrollment, error) {
+func (s *AcademicService) CreateStudentEnrollment(ctx context.Context, actorID, schoolID, studentID, yearID, sectionID int64, rollNumber *string, admissionNumber string, admissionDate, enrolledAt time.Time) (*repository.StudentEnrollment, error) {
 	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
-	return s.repository.CreateStudentEnrollment(ctx, actorID, schoolID, studentID, yearID, sectionID, rollNumber, enrolledAt)
+	return s.repository.CreateStudentEnrollment(ctx, actorID, schoolID, studentID, yearID, sectionID, rollNumber, admissionNumber, admissionDate, enrolledAt)
 }
-func (s *AcademicService) PromoteStudentEnrollment(ctx context.Context, actorID, schoolID, sourceEnrollmentID, destinationYearID, destinationSectionID int64, rollNumber *string, enrolledAt time.Time) (*repository.StudentEnrollment, error) {
+func (s *AcademicService) PromoteStudentEnrollment(ctx context.Context, actorID, schoolID, sourceEnrollmentID, destinationYearID, destinationSectionID int64, rollNumber *string, admissionNumber string, admissionDate, enrolledAt time.Time) (*repository.StudentEnrollment, error) {
 	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
-	return s.repository.PromoteStudentEnrollment(ctx, actorID, schoolID, sourceEnrollmentID, destinationYearID, destinationSectionID, rollNumber, enrolledAt)
+	return s.repository.PromoteStudentEnrollment(ctx, actorID, schoolID, sourceEnrollmentID, destinationYearID, destinationSectionID, rollNumber, admissionNumber, admissionDate, enrolledAt)
+}
+func (s *AcademicService) CreateStudentAdmission(ctx context.Context, actorID, schoolID int64, fullName, admissionNumber string, yearID, sectionID int64, rollNumber *string, admissionDate time.Time) (*repository.StudentAdmissionResult, error) {
+	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
+	return s.repository.CreateStudentAdmission(ctx, actorID, schoolID, fullName, admissionNumber, yearID, sectionID, rollNumber, admissionDate)
 }
 
 func (s *AcademicService) ListStudents(ctx context.Context, actorID, schoolID int64, search, status string, limit, offset int) ([]repository.StudentProfile, int64, error) {
