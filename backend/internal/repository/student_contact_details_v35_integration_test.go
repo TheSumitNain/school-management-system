@@ -93,6 +93,31 @@ func TestStudentContactDetailsV35PostgresIntegration(t *testing.T) {
 	if err != nil || contact.StudentID != studentTwo || contact.PrimaryPhone == nil || *contact.PrimaryPhone != phone {
 		t.Fatalf("read student contact details through repository: item=%+v err=%v", contact, err)
 	}
+
+	updatedPhone := "+91 98123 45678"
+	updatedEmail := "updated-" + suffix + "@example.test"
+	savedContact, err := repository.SaveStudentContactDetails(ctx, actorPrincipalID, schoolID, studentTwo,
+		&updatedPhone, &phone, &updatedEmail)
+	if err != nil {
+		t.Fatalf("save student contact details through repository: %v", err)
+	}
+	if savedContact.StudentID != studentTwo || savedContact.PrimaryPhone == nil || *savedContact.PrimaryPhone != updatedPhone ||
+		savedContact.AlternatePhone == nil || *savedContact.AlternatePhone != phone ||
+		savedContact.EmailAddress == nil || *savedContact.EmailAddress != updatedEmail {
+		t.Fatalf("unexpected saved student contact details: %+v", savedContact)
+	}
+	var updateAuditCount int
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*) FROM audit_events
+		 WHERE school_id=$1 AND actor_principal_id=$2
+		   AND action='school.student.contact_details.updated'
+		   AND resource_id=$3
+	`, schoolID, actorPrincipalID, fmt.Sprint(savedContact.ID)).Scan(&updateAuditCount); err != nil {
+		t.Fatalf("inspect contact update audit: %v", err)
+	}
+	if updateAuditCount != 1 {
+		t.Fatalf("contact update audit count = %d, want 1", updateAuditCount)
+	}
 	var readAuditCount int
 	var readAuditMetadata string
 	if err := tx.QueryRow(ctx, `
