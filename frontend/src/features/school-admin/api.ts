@@ -404,6 +404,13 @@ export function linkSchoolStudentGuardian(studentID: number, input: {
     method: "POST", body: JSON.stringify(input),
   });
 }
+export function updateSchoolStudentGuardianLink(linkID: number, input: {
+  relationship_type: string; is_primary_contact: boolean; is_emergency_contact: boolean;
+}) {
+  return api<{ student_guardian: StudentGuardian }>(`/school/student-guardian-links/${linkID}`, {
+    method: "PATCH", body: JSON.stringify(input),
+  });
+}
 export function revokeSchoolStudentGuardianLink(linkID: number, reason: string) {
   return api<{ message: string }>(`/school/student-guardian-links/${linkID}/revoke`, {
     method: "POST", body: JSON.stringify({ reason }),
