@@ -349,7 +349,8 @@ export function saveSchoolStudentPhysicalDetails(studentID: number, input: {
 
 export type SchoolGuardian = {
   id: number; school_id: number; full_name: string; mobile_number?: string | null;
-  email_address?: string | null; status: "active" | "inactive" | "archived";
+  email_address?: string | null; alternate_mobile_number?: string | null; occupation?: string | null;
+  education?: string | null; workplace_name?: string | null; status: "active" | "inactive" | "archived";
 };
 export type StudentGuardian = {
   id: number; student_id: number; guardian_id: number; guardian_name: string;
@@ -375,7 +376,8 @@ export function getSchoolStudentRelatedStudents(studentID: number, signal?: Abor
   return api<{ related_students: StudentRelatedStudent[] }>(`/school/students/${studentID}/related-students`, { signal });
 }
 export function createSchoolGuardian(input: {
-  full_name: string; mobile_number?: string | null; email_address?: string | null; status?: string;
+  full_name: string; mobile_number?: string | null; email_address?: string | null; alternate_mobile_number?: string | null;
+  occupation?: string | null; education?: string | null; workplace_name?: string | null; status?: string;
 }) {
   return api<{ guardian: SchoolGuardian }>("/school/guardians", { method: "POST", body: JSON.stringify(input) });
 }
