@@ -270,3 +270,27 @@ Do not expose direct database-shaped updates that allow a client to change schoo
 10. Run full integration, tenant-isolation, RBAC and real-browser end-to-end acceptance.
 
 A phase is complete only when code, migrations, automated tests and applicable browser acceptance pass and the actual result is recorded in Project Status.
+
+
+## 9. Student profile screen audit — 2026-11-14
+
+The latest screen/code review found two concrete UX gaps and records the current disposition:
+
+- The directory row's **Edit** action previously opened a legacy modal that submitted only the permanent student name. It now opens the Student Profile section hub so Basic Details, Address & Communication, Medical & Physical, and permission-authorized Parents & Siblings remain independently editable in line with the approved section-based design. This does not combine unrelated records into one unsafe update request.
+- Address reads already returned the selected hierarchy IDs, but the frontend location pickers only listed active locations. If a previously saved school-owned state/district/block/locality was later deactivated, its ID could be present while its option was absent, making the lower hierarchy appear blank. Address reads now also return the ancestor names, and the frontend retains a visible inactive option for an existing saved selection. Deactivation still removes the location from new active selections and does not rewrite historical addresses.
+- A PostgreSQL integration assertion now covers saving a complete State → District → Block/Tehsil → Village/City path, deactivating the saved locality, and reading all saved IDs and names back. Local execution is still required before this fix is marked verified.
+- Aadhaar is intentionally not a default student field and must not be required. The UI/API/schema currently omit it by design. Any request to collect an Aadhaar number or upload an Aadhaar image must first distinguish the intended data, establish a lawful school purpose, retention/deletion rules, masked display, encryption/private storage, and dedicated least-privilege access. Do not add a plaintext Aadhaar field or public document URL.
+- Student document upload/download remains deferred until private storage, malware scanning, opaque references, retention and document-specific access controls are implemented.
+
+### Required acceptance checks before Student Management is called complete
+
+- [ ] Directory View and Edit actions open the correct profile workflow; no legacy name-only edit route remains reachable.
+- [ ] Basic Details: existing values hydrate, each field validates, save/reopen retains values, and archived students are read-only.
+- [ ] Address & Communication: current/permanent/contact tabs hydrate independently; every address text field and all four location levels load; inactive saved locations remain visible; same-as-current works; save/reopen retains values.
+- [ ] Parents & Siblings: section visibility follows guardians.read; create/edit/link/revoke follows guardians.manage; revoked history is retained; related students require basic-read permission.
+- [ ] Medical & Physical: read/write permissions, version/measurement history, loading/error states and archived-state behavior are verified.
+- [ ] All list/profile/API actions enforce live permissions and same-school isolation; frontend visibility is never treated as authorization.
+- [ ] Responsive layout, keyboard/focus behavior, loading/empty/error states, field-level validation and save feedback are checked at desktop and narrow viewport sizes.
+- [ ] Backend PostgreSQL integration tests, frontend typecheck/build, and manual browser acceptance all pass.
+
+Until these checks are completed, Student Management remains **in progress**, not production-ready.
