@@ -35,6 +35,8 @@ type academicRepository interface {
 	SaveStudentAddress(context.Context,int64,int64,int64,string,*string,*string,*string,*string,*string,*int64,bool)(*repository.StudentAddress,error)
 	GetStudentContactDetails(context.Context,int64,int64,int64)(*repository.StudentContactDetails,error)
 	SaveStudentContactDetails(context.Context,int64,int64,int64,*string,*string,*string)(*repository.StudentContactDetails,error)
+	GetStudentBasicDetails(context.Context,int64,int64,int64)(*repository.StudentBasicDetails,error)
+	SaveStudentBasicDetails(context.Context,int64,int64,int64,*time.Time,*string,*string,*string,*string,*string,*bool,*string)(*repository.StudentBasicDetails,error)
 	GetStudentMedicalDetails(context.Context,int64,int64,int64)(*repository.StudentMedicalDetails,error)
 	SaveStudentMedicalDetails(context.Context,int64,int64,int64,*string,*string,*string,*string,*string)(*repository.StudentMedicalDetails,error)
 	GetStudentPhysicalDetails(context.Context,int64,int64,int64)(*repository.StudentPhysicalDetails,error)
@@ -175,6 +177,15 @@ func (s *AcademicService) ListStudentAddresses(ctx context.Context, actorID, sch
 func (s *AcademicService) SaveStudentAddress(ctx context.Context, actorID, schoolID, studentID int64, addressType string, line1, line2, areaMohalla, landmark, postalCode *string, locationID *int64, sameAsCurrent bool) (*repository.StudentAddress, error) {
 	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
 	return s.repository.SaveStudentAddress(ctx, actorID, schoolID, studentID, addressType, line1, line2, areaMohalla, landmark, postalCode, locationID, sameAsCurrent)
+}
+
+func (s *AcademicService) GetStudentBasicDetails(ctx context.Context, actorID, schoolID, studentID int64) (*repository.StudentBasicDetails, error) {
+	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
+	return s.repository.GetStudentBasicDetails(ctx, actorID, schoolID, studentID)
+}
+func (s *AcademicService) SaveStudentBasicDetails(ctx context.Context, actorID, schoolID, studentID int64, dateOfBirth *time.Time, placeOfBirth, gender, nationality, religion, socialCategory *string, ewsStatus *bool, registrationNumber *string) (*repository.StudentBasicDetails, error) {
+	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
+	return s.repository.SaveStudentBasicDetails(ctx, actorID, schoolID, studentID, dateOfBirth, placeOfBirth, gender, nationality, religion, socialCategory, ewsStatus, registrationNumber)
 }
 
 func (s *AcademicService) GetStudentContactDetails(ctx context.Context, actorID, schoolID, studentID int64) (*repository.StudentContactDetails, error) {
