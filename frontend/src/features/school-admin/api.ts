@@ -235,6 +235,14 @@ export function createSchoolStudentEnrollment(input: {
 }) {
   return api<{ enrollment: StudentEnrollment }>("/school/enrollments", { method: "POST", body: JSON.stringify(input) });
 }
+export function promoteSchoolStudentEnrollment(sourceEnrollmentID: number, input: {
+  academic_year_id: number; section_id: number; roll_number?: string | null;
+  admission_number: string; admission_date: string; enrolled_at: string;
+}) {
+  return api<{ enrollment: StudentEnrollment }>(`/school/enrollments/${sourceEnrollmentID}/promote`, {
+    method: "POST", body: JSON.stringify(input),
+  });
+}
 
 export type StudentLocation = {
   id: number; school_id?: number | null; parent_id?: number | null; country_code: string;
