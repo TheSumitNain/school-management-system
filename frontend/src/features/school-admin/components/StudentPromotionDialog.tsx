@@ -102,7 +102,7 @@ export function StudentPromotionDialog({ enrollment, academicYears, onClose, onP
               onChange={event => { setAdmissionNumber(event.target.value); clearError("admission_number"); }} placeholder="e.g. ADM-2027-001" />
             {errors.admission_number && <small id="promotion-admission-error" className="app-field-error">{errors.admission_number}</small>}
           </label>
-          <label><StudentFieldLabel label="Roll number" hint="Optional. Leave blank to automatically assign the next available roll number in the destination section. A manual override is supported." />
+          <label><StudentFieldLabel label="Roll number" hint="Optional. Leave blank to automatically assign the next available roll number in the destination section. If entering one manually, use the school’s roll-number format (up to 30 characters)." />
             <input value={rollNumber} maxLength={30} onChange={event => setRollNumber(event.target.value)} placeholder="Leave blank for automatic assignment" />
             <small>Leave blank to assign the next available roll number in the destination section. Manual override is also supported.</small>
           </label>
