@@ -13,7 +13,7 @@ var ErrInvalidGuardian = errors.New("invalid guardian request")
 type guardianRepository interface {
 	ListGuardians(context.Context,int64,int64,string,string,int,int)([]repository.Guardian,int64,error)
 	GetGuardian(context.Context,int64,int64,int64)(*repository.Guardian,error)
-	SaveGuardian(context.Context,int64,int64,int64,string,*string,*string,string)(*repository.Guardian,error)
+	SaveGuardian(context.Context,int64,int64,int64,string,*string,*string,*string,*string,*string,*string,string)(*repository.Guardian,error)
 	ListStudentGuardians(context.Context,int64,int64,int64,bool)([]repository.StudentGuardian,error)
 	ListStudentRelatedStudents(context.Context,int64,int64,int64)([]repository.StudentRelatedStudent,error)
 	LinkStudentGuardian(context.Context,int64,int64,int64,int64,string,bool,bool)(*repository.StudentGuardian,error)
@@ -32,9 +32,9 @@ func(s *GuardianService) GetGuardian(ctx context.Context,actor,school,id int64)(
 	if s==nil||s.repository==nil{return nil,repository.ErrGuardianAccessDenied}
 	return s.repository.GetGuardian(ctx,actor,school,id)
 }
-func(s *GuardianService) SaveGuardian(ctx context.Context,actor,school,id int64,name string,mobile,email *string,status string)(*repository.Guardian,error){
+func(s *GuardianService) SaveGuardian(ctx context.Context,actor,school,id int64,name string,mobile,email,alternateMobile,occupation,education,workplace *string,status string)(*repository.Guardian,error){
 	if s==nil||s.repository==nil{return nil,repository.ErrGuardianAccessDenied}
-	return s.repository.SaveGuardian(ctx,actor,school,id,name,mobile,email,status)
+	return s.repository.SaveGuardian(ctx,actor,school,id,name,mobile,email,alternateMobile,occupation,education,workplace,status)
 }
 func(s *GuardianService) ListStudentGuardians(ctx context.Context,actor,school,student int64,history bool)([]repository.StudentGuardian,error){
 	if s==nil||s.repository==nil{return nil,repository.ErrGuardianAccessDenied}
