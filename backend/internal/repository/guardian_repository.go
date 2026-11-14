@@ -26,6 +26,10 @@ type Guardian struct {
 	FullName string `json:"full_name"`
 	MobileNumber *string `json:"mobile_number,omitempty"`
 	EmailAddress *string `json:"email_address,omitempty"`
+	AlternateMobileNumber *string `json:"alternate_mobile_number,omitempty"`
+	Occupation *string `json:"occupation,omitempty"`
+	Education *string `json:"education,omitempty"`
+	WorkplaceName *string `json:"workplace_name,omitempty"`
 	Status string `json:"status"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -38,6 +42,10 @@ type StudentGuardian struct {
 	GuardianName string `json:"guardian_name"`
 	MobileNumber *string `json:"mobile_number,omitempty"`
 	EmailAddress *string `json:"email_address,omitempty"`
+	AlternateMobileNumber *string `json:"alternate_mobile_number,omitempty"`
+	Occupation *string `json:"occupation,omitempty"`
+	Education *string `json:"education,omitempty"`
+	WorkplaceName *string `json:"workplace_name,omitempty"`
 	RelationshipType string `json:"relationship_type"`
 	IsPrimaryContact bool `json:"is_primary_contact"`
 	IsEmergencyContact bool `json:"is_emergency_contact"`
@@ -138,13 +146,13 @@ func (r *AcademicRepository) ListGuardians(ctx context.Context, actorID, schoolI
 	if err := r.db.QueryRow(ctx, `SELECT COUNT(*) FROM guardians WHERE school_id=$1 AND ($2='' OR status=$2)
 		AND ($3='' OR full_name ILIKE '%'||$3||'%' OR COALESCE(mobile_number,'') ILIKE '%'||$3||'%' OR COALESCE(email_address,'') ILIKE '%'||$3||'%')`,
 		schoolID, status, search).Scan(&total); err != nil { return nil, 0, fmt.Errorf("count guardians: %w", err) }
-	rows, err := r.db.Query(ctx, `SELECT id,school_id,full_name,mobile_number,email_address,status,created_at,updated_at
+	rows, err := r.db.Query(ctx, `SELECT id,school_id,full_name,mobile_number,email_address,alternate_mobile_number,occupation,education,workplace_name,status,created_at,updated_at
 		FROM guardians WHERE school_id=$1 AND ($2='' OR status=$2)
 		AND ($3='' OR full_name ILIKE '%'||$3||'%' OR COALESCE(mobile_number,'') ILIKE '%'||$3||'%' OR COALESCE(email_address,'') ILIKE '%'||$3||'%')
 		ORDER BY LOWER(full_name),id LIMIT $4 OFFSET $5`, schoolID,status,search,limit,offset)
 	if err != nil { return nil, 0, fmt.Errorf("list guardians: %w", err) }; defer rows.Close()
 	items:=make([]Guardian,0)
-	for rows.Next(){var v Guardian;if err:=rows.Scan(&v.ID,&v.SchoolID,&v.FullName,&v.MobileNumber,&v.EmailAddress,&v.Status,&v.CreatedAt,&v.UpdatedAt);err!=nil{return nil,0,fmt.Errorf("scan guardian: %w",err)};items=append(items,v)}
+	for rows.Next(){var v Guardian;if err:=rows.Scan(&v.ID,&v.SchoolID,&v.FullName,&v.MobileNumber,&v.EmailAddress,&v.AlternateMobileNumber,&v.Occupation,&v.Education,&v.WorkplaceName,&v.Status,&v.CreatedAt,&v.UpdatedAt);err!=nil{return nil,0,fmt.Errorf("scan guardian: %w",err)};items=append(items,v)}
 	if err:=rows.Err();err!=nil{return nil,0,fmt.Errorf("iterate guardians: %w",err)}
 	return items,total,nil
 }
@@ -153,29 +161,30 @@ func (r *AcademicRepository) GetGuardian(ctx context.Context, actorID, schoolID,
 	if r==nil||r.db==nil{return nil,ErrGuardianAccessDenied}
 	if err:=authorizeGuardian(ctx,r.db,actorID,schoolID,"guardians.read");err!=nil{return nil,err}
 	var v Guardian
-	err:=r.db.QueryRow(ctx,`SELECT id,school_id,full_name,mobile_number,email_address,status,created_at,updated_at FROM guardians WHERE school_id=$1 AND id=$2`,schoolID,guardianID).
-		Scan(&v.ID,&v.SchoolID,&v.FullName,&v.MobileNumber,&v.EmailAddress,&v.Status,&v.CreatedAt,&v.UpdatedAt)
+	err:=r.db.QueryRow(ctx,`SELECT id,school_id,full_name,mobile_number,email_address,alternate_mobile_number,occupation,education,workplace_name,status,created_at,updated_at FROM guardians WHERE school_id=$1 AND id=$2`,schoolID,guardianID).
+		Scan(&v.ID,&v.SchoolID,&v.FullName,&v.MobileNumber,&v.EmailAddress,&v.AlternateMobileNumber,&v.Occupation,&v.Education,&v.WorkplaceName,&v.Status,&v.CreatedAt,&v.UpdatedAt)
 	if err!=nil{return nil,guardianWriteError(err)}
 	return &v,nil
 }
 
-func (r *AcademicRepository) SaveGuardian(ctx context.Context, actorID,schoolID,guardianID int64,fullName string,mobile,email *string,status string)(*Guardian,error){
+func (r *AcademicRepository) SaveGuardian(ctx context.Context, actorID,schoolID,guardianID int64,fullName string,mobile,email,alternateMobile,occupation,education,workplace *string,status string)(*Guardian,error){
 	if r==nil||r.db==nil{return nil,ErrGuardianAccessDenied}
 	fullName=strings.TrimSpace(fullName);status=strings.TrimSpace(status)
 	if fullName==""||len([]rune(fullName))>200||(status!="active"&&status!="inactive"&&status!="archived"){return nil,ErrInvalidGuardianInput}
 	if mobile!=nil{v:=strings.TrimSpace(*mobile);if v==""{mobile=nil}else if len(v)>30{return nil,ErrInvalidGuardianInput}else{mobile=&v}}
 	if email!=nil{v:=strings.TrimSpace(*email);if v==""{email=nil}else if len(v)>254||!strings.Contains(v,"@"){return nil,ErrInvalidGuardianInput}else{email=&v}}
+	for _, field := range []*struct{ value **string; max int }{{&alternateMobile,30},{&occupation,120},{&education,120},{&workplace,160}} { if *field.value != nil { value:=strings.TrimSpace(**field.value); if value=="" { *field.value=nil } else if len([]rune(value))>field.max { return nil,ErrInvalidGuardianInput } else { *field.value=&value } } }
 	tx,err:=r.db.Begin(ctx);if err!=nil{return nil,fmt.Errorf("begin guardian save: %w",err)};defer func(){_=tx.Rollback(ctx)}()
 	if err=authorizeGuardian(ctx,tx,actorID,schoolID,"guardians.manage");err!=nil{return nil,err}
 	var v Guardian
 	if guardianID==0{
 		err=tx.QueryRow(ctx,`INSERT INTO guardians(school_id,full_name,mobile_number,email_address,status)
-			VALUES($1,$2,$3,$4,$5) RETURNING id,school_id,full_name,mobile_number,email_address,status,created_at,updated_at`,
-			schoolID,fullName,mobile,email,status).Scan(&v.ID,&v.SchoolID,&v.FullName,&v.MobileNumber,&v.EmailAddress,&v.Status,&v.CreatedAt,&v.UpdatedAt)
+			VALUES($1,$2,$3,$4,$5) RETURNING id,school_id,full_name,mobile_number,email_address,alternate_mobile_number,occupation,education,workplace_name,status,created_at,updated_at`,
+			schoolID,fullName,mobile,email,status).Scan(&v.ID,&v.SchoolID,&v.FullName,&v.MobileNumber,&v.EmailAddress,&v.AlternateMobileNumber,&v.Occupation,&v.Education,&v.WorkplaceName,&v.Status,&v.CreatedAt,&v.UpdatedAt)
 	}else{
 		err=tx.QueryRow(ctx,`UPDATE guardians SET full_name=$3,mobile_number=$4,email_address=$5,status=$6,updated_at=NOW()
-			WHERE school_id=$1 AND id=$2 RETURNING id,school_id,full_name,mobile_number,email_address,status,created_at,updated_at`,
-			schoolID,guardianID,fullName,mobile,email,status).Scan(&v.ID,&v.SchoolID,&v.FullName,&v.MobileNumber,&v.EmailAddress,&v.Status,&v.CreatedAt,&v.UpdatedAt)
+			WHERE school_id=$1 AND id=$2 RETURNING id,school_id,full_name,mobile_number,email_address,alternate_mobile_number,occupation,education,workplace_name,status,created_at,updated_at`,
+			schoolID,guardianID,fullName,mobile,email,status).Scan(&v.ID,&v.SchoolID,&v.FullName,&v.MobileNumber,&v.EmailAddress,&v.AlternateMobileNumber,&v.Occupation,&v.Education,&v.WorkplaceName,&v.Status,&v.CreatedAt,&v.UpdatedAt)
 	}
 	if err!=nil{return nil,guardianWriteError(err)}
 	action:="school.guardian.updated";if guardianID==0{action="school.guardian.created"}
@@ -188,7 +197,7 @@ func (r *AcademicRepository) SaveGuardian(ctx context.Context, actorID,schoolID,
 func (r *AcademicRepository) ListStudentGuardians(ctx context.Context,actorID,schoolID,studentID int64,includeHistory bool)([]StudentGuardian,error){
 	if r==nil||r.db==nil{return nil,ErrGuardianAccessDenied}
 	if err:=authorizeGuardian(ctx,r.db,actorID,schoolID,"guardians.read");err!=nil{return nil,err}
-	rows,err:=r.db.Query(ctx,`SELECT sg.id,sg.student_id,sg.guardian_id,g.full_name,g.mobile_number,g.email_address,
+	rows,err:=r.db.Query(ctx,`SELECT sg.id,sg.student_id,sg.guardian_id,g.full_name,g.mobile_number,g.email_address,g.alternate_mobile_number,g.occupation,g.education,g.workplace_name,
 		sg.relationship_type,sg.is_primary_contact,sg.is_emergency_contact,sg.created_at,sg.revoked_at
 		FROM student_guardians sg JOIN guardians g ON g.id=sg.guardian_id AND g.school_id=sg.school_id
 		JOIN students s ON s.id=sg.student_id AND s.school_id=sg.school_id
@@ -196,7 +205,7 @@ func (r *AcademicRepository) ListStudentGuardians(ctx context.Context,actorID,sc
 		ORDER BY sg.revoked_at NULLS FIRST,sg.is_primary_contact DESC,LOWER(g.full_name),sg.id`,schoolID,studentID,includeHistory)
 	if err!=nil{return nil,fmt.Errorf("list student guardians: %w",err)};defer rows.Close()
 	items:=make([]StudentGuardian,0)
-	for rows.Next(){var v StudentGuardian;if err:=rows.Scan(&v.ID,&v.StudentID,&v.GuardianID,&v.GuardianName,&v.MobileNumber,&v.EmailAddress,&v.RelationshipType,&v.IsPrimaryContact,&v.IsEmergencyContact,&v.CreatedAt,&v.RevokedAt);err!=nil{return nil,fmt.Errorf("scan student guardian: %w",err)};items=append(items,v)}
+	for rows.Next(){var v StudentGuardian;if err:=rows.Scan(&v.ID,&v.StudentID,&v.GuardianID,&v.GuardianName,&v.MobileNumber,&v.EmailAddress,&v.AlternateMobileNumber,&v.Occupation,&v.Education,&v.WorkplaceName,&v.RelationshipType,&v.IsPrimaryContact,&v.IsEmergencyContact,&v.CreatedAt,&v.RevokedAt);err!=nil{return nil,fmt.Errorf("scan student guardian: %w",err)};items=append(items,v)}
 	if err:=rows.Err();err!=nil{return nil,fmt.Errorf("iterate student guardians: %w",err)}
 	return items,nil
 }
