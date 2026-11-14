@@ -351,3 +351,10 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - No LGD location rows have been imported. A database importer remains gated on a verified official snapshot, reviewed IGOD↔LGD State/UT crosswalk, validation report, and explicit apply mode.
 
 - During source inspection on 2026-11-14, the OGD resource pages were returning sandbox/maintenance or no-result content in the page view, so the live raw export schema could not be independently inspected there. Dataset metadata pages still identify Ministry of Panchayati Raj as owner and describe monthly refreshes, but this is not sufficient to claim the current downloadable file schema is verified. Keep the normalized validator contract separate from raw-export parsing until an actual official file is obtained and inspected.
+
+
+## Backend CI efficiency and validator test corrections — 2026-11-14
+
+- Backend CI now skips documentation-only changes and uses a branch-scoped concurrency group with cancel-in-progress, preventing stale runs from consuming PostgreSQL runner capacity after new code is pushed.
+- The first LGD validator CI run exposed test-fixture mistakes (short header, impossible missing-parent expectations in a denormalized ancestor-row format). The tests were corrected to check the actual contract: exact ten-column header, conflicting source-code/parent mappings, duplicate IGOD crosswalks, and BOM/leading-zero preservation.
+- The corrected validator commits are undergoing Backend CI. Do not mark the tool verified until the latest branch-head run completes.
