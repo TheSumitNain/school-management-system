@@ -86,8 +86,9 @@ func TestStudentProfileRepositoryPostgresIntegration(t *testing.T) {
 	if student.AdmissionNumber != "ADM-"+suffix || student.FullName != "Student One" || student.Status != "active" {
 		t.Fatalf("unexpected created student: %+v", student)
 	}
-	if _, err := repo.CreateStudent(ctx, actorID, schoolID, "adm-"+suffix, "Duplicate Admission"); !errors.Is(err, ErrAcademicConflict) {
-		t.Fatalf("duplicate normalized admission error = %v, want conflict", err)
+	duplicateLegacy, err := repo.CreateStudent(ctx, actorID, schoolID, "adm-"+suffix, "Duplicate Legacy Admission")
+	if err != nil || duplicateLegacy == nil || duplicateLegacy.AdmissionNumber != "adm-"+suffix {
+		t.Fatalf("duplicate legacy student-level admission value should be retained without a conflict: student=%+v err=%v", duplicateLegacy, err)
 	}
 	got, err := repo.GetStudent(ctx, actorID, schoolID, student.ID)
 	if err != nil || got.ID != student.ID { t.Fatalf("get student: student=%+v err=%v", got, err) }
