@@ -75,7 +75,7 @@ Admission number and academic placement must not be rewritten on a closed histor
 
 Keep independently maintained profile sections separate from the enrollment record:
 
-- Basic identity: permanent student name plus an independently editable optional basic-details record containing date/place of birth, gender, nationality, religion, social category, EWS status and school registration number. These fields are not required for initial admission.
+- Basic identity: permanent student name is edited inside the Basic Details section (not as a separate action on the profile summary), alongside an independently editable optional basic-details record containing date/place of birth, gender, nationality, religion, social category, EWS status and school registration number. These fields are not required for initial admission.
 - Aadhaar is intentionally not part of the default student profile and must not be added as a required field. Any future national-ID collection needs a separately approved purpose, legal/privacy review, least-privilege access and retention policy.
 - Address and communication: current and permanent address, phone/email where appropriate, and same-as-current behavior.
 - Parents/guardians: reuse the existing guardian and relationship model; support multiple guardians and relationship/contact flags.
@@ -149,7 +149,7 @@ Promotion and transfer are distinct business actions. Promotion creates the next
 
 ### 4.3 Student profile
 
-The directory opens a student profile detail view with permanent identity and academic history shown year by year. Each history entry displays that year's admission number/date, class, section, roll number, status and enrollment lifecycle dates. Launch independently editable sections (Basic Details, Address & Communication, Parents & Siblings, Medical & Physical, Documents) from the profile; do not turn the profile into one long mandatory form. Clearly distinguish incomplete profile sections from enrollment status.
+The directory opens a student profile detail view with permanent identity and academic history shown year by year. Each history entry displays that year's admission number/date, class, section, roll number, status and enrollment lifecycle dates. Launch independently editable sections (Basic Details, Address & Communication, Parents & Siblings, Medical & Physical, Documents) from the profile; the student name belongs in Basic Details, while the profile summary remains a read-only overview. Do not turn the profile into one long mandatory form. Clearly distinguish incomplete profile sections from enrollment status.
 
 The directory should support year-scoped admission-number search and filters, alongside student name/status search. A student without a current-year enrollment must not be silently represented as enrolled in the current year.
 
