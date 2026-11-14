@@ -114,6 +114,11 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
         },
       });
       setSelectedGuardianID(0);
+      setRelationshipType("");
+      setPrimaryContact(false);
+      setEmergencyContact(false);
+      setGuardianSelectError("");
+      setRelationshipError("");
       setFeedback({ kind: "success", message: "Guardian linked to this student." });
     } catch (error) {
       setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Guardian could not be linked." });
@@ -172,7 +177,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
           <>
             <form className="student-family-link-form" onSubmit={linkSelectedGuardian} noValidate>
               <h4>Link a guardian</h4>
-              <label>Search active guardian contacts<input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search by name, phone or email"/></label>
+              <label>Search active guardian contacts<input value={search} onChange={event => { setSearch(event.target.value); setSelectedGuardianID(0); setGuardianSelectError(""); }} placeholder="Search by name, phone or email"/></label>
               <Select ariaLabel="Select guardian" value={String(selectedGuardianID || "")} onChange={value => { setSelectedGuardianID(Number(value)); setGuardianSelectError(""); }} placeholder="Choose a guardian" options={guardianOptions} disabled={guardiansQuery.isLoading}/>
               {guardianSelectError && <small className="app-field-error">{guardianSelectError}</small>}
               {guardiansQuery.isError && <small className="app-field-error" role="alert">{guardiansQuery.error.message}</small>}
@@ -184,7 +189,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
                 <label><input type="checkbox" checked={emergencyContact} onChange={event => setEmergencyContact(event.target.checked)}/> Emergency contact</label>
               </div>
               
-              <button type="submit" className="primary" disabled={busy || !selectedGuardianID}>{linkGuardian.isPending ? "Linking…" : "Link guardian"}</button>
+              <button type="submit" className="primary" disabled={busy}>{linkGuardian.isPending ? "Linking…" : "Link guardian"}</button>
               <button type="button" className="student-link-button" onClick={() => { setShowCreateGuardian(value => !value); setNewGuardianNameError(""); setNewGuardianEmailError(""); }}>Create a new guardian contact</button>
             </form>
             {showCreateGuardian && (
