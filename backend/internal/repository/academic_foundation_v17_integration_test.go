@@ -647,7 +647,7 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 	combined, err := academicRepo.CreateStudentAdmission(ctx, actorPrincipalID, schoolID,
 		combinedName, combinedNumber, apiYear.ID, apiSection.ID, nil, enrolledAt)
 	if err != nil || combined == nil || combined.Student.ID <= 0 ||
-		combined.Student.AdmissionNumber != "" || combined.Enrollment.StudentID != combined.Student.ID ||
+		combined.Student.AdmissionNumber != combinedNumber || combined.Enrollment.StudentID != combined.Student.ID ||
 		combined.Enrollment.AdmissionNumber == nil || *combined.Enrollment.AdmissionNumber != combinedNumber {
 		t.Fatalf("create combined student admission: result=%+v err=%v", combined, err)
 	}
