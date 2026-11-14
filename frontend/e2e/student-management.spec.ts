@@ -765,7 +765,7 @@ test("student archive confirmation keeps the record on conflict and refreshes st
   await page.getByLabel("Password").fill("E2E-only-password");
   await page.getByRole("button", { name: /Continue/ }).click();
   await page.getByRole("button", { name: "Students" }).click();
-  await expect(page.getByText("Archive Retry Student")).toBeVisible();
+  await expect(page.getByText("Archive Retry Student", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Archive Archive Retry Student" }).click();
   let dialog = page.getByRole("dialog", { name: "Archive student?" });
