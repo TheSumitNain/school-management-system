@@ -123,3 +123,12 @@ GitHub Actions uses an ephemeral PostgreSQL database. Its success does not chang
 ## Read-only migration status check
 
 From the `backend` directory, run `go run ./cmd/dbstatus` after loading the intended `.env` configuration. This command connects to the configured database and reports its database name, migration version and dirty flag. It performs no DDL or DML and never applies, rolls back or repairs migrations. A dirty state or malformed migration metadata is reported as an error and must be investigated before any migration attempt. Always verify `DB_NAME` before running it; do not paste credentials into command history or logs.
+
+Official source entry points reviewed on 2026-11-14:
+- OGD LGD catalog (Ministry of Panchayati Raj): https://data.gov.in/catalog/local-government-directory-lgd
+- LGD District dataset: https://data.gov.in/resource/local-government-directory-lgd-districts
+- LGD Sub-District dataset: https://ap.data.gov.in/resource/local-government-directory-lgd-sub-districts
+- LGD Village dataset: https://ap.data.gov.in/datasets_webservices/datasets/7163864
+- Ministry LGD hierarchy overview (shows revenue entities and development blocks as distinct branches): https://panchayat.gov.in/lgd/
+
+The OGD catalog and its District resource describe monthly updates; record the exact source snapshot/update date actually downloaded, not the page's current crawl date. OGD pages expose download/API entry points, but automated access and the current export schema must be verified against the actual official resource response before implementing a parser. The official catalog page itself is the source-of-truth discovery point; do not assume a community API mirrors the current official dataset.
