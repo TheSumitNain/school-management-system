@@ -339,6 +339,12 @@ test("student admission, profile navigation and parent details render without br
   await page.getByLabel("Search States / UTs").fill("Haryana");
   await page.getByRole("button", { name: "State or Union Territory", exact: true }).click();
   await page.getByRole("option", { name: "Haryana" }).click();
+  await addressSaveButton.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Address save button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect(page.getByText("Complete State → District → Sub-District / Tehsil → Village / City, or clear the location selection.")).toBeVisible();
   await page.getByLabel("Search districts").fill("Ambala");
   await page.getByRole("button", { name: "District", exact: true }).click();
   await page.getByRole("option", { name: "Ambala" }).click();
@@ -374,7 +380,16 @@ test("student admission, profile navigation and parent details render without br
 
   await page.getByRole("button", { name: "Contact details", exact: true }).click();
   await page.getByPlaceholder("Primary contact number").fill("9876501234");
+  await page.getByPlaceholder("student@example.com").fill("not-an-email");
   const contactSaveButton = page.getByRole("button", { name: "Save contact details" });
+  await contactSaveButton.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Contact save button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect(page.getByText("Enter a valid email address.")).toBeVisible();
+  expect(contactDetails.primary_phone).toBeNull();
+  await page.getByPlaceholder("student@example.com").fill("student@example.test");
   await contactSaveButton.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
     if (!form) throw new Error("Contact save button is not associated with its form.");
