@@ -268,6 +268,13 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("unexpected first student-guardian link: %+v", firstLink)
 	}
 
+	if _, err := repo.UpdateStudentGuardianLink(ctx, teacherPrincipalID, schoolID, firstLink.ID, "father", false, false); !errors.Is(err, ErrGuardianAccessDenied) {
+		t.Fatalf("Teacher must not update guardian relationship: %v", err)
+	}
+	if _, err := repo.UpdateStudentGuardianLink(ctx, targetPrincipalID, otherSchoolID, firstLink.ID, "father", false, false); !errors.Is(err, ErrGuardianAccessDenied) {
+		t.Fatalf("cross-school guardian relationship update error = %v, want access denied", err)
+	}
+
 	var relatedStudentID int64
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO students (school_id, admission_number, full_name)
@@ -341,6 +348,9 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 	if err := repo.RevokeStudentGuardianLink(ctx, targetPrincipalID, schoolID,
 		firstLink.ID, "relationship ended"); err != nil {
 		t.Fatalf("revoke student guardian link: %v", err)
+	}
+	if _, err := repo.UpdateStudentGuardianLink(ctx, targetPrincipalID, schoolID, firstLink.ID, "mother", false, false); !errors.Is(err, ErrGuardianNotFound) {
+		t.Fatalf("revoked guardian relationship update error = %v, want not found", err)
 	}
 	active, err = repo.ListStudentGuardians(ctx, targetPrincipalID, schoolID, studentID, false)
 	if err != nil || len(active) != 1 || active[0].ID != secondLink.ID {
