@@ -183,7 +183,16 @@ test("student admission, profile navigation and parent details render without br
   }));
   console.log("Admission form validity:", JSON.stringify(admissionFormState));
   expect(admissionFormState.valid).toBe(true);
-  await page.getByRole("button", { name: "Admit student" }).click();
+  await page.locator(".app-modal-content form").evaluate(form => {
+    form.addEventListener("submit", () => document.body.setAttribute("data-e2e-form-submitted", "true"), { once: true });
+  });
+  const submitButton = page.getByRole("button", { name: "Admit student" });
+  expect(await submitButton.evaluate(button => ({
+    type: (button as HTMLButtonElement).type,
+    belongsToForm: (button as HTMLButtonElement).form === button.closest("form"),
+  }))).toEqual({ type: "submit", belongsToForm: true });
+  await submitButton.click();
+  await expect(page.locator("body")).toHaveAttribute("data-e2e-form-submitted", "true");
   await expect.poll(() => createdAdmissions.length).toBe(1);
 
   await expect(page.getByText("Student admitted and enrolled for the selected academic year.")).toBeVisible();
