@@ -183,9 +183,11 @@ func TestStudentMedicalPhysicalDetailsV36PostgresIntegration(t *testing.T) {
 			     metadata::text LIKE '%'||$4||'%'
 			     OR metadata::text LIKE '%'||$5||'%'
 			     OR metadata::text LIKE '%'||$6||'%'
+			     OR metadata::text LIKE '%'||$7||'%'
+			     OR metadata::text LIKE '%'||$8||'%'
 			   )
 		)
-	`, schoolID, actorPrincipalID, fmt.Sprint(studentID), allergies, conditions, medications).Scan(&auditContainsHealthValue); err != nil {
+	`, schoolID, actorPrincipalID, fmt.Sprint(studentID), allergies, conditions, medications, vision, physicalNotes).Scan(&auditContainsHealthValue); err != nil {
 		t.Fatalf("inspect health audit metadata: %v", err)
 	}
 	if auditContainsHealthValue {
