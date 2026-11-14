@@ -30,6 +30,11 @@ test("student admission, profile navigation and parent details render without br
   const contactDetails: Record<string, unknown> = {
     id: 601, school_id: 10, student_id: 1, primary_phone: null, alternate_phone: null, email_address: null,
   };
+  const basicDetails: Record<string, unknown> = {
+    id: 1, school_id: 10, student_id: 1, date_of_birth: null, place_of_birth: null,
+    gender: null, nationality: null, religion: null, social_category: null,
+    ews_status: null, school_registration_number: null,
+  };
   const physicalDetails: Record<string, unknown> = {
     id: 0, school_id: 10, student_id: 1, height_cm: null, weight_kg: null, measured_on: null,
     vision_notes: null, physical_notes: null, history: [],
@@ -153,15 +158,8 @@ test("student admission, profile navigation and parent details render without br
         return;
       }
       if (subpath === "basic-details") {
-        await route.fulfill({
-          json: {
-            basic_details: {
-              id: studentID, school_id: 10, student_id: studentID, date_of_birth: null,
-              place_of_birth: null, gender: null, nationality: null, religion: null,
-              social_category: null, ews_status: null, school_registration_number: null,
-            },
-          },
-        });
+        if (method === "PUT") Object.assign(basicDetails, request.postDataJSON() as Record<string, unknown>);
+        await route.fulfill({ json: { basic_details: basicDetails } });
         return;
       }
       if (subpath === "guardians" || subpath === "related-students") {
@@ -298,6 +296,19 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("button", { name: /Basic details/ }).click();
   await expect(page.getByRole("dialog", { name: "Basic Details" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Save basic details" })).toBeVisible();
+  await page.getByPlaceholder("City, district or place").fill("Ambala, Haryana");
+  await page.getByPlaceholder("e.g. Indian").fill("Indian");
+  await page.getByRole("button", { name: "Gender", exact: true }).click();
+  await page.getByRole("option", { name: "Male" }).click();
+  const basicSaveButton = page.getByRole("button", { name: "Save basic details" });
+  await basicSaveButton.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Basic details save button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect.poll(() => basicDetails.place_of_birth).toBe("Ambala, Haryana");
+  expect(basicDetails).toMatchObject({ nationality: "Indian", gender: "male" });
+  await expect(page.getByText("Basic details saved.")).toBeVisible();
   await page.getByRole("button", { name: "Close dialog" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
 
