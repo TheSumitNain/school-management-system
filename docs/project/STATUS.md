@@ -224,4 +224,4 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - Review found ListStudents and GetStudent were school-scoped and permission-protected but did not emit read-audit events.
 - Added transactional audit events for student directory reads (section and result count only) and individual student profile reads (section only). The list count query, result query, authorization and audit insert share one transaction.
 - Added PostgreSQL integration assertions that both read actions are recorded and that student names/admission numbers do not appear in read-audit metadata.
-- Changes are pushed to work; local PostgreSQL integration, full backend tests and go vet are pending.
+- User verified `TestStudentProfileRepositoryPostgresIntegration`, the full backend test suite (`go test -count=1 -p 1 ./...`) and `go vet ./...` against `school_management_test`; all passed. A Windows temporary executable unlink warning appeared after the targeted test, but the test itself returned success.
