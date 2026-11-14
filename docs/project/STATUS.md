@@ -3,7 +3,7 @@
 **Last reconciled:** 2026-11-14  
 **Repository:** `TheSumitNain/school-management-system`  
 **Reviewed branch:** `work`  
-**Reviewed through:** `e3ae077` (`work` branch; V34 verification pending)
+**Reviewed through:** `4900836` (`work` branch; user-local verification pending)
 
 ## Student Management — approved yearly admission model (V31/V32 schema transition; application cutover in progress)
 
@@ -18,8 +18,8 @@
 - The Student Management page now uses a guided first-admission form (student name, admission number, academic year, section, optional roll number and admission date) and requires year-specific admission number/date when enrolling an existing student.
 - V34 adds tenant-aware hierarchical locations and separate current/permanent student address records. Backend APIs support location search/add/deactivate and address read/update; the frontend now has an independently editable Address & Communication section with dependent State → District → Block/Tehsil → Village/City selectors and school-owned additions. No guessed national geography catalogue has been seeded.
 - **Earlier user-reported local verification:** V31 focused behavioral test, related repository regression tests, full backend `go test -count=1 -p 1 ./...`, and `go vet ./...` passed against the disposable `school_management_test` database before the V32/application changes.
-- **GitHub Actions verification (2026-11-14):** backend CI passed on commit `429985b`, including all migrations on an ephemeral PostgreSQL database, full backend integration tests, and `go vet`; frontend CI passed on commit `7599c3c`, including dependency installation, design-token checks, TypeScript and production build. The later V34 backend migration/API and address-section changes are awaiting their latest CI runs and user-local verification.
-- **Application cutover remains in verification:** V32/V33/V34 migrations and the full combined-admission/address workflow have not yet been run in the user's local test database. Parent/sibling, medical/physical and document profile sections remain future implementation work.
+- **GitHub Actions verification (2026-11-14):** backend CI passed on commit `429985b`, including all migrations on an ephemeral PostgreSQL database, full backend integration tests, and `go vet`; frontend CI passed on commit `7599c3c`, including dependency installation, design-token checks, TypeScript and production build. The V34 backend migration/API and Address & Communication UI passed GitHub CI on commits `13d1a4d` (backend, including PostgreSQL migrations/integration tests and `go vet`) and `4900836` (frontend, including design-token checks, TypeScript and production build). User-local verification remains pending.
+- **Application cutover remains in verification:** V32/V33/V34 migrations and the full combined-admission/address workflow have not yet been run in the user's local test database. Student phone/email contact fields, parent/sibling, medical/physical and document profile sections remain future implementation work.
 - The persistent `school_management` application database has not been migrated by this work. Do not apply V32 or any pending migration to it without explicit approval and a verified backup.
 
 ## Staff Management — employee profile workflow implemented
