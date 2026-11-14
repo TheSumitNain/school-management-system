@@ -116,7 +116,9 @@ export function useSchoolStudentMedicalDetailsQuery(studentID: number, enabled =
     queryKey: schoolStudentQueryKeys.medicalDetails(studentID),
     queryFn: ({ signal }) => getSchoolStudentMedicalDetails(studentID, signal),
     enabled: enabled && studentID > 0,
-    staleTime: 15_000,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
   });
 }
 export function useSchoolStudentPhysicalDetailsQuery(studentID: number, enabled = true) {
@@ -124,7 +126,9 @@ export function useSchoolStudentPhysicalDetailsQuery(studentID: number, enabled 
     queryKey: schoolStudentQueryKeys.physicalDetails(studentID),
     queryFn: ({ signal }) => getSchoolStudentPhysicalDetails(studentID, signal),
     enabled: enabled && studentID > 0,
-    staleTime: 15_000,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
   });
 }
 export function useSchoolStudentLocationsQuery(filters: { parentID?: number; level?: string; q?: string } = {}, enabled = true) {
