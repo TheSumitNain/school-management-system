@@ -618,7 +618,8 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 		apiStudentID, apiYear.ID, apiSection.ID, nil, firstAdmissionNumber, enrolledAt, enrolledAt)
 	if err != nil || apiEnrollment == nil || apiEnrollment.ClassNameSnapshot != apiClass.Name ||
 		apiEnrollment.SectionNameSnapshot != "B" || apiEnrollment.AdmissionNumber == nil ||
-		*apiEnrollment.AdmissionNumber != firstAdmissionNumber || apiEnrollment.AdmissionDate == nil {
+		*apiEnrollment.AdmissionNumber != firstAdmissionNumber || apiEnrollment.AdmissionDate == nil ||
+		apiEnrollment.RollNumber == nil || *apiEnrollment.RollNumber != "1" {
 		t.Fatalf("create enrollment through repository: enrollment=%+v err=%v", apiEnrollment, err)
 	}
 	if _, err := academicRepo.CreateStudentEnrollment(ctx, actorPrincipalID, schoolID,
@@ -638,7 +639,8 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 		apiEnrollment.ID, nextYear.ID, nextSection.ID, nil, nextAdmissionNumber, promotedAt, promotedAt)
 	if err != nil || promoted == nil || promoted.AcademicYearID != nextYear.ID ||
 		promoted.SectionNameSnapshot != "C" || promoted.AdmissionNumber == nil ||
-		*promoted.AdmissionNumber != nextAdmissionNumber || promoted.AdmissionDate == nil {
+		*promoted.AdmissionNumber != nextAdmissionNumber || promoted.AdmissionDate == nil ||
+		promoted.RollNumber == nil || *promoted.RollNumber != "1" {
 		t.Fatalf("promote enrollment through repository: enrollment=%+v err=%v", promoted, err)
 	}
 
@@ -650,7 +652,8 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 		combinedName, combinedNumber, apiYear.ID, apiSection.ID, nil, enrolledAt)
 	if err != nil || combined == nil || combined.Student.ID <= 0 ||
 		combined.Student.AdmissionNumber != combinedNumber || combined.Enrollment.StudentID != combined.Student.ID ||
-		combined.Enrollment.AdmissionNumber == nil || *combined.Enrollment.AdmissionNumber != combinedNumber {
+		combined.Enrollment.AdmissionNumber == nil || *combined.Enrollment.AdmissionNumber != combinedNumber ||
+		combined.Enrollment.RollNumber == nil || *combined.Enrollment.RollNumber != "2" {
 		t.Fatalf("create combined student admission: result=%+v err=%v", combined, err)
 	}
 	directoryMatches, directoryTotal, err := academicRepo.ListStudents(
