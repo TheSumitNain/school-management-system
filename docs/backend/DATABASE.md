@@ -138,3 +138,11 @@ Official source entry points reviewed on 2026-11-14:
 - Ministry LGD hierarchy overview (shows revenue entities and development blocks as distinct branches): https://panchayat.gov.in/lgd/
 
 The OGD catalog and its District resource describe monthly updates; record the exact source snapshot/update date actually downloaded, not the page's current crawl date. OGD pages expose download/API entry points, but automated access and the current export schema must be verified against the actual official resource response before implementing a parser. The official catalog page itself is the source-of-truth discovery point; do not assume a community API mirrors the current official dataset.
+
+### Read-only LGD snapshot validation tool
+
+`go run ./cmd/lgdvalidate -file <normalized.csv> -snapshot-date YYYY-MM-DD` validates a reviewed all-India hierarchy snapshot without opening a database connection. It checks the normalized CSV header, required values, code/name length limits, duplicate/conflicting source-code mappings, parent-child consistency, locality types, unique two-character V40 IGOD State/UT crosswalks, and minimum distinct counts (defaults: 36 States/UTs and at least one district, sub-district and locality). Minimum-count flags can be raised or lowered explicitly for a reviewed partial snapshot.
+
+The validator's input contract is exactly:
+`state_code,state_name,igod_state_code,district_code,district_name,subdistrict_code,subdistrict_name,locality_code,locality_name,locality_type`.
+Each row represents one locality and repeats its State → District → Sub-District ancestors. LGD source codes are kept as strings so leading zeroes are preserved. The IGOD crosswalk column must use the existing V40 two-character source code. The validator does not assume the OGD portal's raw export uses this normalized layout: inspect and transform the exact official source snapshot separately, preserving its original file and checksum. This command is a pre-import gate only; it performs no inserts, updates, deactivations or deletes. A later importer must require a separately reviewed crosswalk and explicit apply action.
