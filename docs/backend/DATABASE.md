@@ -102,6 +102,10 @@ A future LGD import must:
 
 Do not build a runtime dependency on an unofficial mirror. Import only from a reviewed official LGD/OGD download or a verified official API response. The current V40 State/UT seed is separate; no lower-level national hierarchy has been fabricated.
 
+### Revenue sub-districts versus development blocks
+
+Do not treat a revenue Sub-District (commonly called a Tehsil/Taluk/Mandal, depending on the State/UT) as interchangeable with a Development Block. They are distinct administrative concepts and LGD publishes them as separate entity types. The student address locality chain currently models the revenue path State/UT → District → Sub-District → Village/City; the database level `subdistrict` represents only the revenue sub-district. Do not label it simply as Block or seed development-block records into it. If a future school workflow needs Development Block, add a separate optional relationship/reference level with its own LGD source codes and parent validation rather than inserting it into the revenue address chain. Urban localities may require a separately reviewed mapping strategy where LGD's village/revenue path does not directly represent a city address.
+
 ## Local database configuration
 
 Use `backend/.env.example` as the configuration reference. Keep local `.env` files and all passwords, JWT secrets, TOTP encryption keys and other credentials out of Git.
