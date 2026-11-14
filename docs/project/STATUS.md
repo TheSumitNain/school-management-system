@@ -438,3 +438,10 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - The test edits the relationship from `Father` to `Legal Guardian`, verifies the PATCH payload updates only that student's relationship record, and confirms the updated label renders after query refresh.
 - Frontend CI run `43599397403` passed for commit `43ea1aef0f5663053b806a393c2f3aec811cfcba`, including the expanded parent relationship browser flow.
 - Guardian profile shared-field editing (which affects every linked student) remains separately protected by its confirmation flow; this smoke test deliberately does not mutate shared guardian details.
+
+### Address, contact and physical-details browser coverage follow-up
+
+- Expanded the same Chromium acceptance test to open Address & Communication, save a primary contact phone number, and verify the saved value in the mocked API state.
+- Expanded Medical & Physical Details coverage: the test checks the restricted-health privacy notice, switches to Physical Details, confirms invalid height and missing measurement date errors appear together, then saves a valid height with a measurement date.
+- Frontend CI run `43599830202` passed for commit `6732d1c8a5cfe42b44a0fd37b7b3cbc473d65d85`, including all expanded browser flows.
+- These remain frontend-only mocked API checks. PostgreSQL integration tests separately verify persistence, tenant boundaries, permissions, history and audit behavior.
