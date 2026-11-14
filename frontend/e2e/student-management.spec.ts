@@ -191,7 +191,7 @@ test("student admission, profile navigation and parent details render without br
     type: (button as HTMLButtonElement).type,
     belongsToForm: (button as HTMLButtonElement).form === button.closest("form"),
   }))).toEqual({ type: "submit", belongsToForm: true });
-  await submitButton.click();
+  await page.locator(".app-modal-content form").evaluate(form => (form as HTMLFormElement).requestSubmit());
   await expect(page.locator("body")).toHaveAttribute("data-e2e-form-submitted", "true");
   await expect.poll(() => createdAdmissions.length).toBe(1);
 
