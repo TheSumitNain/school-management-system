@@ -213,7 +213,7 @@ func TestStudentMedicalPhysicalDetailsV36PostgresIntegration(t *testing.T) {
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO principal_roles(principal_id,role_id,assigned_by)
 		VALUES($1,$2,$3)
-	`, actorPrincipalID, teacherRoleID, platformAdminPrincipalID); err != nil {
+	`, actorPrincipalID, teacherRoleID, actorPrincipalID); err != nil {
 		t.Fatalf("assign Teacher role for restricted health access test: %v", err)
 	}
 	if _, err := tx.Exec(ctx, `
