@@ -385,21 +385,29 @@ func (r *AcademicRepository) SaveStudentAddress(
 		}
 	}
 
-	if _, err := tx.Exec(ctx, `
-		INSERT INTO student_addresses
-			(school_id,student_id,address_type,address_line_1,address_line_2,area_mohalla,landmark,postal_code,location_id,same_as_current)
-		VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-		ON CONFLICT(student_id,address_type) DO UPDATE SET
-			address_line_1=EXCLUDED.address_line_1,
-			address_line_2=EXCLUDED.address_line_2,
-			area_mohalla=EXCLUDED.area_mohalla,
-			landmark=EXCLUDED.landmark,
-			postal_code=EXCLUDED.postal_code,
-			location_id=EXCLUDED.location_id,
-			same_as_current=EXCLUDED.same_as_current,
-			updated_at=NOW()
-	`, schoolID, studentID, addressType, line1, line2, areaMohalla, landmark, postalCode, locationID, sameAsCurrent); err != nil {
-		return nil, academicWriteError(err)
+	var addressExists bool
+	if err := tx.QueryRow(ctx, `SELECT EXISTS(
+		SELECT 1 FROM student_addresses WHERE school_id=$1 AND student_id=$2 AND address_type=$3
+	)`, schoolID, studentID, addressType).Scan(&addressExists); err != nil {
+		return nil, fmt.Errorf("check existing student address: %w", err)
+	}
+	var writeErr error
+	if addressExists {
+		_, writeErr = tx.Exec(ctx, `
+			UPDATE student_addresses SET
+				address_line_1=$4,address_line_2=$5,area_mohalla=$6,landmark=$7,
+				postal_code=$8,location_id=$9,same_as_current=$10,updated_at=NOW()
+			WHERE school_id=$1 AND student_id=$2 AND address_type=$3
+		`, schoolID, studentID, addressType, line1, line2, areaMohalla, landmark, postalCode, locationID, sameAsCurrent)
+	} else {
+		_, writeErr = tx.Exec(ctx, `
+			INSERT INTO student_addresses
+				(school_id,student_id,address_type,address_line_1,address_line_2,area_mohalla,landmark,postal_code,location_id,same_as_current)
+			VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+		`, schoolID, studentID, addressType, line1, line2, areaMohalla, landmark, postalCode, locationID, sameAsCurrent)
+	}
+	if writeErr != nil {
+		return nil, academicWriteError(writeErr)
 	}
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
