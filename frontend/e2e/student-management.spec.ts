@@ -181,7 +181,6 @@ test("student admission, profile navigation and parent details render without br
       return { name: field.name, value: field.value, required: field.required, valid: field.validity?.valid };
     }),
   }));
-  console.log("Admission form validity:", JSON.stringify(admissionFormState));
   expect(admissionFormState.valid).toBe(true);
   await page.locator(".app-modal-content form").evaluate(form => {
     form.addEventListener("submit", () => document.body.setAttribute("data-e2e-form-submitted", "true"), { once: true });
@@ -191,7 +190,7 @@ test("student admission, profile navigation and parent details render without br
     type: (button as HTMLButtonElement).type,
     belongsToForm: (button as HTMLButtonElement).form === button.closest("form"),
   }))).toEqual({ type: "submit", belongsToForm: true });
-  await page.locator(".app-modal-content form").evaluate(form => (form as HTMLFormElement).requestSubmit());
+  await submitButton.click();
   await expect(page.locator("body")).toHaveAttribute("data-e2e-form-submitted", "true");
   await expect.poll(() => createdAdmissions.length).toBe(1);
 
@@ -208,7 +207,7 @@ test("student admission, profile navigation and parent details render without br
 
   await page.getByRole("button", { name: "View profile for Aarav Sharma" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
-  await expect(page.getByText("Academic history")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Academic history", exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: /Basic details/ }).click();
   await expect(page.getByRole("dialog", { name: "Basic Details" })).toBeVisible();
