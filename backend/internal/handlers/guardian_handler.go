@@ -18,6 +18,7 @@ type GuardianManagementService interface {
 	GetGuardian(context.Context,int64,int64,int64)(*repository.Guardian,error)
 	SaveGuardian(context.Context,int64,int64,int64,string,*string,*string,string)(*repository.Guardian,error)
 	ListStudentGuardians(context.Context,int64,int64,int64,bool)([]repository.StudentGuardian,error)
+	ListStudentRelatedStudents(context.Context,int64,int64,int64)([]repository.StudentRelatedStudent,error)
 	LinkStudentGuardian(context.Context,int64,int64,int64,int64,string,bool,bool)(*repository.StudentGuardian,error)
 	RevokeStudentGuardianLink(context.Context,int64,int64,int64,string)error
 }
@@ -73,6 +74,15 @@ func(h *GuardianHandler) SaveGuardian(c *gin.Context){
 	if err!=nil{guardianError(c,err,"Guardian");return}
 	code:=http.StatusOK;if id==0{code=http.StatusCreated}
 	c.JSON(code,gin.H{"status":"success","guardian":v})
+}
+
+func(h *GuardianHandler) ListStudentRelatedStudents(c *gin.Context){
+	a,s,ok:=h.ready(c);if !ok{return}
+	student,valid:=guardianID(c,"studentID")
+	if !valid{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid student ID"});return}
+	items,err:=h.service.ListStudentRelatedStudents(c.Request.Context(),a,s,student)
+	if err!=nil{guardianError(c,err,"Related student");return}
+	c.JSON(http.StatusOK,gin.H{"status":"success","related_students":items})
 }
 
 func(h *GuardianHandler) ListStudentGuardians(c *gin.Context){
