@@ -400,6 +400,8 @@ test("student admission, profile navigation and parent details render without br
   });
   await expect.poll(() => medicalDetails.blood_group).toBe("O+");
   await expect.poll(() => medicalDetails.allergies).toBe("Peanuts");
+  await expect.poll(() => medicalDetails.known_conditions).toBe("No other known conditions");
+  await expect.poll(() => medicalDetails.version_number).toBe(1);
   await expect(page.getByText("Medical details saved.")).toBeVisible();
   await page.getByRole("button", { name: "Physical details" }).click();
   await page.getByPlaceholder("e.g. 132.5").fill("500");
