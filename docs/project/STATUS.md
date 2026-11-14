@@ -407,3 +407,11 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - Existing V37 integration coverage verifies basic-profile save/read, registration-number normalization/uniqueness, immutable identity/creator fields, cross-school read denial, and value-free audit metadata.
 - Source review confirms address/contact/basic/medical/physical saves are separate transactional operations; all writes require live `students.update`, sensitive reads require `students.read_sensitive`, and each write locks the owning student row before mutation. Existing tenant and sensitive-data boundaries remain unchanged.
 - No persistent database was migrated. Browser-level create/view/edit/save acceptance remains pending; do not claim full UI acceptance based on repository tests alone.
+
+## Student Management view-switcher accessibility — 2026-11-14
+
+- Student Directory / Enrollments switcher now uses a labelled button group with `aria-pressed`, matching its actual interaction model. It no longer advertises an incomplete ARIA tablist without tabpanel and keyboard-roving-focus behavior.
+- Existing visual styling, permission-based visibility, and view-switching callbacks are unchanged.
+- Frontend CI for commit `233fa27595dd2336edc23f21b7765a701152dbf2` (workflow run `43597474039`) passed: design-token/style checks, TypeScript project build, and Vite production build.
+- Backend CI for the same commit (workflow run `43597474026`) was still running when this status entry was written.
+- Browser-level Student Management acceptance remains pending; no claim of end-to-end browser verification is made.
