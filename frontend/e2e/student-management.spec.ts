@@ -325,6 +325,19 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("button", { name: "Save student name" }).click();
   await expect(page.getByText("Student name saved.")).toBeVisible();
   await expect.poll(() => students[0]?.full_name).toBe("Aarav Sharma Updated");
+  await page.getByRole("button", { name: "Date of birth" }).click();
+  const dobLabels = await page.evaluate(() => {
+    const label = (offset: number) => {
+      const date = new Date();
+      date.setDate(date.getDate() + offset);
+      return date.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    };
+    return { yesterday: label(-1), tomorrow: label(1) };
+  });
+  const dobCalendar = page.getByRole("dialog", { name: "Choose date of birth" });
+  await expect(dobCalendar.getByRole("button", { name: dobLabels.tomorrow })).toBeDisabled();
+  await dobCalendar.getByRole("button", { name: dobLabels.yesterday }).click();
+  await expect(page.getByRole("button", { name: "Date of birth" })).toContainText(/\\d{2} [A-Za-z]{3} \\d{4}/);
   await page.getByPlaceholder("City, district or place").fill("Ambala, Haryana");
   await page.getByPlaceholder("e.g. Indian").fill("Indian");
   await page.getByRole("button", { name: "Gender", exact: true }).click();
@@ -337,6 +350,7 @@ test("student admission, profile navigation and parent details render without br
   });
   await expect.poll(() => basicDetails.place_of_birth).toBe("Ambala, Haryana");
   expect(basicDetails).toMatchObject({ nationality: "Indian", gender: "male" });
+  expect(basicDetails.date_of_birth).toMatch(/^\\d{4}-\\d{2}-\\d{2}$/);
   await expect(page.getByText("Basic details saved.")).toBeVisible();
   await page.getByRole("button", { name: "Close dialog" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
