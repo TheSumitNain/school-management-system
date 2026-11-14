@@ -176,12 +176,12 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
             <form className="student-family-link-form" onSubmit={linkSelectedGuardian} noValidate>
               <h4>Link a guardian</h4>
               <label>Search active guardian contacts<input value={search} onChange={event => { setSearch(event.target.value); setSelectedGuardianID(0); setGuardianSelectError(""); }} placeholder="Search by name, phone or email"/></label>
-              <Select ariaLabel="Select guardian" value={String(selectedGuardianID || "")} onChange={value => { setSelectedGuardianID(Number(value)); setGuardianSelectError(""); }} placeholder="Choose a guardian" options={guardianOptions} disabled={guardiansQuery.isLoading}/>
-              {guardianSelectError && <small className="app-field-error">{guardianSelectError}</small>}
+              <Select ariaLabel="Select guardian" value={String(selectedGuardianID || "")} onChange={value => { setSelectedGuardianID(Number(value)); setGuardianSelectError(""); }} placeholder="Choose a guardian" options={guardianOptions} disabled={guardiansQuery.isLoading} invalid={Boolean(guardianSelectError)} describedBy={guardianSelectError ? "student-guardian-select-error" : undefined}/>
+              {guardianSelectError && <small id="student-guardian-select-error" className="app-field-error">{guardianSelectError}</small>}
               {guardiansQuery.isError && <small className="app-field-error" role="alert">{guardiansQuery.error.message}</small>}
               {!guardiansQuery.isLoading && !guardiansQuery.isError && guardianOptions.length === 0 && <p className="student-address-note">No unlinked active guardian contacts match this search. You can create a new contact below.</p>}
-              <label>Relationship to student<input value={relationshipType} maxLength={40} onChange={event => { setRelationshipType(event.target.value); setRelationshipError(""); }} placeholder="Father, Mother, Guardian…"/></label>
-              {relationshipError && <small className="app-field-error">{relationshipError}</small>}
+              <label>Relationship to student<input value={relationshipType} maxLength={40} aria-invalid={Boolean(relationshipError)} aria-describedby={relationshipError ? "student-guardian-relationship-error" : undefined} onChange={event => { setRelationshipType(event.target.value); setRelationshipError(""); }} placeholder="Father, Mother, Guardian…"/></label>
+              {relationshipError && <small id="student-guardian-relationship-error" className="app-field-error">{relationshipError}</small>}
               <div className="student-family-checks">
                 <label><input type="checkbox" checked={primaryContact} onChange={event => setPrimaryContact(event.target.checked)}/> Primary contact</label>
                 <label><input type="checkbox" checked={emergencyContact} onChange={event => setEmergencyContact(event.target.checked)}/> Emergency contact</label>
@@ -193,16 +193,16 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
             {showCreateGuardian && (
               <form className="student-family-create-form" onSubmit={saveGuardian} noValidate>
                 <h4>New guardian contact</h4>
-                <label>Full name<input name="guardian_full_name" disabled={busy} value={newGuardianName} maxLength={200} onChange={event => { setNewGuardianName(event.target.value); setNewGuardianNameError(""); }} placeholder="Guardian full name"/>{newGuardianNameError && <small className="app-field-error">{newGuardianNameError}</small>}</label>
+                <label>Full name<input name="guardian_full_name" disabled={busy} value={newGuardianName} maxLength={200} aria-invalid={Boolean(newGuardianNameError)} aria-describedby={newGuardianNameError ? "student-guardian-name-error" : undefined} onChange={event => { setNewGuardianName(event.target.value); setNewGuardianNameError(""); }} placeholder="Guardian full name"/>{newGuardianNameError && <small id="student-guardian-name-error" className="app-field-error">{newGuardianNameError}</small>}</label>
                 <label>Mobile number<input disabled={busy} value={newGuardianMobile} maxLength={30} onChange={event => setNewGuardianMobile(event.target.value)} placeholder="Mobile number"/></label>
-                <label>Email address<input name="guardian_email_address" disabled={busy} type="email" value={newGuardianEmail} maxLength={254} onChange={event => { setNewGuardianEmail(event.target.value); setNewGuardianEmailError(""); }} placeholder="guardian@example.com"/>{newGuardianEmailError && <small className="app-field-error">{newGuardianEmailError}</small>}</label>
+                <label>Email address<input name="guardian_email_address" disabled={busy} type="email" value={newGuardianEmail} maxLength={254} aria-invalid={Boolean(newGuardianEmailError)} aria-describedby={newGuardianEmailError ? "student-guardian-email-error" : undefined} onChange={event => { setNewGuardianEmail(event.target.value); setNewGuardianEmailError(""); }} placeholder="guardian@example.com"/>{newGuardianEmailError && <small id="student-guardian-email-error" className="app-field-error">{newGuardianEmailError}</small>}</label>
                 
                 <button type="submit" className="secondary" disabled={busy}>{createGuardian.isPending ? "Saving…" : "Save guardian contact"}</button>
               </form>
             )}
             {pendingRevokeID > 0 && (
               <div className="student-location-confirm" role="alertdialog" aria-label="Revoke guardian relationship">
-                <label>Reason for revocation<input value={revokeReason} maxLength={500} onChange={event => { setRevokeReason(event.target.value); setRevokeReasonError(""); }} placeholder="Explain why this link is being revoked"/>{revokeReasonError && <small className="app-field-error">{revokeReasonError}</small>}</label>
+                <label>Reason for revocation<input value={revokeReason} maxLength={500} aria-invalid={Boolean(revokeReasonError)} aria-describedby={revokeReasonError ? "student-guardian-revoke-reason-error" : undefined} onChange={event => { setRevokeReason(event.target.value); setRevokeReasonError(""); }} placeholder="Explain why this link is being revoked"/>{revokeReasonError && <small id="student-guardian-revoke-reason-error" className="app-field-error">{revokeReasonError}</small>}</label>
                 <div><button type="button" className="app-modal-cancel" onClick={() => { setPendingRevokeID(0); setRevokeReasonError(""); }} disabled={busy}>Cancel</button><button type="button" className="secondary" onClick={() => void confirmRevoke()} disabled={busy}>{revokeLink.isPending ? "Revoking…" : "Confirm revoke"}</button></div>
               </div>
             )}
