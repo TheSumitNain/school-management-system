@@ -7,8 +7,8 @@ import (
 	"time"
 )
 
-// TestStudentGuardianFoundationPostgresIntegration verifies V11's relational
-// constraints against PostgreSQL, including the composite tenant boundaries.
+// TestStudentGuardianFoundationPostgresIntegration verifies the student/guardian
+// relational constraints, composite tenant boundaries, and V32 legacy admission semantics.
 func TestStudentGuardianFoundationPostgresIntegration(t *testing.T) {
 	_, pool, userID := newPostgresIntegrationRepository(t)
 	ctx := context.Background()
@@ -139,12 +139,15 @@ func TestStudentGuardianFoundationPostgresIntegration(t *testing.T) {
 		t.Fatal("expected cross-school student-guardian link to be rejected")
 	}
 
-	if _, err := pool.Exec(ctx,
+	// V32 makes the student-level admission value legacy-only and non-unique.
+	// Year-specific uniqueness is enforced by student_enrollments (V31).
+	var duplicateLegacyStudentID int64
+	if err := pool.QueryRow(ctx,
 		`INSERT INTO students (school_id, admission_number, full_name)
-		 VALUES ($1, $2, 'Duplicate Admission')`,
+		 VALUES ($1, $2, 'Duplicate Legacy Admission') RETURNING id`,
 		schoolID1, "  "+admission+"-Student One  ",
-	); err == nil {
-		t.Fatal("expected case/whitespace-normalized admission number collision to be rejected")
+	).Scan(&duplicateLegacyStudentID); err != nil {
+		t.Fatalf("same legacy admission value should be allowed on another permanent student: %v", err)
 	}
 
 	if _, err := pool.Exec(ctx,
