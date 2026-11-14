@@ -32,11 +32,16 @@ func (r *AcademicRepository) GetStudentBasicDetails(
 	if r == nil || r.db == nil || studentID <= 0 {
 		return nil, ErrAcademicAccessDenied
 	}
-	if err := authorizeAcademic(ctx, r.db, actorID, schoolID, "students.read_sensitive"); err != nil {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin student basic details read: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := authorizeAcademic(ctx, tx, actorID, schoolID, "students.read_sensitive"); err != nil {
 		return nil, err
 	}
 	var exists bool
-	if err := r.db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM students WHERE id=$1 AND school_id=$2)`,
+	if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM students WHERE id=$1 AND school_id=$2)`,
 		studentID, schoolID).Scan(&exists); err != nil {
 		return nil, fmt.Errorf("check student for basic details: %w", err)
 	}
@@ -44,7 +49,7 @@ func (r *AcademicRepository) GetStudentBasicDetails(
 		return nil, ErrAcademicNotFound
 	}
 	var item StudentBasicDetails
-	err := r.db.QueryRow(ctx, `
+	err = tx.QueryRow(ctx, `
 		SELECT id,school_id,student_id,date_of_birth,place_of_birth,gender,nationality,
 		       religion,social_category,ews_status,school_registration_number,created_at,updated_at
 		  FROM student_basic_details WHERE school_id=$1 AND student_id=$2
@@ -54,10 +59,21 @@ func (r *AcademicRepository) GetStudentBasicDetails(
 		&item.EWSStatus, &item.SchoolRegistrationNumber, &item.CreatedAt, &item.UpdatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return &StudentBasicDetails{SchoolID: schoolID, StudentID: studentID}, nil
-	}
-	if err != nil {
+		item = StudentBasicDetails{SchoolID: schoolID, StudentID: studentID}
+	} else if err != nil {
 		return nil, fmt.Errorf("load student basic details: %w", err)
+	}
+	// Sensitive-profile reads are auditable. Never copy profile values into
+	// audit metadata; the student identity and section name are sufficient.
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
+		VALUES($1,$2,'school.student.basic_details.read','student_basic_details',$3,'success',
+		       jsonb_build_object('section','basic_details'))
+	`, actorID, schoolID, fmt.Sprint(studentID)); err != nil {
+		return nil, fmt.Errorf("audit student basic details read: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit student basic details read: %w", err)
 	}
 	return &item, nil
 }
