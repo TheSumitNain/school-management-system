@@ -7,7 +7,7 @@ on:
       - "frontend/**"
       - ".github/workflows/frontend-ci.yml"
   push:
-    branches: [main, feature/school-attendance-management]
+    branches: [main, work, feature/school-attendance-management]
     paths:
       - "frontend/**"
       - ".github/workflows/frontend-ci.yml"
