@@ -20,19 +20,21 @@ export function StudentFieldLabel({ label, required = false, conditional = false
       <span className={"student-field-label__status" + (required || conditional ? " is-required" : "")}>{status}</span>
       {hint && (
         <span className="student-field-hint">
-          <button
-            type="button"
+          <span
+            role="button"
+            tabIndex={0}
             className="student-field-hint__trigger"
             aria-label={"Help for " + label}
             aria-expanded={hintOpen}
             aria-controls={hintID}
-            onClick={() => setHintOpen(open => !open)}
+            onClick={event => { event.preventDefault(); event.stopPropagation(); setHintOpen(open => !open); }}
             onKeyDown={event => {
+              if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setHintOpen(open => !open); }
               if (event.key === "Escape") setHintOpen(false);
             }}
           >
             <Info size={14} aria-hidden="true" />
-          </button>
+          </span>
           <span className={"student-field-hint__tooltip" + (hintOpen ? " is-open" : "")} id={hintID} role="tooltip">{hint}</span>
         </span>
       )}
