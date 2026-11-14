@@ -149,7 +149,7 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
                 <label>Ongoing medications<textarea disabled={!canUpdate || busy} rows={3} maxLength={2000} value={ongoingMedications} onChange={event => setOngoingMedications(event.target.value)} placeholder="Record medication information provided by the family"/></label>
                 <label className="wide">Emergency medical notes<textarea disabled={!canUpdate || busy} rows={3} maxLength={2000} value={emergencyNotes} onChange={event => setEmergencyNotes(event.target.value)} placeholder="Only essential emergency information"/></label>
               </div>
-              {!canUpdate && <p className="student-address-note">View-only access. Student update permission is required to edit these details.</p>}
+              {!canUpdate && <p className="student-address-note">View-only access. An active student record and student update permission are required to edit these details.</p>}
               <div className="app-modal-actions">
                 <button type="button" className="app-modal-cancel" onClick={onClose} disabled={busy}>Close</button>
                 {canUpdate && <button className="primary" disabled={busy || medicalQuery.isLoading || medicalQuery.isError}>{saveMedical.isPending ? "Saving…" : "Save medical details"}</button>}
@@ -169,7 +169,7 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
                 <label>Vision notes<textarea disabled={!canUpdate || busy} rows={3} maxLength={1000} value={visionNotes} onChange={event => setVisionNotes(event.target.value)} placeholder="Optional vision-related notes"/></label>
                 <label className="wide">Physical notes<textarea disabled={!canUpdate || busy} rows={3} maxLength={2000} value={physicalNotes} onChange={event => setPhysicalNotes(event.target.value)} placeholder="Optional physical details provided by the family"/></label>
               </div>
-              {!canUpdate && <p className="student-address-note">View-only access. Student update permission is required to edit these details.</p>}
+              {!canUpdate && <p className="student-address-note">View-only access. An active student record and student update permission are required to edit these details.</p>}
               <div className="app-modal-actions">
                 <button type="button" className="app-modal-cancel" onClick={onClose} disabled={busy}>Close</button>
                 {canUpdate && <button className="primary" disabled={busy || physicalQuery.isLoading || physicalQuery.isError}>{savePhysical.isPending ? "Saving…" : "Save physical details"}</button>}
