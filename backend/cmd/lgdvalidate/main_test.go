@@ -79,7 +79,7 @@ func TestValidateCSVRejectsConflictingLocalityParent(t *testing.T) {
 }
 
 func TestValidateCSVRejectsMalformedIGODCrosswalkCode(t *testing.T) {
-	input := strings.Replace(validSnapshot, ",HR,", ",hr,", 1)
+	input := strings.ReplaceAll(validSnapshot, ",HR,", ",hr,")
 	_, err := validateCSV(strings.NewReader(input))
 	if err == nil || !strings.Contains(err.Error(), "igod_state_code") {
 		t.Fatalf("validateCSV() error = %v, want malformed IGOD crosswalk error", err)
