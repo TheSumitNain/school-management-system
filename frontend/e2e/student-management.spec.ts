@@ -20,6 +20,13 @@ test("student admission, profile navigation and parent details render without br
   let nextStudentID = 1;
   const students: Student[] = [];
   const createdAdmissions: Record<string, unknown>[] = [];
+  const guardianLink = {
+    id: 501, student_id: 1, guardian_id: 22, guardian_name: "Ramesh Sharma", guardian_status: "active" as const,
+    mobile_number: "9876543210", email_address: "ramesh@example.test", alternate_mobile_number: null,
+    occupation: "Teacher", education: "Graduate", workplace_name: "Local School",
+    relationship_type: "Father", is_primary_contact: true, is_emergency_contact: true,
+    created_at: "2026-11-14T00:00:00.000Z", revoked_at: null,
+  };
 
   await page.route("**/api/**", async route => {
     const request = route.request();
@@ -131,7 +138,7 @@ test("student admission, profile navigation and parent details render without br
         return;
       }
       if (subpath === "guardians" || subpath === "related-students") {
-        await route.fulfill({ json: subpath === "guardians" ? { student_guardians: [] } : { related_students: [] } });
+        await route.fulfill({ json: subpath === "guardians" ? { student_guardians: [guardianLink] } : { related_students: [] } });
         return;
       }
       if (subpath === "addresses") {
@@ -150,6 +157,15 @@ test("student admission, profile navigation and parent details render without br
         await route.fulfill({ json: { physical_details: { id: 0, school_id: 10, student_id: studentID, history: [] } } });
         return;
       }
+    }
+    const guardianLinkMatch = path.match(/^\/school\/student-guardian-links\/(\d+)$/);
+    if (guardianLinkMatch && method === "PATCH") {
+      const input = request.postDataJSON() as {
+        relationship_type: string; is_primary_contact: boolean; is_emergency_contact: boolean;
+      };
+      Object.assign(guardianLink, input);
+      await route.fulfill({ json: { student_guardian: guardianLink } });
+      return;
     }
     if (path === "/school/guardians") {
       await route.fulfill({ json: { guardians: [], total: 0 } });
@@ -213,7 +229,22 @@ test("student admission, profile navigation and parent details render without br
 
   await page.getByRole("button", { name: /Parents & Siblings/i }).click();
   await expect(page.getByRole("dialog", { name: /Parents & Siblings/i })).toBeVisible();
+  await expect(page.getByText("Ramesh Sharma")).toBeVisible();
+  await expect(page.getByText("Father · Primary contact · Emergency contact")).toBeVisible();
   await expect(page.getByText("Other students sharing a guardian")).toBeVisible();
+
+  await page.getByRole("button", { name: "Edit relationship" }).click();
+  await page.getByPlaceholder("Father, Mother, Legal Guardian…").fill("Legal Guardian");
+  const relationshipForm = page.locator(".student-family-create-form").filter({ has: page.getByRole("heading", { name: "Edit relationship for this student" }) });
+  const saveRelationship = relationshipForm.getByRole("button", { name: "Save relationship" });
+  await saveRelationship.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Relationship submit button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect.poll(() => guardianLink.relationship_type).toBe("Legal Guardian");
+  await expect(page.getByText("Legal Guardian · Primary contact · Emergency contact")).toBeVisible();
+
   await page.getByRole("button", { name: "Close dialog" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
 
