@@ -148,12 +148,12 @@ func TestStudentMedicalPhysicalDetailsV36PostgresIntegration(t *testing.T) {
 	}
 	invalidHeight := 300.0
 	if _, err := repo.SaveStudentPhysicalDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
-		&invalidHeight, nil, nil, nil, nil); !errors.Is(err, ErrInvalidAcademicInput) {
+		&invalidHeight, nil, &measuredOn, nil, nil); !errors.Is(err, ErrInvalidAcademicInput) {
 		t.Fatalf("invalid height error = %v, want invalid input", err)
 	}
 	invalidPrecision := 132.555
 	if _, err := repo.SaveStudentPhysicalDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
-		&invalidPrecision, nil, nil, nil, nil); !errors.Is(err, ErrInvalidAcademicInput) {
+		&invalidPrecision, nil, &measuredOn, nil, nil); !errors.Is(err, ErrInvalidAcademicInput) {
 		t.Fatalf("measurement precision error = %v, want invalid input", err)
 	}
 	otherSchoolID := schoolID + 999999
@@ -183,12 +183,18 @@ func TestStudentMedicalPhysicalDetailsV36PostgresIntegration(t *testing.T) {
 		`INSERT INTO student_medical_details(school_id,student_id,blood_group)
 		 VALUES($1,$2,'INVALID')`, schoolID, secondStudentID)
 	assertRejected("height range database constraint",
-		`INSERT INTO student_physical_details(school_id,student_id,height_cm)
-		 VALUES($1,$2,300)`, schoolID, secondStudentID)
+		`INSERT INTO student_physical_details(school_id,student_id,height_cm,measured_on,recorded_by_principal_id)
+		 VALUES($1,$2,300,$3,$4)`, schoolID, secondStudentID, measuredOn, actorPrincipalID)
 	assertRejected("medical profile delete",
 		`DELETE FROM student_medical_details WHERE student_id=$1`, studentID)
-	assertRejected("physical profile delete",
+	assertRejected("physical measurement delete",
 		`DELETE FROM student_physical_details WHERE student_id=$1`, studentID)
+	assertRejected("physical measurement update",
+		`UPDATE student_physical_details SET height_cm=140 WHERE id=$1`, physical.ID)
+	assertRejected("medical history update",
+		`UPDATE student_medical_details_history SET allergies='rewrite' WHERE student_id=$1`, studentID)
+	assertRejected("medical history delete",
+		`DELETE FROM student_medical_details_history WHERE student_id=$1`, studentID)
 	assertRejected("medical profile ownership rewrite",
 		`UPDATE student_medical_details SET student_id=$2 WHERE student_id=$1`, studentID, secondStudentID)
 
@@ -198,7 +204,7 @@ func TestStudentMedicalPhysicalDetailsV36PostgresIntegration(t *testing.T) {
 		  COUNT(*) FILTER (WHERE action='school.student.medical_details.read'),
 		  COUNT(*) FILTER (WHERE action='school.student.physical_details.read'),
 		  COUNT(*) FILTER (WHERE action='school.student.medical_details.updated'),
-		  COUNT(*) FILTER (WHERE action='school.student.physical_details.updated')
+		  COUNT(*) FILTER (WHERE action='school.student.physical_details.recorded')
 		FROM audit_events
 		WHERE school_id=$1 AND actor_principal_id=$2
 		  AND resource_id=$3
@@ -207,8 +213,8 @@ func TestStudentMedicalPhysicalDetailsV36PostgresIntegration(t *testing.T) {
 	); err != nil {
 		t.Fatalf("count health profile audit events: %v", err)
 	}
-	if readMedical != 1 || readPhysical != 1 || updateMedical != 1 || updatePhysical != 1 {
-		t.Fatalf("health audit counts medical read=%d physical read=%d medical update=%d physical update=%d; want 1 each",
+	if readMedical != 2 || readPhysical != 1 || updateMedical != 2 || updatePhysical != 2 {
+		t.Fatalf("health audit counts medical read=%d physical read=%d medical update=%d physical record=%d; want 2,1,2,2",
 			readMedical, readPhysical, updateMedical, updatePhysical)
 	}
 
