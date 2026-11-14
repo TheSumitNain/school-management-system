@@ -152,6 +152,13 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
           {medicalQuery.isLoading ? <p className="student-address-note">Loading restricted medical details…</p> :
             medicalQuery.isError ? <p className="student-feedback error" role="alert">{medicalQuery.error.message}</p> :
             <>
+              <div className="student-health-grid">
+                <label>Blood group<Select ariaLabel="Blood group" value={bloodGroup} disabled={!canUpdate || busy} onChange={setBloodGroup} placeholder="Select blood group" options={["A+","A-","B+","B-","AB+","AB-","O+","O-"].map(value => ({value,label:value}))}/></label>
+                <label>Allergies<textarea disabled={!canUpdate || busy} rows={3} maxLength={2000} value={allergies} onChange={event => setAllergies(event.target.value)} placeholder="Record known allergies, if any"/></label>
+                <label>Known medical conditions<textarea disabled={!canUpdate || busy} rows={3} maxLength={2000} value={knownConditions} onChange={event => setKnownConditions(event.target.value)} placeholder="Record school-relevant conditions, if any"/></label>
+                <label>Ongoing medications<textarea disabled={!canUpdate || busy} rows={3} maxLength={2000} value={ongoingMedications} onChange={event => setOngoingMedications(event.target.value)} placeholder="Record medication information provided by the family"/></label>
+                <label className="wide">Emergency medical notes<textarea disabled={!canUpdate || busy} rows={3} maxLength={2000} value={emergencyNotes} onChange={event => setEmergencyNotes(event.target.value)} placeholder="Only essential emergency information"/></label>
+              </div>
               {medicalQuery.data?.medical_details.history?.length ? <details className="student-health-history">
                 <summary>Previous medical versions ({medicalQuery.data.medical_details.history.length})</summary>
                 <div className="student-health-history-list">
@@ -169,13 +176,6 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
                   ))}
                 </div>
               </details> : null}
-              <div className="student-health-grid">
-                <label>Blood group<Select ariaLabel="Blood group" value={bloodGroup} disabled={!canUpdate || busy} onChange={setBloodGroup} placeholder="Select blood group" options={["A+","A-","B+","B-","AB+","AB-","O+","O-"].map(value => ({value,label:value}))}/></label>
-                <label>Allergies<textarea disabled={!canUpdate || busy} rows={3} maxLength={2000} value={allergies} onChange={event => setAllergies(event.target.value)} placeholder="Record known allergies, if any"/></label>
-                <label>Known medical conditions<textarea disabled={!canUpdate || busy} rows={3} maxLength={2000} value={knownConditions} onChange={event => setKnownConditions(event.target.value)} placeholder="Record school-relevant conditions, if any"/></label>
-                <label>Ongoing medications<textarea disabled={!canUpdate || busy} rows={3} maxLength={2000} value={ongoingMedications} onChange={event => setOngoingMedications(event.target.value)} placeholder="Record medication information provided by the family"/></label>
-                <label className="wide">Emergency medical notes<textarea disabled={!canUpdate || busy} rows={3} maxLength={2000} value={emergencyNotes} onChange={event => setEmergencyNotes(event.target.value)} placeholder="Only essential emergency information"/></label>
-              </div>
               {!canUpdate && <p className="student-address-note">View-only access. An active student record and student update permission are required to edit these details.</p>}
               <div className="app-modal-actions">
                 <button type="button" className="app-modal-cancel" onClick={onClose} disabled={busy}>Close</button>
@@ -189,6 +189,13 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
           {physicalQuery.isLoading ? <p className="student-address-note">Loading restricted physical details…</p> :
             physicalQuery.isError ? <p className="student-feedback error" role="alert">{physicalQuery.error.message}</p> :
             <>
+              <div className="student-health-grid">
+                <label>Height (cm)<input type="number" min={20} max={250} step="0.01" disabled={!canUpdate || busy} value={heightCM} aria-invalid={Boolean(physicalErrors.heightCM)} aria-describedby={physicalErrors.heightCM ? "student-height-error" : undefined} onChange={event => { setHeightCM(event.target.value); setPhysicalErrors(current => ({...current,heightCM:undefined})); }} placeholder="e.g. 132.5"/>{physicalErrors.heightCM && <small id="student-height-error" className="app-field-error">{physicalErrors.heightCM}</small>}</label>
+                <label>Weight (kg)<input type="number" min={1} max={300} step="0.01" disabled={!canUpdate || busy} value={weightKG} aria-invalid={Boolean(physicalErrors.weightKG)} aria-describedby={physicalErrors.weightKG ? "student-weight-error" : undefined} onChange={event => { setWeightKG(event.target.value); setPhysicalErrors(current => ({...current,weightKG:undefined})); }} placeholder="e.g. 31.25"/>{physicalErrors.weightKG && <small id="student-weight-error" className="app-field-error">{physicalErrors.weightKG}</small>}</label>
+                <label>Measurement date<DatePicker value={measuredOn} onChange={value => { setMeasuredOn(value); setPhysicalErrors(current => ({...current,measuredOn:undefined})); }} ariaLabel="Measurement date" disabled={!canUpdate || busy} invalid={Boolean(physicalErrors.measuredOn)} describedBy={physicalErrors.measuredOn ? "student-measured-on-error" : undefined} placeholder="Choose measurement date"/>{physicalErrors.measuredOn && <small id="student-measured-on-error" className="app-field-error">{physicalErrors.measuredOn}</small>}</label>
+                <label>Vision notes<textarea disabled={!canUpdate || busy} rows={3} maxLength={1000} value={visionNotes} onChange={event => setVisionNotes(event.target.value)} placeholder="Optional vision-related notes"/></label>
+                <label className="wide">Physical notes<textarea disabled={!canUpdate || busy} rows={3} maxLength={2000} value={physicalNotes} onChange={event => setPhysicalNotes(event.target.value)} placeholder="Optional physical details provided by the family"/></label>
+              </div>
               {physicalQuery.data?.physical_details.history && physicalQuery.data.physical_details.history.filter(record => record.id !== physicalQuery.data?.physical_details.id).length > 0 && <details className="student-health-history">
                 <summary>Previous physical measurements ({physicalQuery.data.physical_details.history.filter(record => record.id !== physicalQuery.data?.physical_details.id).length})</summary>
                 <div className="student-health-history-list">
@@ -205,13 +212,6 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
                   ))}
                 </div>
               </details>}
-              <div className="student-health-grid">
-                <label>Height (cm)<input type="number" min={20} max={250} step="0.01" disabled={!canUpdate || busy} value={heightCM} aria-invalid={Boolean(physicalErrors.heightCM)} aria-describedby={physicalErrors.heightCM ? "student-height-error" : undefined} onChange={event => { setHeightCM(event.target.value); setPhysicalErrors(current => ({...current,heightCM:undefined})); }} placeholder="e.g. 132.5"/>{physicalErrors.heightCM && <small id="student-height-error" className="app-field-error">{physicalErrors.heightCM}</small>}</label>
-                <label>Weight (kg)<input type="number" min={1} max={300} step="0.01" disabled={!canUpdate || busy} value={weightKG} aria-invalid={Boolean(physicalErrors.weightKG)} aria-describedby={physicalErrors.weightKG ? "student-weight-error" : undefined} onChange={event => { setWeightKG(event.target.value); setPhysicalErrors(current => ({...current,weightKG:undefined})); }} placeholder="e.g. 31.25"/>{physicalErrors.weightKG && <small id="student-weight-error" className="app-field-error">{physicalErrors.weightKG}</small>}</label>
-                <label>Measurement date<DatePicker value={measuredOn} onChange={value => { setMeasuredOn(value); setPhysicalErrors(current => ({...current,measuredOn:undefined})); }} ariaLabel="Measurement date" disabled={!canUpdate || busy} invalid={Boolean(physicalErrors.measuredOn)} describedBy={physicalErrors.measuredOn ? "student-measured-on-error" : undefined} placeholder="Choose measurement date"/>{physicalErrors.measuredOn && <small id="student-measured-on-error" className="app-field-error">{physicalErrors.measuredOn}</small>}</label>
-                <label>Vision notes<textarea disabled={!canUpdate || busy} rows={3} maxLength={1000} value={visionNotes} onChange={event => setVisionNotes(event.target.value)} placeholder="Optional vision-related notes"/></label>
-                <label className="wide">Physical notes<textarea disabled={!canUpdate || busy} rows={3} maxLength={2000} value={physicalNotes} onChange={event => setPhysicalNotes(event.target.value)} placeholder="Optional physical details provided by the family"/></label>
-              </div>
               {!canUpdate && <p className="student-address-note">View-only access. An active student record and student update permission are required to edit these details.</p>}
               <div className="app-modal-actions">
                 <button type="button" className="app-modal-cancel" onClick={onClose} disabled={busy}>Close</button>
