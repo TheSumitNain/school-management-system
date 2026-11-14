@@ -37,6 +37,7 @@ func TestGuardianRoutesRequireDedicatedPermissions(t *testing.T) {
 		{http.MethodPatch, "/school/guardians/1", "guardians.manage", `{"full_name":"Guardian Updated","status":"active"}`},
 		{http.MethodGet, "/school/students/1/guardians", "guardians.read", ""},
 		{http.MethodPost, "/school/students/1/guardians", "guardians.manage", `{"guardian_id":2,"relationship_type":"mother"}`},
+		{http.MethodPatch, "/school/student-guardian-links/1", "guardians.manage", `{"relationship_type":"mother","is_primary_contact":true,"is_emergency_contact":false}`},
 		{http.MethodPost, "/school/student-guardian-links/1/revoke", "guardians.manage", `{"reason":"Relationship corrected"}`},
 	}
 	for _, test := range tests {
