@@ -85,3 +85,17 @@ func TestValidateCSVRejectsMalformedIGODCrosswalkCode(t *testing.T) {
 		t.Fatalf("validateCSV() error = %v, want malformed IGOD crosswalk error", err)
 	}
 }
+
+func TestValidateCSVPreservesLeadingZeroCodesAndBOM(t *testing.T) {
+	input := "\uFEFF" + validSnapshot
+	got, err := validateCSV(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("validateCSV() error = %v", err)
+	}
+	if _, ok := got.states["06"]; !ok {
+		t.Fatalf("state source code lost leading zero: keys=%v", got.states)
+	}
+	if _, ok := got.localities["900001"]; !ok {
+		t.Fatalf("locality source code was not retained as a string: keys=%v", got.localities)
+	}
+}
