@@ -326,16 +326,16 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByRole("dialog", { name: "Address & Communication" })).toBeVisible();
   await page.getByPlaceholder("House number, street or building").fill("House 12, Main Road");
   await page.getByLabel("Search States / UTs").fill("Haryana");
-  await page.getByRole("button", { name: "State or Union Territory" }).click();
+  await page.getByRole("button", { name: "State or Union Territory", exact: true }).click();
   await page.getByRole("option", { name: "Haryana" }).click();
   await page.getByLabel("Search districts").fill("Ambala");
-  await page.getByRole("button", { name: "District" }).click();
+  await page.getByRole("button", { name: "District", exact: true }).click();
   await page.getByRole("option", { name: "Ambala" }).click();
   await page.getByLabel("Search sub-districts / tehsils").fill("Ambala");
-  await page.getByRole("button", { name: "Sub-District or Tehsil" }).click();
+  await page.getByRole("button", { name: "Sub-District or Tehsil", exact: true }).click();
   await page.getByRole("option", { name: "Ambala" }).click();
   await page.getByLabel("Search villages / cities").fill("Naraingarh");
-  await page.getByRole("button", { name: "Village or City" }).click();
+  await page.getByRole("button", { name: "Village or City", exact: true }).click();
   await page.getByRole("option", { name: /Naraingarh/ }).click();
   const addressSaveButton = page.getByRole("button", { name: "Save address" });
   await addressSaveButton.evaluate(button => {
