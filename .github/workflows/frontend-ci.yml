@@ -18,7 +18,7 @@ permissions:
 jobs:
   build:
     name: TypeScript and Vite production build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -41,5 +41,5 @@ jobs:
         run: npx playwright install --with-deps chromium
         working-directory: frontend
       - name: Run Student Management browser acceptance tests
-        run: npx playwright test
+        run: npm run test:e2e
         working-directory: frontend
