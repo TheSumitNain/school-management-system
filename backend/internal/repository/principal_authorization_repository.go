@@ -189,9 +189,8 @@ WHERE pr.principal_id = $1
 			rows.Close()
 			return nil, fmt.Errorf("scan role permission: %w", err)
 		}
-		// The migration draft currently seeds every school permission into
-		// School Admin. Enforce the approved allowlist at runtime as a second
-		// barrier, including protection from future permission catalogue rows.
+		// Enforce the approved School Admin permission bundle at runtime as a
+		// second barrier, including protection from future permission catalogue rows.
 		if principal.Type == "staff" && roleKey == "school_admin" && !approvedSchoolAdminPermissions[key] {
 			continue
 		}
@@ -295,6 +294,8 @@ var approvedSchoolAdminPermissions = map[string]bool{
 	"students.create":                   true,
 	"students.update":                   true,
 	"students.archive":                  true,
+	"guardians.read":                    true,
+	"guardians.manage":                  true,
 	"attendance.read":                   true,
 	"attendance.mark":                   true,
 	"attendance.update_same_day":        true,
