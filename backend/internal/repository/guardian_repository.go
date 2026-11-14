@@ -382,8 +382,22 @@ func (r *AcademicRepository) RevokeStudentGuardianLink(ctx context.Context,actor
 	reason=strings.TrimSpace(reason);if linkID<=0||reason==""||len([]rune(reason))>500{return ErrInvalidGuardianInput}
 	tx,err:=r.db.Begin(ctx);if err!=nil{return fmt.Errorf("begin guardian link revocation: %w",err)};defer func(){_=tx.Rollback(ctx)}()
 	if err=authorizeGuardian(ctx,tx,actorID,schoolID,"guardians.manage");err!=nil{return err}
+
+	// Resolve the owning student, then take the same row lock used by link
+	// creation and relationship edits. This serializes revocation with primary
+	// contact changes and prevents concurrent relationship mutations from
+	// observing an inconsistent active-link set.
+	var studentID int64
+	if err=tx.QueryRow(ctx,`SELECT student_id FROM student_guardians
+		WHERE id=$1 AND school_id=$2 AND revoked_at IS NULL`,linkID,schoolID).Scan(&studentID);err!=nil{
+		return guardianWriteError(err)
+	}
+	if err=tx.QueryRow(ctx,`SELECT id FROM students
+		WHERE id=$1 AND school_id=$2 AND status='active' FOR UPDATE`,studentID,schoolID).Scan(new(int64));err!=nil{
+		return guardianWriteError(err)
+	}
 	tag,err:=tx.Exec(ctx,`UPDATE student_guardians SET revoked_at=NOW(),revoked_by_principal_id=$3,revocation_reason=$4,updated_at=NOW()
-		WHERE id=$1 AND school_id=$2 AND revoked_at IS NULL`,linkID,schoolID,actorID,reason)
+		WHERE id=$1 AND school_id=$2 AND student_id=$5 AND revoked_at IS NULL`,linkID,schoolID,actorID,reason,studentID)
 	if err!=nil{return guardianWriteError(err)};if tag.RowsAffected()!=1{return ErrGuardianNotFound}
 	if err=tx.Commit(ctx);err!=nil{return fmt.Errorf("commit guardian link revocation: %w",err)}
 	return nil
