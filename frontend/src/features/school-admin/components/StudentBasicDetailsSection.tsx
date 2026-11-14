@@ -6,7 +6,7 @@ import { Select } from "../../../shared/components/Select";
 import type { StudentProfile } from "../api";
 import { useSaveSchoolStudentBasicDetailsMutation, useSchoolStudentBasicDetailsQuery, useUpdateSchoolStudentMutation } from "../queries";
 
-type Props = { student: StudentProfile; canUpdate: boolean; onClose: () => void };
+type Props = { student: StudentProfile; canUpdate: boolean; onStudentNameChange: (fullName: string) => void; onClose: () => void };
 type Values = {
   date_of_birth: string; place_of_birth: string; gender: string; nationality: string;
   religion: string; social_category: string; ews_status: string; school_registration_number: string;
@@ -27,7 +27,7 @@ const emptyValues: Values = {
   religion: "", social_category: "", ews_status: "", school_registration_number: "",
 };
 
-export function StudentBasicDetailsSection({ student, canUpdate, onClose }: Props) {
+export function StudentBasicDetailsSection({ student, canUpdate, onStudentNameChange, onClose }: Props) {
   const query = useSchoolStudentBasicDetailsQuery(student.id);
   const save = useSaveSchoolStudentBasicDetailsMutation();
   const updateStudent = useUpdateSchoolStudentMutation();
@@ -81,6 +81,7 @@ export function StudentBasicDetailsSection({ student, canUpdate, onClose }: Prop
     try {
       await updateStudent.mutateAsync({ studentID: student.id, fullName: trimmed });
       setFullName(trimmed);
+      onStudentNameChange(trimmed);
       setNameFeedback({ kind: "success", message: "Student name saved." });
     } catch (error) {
       setNameFeedback({ kind: "error", message: error instanceof Error ? error.message : "Student name could not be saved." });
