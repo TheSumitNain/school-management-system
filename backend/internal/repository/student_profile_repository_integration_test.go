@@ -93,6 +93,40 @@ func TestStudentProfileRepositoryPostgresIntegration(t *testing.T) {
 	got, err := repo.GetStudent(ctx, actorID, schoolID, student.ID)
 	if err != nil || got.ID != student.ID { t.Fatalf("get student: student=%+v err=%v", got, err) }
 
+	// Address reads must return every saved hierarchy level, including names
+	// needed to display a previously selected location after deactivation.
+	state, err := repo.CreateStudentLocation(ctx, actorID, schoolID, nil, "IN", "state", "State "+suffix, nil)
+	if err != nil { t.Fatalf("create address state: %v", err) }
+	district, err := repo.CreateStudentLocation(ctx, actorID, schoolID, &state.ID, "", "district", "District "+suffix, nil)
+	if err != nil { t.Fatalf("create address district: %v", err) }
+	subdistrict, err := repo.CreateStudentLocation(ctx, actorID, schoolID, &district.ID, "", "subdistrict", "Block "+suffix, nil)
+	if err != nil { t.Fatalf("create address block: %v", err) }
+	localityType := "village"
+	locality, err := repo.CreateStudentLocation(ctx, actorID, schoolID, &subdistrict.ID, "", "locality", "Village "+suffix, &localityType)
+	if err != nil { t.Fatalf("create address locality: %v", err) }
+	line1 := "House 1"
+	if _, err := repo.SaveStudentAddress(ctx, actorID, schoolID, student.ID, "current",
+		&line1, nil, nil, nil, nil, &locality.ID, false); err != nil {
+		t.Fatalf("save student address: %v", err)
+	}
+	if _, err := repo.DeactivateStudentLocation(ctx, actorID, schoolID, locality.ID); err != nil {
+		t.Fatalf("deactivate saved locality: %v", err)
+	}
+	addresses, err := repo.ListStudentAddresses(ctx, actorID, schoolID, student.ID)
+	if err != nil || len(addresses) != 1 {
+		t.Fatalf("list saved address: addresses=%+v err=%v", addresses, err)
+	}
+	address := addresses[0]
+	if address.StateLocationID == nil || *address.StateLocationID != state.ID ||
+		address.DistrictLocationID == nil || *address.DistrictLocationID != district.ID ||
+		address.SubdistrictLocationID == nil || *address.SubdistrictLocationID != subdistrict.ID ||
+		address.StateLocationName == nil || *address.StateLocationName != state.Name ||
+		address.DistrictLocationName == nil || *address.DistrictLocationName != district.Name ||
+		address.SubdistrictLocationName == nil || *address.SubdistrictLocationName != subdistrict.Name ||
+		address.LocationName == nil || *address.LocationName != locality.Name {
+		t.Fatalf("saved address hierarchy was not fully returned: %+v", address)
+	}
+
 	updated, err := repo.UpdateStudent(ctx, actorID, schoolID, student.ID, "Student One Updated")
 	if err != nil || updated.FullName != "Student One Updated" {
 		t.Fatalf("update student: student=%+v err=%v", updated, err)
