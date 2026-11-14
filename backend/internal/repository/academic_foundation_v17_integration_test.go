@@ -656,6 +656,21 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 		combined.Enrollment.RollNumber == nil || *combined.Enrollment.RollNumber != "2" {
 		t.Fatalf("create combined student admission: result=%+v err=%v", combined, err)
 	}
+
+	// An explicit School Admin roll number is retained instead of auto-allocated.
+	var manualStudentID int64
+	if err := tx.QueryRow(ctx, `INSERT INTO students(school_id,admission_number,full_name)
+		VALUES($1,$2,$3) RETURNING id`, schoolID, "API-MANUAL-"+suffix, "Manual Roll Student").Scan(&manualStudentID); err != nil {
+		t.Fatalf("create manual-roll student: %v", err)
+	}
+	manualRoll := "M-77"
+	manualAdmission := "API-MANUAL-ADM-" + suffix
+	manualEnrollment, err := academicRepo.CreateStudentEnrollment(ctx, actorPrincipalID, schoolID,
+		manualStudentID, nextYear.ID, nextSection.ID, &manualRoll, manualAdmission, promotedAt, promotedAt)
+	if err != nil || manualEnrollment == nil || manualEnrollment.RollNumber == nil ||
+		*manualEnrollment.RollNumber != manualRoll {
+		t.Fatalf("preserve manual roll number override: enrollment=%+v err=%v", manualEnrollment, err)
+	}
 	directoryMatches, directoryTotal, err := academicRepo.ListStudents(
 		ctx, actorPrincipalID, schoolID, combinedNumber, "active", 20, 0,
 	)
