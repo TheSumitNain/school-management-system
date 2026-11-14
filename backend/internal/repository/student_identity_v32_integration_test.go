@@ -80,4 +80,14 @@ func TestStudentIdentityAdmissionDecouplingV32PostgresIntegration(t *testing.T) 
 	if preserved != legacyNumber {
 		t.Fatalf("legacy admission number = %q, want %q", preserved, legacyNumber)
 	}
+	var duplicateLegacyID int64
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO students (school_id, admission_number, full_name)
+		VALUES ($1, $2, $3) RETURNING id
+	`, schoolID, "  "+legacyNumber+"  ", "V32 Duplicate Legacy Student "+suffix).Scan(&duplicateLegacyID); err != nil {
+		t.Fatalf("same legacy admission value must be allowed after V32: %v", err)
+	}
+	if duplicateLegacyID == legacyStudent {
+		t.Fatal("duplicate legacy student unexpectedly reused the original student ID")
+	}
 }
