@@ -34,3 +34,12 @@ jobs:
       - name: Build frontend
         run: npm run build
         working-directory: frontend
+      - name: Install pinned Playwright test runner
+        run: npm install --no-save --package-lock=false @playwright/test@1.56.1
+        working-directory: frontend
+      - name: Install Chromium for browser acceptance tests
+        run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - name: Run Student Management browser acceptance tests
+        run: npx playwright test
+        working-directory: frontend
