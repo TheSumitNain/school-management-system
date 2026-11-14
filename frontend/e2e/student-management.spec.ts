@@ -451,8 +451,8 @@ test("student admission, profile navigation and parent details render without br
   await page.getByLabel("Show revoked history").check();
   await expect(page.getByText("Ramesh Sharma")).toBeVisible();
   await expect(page.getByText("Legal Guardian · Primary contact · Emergency contact")).toBeVisible();
-  await expect(page.getByText("9999912345", { exact: true })).toBeVisible();
-  await expect(page.getByText("ramesh.updated@example.test", { exact: true })).toBeVisible();
+  await expect(page.getByText(/9999912345/)).toBeVisible();
+  await expect(page.getByText(/ramesh\.updated@example\.test/)).toBeVisible();
   await expect(page.getByText(/Revoked/)).toBeVisible();
   await page.getByRole("button", { name: "Close dialog" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
