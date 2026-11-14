@@ -68,24 +68,12 @@ func scanStudentEnrollmentWithName(row interface{ Scan(...any) error }) (*Studen
 	return &v, nil
 }
 
-// nextAvailableSectionRollNumber assigns a monotonically increasing numeric
-// roll number within an active section. Callers must hold a FOR UPDATE lock on
-// the destination section row before invoking it so concurrent admissions
-// cannot calculate the same value.
+// nextAvailableSectionRollNumber assigns the next numeric roll number within a section.
+// Callers lock the destination section row before allocation to serialize concurrent admissions.
 func nextAvailableSectionRollNumber(ctx context.Context, tx pgx.Tx, schoolID, sectionID int64) (*string, error) {
 	var value string
-	err := tx.QueryRow(ctx, `SELECT (COALESCE(MAX(CASE WHEN btrim(roll_number) ~ '^[0-9]+$'
-			THEN btrim(roll_number)::numeric END), 0) + 1)::text
-		FROM student_enrollments
-		WHERE school_id=$1 AND section_id=$2`, schoolID, sectionID).Scan(&value)
-	if err != nil {
-		return nil, fmt.Errorf("allocate next section roll number: %w", err)
-	}
-	if len(value) > 30 {
-		return nil, ErrInvalidAcademicInput
-	}
-	return &value, nil
-}
+	err := tx.QueryRow(ctx, `SELECT (COALESCE(MAX(CASE WHEN btrim(roll_number) ~ '^[0-9]+ `id,school_id,student_id,academic_year_id,class_id,section_id,roll_number,
+	class_name_snapshot,section_name_snapshot,admission_number,admission_date,status,enrolled_at,ended_at,created_at,updated_at`
 
 type StudentAdmissionResult struct {
 	Student StudentProfile `json:"student"`
@@ -171,8 +159,8 @@ func (r *AcademicRepository) CreateStudentAdmission(
 	}
 	var classID int64
 	if err = tx.QueryRow(ctx, `SELECT class_id FROM sections
-		WHERE id=$1 AND school_id=$2 AND academic_year_id=$3 AND is_active=TRUE
-		FOR UPDATE`, sectionID, schoolID, yearID).Scan(&classID); err != nil {
+		WHERE id=$1 AND school_id=$2 AND academic_year_id=$3 AND is_active=TRUE FOR UPDATE`,
+		sectionID, schoolID, yearID).Scan(&classID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrAcademicNotFound
 		}
@@ -180,9 +168,7 @@ func (r *AcademicRepository) CreateStudentAdmission(
 	}
 	if rollNumber == nil {
 		rollNumber, err = nextAvailableSectionRollNumber(ctx, tx, schoolID, sectionID)
-		if err != nil {
-			return nil, err
-		}
+		if err != nil { return nil, err }
 	}
 
 	student, err := scanStudentProfile(tx.QueryRow(ctx, `INSERT INTO students
@@ -397,6 +383,13 @@ func (r *AcademicRepository) PromoteStudentEnrollment(ctx context.Context, actor
 	if err = tx.Commit(ctx); err != nil { return nil, fmt.Errorf("commit student promotion: %w", err) }
 	return v, nil
 }
+ THEN btrim(roll_number)::numeric END), 0) + 1)::text
+		FROM student_enrollments WHERE school_id=$1 AND section_id=$2`, schoolID, sectionID).Scan(&value)
+	if err != nil { return nil, fmt.Errorf("allocate next section roll number: %w", err) }
+	if len(value) > 30 { return nil, ErrInvalidAcademicInput }
+	return &value, nil
+}
+
 const enrollmentColumns = `id,school_id,student_id,academic_year_id,class_id,section_id,roll_number,
 	class_name_snapshot,section_name_snapshot,admission_number,admission_date,status,enrolled_at,ended_at,created_at,updated_at`
 
