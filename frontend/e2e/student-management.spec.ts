@@ -387,7 +387,7 @@ test("student admission, profile navigation and parent details render without br
     if (!form) throw new Error("Contact save button is not associated with its form.");
     form.requestSubmit(button as HTMLButtonElement);
   });
-  await expect(page.getByText("Enter a valid email address.")).toBeVisible();
+  await expect(page.getByText("Enter a valid email address.", { exact: true })).toBeVisible();
   expect(contactDetails.primary_phone).toBeNull();
   await page.getByPlaceholder("student@example.com").fill("student@example.test");
   await contactSaveButton.evaluate(button => {
