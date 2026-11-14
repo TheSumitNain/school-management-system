@@ -393,7 +393,7 @@ func (r *AcademicRepository) RevokeStudentGuardianLink(ctx context.Context,actor
 		return guardianWriteError(err)
 	}
 	if err=tx.QueryRow(ctx,`SELECT id FROM students
-		WHERE id=$1 AND school_id=$2 AND status='active' FOR UPDATE`,studentID,schoolID).Scan(new(int64));err!=nil{
+		WHERE id=$1 AND school_id=$2 FOR UPDATE`,studentID,schoolID).Scan(new(int64));err!=nil{
 		return guardianWriteError(err)
 	}
 	tag,err:=tx.Exec(ctx,`UPDATE student_guardians SET revoked_at=NOW(),revoked_by_principal_id=$3,revocation_reason=$4,updated_at=NOW()
