@@ -29,6 +29,7 @@ The Playwright package is installed as an ephemeral test tool in CI and is inten
 - Student archive confirmation can be cancelled; server conflicts remain visible and a successful retry refreshes the archived status
 - View-only student and guardian access hides edit/archive/link/revoke controls and emits no write requests
 - Promotion required-field validation, destination year/section selection, optional automatic roll-number path, and retention of the promoted enrollment alongside the new enrollment
+- Student name editing from Basic Details, save feedback, and updated name preserved when returning to the student profile
 - Basic Details field editing, save, and confirmation
 - Current Address hierarchy selection (State/UT → District → Sub-District/Tehsil → Village/City), save, and resolved hierarchy IDs
 - Permanent Address linked to Current Address and saved with the same_as_current flag
