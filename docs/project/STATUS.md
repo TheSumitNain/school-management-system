@@ -240,3 +240,12 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - Confirmed the promotion API and backend route exist, but the Student Management frontend does not yet expose a promotion action/workflow. This remains a frontend gap; do not treat promotion as end-to-end complete.
 - Moved student address/medical profile tab styling into the shared modal stylesheet with explicit selected, hover, focus-visible and mobile states. Removed the duplicate page-level tab rules so styles are owned by the shared modal shell. This is a source-level styling correction only; browser rendering and crash-free interaction still require local browser acceptance.
 - User's latest local frontend production build passed before this CSS-only follow-up. Re-run the production build after pulling the new commits; do not claim browser acceptance until manually exercised.
+
+
+## Student promotion UI and modal tab styling follow-up — 2026-11-14
+
+- Added a promotion action to active enrollment rows for users who have student-update, academic-year-read and class-read permissions. The dialog requires a destination active academic year, destination section, new admission number and date; roll number may be left blank for transactional automatic assignment or entered manually.
+- Promotion calls the existing school-scoped backend route. On success, the student enrollment list/history query family is invalidated and the UI reports that the previous academic history is preserved.
+- Student address and medical/physical profile tab styles now live in the shared modal stylesheet, with explicit active/pressed, hover, keyboard-focus and mobile layouts. Duplicate feature-page tab rules were removed. This keeps styling with the modal shell used by the profile editors.
+- Review also found promotion audit metadata was storing the raw destination admission number and date. It now stores presence flags only, and the PostgreSQL integration test asserts that the raw values are absent.
+- These frontend/backend follow-ups have been committed to the work branch. The user's earlier build/test output predates these changes. Run the targeted academic integration test, full backend tests, go vet and frontend production build after pulling; then manually test promotion, profile tabs, edit/view modals, permissions, responsive layout and refresh persistence. No browser acceptance or crash-free claim is made yet.
