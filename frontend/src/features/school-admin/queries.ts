@@ -42,7 +42,7 @@ export function useResetSchoolStaffPasswordMutation() {
 
 
 import {
-  archiveSchoolStudent, createSchoolStudent, createSchoolStudentEnrollment,
+  archiveSchoolStudent, createSchoolStudentAdmission, createSchoolStudentEnrollment,
   getSchoolAcademicYears, getSchoolSections, getSchoolStudentEnrollments, getSchoolStudents,
   updateSchoolStudent,
 } from "./api";
@@ -86,7 +86,7 @@ function useStudentMutation<TInput>(mutationFn: (input: TInput) => Promise<unkno
   });
 }
 export function useCreateSchoolStudentMutation() {
-  return useStudentMutation(createSchoolStudent);
+  return useStudentMutation(createSchoolStudentAdmission);
 }
 export function useUpdateSchoolStudentMutation() {
   return useStudentMutation(({ studentID, fullName }: { studentID: number; fullName: string }) => updateSchoolStudent(studentID, { full_name: fullName }));
