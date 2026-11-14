@@ -242,6 +242,7 @@ func (r *AcademicRepository) ListStudentRelatedStudents(ctx context.Context, act
 		   AND enrollment.academic_year_id=(
 		       SELECT id FROM academic_years WHERE school_id=$1 AND is_current=TRUE
 		   )
+		   AND enrollment.status='active'
 		  LEFT JOIN academic_years academic_year
 		    ON academic_year.id=enrollment.academic_year_id
 		 WHERE source_link.school_id=$1
