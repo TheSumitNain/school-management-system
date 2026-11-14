@@ -45,10 +45,11 @@ import {
   archiveSchoolStudent, createSchoolStudentAdmission, createSchoolStudentEnrollment,
   createSchoolStudentLocation, deactivateSchoolStudentLocation, getSchoolAcademicYears,
   getSchoolSections, getSchoolStudentAddresses, getSchoolStudentContactDetails,
+  getSchoolStudentMedicalDetails, getSchoolStudentPhysicalDetails,
   getSchoolStudentEnrollments, getSchoolStudentEnrollmentHistory, getSchoolStudentLocations, getSchoolStudentRelatedStudents,
   getSchoolStudentGuardians, getSchoolStudents, getSchoolGuardians, linkSchoolStudentGuardian,
   revokeSchoolStudentGuardianLink, createSchoolGuardian, saveSchoolStudentAddress,
-  saveSchoolStudentContactDetails, updateSchoolStudent,
+  saveSchoolStudentContactDetails, saveSchoolStudentMedicalDetails, saveSchoolStudentPhysicalDetails, updateSchoolStudent,
 } from "./api";
 
 export const guardianQueryKeys = {
@@ -66,6 +67,8 @@ export const schoolStudentQueryKeys = {
   years: () => [...schoolStudentQueryKeys.all, "academic-years"] as const,
   sections: (academicYearID: number) => [...schoolStudentQueryKeys.all, "sections", academicYearID] as const,
   addresses: (studentID: number) => [...schoolStudentQueryKeys.all, "addresses", studentID] as const,
+  medicalDetails: (studentID: number) => [...schoolStudentQueryKeys.all, "medical-details", studentID] as const,
+  physicalDetails: (studentID: number) => [...schoolStudentQueryKeys.all, "physical-details", studentID] as const,
   locations: (filters: { parentID?: number; level?: string; q?: string }) => [...schoolStudentQueryKeys.all, "locations", filters] as const,
 };
 export function useSchoolStudentsQuery(filters: { q: string; status: string; limit: number; offset: number }, enabled = true) {
@@ -104,6 +107,22 @@ export function useSchoolStudentContactDetailsQuery(studentID: number, enabled =
   return useQuery({
     queryKey: [...schoolStudentQueryKeys.all, "contact-details", studentID] as const,
     queryFn: ({ signal }) => getSchoolStudentContactDetails(studentID, signal),
+    enabled: enabled && studentID > 0,
+    staleTime: 15_000,
+  });
+}
+export function useSchoolStudentMedicalDetailsQuery(studentID: number, enabled = true) {
+  return useQuery({
+    queryKey: schoolStudentQueryKeys.medicalDetails(studentID),
+    queryFn: ({ signal }) => getSchoolStudentMedicalDetails(studentID, signal),
+    enabled: enabled && studentID > 0,
+    staleTime: 15_000,
+  });
+}
+export function useSchoolStudentPhysicalDetailsQuery(studentID: number, enabled = true) {
+  return useQuery({
+    queryKey: schoolStudentQueryKeys.physicalDetails(studentID),
+    queryFn: ({ signal }) => getSchoolStudentPhysicalDetails(studentID, signal),
     enabled: enabled && studentID > 0,
     staleTime: 15_000,
   });
@@ -178,6 +197,18 @@ export function useSaveSchoolStudentContactDetailsMutation() {
   return useStudentMutation(({ studentID, input }: {
     studentID: number; input: { primary_phone?: string | null; alternate_phone?: string | null; email_address?: string | null };
   }) => saveSchoolStudentContactDetails(studentID, input));
+}
+export function useSaveSchoolStudentMedicalDetailsMutation() {
+  return useStudentMutation(({ studentID, input }: {
+    studentID: number; input: { blood_group?: string | null; allergies?: string | null; known_conditions?: string | null;
+      ongoing_medications?: string | null; emergency_medical_notes?: string | null };
+  }) => saveSchoolStudentMedicalDetails(studentID, input));
+}
+export function useSaveSchoolStudentPhysicalDetailsMutation() {
+  return useStudentMutation(({ studentID, input }: {
+    studentID: number; input: { height_cm?: number | null; weight_kg?: number | null; measured_on?: string | null;
+      vision_notes?: string | null; physical_notes?: string | null };
+  }) => saveSchoolStudentPhysicalDetails(studentID, input));
 }
 function useGuardianMutation<TInput>(mutationFn: (input: TInput) => Promise<unknown>) {
   const client = useQueryClient();
