@@ -145,7 +145,7 @@ Promotion and transfer are distinct business actions. Promotion creates the next
 
 ### 4.3 Student profile
 
-Use a profile page with clearly named sections and separate edit actions. Show academic history as a year-by-year timeline/list, including each year's admission number, class, section, roll number and status. Clearly distinguish incomplete profile sections from enrollment status.
+The directory opens a student profile detail view with permanent identity and academic history shown year by year. Each history entry displays that year's admission number/date, class, section, roll number, status and enrollment lifecycle dates. Launch independently editable sections (Basic Details, Address & Communication, Parents & Siblings, Medical & Physical, Documents) from the profile; do not turn the profile into one long mandatory form. Clearly distinguish incomplete profile sections from enrollment status.
 
 The directory should support year-scoped admission-number search and filters, alongside student name/status search. A student without a current-year enrollment must not be silently represented as enrolled in the current year.
 
