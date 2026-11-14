@@ -78,8 +78,8 @@ Keep independently maintained profile sections separate from the enrollment reco
 - Basic identity: name, date of birth, gender and approved optional demographic fields.
 - Address and communication: current and permanent address, phone/email where appropriate, and same-as-current behavior.
 - Parents/guardians: reuse the existing guardian and relationship model; support multiple guardians and relationship/contact flags.
-- Medical details: one optional restricted record with blood group, allergies, known medical conditions, ongoing medication notes and emergency medical notes. These are school-entered facts, not diagnoses or automated health assessments.
-- Physical details: a separate optional record for height (cm), weight (kg), measurement date and concise vision/physical notes. Measurements are dated; the system must not infer health status from them.
+- Medical details: one optional restricted current profile with blood group, allergies, known medical conditions, ongoing medication notes and emergency medical notes. Every change snapshots the previous version into append-only history. These are school-entered facts, not diagnoses or automated health assessments.
+- Physical details: dated append-only measurement records for height (cm), weight (kg) and concise vision/physical notes. New measurements never overwrite earlier measurements; the profile shows the latest record and retains prior records. The system must not infer health status from measurements.
 - Medical and physical reads use the existing restricted `students.read_sensitive` permission; updates use `students.update`. These permissions are not delegated to Teacher roles. Read and write operations are audited, while audit metadata must not contain health values or notes.
 - Documents: metadata, document type, issue/expiry dates where relevant, verification status and an opaque secure-storage reference. Do not store public file URLs or filesystem paths in API responses. Document upload/download stays deferred until private storage and document-specific access controls are reviewed.
 
