@@ -112,5 +112,5 @@ func TestStudentBasicDetailsV37PostgresIntegration(t *testing.T) {
 	assertRejected("basic details student identity rewrite",
 		`UPDATE student_basic_details SET student_id=$2 WHERE id=$1`, detailID, secondStudentID)
 	assertRejected("basic details creator rewrite",
-		`UPDATE student_basic_details SET created_by_principal_id=updated_by_principal_id WHERE id=$1`, detailID)
+		`UPDATE student_basic_details SET created_by_principal_id=created_by_principal_id+1 WHERE id=$1`, detailID)
 }
