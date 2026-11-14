@@ -274,7 +274,7 @@ func (r *AcademicRepository) LinkStudentGuardian(ctx context.Context,actorID,sch
 	if err=tx.QueryRow(ctx,`SELECT EXISTS(SELECT 1 FROM guardians WHERE id=$1 AND school_id=$2 AND status='active')`,guardianID,schoolID).Scan(&active);err!=nil{return nil,fmt.Errorf("validate guardian: %w",err)}
 	if !active{return nil,ErrGuardianNotFound}
 	// Serialize primary-contact selection for a student.
-	if err=tx.QueryRow(ctx,`SELECT id FROM students WHERE id=$1 AND school_id=$2 FOR UPDATE`,studentID,schoolID).Scan(new(int64));err!=nil{return nil,guardianWriteError(err)}
+	if err=tx.QueryRow(ctx,`SELECT id FROM students WHERE id=$1 AND school_id=$2 AND status='active' FOR UPDATE`,studentID,schoolID).Scan(new(int64));err!=nil{return nil,guardianWriteError(err)}
 	if primary { if _,err=tx.Exec(ctx,`UPDATE student_guardians SET is_primary_contact=FALSE,updated_at=NOW() WHERE school_id=$1 AND student_id=$2 AND revoked_at IS NULL`,schoolID,studentID);err!=nil{return nil,fmt.Errorf("clear prior primary contact: %w",err)} }
 	var v StudentGuardian
 	err=tx.QueryRow(ctx,`INSERT INTO student_guardians(school_id,student_id,guardian_id,relationship_type,is_primary_contact,is_emergency_contact)
