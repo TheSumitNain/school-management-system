@@ -38,7 +38,6 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
   const [measuredOn, setMeasuredOn] = useState("");
   const [visionNotes, setVisionNotes] = useState("");
   const [physicalNotes, setPhysicalNotes] = useState("");
-  const [medicalErrors, setMedicalErrors] = useState<Record<string, string>>({});
   const [physicalErrors, setPhysicalErrors] = useState<Record<string, string>>({});
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
 
@@ -56,7 +55,6 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
     setKnownConditions(textValue(details?.known_conditions));
     setOngoingMedications(textValue(details?.ongoing_medications));
     setEmergencyNotes(textValue(details?.emergency_medical_notes));
-    setMedicalErrors({});
   }, [section, medicalQuery.data?.medical_details]);
 
   useEffect(() => {
@@ -73,7 +71,6 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
   async function submitMedical(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canUpdate || medicalQuery.isLoading) return;
-    setMedicalErrors({});
     try {
       await saveMedical.mutateAsync({
         studentID: student.id,
@@ -137,7 +134,7 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
       {feedback && <p className={feedback.kind === "error" ? "student-feedback error" : "student-feedback success"} role={feedback.kind === "error" ? "alert" : "status"}>{feedback.message}</p>}
       <p className="student-health-privacy-note">Optional school-entered information only. This section does not create medical diagnoses or automated health assessments. Teachers do not have access to these records.</p>
       <div className="student-address-tabs" role="group" aria-label="Health profile section">
-        <button type="button" className={section === "medical" ? "active" : ""} aria-pressed={section === "medical"} onClick={() => { setSection("medical"); setFeedback(null); setMedicalErrors({}); }}>Medical details</button>
+        <button type="button" className={section === "medical" ? "active" : ""} aria-pressed={section === "medical"} onClick={() => { setSection("medical"); setFeedback(null); }}>Medical details</button>
         <button type="button" className={section === "physical" ? "active" : ""} aria-pressed={section === "physical"} onClick={() => { setSection("physical"); setFeedback(null); setPhysicalErrors({}); }}>Physical details</button>
       </div>
       {section === "medical" ? (
