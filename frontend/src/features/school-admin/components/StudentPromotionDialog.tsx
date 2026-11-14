@@ -33,6 +33,7 @@ export function StudentPromotionDialog({ enrollment, academicYears, academicYear
   const sectionsQuery = useSchoolStudentSectionsQuery(academicYearID, academicYearID > 0);
   const sections = (sectionsQuery.data?.sections ?? []).filter(section => section.is_active);
   const busy = promote.isPending;
+  const destinationUnavailable = Boolean(academicYearsError) || sectionsQuery.isLoading || sectionsQuery.isError || sections.length === 0;
 
   useEffect(() => {
     if (academicYearID === 0 && availableYears.length > 0) {
@@ -90,7 +91,7 @@ export function StudentPromotionDialog({ enrollment, academicYears, academicYear
           <label><StudentFieldLabel label="Destination academic year" required hint="Choose an active academic year different from the student’s current enrollment year." />
             <Select ariaLabel="Destination academic year" value={String(academicYearID || "")} invalid={Boolean(errors.academic_year_id)} describedBy={errors.academic_year_id ? "promotion-year-error" : undefined}
               onChange={value => { setAcademicYearID(Number(value)); setSectionID(""); clearError("academic_year_id"); clearError("section_id"); }}
-              options={availableYears.map(year => ({ value: String(year.id), label: year.name + (year.is_current ? " · Current" : "") }))} placeholder="Select academic year" />
+              options={availableYears.map(year => ({ value: String(year.id), label: year.name + (year.is_current ? " · Current" : "") }))} placeholder="Select academic year" disabled={busy || Boolean(academicYearsError) || availableYears.length === 0} />
             {errors.academic_year_id && <small id="promotion-year-error" className="app-field-error">{errors.academic_year_id}</small>}
           </label>
           <label><StudentFieldLabel label="Destination class / section" required hint="Choose a section that belongs to the selected destination academic year." />
@@ -99,21 +100,21 @@ export function StudentPromotionDialog({ enrollment, academicYears, academicYear
               options={sections.map(section => ({ value: String(section.id), label: section.class_name + " · " + section.name }))} placeholder="Select section" />
             {errors.section_id && <small id="promotion-section-error" className="app-field-error">{errors.section_id}</small>}
             {sectionsQuery.isLoading && <small>Loading destination sections…</small>}
-            {sectionsQuery.isLoading && <small>Loading destination sections…</small>}{sectionsQuery.isError && <div className="student-feedback error" role="alert"><p>{sectionsQuery.error.message}</p><button type="button" className="student-secondary" onClick={() => void sectionsQuery.refetch()} disabled={sectionsQuery.isFetching}>Retry loading destination sections</button></div>}
+            {sectionsQuery.isError && <div className="student-feedback error" role="alert"><p>{sectionsQuery.error.message}</p><button type="button" className="student-secondary" onClick={() => void sectionsQuery.refetch()} disabled={sectionsQuery.isFetching}>Retry loading destination sections</button></div>}
             {academicYearID > 0 && !sectionsQuery.isLoading && !sectionsQuery.isError && sections.length === 0 && <small>No active sections are available in this academic year.</small>}
           </label>
           <label><StudentFieldLabel label="New admission number" required hint="Enter the student’s admission number for the destination academic year. Maximum 50 characters; unique within the school and year." />
-            <input value={admissionNumber} maxLength={50} aria-invalid={Boolean(errors.admission_number)} aria-describedby={errors.admission_number ? "promotion-admission-error" : undefined}
+            <input disabled={busy || destinationUnavailable} value={admissionNumber} maxLength={50} aria-invalid={Boolean(errors.admission_number)} aria-describedby={errors.admission_number ? "promotion-admission-error" : undefined}
               onChange={event => { setAdmissionNumber(event.target.value); clearError("admission_number"); }} placeholder="e.g. ADM-2027-001" />
             {errors.admission_number && <small id="promotion-admission-error" className="app-field-error">{errors.admission_number}</small>}
           </label>
           <label><StudentFieldLabel label="Roll number" hint="Optional. Leave blank to automatically assign the next available roll number in the destination section. If entering one manually, use the school’s roll-number format (up to 30 characters)." />
-            <input value={rollNumber} maxLength={30} onChange={event => setRollNumber(event.target.value)} placeholder="Leave blank for automatic assignment" />
+            <input disabled={busy || destinationUnavailable} value={rollNumber} maxLength={30} onChange={event => setRollNumber(event.target.value)} placeholder="Leave blank for automatic assignment" />
             <small>Leave blank to assign the next available roll number in the destination section. Manual override is also supported.</small>
           </label>
           <label><StudentFieldLabel label="Admission / promotion date" required hint="Choose a date within the destination academic year and not earlier than the current enrollment." />
             <DatePicker ariaLabel="Admission and promotion date" value={admissionDate} onChange={value => { setAdmissionDate(value); clearError("admission_date"); }}
-              placeholder="Choose a date" invalid={Boolean(errors.admission_date)} describedBy={errors.admission_date ? "promotion-date-error" : undefined} />
+              placeholder="Choose a date" disabled={busy || destinationUnavailable} invalid={Boolean(errors.admission_date)} describedBy={errors.admission_date ? "promotion-date-error" : undefined} />
             {errors.admission_date && <small id="promotion-date-error" className="app-field-error">{errors.admission_date}</small>}
             <small>Choose a date within the destination academic year and not earlier than the current enrollment.</small>
           </label>
