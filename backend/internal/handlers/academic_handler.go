@@ -34,6 +34,11 @@ type AcademicManagementService interface {
 	CreateStudentEnrollment(context.Context,int64,int64,int64,int64,int64,*string,string,time.Time,time.Time)(*repository.StudentEnrollment,error)
 	PromoteStudentEnrollment(context.Context,int64,int64,int64,int64,int64,*string,string,time.Time,time.Time)(*repository.StudentEnrollment,error)
 	CreateStudentAdmission(context.Context,int64,int64,string,string,int64,int64,*string,time.Time)(*repository.StudentAdmissionResult,error)
+	ListStudentLocations(context.Context,int64,int64,*int64,string,string)([]repository.StudentLocation,error)
+	CreateStudentLocation(context.Context,int64,int64,*int64,string,string,string,*string)(*repository.StudentLocation,error)
+	DeactivateStudentLocation(context.Context,int64,int64,int64)(*repository.StudentLocation,error)
+	ListStudentAddresses(context.Context,int64,int64,int64)([]repository.StudentAddress,error)
+	SaveStudentAddress(context.Context,int64,int64,int64,string,*string,*string,*string,*string,*string,*int64,bool)(*repository.StudentAddress,error)
 	ListStudents(context.Context,int64,int64,string,string,int,int)([]repository.StudentProfile,int64,error)
 	GetStudent(context.Context,int64,int64,int64)(*repository.StudentProfile,error)
 	CreateStudent(context.Context,int64,int64,string,string)(*repository.StudentProfile,error)
@@ -241,6 +246,97 @@ func (h *AcademicHandler) PromoteStudentEnrollment(c *gin.Context) {
 	item, err := h.service.PromoteStudentEnrollment(c.Request.Context(), actor, school, sourceID, req.AcademicYearID, req.SectionID, req.RollNumber, req.AdmissionNumber, admissionDate, enrolledAt)
 	if err != nil { academicError(c, err, "Student promotion"); return }
 	c.JSON(http.StatusCreated, gin.H{"status":"success","enrollment":item})
+}
+
+func (h *AcademicHandler) ListStudentLocations(c *gin.Context) {
+	actor, school, ok := h.ready(c)
+	if !ok { return }
+	var parentID *int64
+	if raw := c.Query("parent_id"); raw != "" {
+		value, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil || value <= 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid parent location ID"})
+			return
+		}
+		parentID = &value
+	}
+	items, err := h.service.ListStudentLocations(c.Request.Context(), actor, school, parentID, c.Query("level"), c.Query("q"))
+	if err != nil { academicError(c, err, "Student location"); return }
+	c.JSON(http.StatusOK, gin.H{"status":"success","locations":items})
+}
+
+func (h *AcademicHandler) CreateStudentLocation(c *gin.Context) {
+	actor, school, ok := h.ready(c)
+	if !ok { return }
+	var req struct {
+		ParentID *int64 `json:"parent_id"`
+		CountryCode string `json:"country_code"`
+		Level string `json:"level"`
+		Name string `json:"name"`
+		LocalityType *string `json:"locality_type"`
+	}
+	if c.ShouldBindJSON(&req) != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid request body"})
+		return
+	}
+	item, err := h.service.CreateStudentLocation(c.Request.Context(), actor, school,
+		req.ParentID, req.CountryCode, req.Level, req.Name, req.LocalityType)
+	if err != nil { academicError(c, err, "Student location"); return }
+	c.JSON(http.StatusCreated, gin.H{"status":"success","location":item})
+}
+
+func (h *AcademicHandler) DeactivateStudentLocation(c *gin.Context) {
+	actor, school, ok := h.ready(c)
+	if !ok { return }
+	locationID, valid := academicID(c, "locationID")
+	if !valid {
+		c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid location ID"})
+		return
+	}
+	item, err := h.service.DeactivateStudentLocation(c.Request.Context(), actor, school, locationID)
+	if err != nil { academicError(c, err, "Student location"); return }
+	c.JSON(http.StatusOK, gin.H{"status":"success","location":item})
+}
+
+func (h *AcademicHandler) ListStudentAddresses(c *gin.Context) {
+	actor, school, ok := h.ready(c)
+	if !ok { return }
+	studentID, valid := academicID(c, "studentID")
+	if !valid {
+		c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid student ID"})
+		return
+	}
+	items, err := h.service.ListStudentAddresses(c.Request.Context(), actor, school, studentID)
+	if err != nil { academicError(c, err, "Student address"); return }
+	c.JSON(http.StatusOK, gin.H{"status":"success","addresses":items})
+}
+
+func (h *AcademicHandler) SaveStudentAddress(c *gin.Context) {
+	actor, school, ok := h.ready(c)
+	if !ok { return }
+	studentID, valid := academicID(c, "studentID")
+	if !valid {
+		c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid student ID"})
+		return
+	}
+	var req struct {
+		AddressLine1 *string `json:"address_line_1"`
+		AddressLine2 *string `json:"address_line_2"`
+		AreaMohalla *string `json:"area_mohalla"`
+		Landmark *string `json:"landmark"`
+		PostalCode *string `json:"postal_code"`
+		LocationID *int64 `json:"location_id"`
+		SameAsCurrent bool `json:"same_as_current"`
+	}
+	if c.ShouldBindJSON(&req) != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid request body"})
+		return
+	}
+	item, err := h.service.SaveStudentAddress(c.Request.Context(), actor, school, studentID,
+		c.Param("addressType"), req.AddressLine1, req.AddressLine2, req.AreaMohalla,
+		req.Landmark, req.PostalCode, req.LocationID, req.SameAsCurrent)
+	if err != nil { academicError(c, err, "Student address"); return }
+	c.JSON(http.StatusOK, gin.H{"status":"success","address":item})
 }
 
 func (h *AcademicHandler) ListStudents(c *gin.Context) {
