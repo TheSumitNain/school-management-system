@@ -257,10 +257,10 @@ export function StudentManagementPage({ permissions }: Props) {
       onOpenHealth={() => { const item = profileStudent; setProfileStudent(null); setHealthStudent(item); }}
       onClose={() => setProfileStudent(null)}
     />}
-    {basicDetailsStudent && <StudentBasicDetailsSection student={basicDetailsStudent} canUpdate={canUpdate && basicDetailsStudent.status !== "archived"} onClose={() => setBasicDetailsStudent(null)} />}
-    {addressStudent && <StudentAddressSection student={addressStudent} canUpdate={canUpdate && addressStudent.status !== "archived"} onClose={() => setAddressStudent(null)} />}
-    {familyStudent && <StudentFamilySection student={familyStudent} canManage={canManageGuardians && familyStudent.status !== "archived"} canReadRelatedStudents={canReadEnrollments} onClose={() => setFamilyStudent(null)} />}
-    {healthStudent && <StudentHealthSection student={healthStudent} canUpdate={canUpdate && healthStudent.status === "active"} onClose={() => setHealthStudent(null)} />}
+    {basicDetailsStudent && <StudentBasicDetailsSection student={basicDetailsStudent} canUpdate={canUpdate && basicDetailsStudent.status !== "archived"} onClose={() => { const item = basicDetailsStudent; setBasicDetailsStudent(null); setProfileStudent(item); }} />}
+    {addressStudent && <StudentAddressSection student={addressStudent} canUpdate={canUpdate && addressStudent.status !== "archived"} onClose={() => { const item = addressStudent; setAddressStudent(null); setProfileStudent(item); }} />}
+    {familyStudent && <StudentFamilySection student={familyStudent} canManage={canManageGuardians && familyStudent.status !== "archived"} canReadRelatedStudents={canReadEnrollments} onClose={() => { const item = familyStudent; setFamilyStudent(null); setProfileStudent(item); }} />}
+    {healthStudent && <StudentHealthSection student={healthStudent} canUpdate={canUpdate && healthStudent.status === "active"} onClose={() => { const item = healthStudent; setHealthStudent(null); setProfileStudent(item); }} />}
     {promotionEnrollment && <StudentPromotionDialog
       enrollment={promotionEnrollment}
       academicYears={years}
