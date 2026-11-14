@@ -99,9 +99,13 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
     const weight = weightKG.trim() ? Number(weightKG) : null;
     if (height !== null && (!Number.isFinite(height) || height < 20 || height > 250)) {
       errors.heightCM = "Height must be between 20 and 250 cm.";
+    } else if (height !== null && Math.abs(height * 100 - Math.round(height * 100)) > 1e-8) {
+      errors.heightCM = "Use no more than 2 decimal places.";
     }
     if (weight !== null && (!Number.isFinite(weight) || weight < 1 || weight > 300)) {
       errors.weightKG = "Weight must be between 1 and 300 kg.";
+    } else if (weight !== null && Math.abs(weight * 100 - Math.round(weight * 100)) > 1e-8) {
+      errors.weightKG = "Use no more than 2 decimal places.";
     }
     setPhysicalErrors(errors);
     if (Object.keys(errors).length > 0) return;
