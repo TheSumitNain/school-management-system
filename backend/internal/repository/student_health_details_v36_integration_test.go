@@ -150,6 +150,12 @@ func TestStudentMedicalPhysicalDetailsV36PostgresIntegration(t *testing.T) {
 			t.Fatalf("%s: release savepoint: %v", label, err)
 		}
 	}
+	assertRejected("invalid blood group database constraint",
+		`INSERT INTO student_medical_details(school_id,student_id,blood_group)
+		 VALUES($1,$2,'INVALID')`, schoolID, secondStudentID)
+	assertRejected("height range database constraint",
+		`INSERT INTO student_physical_details(school_id,student_id,height_cm)
+		 VALUES($1,$2,300)`, schoolID, secondStudentID)
 	assertRejected("medical profile delete",
 		`DELETE FROM student_medical_details WHERE student_id=$1`, studentID)
 	assertRejected("physical profile delete",
