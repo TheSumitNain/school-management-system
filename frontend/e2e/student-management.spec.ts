@@ -594,6 +594,12 @@ test("student directory remains view-only when update and archive permissions ar
 
 test("student promotion validates required fields and preserves prior enrollment history", async ({ page }) => {
   const promotionRequests: Record<string, unknown>[] = [];
+  const enrollments: Record<string, unknown>[] = [{
+    id: 100, school_id: 10, student_id: 91, student_name: "Promotion Test Student",
+    academic_year_id: 6, section_id: 61, class_name_snapshot: "Class 1", section_name_snapshot: "A",
+    admission_number: "ADM-OLD-091", roll_number: "09", admission_date: "2025-04-01",
+    status: "active", enrolled_at: "2025-04-01", ended_at: null,
+  }];
   const browserErrors: string[] = [];
   page.on("pageerror", error => browserErrors.push(error.message));
 
@@ -642,26 +648,19 @@ test("student promotion validates required fields and preserves prior enrollment
       return;
     }
     if (path === "/school/enrollments" && request.method() === "GET") {
-      await route.fulfill({
-        json: {
-          enrollments: [{
-            id: 100, school_id: 10, student_id: 91, student_name: "Promotion Test Student",
-            academic_year_id: 6, section_id: 61, class_name_snapshot: "Class 1", section_name_snapshot: "A",
-            admission_number: "ADM-OLD-091", roll_number: "09", admission_date: "2025-04-01",
-            status: "active", enrolled_at: "2025-04-01", ended_at: null,
-          }],
-          pagination: { limit: 20, offset: 0, total: 1 },
-        },
-      });
+      await route.fulfill({ json: { enrollments, pagination: { limit: 20, offset: 0, total: enrollments.length } } });
       return;
     }
     if (path === "/school/enrollments/100/promote" && request.method() === "POST") {
-      promotionRequests.push(request.postDataJSON() as Record<string, unknown>);
-      await route.fulfill({ json: { enrollment: {
+      const input = request.postDataJSON() as Record<string, unknown>;
+      promotionRequests.push(input);
+      Object.assign(enrollments[0], { status: "promoted", ended_at: input.admission_date });
+      enrollments.push({
         id: 101, school_id: 10, student_id: 91, academic_year_id: 7, section_id: 72,
-        admission_number: "ADM-2026-091", class_name_snapshot: "Class 2", section_name_snapshot: "B",
-        status: "active", admission_date: "2026-11-14", enrolled_at: "2026-11-14",
-      } } });
+        admission_number: String(input.admission_number), class_name_snapshot: "Class 2", section_name_snapshot: "B",
+        status: "active", admission_date: input.admission_date, enrolled_at: input.enrolled_at, ended_at: null,
+      });
+      await route.fulfill({ json: { enrollment: enrollments[1] } });
       return;
     }
     await route.fulfill({ status: 404, json: { message: `Unmocked E2E API request: ${request.method()} ${path}` } });
@@ -703,6 +702,9 @@ test("student promotion validates required fields and preserves prior enrollment
   expect(promotionRequests[0].admission_date).toBeTruthy();
   expect(promotionRequests[0].enrolled_at).toBe(promotionRequests[0].admission_date);
   await expect(page.getByText("Student promoted successfully. Previous academic history has been preserved.")).toBeVisible();
+  await expect(page.getByText("ADM-OLD-091")).toBeVisible();
+  await expect(page.getByText("ADM-2026-091")).toBeVisible();
+  await expect(page.getByText("promoted", { exact: true })).toBeVisible();
   await expect(dialog).toHaveCount(0);
   expect(browserErrors).toEqual([]);
 });
