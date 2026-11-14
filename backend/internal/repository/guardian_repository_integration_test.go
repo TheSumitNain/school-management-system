@@ -300,6 +300,30 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("second link should be primary: %+v", secondLink)
 	}
 
+	editedLink, err := repo.UpdateStudentGuardianLink(ctx, targetPrincipalID, schoolID,
+		firstLink.ID, "legal guardian", true, false)
+	if err != nil {
+		t.Fatalf("update student-specific guardian relationship: %v", err)
+	}
+	if editedLink.ID != firstLink.ID || editedLink.RelationshipType != "legal guardian" ||
+		!editedLink.IsPrimaryContact || editedLink.IsEmergencyContact {
+		t.Fatalf("unexpected edited guardian relationship: %+v", editedLink)
+	}
+	active, err := repo.ListStudentGuardians(ctx, targetPrincipalID, schoolID, studentID, false)
+	if err != nil || len(active) != 2 {
+		t.Fatalf("list active links after relationship update: items=%+v err=%v", active, err)
+	}
+	for _, link := range active {
+		if link.ID == secondLink.ID && link.IsPrimaryContact {
+			t.Fatal("updating primary guardian did not clear previous primary contact")
+		}
+	}
+	relatedLink, err := repo.ListStudentGuardians(ctx, targetPrincipalID, schoolID, relatedStudentID, false)
+	if err != nil || len(relatedLink) != 1 || relatedLink[0].RelationshipType != "father" ||
+		!relatedLink[0].IsPrimaryContact || !relatedLink[0].IsEmergencyContact {
+		t.Fatalf("editing one student's relationship changed another student's shared guardian link: links=%+v err=%v", relatedLink, err)
+	}
+
 	history, err := repo.ListStudentGuardians(ctx, targetPrincipalID, schoolID, studentID, true)
 	if err != nil || len(history) != 2 {
 		t.Fatalf("list complete student guardian history: count=%d err=%v", len(history), err)
@@ -344,11 +368,12 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("duplicate link revocation error = %v, want not found", err)
 	}
 
-	var guardianAuditCount, linkCreateAuditCount, linkRevokeAuditCount int
+	var guardianAuditCount, linkCreateAuditCount, linkUpdateAuditCount, linkRevokeAuditCount int
 	if err := tx.QueryRow(ctx, `
 		SELECT
 		  COUNT(*) FILTER (WHERE action IN ('school.guardian.created', 'school.guardian.updated')),
 		  COUNT(*) FILTER (WHERE action = 'school.student_guardian_link_created'),
+		  COUNT(*) FILTER (WHERE action = 'school.student_guardian_link_updated'),
 		  COUNT(*) FILTER (WHERE action = 'school.student_guardian_link_revoked')
 		FROM audit_events
 		WHERE school_id = $1
@@ -359,13 +384,13 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 		  )
 	`, schoolID, targetPrincipalID, fmt.Sprint(guardian.ID),
 		fmt.Sprint(secondGuardian.ID)).Scan(
-		&guardianAuditCount, &linkCreateAuditCount, &linkRevokeAuditCount,
+		&guardianAuditCount, &linkCreateAuditCount, &linkUpdateAuditCount, &linkRevokeAuditCount,
 	); err != nil {
 		t.Fatalf("count guardian audit events: %v", err)
 	}
-	if guardianAuditCount != 4 || linkCreateAuditCount != 3 || linkRevokeAuditCount != 1 {
-		t.Fatalf("guardian audit counts = contacts %d, link creates %d, link revokes %d; want 4, 3, 1",
-			guardianAuditCount, linkCreateAuditCount, linkRevokeAuditCount)
+	if guardianAuditCount != 4 || linkCreateAuditCount != 3 || linkUpdateAuditCount != 1 || linkRevokeAuditCount != 1 {
+		t.Fatalf("guardian audit counts = contacts %d, link creates %d, link updates %d, link revokes %d; want 4, 3, 1, 1",
+			guardianAuditCount, linkCreateAuditCount, linkUpdateAuditCount, linkRevokeAuditCount)
 	}
 
 	var guardianReadAuditCount int
