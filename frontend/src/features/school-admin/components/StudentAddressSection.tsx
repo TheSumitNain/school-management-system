@@ -13,6 +13,7 @@ type AddressType = "current" | "permanent";
 
 type Props = {
   student: StudentProfile;
+  canUpdate: boolean;
   onClose: () => void;
 };
 
@@ -20,7 +21,7 @@ function textValue(value?: string | null) {
   return value ?? "";
 }
 
-export function StudentAddressSection({ student, onClose }: Props) {
+export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
   const [addressType, setAddressType] = useState<AddressType>("current");
   const [line1, setLine1] = useState("");
   const [line2, setLine2] = useState("");
@@ -104,6 +105,7 @@ export function StudentAddressSection({ student, onClose }: Props) {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!canUpdate) return;
     setFieldError("");
     if (addressType === "permanent" && sameAsCurrent && !currentAddress) {
       setFieldError("Save the current address before using it as the permanent address.");
@@ -136,6 +138,7 @@ export function StudentAddressSection({ student, onClose }: Props) {
   }
 
   async function addLocation() {
+    if (!canUpdate) return;
     setFieldError("");
     if (!newLocationName.trim()) {
       setFieldError("Enter the new location name.");
@@ -188,7 +191,7 @@ export function StudentAddressSection({ student, onClose }: Props) {
       <form className="student-address-form" onSubmit={submit} noValidate>
         {addressType === "permanent" && (
           <label className="student-address-same">
-            <input type="checkbox" checked={sameAsCurrent} disabled={!currentAddress || busy} onChange={event => { setSameAsCurrent(event.target.checked); setFieldError(""); }} />
+            <input type="checkbox" checked={sameAsCurrent} disabled={!canUpdate || !currentAddress || busy} onChange={event => { setSameAsCurrent(event.target.checked); setFieldError(""); }} />
             Permanent address is same as current address
           </label>
         )}
@@ -197,40 +200,41 @@ export function StudentAddressSection({ student, onClose }: Props) {
         ) : (
           <>
             <div className="student-address-grid">
-              <label>House / street<input value={line1} maxLength={200} onChange={event => setLine1(event.target.value)} placeholder="House number, street or building"/></label>
-              <label>Address line 2<input value={line2} maxLength={200} onChange={event => setLine2(event.target.value)} placeholder="Apartment, floor or additional details"/></label>
-              <label>Area / mohalla<input value={areaMohalla} maxLength={120} onChange={event => setAreaMohalla(event.target.value)} placeholder="Local area or mohalla"/></label>
-              <label>Landmark<input value={landmark} maxLength={120} onChange={event => setLandmark(event.target.value)} placeholder="Nearby landmark"/></label>
-              <label>PIN / postal code<input value={postalCode} maxLength={20} onChange={event => setPostalCode(event.target.value)} placeholder="PIN or postal code"/></label>
+              <label>House / street<input disabled={!canUpdate} value={line1} maxLength={200} onChange={event => setLine1(event.target.value)} placeholder="House number, street or building"/></label>
+              <label>Address line 2<input disabled={!canUpdate} value={line2} maxLength={200} onChange={event => setLine2(event.target.value)} placeholder="Apartment, floor or additional details"/></label>
+              <label>Area / mohalla<input disabled={!canUpdate} value={areaMohalla} maxLength={120} onChange={event => setAreaMohalla(event.target.value)} placeholder="Local area or mohalla"/></label>
+              <label>Landmark<input disabled={!canUpdate} value={landmark} maxLength={120} onChange={event => setLandmark(event.target.value)} placeholder="Nearby landmark"/></label>
+              <label>PIN / postal code<input disabled={!canUpdate} value={postalCode} maxLength={20} onChange={event => setPostalCode(event.target.value)} placeholder="PIN or postal code"/></label>
             </div>
             <section className="student-location-section" aria-label="Location hierarchy">
               <h3>Location</h3>
               <p>Choose the full location path. If the exact village or city is unknown, leave all four selectors blank and use the address text fields.</p>
               <div className="student-location-grid">
-                <label>State<input value={stateSearch} onChange={event => setStateSearch(event.target.value)} placeholder="Search states"/><Select ariaLabel="State" value={String(stateID || "")} onChange={value => { setStateID(Number(value)); resetChildren("state"); }} placeholder="Select state" options={states.map(item => ({ value: String(item.id), label: item.name }))}/></label>
-                <label>District<input value={districtSearch} onChange={event => setDistrictSearch(event.target.value)} placeholder="Search districts" disabled={!stateID}/><Select ariaLabel="District" value={String(districtID || "")} onChange={value => { setDistrictID(Number(value)); resetChildren("district"); }} placeholder="Select district" disabled={!stateID || districtsQuery.isLoading} options={districts.map(item => ({ value: String(item.id), label: item.name }))}/></label>
-                <label>Block / Tehsil<input value={subdistrictSearch} onChange={event => setSubdistrictSearch(event.target.value)} placeholder="Search blocks / tehsils" disabled={!districtID}/><Select ariaLabel="Block or Tehsil" value={String(subdistrictID || "")} onChange={value => { setSubdistrictID(Number(value)); resetChildren("subdistrict"); }} placeholder="Select block / tehsil" disabled={!districtID || subdistrictsQuery.isLoading} options={subdistricts.map(item => ({ value: String(item.id), label: item.name }))}/></label>
-                <label>Village / City<input value={localitySearch} onChange={event => setLocalitySearch(event.target.value)} placeholder="Search villages / cities" disabled={!subdistrictID}/><Select ariaLabel="Village or City" value={String(localityID || "")} onChange={value => { setLocalityID(Number(value)); setFieldError(""); }} placeholder="Select village / city" disabled={!subdistrictID || localitiesQuery.isLoading} options={localities.map(item => ({ value: String(item.id), label: item.name + (item.locality_type ? " · " + item.locality_type : "") }))}/></label>
+                <label>State<input disabled={!canUpdate} value={stateSearch} onChange={event => setStateSearch(event.target.value)} placeholder="Search states"/><Select ariaLabel="State" value={String(stateID || "")} disabled={!canUpdate} onChange={value => { setStateID(Number(value)); resetChildren("state"); }} placeholder="Select state" options={states.map(item => ({ value: String(item.id), label: item.name }))}/></label>
+                <label>District<input disabled={!canUpdate || !stateID} value={districtSearch} onChange={event => setDistrictSearch(event.target.value)} placeholder="Search districts" disabled={!stateID}/><Select ariaLabel="District" value={String(districtID || "")} disabled={!canUpdate} onChange={value => { setDistrictID(Number(value)); resetChildren("district"); }} placeholder="Select district" disabled={!stateID || districtsQuery.isLoading} options={districts.map(item => ({ value: String(item.id), label: item.name }))}/></label>
+                <label>Block / Tehsil<input disabled={!canUpdate || !districtID} value={subdistrictSearch} onChange={event => setSubdistrictSearch(event.target.value)} placeholder="Search blocks / tehsils" disabled={!districtID}/><Select ariaLabel="Block or Tehsil" value={String(subdistrictID || "")} disabled={!canUpdate} onChange={value => { setSubdistrictID(Number(value)); resetChildren("subdistrict"); }} placeholder="Select block / tehsil" disabled={!districtID || subdistrictsQuery.isLoading} options={subdistricts.map(item => ({ value: String(item.id), label: item.name }))}/></label>
+                <label>Village / City<input disabled={!canUpdate || !subdistrictID} value={localitySearch} onChange={event => setLocalitySearch(event.target.value)} placeholder="Search villages / cities" disabled={!subdistrictID}/><Select ariaLabel="Village or City" value={String(localityID || "")} disabled={!canUpdate} onChange={value => { setLocalityID(Number(value)); setFieldError(""); }} placeholder="Select village / city" disabled={!subdistrictID || localitiesQuery.isLoading} options={localities.map(item => ({ value: String(item.id), label: item.name + (item.locality_type ? " · " + item.locality_type : "") }))}/></label>
               </div>
               {fieldError && <small className="app-field-error">{fieldError}</small>}
-              {canAddLocation && <button type="button" className="student-link-button" onClick={() => { setShowLocationCreator(value => !value); setFieldError(""); }}>Add missing {nextLocationLabel.toLowerCase()}</button>}
+              {canUpdate && canAddLocation && <button type="button" className="student-link-button" onClick={() => { setShowLocationCreator(value => !value); setFieldError(""); }}>Add missing {nextLocationLabel.toLowerCase()}</button>}
               {hasAnyLocation && <button type="button" className="student-link-button" onClick={() => { setStateID(0); resetChildren("state"); }}>Clear location selection</button>}
               {(statesQuery.isError || districtsQuery.isError || subdistrictsQuery.isError || localitiesQuery.isError) && <small className="app-field-error" role="alert">Location options could not be loaded. Close and reopen this section to retry.</small>}
-              {showLocationCreator && canAddLocation && (
+              {showLocationCreator && canUpdate && canAddLocation && (
                 <div className="student-location-create">
                   <strong>Add {nextLocationLabel.toLowerCase()} for this school</strong>
-                  <label>Location name<input value={newLocationName} maxLength={120} onChange={event => setNewLocationName(event.target.value)} placeholder={"Enter " + nextLocationLabel.toLowerCase()}/></label>
-                  {nextLocationLevel === "state" && <label>Country code<input value={countryCode} maxLength={2} onChange={event => setCountryCode(event.target.value.toUpperCase())} placeholder="IN"/></label>}
-                  {nextLocationLevel === "locality" && <label>Locality type<Select ariaLabel="Locality type" value={newLocalityType} onChange={setNewLocalityType} options={[{value:"village",label:"Village"},{value:"city",label:"City"},{value:"town",label:"Town"},{value:"other",label:"Other"}]}/></label>}
+                  <label>Location name<input disabled={!canUpdate} value={newLocationName} maxLength={120} onChange={event => setNewLocationName(event.target.value)} placeholder={"Enter " + nextLocationLabel.toLowerCase()}/></label>
+                  {nextLocationLevel === "state" && <label>Country code<input disabled={!canUpdate} value={countryCode} maxLength={2} onChange={event => setCountryCode(event.target.value.toUpperCase())} placeholder="IN"/></label>}
+                  {nextLocationLevel === "locality" && <label>Locality type<Select ariaLabel="Locality type" value={newLocalityType} disabled={!canUpdate} onChange={setNewLocalityType} options={[{value:"village",label:"Village"},{value:"city",label:"City"},{value:"town",label:"Town"},{value:"other",label:"Other"}]}/></label>}
                   <button type="button" className="secondary" disabled={createLocation.isPending} onClick={() => void addLocation()}>{createLocation.isPending ? "Adding…" : "Add location"}</button>
                 </div>
               )}
             </section>
           </>
         )}
+        {!canUpdate && <p className="student-address-note">View-only access. Student update permission is required to edit addresses or add locations.</p>}
         <div className="app-modal-actions">
           <button type="button" className="app-modal-cancel" onClick={onClose} disabled={busy}>Close</button>
-          <button className="primary" disabled={busy || addressesQuery.isLoading || addressesQuery.isError}>{saveAddress.isPending ? "Saving…" : "Save address"}</button>
+          {canUpdate && <button className="primary" disabled={busy || addressesQuery.isLoading || addressesQuery.isError}>{saveAddress.isPending ? "Saving…" : "Save address"}</button>}
         </div>
       </form>
     </Modal>
