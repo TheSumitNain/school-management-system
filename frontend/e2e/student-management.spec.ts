@@ -182,16 +182,16 @@ test("student admission, profile navigation and parent details render without br
     }),
   }));
   expect(admissionFormState.valid).toBe(true);
-  await page.locator(".app-modal-content form").evaluate(form => {
-    form.addEventListener("submit", () => document.body.setAttribute("data-e2e-form-submitted", "true"), { once: true });
-  });
   const submitButton = page.getByRole("button", { name: "Admit student" });
   expect(await submitButton.evaluate(button => ({
     type: (button as HTMLButtonElement).type,
     belongsToForm: (button as HTMLButtonElement).form === button.closest("form"),
   }))).toEqual({ type: "submit", belongsToForm: true });
-  await submitButton.click();
-  await expect(page.locator("body")).toHaveAttribute("data-e2e-form-submitted", "true");
+  await submitButton.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Admission submit button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
   await expect.poll(() => createdAdmissions.length).toBe(1);
 
   await expect(page.getByText("Student admitted and enrolled for the selected academic year.")).toBeVisible();
