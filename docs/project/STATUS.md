@@ -292,6 +292,7 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - Added `PATCH /school/student-guardian-links/:linkID`, protected by the existing live `guardians.manage` permission and school-scoped repository authorization.
 - Staff can now edit Relationship Type, Primary Contact and Emergency Contact on an active student–guardian link without changing the shared guardian profile or revoking/recreating the relationship.
 - Primary-contact selection is serialized by locking the owning student row; choosing a new primary clears the previous active primary only for that same student. Other students linked to the same guardian remain unchanged.
-- The update is transactional and writes an append-only audit event with before/after relationship values and contact flags. Revoked links cannot be edited; relationship history remains intact.
+- The update is transactional, restricted to active students and active links, and writes an append-only audit event with before/after relationship values and contact flags. Revoked links cannot be edited; relationship history remains intact.
+- Guardian relationship edit forms and action controls wrap responsively inside each guardian card on narrow screens.
 - Frontend includes field-level relationship validation, per-student labels/help text, loading/error/success feedback and query invalidation. Backend handler/route tests and PostgreSQL integration coverage include permission enforcement, audit evidence, primary-contact exclusivity and isolation from another student's link.
 - CI and browser acceptance are pending; do not mark Student Management complete until both are verified.
