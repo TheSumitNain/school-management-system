@@ -116,6 +116,21 @@ func TestStudentBasicDetailsV37PostgresIntegration(t *testing.T) {
 	if err != nil || loadedBasic.ID != basic.ID || loadedBasic.Nationality == nil || *loadedBasic.Nationality != nationality {
 		t.Fatalf("read student basic details through repository: item=%+v err=%v", loadedBasic, err)
 	}
+	var readAuditCount int
+	var readAuditMetadata string
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*),COALESCE(string_agg(metadata::text,' '),'')
+		  FROM audit_events
+		 WHERE school_id=$1 AND actor_principal_id=$2
+		   AND action='school.student.basic_details.read'
+		   AND resource_id=$3
+	`, schoolID, actorPrincipalID, fmt.Sprint(secondStudentID)).Scan(&readAuditCount, &readAuditMetadata); err != nil {
+		t.Fatalf("inspect basic profile read audit: %v", err)
+	}
+	if readAuditCount != 1 || !strings.Contains(readAuditMetadata, "basic_details") ||
+		strings.Contains(readAuditMetadata, nationality) || strings.Contains(readAuditMetadata, placeOfBirth) {
+		t.Fatalf("basic profile read audit must record section only: count=%d metadata=%s", readAuditCount, readAuditMetadata)
+	}
 	var auditCount int
 	var auditMetadata string
 	if err := tx.QueryRow(ctx, `
