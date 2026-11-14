@@ -1,6 +1,6 @@
 # Student Management — Domain and Database Design
 
-**Status:** Approved design baseline; V31–V35 schema and first admission/address/contact workflows implemented, full profile still in progress  
+**Status:** Approved design baseline; V31–V36 schema and first admission/address/contact/guardian workflows implemented, full profile still in progress  
 **Last reconciled:** 2026-11-14  
 **Scope:** Phase 1 School Admin student admission, profiles, academic-year enrollment, curriculum selection and related school workflows.
 
@@ -84,7 +84,7 @@ Keep independently maintained profile sections separate from the enrollment reco
 
 A section may be absent or incomplete. Its absence must not prevent basic student creation or ordinary student directory use.
 
-The existing V11 `guardians` and `student_guardians` model is now exposed in a staff-managed Parents & Siblings profile section. Staff can create guardian contact records, link multiple guardians with relationship/primary/emergency flags, and revoke links with a reason while retaining history. The related-student list is derived only from active shared guardian links and is labelled “Other students sharing a guardian”; it must not be presented as proof of a biological sibling relationship. This work does not enable parent login or OTP; parent authentication remains deferred.
+The existing V11 `guardians` and `student_guardians` model is now exposed in a staff-managed Parents & Siblings profile section. Staff can create guardian contact records, link multiple guardians with relationship/primary/emergency flags, and revoke links with a reason while retaining history. V36 permits a later re-link as a new relationship period without overwriting the revoked row. The related-student list is derived only from active shared guardian links and is labelled “Other students sharing a guardian”; it must not be presented as proof of a biological sibling relationship. This work does not enable parent login or OTP; parent authentication remains deferred.
 
 ### 3.4 Address and location hierarchy
 
