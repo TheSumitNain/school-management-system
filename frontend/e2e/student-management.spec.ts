@@ -339,7 +339,17 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByRole("heading", { name: "Edit shared guardian profile" })).toBeVisible();
   await expect(page.getByText("These contact and profile details are shared across all students linked to this guardian.")).toBeVisible();
   await page.getByPlaceholder("Mobile number").fill("9999912345");
+  await page.getByPlaceholder("guardian@example.com").fill("not-an-email");
   const saveGuardianDetails = page.getByRole("button", { name: "Save guardian details" });
+  await saveGuardianDetails.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Guardian details submit button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect(page.getByText("Enter a valid email address.", { exact: true })).toBeVisible();
+  expect(guardianLink.mobile_number).toBe("9876543210");
+  await expect(page.getByRole("dialog", { name: "Update shared guardian profile?" })).toHaveCount(0);
+  await page.getByPlaceholder("guardian@example.com").fill("ramesh.updated@example.test");
   await saveGuardianDetails.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
     if (!form) throw new Error("Guardian details submit button is not associated with its form.");
