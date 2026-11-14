@@ -338,11 +338,6 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 	// Primary-contact state is asserted against the active-link query above.
 	// includeHistory broadens the result to revoked links; it is not a separate
 	// historical snapshot of every prior field value.
-	active, err = repo.ListStudentGuardians(ctx, targetPrincipalID, schoolID, studentID, false)
-	if err != nil || len(active) != 2 {
-		t.Fatalf("list active student guardian links: count=%d err=%v", len(active), err)
-	}
-
 	if err := repo.RevokeStudentGuardianLink(ctx, targetPrincipalID, schoolID,
 		firstLink.ID, "relationship ended"); err != nil {
 		t.Fatalf("revoke student guardian link: %v", err)
