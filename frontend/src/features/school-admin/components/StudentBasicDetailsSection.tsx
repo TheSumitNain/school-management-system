@@ -42,7 +42,6 @@ export function StudentBasicDetailsSection({ student, canUpdate, onStudentNameCh
   useEffect(() => {
     setFullName(student.full_name);
     setNameError("");
-    setNameFeedback(null);
   }, [student.id, student.full_name]);
 
   useEffect(() => {
