@@ -38,7 +38,7 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
   const [measuredOn, setMeasuredOn] = useState("");
   const [visionNotes, setVisionNotes] = useState("");
   const [physicalNotes, setPhysicalNotes] = useState("");
-  const [physicalErrors, setPhysicalErrors] = useState<Record<string, string>>({});
+  const [physicalErrors, setPhysicalErrors] = useState<{ heightCM?: string; weightKG?: string }>({});
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
 
   const medicalQuery = useSchoolStudentMedicalDetailsQuery(student.id, section === "medical");
