@@ -16,7 +16,7 @@ import (
 type GuardianManagementService interface {
 	ListGuardians(context.Context,int64,int64,string,string,int,int)([]repository.Guardian,int64,error)
 	GetGuardian(context.Context,int64,int64,int64)(*repository.Guardian,error)
-	SaveGuardian(context.Context,int64,int64,int64,string,*string,*string,string)(*repository.Guardian,error)
+	SaveGuardian(context.Context,int64,int64,int64,string,*string,*string,*string,*string,*string,*string,string)(*repository.Guardian,error)
 	ListStudentGuardians(context.Context,int64,int64,int64,bool)([]repository.StudentGuardian,error)
 	ListStudentRelatedStudents(context.Context,int64,int64,int64)([]repository.StudentRelatedStudent,error)
 	LinkStudentGuardian(context.Context,int64,int64,int64,int64,string,bool,bool)(*repository.StudentGuardian,error)
@@ -66,11 +66,11 @@ func(h *GuardianHandler) GetGuardian(c *gin.Context){
 func(h *GuardianHandler) SaveGuardian(c *gin.Context){
 	a,s,ok:=h.ready(c);if !ok{return};id:=int64(0)
 	if c.Param("guardianID")!=""{var valid bool;id,valid=guardianID(c,"guardianID");if !valid{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid guardian ID"});return}}
-	var req struct{FullName string `json:"full_name"`;MobileNumber *string `json:"mobile_number"`;EmailAddress *string `json:"email_address"`;Status string `json:"status"`}
+	var req struct{FullName string `json:"full_name"`;MobileNumber *string `json:"mobile_number"`;EmailAddress *string `json:"email_address"`;AlternateMobileNumber *string `json:"alternate_mobile_number"`;Occupation *string `json:"occupation"`;Education *string `json:"education"`;WorkplaceName *string `json:"workplace_name"`;Status string `json:"status"`}
 	if c.ShouldBindJSON(&req)!=nil{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid request body"});return}
 	if req.Status==""&&id==0{req.Status="active"}
 	if req.Status==""{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"status is required when updating a guardian"});return}
-	v,err:=h.service.SaveGuardian(c.Request.Context(),a,s,id,req.FullName,req.MobileNumber,req.EmailAddress,req.Status)
+	v,err:=h.service.SaveGuardian(c.Request.Context(),a,s,id,req.FullName,req.MobileNumber,req.EmailAddress,req.AlternateMobileNumber,req.Occupation,req.Education,req.WorkplaceName,req.Status)
 	if err!=nil{guardianError(c,err,"Guardian");return}
 	code:=http.StatusOK;if id==0{code=http.StatusCreated}
 	c.JSON(code,gin.H{"status":"success","guardian":v})
