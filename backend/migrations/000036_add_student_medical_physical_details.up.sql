@@ -1,6 +1,6 @@
 -- V36: restricted, auditable student health profiles with preserved history.
--- Medical profile edits snapshot the previous version; physical measurements
--- are append-only dated records. Neither section is part of permanent identity.
+-- Medical edits snapshot the previous version; physical measurements are
+-- append-only dated records. Neither section is part of permanent identity.
 
 CREATE TABLE student_medical_details (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -31,9 +31,6 @@ CREATE TABLE student_medical_details (
         CHECK (emergency_medical_notes IS NULL OR length(BTRIM(emergency_medical_notes)) BETWEEN 1 AND 2000)
 );
 
-CREATE INDEX ix_student_medical_details_school_student
-    ON student_medical_details (school_id, student_id);
-
 CREATE TABLE student_medical_details_history (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     school_id BIGINT NOT NULL REFERENCES schools(id) ON DELETE RESTRICT,
@@ -54,6 +51,8 @@ CREATE TABLE student_medical_details_history (
         CHECK (blood_group IS NULL OR blood_group IN ('A+','A-','B+','B-','AB+','AB-','O+','O-'))
 );
 
+CREATE INDEX ix_student_medical_details_school_student
+    ON student_medical_details (school_id, student_id);
 CREATE INDEX ix_student_medical_details_history_school_student
     ON student_medical_details_history (school_id, student_id, version_number DESC);
 
@@ -63,7 +62,7 @@ CREATE TABLE student_physical_details (
     student_id BIGINT NOT NULL,
     height_cm NUMERIC(5,2),
     weight_kg NUMERIC(5,2),
-    measured_on DATE,
+    measured_on DATE NOT NULL,
     vision_notes VARCHAR(1000),
     physical_notes VARCHAR(2000),
     recorded_by_principal_id BIGINT NOT NULL REFERENCES auth_principals(id) ON DELETE RESTRICT,
@@ -75,8 +74,6 @@ CREATE TABLE student_physical_details (
         CHECK (height_cm IS NULL OR height_cm BETWEEN 20 AND 250),
     CONSTRAINT student_physical_details_weight_range
         CHECK (weight_kg IS NULL OR weight_kg BETWEEN 1 AND 300),
-    CONSTRAINT student_physical_details_measurement_date_required
-        CHECK ((height_cm IS NULL AND weight_kg IS NULL) OR measured_on IS NOT NULL),
     CONSTRAINT student_physical_details_nonempty
         CHECK (height_cm IS NOT NULL OR weight_kg IS NOT NULL OR vision_notes IS NOT NULL OR physical_notes IS NOT NULL),
     CONSTRAINT student_physical_details_vision_notes
@@ -117,20 +114,16 @@ $v36$;
 CREATE TRIGGER trg_guard_student_medical_details
 BEFORE UPDATE OR DELETE ON student_medical_details
 FOR EACH ROW EXECUTE FUNCTION guard_student_medical_details();
-
 CREATE TRIGGER trg_guard_student_medical_details_history
 BEFORE UPDATE OR DELETE ON student_medical_details_history
 FOR EACH ROW EXECUTE FUNCTION guard_student_health_history();
-
 CREATE TRIGGER trg_guard_student_physical_details
 BEFORE UPDATE OR DELETE ON student_physical_details
 FOR EACH ROW EXECUTE FUNCTION guard_student_health_history();
 
 COMMENT ON TABLE student_medical_details IS
     'Current optional student health information; reads require students.read_sensitive and are audited.';
-
 COMMENT ON TABLE student_medical_details_history IS
     'Append-only prior medical profile versions; restricted reads are audited and values are excluded from audit metadata.';
-
 COMMENT ON TABLE student_physical_details IS
     'Append-only dated physical measurements and notes; reads require students.read_sensitive and are audited.';
