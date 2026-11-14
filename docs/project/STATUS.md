@@ -313,3 +313,14 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - V41 retains the same actor/school checks for revocation. The down migration restores the original V12 trigger behavior.
 - The PostgreSQL integration test already exercises relationship-type changes, primary-contact exclusivity, cross-student isolation, revoked-link immutability, inactive-student restrictions and audit logging. CI must rerun with V41 before this correction is considered verified.
 - This is an additive migration; do not edit V12 or apply V41 to the persistent `school_management` database without the user's explicit approval and a verified restorable backup.
+
+
+## Student Management verification update — 2026-11-14
+
+- Backend CI for commit 98c10e62 completed successfully: the full migration chain applied to an ephemeral PostgreSQL database, all backend tests including PostgreSQL integration tests passed, and go vet passed. The earlier V41 status entry above is therefore verified; its CI-pending wording is historical.
+- The guardian relationship integration test now asserts primary-contact exclusivity against active links only. The include-history query verifies history visibility/count; it is not a historical snapshot of previous field values. A redundant second active-link read was removed.
+- The frontend source audit confirms Basic Details and Contact Details Save controls intentionally remain disabled when the prerequisite sensitive-profile GET fails. Do not remove this guard or permit editing against empty fallback values. Retry must recover the read first.
+- GET access for Basic Details, Contact Details and Address requires the existing students.read_sensitive permission; corresponding writes require students.update. Keep these existing live permission boundaries unchanged. If the UI still reports a failed read after the local database is current, capture the API error and diagnose the specific endpoint rather than weakening authorization.
+- The known local adoption gap remains: the user's persistent school_management database was last reported at migration V24, while student address, contact, medical/physical and basic-details tables are introduced in V34–V37, guardian profile extensions in V38, State/UT reference data in V40 and relationship editability in V41. This is a likely explanation for failed profile reads on that database, not proof of its current version. Do not migrate it without explicit approval and a verified restorable backup.
+- Current Student Management gaps: browser-level create/view/edit/save acceptance remains pending; the national District → Block/Tehsil → Village/City reference hierarchy still needs an authoritative LGD import; persistent database migration/adoption remains pending. State/UT rows are seeded by V40, but lower-level rows are deliberately not fabricated.
+- Current work remains scoped to Student Management. Auth, RBAC, Class, Section and Subject are unchanged.
