@@ -24,7 +24,7 @@ func TestValidateCSVBuildsUniqueHierarchy(t *testing.T) {
 }
 
 func TestValidateCSVRejectsWrongHeader(t *testing.T) {
-	_, err := validateCSV(strings.NewReader("state,name\n06,Haryana\n"))
+	_, err := validateCSV(strings.NewReader("state,name,igod_state_code,district_code,district_name,subdistrict_code,subdistrict_name,locality_code,locality_name,locality_type\n06,Haryana,HR,701,Ambala,12001,Ambala,900001,Ambala,village\n"))
 	if err == nil || !strings.Contains(err.Error(), "CSV column") {
 		t.Fatalf("validateCSV() error = %v, want header error", err)
 	}
