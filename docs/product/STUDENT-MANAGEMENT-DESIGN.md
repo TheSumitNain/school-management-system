@@ -321,3 +321,16 @@ The November 13, 2026 reference-screen review captured the following target inve
 - Until that backend/key-management work and its permission/integration tests are complete, do not ship a frontend field that transmits or persists the full number insecurely.
 
 Official references: UIDAI circular, 5 September 2018, “No denial of admission in schools for want of Aadhaar”; UIDAI Aadhaar Mythbusters, question on school admission.
+## 11. Student Management form clarity and validation standard
+
+Every Student Management form must make field expectations understandable before submission:
+
+- Show an explicit **Required** or **Optional** marker beside every editable field label. An asterisk may supplement the text but must not be the only indication. Conditional requirements must say when they become required (for example, measurement date is required only when a physical measurement is being recorded).
+- Add a keyboard- and touch-accessible information icon only where a field has non-obvious meaning, format, allowed values, length/range, privacy implications or a dependency. Its help text must explain what to enter and any restrictions in plain language. Hover-only tooltips are not sufficient; focus/click must expose the same help.
+- Place examples in placeholders or short helper text, but never use a placeholder as the only label or as a substitute for validation/help.
+- Show every relevant validation error next to its field and associate it with the control using accessible descriptions. Keep a form-level message only for non-field/server errors and connect it to the affected fields where possible.
+- Required/optional labels, frontend validation, API validation, repository rules and database constraints must agree. Do not mark a field optional in the UI if the server or database requires it, and do not make a genuinely optional profile field block admission or profile saving.
+- Save controls must expose why they are unavailable: loading, failed prerequisite read, missing permission, invalid input or an in-flight save. Failed prerequisite reads must offer a retry and must not silently allow an empty form to overwrite existing data.
+- Preserve entered values after recoverable server errors. Do not clear forms or close dialogs on a failed save.
+
+Apply this standard consistently to initial admission, returning enrollment, promotion, Basic Details, Address & Communication, Parents & Siblings, Medical & Physical and school-owned location creation.

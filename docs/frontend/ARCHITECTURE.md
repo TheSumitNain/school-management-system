@@ -81,3 +81,11 @@ frontend/src/
 ## Current migration status
 
 The current frontend already contains working sign-in/MFA/session handling and an initial dashboard. The foundation is being introduced incrementally: QueryClient and Zustand appearance/palette preferences are wired at the root; centralized semantic tokens, four color palettes, Light/Dark/System controls, token-based shared styles, a CSS token guard, dashboard skeleton and error boundary have been added. Platform Admin management and school onboarding are implemented against the currently registered backend endpoints, with the Platform Admin page code-split. School staff data is the first School Admin query migrated to TanStack Query. Shared component colors have been migrated to semantic tokens and are guarded by `npm run check:styles`; remaining legacy layout dimensions should be migrated in small verified steps rather than rewritten all at once.
+## Field labels, requiredness and contextual help
+
+- Every editable field must visibly identify itself as **Required** or **Optional**. Use an explicit text marker; an asterisk can be supplementary but cannot be the sole signal. For conditional fields, state the condition in plain language.
+- Use a shared field-label/help primitive rather than one-off tooltip markup. Add an information icon when a field's purpose, accepted format, allowed values, range/length, privacy implications or dependency is not self-evident.
+- Help must work on pointer hover and keyboard focus/click, remain available to touch users, have an accessible name/description, and not rely on hover alone.
+- Keep examples and constraints close to the field. Place validation errors directly beneath the affected field and connect them with aria-describedby/aria-invalid. A placeholder is never the only label or instruction.
+- Keep UI requiredness consistent with frontend validation, API/service rules and database constraints. Conditional requirements must be represented explicitly rather than silently enforced only by the backend.
+- When a prerequisite query fails, show the cause and a retry action. Do not leave an apparently editable form with a permanently disabled Save button; disable unsafe edits until existing values are loaded, and never let a failed read result in accidental blank-overwrite behavior.
