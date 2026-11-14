@@ -117,6 +117,16 @@ func authorizeGuardian(ctx context.Context, db repositoryDB, actorID, schoolID i
 	return ErrGuardianAccessDenied
 }
 
+
+func auditGuardianRead(ctx context.Context, tx pgx.Tx, actorID, schoolID int64, action, resourceType, resourceID, section string, count int) error {
+	_, err := tx.Exec(ctx, `
+		INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
+		VALUES($1,$2,$3,$4,$5,'success',jsonb_build_object('section',$6::text,'result_count',$7::integer))
+	`, actorID, schoolID, action, resourceType, resourceID, section, count)
+	if err != nil { return fmt.Errorf("audit guardian %s read: %w", section, err) }
+	return nil
+}
+
 func guardianWriteError(err error) error {
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {
@@ -139,32 +149,37 @@ func guardianWriteError(err error) error {
 
 func (r *AcademicRepository) ListGuardians(ctx context.Context, actorID, schoolID int64, search, status string, limit, offset int) ([]Guardian, int64, error) {
 	if r == nil || r.db == nil { return nil, 0, ErrGuardianAccessDenied }
-	if err := authorizeGuardian(ctx, r.db, actorID, schoolID, "guardians.read"); err != nil { return nil, 0, err }
 	search = strings.TrimSpace(search); status = strings.TrimSpace(status)
 	if limit < 1 || limit > 100 { limit = 50 }; if offset < 0 { offset = 0 }
 	if status != "" && status != "active" && status != "inactive" && status != "archived" { return nil, 0, ErrInvalidGuardianInput }
+	tx, err := r.db.Begin(ctx); if err != nil { return nil, 0, fmt.Errorf("begin guardian list read: %w", err) }; defer func(){ _ = tx.Rollback(ctx) }()
+	if err := authorizeGuardian(ctx, tx, actorID, schoolID, "guardians.read"); err != nil { return nil, 0, err }
 	var total int64
-	if err := r.db.QueryRow(ctx, `SELECT COUNT(*) FROM guardians WHERE school_id=$1 AND ($2='' OR status=$2)
-		AND ($3='' OR full_name ILIKE '%'||$3||'%' OR COALESCE(mobile_number,'') ILIKE '%'||$3||'%' OR COALESCE(alternate_mobile_number,'') ILIKE '%'||$3||'%' OR COALESCE(email_address,'') ILIKE '%'||$3||'%')`,
-		schoolID, status, search).Scan(&total); err != nil { return nil, 0, fmt.Errorf("count guardians: %w", err) }
-	rows, err := r.db.Query(ctx, `SELECT id,school_id,full_name,mobile_number,email_address,alternate_mobile_number,occupation,education,workplace_name,status,created_at,updated_at
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM guardians WHERE school_id=$1 AND ($2='' OR status=$2)
+		AND ($3='' OR full_name ILIKE '%'||$3||'%' OR COALESCE(mobile_number,'') ILIKE '%'||$3||'%' OR COALESCE(alternate_mobile_number,'') ILIKE '%'||$3||'%' OR COALESCE(email_address,'') ILIKE '%'||$3||'%')`, schoolID,status,search).Scan(&total); err != nil { return nil,0,fmt.Errorf("count guardians: %w",err) }
+	rows,err:=tx.Query(ctx,`SELECT id,school_id,full_name,mobile_number,email_address,alternate_mobile_number,occupation,education,workplace_name,status,created_at,updated_at
 		FROM guardians WHERE school_id=$1 AND ($2='' OR status=$2)
 		AND ($3='' OR full_name ILIKE '%'||$3||'%' OR COALESCE(mobile_number,'') ILIKE '%'||$3||'%' OR COALESCE(alternate_mobile_number,'') ILIKE '%'||$3||'%' OR COALESCE(email_address,'') ILIKE '%'||$3||'%')
-		ORDER BY LOWER(full_name),id LIMIT $4 OFFSET $5`, schoolID,status,search,limit,offset)
-	if err != nil { return nil, 0, fmt.Errorf("list guardians: %w", err) }; defer rows.Close()
+		ORDER BY LOWER(full_name),id LIMIT $4 OFFSET $5`,schoolID,status,search,limit,offset)
+	if err!=nil{return nil,0,fmt.Errorf("list guardians: %w",err)}
 	items:=make([]Guardian,0)
-	for rows.Next(){var v Guardian;if err:=rows.Scan(&v.ID,&v.SchoolID,&v.FullName,&v.MobileNumber,&v.EmailAddress,&v.AlternateMobileNumber,&v.Occupation,&v.Education,&v.WorkplaceName,&v.Status,&v.CreatedAt,&v.UpdatedAt);err!=nil{return nil,0,fmt.Errorf("scan guardian: %w",err)};items=append(items,v)}
-	if err:=rows.Err();err!=nil{return nil,0,fmt.Errorf("iterate guardians: %w",err)}
+	for rows.Next(){var v Guardian;if err:=rows.Scan(&v.ID,&v.SchoolID,&v.FullName,&v.MobileNumber,&v.EmailAddress,&v.AlternateMobileNumber,&v.Occupation,&v.Education,&v.WorkplaceName,&v.Status,&v.CreatedAt,&v.UpdatedAt);err!=nil{rows.Close();return nil,0,fmt.Errorf("scan guardian: %w",err)};items=append(items,v)}
+	if err:=rows.Err();err!=nil{rows.Close();return nil,0,fmt.Errorf("iterate guardians: %w",err)};rows.Close()
+	if err:=auditGuardianRead(ctx,tx,actorID,schoolID,"school.guardian.list.read","guardian_collection",fmt.Sprint(schoolID),"guardians",len(items));err!=nil{return nil,0,err}
+	if err:=tx.Commit(ctx);err!=nil{return nil,0,fmt.Errorf("commit guardian list read audit: %w",err)}
 	return items,total,nil
 }
 
 func (r *AcademicRepository) GetGuardian(ctx context.Context, actorID, schoolID, guardianID int64) (*Guardian,error) {
 	if r==nil||r.db==nil{return nil,ErrGuardianAccessDenied}
-	if err:=authorizeGuardian(ctx,r.db,actorID,schoolID,"guardians.read");err!=nil{return nil,err}
+	tx,err:=r.db.Begin(ctx);if err!=nil{return nil,fmt.Errorf("begin guardian read: %w",err)};defer func(){_=tx.Rollback(ctx)}()
+	if err:=authorizeGuardian(ctx,tx,actorID,schoolID,"guardians.read");err!=nil{return nil,err}
 	var v Guardian
-	err:=r.db.QueryRow(ctx,`SELECT id,school_id,full_name,mobile_number,email_address,alternate_mobile_number,occupation,education,workplace_name,status,created_at,updated_at FROM guardians WHERE school_id=$1 AND id=$2`,schoolID,guardianID).
+	err=tx.QueryRow(ctx,`SELECT id,school_id,full_name,mobile_number,email_address,alternate_mobile_number,occupation,education,workplace_name,status,created_at,updated_at FROM guardians WHERE school_id=$1 AND id=$2`,schoolID,guardianID).
 		Scan(&v.ID,&v.SchoolID,&v.FullName,&v.MobileNumber,&v.EmailAddress,&v.AlternateMobileNumber,&v.Occupation,&v.Education,&v.WorkplaceName,&v.Status,&v.CreatedAt,&v.UpdatedAt)
 	if err!=nil{return nil,guardianWriteError(err)}
+	if err:=auditGuardianRead(ctx,tx,actorID,schoolID,"school.guardian.read","guardian",fmt.Sprint(guardianID),"guardian",1);err!=nil{return nil,err}
+	if err:=tx.Commit(ctx);err!=nil{return nil,fmt.Errorf("commit guardian read audit: %w",err)}
 	return &v,nil
 }
 
@@ -196,85 +211,54 @@ func (r *AcademicRepository) SaveGuardian(ctx context.Context, actorID,schoolID,
 }
 
 func (r *AcademicRepository) ListStudentGuardians(ctx context.Context,actorID,schoolID,studentID int64,includeHistory bool)([]StudentGuardian,error){
-	if r==nil||r.db==nil{return nil,ErrGuardianAccessDenied}
-	if err:=authorizeGuardian(ctx,r.db,actorID,schoolID,"guardians.read");err!=nil{return nil,err}
-	rows,err:=r.db.Query(ctx,`SELECT sg.id,sg.student_id,sg.guardian_id,g.full_name,g.status,g.mobile_number,g.email_address,g.alternate_mobile_number,g.occupation,g.education,g.workplace_name,
+	if r==nil||r.db==nil||studentID<=0{return nil,ErrGuardianAccessDenied}
+	tx,err:=r.db.Begin(ctx);if err!=nil{return nil,fmt.Errorf("begin student guardians read: %w",err)};defer func(){_=tx.Rollback(ctx)}()
+	if err:=authorizeGuardian(ctx,tx,actorID,schoolID,"guardians.read");err!=nil{return nil,err}
+	var exists bool
+	if err:=tx.QueryRow(ctx,`SELECT EXISTS(SELECT 1 FROM students WHERE id=$1 AND school_id=$2)`,studentID,schoolID).Scan(&exists);err!=nil{return nil,fmt.Errorf("check student for guardian list: %w",err)}
+	if !exists{return nil,ErrGuardianNotFound}
+	rows,err:=tx.Query(ctx,`SELECT sg.id,sg.student_id,sg.guardian_id,g.full_name,g.status,g.mobile_number,g.email_address,g.alternate_mobile_number,g.occupation,g.education,g.workplace_name,
 		sg.relationship_type,sg.is_primary_contact,sg.is_emergency_contact,sg.created_at,sg.revoked_at
 		FROM student_guardians sg JOIN guardians g ON g.id=sg.guardian_id AND g.school_id=sg.school_id
 		JOIN students s ON s.id=sg.student_id AND s.school_id=sg.school_id
 		WHERE sg.school_id=$1 AND sg.student_id=$2 AND ($3=TRUE OR sg.revoked_at IS NULL)
 		ORDER BY sg.revoked_at NULLS FIRST,sg.is_primary_contact DESC,LOWER(g.full_name),sg.id`,schoolID,studentID,includeHistory)
-	if err!=nil{return nil,fmt.Errorf("list student guardians: %w",err)};defer rows.Close()
+	if err!=nil{return nil,fmt.Errorf("list student guardians: %w",err)}
 	items:=make([]StudentGuardian,0)
-	for rows.Next(){var v StudentGuardian;if err:=rows.Scan(&v.ID,&v.StudentID,&v.GuardianID,&v.GuardianName,&v.GuardianStatus,&v.MobileNumber,&v.EmailAddress,&v.AlternateMobileNumber,&v.Occupation,&v.Education,&v.WorkplaceName,&v.RelationshipType,&v.IsPrimaryContact,&v.IsEmergencyContact,&v.CreatedAt,&v.RevokedAt);err!=nil{return nil,fmt.Errorf("scan student guardian: %w",err)};items=append(items,v)}
-	if err:=rows.Err();err!=nil{return nil,fmt.Errorf("iterate student guardians: %w",err)}
+	for rows.Next(){var v StudentGuardian;if err:=rows.Scan(&v.ID,&v.StudentID,&v.GuardianID,&v.GuardianName,&v.GuardianStatus,&v.MobileNumber,&v.EmailAddress,&v.AlternateMobileNumber,&v.Occupation,&v.Education,&v.WorkplaceName,&v.RelationshipType,&v.IsPrimaryContact,&v.IsEmergencyContact,&v.CreatedAt,&v.RevokedAt);err!=nil{rows.Close();return nil,fmt.Errorf("scan student guardian: %w",err)};items=append(items,v)}
+	if err:=rows.Err();err!=nil{rows.Close();return nil,fmt.Errorf("iterate student guardians: %w",err)};rows.Close()
+	if err:=auditGuardianRead(ctx,tx,actorID,schoolID,"school.student.guardians.read","student_guardians",fmt.Sprint(studentID),"parents_and_sibling",len(items));err!=nil{return nil,err}
+	if err:=tx.Commit(ctx);err!=nil{return nil,fmt.Errorf("commit student guardians read audit: %w",err)}
 	return items,nil
 }
 
-// ListStudentRelatedStudents derives other active students who share at
-// least one active guardian link. It does not assert a biological sibling
-// relationship; the UI must label these as students sharing a guardian.
-func (r *AcademicRepository) ListStudentRelatedStudents(ctx context.Context, actorID, schoolID, studentID int64) ([]StudentRelatedStudent, error) {
-	if r == nil || r.db == nil { return nil, ErrGuardianAccessDenied }
-	if studentID <= 0 { return nil, ErrInvalidGuardianInput }
-	if err := authorizeGuardian(ctx, r.db, actorID, schoolID, "guardians.read"); err != nil { return nil, err }
-	if err := authorizeAcademic(ctx, r.db, actorID, schoolID, "students.read_basic"); err != nil {
-		if errors.Is(err, ErrAcademicAccessDenied) { return nil, ErrGuardianAccessDenied }
-		return nil, err
-	}
-	var studentExists bool
-	if err := r.db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM students WHERE id=$1 AND school_id=$2)`, studentID, schoolID).Scan(&studentExists); err != nil {
-		return nil, fmt.Errorf("check student for related-student list: %w", err)
-	}
-	if !studentExists { return nil, ErrGuardianNotFound }
-
-	rows, err := r.db.Query(ctx, `
-		SELECT related_student.id, related_student.full_name,
-		       enrollment.admission_number, enrollment.class_name_snapshot,
-		       enrollment.section_name_snapshot, academic_year.name,
-		       COALESCE(array_agg(DISTINCT shared_guardian.full_name ORDER BY shared_guardian.full_name), ARRAY[]::text[])
-		  FROM student_guardians source_link
-		  JOIN guardians shared_guardian
-		    ON shared_guardian.id=source_link.guardian_id
-		   AND shared_guardian.school_id=source_link.school_id
-		   AND shared_guardian.status='active'
-		  JOIN student_guardians related_link
-		    ON related_link.guardian_id=shared_guardian.id
-		   AND related_link.school_id=shared_guardian.school_id
-		   AND related_link.revoked_at IS NULL
-		  JOIN students related_student
-		    ON related_student.id=related_link.student_id
-		   AND related_student.school_id=related_link.school_id
-		   AND related_student.status='active'
-		  LEFT JOIN student_enrollments enrollment
-		    ON enrollment.student_id=related_student.id
-		   AND enrollment.school_id=related_student.school_id
-		   AND enrollment.academic_year_id=(
-		       SELECT id FROM academic_years WHERE school_id=$1 AND is_current=TRUE
-		   )
-		   AND enrollment.status='active'
-		  LEFT JOIN academic_years academic_year
-		    ON academic_year.id=enrollment.academic_year_id
-		 WHERE source_link.school_id=$1
-		   AND source_link.student_id=$2
-		   AND source_link.revoked_at IS NULL
-		   AND related_student.id<>$2
-		 GROUP BY related_student.id,related_student.full_name,enrollment.admission_number,
-		          enrollment.class_name_snapshot,enrollment.section_name_snapshot,academic_year.name
-		 ORDER BY LOWER(related_student.full_name),related_student.id
-	`, schoolID, studentID)
-	if err != nil { return nil, fmt.Errorf("list students sharing guardian: %w", err) }
-	defer rows.Close()
-	items := make([]StudentRelatedStudent, 0)
-	for rows.Next() {
-		var item StudentRelatedStudent
-		if err := rows.Scan(&item.StudentID,&item.FullName,&item.AdmissionNumber,&item.ClassName,
-			&item.SectionName,&item.AcademicYearName,&item.SharedGuardianNames); err != nil {
-			return nil, fmt.Errorf("scan related student: %w", err)
-		}
-		items = append(items,item)
-	}
-	if err := rows.Err(); err != nil { return nil, fmt.Errorf("iterate related students: %w", err) }
+func (r *AcademicRepository) ListStudentRelatedStudents(ctx context.Context,actorID,schoolID,studentID int64)([]StudentRelatedStudent,error){
+	if r==nil||r.db==nil{return nil,ErrGuardianAccessDenied};if studentID<=0{return nil,ErrInvalidGuardianInput}
+	tx,err:=r.db.Begin(ctx);if err!=nil{return nil,fmt.Errorf("begin related-students read: %w",err)};defer func(){_=tx.Rollback(ctx)}()
+	if err:=authorizeGuardian(ctx,tx,actorID,schoolID,"guardians.read");err!=nil{return nil,err}
+	if err:=authorizeAcademic(ctx,tx,actorID,schoolID,"students.read_basic");err!=nil{if errors.Is(err,ErrAcademicAccessDenied){return nil,ErrGuardianAccessDenied};return nil,err}
+	var exists bool
+	if err:=tx.QueryRow(ctx,`SELECT EXISTS(SELECT 1 FROM students WHERE id=$1 AND school_id=$2)`,studentID,schoolID).Scan(&exists);err!=nil{return nil,fmt.Errorf("check student for related-student list: %w",err)}
+	if !exists{return nil,ErrGuardianNotFound}
+	rows,err:=tx.Query(ctx,`
+		SELECT related_student.id,related_student.full_name,enrollment.admission_number,enrollment.class_name_snapshot,enrollment.section_name_snapshot,academic_year.name,
+		       COALESCE(array_agg(DISTINCT shared_guardian.full_name ORDER BY shared_guardian.full_name),ARRAY[]::text[])
+		FROM student_guardians source_link
+		JOIN guardians shared_guardian ON shared_guardian.id=source_link.guardian_id AND shared_guardian.school_id=source_link.school_id AND shared_guardian.status='active'
+		JOIN student_guardians related_link ON related_link.guardian_id=shared_guardian.id AND related_link.school_id=shared_guardian.school_id AND related_link.revoked_at IS NULL
+		JOIN students related_student ON related_student.id=related_link.student_id AND related_student.school_id=related_link.school_id AND related_student.status='active'
+		LEFT JOIN student_enrollments enrollment ON enrollment.student_id=related_student.id AND enrollment.school_id=related_student.school_id
+		 AND enrollment.academic_year_id=(SELECT id FROM academic_years WHERE school_id=$1 AND is_current=TRUE) AND enrollment.status='active'
+		LEFT JOIN academic_years academic_year ON academic_year.id=enrollment.academic_year_id
+		WHERE source_link.school_id=$1 AND source_link.student_id=$2 AND source_link.revoked_at IS NULL AND related_student.id<>$2
+		GROUP BY related_student.id,related_student.full_name,enrollment.admission_number,enrollment.class_name_snapshot,enrollment.section_name_snapshot,academic_year.name
+		ORDER BY LOWER(related_student.full_name),related_student.id`,schoolID,studentID)
+	if err!=nil{return nil,fmt.Errorf("list students sharing guardian: %w",err)}
+	items:=make([]StudentRelatedStudent,0)
+	for rows.Next(){var item StudentRelatedStudent;if err:=rows.Scan(&item.StudentID,&item.FullName,&item.AdmissionNumber,&item.ClassName,&item.SectionName,&item.AcademicYearName,&item.SharedGuardianNames);err!=nil{rows.Close();return nil,fmt.Errorf("scan related student: %w",err)};items=append(items,item)}
+	if err:=rows.Err();err!=nil{rows.Close();return nil,fmt.Errorf("iterate related students: %w",err)};rows.Close()
+	if err:=auditGuardianRead(ctx,tx,actorID,schoolID,"school.student.related_students.read","student_related_students",fmt.Sprint(studentID),"parents_and_sibling",len(items));err!=nil{return nil,err}
+	if err:=tx.Commit(ctx);err!=nil{return nil,fmt.Errorf("commit related-students read audit: %w",err)}
 	return items,nil
 }
 
