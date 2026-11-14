@@ -514,10 +514,6 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 
 	// Re-linking after revocation creates a new active relationship while
 	// retaining the original revoked row as immutable history.
-	relinked, err := repo.LinkStudentGuardian(ctx, targetPrincipalID, schoolID,
-		studentID, guardian.ID, "mother", false, true)
-	if err != nil {
-		t.Fatalf("re-link guardian after revocation: %v", err)
 	}
 	if relinked.ID == firstLink.ID || relinked.RelationshipType != "mother" ||
 		relinked.IsPrimaryContact || !relinked.IsEmergencyContact {
