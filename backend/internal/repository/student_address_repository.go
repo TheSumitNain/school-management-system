@@ -307,32 +307,49 @@ func (r *AcademicRepository) ListStudentAddresses(
 	if studentID <= 0 {
 		return nil, ErrInvalidAcademicInput
 	}
-	if err := authorizeAcademic(ctx, r.db, actorID, schoolID, "students.read_sensitive"); err != nil {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin student address read: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := authorizeAcademic(ctx, tx, actorID, schoolID, "students.read_sensitive"); err != nil {
 		return nil, err
 	}
 	var exists bool
-	if err := r.db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM students WHERE id=$1 AND school_id=$2)`,
+	if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM students WHERE id=$1 AND school_id=$2)`,
 		studentID, schoolID).Scan(&exists); err != nil {
 		return nil, fmt.Errorf("check student for address list: %w", err)
 	}
 	if !exists {
 		return nil, ErrAcademicNotFound
 	}
-	rows, err := r.db.Query(ctx, studentAddressSelect+` ORDER BY CASE address_type WHEN 'current' THEN 0 ELSE 1 END`, schoolID, studentID)
+	rows, err := tx.Query(ctx, studentAddressSelect+` ORDER BY CASE address_type WHEN 'current' THEN 0 ELSE 1 END`, schoolID, studentID)
 	if err != nil {
 		return nil, fmt.Errorf("list student addresses: %w", err)
 	}
-	defer rows.Close()
 	items := make([]StudentAddress, 0, 2)
 	for rows.Next() {
 		item, scanErr := scanStudentAddress(rows)
 		if scanErr != nil {
+			rows.Close()
 			return nil, fmt.Errorf("scan student address: %w", scanErr)
 		}
 		items = append(items, *item)
 	}
 	if err := rows.Err(); err != nil {
+		rows.Close()
 		return nil, fmt.Errorf("iterate student addresses: %w", err)
+	}
+	rows.Close()
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
+		VALUES($1,$2,'school.student.address.read','student_address',$3,'success',
+		       jsonb_build_object('section','address'))
+	`, actorID, schoolID, fmt.Sprint(studentID)); err != nil {
+		return nil, fmt.Errorf("audit student address read: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit student address read audit: %w", err)
 	}
 	return items, nil
 }
