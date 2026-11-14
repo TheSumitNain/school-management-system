@@ -175,6 +175,7 @@ RETURNS trigger
 LANGUAGE plpgsql AS $v34$
 DECLARE
     location_school_id BIGINT;
+    location_level TEXT;
     location_active BOOLEAN;
 BEGIN
     IF TG_OP = 'DELETE' THEN
@@ -190,8 +191,8 @@ BEGIN
     END IF;
 
     IF NEW.location_id IS NOT NULL THEN
-        SELECT school_id, is_active
-          INTO location_school_id, location_active
+        SELECT school_id, level, is_active
+          INTO location_school_id, location_level, location_active
           FROM public.student_locations
          WHERE id = NEW.location_id
          FOR KEY SHARE;
@@ -205,6 +206,10 @@ BEGIN
             ELSIF NEW.location_id IS DISTINCT FROM OLD.location_id THEN
                 RAISE EXCEPTION 'student address cannot select an inactive location';
             END IF;
+        END IF;
+
+        IF location_level <> 'locality' THEN
+            RAISE EXCEPTION 'student address must reference a village/city locality';
         END IF;
 
         IF location_school_id IS NOT NULL
