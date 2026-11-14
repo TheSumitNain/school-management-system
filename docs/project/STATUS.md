@@ -475,3 +475,11 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - Frontend CI passed for commit `196f3e41af15` (run `43603948048`), including guardian create/link validation and relationship flags.
 - Backend CI passed for commit `5c555459a6f8` (run `43603791165`); the guardian create/link commit changes only frontend browser tests.
 - Browser API requests are mocked and use in-memory fixtures; they do not mutate a real school database. Parent OTP/login remains deferred. No persistent database migration was run.
+
+## Student name edit/profile state consistency — 2026-11-14
+
+- Fixed a stale profile-state issue: after saving a student's name in Basic Details, the parent Student Management state now receives the updated name, so closing Basic Details returns to a profile showing the new name rather than the previous value.
+- Preserved the successful name-save feedback while synchronizing the updated student prop.
+- Added a browser assertion for the name update, success feedback, and profile description after returning from Basic Details.
+- Frontend CI passed for commit `f5b9a2ff7396` (run `43604393646`).
+- Browser test uses mocked API fixtures; this is not yet a live local-PostgreSQL/browser acceptance test.
