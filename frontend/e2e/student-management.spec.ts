@@ -20,7 +20,7 @@ test("student admission, profile navigation and parent details render without br
   let nextStudentID = 1;
   const students: Student[] = [];
   const createdAdmissions: Record<string, unknown>[] = [];
-  const failNextStudentRead = new Set<string>();
+  const failStudentReads = new Set<string>();
   const failedStudentReads: string[] = [];
   const observedStudentDetailGets: string[] = [];
   const guardianLink = {
@@ -64,10 +64,9 @@ test("student admission, profile navigation and parent details render without br
     if (method === "GET") {
       const detailRead = path.match(/^\/school\/students\/\d+\/(basic-details|addresses|contact-details)\/?$/)?.[1];
       if (detailRead) observedStudentDetailGets.push(detailRead);
-      if (detailRead && failNextStudentRead.has(detailRead)) {
-        failNextStudentRead.delete(detailRead);
-        await route.fulfill({ status: 429, json: { message: `Temporary ${detailRead} read failure.` } });
+      if (detailRead && failStudentReads.has(detailRead)) {
         failedStudentReads.push(detailRead);
+        await route.fulfill({ status: 429, json: { message: `Temporary ${detailRead} read failure.` } });
         return;
       }
     }
@@ -332,7 +331,7 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Academic history", exact: true })).toBeVisible();
 
-  failNextStudentRead.add("basic-details");
+  failStudentReads.add("basic-details");
   await page.getByRole("button", { name: /Basic details/ }).click();
   await expect(page.getByRole("dialog", { name: "Basic Details" })).toBeVisible();
   await expect.poll(() => observedStudentDetailGets).toContain("basic-details");
@@ -340,6 +339,7 @@ test("student admission, profile navigation and parent details render without br
   const basicSave = page.getByRole("button", { name: "Save basic details" });
   await expect(page.getByRole("alert")).toBeVisible();
   await expect(basicSave).toBeDisabled();
+  failStudentReads.delete("basic-details");
   await page.getByRole("button", { name: "Retry loading details" }).click();
   await expect(basicSave).toBeEnabled();
   await page.getByPlaceholder("Enter student's full name").fill("Aarav Sharma Updated");
@@ -438,12 +438,13 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("button", { name: "Close dialog" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
 
-  failNextStudentRead.add("addresses");
+  failStudentReads.add("addresses");
   await page.getByRole("button", { name: /Address & communication/ }).click();
   await expect(page.getByRole("dialog", { name: "Address & Communication" })).toBeVisible();
   const addressSave = page.getByRole("button", { name: "Save address" });
   await expect(page.getByRole("alert")).toBeVisible();
   await expect(addressSave).toBeDisabled();
+  failStudentReads.delete("addresses");
   await page.getByRole("button", { name: "Retry loading addresses" }).click();
   await expect(addressSave).toBeEnabled();
   await page.getByPlaceholder("House number, street or building").fill("House 12, Main Road");
@@ -489,11 +490,12 @@ test("student admission, profile navigation and parent details render without br
   expect(addresses.find(item => item.address_type === "permanent")).toMatchObject({ same_as_current: true });
   await expect(page.getByText("Permanent address saved.")).toBeVisible();
 
-  failNextStudentRead.add("contact-details");
+  failStudentReads.add("contact-details");
   await page.getByRole("button", { name: "Contact details", exact: true }).click();
   const contactSave = page.getByRole("button", { name: "Save contact details" });
   await expect(page.getByRole("alert")).toBeVisible();
   await expect(contactSave).toBeDisabled();
+  failStudentReads.delete("contact-details");
   await page.getByRole("button", { name: "Retry loading contact details" }).click();
   await expect(contactSave).toBeEnabled();
   await page.getByPlaceholder("Primary contact number").fill("9876501234");
