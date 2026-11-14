@@ -340,3 +340,12 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - Documented official Ministry of Panchayati Raj / OGD LGD entry points for District, Sub-District and Village datasets and the requirement to verify actual official export schema before writing an importer. Community mirrors remain untrusted for production ingestion.
 - The read-only `backend/cmd/dbstatus` command and its documentation passed Backend CI on commits a7ea3c3c / 22733318 (migration chain, PostgreSQL integration suite and go vet).
 - The terminology change passed Frontend CI on commit 46fe22fe. The follow-up label-only correction and subsequent documentation commits are awaiting their own CI runs. Browser acceptance and the persistent database upgrade remain pending.
+
+
+## LGD snapshot pre-import validation — 2026-11-14
+
+- Added `backend/cmd/lgdvalidate`, a read-only standard-library CSV validator for a normalized all-India State → District → Sub-District → Village/City snapshot.
+- The validator checks exact headers, required values, source-code/name limits, duplicate and conflicting hierarchy mappings, parent relationships, locality types, one-to-one two-character IGOD State/UT crosswalks, and minimum coverage counts. Leading-zero source codes are preserved as strings.
+- It does not connect to PostgreSQL and cannot mutate data. The raw official OGD/LGD export schema has not yet been verified; the exact downloaded source file must be preserved and transformed to the documented normalized contract before validation. No community mirror is used as a production import dependency.
+- Added unit tests for valid hierarchy parsing, malformed headers/crosswalks, duplicate or conflicting codes/parents, missing hierarchy consistency, and unsupported locality types. Backend CI is pending for the new command and tests.
+- No LGD location rows have been imported. A database importer remains gated on a verified official snapshot, reviewed IGOD↔LGD State/UT crosswalk, validation report, and explicit apply mode.
