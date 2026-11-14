@@ -598,7 +598,8 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByPlaceholder("Record school-relevant conditions, if any")).toHaveValue("No other known conditions");
   await page.getByRole("button", { name: "Physical details" }).click();
   await expect(page.getByPlaceholder("e.g. 132.5")).toHaveValue("132.5");
-  await expect(page.getByText(/Measured/)).toBeVisible();
+  await page.getByText(/Previous physical measurements \(1\)/).click();
+  await expect(page.getByText("Measured 14 Oct 2026")).toBeVisible();
   await page.getByRole("button", { name: "Close dialog" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
 
