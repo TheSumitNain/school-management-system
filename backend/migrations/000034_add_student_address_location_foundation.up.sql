@@ -181,9 +181,12 @@ BEGIN
         IF NOT FOUND THEN
             RAISE EXCEPTION 'student address location does not exist';
         END IF;
-        IF NOT location_active
-           AND (TG_OP = 'INSERT' OR NEW.location_id IS DISTINCT FROM OLD.location_id) THEN
-            RAISE EXCEPTION 'student address cannot select an inactive location';
+        IF NOT location_active THEN
+            IF TG_OP = 'INSERT' THEN
+                RAISE EXCEPTION 'student address cannot select an inactive location';
+            ELSIF NEW.location_id IS DISTINCT FROM OLD.location_id THEN
+                RAISE EXCEPTION 'student address cannot select an inactive location';
+            END IF;
         END IF;
 
         IF location_school_id IS NOT NULL
