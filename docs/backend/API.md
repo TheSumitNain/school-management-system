@@ -24,10 +24,13 @@ Implemented route groups include:
 - Role, permission, delegation and user-override administration.
 - Academic year/class/section/subject and teacher assignment foundations. Section create/update accepts optional `medium` (`hindi` or `english`); section names remain school-defined and independent of medium.
 - Student admission/profile and enrollment/promotion/history foundations.
+- Student profile sections: address and contact details, guardian relationships, and restricted medical/physical details.
 - Assigned-section teacher enrollment roster.
 - Attendance listing, marking and correction.
 - Timetable current-year lookup, period definitions and weekly section schedules.
 - Guardian management.
+
+Student health endpoints are `GET/PUT /school/students/:studentID/medical-details` and `GET/PUT /school/students/:studentID/physical-details`. Reads require `students.read_sensitive`; writes require `students.update`. Successful reads and writes create audit events; medical/physical values and notes are never copied into audit metadata. These endpoints are available only for the authenticated staff member's own school and do not grant Teacher roles access.
 
 Timetable routes use `academic_year_id` on list requests. Period writes accept `period_number`, `name`, `starts_at` and `ends_at` (`HH:MM`), plus `is_break`. Entry writes accept `academic_year_id`, `section_id`, `subject_id`, `teacher_principal_id`, `teacher_subject_assignment_id`, `period_id`, `day_of_week` (1 = Monday through 7 = Sunday) and optional `room`. Break periods are defined in the period catalogue and cannot receive class entries. Period definitions cannot overlap within the same school and academic year. Entry writes require an active teacher-subject assignment matching the same school, year, section, subject and teacher. Teacher reads are restricted to the teacher's own scheduled entries.\n\nThe exact route paths, request/response DTOs, permission keys and status codes are defined by the current router and handlers under `backend/internal/`. Do not treat this summary as a substitute for source-level contract verification.
 
