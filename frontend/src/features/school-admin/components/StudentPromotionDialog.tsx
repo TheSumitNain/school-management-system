@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { DatePicker } from "../../../shared/components/DatePicker";
 import { Modal } from "../../../shared/components/Modal";
 import { Select } from "../../../shared/components/Select";
+import { StudentFieldLabel } from "./StudentFieldLabel";
 import type { StudentAcademicYear, StudentEnrollment } from "../api";
 import { useSchoolStudentSectionsQuery, usePromoteSchoolStudentEnrollmentMutation } from "../queries";
 
@@ -81,13 +82,13 @@ export function StudentPromotionDialog({ enrollment, academicYears, onClose, onP
         {availableYears.length === 0 ? (
           <p className="student-feedback error" role="alert">No other active academic year is available. Create or activate the destination academic year first.</p>
         ) : <>
-          <label>Destination academic year
+          <label><StudentFieldLabel label="Destination academic year" required hint="Choose an active academic year different from the student’s current enrollment year." />
             <Select ariaLabel="Destination academic year" value={String(academicYearID || "")} invalid={Boolean(errors.academic_year_id)} describedBy={errors.academic_year_id ? "promotion-year-error" : undefined}
               onChange={value => { setAcademicYearID(Number(value)); setSectionID(""); clearError("academic_year_id"); clearError("section_id"); }}
               options={availableYears.map(year => ({ value: String(year.id), label: year.name + (year.is_current ? " · Current" : "") }))} placeholder="Select academic year" />
             {errors.academic_year_id && <small id="promotion-year-error" className="app-field-error">{errors.academic_year_id}</small>}
           </label>
-          <label>Destination class / section
+          <label><StudentFieldLabel label="Destination class / section" required hint="Choose a section that belongs to the selected destination academic year." />
             <Select ariaLabel="Destination class and section" value={sectionID} invalid={Boolean(errors.section_id)} describedBy={errors.section_id ? "promotion-section-error" : undefined}
               onChange={value => { setSectionID(value); clearError("section_id"); }} disabled={!academicYearID || sectionsQuery.isLoading || sections.length === 0}
               options={sections.map(section => ({ value: String(section.id), label: section.class_name + " · " + section.name }))} placeholder="Select section" />
@@ -96,16 +97,16 @@ export function StudentPromotionDialog({ enrollment, academicYears, onClose, onP
             {sectionsQuery.isError && <small className="app-field-error" role="alert">{sectionsQuery.error.message}</small>}
             {academicYearID > 0 && !sectionsQuery.isLoading && !sectionsQuery.isError && sections.length === 0 && <small>No active sections are available in this academic year.</small>}
           </label>
-          <label>New admission number
+          <label><StudentFieldLabel label="New admission number" required hint="Enter the student’s admission number for the destination academic year. Maximum 50 characters; unique within the school and year." />
             <input value={admissionNumber} maxLength={50} aria-invalid={Boolean(errors.admission_number)} aria-describedby={errors.admission_number ? "promotion-admission-error" : undefined}
               onChange={event => { setAdmissionNumber(event.target.value); clearError("admission_number"); }} placeholder="e.g. ADM-2027-001" />
             {errors.admission_number && <small id="promotion-admission-error" className="app-field-error">{errors.admission_number}</small>}
           </label>
-          <label>Roll number (optional)
+          <label><StudentFieldLabel label="Roll number" hint="Optional. Leave blank to automatically assign the next available roll number in the destination section. A manual override is supported." />
             <input value={rollNumber} maxLength={30} onChange={event => setRollNumber(event.target.value)} placeholder="Leave blank for automatic assignment" />
             <small>Leave blank to assign the next available roll number in the destination section. Manual override is also supported.</small>
           </label>
-          <label>Admission / promotion date
+          <label><StudentFieldLabel label="Admission / promotion date" required hint="Choose a date within the destination academic year and not earlier than the current enrollment." />
             <DatePicker ariaLabel="Admission and promotion date" value={admissionDate} onChange={value => { setAdmissionDate(value); clearError("admission_date"); }}
               placeholder="Choose a date" invalid={Boolean(errors.admission_date)} describedBy={errors.admission_date ? "promotion-date-error" : undefined} />
             {errors.admission_date && <small id="promotion-date-error" className="app-field-error">{errors.admission_date}</small>}
