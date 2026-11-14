@@ -65,15 +65,13 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
     setNewGuardianNameError("");
     setNewGuardianEmailError("");
     if (!canManage) return;
-    if (!newGuardianName.trim()) {
-      setNewGuardianNameError("Guardian name is required.");
-      return;
-    }
+    const nameError = newGuardianName.trim() ? "" : "Guardian name is required.";
     const emailInput = event.currentTarget.elements.namedItem("guardian_email_address") as HTMLInputElement | null;
-    if (newGuardianEmail.trim() && emailInput && !emailInput.checkValidity()) {
-      setNewGuardianEmailError("Enter a valid email address.");
-      return;
-    }
+    const emailError = newGuardianEmail.trim() && emailInput && !emailInput.checkValidity()
+      ? "Enter a valid email address." : "";
+    setNewGuardianNameError(nameError);
+    setNewGuardianEmailError(emailError);
+    if (nameError || emailError) return;
     try {
       const result = await createGuardian.mutateAsync({
         full_name: newGuardianName.trim(),
