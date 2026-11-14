@@ -64,8 +64,8 @@ export function StudentProfileDetail({
             <div><dt>Student record created</dt><dd>{dateLabel(student.created_at)}</dd></div>
           </dl>
           <div className="student-profile-actions">
-            {canUpdateBasic && student.status !== "archived" && <button type="button" className="secondary" onClick={onEditBasic}><Pencil size={14}/> Edit student name</button>
-            <button type="button" className="secondary" onClick={onOpenBasic}><UserRound size={14}/> Basic details</button>}
+            {canUpdateBasic && student.status !== "archived" && <button type="button" className="secondary" onClick={onEditBasic}><Pencil size={14}/> Edit student name</button>}
+            <button type="button" className="secondary" onClick={onOpenBasic}><UserRound size={14}/> Basic details</button>
             <button type="button" className="secondary" onClick={onOpenAddress}><MapPin size={14}/> Address & communication</button>
             <button type="button" className="secondary" onClick={onOpenHealth}><HeartPulse size={14}/> Medical & physical</button>
             {canReadFamily && <button type="button" className="secondary" onClick={onOpenFamily}><Users size={14}/> Parents & siblings</button>}
