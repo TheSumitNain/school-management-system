@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"testing"
 	"time"
-
 )
 
 func TestStudentMedicalPhysicalDetailsV36PostgresIntegration(t *testing.T) {
@@ -18,7 +17,8 @@ func TestStudentMedicalPhysicalDetailsV36PostgresIntegration(t *testing.T) {
 	if err := pool.QueryRow(ctx, `
 		SELECT to_regclass('public.student_medical_details') IS NOT NULL
 		   AND to_regclass('public.student_physical_details') IS NOT NULL
-		   AND to_regprocedure('public.guard_student_health_profile()') IS NOT NULL
+		   AND to_regprocedure('public.guard_student_medical_details()') IS NOT NULL
+		   AND to_regprocedure('public.guard_student_health_history()') IS NOT NULL
 	`).Scan(&ready); err != nil {
 		t.Fatalf("inspect V36 student health schema: %v", err)
 	}
@@ -89,8 +89,23 @@ func TestStudentMedicalPhysicalDetailsV36PostgresIntegration(t *testing.T) {
 		t.Fatalf("unexpected saved medical profile: %+v", medical)
 	}
 	loadedMedical, err := repo.GetStudentMedicalDetails(ctx, actorPrincipalID, schoolID, studentID)
-	if err != nil || loadedMedical.ID != medical.ID || loadedMedical.BloodGroup == nil || *loadedMedical.BloodGroup != "AB+" {
+	if err != nil || loadedMedical.ID != medical.ID || loadedMedical.VersionNumber != 1 || loadedMedical.BloodGroup == nil || *loadedMedical.BloodGroup != "AB+" {
 		t.Fatalf("read medical profile: item=%+v err=%v", loadedMedical, err)
+	}
+	updatedAllergies := "V36 updated private allergy note " + suffix
+	updatedMedical, err := repo.SaveStudentMedicalDetails(ctx, actorPrincipalID, schoolID, studentID,
+		&bloodGroup, &updatedAllergies, &conditions, &medications, &emergencyNotes)
+	if err != nil {
+		t.Fatalf("update medical profile: %v", err)
+	}
+	if updatedMedical.VersionNumber != 2 || len(updatedMedical.History) != 1 ||
+		updatedMedical.History[0].VersionNumber != 1 || updatedMedical.History[0].Allergies == nil ||
+		*updatedMedical.History[0].Allergies != allergies {
+		t.Fatalf("medical profile update must preserve previous version: %+v", updatedMedical)
+	}
+	loadedMedical, err = repo.GetStudentMedicalDetails(ctx, actorPrincipalID, schoolID, studentID)
+	if err != nil || loadedMedical.VersionNumber != 2 || len(loadedMedical.History) != 1 {
+		t.Fatalf("read versioned medical profile: item=%+v err=%v", loadedMedical, err)
 	}
 
 	height, weight := 132.5, 31.25
@@ -109,8 +124,22 @@ func TestStudentMedicalPhysicalDetailsV36PostgresIntegration(t *testing.T) {
 		t.Fatalf("unexpected saved physical profile: %+v", physical)
 	}
 	loadedPhysical, err := repo.GetStudentPhysicalDetails(ctx, actorPrincipalID, schoolID, studentID)
-	if err != nil || loadedPhysical.ID != physical.ID || loadedPhysical.HeightCM == nil || *loadedPhysical.HeightCM != height {
+	if err != nil || loadedPhysical.ID != physical.ID || loadedPhysical.HeightCM == nil || *loadedPhysical.HeightCM != height || len(loadedPhysical.History) != 1 {
 		t.Fatalf("read physical profile: item=%+v err=%v", loadedPhysical, err)
+	}
+	nextHeight := 133.25
+	nextMeasuredOn := measuredOn.AddDate(0, 1, 0)
+	nextVision := "V36 next vision measurement " + suffix
+	nextPhysicalNotes := "V36 next physical measurement " + suffix
+	updatedPhysical, err := repo.SaveStudentPhysicalDetails(ctx, actorPrincipalID, schoolID, studentID,
+		&nextHeight, &weight, &nextMeasuredOn, &nextVision, &nextPhysicalNotes)
+	if err != nil {
+		t.Fatalf("record second physical measurement: %v", err)
+	}
+	if updatedPhysical.ID == physical.ID || updatedPhysical.HeightCM == nil || *updatedPhysical.HeightCM != nextHeight ||
+		len(updatedPhysical.History) != 2 || updatedPhysical.History[1].ID != physical.ID ||
+		updatedPhysical.History[1].HeightCM == nil || *updatedPhysical.History[1].HeightCM != height {
+		t.Fatalf("physical measurement history did not preserve prior measurement: %+v", updatedPhysical)
 	}
 
 	if _, err := repo.SaveStudentMedicalDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
