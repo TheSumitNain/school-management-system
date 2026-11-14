@@ -13,6 +13,7 @@ import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { StudentAddressSection } from "../components/StudentAddressSection";
 import { StudentFamilySection } from "../components/StudentFamilySection";
 import { StudentProfileDetail } from "../components/StudentProfileDetail";
+import { StudentHealthSection } from "../components/StudentHealthSection";
 import "./StudentManagementPage.css";
 
 type Props = { permissions: string[] };
@@ -45,6 +46,7 @@ export function StudentManagementPage({ permissions }: Props) {
   const [addressStudent, setAddressStudent] = useState<StudentProfile | null>(null);
   const [familyStudent, setFamilyStudent] = useState<StudentProfile | null>(null);
   const [profileStudent, setProfileStudent] = useState<StudentProfile | null>(null);
+  const [healthStudent, setHealthStudent] = useState<StudentProfile | null>(null);
   const [studentSearch, setStudentSearch] = useState("");
   const deferredStudentSearch = useDeferredValue(studentSearch.trim());
   const [selectedStudentID, setSelectedStudentID] = useState("");
@@ -252,9 +254,11 @@ export function StudentManagementPage({ permissions }: Props) {
       onEditBasic={() => { const item = profileStudent; setProfileStudent(null); openStudent("edit", item); }}
       onOpenAddress={() => { const item = profileStudent; setProfileStudent(null); setAddressStudent(item); }}
       onOpenFamily={() => { const item = profileStudent; setProfileStudent(null); setFamilyStudent(item); }}
+      onOpenHealth={() => { const item = profileStudent; setProfileStudent(null); setHealthStudent(item); }}
       onClose={() => setProfileStudent(null)}
     />}
     {addressStudent && <StudentAddressSection student={addressStudent} canUpdate={canUpdate && addressStudent.status !== "archived"} onClose={() => setAddressStudent(null)} />}
     {familyStudent && <StudentFamilySection student={familyStudent} canManage={canManageGuardians && familyStudent.status !== "archived"} canReadRelatedStudents={canReadEnrollments} onClose={() => setFamilyStudent(null)} />}
+    {healthStudent && <StudentHealthSection student={healthStudent} canUpdate={canUpdate && healthStudent.status !== "archived"} onClose={() => setHealthStudent(null)} />}
   </div>;
 }
