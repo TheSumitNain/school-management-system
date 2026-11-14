@@ -66,6 +66,8 @@ func TestSchoolSystemRoleProvisioningV13PostgresIntegration(t *testing.T) {
 			"students.create": true,
 			"students.update": true,
 			"students.archive": true,
+			"guardians.read": true,
+			"guardians.manage": true,
 			"attendance.read": true,
 			"attendance.mark": true,
 			"attendance.update_same_day": true,
