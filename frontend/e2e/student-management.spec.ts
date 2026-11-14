@@ -591,3 +591,118 @@ test("student directory remains view-only when update and archive permissions ar
   await expect(page.getByRole("button", { name: "Link guardian" })).toHaveCount(0);
   expect(writeRequests).toEqual([]);
 });
+
+test("student promotion validates required fields and preserves prior enrollment history", async ({ page }) => {
+  const promotionRequests: Record<string, unknown>[] = [];
+  const browserErrors: string[] = [];
+  page.on("pageerror", error => browserErrors.push(error.message));
+
+  await page.route("**/api/**", async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname.replace(/^\/api/, "");
+    if (path === "/auth/refresh") {
+      await route.fulfill({ status: 401, json: { message: "No active session" } });
+      return;
+    }
+    if (path === "/auth/login" && request.method() === "POST") {
+      await route.fulfill({
+        json: {
+          access_token: "e2e-promotion-token",
+          token_type: "Bearer",
+          principal: { principal_id: 103, principal_type: "staff", status: "active", school_id: 10 },
+        },
+      });
+      return;
+    }
+    if (path === "/auth/me") {
+      await route.fulfill({
+        json: {
+          principal_id: 103, principal_type: "staff", school_id: 10, username: "e2e-promotion-admin",
+          permissions: ["students.read_sensitive", "students.read_basic", "students.update", "academic_years.read", "classes.read"],
+        },
+      });
+      return;
+    }
+    if (path === "/school/academic-years") {
+      await route.fulfill({ json: { academic_years: [
+        { id: 6, name: "2025–2026", status: "active", is_current: false },
+        { id: 7, name: "2026–2027", status: "active", is_current: true },
+      ] } });
+      return;
+    }
+    if (path === "/school/sections") {
+      await route.fulfill({ json: { sections: [{
+        id: 72, academic_year_id: 7, class_id: 4, class_name: "Class 2", name: "B", is_active: true,
+      }] } });
+      return;
+    }
+    if (path === "/school/students" && request.method() === "GET") {
+      await route.fulfill({ json: { students: [], pagination: { limit: 20, offset: 0, total: 0 } } });
+      return;
+    }
+    if (path === "/school/enrollments" && request.method() === "GET") {
+      await route.fulfill({
+        json: {
+          enrollments: [{
+            id: 100, school_id: 10, student_id: 91, student_name: "Promotion Test Student",
+            academic_year_id: 6, section_id: 61, class_name_snapshot: "Class 1", section_name_snapshot: "A",
+            admission_number: "ADM-OLD-091", roll_number: "09", admission_date: "2025-04-01",
+            status: "active", enrolled_at: "2025-04-01", ended_at: null,
+          }],
+          pagination: { limit: 20, offset: 0, total: 1 },
+        },
+      });
+      return;
+    }
+    if (path === "/school/enrollments/100/promote" && request.method() === "POST") {
+      promotionRequests.push(request.postDataJSON() as Record<string, unknown>);
+      await route.fulfill({ json: { enrollment: {
+        id: 101, school_id: 10, student_id: 91, academic_year_id: 7, section_id: 72,
+        admission_number: "ADM-2026-091", class_name_snapshot: "Class 2", section_name_snapshot: "B",
+        status: "active", admission_date: "2026-11-14", enrolled_at: "2026-11-14",
+      } } });
+      return;
+    }
+    await route.fulfill({ status: 404, json: { message: `Unmocked E2E API request: ${request.method()} ${path}` } });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Username").fill("e2e-promotion-admin");
+  await page.getByLabel("Password").fill("E2E-only-password");
+  await page.getByRole("button", { name: /Continue/ }).click();
+  await expect(page.getByRole("button", { name: "Students" })).toBeVisible();
+  await page.getByRole("button", { name: "Students" }).click();
+  await page.getByRole("button", { name: "Enrollments" }).click();
+  await expect(page.getByText("Promotion Test Student")).toBeVisible();
+  await page.getByRole("button", { name: "Promote" }).click();
+  const dialog = page.getByRole("dialog", { name: "Promote student" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Destination academic year" })).toBeVisible();
+  await page.getByRole("button", { name: "Destination class and section" }).click();
+  await page.getByRole("option", { name: "Class 2 · B" }).click();
+
+  const promoteButton = dialog.getByRole("button", { name: "Promote student" });
+  await promoteButton.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Promotion submit button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect(dialog.getByText("Enter the admission number for the destination year.")).toBeVisible();
+
+  await dialog.getByPlaceholder("e.g. ADM-2027-001").fill("ADM-2026-091");
+  await promoteButton.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Promotion submit button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect.poll(() => promotionRequests.length).toBe(1);
+  expect(promotionRequests[0]).toMatchObject({
+    academic_year_id: 7, section_id: 72, admission_number: "ADM-2026-091", roll_number: null,
+  });
+  expect(promotionRequests[0].admission_date).toBeTruthy();
+  expect(promotionRequests[0].enrolled_at).toBe(promotionRequests[0].admission_date);
+  await expect(page.getByText("Student promoted successfully. Previous academic history has been preserved.")).toBeVisible();
+  await expect(dialog).toHaveCount(0);
+  expect(browserErrors).toEqual([]);
+});
