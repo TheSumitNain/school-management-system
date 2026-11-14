@@ -273,8 +273,10 @@ test("student admission, profile navigation and parent details render without br
 
   async function failNextStudentGet(resource: "basic-details" | "addresses" | "contact-details") {
     let shouldFail = true;
-    await page.route(`**/api/school/students/1/${resource}`, async route => {
-      if (shouldFail && route.request().method() === "GET") {
+    await page.route("**/api/**", async route => {
+      const requestURL = new URL(route.request().url());
+      const expectedPath = `/api/school/students/1/${resource}`;
+      if (shouldFail && route.request().method() === "GET" && requestURL.pathname === expectedPath) {
         shouldFail = false;
         await route.fulfill({ status: 429, json: { message: `Temporary ${resource} read failure.` } });
         return;
