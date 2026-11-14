@@ -144,6 +144,18 @@ test("student admission, profile navigation and parent details render without br
     if (studentMatch) {
       const studentID = Number(studentMatch[1]);
       const subpath = studentMatch[2] ?? "";
+      if (subpath === "" && method === "PATCH") {
+        const input = request.postDataJSON() as { full_name: string };
+        const student = students.find(item => item.id === studentID);
+        if (!student) {
+          await route.fulfill({ status: 404, json: { message: "Student not found." } });
+          return;
+        }
+        student.full_name = input.full_name;
+        student.updated_at = new Date().toISOString();
+        await route.fulfill({ json: { student } });
+        return;
+      }
       if (subpath === "enrollments") {
         await route.fulfill({
           json: {
@@ -309,6 +321,10 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("button", { name: /Basic details/ }).click();
   await expect(page.getByRole("dialog", { name: "Basic Details" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Save basic details" })).toBeVisible();
+  await page.getByPlaceholder("Enter student's full name").fill("Aarav Sharma Updated");
+  await page.getByRole("button", { name: "Save student name" }).click();
+  await expect(page.getByText("Student name saved.")).toBeVisible();
+  await expect.poll(() => students[0]?.full_name).toBe("Aarav Sharma Updated");
   await page.getByPlaceholder("City, district or place").fill("Ambala, Haryana");
   await page.getByPlaceholder("e.g. Indian").fill("Indian");
   await page.getByRole("button", { name: "Gender", exact: true }).click();
@@ -324,6 +340,7 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByText("Basic details saved.")).toBeVisible();
   await page.getByRole("button", { name: "Close dialog" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
+  await expect(page.getByText("Aarav Sharma Updated · Permanent student identity and year-wise academic history")).toBeVisible();
 
   await page.getByRole("button", { name: /Parents & Siblings/i }).click();
   await expect(page.getByRole("dialog", { name: /Parents & Siblings/i })).toBeVisible();
