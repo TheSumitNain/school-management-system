@@ -14,10 +14,11 @@ import {
 type Props = {
   student: StudentProfile;
   canManage: boolean;
+  canReadRelatedStudents: boolean;
   onClose: () => void;
 };
 
-export function StudentFamilySection({ student, canManage, onClose }: Props) {
+export function StudentFamilySection({ student, canManage, canReadRelatedStudents, onClose }: Props) {
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search.trim());
   const [selectedGuardianID, setSelectedGuardianID] = useState(0);
@@ -36,7 +37,7 @@ export function StudentFamilySection({ student, canManage, onClose }: Props) {
 
   const linksQuery = useSchoolStudentGuardiansQuery(student.id, true);
   const guardiansQuery = useSchoolGuardiansQuery({ q: deferredSearch, status: "active" });
-  const relatedQuery = useSchoolStudentRelatedStudentsQuery(student.id);
+  const relatedQuery = useSchoolStudentRelatedStudentsQuery(student.id, canReadRelatedStudents);
   const createGuardian = useCreateSchoolGuardianMutation();
   const linkGuardian = useLinkSchoolStudentGuardianMutation();
   const revokeLink = useRevokeSchoolStudentGuardianMutation();
@@ -194,7 +195,7 @@ export function StudentFamilySection({ student, canManage, onClose }: Props) {
 
       <section className="student-family-section">
         <div className="student-family-heading"><div><h3>Other students sharing a guardian</h3><p>This is derived from active guardian links. It does not assume a biological sibling relationship.</p></div></div>
-        {relatedQuery.isLoading ? <p className="student-address-note">Loading related students…</p> :
+        {!canReadRelatedStudents ? <p className="student-address-note">Basic student read permission is required to view related student records.</p> : relatedQuery.isLoading ? <p className="student-address-note">Loading related students…</p> :
           relatedQuery.isError ? <p className="student-feedback error" role="alert">{relatedQuery.error.message}</p> :
           relatedStudents.length === 0 ? <p className="student-address-note">No other students share an active guardian with this student.</p> :
           <div className="student-family-list">
