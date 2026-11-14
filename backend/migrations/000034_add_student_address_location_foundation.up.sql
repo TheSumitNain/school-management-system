@@ -32,10 +32,10 @@ CREATE TABLE student_locations (
 -- creating its own child under the same parent; duplicates within an owner
 -- and parent are rejected after trimming and case folding.
 CREATE UNIQUE INDEX ux_student_locations_global_name
-    ON student_locations (COALESCE(parent_id, 0), level, normalized_name)
+    ON student_locations (country_code, COALESCE(parent_id, 0), level, normalized_name)
     WHERE school_id IS NULL;
 CREATE UNIQUE INDEX ux_student_locations_school_name
-    ON student_locations (school_id, COALESCE(parent_id, 0), level, normalized_name)
+    ON student_locations (school_id, country_code, COALESCE(parent_id, 0), level, normalized_name)
     WHERE school_id IS NOT NULL;
 CREATE INDEX ix_student_locations_parent_active
     ON student_locations (parent_id, is_active, normalized_name);
@@ -78,6 +78,7 @@ BEGIN
          WHERE canonical.school_id IS NULL
            AND canonical.parent_id IS NOT DISTINCT FROM NEW.parent_id
            AND canonical.level = NEW.level
+           AND canonical.country_code = NEW.country_code
            AND canonical.is_active = TRUE
            AND canonical.normalized_name = LOWER(BTRIM(NEW.name))
     ) THEN
@@ -93,6 +94,7 @@ BEGIN
          WHERE school_owned.school_id IS NOT NULL
            AND school_owned.parent_id IS NOT DISTINCT FROM NEW.parent_id
            AND school_owned.level = NEW.level
+           AND school_owned.country_code = NEW.country_code
            AND school_owned.is_active = TRUE
            AND school_owned.normalized_name = LOWER(BTRIM(NEW.name))
     ) THEN
