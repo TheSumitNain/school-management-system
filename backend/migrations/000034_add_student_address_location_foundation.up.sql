@@ -51,21 +51,21 @@ DECLARE
     parent_country_code TEXT;
     expected_level TEXT;
 BEGIN
-    IF TG_OP = 'UPDATE' AND (
-        NEW.school_id IS DISTINCT FROM OLD.school_id
-        OR NEW.parent_id IS DISTINCT FROM OLD.parent_id
-        OR NEW.level IS DISTINCT FROM OLD.level
-        OR NEW.country_code IS DISTINCT FROM OLD.country_code
-    ) THEN
-        RAISE EXCEPTION 'student location ownership and hierarchy are immutable';
-    END IF;
+    IF TG_OP = 'UPDATE' THEN
+        IF NEW.school_id IS DISTINCT FROM OLD.school_id
+           OR NEW.parent_id IS DISTINCT FROM OLD.parent_id
+           OR NEW.level IS DISTINCT FROM OLD.level
+           OR NEW.country_code IS DISTINCT FROM OLD.country_code THEN
+            RAISE EXCEPTION 'student location ownership and hierarchy are immutable';
+        END IF;
 
-    IF TG_OP = 'UPDATE' AND OLD.is_active = TRUE AND NEW.is_active = FALSE
-       AND EXISTS (
-           SELECT 1 FROM public.student_locations child
-            WHERE child.parent_id = OLD.id AND child.is_active = TRUE
-       ) THEN
-        RAISE EXCEPTION 'student location with active children cannot be deactivated';
+        IF OLD.is_active = TRUE AND NEW.is_active = FALSE
+           AND EXISTS (
+               SELECT 1 FROM public.student_locations child
+                WHERE child.parent_id = OLD.id AND child.is_active = TRUE
+           ) THEN
+            RAISE EXCEPTION 'student location with active children cannot be deactivated';
+        END IF;
     END IF;
 
     IF NEW.parent_id IS NULL THEN
@@ -163,12 +163,12 @@ BEGIN
         RAISE EXCEPTION 'student address records cannot be deleted';
     END IF;
 
-    IF TG_OP = 'UPDATE' AND (
-        NEW.school_id IS DISTINCT FROM OLD.school_id
-        OR NEW.student_id IS DISTINCT FROM OLD.student_id
-        OR NEW.address_type IS DISTINCT FROM OLD.address_type
-    ) THEN
-        RAISE EXCEPTION 'student address ownership and type are immutable';
+    IF TG_OP = 'UPDATE' THEN
+        IF NEW.school_id IS DISTINCT FROM OLD.school_id
+           OR NEW.student_id IS DISTINCT FROM OLD.student_id
+           OR NEW.address_type IS DISTINCT FROM OLD.address_type THEN
+            RAISE EXCEPTION 'student address ownership and type are immutable';
+        END IF;
     END IF;
 
     IF NEW.location_id IS NOT NULL THEN
