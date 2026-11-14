@@ -49,7 +49,7 @@ import {
   getSchoolStudentMedicalDetails, getSchoolStudentPhysicalDetails,
   getSchoolStudentEnrollments, getSchoolStudentEnrollmentHistory, getSchoolStudentLocations, getSchoolStudentRelatedStudents,
   getSchoolStudentGuardians, getSchoolStudents, getSchoolGuardians, linkSchoolStudentGuardian,
-  revokeSchoolStudentGuardianLink, createSchoolGuardian, saveSchoolStudentAddress,
+  revokeSchoolStudentGuardianLink, createSchoolGuardian, updateSchoolGuardian, saveSchoolStudentAddress,
   saveSchoolStudentContactDetails, saveSchoolStudentMedicalDetails, saveSchoolStudentPhysicalDetails, updateSchoolStudent,
 } from "./api";
 
@@ -242,6 +242,15 @@ function useGuardianMutation<TInput>(mutationFn: (input: TInput) => Promise<unkn
 }
 export function useCreateSchoolGuardianMutation() {
   return useGuardianMutation(createSchoolGuardian);
+}
+export function useUpdateSchoolGuardianMutation() {
+  return useGuardianMutation(({ guardianID, input }: {
+    guardianID: number; input: {
+      full_name: string; mobile_number?: string | null; email_address?: string | null;
+      alternate_mobile_number?: string | null; occupation?: string | null; education?: string | null;
+      workplace_name?: string | null; status: string;
+    };
+  }) => updateSchoolGuardian(guardianID, input));
 }
 export function useLinkSchoolStudentGuardianMutation() {
   return useGuardianMutation(({ studentID, input }: {
