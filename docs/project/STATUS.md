@@ -3,7 +3,17 @@
 **Last reconciled:** 2026-11-14  
 **Repository:** `TheSumitNain/school-management-system`  
 **Reviewed branch:** `work`  
-**Reviewed through:** latest `work` commits; V32–V38 locally verified in the user's disposable `school_management_test` database; subsequent guardian profile edit UI changes await local verification
+**Reviewed through:** V39 guardian-permission implementation commits on `work`; V32–V38 were locally verified in the user's disposable `school_management_test` database; V39 and subsequent browser acceptance are pending
+
+## Administrator access correction — School Admin guardian permissions (V39; local verification pending)
+
+- Root cause of the missing Parent/Sibling area: the guardian UI and APIs existed, but the School Admin system-role bundle and its runtime allowlist omitted `guardians.read` and `guardians.manage`.
+- V39 adds both school-scoped permissions to every existing School Admin system role and updates the school-creation provisioning function so newly onboarded schools receive the same bundle. The immutable system-role protection trigger is removed only around the reviewed migration insert and is recreated immediately.
+- Teacher permissions remain unchanged; Teacher system roles receive neither guardian permission. The School Admin runtime permission allowlist and provisioning integration expectations now include both keys.
+- Added PostgreSQL integration coverage for existing-school grants, Teacher exclusion and restoration of the system-role immutability trigger. Newly created-school provisioning coverage also expects the updated 53-permission School Admin bundle.
+- No guardian/student records are modified. No frontend permission check or backend authorization middleware is bypassed.
+- **V39 has been committed to `work` but has not been run against any local database.** Verify it only on the disposable `school_management_test` database first. Do not apply it to the persistent `school_management` database without separate explicit approval and a verified backup.
+- **Platform Admin cross-school business operations remain an explicit architecture gap:** Platform Admin is a platform-scoped principal, while current school business APIs require a school-scoped staff context. Do not impersonate a School Admin or bypass tenant checks. Implement a reviewed selected-school administrative context with explicit target-school authorization and audit before exposing Platform Admin to school business records.
 
 ## Student Management — approved yearly admission model (V31–V38 schema; application cutover in progress)
 
