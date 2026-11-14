@@ -287,6 +287,35 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 		relatedStudentID, guardian.ID, "father", true, false); err != nil {
 		t.Fatalf("link shared guardian to related student: %v", err)
 	}
+
+	// Shared guardian profile edits must flow to every linked student, while
+	// relationship type and per-student contact flags remain independent.
+	sharedMobile := "+919812345678"
+	sharedOccupation := "Updated shared occupation"
+	sharedUpdate, err := repo.SaveGuardian(ctx, targetPrincipalID, schoolID, guardian.ID,
+		"Shared Guardian Profile Updated", &sharedMobile, &email, &alternateMobile,
+		&sharedOccupation, &education, &workplace, "active")
+	if err != nil {
+		t.Fatalf("update shared guardian profile after linking multiple students: %v", err)
+	}
+	if sharedUpdate.ID != guardian.ID {
+		t.Fatalf("shared guardian update changed identity: %+v", sharedUpdate)
+	}
+	studentLinksAfterSharedEdit, err := repo.ListStudentGuardians(ctx, targetPrincipalID, schoolID, studentID, false)
+	if err != nil || len(studentLinksAfterSharedEdit) != 1 ||
+		studentLinksAfterSharedEdit[0].GuardianName != "Shared Guardian Profile Updated" ||
+		studentLinksAfterSharedEdit[0].MobileNumber == nil || *studentLinksAfterSharedEdit[0].MobileNumber != sharedMobile ||
+		studentLinksAfterSharedEdit[0].RelationshipType != "father" ||
+		!studentLinksAfterSharedEdit[0].IsPrimaryContact || !studentLinksAfterSharedEdit[0].IsEmergencyContact {
+		t.Fatalf("shared profile update was not reflected without changing first student's relationship: links=%+v err=%v", studentLinksAfterSharedEdit, err)
+	}
+	relatedLinksAfterSharedEdit, err := repo.ListStudentGuardians(ctx, targetPrincipalID, schoolID, relatedStudentID, false)
+	if err != nil || len(relatedLinksAfterSharedEdit) != 1 ||
+		relatedLinksAfterSharedEdit[0].GuardianName != "Shared Guardian Profile Updated" ||
+		relatedLinksAfterSharedEdit[0].RelationshipType != "father" ||
+		!relatedLinksAfterSharedEdit[0].IsPrimaryContact || relatedLinksAfterSharedEdit[0].IsEmergencyContact {
+		t.Fatalf("shared profile update changed or failed to propagate to related student's relationship: links=%+v err=%v", relatedLinksAfterSharedEdit, err)
+	}
 	relatedStudents, err := repo.ListStudentRelatedStudents(ctx, targetPrincipalID, schoolID, studentID)
 	if err != nil || len(relatedStudents) != 1 || relatedStudents[0].StudentID != relatedStudentID ||
 		len(relatedStudents[0].SharedGuardianNames) != 1 || relatedStudents[0].SharedGuardianNames[0] != firstLink.GuardianName {
