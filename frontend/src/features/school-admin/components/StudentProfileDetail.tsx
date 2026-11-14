@@ -1,4 +1,4 @@
-import { Eye, HeartPulse, MapPin, Pencil, Users } from "lucide-react";
+import { Eye, HeartPulse, MapPin, Pencil, UserRound, Users } from "lucide-react";
 import { Modal } from "../../../shared/components/Modal";
 import type { StudentAcademicYear, StudentEnrollment, StudentProfile } from "../api";
 import { useSchoolStudentEnrollmentHistoryQuery } from "../queries";
@@ -10,6 +10,7 @@ type Props = {
   canReadFamily: boolean;
   academicYears: StudentAcademicYear[];
   onEditBasic: () => void;
+  onOpenBasic: () => void;
   onOpenAddress: () => void;
   onOpenFamily: () => void;
   onOpenHealth: () => void;
@@ -31,7 +32,7 @@ function enrollmentYear(enrollment: StudentEnrollment, years: StudentAcademicYea
 
 export function StudentProfileDetail({
   student, canReadHistory, canUpdateBasic, canReadFamily, academicYears,
-  onEditBasic, onOpenAddress, onOpenFamily, onOpenHealth, onClose,
+  onEditBasic, onOpenBasic, onOpenAddress, onOpenFamily, onOpenHealth, onClose,
 }: Props) {
   const historyQuery = useSchoolStudentEnrollmentHistoryQuery(student.id, canReadHistory);
   const history = [...(historyQuery.data?.enrollments ?? [])].sort(
@@ -63,7 +64,8 @@ export function StudentProfileDetail({
             <div><dt>Student record created</dt><dd>{dateLabel(student.created_at)}</dd></div>
           </dl>
           <div className="student-profile-actions">
-            {canUpdateBasic && student.status !== "archived" && <button type="button" className="secondary" onClick={onEditBasic}><Pencil size={14}/> Edit basic details</button>}
+            {canUpdateBasic && student.status !== "archived" && <button type="button" className="secondary" onClick={onEditBasic}><Pencil size={14}/> Edit student name</button>
+            <button type="button" className="secondary" onClick={onOpenBasic}><UserRound size={14}/> Basic details</button>}
             <button type="button" className="secondary" onClick={onOpenAddress}><MapPin size={14}/> Address & communication</button>
             <button type="button" className="secondary" onClick={onOpenHealth}><HeartPulse size={14}/> Medical & physical</button>
             {canReadFamily && <button type="button" className="secondary" onClick={onOpenFamily}><Users size={14}/> Parents & siblings</button>}
