@@ -15,6 +15,40 @@ The initial deployment direction is one shared database and schema with strict s
 6. Do not apply migrations to `school_management` or `school_management_test` without explicit user approval.
 7. Never run destructive SQL as a cleanup shortcut.
 
+## Long-term database engineering standards
+
+These rules apply to every new or modified domain, not only student and guardian data.
+
+### Schema evolution
+- Treat every applied migration as immutable. Correct deployed schema behavior with a new forward migration; never edit or renumber an applied migration.
+- Keep each migration focused, ordered, reviewable and safe to retry only when its migration runner semantics explicitly support that behavior.
+- Every up migration must have a deliberate down or forward-recovery strategy. A down migration must stop with a clear error rather than silently discard populated or newly meaningful data.
+- Before a migration, inspect existing constraints, triggers, indexes, data shape and dependencies. Document compatibility assumptions and any manual deployment step.
+- Prefer expand-and-contract changes for columns or tables used by deployed application versions; avoid a migration that requires an unsafe all-at-once application rollout.
+
+### Integrity, tenancy and lifecycle
+- Enforce invariants in PostgreSQL as well as in Go: NOT NULL, CHECK, UNIQUE/partial UNIQUE, foreign keys and composite school-scoped foreign keys where appropriate.
+- Every tenant-owned relationship must prove school ownership at the database boundary; do not rely only on a client-supplied school ID or a prior application lookup.
+- Use restrictive delete behavior for records with academic, financial, identity, guardian or audit history. Prefer explicit archive, deactivate, revoke or status transitions over hard deletion.
+- Keep audit/history append-only where records establish who changed sensitive or historically meaningful data. Never place passwords, tokens, contact values, medical values or other unnecessary PII in audit metadata.
+- Preserve historical facts. Do not rewrite old academic-year admission identities, guardian relationship periods or measurements to make current screens appear simpler.
+
+### Transactions, concurrency and performance
+- Put multi-row business operations in one transaction, including admission/enrollment creation, promotion, guardian linking, primary-contact changes and audit writes.
+- Identify the row or key that serializes each competing operation; use appropriate row locks, unique constraints and deterministic lock ordering to prevent races and deadlocks.
+- Add PostgreSQL integration tests for concurrent requests and rollback-on-failure whenever an invariant can be violated by two simultaneous operations.
+- Add indexes for demonstrated filter, join, uniqueness and ordering patterns. Validate query plans for high-volume paths; avoid speculative duplicate indexes.
+- Use bounded pagination and explicit ordering for list endpoints. Watch for N+1 queries, unbounded history reads and expensive wildcard searches as school data grows.
+- Review query and index changes against realistic school sizes and expected multi-school growth; record the reason for non-obvious indexes.
+
+### Verification and recovery
+- For every schema change, test the complete migration chain on a fresh disposable PostgreSQL database and test upgrading a representative prior schema/data state.
+- Test constraints, tenant isolation, transaction rollback, concurrency and the down/forward-recovery path that is safe for the data involved.
+- CI must use an ephemeral database. Local integration tests must use a dedicated disposable test database, never a production or user data database by accident.
+- Maintain documented backup frequency, retention, encryption/access controls and restore procedure for persistent environments. A backup is not verified until a restore has been rehearsed and checked.
+- Before any persistent-database migration or recovery, identify the target database, inspect its migration state, verify a restorable backup and obtain explicit approval. Never delete a backup merely because the application currently starts.
+- Record actual migration/test/restore evidence and outstanding gaps in project status; never infer local database health from a green CI run.
+
 ## Domain areas represented in the schema
 
 The migration history includes schools and identity/principal foundations, refresh sessions, RBAC/delegation/overrides, MFA and audit records, staff lifecycle, academic structure (including optional Hindi/English medium metadata on sections in V27), student/enrollment history, attendance, timetable periods and weekly schedules, and guardian relationships.
