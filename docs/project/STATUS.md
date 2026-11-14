@@ -3,7 +3,7 @@
 **Last reconciled:** 2026-11-14  
 **Repository:** `TheSumitNain/school-management-system`  
 **Reviewed branch:** `work`  
-**Reviewed through:** `1a86c88` (`work` branch; user-local verification pending)
+**Reviewed through:** `f4606f2` (`work` branch; user-local verification pending)
 
 ## Student Management — approved yearly admission model (V31–V35 schema; application cutover in progress)
 
@@ -16,6 +16,7 @@
 - New student creation now has one transactional repository operation that creates the permanent student identity (legacy admission number NULL), its first year-specific enrollment, and both audit events. The `POST /school/students` route now uses this combined operation; an enrollment uniqueness conflict rolls back the student insert.
 - Student directory/profile reads now display and search the current academic year's enrollment admission number. If a student has a current-year enrollment with unknown legacy admission identity, the directory deliberately shows no number rather than incorrectly carrying forward an unverified old-year value. Attendance and enrollment lists also expose the enrollment-level number.
 - The Student Management page now uses a guided first-admission form (student name, admission number, academic year, section, optional roll number and admission date) and requires year-specific admission number/date when enrolling an existing student.
+- The student directory now opens a profile detail view showing the permanent student identity and year-wise enrollment history, including each year's admission number/date, class/section, roll number and enrollment lifecycle dates. Address & Communication and Parents & Siblings are launched as separate profile-section actions; the directory row no longer carries redundant section shortcuts.
 - V34 adds tenant-aware hierarchical locations and separate current/permanent student address records. Backend APIs support location search/add/deactivate and address read/update; the frontend now has an independently editable Address & Communication section with dependent State → District → Block/Tehsil → Village/City selectors and school-owned additions. No guessed national geography catalogue has been seeded.
 - V35 adds optional primary phone, alternate phone and email contact details with live read/update permissions, audit metadata that excludes PII values, and a Contact Details tab in the same independently editable profile section. Phone/email values are intentionally non-unique.
 - The Parents & Siblings section now reuses the existing V11 guardian model: staff can create guardian contacts, link multiple guardians with relationship/primary/emergency flags, and revoke links with reasons while retaining history. Existing V12 partial uniqueness allows a revoked relationship to be re-established as a new history row. A related-student list is derived from active shared guardian links and explicitly does not claim biological sibling status. Parent OTP/login remains deferred.
