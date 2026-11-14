@@ -87,6 +87,21 @@ The authoritative schema is the ordered SQL migration chain in `backend/migratio
 
 V41 updates the existing guardian-history trigger so an active student–guardian link may change its relationship label while preserving immutable ownership and identity (id, school_id, student_id, guardian_id, created_at). Revoked relationship rows remain immutable, and revocation actor/reason validation remains enforced. The migration does not rewrite V12; its down migration restores the previous relationship-label immutability rule. PostgreSQL integration coverage verifies relationship edits, primary-contact exclusivity, cross-student isolation, revoked-link protection and audit behavior.
 
+## India administrative-location reference data
+
+The intended authoritative source for the address hierarchy is the Ministry of Panchayati Raj's Local Government Directory (LGD), published through the Government of India's Open Government Data platform. The LGD catalog describes revenue entities including districts, sub-districts and villages, and is updated monthly. Use the matching LGD revenue-entity resources; do not substitute local-body or panchayat rows for districts, tehsils or villages.
+
+A future LGD import must:
+- retain the official LGD code as the stable source identifier and record source system, source snapshot date and ingestion provenance;
+- validate every parent-child edge (State → District → Sub-District → Village) before writing, including duplicate codes, missing parents and name/code drift;
+- stage and review a complete snapshot before an atomic upsert; never partially replace the active hierarchy after a failed download or validation;
+- deactivate or version entities removed/renamed upstream rather than hard-delete rows referenced by student addresses;
+- preserve school-owned custom locations and distinguish them from canonical LGD rows;
+- report source row counts, rejected rows and changes by level, and require human review for unexpected large changes;
+- retain the exact downloaded source snapshot and its checksum for reproducibility, with required Government Open Data License attribution.
+
+Do not build a runtime dependency on an unofficial mirror. Import only from a reviewed official LGD/OGD download or a verified official API response. The current V40 State/UT seed is separate; no lower-level national hierarchy has been fabricated.
+
 ## Local database configuration
 
 Use `backend/.env.example` as the configuration reference. Keep local `.env` files and all passwords, JWT secrets, TOTP encryption keys and other credentials out of Git.
