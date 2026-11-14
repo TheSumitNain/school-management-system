@@ -297,10 +297,11 @@ func (r *AcademicRepository) LinkStudentGuardian(ctx context.Context,actorID,sch
 		schoolID,studentID,guardianID,relationship,primary,emergency).Scan(&v.ID)
 	if err!=nil{return nil,guardianWriteError(err)}
 	err=tx.QueryRow(ctx,`SELECT sg.id,sg.student_id,sg.guardian_id,g.full_name,g.mobile_number,g.email_address,
+		g.alternate_mobile_number,g.occupation,g.education,g.workplace_name,
 		sg.relationship_type,sg.is_primary_contact,sg.is_emergency_contact,sg.created_at,sg.revoked_at
 		FROM student_guardians sg JOIN guardians g ON g.id=sg.guardian_id AND g.school_id=sg.school_id
 		WHERE sg.id=$1 AND sg.school_id=$2`,v.ID,schoolID).
-		Scan(&v.ID,&v.StudentID,&v.GuardianID,&v.GuardianName,&v.MobileNumber,&v.EmailAddress,&v.RelationshipType,&v.IsPrimaryContact,&v.IsEmergencyContact,&v.CreatedAt,&v.RevokedAt)
+		Scan(&v.ID,&v.StudentID,&v.GuardianID,&v.GuardianName,&v.MobileNumber,&v.EmailAddress,&v.AlternateMobileNumber,&v.Occupation,&v.Education,&v.WorkplaceName,&v.RelationshipType,&v.IsPrimaryContact,&v.IsEmergencyContact,&v.CreatedAt,&v.RevokedAt)
 	if err!=nil{return nil,fmt.Errorf("load created student guardian link: %w",err)}
 	if _,err=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
 		VALUES($1,$2,'school.student_guardian_link_created','student_guardian_link',$3,'success',
