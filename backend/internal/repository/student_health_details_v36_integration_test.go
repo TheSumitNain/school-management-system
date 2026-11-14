@@ -210,22 +210,23 @@ func TestStudentMedicalPhysicalDetailsV36PostgresIntegration(t *testing.T) {
 	`, schoolID).Scan(&teacherRoleID); err != nil {
 		t.Fatalf("load Teacher role for restricted health access test: %v", err)
 	}
+	var teacherPrincipalID int64
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO users(school_id,username,password_hash,status)
+		VALUES($1,$2,'integration-test-hash','active') RETURNING principal_id
+	`, schoolID, "v36-health-teacher-"+suffix).Scan(&teacherPrincipalID); err != nil {
+		t.Fatalf("create Teacher health access fixture: %v", err)
+	}
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO principal_roles(principal_id,role_id,assigned_by)
 		VALUES($1,$2,$3)
-	`, actorPrincipalID, teacherRoleID, actorPrincipalID); err != nil {
+	`, teacherPrincipalID, teacherRoleID, actorPrincipalID); err != nil {
 		t.Fatalf("assign Teacher role for restricted health access test: %v", err)
 	}
-	if _, err := tx.Exec(ctx, `
-		UPDATE principal_roles SET revoked_at=NOW()
-		 WHERE principal_id=$1 AND role_id=$2 AND revoked_at IS NULL
-	`, actorPrincipalID, schoolAdminRoleID); err != nil {
-		t.Fatalf("revoke School Admin role for restricted health access test: %v", err)
-	}
-	if _, err := repo.GetStudentMedicalDetails(ctx, actorPrincipalID, schoolID, studentID); !errors.Is(err, ErrAcademicAccessDenied) {
+	if _, err := repo.GetStudentMedicalDetails(ctx, teacherPrincipalID, schoolID, studentID); !errors.Is(err, ErrAcademicAccessDenied) {
 		t.Fatalf("Teacher medical read error = %v, want access denied", err)
 	}
-	if _, err := repo.GetStudentPhysicalDetails(ctx, actorPrincipalID, schoolID, studentID); !errors.Is(err, ErrAcademicAccessDenied) {
+	if _, err := repo.GetStudentPhysicalDetails(ctx, teacherPrincipalID, schoolID, studentID); !errors.Is(err, ErrAcademicAccessDenied) {
 		t.Fatalf("Teacher physical read error = %v, want access denied", err)
 	}
 
