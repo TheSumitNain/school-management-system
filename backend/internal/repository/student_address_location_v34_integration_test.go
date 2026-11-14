@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -35,9 +36,23 @@ func TestStudentAddressLocationV34PostgresIntegration(t *testing.T) {
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	var schoolID int64
-	if err := tx.QueryRow(ctx, `SELECT school_id FROM users WHERE id=$1`, userID).Scan(&schoolID); err != nil {
-		t.Fatalf("load integration school: %v", err)
+	var schoolID, actorPrincipalID int64
+	if err := tx.QueryRow(ctx, `SELECT school_id,principal_id FROM users WHERE id=$1`, userID).Scan(&schoolID, &actorPrincipalID); err != nil {
+		t.Fatalf("load integration school actor: %v", err)
+	}
+	platformAdminPrincipalID := ensurePlatformAdminLifecycleActor(t, pool)
+	var schoolAdminRoleID int64
+	if err := tx.QueryRow(ctx, `
+		SELECT id FROM roles WHERE school_id=$1 AND principal_type='staff'
+		  AND scope_type='school' AND role_key='school_admin' AND is_system=TRUE
+	`, schoolID).Scan(&schoolAdminRoleID); err != nil {
+		t.Fatalf("load School Admin role: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO principal_roles(principal_id,role_id,assigned_by)
+		VALUES($1,$2,$3)
+	`, actorPrincipalID, schoolAdminRoleID, platformAdminPrincipalID); err != nil {
+		t.Fatalf("assign School Admin fixture role: %v", err)
 	}
 	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
 
@@ -194,6 +209,37 @@ func TestStudentAddressLocationV34PostgresIntegration(t *testing.T) {
 		WHERE school_id=$1 AND student_id=$2
 	`, schoolID, studentID).Scan(&addressCount); err != nil {
 		t.Fatalf("count V34 student addresses: %v", err)
+	}
+	repository := NewAcademicRepository(tx)
+	addresses, err := repository.ListStudentAddresses(ctx, actorPrincipalID, schoolID, studentID)
+	if err != nil || len(addresses) != 2 {
+		t.Fatalf("read student addresses through repository: count=%d err=%v", len(addresses), err)
+	}
+	var foundCurrent bool
+	for _, address := range addresses {
+		if address.AddressType == "current" {
+			foundCurrent = address.AddressLine1 != nil && *address.AddressLine1 == "House 12" &&
+				address.AreaMohalla != nil && *address.AreaMohalla == "Main Mohalla" &&
+				address.LocationName != nil && *address.LocationName == "V34 Village "+suffix
+		}
+	}
+	if !foundCurrent {
+		t.Fatalf("current address did not preserve saved address and inactive locality: %+v", addresses)
+	}
+	var readAuditCount int
+	var readAuditMetadata string
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*),COALESCE(string_agg(metadata::text,' '),'')
+		  FROM audit_events
+		 WHERE school_id=$1 AND actor_principal_id=$2
+		   AND action='school.student.address.read'
+		   AND resource_id=$3
+	`, schoolID, actorPrincipalID, fmt.Sprint(studentID)).Scan(&readAuditCount, &readAuditMetadata); err != nil {
+		t.Fatalf("inspect address read audit: %v", err)
+	}
+	if readAuditCount != 1 || !strings.Contains(readAuditMetadata, "address") ||
+		strings.Contains(readAuditMetadata, "House 12") || strings.Contains(readAuditMetadata, "Main Mohalla") {
+		t.Fatalf("address read audit must contain section only: count=%d metadata=%s", readAuditCount, readAuditMetadata)
 	}
 	if addressCount != 2 {
 		t.Fatalf("student address count = %d, want current + permanent", addressCount)
