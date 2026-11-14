@@ -11,12 +11,12 @@ type Props = {
 
 export function StudentFieldLabel({ label, required = false, conditional = false, hint }: Props) {
   const hintID = useId();
-  const status = required ? "Required" : conditional ? "Conditional" : "Optional";
+  const status = required ? "Required" : conditional ? "Required when used" : "Optional";
 
   return (
     <span className="student-field-label">
       <span className="student-field-label__name">{label}</span>
-      <span className={"student-field-label__status" + (required ? " is-required" : "")}>{status}</span>
+      <span className={"student-field-label__status" + (required || conditional ? " is-required" : "")}>{status}</span>
       {hint && (
         <span className="student-field-hint">
           <span

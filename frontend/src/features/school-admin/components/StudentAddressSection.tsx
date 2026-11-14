@@ -303,7 +303,7 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
         {addressType === "permanent" && (
           <label className="student-address-same">
             <input type="checkbox" checked={sameAsCurrent} disabled={!canUpdate || !currentAddress || busy} onChange={event => { setSameAsCurrent(event.target.checked); setFieldError(""); }} />
-            Permanent address is same as current address
+            <StudentFieldLabel label="Permanent address is same as current address" hint="Optional. Turn this on only when the permanent address is exactly the same as the current address. Save the current address first." />
           </label>
         )}
         {sameAsCurrent && addressType === "permanent" ? (
