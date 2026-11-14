@@ -324,3 +324,10 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - The known local adoption gap remains: the user's persistent school_management database was last reported at migration V24, while student address, contact, medical/physical and basic-details tables are introduced in V34–V37, guardian profile extensions in V38, State/UT reference data in V40 and relationship editability in V41. This is a likely explanation for failed profile reads on that database, not proof of its current version. Do not migrate it without explicit approval and a verified restorable backup.
 - Current Student Management gaps: browser-level create/view/edit/save acceptance remains pending; the national District → Block/Tehsil → Village/City reference hierarchy still needs an authoritative LGD import; persistent database migration/adoption remains pending. State/UT rows are seeded by V40, but lower-level rows are deliberately not fabricated.
 - Current work remains scoped to Student Management. Auth, RBAC, Class, Section and Subject are unchanged.
+
+
+## Read-only database adoption preflight — 2026-11-14
+
+- Added `backend/cmd/dbstatus`, a read-only command that reports the configured database name, golang-migrate version and dirty flag. It performs no schema or data writes and exits with an error for dirty or malformed migration state.
+- Documented the command in the backend database guide. Use it to establish the actual persistent database version before discussing an upgrade; it does not replace a backup/restore rehearsal or the user's explicit approval.
+- The new command is awaiting Backend CI verification. Do not run `go run ./cmd/migrate` against the persistent `school_management` database as part of this preflight.
