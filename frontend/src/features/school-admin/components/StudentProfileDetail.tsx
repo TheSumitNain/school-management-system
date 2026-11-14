@@ -76,7 +76,7 @@ export function StudentProfileDetail({
           </div>
           {!canReadHistory ? <p className="student-address-note">Basic student read permission is required to view academic history.</p> :
             historyQuery.isLoading ? <p className="student-address-note">Loading academic history…</p> :
-            historyQuery.isError ? <p className="student-feedback error" role="alert">{historyQuery.error.message}</p> :
+            historyQuery.isError ? <div className="student-feedback error" role="alert"><p>{historyQuery.error.message}</p><button type="button" className="student-secondary" onClick={() => void historyQuery.refetch()} disabled={historyQuery.isFetching}>Retry loading academic history</button></div> :
             <>
               {currentAcademicYear && <p className={hasActiveCurrentEnrollment ? "student-profile-current-enrollment active" : "student-profile-current-enrollment"}>
                 {currentAcademicYear.name}: {hasActiveCurrentEnrollment ? "Active enrollment" : "No active enrollment"}

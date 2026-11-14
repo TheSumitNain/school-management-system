@@ -233,7 +233,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
           <label className="student-address-same"><input type="checkbox" checked={includeHistory} onChange={event => setIncludeHistory(event.target.checked)}/> Show revoked history</label>
         </div>
         {linksQuery.isLoading ? <p className="student-address-note">Loading guardian relationships…</p> :
-          linksQuery.isError ? <p className="student-feedback error" role="alert">{linksQuery.error.message}</p> :
+          linksQuery.isError ? <div className="student-feedback error" role="alert"><p>{linksQuery.error.message}</p><button type="button" className="student-secondary" onClick={() => void linksQuery.refetch()} disabled={linksQuery.isFetching}>Retry loading guardian relationships</button></div> :
           visibleLinks.length === 0 ? <p className="student-address-note">No guardian relationships are linked to this student yet.</p> :
           <div className="student-family-list">
             {visibleLinks.map(link => (
@@ -279,9 +279,9 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
               <h4>Link a guardian</h4>
               <label><StudentFieldLabel label="Search active guardian contacts" hint="Search existing active guardian contacts by name, phone or email." /><input value={search} onChange={event => { setSearch(event.target.value); setSelectedGuardianID(0); setGuardianSelectError(""); }} placeholder="Search by name, phone or email"/></label>
               <StudentFieldLabel label="Guardian contact" required hint="Choose an existing active guardian contact. If the contact does not exist, create it below first." />
-              <Select ariaLabel="Select guardian" value={String(selectedGuardianID || "")} onChange={value => { setSelectedGuardianID(Number(value)); setGuardianSelectError(""); }} placeholder="Choose a guardian" options={guardianOptions} disabled={guardiansQuery.isLoading} invalid={Boolean(guardianSelectError)} describedBy={guardianSelectError ? "student-guardian-select-error" : undefined}/>
+              <Select ariaLabel="Select guardian" value={String(selectedGuardianID || "")} onChange={value => { setSelectedGuardianID(Number(value)); setGuardianSelectError(""); }} placeholder="Choose a guardian" options={guardianOptions} disabled={guardiansQuery.isLoading || guardiansQuery.isError} invalid={Boolean(guardianSelectError)} describedBy={guardianSelectError ? "student-guardian-select-error" : undefined}/>
               {guardianSelectError && <small id="student-guardian-select-error" className="app-field-error">{guardianSelectError}</small>}
-              {guardiansQuery.isError && <small className="app-field-error" role="alert">{guardiansQuery.error.message}</small>}
+              {guardiansQuery.isError && <div className="student-feedback error" role="alert"><p>{guardiansQuery.error.message}</p><button type="button" className="student-secondary" onClick={() => void guardiansQuery.refetch()} disabled={guardiansQuery.isFetching}>Retry loading guardian contacts</button></div>}
               {!guardiansQuery.isLoading && !guardiansQuery.isError && guardianOptions.length === 0 && <p className="student-address-note">No unlinked active guardian contacts match this search. You can create a new contact below.</p>}
               <label><StudentFieldLabel label="Relationship to student" required hint="Enter how this guardian is related to this student, for example Father, Mother or Legal Guardian. Maximum 40 characters." /><input value={relationshipType} maxLength={40} aria-invalid={Boolean(relationshipError)} aria-describedby={relationshipError ? "student-guardian-relationship-error" : undefined} onChange={event => { setRelationshipType(event.target.value); setRelationshipError(""); }} placeholder="Father, Mother, Guardian…"/></label>
               {relationshipError && <small id="student-guardian-relationship-error" className="app-field-error">{relationshipError}</small>}
@@ -321,7 +321,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
       <section className="student-family-section">
         <div className="student-family-heading"><div><h3>Other students sharing a guardian</h3><p>This is derived from active guardian links. It does not assume a biological sibling relationship.</p></div></div>
         {!canReadRelatedStudents ? <p className="student-address-note">Basic student read permission is required to view related student records.</p> : relatedQuery.isLoading ? <p className="student-address-note">Loading related students…</p> :
-          relatedQuery.isError ? <p className="student-feedback error" role="alert">{relatedQuery.error.message}</p> :
+          relatedQuery.isError ? <div className="student-feedback error" role="alert"><p>{relatedQuery.error.message}</p><button type="button" className="student-secondary" onClick={() => void relatedQuery.refetch()} disabled={relatedQuery.isFetching}>Retry loading related students</button></div> :
           relatedStudents.length === 0 ? <p className="student-address-note">No other students share an active guardian with this student.</p> :
           <div className="student-family-list">
             {relatedStudents.map(item => (
