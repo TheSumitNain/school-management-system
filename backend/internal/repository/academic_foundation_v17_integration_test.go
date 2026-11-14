@@ -646,7 +646,9 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 
 	var promotionAuditJSON []byte
 	if err := pool.QueryRow(ctx, `SELECT metadata FROM audit_events
-		WHERE action='school.student.promoted' AND resource_id=$1`, fmt.Sprint(promoted.ID)).Scan(&promotionAuditJSON); err != nil {
+		WHERE action='school.student.promoted' AND actor_principal_id=$1 AND school_id=$2
+		  AND metadata->>'source_enrollment_id'=$3
+		ORDER BY created_at DESC LIMIT 1`, actorPrincipalID, schoolID, fmt.Sprint(apiEnrollment.ID)).Scan(&promotionAuditJSON); err != nil {
 		t.Fatalf("read student promotion audit metadata: %v", err)
 	}
 	var promotionAudit map[string]any
