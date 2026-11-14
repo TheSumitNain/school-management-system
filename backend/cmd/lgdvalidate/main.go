@@ -123,7 +123,7 @@ func validateCSV(input io.Reader) (*snapshot, error) {
 				return nil, fmt.Errorf("CSV line %d: %s is required", line, expectedHeader[i])
 			}
 		}
-		if len(row[2]) < 2 || len(row[2]) > 2 {
+		if len(row[2]) != 2 || row[2] != strings.ToUpper(row[2]) {
 			return nil, fmt.Errorf("CSV line %d: igod_state_code must be the two-character V40 code", line)
 		}
 		if !validLocalityType(row[9]) {
