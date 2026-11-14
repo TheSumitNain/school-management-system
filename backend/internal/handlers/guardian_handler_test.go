@@ -17,6 +17,7 @@ type fakeGuardianManagementService struct {
 	guardians []repository.Guardian
 	guardian *repository.Guardian
 	links []repository.StudentGuardian
+	relatedStudents []repository.StudentRelatedStudent
 	link *repository.StudentGuardian
 	total int64
 	err error
@@ -44,6 +45,10 @@ func (f *fakeGuardianManagementService) SaveGuardian(_ context.Context, actor, s
 func (f *fakeGuardianManagementService) ListStudentGuardians(_ context.Context, actor, school, student int64, history bool) ([]repository.StudentGuardian, error) {
 	f.calls++; f.actorID, f.schoolID, f.studentID, f.history = actor, school, student, history
 	return f.links, f.err
+}
+func (f *fakeGuardianManagementService) ListStudentRelatedStudents(_ context.Context, actor, school, student int64) ([]repository.StudentRelatedStudent, error) {
+	f.calls++; f.actorID, f.schoolID, f.studentID = actor, school, student
+	return f.relatedStudents, f.err
 }
 func (f *fakeGuardianManagementService) LinkStudentGuardian(_ context.Context, actor, school, student, guardian int64, relationship string, primary, emergency bool) (*repository.StudentGuardian, error) {
 	f.calls++; f.actorID, f.schoolID, f.studentID, f.guardianID = actor, school, student, guardian
@@ -122,6 +127,19 @@ func TestGuardianHandlerSaveCreateAndUpdate(t *testing.T) {
 		if tc.path != "/guardians" { method = http.MethodPatch }
 		router.ServeHTTP(rec, httptest.NewRequest(method, tc.path, strings.NewReader(tc.body)))
 		if rec.Code != http.StatusBadRequest { t.Fatalf("%s status=%d body=%s", tc.path, rec.Code, rec.Body.String()) }
+	}
+}
+
+func TestGuardianHandlerListRelatedStudents(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	service := &fakeGuardianManagementService{relatedStudents: []repository.StudentRelatedStudent{{StudentID: 42, FullName: "Related Student", SharedGuardianNames: []string{"Parent One"}}}}
+	router := gin.New()
+	router.GET("/students/:studentID/related-students", guardianTestAuth, NewGuardianHandler(service).ListStudentRelatedStudents)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/students/15/related-students", nil))
+	if rec.Code != http.StatusOK || service.actorID != 31 || service.schoolID != 8 || service.studentID != 15 ||
+		!strings.Contains(rec.Body.String(), "Related Student") {
+		t.Fatalf("related-students status=%d service=%+v body=%s", rec.Code, service, rec.Body.String())
 	}
 }
 
