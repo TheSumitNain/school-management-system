@@ -296,3 +296,11 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - Guardian relationship edit forms and action controls wrap responsively inside each guardian card on narrow screens.
 - Frontend includes field-level relationship validation, per-student labels/help text, loading/error/success feedback and query invalidation. Backend handler/route tests and PostgreSQL integration coverage include permission enforcement, audit evidence, primary-contact exclusivity and isolation from another student's link.
 - CI and browser acceptance are pending; do not mark Student Management complete until both are verified.
+
+## Student guardian relationship database editability correction — 2026-11-14
+
+- Backend CI exposed a schema/application mismatch: V12's relationship-history trigger treated `relationship_type` as immutable, so the new authorized relationship-edit repository operation was rejected by PostgreSQL even though its application validation allowed the change.
+- Added forward migration V41 to permit edits to the relationship label while keeping student ID, guardian ID, school ownership, row identity, creation time and revoked-history fields immutable. The existing 1–40 character database constraint remains in force.
+- V41 retains the same actor/school checks for revocation. The down migration restores the original V12 trigger behavior.
+- The PostgreSQL integration test already exercises relationship-type changes, primary-contact exclusivity, cross-student isolation, revoked-link immutability, inactive-student restrictions and audit logging. CI must rerun with V41 before this correction is considered verified.
+- This is an additive migration; do not edit V12 or apply V41 to the persistent `school_management` database without the user's explicit approval and a verified restorable backup.
