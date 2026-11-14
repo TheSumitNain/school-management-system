@@ -23,6 +23,10 @@ The Playwright package is installed as an ephemeral test tool in CI and is inten
 - Student profile and academic history rendering
 - Basic Details open/close navigation
 - Linked parent details rendering, relationship edit/save, and return to the same profile
+- Shared guardian profile email validation, explicit all-linked-records confirmation, and preservation of student-specific relationship flags
+- Guardian revocation requires a reason, removes the link from the active list, and retains it in revoked history
+- View-only student and guardian access hides edit/archive/link/revoke controls and emits no write requests
+- Promotion required-field validation, destination year/section selection, optional automatic roll-number path, and retention of the promoted enrollment alongside the new enrollment
 - Basic Details field editing, save, and confirmation
 - Current Address hierarchy selection (State/UT → District → Sub-District/Tehsil → Village/City), save, and resolved hierarchy IDs
 - Permanent Address linked to Current Address and saved with the same_as_current flag
