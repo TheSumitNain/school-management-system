@@ -41,6 +41,8 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
     occupation: "", education: "", workplace_name: "", status: "active" as "active" | "inactive" | "archived",
   });
   const [editGuardianError, setEditGuardianError] = useState("");
+  const [editGuardianNameError, setEditGuardianNameError] = useState("");
+  const [editGuardianEmailError, setEditGuardianEmailError] = useState("");
   const [pendingRevokeID, setPendingRevokeID] = useState(0);
   const [revokeReason, setRevokeReason] = useState("");
   const [guardianSelectError, setGuardianSelectError] = useState("");
@@ -126,20 +128,24 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
       status: link.guardian_status,
     });
     setEditGuardianError("");
+    setEditGuardianNameError("");
+    setEditGuardianEmailError("");
   }
 
   async function saveEditedGuardian(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setEditGuardianError("");
+    setEditGuardianNameError("");
+    setEditGuardianEmailError("");
     if (!canManage || editingGuardianID <= 0) return;
     const name = editGuardianForm.full_name.trim();
     if (!name) {
-      setEditGuardianError("Guardian name is required.");
+      setEditGuardianNameError("Guardian name is required.");
       return;
     }
     const emailInput = event.currentTarget.elements.namedItem("edit_guardian_email") as HTMLInputElement | null;
     if (editGuardianForm.email_address.trim() && emailInput && !emailInput.checkValidity()) {
-      setEditGuardianError("Enter a valid email address.");
+      setEditGuardianEmailError("Enter a valid email address.");
       return;
     }
     try {
@@ -248,16 +254,16 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
                   <form className="student-family-create-form" onSubmit={saveEditedGuardian} noValidate>
                     <h4>Edit shared guardian profile</h4>
                     <p className="student-address-note">These contact and profile details are shared across all students linked to this guardian.</p>
-                    <label>Full name<input disabled={busy} value={editGuardianForm.full_name} maxLength={200} aria-invalid={Boolean(editGuardianError)} onChange={event => setEditGuardianForm(current => ({ ...current, full_name: event.target.value }))} placeholder="Guardian full name"/></label>
+                    <label>Full name<input disabled={busy} value={editGuardianForm.full_name} maxLength={200} aria-invalid={Boolean(editGuardianNameError)} aria-describedby={editGuardianNameError ? "edit-guardian-name-error" : undefined} onChange={event => { setEditGuardianForm(current => ({ ...current, full_name: event.target.value })); setEditGuardianNameError(""); }} placeholder="Guardian full name"/>{editGuardianNameError && <small id="edit-guardian-name-error" className="app-field-error">{editGuardianNameError}</small>}</label>
                     <label>Mobile number<input disabled={busy} value={editGuardianForm.mobile_number} maxLength={30} onChange={event => setEditGuardianForm(current => ({ ...current, mobile_number: event.target.value }))} placeholder="Mobile number"/></label>
-                    <label>Email address<input name="edit_guardian_email" disabled={busy} type="email" value={editGuardianForm.email_address} maxLength={254} onChange={event => setEditGuardianForm(current => ({ ...current, email_address: event.target.value }))} placeholder="guardian@example.com"/></label>
+                    <label>Email address<input name="edit_guardian_email" disabled={busy} type="email" value={editGuardianForm.email_address} maxLength={254} aria-invalid={Boolean(editGuardianEmailError)} aria-describedby={editGuardianEmailError ? "edit-guardian-email-error" : undefined} onChange={event => { setEditGuardianForm(current => ({ ...current, email_address: event.target.value })); setEditGuardianEmailError(""); }} placeholder="guardian@example.com"/>{editGuardianEmailError && <small id="edit-guardian-email-error" className="app-field-error">{editGuardianEmailError}</small>}</label>
                     <label>Alternate mobile number<input disabled={busy} value={editGuardianForm.alternate_mobile_number} maxLength={30} onChange={event => setEditGuardianForm(current => ({ ...current, alternate_mobile_number: event.target.value }))} placeholder="Optional alternate number"/></label>
                     <label>Occupation<input disabled={busy} value={editGuardianForm.occupation} maxLength={120} onChange={event => setEditGuardianForm(current => ({ ...current, occupation: event.target.value }))} placeholder="e.g. Teacher, Business owner"/></label>
                     <label>Education<input disabled={busy} value={editGuardianForm.education} maxLength={120} onChange={event => setEditGuardianForm(current => ({ ...current, education: event.target.value }))} placeholder="Highest education (optional)"/></label>
                     <label>Workplace / organization<input disabled={busy} value={editGuardianForm.workplace_name} maxLength={160} onChange={event => setEditGuardianForm(current => ({ ...current, workplace_name: event.target.value }))} placeholder="Organization name (optional)"/></label>
                     {editGuardianError && <small className="app-field-error" role="alert">{editGuardianError}</small>}
                     <div className="student-family-card-actions">
-                      <button type="button" className="student-link-button" onClick={() => { setEditingGuardianID(0); setEditGuardianError(""); }} disabled={busy}>Cancel</button>
+                      <button type="button" className="student-link-button" onClick={() => { setEditingGuardianID(0); setEditGuardianError(""); setEditGuardianNameError(""); setEditGuardianEmailError(""); }} disabled={busy}>Cancel</button>
                       <button type="submit" className="secondary" disabled={busy}>{updateGuardian.isPending ? "Saving…" : "Save guardian details"}</button>
                     </div>
                   </form>
