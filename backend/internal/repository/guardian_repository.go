@@ -178,13 +178,13 @@ func (r *AcademicRepository) SaveGuardian(ctx context.Context, actorID,schoolID,
 	if err=authorizeGuardian(ctx,tx,actorID,schoolID,"guardians.manage");err!=nil{return nil,err}
 	var v Guardian
 	if guardianID==0{
-		err=tx.QueryRow(ctx,`INSERT INTO guardians(school_id,full_name,mobile_number,email_address,status)
-			VALUES($1,$2,$3,$4,$5) RETURNING id,school_id,full_name,mobile_number,email_address,alternate_mobile_number,occupation,education,workplace_name,status,created_at,updated_at`,
-			schoolID,fullName,mobile,email,status).Scan(&v.ID,&v.SchoolID,&v.FullName,&v.MobileNumber,&v.EmailAddress,&v.AlternateMobileNumber,&v.Occupation,&v.Education,&v.WorkplaceName,&v.Status,&v.CreatedAt,&v.UpdatedAt)
+		err=tx.QueryRow(ctx,`INSERT INTO guardians(school_id,full_name,mobile_number,email_address,alternate_mobile_number,occupation,education,workplace_name,status)
+			VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id,school_id,full_name,mobile_number,email_address,alternate_mobile_number,occupation,education,workplace_name,status,created_at,updated_at`,
+			schoolID,fullName,mobile,email,alternateMobile,occupation,education,workplace,status).Scan(&v.ID,&v.SchoolID,&v.FullName,&v.MobileNumber,&v.EmailAddress,&v.AlternateMobileNumber,&v.Occupation,&v.Education,&v.WorkplaceName,&v.Status,&v.CreatedAt,&v.UpdatedAt)
 	}else{
-		err=tx.QueryRow(ctx,`UPDATE guardians SET full_name=$3,mobile_number=$4,email_address=$5,status=$6,updated_at=NOW()
+		err=tx.QueryRow(ctx,`UPDATE guardians SET full_name=$3,mobile_number=$4,email_address=$5,alternate_mobile_number=$6,occupation=$7,education=$8,workplace_name=$9,status=$10,updated_at=NOW()
 			WHERE school_id=$1 AND id=$2 RETURNING id,school_id,full_name,mobile_number,email_address,alternate_mobile_number,occupation,education,workplace_name,status,created_at,updated_at`,
-			schoolID,guardianID,fullName,mobile,email,status).Scan(&v.ID,&v.SchoolID,&v.FullName,&v.MobileNumber,&v.EmailAddress,&v.AlternateMobileNumber,&v.Occupation,&v.Education,&v.WorkplaceName,&v.Status,&v.CreatedAt,&v.UpdatedAt)
+			schoolID,guardianID,fullName,mobile,email,alternateMobile,occupation,education,workplace,status).Scan(&v.ID,&v.SchoolID,&v.FullName,&v.MobileNumber,&v.EmailAddress,&v.AlternateMobileNumber,&v.Occupation,&v.Education,&v.WorkplaceName,&v.Status,&v.CreatedAt,&v.UpdatedAt)
 	}
 	if err!=nil{return nil,guardianWriteError(err)}
 	action:="school.guardian.updated";if guardianID==0{action="school.guardian.created"}
