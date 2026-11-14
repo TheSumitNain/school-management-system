@@ -22,9 +22,9 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search.trim());
   const [selectedGuardianID, setSelectedGuardianID] = useState(0);
-  const [relationshipType, setRelationshipType] = useState("father");
-  const [primaryContact, setPrimaryContact] = useState(true);
-  const [emergencyContact, setEmergencyContact] = useState(true);
+  const [relationshipType, setRelationshipType] = useState("");
+  const [primaryContact, setPrimaryContact] = useState(false);
+  const [emergencyContact, setEmergencyContact] = useState(false);
   const [includeHistory, setIncludeHistory] = useState(false);
   const [showCreateGuardian, setShowCreateGuardian] = useState(false);
   const [newGuardianName, setNewGuardianName] = useState("");
@@ -162,6 +162,8 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
               <h4>Link a guardian</h4>
               <label>Search active guardian contacts<input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search by name, phone or email"/></label>
               <Select ariaLabel="Select guardian" value={String(selectedGuardianID || "")} onChange={value => setSelectedGuardianID(Number(value))} placeholder="Choose a guardian" options={guardianOptions} disabled={guardiansQuery.isLoading}/>
+              {guardiansQuery.isError && <small className="app-field-error" role="alert">{guardiansQuery.error.message}</small>}
+              {!guardiansQuery.isLoading && !guardiansQuery.isError && guardianOptions.length === 0 && <p className="student-address-note">No unlinked active guardian contacts match this search. You can create a new contact below.</p>}
               <label>Relationship to student<input value={relationshipType} maxLength={40} onChange={event => setRelationshipType(event.target.value)} placeholder="Father, Mother, Guardian…"/></label>
               <div className="student-family-checks">
                 <label><input type="checkbox" checked={primaryContact} onChange={event => setPrimaryContact(event.target.checked)}/> Primary contact</label>
