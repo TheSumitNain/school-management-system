@@ -11,6 +11,7 @@ import { DatePicker } from "../../../shared/components/DatePicker";
 import { Modal } from "../../../shared/components/Modal";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { StudentAddressSection } from "../components/StudentAddressSection";
+import { StudentBasicDetailsSection } from "../components/StudentBasicDetailsSection";
 import { StudentFamilySection } from "../components/StudentFamilySection";
 import { StudentProfileDetail } from "../components/StudentProfileDetail";
 import { StudentHealthSection } from "../components/StudentHealthSection";
@@ -44,6 +45,7 @@ export function StudentManagementPage({ permissions }: Props) {
   const [selected, setSelected] = useState<StudentProfile | null>(null);
   const [showEnrollment, setShowEnrollment] = useState(false);
   const [addressStudent, setAddressStudent] = useState<StudentProfile | null>(null);
+  const [basicDetailsStudent, setBasicDetailsStudent] = useState<StudentProfile | null>(null);
   const [familyStudent, setFamilyStudent] = useState<StudentProfile | null>(null);
   const [profileStudent, setProfileStudent] = useState<StudentProfile | null>(null);
   const [healthStudent, setHealthStudent] = useState<StudentProfile | null>(null);
@@ -252,11 +254,13 @@ export function StudentManagementPage({ permissions }: Props) {
       canReadFamily={canReadGuardians}
       academicYears={yearsQuery.data?.academic_years ?? []}
       onEditBasic={() => { const item = profileStudent; setProfileStudent(null); openStudent("edit", item); }}
+      onOpenBasic={() => { const item = profileStudent; setProfileStudent(null); setBasicDetailsStudent(item); }}
       onOpenAddress={() => { const item = profileStudent; setProfileStudent(null); setAddressStudent(item); }}
       onOpenFamily={() => { const item = profileStudent; setProfileStudent(null); setFamilyStudent(item); }}
       onOpenHealth={() => { const item = profileStudent; setProfileStudent(null); setHealthStudent(item); }}
       onClose={() => setProfileStudent(null)}
     />}
+    {basicDetailsStudent && <StudentBasicDetailsSection student={basicDetailsStudent} canUpdate={canUpdate && basicDetailsStudent.status !== "archived"} onClose={() => setBasicDetailsStudent(null)} />}
     {addressStudent && <StudentAddressSection student={addressStudent} canUpdate={canUpdate && addressStudent.status !== "archived"} onClose={() => setAddressStudent(null)} />}
     {familyStudent && <StudentFamilySection student={familyStudent} canManage={canManageGuardians && familyStudent.status !== "archived"} canReadRelatedStudents={canReadEnrollments} onClose={() => setFamilyStudent(null)} />}
     {healthStudent && <StudentHealthSection student={healthStudent} canUpdate={canUpdate && healthStudent.status === "active"} onClose={() => setHealthStudent(null)} />}
