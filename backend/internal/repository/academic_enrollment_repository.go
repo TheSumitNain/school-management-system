@@ -74,11 +74,18 @@ func scanStudentEnrollmentWithName(row interface{ Scan(...any) error }) (*Studen
 // cannot calculate the same value.
 func nextAvailableSectionRollNumber(ctx context.Context, tx pgx.Tx, schoolID, sectionID int64) (*string, error) {
 	var value string
-	err := tx.QueryRow(ctx, `SELECT (COALESCE(MAX(btrim(roll_number)::numeric), 0) + 1)::text
+	err := tx.QueryRow(ctx, `SELECT (COALESCE(MAX(CASE WHEN btrim(roll_number) ~ '^[0-9]+$'
+			THEN btrim(roll_number)::numeric END), 0) + 1)::text
 		FROM student_enrollments
-		WHERE school_id=$1 AND section_id=$2 AND status='active'
-		  AND btrim(roll_number) ~ '^[0-9]+
-	class_name_snapshot,section_name_snapshot,admission_number,admission_date,status,enrolled_at,ended_at,created_at,updated_at`
+		WHERE school_id=$1 AND section_id=$2 AND status='active'`, schoolID, sectionID).Scan(&value)
+	if err != nil {
+		return nil, fmt.Errorf("allocate next section roll number: %w", err)
+	}
+	if len(value) > 30 {
+		return nil, ErrInvalidAcademicInput
+	}
+	return &value, nil
+}
 
 type StudentAdmissionResult struct {
 	Student StudentProfile `json:"student"`
