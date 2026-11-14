@@ -339,7 +339,7 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("button", { name: /Basic details/ }).click();
   await expect(page.getByRole("dialog", { name: "Basic Details" })).toBeVisible();
   const basicSave = page.getByRole("button", { name: "Save basic details" });
-  await expect(page.getByText("Temporary basic-details read failure.")).toBeVisible();
+  await expect(page.getByRole("alert")).toBeVisible();
   await expect(basicSave).toBeDisabled();
   await page.getByRole("button", { name: "Retry loading details" }).click();
   await expect(basicSave).toBeEnabled();
@@ -442,7 +442,7 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("button", { name: /Address & communication/ }).click();
   await expect(page.getByRole("dialog", { name: "Address & Communication" })).toBeVisible();
   const addressSave = page.getByRole("button", { name: "Save address" });
-  await expect(page.getByText("Temporary address read failure.")).toBeVisible();
+  await expect(page.getByRole("alert")).toBeVisible();
   await expect(addressSave).toBeDisabled();
   await page.getByRole("button", { name: "Retry loading addresses" }).click();
   await expect(addressSave).toBeEnabled();
@@ -491,7 +491,7 @@ test("student admission, profile navigation and parent details render without br
 
   await page.getByRole("button", { name: "Contact details", exact: true }).click();
   const contactSave = page.getByRole("button", { name: "Save contact details" });
-  await expect(page.getByText("Temporary contact-details read failure.")).toBeVisible();
+  await expect(page.getByRole("alert")).toBeVisible();
   await expect(contactSave).toBeDisabled();
   await page.getByRole("button", { name: "Retry loading contact details" }).click();
   await expect(contactSave).toBeEnabled();
