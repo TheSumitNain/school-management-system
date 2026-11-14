@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-14 — School Admin guardian permissions (V39)
+
+- Fixed the missing Parent/Sibling profile section for School Admin accounts: the School Admin system-role bundle and its live permission allowlist now include `guardians.read` and `guardians.manage`.
+- Added V39 to grant those two permissions to existing School Admin system roles and update new-school role provisioning to the 53-permission bundle. Teacher permissions remain unchanged.
+- The migration temporarily removes only the system-role permission immutability trigger for the migration-owned grant insert, then recreates it. It verifies that every School Admin has both grants and no Teacher role receives either grant.
+- Added PostgreSQL integration coverage for existing-school grants, Teacher exclusion, the restored immutability trigger and new-school provisioning expectations.
+- Updated security and project-status documentation. No student/guardian records are changed, no local database has been migrated, and browser acceptance remains pending.
+- Platform Admin remains a platform-scoped principal; selected-school access to school business modules is a separate, explicitly documented architecture gap and must not be implemented by bypassing tenant isolation.
+
 ## 2026-11-06 — Authenticated session permissions for frontend bootstrap
 
 - `GET /auth/me` now returns the caller's current effective permission keys for Staff and Platform Admin principals, sorted deterministically.
