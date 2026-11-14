@@ -33,6 +33,14 @@ These rules apply to every new or modified domain, not only student and guardian
 - Keep audit/history append-only where records establish who changed sensitive or historically meaningful data. Never place passwords, tokens, contact values, medical values or other unnecessary PII in audit metadata.
 - Preserve historical facts. Do not rewrite old academic-year admission identities, guardian relationship periods or measurements to make current screens appear simpler.
 
+
+### Guardian primary-contact invariant (V43)
+- A student may have at most one active primary guardian contact. PostgreSQL enforces this with the partial unique index `ux_student_guardians_active_primary_per_student` over `(school_id, student_id)`, restricted to non-revoked rows marked primary.
+- The migration performs a duplicate-data preflight and fails with a clear error instead of silently choosing or demoting a guardian if legacy rows violate the invariant.
+- Repository operations still lock the owning student row and clear the previous primary contact in the same transaction. The index is the final database guard for alternate writers and future code paths.
+- Emergency-contact status is intentionally not unique: a student may designate more than one emergency contact.
+- The down migration removes only the index; it does not alter guardian relationship data.
+
 ### Transactions, concurrency and performance
 - Put multi-row business operations in one transaction, including admission/enrollment creation, promotion, guardian linking, primary-contact changes and audit writes.
 - Identify the row or key that serializes each competing operation; use appropriate row locks, unique constraints and deterministic lock ordering to prevent races and deadlocks.
