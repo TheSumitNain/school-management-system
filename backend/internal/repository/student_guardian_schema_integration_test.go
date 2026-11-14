@@ -17,6 +17,13 @@ func TestStudentGuardianFoundationPostgresIntegration(t *testing.T) {
 		t.Fatalf("begin guardian schema integration transaction: %v", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	expectRejected := func(query string, args ...any) error {
+		if _, err := tx.Exec(ctx, `SAVEPOINT expected_guardian_rejection`); err != nil { t.Fatalf("create expected-rejection savepoint: %v", err) }
+		_, writeErr := tx.Exec(ctx, query, args...)
+		if _, err := tx.Exec(ctx, `ROLLBACK TO SAVEPOINT expected_guardian_rejection`); err != nil { t.Fatalf("rollback expected-rejection savepoint: %v", err) }
+		if _, err := tx.Exec(ctx, `RELEASE SAVEPOINT expected_guardian_rejection`); err != nil { t.Fatalf("release expected-rejection savepoint: %v", err) }
+		return writeErr
+	}
 
 	var hasV11Schema bool
 	if err := tx.QueryRow(ctx,
@@ -109,21 +116,11 @@ func TestStudentGuardianFoundationPostgresIntegration(t *testing.T) {
 		}
 	}
 
-	if _, err := tx.Exec(ctx,
-		`INSERT INTO student_guardians
-		 (school_id, student_id, guardian_id, relationship_type)
-		 VALUES ($1, $2, $3, 'father')`,
-		schoolID1, student1, guardian1,
-	); err == nil {
+	if err := expectRejected(`INSERT INTO student_guardians (school_id, student_id, guardian_id, relationship_type) VALUES ($1, $2, $3, 'father')`, schoolID1, student1, guardian1); err == nil {
 		t.Fatal("expected duplicate student-guardian pair to be rejected")
 	}
 
-	if _, err := tx.Exec(ctx,
-		`INSERT INTO student_guardians
-		 (school_id, student_id, guardian_id, relationship_type)
-		 VALUES ($1, $2, $3, 'guardian')`,
-		schoolID2, otherSchoolStudent, guardian1,
-	); err == nil {
+	if err := expectRejected(`INSERT INTO student_guardians (school_id, student_id, guardian_id, relationship_type) VALUES ($1, $2, $3, 'guardian')`, schoolID2, otherSchoolStudent, guardian1); err == nil {
 		t.Fatal("expected cross-school student-guardian link to be rejected")
 	}
 
@@ -138,16 +135,10 @@ func TestStudentGuardianFoundationPostgresIntegration(t *testing.T) {
 		t.Fatalf("same legacy admission value should be allowed on another permanent student: %v", err)
 	}
 
-	if _, err := tx.Exec(ctx,
-		`UPDATE students SET school_id = $1 WHERE id = $2`,
-		schoolID2, student1,
-	); err == nil {
+	if err := expectRejected(`UPDATE students SET school_id = $1 WHERE id = $2`, schoolID2, student1); err == nil {
 		t.Fatal("expected student school ownership to be immutable")
 	}
-	if _, err := tx.Exec(ctx,
-		`UPDATE guardians SET school_id = $1 WHERE id = $2`,
-		schoolID2, guardian1,
-	); err == nil {
+	if err := expectRejected(`UPDATE guardians SET school_id = $1 WHERE id = $2`, schoolID2, guardian1); err == nil {
 		t.Fatal("expected guardian school ownership to be immutable")
 	}
 
