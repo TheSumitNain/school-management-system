@@ -174,14 +174,10 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("option", { name: "Class 1 · A" }).click();
   await page.getByRole("button", { name: "Admission date", exact: true }).click();
   await page.getByRole("button", { name: "Today" }).click();
-  const admissionFormState = await page.locator(".app-modal-content form").evaluate(form => ({
-    valid: (form as HTMLFormElement).checkValidity(),
-    fields: Array.from((form as HTMLFormElement).elements).map(element => {
-      const field = element as HTMLInputElement;
-      return { name: field.name, value: field.value, required: field.required, valid: field.validity?.valid };
-    }),
-  }));
-  expect(admissionFormState.valid).toBe(true);
+  const admissionFormValid = await page.locator(".app-modal-content form").evaluate(
+    form => (form as HTMLFormElement).checkValidity(),
+  );
+  expect(admissionFormValid).toBe(true);
   const submitButton = page.getByRole("button", { name: "Admit student" });
   expect(await submitButton.evaluate(button => ({
     type: (button as HTMLButtonElement).type,
