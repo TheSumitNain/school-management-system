@@ -175,7 +175,7 @@ test("student admission, profile navigation and parent details render without br
       if (subpath === "basic-details") {
         if (method === "GET" && failNextBasicDetailsRead) {
           failNextBasicDetailsRead = false;
-          await route.fulfill({ status: 503, json: { message: "Temporary basic-details read failure." } });
+          await route.fulfill({ status: 429, json: { message: "Temporary basic-details read failure." } });
           return;
         }
         if (method === "PUT") Object.assign(basicDetails, request.postDataJSON() as Record<string, unknown>);
@@ -189,7 +189,7 @@ test("student admission, profile navigation and parent details render without br
       if (subpath === "addresses") {
         if (method === "GET" && failNextAddressesRead) {
           failNextAddressesRead = false;
-          await route.fulfill({ status: 503, json: { message: "Temporary address read failure." } });
+          await route.fulfill({ status: 429, json: { message: "Temporary address read failure." } });
           return;
         }
         await route.fulfill({ json: { addresses } });
@@ -225,7 +225,7 @@ test("student admission, profile navigation and parent details render without br
       if (subpath === "contact-details") {
         if (method === "GET" && failNextContactDetailsRead) {
           failNextContactDetailsRead = false;
-          await route.fulfill({ status: 503, json: { message: "Temporary contact-details read failure." } });
+          await route.fulfill({ status: 429, json: { message: "Temporary contact-details read failure." } });
           return;
         }
         if (method === "PUT") {
