@@ -22,7 +22,7 @@ The Playwright package is installed as an ephemeral test tool in CI and is inten
 - Student directory refresh after admission
 - Student profile and academic history rendering
 - Basic Details open/close navigation
-- Parents & Siblings section rendering and return to the same profile
+- Linked parent details rendering, relationship edit/save, and return to the same profile
 - Browser uncaught exceptions
 
 All API calls are intercepted by the test. This is frontend browser acceptance coverage, not a replacement for backend PostgreSQL integration tests or live-browser acceptance against the user's configured school database.
