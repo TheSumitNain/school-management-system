@@ -35,6 +35,10 @@ type academicRepository interface {
 	SaveStudentAddress(context.Context,int64,int64,int64,string,*string,*string,*string,*string,*string,*int64,bool)(*repository.StudentAddress,error)
 	GetStudentContactDetails(context.Context,int64,int64,int64)(*repository.StudentContactDetails,error)
 	SaveStudentContactDetails(context.Context,int64,int64,int64,*string,*string,*string)(*repository.StudentContactDetails,error)
+	GetStudentMedicalDetails(context.Context,int64,int64,int64)(*repository.StudentMedicalDetails,error)
+	SaveStudentMedicalDetails(context.Context,int64,int64,int64,*string,*string,*string,*string,*string)(*repository.StudentMedicalDetails,error)
+	GetStudentPhysicalDetails(context.Context,int64,int64,int64)(*repository.StudentPhysicalDetails,error)
+	SaveStudentPhysicalDetails(context.Context,int64,int64,int64,*float64,*float64,*time.Time,*string,*string)(*repository.StudentPhysicalDetails,error)
 
 	ListStudents(context.Context,int64,int64,string,string,int,int)([]repository.StudentProfile,int64,error)
 	GetStudent(context.Context,int64,int64,int64)(*repository.StudentProfile,error)
@@ -180,6 +184,23 @@ func (s *AcademicService) GetStudentContactDetails(ctx context.Context, actorID,
 func (s *AcademicService) SaveStudentContactDetails(ctx context.Context, actorID, schoolID, studentID int64, primaryPhone, alternatePhone, emailAddress *string) (*repository.StudentContactDetails, error) {
 	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
 	return s.repository.SaveStudentContactDetails(ctx, actorID, schoolID, studentID, primaryPhone, alternatePhone, emailAddress)
+}
+
+func (s *AcademicService) GetStudentMedicalDetails(ctx context.Context, actorID, schoolID, studentID int64) (*repository.StudentMedicalDetails, error) {
+	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
+	return s.repository.GetStudentMedicalDetails(ctx, actorID, schoolID, studentID)
+}
+func (s *AcademicService) SaveStudentMedicalDetails(ctx context.Context, actorID, schoolID, studentID int64, bloodGroup, allergies, knownConditions, ongoingMedications, emergencyNotes *string) (*repository.StudentMedicalDetails, error) {
+	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
+	return s.repository.SaveStudentMedicalDetails(ctx, actorID, schoolID, studentID, bloodGroup, allergies, knownConditions, ongoingMedications, emergencyNotes)
+}
+func (s *AcademicService) GetStudentPhysicalDetails(ctx context.Context, actorID, schoolID, studentID int64) (*repository.StudentPhysicalDetails, error) {
+	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
+	return s.repository.GetStudentPhysicalDetails(ctx, actorID, schoolID, studentID)
+}
+func (s *AcademicService) SaveStudentPhysicalDetails(ctx context.Context, actorID, schoolID, studentID int64, heightCM, weightKG *float64, measuredOn *time.Time, visionNotes, physicalNotes *string) (*repository.StudentPhysicalDetails, error) {
+	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
+	return s.repository.SaveStudentPhysicalDetails(ctx, actorID, schoolID, studentID, heightCM, weightKG, measuredOn, visionNotes, physicalNotes)
 }
 
 func (s *AcademicService) UpdateStudent(ctx context.Context, actorID, schoolID, studentID int64, fullName string) (*repository.StudentProfile, error) {
