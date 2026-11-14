@@ -1,5 +1,6 @@
 import { useDeferredValue, useState, type FormEvent } from "react";
 import { Modal } from "../../../shared/components/Modal";
+import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { Select } from "../../../shared/components/Select";
 import { StudentFieldLabel } from "./StudentFieldLabel";
 import type { StudentProfile } from "../api";
@@ -44,6 +45,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
   const [editGuardianError, setEditGuardianError] = useState("");
   const [editGuardianNameError, setEditGuardianNameError] = useState("");
   const [editGuardianEmailError, setEditGuardianEmailError] = useState("");
+  const [confirmSharedGuardianSave, setConfirmSharedGuardianSave] = useState(false);
   const [pendingRevokeID, setPendingRevokeID] = useState(0);
   const [revokeReason, setRevokeReason] = useState("");
   const [guardianSelectError, setGuardianSelectError] = useState("");
@@ -149,11 +151,16 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
       setEditGuardianEmailError("Enter a valid email address.");
       return;
     }
+    setConfirmSharedGuardianSave(true);
+  }
+
+  async function confirmSaveEditedGuardian() {
+    if (!canManage || editingGuardianID <= 0) return;
     try {
       await updateGuardian.mutateAsync({
         guardianID: editingGuardianID,
         input: {
-          full_name: name,
+          full_name: editGuardianForm.full_name.trim(),
           mobile_number: editGuardianForm.mobile_number.trim() || null,
           email_address: editGuardianForm.email_address.trim() || null,
           alternate_mobile_number: editGuardianForm.alternate_mobile_number.trim() || null,
@@ -163,10 +170,12 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
           status: editGuardianForm.status,
         },
       });
+      setConfirmSharedGuardianSave(false);
       setEditingGuardianID(0);
       setEditGuardianError("");
       setFeedback({ kind: "success", message: "Guardian profile updated. Changes apply to every student linked to this guardian." });
     } catch (error) {
+      setConfirmSharedGuardianSave(false);
       setEditGuardianError(error instanceof Error ? error.message : "Guardian profile could not be updated.");
     }
   }
@@ -337,6 +346,16 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
         }
       </section>
       <div className="app-modal-actions"><button type="button" className="app-modal-cancel" onClick={onClose} disabled={busy}>Close</button></div>
+      <ConfirmDialog
+        open={confirmSharedGuardianSave}
+        title="Update shared guardian profile?"
+        description="These changes update the guardian’s shared contact and profile record for every student linked to this guardian, not only the student currently open. Continue only after confirming the family details."
+        confirmLabel="Update all linked records"
+        pending={updateGuardian.isPending}
+        error={editGuardianError}
+        onConfirm={() => void confirmSaveEditedGuardian()}
+        onCancel={() => { if (!updateGuardian.isPending) setConfirmSharedGuardianSave(false); }}
+      />
     </Modal>
   );
 }
