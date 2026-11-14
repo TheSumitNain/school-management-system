@@ -46,7 +46,10 @@ func TestStudentMedicalPhysicalDetailsV36PostgresIntegration(t *testing.T) {
 	`, schoolID).Scan(&schoolAdminRoleID); err != nil {
 		t.Fatalf("load School Admin role: %v", err)
 	}
-	if err := NewRoleRepository(tx).AssignStaffRole(ctx, platformAdminPrincipalID, schoolID, actorPrincipalID, schoolAdminRoleID); err != nil {
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO principal_roles(principal_id,role_id,assigned_by)
+		VALUES($1,$2,$3)
+	`, actorPrincipalID, schoolAdminRoleID, platformAdminPrincipalID); err != nil {
 		t.Fatalf("assign School Admin fixture role: %v", err)
 	}
 
