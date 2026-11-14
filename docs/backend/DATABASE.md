@@ -83,6 +83,10 @@ The authoritative schema is the ordered SQL migration chain in `backend/migratio
 - V35 rollback refuses to drop contact rows. Contact details use the same `students.read_sensitive` / `students.update` live permission checks as the address section.
 - V12 already enforces one active student/guardian link per pair with a partial unique index, while allowing later relationship periods after revocation; retain this behavior when changing guardian history.
 
+### Guardian relationship editability (V41)
+
+V41 updates the existing guardian-history trigger so an active student–guardian link may change its relationship label while preserving immutable ownership and identity (id, school_id, student_id, guardian_id, created_at). Revoked relationship rows remain immutable, and revocation actor/reason validation remains enforced. The migration does not rewrite V12; its down migration restores the previous relationship-label immutability rule. PostgreSQL integration coverage verifies relationship edits, primary-contact exclusivity, cross-student isolation, revoked-link protection and audit behavior.
+
 ## Local database configuration
 
 Use `backend/.env.example` as the configuration reference. Keep local `.env` files and all passwords, JWT secrets, TOTP encryption keys and other credentials out of Git.
