@@ -535,6 +535,22 @@ test("student directory remains view-only when update and archive permissions ar
       });
       return;
     }
+    if (path === "/school/students/91/guardians") {
+      await route.fulfill({ json: { student_guardians: [{
+        id: 951, student_id: 91, guardian_id: 44, guardian_name: "Guardian E2E",
+        guardian_status: "active", relationship_type: "Mother",
+        is_primary_contact: true, is_emergency_contact: false, revoked_at: null,
+      }] } });
+      return;
+    }
+    if (path === "/school/students/91/related-students") {
+      await route.fulfill({ json: { related_students: [] } });
+      return;
+    }
+    if (path === "/school/students/91/enrollments") {
+      await route.fulfill({ json: { enrollments: [] } });
+      return;
+    }
     if (path === "/school/students" && request.method() === "GET") {
       await route.fulfill({
         json: {
@@ -563,5 +579,15 @@ test("student directory remains view-only when update and archive permissions ar
   await expect(page.getByRole("button", { name: "Edit profile for View Only Student" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Archive View Only Student" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /New admission/ })).toHaveCount(0);
+  await page.getByRole("button", { name: "View profile for View Only Student" }).click();
+  await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
+  await page.getByRole("button", { name: /Parents & siblings/i }).click();
+  await expect(page.getByRole("dialog", { name: "Parents & Siblings" })).toBeVisible();
+  await expect(page.getByText("Guardian E2E")).toBeVisible();
+  await expect(page.getByText(/View-only access/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Edit relationship" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Edit shared guardian details" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Revoke link" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Link guardian" })).toHaveCount(0);
   expect(writeRequests).toEqual([]);
 });
