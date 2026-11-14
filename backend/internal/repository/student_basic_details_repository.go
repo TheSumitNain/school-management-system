@@ -87,8 +87,12 @@ func (r *AcademicRepository) SaveStudentBasicDetails(
 			return nil, ErrInvalidAcademicInput
 		} else { socialCategory = &value }
 	}
-	if dateOfBirth != nil && (dateOfBirth.After(time.Now().UTC()) || dateOfBirth.Before(time.Now().UTC().AddDate(-130, 0, 0))) {
-		return nil, ErrInvalidAcademicInput
+	if dateOfBirth != nil {
+		birthDate := dateOfBirth.UTC().Format("2006-01-02")
+		today := time.Now().UTC()
+		if birthDate > today.Format("2006-01-02") || birthDate < today.AddDate(-130, 0, 0).Format("2006-01-02") {
+			return nil, ErrInvalidAcademicInput
+		}
 	}
 
 	tx, err := r.db.Begin(ctx)
