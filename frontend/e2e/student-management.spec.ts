@@ -495,3 +495,73 @@ test("student admission, profile navigation and parent details render without br
 
   expect(browserErrors).toEqual([]);
 });
+
+test("student directory remains view-only when update and archive permissions are absent", async ({ page }) => {
+  const writeRequests: string[] = [];
+  page.on("request", request => {
+    const url = new URL(request.url());
+    if (url.pathname.startsWith("/api/school/") && !["GET", "HEAD", "OPTIONS"].includes(request.method())) {
+      writeRequests.push(`${request.method()} ${url.pathname}`);
+    }
+  });
+
+  await page.route("**/api/**", async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname.replace(/^\/api/, "");
+    if (path === "/auth/refresh") {
+      await route.fulfill({ status: 401, json: { message: "No active session" } });
+      return;
+    }
+    if (path === "/auth/login" && request.method() === "POST") {
+      await route.fulfill({
+        json: {
+          access_token: "e2e-view-only-token",
+          token_type: "Bearer",
+          principal: { principal_id: 102, principal_type: "staff", status: "active", school_id: 10 },
+        },
+      });
+      return;
+    }
+    if (path === "/auth/me") {
+      await route.fulfill({
+        json: {
+          principal_id: 102,
+          principal_type: "staff",
+          school_id: 10,
+          username: "e2e-view-only-staff",
+          permissions: ["students.read_sensitive", "students.read_basic", "academic_years.read", "classes.read"],
+        },
+      });
+      return;
+    }
+    if (path === "/school/students" && request.method() === "GET") {
+      await route.fulfill({
+        json: {
+          students: [{
+            id: 91, school_id: 10, admission_number: "ADM-VIEW-091",
+            full_name: "View Only Student", status: "active",
+            created_at: "2026-11-14T00:00:00.000Z", updated_at: "2026-11-14T00:00:00.000Z",
+          }],
+          pagination: { limit: 20, offset: 0, total: 1 },
+        },
+      });
+      return;
+    }
+    await route.fulfill({ status: 404, json: { message: `Unmocked E2E API request: ${request.method()} ${path}` } });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Username").fill("e2e-view-only-staff");
+  await page.getByLabel("Password").fill("E2E-only-password");
+  await page.getByRole("button", { name: /Continue/ }).click();
+  await expect(page.getByRole("button", { name: "Students" })).toBeVisible();
+  await page.getByRole("button", { name: "Students" }).click();
+
+  await expect(page.getByText("View Only Student")).toBeVisible();
+  await expect(page.getByRole("button", { name: "View profile for View Only Student" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Edit profile for View Only Student" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Archive View Only Student" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /New admission/ })).toHaveCount(0);
+  expect(writeRequests).toEqual([]);
+});
