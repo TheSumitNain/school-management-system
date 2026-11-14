@@ -45,6 +45,9 @@ test("student admission, profile navigation and parent details render without br
     emergency_medical_notes: null, history: [],
   };
   const addresses: Record<string, unknown>[] = [];
+  let failNextBasicDetailsRead = true;
+  let failNextAddressesRead = true;
+  let failNextContactDetailsRead = true;
   const locationRows = [
     { id: 11, school_id: null, parent_id: null, country_code: "IN", level: "state", name: "Haryana", is_active: true },
     { id: 21, school_id: null, parent_id: 11, country_code: "IN", level: "district", name: "Ambala", is_active: true },
@@ -170,6 +173,11 @@ test("student admission, profile navigation and parent details render without br
         return;
       }
       if (subpath === "basic-details") {
+        if (method === "GET" && failNextBasicDetailsRead) {
+          failNextBasicDetailsRead = false;
+          await route.fulfill({ status: 503, json: { message: "Temporary basic-details read failure." } });
+          return;
+        }
         if (method === "PUT") Object.assign(basicDetails, request.postDataJSON() as Record<string, unknown>);
         await route.fulfill({ json: { basic_details: basicDetails } });
         return;
@@ -179,6 +187,11 @@ test("student admission, profile navigation and parent details render without br
         return;
       }
       if (subpath === "addresses") {
+        if (method === "GET" && failNextAddressesRead) {
+          failNextAddressesRead = false;
+          await route.fulfill({ status: 503, json: { message: "Temporary address read failure." } });
+          return;
+        }
         await route.fulfill({ json: { addresses } });
         return;
       }
@@ -210,6 +223,11 @@ test("student admission, profile navigation and parent details render without br
         return;
       }
       if (subpath === "contact-details") {
+        if (method === "GET" && failNextContactDetailsRead) {
+          failNextContactDetailsRead = false;
+          await route.fulfill({ status: 503, json: { message: "Temporary contact-details read failure." } });
+          return;
+        }
         if (method === "PUT") {
           Object.assign(contactDetails, request.postDataJSON() as Record<string, unknown>);
         }
@@ -320,7 +338,11 @@ test("student admission, profile navigation and parent details render without br
 
   await page.getByRole("button", { name: /Basic details/ }).click();
   await expect(page.getByRole("dialog", { name: "Basic Details" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Save basic details" })).toBeVisible();
+  const basicSave = page.getByRole("button", { name: "Save basic details" });
+  await expect(page.getByText("Temporary basic-details read failure.")).toBeVisible();
+  await expect(basicSave).toBeDisabled();
+  await page.getByRole("button", { name: "Retry loading details" }).click();
+  await expect(basicSave).toBeEnabled();
   await page.getByPlaceholder("Enter student's full name").fill("Aarav Sharma Updated");
   await page.getByRole("button", { name: "Save student name" }).click();
   await expect(page.getByText("Student name saved.")).toBeVisible();
@@ -419,6 +441,11 @@ test("student admission, profile navigation and parent details render without br
 
   await page.getByRole("button", { name: /Address & communication/ }).click();
   await expect(page.getByRole("dialog", { name: "Address & Communication" })).toBeVisible();
+  const addressSave = page.getByRole("button", { name: "Save address" });
+  await expect(page.getByText("Temporary address read failure.")).toBeVisible();
+  await expect(addressSave).toBeDisabled();
+  await page.getByRole("button", { name: "Retry loading addresses" }).click();
+  await expect(addressSave).toBeEnabled();
   await page.getByPlaceholder("House number, street or building").fill("House 12, Main Road");
   await page.getByLabel("Search States / UTs").fill("Haryana");
   await page.getByRole("button", { name: "State or Union Territory", exact: true }).click();
@@ -463,6 +490,11 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByText("Permanent address saved.")).toBeVisible();
 
   await page.getByRole("button", { name: "Contact details", exact: true }).click();
+  const contactSave = page.getByRole("button", { name: "Save contact details" });
+  await expect(page.getByText("Temporary contact-details read failure.")).toBeVisible();
+  await expect(contactSave).toBeDisabled();
+  await page.getByRole("button", { name: "Retry loading contact details" }).click();
+  await expect(contactSave).toBeEnabled();
   await page.getByPlaceholder("Primary contact number").fill("9876501234");
   await page.getByPlaceholder("student@example.com").fill("not-an-email");
   const contactSaveButton = page.getByRole("button", { name: "Save contact details" });
