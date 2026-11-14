@@ -24,7 +24,9 @@ The Playwright package is installed as an ephemeral test tool in CI and is inten
 - Basic Details open/close navigation
 - Linked parent details rendering, relationship edit/save, and return to the same profile
 - Shared guardian profile email validation, explicit all-linked-records confirmation, and preservation of student-specific relationship flags
+- Guardian creation validates email, saves a shared contact, and links it to the student with relationship, primary-contact and emergency-contact flags
 - Guardian revocation requires a reason, removes the link from the active list, and retains it in revoked history
+- Student archive confirmation can be cancelled; server conflicts remain visible and a successful retry refreshes the archived status
 - View-only student and guardian access hides edit/archive/link/revoke controls and emits no write requests
 - Promotion required-field validation, destination year/section selection, optional automatic roll-number path, and retention of the promoted enrollment alongside the new enrollment
 - Basic Details field editing, save, and confirmation
