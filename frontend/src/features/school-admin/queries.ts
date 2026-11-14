@@ -102,6 +102,7 @@ export function useSchoolStudentAddressesQuery(studentID: number, enabled = true
     queryFn: ({ signal }) => getSchoolStudentAddresses(studentID, signal),
     enabled: enabled && studentID > 0,
     staleTime: 15_000,
+    retry: false,
   });
 }
 export function useSchoolStudentBasicDetailsQuery(studentID: number, enabled = true) {
@@ -110,6 +111,7 @@ export function useSchoolStudentBasicDetailsQuery(studentID: number, enabled = t
     queryFn: ({ signal }) => getSchoolStudentBasicDetails(studentID, signal),
     enabled: enabled && studentID > 0,
     staleTime: 15_000,
+    retry: false,
   });
 }
 export function useSchoolStudentContactDetailsQuery(studentID: number, enabled = true) {
@@ -118,6 +120,7 @@ export function useSchoolStudentContactDetailsQuery(studentID: number, enabled =
     queryFn: ({ signal }) => getSchoolStudentContactDetails(studentID, signal),
     enabled: enabled && studentID > 0,
     staleTime: 15_000,
+    retry: false,
   });
 }
 export function useSchoolStudentMedicalDetailsQuery(studentID: number, enabled = true) {
