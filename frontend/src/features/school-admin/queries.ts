@@ -43,8 +43,9 @@ export function useResetSchoolStaffPasswordMutation() {
 
 import {
   archiveSchoolStudent, createSchoolStudentAdmission, createSchoolStudentEnrollment,
-  getSchoolAcademicYears, getSchoolSections, getSchoolStudentEnrollments, getSchoolStudents,
-  updateSchoolStudent,
+  createSchoolStudentLocation, deactivateSchoolStudentLocation, getSchoolAcademicYears,
+  getSchoolSections, getSchoolStudentAddresses, getSchoolStudentEnrollments,
+  getSchoolStudentLocations, getSchoolStudents, saveSchoolStudentAddress, updateSchoolStudent,
 } from "./api";
 
 export const schoolStudentQueryKeys = {
@@ -53,6 +54,8 @@ export const schoolStudentQueryKeys = {
   enrollments: (academicYearID: number) => [...schoolStudentQueryKeys.all, "enrollments", academicYearID] as const,
   years: () => [...schoolStudentQueryKeys.all, "academic-years"] as const,
   sections: (academicYearID: number) => [...schoolStudentQueryKeys.all, "sections", academicYearID] as const,
+  addresses: (studentID: number) => [...schoolStudentQueryKeys.all, "addresses", studentID] as const,
+  locations: (filters: { parentID?: number; level?: string; q?: string }) => [...schoolStudentQueryKeys.all, "locations", filters] as const,
 };
 export function useSchoolStudentsQuery(filters: { q: string; status: string; limit: number; offset: number }, enabled = true) {
   return useQuery({
@@ -68,6 +71,22 @@ export function useSchoolStudentEnrollmentsQuery(academicYearID: number, enabled
     queryFn: ({ signal }) => getSchoolStudentEnrollments(academicYearID, signal),
     enabled,
     staleTime: 15_000,
+  });
+}
+export function useSchoolStudentAddressesQuery(studentID: number, enabled = true) {
+  return useQuery({
+    queryKey: schoolStudentQueryKeys.addresses(studentID),
+    queryFn: ({ signal }) => getSchoolStudentAddresses(studentID, signal),
+    enabled: enabled && studentID > 0,
+    staleTime: 15_000,
+  });
+}
+export function useSchoolStudentLocationsQuery(filters: { parentID?: number; level?: string; q?: string } = {}, enabled = true) {
+  return useQuery({
+    queryKey: schoolStudentQueryKeys.locations(filters),
+    queryFn: ({ signal }) => getSchoolStudentLocations(filters, signal),
+    enabled,
+    staleTime: 60_000,
   });
 }
 export function useSchoolStudentAcademicYearsQuery(enabled = true) {
@@ -96,6 +115,19 @@ export function useArchiveSchoolStudentMutation() {
 }
 export function useCreateSchoolStudentEnrollmentMutation() {
   return useStudentMutation(createSchoolStudentEnrollment);
+}
+export function useSaveSchoolStudentAddressMutation() {
+  return useStudentMutation(({ studentID, addressType, input }: {
+    studentID: number; addressType: "current" | "permanent";
+    input: { address_line_1?: string | null; address_line_2?: string | null; area_mohalla?: string | null;
+      landmark?: string | null; postal_code?: string | null; location_id?: number | null; same_as_current?: boolean };
+  }) => saveSchoolStudentAddress(studentID, addressType, input));
+}
+export function useCreateSchoolStudentLocationMutation() {
+  return useStudentMutation(createSchoolStudentLocation);
+}
+export function useDeactivateSchoolStudentLocationMutation() {
+  return useStudentMutation(deactivateSchoolStudentLocation);
 }
 
 
