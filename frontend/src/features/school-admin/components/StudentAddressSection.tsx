@@ -66,7 +66,6 @@ export function StudentAddressSection({ student, onClose }: Props) {
     setSubdistrictID(selectedAddress?.subdistrict_location_id ?? 0);
     setLocalityID(selectedAddress?.location_id ?? 0);
     setFieldError("");
-    setFeedback(null);
   }, [addressType, addressesQuery.data?.addresses]);
 
   const states = statesQuery.data?.locations ?? [];
@@ -183,8 +182,8 @@ export function StudentAddressSection({ student, onClose }: Props) {
       {addressesQuery.isError && <p className="student-feedback error" role="alert">{addressesQuery.error.message}</p>}
       {feedback && <p className={feedback.kind === "error" ? "student-feedback error" : "student-feedback success"} role={feedback.kind === "error" ? "alert" : "status"}>{feedback.message}</p>}
       <div className="student-address-tabs" role="group" aria-label="Address type">
-        <button type="button" className={addressType === "current" ? "active" : ""} aria-pressed={addressType === "current"} onClick={() => setAddressType("current")}>Current address</button>
-        <button type="button" className={addressType === "permanent" ? "active" : ""} aria-pressed={addressType === "permanent"} onClick={() => setAddressType("permanent")}>Permanent address</button>
+        <button type="button" className={addressType === "current" ? "active" : ""} aria-pressed={addressType === "current"} onClick={() => { setAddressType("current"); setFeedback(null); }}>Current address</button>
+        <button type="button" className={addressType === "permanent" ? "active" : ""} aria-pressed={addressType === "permanent"} onClick={() => { setAddressType("permanent"); setFeedback(null); }}>Permanent address</button>
       </div>
       <form className="student-address-form" onSubmit={submit} noValidate>
         {addressType === "permanent" && (
@@ -215,6 +214,8 @@ export function StudentAddressSection({ student, onClose }: Props) {
               </div>
               {fieldError && <small className="app-field-error">{fieldError}</small>}
               {canAddLocation && <button type="button" className="student-link-button" onClick={() => { setShowLocationCreator(value => !value); setFieldError(""); }}>Add missing {nextLocationLabel.toLowerCase()}</button>}
+              {hasAnyLocation && <button type="button" className="student-link-button" onClick={() => { setStateID(0); resetChildren("state"); }}>Clear location selection</button>}
+              {(statesQuery.isError || districtsQuery.isError || subdistrictsQuery.isError || localitiesQuery.isError) && <small className="app-field-error" role="alert">Location options could not be loaded. Close and reopen this section to retry.</small>}
               {showLocationCreator && canAddLocation && (
                 <div className="student-location-create">
                   <strong>Add {nextLocationLabel.toLowerCase()} for this school</strong>
@@ -229,7 +230,7 @@ export function StudentAddressSection({ student, onClose }: Props) {
         )}
         <div className="app-modal-actions">
           <button type="button" className="app-modal-cancel" onClick={onClose} disabled={busy}>Close</button>
-          <button className="primary" disabled={busy || addressesQuery.isLoading}>{saveAddress.isPending ? "Saving…" : "Save address"}</button>
+          <button className="primary" disabled={busy || addressesQuery.isLoading || addressesQuery.isError}>{saveAddress.isPending ? "Saving…" : "Save address"}</button>
         </div>
       </form>
     </Modal>
