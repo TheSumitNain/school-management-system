@@ -429,6 +429,32 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("guardian sensitive-read audit count = %d, want at least 8 read events with metadata free of contact details", guardianReadAuditCount)
 	}
 
+	// Revocation remains available for inactive students, but now serializes
+	// through the owning student row just like every other relationship change.
+	var inactiveStudentID int64
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO students (school_id, admission_number, full_name)
+		VALUES ($1, $2, 'Inactive Guardian Student') RETURNING id
+	`, schoolID, "INACTIVE-GUARDIAN-"+suffix).Scan(&inactiveStudentID); err != nil {
+		t.Fatalf("create inactive-student revocation fixture: %v", err)
+	}
+	inactiveLink, err := repo.LinkStudentGuardian(ctx, targetPrincipalID, schoolID,
+		inactiveStudentID, guardian.ID, "mother", false, false)
+	if err != nil {
+		t.Fatalf("link guardian before student deactivation: %v", err)
+	}
+	if _, err := tx.Exec(ctx, "UPDATE students SET status='inactive' WHERE id=$1 AND school_id=$2", inactiveStudentID, schoolID); err != nil {
+		t.Fatalf("deactivate guardian relationship fixture student: %v", err)
+	}
+	if err := repo.RevokeStudentGuardianLink(ctx, targetPrincipalID, schoolID,
+		inactiveLink.ID, "student record inactive"); err != nil {
+		t.Fatalf("revoke guardian relationship for inactive student: %v", err)
+	}
+	inactiveHistory, err := repo.ListStudentGuardians(ctx, targetPrincipalID, schoolID, inactiveStudentID, true)
+	if err != nil || len(inactiveHistory) != 1 || inactiveHistory[0].RevokedAt == nil {
+		t.Fatalf("inactive student guardian history after revocation: links=%+v err=%v", inactiveHistory, err)
+	}
+
 	target := &models.AuthPrincipal{
 		ID: targetPrincipalID, Type: "staff", Status: "active",
 		TokenVersion: 1, SchoolID: schoolID,
