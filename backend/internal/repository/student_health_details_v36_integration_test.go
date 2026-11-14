@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5"
 )
 
 func TestStudentMedicalPhysicalDetailsV36PostgresIntegration(t *testing.T) {
@@ -194,7 +193,7 @@ func TestStudentMedicalPhysicalDetailsV36PostgresIntegration(t *testing.T) {
 	}
 
 	// Ensure no unexpected open transaction state remains after nested repository operations.
-	if err := tx.QueryRow(ctx, `SELECT 1`).Scan(new(int)); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+	if err := tx.QueryRow(ctx, `SELECT 1`).Scan(new(int)); err != nil {
 		t.Fatalf("outer transaction is unusable after health operations: %v", err)
 	}
 }
