@@ -42,7 +42,7 @@ export function useResetSchoolStaffPasswordMutation() {
 
 
 import {
-  archiveSchoolStudent, createSchoolStudentAdmission, createSchoolStudentEnrollment,
+  archiveSchoolStudent, createSchoolStudentAdmission, createSchoolStudentEnrollment, promoteSchoolStudentEnrollment,
   getSchoolStudentBasicDetails, saveSchoolStudentBasicDetails,
   createSchoolStudentLocation, deactivateSchoolStudentLocation, getSchoolAcademicYears,
   getSchoolSections, getSchoolStudentAddresses, getSchoolStudentContactDetails,
@@ -198,6 +198,13 @@ export function useArchiveSchoolStudentMutation() {
 }
 export function useCreateSchoolStudentEnrollmentMutation() {
   return useStudentMutation(createSchoolStudentEnrollment);
+}
+export function usePromoteSchoolStudentEnrollmentMutation() {
+  return useStudentMutation(({ sourceEnrollmentID, input }: {
+    sourceEnrollmentID: number;
+    input: { academic_year_id: number; section_id: number; roll_number?: string | null;
+      admission_number: string; admission_date: string; enrolled_at: string };
+  }) => promoteSchoolStudentEnrollment(sourceEnrollmentID, input));
 }
 export function useSaveSchoolStudentAddressMutation() {
   return useStudentMutation(({ studentID, addressType, input }: {
