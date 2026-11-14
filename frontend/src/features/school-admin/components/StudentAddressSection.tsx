@@ -248,7 +248,7 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
       onClose={onClose}
       closeDisabled={busy}
     >
-      {addressesQuery.isError && <p className="student-feedback error" role="alert">{addressesQuery.error.message}</p>}
+      {!showContactDetails && addressesQuery.isError && <p className="student-feedback error" role="alert">{addressesQuery.error.message}</p>}
       {feedback && <p className={feedback.kind === "error" ? "student-feedback error" : "student-feedback success"} role={feedback.kind === "error" ? "alert" : "status"}>{feedback.message}</p>}
       <div className="student-address-tabs" role="group" aria-label="Student profile section">
         <button type="button" className={!showContactDetails && addressType === "current" ? "active" : ""} aria-pressed={!showContactDetails && addressType === "current"} onClick={() => { setShowContactDetails(false); setAddressType("current"); setFeedback(null); }}>Current address</button>
