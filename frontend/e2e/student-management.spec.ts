@@ -377,7 +377,7 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("button", { name: /Medical & physical/ }).click();
   await expect(page.getByRole("dialog", { name: "Medical & Physical Details" })).toBeVisible();
   await expect(page.getByText(/Teachers do not have access to these records/)).toBeVisible();
-  await page.getByRole("button", { name: "Blood group" }).click();
+  await page.getByRole("button", { name: "Blood group", exact: true }).click();
   await page.getByRole("option", { name: "O+" }).click();
   await page.getByPlaceholder("Record known allergies, if any").fill("Peanuts");
   await page.getByPlaceholder("Record school-relevant conditions, if any").fill("No other known conditions");
