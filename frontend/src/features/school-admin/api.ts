@@ -202,6 +202,9 @@ export function getSchoolStudentEnrollments(academicYearID = 0, signal?: AbortSi
   const query = academicYearID > 0 ? `?academic_year_id=${academicYearID}` : "";
   return api<StudentEnrollmentListResponse>("/school/enrollments" + query, { signal });
 }
+export function getSchoolStudentEnrollmentHistory(studentID: number, signal?: AbortSignal) {
+  return api<StudentEnrollmentListResponse>(`/school/students/${studentID}/enrollments`, { signal });
+}
 export function getSchoolAcademicYears(signal?: AbortSignal) {
   return api<{ academic_years: StudentAcademicYear[] }>("/school/academic-years", { signal });
 }
