@@ -30,11 +30,16 @@ func (r *AcademicRepository) GetStudentContactDetails(
 	if studentID <= 0 {
 		return nil, ErrInvalidAcademicInput
 	}
-	if err := authorizeAcademic(ctx, r.db, actorID, schoolID, "students.read_sensitive"); err != nil {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin student contact details read: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := authorizeAcademic(ctx, tx, actorID, schoolID, "students.read_sensitive"); err != nil {
 		return nil, err
 	}
 	var exists bool
-	if err := r.db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM students WHERE id=$1 AND school_id=$2)`,
+	if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM students WHERE id=$1 AND school_id=$2)`,
 		studentID, schoolID).Scan(&exists); err != nil {
 		return nil, fmt.Errorf("check student for contact details: %w", err)
 	}
@@ -43,7 +48,7 @@ func (r *AcademicRepository) GetStudentContactDetails(
 	}
 
 	var item StudentContactDetails
-	err := r.db.QueryRow(ctx, `
+	err = tx.QueryRow(ctx, `
 		SELECT id,school_id,student_id,primary_phone,alternate_phone,email_address,created_at,updated_at
 		  FROM student_contact_details
 		 WHERE school_id=$1 AND student_id=$2
@@ -52,10 +57,19 @@ func (r *AcademicRepository) GetStudentContactDetails(
 		&item.AlternatePhone, &item.EmailAddress, &item.CreatedAt, &item.UpdatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return &StudentContactDetails{SchoolID: schoolID, StudentID: studentID}, nil
-	}
-	if err != nil {
+		item = StudentContactDetails{SchoolID: schoolID, StudentID: studentID}
+	} else if err != nil {
 		return nil, fmt.Errorf("load student contact details: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
+		VALUES($1,$2,'school.student.contact_details.read','student_contact_details',$3,'success',
+		       jsonb_build_object('section','contact_details'))
+	`, actorID, schoolID, fmt.Sprint(studentID)); err != nil {
+		return nil, fmt.Errorf("audit student contact details read: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit student contact details read audit: %w", err)
 	}
 	return &item, nil
 }
