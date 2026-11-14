@@ -186,7 +186,7 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 	mobile := "+911234567890"
 	email := "guardian-" + suffix + "@example.invalid"
 	guardian, err := repo.SaveGuardian(ctx, targetPrincipalID, schoolID, 0,
-		"  Guardian One  ", &mobile, &email, "active")
+		"  Guardian One  ", &mobile, &email, nil, nil, nil, nil, "active")
 	if err != nil {
 		t.Fatalf("create guardian contact: %v", err)
 	}
@@ -198,7 +198,7 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 	}
 
 	updated, err := repo.SaveGuardian(ctx, targetPrincipalID, schoolID, guardian.ID,
-		"Guardian One Updated", &mobile, &email, "inactive")
+		"Guardian One Updated", &mobile, &email, nil, nil, nil, nil, "inactive")
 	if err != nil {
 		t.Fatalf("update guardian contact: %v", err)
 	}
@@ -206,7 +206,7 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("unexpected updated guardian: %+v", updated)
 	}
 	updated, err = repo.SaveGuardian(ctx, targetPrincipalID, schoolID, guardian.ID,
-		"Guardian One Updated", &mobile, &email, "active")
+		"Guardian One Updated", &mobile, &email, nil, nil, nil, nil, "active")
 	if err != nil {
 		t.Fatalf("reactivate guardian contact: %v", err)
 	}
@@ -278,7 +278,7 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 
 	secondMobile := "+919876543210"
 	secondGuardian, err := repo.SaveGuardian(ctx, targetPrincipalID, schoolID, 0,
-		"Guardian Two", &secondMobile, nil, "active")
+		"Guardian Two", &secondMobile, nil, nil, nil, nil, nil, "active")
 	if err != nil {
 		t.Fatalf("create second guardian contact: %v", err)
 	}
