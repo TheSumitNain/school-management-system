@@ -272,6 +272,51 @@ export function saveSchoolStudentContactDetails(studentID: number, input: {
   });
 }
 
+export type SchoolGuardian = {
+  id: number; school_id: number; full_name: string; mobile_number?: string | null;
+  email_address?: string | null; status: "active" | "inactive" | "archived";
+};
+export type StudentGuardian = {
+  id: number; student_id: number; guardian_id: number; guardian_name: string;
+  mobile_number?: string | null; email_address?: string | null; relationship_type: string;
+  is_primary_contact: boolean; is_emergency_contact: boolean; created_at: string; revoked_at?: string | null;
+};
+export type StudentRelatedStudent = {
+  student_id: number; full_name: string; admission_number?: string | null;
+  class_name?: string | null; section_name?: string | null; academic_year_name?: string | null;
+  shared_guardian_names: string[];
+};
+export function getSchoolGuardians(filters: { q?: string; status?: string } = {}, signal?: AbortSignal) {
+  const params = new URLSearchParams({ limit: "50", offset: "0" });
+  if (filters.q) params.set("q", filters.q);
+  if (filters.status) params.set("status", filters.status);
+  return api<{ guardians: SchoolGuardian[]; total: number }>("/school/guardians?" + params.toString(), { signal });
+}
+export function getSchoolStudentGuardians(studentID: number, includeHistory = false, signal?: AbortSignal) {
+  const params = includeHistory ? "?include_history=true" : "";
+  return api<{ student_guardians: StudentGuardian[] }>(`/school/students/${studentID}/guardians${params}`, { signal });
+}
+export function getSchoolStudentRelatedStudents(studentID: number, signal?: AbortSignal) {
+  return api<{ related_students: StudentRelatedStudent[] }>(`/school/students/${studentID}/related-students`, { signal });
+}
+export function createSchoolGuardian(input: {
+  full_name: string; mobile_number?: string | null; email_address?: string | null; status?: string;
+}) {
+  return api<{ guardian: SchoolGuardian }>("/school/guardians", { method: "POST", body: JSON.stringify(input) });
+}
+export function linkSchoolStudentGuardian(studentID: number, input: {
+  guardian_id: number; relationship_type: string; is_primary_contact: boolean; is_emergency_contact: boolean;
+}) {
+  return api<{ student_guardian: StudentGuardian }>(`/school/students/${studentID}/guardians`, {
+    method: "POST", body: JSON.stringify(input),
+  });
+}
+export function revokeSchoolStudentGuardianLink(linkID: number, reason: string) {
+  return api<{ message: string }>(`/school/student-guardian-links/${linkID}/revoke`, {
+    method: "POST", body: JSON.stringify({ reason }),
+  });
+}
+
 
 export type AttendanceRecord = {
   id: number;
