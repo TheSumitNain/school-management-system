@@ -98,7 +98,7 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
   async function submitPhysical(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canUpdate || physicalQuery.isLoading) return;
-    const errors: Record<string, string> = {};
+    const errors: { heightCM?: string; weightKG?: string; measuredOn?: string } = {};
     const height = heightCM.trim() ? Number(heightCM) : null;
     const weight = weightKG.trim() ? Number(weightKG) : null;
     if (height !== null && (!Number.isFinite(height) || height < 20 || height > 250)) {
@@ -122,7 +122,7 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
         input: {
           height_cm: height,
           weight_kg: weight,
-          measured_on: measuredOn || null,
+          measured_on: measuredOn,
           vision_notes: visionNotes.trim() || null,
           physical_notes: physicalNotes.trim() || null,
         },
