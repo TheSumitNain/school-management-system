@@ -257,6 +257,21 @@ export function saveSchoolStudentAddress(studentID: number, addressType: "curren
   });
 }
 
+export type StudentContactDetails = {
+  id: number; school_id: number; student_id: number; primary_phone?: string | null;
+  alternate_phone?: string | null; email_address?: string | null;
+};
+export function getSchoolStudentContactDetails(studentID: number, signal?: AbortSignal) {
+  return api<{ contact_details: StudentContactDetails }>(`/school/students/${studentID}/contact-details`, { signal });
+}
+export function saveSchoolStudentContactDetails(studentID: number, input: {
+  primary_phone?: string | null; alternate_phone?: string | null; email_address?: string | null;
+}) {
+  return api<{ contact_details: StudentContactDetails }>(`/school/students/${studentID}/contact-details`, {
+    method: "PUT", body: JSON.stringify(input),
+  });
+}
+
 
 export type AttendanceRecord = {
   id: number;
