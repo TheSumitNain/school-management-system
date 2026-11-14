@@ -167,17 +167,17 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
                 <label><input type="checkbox" checked={primaryContact} onChange={event => setPrimaryContact(event.target.checked)}/> Primary contact</label>
                 <label><input type="checkbox" checked={emergencyContact} onChange={event => setEmergencyContact(event.target.checked)}/> Emergency contact</label>
               </div>
-              {fieldError && !pendingRevokeID && <small className="app-field-error">{fieldError}</small>}
+              {fieldError && !pendingRevokeID && !showCreateGuardian && <small className="app-field-error">{fieldError}</small>}
               <button type="submit" className="primary" disabled={busy || !selectedGuardianID}>{linkGuardian.isPending ? "Linking…" : "Link guardian"}</button>
               <button type="button" className="student-link-button" onClick={() => { setShowCreateGuardian(value => !value); setFieldError(""); }}>Create a new guardian contact</button>
             </form>
             {showCreateGuardian && (
               <form className="student-family-create-form" onSubmit={saveGuardian} noValidate>
                 <h4>New guardian contact</h4>
-                <label>Full name<input value={newGuardianName} maxLength={200} onChange={event => setNewGuardianName(event.target.value)} placeholder="Guardian full name"/></label>
-                <label>Mobile number<input value={newGuardianMobile} maxLength={30} onChange={event => setNewGuardianMobile(event.target.value)} placeholder="Mobile number"/></label>
-                <label>Email address<input type="email" value={newGuardianEmail} maxLength={254} onChange={event => setNewGuardianEmail(event.target.value)} placeholder="guardian@example.com"/></label>
-                {fieldError && <small className="app-field-error">{fieldError}</small>}
+                <label>Full name<input disabled={busy} value={newGuardianName} maxLength={200} onChange={event => setNewGuardianName(event.target.value)} placeholder="Guardian full name"/></label>
+                <label>Mobile number<input disabled={busy} value={newGuardianMobile} maxLength={30} onChange={event => setNewGuardianMobile(event.target.value)} placeholder="Mobile number"/></label>
+                <label>Email address<input disabled={busy} type="email" value={newGuardianEmail} maxLength={254} onChange={event => setNewGuardianEmail(event.target.value)} placeholder="guardian@example.com"/></label>
+                {fieldError && showCreateGuardian && !pendingRevokeID && <small className="app-field-error">{fieldError}</small>}
                 <button type="submit" className="secondary" disabled={busy}>{createGuardian.isPending ? "Saving…" : "Save guardian contact"}</button>
               </form>
             )}
