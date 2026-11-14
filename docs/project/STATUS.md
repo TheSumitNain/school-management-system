@@ -445,3 +445,13 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - Expanded Medical & Physical Details coverage: the test checks the restricted-health privacy notice, switches to Physical Details, confirms invalid height and missing measurement date errors appear together, then saves a valid height with a measurement date.
 - Frontend CI run `43599830202` passed for commit `6732d1c8a5cfe42b44a0fd37b7b3cbc473d65d85`, including all expanded browser flows.
 - These remain frontend-only mocked API checks. PostgreSQL integration tests separately verify persistence, tenant boundaries, permissions, history and audit behavior.
+
+
+## Student Management address and medical browser coverage — 2026-11-14
+
+- Expanded the Playwright Chromium workflow to exercise the Current Address location chain using test fixtures: Haryana → Ambala district → Ambala Sub-District/Tehsil → Naraingarh locality. The test verifies the saved locality and resolved State, District and Sub-District IDs in the mocked API state.
+- Added Permanent Address coverage for the explicit “same as current” option and verifies the saved same_as_current flag.
+- Added Medical Details save coverage for Blood Group, Allergies and Known Conditions, including the returned profile version increment. Existing physical-measurement range/date validation and save coverage remains in the same browser journey.
+- The test still intercepts every API request and uses in-memory fixtures. It verifies frontend interaction and request/response handling only; it does not prove live database persistence or replace backend PostgreSQL integration tests.
+- Frontend CI passed for commit f0267654b18c904359c12b2cdaf0ff45ba8f57d7 (workflow run 43600789669), including design-token checks, TypeScript, production build and Playwright Chromium.
+- Backend CI for the same commit was still running at the time of this entry. Persistent database migration/adoption and manual browser acceptance against the configured local API remain pending.
