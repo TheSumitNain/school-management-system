@@ -275,6 +275,39 @@ export function saveSchoolStudentContactDetails(studentID: number, input: {
   });
 }
 
+export type StudentMedicalDetails = {
+  id: number; school_id: number; student_id: number; blood_group?: string | null;
+  allergies?: string | null; known_conditions?: string | null;
+  ongoing_medications?: string | null; emergency_medical_notes?: string | null;
+};
+export type StudentPhysicalDetails = {
+  id: number; school_id: number; student_id: number; height_cm?: number | null;
+  weight_kg?: number | null; measured_on?: string | null;
+  vision_notes?: string | null; physical_notes?: string | null;
+};
+export function getSchoolStudentMedicalDetails(studentID: number, signal?: AbortSignal) {
+  return api<{ medical_details: StudentMedicalDetails }>(`/school/students/${studentID}/medical-details`, { signal });
+}
+export function saveSchoolStudentMedicalDetails(studentID: number, input: {
+  blood_group?: string | null; allergies?: string | null; known_conditions?: string | null;
+  ongoing_medications?: string | null; emergency_medical_notes?: string | null;
+}) {
+  return api<{ medical_details: StudentMedicalDetails }>(`/school/students/${studentID}/medical-details`, {
+    method: "PUT", body: JSON.stringify(input),
+  });
+}
+export function getSchoolStudentPhysicalDetails(studentID: number, signal?: AbortSignal) {
+  return api<{ physical_details: StudentPhysicalDetails }>(`/school/students/${studentID}/physical-details`, { signal });
+}
+export function saveSchoolStudentPhysicalDetails(studentID: number, input: {
+  height_cm?: number | null; weight_kg?: number | null; measured_on?: string | null;
+  vision_notes?: string | null; physical_notes?: string | null;
+}) {
+  return api<{ physical_details: StudentPhysicalDetails }>(`/school/students/${studentID}/physical-details`, {
+    method: "PUT", body: JSON.stringify(input),
+  });
+}
+
 export type SchoolGuardian = {
   id: number; school_id: number; full_name: string; mobile_number?: string | null;
   email_address?: string | null; status: "active" | "inactive" | "archived";
