@@ -299,7 +299,7 @@ test("student admission, profile navigation and parent details render without br
   await page.getByPlaceholder("City, district or place").fill("Ambala, Haryana");
   await page.getByPlaceholder("e.g. Indian").fill("Indian");
   await page.getByRole("button", { name: "Gender", exact: true }).click();
-  await page.getByRole("option", { name: "Male" }).click();
+  await page.getByRole("option", { name: "Male", exact: true }).click();
   const basicSaveButton = page.getByRole("button", { name: "Save basic details" });
   await basicSaveButton.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
