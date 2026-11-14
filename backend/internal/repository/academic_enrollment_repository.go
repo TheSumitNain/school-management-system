@@ -95,6 +95,110 @@ func validateEnrollmentDateRange(admissionDate, enrolledAt, yearStartsOn, yearEn
 	return nil
 }
 
+// CreateStudentAdmission creates the permanent student identity and its first
+// academic-year enrollment atomically. The legacy student-level admission
+// number is deliberately NULL; the enrollment is the source of truth.
+func (r *AcademicRepository) CreateStudentAdmission(
+	ctx context.Context,
+	actorID, schoolID int64,
+	fullName, admissionNumber string,
+	yearID, sectionID int64,
+	rollNumber *string,
+	admissionDate time.Time,
+) (*StudentAdmissionResult, error) {
+	if r == nil || r.db == nil {
+		return nil, ErrAcademicAccessDenied
+	}
+	fullName = strings.TrimSpace(fullName)
+	if fullName == "" || len(fullName) > 200 || yearID <= 0 || sectionID <= 0 {
+		return nil, ErrInvalidAcademicInput
+	}
+	admissionNumber, err := normalizeEnrollmentAdmission(admissionNumber, admissionDate)
+	if err != nil {
+		return nil, err
+	}
+	if rollNumber != nil {
+		value := strings.TrimSpace(*rollNumber)
+		if value == "" {
+			rollNumber = nil
+		} else if len(value) > 30 {
+			return nil, ErrInvalidAcademicInput
+		} else {
+			rollNumber = &value
+		}
+	}
+
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin combined student admission: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if err = authorizeAcademic(ctx, tx, actorID, schoolID, "students.create"); err != nil {
+		return nil, err
+	}
+	var yearActive bool
+	var yearStartsOn, yearEndsOn time.Time
+	if err = tx.QueryRow(ctx, `SELECT status='active',starts_on,ends_on
+		FROM academic_years WHERE id=$1 AND school_id=$2`, yearID, schoolID).
+		Scan(&yearActive, &yearStartsOn, &yearEndsOn); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrAcademicNotFound
+		}
+		return nil, fmt.Errorf("load first enrollment academic year: %w", err)
+	}
+	if !yearActive {
+		return nil, ErrInvalidAcademicInput
+	}
+	if err = validateEnrollmentDateRange(admissionDate, admissionDate, yearStartsOn, yearEndsOn); err != nil {
+		return nil, err
+	}
+	var classID int64
+	if err = tx.QueryRow(ctx, `SELECT class_id FROM sections
+		WHERE id=$1 AND school_id=$2 AND academic_year_id=$3 AND is_active=TRUE`,
+		sectionID, schoolID, yearID).Scan(&classID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrAcademicNotFound
+		}
+		return nil, fmt.Errorf("load first enrollment section: %w", err)
+	}
+
+	student, err := scanStudentProfile(tx.QueryRow(ctx, `INSERT INTO students
+		(school_id,admission_number,full_name)
+		VALUES($1,NULL,$2) RETURNING `+studentProfileColumns, schoolID, fullName))
+	if err != nil {
+		return nil, academicWriteError(err)
+	}
+	if _, err = tx.Exec(ctx, `INSERT INTO audit_events
+		(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
+		VALUES($1,$2,'school.student.created','student',$3,'success',
+		jsonb_build_object('initial_academic_year_id',$4::bigint))`,
+		actorID, schoolID, fmt.Sprint(student.ID), yearID); err != nil {
+		return nil, fmt.Errorf("audit student creation: %w", err)
+	}
+
+	enrollment, err := scanStudentEnrollment(tx.QueryRow(ctx, `INSERT INTO student_enrollments
+		(school_id,student_id,academic_year_id,class_id,section_id,roll_number,admission_number,admission_date,enrolled_at)
+		VALUES($1,$2,$3,$4,$5,$6,$7,$8,$8) RETURNING `+enrollmentColumns,
+		schoolID, student.ID, yearID, classID, sectionID, rollNumber, admissionNumber, admissionDate))
+	if err != nil {
+		return nil, academicWriteError(err)
+	}
+	if _, err = tx.Exec(ctx, `INSERT INTO audit_events
+		(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
+		VALUES($1,$2,'school.student.enrolled','student_enrollment',$3,'success',
+		jsonb_build_object('student_id',$4::bigint,'academic_year_id',$5::bigint,
+		'class_id',$6::bigint,'section_id',$7::bigint,'admission_number',$8::text,'admission_date',$9::date))`,
+		actorID, schoolID, fmt.Sprint(enrollment.ID), student.ID, yearID, classID, sectionID,
+		admissionNumber, admissionDate.Format("2006-01-02")); err != nil {
+		return nil, fmt.Errorf("audit first student enrollment: %w", err)
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit combined student admission: %w", err)
+	}
+	return &StudentAdmissionResult{Student: *student, Enrollment: *enrollment}, nil
+}
+
 func (r *AcademicRepository) ListStudentEnrollments(ctx context.Context, actorID, schoolID, yearID, studentID int64) ([]StudentEnrollment, error) {
 	if r == nil || r.db == nil { return nil, ErrAcademicAccessDenied }
 	if yearID < 0 || studentID < 0 { return nil, ErrInvalidAcademicInput }
