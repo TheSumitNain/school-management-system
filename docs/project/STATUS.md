@@ -422,3 +422,12 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - This avoids repeated student searches when completing multiple profile sections in one session. Existing modal close/pending guards and permission checks are unchanged.
 - Frontend CI for commit `478af7360832d5210d5a387e573f4839cde7d642` (workflow run `43597540743`) passed: `npm ci`, design-token/style checks, TypeScript project build, and Vite production build.
 - Backend CI for this commit is queued/pending; no backend source changes were made.
+
+## Student Management browser acceptance baseline — 2026-11-14
+
+- Added a Playwright Chromium browser test and CI execution on Ubuntu 24.04 LTS. The runner is pinned to Playwright `1.56.1`; it is installed ephemerally in CI so the production dependency lockfile remains unchanged.
+- Browser acceptance workflow run `43599136283` passed for commit `9a1d4f8b545a`: frontend style-token checks, TypeScript/Vite production build, Chromium installation, and the Student Management browser test.
+- The browser test signs in with a test-only mocked staff session, admits a student with a blank roll number (automatic assignment path), verifies directory refresh and academic history, opens/closes Basic Details, opens Parents & Siblings, and checks that the same student profile remains available after closing each section. It also fails on uncaught browser exceptions.
+- All `/api` calls in this browser test are intercepted with in-memory fixtures. It does not connect to or mutate the local/persistent school database; backend PostgreSQL integration tests remain the source of truth for persistence, tenant isolation and audit behavior.
+- Failure screenshots and traces are retained as a seven-day GitHub Actions artifact. No generated test output is committed to the repository.
+- Browser coverage is now in CI; manual acceptance against the user's configured local API/database remains a separate final verification step.
