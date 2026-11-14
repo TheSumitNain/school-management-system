@@ -15,6 +15,13 @@ function localDateValue() {
   const now = new Date();
   return [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-");
 }
+function earliestDateOfBirth() {
+  const now = new Date();
+  const year = now.getFullYear() - 130;
+  const month = now.getMonth();
+  const day = Math.min(now.getDate(), new Date(year, month + 1, 0).getDate());
+  return [year, String(month + 1).padStart(2, "0"), String(day).padStart(2, "0")].join("-");
+}
 const emptyValues: Values = {
   date_of_birth: "", place_of_birth: "", gender: "", nationality: "",
   religion: "", social_category: "", ews_status: "", school_registration_number: "",
@@ -131,7 +138,7 @@ export function StudentBasicDetailsSection({ student, canUpdate, onClose }: Prop
           {nameError && <small id="student-basic-name-error" className="app-field-error" role="alert">{nameError}</small>}
           {canUpdate && <button type="button" className="student-link-button" onClick={() => void saveStudentName()} disabled={busy || fullName.trim() === student.full_name}>Save student name</button>}
         </label>
-        <label><StudentFieldLabel label="Date of birth" hint="Optional. Choose a valid date from the past 130 years; future dates are not allowed." /><DatePicker ariaLabel="Date of birth" value={values.date_of_birth} max={localDateValue()} onChange={value => update("date_of_birth", value)} placeholder="Choose date of birth" disabled={!canUpdate || query.isLoading || query.isError || busy}/></label>
+        <label><StudentFieldLabel label="Date of birth" hint="Optional. Choose a valid date from the past 130 years; future dates are not allowed." /><DatePicker ariaLabel="Date of birth" value={values.date_of_birth} min={earliestDateOfBirth()} max={localDateValue()} onChange={value => update("date_of_birth", value)} placeholder="Choose date of birth" disabled={!canUpdate || query.isLoading || query.isError || busy}/></label>
         <label><StudentFieldLabel label="Place of birth" hint="Optional. Enter a city, district or place name. Maximum 120 characters." /><input value={values.place_of_birth} maxLength={120} disabled={!canUpdate || query.isLoading || query.isError || busy} onChange={event => update("place_of_birth", event.target.value)} placeholder="City, district or place"/>{fieldError("place_of_birth")}</label>
         <label><StudentFieldLabel label="Gender" hint="Optional. Choose the value provided by the family; “Prefer not to say” is available." /><Select ariaLabel="Gender" value={values.gender} disabled={!canUpdate || query.isLoading || query.isError || busy} onChange={value => update("gender", value)} placeholder="Not specified" options={[{value:"female",label:"Female"},{value:"male",label:"Male"},{value:"other",label:"Other"},{value:"not_specified",label:"Prefer not to say"}]}/></label>
         <label><StudentFieldLabel label="Nationality" hint="Optional. Enter a nationality such as Indian. Maximum 80 characters." /><input value={values.nationality} maxLength={80} disabled={!canUpdate || query.isLoading || query.isError || busy} onChange={event => update("nationality", event.target.value)} placeholder="e.g. Indian"/>{fieldError("nationality")}</label>
