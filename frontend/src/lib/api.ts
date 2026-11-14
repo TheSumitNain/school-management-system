@@ -169,9 +169,9 @@ export async function api<T>(path:string,options:RequestOptions={}):Promise<T>{
   }
   return payload as T;
 }
-export function loginStaff(username:string,password:string){return withSessionLock(()=>api<AuthTokens|MFAChallenge>("/auth/login",{method:"POST",auth:false,body:JSON.stringify({username,password})}));}
-export function loginPlatformAdmin(email:string,password:string){return withSessionLock(()=>api<AuthTokens|MFAChallenge>("/auth/platform-admin/login",{method:"POST",auth:false,body:JSON.stringify({email,password})}));}
-export function completeMFA(challenge_token:string,code:string,enrollment:boolean){return withSessionLock(()=>api<AuthTokens>(enrollment?"/auth/mfa/enroll/verify":"/auth/mfa/verify",{method:"POST",auth:false,body:JSON.stringify({challenge_token,code})}));}
+export function loginStaff(username:string,password:string){return withSessionLock(async()=>{const result=await api<AuthTokens|MFAChallenge>("/auth/login",{method:"POST",auth:false,body:JSON.stringify({username,password})});if("access_token" in result)saveTokens(result);return result;});}
+export function loginPlatformAdmin(email:string,password:string){return withSessionLock(async()=>{const result=await api<AuthTokens|MFAChallenge>("/auth/platform-admin/login",{method:"POST",auth:false,body:JSON.stringify({email,password})});if("access_token" in result)saveTokens(result);return result;});}
+export function completeMFA(challenge_token:string,code:string,enrollment:boolean){return withSessionLock(async()=>{const tokens=await api<AuthTokens>(enrollment?"/auth/mfa/enroll/verify":"/auth/mfa/verify",{method:"POST",auth:false,body:JSON.stringify({challenge_token,code})});saveTokens(tokens);return tokens;});}
 export function getMe(){return api<AuthUser>("/auth/me");}
 export async function logout(){
   await withSessionLock(()=>api("/auth/logout",{method:"POST",auth:false,retry:false}));
