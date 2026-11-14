@@ -165,6 +165,8 @@ export type StudentEnrollment = {
   roll_number?: string | null;
   class_name_snapshot: string;
   section_name_snapshot: string;
+  admission_number?: string | null;
+  admission_date?: string | null;
   status: string;
   enrolled_at: string;
   ended_at?: string | null;
@@ -185,6 +187,14 @@ export function getSchoolStudents(filters: { q?: string; status?: string; limit?
 export function createSchoolStudent(input: { admission_number: string; full_name: string }) {
   return api<{ student: StudentProfile }>("/school/students", { method: "POST", body: JSON.stringify(input) });
 }
+export function createSchoolStudentAdmission(input: {
+  full_name: string; admission_number: string; academic_year_id: number; section_id: number;
+  roll_number?: string | null; admission_date: string;
+}) {
+  return api<{ student: StudentProfile; enrollment: StudentEnrollment }>("/school/student-admissions", {
+    method: "POST", body: JSON.stringify(input),
+  });
+}
 export function updateSchoolStudent(studentID: number, input: { full_name: string }) {
   return api<{ student: StudentProfile }>(`/school/students/${studentID}`, { method: "PATCH", body: JSON.stringify(input) });
 }
@@ -203,7 +213,8 @@ export function getSchoolSections(academicYearID: number, signal?: AbortSignal) 
   return api<{ sections: StudentSection[] }>("/school/sections" + query, { signal });
 }
 export function createSchoolStudentEnrollment(input: {
-  student_id: number; academic_year_id: number; section_id: number; roll_number?: string | null; enrolled_at: string;
+  student_id: number; academic_year_id: number; section_id: number; roll_number?: string | null;
+  admission_number: string; admission_date: string; enrolled_at: string;
 }) {
   return api<{ enrollment: StudentEnrollment }>("/school/enrollments", { method: "POST", body: JSON.stringify(input) });
 }
