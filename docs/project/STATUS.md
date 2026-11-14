@@ -397,3 +397,13 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - The test verifies both students immediately read the updated shared profile while their independent relationship type, primary-contact and emergency-contact values remain unchanged.
 - This complements existing tests for cross-school isolation, relationship edits, primary-contact uniqueness, revocation and history.
 - Backend CI for commit `0efba97f51` is pending. No persistent database has been migrated.
+
+## Student profile repository regression coverage — 2026-11-14
+
+- Backend CI for commit `3f51290f2906262e85f4513525ad76c76dafbc46` (workflow run `43597056423`) passed: full migration chain on ephemeral PostgreSQL, all backend tests including PostgreSQL integration, and `go vet`.
+- Added address save round-trip coverage that verifies updated current-address fields, preserves the independent permanent-address `same_as_current` setting, and checks the address-update audit event.
+- Added contact save round-trip coverage that verifies primary phone, alternate phone and email persistence and checks the contact-update audit event.
+- Existing V36 integration coverage verifies medical profile version snapshots, append-only physical measurement history, invalid measurement rejection, cross-school read denial, teacher health-data denial, and audit metadata that excludes private health values.
+- Existing V37 integration coverage verifies basic-profile save/read, registration-number normalization/uniqueness, immutable identity/creator fields, cross-school read denial, and value-free audit metadata.
+- Source review confirms address/contact/basic/medical/physical saves are separate transactional operations; all writes require live `students.update`, sensitive reads require `students.read_sensitive`, and each write locks the owning student row before mutation. Existing tenant and sensitive-data boundaries remain unchanged.
+- No persistent database was migrated. Browser-level create/view/edit/save acceptance remains pending; do not claim full UI acceptance based on repository tests alone.
