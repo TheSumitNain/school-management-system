@@ -353,7 +353,7 @@ export type SchoolGuardian = {
   education?: string | null; workplace_name?: string | null; status: "active" | "inactive" | "archived";
 };
 export type StudentGuardian = {
-  id: number; student_id: number; guardian_id: number; guardian_name: string;
+  id: number; student_id: number; guardian_id: number; guardian_name: string; guardian_status: "active" | "inactive" | "archived";
   mobile_number?: string | null; email_address?: string | null; alternate_mobile_number?: string | null;
   occupation?: string | null; education?: string | null; workplace_name?: string | null; relationship_type: string;
   is_primary_contact: boolean; is_emergency_contact: boolean; created_at: string; revoked_at?: string | null;
