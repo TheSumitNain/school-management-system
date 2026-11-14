@@ -45,9 +45,9 @@ test("student admission, profile navigation and parent details render without br
     emergency_medical_notes: null, history: [],
   };
   const addresses: Record<string, unknown>[] = [];
-  let failNextBasicDetailsRead = true;
-  let failNextAddressesRead = true;
-  let failNextContactDetailsRead = true;
+  let failNextBasicDetailsRead = false;
+  let failNextAddressesRead = false;
+  let failNextContactDetailsRead = false;
   const locationRows = [
     { id: 11, school_id: null, parent_id: null, country_code: "IN", level: "state", name: "Haryana", is_active: true },
     { id: 21, school_id: null, parent_id: 11, country_code: "IN", level: "district", name: "Ambala", is_active: true },
@@ -336,6 +336,7 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Academic history", exact: true })).toBeVisible();
 
+  failNextBasicDetailsRead = true;
   await page.getByRole("button", { name: /Basic details/ }).click();
   await expect(page.getByRole("dialog", { name: "Basic Details" })).toBeVisible();
   const basicSave = page.getByRole("button", { name: "Save basic details" });
@@ -439,6 +440,7 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("button", { name: "Close dialog" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
 
+  failNextAddressesRead = true;
   await page.getByRole("button", { name: /Address & communication/ }).click();
   await expect(page.getByRole("dialog", { name: "Address & Communication" })).toBeVisible();
   const addressSave = page.getByRole("button", { name: "Save address" });
@@ -489,6 +491,7 @@ test("student admission, profile navigation and parent details render without br
   expect(addresses.find(item => item.address_type === "permanent")).toMatchObject({ same_as_current: true });
   await expect(page.getByText("Permanent address saved.")).toBeVisible();
 
+  failNextContactDetailsRead = true;
   await page.getByRole("button", { name: "Contact details", exact: true }).click();
   const contactSave = page.getByRole("button", { name: "Save contact details" });
   await expect(page.getByRole("alert")).toBeVisible();
