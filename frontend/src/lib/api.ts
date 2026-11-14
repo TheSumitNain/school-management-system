@@ -118,8 +118,7 @@ async function performRefresh(): Promise<boolean> {
     // Missing identity means this is a legacy/unpinned session; a mismatch
     // means the shared cookie changed unexpectedly. In both cases require an
     // explicit sign-in rather than silently adopting an account.
-    clearSession();
-    dispatchSessionEnded();
+    broadcastSessionEnd();
     return false;
   }
   saveTokens(body as AuthTokens);
