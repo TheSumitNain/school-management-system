@@ -275,3 +275,8 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - Added an explicit confirmation step before saving edits to a shared guardian profile. The confirmation explains that the guardian's contact/profile values are shared by every linked student, and the action label makes the multi-record scope clear.
 - Validation still runs before confirmation; the update mutation remains protected by the existing live guardian-management permission and invalidates guardian/student query families after success. Relationship-specific values (relationship type, primary contact and emergency contact) remain on each student-guardian link, not on the shared guardian profile.
 - This is a frontend safety improvement committed to the work branch; CI is running for the new commit. Browser-level acceptance is still pending.
+
+## Student Basic Details date-range alignment — 2026-11-14
+
+- The Date of birth picker now enforces both ends of the same range as the backend: no future date and no date earlier than 130 years before today. This prevents users from selecting values that the save API will reject and makes the field guidance actionable at entry time.
+- Frontend CI must verify this follow-up; browser interaction and local environment acceptance remain pending.
