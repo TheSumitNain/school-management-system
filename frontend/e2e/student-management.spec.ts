@@ -530,7 +530,7 @@ test("student directory remains view-only when update and archive permissions ar
           principal_type: "staff",
           school_id: 10,
           username: "e2e-view-only-staff",
-          permissions: ["students.read_sensitive", "students.read_basic", "academic_years.read", "classes.read"],
+          permissions: ["students.read_sensitive", "students.read_basic", "guardians.read", "academic_years.read", "classes.read"],
         },
       });
       return;
