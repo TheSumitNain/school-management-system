@@ -17,5 +17,5 @@
 .student-location-create strong{grid-column:1/-1;font-size:12px}
 .student-location-create button{align-self:end}
 .student-link-button{justify-self:start;border:0;background:transparent;color:var(--primary);font-size:11px;font-weight:700;padding:4px 0}
-.student-feedback.success{color:var(--success,#16834b)}
+.student-feedback.success{color:var(--color-success)}
 @media(max-width:720px){.student-address-grid,.student-location-grid,.student-location-create{grid-template-columns:1fr}.student-location-create strong{grid-column:auto}}
