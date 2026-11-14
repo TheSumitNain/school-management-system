@@ -1,17 +1,19 @@
 # Project Status
 
-**Last reconciled:** 2026-11-13  
+**Last reconciled:** 2026-11-14  
 **Repository:** `TheSumitNain/school-management-system`  
 **Reviewed branch:** `work`  
-**Reviewed commit:** `c39fdb8` (`work` branch)
+**Reviewed through:** `599d021` (`work` branch; subsequent application verification pending)
 
-## Student Management — approved yearly admission model (V31 schema expanded; application cutover pending)
+## Student Management — approved yearly admission model (V31/V32 schema transition; application cutover in progress)
 
 - Product decisions are recorded in [Student Management — Domain and Database Design](../product/STUDENT-MANAGEMENT-DESIGN.md): one permanent school-scoped student identity, one enrollment/admission number per academic year, combined initial admission, and independently editable profile sections.
-- Commit `c39fdb8` adds V31 as an additive/expand-only migration. It adds nullable `admission_number` and `admission_date` to `student_enrollments`, a paired-nullability check, a non-empty/length check, and a normalized unique index scoped to school + academic year. The legacy `students.admission_number` remains in place; no legacy values are copied or discarded.
-- **User-reported local verification (2026-11-13):** pending migrations applied successfully to the disposable `school_management_test` database; `TestStudentEnrollmentAdmissionV31SchemaPostgresIntegration` passed; student-profile, academic-foundation and attendance schema integration tests passed.
-- This verification does **not** mean the student application workflow is cut over. Repository/API/frontend readers and writers still need to move to enrollment-level admission identity; combined student + first-enrollment creation, year-aware directory search, attendance projection changes and behavioral uniqueness/constraint tests remain pending.
-- The persistent `school_management` application database was not migrated as part of this check. Do not apply migrations to it without explicit approval and a verified backup.
+- V31 adds nullable `admission_number` and `admission_date` to `student_enrollments`, a paired-nullability check, a non-empty/length check, and a normalized unique index scoped to school + academic year. Historical enrollments may remain NULL/NULL when their original identity cannot be proven.
+- V32 decouples permanent student identity from the legacy school-wide admission number: `students.admission_number` becomes nullable, its school-wide unique index is replaced with a non-unique legacy lookup index, and existing values remain untouched. Its down migration refuses rollback if null or duplicate legacy identities exist.
+- The enrollment repository read model now exposes year-specific admission number/date. Attendance projections now read admission number from the enrollment and return an empty value for historical NULL rows. Student-profile reads safely tolerate a NULL legacy number.
+- **User-reported local verification:** V31 focused behavioral test, related repository regression tests, full backend `go test -count=1 -p 1 ./...`, and `go vet ./...` passed against the disposable `school_management_test` database before the latest V32/read-model commits. The V32 migration and its new integration test still require local execution after pulling.
+- **Application cutover remains incomplete:** new-student + first-enrollment atomic creation, required year-wise admission number/date on new enrollment and promotion writes, year-aware student directory search, frontend combined admission workflow, and end-to-end regression tests remain to be implemented and verified.
+- The persistent `school_management` application database has not been migrated by this work. Do not apply V32 or any pending migration to it without explicit approval and a verified backup.
 
 ## Staff Management — employee profile workflow implemented
 
