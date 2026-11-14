@@ -80,3 +80,69 @@
 .student-basic-details-form label{display:grid;gap:6px;font-size:12px;font-weight:600;color:var(--color-text)}
 .student-basic-details-form input{width:100%;min-height:38px}
 @media(max-width:720px){.student-basic-details-form{grid-template-columns:1fr}}
+
+
+/* Student workspace refresh: modern visual hierarchy without changing workflow semantics. */
+.student-page{width:100%;max-width:1440px}
+.student-page .heading{margin-bottom:22px}
+.student-page .heading h1{letter-spacing:-.035em}
+.student-page .heading p{max-width:720px;line-height:1.65}
+.student-heading-actions{flex-wrap:wrap}
+.student-tabs{gap:4px;margin:22px 0 20px;padding:4px;border:1px solid var(--color-border);border-radius:12px;background:var(--color-surface-subtle)}
+.student-tabs button{min-height:40px;padding:9px 16px;border:0;border-radius:8px;color:var(--color-text-muted);transition:background .16s ease,color .16s ease,box-shadow .16s ease}
+.student-tabs button:hover{background:var(--color-surface);color:var(--color-text)}
+.student-tabs button.selected{background:var(--color-surface);color:var(--color-primary);box-shadow:var(--shadow-sm);border:0}
+.student-toolbar{gap:12px;margin:20px 0 14px}
+.student-search{min-height:44px;border-radius:11px;border-color:var(--color-border);background:var(--color-surface);box-shadow:var(--shadow-xs)}
+.student-search:focus-within{border-color:var(--color-primary);box-shadow:0 0 0 3px var(--color-focus-ring)}
+.student-toolbar select{min-height:44px;border-radius:10px}
+.student-table-wrap{border-color:var(--color-border);border-radius:14px;box-shadow:var(--shadow-sm)}
+.student-table{font-size:13px}
+.student-table th{position:sticky;top:0;z-index:1;padding-top:13px;padding-bottom:13px;background:var(--color-surface-subtle);letter-spacing:.055em}
+.student-table td{padding-top:15px;padding-bottom:15px}
+.student-table tbody tr{transition:background .14s ease}
+.student-table tbody tr:hover{background:var(--color-surface-subtle)}
+.student-table td:first-child b{font-size:13px;letter-spacing:-.01em}
+.student-table td:first-child small{font-size:11px}
+.student-status{min-height:24px;align-items:center;padding:4px 9px;font-weight:650;letter-spacing:.01em}
+.student-row-actions{gap:7px}
+.student-row-actions button{width:34px;height:34px;border-radius:9px;transition:background .14s ease,border-color .14s ease,color .14s ease}
+.student-row-actions button:hover{background:var(--color-surface-subtle);border-color:var(--color-primary);color:var(--color-primary)}
+.student-state{border-radius:14px;background:var(--color-surface);line-height:1.6}
+.student-pagination{font-size:12px}
+.student-form-panel{padding:22px;border-color:var(--color-border);border-radius:16px;box-shadow:var(--shadow-md)}
+.student-form-heading h2{font-size:18px;letter-spacing:-.025em}
+.student-form-panel form{gap:16px}
+.student-form-panel label{font-size:12px;color:var(--color-text)}
+.student-form-panel input,.student-form-panel select{min-height:44px;border-radius:10px;font-size:13px}
+.student-secondary{min-height:38px;border-radius:9px;font-size:12px;transition:background .14s ease,border-color .14s ease}
+.student-secondary:hover:not(:disabled){border-color:var(--color-primary);background:var(--color-surface-subtle)}
+.student-feedback{border:1px solid transparent;border-radius:11px;line-height:1.55}
+.student-address-form,.student-family-link-form,.student-family-create-form{gap:16px}
+.student-location-section,.student-family-link-form,.student-family-create-form,.student-profile-summary,.student-profile-history{border-color:var(--color-border);border-radius:14px}
+.student-family-card{border-color:var(--color-border);border-radius:12px;padding:14px}
+.student-profile-summary,.student-profile-history{padding:18px}
+.student-profile-heading h3{font-size:20px;letter-spacing:-.03em}
+.student-profile-facts{gap:14px 20px}
+.student-profile-facts>div{padding:10px 12px;border:1px solid var(--color-border);border-radius:10px;background:var(--color-surface-subtle)}
+.student-profile-facts dt{font-size:11px}
+.student-profile-facts dd{font-size:13px}
+.student-profile-actions{gap:9px}
+.student-profile-actions button{min-height:40px;border-radius:10px;padding-inline:13px}
+.student-profile-enrollment{border-color:var(--color-border);border-radius:12px;padding:15px}
+.student-health-privacy-note{border-radius:11px}
+.student-health-history{border-color:var(--color-border);border-radius:12px}
+.student-page button:focus-visible,.student-page input:focus-visible,.student-page select:focus-visible,.student-page textarea:focus-visible{outline:3px solid var(--color-focus-ring);outline-offset:2px}
+@media(max-width:720px){
+ .student-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible}
+ .student-tabs button{white-space:normal;padding-inline:8px}
+ .student-form-panel{padding:16px;border-radius:13px}
+ .student-table-wrap{border:0;background:transparent;box-shadow:none;overflow:visible}
+ .student-table tr{margin:0 0 10px;padding:13px 14px;border:1px solid var(--color-border);border-radius:12px;background:var(--color-surface);box-shadow:var(--shadow-xs)}
+ .student-table td{padding:7px 0}
+ .student-row-actions button{width:36px;height:36px}
+ .student-profile-summary,.student-profile-history{padding:14px}
+}
+@media(prefers-reduced-motion:reduce){
+ .student-page *{scroll-behavior:auto!important;transition:none!important}
+}
