@@ -273,7 +273,7 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 	relatedStudents, err := repo.ListStudentRelatedStudents(ctx, targetPrincipalID, schoolID, studentID)
 	if err != nil || len(relatedStudents) != 1 || relatedStudents[0].StudentID != relatedStudentID ||
 		len(relatedStudents[0].SharedGuardianNames) != 1 || relatedStudents[0].SharedGuardianNames[0] != firstLink.GuardianName {
-		t.Fatalf("list students sharing active guardian: items=%+v err=%v", relatedStudents, err)
+		t.Fatalf("list students sharing active guardian: want student_id=%d guardian=%q; items=%+v err=%v", relatedStudentID, firstLink.GuardianName, relatedStudents, err)
 	}
 
 	secondMobile := "+919876543210"
