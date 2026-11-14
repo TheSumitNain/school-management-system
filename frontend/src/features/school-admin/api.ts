@@ -191,7 +191,7 @@ export function createSchoolStudentAdmission(input: {
   full_name: string; admission_number: string; academic_year_id: number; section_id: number;
   roll_number?: string | null; admission_date: string;
 }) {
-  return api<{ student: StudentProfile; enrollment: StudentEnrollment }>("/school/student-admissions", {
+  return api<{ student: StudentProfile; enrollment: StudentEnrollment }>("/school/students", {
     method: "POST", body: JSON.stringify(input),
   });
 }
