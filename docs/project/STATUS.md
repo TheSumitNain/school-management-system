@@ -197,9 +197,10 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 
 
 ## Student Basic Details sensitive-read audit — 2026-11-14
+- Follow-up audit found Address and Contact Detail GET methods were permission-protected but did not create read-audit events. Both now perform permission check, tenant-scoped read and section-only audit insert in one transaction. New integration assertions verify the audit metadata does not contain address, phone or email values. These follow-up changes are pushed but local verification is pending.
 
 - Basic Details GET now runs its authorization, student lookup, sensitive-profile read and audit insert in one transaction. A successful read records `school.student.basic_details.read` with the student reference and section name only; profile values are never copied into read-audit metadata.
-- Added PostgreSQL integration assertions for the read audit event and for absence of personal values in its metadata. Local execution is pending; do not mark verified until the user runs the integration suite.
+- Added PostgreSQL integration assertions for the read audit event and for absence of personal values in its metadata. User ran `go test -count=1 -p 1 ./internal/repository -run TestStudentBasicDetailsV37PostgresIntegration`, the full `go test -count=1 -p 1 ./...`, and `go vet ./...` against `school_management_test`; all passed.
 - This closes the read-audit gap for Basic Details only. Other sensitive profile sections still require their own read-audit review.
 - Aadhaar remains excluded from the UI/API until its dedicated encryption/key-rotation implementation is complete.
 
