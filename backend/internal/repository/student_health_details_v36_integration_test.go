@@ -214,7 +214,7 @@ func TestStudentMedicalPhysicalDetailsV36PostgresIntegration(t *testing.T) {
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO users(school_id,username,password_hash,status)
 		VALUES($1,$2,'integration-test-hash','active') RETURNING principal_id
-	`, schoolID, "v36-health-teacher-"+suffix).Scan(&teacherPrincipalID); err != nil {
+	`, schoolID, "v36t-"+suffix).Scan(&teacherPrincipalID); err != nil {
 		t.Fatalf("create Teacher health access fixture: %v", err)
 	}
 	if _, err := tx.Exec(ctx, `
