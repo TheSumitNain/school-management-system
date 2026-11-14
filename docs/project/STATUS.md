@@ -269,3 +269,9 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - Guardian management is school-scoped and uses live `guardians.read` / `guardians.manage` permission evaluation in the repository, in addition to route authentication. Guardian profile edits are shared identity updates and intentionally affect every linked student; the UI explicitly warns staff before/after this operation. Relationship type, primary-contact and emergency-contact flags are stored per student relationship. Revocation requires a reason and preserves history.
 - Current branch head: `aa8dc03bfb14854184f0bf7a3efaf824fca04ee0`. Auth, RBAC, Class, Section and Subject modules were not changed by this Student Management UI safety pass.
 - **Local V39–V40 migration application and browser-level acceptance remain pending.** CI success does not establish that the user's local persistent `school_management` database has these migrations. Do not migrate that database without explicit approval and a verified backup; use only `school_management_test` for local integration verification.
+
+## Shared guardian update confirmation — 2026-11-14
+
+- Added an explicit confirmation step before saving edits to a shared guardian profile. The confirmation explains that the guardian's contact/profile values are shared by every linked student, and the action label makes the multi-record scope clear.
+- Validation still runs before confirmation; the update mutation remains protected by the existing live guardian-management permission and invalidates guardian/student query families after success. Relationship-specific values (relationship type, primary contact and emergency contact) remain on each student-guardian link, not on the shared guardian profile.
+- This is a frontend safety improvement committed to the work branch; CI is running for the new commit. Browser-level acceptance is still pending.
