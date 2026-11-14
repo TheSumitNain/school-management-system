@@ -41,6 +41,10 @@ type AcademicManagementService interface {
 	SaveStudentAddress(context.Context,int64,int64,int64,string,*string,*string,*string,*string,*string,*int64,bool)(*repository.StudentAddress,error)
 	GetStudentContactDetails(context.Context,int64,int64,int64)(*repository.StudentContactDetails,error)
 	SaveStudentContactDetails(context.Context,int64,int64,int64,*string,*string,*string)(*repository.StudentContactDetails,error)
+	GetStudentMedicalDetails(context.Context,int64,int64,int64)(*repository.StudentMedicalDetails,error)
+	SaveStudentMedicalDetails(context.Context,int64,int64,int64,*string,*string,*string,*string,*string)(*repository.StudentMedicalDetails,error)
+	GetStudentPhysicalDetails(context.Context,int64,int64,int64)(*repository.StudentPhysicalDetails,error)
+	SaveStudentPhysicalDetails(context.Context,int64,int64,int64,*float64,*float64,*time.Time,*string,*string)(*repository.StudentPhysicalDetails,error)
 	ListStudents(context.Context,int64,int64,string,string,int,int)([]repository.StudentProfile,int64,error)
 	GetStudent(context.Context,int64,int64,int64)(*repository.StudentProfile,error)
 	CreateStudent(context.Context,int64,int64,string,string)(*repository.StudentProfile,error)
@@ -375,6 +379,70 @@ func (h *AcademicHandler) SaveStudentContactDetails(c *gin.Context) {
 		req.PrimaryPhone, req.AlternatePhone, req.EmailAddress)
 	if err != nil { academicError(c, err, "Student contact details"); return }
 	c.JSON(http.StatusOK, gin.H{"status":"success","contact_details":item})
+}
+
+func (h *AcademicHandler) GetStudentMedicalDetails(c *gin.Context) {
+	actor, school, ok := h.ready(c)
+	if !ok { return }
+	studentID, valid := academicID(c, "studentID")
+	if !valid { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid student ID"}); return }
+	item, err := h.service.GetStudentMedicalDetails(c.Request.Context(), actor, school, studentID)
+	if err != nil { academicError(c, err, "Student medical details"); return }
+	c.JSON(http.StatusOK, gin.H{"status":"success","medical_details":item})
+}
+
+func (h *AcademicHandler) SaveStudentMedicalDetails(c *gin.Context) {
+	actor, school, ok := h.ready(c)
+	if !ok { return }
+	studentID, valid := academicID(c, "studentID")
+	if !valid { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid student ID"}); return }
+	var req struct {
+		BloodGroup *string `json:"blood_group"`
+		Allergies *string `json:"allergies"`
+		KnownConditions *string `json:"known_conditions"`
+		OngoingMedications *string `json:"ongoing_medications"`
+		EmergencyMedicalNotes *string `json:"emergency_medical_notes"`
+	}
+	if c.ShouldBindJSON(&req) != nil { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid request body"}); return }
+	item, err := h.service.SaveStudentMedicalDetails(c.Request.Context(), actor, school, studentID,
+		req.BloodGroup, req.Allergies, req.KnownConditions, req.OngoingMedications, req.EmergencyMedicalNotes)
+	if err != nil { academicError(c, err, "Student medical details"); return }
+	c.JSON(http.StatusOK, gin.H{"status":"success","medical_details":item})
+}
+
+func (h *AcademicHandler) GetStudentPhysicalDetails(c *gin.Context) {
+	actor, school, ok := h.ready(c)
+	if !ok { return }
+	studentID, valid := academicID(c, "studentID")
+	if !valid { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid student ID"}); return }
+	item, err := h.service.GetStudentPhysicalDetails(c.Request.Context(), actor, school, studentID)
+	if err != nil { academicError(c, err, "Student physical details"); return }
+	c.JSON(http.StatusOK, gin.H{"status":"success","physical_details":item})
+}
+
+func (h *AcademicHandler) SaveStudentPhysicalDetails(c *gin.Context) {
+	actor, school, ok := h.ready(c)
+	if !ok { return }
+	studentID, valid := academicID(c, "studentID")
+	if !valid { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid student ID"}); return }
+	var req struct {
+		HeightCM *float64 `json:"height_cm"`
+		WeightKG *float64 `json:"weight_kg"`
+		MeasuredOn *string `json:"measured_on"`
+		VisionNotes *string `json:"vision_notes"`
+		PhysicalNotes *string `json:"physical_notes"`
+	}
+	if c.ShouldBindJSON(&req) != nil { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid request body"}); return }
+	var measuredOn *time.Time
+	if req.MeasuredOn != nil && strings.TrimSpace(*req.MeasuredOn) != "" {
+		parsed, parseErr := parseEnrollmentDate(*req.MeasuredOn)
+		if parseErr != nil { academicError(c, parseErr, "Student physical details"); return }
+		measuredOn = &parsed
+	}
+	item, err := h.service.SaveStudentPhysicalDetails(c.Request.Context(), actor, school, studentID,
+		req.HeightCM, req.WeightKG, measuredOn, req.VisionNotes, req.PhysicalNotes)
+	if err != nil { academicError(c, err, "Student physical details"); return }
+	c.JSON(http.StatusOK, gin.H{"status":"success","physical_details":item})
 }
 
 func (h *AcademicHandler) ListStudents(c *gin.Context) {
