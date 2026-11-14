@@ -295,6 +295,88 @@ func (r *AcademicRepository) LinkStudentGuardian(ctx context.Context,actorID,sch
 	return &v,nil
 }
 
+func (r *AcademicRepository) UpdateStudentGuardianLink(ctx context.Context, actorID, schoolID, linkID int64, relationship string, primary, emergency bool) (*StudentGuardian, error) {
+	if r == nil || r.db == nil {
+		return nil, ErrGuardianAccessDenied
+	}
+	relationship = strings.TrimSpace(relationship)
+	if linkID <= 0 || relationship == "" || len([]rune(relationship)) > 40 {
+		return nil, ErrInvalidGuardianInput
+	}
+
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin student guardian relationship update: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err = authorizeGuardian(ctx, tx, actorID, schoolID, "guardians.manage"); err != nil {
+		return nil, err
+	}
+
+	// Resolve the owning student first, then serialize every relationship edit
+	// for that student before changing the single active link.
+	var studentID int64
+	err = tx.QueryRow(ctx, `SELECT student_id FROM student_guardians
+		WHERE id=$1 AND school_id=$2 AND revoked_at IS NULL`, linkID, schoolID).Scan(&studentID)
+	if err != nil {
+		return nil, guardianWriteError(err)
+	}
+	if err = tx.QueryRow(ctx, `SELECT id FROM students WHERE id=$1 AND school_id=$2 FOR UPDATE`, studentID, schoolID).Scan(new(int64)); err != nil {
+		return nil, guardianWriteError(err)
+	}
+
+	var oldRelationship string
+	var oldPrimary, oldEmergency bool
+	err = tx.QueryRow(ctx, `SELECT relationship_type,is_primary_contact,is_emergency_contact
+		FROM student_guardians WHERE id=$1 AND school_id=$2 AND student_id=$3 AND revoked_at IS NULL FOR UPDATE`,
+		linkID, schoolID, studentID).Scan(&oldRelationship, &oldPrimary, &oldEmergency)
+	if err != nil {
+		return nil, guardianWriteError(err)
+	}
+
+	if primary {
+		if _, err = tx.Exec(ctx, `UPDATE student_guardians SET is_primary_contact=FALSE,updated_at=NOW()
+			WHERE school_id=$1 AND student_id=$2 AND id<>$3 AND revoked_at IS NULL AND is_primary_contact=TRUE`,
+			schoolID, studentID, linkID); err != nil {
+			return nil, fmt.Errorf("clear previous primary guardian contact: %w", err)
+		}
+	}
+
+	var v StudentGuardian
+	err = tx.QueryRow(ctx, `UPDATE student_guardians SET relationship_type=$3,is_primary_contact=$4,
+		is_emergency_contact=$5,updated_at=NOW()
+		WHERE id=$1 AND school_id=$2 AND student_id=$6 AND revoked_at IS NULL
+		RETURNING id,student_id,guardian_id,relationship_type,is_primary_contact,is_emergency_contact,created_at,revoked_at`,
+		linkID, schoolID, relationship, primary, emergency, studentID).Scan(
+		&v.ID, &v.StudentID, &v.GuardianID, &v.RelationshipType, &v.IsPrimaryContact,
+		&v.IsEmergencyContact, &v.CreatedAt, &v.RevokedAt)
+	if err != nil {
+		return nil, guardianWriteError(err)
+	}
+	err = tx.QueryRow(ctx, `SELECT g.full_name,g.status,g.mobile_number,g.email_address,
+		g.alternate_mobile_number,g.occupation,g.education,g.workplace_name
+		FROM guardians g WHERE g.id=$1 AND g.school_id=$2`, v.GuardianID, schoolID).Scan(
+		&v.GuardianName, &v.GuardianStatus, &v.MobileNumber, &v.EmailAddress,
+		&v.AlternateMobileNumber, &v.Occupation, &v.Education, &v.WorkplaceName)
+	if err != nil {
+		return nil, fmt.Errorf("load updated guardian relationship contact: %w", err)
+	}
+	if _, err = tx.Exec(ctx, `INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
+		VALUES($1,$2,'school.student_guardian_link_updated','student_guardian_link',$3,'success',
+		jsonb_build_object('student_id',$4::bigint,'guardian_id',$5::bigint,
+			'old_relationship_type',$6::text,'relationship_type',$7::text,
+			'old_is_primary_contact',$8::boolean,'is_primary_contact',$9::boolean,
+			'old_is_emergency_contact',$10::boolean,'is_emergency_contact',$11::boolean))`,
+		actorID, schoolID, fmt.Sprint(linkID), studentID, v.GuardianID,
+		oldRelationship, relationship, oldPrimary, primary, oldEmergency, emergency); err != nil {
+		return nil, fmt.Errorf("audit student guardian relationship update: %w", err)
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit student guardian relationship update: %w", err)
+	}
+	return &v, nil
+}
+
 func (r *AcademicRepository) RevokeStudentGuardianLink(ctx context.Context,actorID,schoolID,linkID int64,reason string)error{
 	if r==nil||r.db==nil{return ErrGuardianAccessDenied}
 	reason=strings.TrimSpace(reason);if linkID<=0||reason==""||len([]rune(reason))>500{return ErrInvalidGuardianInput}
