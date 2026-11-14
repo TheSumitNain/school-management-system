@@ -512,6 +512,34 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("inactive student guardian history after revocation: links=%+v err=%v", inactiveHistory, err)
 	}
 
+	// Re-linking after revocation creates a new active relationship while
+	// retaining the original revoked row as immutable history.
+	relinked, err := repo.LinkStudentGuardian(ctx, targetPrincipalID, schoolID,
+		studentID, guardian.ID, "mother", false, true)
+	if err != nil {
+		t.Fatalf("re-link guardian after revocation: %v", err)
+	}
+	if relinked.ID == firstLink.ID || relinked.RelationshipType != "mother" ||
+		relinked.IsPrimaryContact || !relinked.IsEmergencyContact {
+		t.Fatalf("unexpected replacement guardian relationship: %+v", relinked)
+	}
+	relinkedHistory, err := repo.ListStudentGuardians(ctx, targetPrincipalID, schoolID, studentID, true)
+	if err != nil || len(relinkedHistory) != 3 {
+		t.Fatalf("guardian history after re-link: links=%+v err=%v", relinkedHistory, err)
+	}
+	var oldRevocationPreserved, newLinkActive bool
+	for _, link := range relinkedHistory {
+		if link.ID == firstLink.ID {
+			oldRevocationPreserved = link.RevokedAt != nil
+		}
+		if link.ID == relinked.ID {
+			newLinkActive = link.RevokedAt == nil
+		}
+	}
+	if !oldRevocationPreserved || !newLinkActive {
+		t.Fatalf("re-link changed old relationship history or failed to create active link: %+v", relinkedHistory)
+	}
+
 	target := &models.AuthPrincipal{
 		ID: targetPrincipalID, Type: "staff", Status: "active",
 		TokenVersion: 1, SchoolID: schoolID,
