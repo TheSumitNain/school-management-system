@@ -62,6 +62,7 @@ export const schoolStudentQueryKeys = {
   all: [...schoolAdminQueryKeys.all, "students"] as const,
   list: (filters: { q: string; status: string; limit: number; offset: number }) => [...schoolStudentQueryKeys.all, "list", filters] as const,
   enrollments: (academicYearID: number) => [...schoolStudentQueryKeys.all, "enrollments", academicYearID] as const,
+  enrollmentHistory: (studentID: number) => [...schoolStudentQueryKeys.all, "enrollment-history", studentID] as const,
   years: () => [...schoolStudentQueryKeys.all, "academic-years"] as const,
   sections: (academicYearID: number) => [...schoolStudentQueryKeys.all, "sections", academicYearID] as const,
   addresses: (studentID: number) => [...schoolStudentQueryKeys.all, "addresses", studentID] as const,
@@ -80,6 +81,14 @@ export function useSchoolStudentEnrollmentsQuery(academicYearID: number, enabled
     queryKey: schoolStudentQueryKeys.enrollments(academicYearID),
     queryFn: ({ signal }) => getSchoolStudentEnrollments(academicYearID, signal),
     enabled,
+    staleTime: 15_000,
+  });
+}
+export function useSchoolStudentEnrollmentHistoryQuery(studentID: number, enabled = true) {
+  return useQuery({
+    queryKey: schoolStudentQueryKeys.enrollmentHistory(studentID),
+    queryFn: ({ signal }) => getSchoolStudentEnrollmentHistory(studentID, signal),
+    enabled: enabled && studentID > 0,
     staleTime: 15_000,
   });
 }
