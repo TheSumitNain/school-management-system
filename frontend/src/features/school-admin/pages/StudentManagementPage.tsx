@@ -259,6 +259,6 @@ export function StudentManagementPage({ permissions }: Props) {
     />}
     {addressStudent && <StudentAddressSection student={addressStudent} canUpdate={canUpdate && addressStudent.status !== "archived"} onClose={() => setAddressStudent(null)} />}
     {familyStudent && <StudentFamilySection student={familyStudent} canManage={canManageGuardians && familyStudent.status !== "archived"} canReadRelatedStudents={canReadEnrollments} onClose={() => setFamilyStudent(null)} />}
-    {healthStudent && <StudentHealthSection student={healthStudent} canUpdate={canUpdate && healthStudent.status !== "archived"} onClose={() => setHealthStudent(null)} />}
+    {healthStudent && <StudentHealthSection student={healthStudent} canUpdate={canUpdate && healthStudent.status === "active"} onClose={() => setHealthStudent(null)} />}
   </div>;
 }
