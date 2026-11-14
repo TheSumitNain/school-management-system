@@ -178,8 +178,12 @@ BEGIN
          WHERE id = NEW.location_id
          FOR KEY SHARE;
 
-        IF NOT FOUND OR NOT location_active THEN
-            RAISE EXCEPTION 'student address location does not exist or is inactive';
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'student address location does not exist';
+        END IF;
+        IF NOT location_active
+           AND (TG_OP = 'INSERT' OR NEW.location_id IS DISTINCT FROM OLD.location_id) THEN
+            RAISE EXCEPTION 'student address cannot select an inactive location';
         END IF;
 
         IF location_school_id IS NOT NULL
