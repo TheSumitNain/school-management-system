@@ -3,7 +3,7 @@
 **Last reconciled:** 2026-11-14  
 **Repository:** `TheSumitNain/school-management-system`  
 **Reviewed branch:** `work`  
-**Reviewed through:** `b8e615f` (`work` branch; local verification pending)
+**Reviewed through:** `4210980` (`work` branch; user-local verification pending)
 
 ## Student Management — approved yearly admission model (V31/V32 schema transition; application cutover in progress)
 
@@ -16,7 +16,8 @@
 - New student creation now has one transactional repository operation that creates the permanent student identity (legacy admission number NULL), its first year-specific enrollment, and both audit events. The `POST /school/students` route now uses this combined operation; an enrollment uniqueness conflict rolls back the student insert.
 - Student directory/profile reads now display and search the current academic year's enrollment admission number. If a student has a current-year enrollment with unknown legacy admission identity, the directory deliberately shows no number rather than incorrectly carrying forward an unverified old-year value. Attendance and enrollment lists also expose the enrollment-level number.
 - The Student Management page now uses a guided first-admission form (student name, admission number, academic year, section, optional roll number and admission date) and requires year-specific admission number/date when enrolling an existing student.
-- **User-reported local verification:** V31 focused behavioral test, related repository regression tests, full backend `go test -count=1 -p 1 ./...`, and `go vet ./...` passed against the disposable `school_management_test` database before the latest V32/application changes. The V32 migration, new combined-admission integration coverage, and frontend TypeScript/build checks still require local execution after pulling.
+- **Earlier user-reported local verification:** V31 focused behavioral test, related repository regression tests, full backend `go test -count=1 -p 1 ./...`, and `go vet ./...` passed against the disposable `school_management_test` database before the V32/application changes.
+- **GitHub Actions verification (2026-11-14):** backend CI passed on commit `429985b`, including all migrations on an ephemeral PostgreSQL database, full backend integration tests, and `go vet`; frontend CI passed on commit `4210980`, including dependency installation and production build. User-local verification of V32/V33 and the new admission workflow is still pending after pulling.
 - **Application cutover remains in verification:** no local run has yet confirmed the latest V32 migration, transaction behavior, repository/API integration, and frontend build together. The permanent student profile sections beyond the currently implemented name field (address/contact, parent/sibling, medical/physical and documents) remain future implementation work.
 - The persistent `school_management` application database has not been migrated by this work. Do not apply V32 or any pending migration to it without explicit approval and a verified backup.
 
