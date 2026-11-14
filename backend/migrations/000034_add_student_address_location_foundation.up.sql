@@ -78,6 +78,7 @@ BEGIN
          WHERE canonical.school_id IS NULL
            AND canonical.parent_id IS NOT DISTINCT FROM NEW.parent_id
            AND canonical.level = NEW.level
+           AND canonical.is_active = TRUE
            AND canonical.normalized_name = LOWER(BTRIM(NEW.name))
     ) THEN
         RAISE EXCEPTION USING
