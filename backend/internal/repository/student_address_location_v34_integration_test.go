@@ -91,23 +91,8 @@ func TestStudentAddressLocationV34PostgresIntegration(t *testing.T) {
 		t.Fatalf("create school-owned district under canonical state: %v", err)
 	}
 
-	assertCanonicalDuplicate := func() {
-		t.Helper()
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO student_locations(school_id,level,name)
-			VALUES($1,'state',$2)
-		`, schoolID, "  v34 canonical STATE "+suffix+"  "); err == nil {
-			t.Fatal("school-owned location must not duplicate an available canonical location")
-		} else {
-			var pgErr *pgconn.PgError
-			if !errors.As(err, &pgErr) || pgErr.Code != "23505" {
-				t.Fatalf("canonical location duplicate error = %v, want unique violation", err)
-			}
-		}
-	}
-	assertCanonicalDuplicate()
 
-	assertRejected := func(label, query string, args ...any) {
+	assertRejected := func(label, query string, args ...any) *pgconn.PgError {
 		t.Helper()
 		if _, err := tx.Exec(ctx, `SAVEPOINT v34_rejected_write`); err != nil {
 			t.Fatalf("%s: create savepoint: %v", label, err)
@@ -123,6 +108,7 @@ func TestStudentAddressLocationV34PostgresIntegration(t *testing.T) {
 		if !errors.As(writeErr, &pgErr) {
 			t.Fatalf("%s error = %v, want PostgreSQL constraint/trigger error", label, writeErr)
 		}
+		return pgErr
 	}
 
 	assertRejected("wrong hierarchy level",
@@ -134,6 +120,16 @@ func TestStudentAddressLocationV34PostgresIntegration(t *testing.T) {
 	assertRejected("global child under school-owned parent",
 		`INSERT INTO student_locations(school_id,parent_id,level,name)
 		 VALUES(NULL,$1,'district','V34 Invalid Global Child')`, stateID)
+	if pgErr := assertRejected("school-owned location duplicates canonical",
+		`INSERT INTO student_locations(school_id,level,name)
+		 VALUES($1,'state',$2)`, schoolID, "  v34 canonical STATE "+suffix+"  "); pgErr.Code != "23505" {
+		t.Fatalf("school/canonical duplicate SQLSTATE = %s, want 23505", pgErr.Code)
+	}
+	if pgErr := assertRejected("canonical location duplicates active school location",
+		`INSERT INTO student_locations(school_id,level,name)
+		 VALUES(NULL,'state',$1)`, "V34 State "+suffix); pgErr.Code != "23505" {
+		t.Fatalf("canonical/school duplicate SQLSTATE = %s, want 23505", pgErr.Code)
+	}
 	assertRejected("canonical location duplicates active school location",
 		`INSERT INTO student_locations(school_id,level,name)
 		 VALUES(NULL,'state',$1)`, "V34 State "+suffix)
