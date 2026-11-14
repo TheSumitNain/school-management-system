@@ -371,3 +371,10 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - Source review found that opening a read-only Parents & Siblings profile also fetched the full active guardian directory, even though the guardian picker is only used by users with `guardians.manage`.
 - The directory query is now enabled only when the current user has `guardians.manage`. Read-only staff continue to load the student's linked guardian details through the existing `guardians.read` permission, without requesting unrelated guardian-directory records.
 - This is a frontend least-privilege/data-minimization correction; it does not change backend permissions or allow/deny rules. Frontend CI passed on commit `bd9cec3b0f` (TypeScript/design-token checks and Vite production build). Backend CI for the same commit is running; the frontend build is verified, while browser-level role acceptance remains pending. Browser-level role acceptance remains pending.
+
+## Guardian relationship concurrency hardening — 2026-11-14
+
+- Guardian relationship revocation now resolves the owning student and locks that student row inside the same transaction before revoking the active link.
+- This uses the same per-student serialization point as link creation and relationship edits, preventing revocation from racing with primary-contact selection.
+- The lock intentionally does not require the student to remain active, preserving the existing ability to revoke a relationship for an inactive student.
+- Backend CI for this change is pending; existing PostgreSQL integration coverage already exercises link creation, primary-contact updates, revocation, re-linking, history and audit counts. A dedicated inactive-student revocation case is still a useful follow-up.
