@@ -56,20 +56,48 @@ func (r *AcademicRepository) ListStudents(
 	}
 	var total int64
 	if err := r.db.QueryRow(ctx, `
-		SELECT COUNT(*) FROM students
-		WHERE school_id = $1
-		  AND ($2 = '' OR status = $2)
-		  AND ($3 = '' OR admission_number ILIKE '%' || $3 || '%' OR full_name ILIKE '%' || $3 || '%')
+		SELECT COUNT(*)
+		FROM students st
+		LEFT JOIN LATERAL (
+			SELECT e.id, e.admission_number
+			FROM student_enrollments e
+			JOIN academic_years ay
+			  ON ay.id=e.academic_year_id AND ay.school_id=e.school_id AND ay.is_current=TRUE
+			WHERE e.school_id=st.school_id AND e.student_id=st.id
+			ORDER BY e.id DESC
+			LIMIT 1
+		) current_enrollment ON TRUE
+		WHERE st.school_id = $1
+		  AND ($2 = '' OR st.status = $2)
+		  AND ($3 = '' OR
+		       COALESCE(current_enrollment.admission_number,
+		                CASE WHEN current_enrollment.id IS NULL THEN st.admission_number END, '')
+		         ILIKE '%' || $3 || '%' OR st.full_name ILIKE '%' || $3 || '%')
 	`, schoolID, status, search).Scan(&total); err != nil {
 		return nil, 0, fmt.Errorf("count students: %w", err)
 	}
 	rows, err := r.db.Query(ctx, `
-		SELECT `+studentProfileColumns+`
-		FROM students
-		WHERE school_id = $1
-		  AND ($2 = '' OR status = $2)
-		  AND ($3 = '' OR admission_number ILIKE '%' || $3 || '%' OR full_name ILIKE '%' || $3 || '%')
-		ORDER BY LOWER(full_name), id
+		SELECT st.id, st.school_id,
+		       COALESCE(current_enrollment.admission_number,
+		                CASE WHEN current_enrollment.id IS NULL THEN st.admission_number END, ''),
+		       st.full_name, st.status, st.created_at, st.updated_at
+		FROM students st
+		LEFT JOIN LATERAL (
+			SELECT e.id, e.admission_number
+			FROM student_enrollments e
+			JOIN academic_years ay
+			  ON ay.id=e.academic_year_id AND ay.school_id=e.school_id AND ay.is_current=TRUE
+			WHERE e.school_id=st.school_id AND e.student_id=st.id
+			ORDER BY e.id DESC
+			LIMIT 1
+		) current_enrollment ON TRUE
+		WHERE st.school_id = $1
+		  AND ($2 = '' OR st.status = $2)
+		  AND ($3 = '' OR
+		       COALESCE(current_enrollment.admission_number,
+		                CASE WHEN current_enrollment.id IS NULL THEN st.admission_number END, '')
+		         ILIKE '%' || $3 || '%' OR st.full_name ILIKE '%' || $3 || '%')
+		ORDER BY LOWER(st.full_name), st.id
 		LIMIT $4 OFFSET $5
 	`, schoolID, status, search, limit, offset)
 	if err != nil {
@@ -102,10 +130,23 @@ func (r *AcademicRepository) GetStudent(
 	if err := authorizeAcademic(ctx, r.db, actorID, schoolID, "students.read_sensitive"); err != nil {
 		return nil, err
 	}
-	student, err := scanStudentProfile(r.db.QueryRow(ctx,
-		`SELECT `+studentProfileColumns+` FROM students WHERE id = $1 AND school_id = $2`,
-		studentID, schoolID,
-	))
+	student, err := scanStudentProfile(r.db.QueryRow(ctx, `
+		SELECT st.id, st.school_id,
+		       COALESCE(current_enrollment.admission_number,
+		                CASE WHEN current_enrollment.id IS NULL THEN st.admission_number END, ''),
+		       st.full_name, st.status, st.created_at, st.updated_at
+		FROM students st
+		LEFT JOIN LATERAL (
+			SELECT e.id, e.admission_number
+			FROM student_enrollments e
+			JOIN academic_years ay
+			  ON ay.id=e.academic_year_id AND ay.school_id=e.school_id AND ay.is_current=TRUE
+			WHERE e.school_id=st.school_id AND e.student_id=st.id
+			ORDER BY e.id DESC
+			LIMIT 1
+		) current_enrollment ON TRUE
+		WHERE st.id = $1 AND st.school_id = $2
+		`, studentID, schoolID))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrAcademicNotFound
 	}
