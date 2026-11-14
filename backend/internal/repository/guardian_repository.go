@@ -40,6 +40,7 @@ type StudentGuardian struct {
 	StudentID int64 `json:"student_id"`
 	GuardianID int64 `json:"guardian_id"`
 	GuardianName string `json:"guardian_name"`
+	GuardianStatus string `json:"guardian_status"`
 	MobileNumber *string `json:"mobile_number,omitempty"`
 	EmailAddress *string `json:"email_address,omitempty"`
 	AlternateMobileNumber *string `json:"alternate_mobile_number,omitempty"`
@@ -197,7 +198,7 @@ func (r *AcademicRepository) SaveGuardian(ctx context.Context, actorID,schoolID,
 func (r *AcademicRepository) ListStudentGuardians(ctx context.Context,actorID,schoolID,studentID int64,includeHistory bool)([]StudentGuardian,error){
 	if r==nil||r.db==nil{return nil,ErrGuardianAccessDenied}
 	if err:=authorizeGuardian(ctx,r.db,actorID,schoolID,"guardians.read");err!=nil{return nil,err}
-	rows,err:=r.db.Query(ctx,`SELECT sg.id,sg.student_id,sg.guardian_id,g.full_name,g.mobile_number,g.email_address,g.alternate_mobile_number,g.occupation,g.education,g.workplace_name,
+	rows,err:=r.db.Query(ctx,`SELECT sg.id,sg.student_id,sg.guardian_id,g.full_name,g.status,g.mobile_number,g.email_address,g.alternate_mobile_number,g.occupation,g.education,g.workplace_name,
 		sg.relationship_type,sg.is_primary_contact,sg.is_emergency_contact,sg.created_at,sg.revoked_at
 		FROM student_guardians sg JOIN guardians g ON g.id=sg.guardian_id AND g.school_id=sg.school_id
 		JOIN students s ON s.id=sg.student_id AND s.school_id=sg.school_id
@@ -205,7 +206,7 @@ func (r *AcademicRepository) ListStudentGuardians(ctx context.Context,actorID,sc
 		ORDER BY sg.revoked_at NULLS FIRST,sg.is_primary_contact DESC,LOWER(g.full_name),sg.id`,schoolID,studentID,includeHistory)
 	if err!=nil{return nil,fmt.Errorf("list student guardians: %w",err)};defer rows.Close()
 	items:=make([]StudentGuardian,0)
-	for rows.Next(){var v StudentGuardian;if err:=rows.Scan(&v.ID,&v.StudentID,&v.GuardianID,&v.GuardianName,&v.MobileNumber,&v.EmailAddress,&v.AlternateMobileNumber,&v.Occupation,&v.Education,&v.WorkplaceName,&v.RelationshipType,&v.IsPrimaryContact,&v.IsEmergencyContact,&v.CreatedAt,&v.RevokedAt);err!=nil{return nil,fmt.Errorf("scan student guardian: %w",err)};items=append(items,v)}
+	for rows.Next(){var v StudentGuardian;if err:=rows.Scan(&v.ID,&v.StudentID,&v.GuardianID,&v.GuardianName,&v.GuardianStatus,&v.MobileNumber,&v.EmailAddress,&v.AlternateMobileNumber,&v.Occupation,&v.Education,&v.WorkplaceName,&v.RelationshipType,&v.IsPrimaryContact,&v.IsEmergencyContact,&v.CreatedAt,&v.RevokedAt);err!=nil{return nil,fmt.Errorf("scan student guardian: %w",err)};items=append(items,v)}
 	if err:=rows.Err();err!=nil{return nil,fmt.Errorf("iterate student guardians: %w",err)}
 	return items,nil
 }
@@ -296,12 +297,12 @@ func (r *AcademicRepository) LinkStudentGuardian(ctx context.Context,actorID,sch
 		VALUES($1,$2,$3,$4,$5,$6) RETURNING id`,
 		schoolID,studentID,guardianID,relationship,primary,emergency).Scan(&v.ID)
 	if err!=nil{return nil,guardianWriteError(err)}
-	err=tx.QueryRow(ctx,`SELECT sg.id,sg.student_id,sg.guardian_id,g.full_name,g.mobile_number,g.email_address,
+	err=tx.QueryRow(ctx,`SELECT sg.id,sg.student_id,sg.guardian_id,g.full_name,g.status,g.mobile_number,g.email_address,
 		g.alternate_mobile_number,g.occupation,g.education,g.workplace_name,
 		sg.relationship_type,sg.is_primary_contact,sg.is_emergency_contact,sg.created_at,sg.revoked_at
 		FROM student_guardians sg JOIN guardians g ON g.id=sg.guardian_id AND g.school_id=sg.school_id
 		WHERE sg.id=$1 AND sg.school_id=$2`,v.ID,schoolID).
-		Scan(&v.ID,&v.StudentID,&v.GuardianID,&v.GuardianName,&v.MobileNumber,&v.EmailAddress,&v.AlternateMobileNumber,&v.Occupation,&v.Education,&v.WorkplaceName,&v.RelationshipType,&v.IsPrimaryContact,&v.IsEmergencyContact,&v.CreatedAt,&v.RevokedAt)
+		Scan(&v.ID,&v.StudentID,&v.GuardianID,&v.GuardianName,&v.GuardianStatus,&v.MobileNumber,&v.EmailAddress,&v.AlternateMobileNumber,&v.Occupation,&v.Education,&v.WorkplaceName,&v.RelationshipType,&v.IsPrimaryContact,&v.IsEmergencyContact,&v.CreatedAt,&v.RevokedAt)
 	if err!=nil{return nil,fmt.Errorf("load created student guardian link: %w",err)}
 	if _,err=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
 		VALUES($1,$2,'school.student_guardian_link_created','student_guardian_link',$3,'success',
