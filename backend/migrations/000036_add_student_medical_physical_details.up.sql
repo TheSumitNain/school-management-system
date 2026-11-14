@@ -50,8 +50,6 @@ CREATE TABLE student_physical_details (
         CHECK (height_cm IS NULL OR height_cm BETWEEN 20 AND 250),
     CONSTRAINT student_physical_details_weight_range
         CHECK (weight_kg IS NULL OR weight_kg BETWEEN 1 AND 300),
-    CONSTRAINT student_physical_details_measurement_date
-        CHECK (measured_on IS NULL OR measured_on <= CURRENT_DATE),
     CONSTRAINT student_physical_details_vision_notes
         CHECK (vision_notes IS NULL OR length(BTRIM(vision_notes)) BETWEEN 1 AND 1000),
     CONSTRAINT student_physical_details_physical_notes
