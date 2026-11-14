@@ -22,15 +22,24 @@ function clearSession() {
   accessToken = "";
   sessionStorage.removeItem(LEGACY_ACCESS_KEY);
   sessionStorage.removeItem(LEGACY_REFRESH_KEY);
-  sessionStorage.removeItem(SESSION_PRINCIPAL_KEY);
+  localStorage.removeItem(SESSION_PRINCIPAL_KEY);
   localStorage.removeItem(ACTIVE_SESSION_KEY);
 }
 function receiveRemoteSessionEvent(event: SessionEvent) {
   if (!event?.id || event.id === lastRemoteSessionEventId) return;
   lastRemoteSessionEventId = event.id;
-  clearSession();
-  if (event.type === "ended") dispatchSessionEnded();
-  else window.dispatchEvent(new Event("sms:session-changed"));
+  if (event.type === "ended") {
+    clearSession();
+    dispatchSessionEnded();
+    return;
+  }
+  // The other tab has already published the replacement principal identity.
+  // Clear this tab's access token and user-scoped legacy state, but preserve
+  // the shared identity marker so the refresh can verify that new account.
+  accessToken = "";
+  sessionStorage.removeItem(LEGACY_ACCESS_KEY);
+  sessionStorage.removeItem(LEGACY_REFRESH_KEY);
+  window.dispatchEvent(new Event("sms:session-changed"));
 }
 authChannel?.addEventListener("message", (event: MessageEvent<SessionEvent>) => {
   if (event.data?.type === "ended" || event.data?.type === "changed") receiveRemoteSessionEvent(event.data);
@@ -71,7 +80,7 @@ export function saveTokens(tokens: AuthTokens) {
   accessToken = tokens.access_token;
   // Pin the identity for this browser tab. A refresh cookie must never silently
   // replace the account that explicitly signed in to this tab.
-  sessionStorage.setItem(SESSION_PRINCIPAL_KEY, principalIdentity(tokens.principal));
+  localStorage.setItem(SESSION_PRINCIPAL_KEY, principalIdentity(tokens.principal));
   // This marker contains no credential; it only lets tabs distinguish an
   // expired shared session from a visitor who has never signed in.
   localStorage.setItem(ACTIVE_SESSION_KEY, "1");
@@ -104,10 +113,11 @@ async function performRefresh(): Promise<boolean> {
     if (hadSession) broadcastSessionEnd();
     return false;
   }
-  const expectedIdentity = sessionStorage.getItem(SESSION_PRINCIPAL_KEY);
-  if (expectedIdentity && expectedIdentity !== principalIdentity(body.principal)) {
-    // The shared HttpOnly cookie now represents a different account. Do not
-    // accept it in this tab; require an explicit sign-in instead.
+  const expectedIdentity = localStorage.getItem(SESSION_PRINCIPAL_KEY);
+  if (!expectedIdentity || expectedIdentity !== principalIdentity(body.principal)) {
+    // Missing identity means this is a legacy/unpinned session; a mismatch
+    // means the shared cookie changed unexpectedly. In both cases require an
+    // explicit sign-in rather than silently adopting an account.
     clearSession();
     dispatchSessionEnded();
     return false;
