@@ -248,6 +248,23 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("unexpected first student-guardian link: %+v", firstLink)
 	}
 
+	var relatedStudentID int64
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO students (school_id, admission_number, full_name)
+		VALUES ($1, NULL, 'Student Sharing Guardian') RETURNING id
+	`, schoolID).Scan(&relatedStudentID); err != nil {
+		t.Fatalf("create related-student fixture: %v", err)
+	}
+	if _, err := repo.LinkStudentGuardian(ctx, targetPrincipalID, schoolID,
+		relatedStudentID, guardian.ID, "father", true, false); err != nil {
+		t.Fatalf("link shared guardian to related student: %v", err)
+	}
+	relatedStudents, err := repo.ListStudentRelatedStudents(ctx, targetPrincipalID, schoolID, studentID)
+	if err != nil || len(relatedStudents) != 1 || relatedStudents[0].StudentID != relatedStudentID ||
+		len(relatedStudents[0].SharedGuardianNames) != 1 || relatedStudents[0].SharedGuardianNames[0] != guardian.FullName {
+		t.Fatalf("list students sharing active guardian: items=%+v err=%v", relatedStudents, err)
+	}
+
 	secondMobile := "+919876543210"
 	secondGuardian, err := repo.SaveGuardian(ctx, targetPrincipalID, schoolID, 0,
 		"Guardian Two", &secondMobile, nil, "active")
