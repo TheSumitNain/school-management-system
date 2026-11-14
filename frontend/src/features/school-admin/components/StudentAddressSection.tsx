@@ -149,7 +149,7 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!canUpdate) return;
+    if (!canUpdate || addressesQuery.isLoading || addressesQuery.isError) return;
     setFieldError("");
     if (addressType === "permanent" && sameAsCurrent && !currentAddress) {
       setFieldError("Save the current address before using it as the permanent address.");
@@ -183,7 +183,7 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
 
   async function submitContact(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!canUpdate || contactQuery.isLoading) return;
+    if (!canUpdate || contactQuery.isLoading || contactQuery.isError) return;
     const errors: { primaryPhone?: string; alternatePhone?: string; emailAddress?: string } = {};
     if (primaryPhone.trim().length > 30) errors.primaryPhone = "Phone number must be 30 characters or fewer.";
     if (alternatePhone.trim().length > 30) errors.alternatePhone = "Phone number must be 30 characters or fewer.";
@@ -303,7 +303,7 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
       <form className="student-address-form" onSubmit={submit} noValidate>
         {addressType === "permanent" && (
           <label className="student-address-same">
-            <input type="checkbox" checked={sameAsCurrent} disabled={!canUpdate || !currentAddress || busy} onChange={event => { setSameAsCurrent(event.target.checked); setFieldError(""); }} />
+            <input type="checkbox" checked={sameAsCurrent} disabled={!canUpdate || !currentAddress || addressesQuery.isLoading || addressesQuery.isError || busy} onChange={event => { setSameAsCurrent(event.target.checked); setFieldError(""); }} />
             <StudentFieldLabel label="Permanent address is same as current address" hint="Optional. Turn this on only when the permanent address is exactly the same as the current address. Save the current address first." />
           </label>
         )}
