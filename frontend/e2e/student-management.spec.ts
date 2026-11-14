@@ -378,6 +378,14 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
   await expect(page.getByText("Aarav Sharma Updated · Permanent student identity and year-wise academic history")).toBeVisible();
 
+  await page.getByRole("button", { name: /Basic details/ }).click();
+  await expect(page.getByRole("dialog", { name: "Basic Details" })).toBeVisible();
+  await expect(page.getByPlaceholder("City, district or place")).toHaveValue("Ambala, Haryana");
+  await expect(page.getByPlaceholder("e.g. Indian")).toHaveValue("Indian");
+  await expect(page.getByRole("button", { name: "Gender", exact: true })).toContainText("Male");
+  await page.getByRole("button", { name: "Close dialog" }).click();
+  await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
+
   await page.getByRole("button", { name: /Parents & Siblings/i }).click();
   await expect(page.getByRole("dialog", { name: /Parents & Siblings/i })).toBeVisible();
   await expect(page.getByText("Ramesh Sharma")).toBeVisible();
@@ -516,6 +524,15 @@ test("student admission, profile navigation and parent details render without br
   });
   await expect.poll(() => contactDetails.primary_phone).toBe("9876501234");
   await expect(page.getByText("Student contact details saved.")).toBeVisible();
+  await page.getByRole("button", { name: "Close dialog" }).click();
+  await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
+
+  await page.getByRole("button", { name: /Address & communication/ }).click();
+  await expect(page.getByRole("dialog", { name: "Address & Communication" })).toBeVisible();
+  await expect(page.getByPlaceholder("House number, street or building")).toHaveValue("House 12, Main Road");
+  await page.getByRole("button", { name: "Contact details", exact: true }).click();
+  await expect(page.getByPlaceholder("Primary contact number")).toHaveValue("9876501234");
+  await expect(page.getByPlaceholder("student@example.com")).toHaveValue("student@example.test");
   await page.getByRole("button", { name: "Close dialog" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
 
