@@ -10,7 +10,7 @@
 .student-location-section{display:grid;gap:10px;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--color-surface)}
 .student-location-section h3{margin:0;font-size:13px;color:var(--color-text)}
 .student-location-section p,.student-address-note{margin:0;color:var(--muted);font-size:11px;line-height:1.5}
-.student-location-grid label{min-width:0}
+.student-location-grid label{min-width:0}.student-location-grid .student-location-field{display:grid;gap:6px;min-width:0;font-size:12px;font-weight:600;color:var(--color-text)}
 .student-location-grid input{margin-bottom:2px}
 .student-location-create{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:12px;border:1px dashed var(--line);border-radius:10px}
 .student-location-create strong{grid-column:1/-1;font-size:12px}
