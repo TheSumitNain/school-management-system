@@ -446,6 +446,14 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("button", { name: "Close dialog" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
 
+  await page.getByRole("button", { name: /Parents & Siblings/i }).click();
+  await expect(page.getByRole("dialog", { name: /Parents & Siblings/i })).toBeVisible();
+  await page.getByLabel("Show revoked history").check();
+  await expect(page.getByText("Ramesh Sharma")).toBeVisible();
+  await expect(page.getByText(/Revoked/)).toBeVisible();
+  await page.getByRole("button", { name: "Close dialog" }).click();
+  await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
+
   failStudentReads.add("addresses");
   await page.getByRole("button", { name: /Address & communication/ }).click();
   await expect(page.getByRole("dialog", { name: "Address & Communication" })).toBeVisible();
