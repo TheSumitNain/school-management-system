@@ -246,6 +246,10 @@ test("student admission, profile navigation and parent details render without br
           const input = request.postDataJSON() as Record<string, unknown>;
           Object.assign(physicalDetails, input, { id: 701, school_id: 10, student_id: studentID });
           physicalDetails.history = [{
+            id: 700, height_cm: 130, weight_kg: 30,
+            measured_on: "2026-10-14", vision_notes: "Previous vision note",
+            physical_notes: "Previous physical note", created_at: "2026-10-14T00:00:00.000Z",
+          }, {
             id: 701, height_cm: physicalDetails.height_cm, weight_kg: physicalDetails.weight_kg,
             measured_on: physicalDetails.measured_on, vision_notes: physicalDetails.vision_notes,
             physical_notes: physicalDetails.physical_notes, created_at: "2026-11-14T00:00:00.000Z",
