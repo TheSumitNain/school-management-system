@@ -3,7 +3,7 @@
 **Last reconciled:** 2026-11-14  
 **Repository:** `TheSumitNain/school-management-system`  
 **Reviewed branch:** `work`  
-**Reviewed through:** `aa8dc03b` on `work`; V32–V38 were locally verified in the user's disposable `school_management_test` database; V39–V40 and the latest frontend/backend CI are verified on GitHub; local V39–V40 database application and browser acceptance remain pending
+**Reviewed through:** `d4fcf7e0` on `work`; V32–V38 were locally verified in the user's disposable `school_management_test` database; the latest completed backend CI (including PostgreSQL integration and `go vet`) passed on `2a0ced44`; the frontend production build passed on `d4fcf7e0`; backend CI for the latest frontend styling commit is pending; local V39–V41 database application and browser acceptance remain pending
 
 ## Administrator access correction — School Admin guardian permissions (V39; local verification pending)
 
@@ -14,6 +14,15 @@
 - No guardian/student records are modified. No frontend permission check or backend authorization middleware is bypassed.
 - **V39 has been committed to `work` but has not been run against any local database.** Verify it only on the disposable `school_management_test` database first. Do not apply it to the persistent `school_management` database without separate explicit approval and a verified backup.
 - **Platform Admin cross-school business operations remain an explicit architecture gap:** Platform Admin is a platform-scoped principal, while current school business APIs require a school-scoped staff context. Do not impersonate a School Admin or bypass tenant checks. Implement a reviewed selected-school administrative context with explicit target-school authorization and audit before exposing Platform Admin to school business records.
+
+## Student profile UI and guardian relationship verification (2026-11-14)
+
+- The guardian relationship edit regression test was corrected to assert that the previously selected primary contact is cleared, while the newly selected primary contact remains selected. The backend implementation clears the previous primary only within the same student's active guardian links.
+- The full backend CI run on commit `3fd23690` passed: complete migrations on ephemeral PostgreSQL, backend tests including PostgreSQL integration, and `go vet`.
+- The database engineering standards in [DATABASE.md](../backend/DATABASE.md) now cover immutable versioned migrations, integrity and tenant constraints, transaction/concurrency rules, query/index performance, fresh-install and upgrade verification, and backup/restore safety.
+- Address & Communication and Medical & Physical reuse the `.student-address-tabs` class. Its missing styles have now been added with active, hover, keyboard-focus and narrow-screen states. The frontend production build passed on commit `d4fcf7e0`; backend CI for that exact commit is still pending.
+- Source review confirms the Basic Details and Address/Contact save actions intentionally remain unavailable while their initial read request is loading or has failed. This prevents saving blank/default form state over data that could not be loaded. The UI exposes the read error and retry action. The precise cause of the previously reported disabled Save buttons has not been established without a live authenticated browser session; do not remove these safeguards or claim the issue resolved until browser acceptance verifies the read endpoints and permissions.
+- Browser acceptance remains pending: verify view/edit permissions, load and retry behavior, successful save and reload persistence for Basic Details, current/permanent address, contact details, and Parent Details. Parent OTP/authentication remains deferred.
 
 ## Student Management — approved yearly admission model (V31–V38 schema; application cutover in progress)
 
