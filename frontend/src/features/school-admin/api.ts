@@ -141,6 +141,23 @@ export function deleteStaffPermissionOverride(principalID: number, permissionKey
 }
 
 
+export type StudentBasicDetails = {
+  id: number;
+  school_id: number;
+  student_id: number;
+  date_of_birth?: string | null;
+  place_of_birth?: string | null;
+  gender?: "female" | "male" | "other" | "not_specified" | null;
+  nationality?: string | null;
+  religion?: string | null;
+  social_category?: "general" | "obc" | "sc" | "st" | "other" | "not_specified" | null;
+  ews_status?: boolean | null;
+  school_registration_number?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+export type StudentBasicDetailsResponse = { basic_details: StudentBasicDetails };
+
 export type StudentProfile = {
   id: number;
   school_id: number;
@@ -264,6 +281,16 @@ export type StudentContactDetails = {
   id: number; school_id: number; student_id: number; primary_phone?: string | null;
   alternate_phone?: string | null; email_address?: string | null;
 };
+export function getSchoolStudentBasicDetails(studentID: number, signal?: AbortSignal) {
+  return api<StudentBasicDetailsResponse>(`/school/students/${studentID}/basic-details`, { signal });
+}
+export function saveSchoolStudentBasicDetails(studentID: number, input: {
+  date_of_birth?: string | null; place_of_birth?: string | null; gender?: string | null;
+  nationality?: string | null; religion?: string | null; social_category?: string | null;
+  ews_status?: boolean | null; school_registration_number?: string | null;
+}) {
+  return api<StudentBasicDetailsResponse>(`/school/students/${studentID}/basic-details`, { method: "PUT", body: JSON.stringify(input) });
+}
 export function getSchoolStudentContactDetails(studentID: number, signal?: AbortSignal) {
   return api<{ contact_details: StudentContactDetails }>(`/school/students/${studentID}/contact-details`, { signal });
 }
