@@ -60,6 +60,14 @@ BEGIN
         RAISE EXCEPTION 'student location ownership and hierarchy are immutable';
     END IF;
 
+    IF TG_OP = 'UPDATE' AND OLD.is_active = TRUE AND NEW.is_active = FALSE
+       AND EXISTS (
+           SELECT 1 FROM public.student_locations child
+            WHERE child.parent_id = OLD.id AND child.is_active = TRUE
+       ) THEN
+        RAISE EXCEPTION 'student location with active children cannot be deactivated';
+    END IF;
+
     IF NEW.parent_id IS NULL THEN
         IF NEW.level <> 'state' THEN
             RAISE EXCEPTION 'student location hierarchy must start at a state';
@@ -151,6 +159,10 @@ DECLARE
     location_school_id BIGINT;
     location_active BOOLEAN;
 BEGIN
+    IF TG_OP = 'DELETE' THEN
+        RAISE EXCEPTION 'student address records cannot be deleted';
+    END IF;
+
     IF TG_OP = 'UPDATE' AND (
         NEW.school_id IS DISTINCT FROM OLD.school_id
         OR NEW.student_id IS DISTINCT FROM OLD.student_id
@@ -191,7 +203,7 @@ END;
 $v34$;
 
 CREATE TRIGGER trg_guard_student_address_location
-BEFORE INSERT OR UPDATE ON student_addresses
+BEFORE INSERT OR UPDATE OR DELETE ON student_addresses
 FOR EACH ROW EXECUTE FUNCTION guard_student_address_location();
 
 COMMENT ON TABLE student_locations IS
