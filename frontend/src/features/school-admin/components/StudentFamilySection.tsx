@@ -32,7 +32,11 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
   const [newGuardianEmail, setNewGuardianEmail] = useState("");
   const [pendingRevokeID, setPendingRevokeID] = useState(0);
   const [revokeReason, setRevokeReason] = useState("");
-  const [fieldError, setFieldError] = useState("");
+  const [guardianSelectError, setGuardianSelectError] = useState("");
+  const [relationshipError, setRelationshipError] = useState("");
+  const [newGuardianNameError, setNewGuardianNameError] = useState("");
+  const [newGuardianEmailError, setNewGuardianEmailError] = useState("");
+  const [revokeReasonError, setRevokeReasonError] = useState("");
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
 
   const linksQuery = useSchoolStudentGuardiansQuery(student.id, true);
@@ -58,10 +62,16 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
 
   async function saveGuardian(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setFieldError("");
+    setNewGuardianNameError("");
+    setNewGuardianEmailError("");
     if (!canManage) return;
     if (!newGuardianName.trim()) {
-      setFieldError("Guardian name is required.");
+      setNewGuardianNameError("Guardian name is required.");
+      return;
+    }
+    const emailInput = event.currentTarget.elements.namedItem("guardian_email_address") as HTMLInputElement | null;
+    if (newGuardianEmail.trim() && emailInput && !emailInput.checkValidity()) {
+      setNewGuardianEmailError("Enter a valid email address.");
       return;
     }
     try {
@@ -87,12 +97,12 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
 
   async function linkSelectedGuardian(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setFieldError("");
+    setGuardianSelectError("");
+    setRelationshipError("");
     if (!canManage) return;
-    if (!selectedGuardianID || !relationshipType.trim()) {
-      setFieldError("Choose a guardian and enter the relationship.");
-      return;
-    }
+    if (!selectedGuardianID) setGuardianSelectError("Choose a guardian.");
+    if (!relationshipType.trim()) setRelationshipError("Enter the relationship to this student.");
+    if (!selectedGuardianID || !relationshipType.trim()) return;
     try {
       await linkGuardian.mutateAsync({
         studentID: student.id,
@@ -112,8 +122,9 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
 
   async function confirmRevoke() {
     if (!canManage || pendingRevokeID <= 0) return;
+    setRevokeReasonError("");
     if (!revokeReason.trim()) {
-      setFieldError("A reason is required to revoke a guardian relationship.");
+      setRevokeReasonError("A reason is required to revoke this relationship.");
       return;
     }
     try {
@@ -153,7 +164,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
                   <span>{link.mobile_number || "No phone"}{link.email_address ? " · " + link.email_address : ""}</span>
                   {link.revoked_at && <small>Revoked {new Date(link.revoked_at).toLocaleDateString()}</small>}
                 </div>
-                {canManage && !link.revoked_at && <button type="button" className="student-link-button" onClick={() => { setPendingRevokeID(link.id); setRevokeReason(""); setFieldError(""); }}>Revoke link</button>}
+                {canManage && !link.revoked_at && <button type="button" className="student-link-button" onClick={() => { setPendingRevokeID(link.id); setRevokeReason(""); setRevokeReasonError(""); }}>Revoke link</button>}
               </article>
             ))}
           </div>
@@ -163,33 +174,34 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
             <form className="student-family-link-form" onSubmit={linkSelectedGuardian} noValidate>
               <h4>Link a guardian</h4>
               <label>Search active guardian contacts<input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search by name, phone or email"/></label>
-              <Select ariaLabel="Select guardian" value={String(selectedGuardianID || "")} onChange={value => setSelectedGuardianID(Number(value))} placeholder="Choose a guardian" options={guardianOptions} disabled={guardiansQuery.isLoading}/>
+              <Select ariaLabel="Select guardian" value={String(selectedGuardianID || "")} onChange={value => { setSelectedGuardianID(Number(value)); setGuardianSelectError(""); }} placeholder="Choose a guardian" options={guardianOptions} disabled={guardiansQuery.isLoading}/>
+              {guardianSelectError && <small className="app-field-error">{guardianSelectError}</small>}
               {guardiansQuery.isError && <small className="app-field-error" role="alert">{guardiansQuery.error.message}</small>}
               {!guardiansQuery.isLoading && !guardiansQuery.isError && guardianOptions.length === 0 && <p className="student-address-note">No unlinked active guardian contacts match this search. You can create a new contact below.</p>}
-              <label>Relationship to student<input value={relationshipType} maxLength={40} onChange={event => setRelationshipType(event.target.value)} placeholder="Father, Mother, Guardian…"/></label>
+              <label>Relationship to student<input value={relationshipType} maxLength={40} onChange={event => { setRelationshipType(event.target.value); setRelationshipError(""); }} placeholder="Father, Mother, Guardian…"/></label>
+              {relationshipError && <small className="app-field-error">{relationshipError}</small>}
               <div className="student-family-checks">
                 <label><input type="checkbox" checked={primaryContact} onChange={event => setPrimaryContact(event.target.checked)}/> Primary contact</label>
                 <label><input type="checkbox" checked={emergencyContact} onChange={event => setEmergencyContact(event.target.checked)}/> Emergency contact</label>
               </div>
-              {fieldError && !pendingRevokeID && !showCreateGuardian && <small className="app-field-error">{fieldError}</small>}
+              
               <button type="submit" className="primary" disabled={busy || !selectedGuardianID}>{linkGuardian.isPending ? "Linking…" : "Link guardian"}</button>
-              <button type="button" className="student-link-button" onClick={() => { setShowCreateGuardian(value => !value); setFieldError(""); }}>Create a new guardian contact</button>
+              <button type="button" className="student-link-button" onClick={() => { setShowCreateGuardian(value => !value); setNewGuardianNameError(""); setNewGuardianEmailError(""); }}>Create a new guardian contact</button>
             </form>
             {showCreateGuardian && (
               <form className="student-family-create-form" onSubmit={saveGuardian} noValidate>
                 <h4>New guardian contact</h4>
-                <label>Full name<input disabled={busy} value={newGuardianName} maxLength={200} onChange={event => setNewGuardianName(event.target.value)} placeholder="Guardian full name"/></label>
+                <label>Full name<input name="guardian_full_name" disabled={busy} value={newGuardianName} maxLength={200} onChange={event => { setNewGuardianName(event.target.value); setNewGuardianNameError(""); }} placeholder="Guardian full name"/>{newGuardianNameError && <small className="app-field-error">{newGuardianNameError}</small>}</label>
                 <label>Mobile number<input disabled={busy} value={newGuardianMobile} maxLength={30} onChange={event => setNewGuardianMobile(event.target.value)} placeholder="Mobile number"/></label>
-                <label>Email address<input disabled={busy} type="email" value={newGuardianEmail} maxLength={254} onChange={event => setNewGuardianEmail(event.target.value)} placeholder="guardian@example.com"/></label>
-                {fieldError && showCreateGuardian && !pendingRevokeID && <small className="app-field-error">{fieldError}</small>}
+                <label>Email address<input name="guardian_email_address" disabled={busy} type="email" value={newGuardianEmail} maxLength={254} onChange={event => { setNewGuardianEmail(event.target.value); setNewGuardianEmailError(""); }} placeholder="guardian@example.com"/>{newGuardianEmailError && <small className="app-field-error">{newGuardianEmailError}</small>}</label>
+                
                 <button type="submit" className="secondary" disabled={busy}>{createGuardian.isPending ? "Saving…" : "Save guardian contact"}</button>
               </form>
             )}
             {pendingRevokeID > 0 && (
               <div className="student-location-confirm" role="alertdialog" aria-label="Revoke guardian relationship">
-                <label>Reason for revocation<input value={revokeReason} maxLength={500} onChange={event => setRevokeReason(event.target.value)} placeholder="Explain why this link is being revoked"/></label>
-                {fieldError && <small className="app-field-error">{fieldError}</small>}
-                <div><button type="button" className="app-modal-cancel" onClick={() => { setPendingRevokeID(0); setFieldError(""); }} disabled={busy}>Cancel</button><button type="button" className="secondary" onClick={() => void confirmRevoke()} disabled={busy}>{revokeLink.isPending ? "Revoking…" : "Confirm revoke"}</button></div>
+                <label>Reason for revocation<input value={revokeReason} maxLength={500} onChange={event => { setRevokeReason(event.target.value); setRevokeReasonError(""); }} placeholder="Explain why this link is being revoked"/>{revokeReasonError && <small className="app-field-error">{revokeReasonError}</small>}</label>
+                <div><button type="button" className="app-modal-cancel" onClick={() => { setPendingRevokeID(0); setRevokeReasonError(""); }} disabled={busy}>Cancel</button><button type="button" className="secondary" onClick={() => void confirmRevoke()} disabled={busy}>{revokeLink.isPending ? "Revoking…" : "Confirm revoke"}</button></div>
               </div>
             )}
           </>
