@@ -9,6 +9,7 @@ import {
   useUpdateSchoolGuardianMutation,
   useLinkSchoolStudentGuardianMutation,
   useRevokeSchoolStudentGuardianMutation,
+  useUpdateSchoolStudentGuardianMutation,
   useSchoolGuardiansQuery,
   useSchoolStudentGuardiansQuery,
   useSchoolStudentRelatedStudentsQuery,
@@ -38,6 +39,10 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
   const [newGuardianEducation, setNewGuardianEducation] = useState("");
   const [newGuardianWorkplace, setNewGuardianWorkplace] = useState("");
   const [editingGuardianID, setEditingGuardianID] = useState(0);
+  const [editingLinkID, setEditingLinkID] = useState(0);
+  const [editRelationshipForm, setEditRelationshipForm] = useState({ relationship_type: "", is_primary_contact: false, is_emergency_contact: false });
+  const [editRelationshipError, setEditRelationshipError] = useState("");
+  const [editRelationshipFieldError, setEditRelationshipFieldError] = useState("");
   const [editGuardianForm, setEditGuardianForm] = useState({
     full_name: "", mobile_number: "", email_address: "", alternate_mobile_number: "",
     occupation: "", education: "", workplace_name: "", status: "active" as "active" | "inactive" | "archived",
@@ -62,6 +67,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
   const updateGuardian = useUpdateSchoolGuardianMutation();
   const linkGuardian = useLinkSchoolStudentGuardianMutation();
   const revokeLink = useRevokeSchoolStudentGuardianMutation();
+  const updateLink = useUpdateSchoolStudentGuardianMutation();
 
   const allLinks = linksQuery.data?.student_guardians ?? [];
   const visibleLinks = includeHistory ? allLinks : allLinks.filter(link => !link.revoked_at);
@@ -75,7 +81,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
       label: guardian.full_name + (guardian.mobile_number ? " · " + guardian.mobile_number : guardian.email_address ? " · " + guardian.email_address : ""),
     }));
   const relatedStudents = relatedQuery.data?.related_students ?? [];
-  const busy = createGuardian.isPending || updateGuardian.isPending || linkGuardian.isPending || revokeLink.isPending;
+  const busy = createGuardian.isPending || updateGuardian.isPending || linkGuardian.isPending || revokeLink.isPending || updateLink.isPending;
 
   async function saveGuardian(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -210,6 +216,44 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
     }
   }
 
+  function beginEditRelationship(link: (typeof allLinks)[number]) {
+    setEditingLinkID(link.id);
+    setEditRelationshipForm({
+      relationship_type: link.relationship_type,
+      is_primary_contact: link.is_primary_contact,
+      is_emergency_contact: link.is_emergency_contact,
+    });
+    setEditRelationshipError("");
+    setEditRelationshipFieldError("");
+  }
+
+  async function saveEditedRelationship(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setEditRelationshipError("");
+    setEditRelationshipFieldError("");
+    if (!canManage || editingLinkID <= 0) return;
+    const relationship = editRelationshipForm.relationship_type.trim();
+    if (!relationship) {
+      setEditRelationshipFieldError("Relationship to this student is required.");
+      return;
+    }
+    try {
+      await updateLink.mutateAsync({
+        linkID: editingLinkID,
+        input: {
+          relationship_type: relationship,
+          is_primary_contact: editRelationshipForm.is_primary_contact,
+          is_emergency_contact: editRelationshipForm.is_emergency_contact,
+        },
+      });
+      setEditingLinkID(0);
+      setEditRelationshipError("");
+      setFeedback({ kind: "success", message: "This student's guardian relationship details were updated. Other students linked to the same guardian were not changed." });
+    } catch (error) {
+      setEditRelationshipError(error instanceof Error ? error.message : "Guardian relationship could not be updated.");
+    }
+  }
+
   async function confirmRevoke() {
     if (!canManage || pendingRevokeID <= 0) return;
     setRevokeReasonError("");
@@ -256,9 +300,25 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
                 </div>
                 {canManage && !link.revoked_at && (
                   <div className="student-family-card-actions">
-                    <button type="button" className="student-link-button" onClick={() => beginEditGuardian(link)}>Edit guardian details</button>
+                    <button type="button" className="student-link-button" onClick={() => beginEditRelationship(link)}>Edit relationship</button>
+                    <button type="button" className="student-link-button" onClick={() => beginEditGuardian(link)}>Edit shared guardian details</button>
                     <button type="button" className="student-link-button" onClick={() => { setPendingRevokeID(link.id); setRevokeReason(""); setRevokeReasonError(""); }}>Revoke link</button>
                   </div>
+                )}
+                {canManage && editingLinkID === link.id && !link.revoked_at && (
+                  <form className="student-family-create-form" onSubmit={saveEditedRelationship} noValidate>
+                    <h4>Edit relationship for this student</h4>
+                    <label><StudentFieldLabel label="Relationship to student" required hint="Enter how this guardian is related to this student, for example Father, Mother or Legal Guardian. Maximum 40 characters." /><input disabled={busy} value={editRelationshipForm.relationship_type} maxLength={40} aria-invalid={Boolean(editRelationshipFieldError)} aria-describedby={editRelationshipFieldError ? "edit-student-guardian-relationship-error" : undefined} onChange={event => { setEditRelationshipForm(current => ({ ...current, relationship_type: event.target.value })); setEditRelationshipFieldError(""); }} placeholder="Father, Mother, Legal Guardian…"/>{editRelationshipFieldError && <small id="edit-student-guardian-relationship-error" className="app-field-error">{editRelationshipFieldError}</small>}</label>
+                    <div className="student-family-checks">
+                      <label><input type="checkbox" checked={editRelationshipForm.is_primary_contact} disabled={busy} onChange={event => setEditRelationshipForm(current => ({ ...current, is_primary_contact: event.target.checked }))}/> <StudentFieldLabel label="Primary contact" hint="Only one active guardian can be primary for this student. Selecting this clears the previous primary contact for this student only." /></label>
+                      <label><input type="checkbox" checked={editRelationshipForm.is_emergency_contact} disabled={busy} onChange={event => setEditRelationshipForm(current => ({ ...current, is_emergency_contact: event.target.checked }))}/> <StudentFieldLabel label="Emergency contact" hint="Mark this guardian as an emergency contact for this student." /></label>
+                    </div>
+                    {editRelationshipError && <small className="app-field-error" role="alert">{editRelationshipError}</small>}
+                    <div className="student-family-card-actions">
+                      <button type="button" className="student-link-button" onClick={() => { setEditingLinkID(0); setEditRelationshipError(""); setEditRelationshipFieldError(""); }} disabled={busy}>Cancel</button>
+                      <button type="submit" className="secondary" disabled={busy || linksQuery.isLoading || linksQuery.isError}>{updateLink.isPending ? "Saving…" : "Save relationship"}</button>
+                    </div>
+                  </form>
                 )}
                 {canManage && editingGuardianID === link.guardian_id && !link.revoked_at && (
                   <form className="student-family-create-form" onSubmit={saveEditedGuardian} noValidate>
