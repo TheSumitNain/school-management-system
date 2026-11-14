@@ -14,8 +14,14 @@ func TestStudentLocationSourceReferencesV42PostgresIntegration(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin rollback-scoped V42 integration test: %v", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
 	var seeded int
-	if err := pool.QueryRow(ctx, `
+	if err := tx.QueryRow(ctx, `
 		SELECT COUNT(*)
 		  FROM student_location_source_references
 		 WHERE source_system = 'IGOD' AND is_current = TRUE
@@ -27,7 +33,7 @@ func TestStudentLocationSourceReferencesV42PostgresIntegration(t *testing.T) {
 	}
 
 	var haryanaID int64
-	if err := pool.QueryRow(ctx, `
+	if err := tx.QueryRow(ctx, `
 		SELECT id FROM student_locations
 		 WHERE school_id IS NULL AND source_system = 'IGOD'
 		   AND source_code = 'HR' AND level = 'state'
@@ -36,7 +42,7 @@ func TestStudentLocationSourceReferencesV42PostgresIntegration(t *testing.T) {
 	}
 
 	var lgdReferenceID int64
-	if err := pool.QueryRow(ctx, `
+	if err := tx.QueryRow(ctx, `
 		INSERT INTO student_location_source_references
 			(location_id, source_system, source_code, source_name, snapshot_date)
 		VALUES ($1, 'LGD_STATE', '6', 'Haryana', DATE '2026-11-14')
@@ -46,7 +52,7 @@ func TestStudentLocationSourceReferencesV42PostgresIntegration(t *testing.T) {
 	}
 
 	var currentSources int
-	if err := pool.QueryRow(ctx, `
+	if err := tx.QueryRow(ctx, `
 		SELECT COUNT(*) FROM student_location_source_references
 		 WHERE location_id = $1 AND is_current = TRUE
 	`, haryanaID).Scan(&currentSources); err != nil {
@@ -56,7 +62,7 @@ func TestStudentLocationSourceReferencesV42PostgresIntegration(t *testing.T) {
 		t.Fatalf("Haryana has %d current source identifiers, want IGOD + LGD", currentSources)
 	}
 
-	if _, err := pool.Exec(ctx, `
+	if _, err := tx.Exec(ctx, `
 		UPDATE student_location_source_references
 		   SET is_current = FALSE, superseded_at = NOW()
 		 WHERE id = $1
@@ -64,7 +70,7 @@ func TestStudentLocationSourceReferencesV42PostgresIntegration(t *testing.T) {
 		t.Fatalf("supersede old LGD source identifier: %v", err)
 	}
 	var replacementID int64
-	if err := pool.QueryRow(ctx, `
+	if err := tx.QueryRow(ctx, `
 		INSERT INTO student_location_source_references
 			(location_id, source_system, source_code, source_name, snapshot_date)
 		VALUES ($1, 'LGD_STATE', '06', 'Haryana', DATE '2026-11-15')
@@ -73,21 +79,21 @@ func TestStudentLocationSourceReferencesV42PostgresIntegration(t *testing.T) {
 		t.Fatalf("insert replacement LGD source identifier while retaining history: %v", err)
 	}
 
-	if _, err := pool.Exec(ctx, `
+	if _, err := tx.Exec(ctx, `
 		UPDATE student_location_source_references
 		   SET source_code = '999'
 		 WHERE id = $1
 	`, replacementID); err == nil {
 		t.Fatal("source identifier update succeeded; source snapshots must be immutable")
 	}
-	if _, err := pool.Exec(ctx, `
+	if _, err := tx.Exec(ctx, `
 		DELETE FROM student_location_source_references WHERE id = $1
 	`, replacementID); err == nil {
 		t.Fatal("source reference delete succeeded; source history must be append-only")
 	}
 
 	var historyCount int
-	if err := pool.QueryRow(ctx, `
+	if err := tx.QueryRow(ctx, `
 		SELECT COUNT(*) FROM student_location_source_references
 		 WHERE location_id = $1 AND source_system = 'LGD_STATE'
 	`, haryanaID).Scan(&historyCount); err != nil {
