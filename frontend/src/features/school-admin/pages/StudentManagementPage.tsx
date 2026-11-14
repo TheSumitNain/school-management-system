@@ -5,7 +5,7 @@ import {
   useSchoolStudentAcademicYearsQuery, useSchoolStudentEnrollmentsQuery, useSchoolStudentSectionsQuery,
   useSchoolStudentsQuery,
 } from "../queries";
-import type { StudentProfile } from "../api";
+import type { StudentEnrollment, StudentProfile } from "../api";
 import { Select } from "../../../shared/components/Select";
 import { DatePicker } from "../../../shared/components/DatePicker";
 import { Modal } from "../../../shared/components/Modal";
@@ -15,6 +15,7 @@ import { StudentBasicDetailsSection } from "../components/StudentBasicDetailsSec
 import { StudentFamilySection } from "../components/StudentFamilySection";
 import { StudentProfileDetail } from "../components/StudentProfileDetail";
 import { StudentHealthSection } from "../components/StudentHealthSection";
+import { StudentPromotionDialog } from "../components/StudentPromotionDialog";
 import "./StudentManagementPage.css";
 
 type Props = { permissions: string[] };
@@ -47,6 +48,7 @@ export function StudentManagementPage({ permissions }: Props) {
   const [basicDetailsStudent, setBasicDetailsStudent] = useState<StudentProfile | null>(null);
   const [familyStudent, setFamilyStudent] = useState<StudentProfile | null>(null);
   const [profileStudent, setProfileStudent] = useState<StudentProfile | null>(null);
+  const [promotionEnrollment, setPromotionEnrollment] = useState<StudentEnrollment | null>(null);
   const [healthStudent, setHealthStudent] = useState<StudentProfile | null>(null);
   const [studentSearch, setStudentSearch] = useState("");
   const deferredStudentSearch = useDeferredValue(studentSearch.trim());
@@ -236,8 +238,8 @@ export function StudentManagementPage({ permissions }: Props) {
       {enrollmentQuery.isLoading ? <div className="student-state">Loading enrollments…</div> :
        enrollmentQuery.isError ? <div className="student-state error" role="alert"><p>{enrollmentQuery.error.message}</p><button className="student-secondary" onClick={() => void enrollmentQuery.refetch()}>Try again</button></div> :
        enrollments.length === 0 ? <div className="student-state"><GraduationCap size={28}/><b>No enrollments found</b><span>Enrollments appear here after students are assigned to a class section.</span></div> :
-       <section className="student-table-wrap"><table className="student-table"><thead><tr><th>Student</th><th>Admission no.</th><th>Class / section</th><th>Roll number</th><th>Status</th><th>Enrolled on</th></tr></thead><tbody>
-        {enrollments.map(item => <tr key={item.id}><td data-label="Student"><b>{item.student_name || (item.student_id ? `Student #${item.student_id}` : "Assigned student")}</b></td><td data-label="Admission no.">{item.admission_number || "—"}</td><td data-label="Class / section">{item.class_name_snapshot} · {item.section_name_snapshot}</td><td data-label="Roll number">{item.roll_number || "—"}</td><td data-label="Status"><span className={"student-status " + item.status}>{item.status}</span></td><td data-label="Enrolled on">{new Intl.DateTimeFormat("en-IN",{dateStyle:"medium"}).format(new Date(item.enrolled_at))}</td></tr>)}
+       <section className="student-table-wrap"><table className="student-table"><thead><tr><th>Student</th><th>Admission no.</th><th>Class / section</th><th>Roll number</th><th>Status</th><th>Enrolled on</th><th>Actions</th></tr></thead><tbody>
+        {enrollments.map(item => <tr key={item.id}><td data-label="Student"><b>{item.student_name || (item.student_id ? `Student #${item.student_id}` : "Assigned student")}</b></td><td data-label="Admission no.">{item.admission_number || "—"}</td><td data-label="Class / section">{item.class_name_snapshot} · {item.section_name_snapshot}</td><td data-label="Roll number">{item.roll_number || "—"}</td><td data-label="Status"><span className={"student-status " + item.status}>{item.status}</span></td><td data-label="Enrolled on">{new Intl.DateTimeFormat("en-IN",{dateStyle:"medium"}).format(new Date(item.enrolled_at))}</td><td data-label="Actions">{canUpdate && item.status === "active" && item.student_id && item.academic_year_id ? <button type="button" className="student-secondary" onClick={() => setPromotionEnrollment(item)}>Promote</button> : "—"}</td></tr>)}
        </tbody></table></section>}
     </>}
     {profileStudent && <StudentProfileDetail
@@ -255,5 +257,11 @@ export function StudentManagementPage({ permissions }: Props) {
     {addressStudent && <StudentAddressSection student={addressStudent} canUpdate={canUpdate && addressStudent.status !== "archived"} onClose={() => setAddressStudent(null)} />}
     {familyStudent && <StudentFamilySection student={familyStudent} canManage={canManageGuardians && familyStudent.status !== "archived"} canReadRelatedStudents={canReadEnrollments} onClose={() => setFamilyStudent(null)} />}
     {healthStudent && <StudentHealthSection student={healthStudent} canUpdate={canUpdate && healthStudent.status === "active"} onClose={() => setHealthStudent(null)} />}
+    {promotionEnrollment && <StudentPromotionDialog
+      enrollment={promotionEnrollment}
+      academicYears={years}
+      onClose={() => setPromotionEnrollment(null)}
+      onPromoted={() => { setPromotionEnrollment(null); setFeedback({ kind: "success", message: "Student promoted successfully. Previous academic history has been preserved." }); }}
+    />}
   </div>;
 }
