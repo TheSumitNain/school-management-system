@@ -51,6 +51,10 @@ DECLARE
     parent_country_code TEXT;
     expected_level TEXT;
 BEGIN
+    IF TG_OP = 'DELETE' THEN
+        RAISE EXCEPTION 'student locations cannot be deleted; deactivate instead';
+    END IF;
+
     IF TG_OP = 'UPDATE' THEN
         IF NEW.school_id IS DISTINCT FROM OLD.school_id
            OR NEW.parent_id IS DISTINCT FROM OLD.parent_id
@@ -111,7 +115,7 @@ END;
 $v34$;
 
 CREATE TRIGGER trg_guard_student_location_hierarchy
-BEFORE INSERT OR UPDATE ON student_locations
+BEFORE INSERT OR UPDATE OR DELETE ON student_locations
 FOR EACH ROW EXECUTE FUNCTION guard_student_location_hierarchy();
 
 CREATE TABLE student_addresses (
