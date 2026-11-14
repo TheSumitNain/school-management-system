@@ -29,6 +29,9 @@
 .student-family-heading p{margin:0;color:var(--muted);font-size:11px;line-height:1.5}
 .student-family-list{display:grid;gap:8px}
 .student-family-card{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px;border:1px solid var(--line);border-radius:10px;background:var(--color-surface)}
+.student-family-card{flex-wrap:wrap}
+.student-family-card>form{flex:1 1 100%;min-width:0}
+.student-family-card>.student-family-card-actions{display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:8px;min-width:0}
 .student-family-card>div{display:grid;gap:3px;min-width:0}
 .student-family-card strong{font-size:12px;color:var(--color-text)}
 .student-family-card span,.student-family-card small{font-size:11px;color:var(--muted);overflow-wrap:anywhere}
