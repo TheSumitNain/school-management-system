@@ -185,20 +185,24 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 
 	mobile := "+911234567890"
 	email := "guardian-" + suffix + "@example.invalid"
+	occupation := "Teacher"
+	education := "Graduate"
+	workplace := "Public School"
+	alternateMobile := "+919999999999"
 	guardian, err := repo.SaveGuardian(ctx, targetPrincipalID, schoolID, 0,
-		"  Guardian One  ", &mobile, &email, nil, nil, nil, nil, "active")
+		"  Guardian One  ", &mobile, &email, &alternateMobile, &occupation, &education, &workplace, "active")
 	if err != nil {
 		t.Fatalf("create guardian contact: %v", err)
 	}
 	if guardian.ID <= 0 || guardian.FullName != "Guardian One" ||
 		guardian.MobileNumber == nil || *guardian.MobileNumber != mobile ||
 		guardian.EmailAddress == nil || *guardian.EmailAddress != email ||
-		guardian.Status != "active" {
+		guardian.Status != "active" || guardian.Occupation == nil || *guardian.Occupation != occupation || guardian.Education == nil || *guardian.Education != education || guardian.WorkplaceName == nil || *guardian.WorkplaceName != workplace || guardian.AlternateMobileNumber == nil || *guardian.AlternateMobileNumber != alternateMobile {
 		t.Fatalf("unexpected created guardian: %+v", guardian)
 	}
 
 	updated, err := repo.SaveGuardian(ctx, targetPrincipalID, schoolID, guardian.ID,
-		"Guardian One Updated", &mobile, &email, nil, nil, nil, nil, "inactive")
+		"Guardian One Updated", &mobile, &email, &alternateMobile, &occupation, &education, &workplace, "inactive")
 	if err != nil {
 		t.Fatalf("update guardian contact: %v", err)
 	}
@@ -206,7 +210,7 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("unexpected updated guardian: %+v", updated)
 	}
 	updated, err = repo.SaveGuardian(ctx, targetPrincipalID, schoolID, guardian.ID,
-		"Guardian One Updated", &mobile, &email, nil, nil, nil, nil, "active")
+		"Guardian One Updated", &mobile, &email, &alternateMobile, &occupation, &education, &workplace, "active")
 	if err != nil {
 		t.Fatalf("reactivate guardian contact: %v", err)
 	}
