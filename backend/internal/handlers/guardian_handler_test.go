@@ -37,7 +37,7 @@ func (f *fakeGuardianManagementService) GetGuardian(_ context.Context, actor, sc
 	f.calls++; f.actorID, f.schoolID, f.guardianID = actor, school, id
 	return f.guardian, f.err
 }
-func (f *fakeGuardianManagementService) SaveGuardian(_ context.Context, actor, school, id int64, name string, mobile, email *string, status string) (*repository.Guardian, error) {
+func (f *fakeGuardianManagementService) SaveGuardian(_ context.Context, actor, school, id int64, name string, mobile, email, alternateMobile, occupation, education, workplace *string, status string) (*repository.Guardian, error) {
 	f.calls++; f.actorID, f.schoolID, f.guardianID, f.status = actor, school, id, status
 	f.query, f.mobile, f.email = name, mobile, email
 	return f.guardian, f.err
