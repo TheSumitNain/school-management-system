@@ -3,7 +3,7 @@ import { DatePicker } from "../../../shared/components/DatePicker";
 import { Modal } from "../../../shared/components/Modal";
 import { Select } from "../../../shared/components/Select";
 import type { StudentProfile } from "../api";
-import { useSaveSchoolStudentBasicDetailsMutation, useSchoolStudentBasicDetailsQuery } from "../queries";
+import { useSaveSchoolStudentBasicDetailsMutation, useSchoolStudentBasicDetailsQuery, useUpdateSchoolStudentMutation } from "../queries";
 
 type Props = { student: StudentProfile; canUpdate: boolean; onClose: () => void };
 type Values = {
@@ -25,7 +25,7 @@ export function StudentBasicDetailsSection({ student, canUpdate, onClose }: Prop
   const [values, setValues] = useState<Values>(emptyValues);
   const [errors, setErrors] = useState<Partial<Record<keyof Values, string>>>({});
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
-  const busy = save.isPending;
+  const busy = save.isPending || updateStudent.isPending;
 
   useEffect(() => {
     const item = query.data?.basic_details;
@@ -42,6 +42,27 @@ export function StudentBasicDetailsSection({ student, canUpdate, onClose }: Prop
     });
     setErrors({});
   }, [query.data?.basic_details]);
+
+  async function saveStudentName() {
+    const trimmed = fullName.trim();
+    if (!trimmed) {
+      setNameError("Student name is required.");
+      return;
+    }
+    if (trimmed.length > 200) {
+      setNameError("Student name must be 200 characters or fewer.");
+      return;
+    }
+    setNameError("");
+    setNameFeedback(null);
+    try {
+      await updateStudent.mutateAsync({ studentID: student.id, fullName: trimmed });
+      setFullName(trimmed);
+      setNameFeedback({ kind: "success", message: "Student name saved." });
+    } catch (error) {
+      setNameFeedback({ kind: "error", message: error instanceof Error ? error.message : "Student name could not be saved." });
+    }
+  }
 
   function update<K extends keyof Values>(key: K, value: Values[K]) {
     setValues(current => ({ ...current, [key]: value }));
