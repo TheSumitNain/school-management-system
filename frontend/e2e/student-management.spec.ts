@@ -34,6 +34,18 @@ test("student admission, profile navigation and parent details render without br
     id: 0, school_id: 10, student_id: 1, height_cm: null, weight_kg: null, measured_on: null,
     vision_notes: null, physical_notes: null, history: [],
   };
+  const medicalDetails: Record<string, unknown> = {
+    id: 0, school_id: 10, student_id: 1, version_number: 0, blood_group: null,
+    allergies: null, known_conditions: null, ongoing_medications: null,
+    emergency_medical_notes: null, history: [],
+  };
+  const addresses: Record<string, unknown>[] = [];
+  const locationRows = [
+    { id: 11, school_id: null, parent_id: null, country_code: "IN", level: "state", name: "Haryana", is_active: true },
+    { id: 21, school_id: null, parent_id: 11, country_code: "IN", level: "district", name: "Ambala", is_active: true },
+    { id: 31, school_id: null, parent_id: 21, country_code: "IN", level: "subdistrict", name: "Ambala", is_active: true },
+    { id: 41, school_id: null, parent_id: 31, country_code: "IN", level: "locality", name: "Naraingarh", locality_type: "town", is_active: true },
+  ];
 
   await page.route("**/api/**", async route => {
     const request = route.request();
@@ -67,6 +79,14 @@ test("student admission, profile navigation and parent details render without br
             "students.archive", "academic_years.read", "classes.read", "guardians.read", "guardians.manage",
           ],
         },
+      });
+      return;
+    }
+    if (path === "/school/locations") {
+      const level = url.searchParams.get("level");
+      const parentID = Number(url.searchParams.get("parent_id") || 0);
+      await route.fulfill({
+        json: { locations: locationRows.filter(item => item.level === level && (parentID === 0 || item.parent_id === parentID)) },
       });
       return;
     }
@@ -149,7 +169,34 @@ test("student admission, profile navigation and parent details render without br
         return;
       }
       if (subpath === "addresses") {
-        await route.fulfill({ json: { addresses: [] } });
+        await route.fulfill({ json: { addresses } });
+        return;
+      }
+      const addressMatch = subpath.match(/^addresses\/(current|permanent)$/);
+      if (addressMatch && method === "PUT") {
+        const addressType = addressMatch[1];
+        const input = request.postDataJSON() as Record<string, unknown>;
+        const existing = addresses.find(item => item.address_type === addressType);
+        const location = locationRows.find(item => item.id === input.location_id);
+        const saved = {
+          id: existing?.id ?? (addressType === "current" ? 801 : 802),
+          school_id: 10, student_id: studentID, address_type: addressType,
+          address_line_1: input.address_line_1 ?? null, address_line_2: input.address_line_2 ?? null,
+          area_mohalla: input.area_mohalla ?? null, landmark: input.landmark ?? null,
+          postal_code: input.postal_code ?? null, location_id: input.location_id ?? null,
+          location_name: location?.name ?? null, location_level: location?.level ?? null,
+          locality_type: location?.locality_type ?? null,
+          state_location_id: location?.level === "locality" ? 11 : null,
+          district_location_id: location?.level === "locality" ? 21 : null,
+          subdistrict_location_id: location?.level === "locality" ? 31 : null,
+          state_location_name: location?.level === "locality" ? "Haryana" : null,
+          district_location_name: location?.level === "locality" ? "Ambala" : null,
+          subdistrict_location_name: location?.level === "locality" ? "Ambala" : null,
+          same_as_current: input.same_as_current === true,
+        };
+        if (existing) Object.assign(existing, saved);
+        else addresses.push(saved);
+        await route.fulfill({ json: { address: saved } });
         return;
       }
       if (subpath === "contact-details") {
@@ -160,13 +207,15 @@ test("student admission, profile navigation and parent details render without br
         return;
       }
       if (subpath === "medical-details") {
-        await route.fulfill({
-          json: { medical_details: {
-            id: 0, school_id: 10, student_id: studentID, version_number: 0,
-            blood_group: null, allergies: null, known_conditions: null,
-            ongoing_medications: null, emergency_medical_notes: null, history: [],
-          } },
-        });
+        if (method === "PUT") {
+          const input = request.postDataJSON() as Record<string, unknown>;
+          const previousVersion = { ...medicalDetails, changed_by_principal_id: 101, changed_at: "2026-11-14T00:00:00.000Z" };
+          Object.assign(medicalDetails, input, { id: 901, school_id: 10, student_id: studentID, version_number: Number(medicalDetails.version_number) + 1 });
+          if (Number(previousVersion.version_number) > 0) {
+            (medicalDetails.history as Record<string, unknown>[]).unshift(previousVersion);
+          }
+        }
+        await route.fulfill({ json: { medical_details: medicalDetails } });
         return;
       }
       if (subpath === "physical-details") {
@@ -275,6 +324,43 @@ test("student admission, profile navigation and parent details render without br
 
   await page.getByRole("button", { name: /Address & communication/ }).click();
   await expect(page.getByRole("dialog", { name: "Address & Communication" })).toBeVisible();
+  await page.getByPlaceholder("House number, street or building").fill("House 12, Main Road");
+  await page.getByLabel("Search States / UTs").fill("Haryana");
+  await page.getByRole("button", { name: "State or Union Territory" }).click();
+  await page.getByRole("option", { name: "Haryana" }).click();
+  await page.getByLabel("Search districts").fill("Ambala");
+  await page.getByRole("button", { name: "District" }).click();
+  await page.getByRole("option", { name: "Ambala" }).click();
+  await page.getByLabel("Search sub-districts / tehsils").fill("Ambala");
+  await page.getByRole("button", { name: "Sub-District or Tehsil" }).click();
+  await page.getByRole("option", { name: "Ambala" }).click();
+  await page.getByLabel("Search villages / cities").fill("Naraingarh");
+  await page.getByRole("button", { name: "Village or City" }).click();
+  await page.getByRole("option", { name: /Naraingarh/ }).click();
+  const addressSaveButton = page.getByRole("button", { name: "Save address" });
+  await addressSaveButton.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Address save button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect.poll(() => addresses.length).toBe(1);
+  expect(addresses[0]).toMatchObject({
+    address_type: "current", address_line_1: "House 12, Main Road", location_id: 41,
+    state_location_id: 11, district_location_id: 21, subdistrict_location_id: 31,
+  });
+  await expect(page.getByText("Current address saved.")).toBeVisible();
+
+  await page.getByRole("button", { name: "Permanent address", exact: true }).click();
+  await page.getByRole("checkbox", { name: /Permanent address is same as current address/ }).check();
+  await addressSaveButton.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Address save button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect.poll(() => addresses.length).toBe(2);
+  expect(addresses.find(item => item.address_type === "permanent")).toMatchObject({ same_as_current: true });
+  await expect(page.getByText("Permanent address saved.")).toBeVisible();
+
   await page.getByRole("button", { name: "Contact details", exact: true }).click();
   await page.getByPlaceholder("Primary contact number").fill("9876501234");
   const contactSaveButton = page.getByRole("button", { name: "Save contact details" });
@@ -291,6 +377,19 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("button", { name: /Medical & physical/ }).click();
   await expect(page.getByRole("dialog", { name: "Medical & Physical Details" })).toBeVisible();
   await expect(page.getByText(/Teachers do not have access to these records/)).toBeVisible();
+  await page.getByRole("button", { name: "Blood group" }).click();
+  await page.getByRole("option", { name: "O+" }).click();
+  await page.getByPlaceholder("Record known allergies, if any").fill("Peanuts");
+  await page.getByPlaceholder("Record school-relevant conditions, if any").fill("No other known conditions");
+  const medicalSaveButton = page.getByRole("button", { name: "Save medical details" });
+  await medicalSaveButton.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Medical save button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect.poll(() => medicalDetails.blood_group).toBe("O+");
+  await expect.poll(() => medicalDetails.allergies).toBe("Peanuts");
+  await expect(page.getByText("Medical details saved.")).toBeVisible();
   await page.getByRole("button", { name: "Physical details" }).click();
   await page.getByPlaceholder("e.g. 132.5").fill("500");
   const physicalSaveButton = page.getByRole("button", { name: "Save physical details" });
