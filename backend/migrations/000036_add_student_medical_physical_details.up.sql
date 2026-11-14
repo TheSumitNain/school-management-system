@@ -48,7 +48,15 @@ CREATE TABLE student_medical_details_history (
         REFERENCES students (id, school_id) ON DELETE RESTRICT,
     CONSTRAINT student_medical_details_history_version_unique UNIQUE (student_id, version_number),
     CONSTRAINT student_medical_details_history_blood_group
-        CHECK (blood_group IS NULL OR blood_group IN ('A+','A-','B+','B-','AB+','AB-','O+','O-'))
+        CHECK (blood_group IS NULL OR blood_group IN ('A+','A-','B+','B-','AB+','AB-','O+','O-')),
+    CONSTRAINT student_medical_details_history_allergies
+        CHECK (allergies IS NULL OR length(BTRIM(allergies)) BETWEEN 1 AND 2000),
+    CONSTRAINT student_medical_details_history_conditions
+        CHECK (known_conditions IS NULL OR length(BTRIM(known_conditions)) BETWEEN 1 AND 2000),
+    CONSTRAINT student_medical_details_history_medications
+        CHECK (ongoing_medications IS NULL OR length(BTRIM(ongoing_medications)) BETWEEN 1 AND 2000),
+    CONSTRAINT student_medical_details_history_emergency_notes
+        CHECK (emergency_medical_notes IS NULL OR length(BTRIM(emergency_medical_notes)) BETWEEN 1 AND 2000)
 );
 
 CREATE INDEX ix_student_medical_details_school_student
