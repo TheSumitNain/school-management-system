@@ -336,8 +336,11 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("list complete student guardian history: count=%d err=%v", len(history), err)
 	}
 	for _, link := range history {
-		if link.ID == firstLink.ID && link.IsPrimaryContact {
+		if link.ID == secondLink.ID && link.IsPrimaryContact {
 			t.Fatal("previous primary contact was not cleared when new primary was selected")
+		}
+		if link.ID == firstLink.ID && !link.IsPrimaryContact {
+			t.Fatal("newly selected primary contact was not preserved in relationship history")
 		}
 	}
 	active, err = repo.ListStudentGuardians(ctx, targetPrincipalID, schoolID, studentID, false)
