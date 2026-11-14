@@ -321,7 +321,7 @@ func (r *AcademicRepository) UpdateStudentGuardianLink(ctx context.Context, acto
 	if err != nil {
 		return nil, guardianWriteError(err)
 	}
-	if err = tx.QueryRow(ctx, `SELECT id FROM students WHERE id=$1 AND school_id=$2 FOR UPDATE`, studentID, schoolID).Scan(new(int64)); err != nil {
+	if err = tx.QueryRow(ctx, `SELECT id FROM students WHERE id=$1 AND school_id=$2 AND status='active' FOR UPDATE`, studentID, schoolID).Scan(new(int64)); err != nil {
 		return nil, guardianWriteError(err)
 	}
 
