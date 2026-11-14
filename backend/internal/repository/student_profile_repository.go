@@ -23,7 +23,7 @@ type StudentProfile struct {
 	UpdatedAt       time.Time `json:"updated_at"`
 }
 
-const studentProfileColumns = `id, school_id, admission_number, full_name, status, created_at, updated_at`
+const studentProfileColumns = `id, school_id, COALESCE(admission_number, ''), full_name, status, created_at, updated_at`
 
 func scanStudentProfile(row interface{ Scan(...any) error }) (*StudentProfile, error) {
 	var student StudentProfile
