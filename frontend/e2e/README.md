@@ -23,7 +23,11 @@ The Playwright package is installed as an ephemeral test tool in CI and is inten
 - Student profile and academic history rendering
 - Basic Details open/close navigation
 - Linked parent details rendering, relationship edit/save, and return to the same profile
+- Basic Details field editing, save, and confirmation
+- Current Address hierarchy selection (State/UT → District → Sub-District/Tehsil → Village/City), save, and resolved hierarchy IDs
+- Permanent Address linked to Current Address and saved with the same_as_current flag
 - Contact phone save and confirmation
+- Medical profile Blood Group / Allergies / Known Conditions save and version increment
 - Physical measurement validation (range + conditional date) and valid save
 - Browser uncaught exceptions
 
