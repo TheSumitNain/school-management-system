@@ -325,7 +325,7 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("button", { name: "Save student name" }).click();
   await expect(page.getByText("Student name saved.")).toBeVisible();
   await expect.poll(() => students[0]?.full_name).toBe("Aarav Sharma Updated");
-  await page.getByRole("button", { name: "Date of birth" }).click();
+  await page.getByRole("button", { name: "Date of birth", exact: true }).click();
   const dobLabels = await page.evaluate(() => {
     const label = (offset: number) => {
       const date = new Date();
@@ -337,7 +337,7 @@ test("student admission, profile navigation and parent details render without br
   const dobCalendar = page.getByRole("dialog", { name: "Choose date of birth" });
   await expect(dobCalendar.getByRole("button", { name: dobLabels.tomorrow })).toBeDisabled();
   await dobCalendar.getByRole("button", { name: dobLabels.yesterday }).click();
-  await expect(page.getByRole("button", { name: "Date of birth" })).toContainText(/\d{2} [A-Za-z]{3} \d{4}/);
+  await expect(page.getByRole("button", { name: "Date of birth", exact: true })).toContainText(/\d{2} [A-Za-z]{3} \d{4}/);
   await page.getByPlaceholder("City, district or place").fill("Ambala, Haryana");
   await page.getByPlaceholder("e.g. Indian").fill("Indian");
   await page.getByRole("button", { name: "Gender", exact: true }).click();
