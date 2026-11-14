@@ -221,7 +221,7 @@ func (r *AcademicRepository) CreateStudent(
 		INSERT INTO audit_events (actor_principal_id, school_id, action, resource_type, resource_id, outcome, metadata)
 		VALUES ($1, $2, 'school.student.created', 'student', $3, 'success',
 			jsonb_build_object('has_admission_number', TRUE))
-	`, actorID, schoolID, fmt.Sprint(student.ID), student.AdmissionNumber); err != nil {
+	`, actorID, schoolID, fmt.Sprint(student.ID)); err != nil {
 		return nil, fmt.Errorf("audit student admission: %w", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
