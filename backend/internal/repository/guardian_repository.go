@@ -208,7 +208,10 @@ func (r *AcademicRepository) ListStudentRelatedStudents(ctx context.Context, act
 	if r == nil || r.db == nil { return nil, ErrGuardianAccessDenied }
 	if studentID <= 0 { return nil, ErrInvalidGuardianInput }
 	if err := authorizeGuardian(ctx, r.db, actorID, schoolID, "guardians.read"); err != nil { return nil, err }
-	if err := authorizeAcademic(ctx, r.db, actorID, schoolID, "students.read_basic"); err != nil { return nil, err }
+	if err := authorizeAcademic(ctx, r.db, actorID, schoolID, "students.read_basic"); err != nil {
+		if errors.Is(err, ErrAcademicAccessDenied) { return nil, ErrGuardianAccessDenied }
+		return nil, err
+	}
 	var studentExists bool
 	if err := r.db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM students WHERE id=$1 AND school_id=$2)`, studentID, schoolID).Scan(&studentExists); err != nil {
 		return nil, fmt.Errorf("check student for related-student list: %w", err)
