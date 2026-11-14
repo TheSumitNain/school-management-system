@@ -10,6 +10,10 @@ type Values = {
   date_of_birth: string; place_of_birth: string; gender: string; nationality: string;
   religion: string; social_category: string; ews_status: string; school_registration_number: string;
 };
+function localDateValue() {
+  const now = new Date();
+  return [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-");
+}
 const emptyValues: Values = {
   date_of_birth: "", place_of_birth: "", gender: "", nationality: "",
   religion: "", social_category: "", ews_status: "", school_registration_number: "",
@@ -83,7 +87,7 @@ export function StudentBasicDetailsSection({ student, canUpdate, onClose }: Prop
       {query.isError && <p className="student-feedback error" role="alert">{query.error.message}</p>}
       {feedback && <p className={feedback.kind === "error" ? "student-feedback error" : "student-feedback success"} role={feedback.kind === "error" ? "alert" : "status"}>{feedback.message}</p>}
       <form className="student-basic-details-form" onSubmit={submit} noValidate>
-        <label>Date of birth<DatePicker ariaLabel="Date of birth" value={values.date_of_birth} onChange={value => update("date_of_birth", value)} placeholder="Choose date of birth" disabled={!canUpdate}/></label>
+        <label>Date of birth<DatePicker ariaLabel="Date of birth" value={values.date_of_birth} max={localDateValue()} onChange={value => update("date_of_birth", value)} placeholder="Choose date of birth" disabled={!canUpdate}/></label>
         <label>Place of birth<input value={values.place_of_birth} maxLength={120} disabled={!canUpdate} onChange={event => update("place_of_birth", event.target.value)} placeholder="City, district or place"/>{fieldError("place_of_birth")}</label>
         <label>Gender<Select ariaLabel="Gender" value={values.gender} disabled={!canUpdate} onChange={value => update("gender", value)} placeholder="Not specified" options={[{value:"female",label:"Female"},{value:"male",label:"Male"},{value:"other",label:"Other"},{value:"not_specified",label:"Prefer not to say"}]}/></label>
         <label>Nationality<input value={values.nationality} maxLength={80} disabled={!canUpdate} onChange={event => update("nationality", event.target.value)} placeholder="e.g. Indian"/>{fieldError("nationality")}</label>
