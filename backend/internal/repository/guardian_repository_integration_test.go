@@ -327,7 +327,7 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 	}
 	relatedLink, err := repo.ListStudentGuardians(ctx, targetPrincipalID, schoolID, relatedStudentID, false)
 	if err != nil || len(relatedLink) != 1 || relatedLink[0].RelationshipType != "father" ||
-		!relatedLink[0].IsPrimaryContact || !relatedLink[0].IsEmergencyContact {
+		!relatedLink[0].IsPrimaryContact || relatedLink[0].IsEmergencyContact {
 		t.Fatalf("editing one student's relationship changed another student's shared guardian link: links=%+v err=%v", relatedLink, err)
 	}
 
