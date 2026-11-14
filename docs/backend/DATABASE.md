@@ -100,3 +100,7 @@ Use `backend/.env.example` as the configuration reference. Keep local `.env` fil
 - Tenant-boundary and assignment-scope negative tests.
 
 GitHub Actions uses an ephemeral PostgreSQL database. Its success does not change or verify the schema version of any persistent local database.
+
+## Read-only migration status check
+
+From the `backend` directory, run `go run ./cmd/dbstatus` after loading the intended `.env` configuration. This command connects to the configured database and reports its database name, migration version and dirty flag. It performs no DDL or DML and never applies, rolls back or repairs migrations. A dirty state or malformed migration metadata is reported as an error and must be investigated before any migration attempt. Always verify `DB_NAME` before running it; do not paste credentials into command history or logs.
