@@ -466,3 +466,12 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - Frontend and Backend CI passed for commit `288a70a25440` (runs `43602633101` and `43602632967`), including student and guardian view-only permission coverage.
 - Frontend and Backend CI passed for commit `1d739fcb0169` (runs `43603172771` and `43603172772`), including promotion validation and preserved enrollment history.
 - Browser tests intercept all API requests and use in-memory fixtures; they do not write to the local or persistent school database. Backend PostgreSQL integration tests run separately against the ephemeral CI database. No persistent database migration was run.
+
+## Student Management archive and guardian create/link browser coverage — 2026-11-14
+
+- Added archive browser acceptance coverage: cancelling confirmation sends no request; a server conflict keeps the confirmation open and the student visible; retry success refreshes the directory to archived status.
+- Added guardian create/link browser acceptance coverage: invalid email is rejected before create; a valid guardian contact is created, then linked to the student with a relationship and primary/emergency contact flags.
+- Frontend CI passed for commit `5c555459a6f8` (run `43603791131`), including archive cancel/conflict/retry and archived directory refresh.
+- Frontend CI passed for commit `196f3e41af15` (run `43603948048`), including guardian create/link validation and relationship flags.
+- Backend CI passed for commit `5c555459a6f8` (run `43603791165`); the guardian create/link commit changes only frontend browser tests.
+- Browser API requests are mocked and use in-memory fixtures; they do not mutate a real school database. Parent OTP/login remains deferred. No persistent database migration was run.
