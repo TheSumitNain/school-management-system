@@ -104,6 +104,12 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("delegate guardians.read to school roles: %v", err)
 	}
+	studentReadDelegation, err := roleRepo.GrantSchoolPermissionDelegation(
+		ctx, platformAdminPrincipalID, schoolID, "students.read_basic", true, false,
+	)
+	if err != nil {
+		t.Fatalf("delegate students.read_basic to school roles: %v", err)
+	}
 	manageDelegation, err := roleRepo.GrantSchoolPermissionDelegation(
 		ctx, platformAdminPrincipalID, schoolID, "guardians.manage", true, false,
 	)
