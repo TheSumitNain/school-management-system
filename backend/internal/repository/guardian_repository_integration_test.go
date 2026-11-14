@@ -368,6 +368,28 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 			guardianAuditCount, linkCreateAuditCount, linkRevokeAuditCount)
 	}
 
+	var guardianReadAuditCount int
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*)
+		  FROM audit_events
+		 WHERE school_id=$1 AND actor_principal_id=$2
+		   AND action IN (
+		       'school.guardian.list.read',
+		       'school.guardian.read',
+		       'school.student.guardians.read',
+		       'school.student.related_students.read'
+		   )
+		   AND metadata ? 'section'
+		   AND metadata ? 'result_count'
+		   AND metadata::text NOT ILIKE '%'||$3||'%'
+		   AND metadata::text NOT ILIKE '%'||$4||'%'
+	`, schoolID, targetPrincipalID, mobile, email).Scan(&guardianReadAuditCount); err != nil {
+		t.Fatalf("count guardian sensitive-read audit events: %v", err)
+	}
+	if guardianReadAuditCount < 8 {
+		t.Fatalf("guardian sensitive-read audit count = %d, want at least 8 read events with metadata free of contact details", guardianReadAuditCount)
+	}
+
 	target := &models.AuthPrincipal{
 		ID: targetPrincipalID, Type: "staff", Status: "active",
 		TokenVersion: 1, SchoolID: schoolID,
