@@ -382,6 +382,12 @@ export function createSchoolGuardian(input: {
 }) {
   return api<{ guardian: SchoolGuardian }>("/school/guardians", { method: "POST", body: JSON.stringify(input) });
 }
+export function updateSchoolGuardian(guardianID: number, input: {
+  full_name: string; mobile_number?: string | null; email_address?: string | null; alternate_mobile_number?: string | null;
+  occupation?: string | null; education?: string | null; workplace_name?: string | null; status: string;
+}) {
+  return api<{ guardian: SchoolGuardian }>(`/school/guardians/${guardianID}`, { method: "PATCH", body: JSON.stringify(input) });
+}
 export function linkSchoolStudentGuardian(studentID: number, input: {
   guardian_id: number; relationship_type: string; is_primary_contact: boolean; is_emergency_contact: boolean;
 }) {
