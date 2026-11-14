@@ -345,7 +345,7 @@ test("student admission, profile navigation and parent details render without br
     if (!form) throw new Error("Guardian details submit button is not associated with its form.");
     form.requestSubmit(button as HTMLButtonElement);
   });
-  await expect(page.getByRole("alertdialog", { name: "Update shared guardian profile?" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Update shared guardian profile?" })).toBeVisible();
   await page.getByRole("button", { name: "Update all linked records" }).click();
   await expect.poll(() => guardianLink.mobile_number).toBe("9999912345");
   expect(guardianLink).toMatchObject({ relationship_type: "Legal Guardian", is_primary_contact: true, is_emergency_contact: true });
