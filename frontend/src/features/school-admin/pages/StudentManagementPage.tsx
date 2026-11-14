@@ -237,6 +237,6 @@ export function StudentManagementPage({ permissions }: Props) {
         {enrollments.map(item => <tr key={item.id}><td data-label="Student"><b>{item.student_name || (item.student_id ? `Student #${item.student_id}` : "Assigned student")}</b></td><td data-label="Admission no.">{item.admission_number || "—"}</td><td data-label="Class / section">{item.class_name_snapshot} · {item.section_name_snapshot}</td><td data-label="Roll number">{item.roll_number || "—"}</td><td data-label="Status"><span className={"student-status " + item.status}>{item.status}</span></td><td data-label="Enrolled on">{new Intl.DateTimeFormat("en-IN",{dateStyle:"medium"}).format(new Date(item.enrolled_at))}</td></tr>)}
        </tbody></table></section>}
     </>}
-    {addressStudent && <StudentAddressSection student={addressStudent} onClose={() => setAddressStudent(null)} />}
+    {addressStudent && <StudentAddressSection student={addressStudent} canUpdate={canUpdate && addressStudent.status !== "archived"} onClose={() => setAddressStudent(null)} />}
   </div>;
 }
