@@ -415,3 +415,10 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - Frontend CI for commit `233fa27595dd2336edc23f21b7765a701152dbf2` (workflow run `43597474039`) passed: design-token/style checks, TypeScript project build, and Vite production build.
 - Backend CI for the same commit (workflow run `43597474026`) was still running when this status entry was written.
 - Browser-level Student Management acceptance remains pending; no claim of end-to-end browser verification is made.
+
+## Student profile edit navigation — 2026-11-14
+
+- Closing Basic Details, Address & Communication, Parents & Siblings, or Medical & Physical section now returns to the same student's profile instead of dropping the user back to the directory.
+- This avoids repeated student searches when completing multiple profile sections in one session. Existing modal close/pending guards and permission checks are unchanged.
+- Frontend CI for commit `478af7360832d5210d5a387e573f4839cde7d642` (workflow run `43597540743`) passed: `npm ci`, design-token/style checks, TypeScript project build, and Vite production build.
+- Backend CI for this commit is queued/pending; no backend source changes were made.
