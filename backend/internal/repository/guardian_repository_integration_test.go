@@ -260,6 +260,7 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 	}
 	if firstLink.ID <= 0 || !firstLink.IsPrimaryContact || !firstLink.IsEmergencyContact ||
 		firstLink.RelationshipType != "father" || firstLink.GuardianName != "Guardian One Updated" ||
+		firstLink.GuardianStatus != "active" ||
 		firstLink.AlternateMobileNumber == nil || *firstLink.AlternateMobileNumber != alternateMobile ||
 		firstLink.Occupation == nil || *firstLink.Occupation != occupation ||
 		firstLink.Education == nil || *firstLink.Education != education ||
