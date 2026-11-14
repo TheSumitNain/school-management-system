@@ -84,6 +84,8 @@ Keep independently maintained profile sections separate from the enrollment reco
 
 A section may be absent or incomplete. Its absence must not prevent basic student creation or ordinary student directory use.
 
+The existing V11 `guardians` and `student_guardians` model is now exposed in a staff-managed Parents & Siblings profile section. Staff can create guardian contact records, link multiple guardians with relationship/primary/emergency flags, and revoke links with a reason while retaining history. The related-student list is derived only from active shared guardian links and is labelled “Other students sharing a guardian”; it must not be presented as proof of a biological sibling relationship. This work does not enable parent login or OTP; parent authentication remains deferred.
+
 ### 3.4 Address and location hierarchy
 
 Use normalized location records with a parent relationship and a controlled location type, allowing a hierarchy such as State → District → Block/Tehsil → Village/City. Do not hard-code a fixed list of Indian states or assume every deployment uses the same geography.
