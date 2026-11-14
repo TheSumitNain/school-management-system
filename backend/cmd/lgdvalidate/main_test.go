@@ -30,11 +30,12 @@ func TestValidateCSVRejectsWrongHeader(t *testing.T) {
 	}
 }
 
-func TestValidateCSVRejectsMissingParent(t *testing.T) {
-	input := strings.Replace(validSnapshot, "701,Ambala", "999,Ambala", 1)
+func TestValidateCSVRejectsConflictingDistrictParent(t *testing.T) {
+	input := strings.Replace(validSnapshot, "06,Haryana,HR,701,Ambala,12001", "06,Haryana,HR,703,New District,12001", 1)
+	input += "06,Haryana,HR,701,Ambala,12001,Ambala,900004,Fourth Place,village\n"
 	_, err := validateCSV(strings.NewReader(input))
-	if err == nil || !strings.Contains(err.Error(), "missing state code") {
-		t.Fatalf("validateCSV() error = %v, want missing parent error", err)
+	if err == nil || !strings.Contains(err.Error(), "conflicting name or parent mapping") {
+		t.Fatalf("validateCSV() error = %v, want conflicting district-parent error", err)
 	}
 }
 
@@ -62,19 +63,18 @@ func TestValidateCSVRejectsUnsupportedLocalityType(t *testing.T) {
 	}
 }
 
-func TestValidateCSVRejectsMissingSubdistrict(t *testing.T) {
-	input := strings.Replace(validSnapshot, "12001,Ambala", "99999,Ambala", 1)
+func TestValidateCSVRejectsConflictingSubdistrictParent(t *testing.T) {
+	input := strings.Replace(validSnapshot, "06,Haryana,HR,701,Ambala,12001", "06,Haryana,HR,703,New District,12001", 1)
 	_, err := validateCSV(strings.NewReader(input))
-	if err == nil || !strings.Contains(err.Error(), "missing district code") {
-		t.Fatalf("validateCSV() error = %v, want missing district error", err)
+	if err == nil || !strings.Contains(err.Error(), "conflicting name or parent mapping") {
+		t.Fatalf("validateCSV() error = %v, want conflicting sub-district-parent error", err)
 	}
 }
 
-func TestValidateCSVRejectsMissingLocalityParent(t *testing.T) {
-	input := strings.Replace(validSnapshot, "900001,Ambala,village", "900001,Ambala,village", 1)
-	input = strings.Replace(input, "12001,Ambala,900001", "99999,Ambala,900001", 1)
+func TestValidateCSVRejectsConflictingLocalityParent(t *testing.T) {
+	input := strings.Replace(validSnapshot, "900003,Example Town,town", "900001,Ambala,village", 1)
 	_, err := validateCSV(strings.NewReader(input))
-	if err == nil || !strings.Contains(err.Error(), "missing sub-district code") {
-		t.Fatalf("validateCSV() error = %v, want missing sub-district error", err)
+	if err == nil || !strings.Contains(err.Error(), "conflicting name or parent mapping") {
+		t.Fatalf("validateCSV() error = %v, want conflicting locality-parent error", err)
 	}
 }
