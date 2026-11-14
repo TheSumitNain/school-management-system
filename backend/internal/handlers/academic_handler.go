@@ -39,6 +39,8 @@ type AcademicManagementService interface {
 	DeactivateStudentLocation(context.Context,int64,int64,int64)(*repository.StudentLocation,error)
 	ListStudentAddresses(context.Context,int64,int64,int64)([]repository.StudentAddress,error)
 	SaveStudentAddress(context.Context,int64,int64,int64,string,*string,*string,*string,*string,*string,*int64,bool)(*repository.StudentAddress,error)
+	GetStudentContactDetails(context.Context,int64,int64,int64)(*repository.StudentContactDetails,error)
+	SaveStudentContactDetails(context.Context,int64,int64,int64,*string,*string,*string)(*repository.StudentContactDetails,error)
 	ListStudents(context.Context,int64,int64,string,string,int,int)([]repository.StudentProfile,int64,error)
 	GetStudent(context.Context,int64,int64,int64)(*repository.StudentProfile,error)
 	CreateStudent(context.Context,int64,int64,string,string)(*repository.StudentProfile,error)
@@ -337,6 +339,42 @@ func (h *AcademicHandler) SaveStudentAddress(c *gin.Context) {
 		req.Landmark, req.PostalCode, req.LocationID, req.SameAsCurrent)
 	if err != nil { academicError(c, err, "Student address"); return }
 	c.JSON(http.StatusOK, gin.H{"status":"success","address":item})
+}
+
+func (h *AcademicHandler) GetStudentContactDetails(c *gin.Context) {
+	actor, school, ok := h.ready(c)
+	if !ok { return }
+	studentID, valid := academicID(c, "studentID")
+	if !valid {
+		c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid student ID"})
+		return
+	}
+	item, err := h.service.GetStudentContactDetails(c.Request.Context(), actor, school, studentID)
+	if err != nil { academicError(c, err, "Student contact details"); return }
+	c.JSON(http.StatusOK, gin.H{"status":"success","contact_details":item})
+}
+
+func (h *AcademicHandler) SaveStudentContactDetails(c *gin.Context) {
+	actor, school, ok := h.ready(c)
+	if !ok { return }
+	studentID, valid := academicID(c, "studentID")
+	if !valid {
+		c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid student ID"})
+		return
+	}
+	var req struct {
+		PrimaryPhone *string `json:"primary_phone"`
+		AlternatePhone *string `json:"alternate_phone"`
+		EmailAddress *string `json:"email_address"`
+	}
+	if c.ShouldBindJSON(&req) != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid request body"})
+		return
+	}
+	item, err := h.service.SaveStudentContactDetails(c.Request.Context(), actor, school, studentID,
+		req.PrimaryPhone, req.AlternatePhone, req.EmailAddress)
+	if err != nil { academicError(c, err, "Student contact details"); return }
+	c.JSON(http.StatusOK, gin.H{"status":"success","contact_details":item})
 }
 
 func (h *AcademicHandler) ListStudents(c *gin.Context) {
