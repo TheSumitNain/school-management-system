@@ -54,7 +54,7 @@ export function StudentProfileDetail({
             <span className={"student-status " + student.status}>{student.status}</span>
           </div>
           <dl className="student-profile-facts">
-            <div><dt>Current-year admission number</dt><dd>{student.admission_number || "Not assigned"}</dd></div>
+            <div><dt>Admission number shown in directory</dt><dd>{student.admission_number || "Not assigned"}</dd></div>
             <div><dt>Student record created</dt><dd>{dateLabel(student.created_at)}</dd></div>
           </dl>
           <div className="student-profile-actions">
