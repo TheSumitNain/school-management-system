@@ -389,3 +389,11 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - Added PostgreSQL integration coverage proving a direct duplicate-primary insert is rejected, while existing repository behavior can safely transfer primary status.
 - Multiple emergency contacts remain allowed intentionally. The V43 down migration drops only the index and preserves all relationship data.
 - V43 migration and new constraint test are awaiting Backend CI. Persistent databases have not been migrated.
+
+
+## Shared guardian profile propagation regression — 2026-11-14
+
+- Added PostgreSQL integration coverage that edits a guardian's shared name, mobile and occupation after that guardian is linked to two students.
+- The test verifies both students immediately read the updated shared profile while their independent relationship type, primary-contact and emergency-contact values remain unchanged.
+- This complements existing tests for cross-school isolation, relationship edits, primary-contact uniqueness, revocation and history.
+- Backend CI for commit `0efba97f51` is pending. No persistent database has been migrated.
