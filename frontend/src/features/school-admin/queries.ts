@@ -45,9 +45,18 @@ import {
   archiveSchoolStudent, createSchoolStudentAdmission, createSchoolStudentEnrollment,
   createSchoolStudentLocation, deactivateSchoolStudentLocation, getSchoolAcademicYears,
   getSchoolSections, getSchoolStudentAddresses, getSchoolStudentContactDetails,
-  getSchoolStudentEnrollments, getSchoolStudentLocations, getSchoolStudents,
-  saveSchoolStudentAddress, saveSchoolStudentContactDetails, updateSchoolStudent,
+  getSchoolStudentEnrollments, getSchoolStudentLocations, getSchoolStudentRelatedStudents,
+  getSchoolStudentGuardians, getSchoolStudents, getSchoolGuardians, linkSchoolStudentGuardian,
+  revokeSchoolStudentGuardianLink, createSchoolGuardian, saveSchoolStudentAddress,
+  saveSchoolStudentContactDetails, updateSchoolStudent,
 } from "./api";
+
+export const guardianQueryKeys = {
+  all: ["school-admin", "guardians"] as const,
+  list: (filters: { q?: string; status?: string }) => ["school-admin", "guardians", "list", filters] as const,
+  studentLinks: (studentID: number, includeHistory: boolean) => ["school-admin", "guardians", "student-links", studentID, includeHistory] as const,
+  relatedStudents: (studentID: number) => ["school-admin", "guardians", "related-students", studentID] as const,
+};
 
 export const schoolStudentQueryKeys = {
   all: [...schoolAdminQueryKeys.all, "students"] as const,
@@ -98,6 +107,30 @@ export function useSchoolStudentLocationsQuery(filters: { parentID?: number; lev
     staleTime: 60_000,
   });
 }
+export function useSchoolGuardiansQuery(filters: { q?: string; status?: string } = {}, enabled = true) {
+  return useQuery({
+    queryKey: guardianQueryKeys.list(filters),
+    queryFn: ({ signal }) => getSchoolGuardians(filters, signal),
+    enabled,
+    staleTime: 15_000,
+  });
+}
+export function useSchoolStudentGuardiansQuery(studentID: number, includeHistory = false, enabled = true) {
+  return useQuery({
+    queryKey: guardianQueryKeys.studentLinks(studentID, includeHistory),
+    queryFn: ({ signal }) => getSchoolStudentGuardians(studentID, includeHistory, signal),
+    enabled: enabled && studentID > 0,
+    staleTime: 15_000,
+  });
+}
+export function useSchoolStudentRelatedStudentsQuery(studentID: number, enabled = true) {
+  return useQuery({
+    queryKey: guardianQueryKeys.relatedStudents(studentID),
+    queryFn: ({ signal }) => getSchoolStudentRelatedStudents(studentID, signal),
+    enabled: enabled && studentID > 0,
+    staleTime: 15_000,
+  });
+}
 export function useSchoolStudentAcademicYearsQuery(enabled = true) {
   return useQuery({ queryKey: schoolStudentQueryKeys.years(), queryFn: ({ signal }) => getSchoolAcademicYears(signal), enabled, staleTime: 60_000 });
 }
@@ -136,6 +169,27 @@ export function useSaveSchoolStudentContactDetailsMutation() {
   return useStudentMutation(({ studentID, input }: {
     studentID: number; input: { primary_phone?: string | null; alternate_phone?: string | null; email_address?: string | null };
   }) => saveSchoolStudentContactDetails(studentID, input));
+}
+function useGuardianMutation<TInput>(mutationFn: (input: TInput) => Promise<unknown>) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn,
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: guardianQueryKeys.all });
+      client.invalidateQueries({ queryKey: schoolStudentQueryKeys.all });
+    },
+  });
+}
+export function useCreateSchoolGuardianMutation() {
+  return useGuardianMutation(createSchoolGuardian);
+}
+export function useLinkSchoolStudentGuardianMutation() {
+  return useGuardianMutation(({ studentID, input }: {
+    studentID: number; input: { guardian_id: number; relationship_type: string; is_primary_contact: boolean; is_emergency_contact: boolean };
+  }) => linkSchoolStudentGuardian(studentID, input));
+}
+export function useRevokeSchoolStudentGuardianMutation() {
+  return useGuardianMutation(({ linkID, reason }: { linkID: number; reason: string }) => revokeSchoolStudentGuardianLink(linkID, reason));
 }
 function useStudentLocationMutation<TInput>(mutationFn: (input: TInput) => Promise<unknown>) {
   const client = useQueryClient();
