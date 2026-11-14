@@ -36,6 +36,10 @@ export function StudentProfileDetail({
   const history = [...(historyQuery.data?.enrollments ?? [])].sort(
     (a, b) => new Date(b.enrolled_at).getTime() - new Date(a.enrolled_at).getTime(),
   );
+  const currentAcademicYear = academicYears.find(year => year.is_current);
+  const hasActiveCurrentEnrollment = Boolean(currentAcademicYear && history.some(
+    enrollment => enrollment.academic_year_id === currentAcademicYear.id && enrollment.status === "active",
+  ));
 
   return (
     <Modal
@@ -72,8 +76,12 @@ export function StudentProfileDetail({
           {!canReadHistory ? <p className="student-address-note">Basic student read permission is required to view academic history.</p> :
             historyQuery.isLoading ? <p className="student-address-note">Loading academic history…</p> :
             historyQuery.isError ? <p className="student-feedback error" role="alert">{historyQuery.error.message}</p> :
-            history.length === 0 ? <p className="student-address-note">No academic enrollment history is available for this student.</p> :
-            <div className="student-profile-history-list">
+            <>
+              {currentAcademicYear && <p className={hasActiveCurrentEnrollment ? "student-profile-current-enrollment active" : "student-profile-current-enrollment"}>
+                {currentAcademicYear.name}: {hasActiveCurrentEnrollment ? "Active enrollment" : "No active enrollment"}
+              </p>}
+              {history.length === 0 ? <p className="student-address-note">No academic enrollment history is available for this student.</p> :
+              <div className="student-profile-history-list">
               {history.map(enrollment => (
                 <article className="student-profile-enrollment" key={enrollment.id}>
                   <div className="student-profile-enrollment-heading">
@@ -90,7 +98,8 @@ export function StudentProfileDetail({
                   </dl>
                 </article>
               ))}
-            </div>
+              </div>}
+            </>
           }
         </section>
       </div>
