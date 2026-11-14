@@ -78,9 +78,10 @@ Keep independently maintained profile sections separate from the enrollment reco
 - Basic identity: name, date of birth, gender and approved optional demographic fields.
 - Address and communication: current and permanent address, phone/email where appropriate, and same-as-current behavior.
 - Parents/guardians: reuse the existing guardian and relationship model; support multiple guardians and relationship/contact flags.
-- Medical details: separate restricted record; capture only approved fields and expose only to authorized roles.
-- Physical details: separate profile section with explicit field definitions and access rules.
-- Documents: metadata, document type, issue/expiry dates where relevant, verification status and an opaque secure-storage reference. Do not store public file URLs or filesystem paths in API responses.
+- Medical details: one optional restricted record with blood group, allergies, known medical conditions, ongoing medication notes and emergency medical notes. These are school-entered facts, not diagnoses or automated health assessments.
+- Physical details: a separate optional record for height (cm), weight (kg), measurement date and concise vision/physical notes. Measurements are dated; the system must not infer health status from them.
+- Medical and physical reads use the existing restricted `students.read_sensitive` permission; updates use `students.update`. These permissions are not delegated to Teacher roles. Read and write operations are audited, while audit metadata must not contain health values or notes.
+- Documents: metadata, document type, issue/expiry dates where relevant, verification status and an opaque secure-storage reference. Do not store public file URLs or filesystem paths in API responses. Document upload/download stays deferred until private storage and document-specific access controls are reviewed.
 
 A section may be absent or incomplete. Its absence must not prevent basic student creation or ordinary student directory use.
 
