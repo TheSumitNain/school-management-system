@@ -708,3 +708,86 @@ test("student promotion validates required fields and preserves prior enrollment
   await expect(dialog).toHaveCount(0);
   expect(browserErrors).toEqual([]);
 });
+
+test("student archive confirmation keeps the record on conflict and refreshes status after retry", async ({ page }) => {
+  const browserErrors: string[] = [];
+  const archiveRequests: string[] = [];
+  let archiveAttempts = 0;
+  const student = {
+    id: 92, school_id: 10, admission_number: "ADM-ARCH-092",
+    full_name: "Archive Retry Student", status: "active",
+    created_at: "2026-11-14T00:00:00.000Z", updated_at: "2026-11-14T00:00:00.000Z",
+  };
+  page.on("pageerror", error => browserErrors.push(error.message));
+
+  await page.route("**/api/**", async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname.replace(/^\/api/, "");
+    if (path === "/auth/refresh") {
+      await route.fulfill({ status: 401, json: { message: "No active session" } });
+      return;
+    }
+    if (path === "/auth/login" && request.method() === "POST") {
+      await route.fulfill({ json: {
+        access_token: "e2e-archive-token", token_type: "Bearer",
+        principal: { principal_id: 104, principal_type: "staff", status: "active", school_id: 10 },
+      } });
+      return;
+    }
+    if (path === "/auth/me") {
+      await route.fulfill({ json: {
+        principal_id: 104, principal_type: "staff", school_id: 10, username: "e2e-archive-admin",
+        permissions: ["students.read_sensitive", "students.read_basic", "students.archive", "academic_years.read", "classes.read"],
+      } });
+      return;
+    }
+    if (path === "/school/students" && request.method() === "GET") {
+      await route.fulfill({ json: { students: [student], pagination: { limit: 20, offset: 0, total: 1 } } });
+      return;
+    }
+    if (path === "/school/students/92/archive" && request.method() === "POST") {
+      archiveAttempts += 1;
+      archiveRequests.push(request.method() + " " + path);
+      if (archiveAttempts === 1) {
+        await route.fulfill({ status: 409, json: { message: "Student has an active enrollment and cannot be archived." } });
+        return;
+      }
+      Object.assign(student, { status: "archived", updated_at: "2026-11-14T12:00:00.000Z" });
+      await route.fulfill({ json: { student } });
+      return;
+    }
+    await route.fulfill({ status: 404, json: { message: `Unmocked E2E API request: ${request.method()} ${path}` } });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Username").fill("e2e-archive-admin");
+  await page.getByLabel("Password").fill("E2E-only-password");
+  await page.getByRole("button", { name: /Continue/ }).click();
+  await page.getByRole("button", { name: "Students" }).click();
+  await expect(page.getByText("Archive Retry Student")).toBeVisible();
+
+  await page.getByRole("button", { name: "Archive Archive Retry Student" }).click();
+  let dialog = page.getByRole("dialog", { name: "Archive student?" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText(/The record will be retained/)).toBeVisible();
+  await dialog.getByRole("button", { name: "Cancel" }).click();
+  await expect(dialog).toHaveCount(0);
+  expect(archiveAttempts).toBe(0);
+  await expect(page.getByText("Archive Retry Student")).toBeVisible();
+
+  await page.getByRole("button", { name: "Archive Archive Retry Student" }).click();
+  dialog = page.getByRole("dialog", { name: "Archive student?" });
+  await dialog.getByRole("button", { name: "Archive student", exact: true }).click();
+  await expect(dialog.getByRole("alert")).toHaveText("Student has an active enrollment and cannot be archived.");
+  await expect(dialog).toBeVisible();
+  await expect(page.getByText("Archive Retry Student")).toBeVisible();
+  expect(archiveAttempts).toBe(1);
+
+  await dialog.getByRole("button", { name: "Archive student", exact: true }).click();
+  await expect.poll(() => archiveAttempts).toBe(2);
+  await expect(page.getByText("Archive Retry Student has been archived.")).toBeVisible();
+  await expect(page.getByText("archived", { exact: true })).toBeVisible();
+  expect(archiveRequests).toHaveLength(2);
+  expect(browserErrors).toEqual([]);
+});
