@@ -77,7 +77,7 @@ func nextAvailableSectionRollNumber(ctx context.Context, tx pgx.Tx, schoolID, se
 	err := tx.QueryRow(ctx, `SELECT (COALESCE(MAX(CASE WHEN btrim(roll_number) ~ '^[0-9]+$'
 			THEN btrim(roll_number)::numeric END), 0) + 1)::text
 		FROM student_enrollments
-		WHERE school_id=$1 AND section_id=$2 AND status='active'`, schoolID, sectionID).Scan(&value)
+		WHERE school_id=$1 AND section_id=$2`, schoolID, sectionID).Scan(&value)
 	if err != nil {
 		return nil, fmt.Errorf("allocate next section roll number: %w", err)
 	}
