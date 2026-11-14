@@ -123,11 +123,18 @@ export function useSaveSchoolStudentAddressMutation() {
       landmark?: string | null; postal_code?: string | null; location_id?: number | null; same_as_current?: boolean };
   }) => saveSchoolStudentAddress(studentID, addressType, input));
 }
+function useStudentLocationMutation<TInput>(mutationFn: (input: TInput) => Promise<unknown>) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn,
+    onSuccess: () => client.invalidateQueries({ queryKey: [...schoolStudentQueryKeys.all, "locations"] }),
+  });
+}
 export function useCreateSchoolStudentLocationMutation() {
-  return useStudentMutation(createSchoolStudentLocation);
+  return useStudentLocationMutation(createSchoolStudentLocation);
 }
 export function useDeactivateSchoolStudentLocationMutation() {
-  return useStudentMutation(deactivateSchoolStudentLocation);
+  return useStudentLocationMutation(deactivateSchoolStudentLocation);
 }
 
 
