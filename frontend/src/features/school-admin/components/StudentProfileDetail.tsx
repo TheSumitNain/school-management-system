@@ -1,4 +1,4 @@
-import { Eye, MapPin, Pencil, Users } from "lucide-react";
+import { Eye, HeartPulse, MapPin, Pencil, Users } from "lucide-react";
 import { Modal } from "../../../shared/components/Modal";
 import type { StudentAcademicYear, StudentEnrollment, StudentProfile } from "../api";
 import { useSchoolStudentEnrollmentHistoryQuery } from "../queries";
@@ -12,6 +12,7 @@ type Props = {
   onEditBasic: () => void;
   onOpenAddress: () => void;
   onOpenFamily: () => void;
+  onOpenHealth: () => void;
   onClose: () => void;
 };
 
@@ -30,7 +31,7 @@ function enrollmentYear(enrollment: StudentEnrollment, years: StudentAcademicYea
 
 export function StudentProfileDetail({
   student, canReadHistory, canUpdateBasic, canReadFamily, academicYears,
-  onEditBasic, onOpenAddress, onOpenFamily, onClose,
+  onEditBasic, onOpenAddress, onOpenFamily, onOpenHealth, onClose,
 }: Props) {
   const historyQuery = useSchoolStudentEnrollmentHistoryQuery(student.id, canReadHistory);
   const history = [...(historyQuery.data?.enrollments ?? [])].sort(
@@ -64,6 +65,7 @@ export function StudentProfileDetail({
           <div className="student-profile-actions">
             {canUpdateBasic && student.status !== "archived" && <button type="button" className="secondary" onClick={onEditBasic}><Pencil size={14}/> Edit basic details</button>}
             <button type="button" className="secondary" onClick={onOpenAddress}><MapPin size={14}/> Address & communication</button>
+            <button type="button" className="secondary" onClick={onOpenHealth}><HeartPulse size={14}/> Medical & physical</button>
             {canReadFamily && <button type="button" className="secondary" onClick={onOpenFamily}><Users size={14}/> Parents & siblings</button>}
           </div>
         </section>
