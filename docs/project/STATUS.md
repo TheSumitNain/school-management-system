@@ -365,3 +365,9 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - The branch documentation-only HEAD is `ede9692470`; the CI workflow intentionally skips documentation-only changes, so the successful code commit remains the relevant verification target.
 - This verifies the normalized CSV validator only. It does **not** verify a parser for the raw OGD/LGD export, import any locations, migrate the persistent local database, or replace browser acceptance.
 - Next data gate: obtain and preserve an actual official LGD snapshot, verify its raw schema and source checksum, review the IGOD↔LGD crosswalk and row-count drift, then implement a staged importer with dry-run/report mode before any explicit database apply.
+
+## Guardian directory least-privilege query — 2026-11-14
+
+- Source review found that opening a read-only Parents & Siblings profile also fetched the full active guardian directory, even though the guardian picker is only used by users with `guardians.manage`.
+- The directory query is now enabled only when the current user has `guardians.manage`. Read-only staff continue to load the student's linked guardian details through the existing `guardians.read` permission, without requesting unrelated guardian-directory records.
+- This is a frontend least-privilege/data-minimization correction; it does not change backend permissions or allow/deny rules. Frontend and Backend CI for commit `bd9cec3b0f` are running. Browser-level role acceptance remains pending.
