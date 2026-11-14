@@ -39,6 +39,18 @@ func TestStudentMedicalPhysicalDetailsV36PostgresIntegration(t *testing.T) {
 		t.Fatalf("load School Admin actor: %v", err)
 	}
 
+	platformAdminPrincipalID := ensurePlatformAdminLifecycleActor(t, pool)
+	var schoolAdminRoleID int64
+	if err := tx.QueryRow(ctx, `
+		SELECT id FROM roles WHERE school_id=$1 AND principal_type='staff'
+		  AND scope_type='school' AND role_key='school_admin' AND is_system=TRUE
+	`, schoolID).Scan(&schoolAdminRoleID); err != nil {
+		t.Fatalf("load School Admin role: %v", err)
+	}
+	if err := NewRoleRepository(tx).AssignStaffRole(ctx, platformAdminPrincipalID, schoolID, actorPrincipalID, schoolAdminRoleID); err != nil {
+		t.Fatalf("assign School Admin fixture role: %v", err)
+	}
+
 	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
 	var studentID, secondStudentID int64
 	for _, target := range []struct {
