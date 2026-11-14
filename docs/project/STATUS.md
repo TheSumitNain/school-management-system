@@ -185,3 +185,12 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - Do not stage unrelated helper files or commit secrets.
 - Do not run migrations against persistent databases without explicit approval.
 - Keep `.env`, passwords, JWT secrets, TOTP encryption keys and real student data out of Git.
+
+
+## Student profile screen corrections — local verification pending
+
+- The directory Edit action now opens the section-based Student Profile workflow; the legacy name-only edit modal has been removed from the page.
+- Address reads now include the saved State, District and Block/Tehsil names in addition to hierarchy IDs. The UI can keep previously selected inactive locations visible instead of rendering an empty lower-level selector.
+- Added PostgreSQL integration coverage for full address hierarchy read-back after locality deactivation.
+- The design document now records the acceptance checklist and confirms Aadhaar remains intentionally excluded from the default profile; document upload/download remains deferred pending secure private storage and dedicated access controls.
+- These changes are committed on `work`; run backend PostgreSQL integration tests, `go vet`, frontend typecheck and production build locally before browser acceptance. Do not apply migrations to the persistent application database for this work.
