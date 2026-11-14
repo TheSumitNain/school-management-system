@@ -217,7 +217,7 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
               </div>
               {fieldError && <small className="app-field-error">{fieldError}</small>}
               {canUpdate && canAddLocation && <button type="button" className="student-link-button" onClick={() => { setShowLocationCreator(value => !value); setFieldError(""); }}>Add missing {nextLocationLabel.toLowerCase()}</button>}
-              {hasAnyLocation && <button type="button" className="student-link-button" onClick={() => { setStateID(0); resetChildren("state"); }}>Clear location selection</button>}
+              {canUpdate && hasAnyLocation && <button type="button" className="student-link-button" onClick={() => { setStateID(0); resetChildren("state"); }}>Clear location selection</button>}
               {(statesQuery.isError || districtsQuery.isError || subdistrictsQuery.isError || localitiesQuery.isError) && <small className="app-field-error" role="alert">Location options could not be loaded. Close and reopen this section to retry.</small>}
               {showLocationCreator && canUpdate && canAddLocation && (
                 <div className="student-location-create">
