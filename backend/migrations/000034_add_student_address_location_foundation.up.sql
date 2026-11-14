@@ -72,6 +72,20 @@ BEGIN
         END IF;
     END IF;
 
+    IF NEW.school_id IS NOT NULL AND EXISTS (
+        SELECT 1
+          FROM public.student_locations canonical
+         WHERE canonical.school_id IS NULL
+           AND canonical.parent_id IS NOT DISTINCT FROM NEW.parent_id
+           AND canonical.level = NEW.level
+           AND canonical.normalized_name = LOWER(BTRIM(NEW.name))
+    ) THEN
+        RAISE EXCEPTION USING
+            ERRCODE = '23505',
+            CONSTRAINT = 'ux_student_locations_global_school_collision',
+            MESSAGE = 'school location duplicates an available canonical location';
+    END IF;
+
     IF NEW.parent_id IS NULL THEN
         IF NEW.level <> 'state' THEN
             RAISE EXCEPTION 'student location hierarchy must start at a state';
