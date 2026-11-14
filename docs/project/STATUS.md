@@ -358,3 +358,10 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - Backend CI now skips documentation-only changes and uses a branch-scoped concurrency group with cancel-in-progress, preventing stale runs from consuming PostgreSQL runner capacity after new code is pushed.
 - The first LGD validator CI run exposed test-fixture mistakes (short header, impossible missing-parent expectations in a denormalized ancestor-row format). The tests were corrected to check the actual contract: exact ten-column header, conflicting source-code/parent mappings, duplicate IGOD crosswalks, and BOM/leading-zero preservation.
 - The corrected validator commits are undergoing Backend CI. Do not mark the tool verified until the latest branch-head run completes.
+
+## LGD validator verification — 2026-11-14
+
+- The corrected read-only validator and its test suite passed Backend CI on code commit `98c6acfb72` (workflow run `43593036081`). The ephemeral PostgreSQL migration chain, complete backend tests including PostgreSQL integration, and `go vet` all passed.
+- The branch documentation-only HEAD is `ede9692470`; the CI workflow intentionally skips documentation-only changes, so the successful code commit remains the relevant verification target.
+- This verifies the normalized CSV validator only. It does **not** verify a parser for the raw OGD/LGD export, import any locations, migrate the persistent local database, or replace browser acceptance.
+- Next data gate: obtain and preserve an actual official LGD snapshot, verify its raw schema and source checksum, review the IGOD↔LGD crosswalk and row-count drift, then implement a staged importer with dry-run/report mode before any explicit database apply.
