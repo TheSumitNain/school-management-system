@@ -286,3 +286,12 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - The student profile exposes Parents & Siblings as a dedicated section in the same student-record workflow. It loads guardian relationships and related students, supports creating/linking guardians, editing shared guardian profile fields with an all-linked-students confirmation, and revoking links with a required reason while preserving history. Parent OTP/login remains out of scope.
 - A remaining functional gap was identified: once a guardian is linked, the student-specific relationship type and the Primary contact / Emergency contact flags are displayed but have no edit operation. These values belong to the student–guardian relationship, not the shared guardian profile. Add a separately authorized, audited relationship-update operation and UI before calling Parent Details editability complete. Do not work around this by editing the shared guardian profile or revoking/recreating the link, because that would unnecessarily alter history.
 - The relationship-update gap is recorded for implementation; current browser acceptance of the Parents & Siblings workflow remains pending.
+
+## Student-specific guardian relationship editing implemented — 2026-11-14
+
+- Added `PATCH /school/student-guardian-links/:linkID`, protected by the existing live `guardians.manage` permission and school-scoped repository authorization.
+- Staff can now edit Relationship Type, Primary Contact and Emergency Contact on an active student–guardian link without changing the shared guardian profile or revoking/recreating the relationship.
+- Primary-contact selection is serialized by locking the owning student row; choosing a new primary clears the previous active primary only for that same student. Other students linked to the same guardian remain unchanged.
+- The update is transactional and writes an append-only audit event with before/after relationship values and contact flags. Revoked links cannot be edited; relationship history remains intact.
+- Frontend includes field-level relationship validation, per-student labels/help text, loading/error/success feedback and query invalidation. Backend handler/route tests and PostgreSQL integration coverage include permission enforcement, audit evidence, primary-contact exclusivity and isolation from another student's link.
+- CI and browser acceptance are pending; do not mark Student Management complete until both are verified.
