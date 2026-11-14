@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/mail"
-	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
