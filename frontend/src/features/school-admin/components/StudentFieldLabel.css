@@ -6,4 +6,4 @@
 .student-field-hint__trigger{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;color:var(--color-text-muted);cursor:help}
 .student-field-hint__trigger:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px}
 .student-field-hint__tooltip{display:none;position:absolute;z-index:30;left:0;bottom:calc(100% + 8px);width:min(270px,75vw);padding:10px;border:1px solid var(--color-border);border-radius:9px;background:var(--color-surface);box-shadow:var(--shadow-md);color:var(--color-text);font-size:11px;font-weight:400;line-height:1.5}
-.student-field-hint:hover .student-field-hint__tooltip,.student-field-hint:focus-within .student-field-hint__tooltip{display:block}
+.student-field-hint:hover .student-field-hint__tooltip,.student-field-hint:focus-within .student-field-hint__tooltip,.student-field-hint__tooltip.is-open{display:block}
