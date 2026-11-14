@@ -40,6 +40,9 @@ type StudentAddress struct {
 	StateLocationID *int64 `json:"state_location_id,omitempty"`
 	DistrictLocationID *int64 `json:"district_location_id,omitempty"`
 	SubdistrictLocationID *int64 `json:"subdistrict_location_id,omitempty"`
+	StateLocationName *string `json:"state_location_name,omitempty"`
+	DistrictLocationName *string `json:"district_location_name,omitempty"`
+	SubdistrictLocationName *string `json:"subdistrict_location_name,omitempty"`
 	SameAsCurrent bool      `json:"same_as_current"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
@@ -272,6 +275,7 @@ const studentAddressSelect = `
 	       sa.address_line_1,sa.address_line_2,sa.area_mohalla,sa.landmark,
 	       sa.postal_code,sa.location_id,l.name,l.level,l.locality_type,
 	       state_location.id,district_location.id,subdistrict_location.id,
+	       state_location.name,district_location.name,subdistrict_location.name,
 	       sa.same_as_current,sa.created_at,sa.updated_at
 	  FROM student_addresses sa
 	  LEFT JOIN student_locations l ON l.id=sa.location_id
@@ -287,6 +291,7 @@ func scanStudentAddress(row interface{ Scan(...any) error }) (*StudentAddress, e
 		&item.AddressLine1,&item.AddressLine2,&item.AreaMohalla,&item.Landmark,
 		&item.PostalCode,&item.LocationID,&item.LocationName,&item.LocationLevel,
 		&item.LocalityType,&item.StateLocationID,&item.DistrictLocationID,&item.SubdistrictLocationID,
+		&item.StateLocationName,&item.DistrictLocationName,&item.SubdistrictLocationName,
 		&item.SameAsCurrent,&item.CreatedAt,&item.UpdatedAt); err != nil {
 		return nil, err
 	}
