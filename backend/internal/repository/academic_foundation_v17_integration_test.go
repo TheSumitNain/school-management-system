@@ -661,6 +661,59 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 		t.Fatalf("current-year student directory admission search: total=%d items=%+v err=%v",
 			directoryTotal, directoryMatches, err)
 	}
+
+	// Address & Communication profile section: hierarchical locations are
+	// school-owned additions, while address rows remain independently editable.
+	stateName := "V17 Address State " + suffix
+	state, err := academicRepo.CreateStudentLocation(ctx, actorPrincipalID, schoolID,
+		nil, "IN", "state", stateName, nil)
+	if err != nil || state == nil { t.Fatalf("create student address state: location=%+v err=%v", state, err) }
+	district, err := academicRepo.CreateStudentLocation(ctx, actorPrincipalID, schoolID,
+		&state.ID, "", "district", "V17 Address District "+suffix, nil)
+	if err != nil || district == nil { t.Fatalf("create student address district: location=%+v err=%v", district, err) }
+	block, err := academicRepo.CreateStudentLocation(ctx, actorPrincipalID, schoolID,
+		&district.ID, "", "subdistrict", "V17 Address Block "+suffix, nil)
+	if err != nil || block == nil { t.Fatalf("create student address block: location=%+v err=%v", block, err) }
+	villageType := "village"
+	village, err := academicRepo.CreateStudentLocation(ctx, actorPrincipalID, schoolID,
+		&block.ID, "", "locality", "V17 Address Village "+suffix, &villageType)
+	if err != nil || village == nil { t.Fatalf("create student address village: location=%+v err=%v", village, err) }
+
+	stateOptions, err := academicRepo.ListStudentLocations(ctx, actorPrincipalID, schoolID, nil, "state", stateName)
+	if err != nil || len(stateOptions) != 1 || stateOptions[0].ID != state.ID {
+		t.Fatalf("list dependent state options: locations=%+v err=%v", stateOptions, err)
+	}
+	line1 := "House 12"
+	area := "Main Mohalla"
+	postal := "134001"
+	if _, err := academicRepo.SaveStudentAddress(ctx, actorPrincipalID, schoolID, combined.Student.ID,
+		"permanent", nil, nil, nil, nil, nil, nil, true); !errors.Is(err, ErrInvalidAcademicInput) {
+		t.Fatalf("same-as-current without a current address error = %v, want invalid input", err)
+	}
+	currentAddress, err := academicRepo.SaveStudentAddress(ctx, actorPrincipalID, schoolID, combined.Student.ID,
+		"current", &line1, nil, &area, nil, &postal, &village.ID, false)
+	if err != nil || currentAddress == nil || currentAddress.LocationID == nil || *currentAddress.LocationID != village.ID {
+		t.Fatalf("save current student address: address=%+v err=%v", currentAddress, err)
+	}
+	permanentAddress, err := academicRepo.SaveStudentAddress(ctx, actorPrincipalID, schoolID, combined.Student.ID,
+		"permanent", nil, nil, nil, nil, nil, nil, true)
+	if err != nil || permanentAddress == nil || !permanentAddress.SameAsCurrent {
+		t.Fatalf("save same-as-current permanent address: address=%+v err=%v", permanentAddress, err)
+	}
+	addresses, err := academicRepo.ListStudentAddresses(ctx, actorPrincipalID, schoolID, combined.Student.ID)
+	if err != nil || len(addresses) != 2 || addresses[0].AddressType != "current" || !addresses[1].SameAsCurrent {
+		t.Fatalf("list student address section: addresses=%+v err=%v", addresses, err)
+	}
+	if _, err := academicRepo.DeactivateStudentLocation(ctx, actorPrincipalID, schoolID, state.ID); !errors.Is(err, ErrInvalidAcademicInput) {
+		t.Fatalf("deactivate location with active descendants error = %v, want invalid input", err)
+	}
+	if _, err := academicRepo.DeactivateStudentLocation(ctx, actorPrincipalID, schoolID, village.ID); err != nil {
+		t.Fatalf("deactivate referenced leaf location: %v", err)
+	}
+	if _, err := academicRepo.SaveStudentAddress(ctx, actorPrincipalID, schoolID, combined.Student.ID,
+		"current", &line1, nil, &area, nil, &postal, &village.ID, false); err != nil {
+		t.Fatalf("update existing address while retaining its deactivated location: %v", err)
+	}
 	var legacyAdmissionIsNull bool
 	if err := tx.QueryRow(ctx, `SELECT admission_number IS NULL FROM students WHERE id=$1`,
 		combined.Student.ID).Scan(&legacyAdmissionIsNull); err != nil || !legacyAdmissionIsNull {
