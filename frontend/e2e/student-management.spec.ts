@@ -66,8 +66,8 @@ test("student admission, profile navigation and parent details render without br
       if (detailRead) observedStudentDetailGets.push(detailRead);
       if (detailRead && failNextStudentRead.has(detailRead)) {
         failNextStudentRead.delete(detailRead);
-        failedStudentReads.push(detailRead);
         await route.fulfill({ status: 429, json: { message: `Temporary ${detailRead} read failure.` } });
+        failedStudentReads.push(detailRead);
         return;
       }
     }
