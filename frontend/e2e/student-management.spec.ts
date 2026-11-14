@@ -791,3 +791,128 @@ test("student archive confirmation keeps the record on conflict and refreshes st
   expect(archiveRequests).toHaveLength(2);
   expect(browserErrors).toEqual([]);
 });
+
+test("staff can create a guardian contact and link it to a student with relationship flags", async ({ page }) => {
+  const browserErrors: string[] = [];
+  const guardianCreates: Record<string, unknown>[] = [];
+  const guardianLinks: Record<string, unknown>[] = [];
+  const guardian = {
+    id: 45, school_id: 10, full_name: "Nisha Verma", mobile_number: "9876501234",
+    email_address: "nisha.verma@example.test", alternate_mobile_number: null,
+    occupation: "Teacher", education: null, workplace_name: null, status: "active",
+  };
+  page.on("pageerror", error => browserErrors.push(error.message));
+
+  await page.route("**/api/**", async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname.replace(/^\/api/, "");
+    if (path === "/auth/refresh") {
+      await route.fulfill({ status: 401, json: { message: "No active session" } });
+      return;
+    }
+    if (path === "/auth/login" && request.method() === "POST") {
+      await route.fulfill({ json: {
+        access_token: "e2e-guardian-create-token", token_type: "Bearer",
+        principal: { principal_id: 105, principal_type: "staff", status: "active", school_id: 10 },
+      } });
+      return;
+    }
+    if (path === "/auth/me") {
+      await route.fulfill({ json: {
+        principal_id: 105, principal_type: "staff", school_id: 10, username: "e2e-guardian-manager",
+        permissions: ["students.read_sensitive", "students.read_basic", "guardians.read", "guardians.manage", "academic_years.read"],
+      } });
+      return;
+    }
+    if (path === "/school/academic-years") {
+      await route.fulfill({ json: { academic_years: [] } });
+      return;
+    }
+    if (path === "/school/students" && request.method() === "GET") {
+      await route.fulfill({ json: { students: [{
+        id: 93, school_id: 10, admission_number: "ADM-GUARD-093",
+        full_name: "Guardian Workflow Student", status: "active",
+        created_at: "2026-11-14T00:00:00.000Z", updated_at: "2026-11-14T00:00:00.000Z",
+      }], pagination: { limit: 20, offset: 0, total: 1 } } });
+      return;
+    }
+    if (path === "/school/students/93/enrollments") {
+      await route.fulfill({ json: { enrollments: [] } });
+      return;
+    }
+    if (path === "/school/students/93/guardians" && request.method() === "GET") {
+      await route.fulfill({ json: { student_guardians: guardianLinks } });
+      return;
+    }
+    if (path === "/school/students/93/related-students") {
+      await route.fulfill({ json: { related_students: [] } });
+      return;
+    }
+    if (path === "/school/guardians" && request.method() === "GET") {
+      await route.fulfill({ json: { guardians: guardianLinks.length ? [] : [guardian], total: guardianLinks.length ? 0 : 1 } });
+      return;
+    }
+    if (path === "/school/guardians" && request.method() === "POST") {
+      const input = request.postDataJSON() as Record<string, unknown>;
+      guardianCreates.push(input);
+      await route.fulfill({ json: { guardian } });
+      return;
+    }
+    if (path === "/school/students/93/guardians" && request.method() === "POST") {
+      const input = request.postDataJSON() as Record<string, unknown>;
+      const link = {
+        id: 953, student_id: 93, guardian_id: 45, guardian_name: guardian.full_name,
+        guardian_status: "active", mobile_number: guardian.mobile_number, email_address: guardian.email_address,
+        alternate_mobile_number: null, occupation: guardian.occupation, education: null, workplace_name: null,
+        relationship_type: input.relationship_type, is_primary_contact: input.is_primary_contact,
+        is_emergency_contact: input.is_emergency_contact, revoked_at: null,
+      };
+      guardianLinks.push(link);
+      await route.fulfill({ json: { student_guardian: link } });
+      return;
+    }
+    await route.fulfill({ status: 404, json: { message: `Unmocked E2E API request: ${request.method()} ${path}` } });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Username").fill("e2e-guardian-manager");
+  await page.getByLabel("Password").fill("E2E-only-password");
+  await page.getByRole("button", { name: /Continue/ }).click();
+  await page.getByRole("button", { name: "Students" }).click();
+  await page.getByRole("button", { name: "View profile for Guardian Workflow Student" }).click();
+  await page.getByRole("button", { name: /Parents & siblings/i }).click();
+  const familyDialog = page.getByRole("dialog", { name: "Parents & Siblings" });
+  await expect(familyDialog).toBeVisible();
+  await expect(page.getByText(/Staff-managed guardian records only/)).toBeVisible();
+
+  await page.getByRole("button", { name: "Create a new guardian contact" }).click();
+  await page.getByPlaceholder("Guardian full name").fill("Nisha Verma");
+  await page.getByPlaceholder("guardian@example.com").fill("not-an-email");
+  await page.getByRole("button", { name: "Save guardian contact" }).click();
+  await expect(page.getByText("Enter a valid email address.", { exact: true })).toBeVisible();
+  expect(guardianCreates).toHaveLength(0);
+
+  await page.getByPlaceholder("guardian@example.com").fill("nisha.verma@example.test");
+  await page.getByRole("button", { name: "Save guardian contact" }).click();
+  await expect(page.getByText("Guardian contact created. Select the relationship details and link it to this student.")).toBeVisible();
+  expect(guardianCreates).toHaveLength(1);
+  expect(guardianCreates[0]).toMatchObject({
+    full_name: "Nisha Verma", mobile_number: null,
+    email_address: "nisha.verma@example.test", status: "active",
+  });
+
+  await page.getByPlaceholder("Father, Mother, Guardian…").fill("Mother");
+  await page.getByRole("checkbox", { name: /Primary contact/ }).check();
+  await page.getByRole("checkbox", { name: /Emergency contact/ }).check();
+  await page.getByRole("button", { name: "Link guardian", exact: true }).click();
+  await expect.poll(() => guardianLinks.length).toBe(1);
+  expect(guardianLinks[0]).toMatchObject({
+    guardian_id: 45, relationship_type: "Mother",
+    is_primary_contact: true, is_emergency_contact: true,
+  });
+  await expect(page.getByText("Guardian linked to this student.")).toBeVisible();
+  await expect(page.getByText("Nisha Verma", { exact: true })).toBeVisible();
+  await expect(page.getByText("Mother · Primary contact · Emergency contact")).toBeVisible();
+  expect(browserErrors).toEqual([]);
+});
