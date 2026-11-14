@@ -247,6 +247,7 @@ export type StudentAddress = {
   landmark?: string | null; postal_code?: string | null; location_id?: number | null;
   location_name?: string | null; location_level?: string | null; locality_type?: string | null;
   state_location_id?: number | null; district_location_id?: number | null; subdistrict_location_id?: number | null;
+  state_location_name?: string | null; district_location_name?: string | null; subdistrict_location_name?: string | null;
   same_as_current: boolean;
 };
 export function getSchoolStudentLocations(filters: { parentID?: number; level?: string; q?: string } = {}, signal?: AbortSignal) {
