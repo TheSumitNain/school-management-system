@@ -33,6 +33,8 @@ type academicRepository interface {
 	DeactivateStudentLocation(context.Context,int64,int64,int64)(*repository.StudentLocation,error)
 	ListStudentAddresses(context.Context,int64,int64,int64)([]repository.StudentAddress,error)
 	SaveStudentAddress(context.Context,int64,int64,int64,string,*string,*string,*string,*string,*string,*int64,bool)(*repository.StudentAddress,error)
+	GetStudentContactDetails(context.Context,int64,int64,int64)(*repository.StudentContactDetails,error)
+	SaveStudentContactDetails(context.Context,int64,int64,int64,*string,*string,*string)(*repository.StudentContactDetails,error)
 
 	ListStudents(context.Context,int64,int64,string,string,int,int)([]repository.StudentProfile,int64,error)
 	GetStudent(context.Context,int64,int64,int64)(*repository.StudentProfile,error)
@@ -169,6 +171,15 @@ func (s *AcademicService) ListStudentAddresses(ctx context.Context, actorID, sch
 func (s *AcademicService) SaveStudentAddress(ctx context.Context, actorID, schoolID, studentID int64, addressType string, line1, line2, areaMohalla, landmark, postalCode *string, locationID *int64, sameAsCurrent bool) (*repository.StudentAddress, error) {
 	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
 	return s.repository.SaveStudentAddress(ctx, actorID, schoolID, studentID, addressType, line1, line2, areaMohalla, landmark, postalCode, locationID, sameAsCurrent)
+}
+
+func (s *AcademicService) GetStudentContactDetails(ctx context.Context, actorID, schoolID, studentID int64) (*repository.StudentContactDetails, error) {
+	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
+	return s.repository.GetStudentContactDetails(ctx, actorID, schoolID, studentID)
+}
+func (s *AcademicService) SaveStudentContactDetails(ctx context.Context, actorID, schoolID, studentID int64, primaryPhone, alternatePhone, emailAddress *string) (*repository.StudentContactDetails, error) {
+	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
+	return s.repository.SaveStudentContactDetails(ctx, actorID, schoolID, studentID, primaryPhone, alternatePhone, emailAddress)
 }
 
 func (s *AcademicService) UpdateStudent(ctx context.Context, actorID, schoolID, studentID int64, fullName string) (*repository.StudentProfile, error) {
