@@ -21,6 +21,8 @@ test("student admission, profile navigation and parent details render without br
   const students: Student[] = [];
   const createdAdmissions: Record<string, unknown>[] = [];
   const failNextStudentRead = new Set<string>();
+  const failedStudentReads: string[] = [];
+  const observedStudentDetailGets: string[] = [];
   const guardianLink = {
     id: 501, student_id: 1, guardian_id: 22, guardian_name: "Ramesh Sharma", guardian_status: "active" as const,
     mobile_number: "9876543210", email_address: "ramesh@example.test", alternate_mobile_number: null,
@@ -60,12 +62,12 @@ test("student admission, profile navigation and parent details render without br
     const method = request.method();
 
     if (method === "GET") {
-      const failedRead = ["basic-details", "addresses", "contact-details"].find(resource =>
-        path.endsWith(`/${resource}`) && path.includes("/school/students/") && failNextStudentRead.has(resource),
-      );
-      if (failedRead) {
-        failNextStudentRead.delete(failedRead);
-        await route.fulfill({ status: 429, json: { message: `Temporary ${failedRead} read failure.` } });
+      const detailRead = path.match(/^\/school\/students\/\d+\/(basic-details|addresses|contact-details)\/?$/)?.[1];
+      if (detailRead) observedStudentDetailGets.push(detailRead);
+      if (detailRead && failNextStudentRead.has(detailRead)) {
+        failNextStudentRead.delete(detailRead);
+        failedStudentReads.push(detailRead);
+        await route.fulfill({ status: 429, json: { message: `Temporary ${detailRead} read failure.` } });
         return;
       }
     }
@@ -333,6 +335,8 @@ test("student admission, profile navigation and parent details render without br
   failNextStudentRead.add("basic-details");
   await page.getByRole("button", { name: /Basic details/ }).click();
   await expect(page.getByRole("dialog", { name: "Basic Details" })).toBeVisible();
+  await expect.poll(() => observedStudentDetailGets).toContain("basic-details");
+  await expect.poll(() => failedStudentReads).toContain("basic-details");
   const basicSave = page.getByRole("button", { name: "Save basic details" });
   await expect(page.getByRole("alert")).toBeVisible();
   await expect(basicSave).toBeDisabled();
