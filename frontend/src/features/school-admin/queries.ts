@@ -45,7 +45,7 @@ import {
   archiveSchoolStudent, createSchoolStudentAdmission, createSchoolStudentEnrollment,
   createSchoolStudentLocation, deactivateSchoolStudentLocation, getSchoolAcademicYears,
   getSchoolSections, getSchoolStudentAddresses, getSchoolStudentContactDetails,
-  getSchoolStudentEnrollments, getSchoolStudentLocations, getSchoolStudentRelatedStudents,
+  getSchoolStudentEnrollments, getSchoolStudentEnrollmentHistory, getSchoolStudentLocations, getSchoolStudentRelatedStudents,
   getSchoolStudentGuardians, getSchoolStudents, getSchoolGuardians, linkSchoolStudentGuardian,
   revokeSchoolStudentGuardianLink, createSchoolGuardian, saveSchoolStudentAddress,
   saveSchoolStudentContactDetails, updateSchoolStudent,
