@@ -16,7 +16,7 @@ The following decisions are approved:
 - A student has one permanent school-scoped identity. Each academic year has its own enrollment record and its own admission number.
 - A returning student is not created again. A new academic year creates a new enrollment for the existing student.
 - Admission number is an attribute of an academic-year enrollment, not the permanent student identity.
-- Roll numbers are scoped to an active section/enrollment, not the permanent student identity. The system assigns the next available numeric roll number automatically by default; an authorized School Admin may override it manually. Allocation must be transaction-safe under concurrent admissions, and active duplicate roll numbers in the same section must be rejected. Returning students and section changes receive a destination-section roll number; historical enrollment roll numbers remain preserved.
+- Roll numbers are scoped to an active section/enrollment, not the permanent student identity. The system assigns the next available numeric roll number automatically by default; an authorized School Admin may override it manually. Allocation must be transaction-safe under concurrent admissions, consider prior numeric roll numbers in that section so numbers are not recycled after withdrawal/promotion, and reject active duplicate roll numbers in the same section. Returning students and section changes receive a destination-section roll number; historical enrollment roll numbers remain preserved.
 - Historical enrollments, attendance, guardian relationships and student IDs must be preserved.
 - Parent OTP, SMS delivery, parent login and parent-facing applications remain Phase 2 and are not part of this implementation.
 
