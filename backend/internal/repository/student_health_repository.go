@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -249,10 +250,12 @@ func (r *AcademicRepository) SaveStudentPhysicalDetails(
 	if r == nil || r.db == nil || studentID <= 0 {
 		return nil, ErrAcademicAccessDenied
 	}
-	if heightCM != nil && (*heightCM < 20 || *heightCM > 250) {
+	if heightCM != nil && (*heightCM < 20 || *heightCM > 250 ||
+		math.Abs(*heightCM*100-math.Round(*heightCM*100)) > 1e-8) {
 		return nil, ErrInvalidAcademicInput
 	}
-	if weightKG != nil && (*weightKG < 1 || *weightKG > 300) {
+	if weightKG != nil && (*weightKG < 1 || *weightKG > 300 ||
+		math.Abs(*weightKG*100-math.Round(*weightKG*100)) > 1e-8) {
 		return nil, ErrInvalidAcademicInput
 	}
 	var err error
