@@ -339,6 +339,7 @@ test("student admission, profile navigation and parent details render without br
   await page.getByLabel("Search States / UTs").fill("Haryana");
   await page.getByRole("button", { name: "State or Union Territory", exact: true }).click();
   await page.getByRole("option", { name: "Haryana" }).click();
+  const addressSaveButton = page.getByRole("button", { name: "Save address" });
   await addressSaveButton.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
     if (!form) throw new Error("Address save button is not associated with its form.");
@@ -354,7 +355,6 @@ test("student admission, profile navigation and parent details render without br
   await page.getByLabel("Search villages / cities").fill("Naraingarh");
   await page.getByRole("button", { name: "Village or City", exact: true }).click();
   await page.getByRole("option", { name: /Naraingarh/ }).click();
-  const addressSaveButton = page.getByRole("button", { name: "Save address" });
   await addressSaveButton.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
     if (!form) throw new Error("Address save button is not associated with its form.");
