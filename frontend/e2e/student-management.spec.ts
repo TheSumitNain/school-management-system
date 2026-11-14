@@ -45,7 +45,6 @@ test("student admission, profile navigation and parent details render without br
     emergency_medical_notes: null, history: [],
   };
   const addresses: Record<string, unknown>[] = [];
-  const failNextStudentRead: Record<string, boolean> = { "basic-details": false, addresses: false, "contact-details": false };
   const locationRows = [
     { id: 11, school_id: null, parent_id: null, country_code: "IN", level: "state", name: "Haryana", is_active: true },
     { id: 21, school_id: null, parent_id: 11, country_code: "IN", level: "district", name: "Ambala", is_active: true },
@@ -58,14 +57,6 @@ test("student admission, profile navigation and parent details render without br
     const url = new URL(request.url());
     const path = url.pathname.replace(/^\/api/, "");
     const method = request.method();
-
-    for (const resource of Object.keys(failNextStudentRead)) {
-      if (failNextStudentRead[resource] && method === "GET" && path.endsWith(`/students/1/${resource}`)) {
-        failNextStudentRead[resource] = false;
-        await route.fulfill({ status: 429, json: { message: `Temporary ${resource} read failure.` } });
-        return;
-      }
-    }
 
     if (path === "/auth/refresh") {
       await route.fulfill({ status: 401, json: { message: "No active session" } });
@@ -280,6 +271,18 @@ test("student admission, profile navigation and parent details render without br
     await route.fulfill({ status: 404, json: { message: `Unmocked E2E API request: ${method} ${path}` } });
   });
 
+  async function failNextStudentGet(resource: "basic-details" | "addresses" | "contact-details") {
+    let shouldFail = true;
+    await page.route(`**/api/school/students/1/${resource}`, async route => {
+      if (shouldFail && route.request().method() === "GET") {
+        shouldFail = false;
+        await route.fulfill({ status: 429, json: { message: `Temporary ${resource} read failure.` } });
+        return;
+      }
+      await route.fallback();
+    });
+  }
+
   await page.goto("/");
   await page.getByLabel("Username").fill("e2e-school-admin");
   await page.getByLabel("Password").fill("E2E-only-password");
@@ -327,7 +330,7 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Academic history", exact: true })).toBeVisible();
 
-  failNextStudentRead["basic-details"] = true;
+  await failNextStudentGet("basic-details");
   await page.getByRole("button", { name: /Basic details/ }).click();
   await expect(page.getByRole("dialog", { name: "Basic Details" })).toBeVisible();
   const basicSave = page.getByRole("button", { name: "Save basic details" });
@@ -431,7 +434,7 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("button", { name: "Close dialog" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
 
-  failNextStudentRead.addresses = true;
+  await failNextStudentGet("addresses");
   await page.getByRole("button", { name: /Address & communication/ }).click();
   await expect(page.getByRole("dialog", { name: "Address & Communication" })).toBeVisible();
   const addressSave = page.getByRole("button", { name: "Save address" });
@@ -482,7 +485,7 @@ test("student admission, profile navigation and parent details render without br
   expect(addresses.find(item => item.address_type === "permanent")).toMatchObject({ same_as_current: true });
   await expect(page.getByText("Permanent address saved.")).toBeVisible();
 
-  failNextStudentRead["contact-details"] = true;
+  await failNextStudentGet("contact-details");
   await page.getByRole("button", { name: "Contact details", exact: true }).click();
   const contactSave = page.getByRole("button", { name: "Save contact details" });
   await expect(page.getByRole("alert")).toBeVisible();
