@@ -44,8 +44,9 @@ export function useResetSchoolStaffPasswordMutation() {
 import {
   archiveSchoolStudent, createSchoolStudentAdmission, createSchoolStudentEnrollment,
   createSchoolStudentLocation, deactivateSchoolStudentLocation, getSchoolAcademicYears,
-  getSchoolSections, getSchoolStudentAddresses, getSchoolStudentEnrollments,
-  getSchoolStudentLocations, getSchoolStudents, saveSchoolStudentAddress, updateSchoolStudent,
+  getSchoolSections, getSchoolStudentAddresses, getSchoolStudentContactDetails,
+  getSchoolStudentEnrollments, getSchoolStudentLocations, getSchoolStudents,
+  saveSchoolStudentAddress, saveSchoolStudentContactDetails, updateSchoolStudent,
 } from "./api";
 
 export const schoolStudentQueryKeys = {
@@ -77,6 +78,14 @@ export function useSchoolStudentAddressesQuery(studentID: number, enabled = true
   return useQuery({
     queryKey: schoolStudentQueryKeys.addresses(studentID),
     queryFn: ({ signal }) => getSchoolStudentAddresses(studentID, signal),
+    enabled: enabled && studentID > 0,
+    staleTime: 15_000,
+  });
+}
+export function useSchoolStudentContactDetailsQuery(studentID: number, enabled = true) {
+  return useQuery({
+    queryKey: [...schoolStudentQueryKeys.all, "contact-details", studentID] as const,
+    queryFn: ({ signal }) => getSchoolStudentContactDetails(studentID, signal),
     enabled: enabled && studentID > 0,
     staleTime: 15_000,
   });
@@ -122,6 +131,11 @@ export function useSaveSchoolStudentAddressMutation() {
     input: { address_line_1?: string | null; address_line_2?: string | null; area_mohalla?: string | null;
       landmark?: string | null; postal_code?: string | null; location_id?: number | null; same_as_current?: boolean };
   }) => saveSchoolStudentAddress(studentID, addressType, input));
+}
+export function useSaveSchoolStudentContactDetailsMutation() {
+  return useStudentMutation(({ studentID, input }: {
+    studentID: number; input: { primary_phone?: string | null; alternate_phone?: string | null; email_address?: string | null };
+  }) => saveSchoolStudentContactDetails(studentID, input));
 }
 function useStudentLocationMutation<TInput>(mutationFn: (input: TInput) => Promise<unknown>) {
   const client = useQueryClient();
