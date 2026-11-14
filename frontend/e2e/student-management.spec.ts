@@ -678,8 +678,8 @@ test("student promotion validates required fields and preserves prior enrollment
   await page.getByRole("button", { name: "Promote" }).click();
   const dialog = page.getByRole("dialog", { name: "Promote student" });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole("button", { name: "Destination academic year" })).toBeVisible();
-  await page.getByRole("button", { name: "Destination class and section" }).click();
+  await expect(dialog.getByRole("button", { name: "Destination academic year", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Destination class and section", exact: true }).click();
   await page.getByRole("option", { name: "Class 2 · B" }).click();
 
   const promoteButton = dialog.getByRole("button", { name: "Promote student" });
