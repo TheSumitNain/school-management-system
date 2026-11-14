@@ -137,6 +137,31 @@ func TestStudentProfileRepositoryPostgresIntegration(t *testing.T) {
 	for _, item := range items { if item.ID == student.ID { found = true } }
 	if !found { t.Fatalf("student %d missing from school-scoped search: %+v", student.ID, items) }
 
+	var profileReadAuditCount, directoryReadAuditCount int
+	var directoryResultCount int
+	var readAuditContainsStudentData bool
+	if err := tx.QueryRow(ctx, `
+		SELECT
+			COUNT(*) FILTER (WHERE action='school.student.profile.read'),
+			COUNT(*) FILTER (WHERE action='school.student.directory.read'),
+			COALESCE(MAX((metadata->>'result_count')::integer) FILTER (WHERE action='school.student.directory.read'),0),
+			COALESCE(BOOL_OR(metadata::text ILIKE '%'||$3||'%' OR metadata::text ILIKE '%'||$4||'%')
+				FILTER (WHERE action IN ('school.student.profile.read','school.student.directory.read')),FALSE)
+		FROM audit_events
+		WHERE school_id=$1 AND actor_principal_id=$2
+	`, schoolID, actorID, student.FullName, student.AdmissionNumber).Scan(
+		&profileReadAuditCount, &directoryReadAuditCount, &directoryResultCount, &readAuditContainsStudentData,
+	); err != nil {
+		t.Fatalf("inspect student profile/directory read audits: %v", err)
+	}
+	if profileReadAuditCount != 1 || directoryReadAuditCount != 1 || directoryResultCount != 1 {
+		t.Fatalf("student read audit counts profile=%d directory=%d directory result_count=%d; want 1,1,1",
+			profileReadAuditCount, directoryReadAuditCount, directoryResultCount)
+	}
+	if readAuditContainsStudentData {
+		t.Fatal("student profile/directory read audit metadata must not contain student name or admission number")
+	}
+
 	archived, err := repo.ArchiveStudent(ctx, actorID, schoolID, student.ID)
 	if err != nil || archived.Status != "archived" { t.Fatalf("archive student: student=%+v err=%v", archived, err) }
 	if _, err := repo.UpdateStudent(ctx, actorID, schoolID, student.ID, "Should Not Update"); !errors.Is(err, ErrAcademicNotFound) {
