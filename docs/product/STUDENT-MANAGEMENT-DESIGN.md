@@ -1,6 +1,6 @@
 # Student Management — Domain and Database Design
 
-**Status:** Approved design baseline; V31–V34 schema and first admission/address workflows implemented, full profile still in progress  
+**Status:** Approved design baseline; V31–V35 schema and first admission/address/contact workflows implemented, full profile still in progress  
 **Last reconciled:** 2026-11-14  
 **Scope:** Phase 1 School Admin student admission, profiles, academic-year enrollment, curriculum selection and related school workflows.
 
@@ -97,7 +97,9 @@ V34 implements the first address/location foundation:
 - Searchable dependent selectors and school-owned additions are available in the Address & Communication UI. Free-text house/street, area/mohalla, landmark and PIN/postal code are stored separately.
 - A saved address can retain a previously selected inactive locality; it cannot be newly selected for another address.
 
-No national geography has been guessed or seeded. Canonical shared reference data may be imported later only from a reliable source with an update/maintenance strategy and explicit ownership rules. Contact phone/email fields are still pending within this section.
+V35 adds optional student primary phone, alternate phone and email in a separate one-row-per-student contact table. Phone/email values are not unique because households may share contact channels; updates are audited without putting the values into audit metadata.
+
+No national geography has been guessed or seeded. Canonical shared reference data may be imported later only from a reliable source with an update/maintenance strategy and explicit ownership rules.
 
 ### 3.5 Curriculum and student subject selection
 
