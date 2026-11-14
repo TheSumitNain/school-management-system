@@ -91,12 +91,12 @@ export function StudentBasicDetailsSection({ student, canUpdate, onClose }: Prop
         <label>Social category<Select ariaLabel="Social category" value={values.social_category} disabled={!canUpdate} onChange={value => update("social_category", value)} placeholder="Not specified" options={[{value:"general",label:"General"},{value:"obc",label:"OBC"},{value:"sc",label:"SC"},{value:"st",label:"ST"},{value:"other",label:"Other"},{value:"not_specified",label:"Not specified"}]}/></label>
         <label>EWS status<Select ariaLabel="EWS status" value={values.ews_status} disabled={!canUpdate} onChange={value => update("ews_status", value)} placeholder="Not recorded" options={[{value:"yes",label:"Yes"},{value:"no",label:"No"}]}/></label>
         <label>School registration number<input value={values.school_registration_number} maxLength={50} disabled={!canUpdate} onChange={event => update("school_registration_number", event.target.value)} placeholder="Optional school SR number"/>{fieldError("school_registration_number")}</label>
+        {!canUpdate && <p className="student-address-note">View-only access. Student update permission is required to edit these details.</p>}
+        <div className="app-modal-actions">
+          <button type="button" className="app-modal-cancel" onClick={onClose} disabled={busy}>Close</button>
+          {canUpdate && <button type="submit" className="primary" disabled={busy || query.isLoading || query.isError}>{busy ? "Saving…" : "Save basic details"}</button>}
+        </div>
       </form>
-      {!canUpdate && <p className="student-address-note">View-only access. Student update permission is required to edit these details.</p>}
-      <div className="app-modal-actions">
-        <button type="button" className="app-modal-cancel" onClick={onClose} disabled={busy}>Close</button>
-        {canUpdate && <button type="button" className="primary" onClick={() => document.getElementById("student-basic-details-submit")?.click()} disabled={busy || query.isLoading || query.isError}>{busy ? "Saving…" : "Save basic details"}</button>}
-      </div>
     </Modal>
   );
 }
