@@ -20,6 +20,7 @@ type GuardianManagementService interface {
 	ListStudentGuardians(context.Context,int64,int64,int64,bool)([]repository.StudentGuardian,error)
 	ListStudentRelatedStudents(context.Context,int64,int64,int64)([]repository.StudentRelatedStudent,error)
 	LinkStudentGuardian(context.Context,int64,int64,int64,int64,string,bool,bool)(*repository.StudentGuardian,error)
+	UpdateStudentGuardianLink(context.Context,int64,int64,int64,string,bool,bool)(*repository.StudentGuardian,error)
 	RevokeStudentGuardianLink(context.Context,int64,int64,int64,string)error
 }
 
@@ -100,6 +101,20 @@ func(h *GuardianHandler) LinkStudentGuardian(c *gin.Context){
 	v,err:=h.service.LinkStudentGuardian(c.Request.Context(),a,s,student,req.GuardianID,req.RelationshipType,req.IsPrimaryContact,req.IsEmergencyContact)
 	if err!=nil{guardianError(c,err,"Student guardian relationship");return}
 	c.JSON(http.StatusCreated,gin.H{"status":"success","student_guardian":v})
+}
+
+func(h *GuardianHandler) UpdateStudentGuardianLink(c *gin.Context){
+	a,s,ok:=h.ready(c);if !ok{return}
+	id,valid:=guardianID(c,"linkID");if !valid{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid relationship ID"});return}
+	var req struct{
+		RelationshipType string `json:"relationship_type"`
+		IsPrimaryContact bool `json:"is_primary_contact"`
+		IsEmergencyContact bool `json:"is_emergency_contact"`
+	}
+	if c.ShouldBindJSON(&req)!=nil{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid request body"});return}
+	v,err:=h.service.UpdateStudentGuardianLink(c.Request.Context(),a,s,id,req.RelationshipType,req.IsPrimaryContact,req.IsEmergencyContact)
+	if err!=nil{guardianError(c,err,"Student guardian relationship");return}
+	c.JSON(http.StatusOK,gin.H{"status":"success","student_guardian":v})
 }
 
 func(h *GuardianHandler) RevokeStudentGuardianLink(c *gin.Context){
