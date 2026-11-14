@@ -117,7 +117,7 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
   const incompleteLocation = hasAnyLocation && !(stateID > 0 && districtID > 0 && subdistrictID > 0 && localityID > 0);
   const canAddLocation = localityID === 0;
   const nextLocationLevel = !stateID ? "state" : !districtID ? "district" : !subdistrictID ? "subdistrict" : "locality";
-  const nextLocationLabel = nextLocationLevel === "state" ? "State" :
+  const nextLocationLabel = nextLocationLevel === "state" ? "State / UT" :
     nextLocationLevel === "district" ? "District" :
     nextLocationLevel === "subdistrict" ? "Block / Tehsil" : "Village / City";
   const nextParentID = !stateID ? undefined : !districtID ? stateID : !subdistrictID ? districtID : subdistrictID;
@@ -322,8 +322,8 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
               <h3>Location</h3>
               <p>Choose the full location path. If the exact village or city is unknown, leave all four selectors blank and use the address text fields.</p>
               <div className="student-location-grid">
-                <label><StudentFieldLabel label="State" hint="Optional. If you select any location level, complete the full State → District → Block/Tehsil → Village/City path." /><input disabled={!canUpdate || addressesQuery.isLoading || addressesQuery.isError || busy} value={stateSearch} onChange={event => setStateSearch(event.target.value)} placeholder="Search states"/>{statesQuery.isLoading && <small>Loading states…</small>}
-                  <Select ariaLabel="State" value={String(stateID || "")} disabled={!canUpdate || addressesQuery.isLoading || addressesQuery.isError || busy || statesQuery.isLoading || statesQuery.isError} onChange={value => { setStateID(Number(value)); resetChildren("state"); }} placeholder="Select state" options={stateOptions}/></label>
+                <label><StudentFieldLabel label="State / UT" hint="Optional. Choose a State or Union Territory. If you select any location level, complete the full State/UT → District → Block/Tehsil → Village/City path." /><input disabled={!canUpdate || addressesQuery.isLoading || addressesQuery.isError || busy} value={stateSearch} onChange={event => setStateSearch(event.target.value)} placeholder="Search States / UTs"/>{statesQuery.isLoading && <small>Loading states…</small>}
+                  <Select ariaLabel="State or Union Territory" value={String(stateID || "")} disabled={!canUpdate || addressesQuery.isLoading || addressesQuery.isError || busy || statesQuery.isLoading || statesQuery.isError} onChange={value => { setStateID(Number(value)); resetChildren("state"); }} placeholder="Select state" options={stateOptions}/></label>
                 <label><StudentFieldLabel label="District" hint="Optional. Choose a district within the selected state." /><input disabled={!canUpdate || !stateID} value={districtSearch} onChange={event => setDistrictSearch(event.target.value)} placeholder="Search districts"/>{districtsQuery.isLoading && <small>Loading districts…</small>}
                   <Select ariaLabel="District" value={String(districtID || "")} disabled={!canUpdate || addressesQuery.isLoading || addressesQuery.isError || busy || !stateID || districtsQuery.isLoading || districtsQuery.isError} onChange={value => { setDistrictID(Number(value)); resetChildren("district"); }} placeholder="Select district" options={districtOptions}/></label>
                 <label><StudentFieldLabel label="Block / Tehsil" hint="Optional. Choose a block or tehsil within the selected district." /><input disabled={!canUpdate || !districtID} value={subdistrictSearch} onChange={event => setSubdistrictSearch(event.target.value)} placeholder="Search blocks / tehsils"/>{subdistrictsQuery.isLoading && <small>Loading blocks / tehsils…</small>}
@@ -341,7 +341,7 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
                 <div><button type="button" className="app-modal-cancel" onClick={() => setPendingDeactivate(null)} disabled={busy}>Cancel</button><button type="button" className="secondary" onClick={() => void confirmDeactivateLocation()} disabled={busy}>{deactivateLocation.isPending ? "Deactivating…" : "Confirm deactivation"}</button></div>
               </div>}
               {(statesQuery.isError || districtsQuery.isError || subdistrictsQuery.isError || localitiesQuery.isError) && <div className="student-feedback error" role="alert"><p>Location options could not be loaded.</p><button type="button" className="student-secondary" onClick={() => { void statesQuery.refetch(); if (stateID) void districtsQuery.refetch(); if (districtID) void subdistrictsQuery.refetch(); if (subdistrictID) void localitiesQuery.refetch(); }}>Retry location loading</button></div>}
-              {!statesQuery.isLoading && !statesQuery.isError && states.length === 0 && <p className="student-address-note">No shared states are available yet. Add a missing state to this school’s location list, or load the approved reference catalogue.</p>}
+              {!statesQuery.isLoading && !statesQuery.isError && states.length === 0 && <p className="student-address-note">No shared States / UTs are available yet. Add a missing State / UT to this school’s location list, or load the approved reference catalogue.</p>}
               {showLocationCreator && canUpdate && canAddLocation && (
                 <div className="student-location-create">
                   <strong>Add {nextLocationLabel.toLowerCase()} for this school</strong>
