@@ -172,7 +172,7 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("option", { name: "2026–2027" }).click();
   await page.getByRole("button", { name: "Admission section" }).click();
   await page.getByRole("option", { name: "Class 1 · A" }).click();
-  await page.getByRole("button", { name: "Admission date" }).click();
+  await page.getByRole("button", { name: "Admission date", exact: true }).click();
   await page.getByRole("button", { name: "Today" }).click();
   await page.getByRole("button", { name: "Admit student" }).click();
 
