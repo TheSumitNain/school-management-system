@@ -611,13 +611,16 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 		t.Fatalf("create API enrollment student: %v", err)
 	}
 	enrolledAt := time.Date(2028, 4, 1, 0, 0, 0, 0, time.UTC)
+	firstAdmissionNumber := "API-ADM-FIRST-" + suffix
 	apiEnrollment, err := academicRepo.CreateStudentEnrollment(ctx, actorPrincipalID, schoolID,
-		apiStudentID, apiYear.ID, apiSection.ID, nil, enrolledAt)
-	if err != nil || apiEnrollment == nil || apiEnrollment.ClassNameSnapshot != apiClass.Name || apiEnrollment.SectionNameSnapshot != "B" {
+		apiStudentID, apiYear.ID, apiSection.ID, nil, firstAdmissionNumber, enrolledAt, enrolledAt)
+	if err != nil || apiEnrollment == nil || apiEnrollment.ClassNameSnapshot != apiClass.Name ||
+		apiEnrollment.SectionNameSnapshot != "B" || apiEnrollment.AdmissionNumber == nil ||
+		*apiEnrollment.AdmissionNumber != firstAdmissionNumber || apiEnrollment.AdmissionDate == nil {
 		t.Fatalf("create enrollment through repository: enrollment=%+v err=%v", apiEnrollment, err)
 	}
 	if _, err := academicRepo.CreateStudentEnrollment(ctx, actorPrincipalID, schoolID,
-		apiStudentID, apiYear.ID, apiSection.ID, nil, enrolledAt); err == nil {
+		apiStudentID, apiYear.ID, apiSection.ID, nil, firstAdmissionNumber, enrolledAt, enrolledAt); err == nil {
 		t.Fatal("expected duplicate student/year enrollment to be rejected")
 	}
 	nextYear, err := academicRepo.SaveAcademicYear(ctx, actorPrincipalID, schoolID, 0,
@@ -628,9 +631,12 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 		nextYear.ID, apiClass.ID, "C", 3, true)
 	if err != nil { t.Fatalf("create next-year section for promotion: %v", err) }
 	promotedAt := time.Date(2029, 4, 1, 0, 0, 0, 0, time.UTC)
+	nextAdmissionNumber := "API-ADM-NEXT-" + suffix
 	promoted, err := academicRepo.PromoteStudentEnrollment(ctx, actorPrincipalID, schoolID,
-		apiEnrollment.ID, nextYear.ID, nextSection.ID, nil, promotedAt)
-	if err != nil || promoted == nil || promoted.AcademicYearID != nextYear.ID || promoted.SectionNameSnapshot != "C" {
+		apiEnrollment.ID, nextYear.ID, nextSection.ID, nil, nextAdmissionNumber, promotedAt, promotedAt)
+	if err != nil || promoted == nil || promoted.AcademicYearID != nextYear.ID ||
+		promoted.SectionNameSnapshot != "C" || promoted.AdmissionNumber == nil ||
+		*promoted.AdmissionNumber != nextAdmissionNumber || promoted.AdmissionDate == nil {
 		t.Fatalf("promote enrollment through repository: enrollment=%+v err=%v", promoted, err)
 	}
 	history, err := academicRepo.ListStudentEnrollments(ctx, actorPrincipalID, schoolID, 0, apiStudentID)
