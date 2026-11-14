@@ -36,6 +36,7 @@ The authoritative schema is the ordered SQL migration chain in `backend/migratio
 - `students` represents the permanent school-scoped identity. Its former `admission_number` column is retained only as nullable legacy data during the transition; V32 removes the school-wide uniqueness rule without deleting or rewriting existing values.
 - `student_enrollments` owns the admission number and admission date for a specific academic year. V31 enforces paired nullability, non-empty values, and normalized uniqueness within school + academic year.
 - A historical enrollment may remain NULL/NULL when its original year-specific admission identity cannot be proven. Do not copy a legacy student-level number into a year without evidence.
+- V33 extends the existing immutable-history trigger: admission number/date cannot be changed after enrollment creation, even while active. The active-to-terminal status transition remains valid when identity fields are unchanged.
 - New student creation and its first enrollment must be one transaction. Returning-student enrollment and promotion create only a new year-specific enrollment; promotion closes the previous enrollment without rewriting its identity.
 - The V32 down migration refuses rollback when null or duplicate legacy student admission values exist. The V31 down migration refuses rollback once year-specific enrollment identities have been written.
 
