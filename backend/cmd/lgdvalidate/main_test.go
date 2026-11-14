@@ -31,8 +31,7 @@ func TestValidateCSVRejectsWrongHeader(t *testing.T) {
 }
 
 func TestValidateCSVRejectsConflictingDistrictParent(t *testing.T) {
-	input := strings.Replace(validSnapshot, "06,Haryana,HR,701,Ambala,12001", "06,Haryana,HR,703,New District,12001", 1)
-	input += "06,Haryana,HR,701,Ambala,12001,Ambala,900004,Fourth Place,village\n"
+	input := validSnapshot + "07,Other State,OD,701,Ambala,12003,Other Tehsil,900004,Fourth Place,village\n"
 	_, err := validateCSV(strings.NewReader(input))
 	if err == nil || !strings.Contains(err.Error(), "conflicting name or parent mapping") {
 		t.Fatalf("validateCSV() error = %v, want conflicting district-parent error", err)
