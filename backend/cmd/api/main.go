@@ -303,6 +303,7 @@ func setupRouterWithHandlers(
 		router.GET("/school/students/:studentID/guardians", guardianAuth, middleware.RequirePermission("guardians.read"), guardianHandler.ListStudentGuardians)
 		router.GET("/school/students/:studentID/related-students", guardianAuth, middleware.RequirePermission("guardians.read"), middleware.RequirePermission("students.read_basic"), guardianHandler.ListStudentRelatedStudents)
 		router.POST("/school/students/:studentID/guardians", guardianAuth, middleware.RequirePermission("guardians.manage"), guardianHandler.LinkStudentGuardian)
+		router.PATCH("/school/student-guardian-links/:linkID", guardianAuth, middleware.RequirePermission("guardians.manage"), guardianHandler.UpdateStudentGuardianLink)
 		router.POST("/school/student-guardian-links/:linkID/revoke", guardianAuth, middleware.RequirePermission("guardians.manage"), guardianHandler.RevokeStudentGuardianLink)
 	}
 
