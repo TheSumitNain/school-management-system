@@ -22,6 +22,8 @@ type StudentEnrollment struct {
 	RollNumber *string `json:"roll_number,omitempty"`
 	ClassNameSnapshot string `json:"class_name_snapshot"`
 	SectionNameSnapshot string `json:"section_name_snapshot"`
+	AdmissionNumber *string `json:"admission_number,omitempty"`
+	AdmissionDate *time.Time `json:"admission_date,omitempty"`
 	Status string `json:"status"`
 	EnrolledAt time.Time `json:"enrolled_at"`
 	EndedAt *time.Time `json:"ended_at,omitempty"`
@@ -49,7 +51,7 @@ func scanStudentEnrollment(row interface{ Scan(...any) error }) (*StudentEnrollm
 	var v StudentEnrollment
 	err := row.Scan(&v.ID, &v.SchoolID, &v.StudentID, &v.AcademicYearID, &v.ClassID,
 		&v.SectionID, &v.RollNumber, &v.ClassNameSnapshot, &v.SectionNameSnapshot,
-		&v.Status, &v.EnrolledAt, &v.EndedAt, &v.CreatedAt, &v.UpdatedAt)
+		&v.AdmissionNumber, &v.AdmissionDate, &v.Status, &v.EnrolledAt, &v.EndedAt, &v.CreatedAt, &v.UpdatedAt)
 	if err != nil { return nil, err }
 	return &v, nil
 }
@@ -59,7 +61,7 @@ func scanStudentEnrollmentWithName(row interface{ Scan(...any) error }) (*Studen
 	var isSchoolAdmin, isClassIncharge bool
 	err := row.Scan(&v.ID, &v.SchoolID, &v.StudentID, &v.AcademicYearID, &v.ClassID,
 		&v.SectionID, &v.RollNumber, &v.ClassNameSnapshot, &v.SectionNameSnapshot,
-		&v.Status, &v.EnrolledAt, &v.EndedAt, &v.CreatedAt, &v.UpdatedAt, &v.StudentName,
+		&v.AdmissionNumber, &v.AdmissionDate, &v.Status, &v.EnrolledAt, &v.EndedAt, &v.CreatedAt, &v.UpdatedAt, &v.StudentName,
 		&isSchoolAdmin, &isClassIncharge)
 	if err != nil { return nil, err }
 	v.basicRosterOnly = !isSchoolAdmin && !isClassIncharge
@@ -67,14 +69,14 @@ func scanStudentEnrollmentWithName(row interface{ Scan(...any) error }) (*Studen
 }
 
 const enrollmentColumns = `id,school_id,student_id,academic_year_id,class_id,section_id,roll_number,
-	class_name_snapshot,section_name_snapshot,status,enrolled_at,ended_at,created_at,updated_at`
+	class_name_snapshot,section_name_snapshot,admission_number,admission_date,status,enrolled_at,ended_at,created_at,updated_at`
 
 func (r *AcademicRepository) ListStudentEnrollments(ctx context.Context, actorID, schoolID, yearID, studentID int64) ([]StudentEnrollment, error) {
 	if r == nil || r.db == nil { return nil, ErrAcademicAccessDenied }
 	if yearID < 0 || studentID < 0 { return nil, ErrInvalidAcademicInput }
 	if err := authorizeAcademic(ctx, r.db, actorID, schoolID, "students.read_basic"); err != nil { return nil, err }
 	rows, err := r.db.Query(ctx, `SELECT e.id,e.school_id,e.student_id,e.academic_year_id,e.class_id,e.section_id,e.roll_number,
-		e.class_name_snapshot,e.section_name_snapshot,e.status,e.enrolled_at,e.ended_at,e.created_at,e.updated_at,st.full_name,
+		e.class_name_snapshot,e.section_name_snapshot,e.admission_number,e.admission_date,e.status,e.enrolled_at,e.ended_at,e.created_at,e.updated_at,st.full_name,
 		EXISTS (SELECT 1 FROM principal_roles pr JOIN roles r ON r.id=pr.role_id
 		 WHERE pr.principal_id=$4 AND pr.revoked_at IS NULL AND r.school_id=e.school_id
 		 AND r.scope_type='school' AND r.principal_type='staff' AND r.role_key='school_admin' AND r.is_system=TRUE),
