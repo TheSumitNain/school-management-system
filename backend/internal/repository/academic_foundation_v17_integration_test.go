@@ -639,6 +639,37 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 		*promoted.AdmissionNumber != nextAdmissionNumber || promoted.AdmissionDate == nil {
 		t.Fatalf("promote enrollment through repository: enrollment=%+v err=%v", promoted, err)
 	}
+
+	// A first-time admission creates the permanent student and first yearly
+	// enrollment in one transaction, with no legacy student-level admission ID.
+	combinedName := "Combined Admission Student " + suffix
+	combinedNumber := "API-COMBINED-" + suffix
+	combined, err := academicRepo.CreateStudentAdmission(ctx, actorPrincipalID, schoolID,
+		combinedName, combinedNumber, apiYear.ID, apiSection.ID, nil, enrolledAt)
+	if err != nil || combined == nil || combined.Student.ID <= 0 ||
+		combined.Student.AdmissionNumber != "" || combined.Enrollment.StudentID != combined.Student.ID ||
+		combined.Enrollment.AdmissionNumber == nil || *combined.Enrollment.AdmissionNumber != combinedNumber {
+		t.Fatalf("create combined student admission: result=%+v err=%v", combined, err)
+	}
+	var legacyAdmissionIsNull bool
+	if err := tx.QueryRow(ctx, `SELECT admission_number IS NULL FROM students WHERE id=$1`,
+		combined.Student.ID).Scan(&legacyAdmissionIsNull); err != nil || !legacyAdmissionIsNull {
+		t.Fatalf("combined admission legacy identity is not NULL: is_null=%v err=%v", legacyAdmissionIsNull, err)
+	}
+
+	// A duplicate year-specific admission number must roll back the newly
+	// inserted student as well as its failed first enrollment.
+	rollbackCandidateName := "Combined Admission Rollback Candidate " + suffix
+	_, err = academicRepo.CreateStudentAdmission(ctx, actorPrincipalID, schoolID,
+		rollbackCandidateName, firstAdmissionNumber, apiYear.ID, apiSection.ID, nil, enrolledAt)
+	if !errors.Is(err, ErrAcademicConflict) {
+		t.Fatalf("duplicate combined admission error = %v, want ErrAcademicConflict", err)
+	}
+	var rollbackCandidateCount int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM students WHERE school_id=$1 AND full_name=$2`,
+		schoolID, rollbackCandidateName).Scan(&rollbackCandidateCount); err != nil || rollbackCandidateCount != 0 {
+		t.Fatalf("failed combined admission left %d student rows; want 0 (err=%v)", rollbackCandidateCount, err)
+	}
 	history, err := academicRepo.ListStudentEnrollments(ctx, actorPrincipalID, schoolID, 0, apiStudentID)
 	if err != nil || len(history) != 2 {
 		t.Fatalf("list student enrollment history: items=%+v err=%v", history, err)
