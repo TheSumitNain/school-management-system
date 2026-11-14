@@ -52,11 +52,16 @@ func (r *AcademicRepository) ListStudents(
 		limit < 1 || limit > 100 || offset < 0 {
 		return nil, 0, ErrInvalidAcademicInput
 	}
-	if err := authorizeAcademic(ctx, r.db, actorID, schoolID, "students.read_sensitive"); err != nil {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return nil, 0, fmt.Errorf("begin student directory read: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := authorizeAcademic(ctx, tx, actorID, schoolID, "students.read_sensitive"); err != nil {
 		return nil, 0, err
 	}
 	var total int64
-	if err := r.db.QueryRow(ctx, `
+	if err := tx.QueryRow(ctx, `
 		SELECT COUNT(*)
 		FROM students st
 		LEFT JOIN LATERAL (
@@ -77,7 +82,7 @@ func (r *AcademicRepository) ListStudents(
 	`, schoolID, status, search).Scan(&total); err != nil {
 		return nil, 0, fmt.Errorf("count students: %w", err)
 	}
-	rows, err := r.db.Query(ctx, `
+	rows, err := tx.Query(ctx, `
 		SELECT st.id, st.school_id,
 		       COALESCE(current_enrollment.admission_number,
 		                CASE WHEN current_enrollment.id IS NULL THEN st.admission_number END, ''),
@@ -104,17 +109,29 @@ func (r *AcademicRepository) ListStudents(
 	if err != nil {
 		return nil, 0, fmt.Errorf("list students: %w", err)
 	}
-	defer rows.Close()
 	items := make([]StudentProfile, 0)
 	for rows.Next() {
 		student, scanErr := scanStudentProfile(rows)
 		if scanErr != nil {
+			rows.Close()
 			return nil, 0, fmt.Errorf("scan student: %w", scanErr)
 		}
 		items = append(items, *student)
 	}
 	if err := rows.Err(); err != nil {
+		rows.Close()
 		return nil, 0, fmt.Errorf("iterate students: %w", err)
+	}
+	rows.Close()
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
+		VALUES($1,$2,'school.student.directory.read','student_collection',$3,'success',
+		       jsonb_build_object('section','student_directory','result_count',$4::integer))
+	`, actorID, schoolID, fmt.Sprint(schoolID), len(items)); err != nil {
+		return nil, 0, fmt.Errorf("audit student directory read: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, 0, fmt.Errorf("commit student directory read audit: %w", err)
 	}
 	return items, total, nil
 }
@@ -128,10 +145,15 @@ func (r *AcademicRepository) GetStudent(
 	if studentID <= 0 {
 		return nil, ErrInvalidAcademicInput
 	}
-	if err := authorizeAcademic(ctx, r.db, actorID, schoolID, "students.read_sensitive"); err != nil {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin student profile read: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := authorizeAcademic(ctx, tx, actorID, schoolID, "students.read_sensitive"); err != nil {
 		return nil, err
 	}
-	student, err := scanStudentProfile(r.db.QueryRow(ctx, `
+	student, err := scanStudentProfile(tx.QueryRow(ctx, `
 		SELECT st.id, st.school_id,
 		       COALESCE(current_enrollment.admission_number,
 		                CASE WHEN current_enrollment.id IS NULL THEN st.admission_number END, ''),
@@ -153,6 +175,16 @@ func (r *AcademicRepository) GetStudent(
 	}
 	if err != nil {
 		return nil, fmt.Errorf("get student: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
+		VALUES($1,$2,'school.student.profile.read','student',$3,'success',
+		       jsonb_build_object('section','student_profile'))
+	`, actorID, schoolID, fmt.Sprint(student.ID)); err != nil {
+		return nil, fmt.Errorf("audit student profile read: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit student profile read audit: %w", err)
 	}
 	return student, nil
 }
