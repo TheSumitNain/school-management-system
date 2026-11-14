@@ -197,11 +197,11 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 
 
 ## Student Basic Details sensitive-read audit — 2026-11-14
-- Follow-up audit found Address and Contact Detail GET methods were permission-protected but did not create read-audit events. Both now perform permission check, tenant-scoped read and section-only audit insert in one transaction. New integration assertions verify the audit metadata does not contain address, phone or email values. These follow-up changes are pushed but local verification is pending.
+- Follow-up audit found Address and Contact Detail GET methods were permission-protected but did not create read-audit events. Both now perform permission check, tenant-scoped read and section-only audit insert in one transaction. User ran both targeted PostgreSQL integration tests, the full backend test suite and go vet ./... against school_management_test; all passed. Windows emitted a post-test temporary executable unlink warning, but the targeted and full test commands returned success.
 
 - Basic Details GET now runs its authorization, student lookup, sensitive-profile read and audit insert in one transaction. A successful read records `school.student.basic_details.read` with the student reference and section name only; profile values are never copied into read-audit metadata.
 - Added PostgreSQL integration assertions for the read audit event and for absence of personal values in its metadata. User ran `go test -count=1 -p 1 ./internal/repository -run TestStudentBasicDetailsV37PostgresIntegration`, the full `go test -count=1 -p 1 ./...`, and `go vet ./...` against `school_management_test`; all passed.
-- This closes the read-audit gap for Basic Details only. Other sensitive profile sections still require their own read-audit review.
+- Contact Details and Address now have verified transactional read-audit coverage alongside Basic Details. Medical and Physical detail GET methods already use transactional section-only read audits, with PostgreSQL integration assertions for audit counts and absence of health values. Parents & Siblings read-audit coverage is the next implementation and verification item.
 - Aadhaar remains excluded from the UI/API until its dedicated encryption/key-rotation implementation is complete.
 
 ## Student Management reference inventory update — 2026-11-14
@@ -209,3 +209,11 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - Recorded the complete November 13 MySmartSchool reference field inventory: combined admission/enrollment fields; Basic/Personal (including optional Aadhaar number and SR number); Address & Communication; Parents & Siblings; Medical; Physical; Class & Subject; Transport; App Permissions; Documents.
 - Aadhaar card image/PDF and other document uploads remain deferred. Aadhaar number itself is intended as an optional field only; implementation is blocked until dedicated application-level encryption/key rotation, masked responses, least-privilege access and audit behavior are implemented. Never store or return the full number in plaintext; Aadhaar must not be mandatory for admission.
 - Fixed the stale `updateStudent` reference in StudentManagementPage's busy state after removal of the legacy name-only edit modal. Local frontend typecheck/build must be rerun after pulling this fix.
+
+
+## Student Parents & Siblings read-audit follow-up — 2026-11-14
+
+- Review confirmed the Parents & Siblings repository read methods were permission-protected and school-scoped but did not create read-audit events.
+- Added transactional read audits for guardian directory lists, individual guardian reads, a student's guardian links/history, and students sharing a guardian. Audit metadata contains only section and result count; it excludes guardian names, phone numbers, email addresses and relationship/contact values.
+- Added PostgreSQL integration assertions to verify the four read-action families and that guardian contact values do not appear in audit metadata.
+- The implementation and test are pushed to work; local PostgreSQL integration, full backend tests and go vet are pending. Do not mark this item verified until those commands pass.
