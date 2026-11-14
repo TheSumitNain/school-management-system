@@ -201,7 +201,7 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 
 - Basic Details GET now runs its authorization, student lookup, sensitive-profile read and audit insert in one transaction. A successful read records `school.student.basic_details.read` with the student reference and section name only; profile values are never copied into read-audit metadata.
 - Added PostgreSQL integration assertions for the read audit event and for absence of personal values in its metadata. User ran `go test -count=1 -p 1 ./internal/repository -run TestStudentBasicDetailsV37PostgresIntegration`, the full `go test -count=1 -p 1 ./...`, and `go vet ./...` against `school_management_test`; all passed.
-- Contact Details and Address now have verified transactional read-audit coverage alongside Basic Details. Medical and Physical detail GET methods already use transactional section-only read audits, with PostgreSQL integration assertions for audit counts and absence of health values. Parents & Siblings read-audit coverage is the next implementation and verification item.
+- Contact Details and Address now have verified transactional read-audit coverage alongside Basic Details. Medical and Physical detail GET methods already use transactional section-only read audits, with PostgreSQL integration assertions for audit counts and absence of health values. Parents & Siblings guardian/list/link/related-student read-audit changes have now passed the user's targeted PostgreSQL integration test, full backend test suite and go vet ./... against school_management_test.
 - Aadhaar remains excluded from the UI/API until its dedicated encryption/key-rotation implementation is complete.
 
 ## Student Management reference inventory update — 2026-11-14
@@ -216,4 +216,12 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - Review confirmed the Parents & Siblings repository read methods were permission-protected and school-scoped but did not create read-audit events.
 - Added transactional read audits for guardian directory lists, individual guardian reads, a student's guardian links/history, and students sharing a guardian. Audit metadata contains only section and result count; it excludes guardian names, phone numbers, email addresses and relationship/contact values.
 - Added PostgreSQL integration assertions to verify the four read-action families and that guardian contact values do not appear in audit metadata.
-- The implementation and test are pushed to work; local PostgreSQL integration, full backend tests and go vet are pending. Do not mark this item verified until those commands pass.
+- User ran TestGuardianRepositoryPostgresIntegration, the full backend test suite and go vet ./... against school_management_test; all passed. Windows emitted a temporary executable unlink warning after the targeted test, but the test command itself returned success.
+
+
+## Student directory/profile read-audit follow-up — 2026-11-14
+
+- Review found ListStudents and GetStudent were school-scoped and permission-protected but did not emit read-audit events.
+- Added transactional audit events for student directory reads (section and result count only) and individual student profile reads (section only). The list count query, result query, authorization and audit insert share one transaction.
+- Added PostgreSQL integration assertions that both read actions are recorded and that student names/admission numbers do not appear in read-audit metadata.
+- Changes are pushed to work; local PostgreSQL integration, full backend tests and go vet are pending.
