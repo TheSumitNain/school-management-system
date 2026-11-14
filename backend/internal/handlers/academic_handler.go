@@ -31,8 +31,9 @@ type AcademicManagementService interface {
 	CreateClassInchargeAssignment(context.Context,int64,int64,int64,int64,int64)(*repository.ClassInchargeAssignment,error)
 	RevokeClassInchargeAssignment(context.Context,int64,int64,int64)error
 	ListStudentEnrollments(context.Context,int64,int64,int64,int64)([]repository.StudentEnrollment,error)
-	CreateStudentEnrollment(context.Context,int64,int64,int64,int64,int64,*string,time.Time)(*repository.StudentEnrollment,error)
-	PromoteStudentEnrollment(context.Context,int64,int64,int64,int64,int64,*string,time.Time)(*repository.StudentEnrollment,error)
+	CreateStudentEnrollment(context.Context,int64,int64,int64,int64,int64,*string,string,time.Time,time.Time)(*repository.StudentEnrollment,error)
+	PromoteStudentEnrollment(context.Context,int64,int64,int64,int64,int64,*string,string,time.Time,time.Time)(*repository.StudentEnrollment,error)
+	CreateStudentAdmission(context.Context,int64,int64,string,string,int64,int64,*string,time.Time)(*repository.StudentAdmissionResult,error)
 	ListStudents(context.Context,int64,int64,string,string,int,int)([]repository.StudentProfile,int64,error)
 	GetStudent(context.Context,int64,int64,int64)(*repository.StudentProfile,error)
 	CreateStudent(context.Context,int64,int64,string,string)(*repository.StudentProfile,error)
@@ -185,6 +186,25 @@ func (h *AcademicHandler) ListStudentEnrollmentHistory(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status":"success","enrollments":items})
 }
 
+func (h *AcademicHandler) CreateStudentAdmission(c *gin.Context) {
+	actor, school, ok := h.ready(c); if !ok { return }
+	var req struct {
+		FullName string `json:"full_name"`
+		AdmissionNumber string `json:"admission_number"`
+		AcademicYearID int64 `json:"academic_year_id"`
+		SectionID int64 `json:"section_id"`
+		RollNumber *string `json:"roll_number"`
+		AdmissionDate string `json:"admission_date"`
+	}
+	if c.ShouldBindJSON(&req) != nil { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid request body"}); return }
+	admissionDate, err := parseEnrollmentDate(req.AdmissionDate)
+	if err != nil { academicError(c, err, "Student admission"); return }
+	result, err := h.service.CreateStudentAdmission(c.Request.Context(), actor, school,
+		req.FullName, req.AdmissionNumber, req.AcademicYearID, req.SectionID, req.RollNumber, admissionDate)
+	if err != nil { academicError(c, err, "Student admission"); return }
+	c.JSON(http.StatusCreated, gin.H{"status":"success","student":result.Student,"enrollment":result.Enrollment})
+}
+
 func (h *AcademicHandler) CreateStudentEnrollment(c *gin.Context) {
 	actor, school, ok := h.ready(c); if !ok { return }
 	var req struct {
@@ -192,11 +212,14 @@ func (h *AcademicHandler) CreateStudentEnrollment(c *gin.Context) {
 		AcademicYearID int64 `json:"academic_year_id"`
 		SectionID int64 `json:"section_id"`
 		RollNumber *string `json:"roll_number"`
+		AdmissionNumber string `json:"admission_number"`
+		AdmissionDate string `json:"admission_date"`
 		EnrolledAt string `json:"enrolled_at"`
 	}
 	if c.ShouldBindJSON(&req) != nil { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid request body"}); return }
-	date, err := parseEnrollmentDate(req.EnrolledAt); if err != nil { academicError(c, err, "Student enrollment"); return }
-	item, err := h.service.CreateStudentEnrollment(c.Request.Context(), actor, school, req.StudentID, req.AcademicYearID, req.SectionID, req.RollNumber, date)
+	admissionDate, err := parseEnrollmentDate(req.AdmissionDate); if err != nil { academicError(c, err, "Student enrollment"); return }
+	enrolledAt, err := parseEnrollmentDate(req.EnrolledAt); if err != nil { academicError(c, err, "Student enrollment"); return }
+	item, err := h.service.CreateStudentEnrollment(c.Request.Context(), actor, school, req.StudentID, req.AcademicYearID, req.SectionID, req.RollNumber, req.AdmissionNumber, admissionDate, enrolledAt)
 	if err != nil { academicError(c, err, "Student enrollment"); return }
 	c.JSON(http.StatusCreated, gin.H{"status":"success","enrollment":item})
 }
@@ -208,11 +231,14 @@ func (h *AcademicHandler) PromoteStudentEnrollment(c *gin.Context) {
 		AcademicYearID int64 `json:"academic_year_id"`
 		SectionID int64 `json:"section_id"`
 		RollNumber *string `json:"roll_number"`
+		AdmissionNumber string `json:"admission_number"`
+		AdmissionDate string `json:"admission_date"`
 		EnrolledAt string `json:"enrolled_at"`
 	}
 	if c.ShouldBindJSON(&req) != nil { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid request body"}); return }
-	date, err := parseEnrollmentDate(req.EnrolledAt); if err != nil { academicError(c, err, "Student promotion"); return }
-	item, err := h.service.PromoteStudentEnrollment(c.Request.Context(), actor, school, sourceID, req.AcademicYearID, req.SectionID, req.RollNumber, date)
+	admissionDate, err := parseEnrollmentDate(req.AdmissionDate); if err != nil { academicError(c, err, "Student promotion"); return }
+	enrolledAt, err := parseEnrollmentDate(req.EnrolledAt); if err != nil { academicError(c, err, "Student promotion"); return }
+	item, err := h.service.PromoteStudentEnrollment(c.Request.Context(), actor, school, sourceID, req.AcademicYearID, req.SectionID, req.RollNumber, req.AdmissionNumber, admissionDate, enrolledAt)
 	if err != nil { academicError(c, err, "Student promotion"); return }
 	c.JSON(http.StatusCreated, gin.H{"status":"success","enrollment":item})
 }
