@@ -3,7 +3,7 @@
 **Last reconciled:** 2026-11-14  
 **Repository:** `TheSumitNain/school-management-system`  
 **Reviewed branch:** `work`  
-**Reviewed through:** `076c752` (`work` branch; local verification pending)
+**Reviewed through:** `b8e615f` (`work` branch; local verification pending)
 
 ## Student Management — approved yearly admission model (V31/V32 schema transition; application cutover in progress)
 
@@ -12,6 +12,7 @@
 - V32 decouples permanent student identity from the legacy school-wide admission number: `students.admission_number` becomes nullable, its school-wide unique index is replaced with a non-unique legacy lookup index, and existing values remain untouched. Its down migration refuses rollback if null or duplicate legacy identities exist.
 - The enrollment repository read model now exposes year-specific admission number/date. Attendance projections now read admission number from the enrollment and return an empty value for historical NULL rows. Student-profile reads safely tolerate a NULL legacy number.
 - New enrollment and promotion repository writes now require an admission number and admission date, validate both dates against the selected academic year, and write those values with audit metadata. Promotion preserves the prior enrollment and creates the destination-year identity.
+- V33 extends the existing enrollment-history trigger so admission number/date are immutable from the moment an enrollment is created, including while active. The existing active-to-terminal transition remains allowed without rewriting identity; a dedicated PostgreSQL integration test covers both rules.
 - New student creation now has one transactional repository operation that creates the permanent student identity (legacy admission number NULL), its first year-specific enrollment, and both audit events. The `POST /school/students` route now uses this combined operation; an enrollment uniqueness conflict rolls back the student insert.
 - Student directory/profile reads now display and search the current academic year's enrollment admission number. If a student has a current-year enrollment with unknown legacy admission identity, the directory deliberately shows no number rather than incorrectly carrying forward an unverified old-year value. Attendance and enrollment lists also expose the enrollment-level number.
 - The Student Management page now uses a guided first-admission form (student name, admission number, academic year, section, optional roll number and admission date) and requires year-specific admission number/date when enrolling an existing student.
