@@ -94,6 +94,24 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
   const districts = districtsQuery.data?.locations ?? [];
   const subdistricts = subdistrictsQuery.data?.locations ?? [];
   const localities = localitiesQuery.data?.locations ?? [];
+  // Keep an existing address path visible when a previously selected school
+  // location has since been deactivated and is therefore absent from active options.
+  const stateOptions = states.map(item => ({ value: String(item.id), label: item.name }));
+  if (stateID > 0 && !states.some(item => item.id === stateID)) stateOptions.unshift({
+    value: String(stateID), label: (selectedAddress?.state_location_name || "Previously saved state") + " · inactive",
+  });
+  const districtOptions = districts.map(item => ({ value: String(item.id), label: item.name }));
+  if (districtID > 0 && !districts.some(item => item.id === districtID)) districtOptions.unshift({
+    value: String(districtID), label: (selectedAddress?.district_location_name || "Previously saved district") + " · inactive",
+  });
+  const subdistrictOptions = subdistricts.map(item => ({ value: String(item.id), label: item.name }));
+  if (subdistrictID > 0 && !subdistricts.some(item => item.id === subdistrictID)) subdistrictOptions.unshift({
+    value: String(subdistrictID), label: (selectedAddress?.subdistrict_location_name || "Previously saved block / tehsil") + " · inactive",
+  });
+  const localityOptions = localities.map(item => ({ value: String(item.id), label: item.name + (item.locality_type ? " · " + item.locality_type : "") }));
+  if (localityID > 0 && !localities.some(item => item.id === localityID)) localityOptions.unshift({
+    value: String(localityID), label: (selectedAddress?.location_name || "Previously saved village / city") + " · inactive",
+  });
   const hasAnyLocation = stateID > 0 || districtID > 0 || subdistrictID > 0 || localityID > 0;
   const incompleteLocation = hasAnyLocation && !(stateID > 0 && districtID > 0 && subdistrictID > 0 && localityID > 0);
   const canAddLocation = localityID === 0;
@@ -302,10 +320,10 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
               <h3>Location</h3>
               <p>Choose the full location path. If the exact village or city is unknown, leave all four selectors blank and use the address text fields.</p>
               <div className="student-location-grid">
-                <label>State<input disabled={!canUpdate} value={stateSearch} onChange={event => setStateSearch(event.target.value)} placeholder="Search states"/><Select ariaLabel="State" value={String(stateID || "")} disabled={!canUpdate} onChange={value => { setStateID(Number(value)); resetChildren("state"); }} placeholder="Select state" options={states.map(item => ({ value: String(item.id), label: item.name }))}/></label>
-                <label>District<input disabled={!canUpdate || !stateID} value={districtSearch} onChange={event => setDistrictSearch(event.target.value)} placeholder="Search districts"/><Select ariaLabel="District" value={String(districtID || "")} disabled={!canUpdate || !stateID || districtsQuery.isLoading} onChange={value => { setDistrictID(Number(value)); resetChildren("district"); }} placeholder="Select district" options={districts.map(item => ({ value: String(item.id), label: item.name }))}/></label>
-                <label>Block / Tehsil<input disabled={!canUpdate || !districtID} value={subdistrictSearch} onChange={event => setSubdistrictSearch(event.target.value)} placeholder="Search blocks / tehsils"/><Select ariaLabel="Block or Tehsil" value={String(subdistrictID || "")} disabled={!canUpdate || !districtID || subdistrictsQuery.isLoading} onChange={value => { setSubdistrictID(Number(value)); resetChildren("subdistrict"); }} placeholder="Select block / tehsil" options={subdistricts.map(item => ({ value: String(item.id), label: item.name }))}/></label>
-                <label>Village / City<input disabled={!canUpdate || !subdistrictID} value={localitySearch} onChange={event => setLocalitySearch(event.target.value)} placeholder="Search villages / cities"/><Select ariaLabel="Village or City" value={String(localityID || "")} disabled={!canUpdate || !subdistrictID || localitiesQuery.isLoading} onChange={value => { setLocalityID(Number(value)); setFieldError(""); }} placeholder="Select village / city" options={localities.map(item => ({ value: String(item.id), label: item.name + (item.locality_type ? " · " + item.locality_type : "") }))}/></label>
+                <label>State<input disabled={!canUpdate} value={stateSearch} onChange={event => setStateSearch(event.target.value)} placeholder="Search states"/><Select ariaLabel="State" value={String(stateID || "")} disabled={!canUpdate} onChange={value => { setStateID(Number(value)); resetChildren("state"); }} placeholder="Select state" options={stateOptions}/></label>
+                <label>District<input disabled={!canUpdate || !stateID} value={districtSearch} onChange={event => setDistrictSearch(event.target.value)} placeholder="Search districts"/><Select ariaLabel="District" value={String(districtID || "")} disabled={!canUpdate || !stateID || districtsQuery.isLoading} onChange={value => { setDistrictID(Number(value)); resetChildren("district"); }} placeholder="Select district" options={districtOptions}/></label>
+                <label>Block / Tehsil<input disabled={!canUpdate || !districtID} value={subdistrictSearch} onChange={event => setSubdistrictSearch(event.target.value)} placeholder="Search blocks / tehsils"/><Select ariaLabel="Block or Tehsil" value={String(subdistrictID || "")} disabled={!canUpdate || !districtID || subdistrictsQuery.isLoading} onChange={value => { setSubdistrictID(Number(value)); resetChildren("subdistrict"); }} placeholder="Select block / tehsil" options={subdistrictOptions}/></label>
+                <label>Village / City<input disabled={!canUpdate || !subdistrictID} value={localitySearch} onChange={event => setLocalitySearch(event.target.value)} placeholder="Search villages / cities"/><Select ariaLabel="Village or City" value={String(localityID || "")} disabled={!canUpdate || !subdistrictID || localitiesQuery.isLoading} onChange={value => { setLocalityID(Number(value)); setFieldError(""); }} placeholder="Select village / city" options={localityOptions}/></label>
               </div>
               {selectedAddress?.location_name && <p className="student-address-note">Saved locality: {selectedAddress.location_name}{localityID > 0 && !localities.some(item => item.id === localityID) ? " (not in the active location list)" : ""}.</p>}
               {fieldError && <small className="app-field-error">{fieldError}</small>}
