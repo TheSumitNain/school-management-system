@@ -331,3 +331,12 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - Added `backend/cmd/dbstatus`, a read-only command that reports the configured database name, golang-migrate version and dirty flag. It performs no schema or data writes and exits with an error for dirty or malformed migration state.
 - Documented the command in the backend database guide. Use it to establish the actual persistent database version before discussing an upgrade; it does not replace a backup/restore rehearsal or the user's explicit approval.
 - The new command is awaiting Backend CI verification. Do not run `go run ./cmd/migrate` against the persistent `school_management` database as part of this preflight.
+
+
+## Address hierarchy terminology correction — 2026-11-14
+
+- Corrected Student Address labels and help text: the database's `subdistrict` level is now presented as **Sub-District / Tehsil**, not Block / Tehsil. This avoids conflating a revenue sub-district (Tehsil/Taluk/Mandal) with a Development Block, which is a distinct LGD administrative entity.
+- The current address path remains State/UT → District → Sub-District/Tehsil → Village/City. A future Development Block field, if required by school workflows, must be a separate optional reference relationship and must not be inserted into the revenue hierarchy.
+- Documented official Ministry of Panchayati Raj / OGD LGD entry points for District, Sub-District and Village datasets and the requirement to verify actual official export schema before writing an importer. Community mirrors remain untrusted for production ingestion.
+- The read-only `backend/cmd/dbstatus` command and its documentation passed Backend CI on commits a7ea3c3c / 22733318 (migration chain, PostgreSQL integration suite and go vet).
+- The terminology change passed Frontend CI on commit 46fe22fe. The follow-up label-only correction and subsequent documentation commits are awaiting their own CI runs. Browser acceptance and the persistent database upgrade remain pending.
