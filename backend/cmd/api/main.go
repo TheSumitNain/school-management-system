@@ -257,6 +257,8 @@ func setupRouterWithHandlers(
 		router.POST("/school/students/:studentID/archive", academicAuth, middleware.RequirePermission("students.archive"), academic.ArchiveStudent)
 		router.GET("/school/students/:studentID/addresses", academicAuth, middleware.RequirePermission("students.read_sensitive"), academic.ListStudentAddresses)
 		router.PUT("/school/students/:studentID/addresses/:addressType", academicAuth, middleware.RequirePermission("students.update"), academic.SaveStudentAddress)
+		router.GET("/school/students/:studentID/contact-details", academicAuth, middleware.RequirePermission("students.read_sensitive"), academic.GetStudentContactDetails)
+		router.PUT("/school/students/:studentID/contact-details", academicAuth, middleware.RequirePermission("students.update"), academic.SaveStudentContactDetails)
 		router.GET("/school/locations", academicAuth, middleware.RequirePermission("students.read_sensitive"), academic.ListStudentLocations)
 		router.POST("/school/locations", academicAuth, middleware.RequirePermission("students.update"), academic.CreateStudentLocation)
 		router.POST("/school/locations/:locationID/deactivate", academicAuth, middleware.RequirePermission("students.update"), academic.DeactivateStudentLocation)
