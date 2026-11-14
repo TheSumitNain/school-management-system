@@ -343,8 +343,9 @@ func (r *AcademicRepository) SaveStudentAddress(
 	if areaMohalla, err = normalizeAddressText(areaMohalla, 120); err != nil { return nil, err }
 	if landmark, err = normalizeAddressText(landmark, 120); err != nil { return nil, err }
 	if postalCode, err = normalizeAddressText(postalCode, 20); err != nil { return nil, err }
-	if sameAsCurrent {
-		line1, line2, areaMohalla, landmark, postalCode, locationID = nil, nil, nil, nil, nil, nil
+	if sameAsCurrent && (line1 != nil || line2 != nil || areaMohalla != nil ||
+		landmark != nil || postalCode != nil || locationID != nil) {
+		return nil, ErrInvalidAcademicInput
 	}
 
 	tx, err := r.db.Begin(ctx)
