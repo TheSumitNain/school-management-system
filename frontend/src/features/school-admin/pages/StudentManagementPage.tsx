@@ -250,10 +250,8 @@ export function StudentManagementPage({ permissions }: Props) {
     {profileStudent && <StudentProfileDetail
       student={profileStudent}
       canReadHistory={canReadEnrollments}
-      canUpdateBasic={canUpdate}
       canReadFamily={canReadGuardians}
       academicYears={yearsQuery.data?.academic_years ?? []}
-      onEditBasic={() => { const item = profileStudent; setProfileStudent(null); openStudent("edit", item); }}
       onOpenBasic={() => { const item = profileStudent; setProfileStudent(null); setBasicDetailsStudent(item); }}
       onOpenAddress={() => { const item = profileStudent; setProfileStudent(null); setAddressStudent(item); }}
       onOpenFamily={() => { const item = profileStudent; setProfileStudent(null); setFamilyStudent(item); }}
