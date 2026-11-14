@@ -45,6 +45,16 @@ type StudentGuardian struct {
 	RevokedAt *time.Time `json:"revoked_at,omitempty"`
 }
 
+type StudentRelatedStudent struct {
+	StudentID int64 `json:"student_id"`
+	FullName string `json:"full_name"`
+	AdmissionNumber *string `json:"admission_number,omitempty"`
+	ClassName *string `json:"class_name,omitempty"`
+	SectionName *string `json:"section_name,omitempty"`
+	AcademicYearName *string `json:"academic_year_name,omitempty"`
+	SharedGuardianNames []string `json:"shared_guardian_names"`
+}
+
 func authorizeGuardian(ctx context.Context, db repositoryDB, actorID, schoolID int64, permission string) error {
 	if db == nil || actorID <= 0 || schoolID <= 0 || permission == "" {
 		return ErrGuardianAccessDenied
@@ -188,6 +198,69 @@ func (r *AcademicRepository) ListStudentGuardians(ctx context.Context,actorID,sc
 	items:=make([]StudentGuardian,0)
 	for rows.Next(){var v StudentGuardian;if err:=rows.Scan(&v.ID,&v.StudentID,&v.GuardianID,&v.GuardianName,&v.MobileNumber,&v.EmailAddress,&v.RelationshipType,&v.IsPrimaryContact,&v.IsEmergencyContact,&v.CreatedAt,&v.RevokedAt);err!=nil{return nil,fmt.Errorf("scan student guardian: %w",err)};items=append(items,v)}
 	if err:=rows.Err();err!=nil{return nil,fmt.Errorf("iterate student guardians: %w",err)}
+	return items,nil
+}
+
+// ListStudentRelatedStudents derives other active students who share at
+// least one active guardian link. It does not assert a biological sibling
+// relationship; the UI must label these as students sharing a guardian.
+func (r *AcademicRepository) ListStudentRelatedStudents(ctx context.Context, actorID, schoolID, studentID int64) ([]StudentRelatedStudent, error) {
+	if r == nil || r.db == nil { return nil, ErrGuardianAccessDenied }
+	if studentID <= 0 { return nil, ErrInvalidGuardianInput }
+	if err := authorizeGuardian(ctx, r.db, actorID, schoolID, "guardians.read"); err != nil { return nil, err }
+	if err := authorizeAcademic(ctx, r.db, actorID, schoolID, "students.read_basic"); err != nil { return nil, err }
+	var studentExists bool
+	if err := r.db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM students WHERE id=$1 AND school_id=$2)`, studentID, schoolID).Scan(&studentExists); err != nil {
+		return nil, fmt.Errorf("check student for related-student list: %w", err)
+	}
+	if !studentExists { return nil, ErrGuardianNotFound }
+
+	rows, err := r.db.Query(ctx, `
+		SELECT related_student.id, related_student.full_name,
+		       enrollment.admission_number, enrollment.class_name_snapshot,
+		       enrollment.section_name_snapshot, academic_year.name,
+		       COALESCE(array_agg(DISTINCT shared_guardian.full_name ORDER BY shared_guardian.full_name), ARRAY[]::text[])
+		  FROM student_guardians source_link
+		  JOIN guardians shared_guardian
+		    ON shared_guardian.id=source_link.guardian_id
+		   AND shared_guardian.school_id=source_link.school_id
+		   AND shared_guardian.status='active'
+		  JOIN student_guardians related_link
+		    ON related_link.guardian_id=shared_guardian.id
+		   AND related_link.school_id=shared_guardian.school_id
+		   AND related_link.revoked_at IS NULL
+		  JOIN students related_student
+		    ON related_student.id=related_link.student_id
+		   AND related_student.school_id=related_link.school_id
+		   AND related_student.status='active'
+		  LEFT JOIN student_enrollments enrollment
+		    ON enrollment.student_id=related_student.id
+		   AND enrollment.school_id=related_student.school_id
+		   AND enrollment.academic_year_id=(
+		       SELECT id FROM academic_years WHERE school_id=$1 AND is_current=TRUE
+		   )
+		  LEFT JOIN academic_years academic_year
+		    ON academic_year.id=enrollment.academic_year_id
+		 WHERE source_link.school_id=$1
+		   AND source_link.student_id=$2
+		   AND source_link.revoked_at IS NULL
+		   AND related_student.id<>$2
+		 GROUP BY related_student.id,related_student.full_name,enrollment.admission_number,
+		          enrollment.class_name_snapshot,enrollment.section_name_snapshot,academic_year.name
+		 ORDER BY LOWER(related_student.full_name),related_student.id
+	`, schoolID, studentID)
+	if err != nil { return nil, fmt.Errorf("list students sharing guardian: %w", err) }
+	defer rows.Close()
+	items := make([]StudentRelatedStudent, 0)
+	for rows.Next() {
+		var item StudentRelatedStudent
+		if err := rows.Scan(&item.StudentID,&item.FullName,&item.AdmissionNumber,&item.ClassName,
+			&item.SectionName,&item.AcademicYearName,&item.SharedGuardianNames); err != nil {
+			return nil, fmt.Errorf("scan related student: %w", err)
+		}
+		items = append(items,item)
+	}
+	if err := rows.Err(); err != nil { return nil, fmt.Errorf("iterate related students: %w", err) }
 	return items,nil
 }
 
