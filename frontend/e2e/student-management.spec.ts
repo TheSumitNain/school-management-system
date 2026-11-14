@@ -302,7 +302,7 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByText("Height must be between 20 and 250 cm.")).toBeVisible();
   await expect(page.getByText("Measurement date is required.")).toBeVisible();
   await page.getByPlaceholder("e.g. 132.5").fill("132.5");
-  await page.getByRole("button", { name: "Measurement date" }).click();
+  await page.getByRole("button", { name: "Measurement date", exact: true }).click();
   await page.getByRole("button", { name: "Today" }).click();
   await physicalSaveButton.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
