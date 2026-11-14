@@ -375,8 +375,8 @@ func (r *AcademicRepository) PromoteStudentEnrollment(ctx context.Context, actor
 	if err != nil { return nil, academicWriteError(err) }
 	if _, err = tx.Exec(ctx, `INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
 		VALUES($1,$2,'school.student.promoted','student_enrollment',$3,'success',
-		jsonb_build_object('student_id',$4::bigint,'source_enrollment_id',$5::bigint,'source_academic_year_id',$6::bigint,'destination_academic_year_id',$7::bigint,'destination_class_id',$8::bigint,'destination_section_id',$9::bigint,'admission_number',$10::text,'admission_date',$11::date))`,
-		actorID, schoolID, fmt.Sprint(v.ID), studentID, sourceEnrollmentID, sourceYearID, destinationYearID, classID, destinationSectionID, admissionNumber, admissionDate.Format("2006-01-02")); err != nil { return nil, fmt.Errorf("audit student promotion: %w", err) }
+		jsonb_build_object('student_id',$4::bigint,'source_enrollment_id',$5::bigint,'source_academic_year_id',$6::bigint,'destination_academic_year_id',$7::bigint,'destination_class_id',$8::bigint,'destination_section_id',$9::bigint,'has_admission_number',TRUE,'has_admission_date',TRUE))`,
+		actorID, schoolID, fmt.Sprint(v.ID), studentID, sourceEnrollmentID, sourceYearID, destinationYearID, classID, destinationSectionID); err != nil { return nil, fmt.Errorf("audit student promotion: %w", err) }
 	if err = tx.Commit(ctx); err != nil { return nil, fmt.Errorf("commit student promotion: %w", err) }
 	return v, nil
 }
