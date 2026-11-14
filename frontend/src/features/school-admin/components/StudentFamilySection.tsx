@@ -4,6 +4,7 @@ import { Select } from "../../../shared/components/Select";
 import type { StudentProfile } from "../api";
 import {
   useCreateSchoolGuardianMutation,
+  useUpdateSchoolGuardianMutation,
   useLinkSchoolStudentGuardianMutation,
   useRevokeSchoolStudentGuardianMutation,
   useSchoolGuardiansQuery,
@@ -34,6 +35,12 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
   const [newGuardianOccupation, setNewGuardianOccupation] = useState("");
   const [newGuardianEducation, setNewGuardianEducation] = useState("");
   const [newGuardianWorkplace, setNewGuardianWorkplace] = useState("");
+  const [editingGuardianID, setEditingGuardianID] = useState(0);
+  const [editGuardianForm, setEditGuardianForm] = useState({
+    full_name: "", mobile_number: "", email_address: "", alternate_mobile_number: "",
+    occupation: "", education: "", workplace_name: "",
+  });
+  const [editGuardianError, setEditGuardianError] = useState("");
   const [pendingRevokeID, setPendingRevokeID] = useState(0);
   const [revokeReason, setRevokeReason] = useState("");
   const [guardianSelectError, setGuardianSelectError] = useState("");
@@ -47,6 +54,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
   const guardiansQuery = useSchoolGuardiansQuery({ q: deferredSearch, status: "active" });
   const relatedQuery = useSchoolStudentRelatedStudentsQuery(student.id, canReadRelatedStudents);
   const createGuardian = useCreateSchoolGuardianMutation();
+  const updateGuardian = useUpdateSchoolGuardianMutation();
   const linkGuardian = useLinkSchoolStudentGuardianMutation();
   const revokeLink = useRevokeSchoolStudentGuardianMutation();
 
@@ -62,7 +70,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
       label: guardian.full_name + (guardian.mobile_number ? " · " + guardian.mobile_number : guardian.email_address ? " · " + guardian.email_address : ""),
     }));
   const relatedStudents = relatedQuery.data?.related_students ?? [];
-  const busy = createGuardian.isPending || linkGuardian.isPending || revokeLink.isPending;
+  const busy = createGuardian.isPending || updateGuardian.isPending || linkGuardian.isPending || revokeLink.isPending;
 
   async function saveGuardian(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -102,6 +110,56 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
       setFeedback({ kind: "success", message: "Guardian contact created. Select the relationship details and link it to this student." });
     } catch (error) {
       setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Guardian contact could not be saved." });
+    }
+  }
+
+  function beginEditGuardian(link: (typeof allLinks)[number]) {
+    setEditingGuardianID(link.guardian_id);
+    setEditGuardianForm({
+      full_name: link.guardian_name,
+      mobile_number: link.mobile_number ?? "",
+      email_address: link.email_address ?? "",
+      alternate_mobile_number: link.alternate_mobile_number ?? "",
+      occupation: link.occupation ?? "",
+      education: link.education ?? "",
+      workplace_name: link.workplace_name ?? "",
+    });
+    setEditGuardianError("");
+  }
+
+  async function saveEditedGuardian(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setEditGuardianError("");
+    if (!canManage || editingGuardianID <= 0) return;
+    const name = editGuardianForm.full_name.trim();
+    if (!name) {
+      setEditGuardianError("Guardian name is required.");
+      return;
+    }
+    const emailInput = event.currentTarget.elements.namedItem("edit_guardian_email") as HTMLInputElement | null;
+    if (editGuardianForm.email_address.trim() && emailInput && !emailInput.checkValidity()) {
+      setEditGuardianError("Enter a valid email address.");
+      return;
+    }
+    try {
+      await updateGuardian.mutateAsync({
+        guardianID: editingGuardianID,
+        input: {
+          full_name: name,
+          mobile_number: editGuardianForm.mobile_number.trim() || null,
+          email_address: editGuardianForm.email_address.trim() || null,
+          alternate_mobile_number: editGuardianForm.alternate_mobile_number.trim() || null,
+          occupation: editGuardianForm.occupation.trim() || null,
+          education: editGuardianForm.education.trim() || null,
+          workplace_name: editGuardianForm.workplace_name.trim() || null,
+          status: "active",
+        },
+      });
+      setEditingGuardianID(0);
+      setEditGuardianError("");
+      setFeedback({ kind: "success", message: "Guardian profile updated. Changes apply to every student linked to this guardian." });
+    } catch (error) {
+      setEditGuardianError(error instanceof Error ? error.message : "Guardian profile could not be updated.");
     }
   }
 
@@ -179,7 +237,30 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
                   {(link.occupation || link.education || link.workplace_name) && <small>{[link.occupation, link.education, link.workplace_name].filter(Boolean).join(" · ")}</small>}
                   {link.revoked_at && <small>Revoked {new Date(link.revoked_at).toLocaleDateString()}</small>}
                 </div>
-                {canManage && !link.revoked_at && <button type="button" className="student-link-button" onClick={() => { setPendingRevokeID(link.id); setRevokeReason(""); setRevokeReasonError(""); }}>Revoke link</button>}
+                {canManage && !link.revoked_at && (
+                  <div className="student-family-card-actions">
+                    <button type="button" className="student-link-button" onClick={() => beginEditGuardian(link)}>Edit guardian details</button>
+                    <button type="button" className="student-link-button" onClick={() => { setPendingRevokeID(link.id); setRevokeReason(""); setRevokeReasonError(""); }}>Revoke link</button>
+                  </div>
+                )}
+                {canManage && editingGuardianID === link.guardian_id && !link.revoked_at && (
+                  <form className="student-family-create-form" onSubmit={saveEditedGuardian} noValidate>
+                    <h4>Edit shared guardian profile</h4>
+                    <p className="student-address-note">These contact and profile details are shared across all students linked to this guardian.</p>
+                    <label>Full name<input disabled={busy} value={editGuardianForm.full_name} maxLength={200} aria-invalid={Boolean(editGuardianError)} onChange={event => setEditGuardianForm(current => ({ ...current, full_name: event.target.value }))} placeholder="Guardian full name"/></label>
+                    <label>Mobile number<input disabled={busy} value={editGuardianForm.mobile_number} maxLength={30} onChange={event => setEditGuardianForm(current => ({ ...current, mobile_number: event.target.value }))} placeholder="Mobile number"/></label>
+                    <label>Email address<input name="edit_guardian_email" disabled={busy} type="email" value={editGuardianForm.email_address} maxLength={254} onChange={event => setEditGuardianForm(current => ({ ...current, email_address: event.target.value }))} placeholder="guardian@example.com"/></label>
+                    <label>Alternate mobile number<input disabled={busy} value={editGuardianForm.alternate_mobile_number} maxLength={30} onChange={event => setEditGuardianForm(current => ({ ...current, alternate_mobile_number: event.target.value }))} placeholder="Optional alternate number"/></label>
+                    <label>Occupation<input disabled={busy} value={editGuardianForm.occupation} maxLength={120} onChange={event => setEditGuardianForm(current => ({ ...current, occupation: event.target.value }))} placeholder="e.g. Teacher, Business owner"/></label>
+                    <label>Education<input disabled={busy} value={editGuardianForm.education} maxLength={120} onChange={event => setEditGuardianForm(current => ({ ...current, education: event.target.value }))} placeholder="Highest education (optional)"/></label>
+                    <label>Workplace / organization<input disabled={busy} value={editGuardianForm.workplace_name} maxLength={160} onChange={event => setEditGuardianForm(current => ({ ...current, workplace_name: event.target.value }))} placeholder="Organization name (optional)"/></label>
+                    {editGuardianError && <small className="app-field-error" role="alert">{editGuardianError}</small>}
+                    <div className="student-family-card-actions">
+                      <button type="button" className="student-link-button" onClick={() => { setEditingGuardianID(0); setEditGuardianError(""); }} disabled={busy}>Cancel</button>
+                      <button type="submit" className="secondary" disabled={busy}>{updateGuardian.isPending ? "Saving…" : "Save guardian details"}</button>
+                    </div>
+                  </form>
+                )}
               </article>
             ))}
           </div>
