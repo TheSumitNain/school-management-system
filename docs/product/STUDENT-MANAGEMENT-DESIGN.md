@@ -290,9 +290,9 @@ A phase is complete only when code, migrations, automated tests and applicable b
 
 ### Latest verification reconciliation
 
-- Frontend CI run [43708932012](https://github.com/TheSumitNain/school-management-system/actions/runs/43708932012) passed on frontend code commit `b640caed53a4ad7c2a4670719974d2d99b7a4269`; Playwright reports 8 passed, and the design-token check passed.
-- Backend CI run [43709153490](https://github.com/TheSumitNain/school-management-system/actions/runs/43709153490) passed on backend code commit `1196045794777f94d94c994b4750af865d36e84e`; the full migration chain, PostgreSQL integration suite and `go vet ./...` passed.
-- The complete backend workflow also passed on the full-repository checkpoint `834c9419818a85e4a1331cb85fa3f563ca13fc6c` ([run 43711310931](https://github.com/TheSumitNain/school-management-system/actions/runs/43711310931)); no backend source changed in that frontend-only checkpoint.
+- Latest Frontend CI run [43718944849](https://github.com/TheSumitNain/school-management-system/actions/runs/43718944849) passed on code commit `cdfb455ec2aa4451d8a94f421ea022ed23cece09`; Vite production build and all 11 Playwright tests passed, including cross-student profile isolation, Parent Details full browser reload, and shared guardian profile propagation across two linked students.
+- Latest Backend CI run [43718944872](https://github.com/TheSumitNain/school-management-system/actions/runs/43718944872) passed on the same code commit `cdfb455ec2aa4451d8a94f421ea022ed23cece09`; the full migration chain, PostgreSQL integration suite and `go vet ./...` passed.
+- Both latest workflows above ran against the same full-repository code checkpoint, so no cross-commit inference is needed.
 - Guardian form validation now allows over-limit values to reach application validation so each field can show its explicit length error. Do not reintroduce HTML `maxLength` truncation on those fields.
 - Guardian revocation audit has one authoritative writer: the V12 database trigger, updated by V45 to add only the boolean `has_revocation_reason`. The repository must not insert a duplicate audit event. Free-text revocation reasons must remain out of audit metadata.
 - These automated checks do not complete the manual/live acceptance checklist below. Playwright uses mocked APIs; local authenticated acceptance remains pending and must respect the persistent-database approval/backup safety gate.
