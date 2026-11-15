@@ -302,6 +302,19 @@ func (r *AcademicRepository) ArchiveStudent(
 	if err != nil {
 		return nil, academicWriteError(err)
 	}
+	// Closing the permanent student record must also close any current-year
+	// enrollment. Keep every enrollment row and its attendance history intact.
+	// GREATEST protects the enrollment end-date constraint for future-dated
+	// admissions that are archived before their first attendance day.
+	if _, err := tx.Exec(ctx, `
+		UPDATE student_enrollments
+		   SET status = 'withdrawn',
+		       ended_at = GREATEST(CURRENT_DATE, enrolled_at),
+		       updated_at = NOW()
+		 WHERE school_id = $1 AND student_id = $2 AND status = 'active'
+	`, schoolID, student.ID); err != nil {
+		return nil, fmt.Errorf("close active student enrollments during archive: %w", err)
+	}
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO audit_events (actor_principal_id, school_id, action, resource_type, resource_id, outcome, metadata)
 		VALUES ($1, $2, 'school.student.archived', 'student', $3, 'success', '{}'::jsonb)
