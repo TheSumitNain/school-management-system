@@ -1153,6 +1153,10 @@ test("staff can create a guardian contact and link it to a student with relation
     email_address: "nisha.verma@example.test", status: "active",
   });
 
+  await page.getByPlaceholder("Father, Mother, Guardian…").fill("अ".repeat(41));
+  await page.getByRole("button", { name: "Link guardian", exact: true }).click();
+  await expect(page.getByText("Relationship must be 40 characters or fewer.")).toBeVisible();
+  expect(guardianLinks).toHaveLength(0);
   await page.getByPlaceholder("Father, Mother, Guardian…").fill("Mother");
   await page.getByRole("checkbox", { name: /Primary contact/ }).check();
   await page.getByRole("checkbox", { name: /Emergency contact/ }).check();
