@@ -1,5 +1,21 @@
 # Project Status
 
+## Active handover — Student Management (2026-11-15)
+
+**Source of truth:** this section is the first document to reconcile at the start of every new work session. Read this file, the Student Management design, relevant backend/frontend testing docs, and the latest GitHub Actions runs before changing code. Do not restart an already completed audit or treat an earlier green run as proof for a newer commit.
+
+- **Active branch:** `work`. Do not assume `main` contains the latest Student Management work; confirm branch tip before editing.
+- **Latest reviewed commit:** `b354a73613e21442a81307bd010ba357d0af9331` — `fix(student): enforce guardian field input limits`.
+- **Latest CI for that exact commit:** Frontend CI run [43708122255](https://github.com/TheSumitNain/school-management-system/actions/runs/43708122255) **FAILED**; Backend CI run [43708122164](https://github.com/TheSumitNain/school-management-system/actions/runs/43708122164) **FAILED**. The earlier green runs [43703502092](https://github.com/TheSumitNain/school-management-system/actions/runs/43703502092) and [43703502100](https://github.com/TheSumitNain/school-management-system/actions/runs/43703502100) are for older commit `d4680a19b8a5e899ee535fb92ad950b1d84c0fd7`; they do not clear the latest commit.
+- **Frontend failure:** two Playwright tests in the guardian profile validation scenarios fail because expected inline length-validation messages are absent: `Mobile number must be 30 characters or fewer.` and `Guardian name must be 200 characters or fewer.`. The recent `maxLength` attributes prevent over-limit input from reaching application validation. Reconcile the intended UX and tests; preserve field-level validation and do not simply weaken/remove the tests.
+- **Backend failure:** `TestGuardianRepositoryPostgresIntegration` fails at `backend/internal/repository/guardian_repository_integration_test.go:516`: audit counts are contacts=5, link creates=3, link updates=1, link revokes=2; expected revoke count=1. Inspect the fixture and revoke operations to determine whether the new explicit audit event is double-counted or the expected count is stale. Do not change the expected count without understanding the event semantics.
+- **Backend `go vet`:** skipped because the preceding test step failed. It is **not verified** for this commit.
+- **Current Student Management implementation already includes:** student profile sections; address/contact; basic details; medical and physical history; academic-year enrollment/admission and promotion; class/year curriculum and student optional-subject assignment/history; Parent/Guardian create/edit/link/revoke/history; guardian revocation audit and reason display; guardian input limits. These are implementation facts, not a claim that every browser journey has passed.
+- **Still required before Student Management can be called complete:** fix both CI failures; rerun both workflows on the resulting exact commit; verify complete browser journeys for initial admission, profile edit/reload, Parent Details load/edit/save/reload, address/contact, medical/physical history, enrollment/promotion/curriculum, permissions and archived/inactive read-only states; confirm no draft is lost on refetch; record any live local acceptance still pending.
+- **Safety boundary:** CI uses ephemeral PostgreSQL. Do not run migrations or acceptance writes against the user's persistent `school_management` database without explicit approval and a verified restorable backup. Parent OTP/SMS/login remains deferred.
+- **Work-session rule:** before coding, reconcile latest branch commit and Actions; after each meaningful code change, update this status with the change, exact verification command/run and result, and next concrete task. Mark PASS only when the exact current commit's check has passed. Keep this handover current so a new chat resumes from the real next task, not from scratch.
+
+
 **Last reconciled:** 2026-11-15  
 **Repository:** `TheSumitNain/school-management-system`  
 **Reviewed branch:** `work`  
