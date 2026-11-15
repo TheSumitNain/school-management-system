@@ -102,6 +102,12 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
     setPhysicalErrors({});
   }, [student.id, section, physicalSnapshot]);
 
+  useEffect(() => {
+    setFeedback(null);
+    setMedicalErrors({});
+    setPhysicalErrors({});
+  }, [student.id]);
+
   async function submitMedical(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canUpdate || medicalQuery.isLoading || medicalQuery.isError) return;
