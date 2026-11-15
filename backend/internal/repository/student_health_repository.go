@@ -198,9 +198,9 @@ func (r *AcademicRepository) SaveStudentMedicalDetails(
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	if err := authorizeAcademic(ctx, tx, actorID, schoolID, "students.update"); err != nil {
-	if err := authorizeAcademic(ctx, tx, actorID, schoolID, "students.read_sensitive"); err != nil {
 		return nil, err
 	}
+	if err := authorizeAcademic(ctx, tx, actorID, schoolID, "students.read_sensitive"); err != nil {
 		return nil, err
 	}
 	var active bool
