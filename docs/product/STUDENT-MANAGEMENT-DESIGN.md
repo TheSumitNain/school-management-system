@@ -1,6 +1,6 @@
 # Student Management — Domain and Database Design
 
-**Status:** Approved design baseline; Student Management implementation is substantially present, automated CI is green, and authenticated live acceptance remains in progress  
+**Status:** Approved design baseline; Student Management implementation is substantially present, the latest frontend acceptance checkpoint is running, and authenticated live acceptance remains in progress  
 **Last reconciled:** 2026-11-15  
 **Scope:** Phase 1 School Admin student admission, profiles, academic-year enrollment, curriculum selection and related school workflows.
 
@@ -22,7 +22,7 @@ The following decisions are approved:
 
 ## 2. Audit findings in the current implementation
 
-The current `work` branch contains the approved core Student Management model and its major profile workflows. Automated CI is green; the remaining gate is authenticated live acceptance, not the initial implementation foundation.
+The current `work` branch contains the approved core Student Management model and its major profile workflows. Earlier backend/frontend CI checkpoints passed; the latest frontend refetch-regression checkpoint is still being verified. Authenticated live acceptance remains a separate required gate.
 
 | Area | Existing state | Required evolution |
 |---|---|---|
@@ -290,6 +290,9 @@ A phase is complete only when code, migrations, automated tests and applicable b
 - Guardian form validation now allows over-limit values to reach application validation so each field can show its explicit length error. Do not reintroduce HTML `maxLength` truncation on those fields.
 - Guardian revocation audit has one authoritative writer: the V12 database trigger, updated by V45 to add only the boolean `has_revocation_reason`. The repository must not insert a duplicate audit event. Free-text revocation reasons must remain out of audit metadata.
 - These automated checks do not complete the manual/live acceptance checklist below. Playwright uses mocked APIs; local authenticated acceptance remains pending and must respect the persistent-database approval/backup safety gate.
+
+- The latest browser-test work adds explicit window-focus background-refetch checks for unsaved drafts in Basic Details, Parent Details, Address, Contact, Medical and Physical forms. The test waits beyond the relevant query stale windows, verifies that the API is read again, and asserts that the user's draft remains visible when the persisted response is unchanged. Test checkpoint: `ce21411d7ea1a52d5c4633a3c57e317f7f268965`; CI is pending.
+- The first run exposed a name-save feedback race: the success message was cleared when the same student's updated name changed a synchronization-effect dependency. The reset now depends on student identity only; source fix `2419d61299a878669392f69f44549a8e45f7ff9a`. The first failing run is documented in Project Status; the next exact-SHA CI result must confirm the correction.
 
 ## 9. Student profile screen audit — 2026-11-14
 
