@@ -84,6 +84,35 @@ func TestStudentCurriculumV44PostgresIntegration(t *testing.T) {
 		t.Fatalf("save optional subject choice: %v", err)
 	}
 
+	academicRepo := &AcademicRepository{db: tx}
+	curriculumView, err := academicRepo.GetStudentEnrollmentCurriculum(ctx, actorPrincipalID, schoolID, enrollmentID)
+	if err != nil {
+		t.Fatalf("read student enrollment curriculum: %v", err)
+	}
+	if curriculumView.EnrollmentID != enrollmentID || curriculumView.StudentID != studentID ||
+		!curriculumView.Assigned || len(curriculumView.SelectedOptionalSubjectIDs) != 1 ||
+		curriculumView.SelectedOptionalSubjectIDs[0] != optionalCurriculumSubjectID || len(curriculumView.SelectionHistory) != 1 {
+		t.Fatalf("student enrollment curriculum view = %+v; expected assigned curriculum, one selected option and one history row", curriculumView)
+	}
+	var curriculumReadAuditCount, auditedSelectionCount, auditedHistoryCount int
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*)::integer,
+		       COALESCE(MAX((metadata->>'selected_optional_subject_count')::integer),-1),
+		       COALESCE(MAX((metadata->>'selection_history_count')::integer),-1)
+		  FROM audit_events
+		 WHERE school_id=$1 AND actor_principal_id=$2
+		   AND action='school.student.enrollment_curriculum.read'
+		   AND resource_type='student_enrollment' AND resource_id=$3
+	`, schoolID, actorPrincipalID, fmt.Sprint(enrollmentID)).Scan(
+		&curriculumReadAuditCount, &auditedSelectionCount, &auditedHistoryCount,
+	); err != nil {
+		t.Fatalf("read student enrollment curriculum audit: %v", err)
+	}
+	if curriculumReadAuditCount != 1 || auditedSelectionCount != 1 || auditedHistoryCount != 1 {
+		t.Fatalf("student enrollment curriculum audit count=%d selected=%d history=%d; want 1, 1, 1",
+			curriculumReadAuditCount, auditedSelectionCount, auditedHistoryCount)
+	}
+
 	expectRejected := func(label string, operation func() error) {
 		t.Helper()
 		savepoint, saveErr := tx.Begin(ctx)
