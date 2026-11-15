@@ -1047,3 +1047,10 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Added a two-student browser journey that opens Student A's Basic Details, enters an unsaved draft and a field-level validation error, closes that section/profile, then opens Student B.
 - Verified Student B receives its own saved basic details and neither Student A's unsaved value nor Student A's validation error appears.
 - Test commit: `433461bec48f502765b97464ba6e188a9324d687`. Frontend CI **PASS** — [run 43715113384](https://github.com/TheSumitNain/school-management-system/actions/runs/43715113384), production build and all 9 Playwright tests passed. Backend CI **PASS** — [run 43715113361](https://github.com/TheSumitNain/school-management-system/actions/runs/43715113361): full migrations, PostgreSQL integration tests and `go vet ./...` passed on the same checkpoint. This is mocked browser coverage; authenticated local API/database acceptance remains outstanding.
+
+
+## Student Management — cross-student Parent Details draft isolation (2026-11-15)
+
+- Added a second two-student browser journey for Parent Details. Student A's new-guardian form is opened, populated with an over-limit Unicode name and a relationship draft, and submitted to create a field-level validation error.
+- After closing Student A's Parent Details and profile, the test opens Student B's Parent Details and verifies the new-guardian form starts empty and Student A's validation error is absent.
+- Latest test checkpoint: `b6d14c6ed4030724857838ef8cebc131041219ae`. Frontend CI **PASS** — [run 43716057611](https://github.com/TheSumitNain/school-management-system/actions/runs/43716057611), production build and all 10 Playwright tests passed. Backend CI **PASS** — [run 43716057614](https://github.com/TheSumitNain/school-management-system/actions/runs/43716057614), full migration chain, PostgreSQL integration tests and `go vet ./...` passed. These are mocked browser and ephemeral-DB CI checks; authenticated local API/database acceptance remains outstanding.
