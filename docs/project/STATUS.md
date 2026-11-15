@@ -299,18 +299,18 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 
 - Added an explicit confirmation step before saving edits to a shared guardian profile. The confirmation explains that the guardian's contact/profile values are shared by every linked student, and the action label makes the multi-record scope clear.
 - Validation still runs before confirmation; the update mutation remains protected by the existing live guardian-management permission and invalidates guardian/student query families after success. Relationship-specific values (relationship type, primary contact and emergency contact) remain on each student-guardian link, not on the shared guardian profile.
-- This is a frontend safety improvement committed to the work branch; CI is running for the new commit. Browser-level acceptance is still pending.
+- Historical verification note: the shared-profile confirmation workflow is now covered by frontend CI run `43692374206`, which passed all 7 Student Management Playwright tests and the production build.
 
 ## Student Basic Details date-range alignment — 2026-11-14
 
 - The Date of birth picker now enforces both ends of the same range as the backend: no future date and no date earlier than 130 years before today. This prevents users from selecting values that the save API will reject and makes the field guidance actionable at entry time.
-- Frontend CI must verify this follow-up; browser interaction and local environment acceptance remain pending.
+- Historical verification note: the date-range alignment is included in the frontend code checkpoint whose TypeScript/Vite build and 7 Student Management Playwright tests passed in CI run `43692374206`. Live acceptance against the user's persistent database remains pending.
 
 ## Student Parents & Siblings editability audit — 2026-11-14
 
 - The student profile exposes Parents & Siblings as a dedicated section in the same student-record workflow. It loads guardian relationships and related students, supports creating/linking guardians, editing shared guardian profile fields with an all-linked-students confirmation, and revoking links with a required reason while preserving history. Parent OTP/login remains out of scope.
-- A remaining functional gap was identified: once a guardian is linked, the student-specific relationship type and the Primary contact / Emergency contact flags are displayed but have no edit operation. These values belong to the student–guardian relationship, not the shared guardian profile. Add a separately authorized, audited relationship-update operation and UI before calling Parent Details editability complete. Do not work around this by editing the shared guardian profile or revoking/recreating the link, because that would unnecessarily alter history.
-- The relationship-update gap is recorded for implementation; current browser acceptance of the Parents & Siblings workflow remains pending.
+- At the time of this audit, the remaining gap was student-specific relationship editing. It was subsequently closed by the authorized `PATCH /school/student-guardian-links/:linkID` operation and the UI below; the active Parent Details workflow now edits shared guardian fields and per-student relationship/contact flags separately. Do not work around relationship edits by changing the shared profile or revoking/recreating links.
+- This was a historical implementation note; relationship editing was delivered in the following section and the complete mocked Parent Details workflow later passed all 7 Student Management Playwright tests in CI run `43692374206`.
 
 ## Student-specific guardian relationship editing implemented — 2026-11-14
 
@@ -320,14 +320,14 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - The update is transactional, restricted to active students and active links, and writes an append-only audit event with before/after relationship values and contact flags. Revoked links cannot be edited; relationship history remains intact.
 - Guardian relationship edit forms and action controls wrap responsively inside each guardian card on narrow screens.
 - Frontend includes field-level relationship validation, per-student labels/help text, loading/error/success feedback and query invalidation. Backend handler/route tests and PostgreSQL integration coverage include permission enforcement, audit evidence, primary-contact exclusivity and isolation from another student's link.
-- CI and browser acceptance are pending; do not mark Student Management complete until both are verified.
+- The original backend/frontend implementation was subsequently verified by backend CI run `43692087083` and frontend CI run `43692374206`. The browser suite uses mocked APIs; live acceptance against the user's persistent database remains pending.
 
 ## Student guardian relationship database editability correction — 2026-11-14
 
 - Backend CI exposed a schema/application mismatch: V12's relationship-history trigger treated `relationship_type` as immutable, so the new authorized relationship-edit repository operation was rejected by PostgreSQL even though its application validation allowed the change.
 - Added forward migration V41 to permit edits to the relationship label while keeping student ID, guardian ID, school ownership, row identity, creation time and revoked-history fields immutable. The existing 1–40 character database constraint remains in force.
 - V41 retains the same actor/school checks for revocation. The down migration restores the original V12 trigger behavior.
-- The PostgreSQL integration test already exercises relationship-type changes, primary-contact exclusivity, cross-student isolation, revoked-link immutability, inactive-student restrictions and audit logging. CI must rerun with V41 before this correction is considered verified.
+- Backend CI run `43692087083` subsequently passed the full migration chain, PostgreSQL integration suite and `go vet`, including relationship-type changes, primary-contact exclusivity, cross-student isolation, revoked-link immutability, inactive-student restrictions and audit logging.
 - This is an additive migration; do not edit V12 or apply V41 to the persistent `school_management` database without the user's explicit approval and a verified restorable backup.
 
 
@@ -338,7 +338,7 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - The frontend source audit confirms Basic Details and Contact Details Save controls intentionally remain disabled when the prerequisite sensitive-profile GET fails. Do not remove this guard or permit editing against empty fallback values. Retry must recover the read first.
 - GET access for Basic Details, Contact Details and Address requires the existing students.read_sensitive permission; corresponding writes require students.update. Keep these existing live permission boundaries unchanged. If the UI still reports a failed read after the local database is current, capture the API error and diagnose the specific endpoint rather than weakening authorization.
 - The known local adoption gap remains: the user's persistent school_management database was last reported at migration V24, while student address, contact, medical/physical and basic-details tables are introduced in V34–V37, guardian profile extensions in V38, State/UT reference data in V40 and relationship editability in V41. This is a likely explanation for failed profile reads on that database, not proof of its current version. Do not migrate it without explicit approval and a verified restorable backup.
-- Current Student Management gaps: browser-level create/view/edit/save acceptance remains pending; the national District → Block/Tehsil → Village/City reference hierarchy still needs an authoritative LGD import; persistent database migration/adoption remains pending. State/UT rows are seeded by V40, but lower-level rows are deliberately not fabricated.
+- Current Student Management gaps: authenticated live browser/API acceptance against the user's persistent database and persistent migration adoption remain pending; the national District → Block/Tehsil → Village/City reference hierarchy still needs an authoritative LGD import. State/UT rows are seeded by V40, but lower-level rows are deliberately not fabricated. Mocked browser create/view/edit/save acceptance is covered by frontend CI; ephemeral PostgreSQL migration/integration acceptance is covered by backend CI.
 - Current work remains scoped to Student Management. Auth, RBAC, Class, Section and Subject are unchanged.
 
 
