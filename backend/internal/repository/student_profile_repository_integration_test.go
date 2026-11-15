@@ -280,8 +280,31 @@ func TestStudentProfileRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("restore student active after write-boundary test: %v", err)
 	}
 
+	archiveAdmissionNumber := "ARCHIVE-" + suffix
+	archiveEnrollment, err := repo.CreateStudentEnrollment(ctx, actorID, schoolID, student.ID,
+		admissionYearID, admissionSectionID, nil, archiveAdmissionNumber, admissionDate, admissionDate)
+	if err != nil || archiveEnrollment == nil || archiveEnrollment.Status != "active" {
+		t.Fatalf("create active enrollment for archive test: enrollment=%+v err=%v", archiveEnrollment, err)
+	}
 	archived, err := repo.ArchiveStudent(ctx, actorID, schoolID, student.ID)
 	if err != nil || archived.Status != "archived" { t.Fatalf("archive student: student=%+v err=%v", archived, err) }
+	var archivedEnrollmentStatus string
+	var archivedEnrollmentEnd time.Time
+	if err := tx.QueryRow(ctx, `
+		SELECT status, ended_at FROM student_enrollments WHERE id=$1 AND school_id=$2
+	`, archiveEnrollment.ID, schoolID).Scan(&archivedEnrollmentStatus, &archivedEnrollmentEnd); err != nil {
+		t.Fatalf("read enrollment after student archive: %v", err)
+	}
+	if archivedEnrollmentStatus != "withdrawn" || archivedEnrollmentEnd.Before(admissionDate) {
+		t.Fatalf("archived student's enrollment status/end date = %q/%s; want withdrawn and end date >= %s",
+			archivedEnrollmentStatus, archivedEnrollmentEnd.Format("2006-01-02"), admissionDate.Format("2006-01-02"))
+	}
+	var preservedEnrollmentCount int
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*) FROM student_enrollments WHERE id=$1 AND student_id=$2
+	`, archiveEnrollment.ID, student.ID).Scan(&preservedEnrollmentCount); err != nil || preservedEnrollmentCount != 1 {
+		t.Fatalf("archived enrollment history count=%d err=%v; want preserved row", preservedEnrollmentCount, err)
+	}
 	if _, err := repo.UpdateStudent(ctx, actorID, schoolID, student.ID, "Should Not Update"); !errors.Is(err, ErrAcademicNotFound) {
 		t.Fatalf("update archived student error = %v, want not found", err)
 	}
