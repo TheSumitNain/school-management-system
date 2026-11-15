@@ -152,7 +152,7 @@ func TestValidateCSVAllowsSameSourceCodeAcrossEntityNamespaces(t *testing.T) {
 }
 
 func TestValidateCSVRejectsInvalidUTF8(t *testing.T) {
-	input := strings.Replace(validSnapshot, "Ambala", "Amb\\xffala", 1)
+	input := strings.Replace(validSnapshot, "Ambala", "Amb\xffala", 1)
 	_, err := validateCSV(strings.NewReader(input))
 	if err == nil || !strings.Contains(err.Error(), "not valid UTF-8") {
 		t.Fatalf("validateCSV() error = %v, want invalid UTF-8 error", err)
@@ -160,7 +160,7 @@ func TestValidateCSVRejectsInvalidUTF8(t *testing.T) {
 }
 
 func TestValidateCSVRejectsPostgresUnsupportedNUL(t *testing.T) {
-	input := strings.Replace(validSnapshot, "Ambala", "Amb\\x00ala", 1)
+	input := strings.Replace(validSnapshot, "Ambala", "Amb\x00ala", 1)
 	_, err := validateCSV(strings.NewReader(input))
 	if err == nil || !strings.Contains(err.Error(), "contains a NUL byte") {
 		t.Fatalf("validateCSV() error = %v, want NUL byte error", err)
