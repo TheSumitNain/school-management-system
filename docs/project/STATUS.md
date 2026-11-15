@@ -3,7 +3,7 @@
 **Last reconciled:** 2026-11-15  
 **Repository:** `TheSumitNain/school-management-system`  
 **Reviewed branch:** `work`  
-**Reviewed through:** `ab8993413af53eb67a2b40ca955e37bc8e2de78b`; Backend CI run `43611122792` passed the full ephemeral PostgreSQL migration chain, backend tests including PostgreSQL integration, and `go vet`. Frontend CI run `43610711016` passed on `dfeb4bd7`; commits after it in this review changed backend integration tests only. Local V39+ database application and live authenticated browser acceptance remain pending
+**Reviewed through:** `05b9caa8ef9236417817c50353bac9325faba856`; Backend CI run `43669081600` passed the full ephemeral PostgreSQL migration chain, backend tests including PostgreSQL integration, and `go vet`. Frontend CI run `43610711016` passed on `dfeb4bd7`; no frontend source changed in the subsequent guardian-email validation work. Local V39+ database application and live authenticated browser acceptance remain pending
 
 ## Administrator access correction — School Admin guardian permissions (V39; local verification pending)
 
@@ -505,3 +505,13 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - Expected database rejections in the reviewed V12, V31, V33–V37 and V42 tests are isolated with savepoints where later assertions reuse the transaction. No additional persistent-fixture leak was identified in this targeted review.
 - Frontend CI run `43610711016` passed for `dfeb4bd7`, including the expanded mocked Playwright Student Management journey. Subsequent `e9fb7761` and `ab899341` commits changed backend integration tests only; this remains the latest relevant frontend verification.
 - Live acceptance is still pending: Playwright API calls remain mocked, no local persistent database was migrated, and authenticated browser verification of actual load/save/reload behavior and role permissions remains outstanding. Keep `school_management` untouched until explicit approval and a verified backup.
+
+
+## Guardian contact validation and cross-layer review — 2026-11-15
+
+- Guardian email is now normalized and validated on the backend repository write path using Go's `net/mail.ParseAddress`; blank optional values become NULL, values over 254 bytes are rejected, and display-name/multiple-address input is not accepted as a single email field.
+- Unit coverage includes valid and whitespace-trimmed addresses, nil/blank optional values, missing local/domain portions, display-name and multiple-address input, and over-length values.
+- Latest backend CI for exact commit `05b9caa8ef9236417817c50353bac9325faba856` passed: complete ephemeral PostgreSQL migration chain, backend unit and PostgreSQL integration tests, and `go vet` (run `43669081600`).
+- Cross-layer review confirmed the Parents & Siblings UI already validates email fields inline before submit, preserves shared guardian profile semantics, keeps per-student relationship flags separate, and refreshes related query data after writes. Existing Playwright coverage exercises invalid email rejection and guardian create/link/edit/revoke flows using mocked APIs.
+- Database-triggered guardian revocation audit is already implemented in V12 and asserted by repository integration coverage; no duplicate application-level audit insert was added.
+- Remaining acceptance is unchanged: run authenticated browser checks against a migrated disposable/local test environment to prove real backend read/write/reload and role-based behavior. Do not apply outstanding migrations to persistent `school_management` without explicit approval and a verified restorable backup.
