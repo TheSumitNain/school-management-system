@@ -604,3 +604,11 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Student contact email now receives a frontend 254-character Unicode code-point check before syntax validation; the error is shown beneath the email field and the backend's normalized email parser/length validation remains authoritative.
 - Expanded the mocked browser journey to submit over-limit primary phone, alternate phone and email values together, verify all three field errors, and confirm no write occurs until corrected. The existing invalid-email and valid-save checks remain in the same flow.
 - No database or schema changes were made. CI for the exact current branch tip and live authenticated API/database acceptance remain unverified.
+
+
+## Guardian profile field-level validation — 2026-11-15
+
+- Guardian create and shared-profile edit now validate all repository text limits before opening the shared-update confirmation or sending a write: full name 200, mobile/alternate mobile 30, email 254, occupation/education 120 and workplace 160 Unicode characters.
+- Added field-specific inline errors and accessible invalid-state descriptions for every guardian profile field. Email validation checks the character limit before email syntax; the backend's normalized parser and repository character limits remain authoritative.
+- Extended mocked browser coverage to submit all over-limit Hindi guardian-create values together, verify each error and no create request, then continue through invalid-email and successful create/link. Shared guardian edit now also verifies that an over-limit phone is rejected before the cross-student confirmation.
+- No database or schema changes were made. Exact-tip CI and live authenticated API/database acceptance remain unverified.
