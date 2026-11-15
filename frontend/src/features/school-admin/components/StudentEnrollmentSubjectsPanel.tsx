@@ -21,7 +21,7 @@ export function StudentEnrollmentSubjectsPanel({
   const curriculum = data?.curriculum;
   const canEdit = canManage && studentStatus === "active" && enrollmentStatus === "active";
   const grouped = useMemo(() => {
-    const groups = new Map<number, { name: string; min: number; max: number; subjects: typeof curriculum extends undefined ? never[] : NonNullable<typeof curriculum>["subjects"] }>();
+    const groups = new Map<number, { name: string; min: number; max: number; subjects: CurriculumSubject[] }>();
     for (const group of curriculum?.optional_groups ?? []) {
       groups.set(group.id, { name: group.name, min: group.min_selections, max: group.max_selections, subjects: [] });
     }
