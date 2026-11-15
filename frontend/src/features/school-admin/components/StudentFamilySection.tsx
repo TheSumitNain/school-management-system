@@ -1,4 +1,4 @@
-import { useDeferredValue, useState, type FormEvent } from "react";
+import { useDeferredValue, useEffect, useState, type FormEvent } from "react";
 import { Modal } from "../../../shared/components/Modal";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { Select } from "../../../shared/components/Select";
@@ -84,6 +84,48 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
     }));
   const relatedStudents = relatedQuery.data?.related_students ?? [];
   const busy = createGuardian.isPending || updateGuardian.isPending || linkGuardian.isPending || revokeLink.isPending || updateLink.isPending;
+
+  // Never carry a guardian form draft or history filter from one student to another.
+  useEffect(() => {
+    setSearch("");
+    setSelectedGuardianID(0);
+    setRelationshipType("");
+    setPrimaryContact(false);
+    setEmergencyContact(false);
+    setIncludeHistory(false);
+    setShowCreateGuardian(false);
+    setNewGuardianName("");
+    setNewGuardianMobile("");
+    setNewGuardianEmail("");
+    setNewGuardianAlternateMobile("");
+    setNewGuardianOccupation("");
+    setNewGuardianEducation("");
+    setNewGuardianWorkplace("");
+    setEditingGuardianID(0);
+    setEditingLinkID(0);
+    setEditRelationshipForm({ relationship_type: "", is_primary_contact: false, is_emergency_contact: false });
+    setEditRelationshipError("");
+    setEditRelationshipFieldError("");
+    setEditGuardianForm({
+      full_name: "", mobile_number: "", email_address: "", alternate_mobile_number: "",
+      occupation: "", education: "", workplace_name: "", status: "active",
+    });
+    setEditGuardianError("");
+    setEditGuardianNameError("");
+    setEditGuardianEmailError("");
+    setConfirmSharedGuardianSave(false);
+    setPendingRevokeID(0);
+    setRevokeReason("");
+    setGuardianSelectError("");
+    setRelationshipError("");
+    setNewGuardianNameError("");
+    setNewGuardianEmailError("");
+    setNewGuardianFieldErrors({});
+    setEditGuardianFieldErrors({});
+    setRevokeReasonError("");
+    setFeedback(null);
+  }, [student.id]);
+
 
   async function saveGuardian(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
