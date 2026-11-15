@@ -177,7 +177,7 @@ func TestStudentBasicDetailsV37PostgresIntegration(t *testing.T) {
 		_, saveErr := repository.SaveStudentBasicDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
 			nil, field.place, nil, field.nationality, field.religion, nil, nil, field.registration)
 		if !errors.Is(saveErr, ErrInvalidAcademicInput) {
-			t.Fatalf("%s over %d Unicode characters error = %v, want invalid input", field.name, field.limit, saveErr)
+			t.Fatalf("%s over-limit Unicode input error = %v, want invalid input", field.name, saveErr)
 		}
 	}
 
