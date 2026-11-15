@@ -23,13 +23,6 @@ function localDateValue() {
 
 export function StudentPromotionDialog({ enrollment, academicYears, academicYearsError, onRetryAcademicYears, onClose, onPromoted }: Props) {
   const availableYears = academicYears.filter(year => year.status === "active" && year.id !== enrollment.academic_year_id);
-  const destinationYear = availableYears.find(year => year.id === academicYearID);
-  const sourceEnrollmentDate = enrollment.enrolled_at.slice(0, 10);
-  const yearStart = destinationYear?.starts_on?.slice(0, 10);
-  const yearEnd = destinationYear?.ends_on?.slice(0, 10);
-  const minAdmissionDate = yearStart && sourceEnrollmentDate > yearStart ? sourceEnrollmentDate : yearStart ?? sourceEnrollmentDate;
-  const maxAdmissionDate = yearEnd;
-  const invalidPromotionWindow = Boolean(maxAdmissionDate && minAdmissionDate > maxAdmissionDate);
   const [academicYearID, setAcademicYearID] = useState(0);
   const [sectionID, setSectionID] = useState("");
   const [admissionNumber, setAdmissionNumber] = useState("");
@@ -37,6 +30,13 @@ export function StudentPromotionDialog({ enrollment, academicYears, academicYear
   const [admissionDate, setAdmissionDate] = useState(localDateValue());
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [feedback, setFeedback] = useState("");
+  const destinationYear = availableYears.find(year => year.id === academicYearID);
+  const sourceEnrollmentDate = enrollment.enrolled_at.slice(0, 10);
+  const yearStart = destinationYear?.starts_on?.slice(0, 10);
+  const yearEnd = destinationYear?.ends_on?.slice(0, 10);
+  const minAdmissionDate = yearStart && sourceEnrollmentDate > yearStart ? sourceEnrollmentDate : yearStart ?? sourceEnrollmentDate;
+  const maxAdmissionDate = yearEnd;
+  const invalidPromotionWindow = Boolean(maxAdmissionDate && minAdmissionDate > maxAdmissionDate);
   const promote = usePromoteSchoolStudentEnrollmentMutation();
   const sectionsQuery = useSchoolStudentSectionsQuery(academicYearID, academicYearID > 0);
   const sections = (sectionsQuery.data?.sections ?? []).filter(section => section.is_active);
