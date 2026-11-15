@@ -23,6 +23,10 @@ function textValue(value?: string | null) {
   return value ?? "";
 }
 
+function characterCount(value: string) {
+  return Array.from(value).length;
+}
+
 function numberValue(value?: number | null) {
   return value == null ? "" : String(value);
 }
@@ -46,7 +50,8 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
   const [measuredOn, setMeasuredOn] = useState("");
   const [visionNotes, setVisionNotes] = useState("");
   const [physicalNotes, setPhysicalNotes] = useState("");
-  const [physicalErrors, setPhysicalErrors] = useState<{ heightCM?: string; weightKG?: string; measuredOn?: string }>({});
+  const [medicalErrors, setMedicalErrors] = useState<{ allergies?: string; knownConditions?: string; ongoingMedications?: string; emergencyNotes?: string }>({});
+  const [physicalErrors, setPhysicalErrors] = useState<{ heightCM?: string; weightKG?: string; measuredOn?: string; visionNotes?: string; physicalNotes?: string }>({});
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
 
   const medicalQuery = useSchoolStudentMedicalDetailsQuery(student.id, section === "medical");
@@ -79,6 +84,13 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
   async function submitMedical(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canUpdate || medicalQuery.isLoading || medicalQuery.isError) return;
+    const errors: typeof medicalErrors = {};
+    if (characterCount(allergies.trim()) > 2000) errors.allergies = "Use no more than 2,000 characters.";
+    if (characterCount(knownConditions.trim()) > 2000) errors.knownConditions = "Use no more than 2,000 characters.";
+    if (characterCount(ongoingMedications.trim()) > 2000) errors.ongoingMedications = "Use no more than 2,000 characters.";
+    if (characterCount(emergencyNotes.trim()) > 2000) errors.emergencyNotes = "Use no more than 2,000 characters.";
+    setMedicalErrors(errors);
+    if (Object.keys(errors).length > 0) return;
     const current = medicalQuery.data?.medical_details;
     if (current && (current.blood_group ?? "") === bloodGroup &&
       (current.allergies ?? "") === allergies.trim() &&
@@ -121,6 +133,8 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
     } else if (weight !== null && Math.abs(weight * 100 - Math.round(weight * 100)) > 1e-8) {
       errors.weightKG = "Use no more than 2 decimal places.";
     }
+    if (characterCount(visionNotes.trim()) > 1000) errors.visionNotes = "Use no more than 1,000 characters.";
+    if (characterCount(physicalNotes.trim()) > 2000) errors.physicalNotes = "Use no more than 2,000 characters.";
     const hasPhysicalDetails = height !== null || weight !== null || Boolean(visionNotes.trim() || physicalNotes.trim());
     if (!hasPhysicalDetails) errors.measuredOn = "Enter at least one physical detail to add a measurement record.";
     else if (!measuredOn) errors.measuredOn = "Measurement date is required.";
@@ -174,10 +188,10 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
             <>
               <div className="student-health-grid">
                 <label><StudentFieldLabel label="Blood group" hint="Optional. Choose the blood group only when it has been confirmed by the family or a reliable record." /><Select ariaLabel="Blood group" value={bloodGroup} disabled={!canUpdate || busy} onChange={setBloodGroup} placeholder="Select blood group" options={["A+","A-","B+","B-","AB+","AB-","O+","O-"].map(value => ({value,label:value}))}/></label>
-                <label><StudentFieldLabel label="Allergies" hint="Optional. Record only information provided by the family; maximum 2,000 characters." /><textarea disabled={!canUpdate || busy} rows={3} maxLength={2000} value={allergies} onChange={event => setAllergies(event.target.value)} placeholder="Record known allergies, if any"/></label>
-                <label><StudentFieldLabel label="Known medical conditions" hint="Optional. Record school-relevant information provided by the family; do not enter an unverified diagnosis. Maximum 2,000 characters." /><textarea disabled={!canUpdate || busy} rows={3} maxLength={2000} value={knownConditions} onChange={event => setKnownConditions(event.target.value)} placeholder="Record school-relevant conditions, if any"/></label>
-                <label><StudentFieldLabel label="Ongoing medications" hint="Optional. Record medication information provided by the family. Maximum 2,000 characters." /><textarea disabled={!canUpdate || busy} rows={3} maxLength={2000} value={ongoingMedications} onChange={event => setOngoingMedications(event.target.value)} placeholder="Record medication information provided by the family"/></label>
-                <label className="wide"><StudentFieldLabel label="Emergency medical notes" hint="Optional. Keep notes concise and limited to information needed for an emergency. Maximum 2,000 characters." /><textarea disabled={!canUpdate || busy} rows={3} maxLength={2000} value={emergencyNotes} onChange={event => setEmergencyNotes(event.target.value)} placeholder="Only essential emergency information"/></label>
+                <label><StudentFieldLabel label="Allergies" hint="Optional. Record only information provided by the family; maximum 2,000 characters." /><textarea disabled={!canUpdate || busy} rows={3} value={allergies} aria-invalid={Boolean(medicalErrors.allergies)} aria-describedby={medicalErrors.allergies ? "student-allergies-error" : undefined} onChange={event => { setAllergies(event.target.value); setMedicalErrors(current => ({...current,allergies:undefined})); }} placeholder="Record known allergies, if any"/>{medicalErrors.allergies && <small id="student-allergies-error" className="app-field-error">{medicalErrors.allergies}</small> }</label>
+                <label><StudentFieldLabel label="Known medical conditions" hint="Optional. Record school-relevant information provided by the family; do not enter an unverified diagnosis. Maximum 2,000 characters." /><textarea disabled={!canUpdate || busy} rows={3} value={knownConditions} aria-invalid={Boolean(medicalErrors.knownConditions)} aria-describedby={medicalErrors.knownConditions ? "student-conditions-error" : undefined} onChange={event => { setKnownConditions(event.target.value); setMedicalErrors(current => ({...current,knownConditions:undefined})); }} placeholder="Record school-relevant conditions, if any"/>{medicalErrors.knownConditions && <small id="student-conditions-error" className="app-field-error">{medicalErrors.knownConditions}</small> }</label>
+                <label><StudentFieldLabel label="Ongoing medications" hint="Optional. Record medication information provided by the family. Maximum 2,000 characters." /><textarea disabled={!canUpdate || busy} rows={3} value={ongoingMedications} aria-invalid={Boolean(medicalErrors.ongoingMedications)} aria-describedby={medicalErrors.ongoingMedications ? "student-medications-error" : undefined} onChange={event => { setOngoingMedications(event.target.value); setMedicalErrors(current => ({...current,ongoingMedications:undefined})); }} placeholder="Record medication information provided by the family"/>{medicalErrors.ongoingMedications && <small id="student-medications-error" className="app-field-error">{medicalErrors.ongoingMedications}</small> }</label>
+                <label className="wide"><StudentFieldLabel label="Emergency medical notes" hint="Optional. Keep notes concise and limited to information needed for an emergency. Maximum 2,000 characters." /><textarea disabled={!canUpdate || busy} rows={3} value={emergencyNotes} aria-invalid={Boolean(medicalErrors.emergencyNotes)} aria-describedby={medicalErrors.emergencyNotes ? "student-emergency-notes-error" : undefined} onChange={event => { setEmergencyNotes(event.target.value); setMedicalErrors(current => ({...current,emergencyNotes:undefined})); }} placeholder="Only essential emergency information"/>{medicalErrors.emergencyNotes && <small id="student-emergency-notes-error" className="app-field-error">{medicalErrors.emergencyNotes}</small> }</label>
               </div>
               {medicalQuery.data?.medical_details.history?.length ? <details className="student-health-history">
                 <summary>Previous medical versions ({medicalQuery.data.medical_details.history.length})</summary>
@@ -213,8 +227,8 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
                 <label><StudentFieldLabel label="Height (cm)" hint="Optional. Enter a measurement from 20 to 250 cm, using up to 2 decimal places." /><input type="number" min={20} max={250} step="0.01" disabled={!canUpdate || busy} value={heightCM} aria-invalid={Boolean(physicalErrors.heightCM)} aria-describedby={physicalErrors.heightCM ? "student-height-error" : undefined} onChange={event => { setHeightCM(event.target.value); setPhysicalErrors(current => ({...current,heightCM:undefined})); }} placeholder="e.g. 132.5"/>{physicalErrors.heightCM && <small id="student-height-error" className="app-field-error">{physicalErrors.heightCM}</small>}</label>
                 <label><StudentFieldLabel label="Weight (kg)" hint="Optional. Enter a measurement from 1 to 300 kg, using up to 2 decimal places." /><input type="number" min={1} max={300} step="0.01" disabled={!canUpdate || busy} value={weightKG} aria-invalid={Boolean(physicalErrors.weightKG)} aria-describedby={physicalErrors.weightKG ? "student-weight-error" : undefined} onChange={event => { setWeightKG(event.target.value); setPhysicalErrors(current => ({...current,weightKG:undefined})); }} placeholder="e.g. 31.25"/>{physicalErrors.weightKG && <small id="student-weight-error" className="app-field-error">{physicalErrors.weightKG}</small>}</label>
                 <label><StudentFieldLabel label="Measurement date" conditional hint="Required when recording any height, weight, vision note or physical note. Choose the date the measurement/details were recorded." /><DatePicker value={measuredOn} onChange={value => { setMeasuredOn(value); setPhysicalErrors(current => ({...current,measuredOn:undefined})); }} ariaLabel="Measurement date" disabled={!canUpdate || busy} invalid={Boolean(physicalErrors.measuredOn)} describedBy={physicalErrors.measuredOn ? "student-measured-on-error" : undefined} placeholder="Choose measurement date"/>{physicalErrors.measuredOn && <small id="student-measured-on-error" className="app-field-error">{physicalErrors.measuredOn}</small>}</label>
-                <label><StudentFieldLabel label="Vision notes" hint="Optional school-entered note; maximum 1,000 characters. Do not enter a diagnosis." /><textarea disabled={!canUpdate || busy} rows={3} maxLength={1000} value={visionNotes} onChange={event => setVisionNotes(event.target.value)} placeholder="Optional vision-related notes"/></label>
-                <label className="wide"><StudentFieldLabel label="Physical notes" hint="Optional school-entered information provided by the family; maximum 2,000 characters." /><textarea disabled={!canUpdate || busy} rows={3} maxLength={2000} value={physicalNotes} onChange={event => setPhysicalNotes(event.target.value)} placeholder="Optional physical details provided by the family"/></label>
+                <label><StudentFieldLabel label="Vision notes" hint="Optional school-entered note; maximum 1,000 characters. Do not enter a diagnosis." /><textarea disabled={!canUpdate || busy} rows={3} value={visionNotes} aria-invalid={Boolean(physicalErrors.visionNotes)} aria-describedby={physicalErrors.visionNotes ? "student-vision-notes-error" : undefined} onChange={event => setVisionNotes(event.target.value)} placeholder="Optional vision-related notes"/>{physicalErrors.visionNotes && <small id="student-vision-notes-error" className="app-field-error">{physicalErrors.visionNotes}</small> }</label>
+                <label className="wide"><StudentFieldLabel label="Physical notes" hint="Optional school-entered information provided by the family; maximum 2,000 characters." /><textarea disabled={!canUpdate || busy} rows={3} value={physicalNotes} aria-invalid={Boolean(physicalErrors.physicalNotes)} aria-describedby={physicalErrors.physicalNotes ? "student-physical-notes-error" : undefined} onChange={event => setPhysicalNotes(event.target.value)} placeholder="Optional physical details provided by the family"/>{physicalErrors.physicalNotes && <small id="student-physical-notes-error" className="app-field-error">{physicalErrors.physicalNotes}</small> }</label>
               </div>
               {physicalQuery.data?.physical_details.history && physicalQuery.data.physical_details.history.filter(record => record.id !== physicalQuery.data?.physical_details.id).length > 0 && <details className="student-health-history">
                 <summary>Previous physical measurements ({physicalQuery.data.physical_details.history.filter(record => record.id !== physicalQuery.data?.physical_details.id).length})</summary>
