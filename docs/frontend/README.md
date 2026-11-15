@@ -160,6 +160,23 @@ Do not ask the user for repeated screenshots or uploads when command output, log
 9. Verify responsive behavior at mobile, tablet and desktop widths, in every supported theme.
 10. Verify production build, bundle size, route loading, browser workflows and graceful error recovery; ensure backend authorization remains effective when UI controls are bypassed.
 
+## Frontend verification and Student Management browser acceptance
+
+Run from `frontend`:
+
+```cmd
+npm run typecheck
+npm run build
+npm run test:e2e
+```
+
+- `npm run typecheck` runs the design-token guard and TypeScript project checks.
+- `npm run build` runs the design-token guard, TypeScript build and Vite production bundle.
+- `npm run test:e2e` runs the Playwright browser suite in Chromium.
+- Student Management browser coverage includes admission, profile editing/reload, Parent Details, address/contact, medical/physical history, enrollment curriculum and subject choices, promotion, archive and inactive/archived read-only permissions.
+- Background-refetch regression coverage must trigger an actual query refetch (for example, by focusing the browser after the configured stale window) and verify that unsaved drafts remain unchanged in Basic Details, Parent Details, Address, Contact, Medical and Physical forms.
+- These E2E tests use mocked API responses. They verify frontend behavior and API interaction contracts, but do not replace authenticated acceptance against the local API/database. Persistent local database migrations and writes remain subject to the approval and verified-backup safety gate documented in Project Status.
+
 ## Explicitly deferred
 
 - Parent OTP login and OTP/SMS delivery.
