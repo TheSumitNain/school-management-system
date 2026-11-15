@@ -42,7 +42,7 @@ export function StudentEnrollmentSubjectsPanel({
   useEffect(() => {
     setTargetCurriculumID(data?.curriculum?.id ?? data?.available_curriculum?.id ?? 0);
     setSelected(savedSelectionKey ? savedSelectionKey.split(",").map(Number) : []);
-  }, [data?.enrollment_id, data?.curriculum?.id, data?.available_curriculum?.id, savedSelectionKey]);
+  }, [enrollmentID, data?.enrollment_id, data?.curriculum?.id, data?.available_curriculum?.id, savedSelectionKey]);
 
   function toggle(id: number, checked: boolean) {
     setSelected(current => checked ? [...current, id] : current.filter(value => value !== id));
