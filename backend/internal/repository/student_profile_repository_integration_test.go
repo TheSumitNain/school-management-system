@@ -137,6 +137,20 @@ func TestStudentProfileRepositoryPostgresIntegration(t *testing.T) {
 		admission.Enrollment.RollNumber == nil || *admission.Enrollment.RollNumber != unicodeRollNumber {
 		t.Fatalf("create combined admission with maximum Unicode field lengths: result=%+v err=%v", admission, err)
 	}
+
+	// A school may admit a student into a future active academic year before
+	// that year becomes current. The directory and profile must still resolve
+	// the year-scoped admission identity instead of showing an empty number.
+	futureYearItems, futureYearTotal, err := repo.ListStudents(ctx, actorID, schoolID, unicodeAdmissionNumber, "active", 10, 0)
+	if err != nil || futureYearTotal != 1 || len(futureYearItems) != 1 ||
+		futureYearItems[0].ID != admission.Student.ID || futureYearItems[0].AdmissionNumber != unicodeAdmissionNumber {
+		t.Fatalf("directory lookup for non-current-year admission: items=%+v total=%d err=%v",
+			futureYearItems, futureYearTotal, err)
+	}
+	futureYearProfile, err := repo.GetStudent(ctx, actorID, schoolID, admission.Student.ID)
+	if err != nil || futureYearProfile.AdmissionNumber != unicodeAdmissionNumber {
+		t.Fatalf("profile lookup for non-current-year admission: profile=%+v err=%v", futureYearProfile, err)
+	}
 	if _, err := repo.CreateStudentAdmission(ctx, actorID, schoolID, strings.Repeat("अ", 201),
 		"ADM-UNICODE-LONG-"+suffix, admissionYearID, admissionSectionID, nil, admissionDate); !errors.Is(err, ErrInvalidAcademicInput) {
 		t.Fatalf("combined admission with 201-character student name error = %v, want invalid input", err)
