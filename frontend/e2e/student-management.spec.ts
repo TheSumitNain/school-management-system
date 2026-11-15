@@ -379,6 +379,7 @@ test("student admission, profile navigation and parent details render without br
   await dobCalendar.getByRole("button", { name: dobLabels.yesterday }).click();
   await expect(dobCalendar).toBeHidden();
   await expect(page.getByRole("button", { name: "Date of birth", exact: true })).toContainText(/\d{2} [A-Za-z]{3} \d{4}/);
+  const basicSaveButton = page.getByRole("button", { name: "Save basic details" });
   await page.getByPlaceholder("City, district or place").fill("अ".repeat(121));
   await basicSaveButton.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
@@ -391,7 +392,6 @@ test("student admission, profile navigation and parent details render without br
   await page.getByPlaceholder("e.g. Indian").fill("Indian");
   await page.getByRole("button", { name: "Gender", exact: true }).click();
   await page.getByRole("option", { name: "Male", exact: true }).click();
-  const basicSaveButton = page.getByRole("button", { name: "Save basic details" });
   await basicSaveButton.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
     if (!form) throw new Error("Basic details save button is not associated with its form.");
