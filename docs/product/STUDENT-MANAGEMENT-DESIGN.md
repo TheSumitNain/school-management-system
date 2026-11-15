@@ -303,6 +303,7 @@ Automated frontend coverage now exercises the archived-state rule independently 
 - [ ] Address & Communication: current/permanent/contact tabs hydrate independently; every address text field and all four location levels load; inactive saved locations remain visible; same-as-current works; save/reopen retains values.
 - [ ] Parents & Siblings: section visibility follows guardians.read; create/edit/link/revoke follows guardians.manage; revoked history is retained; related students require basic-read permission.
 - [ ] Parents & Siblings reads (guardian directory, guardian profile, student guardian links/history, and students sharing a guardian) require the applicable live permissions and write transactional audit events containing only section/result-count metadata; no guardian contact values, names or relationship values are copied into read-audit metadata.
+- [ ] Promotion: only active students may be promoted; the permanent student row is locked before the source enrollment so archive/promotion operations use a consistent lock order.
 - [ ] Archive: all active enrollments transition to withdrawn with a valid end date in the same transaction; enrollment and attendance history remain readable; archived students cannot receive new attendance marks.
 - [ ] Medical & Physical: read/write permissions, version/measurement history, loading/error states and archived-state behavior are verified.
 - [ ] All list/profile/API actions enforce live permissions and same-school isolation; frontend visibility is never treated as authorization.
