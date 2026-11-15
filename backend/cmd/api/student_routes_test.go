@@ -32,13 +32,13 @@ func TestStudentRoutesEnforceLivePermissions(t *testing.T) {
 		additionalPermissions []string
 		body string
 	}{
-		{http.MethodGet, "/school/students", "students.read_sensitive", ""},
-		{http.MethodPost, "/school/students", "students.create", `{"admission_number":"ADM-001","full_name":"Student One"}`},
-		{http.MethodGet, "/school/students/1", "students.read_sensitive", ""},
-		{http.MethodPatch, "/school/students/1", "students.update", `{"full_name":"Student Updated"}`},
-		{http.MethodPost, "/school/students/1/archive", "students.archive", ""},
-		{http.MethodGet, "/school/class-curricula?academic_year_id=1&class_id=2", "subjects.read", ""},
-		{http.MethodPost, "/school/class-curricula", "subjects.manage", `{"academic_year_id":1,"class_id":2,"subjects":[{"subject_id":3}]}`},
+		{method: http.MethodGet, path: "/school/students", permission: "students.read_sensitive"},
+		{method: http.MethodPost, path: "/school/students", permission: "students.create", body: `{"admission_number":"ADM-001","full_name":"Student One"}`},
+		{method: http.MethodGet, path: "/school/students/1", permission: "students.read_sensitive"},
+		{method: http.MethodPatch, path: "/school/students/1", permission: "students.update", body: `{"full_name":"Student Updated"}`},
+		{method: http.MethodPost, path: "/school/students/1/archive", permission: "students.archive"},
+		{method: http.MethodGet, path: "/school/class-curricula?academic_year_id=1&class_id=2", permission: "subjects.read"},
+		{method: http.MethodPost, path: "/school/class-curricula", permission: "subjects.manage", body: `{"academic_year_id":1,"class_id":2,"subjects":[{"subject_id":3}]}`},
 		{method: http.MethodGet, path: "/school/enrollments/1/curriculum", permission: "subjects.read", additionalPermissions: []string{"students.read_basic"}},
 		{method: http.MethodPut, path: "/school/enrollments/1/subjects", permission: "students.update", additionalPermissions: []string{"subjects.read", "students.read_basic"}, body: `{"curriculum_id":1,"selected_optional_subject_ids":[]}`},
 	}
