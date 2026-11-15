@@ -94,7 +94,7 @@ export function StudentEnrollmentSubjectsPanel({
         <div className="student-subject-actions">
           {invalidGroup && <p className="student-field-error" role="alert">{invalidGroup[1].name}: select between {invalidGroup[1].min} and {invalidGroup[1].max} subjects.</p>}
           {save.isError && <p className="student-field-error" role="alert">{save.error.message}</p>}
-          <button type="button" className="student-primary" disabled={Boolean(invalidGroup) || save.isPending} onClick={() => save.mutate({ enrollmentID, curriculum_id: curriculum.id, selected_optional_subject_ids: selected })}>
+          <button type="button" className="student-secondary" disabled={Boolean(invalidGroup) || save.isPending} onClick={() => save.mutate({ enrollmentID, curriculum_id: curriculum.id, selected_optional_subject_ids: selected })}>
             {save.isPending ? "Saving…" : "Save subject choices"}
           </button>
         </div>
