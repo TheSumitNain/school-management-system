@@ -27,7 +27,7 @@ export function ClassCurriculumSetupPanel({ years, classes, subjects, canManage 
   const selectedCounts = useMemo(() => {
     const counts = new Map<string, number>();
     for (const id of included) {
-      const name = (groupBySubject[id] ?? "").trim().toLocaleLowerCase();
+      const name = (groupBySubject[id] ?? "").trim().toLowerCase();
       if (name) counts.set(name, (counts.get(name) ?? 0) + 1);
     }
     return counts;
@@ -46,7 +46,7 @@ export function ClassCurriculumSetupPanel({ years, classes, subjects, canManage 
     if (included.length === 0) nextErrors.subjects = "Select at least one subject for this curriculum.";
     const normalized = new Set<string>();
     for (const [index, group] of groups.entries()) {
-      const key = group.name.trim().toLocaleLowerCase();
+      const key = group.name.trim().toLowerCase();
       if (!key || normalized.has(key) || group.min_selections < 0 || group.max_selections < 1 || group.min_selections > group.max_selections) {
         nextErrors.groups[index] = "Enter a unique group name and valid minimum/maximum limits.";
         continue;
@@ -57,12 +57,12 @@ export function ClassCurriculumSetupPanel({ years, classes, subjects, canManage 
         nextErrors.groups[index] = "Assign enough subjects to satisfy this group's selection limits.";
       }
     }
-    const groupNames = new Set(groups.map(group => group.name.trim().toLocaleLowerCase()));
+    const groupNames = new Set(groups.map(group => group.name.trim().toLowerCase()));
     const payloadSubjects = included.map(subjectID => {
       const optionalGroup = (groupBySubject[subjectID] ?? "").trim();
       return { subject_id: subjectID, ...(optionalGroup ? { optional_group: optionalGroup } : {}) };
     });
-    if (payloadSubjects.some(subject => subject.optional_group && !groupNames.has(subject.optional_group.toLocaleLowerCase()))) {
+    if (payloadSubjects.some(subject => subject.optional_group && !groupNames.has(subject.optional_group.toLowerCase()))) {
       nextErrors.subjects = "Every optional subject must belong to a configured optional group.";
     }
     setFieldErrors(nextErrors);
@@ -118,7 +118,7 @@ export function ClassCurriculumSetupPanel({ years, classes, subjects, canManage 
               {fieldErrors.groups[index] && <small className="app-field-error" role="alert">{fieldErrors.groups[index]}</small>}
               <label>Minimum choices<input disabled={save.isPending} type="number" min={0} max={150} value={group.min_selections} onChange={event => setGroups(current => current.map((item, i) => i === index ? { ...item, min_selections: Number(event.target.value) } : item))} /></label>
               <label>Maximum choices<input disabled={save.isPending} type="number" min={1} max={150} value={group.max_selections} onChange={event => setGroups(current => current.map((item, i) => i === index ? { ...item, max_selections: Number(event.target.value) } : item))} /></label>
-              <button type="button" className="academic-edit" disabled={save.isPending} onClick={() => { const removedName = group.name.trim().toLocaleLowerCase(); setGroups(current => current.filter((_, i) => i !== index)); setGroupBySubject(current => Object.fromEntries(Object.entries(current).map(([id, name]) => [id, name.trim().toLocaleLowerCase() === removedName ? "" : name]))); }}>Remove group</button>
+              <button type="button" className="academic-edit" disabled={save.isPending} onClick={() => { const removedName = group.name.trim().toLowerCase(); setGroups(current => current.filter((_, i) => i !== index)); setGroupBySubject(current => Object.fromEntries(Object.entries(current).map(([id, name]) => [id, name.trim().toLowerCase() === removedName ? "" : name]))); }}>Remove group</button>
             </fieldset>
           ))}
           <div className="curriculum-subject-picker">
