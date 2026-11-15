@@ -1092,8 +1092,30 @@ test("staff can create a guardian contact and link it to a student with relation
   await expect(page.getByText(/Staff-managed guardian records only/)).toBeVisible();
 
   await page.getByRole("button", { name: "Create a new guardian contact" }).click();
+  await page.getByPlaceholder("Guardian full name").fill("अ".repeat(201));
+  await page.getByPlaceholder("Mobile number").fill("अ".repeat(31));
+  await page.getByPlaceholder("guardian@example.com").fill("a".repeat(245) + "@example.test");
+  await page.getByPlaceholder("Optional alternate number").fill("अ".repeat(31));
+  await page.getByPlaceholder("e.g. Teacher, Business owner").fill("अ".repeat(121));
+  await page.getByPlaceholder("Highest education (optional)").fill("अ".repeat(121));
+  await page.getByPlaceholder("Organization name (optional)").fill("अ".repeat(161));
+  await page.getByRole("button", { name: "Save guardian contact" }).click();
+  await expect(page.getByText("Guardian name must be 200 characters or fewer.")).toBeVisible();
+  await expect(page.getByText("Mobile number must be 30 characters or fewer.")).toBeVisible();
+  await expect(page.getByText("Email address must be 254 characters or fewer.")).toBeVisible();
+  await expect(page.getByText("Alternate mobile number must be 30 characters or fewer.")).toBeVisible();
+  await expect(page.getByText("Occupation must be 120 characters or fewer.")).toBeVisible();
+  await expect(page.getByText("Education must be 120 characters or fewer.")).toBeVisible();
+  await expect(page.getByText("Workplace must be 160 characters or fewer.")).toBeVisible();
+  expect(guardianCreates).toHaveLength(0);
+
   await page.getByPlaceholder("Guardian full name").fill("Nisha Verma");
+  await page.getByPlaceholder("Mobile number").fill("");
   await page.getByPlaceholder("guardian@example.com").fill("not-an-email");
+  await page.getByPlaceholder("Optional alternate number").fill("");
+  await page.getByPlaceholder("e.g. Teacher, Business owner").fill("");
+  await page.getByPlaceholder("Highest education (optional)").fill("");
+  await page.getByPlaceholder("Organization name (optional)").fill("");
   await page.getByRole("button", { name: "Save guardian contact" }).click();
   await expect(page.getByText("Enter a valid email address.", { exact: true })).toBeVisible();
   expect(guardianCreates).toHaveLength(0);
