@@ -1191,7 +1191,7 @@ test("student archive confirmation keeps the record on conflict and refreshes st
       archiveAttempts += 1;
       archiveRequests.push(request.method() + " " + path);
       if (archiveAttempts === 1) {
-        await route.fulfill({ status: 409, json: { message: "Student has an active enrollment and cannot be archived." } });
+        await route.fulfill({ status: 503, json: { message: "Temporary archive failure. Please try again." } });
         return;
       }
       Object.assign(student, { status: "archived", updated_at: "2026-11-14T12:00:00.000Z" });
@@ -1211,7 +1211,8 @@ test("student archive confirmation keeps the record on conflict and refreshes st
   await page.getByRole("button", { name: "Archive Archive Retry Student" }).click();
   let dialog = page.getByRole("dialog", { name: "Archive student?" });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByText(/The record will be retained/)).toBeVisible();
+  await expect(dialog.getByText(/active enrollment will be closed as withdrawn/i)).toBeVisible();
+  await expect(dialog.getByText(/existing attendance records will be retained/i)).toBeVisible();
   await dialog.getByRole("button", { name: "Cancel" }).click();
   await expect(dialog).toHaveCount(0);
   expect(archiveAttempts).toBe(0);
@@ -1220,7 +1221,7 @@ test("student archive confirmation keeps the record on conflict and refreshes st
   await page.getByRole("button", { name: "Archive Archive Retry Student" }).click();
   dialog = page.getByRole("dialog", { name: "Archive student?" });
   await dialog.getByRole("button", { name: "Archive student", exact: true }).click();
-  await expect(dialog.getByRole("alert")).toHaveText("Student has an active enrollment and cannot be archived.");
+  await expect(dialog.getByRole("alert")).toHaveText("Temporary archive failure. Please try again.");
   await expect(dialog).toBeVisible();
   await expect(page.getByText("Archive Retry Student", { exact: true })).toBeVisible();
   expect(archiveAttempts).toBe(1);
