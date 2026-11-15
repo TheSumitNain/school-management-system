@@ -659,3 +659,11 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Exact code checkpoint `02f5b1f5ea1bc9000a55e93da399a6abb9d06f72` passed Frontend CI (`43674731005`): centralized design-token check, TypeScript/Vite production build, and all 6 Student Management Playwright scenarios.
 - The same checkpoint passed Backend CI (`43674731037`): full migrations on ephemeral PostgreSQL, backend unit/integration tests, and `go vet`.
 - The browser scenarios still mock APIs; they do not prove data persistence against the user's local database. Live authenticated API/database acceptance remains pending. No persistent `school_management` database was accessed or migrated.
+
+
+## Health-note Unicode boundary integration checkpoint — 2026-11-15
+
+- Extended rollback-scoped V36 PostgreSQL integration coverage for all four medical note fields at exactly 2,000 Hindi Unicode characters and rejection at 2,001; also covered physical vision notes at 1,000/1,001 and physical notes at 2,000/2,001.
+- Exact code checkpoint `f5b41c6de228997eaddbe93271718f5c5183a980` passed Backend CI (`43675249107`): full migration chain on ephemeral PostgreSQL, backend unit/integration tests, and `go vet`.
+- Existing frontend browser coverage already verifies the matching health-field Unicode boundaries, inline errors, and reload of saved health details. No frontend code changed in this checkpoint.
+- No persistent `school_management` database was accessed or migrated. Real local API/database browser acceptance remains outstanding.
