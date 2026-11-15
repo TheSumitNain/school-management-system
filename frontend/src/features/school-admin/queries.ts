@@ -107,7 +107,6 @@ export function useSchoolStudentAddressesQuery(studentID: number, enabled = true
     queryFn: ({ signal }) => getSchoolStudentAddresses(studentID, signal),
     enabled: enabled && studentID > 0,
     staleTime: 15_000,
-    refetchOnWindowFocus: true,
     retry: false,
   });
 }
@@ -117,7 +116,6 @@ export function useSchoolStudentBasicDetailsQuery(studentID: number, enabled = t
     queryFn: ({ signal }) => getSchoolStudentBasicDetails(studentID, signal),
     enabled: enabled && studentID > 0,
     staleTime: 15_000,
-    refetchOnWindowFocus: true,
     retry: false,
   });
 }
@@ -127,7 +125,6 @@ export function useSchoolStudentContactDetailsQuery(studentID: number, enabled =
     queryFn: ({ signal }) => getSchoolStudentContactDetails(studentID, signal),
     enabled: enabled && studentID > 0,
     staleTime: 15_000,
-    refetchOnWindowFocus: true,
     retry: false,
   });
 }
@@ -137,7 +134,6 @@ export function useSchoolStudentMedicalDetailsQuery(studentID: number, enabled =
     queryFn: ({ signal }) => getSchoolStudentMedicalDetails(studentID, signal),
     enabled: enabled && studentID > 0,
     staleTime: 0,
-    refetchOnWindowFocus: true,
     gcTime: 0,
     refetchOnMount: "always",
   });
@@ -148,7 +144,6 @@ export function useSchoolStudentPhysicalDetailsQuery(studentID: number, enabled 
     queryFn: ({ signal }) => getSchoolStudentPhysicalDetails(studentID, signal),
     enabled: enabled && studentID > 0,
     staleTime: 0,
-    refetchOnWindowFocus: true,
     gcTime: 0,
     refetchOnMount: "always",
   });
@@ -175,7 +170,6 @@ export function useSchoolStudentGuardiansQuery(studentID: number, includeHistory
     queryFn: ({ signal }) => getSchoolStudentGuardians(studentID, includeHistory, signal),
     enabled: enabled && studentID > 0,
     staleTime: 15_000,
-    refetchOnWindowFocus: true,
   });
 }
 export function useSchoolStudentRelatedStudentsQuery(studentID: number, enabled = true) {
@@ -184,7 +178,6 @@ export function useSchoolStudentRelatedStudentsQuery(studentID: number, enabled 
     queryFn: ({ signal }) => getSchoolStudentRelatedStudents(studentID, signal),
     enabled: enabled && studentID > 0,
     staleTime: 15_000,
-    refetchOnWindowFocus: true,
   });
 }
 export function useSchoolStudentAcademicYearsQuery(enabled = true) {
