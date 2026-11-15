@@ -379,3 +379,6 @@ Apply this standard consistently to initial admission, returning enrollment, pro
 
 
 - Cross-student browser coverage: Student A's unsaved Basic Details draft and field validation error are verified not to appear when switching to Student B; Student B's own saved basic details load. Frontend CI [run 43715113384](https://github.com/TheSumitNain/school-management-system/actions/runs/43715113384) passed all 9 Playwright tests, and Backend CI [run 43715113361](https://github.com/TheSumitNain/school-management-system/actions/runs/43715113361) passed full migrations, PostgreSQL integration and `go vet` on `433461bec48f502765b97464ba6e188a9324d687`. Authenticated live acceptance remains outstanding.
+
+
+- Parent Details cross-student isolation is also covered: Student A's unsaved new-guardian name/relationship and field-level validation error do not appear when opening Student B's Parent Details. Latest checkpoint `b6d14c6ed4030724857838ef8cebc131041219ae`: Frontend CI [run 43716057611](https://github.com/TheSumitNain/school-management-system/actions/runs/43716057611) passed all 10 Playwright tests; Backend CI [run 43716057614](https://github.com/TheSumitNain/school-management-system/actions/runs/43716057614) passed migrations, PostgreSQL integration and `go vet`. Authenticated local acceptance remains outstanding.
