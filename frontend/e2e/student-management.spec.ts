@@ -1382,7 +1382,7 @@ test("staff can create a guardian contact and link it to a student with relation
       await route.fulfill({ json: { guardian } });
       return;
     }
-    if (path === "/school/guardians/45" && request.method() === "PUT") {
+    if (path === "/school/guardians/45" && request.method() === "PATCH") {
       const input = request.postDataJSON() as Record<string, unknown>;
       guardianUpdates.push(input);
       Object.assign(guardian, input);
@@ -1399,6 +1399,12 @@ test("staff can create a guardian contact and link it to a student with relation
         });
       }
       await route.fulfill({ json: { guardian } });
+      return;
+    }
+    if (path === "/school/student-guardian-links/953" && request.method() === "PATCH") {
+      const input = request.postDataJSON() as Record<string, unknown>;
+      Object.assign(guardianLinks[0], input);
+      await route.fulfill({ json: { student_guardian: guardianLinks[0] } });
       return;
     }
     if (path === "/school/students/93/guardians" && request.method() === "POST") {
@@ -1542,12 +1548,20 @@ test("staff can create a guardian contact and link it to a student with relation
   await expect(page.getByText("Nisha Verma Updated", { exact: true })).toBeVisible();
   await expect(page.getByText("9876501235 · Alt: 9876501236 · nisha.verma@example.test")).toBeVisible();
   await expect(page.getByText("Principal · M.Ed. · Sunrise Public School")).toBeVisible();
+
+  await page.getByRole("button", { name: "Edit relationship" }).click();
+  await page.getByPlaceholder("Father, Mother, Legal Guardian…").fill("Legal Guardian");
+  await page.getByRole("checkbox", { name: /Primary contact/ }).uncheck();
+  await page.getByRole("button", { name: "Save relationship" }).click();
+  await expect(page.getByText("Legal Guardian · Emergency contact")).toBeVisible();
+
   await page.getByRole("button", { name: "Close dialog" }).click();
   await page.getByRole("button", { name: /Parents & siblings/i }).click();
   await expect(page.getByRole("dialog", { name: "Parents & Siblings" })).toBeVisible();
   await expect(page.getByText("Nisha Verma Updated", { exact: true })).toBeVisible();
   await expect(page.getByText("9876501235 · Alt: 9876501236 · nisha.verma@example.test")).toBeVisible();
   await expect(page.getByText("Principal · M.Ed. · Sunrise Public School")).toBeVisible();
+  await expect(page.getByText("Legal Guardian · Emergency contact")).toBeVisible();
   expect(browserErrors).toEqual([]);
 });
 
