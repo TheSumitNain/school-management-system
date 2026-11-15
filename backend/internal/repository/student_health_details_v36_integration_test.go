@@ -110,7 +110,9 @@ func TestStudentMedicalPhysicalDetailsV36PostgresIntegration(t *testing.T) {
 	}
 
 	height, weight := 132.5, 31.25
-	measuredOn := time.Date(2026, 11, 14, 0, 0, 0, 0, time.UTC)
+	today := time.Now().UTC()
+	today = time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, time.UTC)
+	measuredOn := today.AddDate(0, 0, -1)
 	vision := "V36 private vision note " + suffix
 	physicalNotes := "V36 private physical note " + suffix
 	physical, err := repo.SaveStudentPhysicalDetails(ctx, actorPrincipalID, schoolID, studentID,
@@ -129,7 +131,7 @@ func TestStudentMedicalPhysicalDetailsV36PostgresIntegration(t *testing.T) {
 		t.Fatalf("read physical profile: item=%+v err=%v", loadedPhysical, err)
 	}
 	nextHeight := 133.25
-	nextMeasuredOn := measuredOn.AddDate(0, 1, 0)
+	nextMeasuredOn := today
 	nextVision := "V36 next vision measurement " + suffix
 	nextPhysicalNotes := "V36 next physical measurement " + suffix
 	updatedPhysical, err := repo.SaveStudentPhysicalDetails(ctx, actorPrincipalID, schoolID, studentID,
@@ -156,6 +158,11 @@ func TestStudentMedicalPhysicalDetailsV36PostgresIntegration(t *testing.T) {
 	if _, err := repo.SaveStudentPhysicalDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
 		&invalidPrecision, nil, &measuredOn, nil, nil); !errors.Is(err, ErrInvalidAcademicInput) {
 		t.Fatalf("measurement precision error = %v, want invalid input", err)
+	}
+	futureMeasuredOn := today.AddDate(0, 0, 1)
+	if _, err := repo.SaveStudentPhysicalDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
+		&height, nil, &futureMeasuredOn, nil, nil); !errors.Is(err, ErrInvalidAcademicInput) {
+		t.Fatalf("future measurement date error = %v, want invalid input", err)
 	}
 
 	// Text limits are Unicode code-point limits, not UTF-8 byte or UTF-16 code-unit limits.
