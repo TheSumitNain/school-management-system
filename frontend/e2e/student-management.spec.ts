@@ -379,6 +379,14 @@ test("student admission, profile navigation and parent details render without br
   await dobCalendar.getByRole("button", { name: dobLabels.yesterday }).click();
   await expect(dobCalendar).toBeHidden();
   await expect(page.getByRole("button", { name: "Date of birth", exact: true })).toContainText(/\d{2} [A-Za-z]{3} \d{4}/);
+  await page.getByPlaceholder("City, district or place").fill("अ".repeat(121));
+  await basicSaveButton.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Basic details save button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect(page.getByText("Place of birth must be 120 characters or fewer.")).toBeVisible();
+  expect(basicDetails.place_of_birth).toBeNull();
   await page.getByPlaceholder("City, district or place").fill("Ambala, Haryana");
   await page.getByPlaceholder("e.g. Indian").fill("Indian");
   await page.getByRole("button", { name: "Gender", exact: true }).click();
