@@ -1023,4 +1023,4 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 
 - Extended the active Parent Details browser journey to validate the guardian full-name 200-Unicode-character limit, save a changed guardian name through the shared guardian profile endpoint, and verify the new name after closing and reopening Parent Details.
 - Corrected the mocked PATCH response to return the guardian profile shape and update the linked guardian's displayed name, so the reload assertion checks the actual shared-profile read path rather than an unrelated stale fixture field.
-- Test commit: `bc869769b2a22e43548266f4ea6bcfabea449c4a`. Frontend CI is pending; this is mocked browser coverage, not live local-database acceptance.
+- Test commits: `bc869769b2a22e43548266f4ea6bcfabea449c4a` (full-name edit/validation) and `fc43c199b48a26b08c15a33e86ff28115c8b244c` (renamed name is retained in revoked-history assertions). Frontend CI is pending; this is mocked browser coverage, not live local-database acceptance.
