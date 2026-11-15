@@ -787,3 +787,9 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Fixed a stale-profile edge case: saving a new class/year curriculum version previously refreshed the class-curriculum list but did not invalidate already-open student enrollment curriculum queries. A profile could therefore continue showing the previous available/assigned curriculum until its query became stale or the profile was reopened.
 - Class curriculum saves now invalidate both the matching class/year curriculum list and the enrollment-curriculum query family, so open student profiles refetch and expose the latest version state. Student-specific subject saves continue to invalidate only the affected enrollment curriculum.
 - Code commit: `b2d3d225fa50b0800c8ed76e66869c561897cb5c`. Exact-commit frontend CI and browser regression have not yet been observed; no local tests were run in this session.
+
+## Student Management — enrollment curriculum browser journey (2026-11-15)
+
+- Added the first Student Management Playwright coverage for the enrollment-level curriculum panel: compulsory subject display, first-time assignment guidance, optional-group minimum/maximum count, saving an optional subject, and rendering the assigned state plus saved selection history after the query refetches.
+- The test uses stateful mocked API responses so the post-save refetch returns the saved assignment and choices instead of resetting to the initial unassigned fixture.
+- Test commit: `152e0bc044137c1ec07310cf284fcd76d6f4c554`. Exact-commit frontend CI, TypeScript/Vite build and Playwright execution have not yet been observed. This remains mocked browser coverage, not live database acceptance.
