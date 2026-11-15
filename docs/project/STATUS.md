@@ -711,3 +711,10 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - The test verifies that existing guardian name, relationship, primary/emergency flags, mobile/email, occupation, education and workplace details remain visible after archival, while relationship editing, shared guardian editing, revocation, linking and new guardian creation controls are absent.
 - This protects the distinction between retaining historical student/guardian information for read access and preventing further edits to an archived student. Parent OTP/login remains deferred.
 - Extended assertions: `76bbd02b742579bf603c444c649d80fdf16d4125` also checks that mobile/email and occupation/education/workplace values are preserved in the archived read-only view. **Exact-commit frontend CI has not yet been observed; do not treat this added scenario as verified until the Student Management Playwright suite and production build pass.** No backend, migration or database changes were made.
+
+
+## Inactive / archived student guardian-revocation boundary — 2026-11-15
+
+- Closed a backend authorization/business-rule gap: guardian relationship revocation now locks the owning student only when its status is `active`, matching the existing link-creation and relationship-edit rules. Direct API calls can no longer revoke a relationship belonging to an inactive or archived student merely because the frontend hides the control.
+- Added PostgreSQL integration coverage that deactivates a student, verifies relationship editing and revocation both return the not-found boundary, and confirms the guardian link remains unrevoked in history.
+- Code commits on `work`: `3ac8d275d39de264560086a67c42df62012689c8` and `7c56040a64f9ee39c04384662f3a30bd59379ac8`. Exact-commit backend CI is pending; the PostgreSQL integration test has not yet been executed in this session. No migration or persistent database changes were made.
