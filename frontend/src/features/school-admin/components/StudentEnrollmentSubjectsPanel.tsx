@@ -67,6 +67,9 @@ export function StudentEnrollmentSubjectsPanel({
       <div className="student-profile-enrollment-heading">
         <strong>Curriculum · Version {curriculum.version_number}</strong>
         <span className={"student-status " + (selectedVersionIsAssigned ? "active" : "pending")}>{selectedVersionIsAssigned ? "Assigned" : "Available"}</span>
+        <button type="button" className="student-link-button" onClick={() => void query.refetch()} disabled={query.isFetching || save.isPending} aria-label="Refresh curriculum and subject choices">
+          {query.isFetching ? "Refreshing…" : "Refresh"}
+        </button>
       </div>
       <p className="student-address-note">Compulsory subjects are included automatically. Optional choices follow the school's selection limits.</p>
       {data?.curriculum && data.available_curriculum && (
