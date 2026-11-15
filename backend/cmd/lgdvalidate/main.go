@@ -14,7 +14,7 @@ import (
 )
 
 type record struct {
-	code, name, parent, igod string
+	code, name, parent, igod, localityType string
 }
 
 type snapshot struct {
@@ -129,16 +129,16 @@ func validateCSV(input io.Reader) (*snapshot, error) {
 		if !validLocalityType(row[9]) {
 			return nil, fmt.Errorf("CSV line %d: unsupported locality_type %q", line, row[9])
 		}
-		if err := addRecord(s.states, row[0], row[1], "", row[2]); err != nil {
+		if err := addRecord(s.states, row[0], row[1], "", row[2], ""); err != nil {
 			return nil, fmt.Errorf("CSV line %d state: %w", line, err)
 		}
-		if err := addRecord(s.districts, row[3], row[4], row[0], ""); err != nil {
+		if err := addRecord(s.districts, row[3], row[4], row[0], "", ""); err != nil {
 			return nil, fmt.Errorf("CSV line %d district: %w", line, err)
 		}
-		if err := addRecord(s.subdistricts, row[5], row[6], row[3], ""); err != nil {
+		if err := addRecord(s.subdistricts, row[5], row[6], row[3], "", ""); err != nil {
 			return nil, fmt.Errorf("CSV line %d sub-district: %w", line, err)
 		}
-		if err := addRecord(s.localities, row[7], row[8], row[5], ""); err != nil {
+		if err := addRecord(s.localities, row[7], row[8], row[5], "", row[9]); err != nil {
 			return nil, fmt.Errorf("CSV line %d locality: %w", line, err)
 		}
 	}
@@ -170,14 +170,14 @@ func validateCSV(input io.Reader) (*snapshot, error) {
 	return s, nil
 }
 
-func addRecord(target map[string]record, code, name, parent, igod string) error {
+func addRecord(target map[string]record, code, name, parent, igod, localityType string) error {
 	if code == "" || name == "" {
 		return errors.New("source code and name must not be empty")
 	}
 	if len(code) > 50 || len(name) > 120 {
 		return errors.New("source code exceeds 50 or name exceeds 120 characters")
 	}
-	candidate := record{code: code, name: name, parent: parent, igod: igod}
+	candidate := record{code: code, name: name, parent: parent, igod: igod, localityType: localityType}
 	if previous, exists := target[code]; exists {
 		if previous != candidate {
 			return fmt.Errorf("source code %q has conflicting name or parent mapping", code)
