@@ -954,19 +954,30 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	if err != nil || curriculumV1 == nil || curriculumV1.VersionNumber != 1 || len(curriculumV1.Subjects) != 2 {
 		t.Fatalf("create first class curriculum: curriculum=%+v err=%v", curriculumV1, err)
 	}
-	var optionalV1ID int64
+	var optionalV1ID, compulsoryV1ID int64
 	for _, subject := range curriculumV1.Subjects {
-		if !subject.IsCompulsory {
+		if subject.IsCompulsory {
+			compulsoryV1ID = subject.ID
+		} else {
 			optionalV1ID = subject.ID
 		}
 	}
-	if optionalV1ID == 0 {
-		t.Fatal("first curriculum did not return its optional subject")
+	if optionalV1ID == 0 || compulsoryV1ID == 0 {
+		t.Fatal("first curriculum did not return both compulsory and optional subjects")
+	}
+	// Invalid student choices must be rejected before an assignment is created:
+	// the optional group requires exactly one choice, compulsory subjects are
+	// implicit, and duplicate IDs are not valid selections.
+	for _, invalidSelection := range [][]int64{nil, {compulsoryV1ID}, {optionalV1ID, optionalV1ID}} {
+		if _, err := academicRepo.SaveStudentEnrollmentSubjects(ctx, actorPrincipalID, schoolID,
+			currentEnrollmentID, curriculumV1.ID, invalidSelection); !errors.Is(err, ErrInvalidAcademicInput) {
+			t.Fatalf("save invalid optional subject selection %v: got %v, want ErrInvalidAcademicInput", invalidSelection, err)
+		}
 	}
 	beforeAssignment, err := academicRepo.GetStudentEnrollmentCurriculum(ctx, actorPrincipalID, schoolID, currentEnrollmentID)
 	if err != nil || beforeAssignment == nil || beforeAssignment.Assigned || beforeAssignment.Curriculum == nil ||
-		beforeAssignment.Curriculum.ID != curriculumV1.ID {
-		t.Fatalf("read available curriculum before assignment: item=%+v err=%v", beforeAssignment, err)
+		beforeAssignment.Curriculum.ID != curriculumV1.ID || len(beforeAssignment.SelectionHistory) != 0 {
+		t.Fatalf("read available curriculum after rejected choices: item=%+v err=%v", beforeAssignment, err)
 	}
 	assignedV1, err := academicRepo.SaveStudentEnrollmentSubjects(ctx, actorPrincipalID, schoolID,
 		currentEnrollmentID, curriculumV1.ID, []int64{optionalV1ID})
