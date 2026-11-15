@@ -718,3 +718,11 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Closed a backend authorization/business-rule gap: guardian relationship revocation now locks the owning student only when its status is `active`, matching the existing link-creation and relationship-edit rules. Direct API calls can no longer revoke a relationship belonging to an inactive or archived student merely because the frontend hides the control.
 - Added PostgreSQL integration coverage for both inactive and archived student states: relationship editing/revocation return the not-found boundary, and the guardian link remains unrevoked in history.
 - Code commits on `work`: `3ac8d275d39de264560086a67c42df62012689c8` and `7c56040a64f9ee39c04384662f3a30bd59379ac8` and archived-state follow-up test `a8ae00df0a19b22c935ff1a2f93715f36fe0bd13`. Exact-commit backend CI is pending; the PostgreSQL integration test has not yet been executed in this session. No migration or persistent database changes were made.
+
+
+## Inactive student Parent Details read-only enforcement — 2026-11-15
+
+- Student Management now enables guardian create/link/edit/revoke controls only when the selected student is `active` and the operator has `guardians.manage`. Inactive and archived students continue to expose their existing Parent Details to users with `guardians.read`, but the entire family workflow remains read-only.
+- Updated the read-only explanation so it states both requirements: active student status and guardian management permission.
+- Added a Playwright browser acceptance scenario for an inactive student where the operator deliberately has `guardians.manage`; the test asserts that existing guardian identity, relationship, mobile/email, occupation, education and workplace remain visible while all mutation controls are absent. Updated the archived-student scenario to assert the same guidance.
+- Commits on `work`: `91811d836a26d8163cd55eaa5e4f048fbd7e39d2`, `27da307e470bc5db1222903281fdb1004dde9528`, `8b8d2198a94e16b26bb66bf17fd0d4f530adb831`. Exact-commit frontend CI remains to be checked; no local Playwright execution occurred in this session.
