@@ -6,12 +6,12 @@
 
 ### Latest verified code and CI
 
-- Active branch: `work`.
-- Latest verified backend source remains `1196045794777f94d94c994b4750af865d36e84e` — guardian revocation audit deduplication. The complete backend workflow passed again on full-repository checkpoint `eaed7705bcf14f156a423a157f5f2adebfc5181c` ([run 43712030855](https://github.com/TheSumitNain/school-management-system/actions/runs/43712030855)), including full migrations, PostgreSQL integration tests and `go vet ./...`.
-- Latest frontend source fix: `2419d61299a878669392f69f44549a8e45f7ff9a` — preserve Basic Details name-save success feedback after the parent student record updates. The attempted profile-only window-focus override was reverted; app-wide focus policy remains unchanged. Earlier student-switch cleanup commits are `b302d3761b8ddd4f8e65724234eced9eae9dea6f` and `6b3355f7d7d5b520fd2ca3bf06028c9b09485e11`.
-- Latest Student Management browser-test checkpoint `7e78fd01bc88277d420b276b3ecb82f42eba1753` passed Frontend CI [run 43713194822](https://github.com/TheSumitNain/school-management-system/actions/runs/43713194822): production build and all 8 Playwright tests, including full Parent Details shared-guardian profile validation, edit, save, revoke-history and reload. Backend CI **PASS** on the same checkpoint — [run 43713194771](https://github.com/TheSumitNain/school-management-system/actions/runs/43713194771), including the complete migration chain, PostgreSQL integration suite and `go vet ./...`.
-- The preceding refetch/draft-preservation checkpoint `eaed7705bcf14f156a423a157f5f2adebfc5181c` also passed both CI workflows; the latest 7e78 checkpoint includes that coverage plus the expanded guardian-profile browser assertions.
-- Authenticated live acceptance remains pending. A green run on an older SHA does not verify newer frontend code.
+- Active branch: `work`; latest repository tip after documentation reconciliation and obsolete-file cleanup: `66be255a61954742f8dc4f623d1eebbf3dc4f137`.
+- Latest Student Management browser/test checkpoint: `b6d14c6ed4030724857838ef8cebc131041219ae`. Frontend CI **PASS** — [run 43716057611](https://github.com/TheSumitNain/school-management-system/actions/runs/43716057611): production build and all 10 Playwright tests passed, including guardian profile field validation/edit/save/reload, per-student relationship flags, and cross-student Basic Details + Parent Details draft/error isolation.
+- Backend CI **PASS** on the same full-repository checkpoint — [run 43716057614](https://github.com/TheSumitNain/school-management-system/actions/runs/43716057614): complete migration chain, PostgreSQL integration suite and `go vet ./...`.
+- Earlier frontend implementation fixes include guardian form validation, student-specific state reset, enrollment curriculum identity, Basic Details empty-state cleanup, Address/Health transient-state cleanup and shared profile feedback handling. The latest green checkpoint includes these commits.
+- Background-refetch draft preservation is covered for Basic Details, Parent Details, Address, Contact, Medical, Physical and enrollment subject choices. Cross-student browser journeys currently explicitly cover Basic Details and Parent Details; Address/Contact/Medical/Physical cross-student browser journeys remain an additional acceptance gap.
+- Authenticated live acceptance remains pending. CI uses mocked browser APIs and an ephemeral PostgreSQL database; it does not verify the user's local API/database.
 
 ### Student profile state isolation correction (2026-11-15)
 
@@ -31,26 +31,26 @@
 
 - Added `enrollmentID` to the subject-choice synchronization effect in `StudentEnrollmentSubjectsPanel`. If the panel is reused for a different enrollment whose saved curriculum snapshot happens to match, local optional-subject selections and curriculum target are now rehydrated for the new enrollment instead of carrying over the prior enrollment's draft.
 - Frontend code commit: `8f0ded6f42e9c0c9ea9595b5fe57e33463b03b41`.
-- This change is not yet covered by a reported CI result; verify on the next frontend workflow run.
+- Verified by Frontend CI on checkpoint `433461bec48f502765b97464ba6e188a9324d687` ([run 43715113384](https://github.com/TheSumitNain/school-management-system/actions/runs/43715113384)); the latest 10-test checkpoint `b6d14c6ed4030724857838ef8cebc131041219ae` also includes it.
 
 ### Basic-details empty-state isolation correction (2026-11-15)
 
 - Fixed a student-switch edge case in `StudentBasicDetailsSection`: when the newly selected student has no saved basic-details row, the form now resets to the empty state and clears field errors instead of retaining the previous student's values.
 - Frontend code commit: `1df5e2d0b8c1ee67d21b34e88c2572f281889661`.
-- CI and authenticated live browser acceptance for this change are pending; verify before marking this behavior complete.
+- Included in the passing Frontend CI checkpoints `433461bec48f502765b97464ba6e188a9324d687` ([run 43715113384](https://github.com/TheSumitNain/school-management-system/actions/runs/43715113384)) and `b6d14c6ed4030724857838ef8cebc131041219ae` ([run 43716057611]); authenticated live browser acceptance remains pending.
 
 ### Student-switch feedback cleanup (2026-11-15)
 
 - Basic Details now also clears stale name-save and section feedback when the selected student changes, so validation/success messages from one student's edit are not shown against another student.
 - Frontend code commit: `860bf218dc73b5926079a55b318776afbc24c689`.
-- CI and authenticated browser acceptance remain pending for the latest frontend fixes.
+- Included in the passing Frontend CI checkpoint `b6d14c6ed4030724857838ef8cebc131041219ae` ([run 43716057611]); authenticated browser acceptance against the real API/database remains pending.
 
 ### Student-switch stale feedback and transient-state cleanup (2026-11-15)
 
 - Address & Communication now clears stale contact/address field errors, save feedback, location-creator drafts, pending deactivation confirmation and location-search drafts when the active student changes. The new student's persisted address/contact values continue to be loaded by the existing value-snapshot synchronization effects.
 - Medical & Physical now clears stale save feedback and validation errors when the active student changes; its existing snapshot synchronization continues to load the selected student's persisted medical/measurement values.
 - Frontend commits: `b302d3761b8ddd4f8e65724234eced9eae9dea6f` (Address & Communication), `6b3355f7d7d5b520fd2ca3bf06028c9b09485e11` (Medical & Physical).
-- CI status and authenticated browser acceptance are pending for these changes. Add/execute focused browser coverage and verify the exact branch head before treating the fixes as complete.
+- Included in the passing Frontend CI checkpoint `b6d14c6ed4030724857838ef8cebc131041219ae` ([run 43716057611]); authenticated browser acceptance against the real API/database remains pending.
 
 ### Editable profile background-refetch draft regression coverage (2026-11-15)
 
@@ -83,7 +83,7 @@ Student profile/basic details; address and contact; Parent/Guardian create/edit/
 ### Remaining before completion
 
 - Complete authenticated browser/live acceptance against the local API for admission, profile edit/reload, Parent Details load/edit/save/reload, address/contact, medical/physical history, enrollment/promotion/curriculum, permissions, and inactive/archived read-only states.
-- Add explicit browser acceptance for switching directly between two different students while each has unsaved section drafts; verify no student A values, validation errors, guardian drafts, or feedback leak into student B. Existing component effects are keyed to student identity, but this cross-student journey is not yet explicitly covered by the Playwright suite.
+- Basic Details and Parent Details cross-student draft/error isolation are now explicitly covered by Playwright. Add similar direct student-switch browser acceptance for Address, Contact, Medical and Physical sections; their component synchronization/reset effects are identity-keyed, but those sections do not yet have a dedicated cross-student browser journey.
 - Record exact live acceptance results and any remaining defect; only then mark Student Management complete.
 - Background-refetch draft preservation is already covered by the mocked Playwright journey for basic details, Parent Details, address, contact, medical, physical, and enrollment curriculum/subject choices; it is not a substitute for authenticated live acceptance.
 - Current Playwright acceptance tests use mocked APIs; passing CI does not replace live authenticated acceptance.
