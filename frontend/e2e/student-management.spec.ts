@@ -676,6 +676,17 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByText("Enter a valid email address.", { exact: true })).toBeVisible();
   expect(guardianLink.mobile_number).toBe("9876543210");
   await expect(page.getByRole("dialog", { name: "Update shared guardian profile?" })).toHaveCount(0);
+  for (const invalidEmail of ["Guardian <guardian@example.test>", "guardian@example.test,other@example.test"]) {
+    await page.getByPlaceholder("guardian@example.com").fill(invalidEmail);
+    await saveGuardianDetails.evaluate(button => {
+      const form = (button as HTMLButtonElement).form;
+      if (!form) throw new Error("Guardian details submit button is not associated with its form.");
+      form.requestSubmit(button as HTMLButtonElement);
+    });
+    await expect(page.getByText("Enter a valid email address.", { exact: true })).toBeVisible();
+    expect(guardianLink.mobile_number).toBe("9876543210");
+    expect(guardianLink.email_address).toBe("ramesh@example.test");
+  }
   await page.getByPlaceholder("guardian@example.com").fill("ramesh.updated@example.test");
   await page.getByPlaceholder("Mobile number").fill("अ".repeat(31));
   await page.getByPlaceholder("Optional alternate number").fill("अ".repeat(31));
