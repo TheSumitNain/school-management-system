@@ -13,6 +13,13 @@
 - Frontend CI: **PASS** on that exact frontend commit — [run 43708932012](https://github.com/TheSumitNain/school-management-system/actions/runs/43708932012). Design-token check and production/browser suite completed; Playwright reports **8 passed**.
 - The frontend source was unchanged after its passing run; later code changes were backend-only. Do not confuse older failed runs with the current verified results.
 
+### Student profile state isolation correction (2026-11-15)
+
+- Added the current `student.id` to the synchronization effect dependencies for Basic Details, Address, Contact, Medical and Physical forms.
+- This ensures that switching the active student rehydrates each section from that student's persisted query data even when two students happen to have identical field-value snapshots; unsaved values from the previously selected student must not carry over.
+- Code commits: `295faa89cca2ca33cb673a43c1d95b0db2c655f8`, `19c7f5d763823996d2557a9672efc9b55d5cc130`, `f2bee9b6161f2c3d725d8753abd319c54e77d422`.
+- These are frontend source changes. CI status for the latest commit must be checked before treating them as verified; authenticated live acceptance remains pending.
+
 ### Root causes fixed
 
 1. Guardian form length errors were not appearing because HTML `maxLength` blocked over-limit input before app validation. Removed those truncating attributes; explicit field-level validation remains. Frontend CI now passes.
