@@ -27,6 +27,12 @@
 - Frontend commits: `295faa89cca2ca33cb673a43c1d95b0db2c655f8`, `19c7f5d763823996d2557a9672efc9b55d5cc130`, `f2bee9b6161f2c3d725d8753abd319c54e77d422`, `ba6f03548ac91ccee979d6775d9cc7d583ae2295`.
 - CI has not yet reported a result for these latest frontend commits; do not treat them as verified. Add/execute focused browser coverage for switching between students while forms contain unsaved drafts, then reconcile the resulting CI run.
 
+### Enrollment curriculum form identity guard (2026-11-15)
+
+- Added `enrollmentID` to the subject-choice synchronization effect in `StudentEnrollmentSubjectsPanel`. If the panel is reused for a different enrollment whose saved curriculum snapshot happens to match, local optional-subject selections and curriculum target are now rehydrated for the new enrollment instead of carrying over the prior enrollment's draft.
+- Frontend code commit: `8f0ded6f42e9c0c9ea9595b5fe57e33463b03b41`.
+- This change is not yet covered by a reported CI result; verify on the next frontend workflow run.
+
 ### Root causes fixed
 
 1. Guardian form length errors were not appearing because HTML `maxLength` blocked over-limit input before app validation. Removed those truncating attributes; explicit field-level validation remains. Frontend CI now passes.
