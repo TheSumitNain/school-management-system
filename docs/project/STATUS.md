@@ -3,7 +3,7 @@
 **Last reconciled:** 2026-11-15  
 **Repository:** `TheSumitNain/school-management-system`  
 **Reviewed branch:** `work`  
-**Reviewed through:** `fbbe1a6107623de1788458c697e747899d1e9b40` on `work`. Backend CI run `43676936136` passed this exact tip: complete migrations on ephemeral PostgreSQL, backend unit/integration tests, and `go vet`. Frontend CI run `43676902824` passed commit `0bb83f06ed1b7923a8b9bc3eb92ea94471110515`: design-token check, TypeScript/Vite production build, and all 6 Student Management Playwright tests. The only frontend change after that CI checkpoint was the locator correction included in the successful run; no frontend code changed in the backend-only commit after it. No persistent school database was changed. Local disposable-database verification and authenticated browser acceptance against the real API/database remain pending; do not migrate persistent `school_management` without explicit approval and a verified restorable backup.
+**Reviewed through:** `8a2c32e15deb8464c58b40d0d89fe0ae5187f1a5` on `work`. Backend CI run `43677196532` and Frontend CI run `43677196535` both passed this exact code checkpoint: complete migrations on ephemeral PostgreSQL, backend unit/integration tests, `go vet`, design-token check, TypeScript/Vite production build, and all 6 Student Management Playwright tests. No persistent school database was changed. Local disposable-database verification and authenticated browser acceptance against the real API/database remain pending; do not migrate persistent `school_management` without explicit approval and a verified restorable backup.
 
 ## Administrator access correction — School Admin guardian permissions (V39; local verification pending)
 
@@ -684,3 +684,11 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Extended the Student Management Playwright workflow to assert all three 80/50-character field errors appear together under their own fields and that no invalid form is submitted. The earlier place-of-birth over-limit check remains in the same workflow.
 - Frontend CI run `43676902824` passed all 6 Student Management Playwright tests and the TypeScript/Vite production build on `0bb83f06ed1b7923a8b9bc3eb92ea94471110515`. Backend CI run `43676936136` passed all migrations, backend unit/integration tests (including the new V37 Unicode boundaries), and `go vet` on `fbbe1a6107623de1788458c697e747899d1e9b40`.
 - This verifies the code and mocked browser workflow plus ephemeral PostgreSQL integration; it does not replace authenticated browser acceptance against the user's local API/database. No persistent school database was accessed or migrated.
+
+
+## Basic Details registration conflict feedback — 2026-11-15
+
+- School registration-number uniqueness conflicts returned by the API are now mapped to an inline field error beneath School registration number, rather than a generic form-level error. The field's `aria-describedby` and `aria-invalid` state carry the error to assistive technology; changing the field clears the error.
+- The Playwright workflow now simulates an API 409 conflict, verifies the field-level message, verifies the existing profile value is not overwritten, then retries successfully after the conflict is cleared.
+- Backend CI `43677196532` and Frontend CI `43677196535` both passed on `8a2c32e15deb8464c58b40d0d89fe0ae5187f1a5`. Frontend includes all 6 Student Management Playwright tests; backend includes the full ephemeral PostgreSQL migration chain, integration tests and `go vet`.
+- These checks do not replace authenticated browser acceptance against the local API/database. No persistent school database was accessed or migrated.
