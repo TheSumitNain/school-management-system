@@ -573,15 +573,19 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("button", { name: "Retry loading contact details" }).click();
   await expect(contactSave).toBeEnabled();
   const contactSaveButton = page.getByRole("button", { name: "Save contact details" });
-  await page.getByPlaceholder("Primary contact number").fill("9876501234");
+  await page.getByPlaceholder("Primary contact number").fill("अ".repeat(31));
+  await page.getByPlaceholder("Alternate contact number").fill("अ".repeat(31));
   await page.getByPlaceholder("student@example.com").fill("a".repeat(245) + "@example.test");
   await contactSaveButton.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
     if (!form) throw new Error("Contact save button is not associated with its form.");
     form.requestSubmit(button as HTMLButtonElement);
   });
+  await expect(page.getByText("Phone number must be 30 characters or fewer.")).toHaveCount(2);
   await expect(page.getByText("Email address must be 254 characters or fewer.")).toBeVisible();
   expect(contactDetails.primary_phone).toBeNull();
+  await page.getByPlaceholder("Primary contact number").fill("9876501234");
+  await page.getByPlaceholder("Alternate contact number").fill("");
   await page.getByPlaceholder("student@example.com").fill("not-an-email");
   await contactSaveButton.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
