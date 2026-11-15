@@ -217,6 +217,17 @@ func TestStudentProfileRepositoryPostgresIntegration(t *testing.T) {
 	}
 	district, err := repo.CreateStudentLocation(ctx, actorID, schoolID, &state.ID, "", "district", "District "+suffix, nil)
 	if err != nil { t.Fatalf("create address district: %v", err) }
+	unicodeLocationName := strings.Repeat("अ", 50)
+	if _, err := repo.CreateStudentLocation(ctx, actorID, schoolID, &state.ID, "", "district", unicodeLocationName, nil); err != nil {
+		t.Fatalf("create Unicode location for search: %v", err)
+	}
+	unicodeLocations, err := repo.ListStudentLocations(ctx, actorID, schoolID, &state.ID, "district", unicodeLocationName)
+	if err != nil || len(unicodeLocations) != 1 || unicodeLocations[0].Name != unicodeLocationName {
+		t.Fatalf("search locations by 50 Unicode characters: locations=%+v err=%v", unicodeLocations, err)
+	}
+	if _, err := repo.ListStudentLocations(ctx, actorID, schoolID, &state.ID, "district", strings.Repeat("अ", 101)); !errors.Is(err, ErrInvalidAcademicInput) {
+		t.Fatalf("location search over 100 Unicode characters error = %v, want invalid input", err)
+	}
 	subdistrict, err := repo.CreateStudentLocation(ctx, actorID, schoolID, &district.ID, "", "subdistrict", "Block "+suffix, nil)
 	if err != nil { t.Fatalf("create address block: %v", err) }
 	localityType := "village"
