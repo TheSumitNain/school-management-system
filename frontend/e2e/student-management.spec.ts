@@ -1219,7 +1219,7 @@ test("student archive confirmation keeps the record on conflict and refreshes st
   await page.getByRole("button", { name: "View profile for Archive Retry Student" }).click();
   await page.getByRole("button", { name: "Basic details" }).click();
   await expect(page.getByText("View-only access. Student update permission is required to edit these details.")).toBeVisible();
-  await expect(page.getByLabel("Place of birth")).toHaveValue("Ambala");
+  await expect(page.getByPlaceholder("City, district or place")).toHaveValue("Ambala");
   await expect(page.getByRole("button", { name: "Save basic details" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Save student name" })).toHaveCount(0);
 
