@@ -684,11 +684,11 @@ test("student admission, profile navigation and parent details render without br
   await revokeDialog.getByRole("button", { name: "Confirm revoke" }).click();
   await expect.poll(() => guardianLink.revoked_at).toBe("2026-11-14T12:00:00.000Z");
   await expect(page.getByText("Guardian relationship revoked. Its history is preserved.")).toBeVisible();
-  await expect(page.getByText("Ramesh Sharma")).toHaveCount(0);
+  await expect(page.getByText("Ramesh Sharma Updated")).toHaveCount(0);
   await page.getByLabel("Show revoked history").check();
   await expect.poll(() => guardianHistoryRequests[guardianHistoryRequests.length - 1]).toBe("true");
   expect(guardianHistoryRequests[0]).toBeNull();
-  await expect(page.getByText("Ramesh Sharma")).toBeVisible();
+  await expect(page.getByText("Ramesh Sharma Updated")).toBeVisible();
   await expect(page.getByText(/Revoked/)).toBeVisible();
 
   await page.getByRole("button", { name: "Close dialog" }).click();
