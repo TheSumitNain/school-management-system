@@ -12,6 +12,13 @@
 - Backend CI **PASS** — [run 43717701635](https://github.com/TheSumitNain/school-management-system/actions/runs/43717701635): complete migration chain, Go tests including PostgreSQL integration, and `go vet ./...` all succeeded.
 - This remains mocked browser coverage. Authenticated live acceptance against the local API/database is still separate and pending.
 
+### Parent Details full-browser-reload acceptance — pending CI (2026-11-15)
+
+- Extended the guardian create/link/edit journey to perform a complete browser reload, sign in again, reopen the student profile, and verify that the updated shared guardian name/contact/profile fields and student-specific relationship flags are restored from the mocked API state.
+- Test commit: `ae1e9a3007eddfcb5c2f10f10ddcb6814cc478ca`.
+- Frontend CI run [43718345623](https://github.com/TheSumitNain/school-management-system/actions/runs/43718345623) and Backend CI run [43718345636](https://github.com/TheSumitNain/school-management-system/actions/runs/43718345636) are running. The Vite production build step has passed; the Playwright browser test and backend workflow have not completed yet.
+- Keep `c215c1f52eddc947033bef630f4ecbbbaaff563f` as the latest fully verified code checkpoint until both exact-commit workflows finish. This remains mocked browser persistence, not live API/database acceptance.
+
 ### Latest verified code and CI
 
 - Active branch: `work`; latest verified Student Management test checkpoint is `c215c1f52eddc947033bef630f4ecbbbaaff563f`; Frontend CI run 43717701638 and Backend CI run 43717701635 both PASS.
