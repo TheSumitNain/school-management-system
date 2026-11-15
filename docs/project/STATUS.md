@@ -8,7 +8,7 @@
 
 - Active branch: `work`.
 - Latest verified backend code commit: `1196045794777f94d94c994b4750af865d36e84e` — guardian revocation audit deduplication. Backend CI **PASS** on that exact commit — [run 43709153490](https://github.com/TheSumitNain/school-management-system/actions/runs/43709153490), including the ephemeral PostgreSQL migration chain, backend integration tests and `go vet ./...`.
-- Latest frontend source fix: `2419d61299a878669392f69f44549a8e45f7ff9a` — preserve the Basic Details name-save success feedback after the parent student record updates. Earlier student-switch cleanup commits are `b302d3761b8ddd4f8e65724234eced9eae9dea6f` and `6b3355f7d7d5b520fd2ca3bf06028c9b09485e11`.
+- Latest frontend source fix: `834c9419818a85e4a1331cb85fa3f563ca13fc6c` — enable window-focus refresh for Student Management profile queries while preserving unchanged form drafts. The preceding Basic Details name-save feedback fix is `2419d61299a878669392f69f44549a8e45f7ff9a`; earlier student-switch cleanup commits are `b302d3761b8ddd4f8e65724234eced9eae9dea6f` and `6b3355f7d7d5b520fd2ca3bf06028c9b09485e11`.
 - Latest Student Management browser-test commit: `ce21411d7ea1a52d5c4633a3c57e317f7f268965` — explicit background-refetch draft-preservation coverage across Basic Details, Parent Details, Address, Contact, Medical and Physical sections. Latest docs/test-handoff commit is on the same branch.
 - CI for the latest test/source checkpoint is pending; do not treat earlier failed/cancelled runs as current verification. The last known frontend CI PASS remains [run 43708932012](https://github.com/TheSumitNain/school-management-system/actions/runs/43708932012) on older commit `b640caed53a4ad7c2a4670719974d2d99b7a4269` (8 Playwright tests).
 - Authenticated live acceptance remains pending. A green run on an older SHA does not verify newer frontend code.
@@ -64,6 +64,12 @@
 - The first browser run exposed a real UI race: saving a student's name updates the parent student object, which changed the synchronization effect dependency and immediately cleared the success message before it could be observed.
 - Restricted the name-form reset effect to the active student identity. Saving a new name for the same student no longer triggers the student-switch reset; switching to a different student still clears stale form feedback.
 - Fix commit: `2419d61299a878669392f69f44549a8e45f7ff9a`. Verify the new frontend CI run before treating it as resolved.
+
+### Student profile query refresh and draft-preservation behavior (2026-11-15)
+
+- The first background-refetch browser run showed that the shared QueryClient intentionally disables window-focus refetch globally. The new regression checks therefore could not observe a refetch even after the stale window elapsed.
+- Enabled `refetchOnWindowFocus` specifically for student Basic Details, Address, Contact, Medical, Physical, student-guardian links and related-student profile queries. Unrelated app queries retain the global default. This makes stale profile data refresh when staff return to the app while the snapshot-based form effects preserve unchanged in-progress drafts.
+- Source commit: `834c9419818a85e4a1331cb85fa3f563ca13fc6c`. The latest frontend CI run must verify both the refetch behavior and all six draft-preservation assertions.
 
 ### Root causes fixed
 
