@@ -54,8 +54,8 @@
 ### Editable profile background-refetch draft regression coverage (2026-11-15)
 
 - Extended the main Student Management Playwright journey to trigger a real TanStack Query window-focus refetch and assert that in-progress Basic Details, Address, Contact, Medical and Physical drafts remain unchanged when the server returns the same persisted snapshot.
-- Basic Details uses its stale cached query; Address and Contact wait beyond their 15-second stale window before the focus refetch; Medical and Physical use their configured immediate-stale behavior.
-- Test commits: `2f22369bf41901e7efea80227fc36d483ae77754` (Medical and Physical) and `70f24c208f6705021c21f1e4e03ea6df9aa04044` plus `d81947170aeea9fc2f3082bd6fc8bef335ab2277` (Basic Details, Address and Contact, including explicit stale-window waits and a 90-second test timeout).
+- Basic Details, Address, Contact and Parent Details wait beyond their 15-second stale window before the focus refetch; Medical and Physical use their configured immediate-stale behavior.
+- Test commits: `2f22369bf41901e7efea80227fc36d483ae77754` (Medical and Physical) and `70f24c208f6705021c21f1e4e03ea6df9aa04044` plus `d81947170aeea9fc2f3082bd6fc8bef335ab2277` (Basic Details, Address and Contact, including explicit stale-window waits and timeout protection); Parent Details relationship draft coverage is added in `ce21411d7ea1a52d5c4633a3c57e317f7f268965` with a 120-second timeout for the full journey.
 - The initial frontend run on `2f22369bf41901e7efea80227fc36d483ae77754` exposed the name-save feedback race documented below; the run failed for that assertion, and its concurrent backend run was cancelled by the next push. The expanded test and fix are now committed; verify the workflow on the latest branch head. These are mocked browser tests and do not replace authenticated live acceptance.
 
 ### Basic Details name-save feedback regression (2026-11-15)
