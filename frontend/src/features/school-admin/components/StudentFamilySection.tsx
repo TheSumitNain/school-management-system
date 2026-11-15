@@ -419,7 +419,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
             )}
           </>
         )}
-        {!canManage && <p className="student-address-note">View-only access. Guardian management permission is required to create, link or revoke guardian records.</p>}
+        {!canManage && <p className="student-address-note">View-only access. Guardian records can be changed only for active students and require guardian management permission.</p>}
       </section>
 
       <section className="student-family-section">
