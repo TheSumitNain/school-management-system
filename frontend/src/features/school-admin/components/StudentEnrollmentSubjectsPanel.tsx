@@ -67,7 +67,7 @@ export function StudentEnrollmentSubjectsPanel({
       <p className="student-address-note">Compulsory subjects are included automatically. Optional choices follow the school's selection limits.</p>
       {data?.available_curriculum && (
         <label className="student-curriculum-version-select">Curriculum version
-          <select value={targetCurriculumID} onChange={event => { setTargetCurriculumID(Number(event.target.value)); setSelected([]); }}>
+          <select value={targetCurriculumID} onChange={event => { const nextID = Number(event.target.value); setTargetCurriculumID(nextID); setSelected(nextID === data.curriculum?.id ? (data.selected_optional_subject_ids ?? []) : []); }}>
             <option value={data.curriculum?.id ?? 0}>Assigned version {data.curriculum?.version_number}</option>
             <option value={data.available_curriculum.id}>New version {data.available_curriculum.version_number}</option>
           </select>
