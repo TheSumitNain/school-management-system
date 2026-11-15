@@ -703,3 +703,11 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Extended the guardian workflow Playwright test to simulate the conflict, assert that no link is created, verify the inline message, and then retry successfully. Existing relationship type validation and primary/emergency flags remain covered.
 - Frontend CI run `43677649489` and Backend CI run `43677649516` passed code checkpoint `58b255d2c16a755e0cc39ad86c96675267f1482b`. This includes all 6 Student Management Playwright tests, TypeScript/Vite build, full migrations on ephemeral PostgreSQL, backend unit/integration tests, and `go vet`.
 - No persistent school database was accessed or migrated. Authenticated browser acceptance against the local API/database remains pending.
+
+
+## Archived student Parent Details view-only browser coverage — 2026-11-15
+
+- Extended the archive/retry Student Management browser journey to reopen an archived student's Parents & Siblings section when the operator has `guardians.read` but the student is archived.
+- The test verifies that existing guardian name, relationship, primary/emergency flags and shared contact details remain visible after archival, while relationship editing, shared guardian editing, revocation, linking and new guardian creation controls are absent.
+- This protects the distinction between retaining historical student/guardian information for read access and preventing further edits to an archived student. Parent OTP/login remains deferred.
+- Code commit: `f4704a6e63098af577dc1152d7191f2b6ceed959` on `work`. **Exact-commit frontend CI has not yet been observed; do not treat this added scenario as verified until the Student Management Playwright suite and production build pass.** No backend, migration or database changes were made.
