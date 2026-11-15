@@ -1952,7 +1952,7 @@ test("switching student Parent Details clears unsaved guardian drafts and field 
   await page.getByRole("button", { name: "Students" }).click();
 
   await page.getByRole("button", { name: "View profile for Family Student A" }).click();
-  await page.getByRole("button", { name: /Parents & Siblings/ }).click();
+  await page.getByRole("button", { name: /Parents & Siblings/i }).click();
   await page.getByRole("button", { name: "Create a new guardian contact" }).click();
   await page.getByPlaceholder("Guardian full name").fill("अ".repeat(201));
   await page.getByPlaceholder("Father, Mother, Guardian…").fill("Father");
