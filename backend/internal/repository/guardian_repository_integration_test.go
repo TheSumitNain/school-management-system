@@ -537,9 +537,9 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 		inactiveLink.ID, "student record inactive"); err != nil {
 		t.Fatalf("revoke guardian relationship for inactive student: %v", err)
 	}
-	inactiveHistory, err := repo.ListStudentGuardians(ctx, targetPrincipalID, schoolID, inactiveStudentID, true)
-	if err != nil || len(inactiveHistory) != 1 || inactiveHistory[0].RevokedAt == nil {
-		t.Fatalf("inactive student guardian history after revocation: links=%+v err=%v", inactiveHistory, err)
+	inactiveRevokedHistory, err := repo.ListStudentGuardians(ctx, targetPrincipalID, schoolID, inactiveStudentID, true)
+	if err != nil || len(inactiveRevokedHistory) != 1 || inactiveRevokedHistory[0].RevokedAt == nil {
+		t.Fatalf("inactive student guardian history after revocation: links=%+v err=%v", inactiveRevokedHistory, err)
 	}
 
 	// Re-linking after revocation creates a new active relationship while
