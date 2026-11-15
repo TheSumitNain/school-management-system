@@ -51,6 +51,7 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
   const [newLocationName, setNewLocationName] = useState("");
   const [newLocalityType, setNewLocalityType] = useState("village");
   const [countryCode, setCountryCode] = useState("IN");
+  const [countryCodeError, setCountryCodeError] = useState("");
   const [fieldError, setFieldError] = useState("");
   const [addressErrors, setAddressErrors] = useState<{ line1?: string; line2?: string; areaMohalla?: string; landmark?: string; postalCode?: string }>({});
   const [newLocationNameError, setNewLocationNameError] = useState("");
@@ -259,10 +260,16 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
       return;
     }
     setNewLocationNameError("");
+    const normalizedCountryCode = countryCode.trim().toUpperCase();
+    if (nextLocationLevel === "state" && !/^[A-Z]{2}$/.test(normalizedCountryCode)) {
+      setCountryCodeError("Enter a valid two-letter ISO country code, such as IN.");
+      return;
+    }
+    setCountryCodeError("");
     try {
       const result = await createLocation.mutateAsync({
         parent_id: nextParentID ?? null,
-        country_code: nextLocationLevel === "state" ? countryCode.trim().toUpperCase() : undefined,
+        country_code: nextLocationLevel === "state" ? normalizedCountryCode : undefined,
         level: nextLocationLevel,
         name: newLocationName.trim(),
         locality_type: nextLocationLevel === "locality" ? newLocalityType : null,
@@ -366,7 +373,7 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
                 <div className="student-location-create">
                   <strong>Add {nextLocationLabel.toLowerCase()} for this school</strong>
                   <label><StudentFieldLabel label="Location name" required hint="Enter the official name of the missing state, district, sub-district/tehsil or village/city. Maximum 120 characters." /><input disabled={!canUpdate || addressesQuery.isLoading || addressesQuery.isError || busy} value={newLocationName} aria-invalid={Boolean(newLocationNameError)} aria-describedby={newLocationNameError ? "student-location-name-error" : undefined} onChange={event => { setNewLocationName(event.target.value); setNewLocationNameError(""); }} placeholder={"Enter " + nextLocationLabel.toLowerCase()}/>{newLocationNameError && <small id="student-location-name-error" className="app-field-error">{newLocationNameError}</small>}</label>
-                  {nextLocationLevel === "state" && <label><StudentFieldLabel label="Country code" required hint="Use a two-letter uppercase country code. India is IN." /><input disabled={!canUpdate || addressesQuery.isLoading || addressesQuery.isError || busy} value={countryCode} maxLength={2} onChange={event => setCountryCode(event.target.value.toUpperCase())} placeholder="IN"/></label>}
+                  {nextLocationLevel === "state" && <label><StudentFieldLabel label="Country code" required hint="Use a two-letter uppercase country code. India is IN." /><input disabled={!canUpdate || addressesQuery.isLoading || addressesQuery.isError || busy} value={countryCode} maxLength={2} aria-invalid={Boolean(countryCodeError)} aria-describedby={countryCodeError ? "student-country-code-error" : undefined} onChange={event => { setCountryCode(event.target.value.toUpperCase()); setCountryCodeError(""); }} placeholder="IN"/>{countryCodeError && <small id="student-country-code-error" className="app-field-error">{countryCodeError}</small>}</label>}
                   {nextLocationLevel === "locality" && <label><StudentFieldLabel label="Locality type" required hint="Choose whether the locality is a village, city, town or other." /><Select ariaLabel="Locality type" value={newLocalityType} disabled={!canUpdate || addressesQuery.isLoading || addressesQuery.isError || busy} onChange={setNewLocalityType} options={[{value:"village",label:"Village"},{value:"city",label:"City"},{value:"town",label:"Town"},{value:"other",label:"Other"}]}/></label>}
                   <button type="button" className="secondary" disabled={createLocation.isPending} onClick={() => void addLocation()}>{createLocation.isPending ? "Adding…" : "Add location"}</button>
                 </div>
