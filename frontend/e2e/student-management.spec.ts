@@ -1556,7 +1556,7 @@ test("staff can create a guardian contact and link it to a student with relation
 
   await page.getByRole("button", { name: "Edit relationship" }).click();
   await page.getByPlaceholder("Father, Mother, Legal Guardian…").fill("Legal Guardian");
-  await page.getByRole("checkbox", { name: /Primary contact/ }).uncheck();
+  await page.getByRole("checkbox", { name: /Primary contact/ }).first().uncheck();
   await page.getByRole("button", { name: "Save relationship" }).click();
   await expect(page.getByText("Legal Guardian · Emergency contact")).toBeVisible();
 
