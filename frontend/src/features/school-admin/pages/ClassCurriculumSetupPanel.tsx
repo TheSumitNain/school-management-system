@@ -77,13 +77,13 @@ export function ClassCurriculumSetupPanel({ years, classes, subjects, canManage 
       <div className="toolbar"><div><h2>Class curriculum</h2><small>Configure compulsory and optional subjects for a class in an academic year.</small></div></div>
       <div className="curriculum-filters">
         <label>Academic year
-          <select value={yearID} onChange={event => { setYearID(event.target.value); setSuccess(""); }} required>
+          <select value={yearID} onChange={event => { setYearID(event.target.value); setIncluded([]); setGroupBySubject({}); setGroups([]); setError(""); setSuccess(""); }} required>
             <option value="">Select academic year</option>
             {years.filter(year => year.status !== "closed").map(year => <option key={year.id} value={year.id}>{year.name}</option>)}
           </select>
         </label>
         <label>Class
-          <select value={classID} onChange={event => { setClassID(event.target.value); setSuccess(""); }} required>
+          <select value={classID} onChange={event => { setClassID(event.target.value); setIncluded([]); setGroupBySubject({}); setGroups([]); setError(""); setSuccess(""); }} required>
             <option value="">Select class</option>
             {classes.filter(item => item.is_active).map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
           </select>
@@ -109,7 +109,7 @@ export function ClassCurriculumSetupPanel({ years, classes, subjects, canManage 
               <label>Group name<input value={group.name} maxLength={100} placeholder="e.g. Second language" onChange={event => setGroups(current => current.map((item, i) => i === index ? { ...item, name: event.target.value } : item))} /></label>
               <label>Minimum choices<input type="number" min={0} max={150} value={group.min_selections} onChange={event => setGroups(current => current.map((item, i) => i === index ? { ...item, min_selections: Number(event.target.value) } : item))} /></label>
               <label>Maximum choices<input type="number" min={1} max={150} value={group.max_selections} onChange={event => setGroups(current => current.map((item, i) => i === index ? { ...item, max_selections: Number(event.target.value) } : item))} /></label>
-              <button type="button" className="academic-edit" onClick={() => setGroups(current => current.filter((_, i) => i !== index))}>Remove group</button>
+              <button type="button" className="academic-edit" onClick={() => { const removedName = group.name.trim().toLocaleLowerCase(); setGroups(current => current.filter((_, i) => i !== index)); setGroupBySubject(current => Object.fromEntries(Object.entries(current).map(([id, name]) => [id, name.trim().toLocaleLowerCase() === removedName ? "" : name]))); }}>Remove group</button>
             </fieldset>
           ))}
           <div className="curriculum-subject-picker">
