@@ -612,3 +612,11 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Added field-specific inline errors and accessible invalid-state descriptions for every guardian profile field. Email validation checks the character limit before email syntax; the backend's normalized parser and repository character limits remain authoritative.
 - Extended mocked browser coverage to submit all over-limit Hindi guardian-create values together, verify each error and no create request, then continue through invalid-email and successful create/link. Shared guardian edit now also verifies that an over-limit phone is rejected before the cross-student confirmation.
 - No database or schema changes were made. Exact-tip CI and live authenticated API/database acceptance remain unverified.
+
+
+## Student admission and enrollment field validation — 2026-11-15
+
+- Combined first admission now validates student full name (200), year-scoped admission number (50) and optional manual roll number (30) using Unicode code-point counts before the create request. Each error is shown beneath its field.
+- Standalone academic-year enrollment applies the same 50-character admission-number and 30-character optional roll-number checks, with field-level accessible errors. Blank roll numbers remain valid and continue to request backend auto-assignment.
+- Extended the mocked admission browser journey to submit over-limit Hindi student name, admission number and roll number values together, verify all three inline errors and confirm no admission request is sent before correction.
+- Backend repository validation remains authoritative. No database or schema changes were made; exact-tip CI and live authenticated API/database acceptance remain unverified.
