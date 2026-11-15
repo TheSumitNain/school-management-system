@@ -1,9 +1,9 @@
 # Project Status
 
-**Last reconciled:** 2026-11-14  
+**Last reconciled:** 2026-11-15  
 **Repository:** `TheSumitNain/school-management-system`  
 **Reviewed branch:** `work`  
-**Reviewed through:** `32a8af14777ecabcfd5daaf3d5d2dce002778411` on `work`; historical local verification remains limited to the exact versions and disposable database runs recorded below; latest branch additions include staff lifecycle, timetable, teacher assignments, attendance, and Student Management/Academic Structure UX updates. CI status for the latest `work` tip has not yet been independently confirmed in this review; local V39+ database application and live browser acceptance remain pending
+**Reviewed through:** `ab8993413af53eb67a2b40ca955e37bc8e2de78b`; Backend CI run `43611122792` passed the full ephemeral PostgreSQL migration chain, backend tests including PostgreSQL integration, and `go vet`. Frontend CI run `43610711016` passed on `dfeb4bd7`; commits after it in this review changed backend integration tests only. Local V39+ database application and live authenticated browser acceptance remain pending
 
 ## Administrator access correction — School Admin guardian permissions (V39; local verification pending)
 
@@ -495,3 +495,13 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - CI status for the latest branch tip was not available from the checks inspected during this reconciliation; do not infer a pass from earlier commits. Run/inspect the exact tip's frontend and backend workflows before marking it verified.
 - No source code, database migration, local database, or backup was modified as part of this reconciliation. The persistent `school_management` database must remain untouched unless separately approved with a verified backup.
 - Remaining acceptance work: verify Staff, Teacher Assignments, Timetable and Attendance flows end-to-end; expand browser tests beyond Student Management; run fresh-database and upgrade-path integration checks for migrations V25 onward in a disposable PostgreSQL database; then perform live local API/browser acceptance.
+
+
+## Student Management integration-test audit and CI reconciliation — 2026-11-15
+
+- Backend CI for exact branch tip `ab8993413af53eb67a2b40ca955e37bc8e2de78b` passed (workflow run `43611122792`): ephemeral PostgreSQL containers initialized, the complete migration chain applied, all backend tests including PostgreSQL integration passed, and `go vet` passed.
+- The backend CI failure on earlier commit `0d76f272` was traced to expected PostgreSQL constraint/trigger failures aborting the surrounding test transaction. Savepoint recovery was added to the V42 location-source and guardian-schema integration tests in `e9fb7761` and `ab899341`; the latest exact-tip CI now passes.
+- Source audit confirmed rollback-scoped fixture transactions in the V12 parent/guardian authorization, V31–V33 admission identity, V34 address/location, V35 contact, V36 medical/physical, V37 basic-details, guardian repository, and student-profile integration tests. Read-only schema/reference queries outside those transactions are intentional. The shared Platform Admin lifecycle actor helper in the V36 test remains an intentional reusable fixture, not an accidental per-test data leak.
+- Expected database rejections in the reviewed V12, V31, V33–V37 and V42 tests are isolated with savepoints where later assertions reuse the transaction. No additional persistent-fixture leak was identified in this targeted review.
+- Frontend CI run `43610711016` passed for `dfeb4bd7`, including the expanded mocked Playwright Student Management journey. Subsequent `e9fb7761` and `ab899341` commits changed backend integration tests only; this remains the latest relevant frontend verification.
+- Live acceptance is still pending: Playwright API calls remain mocked, no local persistent database was migrated, and authenticated browser verification of actual load/save/reload behavior and role permissions remains outstanding. Keep `school_management` untouched until explicit approval and a verified backup.
