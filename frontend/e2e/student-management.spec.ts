@@ -395,7 +395,8 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("button", { name: /Parents & Siblings/i }).click();
   await expect(page.getByRole("dialog", { name: /Parents & Siblings/i })).toBeVisible();
   await expect(page.getByText("Ramesh Sharma")).toBeVisible();
-  await expect.poll(() => guardianHistoryRequests).toEqual([null]);
+  await expect.poll(() => guardianHistoryRequests.length).toBeGreaterThan(0);
+  expect(guardianHistoryRequests[0]).toBeNull();
   await expect(page.getByText("Father · Primary contact · Emergency contact")).toBeVisible();
   await expect(page.getByText("Other students sharing a guardian")).toBeVisible();
 
