@@ -68,6 +68,7 @@ export const schoolStudentQueryKeys = {
   enrollments: (academicYearID: number) => [...schoolStudentQueryKeys.all, "enrollments", academicYearID] as const,
   enrollmentHistory: (studentID: number) => [...schoolStudentQueryKeys.all, "enrollment-history", studentID] as const,
   curriculum: (enrollmentID: number) => [...schoolStudentQueryKeys.all, "curriculum", enrollmentID] as const,
+  curricula: () => [...schoolStudentQueryKeys.all, "curriculum"] as const,
   classCurricula: (yearID: number, classID: number) => [...schoolStudentQueryKeys.all, "class-curricula", yearID, classID] as const,
   years: () => [...schoolStudentQueryKeys.all, "academic-years"] as const,
   sections: (academicYearID: number) => [...schoolStudentQueryKeys.all, "sections", academicYearID] as const,
@@ -345,7 +346,12 @@ export function useSaveSchoolClassCurriculumMutation() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: saveSchoolClassCurriculum,
-    onSuccess: (_data, input) => client.invalidateQueries({ queryKey: schoolStudentQueryKeys.classCurricula(input.academic_year_id, input.class_id) }),
+    onSuccess: async (_data, input) => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: schoolStudentQueryKeys.classCurricula(input.academic_year_id, input.class_id) }),
+        client.invalidateQueries({ queryKey: schoolStudentQueryKeys.curricula() }),
+      ]);
+    },
   });
 }
 export function useSaveSchoolStudentEnrollmentSubjectsMutation() {
