@@ -138,14 +138,18 @@ GitHub Actions uses an ephemeral PostgreSQL database. Its success does not chang
 
 From the `backend` directory, run `go run ./cmd/dbstatus` after loading the intended `.env` configuration. This command connects to the configured database and reports its database name, migration version and dirty flag. It performs no DDL or DML and never applies, rolls back or repairs migrations. A dirty state or malformed migration metadata is reported as an error and must be investigated before any migration attempt. Always verify `DB_NAME` before running it; do not paste credentials into command history or logs.
 
-Official source entry points reviewed on 2026-11-14:
+Official source entry points reviewed on 2026-11-15:
 - OGD LGD catalog (Ministry of Panchayati Raj): https://data.gov.in/catalog/local-government-directory-lgd
 - LGD District dataset: https://data.gov.in/resource/local-government-directory-lgd-districts
 - LGD Sub-District dataset: https://ap.data.gov.in/resource/local-government-directory-lgd-sub-districts
 - LGD Village dataset: https://ap.data.gov.in/datasets_webservices/datasets/7163864
 - Ministry LGD hierarchy overview (shows revenue entities and development blocks as distinct branches): https://panchayat.gov.in/lgd/
 
-The OGD catalog and its District resource describe monthly updates; record the exact source snapshot/update date actually downloaded, not the page's current crawl date. OGD pages expose download/API entry points, but automated access and the current export schema must be verified against the actual official resource response before implementing a parser. The official catalog page itself is the source-of-truth discovery point; do not assume a community API mirrors the current official dataset.
+Current source-discovery findings (not an approved/imported snapshot):
+- The OGD LGD catalog identifies the Ministry of Panchayati Raj as publisher, describes the revenue-entity directory as monthly updated, and showed a catalog update date of 2026-10-28 when reviewed.
+- The District resource showed an update date of 2026-10-27. The indexed Sub-District resource did not expose a reliable current update date, and the Village resource listing showed 2025-11-17. These portal metadata dates are discovery clues only; they are not a substitute for the source snapshot date embedded in the exact downloaded export.
+- Before writing a parser or importing anything, download the official all-India exports for Districts, Sub-Districts and Villages (and the matching States/UT reference), inspect the actual file headers, row counts, parent-code fields, entity status/version columns and locality classifications, then preserve the untouched bytes and checksums. If any resource is stale, incomplete, inaccessible or inconsistent with the others, stop and resolve that discrepancy rather than filling gaps from a community mirror.
+- No official lower-level snapshot has been downloaded, normalized or imported as of this review.
 
 ### Read-only LGD snapshot validation tool
 
