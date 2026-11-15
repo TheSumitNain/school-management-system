@@ -331,6 +331,7 @@ Every Student Management form must make field expectations understandable before
 - Show every relevant validation error next to its field and associate it with the control using accessible descriptions. Keep a form-level message only for non-field/server errors and connect it to the affected fields where possible.
 - Required/optional labels, frontend validation, API validation, repository rules and database constraints must agree. Do not mark a field optional in the UI if the server or database requires it, and do not make a genuinely optional profile field block admission or profile saving.
 - Save controls must expose why they are unavailable: loading, failed prerequisite read, missing permission, invalid input or an in-flight save. Failed prerequisite reads must offer a retry and must not silently allow an empty form to overwrite existing data.
+- Text length limits must count Unicode code points/characters consistently across frontend, API, repository validation and PostgreSQL VARCHAR(n); never compare UTF-8 byte length to a database character limit. Include Hindi and other multilingual names/address values in regression tests.
 - Preserve entered values after recoverable server errors. Do not clear forms or close dialogs on a failed save.
 
 Apply this standard consistently to initial admission, returning enrollment, promotion, Basic Details, Address & Communication, Parents & Siblings, Medical & Physical and school-owned location creation.
