@@ -21,6 +21,7 @@ test("student admission, profile navigation and parent details render without br
   const students: Student[] = [];
   const createdAdmissions: Record<string, unknown>[] = [];
   const failStudentReads = new Set<string>();
+  let failRegistrationConflict = false;
   const failedStudentReads: string[] = [];
   const observedStudentDetailGets: string[] = [];
   const guardianHistoryRequests: (string | null)[] = [];
@@ -184,6 +185,10 @@ test("student admission, profile navigation and parent details render without br
         return;
       }
       if (subpath === "basic-details") {
+        if (method === "PUT" && failRegistrationConflict) {
+          await route.fulfill({ status: 409, json: { message: "Student basic details conflicts with an existing record" } });
+          return;
+        }
         if (method === "PUT") Object.assign(basicDetails, request.postDataJSON() as Record<string, unknown>);
         await route.fulfill({ json: { basic_details: basicDetails } });
         return;
@@ -419,6 +424,15 @@ test("student admission, profile navigation and parent details render without br
   await page.getByPlaceholder("e.g. Indian").fill("Indian");
   await page.getByPlaceholder("Optional", { exact: true }).fill("");
   await page.getByPlaceholder("Optional school SR number").fill("SR-E2E-001");
+  failRegistrationConflict = true;
+  await basicSaveButton.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Basic details save button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect(page.getByText("This registration number is already in use for another student in this school.", { exact: true })).toBeVisible();
+  expect(basicDetails.school_registration_number).toBeNull();
+  failRegistrationConflict = false;
   await page.getByRole("button", { name: "Gender", exact: true }).click();
   await page.getByRole("option", { name: "Male", exact: true }).click();
   await basicSaveButton.evaluate(button => {
