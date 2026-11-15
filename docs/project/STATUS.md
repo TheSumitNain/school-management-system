@@ -4,6 +4,13 @@
 
 **Current focus:** finish Student Management only. Parent OTP/SMS/login remains deferred until after the school dashboard; Parent Details in the student record remain required.
 
+### New cross-student profile acceptance coverage — verification pending (2026-11-15)
+
+- Added a two-student Playwright journey covering unsaved drafts and field-validation errors in Address, Contact, Medical and Physical sections. The test switches from Student A to Student B and verifies that Student B's persisted values load without Student A's drafts or errors.
+- Test commit: `6fa80c77e512e29c6c2f33dc6daa83913063acb6` (includes the initial test addition and follow-up corrections).
+- The test has **not yet been reported as passing**. No check runs/statuses were returned for this commit by the available GitHub status lookup; do not mark this acceptance gap closed until Frontend CI reports the build and full Playwright suite green.
+- This remains mocked browser coverage. Authenticated live acceptance against the local API/database is still separate and pending.
+
 ### Latest verified code and CI
 
 - Active branch: `work`; latest code/test checkpoint is `b6d14c6ed4030724857838ef8cebc131041219ae`; subsequent commits reconcile documentation and remove obsolete repository clutter.
