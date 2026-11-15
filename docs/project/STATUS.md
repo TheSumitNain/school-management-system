@@ -588,3 +588,12 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Expanded the mocked browser journey to reject 121 Hindi characters in Place of Birth, 51 in a promotion admission number, 31 in a manual roll number and 501 in a guardian revocation reason before any write is sent. Existing valid workflows continue after correcting the values.
 - Audited the Student Management page and Basic Details, Address, Family, Health and Promotion components for native maxLength attributes. The only remaining native cap is the two-character ISO country code, whose allowed input is ASCII uppercase by design.
 - These changes are frontend validation/input behavior only. No schema or database migration was made and no persistent database was modified. CI for the exact current branch tip and live authenticated API/database browser acceptance remain unverified.
+
+
+## Student address field-level validation — 2026-11-15
+
+- Added Unicode code-point length checks to the Current/Permanent Address form for House / Street (200), Address line 2 (200), Area / Mohalla (120), Landmark (120) and PIN / Postal Code (20). All applicable errors are shown together directly beneath their fields with accessible invalid-state descriptions; editing a field clears its own error.
+- Added the matching 120-character code-point check and inline error to school-created location names. Existing backend repository checks remain authoritative, and the location hierarchy validation remains a separate form-level error because it concerns the combined State → District → Sub-District → Locality path.
+- Associated primary and alternate phone errors with their controls using aria-invalid and aria-describedby, matching the existing contact email accessibility behavior.
+- Extended the mocked browser journey to submit all five over-limit Hindi address values together, verify every field error appears and confirm no address write occurs before correcting the values.
+- No database or schema change was made. These browser checks remain mocked; exact-tip CI and live authenticated API/database acceptance are still outstanding.
