@@ -51,6 +51,12 @@
 - Frontend commits: `b302d3761b8ddd4f8e65724234eced9eae9dea6f` (Address & Communication), `6b3355f7d7d5b520fd2ca3bf06028c9b09485e11` (Medical & Physical).
 - CI status and authenticated browser acceptance are pending for these changes. Add/execute focused browser coverage and verify the exact branch head before treating the fixes as complete.
 
+### Medical and Physical background-refetch draft regression coverage (2026-11-15)
+
+- Extended the Student Management Playwright journey to record medical and physical GET counts, trigger a window-focus refetch, and assert that an in-progress allergy draft and vision-notes draft remain unchanged after the server returns the same persisted snapshot.
+- Test commit: `2f22369bf41901e7efea80227fc36d483ae77754`.
+- The test source is committed, but no CI result has yet been reported for this commit. Verify the workflow on the exact branch head; mocked browser coverage does not replace authenticated live acceptance.
+
 ### Root causes fixed
 
 1. Guardian form length errors were not appearing because HTML `maxLength` blocked over-limit input before app validation. Removed those truncating attributes; explicit field-level validation remains. Frontend CI now passes.
