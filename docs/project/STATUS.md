@@ -20,6 +20,12 @@
 - Backend CI **PASS** — [run 43718345636](https://github.com/TheSumitNain/school-management-system/actions/runs/43718345636): all migrations applied to ephemeral PostgreSQL, all Go tests including PostgreSQL integration passed, and `go vet ./...` passed.
 - This is mocked browser persistence plus ephemeral-database CI, not authenticated live acceptance against the user's local API/database.
 
+### Optional curriculum subject-selection limits — pending CI (2026-11-15)
+
+- Extended the student academic-history browser journey to assert that an optional subject group cannot be saved below its minimum or above its maximum, and that correcting the selection re-enables save.
+- Test commit: `743970d82dc655e7c63d5a72c1097531ba2cb2dc`.
+- Frontend CI [run 43719477558](https://github.com/TheSumitNain/school-management-system/actions/runs/43719477558) and Backend CI [run 43719477590](https://github.com/TheSumitNain/school-management-system/actions/runs/43719477590) are queued. Keep `cdfb455ec2aa4451d8a94f421ea022ed23cece09` as the latest fully verified code checkpoint until the exact-commit workflows finish.
+
 ### Shared guardian profile across linked students — verified (2026-11-15)
 
 - Extended the Parent Details browser journey with a second active student linked to the same guardian. The test verifies that editing the shared guardian profile updates the contact/profile shown under both students, while the second student's own relationship type and primary/emergency flags remain unchanged.
