@@ -44,6 +44,7 @@ func TestGuardianWriteErrorKeepsUnrelatedTriggerFailuresAsInvalidInput(t *testin
 }
 
 func TestNormalizeGuardianEmail(t *testing.T) {
+	ptr := func(value string) *string { return &value }
 	tests := []struct {
 		name    string
 		input   *string
@@ -51,15 +52,15 @@ func TestNormalizeGuardianEmail(t *testing.T) {
 		wantNil bool
 		wantErr bool
 	}{
-		{name: "valid email", input: stringPointer("parent@example.com"), want: "parent@example.com"},
-		{name: "trims surrounding whitespace", input: stringPointer(" parent@example.com "), want: "parent@example.com"},
-		{name: "empty becomes nil", input: stringPointer("  "), wantNil: true},
+		{name: "valid email", input: ptr("parent@example.com"), want: "parent@example.com"},
+		{name: "trims surrounding whitespace", input: ptr(" parent@example.com "), want: "parent@example.com"},
+		{name: "empty becomes nil", input: ptr("  "), wantNil: true},
 		{name: "nil remains nil", input: nil, wantNil: true},
-		{name: "missing domain", input: stringPointer("parent@"), wantErr: true},
-		{name: "missing local part", input: stringPointer("@example.com"), wantErr: true},
-		{name: "display name is not accepted as an email field", input: stringPointer("Parent <parent@example.com>"), wantErr: true},
-		{name: "multiple addresses rejected", input: stringPointer("parent@example.com, other@example.com"), wantErr: true},
-		{name: "over maximum length", input: stringPointer(strings.Repeat("a", 245) + "@example.com"), wantErr: true},
+		{name: "missing domain", input: ptr("parent@"), wantErr: true},
+		{name: "missing local part", input: ptr("@example.com"), wantErr: true},
+		{name: "display name is not accepted as an email field", input: ptr("Parent <parent@example.com>"), wantErr: true},
+		{name: "multiple addresses rejected", input: ptr("parent@example.com, other@example.com"), wantErr: true},
+		{name: "over maximum length", input: ptr(strings.Repeat("a", 245) + "@example.com"), wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -81,8 +82,4 @@ func TestNormalizeGuardianEmail(t *testing.T) {
 			}
 		})
 	}
-}
-
-func stringPointer(value string) *string {
-	return &value
 }
