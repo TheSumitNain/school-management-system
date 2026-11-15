@@ -23,6 +23,7 @@ test("student admission, profile navigation and parent details render without br
   const failStudentReads = new Set<string>();
   let failRegistrationConflict = false;
   let failAdmissionNumberConflict = false;
+  let failRollNumberConflict = false;
   const failedStudentReads: string[] = [];
   const observedStudentDetailGets: string[] = [];
   const guardianHistoryRequests: (string | null)[] = [];
@@ -130,6 +131,16 @@ test("student admission, profile navigation and parent details render without br
           json: {
             message: "Admission number is already used in this academic year",
             field_errors: { admission_number: "This admission number is already in use for the selected academic year." },
+          },
+        });
+        return;
+      }
+      if (failRollNumberConflict) {
+        await route.fulfill({
+          status: 409,
+          json: {
+            message: "Roll number is already used in this section",
+            field_errors: { roll_number: "This roll number is already assigned to an active student in the selected section." },
           },
         });
         return;
@@ -337,7 +348,7 @@ test("student admission, profile navigation and parent details render without br
   expect(createdAdmissions).toHaveLength(0);
   await page.getByPlaceholder("e.g. Aarav Sharma").fill("Aarav Sharma");
   await page.getByPlaceholder("e.g. ADM-2026-001").fill("ADM-E2E-001");
-  await page.getByPlaceholder("e.g. 01").fill("");
+  await page.getByPlaceholder("e.g. 01").fill("01");
   const admissionFormValid = await page.locator(".app-modal-content form").evaluate(
     form => (form as HTMLFormElement).checkValidity(),
   );
@@ -357,6 +368,17 @@ test("student admission, profile navigation and parent details render without br
   expect(students).toHaveLength(0);
 
   failAdmissionNumberConflict = false;
+  failRollNumberConflict = true;
+  await submitButton.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Admission submit button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect(page.getByText("This roll number is already assigned to an active student in the selected section.")).toBeVisible();
+  expect(createdAdmissions).toHaveLength(0);
+  expect(students).toHaveLength(0);
+
+  failRollNumberConflict = false;
   await submitButton.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
     if (!form) throw new Error("Admission submit button is not associated with its form.");
