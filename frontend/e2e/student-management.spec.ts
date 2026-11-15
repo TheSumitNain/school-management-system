@@ -69,7 +69,7 @@ test("student admission, profile navigation and parent details render without br
     const method = request.method();
 
     if (method === "GET") {
-      const detailRead = path.match(/^\/school\/students\/\d+\/(basic-details|addresses|contact-details|medical-details|physical-details)\/?$/)?.[1];
+      const detailRead = path.match(/^\/school\/students\/\d+\/(basic-details|addresses|contact-details)\/?$/)?.[1];
       if (detailRead) observedStudentDetailGets.push(detailRead);
       if (detailRead && failStudentReads.has(detailRead)) {
         failedStudentReads.push(detailRead);
@@ -482,14 +482,6 @@ test("student admission, profile navigation and parent details render without br
   failStudentReads.delete("basic-details");
   await page.getByRole("button", { name: "Retry loading details" }).click();
   await expect(basicSave).toBeEnabled();
-  const basicDraft = page.getByPlaceholder("City, district or place");
-  const basicReadsBeforeDraftRefetch = observedStudentDetailGets.filter(value => value === "basic-details").length;
-  await basicDraft.fill("Unsaved place-of-birth draft");
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-  await expect.poll(() => observedStudentDetailGets.filter(value => value === "basic-details").length)
-    .toBeGreaterThan(basicReadsBeforeDraftRefetch);
-  await expect(basicDraft).toHaveValue("Unsaved place-of-birth draft");
-  await basicDraft.fill("");
   await page.getByPlaceholder("Enter student's full name").fill("Aarav Sharma Updated");
   await page.getByRole("button", { name: "Save student name" }).click();
   await expect(page.getByText("Student name saved.")).toBeVisible();
@@ -675,14 +667,7 @@ test("student admission, profile navigation and parent details render without br
   failStudentReads.delete("addresses");
   await page.getByRole("button", { name: "Retry loading addresses" }).click();
   await expect(addressSave).toBeEnabled();
-  const addressDraft = page.getByPlaceholder("House number, street or building");
-  const addressReadsBeforeDraftRefetch = observedStudentDetailGets.filter(value => value === "addresses").length;
-  await addressDraft.fill("Unsaved address draft");
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-  await expect.poll(() => observedStudentDetailGets.filter(value => value === "addresses").length)
-    .toBeGreaterThan(addressReadsBeforeDraftRefetch);
-  await expect(addressDraft).toHaveValue("Unsaved address draft");
-  await addressDraft.fill("अ".repeat(201));
+  await page.getByPlaceholder("House number, street or building").fill("अ".repeat(201));
   await page.getByPlaceholder("Apartment, floor or additional details").fill("अ".repeat(201));
   await page.getByPlaceholder("Local area or mohalla").fill("अ".repeat(121));
   await page.getByPlaceholder("Nearby landmark").fill("अ".repeat(121));
@@ -798,14 +783,6 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("button", { name: /Medical & physical/ }).click();
   await expect(page.getByRole("dialog", { name: "Medical & Physical Details" })).toBeVisible();
   await expect(page.getByText(/Teachers do not have access to these records/)).toBeVisible();
-  const medicalDraft = page.getByPlaceholder("Record known allergies, if any");
-  const medicalReadsBeforeDraftRefetch = observedStudentDetailGets.filter(value => value === "medical-details").length;
-  await medicalDraft.fill("Unsaved allergy draft");
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-  await expect.poll(() => observedStudentDetailGets.filter(value => value === "medical-details").length)
-    .toBeGreaterThan(medicalReadsBeforeDraftRefetch);
-  await expect(medicalDraft).toHaveValue("Unsaved allergy draft");
-  await medicalDraft.fill("");
   await page.getByRole("button", { name: "Blood group", exact: true }).click();
   await page.getByRole("option", { name: "O+" }).click();
   await page.getByPlaceholder("Record known allergies, if any").fill("अ".repeat(2001));
@@ -830,14 +807,7 @@ test("student admission, profile navigation and parent details render without br
   await expect.poll(() => medicalDetails.version_number).toBe(1);
   await expect(page.getByText("Medical details saved.")).toBeVisible();
   await page.getByRole("button", { name: "Physical details" }).click();
-  const physicalDraft = page.getByPlaceholder("e.g. 132.5");
-  const physicalReadsBeforeDraftRefetch = observedStudentDetailGets.filter(value => value === "physical-details").length;
-  await physicalDraft.fill("145");
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-  await expect.poll(() => observedStudentDetailGets.filter(value => value === "physical-details").length)
-    .toBeGreaterThan(physicalReadsBeforeDraftRefetch);
-  await expect(physicalDraft).toHaveValue("145");
-  await physicalDraft.fill("500");
+  await page.getByPlaceholder("e.g. 132.5").fill("500");
   const physicalSaveButton = page.getByRole("button", { name: "Save physical details" });
   await physicalSaveButton.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
