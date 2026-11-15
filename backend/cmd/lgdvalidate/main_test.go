@@ -73,7 +73,7 @@ func TestValidateCSVRejectsConflictingSubdistrictParent(t *testing.T) {
 func TestValidateCSVRejectsConflictingLocalityParent(t *testing.T) {
 	input := strings.Replace(validSnapshot, "900003,Example Town,town", "900001,Ambala,village", 1)
 	_, err := validateCSV(strings.NewReader(input))
-	if err == nil || !strings.Contains(err.Error(), "conflicting name or parent mapping") {
+	if err == nil || !strings.Contains(err.Error(), "conflicting name, parent, or locality type") {
 		t.Fatalf("validateCSV() error = %v, want conflicting locality-parent error", err)
 	}
 }
