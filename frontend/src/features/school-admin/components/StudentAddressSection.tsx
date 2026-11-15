@@ -52,6 +52,8 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
   const [newLocalityType, setNewLocalityType] = useState("village");
   const [countryCode, setCountryCode] = useState("IN");
   const [fieldError, setFieldError] = useState("");
+  const [addressErrors, setAddressErrors] = useState<{ line1?: string; line2?: string; areaMohalla?: string; landmark?: string; postalCode?: string }>({});
+  const [newLocationNameError, setNewLocationNameError] = useState("");
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
 
   const addressesQuery = useSchoolStudentAddressesQuery(student.id, !showContactDetails);
@@ -81,6 +83,7 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
     setSubdistrictID(selectedAddress?.subdistrict_location_id ?? 0);
     setLocalityID(selectedAddress?.location_id ?? 0);
     setFieldError("");
+    setAddressErrors({});
   }, [showContactDetails, addressType, addressesQuery.data?.addresses]);
 
   useEffect(() => {
@@ -151,6 +154,16 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
     event.preventDefault();
     if (!canUpdate || addressesQuery.isLoading || addressesQuery.isError) return;
     setFieldError("");
+    const errors: typeof addressErrors = {};
+    if (!(addressType === "permanent" && sameAsCurrent)) {
+      if (Array.from(line1.trim()).length > 200) errors.line1 = "House / street must be 200 characters or fewer.";
+      if (Array.from(line2.trim()).length > 200) errors.line2 = "Address line 2 must be 200 characters or fewer.";
+      if (Array.from(areaMohalla.trim()).length > 120) errors.areaMohalla = "Area / mohalla must be 120 characters or fewer.";
+      if (Array.from(landmark.trim()).length > 120) errors.landmark = "Landmark must be 120 characters or fewer.";
+      if (Array.from(postalCode.trim()).length > 20) errors.postalCode = "PIN / postal code must be 20 characters or fewer.";
+    }
+    setAddressErrors(errors);
+    if (Object.keys(errors).length > 0) return;
     if (addressType === "permanent" && sameAsCurrent && !currentAddress) {
       setFieldError("Save the current address before using it as the permanent address.");
       return;
@@ -236,9 +249,14 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
     if (!canUpdate) return;
     setFieldError("");
     if (!newLocationName.trim()) {
-      setFieldError("Enter the new location name.");
+      setNewLocationNameError("Enter the new location name.");
       return;
     }
+    if (Array.from(newLocationName.trim()).length > 120) {
+      setNewLocationNameError("Location name must be 120 characters or fewer.");
+      return;
+    }
+    setNewLocationNameError("");
     try {
       const result = await createLocation.mutateAsync({
         parent_id: nextParentID ?? null,
@@ -312,11 +330,11 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
         ) : (
           <>
             <div className="student-address-grid">
-              <label><StudentFieldLabel label="House / street" hint="Optional. Enter house number, street or building. Maximum 200 characters." /><input disabled={!canUpdate || addressesQuery.isLoading || addressesQuery.isError || busy} value={line1} onChange={event => setLine1(event.target.value)} placeholder="House number, street or building"/></label>
-              <label><StudentFieldLabel label="Address line 2" hint="Optional. Apartment, floor or other additional address details. Maximum 200 characters." /><input disabled={!canUpdate || addressesQuery.isLoading || addressesQuery.isError || busy} value={line2} onChange={event => setLine2(event.target.value)} placeholder="Apartment, floor or additional details"/></label>
-              <label><StudentFieldLabel label="Area / mohalla" hint="Optional local area or mohalla name. Maximum 120 characters." /><input disabled={!canUpdate || addressesQuery.isLoading || addressesQuery.isError || busy} value={areaMohalla} onChange={event => setAreaMohalla(event.target.value)} placeholder="Local area or mohalla"/></label>
-              <label><StudentFieldLabel label="Landmark" hint="Optional nearby landmark. Maximum 120 characters." /><input disabled={!canUpdate || addressesQuery.isLoading || addressesQuery.isError || busy} value={landmark} onChange={event => setLandmark(event.target.value)} placeholder="Nearby landmark"/></label>
-              <label><StudentFieldLabel label="PIN / postal code" hint="Optional postal PIN/code. Enter the code used for this address; maximum 20 characters." /><input disabled={!canUpdate || addressesQuery.isLoading || addressesQuery.isError || busy} value={postalCode} onChange={event => setPostalCode(event.target.value)} placeholder="PIN or postal code"/></label>
+              <label><StudentFieldLabel label="House / street" hint="Optional. Enter house number, street or building. Maximum 200 characters." /><input disabled={!canUpdate || addressesQuery.isLoading || addressesQuery.isError || busy} value={line1} aria-invalid={Boolean(addressErrors.line1)} aria-describedby={addressErrors.line1 ? "student-address-line1-error" : undefined} onChange={event => { setLine1(event.target.value); setAddressErrors(current => ({...current,line1:undefined})); }} placeholder="House number, street or building"/>{addressErrors.line1 && <small id="student-address-line1-error" className="app-field-error">{addressErrors.line1}</small>}</label>
+              <label><StudentFieldLabel label="Address line 2" hint="Optional. Apartment, floor or other additional address details. Maximum 200 characters." /><input disabled={!canUpdate || addressesQuery.isLoading || addressesQuery.isError || busy} value={line2} aria-invalid={Boolean(addressErrors.line2)} aria-describedby={addressErrors.line2 ? "student-address-line2-error" : undefined} onChange={event => { setLine2(event.target.value); setAddressErrors(current => ({...current,line2:undefined})); }} placeholder="Apartment, floor or additional details"/>{addressErrors.line2 && <small id="student-address-line2-error" className="app-field-error">{addressErrors.line2}</small>}</label>
+              <label><StudentFieldLabel label="Area / mohalla" hint="Optional local area or mohalla name. Maximum 120 characters." /><input disabled={!canUpdate || addressesQuery.isLoading || addressesQuery.isError || busy} value={areaMohalla} aria-invalid={Boolean(addressErrors.areaMohalla)} aria-describedby={addressErrors.areaMohalla ? "student-address-area-error" : undefined} onChange={event => { setAreaMohalla(event.target.value); setAddressErrors(current => ({...current,areaMohalla:undefined})); }} placeholder="Local area or mohalla"/>{addressErrors.areaMohalla && <small id="student-address-area-error" className="app-field-error">{addressErrors.areaMohalla}</small>}</label>
+              <label><StudentFieldLabel label="Landmark" hint="Optional nearby landmark. Maximum 120 characters." /><input disabled={!canUpdate || addressesQuery.isLoading || addressesQuery.isError || busy} value={landmark} aria-invalid={Boolean(addressErrors.landmark)} aria-describedby={addressErrors.landmark ? "student-address-landmark-error" : undefined} onChange={event => { setLandmark(event.target.value); setAddressErrors(current => ({...current,landmark:undefined})); }} placeholder="Nearby landmark"/>{addressErrors.landmark && <small id="student-address-landmark-error" className="app-field-error">{addressErrors.landmark}</small>}</label>
+              <label><StudentFieldLabel label="PIN / postal code" hint="Optional postal PIN/code. Enter the code used for this address; maximum 20 characters." /><input disabled={!canUpdate || addressesQuery.isLoading || addressesQuery.isError || busy} value={postalCode} aria-invalid={Boolean(addressErrors.postalCode)} aria-describedby={addressErrors.postalCode ? "student-address-postal-error" : undefined} onChange={event => { setPostalCode(event.target.value); setAddressErrors(current => ({...current,postalCode:undefined})); }} placeholder="PIN or postal code"/>{addressErrors.postalCode && <small id="student-address-postal-error" className="app-field-error">{addressErrors.postalCode}</small>}</label>
             </div>
             <section className="student-location-section" aria-label="Location hierarchy">
               <h3>Location</h3>
@@ -345,7 +363,7 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
               {showLocationCreator && canUpdate && canAddLocation && (
                 <div className="student-location-create">
                   <strong>Add {nextLocationLabel.toLowerCase()} for this school</strong>
-                  <label><StudentFieldLabel label="Location name" required hint="Enter the official name of the missing state, district, sub-district/tehsil or village/city. Maximum 120 characters." /><input disabled={!canUpdate || addressesQuery.isLoading || addressesQuery.isError || busy} value={newLocationName} onChange={event => setNewLocationName(event.target.value)} placeholder={"Enter " + nextLocationLabel.toLowerCase()}/></label>
+                  <label><StudentFieldLabel label="Location name" required hint="Enter the official name of the missing state, district, sub-district/tehsil or village/city. Maximum 120 characters." /><input disabled={!canUpdate || addressesQuery.isLoading || addressesQuery.isError || busy} value={newLocationName} aria-invalid={Boolean(newLocationNameError)} aria-describedby={newLocationNameError ? "student-location-name-error" : undefined} onChange={event => { setNewLocationName(event.target.value); setNewLocationNameError(""); }} placeholder={"Enter " + nextLocationLabel.toLowerCase()}/>{newLocationNameError && <small id="student-location-name-error" className="app-field-error">{newLocationNameError}</small>}</label>
                   {nextLocationLevel === "state" && <label><StudentFieldLabel label="Country code" required hint="Use a two-letter uppercase country code. India is IN." /><input disabled={!canUpdate || addressesQuery.isLoading || addressesQuery.isError || busy} value={countryCode} maxLength={2} onChange={event => setCountryCode(event.target.value.toUpperCase())} placeholder="IN"/></label>}
                   {nextLocationLevel === "locality" && <label><StudentFieldLabel label="Locality type" required hint="Choose whether the locality is a village, city, town or other." /><Select ariaLabel="Locality type" value={newLocalityType} disabled={!canUpdate || addressesQuery.isLoading || addressesQuery.isError || busy} onChange={setNewLocalityType} options={[{value:"village",label:"Village"},{value:"city",label:"City"},{value:"town",label:"Town"},{value:"other",label:"Other"}]}/></label>}
                   <button type="button" className="secondary" disabled={createLocation.isPending} onClick={() => void addLocation()}>{createLocation.isPending ? "Adding…" : "Add location"}</button>
