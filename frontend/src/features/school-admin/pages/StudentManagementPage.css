@@ -223,3 +223,6 @@
 .student-curriculum-version-select{display:grid;grid-template-columns:minmax(110px,auto) minmax(180px,260px);align-items:center;gap:10px;font-weight:600}
 .student-curriculum-version-select select{min-height:38px;padding:7px 10px;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);color:var(--color-text)}
 @media(max-width:600px){.student-curriculum-version-select{grid-template-columns:1fr}}
+
+.student-field-error{margin:0;color:var(--color-danger);font-size:.875rem;font-weight:500}
+.student-success{margin:0;color:var(--color-success);font-size:.9rem;font-weight:600}
