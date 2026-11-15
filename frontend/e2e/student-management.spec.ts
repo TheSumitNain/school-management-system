@@ -28,6 +28,7 @@ test("student admission, profile navigation and parent details render without br
   const observedStudentDetailGets: string[] = [];
   const guardianHistoryRequests: (string | null)[] = [];
   let curriculumAssigned = false;
+  let curriculumReads = 0;
   let savedCurriculumSelections: number[] = [];
   const guardianLink = {
     id: 501, student_id: 1, guardian_id: 22, guardian_name: "Ramesh Sharma", guardian_status: "active" as const,
@@ -194,6 +195,7 @@ test("student admission, profile navigation and parent details render without br
         ],
       };
       if (curriculumEnrollmentMatch[2] === "curriculum" && method === "GET") {
+        curriculumReads++;
         await route.fulfill({ json: { enrollment_curriculum: {
           enrollment_id: enrollmentID, student_id: studentID, student_status: "active", enrollment_status: "active",
           academic_year_id: 7, class_id: 3, assigned: curriculumAssigned, curriculum,
@@ -463,6 +465,11 @@ test("student admission, profile navigation and parent details render without br
   await expect(curriculumPanel.getByText("Hindi · curriculum v1 · Current")).toBeVisible();
   await curriculumPanel.getByRole("checkbox", { name: /Hindi/ }).uncheck();
   await curriculumPanel.getByRole("checkbox", { name: /Sanskrit/ }).check();
+  const readsBeforeRefresh = curriculumReads;
+  await curriculumPanel.getByRole("button", { name: "Refresh curriculum and subject choices" }).click();
+  await expect.poll(() => curriculumReads).toBeGreaterThan(readsBeforeRefresh);
+  await expect(curriculumPanel.getByRole("checkbox", { name: /Sanskrit/ })).toBeChecked();
+  await expect(curriculumPanel.getByRole("checkbox", { name: /Hindi/ })).not.toBeChecked();
 
   failStudentReads.add("basic-details");
   await page.getByRole("button", { name: /Basic details/ }).click();
@@ -553,8 +560,6 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByText("Basic details saved.")).toBeVisible();
   await page.getByRole("button", { name: "Close dialog" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
-  await expect(curriculumPanel.getByRole("checkbox", { name: /Sanskrit/ })).toBeChecked();
-  await expect(curriculumPanel.getByRole("checkbox", { name: /Hindi/ })).not.toBeChecked();
   await expect(page.getByText("Aarav Sharma Updated · Permanent student identity and year-wise academic history")).toBeVisible();
 
   await page.getByRole("button", { name: /Basic details/ }).click();
@@ -1499,7 +1504,7 @@ test("staff can create a guardian contact and link it to a student with relation
   await expect(page.getByText("Mother · Primary contact · Emergency contact")).toBeVisible();
 
   await page.getByRole("button", { name: "Edit shared guardian details" }).click();
-  await expect(page.getByPlaceholder("Mobile number")).toHaveValue("");
+  await expect(page.getByPlaceholder("Mobile number")).toHaveValue("9876501234");
   const editGuardianName = page.getByPlaceholder("Guardian full name");
   const editGuardianMobile = page.getByPlaceholder("Mobile number");
   const editGuardianEmail = page.getByPlaceholder("guardian@example.com");
