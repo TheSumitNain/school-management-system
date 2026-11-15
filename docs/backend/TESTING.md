@@ -36,7 +36,7 @@ Never point integration tests at production or a persistent user database withou
 - Complete cross-school/resource/assignment/field-level authorization tests across all modules.
 - Additional database outage, concurrency and rollback cases.
 - Migration rollback/forward-recovery verification.
-- Automated browser end-to-end tests (frontend exists, but no browser test harness is currently configured).
+- Broader authenticated browser end-to-end coverage across all Student Management journeys and roles. The frontend currently has a Playwright acceptance suite for selected Student Management and Academic Structure scenarios; it uses mocked APIs, so it does not replace live authenticated acceptance against the user's local API/database.
 - Load, penetration, deployment and disaster-recovery testing.
 
 ## Verification evidence
