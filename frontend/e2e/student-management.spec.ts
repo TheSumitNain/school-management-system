@@ -1538,7 +1538,7 @@ test("staff with guardian management permission cannot change an inactive studen
   await expect(familyDialog.getByRole("button", { name: "Revoke link" })).toHaveCount(0);
   await expect(familyDialog.getByRole("button", { name: "Link guardian" })).toHaveCount(0);
   await expect(familyDialog.getByRole("button", { name: "Create a new guardian contact" })).toHaveCount(0);
-  await familyDialog.getByRole("button", { name: "Close" }).click();
+  await familyDialog.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByRole("button", { name: "Close dialog" }).click();
   await page.getByRole("button", { name: "Enrollments" }).click();
   await expect(page.getByText("Inactive Family Student", { exact: true })).toBeVisible();
