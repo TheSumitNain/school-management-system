@@ -167,13 +167,12 @@ func TestStudentBasicDetailsV37PostgresIntegration(t *testing.T) {
 	}
 	for _, field := range []struct {
 		name string
-		limit int
 		place, nationality, religion, registration *string
 	}{
-		{name: "place of birth", limit: 120, place: ptrString(strings.Repeat("अ", 121))},
-		{name: "nationality", limit: 80, nationality: ptrString(strings.Repeat("न", 81))},
-		{name: "religion", limit: 80, religion: ptrString(strings.Repeat("ध", 81))},
-		{name: "school registration number", limit: 50, registration: ptrString(strings.Repeat("प", 51))},
+		{name: "place of birth", place: ptrString(strings.Repeat("अ", 121))},
+		{name: "nationality", nationality: ptrString(strings.Repeat("न", 81))},
+		{name: "religion", religion: ptrString(strings.Repeat("ध", 81))},
+		{name: "school registration number", registration: ptrString(strings.Repeat("प", 51))},
 	} {
 		_, saveErr := repository.SaveStudentBasicDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
 			nil, field.place, nil, field.nationality, field.religion, nil, nil, field.registration)
