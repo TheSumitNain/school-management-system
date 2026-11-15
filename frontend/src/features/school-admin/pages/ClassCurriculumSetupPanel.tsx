@@ -8,6 +8,7 @@ type Year = { id: number; name: string; status: string };
 type SchoolClass = { id: number; name: string; is_active: boolean };
 type Subject = { id: number; name: string; subject_code?: string; is_active: boolean };
 type Group = { name: string; min_selections: number; max_selections: number };
+type GroupFieldErrors = { name?: string; min?: string; max?: string; subjects?: string };
 type Props = { years: Year[]; classes: SchoolClass[]; subjects: Subject[]; canManage: boolean };
 
 export function ClassCurriculumSetupPanel({ years, classes, subjects, canManage }: Props) {
@@ -17,7 +18,7 @@ export function ClassCurriculumSetupPanel({ years, classes, subjects, canManage 
   const [included, setIncluded] = useState<number[]>([]);
   const [groupBySubject, setGroupBySubject] = useState<Record<number, string>>({});
   const [error, setError] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<{ year?: string; class?: string; subjects?: string; groups: Record<number, string> }>({ groups: {} });
+  const [fieldErrors, setFieldErrors] = useState<{ year?: string; class?: string; subjects?: string; groups: Record<number, GroupFieldErrors> }>({ groups: {} });
   const [success, setSuccess] = useState("");
   const save = useSaveSchoolClassCurriculumMutation();
   const yearNumber = Number(yearID);
@@ -35,27 +36,33 @@ export function ClassCurriculumSetupPanel({ years, classes, subjects, canManage 
 
   function addGroup() {
     setGroups(current => [...current, { name: "", min_selections: 1, max_selections: 1 }]);
+    setFieldErrors(current => ({ ...current, groups: {} }));
   }
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
     setSuccess("");
-    const nextErrors: { year?: string; class?: string; subjects?: string; groups: Record<number, string> } = { groups: {} };
+    const nextErrors: { year?: string; class?: string; subjects?: string; groups: Record<number, GroupFieldErrors> } = { groups: {} };
     if (!yearNumber) nextErrors.year = "Select an academic year.";
     if (!classNumber) nextErrors.class = "Select a class.";
     if (included.length === 0) nextErrors.subjects = "Select at least one subject for this curriculum.";
     const normalized = new Set<string>();
     for (const [index, group] of groups.entries()) {
       const key = group.name.trim().toLowerCase();
-      if (!key || normalized.has(key) || group.min_selections < 0 || group.max_selections < 1 || group.min_selections > group.max_selections) {
-        nextErrors.groups[index] = "Enter a unique group name and valid minimum/maximum limits.";
-        continue;
-      }
-      normalized.add(key);
+      const errors: GroupFieldErrors = {};
+      if (!key) errors.name = "Enter a name for this optional group.";
+      else if (normalized.has(key)) errors.name = "Optional group names must be unique.";
+      else normalized.add(key);
+      if (group.min_selections < 0) errors.min = "Minimum choices cannot be negative.";
+      if (group.max_selections < 1) errors.max = "Maximum choices must be at least 1.";
+      if (group.min_selections > group.max_selections) errors.min = "Minimum choices cannot exceed maximum choices.";
       const count = selectedCounts.get(key) ?? 0;
-      if (count === 0 || group.min_selections > count || group.max_selections > count) {
-        nextErrors.groups[index] = "Assign enough subjects to satisfy this group's selection limits.";
+      if (count === 0) errors.subjects = "Assign at least one subject to this optional group.";
+      else {
+        if (group.min_selections > count) errors.min = "Minimum choices cannot exceed the number of subjects in this group.";
+        if (group.max_selections > count) errors.max = "Maximum choices cannot exceed the number of subjects in this group.";
       }
+      if (Object.keys(errors).length > 0) nextErrors.groups[index] = errors;
     }
     const groupNames = new Set(groups.map(group => group.name.trim().toLowerCase()));
     const payloadSubjects = included.map(subjectID => {
@@ -114,11 +121,11 @@ export function ClassCurriculumSetupPanel({ years, classes, subjects, canManage 
           {groups.map((group, index) => (
             <fieldset className="curriculum-group-editor" key={index}>
               <legend>Optional group {index + 1}</legend>
-              <label>Group name<input disabled={save.isPending} value={group.name} maxLength={100} placeholder="e.g. Second language" onChange={event => { const nextName = event.target.value; setGroups(current => current.map((item, i) => i === index ? { ...item, name: nextName } : item)); setGroupBySubject(current => Object.fromEntries(Object.entries(current).map(([id, name]) => [id, name === group.name ? nextName : name]))); }} /></label>
-              {fieldErrors.groups[index] && <small className="app-field-error" role="alert">{fieldErrors.groups[index]}</small>}
-              <label>Minimum choices<input disabled={save.isPending} type="number" min={0} max={150} value={group.min_selections} onChange={event => setGroups(current => current.map((item, i) => i === index ? { ...item, min_selections: Number(event.target.value) } : item))} /></label>
-              <label>Maximum choices<input disabled={save.isPending} type="number" min={1} max={150} value={group.max_selections} onChange={event => setGroups(current => current.map((item, i) => i === index ? { ...item, max_selections: Number(event.target.value) } : item))} /></label>
-              <button type="button" className="academic-edit" disabled={save.isPending} onClick={() => { const removedName = group.name.trim().toLowerCase(); setGroups(current => current.filter((_, i) => i !== index)); setGroupBySubject(current => Object.fromEntries(Object.entries(current).map(([id, name]) => [id, name.trim().toLowerCase() === removedName ? "" : name]))); }}>Remove group</button>
+              <label>Group name<input disabled={save.isPending} value={group.name} maxLength={100} placeholder="e.g. Second language" aria-invalid={Boolean(fieldErrors.groups[index]?.name)} aria-describedby={fieldErrors.groups[index]?.name ? `curriculum-group-${index}-name-error` : undefined} onChange={event => { const nextName = event.target.value; setGroups(current => current.map((item, i) => i === index ? { ...item, name: nextName } : item)); setGroupBySubject(current => Object.fromEntries(Object.entries(current).map(([id, name]) => [id, name === group.name ? nextName : name]))); setFieldErrors(current => ({ ...current, groups: { ...current.groups, [index]: { ...current.groups[index], name: undefined } } })); }} />{fieldErrors.groups[index]?.name && <small id={`curriculum-group-${index}-name-error`} className="app-field-error" role="alert">{fieldErrors.groups[index].name}</small>}</label>
+              <label>Minimum choices<input disabled={save.isPending} type="number" min={0} max={150} value={group.min_selections} aria-invalid={Boolean(fieldErrors.groups[index]?.min)} aria-describedby={fieldErrors.groups[index]?.min ? `curriculum-group-${index}-min-error` : undefined} onChange={event => { setGroups(current => current.map((item, i) => i === index ? { ...item, min_selections: Number(event.target.value) } : item)); setFieldErrors(current => ({ ...current, groups: { ...current.groups, [index]: { ...current.groups[index], min: undefined } } })); }} />{fieldErrors.groups[index]?.min && <small id={`curriculum-group-${index}-min-error`} className="app-field-error" role="alert">{fieldErrors.groups[index].min}</small>}</label>
+              <label>Maximum choices<input disabled={save.isPending} type="number" min={1} max={150} value={group.max_selections} aria-invalid={Boolean(fieldErrors.groups[index]?.max)} aria-describedby={fieldErrors.groups[index]?.max ? `curriculum-group-${index}-max-error` : undefined} onChange={event => { setGroups(current => current.map((item, i) => i === index ? { ...item, max_selections: Number(event.target.value) } : item)); setFieldErrors(current => ({ ...current, groups: { ...current.groups, [index]: { ...current.groups[index], max: undefined } } })); }} />{fieldErrors.groups[index]?.max && <small id={`curriculum-group-${index}-max-error`} className="app-field-error" role="alert">{fieldErrors.groups[index].max}</small>}</label>
+              {fieldErrors.groups[index]?.subjects && <small className="app-field-error" role="alert">{fieldErrors.groups[index].subjects}</small>}
+              <button type="button" className="academic-edit" disabled={save.isPending} onClick={() => { const removedName = group.name.trim().toLowerCase(); setGroups(current => current.filter((_, i) => i !== index)); setGroupBySubject(current => Object.fromEntries(Object.entries(current).map(([id, name]) => [id, name.trim().toLowerCase() === removedName ? "" : name]))); setFieldErrors(current => ({ ...current, groups: {} })); }}>Remove group</button>
             </fieldset>
           ))}
           <div className="curriculum-subject-picker">
