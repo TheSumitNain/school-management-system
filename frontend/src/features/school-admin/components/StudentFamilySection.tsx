@@ -332,6 +332,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
                   <span>{link.mobile_number || "No phone"}{link.alternate_mobile_number ? " · Alt: " + link.alternate_mobile_number : ""}{link.email_address ? " · " + link.email_address : ""}</span>
                   {(link.occupation || link.education || link.workplace_name) && <small>{[link.occupation, link.education, link.workplace_name].filter(Boolean).join(" · ")}</small>}
                   {link.revoked_at && <small>Revoked {new Date(link.revoked_at).toLocaleDateString()}</small>}
+                  {link.revoked_at && link.revocation_reason && <small>Reason: {link.revocation_reason}</small>}
                 </div>
                 {canManage && !link.revoked_at && (
                   <div className="student-family-card-actions">
