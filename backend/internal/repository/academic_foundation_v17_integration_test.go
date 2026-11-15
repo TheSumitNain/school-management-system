@@ -784,8 +784,8 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 	rollbackCandidateName := "Combined Admission Rollback Candidate " + suffix
 	_, err = academicRepo.CreateStudentAdmission(ctx, actorPrincipalID, schoolID,
 		rollbackCandidateName, firstAdmissionNumber, apiYear.ID, apiSection.ID, nil, enrolledAt)
-	if !errors.Is(err, ErrAcademicConflict) {
-		t.Fatalf("duplicate combined admission error = %v, want ErrAcademicConflict", err)
+	if !errors.Is(err, ErrAcademicAdmissionNumberConflict) {
+		t.Fatalf("duplicate combined admission error = %v, want ErrAcademicAdmissionNumberConflict", err)
 	}
 	var rollbackCandidateCount int
 	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM students WHERE school_id=$1 AND full_name=$2`,
