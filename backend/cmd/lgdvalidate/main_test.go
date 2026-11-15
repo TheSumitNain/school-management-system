@@ -134,3 +134,11 @@ func TestAddRecordCountsUnicodeCharactersLikePostgresVarchar(t *testing.T) {
 		t.Fatal("addRecord() accepted 121 Unicode characters; want VARCHAR(120) limit")
 	}
 }
+
+func TestValidateCSVRejectsLGDSourceCodeReusedAcrossLevels(t *testing.T) {
+	input := strings.Replace(validSnapshot, ",701,Ambala,", ",06,Ambala,", 1)
+	_, err := validateCSV(strings.NewReader(input))
+	if err == nil || !strings.Contains(err.Error(), "reused across state and district entities") {
+		t.Fatalf("validateCSV() error = %v, want cross-level LGD source-code collision", err)
+	}
+}
