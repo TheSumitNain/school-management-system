@@ -1245,7 +1245,7 @@ test("student archive confirmation keeps the record on conflict and refreshes st
   await expect(page.getByText("Mother · Primary contact · Emergency contact")).toBeVisible();
   await expect(page.getByText("9876500920 · guardian@example.test", { exact: true })).toBeVisible();
   await expect(page.getByText("Teacher · Graduate · Local School", { exact: true })).toBeVisible();
-  await expect(page.getByText("View-only access. Guardian management permission is required to create, link or revoke guardian records.")).toBeVisible();
+  await expect(page.getByText("View-only access. Guardian records can be changed only for active students and require guardian management permission.")).toBeVisible();
   await expect(familyDialog.getByRole("button", { name: "Edit relationship" })).toHaveCount(0);
   await expect(familyDialog.getByRole("button", { name: "Edit shared guardian details" })).toHaveCount(0);
   await expect(familyDialog.getByRole("button", { name: "Revoke link" })).toHaveCount(0);
@@ -1413,5 +1413,87 @@ test("staff can create a guardian contact and link it to a student with relation
   await expect(page.getByText("Guardian linked to this student.")).toBeVisible();
   await expect(page.getByText("Nisha Verma", { exact: true })).toBeVisible();
   await expect(page.getByText("Mother · Primary contact · Emergency contact")).toBeVisible();
+  expect(browserErrors).toEqual([]);
+});
+
+
+test("staff with guardian management permission cannot change an inactive student's family records", async ({ page }) => {
+  const browserErrors: string[] = [];
+  const student = {
+    id: 94, school_id: 10, admission_number: "ADM-INACTIVE-094",
+    full_name: "Inactive Family Student", status: "inactive",
+    created_at: "2026-11-14T00:00:00.000Z", updated_at: "2026-11-14T00:00:00.000Z",
+  };
+  page.on("pageerror", error => browserErrors.push(error.message));
+  await page.route("**/api/**", async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname.replace(/^\/api/, "");
+    if (path === "/auth/refresh") {
+      await route.fulfill({ status: 401, json: { message: "No active session" } });
+      return;
+    }
+    if (path === "/auth/login" && request.method() === "POST") {
+      await route.fulfill({ json: {
+        access_token: "e2e-inactive-family-token", token_type: "Bearer",
+        principal: { principal_id: 106, principal_type: "staff", status: "active", school_id: 10 },
+      } });
+      return;
+    }
+    if (path === "/auth/me") {
+      await route.fulfill({ json: {
+        principal_id: 106, principal_type: "staff", school_id: 10, username: "e2e-inactive-family",
+        permissions: ["students.read_sensitive", "students.read_basic", "guardians.read", "guardians.manage", "academic_years.read"],
+      } });
+      return;
+    }
+    if (path === "/school/academic-years") {
+      await route.fulfill({ json: { academic_years: [] } });
+      return;
+    }
+    if (path === "/school/students" && request.method() === "GET") {
+      await route.fulfill({ json: { students: [student], pagination: { limit: 20, offset: 0, total: 1 } } });
+      return;
+    }
+    if (path === "/school/students/94/enrollments") {
+      await route.fulfill({ json: { enrollments: [] } });
+      return;
+    }
+    if (path === "/school/students/94/guardians" && request.method() === "GET") {
+      await route.fulfill({ json: { student_guardians: [{
+        id: 9401, student_id: 94, guardian_id: 940, guardian_name: "Inactive Student Guardian",
+        guardian_status: "active", mobile_number: "9876500940", email_address: "inactive.guardian@example.test",
+        alternate_mobile_number: null, occupation: "Farmer", education: "Graduate",
+        workplace_name: "Family Farm", relationship_type: "Father",
+        is_primary_contact: true, is_emergency_contact: true, revoked_at: null,
+      }] } });
+      return;
+    }
+    if (path === "/school/students/94/related-students") {
+      await route.fulfill({ json: { related_students: [] } });
+      return;
+    }
+    await route.fulfill({ status: 404, json: { message: `Unmocked E2E API request: ${request.method()} ${path}` } });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Username").fill("e2e-inactive-family");
+  await page.getByLabel("Password").fill("E2E-only-password");
+  await page.getByRole("button", { name: /Continue/ }).click();
+  await page.getByRole("button", { name: "Students" }).click();
+  await page.getByRole("button", { name: "View profile for Inactive Family Student" }).click();
+  await page.getByRole("button", { name: /Parents & siblings/i }).click();
+  const familyDialog = page.getByRole("dialog", { name: "Parents & Siblings" });
+  await expect(familyDialog).toBeVisible();
+  await expect(page.getByText("Inactive Student Guardian", { exact: true })).toBeVisible();
+  await expect(page.getByText("Father · Primary contact · Emergency contact")).toBeVisible();
+  await expect(page.getByText("9876500940 · inactive.guardian@example.test", { exact: true })).toBeVisible();
+  await expect(page.getByText("Farmer · Graduate · Family Farm", { exact: true })).toBeVisible();
+  await expect(page.getByText("View-only access. Guardian records can be changed only for active students and require guardian management permission.")).toBeVisible();
+  await expect(familyDialog.getByRole("button", { name: "Edit relationship" })).toHaveCount(0);
+  await expect(familyDialog.getByRole("button", { name: "Edit shared guardian details" })).toHaveCount(0);
+  await expect(familyDialog.getByRole("button", { name: "Revoke link" })).toHaveCount(0);
+  await expect(familyDialog.getByRole("button", { name: "Link guardian" })).toHaveCount(0);
+  await expect(familyDialog.getByRole("button", { name: "Create a new guardian contact" })).toHaveCount(0);
   expect(browserErrors).toEqual([]);
 });
