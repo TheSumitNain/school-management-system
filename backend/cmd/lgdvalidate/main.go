@@ -24,7 +24,6 @@ type snapshot struct {
 	districts   map[string]record
 	subdistricts map[string]record
 	localities  map[string]record
-	sourceCodeLevels map[string]string
 }
 
 // supportedIGODStateCodes is the reviewed V40 State/UT crosswalk vocabulary.
@@ -155,14 +154,6 @@ func validateCSV(input io.Reader) (*snapshot, error) {
 		if !validLocalityType(row[9]) {
 			return nil, fmt.Errorf("CSV line %d: unsupported locality_type %q", line, row[9])
 		}
-		for _, item := range []struct{ code, level string }{
-			{row[0], "state"}, {row[3], "district"},
-			{row[5], "subdistrict"}, {row[7], "locality"},
-		} {
-			if err := registerSourceCodeLevel(s.sourceCodeLevels, item.code, item.level); err != nil {
-				return nil, fmt.Errorf("CSV line %d: %w", line, err)
-			}
-		}
 		if err := addRecord(s.states, row[0], row[1], "", row[2], ""); err != nil {
 			return nil, fmt.Errorf("CSV line %d state: %w", line, err)
 		}
@@ -202,14 +193,6 @@ func validateCSV(input io.Reader) (*snapshot, error) {
 		seenIGOD[state.igod] = code
 	}
 	return s, nil
-}
-
-func registerSourceCodeLevel(levels map[string]string, code, level string) error {
-	if previous, exists := levels[code]; exists && previous != level {
-		return fmt.Errorf("LGD source code %q is reused across %s and %s entities", code, previous, level)
-	}
-	levels[code] = level
-	return nil
 }
 
 func addRecord(target map[string]record, code, name, parent, igod, localityType string) error {
