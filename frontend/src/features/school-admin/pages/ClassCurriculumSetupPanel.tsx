@@ -83,14 +83,14 @@ export function ClassCurriculumSetupPanel({ years, classes, subjects, canManage 
       <div className="toolbar"><div><h2>Class curriculum</h2><small>Configure compulsory and optional subjects for a class in an academic year.</small></div></div>
       <div className="curriculum-filters">
         <label>Academic year
-          <select value={yearID} onChange={event => { setYearID(event.target.value); setIncluded([]); setGroupBySubject({}); setGroups([]); setError(""); setSuccess(""); setFieldErrors({ groups: {} }); }} required>
+          <select disabled={save.isPending} value={yearID} onChange={event => { setYearID(event.target.value); setIncluded([]); setGroupBySubject({}); setGroups([]); setError(""); setSuccess(""); setFieldErrors({ groups: {} }); }} required>
             <option value="">Select academic year</option>
             {years.filter(year => year.status !== "closed").map(year => <option key={year.id} value={year.id}>{year.name}</option>)}
           </select>
           {fieldErrors.year && <small className="app-field-error" role="alert">{fieldErrors.year}</small>}
         </label>
         <label>Class
-          <select value={classID} onChange={event => { setClassID(event.target.value); setIncluded([]); setGroupBySubject({}); setGroups([]); setError(""); setSuccess(""); setFieldErrors({ groups: {} }); }} required>
+          <select disabled={save.isPending} value={classID} onChange={event => { setClassID(event.target.value); setIncluded([]); setGroupBySubject({}); setGroups([]); setError(""); setSuccess(""); setFieldErrors({ groups: {} }); }} required>
             <option value="">Select class</option>
             {classes.filter(item => item.is_active).map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
           </select>
@@ -109,16 +109,16 @@ export function ClassCurriculumSetupPanel({ years, classes, subjects, canManage 
       {canManage ? (
         <form onSubmit={submit} className="curriculum-editor">
           <div className="toolbar"><div><h3>Create next version</h3><small>Saving creates a new immutable version; it never overwrites past student choices.</small></div>
-            <button type="button" className="academic-add" onClick={addGroup}>Add optional group</button>
+            <button type="button" className="academic-add" onClick={addGroup} disabled={save.isPending}>Add optional group</button>
           </div>
           {groups.map((group, index) => (
             <fieldset className="curriculum-group-editor" key={index}>
               <legend>Optional group {index + 1}</legend>
-              <label>Group name<input value={group.name} maxLength={100} placeholder="e.g. Second language" onChange={event => { const nextName = event.target.value; setGroups(current => current.map((item, i) => i === index ? { ...item, name: nextName } : item)); setGroupBySubject(current => Object.fromEntries(Object.entries(current).map(([id, name]) => [id, name === group.name ? nextName : name]))); }} /></label>
+              <label>Group name<input disabled={save.isPending} value={group.name} maxLength={100} placeholder="e.g. Second language" onChange={event => { const nextName = event.target.value; setGroups(current => current.map((item, i) => i === index ? { ...item, name: nextName } : item)); setGroupBySubject(current => Object.fromEntries(Object.entries(current).map(([id, name]) => [id, name === group.name ? nextName : name]))); }} /></label>
               {fieldErrors.groups[index] && <small className="app-field-error" role="alert">{fieldErrors.groups[index]}</small>}
-              <label>Minimum choices<input type="number" min={0} max={150} value={group.min_selections} onChange={event => setGroups(current => current.map((item, i) => i === index ? { ...item, min_selections: Number(event.target.value) } : item))} /></label>
-              <label>Maximum choices<input type="number" min={1} max={150} value={group.max_selections} onChange={event => setGroups(current => current.map((item, i) => i === index ? { ...item, max_selections: Number(event.target.value) } : item))} /></label>
-              <button type="button" className="academic-edit" onClick={() => { const removedName = group.name.trim().toLocaleLowerCase(); setGroups(current => current.filter((_, i) => i !== index)); setGroupBySubject(current => Object.fromEntries(Object.entries(current).map(([id, name]) => [id, name.trim().toLocaleLowerCase() === removedName ? "" : name]))); }}>Remove group</button>
+              <label>Minimum choices<input disabled={save.isPending} type="number" min={0} max={150} value={group.min_selections} onChange={event => setGroups(current => current.map((item, i) => i === index ? { ...item, min_selections: Number(event.target.value) } : item))} /></label>
+              <label>Maximum choices<input disabled={save.isPending} type="number" min={1} max={150} value={group.max_selections} onChange={event => setGroups(current => current.map((item, i) => i === index ? { ...item, max_selections: Number(event.target.value) } : item))} /></label>
+              <button type="button" className="academic-edit" disabled={save.isPending} onClick={() => { const removedName = group.name.trim().toLocaleLowerCase(); setGroups(current => current.filter((_, i) => i !== index)); setGroupBySubject(current => Object.fromEntries(Object.entries(current).map(([id, name]) => [id, name.trim().toLocaleLowerCase() === removedName ? "" : name]))); }}>Remove group</button>
             </fieldset>
           ))}
           <div className="curriculum-subject-picker">
@@ -128,11 +128,11 @@ export function ClassCurriculumSetupPanel({ years, classes, subjects, canManage 
               const groupValue = groupBySubject[subject.id] ?? "";
               return (
                 <div className="curriculum-subject-row" key={subject.id}>
-                  <label><input type="checkbox" checked={checked} onChange={event => { setIncluded(current => event.target.checked ? [...current, subject.id] : current.filter(id => id !== subject.id)); setFieldErrors(current => ({ ...current, subjects: undefined })); }} />
+                  <label><input type="checkbox" disabled={save.isPending} checked={checked} onChange={event => { setIncluded(current => event.target.checked ? [...current, subject.id] : current.filter(id => id !== subject.id)); setFieldErrors(current => ({ ...current, subjects: undefined })); }} />
                     <span>{subject.name}{subject.subject_code ? " (" + subject.subject_code + ")" : ""}</span>
                   </label>
                   {checked && <label className="curriculum-subject-group-select">Type
-                    <select value={groupValue} onChange={event => { setGroupBySubject(current => ({ ...current, [subject.id]: event.target.value })); setFieldErrors(current => ({ ...current, subjects: undefined })); }}>
+                    <select disabled={save.isPending} value={groupValue} onChange={event => { setGroupBySubject(current => ({ ...current, [subject.id]: event.target.value })); setFieldErrors(current => ({ ...current, subjects: undefined })); }}>
                       <option value="">Compulsory</option>
                       {groups.filter(group => group.name.trim()).map((group, index) => <option key={index} value={group.name}>{group.name}</option>)}
                     </select>
