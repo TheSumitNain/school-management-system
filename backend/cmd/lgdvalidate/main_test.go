@@ -107,3 +107,11 @@ func TestValidateCSVRejectsConflictingLocalityTypeForSameSourceCode(t *testing.T
 		t.Fatalf("validateCSV() error = %v, want conflicting locality-type error", err)
 	}
 }
+
+func TestValidateCSVRejectsUnknownIGODCrosswalkCode(t *testing.T) {
+	input := strings.ReplaceAll(validSnapshot, ",HR,", ",ZZ,")
+	_, err := validateCSV(strings.NewReader(input))
+	if err == nil || !strings.Contains(err.Error(), "not in the reviewed V40 IGOD") {
+		t.Fatalf("validateCSV() error = %v, want unknown IGOD crosswalk error", err)
+	}
+}
