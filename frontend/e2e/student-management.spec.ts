@@ -366,6 +366,10 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByText("This admission number is already in use for the selected academic year.")).toBeVisible();
   expect(createdAdmissions).toHaveLength(0);
   expect(students).toHaveLength(0);
+  const admissionNumberInput = page.getByPlaceholder("e.g. ADM-2026-001");
+  await admissionNumberInput.fill("ADM-E2E-RETRY");
+  await expect(page.getByText("This admission number is already in use for the selected academic year.")).toHaveCount(0);
+  await admissionNumberInput.fill("ADM-E2E-001");
 
   failAdmissionNumberConflict = false;
   failRollNumberConflict = true;
@@ -377,6 +381,10 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByText("This roll number is already assigned to an active student in the selected section.")).toBeVisible();
   expect(createdAdmissions).toHaveLength(0);
   expect(students).toHaveLength(0);
+  const rollNumberInput = page.getByPlaceholder("e.g. 01");
+  await rollNumberInput.fill("02");
+  await expect(page.getByText("This roll number is already assigned to an active student in the selected section.")).toHaveCount(0);
+  await rollNumberInput.fill("01");
 
   failRollNumberConflict = false;
   await submitButton.evaluate(button => {
