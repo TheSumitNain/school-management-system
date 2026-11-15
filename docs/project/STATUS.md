@@ -107,7 +107,7 @@ At every new session, reconcile this file, Student Management design docs, backe
 **Last reconciled:** 2026-11-15  
 **Repository:** `TheSumitNain/school-management-system`  
 **Reviewed branch:** `work`  
-**Current branch tip:** `eccf8886b73bab35c9d99788748a579f5b58c75f` (latest changes are documentation-only LGD/source-of-truth corrections; the verified code checkpoint remains unchanged).  
+**Branch:** `work`; later documentation-only commits update this handover and the Student Management design without changing the verified code checkpoint below.  
 **Latest verified code checkpoint:** `c215c1f52eddc947033bef630f4ecbbbaaff563f`. Frontend CI run `43717701638` PASS (production build and 11 Playwright tests); Backend CI run `43717701635` PASS (full migration chain, PostgreSQL integration tests and `go vet ./...`).  
 **Latest Student Management acceptance:** cross-student draft/error isolation for Basic Details, Parent Details, Address, Contact, Medical and Physical; background-refetch draft preservation for profile sections and enrollment subject choices; guardian lifecycle and relationship history; academic-year enrollment, promotion and versioned curriculum choices. The Playwright API is mocked and CI PostgreSQL is ephemeral, so authenticated live acceptance against the user's local API/database remains outstanding.  
 **Location master data:** V40/V42 provide the State/UT baseline and source-reference history. The all-India LGD hierarchy is not imported; `backend/cmd/lgdvalidate` remains a read-only normalized-CSV validator. No persistent database writes or migrations are authorized by this status update.
