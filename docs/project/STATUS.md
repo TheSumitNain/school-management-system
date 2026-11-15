@@ -8,7 +8,7 @@
 
 - Active branch: `work`.
 - Latest verified backend code remains `1196045794777f94d94c994b4750af865d36e84e` — guardian revocation audit deduplication. In addition to its original Backend CI **PASS** ([run 43709153490](https://github.com/TheSumitNain/school-management-system/actions/runs/43709153490)), the complete backend workflow passed again on full-repository checkpoint `ce21411d7ea1a52d5c4633a3c57e317f7f268965` ([run 43711080667](https://github.com/TheSumitNain/school-management-system/actions/runs/43711080667)) and on the latest source checkpoint `834c9419818a85e4a1331cb85fa3f563ca13fc6c` ([run 43711310931](https://github.com/TheSumitNain/school-management-system/actions/runs/43711310931)); no backend source changed between those checkpoints.
-- Latest frontend source fix: `834c9419818a85e4a1331cb85fa3f563ca13fc6c` — enable window-focus refresh for Student Management profile queries while preserving unchanged form drafts. The preceding Basic Details name-save feedback fix is `2419d61299a878669392f69f44549a8e45f7ff9a`; earlier student-switch cleanup commits are `b302d3761b8ddd4f8e65724234eced9eae9dea6f` and `6b3355f7d7d5b520fd2ca3bf06028c9b09485e11`.
+- Latest frontend source fix: `2419d61299a878669392f69f44549a8e45f7ff9a` — preserve the Basic Details name-save success feedback after the parent student record updates. The attempted profile-only window-focus override was reverted; app-wide focus policy remains unchanged. earlier student-switch cleanup commits are `b302d3761b8ddd4f8e65724234eced9eae9dea6f` and `6b3355f7d7d5b520fd2ca3bf06028c9b09485e11`.
 - Latest Student Management browser-test commits: `ce21411d7ea1a52d5c4633a3c57e317f7f268965` `76a0bcd7135d974c4ee600a136dc6da6207fbd6f` and `5181587818ba12bd43f1daa4b6147996fe999c15` — explicit background-refetch draft-preservation coverage across Basic Details, Parent Details, Address, Contact, Medical and Physical sections, dispatching visibility-change/focus signals after bringing the browser page to the foreground.
 - CI for the latest test/source checkpoint is pending; do not treat earlier failed/cancelled runs as current verification. The last known frontend CI PASS remains [run 43708932012](https://github.com/TheSumitNain/school-management-system/actions/runs/43708932012) on older commit `b640caed53a4ad7c2a4670719974d2d99b7a4269` (8 Playwright tests).
 - Authenticated live acceptance remains pending. A green run on an older SHA does not verify newer frontend code.
@@ -67,9 +67,9 @@
 
 ### Student profile query refresh and draft-preservation behavior (2026-11-15)
 
-- The shared QueryClient intentionally disables window-focus refetch globally. Student Management detail queries now explicitly opt in; the browser regression emits both document visibility-change and window-focus signals after the stale window.
+- The shared QueryClient intentionally disables window-focus refetch globally. Synthetic browser focus events did not reliably trigger React Query in CI, so the regression now uses the app's real QueryClient to invalidate the appropriate active query family. This exercises the same background refetch path used by successful student/guardian mutations without changing the app-wide focus policy.
 - Enabled `refetchOnWindowFocus` specifically for student Basic Details, Address, Contact, Medical, Physical, student-guardian links and related-student profile queries. Unrelated app queries retain the global default. This makes stale profile data refresh when staff return to the app while the snapshot-based form effects preserve unchanged in-progress drafts.
-- Source commit: `834c9419818a85e4a1331cb85fa3f563ca13fc6c`. The latest frontend CI run must verify both the refetch behavior and all six draft-preservation assertions.
+- The attempted per-query focus-refetch override was reverted in `eaed7705bcf14f156a423a157f5f2adebfc5181c`; no new network-on-focus behavior is being introduced. The latest frontend CI run must verify all six draft-preservation assertions.
 
 ### Root causes fixed
 
