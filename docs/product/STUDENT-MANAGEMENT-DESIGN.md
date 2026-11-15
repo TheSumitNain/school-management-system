@@ -22,20 +22,20 @@ The following decisions are approved:
 
 ## 2. Audit findings in the current implementation
 
-The reviewed `work` branch at `d38ae1ecc0f47384aabdcee8816319d39df1df9e` contains a useful foundation, but it does not yet implement the approved student model.
+The current `work` branch contains the approved core Student Management model and its major profile workflows. Automated CI is green; the remaining gate is authenticated live acceptance, not the initial implementation foundation.
 
 | Area | Existing state | Required evolution |
 |---|---|---|
 | Student identity | V11 `students` stores `full_name`; V32 makes the legacy `admission_number` nullable and removes school-wide uniqueness while preserving old values | Keep stable student identity; current-year display admission number is projected from enrollment |
-| Guardian relationships | V11 `guardians` and `student_guardians` with same-school composite foreign keys | Reuse; add profile workflow and field-level permissions without enabling parent authentication |
+| Guardian relationships | V11 `guardians` and `student_guardians` with same-school composite foreign keys; staff-managed create/edit/link/revoke/history, live permissions, shared guardian profile fields and revocation audit are implemented | Preserve relationship history, tenant isolation and privacy-safe audit metadata; parent authentication remains deferred |
 | Academic year/class/section | V17 school-scoped years, classes and year-specific sections | Preserve existing model and constraints |
 | Enrollment | V31 adds year-specific `admission_number`/`admission_date` and normalized school+year uniqueness; V33 makes both immutable. Backend now auto-assigns the next numeric roll number when omitted for combined admission, returning enrollment and promotion. It locks the destination section row before allocation; explicit manual overrides remain supported, and the active section-scoped unique index remains the final duplicate guard. Integration assertions cover initial auto-numbering, incrementing, promotion allocation and manual override; PostgreSQL integration suite and `go vet ./...` passed in GitHub Actions on 2026-11-14 | Preserve one enrollment per student/year and keep legacy unknown rows NULL/NULL. Browser acceptance remains required before marking the UI workflow complete |
-| Promotion | Repository creates destination enrollment with a new year-specific admission number/date and closes source transactionally | Add full UI flow and verify local acceptance |
+| Promotion | Repository and frontend guided workflow create the destination enrollment with a new year-specific admission number/date and close the source transactionally; automated integration and Playwright coverage exist | Complete authenticated live acceptance and verify preserved history |
 | Attendance | V20 records reference enrollment; attendance projections now read `student_enrollments.admission_number` | Keep year-scoped display and historical NULL compatibility |
-| Subjects | School-level `subjects`; teacher assignments currently validate active subject/section/year | Add class/year curriculum and student enrollment subject selection |
-| Student profile | V37 adds optional one-to-one `student_basic_details` for date/place of birth, gender, nationality, religion, social category, EWS status and school registration number; reads are restricted and updates audited | Continue section workflow and complete local verification |
+| Subjects | V44 class/year curriculum versions, compulsory/optional subjects, selection limits, enrollment-specific choices and append-only selection history are implemented and covered by PostgreSQL integration tests | Preserve version/history semantics and complete authenticated live acceptance |
+| Student profile | V37 optional one-to-one `student_basic_details` is implemented with restricted reads and privacy-safe audit; name and profile sections are independently editable | Complete authenticated live verification of load, validation, save and reload |
 | Addresses/locations | V34 adds `student_addresses` and tenant-aware `student_locations`, with parent-level, ownership, duplicate and deactivate-not-delete rules | Complete local verification; extend the reviewed IGOD State/UT snapshot with an authoritative LGD import for districts/subdistricts/localities |
-| Medical/physical/documents | No dedicated student profile tables found in reviewed migrations | Add separate, permission-restricted profile sections |
+| Medical/physical/documents | V36 medical profile version history and append-only dated physical measurements are implemented with restricted reads/writes and privacy-safe audit. Document upload/download remains deferred pending private storage and document-specific controls | Complete authenticated live verification of medical/physical history; keep documents deferred |
 
 Student directory/profile search now uses the current academic year's enrollment admission number; attendance projections use the matching enrollment. New student creation and first enrollment share one transaction. Legacy student-level values remain available only as compatibility data when there is no current-year enrollment; no ambiguous value has been copied into an enrollment.
 
