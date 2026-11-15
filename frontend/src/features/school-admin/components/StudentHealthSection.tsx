@@ -89,7 +89,7 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
     setOngoingMedications(textValue(details?.ongoing_medications));
     setEmergencyNotes(textValue(details?.emergency_medical_notes));
     setMedicalErrors({});
-  }, [section, medicalSnapshot]);
+  }, [student.id, section, medicalSnapshot]);
 
   useEffect(() => {
     if (section !== "physical") return;
@@ -100,7 +100,7 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
     setVisionNotes(textValue(details?.vision_notes));
     setPhysicalNotes(textValue(details?.physical_notes));
     setPhysicalErrors({});
-  }, [section, physicalSnapshot]);
+  }, [student.id, section, physicalSnapshot]);
 
   async function submitMedical(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
