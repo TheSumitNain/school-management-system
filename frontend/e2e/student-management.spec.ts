@@ -22,6 +22,7 @@ test("student admission, profile navigation and parent details render without br
   const createdAdmissions: Record<string, unknown>[] = [];
   const failStudentReads = new Set<string>();
   let failRegistrationConflict = false;
+  let failAdmissionNumberConflict = false;
   const failedStudentReads: string[] = [];
   const observedStudentDetailGets: string[] = [];
   const guardianHistoryRequests: (string | null)[] = [];
@@ -123,6 +124,16 @@ test("student admission, profile navigation and parent details render without br
       return;
     }
     if (path === "/school/students" && method === "POST") {
+      if (failAdmissionNumberConflict) {
+        await route.fulfill({
+          status: 409,
+          json: {
+            message: "Admission number is already used in this academic year",
+            field_errors: { admission_number: "This admission number is already in use for the selected academic year." },
+          },
+        });
+        return;
+      }
       const input = request.postDataJSON() as Record<string, unknown>;
       createdAdmissions.push(input);
       const now = new Date().toISOString();
@@ -335,6 +346,17 @@ test("student admission, profile navigation and parent details render without br
     type: (button as HTMLButtonElement).type,
     belongsToForm: (button as HTMLButtonElement).form === button.closest("form"),
   }))).toEqual({ type: "submit", belongsToForm: true });
+  failAdmissionNumberConflict = true;
+  await submitButton.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Admission submit button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect(page.getByText("This admission number is already in use for the selected academic year.")).toBeVisible();
+  expect(createdAdmissions).toHaveLength(0);
+  expect(students).toHaveLength(0);
+
+  failAdmissionNumberConflict = false;
   await submitButton.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
     if (!form) throw new Error("Admission submit button is not associated with its form.");
