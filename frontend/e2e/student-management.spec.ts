@@ -530,6 +530,7 @@ test("student admission, profile navigation and parent details render without br
   await page.getByPlaceholder("City, district or place").fill("Ambala, Haryana");
   await page.waitForTimeout(15_100);
   const basicReadsBeforeFocus = observedStudentDetailGets.filter(item => item === "basic-details").length;
+  await page.bringToFront();
   await page.evaluate(() => {
     document.dispatchEvent(new Event("visibilitychange"));
     window.dispatchEvent(new Event("focus"));
@@ -596,6 +597,7 @@ test("student admission, profile navigation and parent details render without br
   const relationshipForm = page.locator(".student-family-create-form").filter({ has: page.getByRole("heading", { name: "Edit relationship for this student" }) });
   await page.waitForTimeout(15_100);
   const guardianReadsBeforeFocus = guardianHistoryRequests.length;
+  await page.bringToFront();
   await page.evaluate(() => {
     document.dispatchEvent(new Event("visibilitychange"));
     window.dispatchEvent(new Event("focus"));
@@ -730,6 +732,7 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("option", { name: /Naraingarh/ }).click();
   await page.waitForTimeout(15_100);
   const addressReadsBeforeFocus = observedStudentDetailGets.filter(item => item === "addresses").length;
+  await page.bringToFront();
   await page.evaluate(() => {
     document.dispatchEvent(new Event("visibilitychange"));
     window.dispatchEvent(new Event("focus"));
@@ -792,6 +795,7 @@ test("student admission, profile navigation and parent details render without br
   await page.getByPlaceholder("student@example.com").fill("student@example.test");
   await page.waitForTimeout(15_100);
   const contactReadsBeforeFocus = observedStudentDetailGets.filter(item => item === "contact-details").length;
+  await page.bringToFront();
   await page.evaluate(() => {
     document.dispatchEvent(new Event("visibilitychange"));
     window.dispatchEvent(new Event("focus"));
@@ -824,6 +828,7 @@ test("student admission, profile navigation and parent details render without br
   const medicalDraft = "Draft must survive a background medical refetch";
   await page.getByPlaceholder("Record known allergies, if any").fill(medicalDraft);
   const medicalReadsBeforeFocus = medicalDetailReads;
+  await page.bringToFront();
   await page.evaluate(() => {
     document.dispatchEvent(new Event("visibilitychange"));
     window.dispatchEvent(new Event("focus"));
@@ -857,6 +862,7 @@ test("student admission, profile navigation and parent details render without br
   const physicalDraft = "Draft physical note survives background refetch";
   await page.getByPlaceholder("Optional vision-related notes").fill(physicalDraft);
   const physicalReadsBeforeFocus = physicalDetailReads;
+  await page.bringToFront();
   await page.evaluate(() => {
     document.dispatchEvent(new Event("visibilitychange"));
     window.dispatchEvent(new Event("focus"));
