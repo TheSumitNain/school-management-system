@@ -501,6 +501,14 @@ test("student admission, profile navigation and parent details render without br
   failStudentReads.delete("addresses");
   await page.getByRole("button", { name: "Retry loading addresses" }).click();
   await expect(addressSave).toBeEnabled();
+  await page.getByPlaceholder("House number, street or building").fill("अ".repeat(201));
+  await addressSave.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Address save button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect(page.getByText("House / street must be 200 characters or fewer.")).toBeVisible();
+  expect(addresses).toHaveLength(0);
   await page.getByPlaceholder("House number, street or building").fill("House 12, Main Road");
   await page.getByLabel("Search States / UTs").fill("Haryana");
   await page.getByRole("button", { name: "State or Union Territory", exact: true }).click();
