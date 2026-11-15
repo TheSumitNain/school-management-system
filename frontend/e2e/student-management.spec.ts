@@ -1498,6 +1498,7 @@ test("staff with guardian management permission cannot change an inactive studen
   await page.getByLabel("Password").fill("E2E-only-password");
   await page.getByRole("button", { name: /Continue/ }).click();
   await page.getByRole("button", { name: "Students" }).click();
+  await expect(page.getByRole("button", { name: "Edit profile for Inactive Family Student" })).toHaveCount(0);
   await page.getByRole("button", { name: "View profile for Inactive Family Student" }).click();
   await page.getByRole("button", { name: "Basic details" }).click();
   await expect(page.getByText("View-only access. Student update permission is required to edit these details.")).toBeVisible();
