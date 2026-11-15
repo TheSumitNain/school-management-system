@@ -151,6 +151,9 @@ func TestStudentProfileRepositoryPostgresIntegration(t *testing.T) {
 	if err != nil || futureYearProfile.AdmissionNumber != unicodeAdmissionNumber {
 		t.Fatalf("profile lookup for non-current-year admission: profile=%+v err=%v", futureYearProfile, err)
 	}
+	if _, _, err := repo.ListStudents(ctx, actorID, schoolID, strings.Repeat("अ", 101), "active", 10, 0); !errors.Is(err, ErrInvalidAcademicInput) {
+		t.Fatalf("directory search over 100 Unicode characters error = %v, want invalid input", err)
+	}
 	if _, err := repo.CreateStudentAdmission(ctx, actorID, schoolID, strings.Repeat("अ", 201),
 		"ADM-UNICODE-LONG-"+suffix, admissionYearID, admissionSectionID, nil, admissionDate); !errors.Is(err, ErrInvalidAcademicInput) {
 		t.Fatalf("combined admission with 201-character student name error = %v, want invalid input", err)
