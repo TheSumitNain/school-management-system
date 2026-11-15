@@ -603,8 +603,8 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("button", { name: "Close dialog" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
 
-  await page.getByRole("button", { name: /Parents & Siblings/i }).click();
-  await expect(page.getByRole("dialog", { name: /Parents & Siblings/i })).toBeVisible();
+  await page.getByRole("button", { name: /Parents & Siblings/ii }).click();
+  await expect(page.getByRole("dialog", { name: /Parents & Siblings/ii })).toBeVisible();
   await expect(page.getByText("Ramesh Sharma")).toBeVisible();
   await expect.poll(() => guardianHistoryRequests.length).toBeGreaterThan(0);
   expect(guardianHistoryRequests[0]).toBeNull();
@@ -727,8 +727,8 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("button", { name: "Close dialog" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
 
-  await page.getByRole("button", { name: /Parents & Siblings/i }).click();
-  await expect(page.getByRole("dialog", { name: /Parents & Siblings/i })).toBeVisible();
+  await page.getByRole("button", { name: /Parents & Siblings/ii }).click();
+  await expect(page.getByRole("dialog", { name: /Parents & Siblings/ii })).toBeVisible();
   await page.getByLabel("Show revoked history").check();
   await expect(page.getByText("Ramesh Sharma")).toBeVisible();
   await expect(page.getByText("Legal Guardian", { exact: true })).toBeVisible();
@@ -1409,7 +1409,7 @@ test("student archive confirmation keeps the record on a retryable error and ref
   await expect(page.getByRole("button", { name: "Save basic details" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Save student name" })).toHaveCount(0);
   await page.getByRole("button", { name: "Close dialog" }).click();
-  await page.getByRole("button", { name: /Parents & Siblings/i }).click();
+  await page.getByRole("button", { name: /Parents & Siblings/ii }).click();
   const familyDialog = page.getByRole("dialog", { name: "Parents & Siblings" });
   await expect(familyDialog).toBeVisible();
   await expect(page.getByText("Archived Student Guardian", { exact: true })).toBeVisible();
@@ -1952,7 +1952,7 @@ test("switching student Parent Details clears unsaved guardian drafts and field 
   await page.getByRole("button", { name: "Students" }).click();
 
   await page.getByRole("button", { name: "View profile for Family Student A" }).click();
-  await page.getByRole("button", { name: /Parents & Siblings/i }).click();
+  await page.getByRole("button", { name: /Parents & Siblings/ii }).click();
   await page.getByRole("button", { name: "Create a new guardian contact" }).click();
   await page.getByPlaceholder("Guardian full name").fill("अ".repeat(201));
   await page.getByPlaceholder("Father, Mother, Guardian…").fill("Father");
@@ -1962,11 +1962,11 @@ test("switching student Parent Details clears unsaved guardian drafts and field 
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByRole("button", { name: "Close dialog" }).click();
   await page.getByRole("button", { name: "View profile for Family Student B" }).click();
-  await page.getByRole("button", { name: /Parents & Siblings/ }).click();
+  await page.getByRole("button", { name: /Parents & Siblings/i }).click();
   await page.getByRole("button", { name: "Create a new guardian contact" }).click();
 
   await expect(page.getByPlaceholder("Guardian full name")).toHaveValue("");
   await expect(page.getByPlaceholder("Father, Mother, Guardian…")).toHaveValue("");
   await expect(page.getByText("Guardian name must be 200 characters or fewer.", { exact: true })).toHaveCount(0);
-  await expect(page.getByRole("dialog", { name: /Parents & Siblings/ })).toContainText("Family Student B");
+  await expect(page.getByRole("dialog", { name: /Parents & Siblings/i })).toContainText("Family Student B");
 });
