@@ -106,6 +106,45 @@ func TestStudentAddressLocationV34PostgresIntegration(t *testing.T) {
 		t.Fatalf("create school-owned district under canonical state: %v", err)
 	}
 
+	// Exercise the repository-backed reference-data operations as well as the
+	// database constraints below. All writes remain inside this rollback scope.
+	locationRepo := &AcademicRepository{db: tx}
+	listedDistricts, err := locationRepo.ListStudentLocations(ctx, actorPrincipalID, schoolID, &stateID, "district", "")
+	if err != nil || len(listedDistricts) != 1 || listedDistricts[0].ID != districtID {
+		t.Fatalf("list school district locations: items=%+v err=%v", listedDistricts, err)
+	}
+	createdDistrict, err := locationRepo.CreateStudentLocation(ctx, actorPrincipalID, schoolID,
+		&stateID, "IN", "district", "V34 Repository District "+suffix, nil)
+	if err != nil || createdDistrict == nil || createdDistrict.SchoolID == nil ||
+		*createdDistrict.SchoolID != schoolID || createdDistrict.ParentID == nil || *createdDistrict.ParentID != stateID {
+		t.Fatalf("create school district through repository: item=%+v err=%v", createdDistrict, err)
+	}
+	deactivatedDistrict, err := locationRepo.DeactivateStudentLocation(ctx, actorPrincipalID, schoolID, createdDistrict.ID)
+	if err != nil || deactivatedDistrict == nil || deactivatedDistrict.IsActive {
+		t.Fatalf("deactivate school district through repository: item=%+v err=%v", deactivatedDistrict, err)
+	}
+	if _, err := locationRepo.ListStudentLocations(ctx, actorPrincipalID, otherSchoolID, nil, "state", ""); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("cross-school location directory read error = %v, want access denied", err)
+	}
+	if _, err := locationRepo.CreateStudentLocation(ctx, actorPrincipalID, otherSchoolID,
+		nil, "IN", "state", "V34 Foreign Repository State "+suffix, nil); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("cross-school location create error = %v, want access denied", err)
+	}
+	if _, err := locationRepo.DeactivateStudentLocation(ctx, actorPrincipalID, otherSchoolID, createdDistrict.ID); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("cross-school location deactivate error = %v, want access denied", err)
+	}
+	var foreignStateID int64
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO student_locations(school_id,level,name)
+		VALUES($1,'state',$2) RETURNING id
+	`, otherSchoolID, "V34 Foreign State "+suffix).Scan(&foreignStateID); err != nil {
+		t.Fatalf("create foreign school state: %v", err)
+	}
+	if _, err := locationRepo.CreateStudentLocation(ctx, actorPrincipalID, schoolID,
+		&foreignStateID, "IN", "district", "V34 Invalid Foreign Child "+suffix, nil); !errors.Is(err, ErrAcademicNotFound) {
+		t.Fatalf("create location under another school's parent error = %v, want not found", err)
+	}
+
 
 	assertRejected := func(label, query string, args ...any) *pgconn.PgError {
 		t.Helper()
