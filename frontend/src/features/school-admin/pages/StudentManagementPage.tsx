@@ -17,6 +17,7 @@ import { StudentFamilySection } from "../components/StudentFamilySection";
 import { StudentProfileDetail } from "../components/StudentProfileDetail";
 import { StudentHealthSection } from "../components/StudentHealthSection";
 import { StudentPromotionDialog } from "../components/StudentPromotionDialog";
+import { ApiError } from "../../../lib/api";
 import "./StudentManagementPage.css";
 
 type Props = { permissions: string[] };
@@ -129,7 +130,12 @@ export function StudentManagementPage({ permissions }: Props) {
       }
       setAction(null);
     } catch (error) {
-      setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to save the student record." });
+      if (error instanceof ApiError && Object.keys(error.fieldErrors).length > 0) {
+        setFieldErrors(current => ({ ...current, ...error.fieldErrors }));
+        setFeedback(null);
+      } else {
+        setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to save the student record." });
+      }
     }
   }
   function archive(item: StudentProfile) { setArchiveError(""); setStudentToArchive(item); }
@@ -180,7 +186,12 @@ export function StudentManagementPage({ permissions }: Props) {
       setEnrolledAt(localDateValue());
       setFeedback({ kind: "success", message: "Student enrolled successfully." });
     } catch (error) {
-      setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to create the enrollment." });
+      if (error instanceof ApiError && Object.keys(error.fieldErrors).length > 0) {
+        setFieldErrors(current => ({ ...current, ...error.fieldErrors }));
+        setFeedback(null);
+      } else {
+        setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to create the enrollment." });
+      }
     }
   }
   const pageCount = Math.max(1, Math.ceil(total / 20));
