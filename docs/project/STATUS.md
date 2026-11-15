@@ -548,3 +548,11 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 3. Decide/complete the authoritative LGD District → Sub-District/Tehsil → Village/City reference-data import. V40 seeds State/UT values; lower levels are intentionally not fabricated. Import remains gated on a verified official snapshot and reviewed crosswalk.
 
 Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload remain excluded until their dedicated security/storage controls are designed. No persistent database was modified during this review.
+
+
+## Student Management Unicode validation hardening — 2026-11-15
+
+- Student full-name, address-line and location-name limits now count Unicode code points, matching PostgreSQL VARCHAR(n) character semantics instead of Go UTF-8 byte length.
+- The same rule is applied to the combined admission path, including year-scoped admission numbers and optional roll numbers; standalone legacy student create/update paths use the same student-name limit.
+- Rollback-scoped PostgreSQL integration coverage now exercises maximum-length Hindi-script student names, admission numbers, roll numbers, location names and address lines, plus rejection immediately above each limit.
+- This is server-side validation and test coverage only. The persistent school database was not migrated or modified. CI verification for the new commits must be checked on the exact latest branch tip before marking this change verified.
