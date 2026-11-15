@@ -763,3 +763,8 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Corrected the Student Profile curriculum selector so it appears only when an enrollment already has an assigned curriculum and a newer version is available. A first-time assignment no longer displays a misleading empty “Assigned version” option.
 - The confirmation guidance now distinguishes assigning the first curriculum from replacing an existing assignment; prior subject-choice history remains preserved when replacing.
 - Frontend fix: `cc1340616fa1e73913a6280354a4b00cfa50327d`. Exact-commit CI has not yet been observed, and no local browser or TypeScript test was run in this session.
+
+## First student curriculum assignment messaging — 2026-11-15
+
+- Student Enrollment Subjects now explicitly explains that saving the available class/year curriculum will assign it to the enrollment when no curriculum is assigned yet. The replacement-history message is reserved for switching an existing assignment to a newer curriculum version.
+- Code commit: `9b4ce26355f76a212a3abe5af87c6ebc268977af`. CI and browser acceptance remain unverified for this commit.
