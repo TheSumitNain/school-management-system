@@ -132,7 +132,7 @@ func (r *AcademicRepository) CreateStudentAdmission(
 		value := strings.TrimSpace(*rollNumber)
 		if value == "" {
 			rollNumber = nil
-		} else if len(value) > 30 {
+		} else if utf8.RuneCountInString(value) > 30 {
 			return nil, ErrInvalidAcademicInput
 		} else {
 			rollNumber = &value
@@ -293,7 +293,7 @@ func (r *AcademicRepository) CreateStudentEnrollment(ctx context.Context, actorI
 	if err != nil { return nil, err }
 	if rollNumber != nil {
 		value := strings.TrimSpace(*rollNumber)
-		if value == "" { rollNumber = nil } else if len(value) > 30 { return nil, ErrInvalidAcademicInput } else { rollNumber = &value }
+		if value == "" { rollNumber = nil } else if utf8.RuneCountInString(value) > 30 { return nil, ErrInvalidAcademicInput } else { rollNumber = &value }
 	}
 	tx, err := r.db.Begin(ctx)
 	if err != nil { return nil, fmt.Errorf("begin student enrollment: %w", err) }
@@ -338,7 +338,7 @@ func (r *AcademicRepository) PromoteStudentEnrollment(ctx context.Context, actor
 	if err != nil { return nil, err }
 	if rollNumber != nil {
 		value := strings.TrimSpace(*rollNumber)
-		if value == "" { rollNumber = nil } else if len(value) > 30 { return nil, ErrInvalidAcademicInput } else { rollNumber = &value }
+		if value == "" { rollNumber = nil } else if utf8.RuneCountInString(value) > 30 { return nil, ErrInvalidAcademicInput } else { rollNumber = &value }
 	}
 	tx, err := r.db.Begin(ctx)
 	if err != nil { return nil, fmt.Errorf("begin student promotion: %w", err) }
