@@ -84,17 +84,17 @@ export function ClassCurriculumSetupPanel({ years, classes, subjects, canManage 
       <div className="curriculum-filters">
         <label>Academic year
           <select value={yearID} onChange={event => { setYearID(event.target.value); setIncluded([]); setGroupBySubject({}); setGroups([]); setError(""); setSuccess(""); setFieldErrors({ groups: {} }); }} required>
-          {fieldErrors.year && <small className="app-field-error" role="alert">{fieldErrors.year}</small>}
             <option value="">Select academic year</option>
             {years.filter(year => year.status !== "closed").map(year => <option key={year.id} value={year.id}>{year.name}</option>)}
           </select>
+          {fieldErrors.year && <small className="app-field-error" role="alert">{fieldErrors.year}</small>}
         </label>
         <label>Class
           <select value={classID} onChange={event => { setClassID(event.target.value); setIncluded([]); setGroupBySubject({}); setGroups([]); setError(""); setSuccess(""); setFieldErrors({ groups: {} }); }} required>
-          {fieldErrors.class && <small className="app-field-error" role="alert">{fieldErrors.class}</small>}
             <option value="">Select class</option>
             {classes.filter(item => item.is_active).map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
           </select>
+          {fieldErrors.class && <small className="app-field-error" role="alert">{fieldErrors.class}</small>}
         </label>
       </div>
       {yearNumber > 0 && classNumber > 0 && (
