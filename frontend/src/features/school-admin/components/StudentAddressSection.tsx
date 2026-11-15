@@ -106,7 +106,7 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
     setLocalityID(selectedAddress?.location_id ?? 0);
     setFieldError("");
     setAddressErrors({});
-  }, [showContactDetails, addressType, selectedAddressSnapshot]);
+  }, [student.id, showContactDetails, addressType, selectedAddressSnapshot]);
 
   useEffect(() => {
     if (!showContactDetails) return;
@@ -114,7 +114,7 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
     setPrimaryPhone(textValue(details?.primary_phone));
     setAlternatePhone(textValue(details?.alternate_phone));
     setEmailAddress(textValue(details?.email_address));
-  }, [showContactDetails, contactSnapshot]);
+  }, [student.id, showContactDetails, contactSnapshot]);
 
   const states = statesQuery.data?.locations ?? [];
   const districts = districtsQuery.data?.locations ?? [];
