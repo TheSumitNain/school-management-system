@@ -551,10 +551,10 @@ test("student admission, profile navigation and parent details render without br
   expect(basicDetails).toMatchObject({ nationality: "Indian", gender: "male" });
   expect(basicDetails.date_of_birth).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   await expect(page.getByText("Basic details saved.")).toBeVisible();
-  await expect(curriculumPanel.getByRole("checkbox", { name: /Sanskrit/ })).toBeChecked();
-  await expect(curriculumPanel.getByRole("checkbox", { name: /Hindi/ })).not.toBeChecked();
   await page.getByRole("button", { name: "Close dialog" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
+  await expect(curriculumPanel.getByRole("checkbox", { name: /Sanskrit/ })).toBeChecked();
+  await expect(curriculumPanel.getByRole("checkbox", { name: /Hindi/ })).not.toBeChecked();
   await expect(page.getByText("Aarav Sharma Updated · Permanent student identity and year-wise academic history")).toBeVisible();
 
   await page.getByRole("button", { name: /Basic details/ }).click();
