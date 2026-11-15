@@ -1728,7 +1728,7 @@ test("staff can create a guardian contact and link it to a student with relation
   await expect(page.getByText("9876501235 · Alt: 9876501236 · nisha.verma@example.test")).toBeVisible();
   await expect(page.getByText("Principal · M.Ed. · Sunrise Public School")).toBeVisible();
   await expect(page.getByText("Legal Guardian · Emergency contact")).toBeVisible();
-  await expect(page.getByText("Other Guardian Student", { exact: true })).toBeVisible();
+  await expect(familyDialog.getByText("Other Guardian Student", { exact: true })).toBeVisible();
 
   // The same guardian's updated contact profile is shared with the second
   // student, but that student's own relationship type and flags remain intact.
