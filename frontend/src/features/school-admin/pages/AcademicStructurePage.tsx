@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { CalendarDays, BookOpen, Layers3, FlaskConical, Pencil, Plus, RefreshCw, UsersRound } from "lucide-react";
 import { TeacherAssignmentsPage } from "./TeacherAssignmentsPage";
+import { ClassCurriculumSetupPanel } from "./ClassCurriculumSetupPanel";
 import { api } from "../../../lib/api";
 import { Select } from "../../../shared/components/Select";
 import { DatePicker } from "../../../shared/components/DatePicker";
@@ -11,8 +12,8 @@ type Year = { id:number; name:string; starts_on:string; ends_on:string; status:"
 type SchoolClass = { id:number; name:string; display_order:number; is_active:boolean };
 type Section = { id:number; academic_year_id:number; class_id:number; name:string; medium?:"hindi"|"english"|null; display_order:number; is_active:boolean };
 type Subject = { id:number; name:string; subject_code?:string; is_active:boolean };
-type Kind = "year"|"class"|"section"|"subject"|"assignments";
-type EditableKind = Exclude<Kind, "assignments">;
+type Kind = "year"|"class"|"section"|"subject"|"curriculum"|"assignments";
+type EditableKind = Exclude<Kind, "assignments"|"curriculum">;
 type Action = { kind:EditableKind; record?: Year|SchoolClass|Section|Subject } | null;
 type Props = { permissions:string[] };
 
@@ -74,6 +75,7 @@ export function AcademicStructurePage({permissions}:Props) {
   if(canReadYears)availableTabs.push("year");
   if(canReadClasses)availableTabs.push("class","section");
   if(canReadSubjects)availableTabs.push("subject");
+  if(canReadYears&&canReadClasses&&canReadSubjects)availableTabs.push("curriculum");
   if(canReadAssignments)availableTabs.push("assignments");
   useEffect(()=>{if(!availableTabs.includes(tab)&&availableTabs.length)setTab(availableTabs[0]??"year");},[tab,canReadYears,canReadClasses,canReadSubjects,canReadAssignments]);
   useEffect(()=>{
@@ -126,7 +128,7 @@ export function AcademicStructurePage({permissions}:Props) {
     finally{setSaving(false);}
   }
 
-  const titles:Record<Kind,string>={year:"Academic years",class:"Classes",section:"Sections",subject:"Subjects",assignments:"Teacher assignments"};
+  const titles:Record<Kind,string>={year:"Academic years",class:"Classes",section:"Sections",subject:"Subjects",curriculum:"Class curriculum",assignments:"Teacher assignments"};
   const currentRecord=action?.record as Year|SchoolClass|Section|Subject|undefined;
   const sectionRows=sections.filter(item=>!filterYear||String(item.academic_year_id)===filterYear);
   return <div className="content academic-page">
@@ -157,6 +159,7 @@ export function AcademicStructurePage({permissions}:Props) {
     :tab==="class"?<section className="table-panel"><div className="toolbar"><div><h2>Classes</h2><small>{classes.length} records</small></div>{canManageClasses&&<button className="primary academic-add" type="button" onClick={()=>begin("class")}><Plus size={15}/> Add class</button>}</div>{classes.length===0?<div className="table-message">No classes configured yet.</div>:<div className="table-scroll"><table><thead><tr><th>Class</th><th>Order</th><th>Status</th>{canManageClasses&&<th>Action</th>}</tr></thead><tbody>{classes.map(item=><tr key={item.id}><td><b>{item.name}</b></td><td>{item.display_order}</td><td><span className={`academic-status-badge status-${item.is_active?"active":"inactive"}`}>{item.is_active?"Active":"Inactive"}</span></td>{canManageClasses&&<td><button type="button" className="academic-edit" onClick={()=>begin("class",item)} aria-label={"Edit "+item.name}><Pencil size={15}/></button></td>}</tr>)}</tbody></table></div>}</section>
     :tab==="section"?<section className="table-panel"><div className="toolbar"><div><h2>Sections</h2><small>{sectionRows.length} records</small></div><div className="academic-toolbar-actions">{years.length>0&&<Select ariaLabel="Filter sections by academic year" value={filterYear} onChange={setFilterYear} placeholder="All academic years" options={[{value:"",label:"All academic years"},...years.map(x=>({value:String(x.id),label:x.name}))]} />}{canManageClasses&&canReadYears&&<button className="primary academic-add" type="button" onClick={()=>begin("section")} disabled={!years.some(x=>x.status!=="closed")||!classes.some(x=>x.is_active)}><Plus size={15}/> Add section</button>}</div></div>{sectionRows.length===0?<div className="table-message">No sections configured for this selection.</div>:<div className="table-scroll"><table><thead><tr><th>Section</th><th>Medium</th><th>Class</th><th>Academic year</th><th>Status</th>{canManageClasses&&canReadYears&&<th>Action</th>}</tr></thead><tbody>{sectionRows.map(item=><tr key={item.id}><td><b>{item.name}</b></td><td>{item.medium?item.medium==="hindi"?"Hindi":"English":"—"}</td><td>{classes.find(x=>x.id===item.class_id)?.name??"—"}</td><td>{years.find(x=>x.id===item.academic_year_id)?.name??"—"}</td><td><span className={`academic-status-badge status-${item.is_active?"active":"inactive"}`}>{item.is_active?"Active":"Inactive"}</span></td>{canManageClasses&&canReadYears&&<td><button type="button" className="academic-edit" onClick={()=>begin("section",item)} aria-label={"Edit "+item.name}><Pencil size={15}/></button></td>}</tr>)}</tbody></table></div>}</section>
     :tab==="assignments"?<TeacherAssignmentsPage permissions={permissions}/>
+    :tab==="curriculum"?<ClassCurriculumSetupPanel years={years} classes={classes} subjects={subjects} canManage={canManageSubjects}/>
     :<section className="table-panel"><div className="toolbar"><div><h2>Subjects</h2><small>{subjects.length} records</small></div>{canManageSubjects&&<button className="primary academic-add" type="button" onClick={()=>begin("subject")}><Plus size={15}/> Add subject</button>}</div>{subjects.length===0?<div className="table-message">No subjects configured yet.</div>:<div className="table-scroll"><table><thead><tr><th>Subject</th><th>Code</th><th>Status</th>{canManageSubjects&&<th>Action</th>}</tr></thead><tbody>{subjects.map(item=><tr key={item.id}><td><b>{item.name}</b></td><td>{item.subject_code??"—"}</td><td><span className={`academic-status-badge status-${item.is_active?"active":"inactive"}`}>{item.is_active?"Active":"Inactive"}</span></td>{canManageSubjects&&<td><button type="button" className="academic-edit" onClick={()=>begin("subject",item)} aria-label={"Edit "+item.name}><Pencil size={15}/></button></td>}</tr>)}</tbody></table></div>}</section>}
   </div>;
 }
