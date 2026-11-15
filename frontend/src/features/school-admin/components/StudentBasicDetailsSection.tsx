@@ -56,7 +56,13 @@ export function StudentBasicDetailsSection({ student, canUpdate, onStudentNameCh
 
   useEffect(() => {
     const item = query.data?.basic_details;
-    if (!item) return;
+    if (!item) {
+      // A student may have no basic-details row yet. Clear the previous
+      // student's draft instead of leaving it visible in the new profile.
+      setValues(emptyValues);
+      setErrors({});
+      return;
+    }
     setValues({
       date_of_birth: item.date_of_birth?.slice(0, 10) ?? "",
       place_of_birth: item.place_of_birth ?? "",
