@@ -8,6 +8,7 @@ type Props = {
   student: StudentProfile;
   canReadHistory: boolean;
   canReadFamily: boolean;
+  canReadSubjects: boolean;
   canManageSubjects: boolean;
   academicYears: StudentAcademicYear[];
   onOpenBasic: () => void;
@@ -31,7 +32,7 @@ function enrollmentYear(enrollment: StudentEnrollment, years: StudentAcademicYea
 }
 
 export function StudentProfileDetail({
-  student, canReadHistory, canReadFamily, canManageSubjects, academicYears,
+  student, canReadHistory, canReadFamily, canReadSubjects, canManageSubjects, academicYears,
   onOpenBasic, onOpenAddress, onOpenFamily, onOpenHealth, onClose,
 }: Props) {
   const historyQuery = useSchoolStudentEnrollmentHistoryQuery(student.id, canReadHistory);
@@ -99,12 +100,12 @@ export function StudentProfileDetail({
                     <div><dt>Enrolled on</dt><dd>{dateLabel(enrollment.enrolled_at)}</dd></div>
                     <div><dt>Ended on</dt><dd>{dateLabel(enrollment.ended_at)}</dd></div>
                   </dl>
-                  <StudentEnrollmentSubjectsPanel
+                  {canReadSubjects && <StudentEnrollmentSubjectsPanel
                     enrollmentID={enrollment.id}
                     studentStatus={student.status}
                     enrollmentStatus={enrollment.status}
                     canManage={canManageSubjects}
-                  />
+                  />}
                 </article>
               ))}
               </div>}
