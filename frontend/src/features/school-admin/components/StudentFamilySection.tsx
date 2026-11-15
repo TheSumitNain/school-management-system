@@ -57,6 +57,8 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
   const [relationshipError, setRelationshipError] = useState("");
   const [newGuardianNameError, setNewGuardianNameError] = useState("");
   const [newGuardianEmailError, setNewGuardianEmailError] = useState("");
+  const [newGuardianFieldErrors, setNewGuardianFieldErrors] = useState<Record<string, string>>({});
+  const [editGuardianFieldErrors, setEditGuardianFieldErrors] = useState<Record<string, string>>({});
   const [revokeReasonError, setRevokeReasonError] = useState("");
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
 
@@ -88,13 +90,22 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
     setNewGuardianNameError("");
     setNewGuardianEmailError("");
     if (!canManage) return;
-    const nameError = newGuardianName.trim() ? "" : "Guardian name is required.";
+    const nameLength = Array.from(newGuardianName.trim()).length;
+    const nameError = !newGuardianName.trim() ? "Guardian name is required." : nameLength > 200 ? "Guardian name must be 200 characters or fewer." : "";
     const emailInput = event.currentTarget.elements.namedItem("guardian_email_address") as HTMLInputElement | null;
-    const emailError = newGuardianEmail.trim() && emailInput && !emailInput.checkValidity()
-      ? "Enter a valid email address." : "";
+    const emailLength = Array.from(newGuardianEmail.trim()).length;
+    const emailError = emailLength > 254 ? "Email address must be 254 characters or fewer." :
+      newGuardianEmail.trim() && emailInput && !emailInput.checkValidity() ? "Enter a valid email address." : "";
+    const fieldErrors: Record<string, string> = {};
+    if (Array.from(newGuardianMobile.trim()).length > 30) fieldErrors.mobile_number = "Mobile number must be 30 characters or fewer.";
+    if (Array.from(newGuardianAlternateMobile.trim()).length > 30) fieldErrors.alternate_mobile_number = "Alternate mobile number must be 30 characters or fewer.";
+    if (Array.from(newGuardianOccupation.trim()).length > 120) fieldErrors.occupation = "Occupation must be 120 characters or fewer.";
+    if (Array.from(newGuardianEducation.trim()).length > 120) fieldErrors.education = "Education must be 120 characters or fewer.";
+    if (Array.from(newGuardianWorkplace.trim()).length > 160) fieldErrors.workplace_name = "Workplace must be 160 characters or fewer.";
     setNewGuardianNameError(nameError);
     setNewGuardianEmailError(emailError);
-    if (nameError || emailError) return;
+    setNewGuardianFieldErrors(fieldErrors);
+    if (nameError || emailError || Object.keys(fieldErrors).length > 0) return;
     try {
       const result = await createGuardian.mutateAsync({
         full_name: newGuardianName.trim(),
@@ -139,6 +150,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
     setEditGuardianError("");
     setEditGuardianNameError("");
     setEditGuardianEmailError("");
+    setEditGuardianFieldErrors({});
   }
 
   async function saveEditedGuardian(event: FormEvent<HTMLFormElement>) {
@@ -148,15 +160,22 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
     setEditGuardianEmailError("");
     if (!canManage || editingGuardianID <= 0) return;
     const name = editGuardianForm.full_name.trim();
-    if (!name) {
-      setEditGuardianNameError("Guardian name is required.");
-      return;
-    }
+    const nameLength = Array.from(name).length;
+    const nameError = !name ? "Guardian name is required." : nameLength > 200 ? "Guardian name must be 200 characters or fewer." : "";
     const emailInput = event.currentTarget.elements.namedItem("edit_guardian_email") as HTMLInputElement | null;
-    if (editGuardianForm.email_address.trim() && emailInput && !emailInput.checkValidity()) {
-      setEditGuardianEmailError("Enter a valid email address.");
-      return;
-    }
+    const emailLength = Array.from(editGuardianForm.email_address.trim()).length;
+    const emailError = emailLength > 254 ? "Email address must be 254 characters or fewer." :
+      editGuardianForm.email_address.trim() && emailInput && !emailInput.checkValidity() ? "Enter a valid email address." : "";
+    const fieldErrors: Record<string, string> = {};
+    if (Array.from(editGuardianForm.mobile_number.trim()).length > 30) fieldErrors.mobile_number = "Mobile number must be 30 characters or fewer.";
+    if (Array.from(editGuardianForm.alternate_mobile_number.trim()).length > 30) fieldErrors.alternate_mobile_number = "Alternate mobile number must be 30 characters or fewer.";
+    if (Array.from(editGuardianForm.occupation.trim()).length > 120) fieldErrors.occupation = "Occupation must be 120 characters or fewer.";
+    if (Array.from(editGuardianForm.education.trim()).length > 120) fieldErrors.education = "Education must be 120 characters or fewer.";
+    if (Array.from(editGuardianForm.workplace_name.trim()).length > 160) fieldErrors.workplace_name = "Workplace must be 160 characters or fewer.";
+    setEditGuardianNameError(nameError);
+    setEditGuardianEmailError(emailError);
+    setEditGuardianFieldErrors(fieldErrors);
+    if (nameError || emailError || Object.keys(fieldErrors).length > 0) return;
     setConfirmSharedGuardianSave(true);
   }
 
