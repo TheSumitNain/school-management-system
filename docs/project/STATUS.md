@@ -6,7 +6,7 @@
 
 ### Latest verified code and CI
 
-- Active branch: `work`; latest repository tip after documentation reconciliation and obsolete-file cleanup: `66be255a61954742f8dc4f623d1eebbf3dc4f137`.
+- Active branch: `work`; latest repository tip: `4a17a5fdf2cdae485be5f64c9fc6dde933c271b8`.
 - Latest Student Management browser/test checkpoint: `b6d14c6ed4030724857838ef8cebc131041219ae`. Frontend CI **PASS** — [run 43716057611](https://github.com/TheSumitNain/school-management-system/actions/runs/43716057611): production build and all 10 Playwright tests passed, including guardian profile field validation/edit/save/reload, per-student relationship flags, and cross-student Basic Details + Parent Details draft/error isolation.
 - Backend CI **PASS** on the same full-repository checkpoint — [run 43716057614](https://github.com/TheSumitNain/school-management-system/actions/runs/43716057614): complete migration chain, PostgreSQL integration suite and `go vet ./...`.
 - Earlier frontend implementation fixes include guardian form validation, student-specific state reset, enrollment curriculum identity, Basic Details empty-state cleanup, Address/Health transient-state cleanup and shared profile feedback handling. The latest green checkpoint includes these commits.
