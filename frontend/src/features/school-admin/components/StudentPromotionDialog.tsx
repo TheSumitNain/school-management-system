@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { DatePicker } from "../../../shared/components/DatePicker";
+import { ApiError } from "../../../lib/api";
 import { Modal } from "../../../shared/components/Modal";
 import { Select } from "../../../shared/components/Select";
 import { StudentFieldLabel } from "./StudentFieldLabel";
@@ -74,7 +75,12 @@ export function StudentPromotionDialog({ enrollment, academicYears, academicYear
       });
       onPromoted();
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : "Student promotion could not be completed.");
+      if (error instanceof ApiError && Object.keys(error.fieldErrors).length > 0) {
+        setErrors(current => ({ ...current, ...error.fieldErrors }));
+        setFeedback("");
+      } else {
+        setFeedback(error instanceof Error ? error.message : "Student promotion could not be completed.");
+      }
     }
   }
 
