@@ -3,7 +3,7 @@
 **Last reconciled:** 2026-11-15  
 **Repository:** `TheSumitNain/school-management-system`  
 **Reviewed branch:** `work`  
-**Reviewed through:** `05b9caa8ef9236417817c50353bac9325faba856`; Backend CI run `43669081600` passed the full ephemeral PostgreSQL migration chain, backend tests including PostgreSQL integration, and `go vet`. Frontend CI run `43610711016` passed on `dfeb4bd7`; no frontend source changed in the subsequent guardian-email validation work. Local V39+ database application and live authenticated browser acceptance remain pending
+**Reviewed through:** `06d2325a5e7700bf493f1d8bf21f07d19c9d5fe6`; Backend CI run `43669467831` and Frontend CI run `43669467828` both passed. Backend CI applied the complete migration chain to ephemeral PostgreSQL, passed all backend tests including PostgreSQL integration, and passed `go vet`. Frontend CI passed the production build and all 5 Playwright tests. Local V39+ database application and live authenticated browser acceptance remain pending
 
 ## Administrator access correction — School Admin guardian permissions (V39; local verification pending)
 
@@ -515,3 +515,12 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - Cross-layer review confirmed the Parents & Siblings UI already validates email fields inline before submit, preserves shared guardian profile semantics, keeps per-student relationship flags separate, and refreshes related query data after writes. Existing Playwright coverage exercises invalid email rejection and guardian create/link/edit/revoke flows using mocked APIs.
 - Database-triggered guardian revocation audit is already implemented in V12 and asserted by repository integration coverage; no duplicate application-level audit insert was added.
 - Remaining acceptance is unchanged: run authenticated browser checks against a migrated disposable/local test environment to prove real backend read/write/reload and role-based behavior. Do not apply outstanding migrations to persistent `school_management` without explicit approval and a verified restorable backup.
+
+
+## Guardian history privacy correction — 2026-11-15
+
+- The Parents & Siblings UI previously requested `include_history=true` on every open, even while the “Show revoked history” checkbox was off. The screen hid revoked rows, but the backend still returned their guardian contact fields.
+- The query now keys and fetches by the checkbox state: default reads omit `include_history` and return active links only; enabling history issues a separate `include_history=true` read. This reduces unnecessary access to revoked relationship/contact data and preserves history-on-demand behavior.
+- Playwright coverage now checks the initial active-only request and verifies that enabling the checkbox requests history. It tolerates legitimate React Query refetches after mutations rather than assuming exactly one request.
+- Latest exact-tip verification on `06d2325a5e7700bf493f1d8bf21f07d19c9d5fe6`: Frontend CI run `43669467828` passed production build and all 5 Playwright tests; Backend CI run `43669467831` passed all migrations on ephemeral PostgreSQL, backend unit/integration tests, and `go vet`.
+- Playwright uses mocked API responses; it is not proof of persistence against the user's local database. Live authenticated browser acceptance and local V39+ migration remain outstanding. Do not modify persistent `school_management` without explicit approval and a verified restorable backup.
