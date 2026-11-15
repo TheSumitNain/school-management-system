@@ -1015,5 +1015,5 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 ## Student Management — shared Unicode text normalization unit coverage (2026-11-15)
 
 - Added focused backend unit tests for the shared text normalizer used by student Basic Details, Address, Contact and Health persistence: nil values, whitespace-only values, trimming before counting, exact Hindi Unicode-code-point boundaries, and one-code-point-over rejection.
-- Test commit: `7644776e2392d7bd28468d80b4bed2460332755e`.
-- CI is pending for this exact commit. The tests are pure unit tests; no schema, migration, persistent database or school data was changed.
+- Test commits: `7644776e2392d7bd28468d80b4bed2460332755e` (shared Unicode normalizer unit boundaries) and `5a031c694f839338d4e766f5f6a72fcaf525dbea` (PostgreSQL contact repository rejects a 31-code-point phone value and a display-name email address).
+- CI is pending for the latest exact commit. The contact validation assertions run before any database write; no schema, migration, persistent database or school data was changed.
