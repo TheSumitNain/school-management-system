@@ -268,6 +268,7 @@ export function StudentManagementPage({ permissions }: Props) {
       student={profileStudent}
       canReadHistory={canReadEnrollments}
       canReadFamily={canReadGuardians}
+      canManageSubjects={canUpdate && permissions.includes("subjects.read")}
       academicYears={yearsQuery.data?.academic_years ?? []}
       onOpenBasic={() => { const item = profileStudent; setProfileStudent(null); setBasicDetailsStudent(item); }}
       onOpenAddress={() => { const item = profileStudent; setProfileStudent(null); setAddressStudent(item); }}
