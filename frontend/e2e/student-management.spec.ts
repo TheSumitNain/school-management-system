@@ -460,6 +460,8 @@ test("student admission, profile navigation and parent details render without br
   await expect(curriculumPanel.getByText("Assigned", { exact: true })).toBeVisible();
   await expect(curriculumPanel.getByText("Previous subject choices (1)")).toBeVisible();
   await expect(curriculumPanel.getByText("Hindi · curriculum v1 · Current")).toBeVisible();
+  await curriculumPanel.getByRole("checkbox", { name: /Hindi/ }).uncheck();
+  await curriculumPanel.getByRole("checkbox", { name: /Sanskrit/ }).check();
 
   failStudentReads.add("basic-details");
   await page.getByRole("button", { name: /Basic details/ }).click();
@@ -548,6 +550,8 @@ test("student admission, profile navigation and parent details render without br
   expect(basicDetails).toMatchObject({ nationality: "Indian", gender: "male" });
   expect(basicDetails.date_of_birth).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   await expect(page.getByText("Basic details saved.")).toBeVisible();
+  await expect(curriculumPanel.getByRole("checkbox", { name: /Sanskrit/ })).toBeChecked();
+  await expect(curriculumPanel.getByRole("checkbox", { name: /Hindi/ })).not.toBeChecked();
   await page.getByRole("button", { name: "Close dialog" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
   await expect(page.getByText("Aarav Sharma Updated · Permanent student identity and year-wise academic history")).toBeVisible();
