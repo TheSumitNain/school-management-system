@@ -553,6 +553,6 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 ## Student Management Unicode validation hardening — 2026-11-15
 
 - Student full-name, address-line and location-name limits now count Unicode code points, matching PostgreSQL VARCHAR(n) character semantics instead of Go UTF-8 byte length.
-- The same rule is applied to the combined admission path, including year-scoped admission numbers and optional roll numbers; standalone legacy student create/update paths use the same student-name limit.
+- The same rule is applied to the combined admission path, including year-scoped admission numbers and optional roll numbers; standalone legacy student create/update paths use the same student-name and legacy admission-number limits.
 - Rollback-scoped PostgreSQL integration coverage now exercises maximum-length Hindi-script student names, admission numbers, roll numbers, location names and address lines, plus rejection immediately above each limit.
 - This is server-side validation and test coverage only. The persistent school database was not migrated or modified. CI verification for the new commits must be checked on the exact latest branch tip before marking this change verified.
