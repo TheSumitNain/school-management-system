@@ -54,7 +54,7 @@ export function StudentBasicDetailsSection({ student, canUpdate, onStudentNameCh
     setNameError("");
     setNameFeedback(null);
     setFeedback(null);
-  }, [student.id, student.full_name]);
+  }, [student.id]);
 
   useEffect(() => {
     const item = query.data?.basic_details;
