@@ -401,7 +401,7 @@ export type StudentGuardian = {
   id: number; student_id: number; guardian_id: number; guardian_name: string; guardian_status: "active" | "inactive" | "archived";
   mobile_number?: string | null; email_address?: string | null; alternate_mobile_number?: string | null;
   occupation?: string | null; education?: string | null; workplace_name?: string | null; relationship_type: string;
-  is_primary_contact: boolean; is_emergency_contact: boolean; created_at: string; revoked_at?: string | null;
+  is_primary_contact: boolean; is_emergency_contact: boolean; created_at: string; revoked_at?: string | null; revocation_reason?: string | null;
 };
 export type StudentRelatedStudent = {
   student_id: number; full_name: string; admission_number?: string | null;
