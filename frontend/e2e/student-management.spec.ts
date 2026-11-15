@@ -1542,6 +1542,12 @@ test("staff can create a guardian contact and link it to a student with relation
   await expect(page.getByText("Nisha Verma Updated", { exact: true })).toBeVisible();
   await expect(page.getByText("9876501235 · Alt: 9876501236 · nisha.verma@example.test")).toBeVisible();
   await expect(page.getByText("Principal · M.Ed. · Sunrise Public School")).toBeVisible();
+  await page.getByRole("button", { name: "Close dialog" }).click();
+  await page.getByRole("button", { name: /Parents & siblings/i }).click();
+  await expect(page.getByRole("dialog", { name: "Parents & Siblings" })).toBeVisible();
+  await expect(page.getByText("Nisha Verma Updated", { exact: true })).toBeVisible();
+  await expect(page.getByText("9876501235 · Alt: 9876501236 · nisha.verma@example.test")).toBeVisible();
+  await expect(page.getByText("Principal · M.Ed. · Sunrise Public School")).toBeVisible();
   expect(browserErrors).toEqual([]);
 });
 
