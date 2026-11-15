@@ -38,7 +38,7 @@ func TestStudentRoutesEnforceLivePermissions(t *testing.T) {
 		{http.MethodPost, "/school/students/1/archive", "students.archive", ""},
 		{http.MethodGet, "/school/class-curricula?academic_year_id=1&class_id=2", "subjects.read", ""},
 		{http.MethodPost, "/school/class-curricula", "subjects.manage", `{"academic_year_id":1,"class_id":2,"subjects":[{"subject_id":3}]}`},
-		{http.MethodGet, "/school/enrollments/1/curriculum", "students.read_basic", ""},
+		{http.MethodGet, "/school/enrollments/1/curriculum", "subjects.read", ""},
 		{http.MethodPut, "/school/enrollments/1/subjects", "students.update", `{"curriculum_id":1,"selected_optional_subject_ids":[]}`},
 	}
 	for _, test := range tests {
