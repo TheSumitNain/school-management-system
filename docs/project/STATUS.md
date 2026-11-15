@@ -2,22 +2,37 @@
 
 ## Active handover — Student Management (2026-11-15)
 
-### Guardian revocation audit correction (2026-11-15)
+**Current focus:** finish Student Management only. Parent OTP/SMS/login remains deferred until after the school dashboard; Parent Details in the student record remain required.
 
-- Root cause verified from migration V12: `trg_audit_student_guardian_revocation` already inserts `school.student_guardian_link_revoked`. The repository also inserted the same event explicitly, producing two audit rows for one revocation and failing the integration count.
-- Fix committed on `work`: migration V45 updates the existing trigger metadata to include `has_revocation_reason` (boolean only; never the free-text reason), and the repository now relies on the trigger as the single audit writer.
-- Code commit: `1196045794777f94d94c994b4750af865d36e84e`. CI for this exact commit must be checked before declaring backend green.
-- Frontend correction commit `b640caed53a4ad7c2a4670719974d2d99b7a4269` has Frontend CI SUCCESS (run 43708932012). Backend CI on b640 failed only at the verified duplicate audit count; go vet did not run because tests failed.
-- Next: verify both workflows on the post-V45 code commit, fix any newly exposed failures, then complete remaining Student Management browser acceptance journeys.
+### Latest verified code and CI
 
+- Active branch: `work`.
+- Latest Student Management code commit: `1196045794777f94d94c994b4750af865d36e84e` — guardian revocation audit deduplication.
+- Backend CI: **PASS** on that exact code commit — [run 43709153490](https://github.com/TheSumitNain/school-management-system/actions/runs/43709153490). Ephemeral PostgreSQL migration chain, backend tests including `TestGuardianRepositoryPostgresIntegration`, and `go vet ./...` all completed successfully.
+- Latest frontend code commit: `b640caed53a4ad7c2a4670719974d2d99b7a4269` — guardian form validation fix.
+- Frontend CI: **PASS** on that exact frontend commit — [run 43708932012](https://github.com/TheSumitNain/school-management-system/actions/runs/43708932012). Design-token check and production/browser suite completed; Playwright reports **8 passed**.
+- The frontend source was unchanged after its passing run; later code changes were backend-only. Do not confuse older failed runs with the current verified results.
 
-## Student Management — guardian validation CI correction (2026-11-15)
+### Root causes fixed
 
-- Commit `b640caed53a4ad7c2a4670719974d2d99b7a4269` removes browser-level `maxLength` truncation from the guardian form inputs. The component already performs explicit length validation and renders field-level errors; native truncation prevented over-limit values from reaching that validation, causing the two Playwright failures.
-- This is a code correction, **not yet a PASS claim**. Frontend CI must run on this exact commit and its result must be checked.
-- Backend audit-count failure remains unresolved. The repository revoke method visibly inserts one explicit `school.student_guardian_link_revoked` event after a successful update. The integration test's aggregate query counts all link-revocation events for the actor and school, while its privacy assertion scopes to the first link. Inspect all audit-producing database triggers/fixtures and event history before changing the expected aggregate count.
-- Next task: resolve the backend audit count based on verified event semantics, then verify frontend and backend CI on the resulting code commit.
+1. Guardian form length errors were not appearing because HTML `maxLength` blocked over-limit input before app validation. Removed those truncating attributes; explicit field-level validation remains. Frontend CI now passes.
+2. Guardian revocation was audited twice: V12's database trigger already inserted the audit event, and Go repository code inserted another. Migration V45 now adds only a boolean `has_revocation_reason` to trigger metadata; repository relies on the trigger as the single audit writer. Free-text revocation reason is never copied into audit metadata. Backend integration tests and `go vet` now pass.
 
+### Implemented Student Management scope
+
+Student profile/basic details; address and contact; Parent/Guardian create/edit/link/revoke/history; medical and physical details/history; academic-year admission/enrollment and promotion; class/year curriculum and optional-subject assignment/history; guardian permission and audit boundaries. Implementation does not mean every live workflow has been accepted.
+
+### Remaining before completion
+
+- Complete authenticated browser/live acceptance against the local API for admission, profile edit/reload, Parent Details load/edit/save/reload, address/contact, medical/physical history, enrollment/promotion/curriculum, permissions, and inactive/archived read-only states.
+- Confirm unsaved form drafts survive background refetches in each editable section.
+- Record exact live acceptance results and any remaining defect; only then mark Student Management complete.
+- Current Playwright acceptance tests use mocked APIs; passing CI does not replace live authenticated acceptance.
+- Persistent database migration/acceptance writes are approval-gated. Do not touch the user's persistent `school_management` database without explicit approval and a verified restorable backup.
+
+### Work-session rule
+
+At every new session, reconcile this file, Student Management design docs, backend/frontend testing docs, current branch tip and latest Actions before editing. Continue from the recorded next task; do not restart completed work. After meaningful code changes, record exact commit, tests, CI run and result. Never claim PASS before the exact check finishes. Keep the repository free of temporary clutter.
 
 **Source of truth:** this section is the first document to reconcile at the start of every new work session. Read this file, the Student Management design, relevant backend/frontend testing docs, and the latest GitHub Actions runs before changing code. Do not restart an already completed audit or treat an earlier green run as proof for a newer commit.
 
