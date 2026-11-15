@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -197,7 +198,7 @@ func (r *AcademicRepository) CreateStudent(
 	}
 	admissionNumber = strings.TrimSpace(admissionNumber)
 	fullName = strings.TrimSpace(fullName)
-	if admissionNumber == "" || len(admissionNumber) > 50 || fullName == "" || len(fullName) > 200 {
+	if admissionNumber == "" || len(admissionNumber) > 50 || fullName == "" || utf8.RuneCountInString(fullName) > 200 {
 		return nil, ErrInvalidAcademicInput
 	}
 	tx, err := r.db.Begin(ctx)
