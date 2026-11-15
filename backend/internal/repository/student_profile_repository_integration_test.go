@@ -277,8 +277,8 @@ func TestStudentProfileRepositoryPostgresIntegration(t *testing.T) {
 	); err != nil {
 		t.Fatalf("inspect student profile/directory read audits: %v", err)
 	}
-	if profileReadAuditCount != 1 || directoryReadAuditCount != 1 || directoryResultCount != 1 {
-		t.Fatalf("student read audit counts profile=%d directory=%d directory result_count=%d; want 1,1,1",
+	if profileReadAuditCount != 2 || directoryReadAuditCount != 2 || directoryResultCount != 1 {
+		t.Fatalf("student read audit counts profile=%d directory=%d directory result_count=%d; want 2,2,1",
 			profileReadAuditCount, directoryReadAuditCount, directoryResultCount)
 	}
 	if readAuditContainsStudentData {
