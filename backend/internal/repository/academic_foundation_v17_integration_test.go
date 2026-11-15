@@ -1045,6 +1045,16 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	if !foundRevokedV1 || !foundActiveV2 {
 		t.Fatalf("curriculum replacement history missing revoked v1 or active v2 choice: %+v", assignedV2.SelectionHistory)
 	}
+	if _, err := academicRepo.SaveStudentEnrollmentSubjects(ctx, actorPrincipalID, schoolID,
+		currentEnrollmentID, curriculumV1.ID, []int64{optionalV1ID}); !errors.Is(err, ErrAcademicNotFound) {
+		t.Fatalf("reassign retired curriculum v1 after replacement: got %v, want ErrAcademicNotFound", err)
+	}
+	afterRejectedRevert, err := academicRepo.GetStudentEnrollmentCurriculum(ctx, actorPrincipalID, schoolID, currentEnrollmentID)
+	if err != nil || afterRejectedRevert == nil || afterRejectedRevert.Curriculum == nil ||
+		afterRejectedRevert.Curriculum.ID != curriculumV2.ID || len(afterRejectedRevert.SelectionHistory) != 2 ||
+		len(afterRejectedRevert.SelectedOptionalSubjectIDs) != 1 || afterRejectedRevert.SelectedOptionalSubjectIDs[0] != optionalV2ID {
+		t.Fatalf("rejected retired-curriculum reversion changed the active assignment: item=%+v err=%v", afterRejectedRevert, err)
+	}
 
 	var promotionSectionID int64
 	if err := tx.QueryRow(ctx, `
