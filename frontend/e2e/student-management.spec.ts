@@ -23,6 +23,7 @@ test("student admission, profile navigation and parent details render without br
   const failStudentReads = new Set<string>();
   const failedStudentReads: string[] = [];
   const observedStudentDetailGets: string[] = [];
+  const guardianHistoryRequests: (string | null)[] = [];
   const guardianLink = {
     id: 501, student_id: 1, guardian_id: 22, guardian_name: "Ramesh Sharma", guardian_status: "active" as const,
     mobile_number: "9876543210", email_address: "ramesh@example.test", alternate_mobile_number: null,
@@ -188,6 +189,7 @@ test("student admission, profile navigation and parent details render without br
         return;
       }
       if (subpath === "guardians" || subpath === "related-students") {
+        if (subpath === "guardians") guardianHistoryRequests.push(url.searchParams.get("include_history"));
         await route.fulfill({ json: subpath === "guardians" ? { student_guardians: [guardianLink] } : { related_students: [] } });
         return;
       }
@@ -393,6 +395,7 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("button", { name: /Parents & Siblings/i }).click();
   await expect(page.getByRole("dialog", { name: /Parents & Siblings/i })).toBeVisible();
   await expect(page.getByText("Ramesh Sharma")).toBeVisible();
+  await expect.poll(() => guardianHistoryRequests).toEqual([null]);
   await expect(page.getByText("Father · Primary contact · Emergency contact")).toBeVisible();
   await expect(page.getByText("Other students sharing a guardian")).toBeVisible();
 
@@ -444,6 +447,7 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByText("Guardian relationship revoked. Its history is preserved.")).toBeVisible();
   await expect(page.getByText("Ramesh Sharma")).toHaveCount(0);
   await page.getByLabel("Show revoked history").check();
+  await expect.poll(() => guardianHistoryRequests).toEqual([null, "true"]);
   await expect(page.getByText("Ramesh Sharma")).toBeVisible();
   await expect(page.getByText(/Revoked/)).toBeVisible();
 
