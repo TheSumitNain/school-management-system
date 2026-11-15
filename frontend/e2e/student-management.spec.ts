@@ -405,6 +405,7 @@ test("student admission, profile navigation and parent details render without br
     roll_number: "01",
   });
 
+  await expect(page.getByRole("button", { name: "Edit profile for Aarav Sharma" })).toBeVisible();
   await page.getByRole("button", { name: "View profile for Aarav Sharma" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Academic history", exact: true })).toBeVisible();
