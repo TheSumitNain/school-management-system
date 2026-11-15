@@ -39,6 +39,12 @@
 - Frontend code commit: `1df5e2d0b8c1ee67d21b34e88c2572f281889661`.
 - CI and authenticated live browser acceptance for this change are pending; verify before marking this behavior complete.
 
+### Student-switch feedback cleanup (2026-11-15)
+
+- Basic Details now also clears stale name-save and section feedback when the selected student changes, so validation/success messages from one student's edit are not shown against another student.
+- Frontend code commit: `860bf218dc73b5926079a55b318776afbc24c689`.
+- CI and authenticated browser acceptance remain pending for the latest frontend fixes.
+
 ### Root causes fixed
 
 1. Guardian form length errors were not appearing because HTML `maxLength` blocked over-limit input before app validation. Removed those truncating attributes; explicit field-level validation remains. Frontend CI now passes.
