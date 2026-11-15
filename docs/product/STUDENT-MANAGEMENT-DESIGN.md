@@ -22,7 +22,7 @@ The following decisions are approved:
 
 ## 2. Audit findings in the current implementation
 
-The current `work` branch contains the approved core Student Management model and its major profile workflows. The latest Student Management checkpoint `cdfb455ec2aa4451d8a94f421ea022ed23cece09` passed Frontend CI (production build and all 11 Playwright tests) and Backend CI (complete migrations, PostgreSQL integration tests and `go vet ./...`) on 2026-11-15. Browser acceptance now covers full browser reload of Parent Details and shared guardian profile propagation across two linked students while preserving per-student relationship flags. Browser API calls are mocked; authenticated live acceptance against the user's local API/database remains a separate required gate.
+The current `work` branch contains the approved core Student Management model and its major profile workflows. The latest Student Management checkpoint `2b7e6c38f34f1ba28ca38dd3f3e527392b77fd26` passed Frontend CI (production build and all 11 Playwright tests) and Backend CI (complete migrations, PostgreSQL integration tests and `go vet ./...`) on 2026-11-15. Browser acceptance now also covers optional curriculum subject-group minimum/maximum boundaries and clear exact-one-subject guidance, alongside full Parent Details browser reload and shared guardian profile propagation across linked students while preserving per-student relationship flags. Browser API calls are mocked; authenticated live acceptance against the user's local API/database remains a separate required gate.
 
 | Area | Existing state | Required evolution |
 |---|---|---|
@@ -290,8 +290,8 @@ A phase is complete only when code, migrations, automated tests and applicable b
 
 ### Latest verification reconciliation
 
-- Latest Frontend CI run [43718944849](https://github.com/TheSumitNain/school-management-system/actions/runs/43718944849) passed on code commit `cdfb455ec2aa4451d8a94f421ea022ed23cece09`; Vite production build and all 11 Playwright tests passed, including cross-student profile isolation, Parent Details full browser reload, and shared guardian profile propagation across two linked students.
-- Latest Backend CI run [43718944872](https://github.com/TheSumitNain/school-management-system/actions/runs/43718944872) passed on the same code commit `cdfb455ec2aa4451d8a94f421ea022ed23cece09`; the full migration chain, PostgreSQL integration suite and `go vet ./...` passed.
+- Latest Frontend CI run [43719842826](https://github.com/TheSumitNain/school-management-system/actions/runs/43719842826) passed on code commit `2b7e6c38f34f1ba28ca38dd3f3e527392b77fd26`; Vite production build and all 11 Playwright tests passed, including cross-student profile isolation, Parent Details full browser reload, shared guardian profile propagation across two linked students, and optional-subject minimum/maximum validation.
+- Latest Backend CI run [43719842838](https://github.com/TheSumitNain/school-management-system/actions/runs/43719842838) passed on the same code commit `2b7e6c38f34f1ba28ca38dd3f3e527392b77fd26`; the full migration chain, PostgreSQL integration suite and `go vet ./...` passed.
 - Both latest workflows above ran against the same full-repository code checkpoint, so no cross-commit inference is needed.
 - Guardian form validation now allows over-limit values to reach application validation so each field can show its explicit length error. Do not reintroduce HTML `maxLength` truncation on those fields.
 - Guardian revocation audit has one authoritative writer: the V12 database trigger, updated by V45 to add only the boolean `has_revocation_reason`. The repository must not insert a duplicate audit event. Free-text revocation reasons must remain out of audit metadata.
