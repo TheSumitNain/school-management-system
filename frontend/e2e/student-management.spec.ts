@@ -1295,20 +1295,6 @@ test("staff can create a guardian contact and link it to a student with relation
       await route.fulfill({ json: { academic_years: [] } });
       return;
     }
-    if (path === "/school/sections") {
-      await route.fulfill({ json: { sections: [] } });
-      return;
-    }
-    if (path === "/school/enrollments" && request.method() === "GET") {
-      await route.fulfill({ json: { enrollments: [{
-        id: 9400, school_id: 10, student_id: 94, student_name: "Inactive Family Student",
-        student_status: "inactive", academic_year_id: 6, class_id: 3, section_id: 61,
-        class_name_snapshot: "Class 1", section_name_snapshot: "A", roll_number: "04",
-        admission_number: "ADM-INACTIVE-094", admission_date: "2025-04-01",
-        status: "active", enrolled_at: "2025-04-01", ended_at: null,
-      }], pagination: { limit: 20, offset: 0, total: 1 } } });
-      return;
-    }
     if (path === "/school/students" && request.method() === "GET") {
       await route.fulfill({ json: { students: [{
         id: 93, school_id: 10, admission_number: "ADM-GUARD-093",
@@ -1465,6 +1451,20 @@ test("staff with guardian management permission cannot change an inactive studen
     }
     if (path === "/school/academic-years") {
       await route.fulfill({ json: { academic_years: [] } });
+      return;
+    }
+    if (path === "/school/sections") {
+      await route.fulfill({ json: { sections: [] } });
+      return;
+    }
+    if (path === "/school/enrollments" && request.method() === "GET") {
+      await route.fulfill({ json: { enrollments: [{
+        id: 9400, school_id: 10, student_id: 94, student_name: "Inactive Family Student",
+        student_status: "inactive", academic_year_id: 6, class_id: 3, section_id: 61,
+        class_name_snapshot: "Class 1", section_name_snapshot: "A", roll_number: "04",
+        admission_number: "ADM-INACTIVE-094", admission_date: "2025-04-01",
+        status: "active", enrolled_at: "2025-04-01", ended_at: null,
+      }], pagination: { limit: 20, offset: 0, total: 1 } } });
       return;
     }
     if (path === "/school/students" && request.method() === "GET") {
