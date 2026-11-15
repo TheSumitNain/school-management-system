@@ -11,6 +11,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 type record struct {
@@ -152,7 +153,7 @@ func validateCSV(input io.Reader) (*snapshot, error) {
 		if err := addRecord(s.subdistricts, row[5], row[6], row[3], "", ""); err != nil {
 			return nil, fmt.Errorf("CSV line %d sub-district: %w", line, err)
 		}
-		if err := addRecord(s.localities, row[7], row[8], row[5], "", row[9]); err != nil {
+		if err := addLocalityRecord(s.localities, row[7], row[8], row[5], row[9]); err != nil {
 			return nil, fmt.Errorf("CSV line %d locality: %w", line, err)
 		}
 	}
@@ -188,7 +189,7 @@ func addRecord(target map[string]record, code, name, parent, igod, localityType 
 	if code == "" || name == "" {
 		return errors.New("source code and name must not be empty")
 	}
-	if len(code) > 50 || len(name) > 120 {
+	if utf8.RuneCountInString(code) > 50 || utf8.RuneCountInString(name) > 120 {
 		return errors.New("source code exceeds 50 or name exceeds 120 characters")
 	}
 	candidate := record{code: code, name: name, parent: parent, igod: igod, localityType: localityType}
@@ -200,6 +201,17 @@ func addRecord(target map[string]record, code, name, parent, igod, localityType 
 	}
 	target[code] = candidate
 	return nil
+}
+
+func addLocalityRecord(target map[string]record, code, name, parent, localityType string) error {
+	candidate := record{code: code, name: name, parent: parent, localityType: localityType}
+	if previous, exists := target[code]; exists {
+		if previous == candidate {
+			return fmt.Errorf("duplicate locality row for source code %q", code)
+		}
+		return fmt.Errorf("source code %q has conflicting name, parent, or locality type", code)
+	}
+	return addRecord(target, code, name, parent, "", localityType)
 }
 
 func validLocalityType(value string) bool {
