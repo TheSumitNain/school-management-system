@@ -83,8 +83,9 @@ Student profile/basic details; address and contact; Parent/Guardian create/edit/
 ### Remaining before completion
 
 - Complete authenticated browser/live acceptance against the local API for admission, profile edit/reload, Parent Details load/edit/save/reload, address/contact, medical/physical history, enrollment/promotion/curriculum, permissions, and inactive/archived read-only states.
-- Confirm unsaved form drafts survive background refetches in each editable section.
+- Add explicit browser acceptance for switching directly between two different students while each has unsaved section drafts; verify no student A values, validation errors, guardian drafts, or feedback leak into student B. Existing component effects are keyed to student identity, but this cross-student journey is not yet explicitly covered by the Playwright suite.
 - Record exact live acceptance results and any remaining defect; only then mark Student Management complete.
+- Background-refetch draft preservation is already covered by the mocked Playwright journey for basic details, Parent Details, address, contact, medical, physical, and enrollment curriculum/subject choices; it is not a substitute for authenticated live acceptance.
 - Current Playwright acceptance tests use mocked APIs; passing CI does not replace live authenticated acceptance.
 - Persistent database migration/acceptance writes are approval-gated. Do not touch the user's persistent `school_management` database without explicit approval and a verified restorable backup.
 
