@@ -1972,6 +1972,10 @@ test("switching student Parent Details clears unsaved guardian drafts and field 
 });
 
 test("switching student profiles clears address, contact, medical and physical drafts and errors", async ({ page }) => {
+  test.setTimeout(60_000);
+  const browserErrors: string[] = [];
+  page.on("pageerror", error => browserErrors.push(error.message));
+  const writeRequests: string[] = [];
   const students: Student[] = [
     { id: 31, school_id: 10, admission_number: "ADM-STATE-A", full_name: "State Student A", status: "active", created_at: "2026-01-01T00:00:00.000Z", updated_at: "2026-01-01T00:00:00.000Z" },
     { id: 32, school_id: 10, admission_number: "ADM-STATE-B", full_name: "State Student B", status: "active", created_at: "2026-01-02T00:00:00.000Z", updated_at: "2026-01-02T00:00:00.000Z" },
@@ -2006,6 +2010,9 @@ test("switching student profiles clears address, contact, medical and physical d
     const url = new URL(request.url());
     const path = url.pathname.replace(/^\/api/, "");
     const method = request.method();
+    if (method === "PUT" && /^\/school\/students\/\d+\/(addresses\/|contact-details$|medical-details$|physical-details$)/.test(path)) {
+      writeRequests.push(path);
+    }
 
     if (path === "/auth/refresh") {
       await route.fulfill({ status: 401, json: { message: "No active session" } });
@@ -2157,4 +2164,6 @@ test("switching student profiles clears address, contact, medical and physical d
   await expect(page.getByPlaceholder("e.g. 132.5")).toHaveValue("140");
   await expect(page.getByPlaceholder("Optional vision-related notes")).toHaveValue("Student B saved vision record");
   await expect(page.getByText("Height must be between 20 and 250 cm.", { exact: true })).toHaveCount(0);
+  expect(writeRequests).toEqual([]);
+  expect(browserErrors).toEqual([]);
 });
