@@ -24,7 +24,7 @@
 
 - Extended the Parent Details browser journey with a second active student linked to the same guardian. The test verifies that editing the shared guardian profile updates the contact/profile shown under both students, while the second student's own relationship type and primary/emergency flags remain unchanged.
 - Test commit: `033cd9ee1d7ee45b2009114aaa26c76e76811adf`.
-- Frontend CI run [43718613307](https://github.com/TheSumitNain/school-management-system/actions/runs/43718613307) and Backend CI run [43718613129](https://github.com/TheSumitNain/school-management-system/actions/runs/43718613129) are running. Keep `ae1e9a3007eddfcb5c2f10f10ddcb6814cc478ca` as the latest fully verified code checkpoint until both exact-commit workflows finish.
+- The first Frontend CI run [43718613307](https://github.com/TheSumitNain/school-management-system/actions/runs/43718613307) caught an over-escaped JavaScript regular-expression literal in the new student-route matcher before Playwright could start. Corrected it in follow-up commit `e379509c7d8a6d6a4175bd675910d9bbbaf6fd33`; new Frontend/Backend CI runs for that exact fix are pending. Keep `ae1e9a3007eddfcb5c2f10f10ddcb6814cc478ca` as the latest fully verified code checkpoint until the corrected run passes.
 
 ### Latest verified code and CI
 
