@@ -342,6 +342,9 @@ func (r *AcademicRepository) GetStudentEnrollmentCurriculum(ctx context.Context,
 	if enrollmentID <= 0 {
 		return nil, ErrInvalidAcademicInput
 	}
+	if err := authorizeAcademic(ctx, r.db, actorID, schoolID, "subjects.read"); err != nil {
+		return nil, err
+	}
 	var studentID int64
 	if err := r.db.QueryRow(ctx, `
 		SELECT student_id FROM student_enrollments WHERE id=$1 AND school_id=$2
@@ -494,6 +497,9 @@ func (r *AcademicRepository) SaveStudentEnrollmentSubjects(
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	if err := authorizeAcademic(ctx, tx, actorID, schoolID, "students.update"); err != nil {
+		return nil, err
+	}
+	if err := authorizeAcademic(ctx, tx, actorID, schoolID, "subjects.read"); err != nil {
 		return nil, err
 	}
 	var studentID int64
