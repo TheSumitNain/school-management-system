@@ -135,7 +135,6 @@ func validateCSV(input io.Reader) (*snapshot, error) {
 	s := &snapshot{
 		states: make(map[string]record), districts: make(map[string]record),
 		subdistricts: make(map[string]record), localities: make(map[string]record),
-		sourceCodeLevels: make(map[string]string),
 	}
 	line := 1
 	for {
