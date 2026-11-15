@@ -674,6 +674,20 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 		t.Fatalf("promote enrollment through repository: enrollment=%+v err=%v", promoted, err)
 	}
 
+	// Enrollment history and lifecycle operations must use the actor's own
+	// school scope, even when the supplied student/enrollment IDs are valid.
+	if _, err := academicRepo.ListStudentEnrollments(ctx, actorPrincipalID, otherSchoolID, 0, apiStudentID); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("cross-school enrollment history read error = %v, want ErrAcademicAccessDenied", err)
+	}
+	if _, err := academicRepo.CreateStudentEnrollment(ctx, actorPrincipalID, otherSchoolID,
+		apiStudentID, apiYear.ID, apiSection.ID, nil, "FOREIGN-ADM-"+suffix, enrolledAt, enrolledAt); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("cross-school enrollment create error = %v, want ErrAcademicAccessDenied", err)
+	}
+	if _, err := academicRepo.PromoteStudentEnrollment(ctx, actorPrincipalID, otherSchoolID,
+		apiEnrollment.ID, nextYear.ID, nextSection.ID, nil, "FOREIGN-PROMO-"+suffix, promotedAt, promotedAt); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("cross-school enrollment promotion error = %v, want ErrAcademicAccessDenied", err)
+	}
+
 	var promotionAuditJSON []byte
 	if err := tx.QueryRow(ctx, `SELECT metadata FROM audit_events
 		WHERE action='school.student.promoted' AND actor_principal_id=$1 AND school_id=$2
