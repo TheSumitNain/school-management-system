@@ -1,6 +1,6 @@
 # Student Management — Domain and Database Design
 
-**Status:** Approved design baseline; Student Management implementation is substantially present, the latest frontend browser acceptance checkpoint passed CI; authenticated live acceptance remains outstanding, and authenticated live acceptance remains in progress  
+**Status:** Approved design baseline; core Student Management implementation and mocked browser acceptance are substantially verified in CI; authenticated live acceptance against the local API/database remains outstanding.  
 **Last reconciled:** 2026-11-15  
 **Scope:** Phase 1 School Admin student admission, profiles, academic-year enrollment, curriculum selection and related school workflows.
 
@@ -22,7 +22,7 @@ The following decisions are approved:
 
 ## 2. Audit findings in the current implementation
 
-The current `work` branch contains the approved core Student Management model and its major profile workflows. Earlier backend/frontend CI checkpoints passed; the latest frontend refetch-regression checkpoint passed CI; authenticated live acceptance remains in progress. Authenticated live acceptance remains a separate required gate.
+The current `work` branch contains the approved core Student Management model and its major profile workflows. The latest Student Management checkpoint `c215c1f52eddc947033bef630f4ecbbbaaff563f` passed Frontend CI (production build and 11 Playwright tests) and Backend CI (complete migrations, PostgreSQL integration tests and `go vet ./...`) on 2026-11-15. Browser API calls are mocked; authenticated live acceptance against the user's local API/database remains a separate required gate.
 
 | Area | Existing state | Required evolution |
 |---|---|---|
