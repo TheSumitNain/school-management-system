@@ -1,7 +1,7 @@
 # Student Management — Domain and Database Design
 
-**Status:** Approved design baseline; V31–V37 schema and first admission/profile workflows implemented, full profile still in progress  
-**Last reconciled:** 2026-11-14  
+**Status:** Approved design baseline; Student Management implementation is substantially present, automated CI is green, and authenticated live acceptance remains in progress  
+**Last reconciled:** 2026-11-15  
 **Scope:** Phase 1 School Admin student admission, profiles, academic-year enrollment, curriculum selection and related school workflows.
 
 This document defines the intended domain model and safe implementation sequence. Implementation notes below distinguish completed code paths from work still awaiting local verification or future phases. The ordered migration chain and automated tests remain authoritative for actual implementation.
@@ -280,6 +280,16 @@ Do not expose direct database-shaped updates that allow a client to change schoo
 
 A phase is complete only when code, migrations, automated tests and applicable browser acceptance pass and the actual result is recorded in Project Status.
 
+
+## 9. Student profile screen audit — 2026-11-15
+
+### Latest verification reconciliation
+
+- Frontend CI run [43708932012](https://github.com/TheSumitNain/school-management-system/actions/runs/43708932012) passed on frontend code commit `b640caed53a4ad7c2a4670719974d2d99b7a4269`; Playwright reports 8 passed, and the design-token check passed.
+- Backend CI run [43709153490](https://github.com/TheSumitNain/school-management-system/actions/runs/43709153490) passed on backend code commit `1196045794777f94d94c994b4750af865d36e84e`; the full migration chain, PostgreSQL integration suite and `go vet ./...` passed.
+- Guardian form validation now allows over-limit values to reach application validation so each field can show its explicit length error. Do not reintroduce HTML `maxLength` truncation on those fields.
+- Guardian revocation audit has one authoritative writer: the V12 database trigger, updated by V45 to add only the boolean `has_revocation_reason`. The repository must not insert a duplicate audit event. Free-text revocation reasons must remain out of audit metadata.
+- These automated checks do not complete the manual/live acceptance checklist below. Playwright uses mocked APIs; local authenticated acceptance remains pending and must respect the persistent-database approval/backup safety gate.
 
 ## 9. Student profile screen audit — 2026-11-14
 
