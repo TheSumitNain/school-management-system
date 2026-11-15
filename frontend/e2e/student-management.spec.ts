@@ -1285,7 +1285,7 @@ test("staff can create a guardian contact and link it to a student with relation
     if (path === "/auth/me") {
       await route.fulfill({ json: {
         principal_id: 105, principal_type: "staff", school_id: 10, username: "e2e-guardian-manager",
-        permissions: ["students.read_sensitive", "students.read_basic", "students.update", "guardians.read", "guardians.manage", "academic_years.read"],
+        permissions: ["students.read_sensitive", "students.read_basic", "guardians.read", "guardians.manage", "academic_years.read"],
       } });
       return;
     }
