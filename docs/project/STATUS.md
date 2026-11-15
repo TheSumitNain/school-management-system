@@ -716,5 +716,5 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 ## Inactive / archived student guardian-revocation boundary — 2026-11-15
 
 - Closed a backend authorization/business-rule gap: guardian relationship revocation now locks the owning student only when its status is `active`, matching the existing link-creation and relationship-edit rules. Direct API calls can no longer revoke a relationship belonging to an inactive or archived student merely because the frontend hides the control.
-- Added PostgreSQL integration coverage that deactivates a student, verifies relationship editing and revocation both return the not-found boundary, and confirms the guardian link remains unrevoked in history.
-- Code commits on `work`: `3ac8d275d39de264560086a67c42df62012689c8` and `7c56040a64f9ee39c04384662f3a30bd59379ac8`. Exact-commit backend CI is pending; the PostgreSQL integration test has not yet been executed in this session. No migration or persistent database changes were made.
+- Added PostgreSQL integration coverage for both inactive and archived student states: relationship editing/revocation return the not-found boundary, and the guardian link remains unrevoked in history.
+- Code commits on `work`: `3ac8d275d39de264560086a67c42df62012689c8` and `7c56040a64f9ee39c04384662f3a30bd59379ac8` and archived-state follow-up test `a8ae00df0a19b22c935ff1a2f93715f36fe0bd13`. Exact-commit backend CI is pending; the PostgreSQL integration test has not yet been executed in this session. No migration or persistent database changes were made.
