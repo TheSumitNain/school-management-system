@@ -27,6 +27,8 @@ test("student admission, profile navigation and parent details render without br
   const failedStudentReads: string[] = [];
   const observedStudentDetailGets: string[] = [];
   const guardianHistoryRequests: (string | null)[] = [];
+  let curriculumAssigned = false;
+  let savedCurriculumSelections: number[] = [];
   const guardianLink = {
     id: 501, student_id: 1, guardian_id: 22, guardian_name: "Ramesh Sharma", guardian_status: "active" as const,
     mobile_number: "9876543210", email_address: "ramesh@example.test", alternate_mobile_number: null,
@@ -194,18 +196,23 @@ test("student admission, profile navigation and parent details render without br
       if (curriculumEnrollmentMatch[2] === "curriculum" && method === "GET") {
         await route.fulfill({ json: { enrollment_curriculum: {
           enrollment_id: enrollmentID, student_id: studentID, student_status: "active", enrollment_status: "active",
-          academic_year_id: 7, class_id: 3, assigned: false, curriculum,
-          selected_optional_subject_ids: [], selection_history: [],
+          academic_year_id: 7, class_id: 3, assigned: curriculumAssigned, curriculum,
+          selected_optional_subject_ids: savedCurriculumSelections,
+          selection_history: savedCurriculumSelections.map(() => ({
+            curriculum_version: 1, subject_name: "Hindi", selected_at: "2026-11-14T00:00:00.000Z",
+          })),
         } } });
         return;
       }
       if (curriculumEnrollmentMatch[2] === "subjects" && method === "PUT") {
         const input = request.postDataJSON() as { selected_optional_subject_ids: number[] };
+        curriculumAssigned = true;
+        savedCurriculumSelections = input.selected_optional_subject_ids;
         await route.fulfill({ json: { enrollment_curriculum: {
           enrollment_id: enrollmentID, student_id: studentID, student_status: "active", enrollment_status: "active",
-          academic_year_id: 7, class_id: 3, assigned: true, curriculum,
-          selected_optional_subject_ids: input.selected_optional_subject_ids,
-          selection_history: input.selected_optional_subject_ids.map(() => ({
+          academic_year_id: 7, class_id: 3, assigned: curriculumAssigned, curriculum,
+          selected_optional_subject_ids: savedCurriculumSelections,
+          selection_history: savedCurriculumSelections.map(() => ({
             curriculum_version: 1, subject_name: "Hindi", selected_at: "2026-11-14T00:00:00.000Z",
           })),
         } } });
