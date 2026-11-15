@@ -183,6 +183,9 @@ BEGIN
     IF TG_OP = 'DELETE' THEN
         v_curriculum_id := OLD.curriculum_id;
         v_school_id := OLD.school_id;
+    ELSIF TG_OP = 'INSERT' THEN
+        v_curriculum_id := NEW.curriculum_id;
+        v_school_id := NEW.school_id;
     ELSE
         v_curriculum_id := OLD.curriculum_id;
         v_school_id := OLD.school_id;
@@ -206,11 +209,78 @@ BEGIN
 END;
 $v43$;
 CREATE TRIGGER trg_guard_v43_curriculum_groups
-BEFORE UPDATE OR DELETE ON class_curriculum_optional_groups
+BEFORE INSERT OR UPDATE OR DELETE ON class_curriculum_optional_groups
 FOR EACH ROW EXECUTE FUNCTION guard_v43_class_curriculum_child();
 CREATE TRIGGER trg_guard_v43_curriculum_subjects
-BEFORE UPDATE OR DELETE ON class_curriculum_subjects
+BEFORE INSERT OR UPDATE OR DELETE ON class_curriculum_subjects
 FOR EACH ROW EXECUTE FUNCTION guard_v43_class_curriculum_child();
+
+CREATE OR REPLACE FUNCTION validate_v43_enrollment_curriculum()
+RETURNS trigger
+LANGUAGE plpgsql AS $v43$
+DECLARE
+    v_enrollment_year BIGINT;
+    v_enrollment_class BIGINT;
+    v_enrollment_status TEXT;
+    v_student_status TEXT;
+    v_curriculum_year BIGINT;
+    v_curriculum_class BIGINT;
+    v_curriculum_status TEXT;
+BEGIN
+    SELECT e.academic_year_id, e.class_id, e.status, st.status
+      INTO v_enrollment_year, v_enrollment_class, v_enrollment_status, v_student_status
+      FROM student_enrollments e
+      JOIN students st ON st.id=e.student_id AND st.school_id=e.school_id
+     WHERE e.id=NEW.enrollment_id AND e.school_id=NEW.school_id;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'student enrollment not found for curriculum assignment';
+    END IF;
+    SELECT academic_year_id, class_id, status
+      INTO v_curriculum_year, v_curriculum_class, v_curriculum_status
+      FROM class_curricula
+     WHERE id=NEW.curriculum_id AND school_id=NEW.school_id;
+    IF NOT FOUND OR v_curriculum_status <> 'active'
+       OR v_curriculum_year <> v_enrollment_year
+       OR v_curriculum_class <> v_enrollment_class THEN
+        RAISE EXCEPTION 'curriculum does not match the active enrollment class and year';
+    END IF;
+    IF v_enrollment_status <> 'active' OR v_student_status <> 'active' THEN
+        RAISE EXCEPTION 'only active students and enrollments can receive a curriculum';
+    END IF;
+    RETURN NEW;
+END;
+$v43$;
+CREATE TRIGGER trg_validate_v43_enrollment_curriculum
+BEFORE INSERT ON student_enrollment_curricula
+FOR EACH ROW EXECUTE FUNCTION validate_v43_enrollment_curriculum();
+
+CREATE OR REPLACE FUNCTION validate_v43_enrollment_subject_selection()
+RETURNS trigger
+LANGUAGE plpgsql AS $v43$
+DECLARE
+    v_assignment_status TEXT;
+    v_is_optional BOOLEAN;
+BEGIN
+    SELECT status INTO v_assignment_status
+      FROM student_enrollment_curricula
+     WHERE id=NEW.enrollment_curriculum_id
+       AND curriculum_id=NEW.curriculum_id AND school_id=NEW.school_id;
+    IF NOT FOUND OR v_assignment_status <> 'active' THEN
+        RAISE EXCEPTION 'subject choices require an active enrollment curriculum';
+    END IF;
+    SELECT optional_group_id IS NOT NULL INTO v_is_optional
+      FROM class_curriculum_subjects
+     WHERE id=NEW.curriculum_subject_id
+       AND curriculum_id=NEW.curriculum_id AND school_id=NEW.school_id;
+    IF NOT FOUND OR NOT v_is_optional THEN
+        RAISE EXCEPTION 'only optional curriculum subjects can be selected';
+    END IF;
+    RETURN NEW;
+END;
+$v43$;
+CREATE TRIGGER trg_validate_v43_enrollment_subject_selection
+BEFORE INSERT ON student_enrollment_subject_selections
+FOR EACH ROW EXECUTE FUNCTION validate_v43_enrollment_subject_selection();
 
 CREATE OR REPLACE FUNCTION guard_v43_enrollment_curriculum_history()
 RETURNS trigger
