@@ -68,7 +68,7 @@ export function StudentBasicDetailsSection({ student, canUpdate, onStudentNameCh
       school_registration_number: item.school_registration_number ?? "",
     });
     setErrors({});
-  }, [basicDetailsSnapshot]);
+  }, [student.id, basicDetailsSnapshot]);
 
   async function saveStudentName() {
     const trimmed = fullName.trim();
