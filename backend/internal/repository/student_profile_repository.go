@@ -69,9 +69,9 @@ func (r *AcademicRepository) ListStudents(
 			SELECT e.id, e.admission_number
 			FROM student_enrollments e
 			JOIN academic_years ay
-			  ON ay.id=e.academic_year_id AND ay.school_id=e.school_id AND ay.is_current=TRUE
+			  ON ay.id=e.academic_year_id AND ay.school_id=e.school_id
 			WHERE e.school_id=st.school_id AND e.student_id=st.id
-			ORDER BY e.id DESC
+			ORDER BY (e.status='active') DESC, ay.is_current DESC, e.enrolled_at DESC, e.id DESC
 			LIMIT 1
 		) current_enrollment ON TRUE
 		WHERE st.school_id = $1
@@ -93,9 +93,9 @@ func (r *AcademicRepository) ListStudents(
 			SELECT e.id, e.admission_number
 			FROM student_enrollments e
 			JOIN academic_years ay
-			  ON ay.id=e.academic_year_id AND ay.school_id=e.school_id AND ay.is_current=TRUE
+			  ON ay.id=e.academic_year_id AND ay.school_id=e.school_id
 			WHERE e.school_id=st.school_id AND e.student_id=st.id
-			ORDER BY e.id DESC
+			ORDER BY (e.status='active') DESC, ay.is_current DESC, e.enrolled_at DESC, e.id DESC
 			LIMIT 1
 		) current_enrollment ON TRUE
 		WHERE st.school_id = $1
@@ -164,9 +164,9 @@ func (r *AcademicRepository) GetStudent(
 			SELECT e.id, e.admission_number
 			FROM student_enrollments e
 			JOIN academic_years ay
-			  ON ay.id=e.academic_year_id AND ay.school_id=e.school_id AND ay.is_current=TRUE
+			  ON ay.id=e.academic_year_id AND ay.school_id=e.school_id
 			WHERE e.school_id=st.school_id AND e.student_id=st.id
-			ORDER BY e.id DESC
+			ORDER BY (e.status='active') DESC, ay.is_current DESC, e.enrolled_at DESC, e.id DESC
 			LIMIT 1
 		) current_enrollment ON TRUE
 		WHERE st.id = $1 AND st.school_id = $2
