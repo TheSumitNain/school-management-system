@@ -609,6 +609,15 @@ test("student admission, profile navigation and parent details render without br
   await page.getByPlaceholder("e.g. 132.5").fill("132.5");
   await page.getByRole("button", { name: "Measurement date", exact: true }).click();
   await page.getByRole("button", { name: "Today" }).click();
+  await page.getByPlaceholder("Optional vision-related notes").fill("अ".repeat(1001));
+  await physicalSaveButton.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Physical save button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect(page.getByText("Use no more than 1,000 characters.")).toBeVisible();
+  expect(physicalDetails.height_cm).toBeNull();
+  await page.getByPlaceholder("Optional vision-related notes").fill("अ".repeat(1000));
   await physicalSaveButton.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
     if (!form) throw new Error("Physical save button is not associated with its form.");
