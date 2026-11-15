@@ -12,9 +12,9 @@ import (
 )
 
 // StudentProfile contains the permanent student identity and the admission
-// number presented for the current academic year. The number is sourced from
-// the current-year enrollment; a legacy student-level value is used only when
-// the student has no current-year enrollment.
+// number presented for the preferred active enrollment. The current academic
+// year is preferred; if no active current-year enrollment exists, the latest
+// active enrollment is used before falling back to legacy student-level data.
 type StudentProfile struct {
 	ID              int64     `json:"id"`
 	SchoolID        int64     `json:"school_id"`
@@ -49,7 +49,7 @@ func (r *AcademicRepository) ListStudents(
 	}
 	search = strings.TrimSpace(search)
 	status = strings.TrimSpace(strings.ToLower(status))
-	if len(search) > 100 || (status != "" && status != "active" && status != "inactive" && status != "archived") ||
+	if utf8.RuneCountInString(search) > 100 || (status != "" && status != "active" && status != "inactive" && status != "archived") ||
 		limit < 1 || limit > 100 || offset < 0 {
 		return nil, 0, ErrInvalidAcademicInput
 	}
