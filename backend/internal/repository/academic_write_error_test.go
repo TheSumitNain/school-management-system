@@ -26,3 +26,13 @@ func TestAcademicWriteErrorKeepsOtherUniqueConflictsGeneric(t *testing.T) {
 		t.Fatal("non-admission unique constraint was incorrectly classified as an admission-number conflict")
 	}
 }
+
+func TestAcademicWriteErrorIdentifiesActiveRollConstraint(t *testing.T) {
+	err := &pgconn.PgError{
+		Code: "23505",
+		ConstraintName: "ux_student_enrollments_active_roll",
+	}
+	if got := academicWriteError(err); !errors.Is(got, ErrAcademicRollNumberConflict) {
+		t.Fatalf("academicWriteError() = %v, want active roll-number conflict", got)
+	}
+}
