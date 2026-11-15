@@ -1243,6 +1243,8 @@ test("student archive confirmation keeps the record on conflict and refreshes st
   await expect(familyDialog).toBeVisible();
   await expect(page.getByText("Archived Student Guardian", { exact: true })).toBeVisible();
   await expect(page.getByText("Mother · Primary contact · Emergency contact")).toBeVisible();
+  await expect(page.getByText("9876500920 · guardian@example.test", { exact: true })).toBeVisible();
+  await expect(page.getByText("Teacher · Graduate · Local School", { exact: true })).toBeVisible();
   await expect(page.getByText("View-only access. Guardian management permission is required to create, link or revoke guardian records.")).toBeVisible();
   await expect(familyDialog.getByRole("button", { name: "Edit relationship" })).toHaveCount(0);
   await expect(familyDialog.getByRole("button", { name: "Edit shared guardian details" })).toHaveCount(0);
