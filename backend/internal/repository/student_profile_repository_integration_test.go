@@ -187,6 +187,12 @@ func TestStudentProfileRepositoryPostgresIntegration(t *testing.T) {
 	// Address reads must return every saved hierarchy level, including names
 	// needed to display a previously selected location after deactivation.
 	stateName := strings.Repeat("ह", 120)
+	if _, err := repo.CreateStudentLocation(ctx, actorID, schoolID, nil, "é", "state", "Invalid Unicode Country Code", nil); !errors.Is(err, ErrInvalidAcademicInput) {
+		t.Fatalf("create state with non-ASCII two-byte country code error = %v, want invalid input", err)
+	}
+	if _, err := repo.CreateStudentLocation(ctx, actorID, schoolID, nil, "1!", "state", "Invalid Country Code", nil); !errors.Is(err, ErrInvalidAcademicInput) {
+		t.Fatalf("create state with non-letter country code error = %v, want invalid input", err)
+	}
 	state, err := repo.CreateStudentLocation(ctx, actorID, schoolID, nil, "IN", "state", stateName, nil)
 	if err != nil { t.Fatalf("create address state: %v", err) }
 	if _, err := repo.CreateStudentLocation(ctx, actorID, schoolID, nil, "IN", "state", strings.Repeat("ह", 121), nil); !errors.Is(err, ErrInvalidAcademicInput) {
