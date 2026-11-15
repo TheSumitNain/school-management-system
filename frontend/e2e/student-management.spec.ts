@@ -14,7 +14,7 @@ const academicYear = { id: 7, name: "2026–2027", starts_on: "2026-04-01", ends
 const section = { id: 12, academic_year_id: 7, class_id: 3, class_name: "Class 1", name: "A", is_active: true };
 
 test("student admission, profile navigation and parent details render without browser errors", async ({ page }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(60_000);
   const browserErrors: string[] = [];
   page.on("pageerror", error => browserErrors.push(error.message));
 
@@ -528,12 +528,11 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByText("Place of birth must be 120 characters or fewer.", { exact: true })).toBeVisible();
   expect(basicDetails.place_of_birth).toBeNull();
   await page.getByPlaceholder("City, district or place").fill("Ambala, Haryana");
-  await page.waitForTimeout(15_100);
   const basicReadsBeforeFocus = observedStudentDetailGets.filter(item => item === "basic-details").length;
-  await page.bringToFront();
-  await page.evaluate(() => {
-    document.dispatchEvent(new Event("visibilitychange"));
-    window.dispatchEvent(new Event("focus"));
+  await page.evaluate(async () => {
+    const moduleUrl = new URL("/src/app/providers.tsx", window.location.origin).href;
+    const { queryClient } = await import(moduleUrl);
+    await queryClient.invalidateQueries({ queryKey: ["school-admin", "students"] });
   });
   await expect.poll(() => observedStudentDetailGets.filter(item => item === "basic-details").length).toBeGreaterThan(basicReadsBeforeFocus);
   await expect(page.getByPlaceholder("City, district or place")).toHaveValue("Ambala, Haryana");
@@ -595,12 +594,11 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("button", { name: "Edit relationship" }).click();
   await page.getByPlaceholder("Father, Mother, Legal Guardian…").fill("Legal Guardian");
   const relationshipForm = page.locator(".student-family-create-form").filter({ has: page.getByRole("heading", { name: "Edit relationship for this student" }) });
-  await page.waitForTimeout(15_100);
   const guardianReadsBeforeFocus = guardianHistoryRequests.length;
-  await page.bringToFront();
-  await page.evaluate(() => {
-    document.dispatchEvent(new Event("visibilitychange"));
-    window.dispatchEvent(new Event("focus"));
+  await page.evaluate(async () => {
+    const moduleUrl = new URL("/src/app/providers.tsx", window.location.origin).href;
+    const { queryClient } = await import(moduleUrl);
+    await queryClient.invalidateQueries({ queryKey: ["school-admin", "guardians"] });
   });
   await expect.poll(() => guardianHistoryRequests.length).toBeGreaterThan(guardianReadsBeforeFocus);
   await expect(relationshipForm.getByPlaceholder("Father, Mother, Legal Guardian…")).toHaveValue("Legal Guardian");
@@ -730,12 +728,11 @@ test("student admission, profile navigation and parent details render without br
   await page.getByLabel("Search villages / cities").fill("Naraingarh");
   await page.getByRole("button", { name: "Village or City", exact: true }).click();
   await page.getByRole("option", { name: /Naraingarh/ }).click();
-  await page.waitForTimeout(15_100);
   const addressReadsBeforeFocus = observedStudentDetailGets.filter(item => item === "addresses").length;
-  await page.bringToFront();
-  await page.evaluate(() => {
-    document.dispatchEvent(new Event("visibilitychange"));
-    window.dispatchEvent(new Event("focus"));
+  await page.evaluate(async () => {
+    const moduleUrl = new URL("/src/app/providers.tsx", window.location.origin).href;
+    const { queryClient } = await import(moduleUrl);
+    await queryClient.invalidateQueries({ queryKey: ["school-admin", "students"] });
   });
   await expect.poll(() => observedStudentDetailGets.filter(item => item === "addresses").length).toBeGreaterThan(addressReadsBeforeFocus);
   await expect(page.getByPlaceholder("House number, street or building")).toHaveValue("House 12, Main Road");
@@ -793,12 +790,11 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByText("Enter a valid email address.", { exact: true })).toBeVisible();
   expect(contactDetails.primary_phone).toBeNull();
   await page.getByPlaceholder("student@example.com").fill("student@example.test");
-  await page.waitForTimeout(15_100);
   const contactReadsBeforeFocus = observedStudentDetailGets.filter(item => item === "contact-details").length;
-  await page.bringToFront();
-  await page.evaluate(() => {
-    document.dispatchEvent(new Event("visibilitychange"));
-    window.dispatchEvent(new Event("focus"));
+  await page.evaluate(async () => {
+    const moduleUrl = new URL("/src/app/providers.tsx", window.location.origin).href;
+    const { queryClient } = await import(moduleUrl);
+    await queryClient.invalidateQueries({ queryKey: ["school-admin", "students"] });
   });
   await expect.poll(() => observedStudentDetailGets.filter(item => item === "contact-details").length).toBeGreaterThan(contactReadsBeforeFocus);
   await expect(page.getByPlaceholder("Primary contact number")).toHaveValue("9876501234");
@@ -829,9 +825,10 @@ test("student admission, profile navigation and parent details render without br
   await page.getByPlaceholder("Record known allergies, if any").fill(medicalDraft);
   const medicalReadsBeforeFocus = medicalDetailReads;
   await page.bringToFront();
-  await page.evaluate(() => {
-    document.dispatchEvent(new Event("visibilitychange"));
-    window.dispatchEvent(new Event("focus"));
+  await page.evaluate(async () => {
+    const moduleUrl = new URL("/src/app/providers.tsx", window.location.origin).href;
+    const { queryClient } = await import(moduleUrl);
+    await queryClient.invalidateQueries({ queryKey: ["school-admin", "students"] });
   });
   await expect.poll(() => medicalDetailReads).toBeGreaterThan(medicalReadsBeforeFocus);
   await expect(page.getByPlaceholder("Record known allergies, if any")).toHaveValue(medicalDraft);
@@ -863,9 +860,10 @@ test("student admission, profile navigation and parent details render without br
   await page.getByPlaceholder("Optional vision-related notes").fill(physicalDraft);
   const physicalReadsBeforeFocus = physicalDetailReads;
   await page.bringToFront();
-  await page.evaluate(() => {
-    document.dispatchEvent(new Event("visibilitychange"));
-    window.dispatchEvent(new Event("focus"));
+  await page.evaluate(async () => {
+    const moduleUrl = new URL("/src/app/providers.tsx", window.location.origin).href;
+    const { queryClient } = await import(moduleUrl);
+    await queryClient.invalidateQueries({ queryKey: ["school-admin", "students"] });
   });
   await expect.poll(() => physicalDetailReads).toBeGreaterThan(physicalReadsBeforeFocus);
   await expect(page.getByPlaceholder("Optional vision-related notes")).toHaveValue(physicalDraft);
