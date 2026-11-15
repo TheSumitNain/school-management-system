@@ -747,7 +747,9 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Added database guards for immutable curriculum identity, no curriculum-child edits after assignment, active-student/active-enrollment assignment, optional-only subject selection, and history-preserving replacement/revocation.
 - Added repository workflows to list/save class curriculum versions, read enrollment curriculum and subject history, and validate/save optional choices transactionally with school scoping, live permission checks and audit events.
 - Added service methods, HTTP handlers and routes: `GET/POST /school/class-curricula`, `GET /school/enrollments/:enrollmentID/curriculum`, and `PUT /school/enrollments/:enrollmentID/subjects`.
-- Not yet complete: frontend curriculum setup and per-enrollment choice UI, PostgreSQL integration tests for V43, route/permission tests, migration execution and CI verification. Do not mark curriculum/subject selection complete until these pass.
+- Added student-profile enrollment UI to display compulsory subjects, optional groups, selection limits, saved choices and previous choice history; active students/enrollments with both `students.update` and `subjects.read` can save choices. Inactive records remain view-only.
+- Added route permission-gate tests for curriculum setup/read and enrollment subject-choice endpoints.
+- Not yet complete: curriculum setup UI, PostgreSQL integration tests for V43, migration execution against the full chain and successful exact-commit CI. Do not mark curriculum/subject selection complete until these pass.
 
 ## Remaining approved Student Management scope — curriculum and subject selection
 
