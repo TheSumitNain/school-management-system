@@ -22,7 +22,7 @@ The following decisions are approved:
 
 ## 2. Audit findings in the current implementation
 
-The current `work` branch contains the approved core Student Management model and its major profile workflows. The latest Student Management checkpoint `c215c1f52eddc947033bef630f4ecbbbaaff563f` passed Frontend CI (production build and 11 Playwright tests) and Backend CI (complete migrations, PostgreSQL integration tests and `go vet ./...`) on 2026-11-15. Browser API calls are mocked; authenticated live acceptance against the user's local API/database remains a separate required gate.
+The current `work` branch contains the approved core Student Management model and its major profile workflows. The latest Student Management checkpoint `cdfb455ec2aa4451d8a94f421ea022ed23cece09` passed Frontend CI (production build and all 11 Playwright tests) and Backend CI (complete migrations, PostgreSQL integration tests and `go vet ./...`) on 2026-11-15. Browser acceptance now covers full browser reload of Parent Details and shared guardian profile propagation across two linked students while preserving per-student relationship flags. Browser API calls are mocked; authenticated live acceptance against the user's local API/database remains a separate required gate.
 
 | Area | Existing state | Required evolution |
 |---|---|---|
