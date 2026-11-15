@@ -84,6 +84,57 @@ func TestStudentCurriculumV44PostgresIntegration(t *testing.T) {
 		t.Fatalf("save optional subject choice: %v", err)
 	}
 
+	// Give the integration actor the production School Admin grant so the
+	// read path is exercised with both students.read_basic and subjects.read.
+	var schoolAdminRoleID int64
+	if err := tx.QueryRow(ctx, `
+		SELECT id FROM roles
+		 WHERE school_id=$1 AND principal_type='staff'
+		   AND scope_type='school' AND role_key='school_admin' AND is_system=TRUE
+	`, schoolID).Scan(&schoolAdminRoleID); err != nil {
+		t.Fatalf("load system School Admin role: %v", err)
+	}
+	var platformAdminPrincipalID int64
+	err = tx.QueryRow(ctx, `
+		SELECT ap.id
+		  FROM platform_admin_accounts pa
+		  JOIN auth_principals ap ON ap.id=pa.principal_id
+		  JOIN principal_roles pr ON pr.principal_id=ap.id AND pr.revoked_at IS NULL
+		  JOIN roles r ON r.id=pr.role_id
+		  JOIN role_permissions rp ON rp.role_id=r.id
+		  JOIN permissions p ON p.id=rp.permission_id
+		 WHERE ap.principal_type='platform_admin' AND ap.status='active'
+		   AND r.role_key='platform_admin' AND r.scope_type='platform' AND r.is_system=TRUE
+		   AND p.permission_key='platform.permissions.delegate' AND p.scope_type='platform' AND p.is_active=TRUE
+		 LIMIT 1
+	`).Scan(&platformAdminPrincipalID)
+	if err != nil {
+		var bootstrapExists bool
+		if checkErr := tx.QueryRow(ctx, `
+			SELECT EXISTS(SELECT 1 FROM platform_admin_accounts)
+			    OR EXISTS(SELECT 1 FROM principal_roles pr JOIN roles r ON r.id=pr.role_id
+			              WHERE r.principal_type='platform_admin' AND r.scope_type='platform'
+			                AND r.role_key='platform_admin')
+		`).Scan(&bootstrapExists); checkErr != nil {
+			t.Fatalf("check Platform Admin bootstrap state: %v", checkErr)
+		}
+		if bootstrapExists {
+			t.Skip("Platform Admin bootstrap exists but no active administrator has platform.permissions.delegate")
+		}
+		platformAdminPrincipalID, err = NewPlatformAdminRepository(pool).bootstrapFirstInTx(
+			ctx, tx, fmt.Sprintf("curriculum-v44-%s@example.invalid", suffix), "integration-test-password-hash",
+		)
+		if err != nil {
+			t.Fatalf("create rollback-scoped Platform Admin fixture: %v", err)
+		}
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO principal_roles(principal_id,role_id,assigned_by)
+		VALUES($1,$2,$3)
+	`, actorPrincipalID, schoolAdminRoleID, platformAdminPrincipalID); err != nil {
+		t.Fatalf("grant School Admin role to fixture actor: %v", err)
+	}
+
 	academicRepo := &AcademicRepository{db: tx}
 	curriculumView, err := academicRepo.GetStudentEnrollmentCurriculum(ctx, actorPrincipalID, schoolID, enrollmentID)
 	if err != nil {
