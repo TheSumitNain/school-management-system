@@ -316,8 +316,8 @@ test("student admission, profile navigation and parent details render without br
     form.requestSubmit(button as HTMLButtonElement);
   });
   await expect(page.getByText("Student name must be 200 characters or fewer.")).toBeVisible();
-  await expect(page.getByText("Admission number must be 50 characters or fewer.")).toBeVisible();
-  await expect(page.getByText("Roll number must be 30 characters or fewer.")).toBeVisible();
+  await expect(page.getByText("Admission number must be 50 characters or fewer.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Roll number must be 30 characters or fewer.", { exact: true })).toBeVisible();
   expect(createdAdmissions).toHaveLength(0);
   await page.getByPlaceholder("e.g. Aarav Sharma").fill("Aarav Sharma");
   await page.getByPlaceholder("e.g. ADM-2026-001").fill("ADM-E2E-001");
@@ -401,7 +401,7 @@ test("student admission, profile navigation and parent details render without br
     if (!form) throw new Error("Basic details save button is not associated with its form.");
     form.requestSubmit(button as HTMLButtonElement);
   });
-  await expect(page.getByText("Place of birth must be 120 characters or fewer.")).toBeVisible();
+  await expect(page.getByText("Place of birth must be 120 characters or fewer.", { exact: true })).toBeVisible();
   expect(basicDetails.place_of_birth).toBeNull();
   await page.getByPlaceholder("City, district or place").fill("Ambala, Haryana");
   await page.getByPlaceholder("e.g. Indian").fill("Indian");
@@ -489,7 +489,7 @@ test("student admission, profile navigation and parent details render without br
   await expect(revokeDialog.getByText("A reason is required to revoke this relationship.")).toBeVisible();
   await revokeDialog.getByPlaceholder("Explain why this link is being revoked").fill("अ".repeat(501));
   await revokeDialog.getByRole("button", { name: "Confirm revoke" }).click();
-  await expect(revokeDialog.getByText("Reason must be 500 characters or fewer.")).toBeVisible();
+  await expect(revokeDialog.getByText("Reason must be 500 characters or fewer.", { exact: true })).toBeVisible();
   expect(guardianLink.revoked_at).toBeNull();
   await revokeDialog.getByPlaceholder("Explain why this link is being revoked").fill("Family requested removal of this contact link.");
   await revokeDialog.getByRole("button", { name: "Confirm revoke" }).click();
@@ -535,11 +535,11 @@ test("student admission, profile navigation and parent details render without br
     if (!form) throw new Error("Address save button is not associated with its form.");
     form.requestSubmit(button as HTMLButtonElement);
   });
-  await expect(page.getByText("House / street must be 200 characters or fewer.")).toBeVisible();
-  await expect(page.getByText("Address line 2 must be 200 characters or fewer.")).toBeVisible();
-  await expect(page.getByText("Area / mohalla must be 120 characters or fewer.")).toBeVisible();
-  await expect(page.getByText("Landmark must be 120 characters or fewer.")).toBeVisible();
-  await expect(page.getByText("PIN / postal code must be 20 characters or fewer.")).toBeVisible();
+  await expect(page.getByText("House / street must be 200 characters or fewer.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Address line 2 must be 200 characters or fewer.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Area / mohalla must be 120 characters or fewer.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Landmark must be 120 characters or fewer.", { exact: true })).toBeVisible();
+  await expect(page.getByText("PIN / postal code must be 20 characters or fewer.", { exact: true })).toBeVisible();
   expect(addresses).toHaveLength(0);
   await page.getByPlaceholder("House number, street or building").fill("House 12, Main Road");
   await page.getByPlaceholder("Apartment, floor or additional details").fill("");
@@ -606,7 +606,7 @@ test("student admission, profile navigation and parent details render without br
     form.requestSubmit(button as HTMLButtonElement);
   });
   await expect(page.getByText("Phone number must be 30 characters or fewer.")).toHaveCount(2);
-  await expect(page.getByText("Email address must be 254 characters or fewer.")).toBeVisible();
+  await expect(page.getByText("Email address must be 254 characters or fewer.", { exact: true })).toBeVisible();
   expect(contactDetails.primary_phone).toBeNull();
   await page.getByPlaceholder("Primary contact number").fill("9876501234");
   await page.getByPlaceholder("Alternate contact number").fill("");
@@ -909,7 +909,7 @@ test("student promotion validates required fields and preserves prior enrollment
     if (!form) throw new Error("Promotion submit button is not associated with its form.");
     form.requestSubmit(button as HTMLButtonElement);
   });
-  await expect(dialog.getByText("Admission number must be 50 characters or fewer.")).toBeVisible();
+  await expect(dialog.getByText("Admission number must be 50 characters or fewer.", { exact: true })).toBeVisible();
   await dialog.getByPlaceholder("e.g. ADM-2027-001").fill("ADM-2026-091");
   await dialog.getByPlaceholder("Leave blank for automatic assignment").fill("अ".repeat(31));
   await promoteButton.evaluate(button => {
@@ -917,7 +917,7 @@ test("student promotion validates required fields and preserves prior enrollment
     if (!form) throw new Error("Promotion submit button is not associated with its form.");
     form.requestSubmit(button as HTMLButtonElement);
   });
-  await expect(dialog.getByText("Roll number must be 30 characters or fewer.")).toBeVisible();
+  await expect(dialog.getByText("Roll number must be 30 characters or fewer.", { exact: true })).toBeVisible();
   await dialog.getByPlaceholder("Leave blank for automatic assignment").fill("");
   await promoteButton.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
@@ -1124,13 +1124,13 @@ test("staff can create a guardian contact and link it to a student with relation
   await page.getByPlaceholder("Highest education (optional)").fill("अ".repeat(121));
   await page.getByPlaceholder("Organization name (optional)").fill("अ".repeat(161));
   await page.getByRole("button", { name: "Save guardian contact" }).click();
-  await expect(page.getByText("Guardian name must be 200 characters or fewer.")).toBeVisible();
-  await expect(page.getByText("Mobile number must be 30 characters or fewer.")).toBeVisible();
-  await expect(page.getByText("Email address must be 254 characters or fewer.")).toBeVisible();
-  await expect(page.getByText("Alternate mobile number must be 30 characters or fewer.")).toBeVisible();
-  await expect(page.getByText("Occupation must be 120 characters or fewer.")).toBeVisible();
-  await expect(page.getByText("Education must be 120 characters or fewer.")).toBeVisible();
-  await expect(page.getByText("Workplace must be 160 characters or fewer.")).toBeVisible();
+  await expect(page.getByText("Guardian name must be 200 characters or fewer.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Mobile number must be 30 characters or fewer.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Email address must be 254 characters or fewer.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Alternate mobile number must be 30 characters or fewer.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Occupation must be 120 characters or fewer.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Education must be 120 characters or fewer.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Workplace must be 160 characters or fewer.", { exact: true })).toBeVisible();
   expect(guardianCreates).toHaveLength(0);
 
   await page.getByPlaceholder("Guardian full name").fill("Nisha Verma");
@@ -1155,7 +1155,7 @@ test("staff can create a guardian contact and link it to a student with relation
 
   await page.getByPlaceholder("Father, Mother, Guardian…").fill("अ".repeat(41));
   await page.getByRole("button", { name: "Link guardian", exact: true }).click();
-  await expect(page.getByText("Relationship must be 40 characters or fewer.")).toBeVisible();
+  await expect(page.getByText("Relationship must be 40 characters or fewer.", { exact: true })).toBeVisible();
   expect(guardianLinks).toHaveLength(0);
   await page.getByPlaceholder("Father, Mother, Guardian…").fill("Mother");
   await page.getByRole("checkbox", { name: /Primary contact/ }).check();
