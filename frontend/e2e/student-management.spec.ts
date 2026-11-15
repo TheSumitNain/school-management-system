@@ -455,6 +455,10 @@ test("student admission, profile navigation and parent details render without br
   await expect(revokeDialog).toBeVisible();
   await revokeDialog.getByRole("button", { name: "Confirm revoke" }).click();
   await expect(revokeDialog.getByText("A reason is required to revoke this relationship.")).toBeVisible();
+  await revokeDialog.getByPlaceholder("Explain why this link is being revoked").fill("अ".repeat(501));
+  await revokeDialog.getByRole("button", { name: "Confirm revoke" }).click();
+  await expect(revokeDialog.getByText("Reason must be 500 characters or fewer.")).toBeVisible();
+  expect(guardianLink.revoked_at).toBeNull();
   await revokeDialog.getByPlaceholder("Explain why this link is being revoked").fill("Family requested removal of this contact link.");
   await revokeDialog.getByRole("button", { name: "Confirm revoke" }).click();
   await expect.poll(() => guardianLink.revoked_at).toBe("2026-11-14T12:00:00.000Z");
@@ -835,7 +839,22 @@ test("student promotion validates required fields and preserves prior enrollment
   });
   await expect(dialog.getByText("Enter the admission number for the destination year.")).toBeVisible();
 
+  await dialog.getByPlaceholder("e.g. ADM-2027-001").fill("अ".repeat(51));
+  await promoteButton.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Promotion submit button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect(dialog.getByText("Admission number must be 50 characters or fewer.")).toBeVisible();
   await dialog.getByPlaceholder("e.g. ADM-2027-001").fill("ADM-2026-091");
+  await dialog.getByPlaceholder("Leave blank for automatic assignment").fill("अ".repeat(31));
+  await promoteButton.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Promotion submit button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect(dialog.getByText("Roll number must be 30 characters or fewer.")).toBeVisible();
+  await dialog.getByPlaceholder("Leave blank for automatic assignment").fill("");
   await promoteButton.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
     if (!form) throw new Error("Promotion submit button is not associated with its form.");
