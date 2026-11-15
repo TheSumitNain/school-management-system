@@ -31,6 +31,10 @@ type AcademicManagementService interface {
 	CreateClassInchargeAssignment(context.Context,int64,int64,int64,int64,int64)(*repository.ClassInchargeAssignment,error)
 	RevokeClassInchargeAssignment(context.Context,int64,int64,int64)error
 	ListStudentEnrollments(context.Context,int64,int64,int64,int64)([]repository.StudentEnrollment,error)
+	ListClassCurricula(context.Context,int64,int64,int64,int64)([]repository.ClassCurriculum,error)
+	SaveClassCurriculum(context.Context,int64,int64,int64,int64,[]repository.CurriculumOptionalGroupInput,[]repository.CurriculumSubjectInput)(*repository.ClassCurriculum,error)
+	GetStudentEnrollmentCurriculum(context.Context,int64,int64,int64)(*repository.StudentEnrollmentCurriculum,error)
+	SaveStudentEnrollmentSubjects(context.Context,int64,int64,int64,int64,[]int64)(*repository.StudentEnrollmentCurriculum,error)
 	CreateStudentEnrollment(context.Context,int64,int64,int64,int64,int64,*string,string,time.Time,time.Time)(*repository.StudentEnrollment,error)
 	PromoteStudentEnrollment(context.Context,int64,int64,int64,int64,int64,*string,string,time.Time,time.Time)(*repository.StudentEnrollment,error)
 	CreateStudentAdmission(context.Context,int64,int64,string,string,int64,int64,*string,time.Time)(*repository.StudentAdmissionResult,error)
@@ -560,4 +564,49 @@ func (h *AcademicHandler) ArchiveStudent(c *gin.Context) {
 	item, err := h.service.ArchiveStudent(c.Request.Context(), actor, school, studentID)
 	if err != nil { academicError(c, err, "Student"); return }
 	c.JSON(http.StatusOK, gin.H{"status":"success","student":item})
+}
+
+func (h *AcademicHandler) ListClassCurricula(c *gin.Context) {
+	actor, school, ok := h.ready(c); if !ok { return }
+	yearID, valid := queryPositiveID(c, "academic_year_id")
+	if !valid || yearID == 0 { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Valid academic_year_id is required"}); return }
+	classID, valid := queryPositiveID(c, "class_id")
+	if !valid || classID == 0 { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Valid class_id is required"}); return }
+	items, err := h.service.ListClassCurricula(c.Request.Context(), actor, school, yearID, classID)
+	if err != nil { academicError(c, err, "Class curriculum"); return }
+	c.JSON(http.StatusOK, gin.H{"status":"success","curricula":items})
+}
+func (h *AcademicHandler) SaveClassCurriculum(c *gin.Context) {
+	actor, school, ok := h.ready(c); if !ok { return }
+	var req struct {
+		AcademicYearID int64 `json:"academic_year_id"`
+		ClassID int64 `json:"class_id"`
+		Groups []repository.CurriculumOptionalGroupInput `json:"optional_groups"`
+		Subjects []repository.CurriculumSubjectInput `json:"subjects"`
+	}
+	if c.ShouldBindJSON(&req) != nil { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid request body"}); return }
+	item, err := h.service.SaveClassCurriculum(c.Request.Context(), actor, school, req.AcademicYearID, req.ClassID, req.Groups, req.Subjects)
+	if err != nil { academicError(c, err, "Class curriculum"); return }
+	c.JSON(http.StatusCreated, gin.H{"status":"success","curriculum":item})
+}
+func (h *AcademicHandler) GetStudentEnrollmentCurriculum(c *gin.Context) {
+	actor, school, ok := h.ready(c); if !ok { return }
+	enrollmentID, valid := academicID(c, "enrollmentID")
+	if !valid { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid enrollment ID"}); return }
+	item, err := h.service.GetStudentEnrollmentCurriculum(c.Request.Context(), actor, school, enrollmentID)
+	if err != nil { academicError(c, err, "Student enrollment curriculum"); return }
+	c.JSON(http.StatusOK, gin.H{"status":"success","enrollment_curriculum":item})
+}
+func (h *AcademicHandler) SaveStudentEnrollmentSubjects(c *gin.Context) {
+	actor, school, ok := h.ready(c); if !ok { return }
+	enrollmentID, valid := academicID(c, "enrollmentID")
+	if !valid { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid enrollment ID"}); return }
+	var req struct {
+		CurriculumID int64 `json:"curriculum_id"`
+		SelectedOptionalSubjectIDs []int64 `json:"selected_optional_subject_ids"`
+	}
+	if c.ShouldBindJSON(&req) != nil { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid request body"}); return }
+	item, err := h.service.SaveStudentEnrollmentSubjects(c.Request.Context(), actor, school, enrollmentID, req.CurriculumID, req.SelectedOptionalSubjectIDs)
+	if err != nil { academicError(c, err, "Student subject selection"); return }
+	c.JSON(http.StatusOK, gin.H{"status":"success","enrollment_curriculum":item})
 }
