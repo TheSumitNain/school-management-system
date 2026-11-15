@@ -370,3 +370,6 @@ Apply this standard consistently to initial admission, returning enrollment, pro
 - Shared student profile text normalization has unit coverage for nil/blank inputs, whitespace trimming, exact Hindi Unicode-code-point limits and over-limit rejection. This helper is used by Basic Details, Address, Contact and Health persistence.
 - Student Contact Details PostgreSQL integration now asserts that a 31-code-point phone value and an email containing a display name are rejected as invalid input before any database write.
 - Backend CI [run 43712579620](https://github.com/TheSumitNain/school-management-system/actions/runs/43712579620) passed the full migration chain, PostgreSQL integration suite and `go vet ./...` on test commit `5a031c694f839338d4e766f5f6a72fcaf525dbea`.
+
+
+- Follow-up browser coverage explicitly edits the shared guardian's full name, checks the 200-character Unicode boundary, saves the change and verifies it after reopening Parent Details. Frontend CI is pending on test commit `bc869769b2a22e43548266f4ea6bcfabea449c4a`.
