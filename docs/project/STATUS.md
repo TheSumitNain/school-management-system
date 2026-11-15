@@ -95,6 +95,7 @@ Student profile/basic details; address and contact; Parent/Guardian create/edit/
 - Record exact live acceptance results and any remaining defect; only then mark Student Management complete.
 - Background-refetch draft preservation is already covered by the mocked Playwright journey for basic details, Parent Details, address, contact, medical, physical, and enrollment curriculum/subject choices; it is not a substitute for authenticated live acceptance.
 - Current Playwright acceptance tests use mocked APIs; passing CI does not replace live authenticated acceptance.
+- Location master-data follow-up remains: V40 seeds the 36 State/UT names from IGOD, V42 preserves source-reference history, and `backend/cmd/lgdvalidate` is deliberately read-only. The all-India district/sub-district/village LGD snapshot has not been imported. Next data task is to obtain an untouched official LGD export, document its exact headers/field crosswalk (including separate Development Block relationships), run the validator in dry-run mode, review counts/duplicates/parentage, and only then design a separately approved import. Do not use third-party derived datasets as the authoritative source or write location data to the persistent DB during preparation.
 - Persistent database migration/acceptance writes are approval-gated. Do not touch the user's persistent `school_management` database without explicit approval and a verified restorable backup.
 
 ### Work-session rule
