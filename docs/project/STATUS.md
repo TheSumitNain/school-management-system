@@ -570,3 +570,12 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Student contact phone length validation now counts Unicode code points, matching the backend's PostgreSQL character-limit semantics.
 - Removed browser-native UTF-16 `maxLength` caps from student phone/email, address text, postal code and school-added location-name inputs. These controls no longer reject otherwise valid Unicode input based on UTF-16 code-unit counts; server-side validation remains authoritative.
 - This change does not modify database schemas or persistent data. Exact-tip CI and authenticated browser acceptance are still required; no CI PASS is claimed here.
+
+
+## Student health text validation consistency — 2026-11-15
+
+- Removed browser-native UTF-16 maxLength enforcement from medical and physical note fields. The backend already enforces the corresponding 2,000-character and 1,000-character limits using the shared Unicode-aware repository text normalizer.
+- Added frontend code-point validation for all medical notes, vision notes and physical notes. Every over-limit field now receives its own inline error and accessible description; errors clear as the user edits the affected field.
+- Extended the mocked Student Management browser journey to verify that 2,001 Hindi characters are rejected and 2,000 accepted for a medical note, and that 1,001 Hindi characters are rejected and 1,000 accepted for vision notes. These are frontend interaction checks, not live database persistence tests.
+- Updated the Student Management design standard so the Unicode code-point rule and prohibition on UTF-16-based native caps apply to health fields as well as identity, address, contact and guardian fields.
+- No schema, migration, local database or persistent school data was changed. Exact-tip CI and authenticated browser acceptance against a real API/database remain unverified.
