@@ -13,11 +13,11 @@
 
 ### Latest verified code and CI
 
-- Active branch: `work`; latest code/test checkpoint is `b6d14c6ed4030724857838ef8cebc131041219ae`; subsequent commits reconcile documentation and remove obsolete repository clutter.
+- Active branch: `work`; latest **verified** code/test checkpoint is `b6d14c6ed4030724857838ef8cebc131041219ae`. Newer cross-student browser-test code is at `c215c1f52eddc947033bef630f4ecbbbaaff563f` and remains unverified pending an observable Frontend CI result.
 - Latest Student Management browser/test checkpoint: `b6d14c6ed4030724857838ef8cebc131041219ae`. Frontend CI **PASS** — [run 43716057611](https://github.com/TheSumitNain/school-management-system/actions/runs/43716057611): production build and all 10 Playwright tests passed, including guardian profile field validation/edit/save/reload, per-student relationship flags, and cross-student Basic Details + Parent Details draft/error isolation.
 - Backend CI **PASS** on the same full-repository checkpoint — [run 43716057614](https://github.com/TheSumitNain/school-management-system/actions/runs/43716057614): complete migration chain, PostgreSQL integration suite and `go vet ./...`.
 - Earlier frontend implementation fixes include guardian form validation, student-specific state reset, enrollment curriculum identity, Basic Details empty-state cleanup, Address/Health transient-state cleanup and shared profile feedback handling. The latest green checkpoint includes these commits.
-- Background-refetch draft preservation is covered for Basic Details, Parent Details, Address, Contact, Medical, Physical and enrollment subject choices. Cross-student browser journeys currently explicitly cover Basic Details and Parent Details; Address/Contact/Medical/Physical cross-student browser journeys remain an additional acceptance gap.
+- Background-refetch draft preservation is covered for Basic Details, Parent Details, Address, Contact, Medical, Physical and enrollment subject choices. Cross-student browser journeys for Basic Details and Parent Details are CI-verified; a combined Address/Contact/Medical/Physical cross-student journey has now been added at `c215c1f52eddc947033bef630f4ecbbbaaff563f` and remains pending CI verification.
 - Authenticated live acceptance remains pending. CI uses mocked browser APIs and an ephemeral PostgreSQL database; it does not verify the user's local API/database.
 
 ### Student profile state isolation correction (2026-11-15)
