@@ -238,7 +238,7 @@ func (r *AcademicRepository) UpdateStudent(
 		return nil, ErrAcademicAccessDenied
 	}
 	fullName = strings.TrimSpace(fullName)
-	if studentID <= 0 || fullName == "" || len(fullName) > 200 {
+	if studentID <= 0 || fullName == "" || utf8.RuneCountInString(fullName) > 200 {
 		return nil, ErrInvalidAcademicInput
 	}
 	tx, err := r.db.Begin(ctx)
