@@ -202,7 +202,7 @@ export type ClassCurriculum = {
 };
 export type StudentEnrollmentCurriculum = {
   enrollment_id: number; student_id: number; student_status: string; enrollment_status: string;
-  academic_year_id: number; class_id: number; curriculum?: ClassCurriculum | null; assigned: boolean;
+  academic_year_id: number; class_id: number; curriculum?: ClassCurriculum | null; available_curriculum?: ClassCurriculum | null; assigned: boolean;
   selected_optional_subject_ids: number[];
   selection_history: Array<{ curriculum_version: number; subject_name: string; subject_code?: string | null; selected_at: string; revoked_at?: string | null }>;
 };
