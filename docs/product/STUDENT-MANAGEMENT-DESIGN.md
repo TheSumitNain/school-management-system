@@ -106,7 +106,7 @@ V34 implements the first address/location foundation:
 
 V35 adds optional student primary phone, alternate phone and email in a separate one-row-per-student contact table. Phone/email values are not unique because households may share contact channels; updates are audited without putting the values into audit metadata.
 
-The frontend does not hard-code geography options. V40 adds a database-backed snapshot of all 36 India State/UT entries from the Government of India's IGOD State/UT directory (source codes are retained as source_system=IGOD/source_code). District, Block/Tehsil and Village/City rows are not fabricated or seeded from an unverified list; they remain school-addable while a versioned import from the Ministry of Panchayati Raj Local Government Directory (LGD) is designed. Any future bulk import must retain source codes, source date, parent relationships and a repeatable update strategy.
+The frontend does not hard-code geography options. V40 adds a database-backed snapshot of all 36 India State/UT entries from the Government of India's IGOD State/UT directory (source codes are retained as source_system=IGOD/source_code). School-created State/UT entries must use exactly two ASCII uppercase letters as the ISO country code; byte-length alone is not sufficient. District, Block/Tehsil and Village/City rows are not fabricated or seeded from an unverified list; they remain school-addable while a versioned import from the Ministry of Panchayati Raj Local Government Directory (LGD) is designed. Any future bulk import must retain source codes, source date, parent relationships and a repeatable update strategy.
 
 ### 3.5 Curriculum and student subject selection
 
