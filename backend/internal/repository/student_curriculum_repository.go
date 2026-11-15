@@ -336,6 +336,40 @@ func (r *AcademicRepository) SaveClassCurriculum(
 }
 
 func (r *AcademicRepository) GetStudentEnrollmentCurriculum(ctx context.Context, actorID, schoolID, enrollmentID int64) (*StudentEnrollmentCurriculum, error) {
+	item, err := r.loadStudentEnrollmentCurriculum(ctx, actorID, schoolID, enrollmentID)
+	if err != nil {
+		return nil, err
+	}
+	// Student subject choices and their history are personal academic records.
+	// Do not return them unless their dedicated read audit is persisted.
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin student enrollment curriculum read audit: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := authorizeAcademic(ctx, tx, actorID, schoolID, "students.read_basic"); err != nil {
+		return nil, err
+	}
+	if err := authorizeAcademic(ctx, tx, actorID, schoolID, "subjects.read"); err != nil {
+		return nil, err
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
+		VALUES($1,$2,'school.student.enrollment_curriculum.read','student_enrollment',$3,'success',
+		       jsonb_build_object('selected_optional_subject_count',$4::integer,
+		                          'selection_history_count',$5::integer,
+		                          'has_curriculum',$6::boolean))
+	`, actorID, schoolID, fmt.Sprint(enrollmentID), len(item.SelectedOptionalSubjectIDs),
+		len(item.SelectionHistory), item.Curriculum != nil); err != nil {
+		return nil, fmt.Errorf("audit student enrollment curriculum read: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit student enrollment curriculum read audit: %w", err)
+	}
+	return item, nil
+}
+
+func (r *AcademicRepository) loadStudentEnrollmentCurriculum(ctx context.Context, actorID, schoolID, enrollmentID int64) (*StudentEnrollmentCurriculum, error) {
 	if r == nil || r.db == nil {
 		return nil, ErrAcademicAccessDenied
 	}
