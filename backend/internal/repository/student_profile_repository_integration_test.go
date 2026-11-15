@@ -134,8 +134,12 @@ func TestStudentProfileRepositoryPostgresIntegration(t *testing.T) {
 
 	// Address reads must return every saved hierarchy level, including names
 	// needed to display a previously selected location after deactivation.
-	state, err := repo.CreateStudentLocation(ctx, actorID, schoolID, nil, "IN", "state", "State "+suffix, nil)
+	stateName := strings.Repeat("ह", 120)
+	state, err := repo.CreateStudentLocation(ctx, actorID, schoolID, nil, "IN", "state", stateName, nil)
 	if err != nil { t.Fatalf("create address state: %v", err) }
+	if _, err := repo.CreateStudentLocation(ctx, actorID, schoolID, nil, "IN", "state", strings.Repeat("ह", 121), nil); !errors.Is(err, ErrInvalidAcademicInput) {
+		t.Fatalf("create 121-character Unicode location name error = %v, want invalid input", err)
+	}
 	district, err := repo.CreateStudentLocation(ctx, actorID, schoolID, &state.ID, "", "district", "District "+suffix, nil)
 	if err != nil { t.Fatalf("create address district: %v", err) }
 	subdistrict, err := repo.CreateStudentLocation(ctx, actorID, schoolID, &district.ID, "", "subdistrict", "Block "+suffix, nil)
@@ -143,10 +147,15 @@ func TestStudentProfileRepositoryPostgresIntegration(t *testing.T) {
 	localityType := "village"
 	locality, err := repo.CreateStudentLocation(ctx, actorID, schoolID, &subdistrict.ID, "", "locality", "Village "+suffix, &localityType)
 	if err != nil { t.Fatalf("create address locality: %v", err) }
-	line1 := "House 1"
+	line1 := strings.Repeat("ग", 200)
 	if _, err := repo.SaveStudentAddress(ctx, actorID, schoolID, student.ID, "current",
 		&line1, nil, nil, nil, nil, &locality.ID, false); err != nil {
 		t.Fatalf("save student address: %v", err)
+	}
+	tooLongAddressLine := strings.Repeat("ग", 201)
+	if _, err := repo.SaveStudentAddress(ctx, actorID, schoolID, student.ID, "current",
+		&tooLongAddressLine, nil, nil, nil, nil, &locality.ID, false); !errors.Is(err, ErrInvalidAcademicInput) {
+		t.Fatalf("save 201-character Unicode address line error = %v, want invalid input", err)
 	}
 	if _, err := repo.DeactivateStudentLocation(ctx, actorID, schoolID, locality.ID); err != nil {
 		t.Fatalf("deactivate saved locality: %v", err)
