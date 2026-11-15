@@ -128,6 +128,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
       setNewGuardianOccupation("");
       setNewGuardianEducation("");
       setNewGuardianWorkplace("");
+      setNewGuardianFieldErrors({});
       setShowCreateGuardian(false);
       setFeedback({ kind: "success", message: "Guardian contact created. Select the relationship details and link it to this student." });
     } catch (error) {
@@ -361,7 +362,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
                     <label><StudentFieldLabel label="Workplace / organization" hint="Optional employer or organization name. Maximum 160 characters." /><input disabled={busy} value={editGuardianForm.workplace_name} aria-invalid={Boolean(editGuardianFieldErrors.workplace_name)} aria-describedby={editGuardianFieldErrors.workplace_name ? "edit-guardian-workplace-error" : undefined} onChange={event => { setEditGuardianForm(current => ({ ...current, workplace_name: event.target.value })); setEditGuardianFieldErrors(current => ({...current,workplace_name:""})); }} placeholder="Organization name (optional)"/>{editGuardianFieldErrors.workplace_name && <small id="edit-guardian-workplace-error" className="app-field-error">{editGuardianFieldErrors.workplace_name}</small>}</label>
                     {editGuardianError && <small className="app-field-error" role="alert">{editGuardianError}</small>}
                     <div className="student-family-card-actions">
-                      <button type="button" className="student-link-button" onClick={() => { setEditingGuardianID(0); setEditGuardianError(""); setEditGuardianNameError(""); setEditGuardianEmailError(""); }} disabled={busy}>Cancel</button>
+                      <button type="button" className="student-link-button" onClick={() => { setEditingGuardianID(0); setEditGuardianError(""); setEditGuardianNameError(""); setEditGuardianEmailError(""); setEditGuardianFieldErrors({}); }} disabled={busy}>Cancel</button>
                       <button type="submit" className="secondary" disabled={busy}>{updateGuardian.isPending ? "Saving…" : "Save guardian details"}</button>
                     </div>
                   </form>
@@ -388,7 +389,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
               </div>
               
               <button type="submit" className="primary" disabled={busy || linksQuery.isLoading || linksQuery.isError || guardiansQuery.isLoading || guardiansQuery.isError}>{linkGuardian.isPending ? "Linking…" : "Link guardian"}</button>
-              <button type="button" className="student-link-button" onClick={() => { setShowCreateGuardian(value => !value); setNewGuardianNameError(""); setNewGuardianEmailError(""); }}>Create a new guardian contact</button>
+              <button type="button" className="student-link-button" onClick={() => { setShowCreateGuardian(value => !value); setNewGuardianNameError(""); setNewGuardianEmailError(""); setNewGuardianFieldErrors({}); }}>Create a new guardian contact</button>
             </form>
             {showCreateGuardian && (
               <form className="student-family-create-form" onSubmit={saveGuardian} noValidate>
