@@ -484,6 +484,12 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 	if !archivedOriginalLinkStillRevoked || !archivedRemainingLinkStillActive {
 		t.Fatalf("archived student guardian history changed unexpectedly: links=%+v", archivedHistory)
 	}
+	// Restore the main fixture to active before testing a new relationship.
+	// The archived-state assertions above intentionally verify that mutations
+	// are blocked while the student is archived.
+	if _, err := tx.Exec(ctx, "UPDATE students SET status='active' WHERE id=$1 AND school_id=$2", studentID, schoolID); err != nil {
+		t.Fatalf("restore active student before guardian re-link coverage: %v", err)
+	}
 
 	var guardianAuditCount, linkCreateAuditCount, linkUpdateAuditCount, linkRevokeAuditCount int
 	if err := tx.QueryRow(ctx, `
