@@ -473,8 +473,16 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("archived student's guardian relationship revoke error = %v, want not found", err)
 	}
 	archivedHistory, err := repo.ListStudentGuardians(ctx, targetPrincipalID, schoolID, studentID, true)
-	if err != nil || len(archivedHistory) != 1 || archivedHistory[0].ID != secondLink.ID || archivedHistory[0].RevokedAt != nil {
-		t.Fatalf("archived student guardian link should remain unchanged: links=%+v err=%v", archivedHistory, err)
+	if err != nil || len(archivedHistory) != 2 {
+		t.Fatalf("archived student guardian history should retain both relationships: links=%+v err=%v", archivedHistory, err)
+	}
+	var archivedOriginalLinkStillRevoked, archivedRemainingLinkStillActive bool
+	for _, link := range archivedHistory {
+		if link.ID == firstLink.ID { archivedOriginalLinkStillRevoked = link.RevokedAt != nil }
+		if link.ID == secondLink.ID { archivedRemainingLinkStillActive = link.RevokedAt == nil }
+	}
+	if !archivedOriginalLinkStillRevoked || !archivedRemainingLinkStillActive {
+		t.Fatalf("archived student guardian history changed unexpectedly: links=%+v", archivedHistory)
 	}
 
 	var guardianAuditCount, linkCreateAuditCount, linkUpdateAuditCount, linkRevokeAuditCount int
