@@ -352,6 +352,19 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("button", { name: "Save student name" }).click();
   await expect(page.getByText("Student name saved.")).toBeVisible();
   await expect.poll(() => students[0]?.full_name).toBe("Aarav Sharma Updated");
+  const studentNameInput = page.getByPlaceholder("Enter student's full name");
+  await studentNameInput.fill("अ".repeat(201));
+  await page.getByRole("button", { name: "Save student name" }).click();
+  await expect(page.getByText("Student name must be 200 characters or fewer.")).toBeVisible();
+  expect(students[0]?.full_name).toBe("Aarav Sharma Updated");
+  await studentNameInput.fill("अ".repeat(200));
+  await page.getByRole("button", { name: "Save student name" }).click();
+  await expect(page.getByText("Student name saved.")).toBeVisible();
+  await expect.poll(() => students[0]?.full_name).toBe("अ".repeat(200));
+  await studentNameInput.fill("Aarav Sharma Updated");
+  await page.getByRole("button", { name: "Save student name" }).click();
+  await expect(page.getByText("Student name saved.")).toBeVisible();
+  await expect.poll(() => students[0]?.full_name).toBe("Aarav Sharma Updated");
   await page.getByRole("button", { name: "Date of birth", exact: true }).click();
   const dobLabels = await page.evaluate(() => {
     const label = (offset: number) => {
