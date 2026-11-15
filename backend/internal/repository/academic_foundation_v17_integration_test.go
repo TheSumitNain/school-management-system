@@ -965,6 +965,19 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	if optionalV1ID == 0 || compulsoryV1ID == 0 {
 		t.Fatal("first curriculum did not return both compulsory and optional subjects")
 	}
+	// A principal from this school must not read or mutate curriculum data
+	// through another school's tenant scope, even when supplied valid local IDs.
+	if _, err := academicRepo.GetStudentEnrollmentCurriculum(ctx, actorPrincipalID, otherSchoolID, currentEnrollmentID); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("cross-school enrollment curriculum read error = %v, want ErrAcademicAccessDenied", err)
+	}
+	if _, err := academicRepo.SaveStudentEnrollmentSubjects(ctx, actorPrincipalID, otherSchoolID,
+		currentEnrollmentID, curriculumV1.ID, []int64{optionalV1ID}); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("cross-school enrollment subject update error = %v, want ErrAcademicAccessDenied", err)
+	}
+	if _, err := academicRepo.SaveClassCurriculum(ctx, actorPrincipalID, otherSchoolID,
+		enrollmentYearID, sourceClassID, nil, []CurriculumSubjectInput{{SubjectID: subjectID}}); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("cross-school class curriculum update error = %v, want ErrAcademicAccessDenied", err)
+	}
 	// Invalid student choices must be rejected before an assignment is created:
 	// the optional group requires exactly one choice, compulsory subjects are
 	// implicit, and duplicate IDs are not valid selections.
