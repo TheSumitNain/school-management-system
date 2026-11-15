@@ -1214,6 +1214,7 @@ test("student archive confirmation keeps the record on conflict and refreshes st
   await expect.poll(() => archiveAttempts).toBe(2);
   await expect(page.getByText("Archive Retry Student has been archived.")).toBeVisible();
   await expect(page.getByText("archived", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Edit profile for Archive Retry Student" })).toHaveCount(0);
   expect(archiveRequests).toHaveLength(2);
 
   await page.getByRole("button", { name: "View profile for Archive Retry Student" }).click();
