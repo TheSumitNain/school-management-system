@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -85,6 +86,25 @@ func TestStudentProfileRepositoryPostgresIntegration(t *testing.T) {
 	if err != nil { t.Fatalf("create student admission: %v", err) }
 	if student.AdmissionNumber != "ADM-"+suffix || student.FullName != "Student One" || student.Status != "active" {
 		t.Fatalf("unexpected created student: %+v", student)
+	}
+
+	// PostgreSQL VARCHAR(200) counts characters, not UTF-8 bytes. Names in
+	// Indian scripts must therefore be validated by Unicode code point count.
+	unicodeName := strings.Repeat("अ", 200)
+	unicodeStudent, err := repo.CreateStudent(ctx, actorID, schoolID, "ADM-UNICODE-"+suffix, unicodeName)
+	if err != nil || unicodeStudent == nil || unicodeStudent.FullName != unicodeName {
+		t.Fatalf("create 200-character Unicode student name: student=%+v err=%v", unicodeStudent, err)
+	}
+	if _, err := repo.CreateStudent(ctx, actorID, schoolID, "ADM-UNICODE-TOO-LONG-"+suffix, strings.Repeat("अ", 201)); !errors.Is(err, ErrInvalidAcademicInput) {
+		t.Fatalf("create 201-character Unicode student name error = %v, want invalid input", err)
+	}
+	updatedUnicodeName := strings.Repeat("म", 200)
+	updatedUnicode, err := repo.UpdateStudent(ctx, actorID, schoolID, unicodeStudent.ID, updatedUnicodeName)
+	if err != nil || updatedUnicode == nil || updatedUnicode.FullName != updatedUnicodeName {
+		t.Fatalf("update to 200-character Unicode student name: student=%+v err=%v", updatedUnicode, err)
+	}
+	if _, err := repo.UpdateStudent(ctx, actorID, schoolID, unicodeStudent.ID, strings.Repeat("म", 201)); !errors.Is(err, ErrInvalidAcademicInput) {
+		t.Fatalf("update to 201-character Unicode student name error = %v, want invalid input", err)
 	}
 	var createdAuditCount int
 	var createdAuditHasAdmissionFlag bool
