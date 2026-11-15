@@ -29,6 +29,8 @@ test("student admission, profile navigation and parent details render without br
   const guardianHistoryRequests: (string | null)[] = [];
   let curriculumAssigned = false;
   let curriculumReads = 0;
+  let medicalDetailReads = 0;
+  let physicalDetailReads = 0;
   let savedCurriculumSelections: number[] = [];
   const guardianLink = {
     id: 501, student_id: 1, guardian_id: 22, guardian_name: "Ramesh Sharma", guardian_status: "active" as const,
@@ -303,6 +305,7 @@ test("student admission, profile navigation and parent details render without br
         return;
       }
       if (subpath === "medical-details") {
+        if (method === "GET") medicalDetailReads++;
         if (method === "PUT") {
           const input = request.postDataJSON() as Record<string, unknown>;
           const previousVersion = { ...medicalDetails, changed_by_principal_id: 101, changed_at: "2026-11-14T00:00:00.000Z" };
@@ -315,6 +318,7 @@ test("student admission, profile navigation and parent details render without br
         return;
       }
       if (subpath === "physical-details") {
+        if (method === "GET") physicalDetailReads++;
         if (method === "PUT") {
           const input = request.postDataJSON() as Record<string, unknown>;
           Object.assign(physicalDetails, input, { id: 701, school_id: 10, student_id: studentID });
@@ -783,6 +787,12 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("button", { name: /Medical & physical/ }).click();
   await expect(page.getByRole("dialog", { name: "Medical & Physical Details" })).toBeVisible();
   await expect(page.getByText(/Teachers do not have access to these records/)).toBeVisible();
+  const medicalDraft = "Draft must survive a background medical refetch";
+  await page.getByPlaceholder("Record known allergies, if any").fill(medicalDraft);
+  const medicalReadsBeforeFocus = medicalDetailReads;
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect.poll(() => medicalDetailReads).toBeGreaterThan(medicalReadsBeforeFocus);
+  await expect(page.getByPlaceholder("Record known allergies, if any")).toHaveValue(medicalDraft);
   await page.getByRole("button", { name: "Blood group", exact: true }).click();
   await page.getByRole("option", { name: "O+" }).click();
   await page.getByPlaceholder("Record known allergies, if any").fill("अ".repeat(2001));
@@ -807,6 +817,12 @@ test("student admission, profile navigation and parent details render without br
   await expect.poll(() => medicalDetails.version_number).toBe(1);
   await expect(page.getByText("Medical details saved.")).toBeVisible();
   await page.getByRole("button", { name: "Physical details" }).click();
+  const physicalDraft = "Draft physical note survives background refetch";
+  await page.getByPlaceholder("Optional vision-related notes").fill(physicalDraft);
+  const physicalReadsBeforeFocus = physicalDetailReads;
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect.poll(() => physicalDetailReads).toBeGreaterThan(physicalReadsBeforeFocus);
+  await expect(page.getByPlaceholder("Optional vision-related notes")).toHaveValue(physicalDraft);
   await page.getByPlaceholder("e.g. 132.5").fill("500");
   const physicalSaveButton = page.getByRole("button", { name: "Save physical details" });
   await physicalSaveButton.evaluate(button => {
