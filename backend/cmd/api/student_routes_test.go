@@ -70,13 +70,16 @@ func TestStudentRoutesEnforceLivePermissions(t *testing.T) {
 			if got := request(nil); got.Code != http.StatusForbidden {
 				t.Fatalf("without %s: status=%d body=%s", test.permission, got.Code, got.Body.String())
 			}
-			for _, requiredPermission := range test.additionalPermissions {
-				permissions := []string{test.permission}
-				for _, candidate := range test.additionalPermissions {
-					if candidate != requiredPermission { permissions = append(permissions, candidate) }
+			requiredPermissions := append([]string{test.permission}, test.additionalPermissions...)
+			for _, missingPermission := range requiredPermissions {
+				permissions := make([]string, 0, len(requiredPermissions)-1)
+				for _, candidate := range requiredPermissions {
+					if candidate != missingPermission {
+						permissions = append(permissions, candidate)
+					}
 				}
 				if got := request(permissions); got.Code != http.StatusForbidden {
-					t.Fatalf("without additional %s: status=%d body=%s", requiredPermission, got.Code, got.Body.String())
+					t.Fatalf("without %s: status=%d body=%s", missingPermission, got.Code, got.Body.String())
 				}
 			}
 			if test.permission == "students.read_sensitive" {
