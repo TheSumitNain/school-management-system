@@ -33,6 +33,12 @@
 - Frontend code commit: `8f0ded6f42e9c0c9ea9595b5fe57e33463b03b41`.
 - This change is not yet covered by a reported CI result; verify on the next frontend workflow run.
 
+### Basic-details empty-state isolation correction (2026-11-15)
+
+- Fixed a student-switch edge case in `StudentBasicDetailsSection`: when the newly selected student has no saved basic-details row, the form now resets to the empty state and clears field errors instead of retaining the previous student's values.
+- Frontend code commit: `1df5e2d0b8c1ee67d21b34e88c2572f281889661`.
+- CI and authenticated live browser acceptance for this change are pending; verify before marking this behavior complete.
+
 ### Root causes fixed
 
 1. Guardian form length errors were not appearing because HTML `maxLength` blocked over-limit input before app validation. Removed those truncating attributes; explicit field-level validation remains. Frontend CI now passes.
