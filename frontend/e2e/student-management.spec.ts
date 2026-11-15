@@ -447,6 +447,15 @@ test("student admission, profile navigation and parent details render without br
   expect(guardianLink.mobile_number).toBe("9876543210");
   await expect(page.getByRole("dialog", { name: "Update shared guardian profile?" })).toHaveCount(0);
   await page.getByPlaceholder("guardian@example.com").fill("ramesh.updated@example.test");
+  await page.getByPlaceholder("Mobile number").fill("अ".repeat(31));
+  await saveGuardianDetails.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Guardian details submit button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect(page.getByText("Mobile number must be 30 characters or fewer.")).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Update shared guardian profile?" })).toHaveCount(0);
+  await page.getByPlaceholder("Mobile number").fill("9999912345");
   await saveGuardianDetails.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
     if (!form) throw new Error("Guardian details submit button is not associated with its form.");
