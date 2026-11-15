@@ -651,14 +651,26 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByRole("dialog", { name: "Update shared guardian profile?" })).toHaveCount(0);
   await page.getByPlaceholder("guardian@example.com").fill("ramesh.updated@example.test");
   await page.getByPlaceholder("Mobile number").fill("अ".repeat(31));
+  await page.getByPlaceholder("Optional alternate number").fill("अ".repeat(31));
+  await page.getByPlaceholder("e.g. Teacher, Business owner").fill("अ".repeat(121));
+  await page.getByPlaceholder("Highest education (optional)").fill("अ".repeat(121));
+  await page.getByPlaceholder("Organization name (optional)").fill("अ".repeat(161));
   await saveGuardianDetails.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
     if (!form) throw new Error("Guardian details submit button is not associated with its form.");
     form.requestSubmit(button as HTMLButtonElement);
   });
   await expect(page.getByText("Mobile number must be 30 characters or fewer.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Alternate mobile number must be 30 characters or fewer.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Occupation must be 120 characters or fewer.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Education must be 120 characters or fewer.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Workplace must be 160 characters or fewer.", { exact: true })).toBeVisible();
   await expect(page.getByRole("dialog", { name: "Update shared guardian profile?" })).toHaveCount(0);
   await page.getByPlaceholder("Mobile number").fill("9999912345");
+  await page.getByPlaceholder("Optional alternate number").fill("9999987654");
+  await page.getByPlaceholder("e.g. Teacher, Business owner").fill("Engineer");
+  await page.getByPlaceholder("Highest education (optional)").fill("Postgraduate");
+  await page.getByPlaceholder("Organization name (optional)").fill("City Hospital");
   await saveGuardianDetails.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
     if (!form) throw new Error("Guardian details submit button is not associated with its form.");
@@ -668,7 +680,11 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("button", { name: "Update all linked records" }).click();
   await expect.poll(() => guardianLink.mobile_number).toBe("9999912345");
   await expect.poll(() => guardianLink.guardian_name).toBe("Ramesh Sharma Updated");
-  expect(guardianLink).toMatchObject({ relationship_type: "Legal Guardian", is_primary_contact: true, is_emergency_contact: true });
+  expect(guardianLink).toMatchObject({
+    alternate_mobile_number: "9999987654", occupation: "Engineer",
+    education: "Postgraduate", workplace_name: "City Hospital",
+    relationship_type: "Legal Guardian", is_primary_contact: true, is_emergency_contact: true,
+  });
   await expect(page.getByText("Guardian profile updated. Changes apply to every student linked to this guardian.")).toBeVisible();
 
   await page.getByRole("button", { name: "Revoke link" }).click();
@@ -701,7 +717,11 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByText("Legal Guardian · Primary contact · Emergency contact")).toBeVisible();
   await expect(page.getByText("Ramesh Sharma Updated")).toBeVisible();
   await expect(page.getByText(/9999912345/)).toBeVisible();
+  await expect(page.getByText(/9999987654/)).toBeVisible();
   await expect(page.getByText(/ramesh\.updated@example\.test/)).toBeVisible();
+  await expect(page.getByText(/Engineer/)).toBeVisible();
+  await expect(page.getByText(/Postgraduate/)).toBeVisible();
+  await expect(page.getByText(/City Hospital/)).toBeVisible();
   await expect(page.getByText(/Revoked/)).toBeVisible();
   await page.getByRole("button", { name: "Close dialog" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
