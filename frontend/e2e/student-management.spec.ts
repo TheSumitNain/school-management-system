@@ -1970,3 +1970,200 @@ test("switching student Parent Details clears unsaved guardian drafts and field 
   await expect(page.getByText("Guardian name must be 200 characters or fewer.", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("dialog", { name: /Parents & Siblings/i })).toContainText("Family Student B");
 });
+
+test("switching student profiles clears address, contact, medical and physical drafts and errors", async ({ page }) => {
+  const students: Student[] = [
+    { id: 31, school_id: 10, admission_number: "ADM-STATE-A", full_name: "State Student A", status: "active", created_at: "2026-01-01T00:00:00.000Z", updated_at: "2026-01-01T00:00:00.000Z" },
+    { id: 32, school_id: 10, admission_number: "ADM-STATE-B", full_name: "State Student B", status: "active", created_at: "2026-01-02T00:00:00.000Z", updated_at: "2026-01-02T00:00:00.000Z" },
+  ];
+  const addressFor = (studentID: number) => ({
+    id: studentID * 10, school_id: 10, student_id: studentID, address_type: "current",
+    address_line_1: studentID === 32 ? "Student B saved address" : "Student A saved address",
+    address_line_2: null, area_mohalla: null, landmark: null, postal_code: null,
+    location_id: null, state_location_id: null, district_location_id: null,
+    subdistrict_location_id: null, same_as_current: false,
+  });
+  const contactFor = (studentID: number) => ({
+    id: studentID * 20, school_id: 10, student_id: studentID,
+    primary_phone: studentID === 32 ? "9999900032" : null,
+    alternate_phone: null, email_address: null,
+  });
+  const medicalFor = (studentID: number) => ({
+    id: studentID * 30, school_id: 10, student_id: studentID, version_number: 0,
+    blood_group: null, allergies: studentID === 32 ? "Student B saved allergy record" : null,
+    known_conditions: null, ongoing_medications: null, emergency_medical_notes: null, history: [],
+  });
+  const physicalFor = (studentID: number) => ({
+    id: studentID * 40, school_id: 10, student_id: studentID,
+    height_cm: studentID === 32 ? 140 : null, weight_kg: null,
+    measured_on: studentID === 32 ? "2026-11-10" : null,
+    vision_notes: studentID === 32 ? "Student B saved vision record" : null,
+    physical_notes: null, history: [],
+  });
+
+  await page.route("**/api/**", async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname.replace(/^\/api/, "");
+    const method = request.method();
+
+    if (path === "/auth/refresh") {
+      await route.fulfill({ status: 401, json: { message: "No active session" } });
+      return;
+    }
+    if (path === "/auth/login" && method === "POST") {
+      await route.fulfill({ json: {
+        access_token: "e2e-profile-state-token", token_type: "Bearer",
+        principal: { principal_id: 131, principal_type: "staff", status: "active", school_id: 10 },
+      } });
+      return;
+    }
+    if (path === "/auth/me") {
+      await route.fulfill({ json: {
+        principal_id: 131, principal_type: "staff", school_id: 10, username: "e2e-profile-state",
+        permissions: ["students.read_sensitive", "students.read_basic", "students.update", "academic_years.read", "subjects.read"],
+      } });
+      return;
+    }
+    if (path === "/school/academic-years") {
+      await route.fulfill({ json: { academic_years: [] } });
+      return;
+    }
+    if (path === "/school/students" && method === "GET") {
+      await route.fulfill({ json: { students, pagination: { limit: 20, offset: 0, total: students.length } } });
+      return;
+    }
+    if (path === "/school/locations") {
+      await route.fulfill({ json: { locations: [] } });
+      return;
+    }
+
+    const match = path.match(/^\/school\/students\/(\d+)(?:\/(.*))?$/);
+    if (match) {
+      const studentID = Number(match[1]);
+      const subpath = match[2] ?? "";
+      if (subpath === "enrollments" && method === "GET") {
+        await route.fulfill({ json: { enrollments: [] } });
+        return;
+      }
+      if (subpath === "basic-details" && method === "GET") {
+        await route.fulfill({ json: { basic_details: {
+          id: studentID, school_id: 10, student_id: studentID, date_of_birth: null,
+          place_of_birth: null, gender: null, nationality: null, religion: null,
+          social_category: null, ews_status: null, school_registration_number: null,
+        } } });
+        return;
+      }
+      if (subpath === "addresses" && method === "GET") {
+        await route.fulfill({ json: { addresses: [addressFor(studentID)] } });
+        return;
+      }
+      if (subpath === "contact-details" && method === "GET") {
+        await route.fulfill({ json: { contact_details: contactFor(studentID) } });
+        return;
+      }
+      if (subpath === "medical-details" && method === "GET") {
+        await route.fulfill({ json: { medical_details: medicalFor(studentID) } });
+        return;
+      }
+      if (subpath === "physical-details" && method === "GET") {
+        await route.fulfill({ json: { physical_details: physicalFor(studentID) } });
+        return;
+      }
+    }
+    await route.fulfill({ status: 404, json: { message: `Unmocked E2E API request: ${method} ${path}` } });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Username").fill("e2e-profile-state");
+  await page.getByLabel("Password").fill("E2E-only-password");
+  await page.getByRole("button", { name: /Continue/ }).click();
+  await expect(page.getByRole("button", { name: "Students" })).toBeVisible();
+  await page.getByRole("button", { name: "Students" }).click();
+
+  await page.getByRole("button", { name: "View profile for State Student A" }).click();
+  await page.getByRole("button", { name: /Address & communication/ }).click();
+  const addressDialog = page.getByRole("dialog", { name: "Address & Communication" });
+  await expect(addressDialog).toBeVisible();
+  const addressLine = page.getByPlaceholder("House number, street or building");
+  await expect(addressLine).toHaveValue("Student A saved address");
+  await addressLine.fill("अ".repeat(201));
+  const saveAddress = addressDialog.getByRole("button", { name: "Save address" });
+  await saveAddress.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Address save button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect(addressDialog.getByText("House / street must be 200 characters or fewer.", { exact: true })).toBeVisible();
+
+  await addressDialog.getByRole("button", { name: "Contact details", exact: true }).click();
+  const primaryPhone = page.getByPlaceholder("Primary contact number");
+  await primaryPhone.fill("अ".repeat(31));
+  const saveContact = addressDialog.getByRole("button", { name: "Save contact details" });
+  await saveContact.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Contact save button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect(addressDialog.getByText("Phone number must be 30 characters or fewer.", { exact: true })).toBeVisible();
+
+  await addressDialog.getByRole("button", { name: "Close dialog" }).click();
+  await page.getByRole("button", { name: "Close dialog" }).click();
+  await page.getByRole("button", { name: "View profile for State Student B" }).click();
+  await page.getByRole("button", { name: /Address & communication/ }).click();
+  await expect(page.getByRole("dialog", { name: "Address & Communication" })).toBeVisible();
+  await expect(page.getByPlaceholder("House number, street or building")).toHaveValue("Student B saved address");
+  await expect(page.getByText("House / street must be 200 characters or fewer.", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("अ".repeat(201), { exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Contact details", exact: true }).click();
+  await expect(page.getByPlaceholder("Primary contact number")).toHaveValue("9999900032");
+  await expect(page.getByText("Phone number must be 30 characters or fewer.", { exact: true })).toHaveCount(0);
+  await expect(page.getByPlaceholder("Primary contact number")).not.toHaveValue("अ".repeat(31));
+  await page.getByRole("button", { name: "Close dialog" }).click();
+  await page.getByRole("button", { name: "Close dialog" }).click();
+
+  await page.getByRole("button", { name: /Medical & physical/ }).click();
+  const healthDialog = page.getByRole("dialog", { name: "Medical & Physical Details" });
+  await expect(healthDialog).toBeVisible();
+  const allergies = page.getByPlaceholder("Record known allergies, if any");
+  await allergies.fill("अ".repeat(2001));
+  const saveMedical = healthDialog.getByRole("button", { name: "Save medical details" });
+  await saveMedical.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Medical save button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect(healthDialog.getByText("Use no more than 2,000 characters.", { exact: true })).toBeVisible();
+
+  await healthDialog.getByRole("button", { name: "Physical details" }).click();
+  const height = page.getByPlaceholder("e.g. 132.5");
+  await height.fill("500");
+  const savePhysical = healthDialog.getByRole("button", { name: "Save physical details" });
+  await savePhysical.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Physical save button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect(healthDialog.getByText("Height must be between 20 and 250 cm.", { exact: true })).toBeVisible();
+  await expect(healthDialog.getByText("Measurement date is required.", { exact: true })).toBeVisible();
+
+  await healthDialog.getByRole("button", { name: "Close dialog" }).click();
+  await page.getByRole("button", { name: "Close dialog" }).click();
+  await page.getByRole("button", { name: "View profile for State Student A" }).click();
+  await page.getByRole("button", { name: /Medical & physical/ }).click();
+  await expect(page.getByPlaceholder("Record known allergies, if any")).toHaveValue("");
+  await page.getByRole("button", { name: "Physical details" }).click();
+  await expect(page.getByPlaceholder("e.g. 132.5")).toHaveValue("");
+  await expect(page.getByText("Height must be between 20 and 250 cm.", { exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Close dialog" }).click();
+  await page.getByRole("button", { name: "Close dialog" }).click();
+
+  await page.getByRole("button", { name: "View profile for State Student B" }).click();
+  await page.getByRole("button", { name: /Medical & physical/ }).click();
+  await expect(page.getByPlaceholder("Record known allergies, if any")).toHaveValue("Student B saved allergy record");
+  await expect(page.getByText("Use no more than 2,000 characters.", { exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Physical details" }).click();
+  await expect(page.getByPlaceholder("e.g. 132.5")).toHaveValue("140");
+  await expect(page.getByPlaceholder("Optional vision-related notes")).toHaveValue("Student B saved vision record");
+  await expect(page.getByText("Height must be between 20 and 250 cm.", { exact: true })).toHaveCount(0);
+});
