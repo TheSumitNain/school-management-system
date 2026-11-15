@@ -10,7 +10,7 @@ type Student = {
   updated_at: string;
 };
 
-const academicYear = { id: 7, name: "2026–2027", status: "active", is_current: true };
+const academicYear = { id: 7, name: "2026–2027", starts_on: "2026-04-01", ends_on: "2027-03-31", status: "active", is_current: true };
 const section = { id: 12, academic_year_id: 7, class_id: 3, class_name: "Class 1", name: "A", is_active: true };
 
 test("student admission, profile navigation and parent details render without browser errors", async ({ page }) => {
