@@ -628,3 +628,10 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Student first admission and standalone enrollment now validate the student name, admission number and optional roll number in code points before requests. The admission Playwright flow now verifies simultaneous over-limit name/admission/roll errors and no write before correction. The standalone enrollment validation is implemented but does not yet have a dedicated mocked browser scenario.
 - Guardian Playwright coverage now verifies all over-limit fields together on create and an over-limit mobile number on shared-profile edit before the confirmation step.
 - All these browser scenarios use mocked APIs. No local/persistent database was changed; exact-tip CI and authenticated browser acceptance against a real API/database remain outstanding.
+
+
+## Student location country-code validation — 2026-11-15
+
+- Tightened school-created State/UT location validation: country codes must now be exactly two ASCII uppercase letters after normalization. A two-byte non-ASCII character or arbitrary punctuation/digit pair can no longer pass the previous byte-length-only check.
+- Added rollback-scoped PostgreSQL integration assertions for invalid non-ASCII and non-letter country codes alongside the existing valid `IN` location hierarchy and Unicode location-name/address tests.
+- This is repository validation/test coverage only; no migration or persistent database change. Exact-tip backend CI remains unverified.
