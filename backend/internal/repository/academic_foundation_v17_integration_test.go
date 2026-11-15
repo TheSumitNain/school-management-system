@@ -9,9 +9,10 @@ import (
 	"time"
 )
 
-// TestAcademicFoundationV17PostgresIntegration exercises configurable class
-// names, year-specific sections, promotion history, teacher scope, and tenant FKs.
-func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing.T) {
+// TestAcademicFoundationAndStudentLifecyclePostgresIntegration exercises
+// academic setup, enrollment history, teacher scope, tenant FKs, and V44
+// curriculum assignment/replacement through the production repository.
+func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) {
 	_, pool, userID := newPostgresIntegrationRepository(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 	defer cancel()
@@ -60,6 +61,20 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 	}
 	if !hasV17 {
 		t.Fatal("V17 academic foundation is missing; apply migrations to school_management_test first")
+	}
+
+	var hasV44 bool
+	if err := tx.QueryRow(ctx, `
+		SELECT to_regclass('public.class_curricula') IS NOT NULL
+		   AND to_regclass('public.class_curriculum_optional_groups') IS NOT NULL
+		   AND to_regclass('public.class_curriculum_subjects') IS NOT NULL
+		   AND to_regclass('public.student_enrollment_curricula') IS NOT NULL
+		   AND to_regclass('public.student_enrollment_subject_selections') IS NOT NULL
+	`).Scan(&hasV44); err != nil {
+		t.Fatalf("detect V44 student curriculum schema: %v", err)
+	}
+	if !hasV44 {
+		t.Fatal("V44 student curriculum schema is missing; apply migrations to school_management_test first")
 	}
 
 	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
