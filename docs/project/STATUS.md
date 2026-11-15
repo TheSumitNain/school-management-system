@@ -20,6 +20,13 @@
 - Code commits: `295faa89cca2ca33cb673a43c1d95b0db2c655f8`, `19c7f5d763823996d2557a9672efc9b55d5cc130`, `f2bee9b6161f2c3d725d8753abd319c54e77d422`.
 - These are frontend source changes. CI status for the latest commit must be checked before treating them as verified; authenticated live acceptance remains pending.
 
+### Student form state isolation — active student switch (2026-11-15)
+
+- Basic Details, Address, Contact, Medical and Physical synchronization now includes `student.id`; equal field snapshots across two students no longer prevent the new student's values from loading.
+- Parent Details / Guardian management now clears relationship, shared-guardian edit, create, revoke, history-filter and validation drafts when the active student changes. Guardian records themselves remain shared entities; only the student-specific form state is reset.
+- Frontend commits: `295faa89cca2ca33cb673a43c1d95b0db2c655f8`, `19c7f5d763823996d2557a9672efc9b55d5cc130`, `f2bee9b6161f2c3d725d8753abd319c54e77d422`, `ba6f03548ac91ccee979d6775d9cc7d583ae2295`.
+- CI has not yet reported a result for these latest frontend commits; do not treat them as verified. Add/execute focused browser coverage for switching between students while forms contain unsaved drafts, then reconcile the resulting CI run.
+
 ### Root causes fixed
 
 1. Guardian form length errors were not appearing because HTML `maxLength` blocked over-limit input before app validation. Removed those truncating attributes; explicit field-level validation remains. Frontend CI now passes.
