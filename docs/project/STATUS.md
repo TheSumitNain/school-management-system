@@ -1010,3 +1010,10 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Student directory and active-student enrollment search fields now cap input at 100 characters, matching backend search validation.
 - State/UT, district, sub-district/tehsil and village/city location search inputs also cap at 100 characters, avoiding requests that the location repository would reject.
 - Backend CI run `43703502100` passed the full migration chain, Go tests including PostgreSQL integration, and `go vet`; frontend CI run `43703502092` passed design-token checks, TypeScript/Vite production build, and the Student Management Playwright acceptance suite for checkpoint `d4680a19b8a5e899ee535fb92ad950b1d84c0fd7`.
+
+
+## Student Management — shared Unicode text normalization unit coverage (2026-11-15)
+
+- Added focused backend unit tests for the shared text normalizer used by student Basic Details, Address, Contact and Health persistence: nil values, whitespace-only values, trimming before counting, exact Hindi Unicode-code-point boundaries, and one-code-point-over rejection.
+- Test commit: `7644776e2392d7bd28468d80b4bed2460332755e`.
+- CI is pending for this exact commit. The tests are pure unit tests; no schema, migration, persistent database or school data was changed.
