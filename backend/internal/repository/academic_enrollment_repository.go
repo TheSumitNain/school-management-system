@@ -17,6 +17,7 @@ type StudentEnrollment struct {
 	SchoolID int64 `json:"school_id"`
 	StudentID int64 `json:"student_id"`
 	StudentName string `json:"student_name,omitempty"`
+	StudentStatus string `json:"student_status,omitempty"`
 	AcademicYearID int64 `json:"academic_year_id"`
 	ClassID int64 `json:"class_id"`
 	SectionID int64 `json:"section_id"`
@@ -63,7 +64,7 @@ func scanStudentEnrollmentWithName(row interface{ Scan(...any) error }) (*Studen
 	err := row.Scan(&v.ID, &v.SchoolID, &v.StudentID, &v.AcademicYearID, &v.ClassID,
 		&v.SectionID, &v.RollNumber, &v.ClassNameSnapshot, &v.SectionNameSnapshot,
 		&v.AdmissionNumber, &v.AdmissionDate, &v.Status, &v.EnrolledAt, &v.EndedAt, &v.CreatedAt, &v.UpdatedAt, &v.StudentName,
-		&isSchoolAdmin, &isClassIncharge)
+		&isSchoolAdmin, &isClassIncharge, &v.StudentStatus)
 	if err != nil { return nil, err }
 	v.basicRosterOnly = !isSchoolAdmin && !isClassIncharge
 	return &v, nil
@@ -225,7 +226,8 @@ func (r *AcademicRepository) ListStudentEnrollments(ctx context.Context, actorID
 		 AND r.scope_type='school' AND r.principal_type='staff' AND r.role_key='school_admin' AND r.is_system=TRUE),
 		EXISTS (SELECT 1 FROM class_incharge_assignments cia
 		 WHERE cia.school_id=e.school_id AND cia.academic_year_id=e.academic_year_id
-		 AND cia.section_id=e.section_id AND cia.teacher_principal_id=$4 AND cia.revoked_at IS NULL)
+		 AND cia.section_id=e.section_id AND cia.teacher_principal_id=$4 AND cia.revoked_at IS NULL),
+		st.status
 		FROM student_enrollments e
 		JOIN students st ON st.id=e.student_id AND st.school_id=e.school_id
 		WHERE e.school_id=$1 AND ($2=0 OR e.academic_year_id=$2) AND ($3=0 OR e.student_id=$3)
