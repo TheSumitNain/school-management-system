@@ -29,16 +29,18 @@ func TestGuardianRoutesRequireDedicatedPermissions(t *testing.T) {
 		method string
 		path string
 		permission string
+		additionalPermissions []string
 		body string
 	}{
-		{http.MethodGet, "/school/guardians", "guardians.read", ""},
-		{http.MethodPost, "/school/guardians", "guardians.manage", `{"full_name":"Guardian One"}`},
-		{http.MethodGet, "/school/guardians/1", "guardians.read", ""},
-		{http.MethodPatch, "/school/guardians/1", "guardians.manage", `{"full_name":"Guardian Updated","status":"active"}`},
-		{http.MethodGet, "/school/students/1/guardians", "guardians.read", ""},
-		{http.MethodPost, "/school/students/1/guardians", "guardians.manage", `{"guardian_id":2,"relationship_type":"mother"}`},
-		{http.MethodPatch, "/school/student-guardian-links/1", "guardians.manage", `{"relationship_type":"mother","is_primary_contact":true,"is_emergency_contact":false}`},
-		{http.MethodPost, "/school/student-guardian-links/1/revoke", "guardians.manage", `{"reason":"Relationship corrected"}`},
+		{http.MethodGet, "/school/guardians", "guardians.read", nil, ""},
+		{http.MethodPost, "/school/guardians", "guardians.manage", nil, `{"full_name":"Guardian One"}`},
+		{http.MethodGet, "/school/guardians/1", "guardians.read", nil, ""},
+		{http.MethodPatch, "/school/guardians/1", "guardians.manage", nil, `{"full_name":"Guardian Updated","status":"active"}`},
+		{http.MethodGet, "/school/students/1/guardians", "guardians.read", nil, ""},
+		{http.MethodGet, "/school/students/1/related-students", "guardians.read", []string{"students.read_basic"}, ""},
+		{http.MethodPost, "/school/students/1/guardians", "guardians.manage", nil, `{"guardian_id":2,"relationship_type":"mother"}`},
+		{http.MethodPatch, "/school/student-guardian-links/1", "guardians.manage", nil, `{"relationship_type":"mother","is_primary_contact":true,"is_emergency_contact":false}`},
+		{http.MethodPost, "/school/student-guardian-links/1/revoke", "guardians.manage", nil, `{"reason":"Relationship corrected"}`},
 	}
 	for _, test := range tests {
 		t.Run(test.method+" "+test.path, func(t *testing.T) {
@@ -63,11 +65,24 @@ func TestGuardianRoutesRequireDedicatedPermissions(t *testing.T) {
 			if got:=request(nil);got.Code!=http.StatusForbidden{
 				t.Fatalf("without %s: status=%d body=%s",test.permission,got.Code,got.Body.String())
 			}
-			if got:=request([]string{"students.read_basic"});got.Code!=http.StatusForbidden{
-				t.Fatalf("Teacher/basic student permission must not expose guardian data: status=%d body=%s",got.Code,got.Body.String())
+			requiredPermissions := append([]string{test.permission}, test.additionalPermissions...)
+			for _, missingPermission := range requiredPermissions {
+				permissions := make([]string, 0, len(requiredPermissions)-1)
+				for _, candidate := range requiredPermissions {
+					if candidate != missingPermission {
+						permissions = append(permissions, candidate)
+					}
+				}
+				if got := request(permissions); got.Code != http.StatusForbidden {
+					t.Fatalf("without %s: status=%d body=%s", missingPermission, got.Code, got.Body.String())
+				}
 			}
-			if got:=request([]string{test.permission});got.Code!=http.StatusServiceUnavailable{
-				t.Fatalf("authorized route should reach handler: status=%d body=%s",got.Code,got.Body.String())
+			if got := request([]string{"students.read_basic"}); got.Code != http.StatusForbidden {
+				t.Fatalf("basic student permission alone must not expose guardian data: status=%d body=%s", got.Code, got.Body.String())
+			}
+			permissions := append([]string{test.permission}, test.additionalPermissions...)
+			if got := request(permissions); got.Code != http.StatusServiceUnavailable {
+				t.Fatalf("authorized route should reach handler: status=%d body=%s", got.Code, got.Body.String())
 			}
 		})
 	}
