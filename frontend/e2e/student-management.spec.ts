@@ -788,6 +788,7 @@ test("standalone enrollment validates admission and roll number before saving", 
   await page.getByRole("option", { name: "Existing Student · ADM-EXISTING-044" }).click();
   await page.getByRole("button", { name: "Enrollment academic year" }).click();
   await page.getByRole("option", { name: "2027–2028" }).click();
+  await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Enrollment section" }).click();
   await page.getByRole("option", { name: "B" }).click();
   await page.getByRole("button", { name: "Admission date", exact: true }).click();
