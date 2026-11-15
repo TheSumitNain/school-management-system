@@ -73,7 +73,8 @@ export function StudentEnrollmentSubjectsPanel({
           </select>
         </label>
       )}
-      {movingToNewVersion && <p className="student-address-note">{data?.curriculum ? "Saving this version replaces the assigned curriculum while preserving previous subject-choice history." : "Saving this version assigns the curriculum to this enrollment."}</p>}
+      {!data?.assigned && <p className="student-address-note">This curriculum is available for the selected class and academic year. Saving subject choices will assign it to this student’s enrollment.</p>}
+      {movingToNewVersion && <p className="student-address-note">Saving this version replaces the assigned curriculum while preserving previous subject-choice history.</p>}
       <div className="student-subject-list">
         {curriculum.subjects.filter(subject => subject.is_compulsory).map(subject => (
           <div className="student-subject-row" key={subject.id}>
