@@ -1889,3 +1889,84 @@ test("switching student profiles clears unsaved basic-details drafts and validat
   await expect(page.getByText("Unsaved draft belonging only to Student A")).toHaveCount(0);
   await expect(page.getByRole("dialog", { name: "Basic Details" })).toContainText("Student B");
 });
+
+
+test("switching student Parent Details clears unsaved guardian drafts and field errors", async ({ page }) => {
+  const students: Student[] = [
+    { id: 21, school_id: 10, admission_number: "ADM-FAM-A", full_name: "Family Student A", status: "active", created_at: "2026-01-01T00:00:00.000Z", updated_at: "2026-01-01T00:00:00.000Z" },
+    { id: 22, school_id: 10, admission_number: "ADM-FAM-B", full_name: "Family Student B", status: "active", created_at: "2026-01-02T00:00:00.000Z", updated_at: "2026-01-02T00:00:00.000Z" },
+  ];
+  await page.route("**/api/**", async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname.replace(/^\/api/, "");
+    const method = request.method();
+    if (path === "/auth/refresh") {
+      await route.fulfill({ status: 401, json: { message: "No active session" } });
+      return;
+    }
+    if (path === "/auth/login" && method === "POST") {
+      await route.fulfill({ json: { access_token: "e2e-access-token", token_type: "Bearer", principal: { principal_id: 101, principal_type: "staff", status: "active", school_id: 10 } } });
+      return;
+    }
+    if (path === "/auth/me") {
+      await route.fulfill({ json: {
+        principal_id: 101, principal_type: "staff", school_id: 10, username: "e2e-school-admin",
+        permissions: ["students.read_sensitive", "students.read_basic", "students.update", "guardians.read", "guardians.manage"],
+      } });
+      return;
+    }
+    if (path === "/school/students" && method === "GET") {
+      await route.fulfill({ json: { students, pagination: { limit: 20, offset: 0, total: students.length } } });
+      return;
+    }
+    if (path === "/school/guardians" && method === "GET") {
+      await route.fulfill({ json: { guardians: [], total: 0 } });
+      return;
+    }
+    const match = path.match(/^\/school\/students\/(\d+)(?:\/(.*))?$/);
+    if (match) {
+      const studentID = Number(match[1]);
+      const subpath = match[2] ?? "";
+      if (subpath === "enrollments" && method === "GET") {
+        await route.fulfill({ json: { enrollments: [] } });
+        return;
+      }
+      if (subpath === "guardians" && method === "GET") {
+        await route.fulfill({ json: { student_guardians: [] } });
+        return;
+      }
+      if (subpath === "related-students" && method === "GET") {
+        await route.fulfill({ json: { related_students: [] } });
+        return;
+      }
+    }
+    await route.fulfill({ status: 404, json: { message: `Unmocked E2E API request: ${method} ${path}` } });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Username").fill("e2e-school-admin");
+  await page.getByLabel("Password").fill("E2E-only-password");
+  await page.getByRole("button", { name: /Continue/ }).click();
+  await expect(page.getByRole("button", { name: "Students" })).toBeVisible();
+  await page.getByRole("button", { name: "Students" }).click();
+
+  await page.getByRole("button", { name: "View profile for Family Student A" }).click();
+  await page.getByRole("button", { name: /Parents & Siblings/ }).click();
+  await page.getByRole("button", { name: "Create a new guardian contact" }).click();
+  await page.getByPlaceholder("Guardian full name").fill("अ".repeat(201));
+  await page.getByPlaceholder("Father, Mother, Guardian…").fill("Father");
+  await page.getByRole("button", { name: "Save guardian contact" }).click();
+  await expect(page.getByText("Guardian name must be 200 characters or fewer.", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByRole("button", { name: "Close dialog" }).click();
+  await page.getByRole("button", { name: "View profile for Family Student B" }).click();
+  await page.getByRole("button", { name: /Parents & Siblings/ }).click();
+  await page.getByRole("button", { name: "Create a new guardian contact" }).click();
+
+  await expect(page.getByPlaceholder("Guardian full name")).toHaveValue("");
+  await expect(page.getByPlaceholder("Father, Mother, Guardian…")).toHaveValue("");
+  await expect(page.getByText("Guardian name must be 200 characters or fewer.", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: /Parents & Siblings/ })).toContainText("Family Student B");
+});
