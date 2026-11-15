@@ -597,3 +597,10 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Associated primary and alternate phone errors with their controls using aria-invalid and aria-describedby, matching the existing contact email accessibility behavior.
 - Extended the mocked browser journey to submit all five over-limit Hindi address values together, verify every field error appears and confirm no address write occurs before correcting the values.
 - No database or schema change was made. These browser checks remain mocked; exact-tip CI and live authenticated API/database acceptance are still outstanding.
+
+
+## Student contact field-level validation — 2026-11-15
+
+- Student contact email now receives a frontend 254-character Unicode code-point check before syntax validation; the error is shown beneath the email field and the backend's normalized email parser/length validation remains authoritative.
+- Expanded the mocked browser journey to submit over-limit primary phone, alternate phone and email values together, verify all three field errors, and confirm no write occurs until corrected. The existing invalid-email and valid-save checks remain in the same flow.
+- No database or schema changes were made. CI for the exact current branch tip and live authenticated API/database acceptance remain unverified.
