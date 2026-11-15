@@ -757,3 +757,9 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Product requirements explicitly require compulsory/optional subjects to be defined per class and academic year, with student choices preserved against the enrollment history. This remains part of the approved Student Management scope and must not be reported as complete.
 - Optional-subject groups need configurable minimum/maximum selection rules; do not hard-code a school-specific subject policy. Curriculum revisions must not silently rewrite past enrollment choices.
 - Student transport, app-permission and document-upload submodules remain outside this immediate completion target; secure document upload is deferred. Parent OTP/SMS/login remains deferred.
+
+## First curriculum assignment guidance — 2026-11-15
+
+- Corrected the Student Profile curriculum selector so it appears only when an enrollment already has an assigned curriculum and a newer version is available. A first-time assignment no longer displays a misleading empty “Assigned version” option.
+- The confirmation guidance now distinguishes assigning the first curriculum from replacing an existing assignment; prior subject-choice history remains preserved when replacing.
+- Frontend fix: `cc1340616fa1e73913a6280354a4b00cfa50327d`. Exact-commit CI has not yet been observed, and no local browser or TypeScript test was run in this session.
