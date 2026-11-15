@@ -7,11 +7,10 @@
 ### Latest verified code and CI
 
 - Active branch: `work`.
-- Latest Student Management code commit: `1196045794777f94d94c994b4750af865d36e84e` — guardian revocation audit deduplication.
-- Backend CI: **PASS** on that exact code commit — [run 43709153490](https://github.com/TheSumitNain/school-management-system/actions/runs/43709153490). Ephemeral PostgreSQL migration chain, backend tests including `TestGuardianRepositoryPostgresIntegration`, and `go vet ./...` all completed successfully.
-- Latest frontend code commit: `b640caed53a4ad7c2a4670719974d2d99b7a4269` — guardian form validation fix.
-- Frontend CI: **PASS** on that exact frontend commit — [run 43708932012](https://github.com/TheSumitNain/school-management-system/actions/runs/43708932012). Design-token check and production/browser suite completed; Playwright reports **8 passed**.
-- The frontend source was unchanged after its passing run; later code changes were backend-only. Do not confuse older failed runs with the current verified results.
+- Latest verified backend code commit: `1196045794777f94d94c994b4750af865d36e84e` — guardian revocation audit deduplication. Backend CI **PASS** on that exact commit — [run 43709153490](https://github.com/TheSumitNain/school-management-system/actions/runs/43709153490), including the ephemeral PostgreSQL migration chain, backend integration tests and `go vet ./...`.
+- Latest frontend commit currently pushed to `work`: `6b3355f7d7d5b520fd2ca3bf06028c9b09485e11` — clear stale health-form feedback on student switch. Its parent commit `b302d3761b8ddd4f8e65724234eced9eae9dea6f` clears stale address/contact form feedback and transient location-creator state on student switch.
+- The latest frontend commits do **not** yet have a reported CI status; the commit status endpoint returned no checks. Do not treat these changes or earlier frontend commits as CI-verified. The last known frontend CI PASS remains [run 43708932012](https://github.com/TheSumitNain/school-management-system/actions/runs/43708932012) on older commit `b640caed53a4ad7c2a4670719974d2d99b7a4269` (8 Playwright tests).
+- Authenticated live acceptance remains pending. A green run on an older SHA does not verify newer frontend code.
 
 ### Student profile state isolation correction (2026-11-15)
 
@@ -45,6 +44,13 @@
 - Frontend code commit: `860bf218dc73b5926079a55b318776afbc24c689`.
 - CI and authenticated browser acceptance remain pending for the latest frontend fixes.
 
+### Student-switch stale feedback and transient-state cleanup (2026-11-15)
+
+- Address & Communication now clears stale contact/address field errors, save feedback, location-creator drafts, pending deactivation confirmation and location-search drafts when the active student changes. The new student's persisted address/contact values continue to be loaded by the existing value-snapshot synchronization effects.
+- Medical & Physical now clears stale save feedback and validation errors when the active student changes; its existing snapshot synchronization continues to load the selected student's persisted medical/measurement values.
+- Frontend commits: `b302d3761b8ddd4f8e65724234eced9eae9dea6f` (Address & Communication), `6b3355f7d7d5b520fd2ca3bf06028c9b09485e11` (Medical & Physical).
+- CI status and authenticated browser acceptance are pending for these changes. Add/execute focused browser coverage and verify the exact branch head before treating the fixes as complete.
+
 ### Root causes fixed
 
 1. Guardian form length errors were not appearing because HTML `maxLength` blocked over-limit input before app validation. Removed those truncating attributes; explicit field-level validation remains. Frontend CI now passes.
@@ -72,7 +78,7 @@ At every new session, reconcile this file, Student Management design docs, backe
 **Repository:** `TheSumitNain/school-management-system`  
 **Reviewed branch:** `work`  
 **Latest verified backend code:** `1196045794777f94d94c994b4750af865d36e84e` (Backend CI PASS: `43709153490`).  
-**Latest verified frontend code:** `b640caed53a4ad7c2a4670719974d2d99b7a4269` (Frontend CI PASS: `43708932012`, 8 Playwright tests). Earlier failed runs listed in the GitHub Actions history are superseded by these fixes; do not treat them as current failures. LGD validator regression coverage verifies empty snapshots and repeated identical ancestor rows. Backend CI run `43695705432` passed the complete migration chain, Go tests including PostgreSQL integration, and `go vet`; frontend CI run `43695705443` passed design-token checks, TypeScript/Vite production build, and all 8 Playwright tests. The latest Student Management frontend correction prevents unchanged background refetches from overwriting in-progress drafts in Address & Communication, Basic Details, and Medical/Physical forms. Student Management also includes the V44 class/year curriculum editor, enrollment-specific compulsory/optional subject choices and append-only version history; backend validation covers invalid selections, cross-school isolation, inactive students/enrollments and retired-version reversion. Parent Details includes active-student create/link/edit/revoke flows, shared guardian profile editing, reload/history preservation and inactive/archived read-only access. Enrollment curriculum routes and save/readback paths enforce all required subject and student permissions before writes. Browser tests use mocked APIs; CI PostgreSQL is ephemeral. Live acceptance against the user's persistent database remains pending and must not be attempted without explicit approval and a verified restorable backup.
+**Latest pushed frontend code:** `6b3355f7d7d5b520fd2ca3bf06028c9b09485e11` (CI pending; last known frontend PASS is older commit `b640caed53a4ad7c2a4670719974d2d99b7a4269`, run `43708932012`). Earlier failed runs listed in the GitHub Actions history are superseded by these fixes; do not treat them as current failures. LGD validator regression coverage verifies empty snapshots and repeated identical ancestor rows. Backend CI run `43695705432` passed the complete migration chain, Go tests including PostgreSQL integration, and `go vet`; frontend CI run `43695705443` passed design-token checks, TypeScript/Vite production build, and all 8 Playwright tests. The latest Student Management frontend correction prevents unchanged background refetches from overwriting in-progress drafts in Address & Communication, Basic Details, and Medical/Physical forms. Student Management also includes the V44 class/year curriculum editor, enrollment-specific compulsory/optional subject choices and append-only version history; backend validation covers invalid selections, cross-school isolation, inactive students/enrollments and retired-version reversion. Parent Details includes active-student create/link/edit/revoke flows, shared guardian profile editing, reload/history preservation and inactive/archived read-only access. Enrollment curriculum routes and save/readback paths enforce all required subject and student permissions before writes. Browser tests use mocked APIs; CI PostgreSQL is ephemeral. Live acceptance against the user's persistent database remains pending and must not be attempted without explicit approval and a verified restorable backup.
 
 ## Student Management — profile form refetch resilience (2026-11-15)
 
