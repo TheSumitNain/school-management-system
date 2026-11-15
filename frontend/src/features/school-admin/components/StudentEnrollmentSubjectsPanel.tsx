@@ -18,8 +18,11 @@ export function StudentEnrollmentSubjectsPanel({
   const query = useSchoolStudentEnrollmentCurriculumQuery(enrollmentID);
   const save = useSaveSchoolStudentEnrollmentSubjectsMutation();
   const [selected, setSelected] = useState<number[]>([]);
+  const [targetCurriculumID, setTargetCurriculumID] = useState(0);
   const data = query.data?.enrollment_curriculum;
-  const curriculum = data?.curriculum;
+  const curriculum = [data?.curriculum, data?.available_curriculum].find(item => item?.id === targetCurriculumID) ?? data?.curriculum ?? data?.available_curriculum;
+  const movingToNewVersion = Boolean(data?.available_curriculum && targetCurriculumID === data.available_curriculum.id);
+  const selectedVersionIsAssigned = Boolean(data?.assigned && data.curriculum?.id === targetCurriculumID);
   const canEdit = canManage && studentStatus === "active" && enrollmentStatus === "active";
   const grouped = useMemo(() => {
     const groups = new Map<number, { name: string; min: number; max: number; subjects: CurriculumSubject[] }>();
@@ -33,8 +36,9 @@ export function StudentEnrollmentSubjectsPanel({
   }, [curriculum]);
 
   useEffect(() => {
+    setTargetCurriculumID(data?.curriculum?.id ?? data?.available_curriculum?.id ?? 0);
     setSelected(data?.selected_optional_subject_ids ?? []);
-  }, [data?.enrollment_id, data?.curriculum?.id, data?.selected_optional_subject_ids]);
+  }, [data?.enrollment_id, data?.curriculum?.id, data?.available_curriculum?.id, data?.selected_optional_subject_ids]);
 
   function toggle(id: number, checked: boolean) {
     setSelected(current => checked ? [...current, id] : current.filter(value => value !== id));
@@ -58,9 +62,18 @@ export function StudentEnrollmentSubjectsPanel({
     <section className="student-enrollment-subjects" aria-label="Curriculum and subject choices">
       <div className="student-profile-enrollment-heading">
         <strong>Curriculum · Version {curriculum.version_number}</strong>
-        <span className={"student-status " + (data?.assigned ? "active" : "pending")}>{data?.assigned ? "Assigned" : "Available"}</span>
+        <span className={"student-status " + (selectedVersionIsAssigned ? "active" : "pending")}>{selectedVersionIsAssigned ? "Assigned" : "Available"}</span>
       </div>
       <p className="student-address-note">Compulsory subjects are included automatically. Optional choices follow the school's selection limits.</p>
+      {data?.available_curriculum && (
+        <label className="student-curriculum-version-select">Curriculum version
+          <select value={targetCurriculumID} onChange={event => { setTargetCurriculumID(Number(event.target.value)); setSelected([]); }}>
+            <option value={data.curriculum?.id ?? 0}>Assigned version {data.curriculum?.version_number}</option>
+            <option value={data.available_curriculum.id}>New version {data.available_curriculum.version_number}</option>
+          </select>
+        </label>
+      )}
+      {movingToNewVersion && <p className="student-address-note">Saving this version replaces the assigned curriculum while preserving previous subject-choice history.</p>}
       <div className="student-subject-list">
         {curriculum.subjects.filter(subject => subject.is_compulsory).map(subject => (
           <div className="student-subject-row" key={subject.id}>
@@ -94,7 +107,7 @@ export function StudentEnrollmentSubjectsPanel({
         <div className="student-subject-actions">
           {invalidGroup && <p className="student-field-error" role="alert">{invalidGroup[1].name}: select between {invalidGroup[1].min} and {invalidGroup[1].max} subjects.</p>}
           {save.isError && <p className="student-field-error" role="alert">{save.error.message}</p>}
-          <button type="button" className="student-secondary" disabled={Boolean(invalidGroup) || save.isPending} onClick={() => save.mutate({ enrollmentID, curriculum_id: curriculum.id, selected_optional_subject_ids: selected })}>
+          <button type="button" className="student-secondary" disabled={Boolean(invalidGroup) || save.isPending} onClick={() => save.mutate({ enrollmentID, curriculum_id: targetCurriculumID || curriculum.id, selected_optional_subject_ids: selected })}>
             {save.isPending ? "Saving…" : "Save subject choices"}
           </button>
         </div>
