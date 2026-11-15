@@ -1092,8 +1092,8 @@ test("student promotion validates required fields and preserves prior enrollment
     }
     if (path === "/school/academic-years") {
       await route.fulfill({ json: { academic_years: [
-        { id: 6, name: "2025–2026", status: "active", is_current: false },
-        { id: 7, name: "2026–2027", status: "active", is_current: true },
+        { id: 6, name: "2025–2026", starts_on: "2025-04-01", ends_on: "2026-03-31", status: "active", is_current: false },
+        { id: 7, name: "2026–2027", starts_on: "2026-04-01", ends_on: "2027-03-31", status: "active", is_current: true },
       ] } });
       return;
     }
