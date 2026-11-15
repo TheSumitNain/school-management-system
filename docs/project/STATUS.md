@@ -2,6 +2,15 @@
 
 ## Active handover — Student Management (2026-11-15)
 
+### Guardian revocation audit correction (2026-11-15)
+
+- Root cause verified from migration V12: `trg_audit_student_guardian_revocation` already inserts `school.student_guardian_link_revoked`. The repository also inserted the same event explicitly, producing two audit rows for one revocation and failing the integration count.
+- Fix committed on `work`: migration V45 updates the existing trigger metadata to include `has_revocation_reason` (boolean only; never the free-text reason), and the repository now relies on the trigger as the single audit writer.
+- Code commit: `1196045794777f94d94c994b4750af865d36e84e`. CI for this exact commit must be checked before declaring backend green.
+- Frontend correction commit `b640caed53a4ad7c2a4670719974d2d99b7a4269` has Frontend CI SUCCESS (run 43708932012). Backend CI on b640 failed only at the verified duplicate audit count; go vet did not run because tests failed.
+- Next: verify both workflows on the post-V45 code commit, fix any newly exposed failures, then complete remaining Student Management browser acceptance journeys.
+
+
 ## Student Management — guardian validation CI correction (2026-11-15)
 
 - Commit `b640caed53a4ad7c2a4670719974d2d99b7a4269` removes browser-level `maxLength` truncation from the guardian form inputs. The component already performs explicit length validation and renders field-level errors; native truncation prevented over-limit values from reaching that validation, causing the two Playwright failures.
