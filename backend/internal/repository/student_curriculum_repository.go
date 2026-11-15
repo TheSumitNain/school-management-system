@@ -500,8 +500,8 @@ func (r *AcademicRepository) SaveStudentEnrollmentSubjects(
 		return nil, err
 	}
 	// The successful response reloads the enrollment curriculum through the
-	// same visibility rules as a read. Enforce that permission before writing
-	// so a caller can never commit a change and then receive a 403 response.
+	// same visibility rules as a read. Check that permission before writing to
+	// avoid a predictable post-commit 403 for callers who lack read access.
 	if err := authorizeAcademic(ctx, tx, actorID, schoolID, "students.read_basic"); err != nil {
 		return nil, err
 	}
