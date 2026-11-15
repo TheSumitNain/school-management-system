@@ -574,19 +574,19 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Rollback-scoped PostgreSQL integration coverage now exercises maximum-length Hindi-script student names, admission numbers, roll numbers, location names and address lines, plus rejection immediately above each limit.
 - The Basic Details frontend now uses Unicode code-point counting for student name and optional text fields; the student-name input no longer relies on the browser's UTF-16 `maxLength` behavior. Mocked Playwright coverage checks 200 Hindi characters are accepted and 201 are rejected without sending a save request.
 - Guardian mobile and email limits also use Unicode code-point counts; rollback-scoped PostgreSQL integration coverage rejects over-limit Hindi-script contact values.
-- This is application validation and regression coverage only. The persistent school database was not migrated or modified. CI verification for the exact latest branch tip must be checked before marking this change verified.
+- Backend CI run `43693986179` passed the full migration chain, Go integration/unit tests and `go vet`, including the Unicode validation integration coverage. Frontend CI run `43694724225` passed all 8 Playwright tests, including the Hindi-script boundary checks. The persistent school database was not migrated or modified.
 
 ## Student Management Unicode input consistency — 2026-11-15
 
 - Removed native HTML `maxLength` caps from admission, enrollment and guardian/relationship inputs whose server-side limits are measured in Unicode code points. Browser `maxLength` counts UTF-16 code units, so it could reject valid supplementary-plane characters before the API's PostgreSQL-compatible character validation ran.
 - Backend repository validation remains authoritative for the documented limits; this change does not weaken server validation or change database schemas.
-- This is a frontend input-behavior correction. The exact latest commit still requires frontend CI verification; mocked Playwright coverage and live authenticated browser acceptance remain separate checks. No database migration or persistent data change was performed.
+- Frontend CI run `43694724225` passed the TypeScript/Vite production build and all 8 Playwright tests on the current frontend checkpoint. Mocked Playwright coverage and live authenticated browser acceptance remain separate checks. No database migration or persistent data change was performed.
 
 ## Student address/contact Unicode input consistency — 2026-11-15
 
 - Student contact phone length validation now counts Unicode code points, matching the backend's PostgreSQL character-limit semantics.
 - Removed browser-native UTF-16 `maxLength` caps from student phone/email, address text, postal code and school-added location-name inputs. These controls no longer reject otherwise valid Unicode input based on UTF-16 code-unit counts; server-side validation remains authoritative.
-- This change does not modify database schemas or persistent data. Exact-tip CI and authenticated browser acceptance are still required; no CI PASS is claimed here.
+- Backend CI run `43693986179` passed the migration/integration suite and `go vet`; frontend CI run `43694724225` passed the production build and all 8 Playwright tests. These are CI checks, not authenticated acceptance against the user's persistent database; no database schema or persistent data was changed by this input-behavior correction.
 
 
 ## Student health text validation consistency — 2026-11-15
