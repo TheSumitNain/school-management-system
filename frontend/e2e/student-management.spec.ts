@@ -575,16 +575,24 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByText(/Teachers do not have access to these records/)).toBeVisible();
   await page.getByRole("button", { name: "Blood group", exact: true }).click();
   await page.getByRole("option", { name: "O+" }).click();
-  await page.getByPlaceholder("Record known allergies, if any").fill("Peanuts");
-  await page.getByPlaceholder("Record school-relevant conditions, if any").fill("No other known conditions");
+  await page.getByPlaceholder("Record known allergies, if any").fill("अ".repeat(2001));
   const medicalSaveButton = page.getByRole("button", { name: "Save medical details" });
   await medicalSaveButton.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
     if (!form) throw new Error("Medical save button is not associated with its form.");
     form.requestSubmit(button as HTMLButtonElement);
   });
+  await expect(page.getByText("Use no more than 2,000 characters.")).toBeVisible();
+  expect(medicalDetails.version_number).toBe(0);
+  await page.getByPlaceholder("Record known allergies, if any").fill("अ".repeat(2000));
+  await page.getByPlaceholder("Record school-relevant conditions, if any").fill("No other known conditions");
+  await medicalSaveButton.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Medical save button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
   await expect.poll(() => medicalDetails.blood_group).toBe("O+");
-  await expect.poll(() => medicalDetails.allergies).toBe("Peanuts");
+  await expect.poll(() => medicalDetails.allergies).toBe("अ".repeat(2000));
   await expect.poll(() => medicalDetails.known_conditions).toBe("No other known conditions");
   await expect.poll(() => medicalDetails.version_number).toBe(1);
   await expect(page.getByText("Medical details saved.")).toBeVisible();
