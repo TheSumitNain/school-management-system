@@ -300,6 +300,12 @@ BEGIN
     IF OLD.status <> 'active' OR NEW.status <> 'replaced' OR NEW.revoked_at IS NULL THEN
         RAISE EXCEPTION 'active enrollment curriculum can only be replaced once';
     END IF;
+    IF EXISTS (
+        SELECT 1 FROM student_enrollment_subject_selections s
+        WHERE s.enrollment_curriculum_id = OLD.id AND s.revoked_at IS NULL
+    ) THEN
+        RAISE EXCEPTION 'optional subject selections must be revoked before replacing an enrollment curriculum';
+    END IF;
     RETURN NEW;
 END;
 $v43$;
