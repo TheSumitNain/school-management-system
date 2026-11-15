@@ -281,4 +281,14 @@ func TestStudentAddressLocationV34PostgresIntegration(t *testing.T) {
 	if addressCount != 2 {
 		t.Fatalf("student address count = %d, want current + permanent", addressCount)
 	}
+
+	// A school administrator must not read or mutate address data belonging
+	// to another school, even when both student and school IDs are supplied.
+	if _, err := repository.ListStudentAddresses(ctx, actorPrincipalID, otherSchoolID, otherStudentID); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("cross-school address read error = %v, want access denied", err)
+	}
+	if _, err := repository.SaveStudentAddress(ctx, actorPrincipalID, otherSchoolID, otherStudentID,
+		"current", &updatedLine1, nil, nil, nil, nil, nil, false); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("cross-school address update error = %v, want access denied", err)
+	}
 }
