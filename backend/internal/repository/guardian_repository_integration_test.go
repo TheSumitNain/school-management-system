@@ -288,6 +288,9 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 	if _, err := repo.UpdateStudentGuardianLink(ctx, targetPrincipalID, otherSchoolID, firstLink.ID, "father", false, false); !errors.Is(err, ErrGuardianAccessDenied) {
 		t.Fatalf("cross-school guardian relationship update error = %v, want access denied", err)
 	}
+	if err := repo.RevokeStudentGuardianLink(ctx, targetPrincipalID, otherSchoolID, firstLink.ID, "cross-school attempt"); !errors.Is(err, ErrGuardianAccessDenied) {
+		t.Fatalf("cross-school guardian relationship revoke error = %v, want access denied", err)
+	}
 
 	var relatedStudentID int64
 	if err := tx.QueryRow(ctx, `
