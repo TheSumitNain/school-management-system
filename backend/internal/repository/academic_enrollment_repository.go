@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -74,7 +75,7 @@ func nextAvailableSectionRollNumber(ctx context.Context, tx pgx.Tx, schoolID, se
 	var value string
 	err := tx.QueryRow(ctx, `SELECT (COALESCE(MAX(CASE WHEN btrim(roll_number) ~ '^[0-9]+$' THEN btrim(roll_number)::numeric END), 0) + 1)::text FROM student_enrollments WHERE school_id=$1 AND section_id=$2`, schoolID, sectionID).Scan(&value)
 	if err != nil { return nil, fmt.Errorf("allocate next section roll number: %w", err) }
-	if len(value) > 30 { return nil, ErrInvalidAcademicInput }
+	if utf8.RuneCountInString(value) > 30 { return nil, ErrInvalidAcademicInput }
 	return &value, nil
 }
 
@@ -88,7 +89,7 @@ type StudentAdmissionResult struct {
 
 func normalizeEnrollmentAdmission(number string, admissionDate time.Time) (string, error) {
 	number = strings.TrimSpace(number)
-	if number == "" || len(number) > 50 || admissionDate.IsZero() {
+	if number == "" || utf8.RuneCountInString(number) > 50 || admissionDate.IsZero() {
 		return "", ErrInvalidAcademicInput
 	}
 	return number, nil
@@ -120,7 +121,7 @@ func (r *AcademicRepository) CreateStudentAdmission(
 		return nil, ErrAcademicAccessDenied
 	}
 	fullName = strings.TrimSpace(fullName)
-	if fullName == "" || len(fullName) > 200 || yearID <= 0 || sectionID <= 0 {
+	if fullName == "" || utf8.RuneCountInString(fullName) > 200 || yearID <= 0 || sectionID <= 0 {
 		return nil, ErrInvalidAcademicInput
 	}
 	admissionNumber, err := normalizeEnrollmentAdmission(admissionNumber, admissionDate)
