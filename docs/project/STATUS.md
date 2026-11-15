@@ -24,7 +24,7 @@
 
 - Extended the student academic-history browser journey to assert that an optional subject group cannot be saved below its minimum or above its maximum, and that correcting the selection re-enables save.
 - Test commit: `743970d82dc655e7c63d5a72c1097531ba2cb2dc`.
-- Frontend CI [run 43719477558](https://github.com/TheSumitNain/school-management-system/actions/runs/43719477558) and Backend CI [run 43719477590](https://github.com/TheSumitNain/school-management-system/actions/runs/43719477590) are queued. Keep `cdfb455ec2aa4451d8a94f421ea022ed23cece09` as the latest fully verified code checkpoint until the exact-commit workflows finish.
+- Frontend CI [run 43719477558](https://github.com/TheSumitNain/school-management-system/actions/runs/43719477558) reached the new boundary assertions but failed because the expected validation text used `Language` while the fixture group is named `Second language`; the actual UI correctly rendered `Second language`. Corrected the assertion in `9c7dce3feaef57ead8771c7a8c2773f3a3d7ed20`. Backend CI for the original test commit passed in [run 43719477590](https://github.com/TheSumitNain/school-management-system/actions/runs/43719477590). Frontend/Backend CI for the corrected exact commit are pending. Keep `cdfb455ec2aa4451d8a94f421ea022ed23cece09` as the latest fully verified code checkpoint until the corrected workflows finish.
 
 ### Shared guardian profile across linked students — verified (2026-11-15)
 
