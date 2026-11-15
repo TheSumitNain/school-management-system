@@ -912,6 +912,34 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 	`, schoolID, apiStudentID).Scan(&currentEnrollmentID); err != nil {
 		t.Fatalf("find active enrollment before student archive: %v", err)
 	}
+	var sourceClassID int64
+	if err := tx.QueryRow(ctx, `
+		SELECT class_id FROM student_enrollments WHERE id=$1 AND school_id=$2
+	`, currentEnrollmentID, schoolID).Scan(&sourceClassID); err != nil {
+		t.Fatalf("load source class for inactive-promotion test: %v", err)
+	}
+	var promotionSectionID int64
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO sections(school_id,academic_year_id,class_id,name)
+		VALUES($1,$2,$3,$4) RETURNING id
+	`, schoolID, switchYear.ID, sourceClassID, "Archive Boundary "+suffix).Scan(&promotionSectionID); err != nil {
+		t.Fatalf("create destination section for inactive-promotion test: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `UPDATE students SET status='inactive' WHERE id=$1 AND school_id=$2`, apiStudentID, schoolID); err != nil {
+		t.Fatalf("mark student inactive for promotion-boundary test: %v", err)
+	}
+	promotionDate := time.Date(2030, 4, 1, 0, 0, 0, 0, time.UTC)
+	if _, err := academicRepo.PromoteStudentEnrollment(ctx, actorPrincipalID, schoolID, currentEnrollmentID,
+		switchYear.ID, promotionSectionID, nil, "INACTIVE-PROMOTION-"+suffix, promotionDate, promotionDate); !errors.Is(err, ErrAcademicNotFound) {
+		t.Fatalf("promote inactive student error = %v, want ErrAcademicNotFound", err)
+	}
+	var sourceEnrollmentStatus string
+	if err := tx.QueryRow(ctx, `SELECT status FROM student_enrollments WHERE id=$1`, currentEnrollmentID).Scan(&sourceEnrollmentStatus); err != nil || sourceEnrollmentStatus != "active" {
+		t.Fatalf("inactive promotion changed source enrollment status to %q; err=%v", sourceEnrollmentStatus, err)
+	}
+	if _, err := tx.Exec(ctx, `UPDATE students SET status='active' WHERE id=$1 AND school_id=$2`, apiStudentID, schoolID); err != nil {
+		t.Fatalf("restore student active after promotion-boundary test: %v", err)
+	}
 	archivedStudent, err := academicRepo.ArchiveStudent(ctx, actorPrincipalID, schoolID, apiStudentID)
 	if err != nil || archivedStudent == nil || archivedStudent.Status != "archived" {
 		t.Fatalf("archive student with enrollment history: student=%+v err=%v", archivedStudent, err)
