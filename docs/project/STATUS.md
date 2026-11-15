@@ -3,7 +3,7 @@
 **Last reconciled:** 2026-11-15  
 **Repository:** `TheSumitNain/school-management-system`  
 **Reviewed branch:** `work`  
-**Reviewed through:** `dabcfa50e2ba173b8b6b82a217e141a9eb664865` on `work`. The last fully verified code checkpoint remains `06d2325a5e7700bf493f1d8bf21f07d19c9d5fe6` (Backend CI run `43669467831`; Frontend CI run `43669467828`). CI status for the current tip and all subsequent frontend validation changes is not available in the inspected commit checks; do not treat the older pass as verification of the current tip. Local V39+ database application and live authenticated browser acceptance remain pending.
+**Reviewed through:** `6e3085218c6615b154d67edc6518c598b9d7ddf9` on `work`. Backend CI run `43673900042` and Frontend CI run `43673900145` both passed on this code checkpoint. Backend CI applied the complete migration chain to ephemeral PostgreSQL, passed backend tests including PostgreSQL integration, and passed `go vet`. Frontend CI passed the design-token check, TypeScript/Vite production build, and all 5 Student Management Playwright tests. No persistent school database was changed. Local disposable-database verification and authenticated browser acceptance against the real API/database remain pending; do not migrate persistent `school_management` without explicit approval and a verified restorable backup.
 
 ## Administrator access correction — School Admin guardian permissions (V39; local verification pending)
 
@@ -635,3 +635,11 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Tightened school-created State/UT location validation: country codes must now be exactly two ASCII uppercase letters after normalization. A two-byte non-ASCII character or arbitrary punctuation/digit pair can no longer pass the previous byte-length-only check.
 - Added rollback-scoped PostgreSQL integration assertions for invalid non-ASCII and non-letter country codes alongside the existing valid `IN` location hierarchy and Unicode location-name/address tests.
 - This is repository validation/test coverage only; no migration or persistent database change. Exact-tip backend CI remains unverified.
+
+
+## Verified Student Management validation checkpoint — 2026-11-15
+
+- Exact code checkpoint `6e3085218c6615b154d67edc6518c598b9d7ddf9` passed Frontend CI (`43673900145`): centralized design-token check, `tsc -b`, Vite production build and 5 Playwright Student Management scenarios.
+- The same code checkpoint passed Backend CI (`43673900042`): all migrations applied to ephemeral PostgreSQL, complete backend tests including PostgreSQL integration, and `go vet`.
+- The Playwright scenarios are API-mocked browser tests. They verify UI validation and interactions but do not prove persistence against the user's local database. Real authenticated admission/profile/Parent Details/address/contact/health/promotion save-reopen-reload acceptance remains outstanding.
+- No persistent `school_management` database was accessed or migrated during this work.
