@@ -22,7 +22,7 @@ The following decisions are approved:
 
 ## 2. Audit findings in the current implementation
 
-The current `work` branch contains the approved core Student Management model and its major profile workflows. Earlier backend/frontend CI checkpoints passed; the latest frontend refetch-regression checkpoint is still being verified. Authenticated live acceptance remains a separate required gate.
+The current `work` branch contains the approved core Student Management model and its major profile workflows. Earlier backend/frontend CI checkpoints passed; the latest frontend refetch-regression checkpoint passed CI; authenticated live acceptance remains in progress. Authenticated live acceptance remains a separate required gate.
 
 | Area | Existing state | Required evolution |
 |---|---|---|
@@ -292,9 +292,9 @@ A phase is complete only when code, migrations, automated tests and applicable b
 - Guardian revocation audit has one authoritative writer: the V12 database trigger, updated by V45 to add only the boolean `has_revocation_reason`. The repository must not insert a duplicate audit event. Free-text revocation reasons must remain out of audit metadata.
 - These automated checks do not complete the manual/live acceptance checklist below. Playwright uses mocked APIs; local authenticated acceptance remains pending and must respect the persistent-database approval/backup safety gate.
 
-- The latest browser-test work adds explicit window-focus background-refetch checks for unsaved drafts in Basic Details, Parent Details, Address, Contact, Medical and Physical forms. The test waits beyond the relevant query stale windows, verifies that the API is read again, and asserts that the user's draft remains visible when the persisted response is unchanged. Test checkpoint: `ce21411d7ea1a52d5c4633a3c57e317f7f268965`; CI is pending.
+- The latest browser-test work adds explicit window-focus background-refetch checks for unsaved drafts in Basic Details, Parent Details, Address, Contact, Medical and Physical forms. The test waits beyond the relevant query stale windows, verifies that the API is read again, and asserts that the user's draft remains visible when the persisted response is unchanged. Test checkpoint: `eaed7705bcf14f156a423a157f5f2adebfc5181c`; Frontend CI [43712030788](https://github.com/TheSumitNain/school-management-system/actions/runs/43712030788) passed all 8 Playwright tests, including these draft checks.
 - The app-wide QueryClient focus policy remains unchanged. The browser regression deterministically invalidates the app's actual QueryClient query families, waits for active profile queries to refetch, and verifies unchanged unsaved drafts remain intact. This exercises the same invalidation/refetch path used by successful mutations without introducing extra focus-triggered reads.
-- The first run exposed a name-save feedback race: the success message was cleared when the same student's updated name changed a synchronization-effect dependency. The reset now depends on student identity only; source fix `2419d61299a878669392f69f44549a8e45f7ff9a`. The first failing run is documented in Project Status; the next exact-SHA CI result must confirm the correction.
+- The first run exposed a name-save feedback race: the success message was cleared when the same student's updated name changed a synchronization-effect dependency. The reset now depends on student identity only; source fix `2419d61299a878669392f69f44549a8e45f7ff9a`. The fix is covered by the passing frontend checkpoint above.
 
 ## 9. Student profile screen audit — 2026-11-14
 
