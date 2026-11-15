@@ -115,9 +115,11 @@ func (r *AcademicRepository) SaveStudentBasicDetails(
 	if err != nil { return nil, fmt.Errorf("begin student basic details save: %w", err) }
 	defer func() { _ = tx.Rollback(ctx) }()
 	if err := authorizeAcademic(ctx, tx, actorID, schoolID, "students.update"); err != nil {
+		return nil, err
+	}
 	if err := authorizeAcademic(ctx, tx, actorID, schoolID, "students.read_sensitive"); err != nil {
 		return nil, err
-	} return nil, err }
+	}
 	var active bool
 	if err := tx.QueryRow(ctx, `SELECT status='active' FROM students WHERE id=$1 AND school_id=$2 FOR UPDATE`,
 		studentID, schoolID).Scan(&active); err != nil {
