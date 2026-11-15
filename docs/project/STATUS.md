@@ -3,7 +3,7 @@
 **Last reconciled:** 2026-11-15  
 **Repository:** `TheSumitNain/school-management-system`  
 **Reviewed branch:** `work`  
-**Reviewed through:** `06d2325a5e7700bf493f1d8bf21f07d19c9d5fe6`; Backend CI run `43669467831` and Frontend CI run `43669467828` both passed. Backend CI applied the complete migration chain to ephemeral PostgreSQL, passed all backend tests including PostgreSQL integration, and passed `go vet`. Frontend CI passed the production build and all 5 Playwright tests. Local V39+ database application and live authenticated browser acceptance remain pending
+**Reviewed through:** `dabcfa50e2ba173b8b6b82a217e141a9eb664865` on `work`. The last fully verified code checkpoint remains `06d2325a5e7700bf493f1d8bf21f07d19c9d5fe6` (Backend CI run `43669467831`; Frontend CI run `43669467828`). CI status for the current tip and all subsequent frontend validation changes is not available in the inspected commit checks; do not treat the older pass as verification of the current tip. Local V39+ database application and live authenticated browser acceptance remain pending.
 
 ## Administrator access correction — School Admin guardian permissions (V39; local verification pending)
 
