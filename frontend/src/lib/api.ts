@@ -144,7 +144,7 @@ async function refreshSession(): Promise<boolean> {
 export function restoreSession() { return refreshSession(); }
 
 type RequestOptions = RequestInit & { auth?: boolean; retry?: boolean };
-export class ApiError extends Error { constructor(public status:number,message:string){super(message);this.name="ApiError";} }
+export class ApiError extends Error { constructor(public status:number,message:string,public fieldErrors:Record<string,string>={}){super(message);this.name="ApiError";} }
 export async function api<T>(path:string,options:RequestOptions={}):Promise<T>{
   const {auth=true,retry=true,headers,...init}=options;
   const requestHeaders=new Headers(headers);
@@ -164,7 +164,8 @@ export async function api<T>(path:string,options:RequestOptions={}):Promise<T>{
   const payload=await response.json().catch(()=>({}));
   if(!response.ok){
     const message=typeof payload.message==="string"?payload.message:response.status===403?"You do not have permission to perform this action.":"Request failed. Please try again.";
-    throw new ApiError(response.status,message);
+    const fieldErrors=payload.field_errors&&typeof payload.field_errors==="object"?Object.fromEntries(Object.entries(payload.field_errors).filter((entry):entry is [string,string]=>typeof entry[1]==="string")):{};
+    throw new ApiError(response.status,message,fieldErrors);
   }
   return payload as T;
 }
