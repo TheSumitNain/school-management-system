@@ -283,6 +283,7 @@ func (r *AcademicRepository) ListStudentEnrollments(ctx context.Context, actorID
 		items = append(items, *v)
 	}
 	if err := rows.Err(); err != nil { return nil, fmt.Errorf("iterate student enrollments: %w", err) }
+	rows.Close()
 	if studentID > 0 && len(items) == 0 {
 		var exists bool
 		if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM students WHERE id=$1 AND school_id=$2)`, studentID, schoolID).Scan(&exists); err != nil { return nil, fmt.Errorf("check student: %w", err) }
