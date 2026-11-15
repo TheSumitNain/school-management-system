@@ -23,6 +23,10 @@ export function StudentEnrollmentSubjectsPanel({
   const curriculum = [data?.curriculum, data?.available_curriculum].find(item => item?.id === targetCurriculumID) ?? data?.curriculum ?? data?.available_curriculum;
   const movingToNewVersion = Boolean(data?.available_curriculum && targetCurriculumID === data.available_curriculum.id);
   const selectedVersionIsAssigned = Boolean(data?.assigned && data.curriculum?.id === targetCurriculumID);
+  // Query refetches can replace the selected-ID array with a new reference
+  // even when its values have not changed. Track the saved values rather than
+  // the array identity so background refetches never discard unsaved edits.
+  const savedSelectionKey = (data?.selected_optional_subject_ids ?? []).join(",");
   const canEdit = canManage && studentStatus === "active" && enrollmentStatus === "active";
   const grouped = useMemo(() => {
     const groups = new Map<number, { name: string; min: number; max: number; subjects: CurriculumSubject[] }>();
@@ -37,8 +41,8 @@ export function StudentEnrollmentSubjectsPanel({
 
   useEffect(() => {
     setTargetCurriculumID(data?.curriculum?.id ?? data?.available_curriculum?.id ?? 0);
-    setSelected(data?.selected_optional_subject_ids ?? []);
-  }, [data?.enrollment_id, data?.curriculum?.id, data?.available_curriculum?.id, data?.selected_optional_subject_ids]);
+    setSelected(savedSelectionKey ? savedSelectionKey.split(",").map(Number) : []);
+  }, [data?.enrollment_id, data?.curriculum?.id, data?.available_curriculum?.id, savedSelectionKey]);
 
   function toggle(id: number, checked: boolean) {
     setSelected(current => checked ? [...current, id] : current.filter(value => value !== id));
