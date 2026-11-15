@@ -3,7 +3,7 @@
 **Last reconciled:** 2026-11-15  
 **Repository:** `TheSumitNain/school-management-system`  
 **Reviewed branch:** `work`  
-**Reviewed through:** `87647ce15f825176af6ba8edfad902cc7dc1d93b` on `work` (documentation-only UX-standard clarification after the passing code checkpoint `8a2c32e15deb8464c58b40d0d89fe0ae5187f1a5`). Backend CI run `43677196532` and Frontend CI run `43677196535` both passed this exact code checkpoint: complete migrations on ephemeral PostgreSQL, backend unit/integration tests, `go vet`, design-token check, TypeScript/Vite production build, and all 6 Student Management Playwright tests. No persistent school database was changed. Local disposable-database verification and authenticated browser acceptance against the real API/database remain pending; do not migrate persistent `school_management` without explicit approval and a verified restorable backup.
+**Reviewed through:** `58b255d2c16a755e0cc39ad86c96675267f1482b` on `work`. Backend CI run `43677649516` and Frontend CI run `43677649489` both passed this exact code checkpoint: complete migration chain on ephemeral PostgreSQL, backend unit/integration tests, `go vet`, frontend design-token check, TypeScript/Vite production build, and all 6 Student Management Playwright tests. Backend CI run `43677196532` and Frontend CI run `43677196535` both passed this exact code checkpoint: complete migrations on ephemeral PostgreSQL, backend unit/integration tests, `go vet`, design-token check, TypeScript/Vite production build, and all 6 Student Management Playwright tests. No persistent school database was changed. Local disposable-database verification and authenticated browser acceptance against the real API/database remain pending; do not migrate persistent `school_management` without explicit approval and a verified restorable backup.
 
 ## Administrator access correction — School Admin guardian permissions (V39; local verification pending)
 
@@ -692,3 +692,11 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - The Playwright workflow now simulates an API 409 conflict, verifies the field-level message, verifies the existing profile value is not overwritten, then retries successfully after the conflict is cleared.
 - Backend CI `43677196532` and Frontend CI `43677196535` both passed on `8a2c32e15deb8464c58b40d0d89fe0ae5187f1a5`. Frontend includes all 6 Student Management Playwright tests; backend includes the full ephemeral PostgreSQL migration chain, integration tests and `go vet`.
 - These checks do not replace authenticated browser acceptance against the local API/database. No persistent school database was accessed or migrated.
+
+
+## Guardian-link conflict feedback — 2026-11-15
+
+- A duplicate active guardian-link conflict (HTTP 409) is now mapped to an inline error beside the Guardian selector in Parents & Siblings. The selected guardian and relationship form values are retained so staff can review existing links and retry; other unexpected errors remain in form-level feedback.
+- Extended the guardian workflow Playwright test to simulate the conflict, assert that no link is created, verify the inline message, and then retry successfully. Existing relationship type validation and primary/emergency flags remain covered.
+- Frontend CI run `43677649489` and Backend CI run `43677649516` passed code checkpoint `58b255d2c16a755e0cc39ad86c96675267f1482b`. This includes all 6 Student Management Playwright tests, TypeScript/Vite build, full migrations on ephemeral PostgreSQL, backend unit/integration tests, and `go vet`.
+- No persistent school database was accessed or migrated. Authenticated browser acceptance against the local API/database remains pending.
