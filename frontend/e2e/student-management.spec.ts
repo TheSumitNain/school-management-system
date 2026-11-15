@@ -98,7 +98,7 @@ test("student admission, profile navigation and parent details render without br
           username: "e2e-school-admin",
           permissions: [
             "students.read_sensitive", "students.read_basic", "students.create", "students.update",
-            "students.archive", "academic_years.read", "classes.read", "guardians.read", "guardians.manage",
+            "students.archive", "academic_years.read", "classes.read", "subjects.read", "guardians.read", "guardians.manage",
           ],
         },
       });
@@ -204,6 +204,46 @@ test("student admission, profile navigation and parent details render without br
             }],
           },
         });
+        return;
+      }
+      if (subpath === "enrollments/101/curriculum" && method === "GET") {
+        await route.fulfill({ json: { enrollment_curriculum: {
+          enrollment_id: 101, student_id: studentID, student_status: "active", enrollment_status: "active",
+          academic_year_id: 7, class_id: 3, assigned: false,
+          curriculum: {
+            id: 701, school_id: 10, academic_year_id: 7, class_id: 3, version_number: 1, status: "active",
+            created_at: "2026-11-14T00:00:00.000Z",
+            optional_groups: [{ id: 801, name: "Second language", min_selections: 1, max_selections: 1 }],
+            subjects: [
+              { id: 901, subject_id: 91, name: "Mathematics", is_compulsory: true },
+              { id: 902, subject_id: 92, name: "Hindi", optional_group_id: 801, optional_group_name: "Second language", is_compulsory: false },
+              { id: 903, subject_id: 93, name: "Sanskrit", optional_group_id: 801, optional_group_name: "Second language", is_compulsory: false },
+            ],
+          },
+          selected_optional_subject_ids: [], selection_history: [],
+        } } });
+        return;
+      }
+      if (subpath === "enrollments/101/subjects" && method === "PUT") {
+        const input = request.postDataJSON() as { selected_optional_subject_ids: number[] };
+        await route.fulfill({ json: { enrollment_curriculum: {
+          enrollment_id: 101, student_id: studentID, student_status: "active", enrollment_status: "active",
+          academic_year_id: 7, class_id: 3, assigned: true,
+          curriculum: {
+            id: 701, school_id: 10, academic_year_id: 7, class_id: 3, version_number: 1, status: "active",
+            created_at: "2026-11-14T00:00:00.000Z",
+            optional_groups: [{ id: 801, name: "Second language", min_selections: 1, max_selections: 1 }],
+            subjects: [
+              { id: 901, subject_id: 91, name: "Mathematics", is_compulsory: true },
+              { id: 902, subject_id: 92, name: "Hindi", optional_group_id: 801, optional_group_name: "Second language", is_compulsory: false },
+              { id: 903, subject_id: 93, name: "Sanskrit", optional_group_id: 801, optional_group_name: "Second language", is_compulsory: false },
+            ],
+          },
+          selected_optional_subject_ids: input.selected_optional_subject_ids,
+          selection_history: input.selected_optional_subject_ids.map(() => ({
+            curriculum_version: 1, subject_name: "Hindi", selected_at: "2026-11-14T00:00:00.000Z",
+          })),
+        } } });
         return;
       }
       if (subpath === "basic-details") {
@@ -409,6 +449,15 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("button", { name: "View profile for Aarav Sharma" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Academic history", exact: true })).toBeVisible();
+  const curriculumPanel = page.getByRole("region", { name: "Curriculum and subject choices" });
+  await expect(curriculumPanel.getByText("Mathematics")).toBeVisible();
+  await expect(curriculumPanel.getByText("This curriculum is available for the selected class and academic year. Saving subject choices will assign it to this student’s enrollment.")).toBeVisible();
+  await curriculumPanel.getByRole("checkbox", { name: /Hindi/ }).check();
+  await expect(curriculumPanel.getByText("1 selected · minimum 1, maximum 1")).toBeVisible();
+  await curriculumPanel.getByRole("button", { name: "Save subject choices" }).click();
+  await expect(curriculumPanel.getByText("Assigned", { exact: true })).toBeVisible();
+  await expect(curriculumPanel.getByText("Previous subject choices (1)")).toBeVisible();
+  await expect(curriculumPanel.getByText("Hindi · curriculum v1 · Current")).toBeVisible();
 
   failStudentReads.add("basic-details");
   await page.getByRole("button", { name: /Basic details/ }).click();
