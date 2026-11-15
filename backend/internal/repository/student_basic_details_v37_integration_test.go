@@ -149,6 +149,39 @@ func TestStudentBasicDetailsV37PostgresIntegration(t *testing.T) {
 		t.Fatalf("cross-school basic details read error = %v, want access denied", err)
 	}
 
+	// The basic-details VARCHAR limits count Unicode characters, not UTF-8 bytes.
+	maxPlace := strings.Repeat("अ", 120)
+	maxNationality := strings.Repeat("न", 80)
+	maxReligion := strings.Repeat("ध", 80)
+	maxRegistration := strings.Repeat("प", 50)
+	unicodeBasic, err := repository.SaveStudentBasicDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
+		&birthDate, &maxPlace, nil, &maxNationality, &maxReligion, nil, nil, &maxRegistration)
+	if err != nil {
+		t.Fatalf("save basic details at Unicode character limits: %v", err)
+	}
+	if unicodeBasic.PlaceOfBirth == nil || len([]rune(*unicodeBasic.PlaceOfBirth)) != 120 ||
+		unicodeBasic.Nationality == nil || len([]rune(*unicodeBasic.Nationality)) != 80 ||
+		unicodeBasic.Religion == nil || len([]rune(*unicodeBasic.Religion)) != 80 ||
+		unicodeBasic.SchoolRegistrationNumber == nil || len([]rune(*unicodeBasic.SchoolRegistrationNumber)) != 50 {
+		t.Fatalf("basic-details fields must preserve exact Unicode limits: %+v", unicodeBasic)
+	}
+	for _, field := range []struct {
+		name string
+		limit int
+		place, nationality, religion, registration *string
+	}{
+		{name: "place of birth", limit: 120, place: ptrString(strings.Repeat("अ", 121))},
+		{name: "nationality", limit: 80, nationality: ptrString(strings.Repeat("न", 81))},
+		{name: "religion", limit: 80, religion: ptrString(strings.Repeat("ध", 81))},
+		{name: "school registration number", limit: 50, registration: ptrString(strings.Repeat("प", 51))},
+	} {
+		_, saveErr := repository.SaveStudentBasicDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
+			nil, field.place, nil, field.nationality, field.religion, nil, nil, field.registration)
+		if !errors.Is(saveErr, ErrInvalidAcademicInput) {
+			t.Fatalf("%s over %d Unicode characters error = %v, want invalid input", field.name, field.limit, saveErr)
+		}
+	}
+
 	assertRejected := func(label, query string, args ...any) {
 		t.Helper()
 		if _, err := tx.Exec(ctx, `SAVEPOINT v37_rejected_write`); err != nil {
