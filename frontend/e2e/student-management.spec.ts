@@ -1285,7 +1285,7 @@ test("staff can create a guardian contact and link it to a student with relation
     if (path === "/auth/me") {
       await route.fulfill({ json: {
         principal_id: 105, principal_type: "staff", school_id: 10, username: "e2e-guardian-manager",
-        permissions: ["students.read_sensitive", "students.read_basic", "guardians.read", "guardians.manage", "academic_years.read"],
+        permissions: ["students.read_sensitive", "students.read_basic", "students.update", "guardians.read", "guardians.manage", "academic_years.read"],
       } });
       return;
     }
@@ -1459,6 +1459,23 @@ test("staff with guardian management permission cannot change an inactive studen
       await route.fulfill({ json: { enrollments: [] } });
       return;
     }
+    if (path === "/school/students/94/basic-details") {
+      await route.fulfill({ json: { basic_details: {
+        id: 940, school_id: 10, student_id: 94, date_of_birth: "2016-08-12",
+        place_of_birth: "Ambala", gender: "female", nationality: "Indian",
+        religion: null, social_category: null, ews_status: null,
+        school_registration_number: "SR-INACTIVE-094",
+      } } });
+      return;
+    }
+    if (path === "/school/students/94/addresses") {
+      await route.fulfill({ json: { addresses: [] } });
+      return;
+    }
+    if (path === "/school/locations") {
+      await route.fulfill({ json: { locations: [] } });
+      return;
+    }
     if (path === "/school/students/94/guardians" && request.method() === "GET") {
       await route.fulfill({ json: { student_guardians: [{
         id: 9401, student_id: 94, guardian_id: 940, guardian_name: "Inactive Student Guardian",
@@ -1482,6 +1499,16 @@ test("staff with guardian management permission cannot change an inactive studen
   await page.getByRole("button", { name: /Continue/ }).click();
   await page.getByRole("button", { name: "Students" }).click();
   await page.getByRole("button", { name: "View profile for Inactive Family Student" }).click();
+  await page.getByRole("button", { name: "Basic details" }).click();
+  await expect(page.getByText("View-only access. Student update permission is required to edit these details.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save basic details" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Save student name" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Close dialog" }).click();
+  await page.getByRole("button", { name: /Student profile/ }).waitFor();
+  await page.getByRole("button", { name: "Address & communication" }).click();
+  await expect(page.getByText("View-only access. Student update permission is required to edit addresses or add locations.")).toBeVisible();
+  await expect(page.getByRole("button", { name: /Save current address/i })).toHaveCount(0);
+  await page.getByRole("button", { name: "Close dialog" }).click();
   await page.getByRole("button", { name: /Parents & siblings/i }).click();
   const familyDialog = page.getByRole("dialog", { name: "Parents & Siblings" });
   await expect(familyDialog).toBeVisible();
