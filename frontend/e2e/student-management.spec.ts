@@ -1805,3 +1805,87 @@ test("staff with guardian management permission cannot change an inactive studen
   await expect(page.getByRole("button", { name: "Promote", exact: true })).toHaveCount(0);
   expect(browserErrors).toEqual([]);
 });
+
+
+test("switching student profiles clears unsaved basic-details drafts and validation errors", async ({ page }) => {
+  const students: Student[] = [
+    { id: 11, school_id: 10, admission_number: "ADM-A", full_name: "Student A", status: "active", created_at: "2026-01-01T00:00:00.000Z", updated_at: "2026-01-01T00:00:00.000Z" },
+    { id: 12, school_id: 10, admission_number: "ADM-B", full_name: "Student B", status: "active", created_at: "2026-01-02T00:00:00.000Z", updated_at: "2026-01-02T00:00:00.000Z" },
+  ];
+  await page.route("**/api/**", async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname.replace(/^\/api/, "");
+    const method = request.method();
+    if (path === "/auth/refresh") {
+      await route.fulfill({ status: 401, json: { message: "No active session" } });
+      return;
+    }
+    if (path === "/auth/login" && method === "POST") {
+      await route.fulfill({ json: { access_token: "e2e-access-token", token_type: "Bearer", principal: { principal_id: 101, principal_type: "staff", status: "active", school_id: 10 } } });
+      return;
+    }
+    if (path === "/auth/me") {
+      await route.fulfill({ json: {
+        principal_id: 101, principal_type: "staff", school_id: 10, username: "e2e-school-admin",
+        permissions: ["students.read_sensitive", "students.read_basic", "students.update", "academic_years.read", "subjects.read"],
+      } });
+      return;
+    }
+    if (path === "/school/academic-years") {
+      await route.fulfill({ json: { academic_years: [] } });
+      return;
+    }
+    if (path === "/school/students" && method === "GET") {
+      await route.fulfill({ json: { students, pagination: { limit: 20, offset: 0, total: students.length } } });
+      return;
+    }
+    const match = path.match(/^\/school\/students\/(\d+)(?:\/(.*))?$/);
+    if (match) {
+      const studentID = Number(match[1]);
+      const subpath = match[2] ?? "";
+      if (subpath === "enrollments" && method === "GET") {
+        await route.fulfill({ json: { enrollments: [] } });
+        return;
+      }
+      if (subpath === "basic-details" && method === "GET") {
+        await route.fulfill({ json: { basic_details: {
+          id: studentID, school_id: 10, student_id: studentID, date_of_birth: null,
+          place_of_birth: studentID === 12 ? "Ambala, Haryana" : null, gender: null,
+          nationality: studentID === 12 ? "Indian" : null, religion: null,
+          social_category: null, ews_status: null, school_registration_number: null,
+        } } });
+        return;
+      }
+    }
+    await route.fulfill({ status: 404, json: { message: `Unmocked E2E API request: ${method} ${path}` } });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Username").fill("e2e-school-admin");
+  await page.getByLabel("Password").fill("E2E-only-password");
+  await page.getByRole("button", { name: /Continue/ }).click();
+  await expect(page.getByRole("button", { name: "Students" })).toBeVisible();
+  await page.getByRole("button", { name: "Students" }).click();
+
+  await page.getByRole("button", { name: "View profile for Student A" }).click();
+  await page.getByRole("button", { name: "Basic details" }).click();
+  const placeOfBirth = page.getByPlaceholder("City, district or place");
+  await expect(placeOfBirth).toBeVisible();
+  await placeOfBirth.fill("Unsaved draft belonging only to Student A");
+  await page.getByPlaceholder("e.g. Indian").fill("अ".repeat(81));
+  await page.getByRole("button", { name: "Save basic details" }).click();
+  await expect(page.getByText("Nationality must be 80 characters or fewer.", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Close dialog" }).click();
+  await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
+  await page.getByRole("button", { name: "Close dialog" }).click();
+  await page.getByRole("button", { name: "View profile for Student B" }).click();
+  await page.getByRole("button", { name: "Basic details" }).click();
+
+  await expect(page.getByPlaceholder("City, district or place")).toHaveValue("Ambala, Haryana");
+  await expect(page.getByPlaceholder("e.g. Indian")).toHaveValue("Indian");
+  await expect(page.getByText("Nationality must be 80 characters or fewer.", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Unsaved draft belonging only to Student A")).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: "Basic Details" })).toContainText("Student B");
+});
