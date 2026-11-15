@@ -1513,7 +1513,7 @@ test("staff can create a guardian contact and link it to a student with relation
   const editGuardianEducation = page.getByPlaceholder("Highest education (optional)");
   const editGuardianWorkplace = page.getByPlaceholder("Organization name (optional)");
   await expect(editGuardianName).toHaveValue("Nisha Verma");
-  await expect(editGuardianMobile).toHaveValue("");
+  await expect(editGuardianMobile).toHaveValue("9876501234");
   await expect(editGuardianEmail).toHaveValue("nisha.verma@example.test");
 
   await editGuardianMobile.fill("अ".repeat(31));
