@@ -188,36 +188,22 @@ func TestSHA256FileHashesOriginalBytesWithoutParsing(t *testing.T) {
 	}
 }
 
-func TestValidateCSVRejectsMissingStateForDistrict(t *testing.T) {
-	input := validSnapshot + "07,Other State,OD,703,Orphan District,12003,Orphan Tehsil,900004,Orphan Village,village\n"
-	input = strings.Replace(input, "07,Other State,OD,703,Orphan District", "08,Other State,OD,703,Orphan District", 1)
-	_, err := validateCSV(strings.NewReader(input))
-	if err == nil || !strings.Contains(err.Error(), "references missing state code") {
-		t.Fatalf("validateCSV() error = %v, want missing-state hierarchy error", err)
-	}
-}
-
-func TestValidateCSVRejectsMissingDistrictForSubdistrict(t *testing.T) {
-	input := validSnapshot + "06,Haryana,HR,703,Other District,12003,Orphan Tehsil,900004,Orphan Village,village\n"
-	input = strings.Replace(input, "703,Other District,12003", "704,Other District,12003", 1)
-	_, err := validateCSV(strings.NewReader(input))
-	if err == nil || !strings.Contains(err.Error(), "references missing district code") {
-		t.Fatalf("validateCSV() error = %v, want missing-district hierarchy error", err)
-	}
-}
-
-func TestValidateCSVRejectsMissingSubdistrictForLocality(t *testing.T) {
-	input := validSnapshot + "06,Haryana,HR,701,Ambala,12003,Other Tehsil,900004,Orphan Village,village\n"
-	input = strings.Replace(input, "12003,Other Tehsil,900004", "12004,Other Tehsil,900004", 1)
-	_, err := validateCSV(strings.NewReader(input))
-	if err == nil || !strings.Contains(err.Error(), "references missing sub-district code") {
-		t.Fatalf("validateCSV() error = %v, want missing-subdistrict hierarchy error", err)
-	}
-}
 
 func TestValidateCSVRejectsHeaderOnlySnapshot(t *testing.T) {
 	_, err := validateCSV(strings.NewReader(strings.Join(expectedHeader, ",") + "\n"))
 	if err == nil || !strings.Contains(err.Error(), "contains no data rows") {
 		t.Fatalf("validateCSV() error = %v, want empty-snapshot error", err)
+	}
+}
+
+func TestValidateCSVAllowsRepeatedIdenticalAncestorRows(t *testing.T) {
+	input := validSnapshot + "06,Haryana,HR,701,Ambala,12001,Ambala,900006,Another Village,village\n"
+	got, err := validateCSV(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("validateCSV() rejected repeated identical state/district/sub-district rows: %v", err)
+	}
+	if len(got.states) != 1 || len(got.districts) != 2 || len(got.subdistricts) != 2 || len(got.localities) != 4 {
+		t.Fatalf("unexpected distinct hierarchy counts after repeated ancestors: states=%d districts=%d subdistricts=%d localities=%d",
+			len(got.states), len(got.districts), len(got.subdistricts), len(got.localities))
 	}
 }
