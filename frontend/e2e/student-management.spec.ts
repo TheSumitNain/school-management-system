@@ -1427,6 +1427,7 @@ test("student archive confirmation keeps the record on a retryable error and ref
 });
 
 test("staff can create a guardian contact and link it to a student with relationship flags", async ({ page }) => {
+  test.setTimeout(60_000);
   const browserErrors: string[] = [];
   const guardianCreates: Record<string, unknown>[] = [];
   const guardianUpdates: Record<string, unknown>[] = [];
@@ -1669,6 +1670,23 @@ test("staff can create a guardian contact and link it to a student with relation
   await expect(page.getByText("Legal Guardian · Emergency contact")).toBeVisible();
 
   await page.getByRole("button", { name: "Close dialog" }).click();
+  await page.getByRole("button", { name: /Parents & siblings/i }).click();
+  await expect(page.getByRole("dialog", { name: "Parents & Siblings" })).toBeVisible();
+  await expect(page.getByText("Nisha Verma Updated", { exact: true })).toBeVisible();
+  await expect(page.getByText("9876501235 · Alt: 9876501236 · nisha.verma@example.test")).toBeVisible();
+  await expect(page.getByText("Principal · M.Ed. · Sunrise Public School")).toBeVisible();
+  await expect(page.getByText("Legal Guardian · Emergency contact")).toBeVisible();
+
+  // A full browser reload must restore the persisted guardian and relationship
+  // from the API, not merely retain the previous React component's local state.
+  await page.reload();
+  await expect(page.getByLabel("Username")).toBeVisible();
+  await page.getByLabel("Username").fill("e2e-guardian-manager");
+  await page.getByLabel("Password").fill("E2E-only-password");
+  await page.getByRole("button", { name: /Continue/ }).click();
+  await expect(page.getByRole("button", { name: "Students" })).toBeVisible();
+  await page.getByRole("button", { name: "Students" }).click();
+  await page.getByRole("button", { name: "View profile for Guardian Workflow Student" }).click();
   await page.getByRole("button", { name: /Parents & siblings/i }).click();
   await expect(page.getByRole("dialog", { name: "Parents & Siblings" })).toBeVisible();
   await expect(page.getByText("Nisha Verma Updated", { exact: true })).toBeVisible();
