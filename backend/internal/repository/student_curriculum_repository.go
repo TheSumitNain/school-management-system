@@ -229,7 +229,7 @@ func (r *AcademicRepository) SaveClassCurriculum(
 	}
 	for key, group := range groupByName {
 		count := groupCounts[key]
-		if count == 0 || group.MaxSelections > count {
+		if count == 0 || group.MinSelections > count || group.MaxSelections > count {
 			return nil, ErrInvalidAcademicInput
 		}
 	}
