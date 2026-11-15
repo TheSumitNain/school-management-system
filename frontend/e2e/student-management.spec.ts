@@ -363,8 +363,22 @@ test("student admission, profile navigation and parent details render without br
     }
     const guardianProfileMatch = path.match(/^\/school\/guardians\/(\d+)$/);
     if (guardianProfileMatch && method === "PATCH") {
-      Object.assign(guardianLink, request.postDataJSON() as Record<string, unknown>);
-      await route.fulfill({ json: { guardian: guardianLink } });
+      const input = request.postDataJSON() as {
+        full_name: string; mobile_number: string | null; email_address: string | null;
+        alternate_mobile_number: string | null; occupation: string | null;
+        education: string | null; workplace_name: string | null;
+      };
+      Object.assign(guardianLink, {
+        guardian_name: input.full_name, mobile_number: input.mobile_number,
+        email_address: input.email_address, alternate_mobile_number: input.alternate_mobile_number,
+        occupation: input.occupation, education: input.education, workplace_name: input.workplace_name,
+      });
+      await route.fulfill({ json: { guardian: {
+        id: 22, school_id: 10, full_name: input.full_name,
+        mobile_number: input.mobile_number, email_address: input.email_address,
+        alternate_mobile_number: input.alternate_mobile_number, occupation: input.occupation,
+        education: input.education, workplace_name: input.workplace_name, status: "active",
+      } } });
       return;
     }
     if (path === "/school/guardians") {
@@ -613,9 +627,20 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("button", { name: "Edit shared guardian details" }).click();
   await expect(page.getByRole("heading", { name: "Edit shared guardian profile" })).toBeVisible();
   await expect(page.getByText("These contact and profile details are shared across all students linked to this guardian.")).toBeVisible();
+  const guardianNameInput = page.getByPlaceholder("Guardian full name");
+  await expect(guardianNameInput).toHaveValue("Ramesh Sharma");
+  await guardianNameInput.fill("अ".repeat(201));
+  const saveGuardianDetails = page.getByRole("button", { name: "Save guardian details" });
+  await saveGuardianDetails.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Guardian details submit button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect(page.getByText("Guardian name must be 200 characters or fewer.", { exact: true })).toBeVisible();
+  expect(guardianLink.guardian_name).toBe("Ramesh Sharma");
+  await guardianNameInput.fill("Ramesh Sharma Updated");
   await page.getByPlaceholder("Mobile number").fill("9999912345");
   await page.getByPlaceholder("guardian@example.com").fill("not-an-email");
-  const saveGuardianDetails = page.getByRole("button", { name: "Save guardian details" });
   await saveGuardianDetails.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
     if (!form) throw new Error("Guardian details submit button is not associated with its form.");
@@ -642,6 +667,7 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByRole("dialog", { name: "Update shared guardian profile?" })).toBeVisible();
   await page.getByRole("button", { name: "Update all linked records" }).click();
   await expect.poll(() => guardianLink.mobile_number).toBe("9999912345");
+  await expect.poll(() => guardianLink.guardian_name).toBe("Ramesh Sharma Updated");
   expect(guardianLink).toMatchObject({ relationship_type: "Legal Guardian", is_primary_contact: true, is_emergency_contact: true });
   await expect(page.getByText("Guardian profile updated. Changes apply to every student linked to this guardian.")).toBeVisible();
 
@@ -673,6 +699,7 @@ test("student admission, profile navigation and parent details render without br
   await page.getByLabel("Show revoked history").check();
   await expect(page.getByText("Ramesh Sharma")).toBeVisible();
   await expect(page.getByText("Legal Guardian · Primary contact · Emergency contact")).toBeVisible();
+  await expect(page.getByText("Ramesh Sharma Updated")).toBeVisible();
   await expect(page.getByText(/9999912345/)).toBeVisible();
   await expect(page.getByText(/ramesh\.updated@example\.test/)).toBeVisible();
   await expect(page.getByText(/Revoked/)).toBeVisible();
