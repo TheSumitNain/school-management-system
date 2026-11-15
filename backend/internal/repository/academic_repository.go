@@ -18,6 +18,7 @@ var (
 	ErrAcademicNotFound = errors.New("academic resource not found")
 	ErrAcademicConflict = errors.New("academic resource conflicts with an existing record")
 	ErrAcademicAdmissionNumberConflict = errors.New("academic admission number already exists in this school year")
+	ErrAcademicRollNumberConflict = errors.New("academic roll number already exists in this active section")
 	ErrInvalidAcademicInput = errors.New("invalid academic input")
 )
 
@@ -155,8 +156,14 @@ func academicWriteError(err error) error {
 	if errors.As(err, &pgErr) {
 		switch pgErr.Code {
 		case "23505":
-			if pgErr.ConstraintName == "ux_student_enrollments_school_year_admission_number" { return ErrAcademicAdmissionNumberConflict }
-			return ErrAcademicConflict
+			switch pgErr.ConstraintName {
+			case "ux_student_enrollments_school_year_admission_number":
+				return ErrAcademicAdmissionNumberConflict
+			case "ux_student_enrollments_active_roll":
+				return ErrAcademicRollNumberConflict
+			default:
+				return ErrAcademicConflict
+			}
 		case "23P01": return ErrAcademicConflict
 		case "23503", "23514", "22001", "22007", "P0001":
 			if strings.Contains(strings.ToLower(pgErr.Message), "assignment actor") { return ErrAcademicAccessDenied }
