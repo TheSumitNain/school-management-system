@@ -448,6 +448,13 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 	if _, err := repo.UpdateStudentGuardianLink(ctx, targetPrincipalID, schoolID, secondLink.ID, "mother", false, false); !errors.Is(err, ErrGuardianNotFound) {
 		t.Fatalf("inactive student's guardian relationship update error = %v, want not found", err)
 	}
+	if err := repo.RevokeStudentGuardianLink(ctx, targetPrincipalID, schoolID, secondLink.ID, "inactive student boundary"); !errors.Is(err, ErrGuardianNotFound) {
+		t.Fatalf("inactive student's guardian relationship revoke error = %v, want not found", err)
+	}
+	inactiveHistory, err := repo.ListStudentGuardians(ctx, targetPrincipalID, schoolID, studentID, true)
+	if err != nil || len(inactiveHistory) != 1 || inactiveHistory[0].ID != secondLink.ID || inactiveHistory[0].RevokedAt != nil {
+		t.Fatalf("inactive student guardian link should remain unchanged: links=%+v err=%v", inactiveHistory, err)
+	}
 	if _, err := tx.Exec(ctx, "UPDATE students SET status='active' WHERE id=$1 AND school_id=$2", studentID, schoolID); err != nil {
 		t.Fatalf("restore active student after relationship edit boundary: %v", err)
 	}
