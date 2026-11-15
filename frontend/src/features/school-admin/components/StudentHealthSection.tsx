@@ -56,6 +56,22 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
 
   const medicalQuery = useSchoolStudentMedicalDetailsQuery(student.id, section === "medical");
   const physicalQuery = useSchoolStudentPhysicalDetailsQuery(student.id, section === "physical");
+  // Background refetches with unchanged persisted values must not reset an
+  // in-progress medical or measurement form.
+  const medicalSnapshot = JSON.stringify(medicalQuery.data?.medical_details ? {
+    blood_group: medicalQuery.data.medical_details.blood_group,
+    allergies: medicalQuery.data.medical_details.allergies,
+    known_conditions: medicalQuery.data.medical_details.known_conditions,
+    ongoing_medications: medicalQuery.data.medical_details.ongoing_medications,
+    emergency_medical_notes: medicalQuery.data.medical_details.emergency_medical_notes,
+  } : null);
+  const physicalSnapshot = JSON.stringify(physicalQuery.data?.physical_details ? {
+    height_cm: physicalQuery.data.physical_details.height_cm,
+    weight_kg: physicalQuery.data.physical_details.weight_kg,
+    measured_on: physicalQuery.data.physical_details.measured_on,
+    vision_notes: physicalQuery.data.physical_details.vision_notes,
+    physical_notes: physicalQuery.data.physical_details.physical_notes,
+  } : null);
   const saveMedical = useSaveSchoolStudentMedicalDetailsMutation();
   const savePhysical = useSaveSchoolStudentPhysicalDetailsMutation();
   const busy = saveMedical.isPending || savePhysical.isPending;
@@ -69,7 +85,7 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
     setOngoingMedications(textValue(details?.ongoing_medications));
     setEmergencyNotes(textValue(details?.emergency_medical_notes));
     setMedicalErrors({});
-  }, [section, medicalQuery.data?.medical_details]);
+  }, [section, medicalSnapshot]);
 
   useEffect(() => {
     if (section !== "physical") return;
@@ -80,7 +96,7 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
     setVisionNotes(textValue(details?.vision_notes));
     setPhysicalNotes(textValue(details?.physical_notes));
     setPhysicalErrors({});
-  }, [section, physicalQuery.data?.physical_details]);
+  }, [section, physicalSnapshot]);
 
   async function submitMedical(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
