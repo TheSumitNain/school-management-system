@@ -66,7 +66,7 @@ export function StudentBasicDetailsSection({ student, canUpdate, onStudentNameCh
       setNameError("Student name is required.");
       return;
     }
-    if (trimmed.length > 200) {
+    if (Array.from(trimmed).length > 200) {
       setNameError("Student name must be 200 characters or fewer.");
       return;
     }
@@ -97,10 +97,10 @@ export function StudentBasicDetailsSection({ student, canUpdate, onStudentNameCh
     event.preventDefault();
     if (!canUpdate || query.isLoading || query.isError) return;
     const nextErrors: Partial<Record<keyof Values, string>> = {};
-    if (values.place_of_birth.trim().length > 120) nextErrors.place_of_birth = "Place of birth must be 120 characters or fewer.";
-    if (values.nationality.trim().length > 80) nextErrors.nationality = "Nationality must be 80 characters or fewer.";
-    if (values.religion.trim().length > 80) nextErrors.religion = "Religion must be 80 characters or fewer.";
-    if (values.school_registration_number.trim().length > 50) nextErrors.school_registration_number = "Registration number must be 50 characters or fewer.";
+    if (Array.from(values.place_of_birth.trim()).length > 120) nextErrors.place_of_birth = "Place of birth must be 120 characters or fewer.";
+    if (Array.from(values.nationality.trim()).length > 80) nextErrors.nationality = "Nationality must be 80 characters or fewer.";
+    if (Array.from(values.religion.trim()).length > 80) nextErrors.religion = "Religion must be 80 characters or fewer.";
+    if (Array.from(values.school_registration_number.trim()).length > 50) nextErrors.school_registration_number = "Registration number must be 50 characters or fewer.";
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) return;
     try {
@@ -133,7 +133,7 @@ export function StudentBasicDetailsSection({ student, canUpdate, onStudentNameCh
       {feedback && <p className={feedback.kind === "error" ? "student-feedback error" : "student-feedback success"} role={feedback.kind === "error" ? "alert" : "status"}>{feedback.message}</p>}
       <form className="student-basic-details-form" onSubmit={submit} noValidate>
         <label><StudentFieldLabel label="Student name" required hint="Enter the student’s full name as it should appear in school records. Maximum 200 characters." />
-          <input value={fullName} maxLength={200} disabled={!canUpdate || busy} aria-invalid={Boolean(nameError)} aria-describedby={nameError ? "student-basic-name-error" : undefined}
+          <input value={fullName} disabled={!canUpdate || busy} aria-invalid={Boolean(nameError)} aria-describedby={nameError ? "student-basic-name-error" : undefined}
             onChange={event => { setFullName(event.target.value); setNameError(""); setNameFeedback(null); }} placeholder="Enter student's full name" />
           {nameError && <small id="student-basic-name-error" className="app-field-error" role="alert">{nameError}</small>}
           {canUpdate && <button type="button" className="student-link-button" onClick={() => void saveStudentName()} disabled={busy || fullName.trim() === student.full_name}>Save student name</button>}
