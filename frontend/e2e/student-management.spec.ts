@@ -1316,6 +1316,7 @@ test("student archive confirmation keeps the record on a retryable error and ref
 test("staff can create a guardian contact and link it to a student with relationship flags", async ({ page }) => {
   const browserErrors: string[] = [];
   const guardianCreates: Record<string, unknown>[] = [];
+  const guardianUpdates: Record<string, unknown>[] = [];
   const guardianLinks: Record<string, unknown>[] = [];
   let failGuardianLinkConflict = false;
   const guardian = {
@@ -1378,6 +1379,25 @@ test("staff can create a guardian contact and link it to a student with relation
     if (path === "/school/guardians" && request.method() === "POST") {
       const input = request.postDataJSON() as Record<string, unknown>;
       guardianCreates.push(input);
+      await route.fulfill({ json: { guardian } });
+      return;
+    }
+    if (path === "/school/guardians/45" && request.method() === "PUT") {
+      const input = request.postDataJSON() as Record<string, unknown>;
+      guardianUpdates.push(input);
+      Object.assign(guardian, input);
+      for (const link of guardianLinks) {
+        Object.assign(link, {
+          guardian_name: guardian.full_name,
+          mobile_number: guardian.mobile_number,
+          email_address: guardian.email_address,
+          alternate_mobile_number: guardian.alternate_mobile_number,
+          occupation: guardian.occupation,
+          education: guardian.education,
+          workplace_name: guardian.workplace_name,
+          guardian_status: guardian.status,
+        });
+      }
       await route.fulfill({ json: { guardian } });
       return;
     }
@@ -1471,6 +1491,57 @@ test("staff can create a guardian contact and link it to a student with relation
   await expect(page.getByText("Guardian linked to this student.")).toBeVisible();
   await expect(page.getByText("Nisha Verma", { exact: true })).toBeVisible();
   await expect(page.getByText("Mother · Primary contact · Emergency contact")).toBeVisible();
+
+  await page.getByRole("button", { name: "Edit shared guardian details" }).click();
+  await expect(page.getByPlaceholder("Mobile number")).toHaveValue("");
+  const editGuardianName = page.getByPlaceholder("Guardian full name");
+  const editGuardianMobile = page.getByPlaceholder("Mobile number");
+  const editGuardianEmail = page.getByPlaceholder("guardian@example.com");
+  const editGuardianAlternate = page.getByPlaceholder("Optional alternate number");
+  const editGuardianOccupation = page.getByPlaceholder("e.g. Teacher, Business owner");
+  const editGuardianEducation = page.getByPlaceholder("Highest education (optional)");
+  const editGuardianWorkplace = page.getByPlaceholder("Organization name (optional)");
+  await expect(editGuardianName).toHaveValue("Nisha Verma");
+  await expect(editGuardianMobile).toHaveValue("");
+  await expect(editGuardianEmail).toHaveValue("nisha.verma@example.test");
+
+  await editGuardianMobile.fill("अ".repeat(31));
+  await editGuardianAlternate.fill("अ".repeat(31));
+  await editGuardianOccupation.fill("अ".repeat(121));
+  await editGuardianEducation.fill("अ".repeat(121));
+  await editGuardianWorkplace.fill("अ".repeat(161));
+  await page.getByRole("button", { name: "Save guardian details" }).click();
+  await expect(page.getByText("Mobile number must be 30 characters or fewer.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Alternate mobile number must be 30 characters or fewer.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Occupation must be 120 characters or fewer.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Education must be 120 characters or fewer.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Workplace must be 160 characters or fewer.", { exact: true })).toBeVisible();
+  expect(guardianUpdates).toHaveLength(0);
+
+  await editGuardianName.fill("Nisha Verma Updated");
+  await editGuardianMobile.fill("9876501235");
+  await editGuardianAlternate.fill("9876501236");
+  await editGuardianOccupation.fill("Principal");
+  await editGuardianEducation.fill("M.Ed.");
+  await editGuardianWorkplace.fill("Sunrise Public School");
+  await page.getByRole("button", { name: "Save guardian details" }).click();
+  await expect(page.getByRole("dialog", { name: "Update shared guardian profile?" })).toBeVisible();
+  await page.getByRole("button", { name: "Update all linked records" }).click();
+  await expect(page.getByText("Guardian profile updated. Changes apply to every student linked to this guardian.")).toBeVisible();
+  await expect.poll(() => guardianUpdates.length).toBe(1);
+  expect(guardianUpdates[0]).toMatchObject({
+    full_name: "Nisha Verma Updated",
+    mobile_number: "9876501235",
+    email_address: "nisha.verma@example.test",
+    alternate_mobile_number: "9876501236",
+    occupation: "Principal",
+    education: "M.Ed.",
+    workplace_name: "Sunrise Public School",
+    status: "active",
+  });
+  await expect(page.getByText("Nisha Verma Updated", { exact: true })).toBeVisible();
+  await expect(page.getByText("9876501235 · Alt: 9876501236 · nisha.verma@example.test")).toBeVisible();
+  await expect(page.getByText("Principal · M.Ed. · Sunrise Public School")).toBeVisible();
   expect(browserErrors).toEqual([]);
 });
 
