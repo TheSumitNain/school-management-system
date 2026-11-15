@@ -344,10 +344,27 @@ func (r *AcademicRepository) PromoteStudentEnrollment(ctx context.Context, actor
 	if err != nil { return nil, fmt.Errorf("begin student promotion: %w", err) }
 	defer func() { _ = tx.Rollback(ctx) }()
 	if err = authorizeAcademic(ctx, tx, actorID, schoolID, "students.update"); err != nil { return nil, err }
-	var studentID, sourceYearID int64
+	// Lock the permanent student row before the enrollment row. Archive and
+	// new-enrollment operations use the same lock order, avoiding a promotion /
+	// archive deadlock and ensuring inactive students cannot be promoted.
+	var studentID int64
+	if err = tx.QueryRow(ctx, `SELECT student_id FROM student_enrollments
+		WHERE id=$1 AND school_id=$2`, sourceEnrollmentID, schoolID).Scan(&studentID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) { return nil, ErrAcademicNotFound }
+		return nil, fmt.Errorf("load source enrollment student: %w", err)
+	}
+	var studentActive bool
+	if err = tx.QueryRow(ctx, `SELECT status='active' FROM students
+		WHERE id=$1 AND school_id=$2 FOR UPDATE`, studentID, schoolID).Scan(&studentActive); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) { return nil, ErrAcademicNotFound }
+		return nil, fmt.Errorf("lock promotion student: %w", err)
+	}
+	if !studentActive { return nil, ErrAcademicNotFound }
+	var sourceYearID int64
 	var sourceEnrolledAt time.Time
-	err = tx.QueryRow(ctx, `SELECT student_id,academic_year_id,enrolled_at FROM student_enrollments
-		WHERE id=$1 AND school_id=$2 AND status='active' FOR UPDATE`, sourceEnrollmentID, schoolID).Scan(&studentID, &sourceYearID, &sourceEnrolledAt)
+	err = tx.QueryRow(ctx, `SELECT academic_year_id,enrolled_at FROM student_enrollments
+		WHERE id=$1 AND school_id=$2 AND student_id=$3 AND status='active' FOR UPDATE`,
+		sourceEnrollmentID, schoolID, studentID).Scan(&sourceYearID, &sourceEnrolledAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) { return nil, ErrAcademicNotFound }
 		return nil, fmt.Errorf("lock source enrollment: %w", err)
