@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"errors"
 	"testing"
 	"time"
 )
@@ -139,6 +140,10 @@ func TestStudentCurriculumV44PostgresIntegration(t *testing.T) {
 	curriculumView, err := academicRepo.GetStudentEnrollmentCurriculum(ctx, actorPrincipalID, schoolID, enrollmentID)
 	if err != nil {
 		t.Fatalf("read student enrollment curriculum: %v", err)
+	}
+
+	if _, err := academicRepo.GetStudentEnrollmentCurriculum(ctx, actorPrincipalID, schoolID+999999, enrollmentID); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("cross-school enrollment curriculum read error = %v, want access denied", err)
 	}
 	if curriculumView.EnrollmentID != enrollmentID || curriculumView.StudentID != studentID ||
 		!curriculumView.Assigned || len(curriculumView.SelectedOptionalSubjectIDs) != 1 ||
