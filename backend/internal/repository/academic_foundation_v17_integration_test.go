@@ -918,6 +918,95 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 	`, currentEnrollmentID, schoolID).Scan(&sourceClassID); err != nil {
 		t.Fatalf("load source class for inactive-promotion test: %v", err)
 	}
+	// Exercise the V44 curriculum lifecycle through the production repository:
+	// first assignment, read-after-write, version replacement, and immutable
+	// selection history. This uses the active enrollment selected above.
+	var enrollmentYearID int64
+	if err := tx.QueryRow(ctx, `
+		SELECT academic_year_id FROM student_enrollments
+		 WHERE id=$1 AND school_id=$2 AND status='active'
+	`, currentEnrollmentID, schoolID).Scan(&enrollmentYearID); err != nil {
+		t.Fatalf("load active enrollment year for curriculum test: %v", err)
+	}
+	curriculumV1, err := academicRepo.SaveClassCurriculum(ctx, actorPrincipalID, schoolID,
+		enrollmentYearID, sourceClassID,
+		[]CurriculumOptionalGroupInput{{Name: "Electives", MinSelections: 1, MaxSelections: 1}},
+		[]CurriculumSubjectInput{
+			{SubjectID: subjectID},
+			{SubjectID: subjectAltID, OptionalGroup: "Electives"},
+		},
+	)
+	if err != nil || curriculumV1 == nil || curriculumV1.VersionNumber != 1 || len(curriculumV1.Subjects) != 2 {
+		t.Fatalf("create first class curriculum: curriculum=%+v err=%v", curriculumV1, err)
+	}
+	var optionalV1ID int64
+	for _, subject := range curriculumV1.Subjects {
+		if !subject.IsCompulsory {
+			optionalV1ID = subject.ID
+		}
+	}
+	if optionalV1ID == 0 {
+		t.Fatal("first curriculum did not return its optional subject")
+	}
+	beforeAssignment, err := academicRepo.GetStudentEnrollmentCurriculum(ctx, actorPrincipalID, schoolID, currentEnrollmentID)
+	if err != nil || beforeAssignment == nil || beforeAssignment.Assigned || beforeAssignment.Curriculum == nil ||
+		beforeAssignment.Curriculum.ID != curriculumV1.ID {
+		t.Fatalf("read available curriculum before assignment: item=%+v err=%v", beforeAssignment, err)
+	}
+	assignedV1, err := academicRepo.SaveStudentEnrollmentSubjects(ctx, actorPrincipalID, schoolID,
+		currentEnrollmentID, curriculumV1.ID, []int64{optionalV1ID})
+	if err != nil || assignedV1 == nil || !assignedV1.Assigned ||
+		len(assignedV1.SelectedOptionalSubjectIDs) != 1 || assignedV1.SelectedOptionalSubjectIDs[0] != optionalV1ID ||
+		len(assignedV1.SelectionHistory) != 1 || assignedV1.SelectionHistory[0].RevokedAt != nil {
+		t.Fatalf("assign first curriculum and persist optional choice: item=%+v err=%v", assignedV1, err)
+	}
+	curriculumV2, err := academicRepo.SaveClassCurriculum(ctx, actorPrincipalID, schoolID,
+		enrollmentYearID, sourceClassID,
+		[]CurriculumOptionalGroupInput{{Name: "Electives", MinSelections: 1, MaxSelections: 1}},
+		[]CurriculumSubjectInput{
+			{SubjectID: subjectAltID},
+			{SubjectID: subjectID, OptionalGroup: "Electives"},
+		},
+	)
+	if err != nil || curriculumV2 == nil || curriculumV2.VersionNumber != 2 {
+		t.Fatalf("create replacement class curriculum version: curriculum=%+v err=%v", curriculumV2, err)
+	}
+	availableV2, err := academicRepo.GetStudentEnrollmentCurriculum(ctx, actorPrincipalID, schoolID, currentEnrollmentID)
+	if err != nil || availableV2 == nil || !availableV2.Assigned ||
+		availableV2.Curriculum == nil || availableV2.Curriculum.ID != curriculumV1.ID ||
+		availableV2.AvailableCurriculum == nil || availableV2.AvailableCurriculum.ID != curriculumV2.ID {
+		t.Fatalf("read assigned and available curriculum versions: item=%+v err=%v", availableV2, err)
+	}
+	var optionalV2ID int64
+	for _, subject := range curriculumV2.Subjects {
+		if !subject.IsCompulsory {
+			optionalV2ID = subject.ID
+		}
+	}
+	if optionalV2ID == 0 {
+		t.Fatal("replacement curriculum did not return its optional subject")
+	}
+	assignedV2, err := academicRepo.SaveStudentEnrollmentSubjects(ctx, actorPrincipalID, schoolID,
+		currentEnrollmentID, curriculumV2.ID, []int64{optionalV2ID})
+	if err != nil || assignedV2 == nil || !assignedV2.Assigned ||
+		assignedV2.Curriculum == nil || assignedV2.Curriculum.ID != curriculumV2.ID ||
+		len(assignedV2.SelectedOptionalSubjectIDs) != 1 || assignedV2.SelectedOptionalSubjectIDs[0] != optionalV2ID ||
+		len(assignedV2.SelectionHistory) != 2 {
+		t.Fatalf("replace assigned curriculum and preserve selection history: item=%+v err=%v", assignedV2, err)
+	}
+	foundRevokedV1, foundActiveV2 := false, false
+	for _, history := range assignedV2.SelectionHistory {
+		if history.CurriculumVersion == 1 && history.SubjectName != "" && history.RevokedAt != nil {
+			foundRevokedV1 = true
+		}
+		if history.CurriculumVersion == 2 && history.SubjectName != "" && history.RevokedAt == nil {
+			foundActiveV2 = true
+		}
+	}
+	if !foundRevokedV1 || !foundActiveV2 {
+		t.Fatalf("curriculum replacement history missing revoked v1 or active v2 choice: %+v", assignedV2.SelectionHistory)
+	}
+
 	var promotionSectionID int64
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO sections(school_id,academic_year_id,class_id,name)
