@@ -738,3 +738,11 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Promotion now locks the permanent student row before the enrollment row, matching the archive/create lock order; inactive students cannot be promoted through a direct API request. A PostgreSQL integration regression test confirms the source enrollment remains active after a rejected promotion.
 - Added PostgreSQL integration coverage for archive → withdrawn enrollment, retained enrollment history, and rejection of new attendance marks for archived students.
 - Exact-commit backend CI and frontend CI are pending for this change. No local database was migrated or modified.
+
+
+## Remaining approved Student Management scope — curriculum and subject selection
+
+- The school-wide `subjects` catalogue and teacher-to-subject assignments exist, but class/year curriculum definitions and student subject selections linked to a specific academic-year enrollment are not yet implemented.
+- Product requirements explicitly require compulsory/optional subjects to be defined per class and academic year, with student choices preserved against the enrollment history. This remains part of the approved Student Management scope and must not be reported as complete.
+- Optional-subject groups need configurable minimum/maximum selection rules; do not hard-code a school-specific subject policy. Curriculum revisions must not silently rewrite past enrollment choices.
+- Student transport, app-permission and document-upload submodules remain outside this immediate completion target; secure document upload is deferred. Parent OTP/SMS/login remains deferred.
