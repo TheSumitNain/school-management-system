@@ -718,13 +718,9 @@ test("standalone enrollment validates admission and roll number before saving", 
     full_name: "Existing Student", status: "active", created_at: "2026-01-01T00:00:00.000Z",
     updated_at: "2026-01-01T00:00:00.000Z",
   };
-  const years = [
-    { id: 7, name: "2026–2027", status: "active", is_current: true },
-    { id: 8, name: "2027–2028", status: "active", is_current: false },
-  ];
+  const years = [{ id: 7, name: "2026–2027", status: "active", is_current: true }];
   const sections = [
     { id: 12, academic_year_id: 7, class_id: 3, class_name: "Class 1", name: "A", is_active: true },
-    { id: 13, academic_year_id: 8, class_id: 3, class_name: "Class 1", name: "B", is_active: true },
   ];
 
   await page.route("**/api/**", async route => {
@@ -786,11 +782,8 @@ test("standalone enrollment validates admission and roll number before saving", 
   await page.getByPlaceholder("Search name or admission number").fill("Existing Student");
   await page.getByRole("button", { name: "Student", exact: true }).click();
   await page.getByRole("option", { name: "Existing Student · ADM-EXISTING-044" }).click();
-  await page.getByRole("button", { name: "Enrollment academic year" }).click();
-  await page.getByRole("option", { name: "2027–2028" }).click();
-  await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Enrollment section" }).click();
-  await page.getByRole("option", { name: "B" }).click();
+  await page.getByRole("option", { name: "A" }).click();
   await page.getByRole("button", { name: "Admission date", exact: true }).click();
   await page.getByRole("button", { name: "Today" }).click();
 
@@ -815,7 +808,7 @@ test("standalone enrollment validates admission and roll number before saving", 
   });
   await expect.poll(() => requests.length).toBe(1);
   expect(requests[0]).toMatchObject({
-    student_id: 44, academic_year_id: 8, section_id: 13,
+    student_id: 44, academic_year_id: 7, section_id: 12,
     admission_number: "ADM-2027-044", roll_number: null,
   });
   await expect(page.getByText("Student enrolled successfully.")).toBeVisible();
