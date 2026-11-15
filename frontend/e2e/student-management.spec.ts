@@ -1438,6 +1438,10 @@ test("staff can create a guardian contact and link it to a student with relation
     email_address: "nisha.verma@example.test", alternate_mobile_number: null,
     occupation: "Teacher", education: null, workplace_name: null, status: "active",
   };
+  const otherStudent: Student = {
+    id: 94, school_id: 10, admission_number: "ADM-GUARD-094", full_name: "Other Guardian Student",
+    status: "active", created_at: "2026-11-14T00:00:00.000Z", updated_at: "2026-11-14T00:00:00.000Z",
+  };
   page.on("pageerror", error => browserErrors.push(error.message));
 
   await page.route("**/api/**", async route => {
@@ -1471,23 +1475,39 @@ test("staff can create a guardian contact and link it to a student with relation
         id: 93, school_id: 10, admission_number: "ADM-GUARD-093",
         full_name: "Guardian Workflow Student", status: "active",
         created_at: "2026-11-14T00:00:00.000Z", updated_at: "2026-11-14T00:00:00.000Z",
-      }], pagination: { limit: 20, offset: 0, total: 1 } } });
+      }, otherStudent], pagination: { limit: 20, offset: 0, total: 2 } } });
       return;
     }
-    if (path === "/school/students/93/enrollments") {
-      await route.fulfill({ json: { enrollments: [] } });
-      return;
-    }
-    if (path === "/school/students/93/guardians" && request.method() === "GET") {
-      await route.fulfill({ json: { student_guardians: guardianLinks } });
-      return;
-    }
-    if (path === "/school/students/93/related-students") {
-      await route.fulfill({ json: { related_students: [] } });
-      return;
+    const studentRoute = path.match(/^\\/school\\/students\\/(\\d+)(?:\\/(.*))?$/);
+    if (studentRoute) {
+      const studentID = Number(studentRoute[1]);
+      const subpath = studentRoute[2] ?? "";
+      if (subpath === "enrollments" && request.method() === "GET") {
+        await route.fulfill({ json: { enrollments: [] } });
+        return;
+      }
+      if (subpath === "guardians" && request.method() === "GET") {
+        await route.fulfill({ json: { student_guardians: guardianLinks.filter(link => Number(link.student_id) === studentID) } });
+        return;
+      }
+      if (subpath === "related-students" && request.method() === "GET") {
+        const currentLinks = guardianLinks.filter(link => Number(link.student_id) === studentID && !link.revoked_at);
+        const guardianIDs = new Set(currentLinks.map(link => Number(link.guardian_id)));
+        const relatedStudentIDs = new Set(guardianLinks
+          .filter(link => guardianIDs.has(Number(link.guardian_id)) && Number(link.student_id) !== studentID && !link.revoked_at)
+          .map(link => Number(link.student_id)));
+        const relatedStudents = [...relatedStudentIDs].map(id => ({
+          student_id: id,
+          full_name: id === 94 ? otherStudent.full_name : "Guardian Workflow Student",
+          shared_guardian_names: [guardian.full_name],
+        }));
+        await route.fulfill({ json: { related_students: relatedStudents } });
+        return;
+      }
     }
     if (path === "/school/guardians" && request.method() === "GET") {
-      await route.fulfill({ json: { guardians: guardianLinks.length ? [] : [guardian], total: guardianLinks.length ? 0 : 1 } });
+      const linkedToCurrentStudent = guardianLinks.some(link => Number(link.student_id) === 93 && !link.revoked_at);
+      await route.fulfill({ json: { guardians: linkedToCurrentStudent ? [] : [guardian], total: linkedToCurrentStudent ? 0 : 1 } });
       return;
     }
     if (path === "/school/guardians" && request.method() === "POST") {
@@ -1517,8 +1537,10 @@ test("staff can create a guardian contact and link it to a student with relation
     }
     if (path === "/school/student-guardian-links/953" && request.method() === "PATCH") {
       const input = request.postDataJSON() as Record<string, unknown>;
-      Object.assign(guardianLinks[0], input);
-      await route.fulfill({ json: { student_guardian: guardianLinks[0] } });
+      const link = guardianLinks.find(item => Number(item.id) === 953);
+      if (!link) throw new Error("Student 93 guardian relationship fixture is missing.");
+      Object.assign(link, input);
+      await route.fulfill({ json: { student_guardian: link } });
       return;
     }
     if (path === "/school/students/93/guardians" && request.method() === "POST") {
@@ -1535,6 +1557,15 @@ test("staff can create a guardian contact and link it to a student with relation
         is_emergency_contact: input.is_emergency_contact, revoked_at: null,
       };
       guardianLinks.push(link);
+      // Simulate the same guardian already being linked to another student.
+      // Shared contact fields must propagate, while this student's relationship flags stay independent.
+      guardianLinks.push({
+        id: 954, student_id: 94, guardian_id: 45, guardian_name: guardian.full_name,
+        guardian_status: "active", mobile_number: guardian.mobile_number, email_address: guardian.email_address,
+        alternate_mobile_number: guardian.alternate_mobile_number, occupation: guardian.occupation,
+        education: guardian.education, workplace_name: guardian.workplace_name,
+        relationship_type: "Father", is_primary_contact: true, is_emergency_contact: false, revoked_at: null,
+      });
       await route.fulfill({ json: { student_guardian: link } });
       return;
     }
@@ -1603,10 +1634,14 @@ test("staff can create a guardian contact and link it to a student with relation
   expect(guardianLinks).toHaveLength(0);
   failGuardianLinkConflict = false;
   await page.getByRole("button", { name: "Link guardian", exact: true }).click();
-  await expect.poll(() => guardianLinks.length).toBe(1);
-  expect(guardianLinks[0]).toMatchObject({
+  await expect.poll(() => guardianLinks.length).toBe(2);
+  expect(guardianLinks.find(link => Number(link.student_id) === 93)).toMatchObject({
     guardian_id: 45, relationship_type: "Mother",
     is_primary_contact: true, is_emergency_contact: true,
+  });
+  expect(guardianLinks.find(link => Number(link.student_id) === 94)).toMatchObject({
+    guardian_id: 45, relationship_type: "Father",
+    is_primary_contact: true, is_emergency_contact: false,
   });
   await expect(page.getByText("Guardian linked to this student.")).toBeVisible();
   await expect(page.getByText("Nisha Verma", { exact: true })).toBeVisible();
@@ -1693,6 +1728,20 @@ test("staff can create a guardian contact and link it to a student with relation
   await expect(page.getByText("9876501235 · Alt: 9876501236 · nisha.verma@example.test")).toBeVisible();
   await expect(page.getByText("Principal · M.Ed. · Sunrise Public School")).toBeVisible();
   await expect(page.getByText("Legal Guardian · Emergency contact")).toBeVisible();
+  await expect(page.getByText("Other Guardian Student", { exact: true })).toBeVisible();
+
+  // The same guardian's updated contact profile is shared with the second
+  // student, but that student's own relationship type and flags remain intact.
+  await page.getByRole("button", { name: "Close dialog" }).click();
+  await page.getByRole("button", { name: "Close dialog" }).click();
+  await page.getByRole("button", { name: "View profile for Other Guardian Student" }).click();
+  await page.getByRole("button", { name: /Parents & siblings/i }).click();
+  await expect(page.getByRole("dialog", { name: "Parents & Siblings" })).toBeVisible();
+  await expect(page.getByText("Nisha Verma Updated", { exact: true })).toBeVisible();
+  await expect(page.getByText("9876501235 · Alt: 9876501236 · nisha.verma@example.test")).toBeVisible();
+  await expect(page.getByText("Principal · M.Ed. · Sunrise Public School")).toBeVisible();
+  await expect(page.getByText("Father · Primary contact", { exact: true })).toBeVisible();
+  await expect(page.getByText("Other students sharing a guardian")).toBeVisible();
   expect(browserErrors).toEqual([]);
 });
 
