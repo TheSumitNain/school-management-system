@@ -493,7 +493,7 @@ test("student admission, profile navigation and parent details render without br
   await expect(saveSubjectChoices).toBeEnabled();
   await curriculumPanel.getByRole("checkbox", { name: /Sanskrit/ }).check();
   await expect(curriculumPanel.getByText("2 selected · minimum 1, maximum 1")).toBeVisible();
-  await expect(curriculumPanel.getByText("Select between 1 and 1 subjects in Second language.")).toBeVisible();
+  await expect(curriculumPanel.getByText("Select exactly 1 subject in Second language.")).toBeVisible();
   await expect(saveSubjectChoices).toBeDisabled();
   await curriculumPanel.getByRole("checkbox", { name: /Sanskrit/ }).uncheck();
   await expect(saveSubjectChoices).toBeEnabled();
