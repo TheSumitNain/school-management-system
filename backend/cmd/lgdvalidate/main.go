@@ -47,6 +47,7 @@ var expectedHeader = []string{
 func main() {
 	file := flag.String("file", "", "normalized LGD hierarchy CSV file")
 	snapshotDate := flag.String("snapshot-date", "", "official source snapshot date (YYYY-MM-DD)")
+	sourceFile := flag.String("source-file", "", "untouched official source file to checksum only (optional; never parsed or modified)")
 	minStates := flag.Int("min-states", 36, "minimum distinct State/UT rows expected")
 	minDistricts := flag.Int("min-districts", 1, "minimum distinct districts expected")
 	minSubdistricts := flag.Int("min-subdistricts", 1, "minimum distinct sub-districts expected")
@@ -88,11 +89,31 @@ func main() {
 		}
 	}
 	fmt.Printf("Snapshot date: %s\n", *snapshotDate)
-	fmt.Printf("Input SHA-256: %x\n", hash.Sum(nil))
+	fmt.Printf("Normalized CSV SHA-256: %x\n", hash.Sum(nil))
+	if *sourceFile != "" {
+		sourceHash, err := sha256File(*sourceFile)
+		if err != nil {
+			fail(fmt.Errorf("checksum original source file: %w", err))
+		}
+		fmt.Printf("Original source SHA-256: %s\n", sourceHash)
+	}
 	for _, count := range counts {
 		fmt.Printf("%s: %d\n", count.name, count.got)
 	}
 	fmt.Println("Validation: PASS (read-only; no database connection or writes)")
+}
+
+func sha256File(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	hash := sha256.New()
+	if _, err := io.Copy(hash, f); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%x", hash.Sum(nil)), nil
 }
 
 func validateCSV(input io.Reader) (*snapshot, error) {
