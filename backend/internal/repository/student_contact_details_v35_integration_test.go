@@ -131,6 +131,17 @@ func TestStudentContactDetailsV35PostgresIntegration(t *testing.T) {
 	if updateAuditCount != 1 {
 		t.Fatalf("contact update audit count = %d, want 1", updateAuditCount)
 	}
+
+	// Sensitive contact details must remain inaccessible when a caller supplies
+	// a different school scope, even if the student identifier is otherwise valid.
+	foreignSchoolID := schoolID + 999999
+	if _, err := repository.GetStudentContactDetails(ctx, actorPrincipalID, foreignSchoolID, studentTwo); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("cross-school contact read error = %v, want access denied", err)
+	}
+	if _, err := repository.SaveStudentContactDetails(ctx, actorPrincipalID, foreignSchoolID, studentTwo,
+		&updatedPhone, nil, nil); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("cross-school contact update error = %v, want access denied", err)
+	}
 	var readAuditCount int
 	var readAuditMetadata string
 	if err := tx.QueryRow(ctx, `
