@@ -404,7 +404,21 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByText("Place of birth must be 120 characters or fewer.", { exact: true })).toBeVisible();
   expect(basicDetails.place_of_birth).toBeNull();
   await page.getByPlaceholder("City, district or place").fill("Ambala, Haryana");
+  await page.getByPlaceholder("e.g. Indian").fill("न".repeat(81));
+  await page.getByPlaceholder("Optional").fill("ध".repeat(81));
+  await page.getByPlaceholder("Optional school SR number").fill("प".repeat(51));
+  await basicSaveButton.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Basic details save button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect(page.getByText("Nationality must be 80 characters or fewer.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Religion must be 80 characters or fewer.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Registration number must be 50 characters or fewer.", { exact: true })).toBeVisible();
+  expect(basicDetails.place_of_birth).toBeNull();
   await page.getByPlaceholder("e.g. Indian").fill("Indian");
+  await page.getByPlaceholder("Optional").fill("");
+  await page.getByPlaceholder("Optional school SR number").fill("SR-E2E-001");
   await page.getByRole("button", { name: "Gender", exact: true }).click();
   await page.getByRole("option", { name: "Male", exact: true }).click();
   await basicSaveButton.evaluate(button => {
