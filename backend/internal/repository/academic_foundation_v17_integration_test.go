@@ -902,4 +902,37 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 			currentAfterClosedAttempt, switchYear.ID)
 	}
 
+	// Archiving a student must close only active enrollments, retain all
+	// historical enrollment/attendance rows, and prevent new attendance marks.
+	var currentEnrollmentID int64
+	if err := tx.QueryRow(ctx, `
+		SELECT id FROM student_enrollments
+		 WHERE school_id=$1 AND student_id=$2 AND status='active'
+		 LIMIT 1
+	`, schoolID, apiStudentID).Scan(&currentEnrollmentID); err != nil {
+		t.Fatalf("find active enrollment before student archive: %v", err)
+	}
+	archivedStudent, err := academicRepo.ArchiveStudent(ctx, actorPrincipalID, schoolID, apiStudentID)
+	if err != nil || archivedStudent == nil || archivedStudent.Status != "archived" {
+		t.Fatalf("archive student with enrollment history: student=%+v err=%v", archivedStudent, err)
+	}
+	var activeEnrollmentCount, withdrawnEnrollmentCount, retainedHistoryCount int
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*) FILTER (WHERE status='active'),
+		       COUNT(*) FILTER (WHERE status='withdrawn'),
+		       COUNT(*)
+		  FROM student_enrollments
+		 WHERE school_id=$1 AND student_id=$2
+	`, schoolID, apiStudentID).Scan(&activeEnrollmentCount, &withdrawnEnrollmentCount, &retainedHistoryCount); err != nil {
+		t.Fatalf("inspect enrollments after archive: %v", err)
+	}
+	if activeEnrollmentCount != 0 || withdrawnEnrollmentCount != 1 || retainedHistoryCount != 2 {
+		t.Fatalf("archive enrollment lifecycle: active=%d withdrawn=%d retained=%d; want 0,1,2",
+			activeEnrollmentCount, withdrawnEnrollmentCount, retainedHistoryCount)
+	}
+	if _, err := attendanceRepo.MarkAttendance(ctx, teacherPrincipalID, schoolID, currentEnrollmentID,
+		attendanceDay, "present", nil); !errors.Is(err, ErrAttendanceNotFound) {
+		t.Fatalf("mark attendance for archived student error = %v, want ErrAttendanceNotFound", err)
+	}
+
 }
