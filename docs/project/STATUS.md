@@ -524,3 +524,18 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 - Playwright coverage now checks the initial active-only request and verifies that enabling the checkbox requests history. It tolerates legitimate React Query refetches after mutations rather than assuming exactly one request.
 - Latest exact-tip verification on `06d2325a5e7700bf493f1d8bf21f07d19c9d5fe6`: Frontend CI run `43669467828` passed production build and all 5 Playwright tests; Backend CI run `43669467831` passed all migrations on ephemeral PostgreSQL, backend unit/integration tests, and `go vet`.
 - Playwright uses mocked API responses; it is not proof of persistence against the user's local database. Live authenticated browser acceptance and local V39+ migration remain outstanding. Do not modify persistent `school_management` without explicit approval and a verified restorable backup.
+
+
+## Student Management readiness checkpoint — 2026-11-15
+
+**Code and CI state:** The currently implemented Student Management workflows are present on `work`: student admission and yearly enrollment/promotion, identity and basic details, address/location, contact, medical/physical details, guardian contact profiles, student-specific guardian relationships, related-student lookup, history/revocation, permissions and audit behavior. The formerly recorded relationship-edit gap is closed by V41 and the audited transactional update operation. The latest V43 migration enforces one active primary guardian per student. Recent cross-layer work also validates guardian email on the server and fetches revoked guardian history only when explicitly requested.
+
+**Latest automated verification:** exact code tip `06d2325a5e7700bf493f1d8bf21f07d19c9d5fe6` passed Backend CI run `43669467831` (complete ephemeral PostgreSQL migration chain, backend unit/integration tests, `go vet`) and Frontend CI run `43669467828` (design-token check, TypeScript/Vite production build, all 5 Playwright tests). The following documentation-only commit `52ddb40d` records that result.
+
+**Still required before calling this section fully accepted:**
+
+1. Apply V25–V43 to a disposable local PostgreSQL database and verify the user's configured API against it. The persistent `school_management` database must not be migrated without explicit approval and a verified restorable backup. Its current version must be checked rather than assumed; the last reported local application-database version was V24.
+2. Run authenticated browser acceptance against that real local API/database: admission, profile load, Basic Details, current/permanent address, contact, Parent Details, medical/physical details, promotion, role restrictions, save/reopen/reload persistence and error/retry behavior. The 5 Playwright tests use mocked APIs and do not prove database persistence.
+3. Decide/complete the authoritative LGD District → Sub-District/Tehsil → Village/City reference-data import. V40 seeds State/UT values; lower levels are intentionally not fabricated. Import remains gated on a verified official snapshot and reviewed crosswalk.
+
+Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload remain excluded until their dedicated security/storage controls are designed. No persistent database was modified during this review.
