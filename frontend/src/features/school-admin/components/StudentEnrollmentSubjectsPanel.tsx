@@ -99,7 +99,9 @@ export function StudentEnrollmentSubjectsPanel({
             </label>
           ))}
           <small>{counts.get(groupID) ?? 0} selected · minimum {group.min}, maximum {group.max}</small>
-          {invalidGroups.some(([invalidID]) => invalidID === groupID) && <p className="student-field-error" role="alert">Select between {group.min} and {group.max} subjects in {group.name}.</p>}
+          {invalidGroups.some(([invalidID]) => invalidID === groupID) && <p className="student-field-error" role="alert">{group.min === group.max
+            ? `Select exactly ${group.min} ${group.min === 1 ? "subject" : "subjects"} in ${group.name}.`
+            : `Select between ${group.min} and ${group.max} subjects in ${group.name}.`}</p>}
         </fieldset>
       ))}
       {data?.selection_history && data.selection_history.length > 0 && (
