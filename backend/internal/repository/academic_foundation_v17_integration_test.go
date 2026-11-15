@@ -445,7 +445,7 @@ func TestAcademicFoundationAndAssignmentHistoryV18PostgresIntegration(t *testing
 	if teacherEnrollments[0].basicRosterOnly {
 		t.Fatal("class-in-charge teacher was incorrectly restricted to the subject-only roster")
 	}
-	if teacherEnrollments[0].StudentName != "V17 Promotion Student" ||
+	if teacherEnrollments[0].StudentStatus != "active" || teacherEnrollments[0].StudentName != "V17 Promotion Student" ||
 		teacherEnrollments[0].RollNumber == nil || *teacherEnrollments[0].RollNumber != "01" ||
 		teacherEnrollments[0].ClassNameSnapshot != "UKG" ||
 		teacherEnrollments[0].SectionNameSnapshot != "A" {
