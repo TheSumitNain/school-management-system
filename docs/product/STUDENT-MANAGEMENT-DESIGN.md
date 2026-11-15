@@ -373,3 +373,6 @@ Apply this standard consistently to initial admission, returning enrollment, pro
 
 
 - Follow-up browser coverage explicitly edits the shared guardian's full name, checks the 200-character Unicode boundary, saves the change and verifies it after reopening Parent Details. Frontend CI [run 43712924033](https://github.com/TheSumitNain/school-management-system/actions/runs/43712924033) passed all 8 Playwright tests on follow-up checkpoint `fc43c199b48a26b08c15a33e86ff28115c8b244c`; Backend CI [run 43713194771](https://github.com/TheSumitNain/school-management-system/actions/runs/43713194771) also passed the full migration chain, PostgreSQL integration suite and `go vet` on the latest checkpoint `7e78fd01bc88277d420b276b3ecb82f42eba1753`.
+
+
+- Browser regression coverage now checks Unicode length rejection for the per-student relationship label and editing both primary/emergency flags to false. The test verifies the outgoing PATCH payload and that the values persist after the shared guardian profile edit and reopening Parent Details. CI pending on `c4a221ad24048333bafc2dda2f52d9c9cc8542eb`.
