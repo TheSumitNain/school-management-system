@@ -219,3 +219,7 @@
 .student-subject-history summary{cursor:pointer;font-weight:600}
 .student-subject-history ul{margin:8px 0 0;padding-left:20px}
 .student-subject-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+
+.student-curriculum-version-select{display:grid;grid-template-columns:minmax(110px,auto) minmax(180px,260px);align-items:center;gap:10px;font-weight:600}
+.student-curriculum-version-select select{min-height:38px;padding:7px 10px;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);color:var(--color-text)}
+@media(max-width:600px){.student-curriculum-version-select{grid-template-columns:1fr}}
