@@ -14,7 +14,7 @@ const academicYear = { id: 7, name: "2026–2027", starts_on: "2026-04-01", ends
 const section = { id: 12, academic_year_id: 7, class_id: 3, class_name: "Class 1", name: "A", is_active: true };
 
 test("student admission, profile navigation and parent details render without browser errors", async ({ page }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(120_000);
   const browserErrors: string[] = [];
   page.on("pageerror", error => browserErrors.push(error.message));
 
@@ -591,6 +591,11 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("button", { name: "Edit relationship" }).click();
   await page.getByPlaceholder("Father, Mother, Legal Guardian…").fill("Legal Guardian");
   const relationshipForm = page.locator(".student-family-create-form").filter({ has: page.getByRole("heading", { name: "Edit relationship for this student" }) });
+  await page.waitForTimeout(15_100);
+  const guardianReadsBeforeFocus = guardianHistoryRequests.length;
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect.poll(() => guardianHistoryRequests.length).toBeGreaterThan(guardianReadsBeforeFocus);
+  await expect(relationshipForm.getByPlaceholder("Father, Mother, Legal Guardian…")).toHaveValue("Legal Guardian");
   const saveRelationship = relationshipForm.getByRole("button", { name: "Save relationship" });
   await saveRelationship.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
