@@ -502,14 +502,26 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("button", { name: "Retry loading addresses" }).click();
   await expect(addressSave).toBeEnabled();
   await page.getByPlaceholder("House number, street or building").fill("अ".repeat(201));
+  await page.getByPlaceholder("Apartment, floor or additional details").fill("अ".repeat(201));
+  await page.getByPlaceholder("Local area or mohalla").fill("अ".repeat(121));
+  await page.getByPlaceholder("Nearby landmark").fill("अ".repeat(121));
+  await page.getByPlaceholder("PIN or postal code").fill("अ".repeat(21));
   await addressSave.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
     if (!form) throw new Error("Address save button is not associated with its form.");
     form.requestSubmit(button as HTMLButtonElement);
   });
   await expect(page.getByText("House / street must be 200 characters or fewer.")).toBeVisible();
+  await expect(page.getByText("Address line 2 must be 200 characters or fewer.")).toBeVisible();
+  await expect(page.getByText("Area / mohalla must be 120 characters or fewer.")).toBeVisible();
+  await expect(page.getByText("Landmark must be 120 characters or fewer.")).toBeVisible();
+  await expect(page.getByText("PIN / postal code must be 20 characters or fewer.")).toBeVisible();
   expect(addresses).toHaveLength(0);
   await page.getByPlaceholder("House number, street or building").fill("House 12, Main Road");
+  await page.getByPlaceholder("Apartment, floor or additional details").fill("");
+  await page.getByPlaceholder("Local area or mohalla").fill("");
+  await page.getByPlaceholder("Nearby landmark").fill("");
+  await page.getByPlaceholder("PIN or postal code").fill("");
   await page.getByLabel("Search States / UTs").fill("Haryana");
   await page.getByRole("button", { name: "State or Union Territory", exact: true }).click();
   await page.getByRole("option", { name: "Haryana" }).click();
