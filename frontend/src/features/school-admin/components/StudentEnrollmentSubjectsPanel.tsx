@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import type { CurriculumSubject } from "../api";
 import {
   useSaveSchoolStudentEnrollmentSubjectsMutation,
   useSchoolStudentEnrollmentCurriculumQuery,
