@@ -215,6 +215,14 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("save guardian with over-limit Unicode email error = %v, want invalid input", err)
 	}
 
+	for _, invalidEmail := range []string{"not-an-email", "Guardian <guardian@example.invalid>", "guardian@example.invalid,other@example.invalid"} {
+		if _, err := repo.SaveGuardian(ctx, targetPrincipalID, schoolID, guardian.ID,
+			"Guardian One", &mobile, &invalidEmail, &alternateMobile,
+			&occupation, &education, &workplace, "active"); !errors.Is(err, ErrInvalidGuardianInput) {
+			t.Errorf("save guardian with invalid email %q error = %v, want invalid input", invalidEmail, err)
+		}
+	}
+
 	updated, err := repo.SaveGuardian(ctx, targetPrincipalID, schoolID, guardian.ID,
 		"Guardian One Updated", &mobile, &email, &alternateMobile, &occupation, &education, &workplace, "inactive")
 	if err != nil {
