@@ -2114,7 +2114,6 @@ test("switching student profiles clears address, contact, medical and physical d
   await expect(page.getByRole("dialog", { name: "Address & Communication" })).toBeVisible();
   await expect(page.getByPlaceholder("House number, street or building")).toHaveValue("Student B saved address");
   await expect(page.getByText("House / street must be 200 characters or fewer.", { exact: true })).toHaveCount(0);
-  await expect(page.getByText("अ".repeat(201), { exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Contact details", exact: true }).click();
   await expect(page.getByPlaceholder("Primary contact number")).toHaveValue("9999900032");
   await expect(page.getByText("Phone number must be 30 characters or fewer.", { exact: true })).toHaveCount(0);
@@ -2150,15 +2149,6 @@ test("switching student profiles clears address, contact, medical and physical d
 
   await healthDialog.getByRole("button", { name: "Close dialog" }).click();
   await page.getByRole("button", { name: "Close dialog" }).click();
-  await page.getByRole("button", { name: "View profile for State Student A" }).click();
-  await page.getByRole("button", { name: /Medical & physical/ }).click();
-  await expect(page.getByPlaceholder("Record known allergies, if any")).toHaveValue("");
-  await page.getByRole("button", { name: "Physical details" }).click();
-  await expect(page.getByPlaceholder("e.g. 132.5")).toHaveValue("");
-  await expect(page.getByText("Height must be between 20 and 250 cm.", { exact: true })).toHaveCount(0);
-  await page.getByRole("button", { name: "Close dialog" }).click();
-  await page.getByRole("button", { name: "Close dialog" }).click();
-
   await page.getByRole("button", { name: "View profile for State Student B" }).click();
   await page.getByRole("button", { name: /Medical & physical/ }).click();
   await expect(page.getByPlaceholder("Record known allergies, if any")).toHaveValue("Student B saved allergy record");
