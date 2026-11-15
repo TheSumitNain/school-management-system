@@ -116,6 +116,23 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
     setEmailAddress(textValue(details?.email_address));
   }, [student.id, showContactDetails, contactSnapshot]);
 
+  useEffect(() => {
+    setContactErrors({});
+    setCountryCodeError("");
+    setFieldError("");
+    setAddressErrors({});
+    setNewLocationNameError("");
+    setFeedback(null);
+    setShowLocationCreator(false);
+    setPendingDeactivate(null);
+    setNewLocationName("");
+    setNewLocalityType("village");
+    setStateSearch("");
+    setDistrictSearch("");
+    setSubdistrictSearch("");
+    setLocalitySearch("");
+  }, [student.id]);
+
   const states = statesQuery.data?.locations ?? [];
   const districts = districtsQuery.data?.locations ?? [];
   const subdistricts = subdistrictsQuery.data?.locations ?? [];
