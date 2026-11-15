@@ -320,6 +320,24 @@ func TestStudentMedicalPhysicalDetailsV36PostgresIntegration(t *testing.T) {
 		t.Fatalf("Teacher physical read error = %v, want access denied", err)
 	}
 
+	// Cross-tenant medical and physical data must be inaccessible for both
+	// reads and writes, independently of the role-based checks above.
+	foreignSchoolID := schoolID + 999999
+	if _, err := repo.GetStudentMedicalDetails(ctx, actorPrincipalID, foreignSchoolID, studentID); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("cross-school medical read error = %v, want access denied", err)
+	}
+	if _, err := repo.GetStudentPhysicalDetails(ctx, actorPrincipalID, foreignSchoolID, studentID); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("cross-school physical read error = %v, want access denied", err)
+	}
+	if _, err := repo.SaveStudentMedicalDetails(ctx, actorPrincipalID, foreignSchoolID, studentID,
+		&bloodGroup, &updatedAllergies, &conditions, &medications, &emergencyNotes); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("cross-school medical update error = %v, want access denied", err)
+	}
+	if _, err := repo.SaveStudentPhysicalDetails(ctx, actorPrincipalID, foreignSchoolID, studentID,
+		&nextHeight, &weight, &nextMeasuredOn, &nextVision, &nextPhysicalNotes); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("cross-school physical update error = %v, want access denied", err)
+	}
+
 	// Ensure no unexpected open transaction state remains after nested repository operations.
 	if err := tx.QueryRow(ctx, `SELECT 1`).Scan(new(int)); err != nil {
 		t.Fatalf("outer transaction is unusable after health operations: %v", err)
