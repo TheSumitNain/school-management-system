@@ -20,19 +20,21 @@
 - Backend CI **PASS** — [run 43718345636](https://github.com/TheSumitNain/school-management-system/actions/runs/43718345636): all migrations applied to ephemeral PostgreSQL, all Go tests including PostgreSQL integration passed, and `go vet ./...` passed.
 - This is mocked browser persistence plus ephemeral-database CI, not authenticated live acceptance against the user's local API/database.
 
-### Shared guardian profile across linked students — pending CI (2026-11-15)
+### Shared guardian profile across linked students — verified (2026-11-15)
 
 - Extended the Parent Details browser journey with a second active student linked to the same guardian. The test verifies that editing the shared guardian profile updates the contact/profile shown under both students, while the second student's own relationship type and primary/emergency flags remain unchanged.
-- Test commit: `033cd9ee1d7ee45b2009114aaa26c76e76811adf`.
-- Frontend CI run [43718613307](https://github.com/TheSumitNain/school-management-system/actions/runs/43718613307) caught an over-escaped JavaScript route-matcher regex before Playwright could start; corrected in `e379509c7d8a6d6a4175bd675910d9bbbaf6fd33`. The next browser run [43718725934](https://github.com/TheSumitNain/school-management-system/actions/runs/43718725934) reached the new test and caught an ambiguous locator because the related student's name also appeared in the directory row; scoped the assertion to the Parents & Siblings dialog in `cdfb455ec2aa4451d8a94f421ea022ed23cece09`. Backend CI for the regex-fix commit passed in [run 43718725932](https://github.com/TheSumitNain/school-management-system/actions/runs/43718725932). New Frontend/Backend CI for `cdfb455ec2aa4451d8a94f421ea022ed23cece09` is pending. Keep `ae1e9a3007eddfcb5c2f10f10ddcb6814cc478ca` as the latest fully verified code checkpoint until the corrected browser run passes.
+- Final test commit: `cdfb455ec2aa4451d8a94f421ea022ed23cece09`. The initial test addition was `033cd9ee1d7ee45b2009114aaa26c76e76811adf`; CI caught and the follow-up commits corrected the route-matcher regex and dialog-scoped locator.
+- Frontend CI **PASS** — [run 43718944849](https://github.com/TheSumitNain/school-management-system/actions/runs/43718944849): production build and all 11 Playwright tests passed in 51.8 seconds. The shared-guardian journey passed in 6.1 seconds, including a full browser reload and verification across both linked students.
+- Backend CI **PASS** — [run 43718944872](https://github.com/TheSumitNain/school-management-system/actions/runs/43718944872): full migration chain, PostgreSQL integration tests and `go vet ./...` all passed.
+- Browser API responses are mocked; CI PostgreSQL is ephemeral. Authenticated live acceptance against the user's local API/database remains outstanding.
 
 ### Latest verified code and CI
 
-- Active branch: `work`; latest verified Student Management test checkpoint is `ae1e9a3007eddfcb5c2f10f10ddcb6814cc478ca`; Frontend CI run 43718345623 and Backend CI run 43718345636 both PASS.
-- Latest Student Management browser/test checkpoint: `ae1e9a3007eddfcb5c2f10f10ddcb6814cc478ca`. Frontend CI **PASS** — [run 43718345623](https://github.com/TheSumitNain/school-management-system/actions/runs/43718345623): production build and all 11 Playwright tests passed, including the cross-student Address, Contact, Medical and Physical isolation journey and full browser-reload Parent Details persistence.
-- Backend CI **PASS** on the same full-repository checkpoint — [run 43718345636](https://github.com/TheSumitNain/school-management-system/actions/runs/43718345636): complete migration chain, PostgreSQL integration suite and `go vet ./...`.
+- Active branch: `work`; latest verified Student Management test checkpoint is `cdfb455ec2aa4451d8a94f421ea022ed23cece09`; Frontend CI run 43718944849 and Backend CI run 43718944872 both PASS.
+- Latest Student Management browser/test checkpoint: `cdfb455ec2aa4451d8a94f421ea022ed23cece09`. Frontend CI **PASS** — [run 43718944849](https://github.com/TheSumitNain/school-management-system/actions/runs/43718944849): production build and all 11 Playwright tests passed, including cross-student profile isolation, full browser-reload Parent Details persistence, and shared guardian profile propagation across linked students.
+- Backend CI **PASS** on the same full-repository checkpoint — [run 43718944872](https://github.com/TheSumitNain/school-management-system/actions/runs/43718944872): complete migration chain, PostgreSQL integration suite and `go vet ./...`.
 - Earlier frontend implementation fixes include guardian form validation, student-specific state reset, enrollment curriculum identity, Basic Details empty-state cleanup, Address/Health transient-state cleanup and shared profile feedback handling. The latest green checkpoint includes these commits.
-- Background-refetch draft preservation is covered for Basic Details, Parent Details, Address, Contact, Medical, Physical and enrollment subject choices. Cross-student browser journeys for Basic Details, Parent Details, Address, Contact, Medical and Physical are all Frontend-CI-verified at `ae1e9a3007eddfcb5c2f10f10ddcb6814cc478ca`.
+- Background-refetch draft preservation is covered for Basic Details, Parent Details, Address, Contact, Medical, Physical and enrollment subject choices. Cross-student browser journeys for Basic Details, Parent Details, Address, Contact, Medical and Physical are all Frontend-CI-verified at `cdfb455ec2aa4451d8a94f421ea022ed23cece09`.
 - Authenticated live acceptance remains pending. CI uses mocked browser APIs and an ephemeral PostgreSQL database; it does not verify the user's local API/database.
 
 ### Student profile state isolation correction (2026-11-15)
@@ -122,7 +124,7 @@ At every new session, reconcile this file, Student Management design docs, backe
 **Repository:** `TheSumitNain/school-management-system`  
 **Reviewed branch:** `work`  
 **Branch:** `work`; later documentation-only commits update this handover and the Student Management design without changing the verified code checkpoint below.  
-**Latest verified code checkpoint:** `ae1e9a3007eddfcb5c2f10f10ddcb6814cc478ca`. Frontend CI run `43718345623` PASS (production build and 11 Playwright tests, including full browser reload); Backend CI run `43718345636` PASS (full migration chain, PostgreSQL integration tests and `go vet ./...`).  
+**Latest verified code checkpoint:** `cdfb455ec2aa4451d8a94f421ea022ed23cece09`. Frontend CI run `43718944849` PASS (production build and 11 Playwright tests, including full browser reload and shared guardian propagation); Backend CI run `43718944872` PASS (full migration chain, PostgreSQL integration tests and `go vet ./...`).  
 **Latest Student Management acceptance:** cross-student draft/error isolation for Basic Details, Parent Details, Address, Contact, Medical and Physical; background-refetch draft preservation for profile sections and enrollment subject choices; guardian lifecycle and relationship history; academic-year enrollment, promotion and versioned curriculum choices. The Playwright API is mocked and CI PostgreSQL is ephemeral, so authenticated live acceptance against the user's local API/database remains outstanding.  
 **Location master data:** V40/V42 provide the State/UT baseline and source-reference history. The all-India LGD hierarchy is not imported; `backend/cmd/lgdvalidate` remains a read-only normalized-CSV validator. No persistent database writes or migrations are authorized by this status update.
 
