@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 )
@@ -155,6 +156,53 @@ func TestStudentMedicalPhysicalDetailsV36PostgresIntegration(t *testing.T) {
 	if _, err := repo.SaveStudentPhysicalDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
 		&invalidPrecision, nil, &measuredOn, nil, nil); !errors.Is(err, ErrInvalidAcademicInput) {
 		t.Fatalf("measurement precision error = %v, want invalid input", err)
+	}
+
+	// Text limits are Unicode code-point limits, not UTF-8 byte or UTF-16 code-unit limits.
+	maxMedicalText := strings.Repeat("अ", 2000)
+	maxVisionText := strings.Repeat("अ", 1000)
+	maxPhysicalText := strings.Repeat("अ", 2000)
+	boundaryMedical, err := repo.SaveStudentMedicalDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
+		nil, &maxMedicalText, &maxMedicalText, &maxMedicalText, &maxMedicalText)
+	if err != nil {
+		t.Fatalf("save medical fields at 2,000 Unicode characters: %v", err)
+	}
+	if boundaryMedical.Allergies == nil || len([]rune(*boundaryMedical.Allergies)) != 2000 ||
+		boundaryMedical.KnownConditions == nil || len([]rune(*boundaryMedical.KnownConditions)) != 2000 ||
+		boundaryMedical.OngoingMedications == nil || len([]rune(*boundaryMedical.OngoingMedications)) != 2000 ||
+		boundaryMedical.EmergencyMedicalNotes == nil || len([]rune(*boundaryMedical.EmergencyMedicalNotes)) != 2000 {
+		t.Fatal("medical fields must preserve exactly 2,000 Unicode characters")
+	}
+	tooLongMedicalText := strings.Repeat("अ", 2001)
+	for label, values := range map[string][4]*string{
+		"allergies": {&tooLongMedicalText, &maxMedicalText, &maxMedicalText, &maxMedicalText},
+		"known conditions": {&maxMedicalText, &tooLongMedicalText, &maxMedicalText, &maxMedicalText},
+		"ongoing medications": {&maxMedicalText, &maxMedicalText, &tooLongMedicalText, &maxMedicalText},
+		"emergency notes": {&maxMedicalText, &maxMedicalText, &maxMedicalText, &tooLongMedicalText},
+	} {
+		if _, err := repo.SaveStudentMedicalDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
+			nil, values[0], values[1], values[2], values[3]); !errors.Is(err, ErrInvalidAcademicInput) {
+			t.Fatalf("%s over-limit Unicode text error = %v, want invalid input", label, err)
+		}
+	}
+
+	boundaryPhysical, err := repo.SaveStudentPhysicalDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
+		nil, nil, &measuredOn, &maxVisionText, &maxPhysicalText)
+	if err != nil {
+		t.Fatalf("save physical fields at Unicode character limits: %v", err)
+	}
+	if boundaryPhysical.VisionNotes == nil || len([]rune(*boundaryPhysical.VisionNotes)) != 1000 ||
+		boundaryPhysical.PhysicalNotes == nil || len([]rune(*boundaryPhysical.PhysicalNotes)) != 2000 {
+		t.Fatal("physical fields must preserve 1,000/2,000 Unicode characters")
+	}
+	tooLongVisionText := strings.Repeat("अ", 1001)
+	if _, err := repo.SaveStudentPhysicalDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
+		nil, nil, &measuredOn, &tooLongVisionText, nil); !errors.Is(err, ErrInvalidAcademicInput) {
+		t.Fatalf("vision notes over-limit Unicode text error = %v, want invalid input", err)
+	}
+	if _, err := repo.SaveStudentPhysicalDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
+		nil, nil, &measuredOn, nil, &tooLongMedicalText); !errors.Is(err, ErrInvalidAcademicInput) {
+		t.Fatalf("physical notes over-limit Unicode text error = %v, want invalid input", err)
 	}
 	otherSchoolID := schoolID + 999999
 	if _, err := repo.GetStudentMedicalDetails(ctx, actorPrincipalID, otherSchoolID, studentID); !errors.Is(err, ErrAcademicAccessDenied) {
