@@ -390,3 +390,9 @@ Apply this standard consistently to initial admission, returning enrollment, pro
 
 
 - Final Parent Details draft-isolation test checkpoint `b6d14c6ed4030724857838ef8cebc131041219ae` passed Frontend CI [run 43716057611](https://github.com/TheSumitNain/school-management-system/actions/runs/43716057611) with all 10 Playwright tests and Backend CI [run 43716057614](https://github.com/TheSumitNain/school-management-system/actions/runs/43716057614) with migrations, PostgreSQL integration and `go vet`. The test-only selector corrections did not change application source. Authenticated local acceptance remains outstanding.
+
+## Guardian email validation regression coverage — 2026-11-15
+
+- Backend repository integration tests reject malformed guardian email values, including display-name and comma-separated multiple-address inputs, as well as over-limit Unicode values.
+- Parent Details Playwright coverage applies the same malformed email cases to both shared guardian profile edits and new guardian creation. It verifies inline errors and that invalid submissions do not change the mocked persisted guardian profile or create a guardian.
+- Checkpoint `da85edc9f020c7db2d0b474c4855e3be7249bf80`: Frontend CI [run 43724412256](https://github.com/TheSumitNain/school-management-system/actions/runs/43724412256) passed production build and all 11 Playwright tests; Backend CI [run 43724412200](https://github.com/TheSumitNain/school-management-system/actions/runs/43724412200) passed migrations, PostgreSQL integration tests and `go vet ./...`. Authenticated local API/database acceptance remains outstanding.
