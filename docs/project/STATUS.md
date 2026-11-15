@@ -620,3 +620,11 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Standalone academic-year enrollment applies the same 50-character admission-number and 30-character optional roll-number checks, with field-level accessible errors. Blank roll numbers remain valid and continue to request backend auto-assignment.
 - Extended the mocked admission browser journey to submit over-limit Hindi student name, admission number and roll number values together, verify all three inline errors and confirm no admission request is sent before correction.
 - Backend repository validation remains authoritative. No database or schema changes were made; exact-tip CI and live authenticated API/database acceptance remain unverified.
+
+
+## Guardian profile and admission input validation follow-up — 2026-11-15
+
+- Guardian create/edit forms now validate every shared guardian profile field against the repository's Unicode character limits (name, mobile, email, alternate mobile, occupation, education and workplace) before saving. Each field has its own accessible inline error; closing/reopening forms clears stale field errors.
+- Student first admission and standalone enrollment now validate the student name, admission number and optional roll number in code points before requests. The admission Playwright flow now verifies simultaneous over-limit name/admission/roll errors and no write before correction. The standalone enrollment validation is implemented but does not yet have a dedicated mocked browser scenario.
+- Guardian Playwright coverage now verifies all over-limit fields together on create and an over-limit mobile number on shared-profile edit before the confirmation step.
+- All these browser scenarios use mocked APIs. No local/persistent database was changed; exact-tip CI and authenticated browser acceptance against a real API/database remain outstanding.
