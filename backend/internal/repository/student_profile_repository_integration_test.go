@@ -268,6 +268,18 @@ func TestStudentProfileRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatal("student profile/directory read audit metadata must not contain student name or admission number")
 	}
 
+	// Direct API writes must obey the same active-only edit boundary as the
+	// Student Management UI. Inactive records remain readable but immutable.
+	if _, err := tx.Exec(ctx, `UPDATE students SET status='inactive' WHERE id=$1 AND school_id=$2`, student.ID, schoolID); err != nil {
+		t.Fatalf("mark student inactive for write-boundary test: %v", err)
+	}
+	if _, err := repo.UpdateStudent(ctx, actorID, schoolID, student.ID, "Inactive Name Must Not Change"); !errors.Is(err, ErrAcademicNotFound) {
+		t.Fatalf("update inactive student error = %v, want not found", err)
+	}
+	if _, err := tx.Exec(ctx, `UPDATE students SET status='active' WHERE id=$1 AND school_id=$2`, student.ID, schoolID); err != nil {
+		t.Fatalf("restore student active after write-boundary test: %v", err)
+	}
+
 	archived, err := repo.ArchiveStudent(ctx, actorID, schoolID, student.ID)
 	if err != nil || archived.Status != "archived" { t.Fatalf("archive student: student=%+v err=%v", archived, err) }
 	if _, err := repo.UpdateStudent(ctx, actorID, schoolID, student.ID, "Should Not Update"); !errors.Is(err, ErrAcademicNotFound) {
