@@ -56,7 +56,13 @@
 - Extended the main Student Management Playwright journey to trigger a real TanStack Query window-focus refetch and assert that in-progress Basic Details, Address, Contact, Medical and Physical drafts remain unchanged when the server returns the same persisted snapshot.
 - Basic Details uses its stale cached query; Address and Contact wait beyond their 15-second stale window before the focus refetch; Medical and Physical use their configured immediate-stale behavior.
 - Test commits: `2f22369bf41901e7efea80227fc36d483ae77754` (Medical and Physical) and `70f24c208f6705021c21f1e4e03ea6df9aa04044` (Basic Details, Address and Contact).
-- CI results are pending for the latest test commit; verify the workflow on the exact branch head. These are mocked browser tests and do not replace authenticated live acceptance.
+- The initial frontend run on `2f22369bf41901e7efea80227fc36d483ae77754` exposed the name-save feedback race documented below; the run failed for that assertion, and its concurrent backend run was cancelled by the next push. The expanded test and fix are now committed; verify the workflow on the latest branch head. These are mocked browser tests and do not replace authenticated live acceptance.
+
+### Basic Details name-save feedback regression (2026-11-15)
+
+- The first browser run exposed a real UI race: saving a student's name updates the parent student object, which changed the synchronization effect dependency and immediately cleared the success message before it could be observed.
+- Restricted the name-form reset effect to the active student identity. Saving a new name for the same student no longer triggers the student-switch reset; switching to a different student still clears stale form feedback.
+- Fix commit: `2419d61299a878669392f69f44549a8e45f7ff9a`. Verify the new frontend CI run before treating it as resolved.
 
 ### Root causes fixed
 
