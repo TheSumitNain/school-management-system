@@ -99,3 +99,11 @@ func TestValidateCSVPreservesLeadingZeroCodesAndBOM(t *testing.T) {
 		t.Fatalf("locality source code was not retained as a string: keys=%v", got.localities)
 	}
 }
+
+func TestValidateCSVRejectsConflictingLocalityTypeForSameSourceCode(t *testing.T) {
+	input := validSnapshot + "06,Haryana,HR,701,Ambala,12001,Ambala,900001,Ambala,city\\n"
+	_, err := validateCSV(strings.NewReader(input))
+	if err == nil || !strings.Contains(err.Error(), "conflicting name or parent mapping") {
+		t.Fatalf("validateCSV() error = %v, want conflicting locality-type error", err)
+	}
+}
