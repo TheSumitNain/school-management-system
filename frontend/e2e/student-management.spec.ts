@@ -36,6 +36,7 @@ test("student admission, profile navigation and parent details render without br
   const failedStudentReads: string[] = [];
   const observedStudentDetailGets: string[] = [];
   const guardianHistoryRequests: (string | null)[] = [];
+  const guardianLinkUpdateRequests: Record<string, unknown>[] = [];
   let curriculumAssigned = false;
   let curriculumReads = 0;
   let medicalDetailReads = 0;
@@ -357,6 +358,7 @@ test("student admission, profile navigation and parent details render without br
       const input = request.postDataJSON() as {
         relationship_type: string; is_primary_contact: boolean; is_emergency_contact: boolean;
       };
+      guardianLinkUpdateRequests.push(input);
       Object.assign(guardianLink, input);
       await route.fulfill({ json: { student_guardian: guardianLink } });
       return;
@@ -610,20 +612,35 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByText("Other students sharing a guardian")).toBeVisible();
 
   await page.getByRole("button", { name: "Edit relationship" }).click();
-  await page.getByPlaceholder("Father, Mother, Legal Guardian…").fill("Legal Guardian");
   const relationshipForm = page.locator(".student-family-create-form").filter({ has: page.getByRole("heading", { name: "Edit relationship for this student" }) });
-  const guardianReadsBeforeFocus = guardianHistoryRequests.length;
-  await invalidateProfileQueries(page, "guardians");
-  await expect.poll(() => guardianHistoryRequests.length).toBeGreaterThan(guardianReadsBeforeFocus);
-  await expect(relationshipForm.getByPlaceholder("Father, Mother, Legal Guardian…")).toHaveValue("Legal Guardian");
+  const relationshipInput = relationshipForm.getByPlaceholder("Father, Mother, Legal Guardian…");
+  await relationshipInput.fill("अ".repeat(41));
   const saveRelationship = relationshipForm.getByRole("button", { name: "Save relationship" });
   await saveRelationship.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
     if (!form) throw new Error("Relationship submit button is not associated with its form.");
     form.requestSubmit(button as HTMLButtonElement);
   });
+  await expect(relationshipForm.getByText("Relationship must be 40 characters or fewer.", { exact: true })).toBeVisible();
+  expect(guardianLinkUpdateRequests).toHaveLength(0);
+  await relationshipInput.fill("Legal Guardian");
+  const guardianReadsBeforeFocus = guardianHistoryRequests.length;
+  await invalidateProfileQueries(page, "guardians");
+  await expect.poll(() => guardianHistoryRequests.length).toBeGreaterThan(guardianReadsBeforeFocus);
+  await expect(relationshipInput).toHaveValue("Legal Guardian");
+  await relationshipForm.getByRole("checkbox", { name: /Primary contact/ }).uncheck();
+  await relationshipForm.getByRole("checkbox", { name: /Emergency contact/ }).uncheck();
+  await saveRelationship.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Relationship submit button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
   await expect.poll(() => guardianLink.relationship_type).toBe("Legal Guardian");
-  await expect(page.getByText("Legal Guardian · Primary contact · Emergency contact")).toBeVisible();
+  expect(guardianLinkUpdateRequests).toHaveLength(1);
+  expect(guardianLinkUpdateRequests[0]).toMatchObject({
+    relationship_type: "Legal Guardian", is_primary_contact: false, is_emergency_contact: false,
+  });
+  await expect(page.getByText("Legal Guardian", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Edit shared guardian details" }).click();
   await expect(page.getByRole("heading", { name: "Edit shared guardian profile" })).toBeVisible();
   await expect(page.getByText("These contact and profile details are shared across all students linked to this guardian.")).toBeVisible();
@@ -683,7 +700,7 @@ test("student admission, profile navigation and parent details render without br
   expect(guardianLink).toMatchObject({
     alternate_mobile_number: "9999987654", occupation: "Engineer",
     education: "Postgraduate", workplace_name: "City Hospital",
-    relationship_type: "Legal Guardian", is_primary_contact: true, is_emergency_contact: true,
+    relationship_type: "Legal Guardian", is_primary_contact: false, is_emergency_contact: false,
   });
   await expect(page.getByText("Guardian profile updated. Changes apply to every student linked to this guardian.")).toBeVisible();
 
@@ -714,7 +731,7 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByRole("dialog", { name: /Parents & Siblings/i })).toBeVisible();
   await page.getByLabel("Show revoked history").check();
   await expect(page.getByText("Ramesh Sharma")).toBeVisible();
-  await expect(page.getByText("Legal Guardian · Primary contact · Emergency contact")).toBeVisible();
+  await expect(page.getByText("Legal Guardian", { exact: true })).toBeVisible();
   await expect(page.getByText("Ramesh Sharma Updated")).toBeVisible();
   await expect(page.getByText(/9999912345/)).toBeVisible();
   await expect(page.getByText(/9999987654/)).toBeVisible();
