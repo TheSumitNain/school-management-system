@@ -1,4 +1,12 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+
+async function invalidateProfileQueries(page: Page, family: "students" | "guardians") {
+  await page.evaluate(async (queryFamily) => {
+    const moduleUrl = new URL("/src/app/providers.tsx", window.location.origin).href;
+    const { queryClient } = await import(moduleUrl);
+    await queryClient.invalidateQueries({ queryKey: ["school-admin", queryFamily] });
+  }, family);
+}
 
 type Student = {
   id: number;
@@ -529,11 +537,7 @@ test("student admission, profile navigation and parent details render without br
   expect(basicDetails.place_of_birth).toBeNull();
   await page.getByPlaceholder("City, district or place").fill("Ambala, Haryana");
   const basicReadsBeforeFocus = observedStudentDetailGets.filter(item => item === "basic-details").length;
-  await page.evaluate(async () => {
-    const moduleUrl = new URL("/src/app/providers.tsx", window.location.origin).href;
-    const { queryClient } = await import(moduleUrl);
-    await queryClient.invalidateQueries({ queryKey: ["school-admin", "students"] });
-  });
+  await invalidateProfileQueries(page, "students");
   await expect.poll(() => observedStudentDetailGets.filter(item => item === "basic-details").length).toBeGreaterThan(basicReadsBeforeFocus);
   await expect(page.getByPlaceholder("City, district or place")).toHaveValue("Ambala, Haryana");
   await page.getByPlaceholder("e.g. Indian").fill("न".repeat(81));
@@ -595,11 +599,7 @@ test("student admission, profile navigation and parent details render without br
   await page.getByPlaceholder("Father, Mother, Legal Guardian…").fill("Legal Guardian");
   const relationshipForm = page.locator(".student-family-create-form").filter({ has: page.getByRole("heading", { name: "Edit relationship for this student" }) });
   const guardianReadsBeforeFocus = guardianHistoryRequests.length;
-  await page.evaluate(async () => {
-    const moduleUrl = new URL("/src/app/providers.tsx", window.location.origin).href;
-    const { queryClient } = await import(moduleUrl);
-    await queryClient.invalidateQueries({ queryKey: ["school-admin", "guardians"] });
-  });
+  await invalidateProfileQueries(page, "guardians");
   await expect.poll(() => guardianHistoryRequests.length).toBeGreaterThan(guardianReadsBeforeFocus);
   await expect(relationshipForm.getByPlaceholder("Father, Mother, Legal Guardian…")).toHaveValue("Legal Guardian");
   const saveRelationship = relationshipForm.getByRole("button", { name: "Save relationship" });
@@ -729,11 +729,7 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("button", { name: "Village or City", exact: true }).click();
   await page.getByRole("option", { name: /Naraingarh/ }).click();
   const addressReadsBeforeFocus = observedStudentDetailGets.filter(item => item === "addresses").length;
-  await page.evaluate(async () => {
-    const moduleUrl = new URL("/src/app/providers.tsx", window.location.origin).href;
-    const { queryClient } = await import(moduleUrl);
-    await queryClient.invalidateQueries({ queryKey: ["school-admin", "students"] });
-  });
+  await invalidateProfileQueries(page, "students");
   await expect.poll(() => observedStudentDetailGets.filter(item => item === "addresses").length).toBeGreaterThan(addressReadsBeforeFocus);
   await expect(page.getByPlaceholder("House number, street or building")).toHaveValue("House 12, Main Road");
   await addressSaveButton.evaluate(button => {
@@ -791,11 +787,7 @@ test("student admission, profile navigation and parent details render without br
   expect(contactDetails.primary_phone).toBeNull();
   await page.getByPlaceholder("student@example.com").fill("student@example.test");
   const contactReadsBeforeFocus = observedStudentDetailGets.filter(item => item === "contact-details").length;
-  await page.evaluate(async () => {
-    const moduleUrl = new URL("/src/app/providers.tsx", window.location.origin).href;
-    const { queryClient } = await import(moduleUrl);
-    await queryClient.invalidateQueries({ queryKey: ["school-admin", "students"] });
-  });
+  await invalidateProfileQueries(page, "students");
   await expect.poll(() => observedStudentDetailGets.filter(item => item === "contact-details").length).toBeGreaterThan(contactReadsBeforeFocus);
   await expect(page.getByPlaceholder("Primary contact number")).toHaveValue("9876501234");
   await expect(page.getByPlaceholder("student@example.com")).toHaveValue("student@example.test");
@@ -825,11 +817,7 @@ test("student admission, profile navigation and parent details render without br
   await page.getByPlaceholder("Record known allergies, if any").fill(medicalDraft);
   const medicalReadsBeforeFocus = medicalDetailReads;
   await page.bringToFront();
-  await page.evaluate(async () => {
-    const moduleUrl = new URL("/src/app/providers.tsx", window.location.origin).href;
-    const { queryClient } = await import(moduleUrl);
-    await queryClient.invalidateQueries({ queryKey: ["school-admin", "students"] });
-  });
+  await invalidateProfileQueries(page, "students");
   await expect.poll(() => medicalDetailReads).toBeGreaterThan(medicalReadsBeforeFocus);
   await expect(page.getByPlaceholder("Record known allergies, if any")).toHaveValue(medicalDraft);
   await page.getByRole("button", { name: "Blood group", exact: true }).click();
@@ -860,11 +848,7 @@ test("student admission, profile navigation and parent details render without br
   await page.getByPlaceholder("Optional vision-related notes").fill(physicalDraft);
   const physicalReadsBeforeFocus = physicalDetailReads;
   await page.bringToFront();
-  await page.evaluate(async () => {
-    const moduleUrl = new URL("/src/app/providers.tsx", window.location.origin).href;
-    const { queryClient } = await import(moduleUrl);
-    await queryClient.invalidateQueries({ queryKey: ["school-admin", "students"] });
-  });
+  await invalidateProfileQueries(page, "students");
   await expect.poll(() => physicalDetailReads).toBeGreaterThan(physicalReadsBeforeFocus);
   await expect(page.getByPlaceholder("Optional vision-related notes")).toHaveValue(physicalDraft);
   await page.getByPlaceholder("e.g. 132.5").fill("500");
