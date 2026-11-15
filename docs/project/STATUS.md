@@ -3,7 +3,7 @@
 **Last reconciled:** 2026-11-15  
 **Repository:** `TheSumitNain/school-management-system`  
 **Reviewed branch:** `work`  
-**Reviewed through:** `6e3085218c6615b154d67edc6518c598b9d7ddf9` on `work`. Backend CI run `43673900042` and Frontend CI run `43673900145` both passed on this code checkpoint. Backend CI applied the complete migration chain to ephemeral PostgreSQL, passed backend tests including PostgreSQL integration, and passed `go vet`. Frontend CI passed the design-token check, TypeScript/Vite production build, and all 5 Student Management Playwright tests. No persistent school database was changed. Local disposable-database verification and authenticated browser acceptance against the real API/database remain pending; do not migrate persistent `school_management` without explicit approval and a verified restorable backup.
+**Reviewed through:** `02f5b1f5ea1bc9000a55e93da399a6abb9d06f72` on `work`. Backend CI run `43674731037` and Frontend CI run `43674731005` both passed on this code checkpoint. Backend CI applied the complete migration chain to ephemeral PostgreSQL, passed backend tests including PostgreSQL integration, and passed `go vet`. Frontend CI passed the design-token check, TypeScript/Vite production build, and all 6 Student Management Playwright tests. No persistent school database was changed. Local disposable-database verification and authenticated browser acceptance against the real API/database remain pending; do not migrate persistent `school_management` without explicit approval and a verified restorable backup.
 
 ## Administrator access correction — School Admin guardian permissions (V39; local verification pending)
 
@@ -651,3 +651,11 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Documented a human-downloaded, immutable source snapshot workflow with retrieval metadata/checksum, reviewed field crosswalk, parent/code reconciliation, dry-run validation and versioned delta imports. CAPTCHA must not be automated or bypassed.
 - Clarified that LGD Development Blocks and Sub-Districts/Tehsils are distinct levels; a village's block coverage must not be silently flattened into the sub-district parent chain used by the address selector.
 - Official LGD download page: https://lgdirectory.gov.in/downloadDirectory.do. OGD catalog discovery: https://data.gov.in/catalog/local-government-directory-lgd. No LGD data file has been downloaded or imported; actual bulk import remains blocked until a human-procured official snapshot is available and its headers/hierarchy are reviewed.
+
+
+## Standalone enrollment browser coverage and verified checkpoint — 2026-11-15
+
+- Added a dedicated mocked browser journey for enrolling an existing student into an academic year. It verifies that 51-character admission numbers and 31-character roll numbers are rejected together with field-level errors and no POST, then confirms a valid enrollment is submitted with a blank roll number preserved as `null` for backend auto-assignment.
+- Exact code checkpoint `02f5b1f5ea1bc9000a55e93da399a6abb9d06f72` passed Frontend CI (`43674731005`): centralized design-token check, TypeScript/Vite production build, and all 6 Student Management Playwright scenarios.
+- The same checkpoint passed Backend CI (`43674731037`): full migrations on ephemeral PostgreSQL, backend unit/integration tests, and `go vet`.
+- The browser scenarios still mock APIs; they do not prove data persistence against the user's local database. Live authenticated API/database acceptance remains pending. No persistent `school_management` database was accessed or migrated.
