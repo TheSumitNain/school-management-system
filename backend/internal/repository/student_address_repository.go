@@ -90,7 +90,7 @@ func (r *AcademicRepository) ListStudentLocations(
 	level = strings.TrimSpace(strings.ToLower(level))
 	search = strings.TrimSpace(search)
 	if (level != "" && level != "state" && level != "district" && level != "subdistrict" && level != "locality") ||
-		len(search) > 100 || (parentID != nil && *parentID <= 0) {
+		utf8.RuneCountInString(search) > 100 || (parentID != nil && *parentID <= 0) {
 		return nil, ErrInvalidAcademicInput
 	}
 
