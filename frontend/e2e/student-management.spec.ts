@@ -485,9 +485,19 @@ test("student admission, profile navigation and parent details render without br
   const curriculumPanel = page.getByRole("region", { name: "Curriculum and subject choices" });
   await expect(curriculumPanel.getByText("Mathematics")).toBeVisible();
   await expect(curriculumPanel.getByText("This curriculum is available for the selected class and academic year. Saving subject choices will assign it to this student’s enrollment.")).toBeVisible();
+  const saveSubjectChoices = curriculumPanel.getByRole("button", { name: "Save subject choices" });
+  // A required optional group cannot be saved empty, and its maximum must be enforced in the UI.
+  await expect(saveSubjectChoices).toBeDisabled();
   await curriculumPanel.getByRole("checkbox", { name: /Hindi/ }).check();
   await expect(curriculumPanel.getByText("1 selected · minimum 1, maximum 1")).toBeVisible();
-  await curriculumPanel.getByRole("button", { name: "Save subject choices" }).click();
+  await expect(saveSubjectChoices).toBeEnabled();
+  await curriculumPanel.getByRole("checkbox", { name: /Sanskrit/ }).check();
+  await expect(curriculumPanel.getByText("2 selected · minimum 1, maximum 1")).toBeVisible();
+  await expect(curriculumPanel.getByText("Select between 1 and 1 subjects in Language.")).toBeVisible();
+  await expect(saveSubjectChoices).toBeDisabled();
+  await curriculumPanel.getByRole("checkbox", { name: /Sanskrit/ }).uncheck();
+  await expect(saveSubjectChoices).toBeEnabled();
+  await saveSubjectChoices.click();
   await expect(curriculumPanel.getByText("Assigned", { exact: true })).toBeVisible();
   await expect(curriculumPanel.getByText("Previous subject choices (1)")).toBeVisible();
   await curriculumPanel.getByText("Previous subject choices (1)").click();
