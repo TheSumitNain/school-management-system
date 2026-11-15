@@ -811,6 +811,26 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	if err != nil || len(history) != 2 {
 		t.Fatalf("list student enrollment history: items=%+v err=%v", history, err)
 	}
+	var enrollmentReadAuditCount int
+	var enrollmentReadAuditHasResultCount bool
+	var enrollmentReadAuditLeaksStudentData bool
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*),
+		       COALESCE(BOOL_OR(metadata ? 'result_count' AND metadata->>'section'='student_enrollment_history'),FALSE),
+		       COALESCE(BOOL_OR(metadata::text ILIKE '%'||$3||'%' OR metadata::text ILIKE '%'||$4||'%'),FALSE)
+		  FROM audit_events
+		 WHERE school_id=$1 AND actor_principal_id=$2
+		   AND action='school.student.enrollments.read'
+		   AND resource_type='student' AND resource_id=$5
+	`, schoolID, actorPrincipalID, combined.Student.FullName, firstAdmissionNumber, fmt.Sprint(apiStudentID)).Scan(
+		&enrollmentReadAuditCount, &enrollmentReadAuditHasResultCount, &enrollmentReadAuditLeaksStudentData,
+	); err != nil {
+		t.Fatalf("read student enrollment history audit: %v", err)
+	}
+	if enrollmentReadAuditCount != 1 || !enrollmentReadAuditHasResultCount || enrollmentReadAuditLeaksStudentData {
+		t.Fatalf("student enrollment read audit count=%d has_result_count=%v leaks_student_data=%v",
+			enrollmentReadAuditCount, enrollmentReadAuditHasResultCount, enrollmentReadAuditLeaksStudentData)
+	}
 	var priorStatus string
 	if err := tx.QueryRow(ctx, `SELECT status FROM student_enrollments WHERE id=$1`, apiEnrollment.ID).Scan(&priorStatus); err != nil || priorStatus != "promoted" {
 		t.Fatalf("prior enrollment status=%q err=%v; want promoted", priorStatus, err)
