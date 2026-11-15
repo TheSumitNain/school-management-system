@@ -1031,3 +1031,11 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Extended the same Parent Details browser journey to validate mobile, alternate mobile, occupation, education and workplace limits together, then save changed values for all of those fields plus guardian full name, email and alternate contact.
 - The test now checks the persisted shared-profile response and verifies all edited values after closing and reopening Parent Details. The fixture models the returned guardian profile separately from the student-guardian relationship and keeps both views coherent.
 - Test commit: `7e78fd01bc88277d420b276b3ecb82f42eba1753`. Frontend CI **PASS** on exact test checkpoint `7e78fd01bc88277d420b276b3ecb82f42eba1753` — [run 43713194822](https://github.com/TheSumitNain/school-management-system/actions/runs/43713194822): production build and all 8 Playwright tests passed, including field-level validation and save/reload of the full shared guardian profile. Authenticated live acceptance against the local API/database remains outstanding.
+
+
+## Student Management — guardian relationship field-level regression (2026-11-15)
+
+- Extended the Parent Details Playwright journey to reject a 41-code-point Hindi relationship label at the 40-character boundary without sending a PATCH request.
+- The same journey now edits the student-specific relationship label and clears both Primary contact and Emergency contact flags, verifies the exact PATCH payload, and confirms the changed flags remain cleared after the shared guardian profile update and Parent Details reload.
+- This protects the distinction between shared guardian profile fields and per-student relationship fields. Existing backend PostgreSQL integration coverage continues to verify relationship authorization, school/student scope, primary-contact behavior, and append-only update audit metadata.
+- Test commit: `c4a221ad24048333bafc2dda2f52d9c9cc8542eb`. Frontend CI is pending; authenticated local API/database acceptance remains outstanding.
