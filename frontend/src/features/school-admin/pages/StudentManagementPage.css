@@ -206,3 +206,16 @@
   .student-address-tabs button{transition:none}
 }
 
+
+.student-enrollment-subjects{display:grid;gap:12px;margin-top:16px;padding:14px;border:1px solid var(--border-subtle,#d9dee7);border-radius:12px;background:var(--surface-subtle,#f8fafc)}
+.student-subject-list{display:grid;gap:6px}
+.student-subject-row,.student-subject-option{display:flex;align-items:center;gap:10px;padding:7px 9px;border-radius:8px;background:var(--surface,#fff)}
+.student-subject-row{justify-content:space-between}
+.student-subject-group{display:grid;gap:8px;min-width:0;margin:0;padding:10px;border:1px solid var(--border-subtle,#d9dee7);border-radius:9px}
+.student-subject-group legend{padding:0 5px;font-weight:600}
+.student-subject-group legend span{font-size:.85em;font-weight:400;color:var(--text-muted,#64748b)}
+.student-subject-group small{color:var(--text-muted,#64748b)}
+.student-subject-option input{width:16px;height:16px;flex:0 0 auto}
+.student-subject-history summary{cursor:pointer;font-weight:600}
+.student-subject-history ul{margin:8px 0 0;padding-left:20px}
+.student-subject-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
