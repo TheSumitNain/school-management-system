@@ -175,6 +175,7 @@ export type StudentEnrollment = {
   id: number;
   school_id?: number;
   student_id?: number;
+  student_status?: string;
   student_name?: string;
   academic_year_id?: number;
   class_id?: number;
