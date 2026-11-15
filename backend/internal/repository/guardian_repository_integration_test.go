@@ -202,6 +202,19 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("unexpected created guardian: %+v", guardian)
 	}
 
+	tooLongUnicodeMobile := strings.Repeat("९", 31)
+	if _, err := repo.SaveGuardian(ctx, targetPrincipalID, schoolID, guardian.ID,
+		"Guardian One", &tooLongUnicodeMobile, &email, &alternateMobile,
+		&occupation, &education, &workplace, "active"); !errors.Is(err, ErrInvalidGuardianInput) {
+		t.Fatalf("save guardian with 31-character Unicode mobile error = %v, want invalid input", err)
+	}
+	tooLongUnicodeEmail := strings.Repeat("अ", 255) + "@example.invalid"
+	if _, err := repo.SaveGuardian(ctx, targetPrincipalID, schoolID, guardian.ID,
+		"Guardian One", &mobile, &tooLongUnicodeEmail, &alternateMobile,
+		&occupation, &education, &workplace, "active"); !errors.Is(err, ErrInvalidGuardianInput) {
+		t.Fatalf("save guardian with over-limit Unicode email error = %v, want invalid input", err)
+	}
+
 	updated, err := repo.SaveGuardian(ctx, targetPrincipalID, schoolID, guardian.ID,
 		"Guardian One Updated", &mobile, &email, &alternateMobile, &occupation, &education, &workplace, "inactive")
 	if err != nil {
