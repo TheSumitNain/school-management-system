@@ -527,6 +527,10 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByText("Place of birth must be 120 characters or fewer.", { exact: true })).toBeVisible();
   expect(basicDetails.place_of_birth).toBeNull();
   await page.getByPlaceholder("City, district or place").fill("Ambala, Haryana");
+  const basicReadsBeforeFocus = observedStudentDetailGets.filter(item => item === "basic-details").length;
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect.poll(() => observedStudentDetailGets.filter(item => item === "basic-details").length).toBeGreaterThan(basicReadsBeforeFocus);
+  await expect(page.getByPlaceholder("City, district or place")).toHaveValue("Ambala, Haryana");
   await page.getByPlaceholder("e.g. Indian").fill("न".repeat(81));
   await page.getByPlaceholder("Optional", { exact: true }).fill("ध".repeat(81));
   await page.getByPlaceholder("Optional school SR number").fill("प".repeat(51));
@@ -711,6 +715,11 @@ test("student admission, profile navigation and parent details render without br
   await page.getByLabel("Search villages / cities").fill("Naraingarh");
   await page.getByRole("button", { name: "Village or City", exact: true }).click();
   await page.getByRole("option", { name: /Naraingarh/ }).click();
+  await page.waitForTimeout(15_100);
+  const addressReadsBeforeFocus = observedStudentDetailGets.filter(item => item === "addresses").length;
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect.poll(() => observedStudentDetailGets.filter(item => item === "addresses").length).toBeGreaterThan(addressReadsBeforeFocus);
+  await expect(page.getByPlaceholder("House number, street or building")).toHaveValue("House 12, Main Road");
   await addressSaveButton.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
     if (!form) throw new Error("Address save button is not associated with its form.");
@@ -765,6 +774,12 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByText("Enter a valid email address.", { exact: true })).toBeVisible();
   expect(contactDetails.primary_phone).toBeNull();
   await page.getByPlaceholder("student@example.com").fill("student@example.test");
+  await page.waitForTimeout(15_100);
+  const contactReadsBeforeFocus = observedStudentDetailGets.filter(item => item === "contact-details").length;
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect.poll(() => observedStudentDetailGets.filter(item => item === "contact-details").length).toBeGreaterThan(contactReadsBeforeFocus);
+  await expect(page.getByPlaceholder("Primary contact number")).toHaveValue("9876501234");
+  await expect(page.getByPlaceholder("student@example.com")).toHaveValue("student@example.test");
   await contactSaveButton.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
     if (!form) throw new Error("Contact save button is not associated with its form.");
