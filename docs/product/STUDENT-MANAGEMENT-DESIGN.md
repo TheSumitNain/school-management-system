@@ -291,6 +291,8 @@ The latest screen/code review found two concrete UX gaps and records the current
 - Aadhaar is intentionally not a default student field and must not be required. The UI/API/schema currently omit it by design. Any request to collect an Aadhaar number or upload an Aadhaar image must first distinguish the intended data, establish a lawful school purpose, retention/deletion rules, masked display, encryption/private storage, and dedicated least-privilege access. Do not add a plaintext Aadhaar field or public document URL.
 - Student document upload/download remains deferred until private storage, malware scanning, opaque references, retention and document-specific access controls are implemented.
 
+Automated frontend coverage now exercises the archived-state rule independently of missing permissions: the mocked staff principal has `students.update` and `students.archive`, archives a student after a conflict/retry, reopens the archived profile, confirms saved Basic Details hydrate, and verifies that edit/save controls remain unavailable. This is a mocked API workflow only; the checklist below still requires live authenticated API/database acceptance.
+
 ### Required acceptance checks before Student Management is called complete
 
 - [ ] Directory View and Edit actions open the correct profile workflow; no legacy name-only edit route remains reachable.
