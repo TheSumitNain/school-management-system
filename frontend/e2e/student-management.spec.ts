@@ -2122,6 +2122,7 @@ test("switching student profiles clears address, contact, medical and physical d
   await page.getByRole("button", { name: "Close dialog" }).click();
   await page.getByRole("button", { name: "Close dialog" }).click();
 
+  await page.getByRole("button", { name: "View profile for State Student A" }).click();
   await page.getByRole("button", { name: /Medical & physical/ }).click();
   const healthDialog = page.getByRole("dialog", { name: "Medical & Physical Details" });
   await expect(healthDialog).toBeVisible();
