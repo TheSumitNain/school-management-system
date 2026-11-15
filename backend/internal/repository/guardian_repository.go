@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/mail"
 	"strings"
+	"unicode/utf8"
 	"time"
 
 	"school-management-system/internal/models"
@@ -192,7 +193,7 @@ func normalizeGuardianEmail(email *string) (*string, error) {
 	if value == "" {
 		return nil, nil
 	}
-	if len(value) > 254 {
+	if utf8.RuneCountInString(value) > 254 {
 		return nil, ErrInvalidGuardianInput
 	}
 	parsed, err := mail.ParseAddress(value)
@@ -206,7 +207,7 @@ func (r *AcademicRepository) SaveGuardian(ctx context.Context, actorID,schoolID,
 	if r==nil||r.db==nil{return nil,ErrGuardianAccessDenied}
 	fullName=strings.TrimSpace(fullName);status=strings.TrimSpace(status)
 	if fullName==""||len([]rune(fullName))>200||(status!="active"&&status!="inactive"&&status!="archived"){return nil,ErrInvalidGuardianInput}
-	if mobile!=nil{v:=strings.TrimSpace(*mobile);if v==""{mobile=nil}else if len(v)>30{return nil,ErrInvalidGuardianInput}else{mobile=&v}}
+	if mobile!=nil{v:=strings.TrimSpace(*mobile);if v==""{mobile=nil}else if utf8.RuneCountInString(v)>30{return nil,ErrInvalidGuardianInput}else{mobile=&v}}
 	normalizedEmail, emailErr := normalizeGuardianEmail(email)
 	if emailErr != nil {
 		return nil, emailErr
