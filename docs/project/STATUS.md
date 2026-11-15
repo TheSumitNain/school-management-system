@@ -781,3 +781,9 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 
 - Student Enrollment Subjects now explicitly explains that saving the available class/year curriculum will assign it to the enrollment when no curriculum is assigned yet. The replacement-history message is reserved for switching an existing assignment to a newer curriculum version.
 - Code commit: `9b4ce26355f76a212a3abe5af87c6ebc268977af`. CI and browser acceptance remain unverified for this commit.
+
+## Student Management — curriculum cache coherence after class revisions (2026-11-15)
+
+- Fixed a stale-profile edge case: saving a new class/year curriculum version previously refreshed the class-curriculum list but did not invalidate already-open student enrollment curriculum queries. A profile could therefore continue showing the previous available/assigned curriculum until its query became stale or the profile was reopened.
+- Class curriculum saves now invalidate both the matching class/year curriculum list and the enrollment-curriculum query family, so open student profiles refetch and expose the latest version state. Student-specific subject saves continue to invalidate only the affected enrollment curriculum.
+- Code commit: `b2d3d225fa50b0800c8ed76e66869c561897cb5c`. Exact-commit frontend CI and browser regression have not yet been observed; no local tests were run in this session.
