@@ -26,6 +26,10 @@ function textValue(value?: string | null) {
 function characterCount(value: string) {
   return Array.from(value).length;
 }
+function localDateValue() {
+  const now = new Date();
+  return [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-");
+}
 
 function numberValue(value?: number | null) {
   return value == null ? "" : String(value);
@@ -155,6 +159,7 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
     const hasPhysicalDetails = height !== null || weight !== null || Boolean(visionNotes.trim() || physicalNotes.trim());
     if (!hasPhysicalDetails) errors.measuredOn = "Enter at least one physical detail to add a measurement record.";
     else if (!measuredOn) errors.measuredOn = "Measurement date is required.";
+    else if (measuredOn > localDateValue()) errors.measuredOn = "Measurement date cannot be in the future.";
     setPhysicalErrors(errors);
     if (Object.keys(errors).length > 0) return;
     const current = physicalQuery.data?.physical_details;
@@ -243,7 +248,7 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
               <div className="student-health-grid">
                 <label><StudentFieldLabel label="Height (cm)" hint="Optional. Enter a measurement from 20 to 250 cm, using up to 2 decimal places." /><input type="number" min={20} max={250} step="0.01" disabled={!canUpdate || busy} value={heightCM} aria-invalid={Boolean(physicalErrors.heightCM)} aria-describedby={physicalErrors.heightCM ? "student-height-error" : undefined} onChange={event => { setHeightCM(event.target.value); setPhysicalErrors(current => ({...current,heightCM:undefined})); }} placeholder="e.g. 132.5"/>{physicalErrors.heightCM && <small id="student-height-error" className="app-field-error">{physicalErrors.heightCM}</small>}</label>
                 <label><StudentFieldLabel label="Weight (kg)" hint="Optional. Enter a measurement from 1 to 300 kg, using up to 2 decimal places." /><input type="number" min={1} max={300} step="0.01" disabled={!canUpdate || busy} value={weightKG} aria-invalid={Boolean(physicalErrors.weightKG)} aria-describedby={physicalErrors.weightKG ? "student-weight-error" : undefined} onChange={event => { setWeightKG(event.target.value); setPhysicalErrors(current => ({...current,weightKG:undefined})); }} placeholder="e.g. 31.25"/>{physicalErrors.weightKG && <small id="student-weight-error" className="app-field-error">{physicalErrors.weightKG}</small>}</label>
-                <label><StudentFieldLabel label="Measurement date" conditional hint="Required when recording any height, weight, vision note or physical note. Choose the date the measurement/details were recorded." /><DatePicker value={measuredOn} onChange={value => { setMeasuredOn(value); setPhysicalErrors(current => ({...current,measuredOn:undefined})); }} ariaLabel="Measurement date" disabled={!canUpdate || busy} invalid={Boolean(physicalErrors.measuredOn)} describedBy={physicalErrors.measuredOn ? "student-measured-on-error" : undefined} placeholder="Choose measurement date"/>{physicalErrors.measuredOn && <small id="student-measured-on-error" className="app-field-error">{physicalErrors.measuredOn}</small>}</label>
+                <label><StudentFieldLabel label="Measurement date" conditional hint="Required when recording any height, weight, vision note or physical note. Choose the date the measurement/details were recorded." /><DatePicker value={measuredOn} max={localDateValue()} onChange={value => { setMeasuredOn(value); setPhysicalErrors(current => ({...current,measuredOn:undefined})); }} ariaLabel="Measurement date" disabled={!canUpdate || busy} invalid={Boolean(physicalErrors.measuredOn)} describedBy={physicalErrors.measuredOn ? "student-measured-on-error" : undefined} placeholder="Choose measurement date"/>{physicalErrors.measuredOn && <small id="student-measured-on-error" className="app-field-error">{physicalErrors.measuredOn}</small>}</label>
                 <label><StudentFieldLabel label="Vision notes" hint="Optional school-entered note; maximum 1,000 characters. Do not enter a diagnosis." /><textarea disabled={!canUpdate || busy} rows={3} value={visionNotes} aria-invalid={Boolean(physicalErrors.visionNotes)} aria-describedby={physicalErrors.visionNotes ? "student-vision-notes-error" : undefined} onChange={event => { setVisionNotes(event.target.value); setPhysicalErrors(current => ({...current,visionNotes:undefined})); }} placeholder="Optional vision-related notes"/>{physicalErrors.visionNotes && <small id="student-vision-notes-error" className="app-field-error">{physicalErrors.visionNotes}</small> }</label>
                 <label className="wide"><StudentFieldLabel label="Physical notes" hint="Optional school-entered information provided by the family; maximum 2,000 characters." /><textarea disabled={!canUpdate || busy} rows={3} value={physicalNotes} aria-invalid={Boolean(physicalErrors.physicalNotes)} aria-describedby={physicalErrors.physicalNotes ? "student-physical-notes-error" : undefined} onChange={event => { setPhysicalNotes(event.target.value); setPhysicalErrors(current => ({...current,physicalNotes:undefined})); }} placeholder="Optional physical details provided by the family"/>{physicalErrors.physicalNotes && <small id="student-physical-notes-error" className="app-field-error">{physicalErrors.physicalNotes}</small> }</label>
               </div>
