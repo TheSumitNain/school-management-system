@@ -9,7 +9,7 @@
 - Active branch: `work`.
 - Latest verified backend source remains `1196045794777f94d94c994b4750af865d36e84e` — guardian revocation audit deduplication. The complete backend workflow passed again on full-repository checkpoint `eaed7705bcf14f156a423a157f5f2adebfc5181c` ([run 43712030855](https://github.com/TheSumitNain/school-management-system/actions/runs/43712030855)), including full migrations, PostgreSQL integration tests and `go vet ./...`.
 - Latest frontend source fix: `2419d61299a878669392f69f44549a8e45f7ff9a` — preserve Basic Details name-save success feedback after the parent student record updates. The attempted profile-only window-focus override was reverted; app-wide focus policy remains unchanged. Earlier student-switch cleanup commits are `b302d3761b8ddd4f8e65724234eced9eae9dea6f` and `6b3355f7d7d5b520fd2ca3bf06028c9b09485e11`.
-- Latest Student Management browser-test commits: `3a73e44f20a05c6ed211f4ad161381145e99abb9` (draft-preservation assertions) and `979039795d67b017bacfea7fab3a5260ebb9713e` (shared query-invalidation helper). The preceding full-repository checkpoint `eaed7705bcf14f156a423a157f5f2adebfc5181c` passed; the refactor is awaiting its own exact-SHA CI run.
+- Latest Student Management browser-test refactor `979039795d67b017bacfea7fab3a5260ebb9713e` passed Frontend CI [run 43712265573](https://github.com/TheSumitNain/school-management-system/actions/runs/43712265573); the shared helper retains the six-section draft-preservation assertions. The next backend-only test commits are `7644776e2392d7bd28468d80b4bed2460332755e` and `5a031c694f839338d4e766f5f6a72fcaf525dbea`; latest Backend CI is pending on the latter.
 - Frontend CI **PASS** on exact browser-test/source checkpoint `eaed7705bcf14f156a423a157f5f2adebfc5181c` — [run 43712030788](https://github.com/TheSumitNain/school-management-system/actions/runs/43712030788): TypeScript/Vite production build and all **8 Playwright tests passed**, including draft-preservation checks across Basic Details, Parent Details, Address, Contact, Medical and Physical. Backend CI **PASS** on the same checkpoint — [run 43712030855](https://github.com/TheSumitNain/school-management-system/actions/runs/43712030855), including full migrations, PostgreSQL integration tests and `go vet ./...`.
 - Authenticated live acceptance remains pending. A green run on an older SHA does not verify newer frontend code.
 
@@ -18,14 +18,14 @@
 - Added the current `student.id` to the synchronization effect dependencies for Basic Details, Address, Contact, Medical and Physical forms.
 - This ensures that switching the active student rehydrates each section from that student's persisted query data even when two students happen to have identical field-value snapshots; unsaved values from the previously selected student must not carry over.
 - Code commits: `295faa89cca2ca33cb673a43c1d95b0db2c655f8`, `19c7f5d763823996d2557a9672efc9b55d5cc130`, `f2bee9b6161f2c3d725d8753abd319c54e77d422`.
-- These are frontend source changes. CI status for the latest commit must be checked before treating them as verified; authenticated live acceptance remains pending.
+- These frontend source changes are included in the passing Frontend CI checkpoint `eaed7705bcf14f156a423a157f5f2adebfc5181c` ([run 43712030788](https://github.com/TheSumitNain/school-management-system/actions/runs/43712030788)); authenticated live acceptance remains pending.
 
 ### Student form state isolation — active student switch (2026-11-15)
 
 - Basic Details, Address, Contact, Medical and Physical synchronization now includes `student.id`; equal field snapshots across two students no longer prevent the new student's values from loading.
 - Parent Details / Guardian management now clears relationship, shared-guardian edit, create, revoke, history-filter and validation drafts when the active student changes. Guardian records themselves remain shared entities; only the student-specific form state is reset.
 - Frontend commits: `295faa89cca2ca33cb673a43c1d95b0db2c655f8`, `19c7f5d763823996d2557a9672efc9b55d5cc130`, `f2bee9b6161f2c3d725d8753abd319c54e77d422`, `ba6f03548ac91ccee979d6775d9cc7d583ae2295`.
-- CI has not yet reported a result for these latest frontend commits; do not treat them as verified. Add/execute focused browser coverage for switching between students while forms contain unsaved drafts, then reconcile the resulting CI run.
+- The changes are included in the passing Frontend CI checkpoint `eaed7705bcf14f156a423a157f5f2adebfc5181c` ([run 43712030788](https://github.com/TheSumitNain/school-management-system/actions/runs/43712030788)). Background-refetch draft preservation is separately covered by the same suite; authenticated live acceptance remains pending.
 
 ### Enrollment curriculum form identity guard (2026-11-15)
 
