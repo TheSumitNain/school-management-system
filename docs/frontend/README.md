@@ -175,7 +175,7 @@ npm run test:e2e
 - `npm run test:e2e` runs the Playwright browser suite in Chromium.
 - Student Management browser coverage includes admission, profile editing/reload, Parent Details, address/contact, medical/physical history, enrollment curriculum and subject choices, promotion, archive and inactive/archived read-only permissions.
 - Background-refetch regression coverage must trigger an actual query refetch (for example, by focusing the browser after the configured stale window) and verify that unsaved drafts remain unchanged in Basic Details, Parent Details, Address, Contact, Medical and Physical forms.
-- Student Management profile-detail queries explicitly enable `refetchOnWindowFocus`; the app-wide QueryClient default remains disabled for unrelated feature areas. Keep this scope deliberate and ensure snapshot-based form synchronization does not overwrite unchanged drafts.
+- The app-wide QueryClient focus policy remains unchanged. Browser regression tests use the actual app QueryClient to invalidate active Student Management query families, then verify refetches do not overwrite unchanged drafts. Keep snapshot-based form synchronization intact.
 - These E2E tests use mocked API responses. They verify frontend behavior and API interaction contracts, but do not replace authenticated acceptance against the local API/database. Persistent local database migrations and writes remain subject to the approval and verified-backup safety gate documented in Project Status.
 
 ## Explicitly deferred
