@@ -198,7 +198,7 @@ func (r *AcademicRepository) CreateStudent(
 	}
 	admissionNumber = strings.TrimSpace(admissionNumber)
 	fullName = strings.TrimSpace(fullName)
-	if admissionNumber == "" || len(admissionNumber) > 50 || fullName == "" || utf8.RuneCountInString(fullName) > 200 {
+	if admissionNumber == "" || utf8.RuneCountInString(admissionNumber) > 50 || fullName == "" || utf8.RuneCountInString(fullName) > 200 {
 		return nil, ErrInvalidAcademicInput
 	}
 	tx, err := r.db.Begin(ctx)
