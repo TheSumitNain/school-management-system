@@ -994,7 +994,7 @@ test("student directory remains view-only when update and archive permissions ar
 test("student promotion validates required fields and preserves prior enrollment history", async ({ page }) => {
   const promotionRequests: Record<string, unknown>[] = [];
   const enrollments: Record<string, unknown>[] = [{
-    id: 100, school_id: 10, student_id: 91, student_name: "Promotion Test Student",
+    id: 100, school_id: 10, student_id: 91, student_name: "Promotion Test Student", student_status: "active",
     academic_year_id: 6, section_id: 61, class_name_snapshot: "Class 1", section_name_snapshot: "A",
     admission_number: "ADM-OLD-091", roll_number: "09", admission_date: "2025-04-01",
     status: "active", enrolled_at: "2025-04-01", ended_at: null,
@@ -1055,7 +1055,7 @@ test("student promotion validates required fields and preserves prior enrollment
       promotionRequests.push(input);
       Object.assign(enrollments[0], { status: "promoted", ended_at: input.admission_date });
       enrollments.push({
-        id: 101, school_id: 10, student_id: 91, academic_year_id: 7, section_id: 72,
+        id: 101, school_id: 10, student_id: 91, student_status: "active", academic_year_id: 7, section_id: 72,
         admission_number: String(input.admission_number), class_name_snapshot: "Class 2", section_name_snapshot: "B",
         status: "active", admission_date: input.admission_date, enrolled_at: input.enrolled_at, ended_at: null,
       });
