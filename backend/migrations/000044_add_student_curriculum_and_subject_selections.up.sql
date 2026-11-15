@@ -1,4 +1,4 @@
--- V43: versioned class/year curriculum and enrollment-specific subject choices.
+-- V44: versioned class/year curriculum and enrollment-specific subject choices.
 -- Compulsory subjects are inherited from the curriculum; optional choices are
 -- recorded per enrollment and remain append-only when choices are replaced.
 
@@ -147,9 +147,9 @@ CREATE UNIQUE INDEX ux_student_enrollment_subject_selection_active
 CREATE INDEX ix_student_enrollment_subject_selection_history
     ON student_enrollment_subject_selections (enrollment_curriculum_id, selected_at DESC, id DESC);
 
-CREATE OR REPLACE FUNCTION guard_v43_class_curriculum()
+CREATE OR REPLACE FUNCTION guard_v44_class_curriculum()
 RETURNS trigger
-LANGUAGE plpgsql AS $v43$
+LANGUAGE plpgsql AS $v44$
 BEGIN
     IF TG_OP = 'DELETE' THEN
         RAISE EXCEPTION 'class curriculum versions cannot be deleted';
@@ -168,14 +168,14 @@ BEGIN
     END IF;
     RETURN NEW;
 END;
-$v43$;
-CREATE TRIGGER trg_guard_v43_class_curriculum
+$v44$;
+CREATE TRIGGER trg_guard_v44_class_curriculum
 BEFORE UPDATE OR DELETE ON class_curricula
-FOR EACH ROW EXECUTE FUNCTION guard_v43_class_curriculum();
+FOR EACH ROW EXECUTE FUNCTION guard_v44_class_curriculum();
 
-CREATE OR REPLACE FUNCTION guard_v43_class_curriculum_child()
+CREATE OR REPLACE FUNCTION guard_v44_class_curriculum_child()
 RETURNS trigger
-LANGUAGE plpgsql AS $v43$
+LANGUAGE plpgsql AS $v44$
 DECLARE
     v_curriculum_id BIGINT;
     v_school_id BIGINT;
@@ -207,17 +207,17 @@ BEGIN
     END IF;
     RETURN NEW;
 END;
-$v43$;
-CREATE TRIGGER trg_guard_v43_curriculum_groups
+$v44$;
+CREATE TRIGGER trg_guard_v44_curriculum_groups
 BEFORE INSERT OR UPDATE OR DELETE ON class_curriculum_optional_groups
-FOR EACH ROW EXECUTE FUNCTION guard_v43_class_curriculum_child();
-CREATE TRIGGER trg_guard_v43_curriculum_subjects
+FOR EACH ROW EXECUTE FUNCTION guard_v44_class_curriculum_child();
+CREATE TRIGGER trg_guard_v44_curriculum_subjects
 BEFORE INSERT OR UPDATE OR DELETE ON class_curriculum_subjects
-FOR EACH ROW EXECUTE FUNCTION guard_v43_class_curriculum_child();
+FOR EACH ROW EXECUTE FUNCTION guard_v44_class_curriculum_child();
 
-CREATE OR REPLACE FUNCTION validate_v43_enrollment_curriculum()
+CREATE OR REPLACE FUNCTION validate_v44_enrollment_curriculum()
 RETURNS trigger
-LANGUAGE plpgsql AS $v43$
+LANGUAGE plpgsql AS $v44$
 DECLARE
     v_enrollment_year BIGINT;
     v_enrollment_class BIGINT;
@@ -249,14 +249,14 @@ BEGIN
     END IF;
     RETURN NEW;
 END;
-$v43$;
-CREATE TRIGGER trg_validate_v43_enrollment_curriculum
+$v44$;
+CREATE TRIGGER trg_validate_v44_enrollment_curriculum
 BEFORE INSERT ON student_enrollment_curricula
-FOR EACH ROW EXECUTE FUNCTION validate_v43_enrollment_curriculum();
+FOR EACH ROW EXECUTE FUNCTION validate_v44_enrollment_curriculum();
 
-CREATE OR REPLACE FUNCTION validate_v43_enrollment_subject_selection()
+CREATE OR REPLACE FUNCTION validate_v44_enrollment_subject_selection()
 RETURNS trigger
-LANGUAGE plpgsql AS $v43$
+LANGUAGE plpgsql AS $v44$
 DECLARE
     v_assignment_status TEXT;
     v_is_optional BOOLEAN;
@@ -277,14 +277,14 @@ BEGIN
     END IF;
     RETURN NEW;
 END;
-$v43$;
-CREATE TRIGGER trg_validate_v43_enrollment_subject_selection
+$v44$;
+CREATE TRIGGER trg_validate_v44_enrollment_subject_selection
 BEFORE INSERT ON student_enrollment_subject_selections
-FOR EACH ROW EXECUTE FUNCTION validate_v43_enrollment_subject_selection();
+FOR EACH ROW EXECUTE FUNCTION validate_v44_enrollment_subject_selection();
 
-CREATE OR REPLACE FUNCTION guard_v43_enrollment_curriculum_history()
+CREATE OR REPLACE FUNCTION guard_v44_enrollment_curriculum_history()
 RETURNS trigger
-LANGUAGE plpgsql AS $v43$
+LANGUAGE plpgsql AS $v44$
 BEGIN
     IF TG_OP = 'DELETE' THEN
         RAISE EXCEPTION 'student enrollment curriculum history cannot be deleted';
@@ -308,14 +308,14 @@ BEGIN
     END IF;
     RETURN NEW;
 END;
-$v43$;
-CREATE TRIGGER trg_guard_v43_enrollment_curriculum_history
+$v44$;
+CREATE TRIGGER trg_guard_v44_enrollment_curriculum_history
 BEFORE UPDATE OR DELETE ON student_enrollment_curricula
-FOR EACH ROW EXECUTE FUNCTION guard_v43_enrollment_curriculum_history();
+FOR EACH ROW EXECUTE FUNCTION guard_v44_enrollment_curriculum_history();
 
-CREATE OR REPLACE FUNCTION guard_v43_enrollment_subject_history()
+CREATE OR REPLACE FUNCTION guard_v44_enrollment_subject_history()
 RETURNS trigger
-LANGUAGE plpgsql AS $v43$
+LANGUAGE plpgsql AS $v44$
 BEGIN
     IF TG_OP = 'DELETE' THEN
         RAISE EXCEPTION 'student enrollment subject history cannot be deleted';
@@ -336,10 +336,10 @@ BEGIN
     END IF;
     RETURN NEW;
 END;
-$v43$;
-CREATE TRIGGER trg_guard_v43_enrollment_subject_history
+$v44$;
+CREATE TRIGGER trg_guard_v44_enrollment_subject_history
 BEFORE UPDATE OR DELETE ON student_enrollment_subject_selections
-FOR EACH ROW EXECUTE FUNCTION guard_v43_enrollment_subject_history();
+FOR EACH ROW EXECUTE FUNCTION guard_v44_enrollment_subject_history();
 
 COMMENT ON TABLE class_curricula IS 'Immutable, versioned school/year/class subject curricula; a new version supersedes the previous active version.';
 COMMENT ON TABLE class_curriculum_optional_groups IS 'Configurable optional-subject groups with explicit minimum and maximum student choices.';
