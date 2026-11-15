@@ -430,11 +430,12 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 	var revokedFound bool
 	for _, link := range history {
 		if link.ID == firstLink.ID {
-			revokedFound = link.RevokedAt != nil
+			revokedFound = link.RevokedAt != nil && link.RevocationReason != nil &&
+				*link.RevocationReason == "relationship ended"
 		}
 	}
 	if !revokedFound {
-		t.Fatalf("revoked link missing from immutable history: %+v", history)
+		t.Fatalf("revoked link history must retain its timestamp and reason: %+v", history)
 	}
 	if err := repo.RevokeStudentGuardianLink(ctx, targetPrincipalID, schoolID,
 		firstLink.ID, "duplicate revoke"); !errors.Is(err, ErrGuardianNotFound) {
