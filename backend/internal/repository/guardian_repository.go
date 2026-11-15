@@ -54,6 +54,7 @@ type StudentGuardian struct {
 	IsEmergencyContact bool `json:"is_emergency_contact"`
 	CreatedAt time.Time `json:"created_at"`
 	RevokedAt *time.Time `json:"revoked_at,omitempty"`
+	RevocationReason *string `json:"revocation_reason,omitempty"`
 }
 
 type StudentRelatedStudent struct {
@@ -242,14 +243,14 @@ func (r *AcademicRepository) ListStudentGuardians(ctx context.Context,actorID,sc
 	if err:=tx.QueryRow(ctx,`SELECT EXISTS(SELECT 1 FROM students WHERE id=$1 AND school_id=$2)`,studentID,schoolID).Scan(&exists);err!=nil{return nil,fmt.Errorf("check student for guardian list: %w",err)}
 	if !exists{return nil,ErrGuardianNotFound}
 	rows,err:=tx.Query(ctx,`SELECT sg.id,sg.student_id,sg.guardian_id,g.full_name,g.status,g.mobile_number,g.email_address,g.alternate_mobile_number,g.occupation,g.education,g.workplace_name,
-		sg.relationship_type,sg.is_primary_contact,sg.is_emergency_contact,sg.created_at,sg.revoked_at
+		sg.relationship_type,sg.is_primary_contact,sg.is_emergency_contact,sg.created_at,sg.revoked_at,sg.revocation_reason
 		FROM student_guardians sg JOIN guardians g ON g.id=sg.guardian_id AND g.school_id=sg.school_id
 		JOIN students s ON s.id=sg.student_id AND s.school_id=sg.school_id
 		WHERE sg.school_id=$1 AND sg.student_id=$2 AND ($3=TRUE OR sg.revoked_at IS NULL)
 		ORDER BY sg.revoked_at NULLS FIRST,sg.is_primary_contact DESC,LOWER(g.full_name),sg.id`,schoolID,studentID,includeHistory)
 	if err!=nil{return nil,fmt.Errorf("list student guardians: %w",err)}
 	items:=make([]StudentGuardian,0)
-	for rows.Next(){var v StudentGuardian;if err:=rows.Scan(&v.ID,&v.StudentID,&v.GuardianID,&v.GuardianName,&v.GuardianStatus,&v.MobileNumber,&v.EmailAddress,&v.AlternateMobileNumber,&v.Occupation,&v.Education,&v.WorkplaceName,&v.RelationshipType,&v.IsPrimaryContact,&v.IsEmergencyContact,&v.CreatedAt,&v.RevokedAt);err!=nil{rows.Close();return nil,fmt.Errorf("scan student guardian: %w",err)};items=append(items,v)}
+	for rows.Next(){var v StudentGuardian;if err:=rows.Scan(&v.ID,&v.StudentID,&v.GuardianID,&v.GuardianName,&v.GuardianStatus,&v.MobileNumber,&v.EmailAddress,&v.AlternateMobileNumber,&v.Occupation,&v.Education,&v.WorkplaceName,&v.RelationshipType,&v.IsPrimaryContact,&v.IsEmergencyContact,&v.CreatedAt,&v.RevokedAt,&v.RevocationReason);err!=nil{rows.Close();return nil,fmt.Errorf("scan student guardian: %w",err)};items=append(items,v)}
 	if err:=rows.Err();err!=nil{rows.Close();return nil,fmt.Errorf("iterate student guardians: %w",err)};rows.Close()
 	if err:=auditGuardianRead(ctx,tx,actorID,schoolID,"school.student.guardians.read","student_guardians",fmt.Sprint(studentID),"parents_and_sibling",len(items));err!=nil{return nil,err}
 	if err:=tx.Commit(ctx);err!=nil{return nil,fmt.Errorf("commit student guardians read audit: %w",err)}
