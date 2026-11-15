@@ -346,4 +346,11 @@ func TestStudentProfileRepositoryPostgresIntegration(t *testing.T) {
 	if _, err := repo.GetStudent(ctx, actorID, otherSchoolID, student.ID); !errors.Is(err, ErrAcademicAccessDenied) {
 		t.Fatalf("cross-school student lookup error = %v, want access denied", err)
 	}
+
+	if _, err := repo.UpdateStudent(ctx, actorID, otherSchoolID, student.ID, "Cross School Update Must Fail"); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("cross-school student update error = %v, want access denied", err)
+	}
+	if _, err := repo.ArchiveStudent(ctx, actorID, otherSchoolID, student.ID); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("cross-school student archive error = %v, want access denied", err)
+	}
 }
