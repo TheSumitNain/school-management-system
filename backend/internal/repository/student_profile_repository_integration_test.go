@@ -173,6 +173,14 @@ func TestStudentProfileRepositoryPostgresIntegration(t *testing.T) {
 	if err != nil || duplicateLegacy == nil || duplicateLegacy.AdmissionNumber != "adm-"+suffix {
 		t.Fatalf("duplicate legacy student-level admission value should be retained without a conflict: student=%+v err=%v", duplicateLegacy, err)
 	}
+	legacyUnicodeAdmission := strings.Repeat("न", 50)
+	legacyUnicodeStudent, err := repo.CreateStudent(ctx, actorID, schoolID, legacyUnicodeAdmission, "Legacy Unicode Admission")
+	if err != nil || legacyUnicodeStudent == nil || legacyUnicodeStudent.AdmissionNumber != legacyUnicodeAdmission {
+		t.Fatalf("create legacy student with 50-character Unicode admission number: student=%+v err=%v", legacyUnicodeStudent, err)
+	}
+	if _, err := repo.CreateStudent(ctx, actorID, schoolID, strings.Repeat("न", 51), "Too Long Unicode Admission"); !errors.Is(err, ErrInvalidAcademicInput) {
+		t.Fatalf("create legacy student with 51-character Unicode admission number error = %v, want invalid input", err)
+	}
 	got, err := repo.GetStudent(ctx, actorID, schoolID, student.ID)
 	if err != nil || got.ID != student.ID { t.Fatalf("get student: student=%+v err=%v", got, err) }
 
