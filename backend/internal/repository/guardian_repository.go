@@ -424,13 +424,6 @@ func (r *AcademicRepository) RevokeStudentGuardianLink(ctx context.Context,actor
 	tag,err:=tx.Exec(ctx,`UPDATE student_guardians SET revoked_at=NOW(),revoked_by_principal_id=$3,revocation_reason=$4,updated_at=NOW()
 		WHERE id=$1 AND school_id=$2 AND student_id=$5 AND revoked_at IS NULL`,linkID,schoolID,actorID,reason,studentID)
 	if err!=nil{return guardianWriteError(err)};if tag.RowsAffected()!=1{return ErrGuardianNotFound}
-	// Revocation is a sensitive relationship change; persist its audit event
-	// atomically with the history update. Never copy the free-text reason into
-	// audit metadata because it may contain private family information.
-	if _,err=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
-		VALUES($1,$2,'school.student_guardian_link_revoked','student_guardian_link',$3,'success',
-		jsonb_build_object('student_id',$4::bigint,'has_revocation_reason',TRUE))`,
-		actorID,schoolID,fmt.Sprint(linkID),studentID);err!=nil{return fmt.Errorf("audit student guardian link revocation: %w",err)}
 	if err=tx.Commit(ctx);err!=nil{return fmt.Errorf("commit guardian link revocation: %w",err)}
 	return nil
 }
