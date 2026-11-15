@@ -1,6 +1,6 @@
 # Student Management — Domain and Database Design
 
-**Status:** Approved design baseline; Student Management implementation is substantially present, the latest frontend acceptance checkpoint is running, and authenticated live acceptance remains in progress  
+**Status:** Approved design baseline; Student Management implementation is substantially present, the latest frontend browser acceptance checkpoint passed CI; authenticated live acceptance remains outstanding, and authenticated live acceptance remains in progress  
 **Last reconciled:** 2026-11-15  
 **Scope:** Phase 1 School Admin student admission, profiles, academic-year enrollment, curriculum selection and related school workflows.
 
@@ -375,4 +375,4 @@ Apply this standard consistently to initial admission, returning enrollment, pro
 - Follow-up browser coverage explicitly edits the shared guardian's full name, checks the 200-character Unicode boundary, saves the change and verifies it after reopening Parent Details. Frontend CI [run 43712924033](https://github.com/TheSumitNain/school-management-system/actions/runs/43712924033) passed all 8 Playwright tests on follow-up checkpoint `fc43c199b48a26b08c15a33e86ff28115c8b244c`; Backend CI [run 43713194771](https://github.com/TheSumitNain/school-management-system/actions/runs/43713194771) also passed the full migration chain, PostgreSQL integration suite and `go vet` on the latest checkpoint `7e78fd01bc88277d420b276b3ecb82f42eba1753`.
 
 
-- Browser regression coverage now checks Unicode length rejection for the per-student relationship label and editing both primary/emergency flags to false. The test verifies the outgoing PATCH payload and that the values persist after the shared guardian profile edit and reopening Parent Details. CI pending on `c4a221ad24048333bafc2dda2f52d9c9cc8542eb`.
+- Browser regression coverage now checks Unicode length rejection for the per-student relationship label and editing both primary/emergency flags to false. The test verifies the outgoing PATCH payload and that the values persist after the shared guardian profile edit and reopening Parent Details. Frontend CI [run 43713791921](https://github.com/TheSumitNain/school-management-system/actions/runs/43713791921) passed all 8 Playwright tests; Backend CI [run 43713791860](https://github.com/TheSumitNain/school-management-system/actions/runs/43713791860) passed full migrations, PostgreSQL integration and `go vet` on `c4a221ad24048333bafc2dda2f52d9c9cc8542eb`.
