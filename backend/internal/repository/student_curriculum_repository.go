@@ -66,6 +66,7 @@ type StudentEnrollmentCurriculum struct {
 	AcademicYearID             int64                            `json:"academic_year_id"`
 	ClassID                    int64                            `json:"class_id"`
 	Curriculum                 *ClassCurriculum                 `json:"curriculum,omitempty"`
+	AvailableCurriculum        *ClassCurriculum                 `json:"available_curriculum,omitempty"`
 	Assigned                   bool                             `json:"assigned"`
 	SelectedOptionalSubjectIDs []int64                          `json:"selected_optional_subject_ids"`
 	SelectionHistory           []StudentSubjectSelectionHistory `json:"selection_history"`
@@ -403,6 +404,20 @@ func (r *AcademicRepository) GetStudentEnrollmentCurriculum(ctx context.Context,
 		return nil, err
 	}
 	if item.Assigned {
+		var activeCurriculumID int64
+		activeErr := r.db.QueryRow(ctx, `
+			SELECT id FROM class_curricula
+			 WHERE school_id=$1 AND academic_year_id=$2 AND class_id=$3 AND status='active'
+		`, schoolID, item.AcademicYearID, item.ClassID).Scan(&activeCurriculumID)
+		if activeErr != nil && !errors.Is(activeErr, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("load current class curriculum version: %w", activeErr)
+		}
+		if activeErr == nil && activeCurriculumID != curriculumID {
+			item.AvailableCurriculum, err = loadClassCurriculum(ctx, r.db, activeCurriculumID, schoolID)
+			if err != nil {
+				return nil, err
+			}
+		}
 		rows, err := r.db.Query(ctx, `
 			SELECT curriculum_subject_id
 			  FROM student_enrollment_subject_selections
