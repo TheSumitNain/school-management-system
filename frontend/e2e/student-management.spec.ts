@@ -468,7 +468,7 @@ test("student admission, profile navigation and parent details render without br
     if (!form) throw new Error("Guardian details submit button is not associated with its form.");
     form.requestSubmit(button as HTMLButtonElement);
   });
-  await expect(page.getByText("Mobile number must be 30 characters or fewer.")).toBeVisible();
+  await expect(page.getByText("Mobile number must be 30 characters or fewer.", { exact: true })).toBeVisible();
   await expect(page.getByRole("dialog", { name: "Update shared guardian profile?" })).toHaveCount(0);
   await page.getByPlaceholder("Mobile number").fill("9999912345");
   await saveGuardianDetails.evaluate(button => {
@@ -698,7 +698,7 @@ test("student admission, profile navigation and parent details render without br
 
   await page.getByRole("button", { name: /Medical & physical/ }).click();
   await expect(page.getByRole("dialog", { name: "Medical & Physical Details" })).toBeVisible();
-  await expect(page.getByPlaceholder("Record known allergies, if any")).toHaveValue("Peanuts");
+  await expect(page.getByPlaceholder("Record known allergies, if any")).toHaveValue("अ".repeat(2000));
   await expect(page.getByPlaceholder("Record school-relevant conditions, if any")).toHaveValue("No other known conditions");
   await page.getByRole("button", { name: "Physical details" }).click();
   await expect(page.getByPlaceholder("e.g. 132.5")).toHaveValue("132.5");
