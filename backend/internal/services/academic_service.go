@@ -25,6 +25,10 @@ type academicRepository interface {
 	CreateClassInchargeAssignment(context.Context,int64,int64,int64,int64,int64)(*repository.ClassInchargeAssignment,error)
 	RevokeClassInchargeAssignment(context.Context,int64,int64,int64)error
 	ListStudentEnrollments(context.Context,int64,int64,int64,int64)([]repository.StudentEnrollment,error)
+	ListClassCurricula(context.Context,int64,int64,int64,int64)([]repository.ClassCurriculum,error)
+	SaveClassCurriculum(context.Context,int64,int64,int64,int64,[]repository.CurriculumOptionalGroupInput,[]repository.CurriculumSubjectInput)(*repository.ClassCurriculum,error)
+	GetStudentEnrollmentCurriculum(context.Context,int64,int64,int64)(*repository.StudentEnrollmentCurriculum,error)
+	SaveStudentEnrollmentSubjects(context.Context,int64,int64,int64,int64,[]int64)(*repository.StudentEnrollmentCurriculum,error)
 	CreateStudentEnrollment(context.Context,int64,int64,int64,int64,int64,*string,string,time.Time,time.Time)(*repository.StudentEnrollment,error)
 	PromoteStudentEnrollment(context.Context,int64,int64,int64,int64,int64,*string,string,time.Time,time.Time)(*repository.StudentEnrollment,error)
 	CreateStudentAdmission(context.Context,int64,int64,string,string,int64,int64,*string,time.Time)(*repository.StudentAdmissionResult,error)
@@ -221,4 +225,21 @@ func (s *AcademicService) UpdateStudent(ctx context.Context, actorID, schoolID, 
 func (s *AcademicService) ArchiveStudent(ctx context.Context, actorID, schoolID, studentID int64) (*repository.StudentProfile, error) {
 	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
 	return s.repository.ArchiveStudent(ctx, actorID, schoolID, studentID)
+}
+
+func (s *AcademicService) ListClassCurricula(ctx context.Context, actorID, schoolID, yearID, classID int64) ([]repository.ClassCurriculum, error) {
+	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
+	return s.repository.ListClassCurricula(ctx, actorID, schoolID, yearID, classID)
+}
+func (s *AcademicService) SaveClassCurriculum(ctx context.Context, actorID, schoolID, yearID, classID int64, groups []repository.CurriculumOptionalGroupInput, subjects []repository.CurriculumSubjectInput) (*repository.ClassCurriculum, error) {
+	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
+	return s.repository.SaveClassCurriculum(ctx, actorID, schoolID, yearID, classID, groups, subjects)
+}
+func (s *AcademicService) GetStudentEnrollmentCurriculum(ctx context.Context, actorID, schoolID, enrollmentID int64) (*repository.StudentEnrollmentCurriculum, error) {
+	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
+	return s.repository.GetStudentEnrollmentCurriculum(ctx, actorID, schoolID, enrollmentID)
+}
+func (s *AcademicService) SaveStudentEnrollmentSubjects(ctx context.Context, actorID, schoolID, enrollmentID, curriculumID int64, selected []int64) (*repository.StudentEnrollmentCurriculum, error) {
+	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
+	return s.repository.SaveStudentEnrollmentSubjects(ctx, actorID, schoolID, enrollmentID, curriculumID, selected)
 }
