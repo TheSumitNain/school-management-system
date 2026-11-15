@@ -1478,7 +1478,7 @@ test("staff can create a guardian contact and link it to a student with relation
       }, otherStudent], pagination: { limit: 20, offset: 0, total: 2 } } });
       return;
     }
-    const studentRoute = path.match(/^\\/school\\/students\\/(\\d+)(?:\\/(.*))?$/);
+    const studentRoute = path.match(/^\/school\/students\/(\d+)(?:\/(.*))?$/);
     if (studentRoute) {
       const studentID = Number(studentRoute[1]);
       const subpath = studentRoute[2] ?? "";
