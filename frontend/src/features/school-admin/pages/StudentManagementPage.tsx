@@ -277,7 +277,7 @@ export function StudentManagementPage({ permissions }: Props) {
     />}
     {basicDetailsStudent && <StudentBasicDetailsSection student={basicDetailsStudent} canUpdate={canUpdate && basicDetailsStudent.status !== "archived"} onStudentNameChange={fullName => setBasicDetailsStudent(current => current ? { ...current, full_name: fullName } : current)} onClose={() => { const item = basicDetailsStudent; setBasicDetailsStudent(null); setProfileStudent(item); }} />}
     {addressStudent && <StudentAddressSection student={addressStudent} canUpdate={canUpdate && addressStudent.status !== "archived"} onClose={() => { const item = addressStudent; setAddressStudent(null); setProfileStudent(item); }} />}
-    {familyStudent && <StudentFamilySection student={familyStudent} canManage={canManageGuardians && familyStudent.status !== "archived"} canReadRelatedStudents={canReadEnrollments} onClose={() => { const item = familyStudent; setFamilyStudent(null); setProfileStudent(item); }} />}
+    {familyStudent && <StudentFamilySection student={familyStudent} canManage={canManageGuardians && familyStudent.status === "active"} canReadRelatedStudents={canReadEnrollments} onClose={() => { const item = familyStudent; setFamilyStudent(null); setProfileStudent(item); }} />}
     {healthStudent && <StudentHealthSection student={healthStudent} canUpdate={canUpdate && healthStudent.status === "active"} onClose={() => { const item = healthStudent; setHealthStudent(null); setProfileStudent(item); }} />}
     {promotionEnrollment && <StudentPromotionDialog
       enrollment={promotionEnrollment}
