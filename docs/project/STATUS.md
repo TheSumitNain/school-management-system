@@ -1040,3 +1040,10 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - The same journey now edits the student-specific relationship label and clears both Primary contact and Emergency contact flags, verifies the exact PATCH payload, and confirms the changed flags remain cleared after the shared guardian profile update and Parent Details reload.
 - This protects the distinction between shared guardian profile fields and per-student relationship fields. Existing backend PostgreSQL integration coverage continues to verify relationship authorization, school/student scope, primary-contact behavior, and append-only update audit metadata.
 - Test commit: `c4a221ad24048333bafc2dda2f52d9c9cc8542eb`. Frontend CI **PASS** — [run 43713791921](https://github.com/TheSumitNain/school-management-system/actions/runs/43713791921): production build and all 8 Playwright tests passed, including the new 41-code-point rejection and per-student contact-flag updates. Backend CI **PASS** — [run 43713791860](https://github.com/TheSumitNain/school-management-system/actions/runs/43713791860): full migration chain, PostgreSQL integration suite and `go vet ./...` passed on the same test checkpoint. Authenticated local API/database acceptance remains outstanding.
+
+
+## Student Management — cross-student draft isolation browser coverage (2026-11-15)
+
+- Added a two-student browser journey that opens Student A's Basic Details, enters an unsaved draft and a field-level validation error, closes that section/profile, then opens Student B.
+- Verified Student B receives its own saved basic details and neither Student A's unsaved value nor Student A's validation error appears.
+- Test commit: `433461bec48f502765b97464ba6e188a9324d687`. Frontend CI **PASS** — [run 43715113384](https://github.com/TheSumitNain/school-management-system/actions/runs/43715113384), production build and all 9 Playwright tests passed. Backend CI is still running for the same checkpoint. This is mocked browser coverage; authenticated local API/database acceptance remains outstanding.
