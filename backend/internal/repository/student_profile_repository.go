@@ -251,7 +251,7 @@ func (r *AcademicRepository) UpdateStudent(
 	}
 	student, err := scanStudentProfile(tx.QueryRow(ctx, `
 		UPDATE students SET full_name = $3, updated_at = NOW()
-		WHERE id = $1 AND school_id = $2 AND status <> 'archived'
+		WHERE id = $1 AND school_id = $2 AND status = 'active'
 		RETURNING `+studentProfileColumns,
 		studentID, schoolID, fullName,
 	))
