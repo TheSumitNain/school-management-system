@@ -394,7 +394,7 @@ test("student admission, profile navigation and parent details render without br
     admission_number: "ADM-E2E-001",
     academic_year_id: 7,
     section_id: 12,
-    roll_number: null,
+    roll_number: "01",
   });
 
   await page.getByRole("button", { name: "View profile for Aarav Sharma" }).click();
