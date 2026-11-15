@@ -184,12 +184,33 @@ func (r *AcademicRepository) GetGuardian(ctx context.Context, actorID, schoolID,
 	return &v,nil
 }
 
+func normalizeGuardianEmail(email *string) (*string, error) {
+	if email == nil {
+		return nil, nil
+	}
+	value := strings.TrimSpace(*email)
+	if value == "" {
+		return nil, nil
+	}
+	if len(value) > 254 {
+		return nil, ErrInvalidGuardianInput
+	}
+	parsed, err := mail.ParseAddress(value)
+	if err != nil || parsed.Address != value {
+		return nil, ErrInvalidGuardianInput
+	}
+	return &value, nil
+}
+
 func (r *AcademicRepository) SaveGuardian(ctx context.Context, actorID,schoolID,guardianID int64,fullName string,mobile,email,alternateMobile,occupation,education,workplace *string,status string)(*Guardian,error){
 	if r==nil||r.db==nil{return nil,ErrGuardianAccessDenied}
 	fullName=strings.TrimSpace(fullName);status=strings.TrimSpace(status)
 	if fullName==""||len([]rune(fullName))>200||(status!="active"&&status!="inactive"&&status!="archived"){return nil,ErrInvalidGuardianInput}
 	if mobile!=nil{v:=strings.TrimSpace(*mobile);if v==""{mobile=nil}else if len(v)>30{return nil,ErrInvalidGuardianInput}else{mobile=&v}}
-	if email!=nil{v:=strings.TrimSpace(*email);if v==""{email=nil}else if len(v)>254{return nil,ErrInvalidGuardianInput}else{parsed,parseErr:=mail.ParseAddress(v);if parseErr!=nil||parsed.Address!=v{return nil,ErrInvalidGuardianInput};email=&v}}
+	email, err = normalizeGuardianEmail(email)
+	if err != nil {
+		return nil, err
+	}
 	for _, field := range []*struct{ value **string; max int }{{&alternateMobile,30},{&occupation,120},{&education,120},{&workplace,160}} { if *field.value != nil { value:=strings.TrimSpace(**field.value); if value=="" { *field.value=nil } else if len([]rune(value))>field.max { return nil,ErrInvalidGuardianInput } else { *field.value=&value } } }
 	tx,err:=r.db.Begin(ctx);if err!=nil{return nil,fmt.Errorf("begin guardian save: %w",err)};defer func(){_=tx.Rollback(ctx)}()
 	if err=authorizeGuardian(ctx,tx,actorID,schoolID,"guardians.manage");err!=nil{return nil,err}
