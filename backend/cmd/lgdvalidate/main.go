@@ -24,6 +24,17 @@ type snapshot struct {
 	localities  map[string]record
 }
 
+// supportedIGODStateCodes is the reviewed V40 State/UT crosswalk vocabulary.
+// LGD state codes remain independent; this set only prevents unknown IGOD references.
+var supportedIGODStateCodes = map[string]struct{}{
+	"AN": {}, "AP": {}, "AR": {}, "AS": {}, "BR": {}, "CH": {},
+	"CG": {}, "ND": {}, "DL": {}, "GA": {}, "GJ": {}, "HR": {},
+	"HP": {}, "JK": {}, "JH": {}, "KA": {}, "KL": {}, "LA": {},
+	"LD": {}, "MP": {}, "MH": {}, "MN": {}, "ML": {}, "MZ": {},
+	"NL": {}, "OD": {}, "PY": {}, "PB": {}, "RJ": {}, "SK": {},
+	"TN": {}, "TS": {}, "TR": {}, "UP": {}, "UK": {}, "WB": {},
+}
+
 var expectedHeader = []string{
 	"state_code", "state_name", "igod_state_code",
 	"district_code", "district_name",
@@ -125,6 +136,9 @@ func validateCSV(input io.Reader) (*snapshot, error) {
 		}
 		if len(row[2]) != 2 || row[2] != strings.ToUpper(row[2]) {
 			return nil, fmt.Errorf("CSV line %d: igod_state_code must be the two-character V40 code", line)
+		}
+		if _, ok := supportedIGODStateCodes[row[2]]; !ok {
+			return nil, fmt.Errorf("CSV line %d: igod_state_code %q is not in the reviewed V40 IGOD State/UT crosswalk", line, row[2])
 		}
 		if !validLocalityType(row[9]) {
 			return nil, fmt.Errorf("CSV line %d: unsupported locality_type %q", line, row[9])
