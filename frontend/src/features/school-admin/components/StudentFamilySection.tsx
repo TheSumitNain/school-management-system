@@ -193,7 +193,8 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
     if (!canManage || linksQuery.isLoading || linksQuery.isError || guardiansQuery.isLoading || guardiansQuery.isError) return;
     if (!selectedGuardianID) setGuardianSelectError("Choose a guardian.");
     if (!relationshipType.trim()) setRelationshipError("Enter the relationship to this student.");
-    if (!selectedGuardianID || !relationshipType.trim()) return;
+    else if (Array.from(relationshipType.trim()).length > 40) setRelationshipError("Relationship must be 40 characters or fewer.");
+    if (!selectedGuardianID || !relationshipType.trim() || Array.from(relationshipType.trim()).length > 40) return;
     try {
       await linkGuardian.mutateAsync({
         studentID: student.id,
@@ -237,6 +238,10 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
       setEditRelationshipFieldError("Relationship to this student is required.");
       return;
     }
+    if (Array.from(relationship).length > 40) {
+      setEditRelationshipFieldError("Relationship must be 40 characters or fewer.");
+      return;
+    }
     try {
       await updateLink.mutateAsync({
         linkID: editingLinkID,
@@ -259,6 +264,10 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
     setRevokeReasonError("");
     if (!revokeReason.trim()) {
       setRevokeReasonError("A reason is required to revoke this relationship.");
+      return;
+    }
+    if (Array.from(revokeReason.trim()).length > 500) {
+      setRevokeReasonError("Reason must be 500 characters or fewer.");
       return;
     }
     try {
@@ -378,7 +387,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
             )}
             {pendingRevokeID > 0 && (
               <div className="student-location-confirm" role="alertdialog" aria-label="Revoke guardian relationship">
-                <label><StudentFieldLabel label="Reason for revocation" required hint="Explain why this guardian relationship is being revoked. Maximum 500 characters; the reason is retained in the audit/history." /><input value={revokeReason} maxLength={500} aria-invalid={Boolean(revokeReasonError)} aria-describedby={revokeReasonError ? "student-guardian-revoke-reason-error" : undefined} onChange={event => { setRevokeReason(event.target.value); setRevokeReasonError(""); }} placeholder="Explain why this link is being revoked"/>{revokeReasonError && <small id="student-guardian-revoke-reason-error" className="app-field-error">{revokeReasonError}</small>}</label>
+                <label><StudentFieldLabel label="Reason for revocation" required hint="Explain why this guardian relationship is being revoked. Maximum 500 characters; the reason is retained in the audit/history." /><input value={revokeReason} aria-invalid={Boolean(revokeReasonError)} aria-describedby={revokeReasonError ? "student-guardian-revoke-reason-error" : undefined} onChange={event => { setRevokeReason(event.target.value); setRevokeReasonError(""); }} placeholder="Explain why this link is being revoked"/>{revokeReasonError && <small id="student-guardian-revoke-reason-error" className="app-field-error">{revokeReasonError}</small>}</label>
                 <div><button type="button" className="app-modal-cancel" onClick={() => { setPendingRevokeID(0); setRevokeReasonError(""); }} disabled={busy}>Cancel</button><button type="button" className="secondary" onClick={() => void confirmRevoke()} disabled={busy}>{revokeLink.isPending ? "Revoking…" : "Confirm revoke"}</button></div>
               </div>
             )}
