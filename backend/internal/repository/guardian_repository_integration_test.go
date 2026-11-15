@@ -216,10 +216,12 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 	}
 
 	for _, invalidEmail := range []string{"not-an-email", "Guardian <guardian@example.invalid>", "guardian@example.invalid,other@example.invalid"} {
-		if _, err := repo.SaveGuardian(ctx, targetPrincipalID, schoolID, guardian.ID,
-			"Guardian One", &mobile, &invalidEmail, &alternateMobile,
-			&occupation, &education, &workplace, "active"); !errors.Is(err, ErrInvalidGuardianInput) {
-			t.Errorf("save guardian with invalid email %q error = %v, want invalid input", invalidEmail, err)
+		for _, existingGuardianID := range []int64{0, guardian.ID} {
+			if _, err := repo.SaveGuardian(ctx, targetPrincipalID, schoolID, existingGuardianID,
+				"Guardian One", &mobile, &invalidEmail, &alternateMobile,
+				&occupation, &education, &workplace, "active"); !errors.Is(err, ErrInvalidGuardianInput) {
+				t.Errorf("save guardian (id=%d) with invalid email %q error = %v, want invalid input", existingGuardianID, invalidEmail, err)
+			}
 		}
 	}
 
