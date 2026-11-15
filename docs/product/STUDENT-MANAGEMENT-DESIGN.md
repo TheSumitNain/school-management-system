@@ -363,3 +363,10 @@ Every Student Management form must make field expectations understandable before
 - Preserve entered values after recoverable server errors. Do not clear forms or close dialogs on a failed save.
 
 Apply this standard consistently to initial admission, returning enrollment, promotion, Basic Details, Address & Communication, Parents & Siblings, Medical & Physical and school-owned location creation.
+
+
+## Backend input-validation regression coverage — 2026-11-15
+
+- Shared student profile text normalization has unit coverage for nil/blank inputs, whitespace trimming, exact Hindi Unicode-code-point limits and over-limit rejection. This helper is used by Basic Details, Address, Contact and Health persistence.
+- Student Contact Details PostgreSQL integration now asserts that a 31-code-point phone value and an email containing a display name are rejected as invalid input before any database write.
+- Backend CI [run 43712579620](https://github.com/TheSumitNain/school-management-system/actions/runs/43712579620) passed the full migration chain, PostgreSQL integration suite and `go vet ./...` on test commit `5a031c694f839338d4e766f5f6a72fcaf525dbea`.
