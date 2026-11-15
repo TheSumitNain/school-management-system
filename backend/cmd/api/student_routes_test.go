@@ -29,7 +29,7 @@ func TestStudentRoutesEnforceLivePermissions(t *testing.T) {
 		method string
 		path string
 		permission string
-		additionalPermission string
+		additionalPermissions []string
 		body string
 	}{
 		{http.MethodGet, "/school/students", "students.read_sensitive", ""},
@@ -39,8 +39,8 @@ func TestStudentRoutesEnforceLivePermissions(t *testing.T) {
 		{http.MethodPost, "/school/students/1/archive", "students.archive", ""},
 		{http.MethodGet, "/school/class-curricula?academic_year_id=1&class_id=2", "subjects.read", ""},
 		{http.MethodPost, "/school/class-curricula", "subjects.manage", `{"academic_year_id":1,"class_id":2,"subjects":[{"subject_id":3}]}`},
-		{http.MethodGet, "/school/enrollments/1/curriculum", "subjects.read", ""},
-		{method: http.MethodPut, path: "/school/enrollments/1/subjects", permission: "students.update", additionalPermission: "subjects.read", body: `{"curriculum_id":1,"selected_optional_subject_ids":[]}`},
+		{method: http.MethodGet, path: "/school/enrollments/1/curriculum", permission: "subjects.read", additionalPermissions: []string{"students.read_basic"}},
+		{method: http.MethodPut, path: "/school/enrollments/1/subjects", permission: "students.update", additionalPermissions: []string{"subjects.read", "students.read_basic"}, body: `{"curriculum_id":1,"selected_optional_subject_ids":[]}`},
 	}
 	for _, test := range tests {
 		t.Run(test.method+" "+test.path, func(t *testing.T) {
@@ -65,9 +65,13 @@ func TestStudentRoutesEnforceLivePermissions(t *testing.T) {
 			if got := request(nil); got.Code != http.StatusForbidden {
 				t.Fatalf("without %s: status=%d body=%s", test.permission, got.Code, got.Body.String())
 			}
-			if test.additionalPermission != "" {
-				if got := request([]string{test.permission}); got.Code != http.StatusForbidden {
-					t.Fatalf("without additional %s: status=%d body=%s", test.additionalPermission, got.Code, got.Body.String())
+			for _, requiredPermission := range test.additionalPermissions {
+				permissions := []string{test.permission}
+				for _, candidate := range test.additionalPermissions {
+					if candidate != requiredPermission { permissions = append(permissions, candidate) }
+				}
+				if got := request(permissions); got.Code != http.StatusForbidden {
+					t.Fatalf("without additional %s: status=%d body=%s", requiredPermission, got.Code, got.Body.String())
 				}
 			}
 			if test.permission == "students.read_sensitive" {
@@ -75,8 +79,7 @@ func TestStudentRoutesEnforceLivePermissions(t *testing.T) {
 					t.Fatalf("basic Teacher read permission must not expose student profiles: status=%d body=%s", got.Code, got.Body.String())
 				}
 			}
-			permissions := []string{test.permission}
-			if test.additionalPermission != "" { permissions = append(permissions, test.additionalPermission) }
+			permissions := append([]string{test.permission}, test.additionalPermissions...)
 			if got := request(permissions); got.Code != http.StatusServiceUnavailable {
 				t.Fatalf("authorized route should reach handler: status=%d body=%s", got.Code, got.Body.String())
 			}
