@@ -106,6 +106,50 @@ func TestStudentProfileRepositoryPostgresIntegration(t *testing.T) {
 	if _, err := repo.UpdateStudent(ctx, actorID, schoolID, unicodeStudent.ID, strings.Repeat("म", 201)); !errors.Is(err, ErrInvalidAcademicInput) {
 		t.Fatalf("update to 201-character Unicode student name error = %v, want invalid input", err)
 	}
+
+	// The combined admission path must apply the same character-based limits
+	// to the student name, year-scoped admission number and optional roll number.
+	var admissionYearID, admissionClassID, admissionSectionID int64
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO academic_years(school_id,name,starts_on,ends_on,status,is_current)
+		VALUES($1,$2,DATE '2026-04-01',DATE '2027-03-31','active',FALSE) RETURNING id
+	`, schoolID, "Unicode Admission Year "+suffix).Scan(&admissionYearID); err != nil {
+		t.Fatalf("create Unicode admission year: %v", err)
+	}
+	if err := tx.QueryRow(ctx, `INSERT INTO classes(school_id,name) VALUES($1,$2) RETURNING id`,
+		schoolID, "Unicode Admission Class "+suffix).Scan(&admissionClassID); err != nil {
+		t.Fatalf("create Unicode admission class: %v", err)
+	}
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO sections(school_id,academic_year_id,class_id,name)
+		VALUES($1,$2,$3,$4) RETURNING id
+	`, schoolID, admissionYearID, admissionClassID, "Unicode "+suffix).Scan(&admissionSectionID); err != nil {
+		t.Fatalf("create Unicode admission section: %v", err)
+	}
+	admissionDate := time.Date(2026, time.April, 1, 0, 0, 0, 0, time.UTC)
+	unicodeAdmissionName := strings.Repeat("अ", 200)
+	unicodeAdmissionNumber := strings.Repeat("क", 50)
+	unicodeRollNumber := strings.Repeat("र", 30)
+	admission, err := repo.CreateStudentAdmission(ctx, actorID, schoolID, unicodeAdmissionName,
+		unicodeAdmissionNumber, admissionYearID, admissionSectionID, &unicodeRollNumber, admissionDate)
+	if err != nil || admission == nil || admission.Student.FullName != unicodeAdmissionName ||
+		admission.Enrollment.AdmissionNumber == nil || *admission.Enrollment.AdmissionNumber != unicodeAdmissionNumber ||
+		admission.Enrollment.RollNumber == nil || *admission.Enrollment.RollNumber != unicodeRollNumber {
+		t.Fatalf("create combined admission with maximum Unicode field lengths: result=%+v err=%v", admission, err)
+	}
+	if _, err := repo.CreateStudentAdmission(ctx, actorID, schoolID, strings.Repeat("अ", 201),
+		"ADM-UNICODE-LONG-"+suffix, admissionYearID, admissionSectionID, nil, admissionDate); !errors.Is(err, ErrInvalidAcademicInput) {
+		t.Fatalf("combined admission with 201-character student name error = %v, want invalid input", err)
+	}
+	if _, err := repo.CreateStudentAdmission(ctx, actorID, schoolID, "Unicode Admission",
+		strings.Repeat("क", 51), admissionYearID, admissionSectionID, nil, admissionDate); !errors.Is(err, ErrInvalidAcademicInput) {
+		t.Fatalf("combined admission with 51-character admission number error = %v, want invalid input", err)
+	}
+	tooLongRollNumber := strings.Repeat("र", 31)
+	if _, err := repo.CreateStudentAdmission(ctx, actorID, schoolID, "Unicode Admission",
+		"ADM-UNICODE-ROLL-"+suffix, admissionYearID, admissionSectionID, &tooLongRollNumber, admissionDate); !errors.Is(err, ErrInvalidAcademicInput) {
+		t.Fatalf("combined admission with 31-character roll number error = %v, want invalid input", err)
+	}
 	var createdAuditCount int
 	var createdAuditHasAdmissionFlag bool
 	var createdAuditLeaksStudentData bool
