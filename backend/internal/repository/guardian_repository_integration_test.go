@@ -458,6 +458,16 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 	if _, err := tx.Exec(ctx, "UPDATE students SET status='active' WHERE id=$1 AND school_id=$2", studentID, schoolID); err != nil {
 		t.Fatalf("restore active student after relationship edit boundary: %v", err)
 	}
+	if _, err := tx.Exec(ctx, "UPDATE students SET status='archived' WHERE id=$1 AND school_id=$2", studentID, schoolID); err != nil {
+		t.Fatalf("archive student for guardian revocation boundary: %v", err)
+	}
+	if err := repo.RevokeStudentGuardianLink(ctx, targetPrincipalID, schoolID, secondLink.ID, "archived student boundary"); !errors.Is(err, ErrGuardianNotFound) {
+		t.Fatalf("archived student's guardian relationship revoke error = %v, want not found", err)
+	}
+	archivedHistory, err := repo.ListStudentGuardians(ctx, targetPrincipalID, schoolID, studentID, true)
+	if err != nil || len(archivedHistory) != 1 || archivedHistory[0].ID != secondLink.ID || archivedHistory[0].RevokedAt != nil {
+		t.Fatalf("archived student guardian link should remain unchanged: links=%+v err=%v", archivedHistory, err)
+	}
 
 	var guardianAuditCount, linkCreateAuditCount, linkUpdateAuditCount, linkRevokeAuditCount int
 	if err := tx.QueryRow(ctx, `
