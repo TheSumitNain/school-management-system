@@ -1151,7 +1151,7 @@ test("student archive confirmation keeps the record on conflict and refreshes st
     if (path === "/auth/me") {
       await route.fulfill({ json: {
         principal_id: 104, principal_type: "staff", school_id: 10, username: "e2e-archive-admin",
-        permissions: ["students.read_sensitive", "students.read_basic", "students.archive", "academic_years.read", "classes.read"],
+        permissions: ["students.read_sensitive", "students.read_basic", "students.update", "students.archive", "academic_years.read", "classes.read"],
       } });
       return;
     }
