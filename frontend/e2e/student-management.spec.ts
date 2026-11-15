@@ -306,11 +306,26 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("option", { name: "Class 1 · A" }).click();
   await page.getByRole("button", { name: "Admission date", exact: true }).click();
   await page.getByRole("button", { name: "Today" }).click();
+  const submitButton = page.getByRole("button", { name: "Admit student" });
+  await page.getByPlaceholder("e.g. Aarav Sharma").fill("अ".repeat(201));
+  await page.getByPlaceholder("e.g. ADM-2026-001").fill("अ".repeat(51));
+  await page.getByPlaceholder("e.g. 01").fill("अ".repeat(31));
+  await submitButton.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Admission submit button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect(page.getByText("Student name must be 200 characters or fewer.")).toBeVisible();
+  await expect(page.getByText("Admission number must be 50 characters or fewer.")).toBeVisible();
+  await expect(page.getByText("Roll number must be 30 characters or fewer.")).toBeVisible();
+  expect(createdAdmissions).toHaveLength(0);
+  await page.getByPlaceholder("e.g. Aarav Sharma").fill("Aarav Sharma");
+  await page.getByPlaceholder("e.g. ADM-2026-001").fill("ADM-E2E-001");
+  await page.getByPlaceholder("e.g. 01").fill("");
   const admissionFormValid = await page.locator(".app-modal-content form").evaluate(
     form => (form as HTMLFormElement).checkValidity(),
   );
   expect(admissionFormValid).toBe(true);
-  const submitButton = page.getByRole("button", { name: "Admit student" });
   expect(await submitButton.evaluate(button => ({
     type: (button as HTMLButtonElement).type,
     belongsToForm: (button as HTMLButtonElement).form === button.closest("form"),
