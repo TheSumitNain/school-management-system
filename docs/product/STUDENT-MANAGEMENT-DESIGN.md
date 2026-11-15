@@ -382,3 +382,6 @@ Apply this standard consistently to initial admission, returning enrollment, pro
 
 
 - Parent Details cross-student isolation is also covered: Student A's unsaved new-guardian name/relationship and field-level validation error do not appear when opening Student B's Parent Details. Latest checkpoint `b6d14c6ed4030724857838ef8cebc131041219ae`: Frontend CI [run 43716057611](https://github.com/TheSumitNain/school-management-system/actions/runs/43716057611) passed all 10 Playwright tests; Backend CI [run 43716057614](https://github.com/TheSumitNain/school-management-system/actions/runs/43716057614) passed migrations, PostgreSQL integration and `go vet`. Authenticated local acceptance remains outstanding.
+
+
+- Final Parent Details draft-isolation test checkpoint `b6d14c6ed4030724857838ef8cebc131041219ae` passed Frontend CI [run 43716057611](https://github.com/TheSumitNain/school-management-system/actions/runs/43716057611) with all 10 Playwright tests and Backend CI [run 43716057614](https://github.com/TheSumitNain/school-management-system/actions/runs/43716057614) with migrations, PostgreSQL integration and `go vet`. The test-only selector corrections did not change application source. Authenticated local acceptance remains outstanding.
