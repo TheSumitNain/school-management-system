@@ -20,6 +20,12 @@
 - Backend CI **PASS** — [run 43718345636](https://github.com/TheSumitNain/school-management-system/actions/runs/43718345636): all migrations applied to ephemeral PostgreSQL, all Go tests including PostgreSQL integration passed, and `go vet ./...` passed.
 - This is mocked browser persistence plus ephemeral-database CI, not authenticated live acceptance against the user's local API/database.
 
+### Shared guardian profile across linked students — pending CI (2026-11-15)
+
+- Extended the Parent Details browser journey with a second active student linked to the same guardian. The test verifies that editing the shared guardian profile updates the contact/profile shown under both students, while the second student's own relationship type and primary/emergency flags remain unchanged.
+- Test commit: `033cd9ee1d7ee45b2009114aaa26c76e76811adf`.
+- Frontend CI run [43718613307](https://github.com/TheSumitNain/school-management-system/actions/runs/43718613307) and Backend CI run [43718613129](https://github.com/TheSumitNain/school-management-system/actions/runs/43718613129) are running. Keep `ae1e9a3007eddfcb5c2f10f10ddcb6814cc478ca` as the latest fully verified code checkpoint until both exact-commit workflows finish.
+
 ### Latest verified code and CI
 
 - Active branch: `work`; latest verified Student Management test checkpoint is `ae1e9a3007eddfcb5c2f10f10ddcb6814cc478ca`; Frontend CI run 43718345623 and Backend CI run 43718345636 both PASS.
