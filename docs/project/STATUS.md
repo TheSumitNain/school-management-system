@@ -10,7 +10,7 @@
 - The enrollment subject-choice panel compares saved optional subject IDs by value rather than array reference when synchronizing query data into form state.
 - An explicit Refresh action refetches the current assignment and available curriculum without discarding an in-progress checkbox draft when the server's saved selections have not changed.
 - Class curriculum editor controls are disabled while a version save is pending, preventing a year/class switch or a new draft from being silently cleared by the previous save's success handler.
-- Playwright coverage verifies subject-choice save/history and preservation of an unsaved choice during an explicit refresh. Frontend CI run `43693753551` passed all 7 Student Management tests and the production build.
+- Playwright coverage verifies subject-choice save/history and preservation of an unsaved choice during an explicit refresh. Frontend CI run `43694724225` passed the production build and all 8 browser tests, including the Student Management curriculum and Academic Structure editor scenarios.
 
 ## Student Management — V44 curriculum repository verification added (2026-11-15)
 
