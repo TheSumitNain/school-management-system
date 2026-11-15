@@ -68,6 +68,7 @@ func academicError(c *gin.Context,err error,resource string){
 	case errors.Is(err,repository.ErrAcademicAccessDenied):c.JSON(http.StatusForbidden,gin.H{"status":"error","message":"Academic operation is not authorized"})
 	case errors.Is(err,repository.ErrAcademicNotFound):c.JSON(http.StatusNotFound,gin.H{"status":"error","message":resource+" not found"})
 	case errors.Is(err,repository.ErrAcademicAdmissionNumberConflict):c.JSON(http.StatusConflict,gin.H{"status":"error","message":"Admission number is already used in this academic year","field_errors":gin.H{"admission_number":"This admission number is already in use for the selected academic year."}})
+	case errors.Is(err,repository.ErrAcademicRollNumberConflict):c.JSON(http.StatusConflict,gin.H{"status":"error","message":"Roll number is already used in this section","field_errors":gin.H{"roll_number":"This roll number is already assigned to an active student in the selected section."}})
 	case errors.Is(err,repository.ErrAcademicConflict):c.JSON(http.StatusConflict,gin.H{"status":"error","message":resource+" conflicts with an existing record"})
 	case errors.Is(err,repository.ErrInvalidAcademicInput):c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid academic data"})
 	default:c.JSON(http.StatusInternalServerError,gin.H{"status":"error","message":"Unable to process "+strings.ToLower(resource)+" request"})
