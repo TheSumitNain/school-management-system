@@ -710,6 +710,115 @@ test("student admission, profile navigation and parent details render without br
   expect(browserErrors).toEqual([]);
 });
 
+
+test("standalone enrollment validates admission and roll number before saving", async ({ page }) => {
+  const requests: Record<string, unknown>[] = [];
+  const student = {
+    id: 44, school_id: 10, admission_number: "ADM-EXISTING-044",
+    full_name: "Existing Student", status: "active", created_at: "2026-01-01T00:00:00.000Z",
+    updated_at: "2026-01-01T00:00:00.000Z",
+  };
+  const years = [
+    { id: 7, name: "2026–2027", status: "active", is_current: true },
+    { id: 8, name: "2027–2028", status: "active", is_current: false },
+  ];
+  const sections = [
+    { id: 12, academic_year_id: 7, class_id: 3, class_name: "Class 1", name: "A", is_active: true },
+    { id: 13, academic_year_id: 8, class_id: 3, class_name: "Class 1", name: "B", is_active: true },
+  ];
+
+  await page.route("**/api/**", async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname.replace(/^\/api/, "");
+    const method = request.method();
+    if (path === "/auth/refresh") {
+      await route.fulfill({ status: 401, json: { message: "No active session" } });
+      return;
+    }
+    if (path === "/auth/login" && method === "POST") {
+      await route.fulfill({ json: {
+        access_token: "e2e-access-token", token_type: "Bearer",
+        principal: { principal_id: 101, principal_type: "staff", status: "active", school_id: 10 },
+      }});
+      return;
+    }
+    if (path === "/auth/me") {
+      await route.fulfill({ json: {
+        principal_id: 101, principal_type: "staff", school_id: 10, username: "e2e-enrollment-admin",
+        permissions: ["students.read_sensitive", "students.read_basic", "students.create", "academic_years.read", "classes.read"],
+      }});
+      return;
+    }
+    if (path === "/school/academic-years") {
+      await route.fulfill({ json: { academic_years: years } });
+      return;
+    }
+    if (path === "/school/sections") {
+      const yearID = Number(url.searchParams.get("academic_year_id") || 0);
+      await route.fulfill({ json: { sections: sections.filter(item => item.academic_year_id === yearID) } });
+      return;
+    }
+    if (path === "/school/students" && method === "GET") {
+      await route.fulfill({ json: { students: [student], pagination: { limit: 20, offset: 0, total: 1 } } });
+      return;
+    }
+    if (path === "/school/enrollments" && method === "GET") {
+      await route.fulfill({ json: { enrollments: [] } });
+      return;
+    }
+    if (path === "/school/enrollments" && method === "POST") {
+      const input = request.postDataJSON() as Record<string, unknown>;
+      requests.push(input);
+      await route.fulfill({ json: { enrollment: { id: 501, school_id: 10, student_id: student.id, ...input, status: "active" } } });
+      return;
+    }
+    await route.fulfill({ status: 404, json: { message: `Unmocked E2E API request: ${method} ${path}` } });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Username").fill("e2e-enrollment-admin");
+  await page.getByLabel("Password").fill("E2E-only-password");
+  await page.getByRole("button", { name: /Continue/ }).click();
+  await page.getByRole("button", { name: "Students" }).click();
+  await page.getByRole("button", { name: "Enrollments" }).click();
+  await page.getByRole("button", { name: "Enroll student" }).click();
+  await page.getByPlaceholder("Search name or admission number").fill("Existing Student");
+  await page.getByRole("option", { name: "Existing Student · ADM-EXISTING-044" }).click();
+  await page.getByRole("button", { name: "Enrollment academic year" }).click();
+  await page.getByRole("option", { name: "2027–2028" }).click();
+  await page.getByRole("button", { name: "Enrollment section" }).click();
+  await page.getByRole("option", { name: "Class 1 · B" }).click();
+  await page.getByRole("button", { name: "Admission date", exact: true }).click();
+  await page.getByRole("button", { name: "Today" }).click();
+
+  const saveButton = page.getByRole("button", { name: "Create enrollment" });
+  await page.getByPlaceholder("e.g. ADM-2026-001").fill("अ".repeat(51));
+  await page.getByPlaceholder("e.g. 01").fill("अ".repeat(31));
+  await saveButton.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Enrollment submit button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect(page.getByText("Admission number must be 50 characters or fewer.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Roll number must be 30 characters or fewer.", { exact: true })).toBeVisible();
+  expect(requests).toHaveLength(0);
+
+  await page.getByPlaceholder("e.g. ADM-2026-001").fill("ADM-2027-044");
+  await page.getByPlaceholder("e.g. 01").fill("");
+  await saveButton.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Enrollment submit button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect.poll(() => requests.length).toBe(1);
+  expect(requests[0]).toMatchObject({
+    student_id: 44, academic_year_id: 8, section_id: 13,
+    admission_number: "ADM-2027-044", roll_number: null,
+  });
+  await expect(page.getByText("Student enrolled successfully.")).toBeVisible();
+});
+ 
 test("student directory remains view-only when update and archive permissions are absent", async ({ page }) => {
   const writeRequests: string[] = [];
   page.on("request", request => {
