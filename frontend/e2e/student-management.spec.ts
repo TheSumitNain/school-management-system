@@ -1151,7 +1151,7 @@ test("student archive confirmation keeps the record on conflict and refreshes st
     if (path === "/auth/me") {
       await route.fulfill({ json: {
         principal_id: 104, principal_type: "staff", school_id: 10, username: "e2e-archive-admin",
-        permissions: ["students.read_sensitive", "students.read_basic", "students.update", "students.archive", "academic_years.read", "classes.read"],
+        permissions: ["students.read_sensitive", "students.read_basic", "students.update", "students.archive", "academic_years.read", "classes.read", "guardians.read"],
       } });
       return;
     }
@@ -1170,6 +1170,20 @@ test("student archive confirmation keeps the record on conflict and refreshes st
         religion: null, social_category: null, ews_status: null,
         school_registration_number: "SR-ARCH-092",
       } } });
+      return;
+    }
+    if (path === "/school/students/92/guardians" && request.method() === "GET") {
+      await route.fulfill({ json: { student_guardians: [{
+        id: 9201, student_id: 92, guardian_id: 920, guardian_name: "Archived Student Guardian",
+        guardian_status: "active", mobile_number: "9876500920", email_address: "guardian@example.test",
+        alternate_mobile_number: null, occupation: "Teacher", education: "Graduate",
+        workplace_name: "Local School", relationship_type: "Mother",
+        is_primary_contact: true, is_emergency_contact: true, revoked_at: null,
+      }] } });
+      return;
+    }
+    if (path === "/school/students/92/related-students" && request.method() === "GET") {
+      await route.fulfill({ json: { related_students: [] } });
       return;
     }
     if (path === "/school/students/92/archive" && request.method() === "POST") {
@@ -1223,6 +1237,18 @@ test("student archive confirmation keeps the record on conflict and refreshes st
   await expect(page.getByPlaceholder("City, district or place")).toHaveValue("Ambala");
   await expect(page.getByRole("button", { name: "Save basic details" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Save student name" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Close dialog" }).click();
+  await page.getByRole("button", { name: /Parents & Siblings/i }).click();
+  const familyDialog = page.getByRole("dialog", { name: "Parents & Siblings" });
+  await expect(familyDialog).toBeVisible();
+  await expect(page.getByText("Archived Student Guardian", { exact: true })).toBeVisible();
+  await expect(page.getByText("Mother · Primary contact · Emergency contact")).toBeVisible();
+  await expect(page.getByText("View-only access. Guardian management permission is required to create, link or revoke guardian records.")).toBeVisible();
+  await expect(familyDialog.getByRole("button", { name: "Edit relationship" })).toHaveCount(0);
+  await expect(familyDialog.getByRole("button", { name: "Edit shared guardian details" })).toHaveCount(0);
+  await expect(familyDialog.getByRole("button", { name: "Revoke link" })).toHaveCount(0);
+  await expect(familyDialog.getByRole("button", { name: "Link guardian" })).toHaveCount(0);
+  await expect(familyDialog.getByRole("button", { name: "Create a new guardian contact" })).toHaveCount(0);
 
   expect(browserErrors).toEqual([]);
 });
