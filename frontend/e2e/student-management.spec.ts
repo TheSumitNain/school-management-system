@@ -1632,6 +1632,12 @@ test("staff can create a guardian contact and link it to a student with relation
   await page.getByRole("button", { name: "Save guardian contact" }).click();
   await expect(page.getByText("Enter a valid email address.", { exact: true })).toBeVisible();
   expect(guardianCreates).toHaveLength(0);
+  for (const invalidEmail of ["Guardian <guardian@example.test>", "guardian@example.test,other@example.test"]) {
+    await page.getByPlaceholder("guardian@example.com").fill(invalidEmail);
+    await page.getByRole("button", { name: "Save guardian contact" }).click();
+    await expect(page.getByText("Enter a valid email address.", { exact: true })).toBeVisible();
+    expect(guardianCreates).toHaveLength(0);
+  }
 
   await page.getByPlaceholder("guardian@example.com").fill("nisha.verma@example.test");
   await page.getByRole("button", { name: "Save guardian contact" }).click();
