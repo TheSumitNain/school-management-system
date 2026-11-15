@@ -53,7 +53,7 @@ export function StudentEnrollmentSubjectsPanel({
     const subject = curriculum.subjects.find(item => item.id === id);
     if (subject?.optional_group_id) counts.set(subject.optional_group_id, (counts.get(subject.optional_group_id) ?? 0) + 1);
   }
-  const invalidGroup = grouped.find(([id, group]) => {
+  const invalidGroups = grouped.filter(([id, group]) => {
     const count = counts.get(id) ?? 0;
     return count < group.min || count > group.max;
   });
@@ -91,6 +91,7 @@ export function StudentEnrollmentSubjectsPanel({
             </label>
           ))}
           <small>{counts.get(groupID) ?? 0} selected · minimum {group.min}, maximum {group.max}</small>
+          {invalidGroups.some(([invalidID]) => invalidID === groupID) && <p className="student-field-error" role="alert">Select between {group.min} and {group.max} subjects in {group.name}.</p>}
         </fieldset>
       ))}
       {data?.selection_history && data.selection_history.length > 0 && (
@@ -105,9 +106,8 @@ export function StudentEnrollmentSubjectsPanel({
       )}
       {canEdit ? (
         <div className="student-subject-actions">
-          {invalidGroup && <p className="student-field-error" role="alert">{invalidGroup[1].name}: select between {invalidGroup[1].min} and {invalidGroup[1].max} subjects.</p>}
           {save.isError && <p className="student-field-error" role="alert">{save.error.message}</p>}
-          <button type="button" className="student-secondary" disabled={Boolean(invalidGroup) || save.isPending} onClick={() => save.mutate({ enrollmentID, curriculum_id: targetCurriculumID || curriculum.id, selected_optional_subject_ids: selected })}>
+          <button type="button" className="student-secondary" disabled={invalidGroups.length > 0 || save.isPending} onClick={() => save.mutate({ enrollmentID, curriculum_id: targetCurriculumID || curriculum.id, selected_optional_subject_ids: selected })}>
             {save.isPending ? "Saving…" : "Save subject choices"}
           </button>
         </div>
