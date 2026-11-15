@@ -791,5 +791,5 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 ## Student Management — enrollment curriculum browser journey (2026-11-15)
 
 - Added the first Student Management Playwright coverage for the enrollment-level curriculum panel: compulsory subject display, first-time assignment guidance, optional-group minimum/maximum count, saving an optional subject, and rendering the assigned state plus saved selection history after the query refetches.
-- The test uses stateful mocked API responses so the post-save refetch returns the saved assignment and choices instead of resetting to the initial unassigned fixture.
-- Test commit: `152e0bc044137c1ec07310cf284fcd76d6f4c554`. Exact-commit frontend CI, TypeScript/Vite build and Playwright execution have not yet been observed. This remains mocked browser coverage, not live database acceptance.
+- The test uses stateful mocked API responses so the post-save refetch returns the saved assignment and choices instead of resetting to the initial unassigned fixture. It also makes an unrelated Basic Details save invalidate student queries while a different optional subject is still unsaved, then asserts the background curriculum refetch preserves that in-progress choice.
+- Test commits: `152e0bc044137c1ec07310cf284fcd76d6f4c554` and unsaved-choice refetch regression `f7d6f3cfc655424ccd2af3fd57a1e8a5f18bac67`. Exact-commit frontend CI, TypeScript/Vite build and Playwright execution have not yet been observed. This remains mocked browser coverage, not live database acceptance.
