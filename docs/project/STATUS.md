@@ -8,16 +8,17 @@
 
 - Added a two-student Playwright journey covering unsaved drafts and field-validation errors in Address, Contact, Medical and Physical sections. The test switches from Student A to Student B and verifies that Student B's persisted values load without Student A's drafts or errors.
 - Final test commit: `c215c1f52eddc947033bef630f4ecbbbaaff563f` (includes the initial test addition, navigation correction, and assertions that no unintended profile writes or browser errors occur).
-- The test has **not yet been reported as passing**. No check runs/statuses were returned for this commit by the available GitHub status lookup; do not mark this acceptance gap closed until Frontend CI reports the build and full Playwright suite green.
+- Frontend CI **PASS** — [run 43717701638](https://github.com/TheSumitNain/school-management-system/actions/runs/43717701638): Vite production build succeeded and all 11 Playwright tests passed. The new four-section cross-student test passed in 5.4 seconds; it verified student-specific saved values, cleared drafts/errors, no unintended profile PUTs, and no browser page errors.
+- Backend CI is still running — [run 43717701635](https://github.com/TheSumitNain/school-management-system/actions/runs/43717701635). Migration setup passed; PostgreSQL integration tests and `go vet` have not yet reported completion.
 - This remains mocked browser coverage. Authenticated live acceptance against the local API/database is still separate and pending.
 
 ### Latest verified code and CI
 
-- Active branch: `work`; latest **verified** code/test checkpoint is `b6d14c6ed4030724857838ef8cebc131041219ae`. Newer cross-student browser-test code is at `c215c1f52eddc947033bef630f4ecbbbaaff563f` and remains unverified pending an observable Frontend CI result.
+- Active branch: `work`; latest frontend-verified Student Management test checkpoint is `c215c1f52eddc947033bef630f4ecbbbaaff563f` (Frontend CI run 43717701638 PASS). Backend CI for the same commit is still in progress (run 43717701635).
 - Latest Student Management browser/test checkpoint: `b6d14c6ed4030724857838ef8cebc131041219ae`. Frontend CI **PASS** — [run 43716057611](https://github.com/TheSumitNain/school-management-system/actions/runs/43716057611): production build and all 10 Playwright tests passed, including guardian profile field validation/edit/save/reload, per-student relationship flags, and cross-student Basic Details + Parent Details draft/error isolation.
 - Backend CI **PASS** on the same full-repository checkpoint — [run 43716057614](https://github.com/TheSumitNain/school-management-system/actions/runs/43716057614): complete migration chain, PostgreSQL integration suite and `go vet ./...`.
 - Earlier frontend implementation fixes include guardian form validation, student-specific state reset, enrollment curriculum identity, Basic Details empty-state cleanup, Address/Health transient-state cleanup and shared profile feedback handling. The latest green checkpoint includes these commits.
-- Background-refetch draft preservation is covered for Basic Details, Parent Details, Address, Contact, Medical, Physical and enrollment subject choices. Cross-student browser journeys for Basic Details and Parent Details are CI-verified; a combined Address/Contact/Medical/Physical cross-student journey has now been added at `c215c1f52eddc947033bef630f4ecbbbaaff563f` and remains pending CI verification.
+- Background-refetch draft preservation is covered for Basic Details, Parent Details, Address, Contact, Medical, Physical and enrollment subject choices. Cross-student browser journeys for Basic Details, Parent Details, Address, Contact, Medical and Physical are all now Frontend-CI-verified at `c215c1f52eddc947033bef630f4ecbbbaaff563f`.
 - Authenticated live acceptance remains pending. CI uses mocked browser APIs and an ephemeral PostgreSQL database; it does not verify the user's local API/database.
 
 ### Student profile state isolation correction (2026-11-15)
