@@ -3,6 +3,7 @@
 package main
 
 import (
+	"crypto/sha256"
 	"encoding/csv"
 	"errors"
 	"flag"
@@ -68,7 +69,8 @@ func main() {
 	}
 	defer f.Close()
 
-	s, err := validateCSV(f)
+	hash := sha256.New()
+	s, err := validateCSV(io.TeeReader(f, hash))
 	if err != nil {
 		fail(err)
 	}
@@ -87,6 +89,7 @@ func main() {
 		}
 	}
 	fmt.Printf("Snapshot date: %s\n", *snapshotDate)
+	fmt.Printf("Input SHA-256: %x\n", hash.Sum(nil))
 	for _, count := range counts {
 		fmt.Printf("%s: %d\n", count.name, count.got)
 	}
@@ -124,8 +127,14 @@ func validateCSV(input io.Reader) (*snapshot, error) {
 		if readErr != nil {
 			return nil, fmt.Errorf("CSV line %d: %w", line, readErr)
 		}
-		for i := range row {
-			row[i] = strings.TrimSpace(row[i])
+		for i, value := range row {
+			if !utf8.ValidString(value) {
+				return nil, fmt.Errorf("CSV line %d: %s is not valid UTF-8", line, expectedHeader[i])
+			}
+			if strings.ContainsRune(value, '\x00') {
+				return nil, fmt.Errorf("CSV line %d: %s contains a NUL byte unsupported by PostgreSQL text", line, expectedHeader[i])
+			}
+			row[i] = strings.TrimSpace(value)
 		}
 		if row[0] == "" && row[1] == "" && row[2] == "" &&
 			row[3] == "" && row[4] == "" && row[5] == "" &&
