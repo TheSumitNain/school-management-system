@@ -1123,7 +1123,7 @@ test("student promotion validates required fields and preserves prior enrollment
   expect(browserErrors).toEqual([]);
 });
 
-test("student archive confirmation keeps the record on conflict and refreshes status after retry", async ({ page }) => {
+test("student archive confirmation keeps the record on a retryable error and refreshes status after retry", async ({ page }) => {
   const browserErrors: string[] = [];
   const archiveRequests: string[] = [];
   let archiveAttempts = 0;
