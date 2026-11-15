@@ -459,6 +459,7 @@ test("student admission, profile navigation and parent details render without br
   await curriculumPanel.getByRole("button", { name: "Save subject choices" }).click();
   await expect(curriculumPanel.getByText("Assigned", { exact: true })).toBeVisible();
   await expect(curriculumPanel.getByText("Previous subject choices (1)")).toBeVisible();
+  await curriculumPanel.getByText("Previous subject choices (1)").click();
   await expect(curriculumPanel.getByText("Hindi · curriculum v1 · Current")).toBeVisible();
   await curriculumPanel.getByRole("checkbox", { name: /Hindi/ }).uncheck();
   await curriculumPanel.getByRole("checkbox", { name: /Sanskrit/ }).check();
