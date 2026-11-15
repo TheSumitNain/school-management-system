@@ -218,8 +218,11 @@ func (r *AcademicRepository) CreateStudentAdmission(
 func (r *AcademicRepository) ListStudentEnrollments(ctx context.Context, actorID, schoolID, yearID, studentID int64) ([]StudentEnrollment, error) {
 	if r == nil || r.db == nil { return nil, ErrAcademicAccessDenied }
 	if yearID < 0 || studentID < 0 { return nil, ErrInvalidAcademicInput }
-	if err := authorizeAcademic(ctx, r.db, actorID, schoolID, "students.read_basic"); err != nil { return nil, err }
-	rows, err := r.db.Query(ctx, `SELECT e.id,e.school_id,e.student_id,e.academic_year_id,e.class_id,e.section_id,e.roll_number,
+	tx, err := r.db.Begin(ctx)
+	if err != nil { return nil, fmt.Errorf("begin student enrollment history read: %w", err) }
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := authorizeAcademic(ctx, tx, actorID, schoolID, "students.read_basic"); err != nil { return nil, err }
+	rows, err := tx.Query(ctx, `SELECT e.id,e.school_id,e.student_id,e.academic_year_id,e.class_id,e.section_id,e.roll_number,
 		e.class_name_snapshot,e.section_name_snapshot,e.admission_number,e.admission_date,e.status,e.enrolled_at,e.ended_at,e.created_at,e.updated_at,st.full_name,
 		EXISTS (SELECT 1 FROM principal_roles pr JOIN roles r ON r.id=pr.role_id
 		 WHERE pr.principal_id=$4 AND pr.revoked_at IS NULL AND r.school_id=e.school_id
@@ -282,9 +285,24 @@ func (r *AcademicRepository) ListStudentEnrollments(ctx context.Context, actorID
 	if err := rows.Err(); err != nil { return nil, fmt.Errorf("iterate student enrollments: %w", err) }
 	if studentID > 0 && len(items) == 0 {
 		var exists bool
-		if err := r.db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM students WHERE id=$1 AND school_id=$2)`, studentID, schoolID).Scan(&exists); err != nil { return nil, fmt.Errorf("check student: %w", err) }
+		if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM students WHERE id=$1 AND school_id=$2)`, studentID, schoolID).Scan(&exists); err != nil { return nil, fmt.Errorf("check student: %w", err) }
 		if !exists { return nil, ErrAcademicNotFound }
 	}
+	// Enrollment history contains student identity and admission details. Keep
+	// its read audit in the same transaction as the authorized result.
+	resourceType, resourceID := "student_enrollment_collection", fmt.Sprint(schoolID)
+	if studentID > 0 {
+		resourceType, resourceID = "student", fmt.Sprint(studentID)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
+		VALUES($1,$2,'school.student.enrollments.read',$3,$4,'success',
+		       jsonb_build_object('section','student_enrollment_history','result_count',$5::integer,
+		                          'academic_year_filtered',$6::boolean))
+	`, actorID, schoolID, resourceType, resourceID, len(items), yearID > 0); err != nil {
+		return nil, fmt.Errorf("audit student enrollment history read: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil { return nil, fmt.Errorf("commit student enrollment history read audit: %w", err) }
 	return items, nil
 }
 
