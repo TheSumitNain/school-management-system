@@ -149,6 +149,11 @@ func TestStudentBasicDetailsV37PostgresIntegration(t *testing.T) {
 		t.Fatalf("cross-school basic details read error = %v, want access denied", err)
 	}
 
+	if _, err := repository.SaveStudentBasicDetails(ctx, actorPrincipalID, schoolID+999999, secondStudentID,
+		&birthDate, &placeOfBirth, ptrString("female"), &nationality, &religion, &category, &ews, &repoRegistration); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("cross-school basic details update error = %v, want access denied", err)
+	}
+
 	// The basic-details VARCHAR limits count Unicode characters, not UTF-8 bytes.
 	maxPlace := strings.Repeat("अ", 120)
 	maxNationality := strings.Repeat("न", 80)
