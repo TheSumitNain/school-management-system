@@ -564,3 +564,9 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Removed native HTML `maxLength` caps from admission, enrollment and guardian/relationship inputs whose server-side limits are measured in Unicode code points. Browser `maxLength` counts UTF-16 code units, so it could reject valid supplementary-plane characters before the API's PostgreSQL-compatible character validation ran.
 - Backend repository validation remains authoritative for the documented limits; this change does not weaken server validation or change database schemas.
 - This is a frontend input-behavior correction. The exact latest commit still requires frontend CI verification; mocked Playwright coverage and live authenticated browser acceptance remain separate checks. No database migration or persistent data change was performed.
+
+## Student address/contact Unicode input consistency — 2026-11-15
+
+- Student contact phone length validation now counts Unicode code points, matching the backend's PostgreSQL character-limit semantics.
+- Removed browser-native UTF-16 `maxLength` caps from student phone/email, address text, postal code and school-added location-name inputs. These controls no longer reject otherwise valid Unicode input based on UTF-16 code-unit counts; server-side validation remains authoritative.
+- This change does not modify database schemas or persistent data. Exact-tip CI and authenticated browser acceptance are still required; no CI PASS is claimed here.
