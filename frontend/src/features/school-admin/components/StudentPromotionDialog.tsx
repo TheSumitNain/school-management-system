@@ -23,6 +23,13 @@ function localDateValue() {
 
 export function StudentPromotionDialog({ enrollment, academicYears, academicYearsError, onRetryAcademicYears, onClose, onPromoted }: Props) {
   const availableYears = academicYears.filter(year => year.status === "active" && year.id !== enrollment.academic_year_id);
+  const destinationYear = availableYears.find(year => year.id === academicYearID);
+  const sourceEnrollmentDate = enrollment.enrolled_at.slice(0, 10);
+  const yearStart = destinationYear?.starts_on?.slice(0, 10);
+  const yearEnd = destinationYear?.ends_on?.slice(0, 10);
+  const minAdmissionDate = yearStart && sourceEnrollmentDate > yearStart ? sourceEnrollmentDate : yearStart ?? sourceEnrollmentDate;
+  const maxAdmissionDate = yearEnd;
+  const invalidPromotionWindow = Boolean(maxAdmissionDate && minAdmissionDate > maxAdmissionDate);
   const [academicYearID, setAcademicYearID] = useState(0);
   const [sectionID, setSectionID] = useState("");
   const [admissionNumber, setAdmissionNumber] = useState("");
@@ -42,6 +49,11 @@ export function StudentPromotionDialog({ enrollment, academicYears, academicYear
     }
   }, [academicYearID, availableYears]);
 
+  useEffect(() => {
+    if (!yearStart || !yearEnd || invalidPromotionWindow) return;
+    setAdmissionDate(current => current < minAdmissionDate ? minAdmissionDate : current > yearEnd ? yearEnd : current);
+  }, [yearStart, yearEnd, minAdmissionDate, invalidPromotionWindow]);
+
   function clearError(key: string) {
     setErrors(current => ({ ...current, [key]: "" }));
     setFeedback("");
@@ -57,6 +69,9 @@ export function StudentPromotionDialog({ enrollment, academicYears, academicYear
     else if (Array.from(admissionNumber.trim()).length > 50) next.admission_number = "Admission number must be 50 characters or fewer.";
     if (Array.from(rollNumber.trim()).length > 30) next.roll_number = "Roll number must be 30 characters or fewer.";
     if (!admissionDate) next.admission_date = "Choose the admission date.";
+    else if (invalidPromotionWindow) next.admission_date = "No valid promotion date exists within the destination academic year after the current enrollment.";
+    else if (admissionDate < minAdmissionDate) next.admission_date = "Promotion date cannot be earlier than the current enrollment or destination academic-year start.";
+    else if (maxAdmissionDate && admissionDate > maxAdmissionDate) next.admission_date = "Promotion date must fall within the destination academic year.";
     setErrors(next);
     setFeedback("");
     if (Object.keys(next).length > 0) return;
@@ -122,15 +137,16 @@ export function StudentPromotionDialog({ enrollment, academicYears, academicYear
             <small>Leave blank to assign the next available roll number in the destination section. Manual override is also supported.</small>
           </label>
           <label><StudentFieldLabel label="Admission / promotion date" required hint="Choose a date within the destination academic year and not earlier than the current enrollment." />
-            <DatePicker ariaLabel="Admission and promotion date" value={admissionDate} onChange={value => { setAdmissionDate(value); clearError("admission_date"); }}
-              placeholder="Choose a date" disabled={busy || destinationUnavailable} invalid={Boolean(errors.admission_date)} describedBy={errors.admission_date ? "promotion-date-error" : undefined} />
+            <DatePicker ariaLabel="Admission and promotion date" value={admissionDate} min={minAdmissionDate} max={maxAdmissionDate} onChange={value => { setAdmissionDate(value); clearError("admission_date"); }}
+              placeholder="Choose a date" disabled={busy || destinationUnavailable || invalidPromotionWindow} invalid={Boolean(errors.admission_date)} describedBy={errors.admission_date ? "promotion-date-error" : undefined} />
             {errors.admission_date && <small id="promotion-date-error" className="app-field-error">{errors.admission_date}</small>}
             <small>Choose a date within the destination academic year and not earlier than the current enrollment.</small>
+            {invalidPromotionWindow && <small className="app-field-error">No valid date is available because the destination academic year ends before the current enrollment.</small>}
           </label>
         </>}
         <div className="app-modal-actions">
           <button type="button" className="app-modal-cancel" onClick={onClose} disabled={busy}>Cancel</button>
-          <button type="submit" className="primary" disabled={busy || Boolean(academicYearsError) || availableYears.length === 0 || sectionsQuery.isLoading || sectionsQuery.isError || sections.length === 0}>
+          <button type="submit" className="primary" disabled={busy || Boolean(academicYearsError) || availableYears.length === 0 || invalidPromotionWindow || sectionsQuery.isLoading || sectionsQuery.isError || sections.length === 0}>
             {busy ? "Promoting…" : "Promote student"}
           </button>
         </div>
