@@ -177,6 +177,41 @@ test("student admission, profile navigation and parent details render without br
       });
       return;
     }
+    const curriculumEnrollmentMatch = path.match(/^\/school\/enrollments\/(\d+)\/(curriculum|subjects)$/);
+    if (curriculumEnrollmentMatch) {
+      const enrollmentID = Number(curriculumEnrollmentMatch[1]);
+      const studentID = enrollmentID - 100;
+      const curriculum = {
+        id: 701, school_id: 10, academic_year_id: 7, class_id: 3, version_number: 1, status: "active",
+        created_at: "2026-11-14T00:00:00.000Z",
+        optional_groups: [{ id: 801, name: "Second language", min_selections: 1, max_selections: 1 }],
+        subjects: [
+          { id: 901, subject_id: 91, name: "Mathematics", is_compulsory: true },
+          { id: 902, subject_id: 92, name: "Hindi", optional_group_id: 801, optional_group_name: "Second language", is_compulsory: false },
+          { id: 903, subject_id: 93, name: "Sanskrit", optional_group_id: 801, optional_group_name: "Second language", is_compulsory: false },
+        ],
+      };
+      if (curriculumEnrollmentMatch[2] === "curriculum" && method === "GET") {
+        await route.fulfill({ json: { enrollment_curriculum: {
+          enrollment_id: enrollmentID, student_id: studentID, student_status: "active", enrollment_status: "active",
+          academic_year_id: 7, class_id: 3, assigned: false, curriculum,
+          selected_optional_subject_ids: [], selection_history: [],
+        } } });
+        return;
+      }
+      if (curriculumEnrollmentMatch[2] === "subjects" && method === "PUT") {
+        const input = request.postDataJSON() as { selected_optional_subject_ids: number[] };
+        await route.fulfill({ json: { enrollment_curriculum: {
+          enrollment_id: enrollmentID, student_id: studentID, student_status: "active", enrollment_status: "active",
+          academic_year_id: 7, class_id: 3, assigned: true, curriculum,
+          selected_optional_subject_ids: input.selected_optional_subject_ids,
+          selection_history: input.selected_optional_subject_ids.map(() => ({
+            curriculum_version: 1, subject_name: "Hindi", selected_at: "2026-11-14T00:00:00.000Z",
+          })),
+        } } });
+        return;
+      }
+    }
     const studentMatch = path.match(/^\/school\/students\/(\d+)(?:\/(.*))?$/);
     if (studentMatch) {
       const studentID = Number(studentMatch[1]);
@@ -204,46 +239,6 @@ test("student admission, profile navigation and parent details render without br
             }],
           },
         });
-        return;
-      }
-      if (subpath === "enrollments/101/curriculum" && method === "GET") {
-        await route.fulfill({ json: { enrollment_curriculum: {
-          enrollment_id: 101, student_id: studentID, student_status: "active", enrollment_status: "active",
-          academic_year_id: 7, class_id: 3, assigned: false,
-          curriculum: {
-            id: 701, school_id: 10, academic_year_id: 7, class_id: 3, version_number: 1, status: "active",
-            created_at: "2026-11-14T00:00:00.000Z",
-            optional_groups: [{ id: 801, name: "Second language", min_selections: 1, max_selections: 1 }],
-            subjects: [
-              { id: 901, subject_id: 91, name: "Mathematics", is_compulsory: true },
-              { id: 902, subject_id: 92, name: "Hindi", optional_group_id: 801, optional_group_name: "Second language", is_compulsory: false },
-              { id: 903, subject_id: 93, name: "Sanskrit", optional_group_id: 801, optional_group_name: "Second language", is_compulsory: false },
-            ],
-          },
-          selected_optional_subject_ids: [], selection_history: [],
-        } } });
-        return;
-      }
-      if (subpath === "enrollments/101/subjects" && method === "PUT") {
-        const input = request.postDataJSON() as { selected_optional_subject_ids: number[] };
-        await route.fulfill({ json: { enrollment_curriculum: {
-          enrollment_id: 101, student_id: studentID, student_status: "active", enrollment_status: "active",
-          academic_year_id: 7, class_id: 3, assigned: true,
-          curriculum: {
-            id: 701, school_id: 10, academic_year_id: 7, class_id: 3, version_number: 1, status: "active",
-            created_at: "2026-11-14T00:00:00.000Z",
-            optional_groups: [{ id: 801, name: "Second language", min_selections: 1, max_selections: 1 }],
-            subjects: [
-              { id: 901, subject_id: 91, name: "Mathematics", is_compulsory: true },
-              { id: 902, subject_id: 92, name: "Hindi", optional_group_id: 801, optional_group_name: "Second language", is_compulsory: false },
-              { id: 903, subject_id: 93, name: "Sanskrit", optional_group_id: 801, optional_group_name: "Second language", is_compulsory: false },
-            ],
-          },
-          selected_optional_subject_ids: input.selected_optional_subject_ids,
-          selection_history: input.selected_optional_subject_ids.map(() => ({
-            curriculum_version: 1, subject_name: "Hindi", selected_at: "2026-11-14T00:00:00.000Z",
-          })),
-        } } });
         return;
       }
       if (subpath === "basic-details") {
