@@ -106,6 +106,19 @@ func TestStudentContactDetailsV35PostgresIntegration(t *testing.T) {
 		savedContact.EmailAddress == nil || *savedContact.EmailAddress != updatedEmail {
 		t.Fatalf("unexpected saved student contact details: %+v", savedContact)
 	}
+
+	// Repository validation is authoritative even when a caller bypasses the
+	// frontend's field-level limits and email-format checks.
+	overlongPhone := strings.Repeat("अ", 31)
+	if _, err := repository.SaveStudentContactDetails(ctx, actorPrincipalID, schoolID, studentTwo,
+		&overlongPhone, nil, nil); !errors.Is(err, ErrInvalidAcademicInput) {
+		t.Fatalf("31-code-point contact number error = %v, want invalid input", err)
+	}
+	invalidEmail := "Student <student@example.test>"
+	if _, err := repository.SaveStudentContactDetails(ctx, actorPrincipalID, schoolID, studentTwo,
+		nil, nil, &invalidEmail); !errors.Is(err, ErrInvalidAcademicInput) {
+		t.Fatalf("display-name email error = %v, want invalid input", err)
+	}
 	var updateAuditCount int
 	if err := tx.QueryRow(ctx, `
 		SELECT COUNT(*) FROM audit_events
