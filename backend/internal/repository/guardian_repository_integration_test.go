@@ -516,6 +516,24 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 			guardianAuditCount, linkCreateAuditCount, linkUpdateAuditCount, linkRevokeAuditCount)
 	}
 
+	var revocationAuditMetadataValid bool
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*) = 1
+		   AND BOOL_AND(metadata->>'student_id' IS NOT NULL)
+	   AND BOOL_AND(metadata->>'has_revocation_reason' = 'true')
+	   AND BOOL_AND(metadata::text NOT ILIKE '%relationship ended%')
+		  FROM audit_events
+		 WHERE school_id=$1 AND actor_principal_id=$2
+		   AND action='school.student_guardian_link_revoked'
+		   AND resource_type='student_guardian_link'
+		   AND resource_id=$3
+	`, schoolID, targetPrincipalID, fmt.Sprint(firstLink.ID)).Scan(&revocationAuditMetadataValid); err != nil {
+		t.Fatalf("validate guardian revocation audit metadata: %v", err)
+	}
+	if !revocationAuditMetadataValid {
+		t.Fatal("guardian revocation audit must identify the student and reason presence without storing the private reason")
+	}
+
 	var guardianReadAuditCount int
 	if err := tx.QueryRow(ctx, `
 		SELECT COUNT(*)
