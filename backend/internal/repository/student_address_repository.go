@@ -175,7 +175,9 @@ func (r *AcademicRepository) CreateStudentLocation(
 		if countryCode == "" {
 			countryCode = "IN"
 		}
-		if len(countryCode) != 2 {
+		if len(countryCode) != 2 ||
+			countryCode[0] < 'A' || countryCode[0] > 'Z' ||
+			countryCode[1] < 'A' || countryCode[1] > 'Z' {
 			return nil, ErrInvalidAcademicInput
 		}
 	} else {
