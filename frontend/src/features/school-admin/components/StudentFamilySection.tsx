@@ -60,7 +60,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
   const [revokeReasonError, setRevokeReasonError] = useState("");
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
 
-  const linksQuery = useSchoolStudentGuardiansQuery(student.id, true);
+  const linksQuery = useSchoolStudentGuardiansQuery(student.id, includeHistory);
   const guardiansQuery = useSchoolGuardiansQuery({ q: deferredSearch, status: "active" }, canManage);
   const relatedQuery = useSchoolStudentRelatedStudentsQuery(student.id, canReadRelatedStudents);
   const createGuardian = useCreateSchoolGuardianMutation();
