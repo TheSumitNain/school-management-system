@@ -62,6 +62,27 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
   const addresses = addressesQuery.data?.addresses ?? [];
   const currentAddress = addresses.find(address => address.address_type === "current");
   const selectedAddress = addresses.find(address => address.address_type === addressType);
+  // React Query may replace response objects during a background refetch.
+  // Depend on persisted field values, not array/object identity, so an unchanged
+  // server snapshot cannot erase an in-progress address draft.
+  const selectedAddressSnapshot = JSON.stringify(selectedAddress ? {
+    id: selectedAddress.id,
+    address_line_1: selectedAddress.address_line_1,
+    address_line_2: selectedAddress.address_line_2,
+    area_mohalla: selectedAddress.area_mohalla,
+    landmark: selectedAddress.landmark,
+    postal_code: selectedAddress.postal_code,
+    same_as_current: selectedAddress.same_as_current,
+    state_location_id: selectedAddress.state_location_id,
+    district_location_id: selectedAddress.district_location_id,
+    subdistrict_location_id: selectedAddress.subdistrict_location_id,
+    location_id: selectedAddress.location_id,
+  } : null);
+  const contactSnapshot = JSON.stringify(contactQuery.data?.contact_details ? {
+    primary_phone: contactQuery.data.contact_details.primary_phone,
+    alternate_phone: contactQuery.data.contact_details.alternate_phone,
+    email_address: contactQuery.data.contact_details.email_address,
+  } : null);
   const statesQuery = useSchoolStudentLocationsQuery({ level: "state", q: stateSearch }, !showContactDetails);
   const districtsQuery = useSchoolStudentLocationsQuery({ parentID: stateID || undefined, level: "district", q: districtSearch }, !showContactDetails && stateID > 0);
   const subdistrictsQuery = useSchoolStudentLocationsQuery({ parentID: districtID || undefined, level: "subdistrict", q: subdistrictSearch }, !showContactDetails && districtID > 0);
@@ -85,7 +106,7 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
     setLocalityID(selectedAddress?.location_id ?? 0);
     setFieldError("");
     setAddressErrors({});
-  }, [showContactDetails, addressType, addressesQuery.data?.addresses]);
+  }, [showContactDetails, addressType, selectedAddressSnapshot]);
 
   useEffect(() => {
     if (!showContactDetails) return;
@@ -93,7 +114,7 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
     setPrimaryPhone(textValue(details?.primary_phone));
     setAlternatePhone(textValue(details?.alternate_phone));
     setEmailAddress(textValue(details?.email_address));
-  }, [showContactDetails, contactQuery.data?.contact_details]);
+  }, [showContactDetails, contactSnapshot]);
 
   const states = statesQuery.data?.locations ?? [];
   const districts = districtsQuery.data?.locations ?? [];
