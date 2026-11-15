@@ -53,6 +53,8 @@ export function StudentPromotionDialog({ enrollment, academicYears, academicYear
     if (!academicYearID) next.academic_year_id = "Select the destination academic year.";
     if (!sectionID) next.section_id = "Select a destination class and section.";
     if (!admissionNumber.trim()) next.admission_number = "Enter the admission number for the destination year.";
+    else if (Array.from(admissionNumber.trim()).length > 50) next.admission_number = "Admission number must be 50 characters or fewer.";
+    if (Array.from(rollNumber.trim()).length > 30) next.roll_number = "Roll number must be 30 characters or fewer.";
     if (!admissionDate) next.admission_date = "Choose the admission date.";
     setErrors(next);
     setFeedback("");
@@ -104,12 +106,13 @@ export function StudentPromotionDialog({ enrollment, academicYears, academicYear
             {academicYearID > 0 && !sectionsQuery.isLoading && !sectionsQuery.isError && sections.length === 0 && <small>No active sections are available in this academic year.</small>}
           </label>
           <label><StudentFieldLabel label="New admission number" required hint="Enter the student’s admission number for the destination academic year. Maximum 50 characters; unique within the school and year." />
-            <input disabled={busy || destinationUnavailable} value={admissionNumber} maxLength={50} aria-invalid={Boolean(errors.admission_number)} aria-describedby={errors.admission_number ? "promotion-admission-error" : undefined}
+            <input disabled={busy || destinationUnavailable} value={admissionNumber} aria-invalid={Boolean(errors.admission_number)} aria-describedby={errors.admission_number ? "promotion-admission-error" : undefined}
               onChange={event => { setAdmissionNumber(event.target.value); clearError("admission_number"); }} placeholder="e.g. ADM-2027-001" />
             {errors.admission_number && <small id="promotion-admission-error" className="app-field-error">{errors.admission_number}</small>}
           </label>
           <label><StudentFieldLabel label="Roll number" hint="Optional. Leave blank to automatically assign the next available roll number in the destination section. If entering one manually, use the school’s roll-number format (up to 30 characters)." />
-            <input disabled={busy || destinationUnavailable} value={rollNumber} maxLength={30} onChange={event => setRollNumber(event.target.value)} placeholder="Leave blank for automatic assignment" />
+            <input disabled={busy || destinationUnavailable} value={rollNumber} aria-invalid={Boolean(errors.roll_number)} aria-describedby={errors.roll_number ? "promotion-roll-error" : undefined} onChange={event => { setRollNumber(event.target.value); clearError("roll_number"); }} placeholder="Leave blank for automatic assignment" />
+            {errors.roll_number && <small id="promotion-roll-error" className="app-field-error">{errors.roll_number}</small>}
             <small>Leave blank to assign the next available roll number in the destination section. Manual override is also supported.</small>
           </label>
           <label><StudentFieldLabel label="Admission / promotion date" required hint="Choose a date within the destination academic year and not earlier than the current enrollment." />
