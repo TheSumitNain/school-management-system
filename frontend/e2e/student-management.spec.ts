@@ -1159,6 +1159,19 @@ test("student archive confirmation keeps the record on conflict and refreshes st
       await route.fulfill({ json: { students: [student], pagination: { limit: 20, offset: 0, total: 1 } } });
       return;
     }
+    if (path === "/school/academic-years") {
+      await route.fulfill({ json: { academic_years: [] } });
+      return;
+    }
+    if (path === "/school/students/92/basic-details" && request.method() === "GET") {
+      await route.fulfill({ json: { basic_details: {
+        id: 920, school_id: 10, student_id: 92, date_of_birth: "2017-04-12",
+        place_of_birth: "Ambala", gender: "female", nationality: "Indian",
+        religion: null, social_category: null, ews_status: null,
+        school_registration_number: "SR-ARCH-092",
+      } } });
+      return;
+    }
     if (path === "/school/students/92/archive" && request.method() === "POST") {
       archiveAttempts += 1;
       archiveRequests.push(request.method() + " " + path);
@@ -1202,6 +1215,14 @@ test("student archive confirmation keeps the record on conflict and refreshes st
   await expect(page.getByText("Archive Retry Student has been archived.")).toBeVisible();
   await expect(page.getByText("archived", { exact: true })).toBeVisible();
   expect(archiveRequests).toHaveLength(2);
+
+  await page.getByRole("button", { name: "View profile for Archive Retry Student" }).click();
+  await page.getByRole("button", { name: "Basic details" }).click();
+  await expect(page.getByText("View-only access. Student update permission is required to edit these details.")).toBeVisible();
+  await expect(page.getByLabel("Place of birth")).toHaveValue("Ambala");
+  await expect(page.getByRole("button", { name: "Save basic details" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Save student name" })).toHaveCount(0);
+
   expect(browserErrors).toEqual([]);
 });
 
