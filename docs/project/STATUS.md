@@ -1017,3 +1017,10 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Added focused backend unit tests for the shared text normalizer used by student Basic Details, Address, Contact and Health persistence: nil values, whitespace-only values, trimming before counting, exact Hindi Unicode-code-point boundaries, and one-code-point-over rejection.
 - Test commits: `7644776e2392d7bd28468d80b4bed2460332755e` (shared Unicode normalizer unit boundaries) and `5a031c694f839338d4e766f5f6a72fcaf525dbea` (PostgreSQL contact repository rejects a 31-code-point phone value and a display-name email address).
 - Backend CI **PASS** for exact test commit `5a031c694f839338d4e766f5f6a72fcaf525dbea` — [run 43712579620](https://github.com/TheSumitNain/school-management-system/actions/runs/43712579620), including full migrations, PostgreSQL integration tests and `go vet ./...`. The contact validation assertions run before any database write; no persistent school database or school data was changed.
+
+
+## Student Management — guardian full-name edit regression coverage (2026-11-15)
+
+- Extended the active Parent Details browser journey to validate the guardian full-name 200-Unicode-character limit, save a changed guardian name through the shared guardian profile endpoint, and verify the new name after closing and reopening Parent Details.
+- Corrected the mocked PATCH response to return the guardian profile shape and update the linked guardian's displayed name, so the reload assertion checks the actual shared-profile read path rather than an unrelated stale fixture field.
+- Test commit: `bc869769b2a22e43548266f4ea6bcfabea449c4a`. Frontend CI is pending; this is mocked browser coverage, not live local-database acceptance.
