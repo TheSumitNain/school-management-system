@@ -337,6 +337,13 @@ func TestStudentProfileRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("update archived student error = %v, want not found", err)
 	}
 
+	// Attendance marking must reject an archived student's retained enrollment.
+	// MarkAttendance also locks the permanent student row before inserting, matching
+	// ArchiveStudent's lock order so a concurrent archive cannot race a new mark.
+	if _, err := repo.MarkAttendance(ctx, actorID, schoolID, archiveEnrollment.ID, time.Now(), "present", nil); !errors.Is(err, ErrAttendanceNotFound) {
+		t.Fatalf("mark attendance for archived student error = %v, want not found", err)
+	}
+
 	var otherSchoolID int64
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO schools (name, code, status) VALUES ($1, $2, 'active') RETURNING id
