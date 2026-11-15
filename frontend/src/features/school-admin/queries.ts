@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  getSchoolClassCurricula, getSchoolStudentEnrollmentCurriculum, saveSchoolClassCurriculum,
+  saveSchoolStudentEnrollmentSubjects,
   createSchoolStaff, disableSchoolStaff, enableSchoolStaff, getSchoolStaff,
   resetSchoolStaffPassword, updateSchoolStaff,
 } from "./api";
@@ -65,6 +67,8 @@ export const schoolStudentQueryKeys = {
   list: (filters: { q: string; status: string; limit: number; offset: number }) => [...schoolStudentQueryKeys.all, "list", filters] as const,
   enrollments: (academicYearID: number) => [...schoolStudentQueryKeys.all, "enrollments", academicYearID] as const,
   enrollmentHistory: (studentID: number) => [...schoolStudentQueryKeys.all, "enrollment-history", studentID] as const,
+  curriculum: (enrollmentID: number) => [...schoolStudentQueryKeys.all, "curriculum", enrollmentID] as const,
+  classCurricula: (yearID: number, classID: number) => [...schoolStudentQueryKeys.all, "class-curricula", yearID, classID] as const,
   years: () => [...schoolStudentQueryKeys.all, "academic-years"] as const,
   sections: (academicYearID: number) => [...schoolStudentQueryKeys.all, "sections", academicYearID] as const,
   addresses: (studentID: number) => [...schoolStudentQueryKeys.all, "addresses", studentID] as const,
@@ -319,4 +323,36 @@ export function useMarkSchoolAttendanceMutation() {
 export function useUpdateSchoolAttendanceMutation() {
   return useAttendanceMutation(({ attendanceID, status, remarks }: { attendanceID: number; status: string; remarks?: string | null }) =>
     updateSchoolAttendance(attendanceID, { status, remarks }));
+}
+
+export function useSchoolClassCurriculaQuery(academicYearID: number, classID: number, enabled = true) {
+  return useQuery({
+    queryKey: schoolStudentQueryKeys.classCurricula(academicYearID, classID),
+    queryFn: ({ signal }) => getSchoolClassCurricula(academicYearID, classID, signal),
+    enabled: enabled && academicYearID > 0 && classID > 0,
+    staleTime: 15_000,
+  });
+}
+export function useSchoolStudentEnrollmentCurriculumQuery(enrollmentID: number, enabled = true) {
+  return useQuery({
+    queryKey: schoolStudentQueryKeys.curriculum(enrollmentID),
+    queryFn: ({ signal }) => getSchoolStudentEnrollmentCurriculum(enrollmentID, signal),
+    enabled: enabled && enrollmentID > 0,
+    staleTime: 15_000,
+  });
+}
+export function useSaveSchoolClassCurriculumMutation() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: saveSchoolClassCurriculum,
+    onSuccess: (_data, input) => client.invalidateQueries({ queryKey: schoolStudentQueryKeys.classCurricula(input.academic_year_id, input.class_id) }),
+  });
+}
+export function useSaveSchoolStudentEnrollmentSubjectsMutation() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ enrollmentID, ...input }: { enrollmentID: number; curriculum_id: number; selected_optional_subject_ids: number[] }) =>
+      saveSchoolStudentEnrollmentSubjects(enrollmentID, input),
+    onSuccess: (_data, input) => client.invalidateQueries({ queryKey: schoolStudentQueryKeys.curriculum(input.enrollmentID) }),
+  });
 }
