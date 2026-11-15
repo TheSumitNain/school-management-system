@@ -1,6 +1,10 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -164,5 +168,22 @@ func TestValidateCSVRejectsPostgresUnsupportedNUL(t *testing.T) {
 	_, err := validateCSV(strings.NewReader(input))
 	if err == nil || !strings.Contains(err.Error(), "contains a NUL byte") {
 		t.Fatalf("validateCSV() error = %v, want NUL byte error", err)
+	}
+}
+
+func TestSHA256FileHashesOriginalBytesWithoutParsing(t *testing.T) {
+	content := []byte{0x00, 0x01, 0x02, 0xff, '\n'}
+	path := filepath.Join(t.TempDir(), "official-source.xls")
+	if err := os.WriteFile(path, content, 0o600); err != nil {
+		t.Fatalf("write source fixture: %v", err)
+	}
+	got, err := sha256File(path)
+	if err != nil {
+		t.Fatalf("sha256File() error = %v", err)
+	}
+	wantBytes := sha256.Sum256(content)
+	want := hex.EncodeToString(wantBytes[:])
+	if got != want {
+		t.Fatalf("sha256File() = %q, want %q", got, want)
 	}
 }
