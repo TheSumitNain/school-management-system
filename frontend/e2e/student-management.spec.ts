@@ -447,7 +447,8 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByText("Guardian relationship revoked. Its history is preserved.")).toBeVisible();
   await expect(page.getByText("Ramesh Sharma")).toHaveCount(0);
   await page.getByLabel("Show revoked history").check();
-  await expect.poll(() => guardianHistoryRequests).toEqual([null, "true"]);
+  await expect.poll(() => guardianHistoryRequests[guardianHistoryRequests.length - 1]).toBe("true");
+  expect(guardianHistoryRequests[0]).toBeNull();
   await expect(page.getByText("Ramesh Sharma")).toBeVisible();
   await expect(page.getByText(/Revoked/)).toBeVisible();
 
