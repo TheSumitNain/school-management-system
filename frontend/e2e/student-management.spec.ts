@@ -1443,7 +1443,7 @@ test("staff with guardian management permission cannot change an inactive studen
     if (path === "/auth/me") {
       await route.fulfill({ json: {
         principal_id: 106, principal_type: "staff", school_id: 10, username: "e2e-inactive-family",
-        permissions: ["students.read_sensitive", "students.read_basic", "guardians.read", "guardians.manage", "academic_years.read"],
+        permissions: ["students.read_sensitive", "students.read_basic", "students.update", "guardians.read", "guardians.manage", "academic_years.read"],
       } });
       return;
     }
