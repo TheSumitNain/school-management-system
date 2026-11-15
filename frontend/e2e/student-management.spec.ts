@@ -1506,7 +1506,7 @@ test("staff with guardian management permission cannot change an inactive studen
   await page.getByRole("button", { name: "Close dialog" }).click();
   await page.getByRole("button", { name: "Address & communication" }).click();
   await expect(page.getByText("View-only access. Student update permission is required to edit addresses or add locations.")).toBeVisible();
-  await expect(page.getByRole("button", { name: /Save current address/i })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Save address" })).toHaveCount(0);
   await page.getByRole("button", { name: "Close dialog" }).click();
   await page.getByRole("button", { name: /Parents & siblings/i }).click();
   const familyDialog = page.getByRole("dialog", { name: "Parents & Siblings" });
