@@ -14,6 +14,7 @@ const academicYear = { id: 7, name: "2026–2027", starts_on: "2026-04-01", ends
 const section = { id: 12, academic_year_id: 7, class_id: 3, class_name: "Class 1", name: "A", is_active: true };
 
 test("student admission, profile navigation and parent details render without browser errors", async ({ page }) => {
+  test.setTimeout(90_000);
   const browserErrors: string[] = [];
   page.on("pageerror", error => browserErrors.push(error.message));
 
@@ -527,6 +528,7 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByText("Place of birth must be 120 characters or fewer.", { exact: true })).toBeVisible();
   expect(basicDetails.place_of_birth).toBeNull();
   await page.getByPlaceholder("City, district or place").fill("Ambala, Haryana");
+  await page.waitForTimeout(15_100);
   const basicReadsBeforeFocus = observedStudentDetailGets.filter(item => item === "basic-details").length;
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect.poll(() => observedStudentDetailGets.filter(item => item === "basic-details").length).toBeGreaterThan(basicReadsBeforeFocus);
