@@ -579,3 +579,12 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Extended the mocked Student Management browser journey to verify that 2,001 Hindi characters are rejected and 2,000 accepted for a medical note, and that 1,001 Hindi characters are rejected and 1,000 accepted for vision notes. These are frontend interaction checks, not live database persistence tests.
 - Updated the Student Management design standard so the Unicode code-point rule and prohibition on UTF-16-based native caps apply to health fields as well as identity, address, contact and guardian fields.
 - No schema, migration, local database or persistent school data was changed. Exact-tip CI and authenticated browser acceptance against a real API/database remain unverified.
+
+
+## Student text-limit audit across profile workflows — 2026-11-15
+
+- Extended the Unicode input audit beyond the health section. Removed UTF-16-based native maxLength caps from Basic Details and Promotion fields; the existing Basic Details code-point checks remain in place, and promotion now validates destination admission numbers (50 characters) and optional roll numbers (30 characters) before sending the request.
+- Added field-level validation for guardian relationship text (40 characters) on create/edit and guardian revocation reasons (500 characters). Removed the revocation reason's browser-native UTF-16 cap; backend repository validation already enforces the same Unicode character limit.
+- Expanded the mocked browser journey to reject 121 Hindi characters in Place of Birth, 51 in a promotion admission number, 31 in a manual roll number and 501 in a guardian revocation reason before any write is sent. Existing valid workflows continue after correcting the values.
+- Audited the Student Management page and Basic Details, Address, Family, Health and Promotion components for native maxLength attributes. The only remaining native cap is the two-character ISO country code, whose allowed input is ASCII uppercase by design.
+- These changes are frontend validation/input behavior only. No schema or database migration was made and no persistent database was modified. CI for the exact current branch tip and live authenticated API/database browser acceptance remain unverified.
