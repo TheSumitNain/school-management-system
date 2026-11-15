@@ -80,7 +80,7 @@ func TestStudentAddressLocationV34PostgresIntegration(t *testing.T) {
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO student_locations(school_id,parent_id,level,name)
 		VALUES($1,$2,'subdistrict',$3) RETURNING id
-	`, schoolID, districtID, "V34 Block "+suffix).Scan(&subdistrictID); err != nil {
+	`, schoolID, districtID, "V34 Tehsil "+suffix).Scan(&subdistrictID); err != nil {
 		t.Fatalf("create school block: %v", err)
 	}
 	if err := tx.QueryRow(ctx, `
