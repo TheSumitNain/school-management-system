@@ -2,6 +2,10 @@ DROP TRIGGER IF EXISTS trg_guard_v43_enrollment_subject_history ON student_enrol
 DROP FUNCTION IF EXISTS guard_v43_enrollment_subject_history();
 DROP TRIGGER IF EXISTS trg_guard_v43_enrollment_curriculum_history ON student_enrollment_curricula;
 DROP FUNCTION IF EXISTS guard_v43_enrollment_curriculum_history();
+DROP TRIGGER IF EXISTS trg_validate_v43_enrollment_subject_selection ON student_enrollment_subject_selections;
+DROP FUNCTION IF EXISTS validate_v43_enrollment_subject_selection();
+DROP TRIGGER IF EXISTS trg_validate_v43_enrollment_curriculum ON student_enrollment_curricula;
+DROP FUNCTION IF EXISTS validate_v43_enrollment_curriculum();
 DROP TRIGGER IF EXISTS trg_guard_v43_curriculum_subjects ON class_curriculum_subjects;
 DROP TRIGGER IF EXISTS trg_guard_v43_curriculum_groups ON class_curriculum_optional_groups;
 DROP FUNCTION IF EXISTS guard_v43_class_curriculum_child();
