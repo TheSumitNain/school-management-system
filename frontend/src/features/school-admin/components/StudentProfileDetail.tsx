@@ -2,11 +2,13 @@ import { Eye, HeartPulse, MapPin, UserRound, Users } from "lucide-react";
 import { Modal } from "../../../shared/components/Modal";
 import type { StudentAcademicYear, StudentEnrollment, StudentProfile } from "../api";
 import { useSchoolStudentEnrollmentHistoryQuery } from "../queries";
+import { StudentEnrollmentSubjectsPanel } from "./StudentEnrollmentSubjectsPanel";
 
 type Props = {
   student: StudentProfile;
   canReadHistory: boolean;
   canReadFamily: boolean;
+  canManageSubjects: boolean;
   academicYears: StudentAcademicYear[];
   onOpenBasic: () => void;
   onOpenAddress: () => void;
@@ -29,7 +31,7 @@ function enrollmentYear(enrollment: StudentEnrollment, years: StudentAcademicYea
 }
 
 export function StudentProfileDetail({
-  student, canReadHistory, canReadFamily, academicYears,
+  student, canReadHistory, canReadFamily, canManageSubjects, academicYears,
   onOpenBasic, onOpenAddress, onOpenFamily, onOpenHealth, onClose,
 }: Props) {
   const historyQuery = useSchoolStudentEnrollmentHistoryQuery(student.id, canReadHistory);
@@ -97,6 +99,12 @@ export function StudentProfileDetail({
                     <div><dt>Enrolled on</dt><dd>{dateLabel(enrollment.enrolled_at)}</dd></div>
                     <div><dt>Ended on</dt><dd>{dateLabel(enrollment.ended_at)}</dd></div>
                   </dl>
+                  <StudentEnrollmentSubjectsPanel
+                    enrollmentID={enrollment.id}
+                    studentStatus={student.status}
+                    enrollmentStatus={enrollment.status}
+                    canManage={canManageSubjects}
+                  />
                 </article>
               ))}
               </div>}
