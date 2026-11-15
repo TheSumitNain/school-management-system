@@ -135,11 +135,19 @@ func TestAddRecordCountsUnicodeCharactersLikePostgresVarchar(t *testing.T) {
 	}
 }
 
-func TestValidateCSVRejectsLGDSourceCodeReusedAcrossLevels(t *testing.T) {
-	input := strings.Replace(validSnapshot, ",701,Ambala,", ",06,Ambala,", 1)
-	_, err := validateCSV(strings.NewReader(input))
-	if err == nil || !strings.Contains(err.Error(), "reused across state and district entities") {
-		t.Fatalf("validateCSV() error = %v, want cross-level LGD source-code collision", err)
+func TestValidateCSVAllowsSameSourceCodeAcrossEntityNamespaces(t *testing.T) {
+	// V42 source_system values are entity-specific (LGD_STATE, LGD_DISTRICT,
+	// etc.), so identical code strings in different entity classes are distinct.
+	input := strings.ReplaceAll(validSnapshot, ",701,Ambala,", ",06,Ambala,")
+	got, err := validateCSV(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("validateCSV() rejected code reuse across separate entity namespaces: %v", err)
+	}
+	if _, ok := got.states["06"]; !ok {
+		t.Fatal("expected state source code 06 to remain present")
+	}
+	if _, ok := got.districts["06"]; !ok {
+		t.Fatal("expected district source code 06 to remain independently present")
 	}
 }
 
