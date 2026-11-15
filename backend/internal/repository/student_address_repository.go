@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -69,7 +70,7 @@ func normalizeAddressText(value *string, max int) (*string, error) {
 	if normalized == "" {
 		return nil, nil
 	}
-	if len(normalized) > max {
+	if utf8.RuneCountInString(normalized) > max {
 		return nil, ErrInvalidAcademicInput
 	}
 	return &normalized, nil
@@ -136,7 +137,7 @@ func (r *AcademicRepository) CreateStudentLocation(
 	}
 	level = strings.TrimSpace(strings.ToLower(level))
 	name = strings.TrimSpace(name)
-	if name == "" || len(name) > 120 || (parentID != nil && *parentID <= 0) {
+	if name == "" || utf8.RuneCountInString(name) > 120 || (parentID != nil && *parentID <= 0) {
 		return nil, ErrInvalidAcademicInput
 	}
 	if level != "state" && level != "district" && level != "subdistrict" && level != "locality" {
