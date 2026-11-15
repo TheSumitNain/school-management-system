@@ -460,6 +460,21 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	if teacherEnrollments[0].basicRosterOnly {
 		t.Fatal("class-in-charge teacher was incorrectly restricted to the subject-only roster")
 	}
+	var teacherHistoryAuditCount int
+	var teacherHistoryAuditResultCount int
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*)::integer, COALESCE(MAX((metadata->>'result_count')::integer),-1)
+		  FROM audit_events
+		 WHERE school_id=$1 AND actor_principal_id=$2
+		   AND action='school.student.enrollments.read'
+		   AND resource_type='student_enrollment_collection' AND resource_id=$3
+	`, schoolID, teacherPrincipalID, fmt.Sprint(schoolID)).Scan(&teacherHistoryAuditCount, &teacherHistoryAuditResultCount); err != nil {
+		t.Fatalf("read teacher enrollment collection audit: %v", err)
+	}
+	if teacherHistoryAuditCount != 1 || teacherHistoryAuditResultCount != len(teacherEnrollments) {
+		t.Fatalf("teacher enrollment collection audit count=%d result_count=%d; want 1 and %d",
+			teacherHistoryAuditCount, teacherHistoryAuditResultCount, len(teacherEnrollments))
+	}
 	if teacherEnrollments[0].StudentStatus != "active" || teacherEnrollments[0].StudentName != "V17 Promotion Student" ||
 		teacherEnrollments[0].RollNumber == nil || *teacherEnrollments[0].RollNumber != "01" ||
 		teacherEnrollments[0].ClassNameSnapshot != "UKG" ||
