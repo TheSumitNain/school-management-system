@@ -29,6 +29,16 @@ const emptyValues: Values = {
 
 export function StudentBasicDetailsSection({ student, canUpdate, onStudentNameChange, onClose }: Props) {
   const query = useSchoolStudentBasicDetailsQuery(student.id);
+  const basicDetailsSnapshot = JSON.stringify(query.data?.basic_details ? {
+    date_of_birth: query.data.basic_details.date_of_birth,
+    place_of_birth: query.data.basic_details.place_of_birth,
+    gender: query.data.basic_details.gender,
+    nationality: query.data.basic_details.nationality,
+    religion: query.data.basic_details.religion,
+    social_category: query.data.basic_details.social_category,
+    ews_status: query.data.basic_details.ews_status,
+    school_registration_number: query.data.basic_details.school_registration_number,
+  } : null);
   const save = useSaveSchoolStudentBasicDetailsMutation();
   const updateStudent = useUpdateSchoolStudentMutation();
   const [fullName, setFullName] = useState(student.full_name);
@@ -58,7 +68,7 @@ export function StudentBasicDetailsSection({ student, canUpdate, onStudentNameCh
       school_registration_number: item.school_registration_number ?? "",
     });
     setErrors({});
-  }, [query.data?.basic_details]);
+  }, [basicDetailsSnapshot]);
 
   async function saveStudentName() {
     const trimmed = fullName.trim();
