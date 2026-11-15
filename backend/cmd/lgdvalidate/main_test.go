@@ -115,3 +115,22 @@ func TestValidateCSVRejectsUnknownIGODCrosswalkCode(t *testing.T) {
 		t.Fatalf("validateCSV() error = %v, want unknown IGOD crosswalk error", err)
 	}
 }
+
+func TestValidateCSVRejectsDuplicateLocalityRow(t *testing.T) {
+	input := validSnapshot + "06,Haryana,HR,701,Ambala,12001,Ambala,900001,Ambala,village\n"
+	_, err := validateCSV(strings.NewReader(input))
+	if err == nil || !strings.Contains(err.Error(), "duplicate locality row") {
+		t.Fatalf("validateCSV() error = %v, want duplicate locality row error", err)
+	}
+}
+
+func TestAddRecordCountsUnicodeCharactersLikePostgresVarchar(t *testing.T) {
+	target := make(map[string]record)
+	name120 := strings.Repeat("अ", 120)
+	if err := addRecord(target, "01", name120, "", "HR", ""); err != nil {
+		t.Fatalf("addRecord() rejected 120 Unicode characters: %v", err)
+	}
+	if err := addRecord(target, "02", strings.Repeat("अ", 121), "", "HR", ""); err == nil {
+		t.Fatal("addRecord() accepted 121 Unicode characters; want VARCHAR(120) limit")
+	}
+}
