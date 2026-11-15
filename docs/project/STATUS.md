@@ -643,3 +643,11 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - The same code checkpoint passed Backend CI (`43673900042`): all migrations applied to ephemeral PostgreSQL, complete backend tests including PostgreSQL integration, and `go vet`.
 - The Playwright scenarios are API-mocked browser tests. They verify UI validation and interactions but do not prove persistence against the user's local database. Real authenticated admission/profile/Parent Details/address/contact/health/promotion save-reopen-reload acceptance remains outstanding.
 - No persistent `school_management` database was accessed or migrated during this work.
+
+
+## Official LGD acquisition path documented — 2026-11-15
+
+- Verified the Ministry of Panchayati Raj's official LGD portal and its Download Directory workflow. It exposes state-wide/entity-level downloads for districts, sub-districts, villages and development blocks, plus date-scoped modifications; report generation is CAPTCHA-gated and offers PDF/HTML/XLS/ODT output.
+- Documented a human-downloaded, immutable source snapshot workflow with retrieval metadata/checksum, reviewed field crosswalk, parent/code reconciliation, dry-run validation and versioned delta imports. CAPTCHA must not be automated or bypassed.
+- Clarified that LGD Development Blocks and Sub-Districts/Tehsils are distinct levels; a village's block coverage must not be silently flattened into the sub-district parent chain used by the address selector.
+- Official LGD download page: https://lgdirectory.gov.in/downloadDirectory.do. OGD catalog discovery: https://data.gov.in/catalog/local-government-directory-lgd. No LGD data file has been downloaded or imported; actual bulk import remains blocked until a human-procured official snapshot is available and its headers/hierarchy are reviewed.
