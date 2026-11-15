@@ -201,7 +201,9 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
     if (Array.from(primaryPhone.trim()).length > 30) errors.primaryPhone = "Phone number must be 30 characters or fewer.";
     if (Array.from(alternatePhone.trim()).length > 30) errors.alternatePhone = "Phone number must be 30 characters or fewer.";
     const emailInput = event.currentTarget.elements.namedItem("student_email_address") as HTMLInputElement | null;
-    if (emailAddress.trim() && emailInput && !emailInput.checkValidity()) {
+    if (Array.from(emailAddress.trim()).length > 254) {
+      errors.emailAddress = "Email address must be 254 characters or fewer.";
+    } else if (emailAddress.trim() && emailInput && !emailInput.checkValidity()) {
       errors.emailAddress = "Enter a valid email address.";
     }
     setContactErrors(errors);
