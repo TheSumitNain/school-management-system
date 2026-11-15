@@ -1295,6 +1295,20 @@ test("staff can create a guardian contact and link it to a student with relation
       await route.fulfill({ json: { academic_years: [] } });
       return;
     }
+    if (path === "/school/sections") {
+      await route.fulfill({ json: { sections: [] } });
+      return;
+    }
+    if (path === "/school/enrollments" && request.method() === "GET") {
+      await route.fulfill({ json: { enrollments: [{
+        id: 9400, school_id: 10, student_id: 94, student_name: "Inactive Family Student",
+        student_status: "inactive", academic_year_id: 6, class_id: 3, section_id: 61,
+        class_name_snapshot: "Class 1", section_name_snapshot: "A", roll_number: "04",
+        admission_number: "ADM-INACTIVE-094", admission_date: "2025-04-01",
+        status: "active", enrolled_at: "2025-04-01", ended_at: null,
+      }], pagination: { limit: 20, offset: 0, total: 1 } } });
+      return;
+    }
     if (path === "/school/students" && request.method() === "GET") {
       await route.fulfill({ json: { students: [{
         id: 93, school_id: 10, admission_number: "ADM-GUARD-093",
@@ -1445,7 +1459,7 @@ test("staff with guardian management permission cannot change an inactive studen
     if (path === "/auth/me") {
       await route.fulfill({ json: {
         principal_id: 106, principal_type: "staff", school_id: 10, username: "e2e-inactive-family",
-        permissions: ["students.read_sensitive", "students.read_basic", "students.update", "guardians.read", "guardians.manage", "academic_years.read"],
+        permissions: ["students.read_sensitive", "students.read_basic", "students.update", "guardians.read", "guardians.manage", "academic_years.read", "classes.read"],
       } });
       return;
     }
@@ -1524,5 +1538,9 @@ test("staff with guardian management permission cannot change an inactive studen
   await expect(familyDialog.getByRole("button", { name: "Revoke link" })).toHaveCount(0);
   await expect(familyDialog.getByRole("button", { name: "Link guardian" })).toHaveCount(0);
   await expect(familyDialog.getByRole("button", { name: "Create a new guardian contact" })).toHaveCount(0);
+  await familyDialog.getByRole("button", { name: "Close" }).click();
+  await page.getByRole("button", { name: "Enrollments" }).click();
+  await expect(page.getByText("Inactive Family Student", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Promote", exact: true })).toHaveCount(0);
   expect(browserErrors).toEqual([]);
 });
