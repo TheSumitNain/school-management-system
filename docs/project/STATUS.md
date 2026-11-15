@@ -1024,3 +1024,10 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Extended the active Parent Details browser journey to validate the guardian full-name 200-Unicode-character limit, save a changed guardian name through the shared guardian profile endpoint, and verify the new name after closing and reopening Parent Details.
 - Corrected the mocked PATCH response to return the guardian profile shape and update the linked guardian's displayed name, so the reload assertion checks the actual shared-profile read path rather than an unrelated stale fixture field.
 - Test commits: `bc869769b2a22e43548266f4ea6bcfabea449c4a` (full-name edit/validation) and `fc43c199b48a26b08c15a33e86ff28115c8b244c` (renamed name is retained in revoked-history assertions). Frontend CI **PASS** on exact test checkpoint `fc43c199b48a26b08c15a33e86ff28115c8b244c` — [run 43712924033](https://github.com/TheSumitNain/school-management-system/actions/runs/43712924033): production build and all 8 Playwright tests passed, including guardian full-name validation, save, revoke-history display and reload. This is mocked browser coverage, not live local-database acceptance.
+
+
+## Student Management — complete shared guardian profile edit coverage (2026-11-15)
+
+- Extended the same Parent Details browser journey to validate mobile, alternate mobile, occupation, education and workplace limits together, then save changed values for all of those fields plus guardian full name, email and alternate contact.
+- The test now checks the persisted shared-profile response and verifies all edited values after closing and reopening Parent Details. The fixture models the returned guardian profile separately from the student-guardian relationship and keeps both views coherent.
+- Test commit: `7e78fd01bc88277d420b276b3ecb82f42eba1753`. Frontend CI is pending; authenticated live acceptance against the local API/database remains outstanding.
