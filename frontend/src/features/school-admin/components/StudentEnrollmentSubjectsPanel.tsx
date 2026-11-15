@@ -65,15 +65,15 @@ export function StudentEnrollmentSubjectsPanel({
         <span className={"student-status " + (selectedVersionIsAssigned ? "active" : "pending")}>{selectedVersionIsAssigned ? "Assigned" : "Available"}</span>
       </div>
       <p className="student-address-note">Compulsory subjects are included automatically. Optional choices follow the school's selection limits.</p>
-      {data?.available_curriculum && (
+      {data?.curriculum && data.available_curriculum && (
         <label className="student-curriculum-version-select">Curriculum version
           <select value={targetCurriculumID} onChange={event => { const nextID = Number(event.target.value); setTargetCurriculumID(nextID); setSelected(nextID === data.curriculum?.id ? (data.selected_optional_subject_ids ?? []) : []); }}>
-            <option value={data.curriculum?.id ?? 0}>Assigned version {data.curriculum?.version_number}</option>
+            <option value={data.curriculum.id}>Assigned version {data.curriculum.version_number}</option>
             <option value={data.available_curriculum.id}>New version {data.available_curriculum.version_number}</option>
           </select>
         </label>
       )}
-      {movingToNewVersion && <p className="student-address-note">Saving this version replaces the assigned curriculum while preserving previous subject-choice history.</p>}
+      {movingToNewVersion && <p className="student-address-note">{data?.curriculum ? "Saving this version replaces the assigned curriculum while preserving previous subject-choice history." : "Saving this version assigns the curriculum to this enrollment."}</p>}
       <div className="student-subject-list">
         {curriculum.subjects.filter(subject => subject.is_compulsory).map(subject => (
           <div className="student-subject-row" key={subject.id}>
