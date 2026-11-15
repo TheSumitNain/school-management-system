@@ -121,7 +121,7 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
   async function submitPhysical(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canUpdate || physicalQuery.isLoading || physicalQuery.isError) return;
-    const errors: { heightCM?: string; weightKG?: string; measuredOn?: string } = {};
+    const errors: { heightCM?: string; weightKG?: string; measuredOn?: string; visionNotes?: string; physicalNotes?: string } = {};
     const height = heightCM.trim() ? Number(heightCM) : null;
     const weight = weightKG.trim() ? Number(weightKG) : null;
     if (height !== null && (!Number.isFinite(height) || height < 20 || height > 250)) {
