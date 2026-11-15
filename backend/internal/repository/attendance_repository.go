@@ -147,7 +147,8 @@ func (r *AcademicRepository) MarkAttendance(ctx context.Context,actorID,schoolID
 	err=tx.QueryRow(ctx,`SELECT e.section_id
 		FROM student_enrollments e
 		JOIN students st ON st.id=e.student_id AND st.school_id=e.school_id
-		WHERE e.id=$1 AND e.school_id=$2 AND st.status='active'`,enrollmentID,schoolID).Scan(&sectionID)
+		WHERE e.id=$1 AND e.school_id=$2 AND st.status='active'
+		FOR UPDATE OF st`,enrollmentID,schoolID).Scan(&sectionID)
 	if errors.Is(err,pgx.ErrNoRows){return nil,ErrAttendanceNotFound};if err!=nil{return nil,fmt.Errorf("load attendance enrollment: %w",err)}
 	var isPast bool
 	if err=tx.QueryRow(ctx,`SELECT $1::date < CURRENT_DATE`,day.Format("2006-01-02")).Scan(&isPast);err!=nil{return nil,fmt.Errorf("classify attendance date: %w",err)}
