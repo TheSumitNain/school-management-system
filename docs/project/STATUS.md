@@ -2,6 +2,14 @@
 
 ## Active handover — Student Management (2026-11-15)
 
+## Student Management — guardian validation CI correction (2026-11-15)
+
+- Commit `b640caed53a4ad7c2a4670719974d2d99b7a4269` removes browser-level `maxLength` truncation from the guardian form inputs. The component already performs explicit length validation and renders field-level errors; native truncation prevented over-limit values from reaching that validation, causing the two Playwright failures.
+- This is a code correction, **not yet a PASS claim**. Frontend CI must run on this exact commit and its result must be checked.
+- Backend audit-count failure remains unresolved. The repository revoke method visibly inserts one explicit `school.student_guardian_link_revoked` event after a successful update. The integration test's aggregate query counts all link-revocation events for the actor and school, while its privacy assertion scopes to the first link. Inspect all audit-producing database triggers/fixtures and event history before changing the expected aggregate count.
+- Next task: resolve the backend audit count based on verified event semantics, then verify frontend and backend CI on the resulting code commit.
+
+
 **Source of truth:** this section is the first document to reconcile at the start of every new work session. Read this file, the Student Management design, relevant backend/frontend testing docs, and the latest GitHub Actions runs before changing code. Do not restart an already completed audit or treat an earlier green run as proof for a newer commit.
 
 - **Active branch:** `work`. Do not assume `main` contains the latest Student Management work; confirm branch tip before editing.
