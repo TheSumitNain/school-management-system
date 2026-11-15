@@ -119,7 +119,16 @@ export function StudentBasicDetailsSection({ student, canUpdate, onStudentNameCh
       });
       setFeedback({ kind: "success", message: "Basic details saved." });
     } catch (error) {
-      setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Basic details could not be saved." });
+      const message = error instanceof Error ? error.message : "Basic details could not be saved.";
+      if (/conflicts with an existing record/i.test(message)) {
+        setErrors(current => ({
+          ...current,
+          school_registration_number: "This registration number is already in use for another student in this school.",
+        }));
+        setFeedback(null);
+        return;
+      }
+      setFeedback({ kind: "error", message });
     }
   }
 
