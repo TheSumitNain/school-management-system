@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { ApiError } from "../../../lib/api";
 import { DatePicker } from "../../../shared/components/DatePicker";
 import { Modal } from "../../../shared/components/Modal";
 import { StudentFieldLabel } from "./StudentFieldLabel";
@@ -138,11 +139,9 @@ export function StudentBasicDetailsSection({ student, canUpdate, onStudentNameCh
       setFeedback({ kind: "success", message: "Basic details saved." });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Basic details could not be saved.";
-      if (/conflicts with an existing record/i.test(message)) {
-        setErrors(current => ({
-          ...current,
-          school_registration_number: "This registration number is already in use for another student in this school.",
-        }));
+      const registrationError = error instanceof ApiError ? error.fieldErrors.school_registration_number : undefined;
+      if (registrationError) {
+        setErrors(current => ({ ...current, school_registration_number: registrationError }));
         setFeedback(null);
         return;
       }
