@@ -437,3 +437,10 @@ Apply this standard consistently to initial admission, returning enrollment, pro
 - Malformed student contact email now returns a dedicated `email_address` field error from the backend rather than a generic academic validation response. The frontend renders it under Email and preserves the contact form values for correction and retry.
 - PostgreSQL integration and handler tests cover the backend contract. Playwright verifies server rejection, inline field feedback, no persisted mutation on rejection and successful corrected save.
 - Backend CI [run 43797770850](https://github.com/TheSumitNain/school-management-system/actions/runs/43797770850) passed migrations, PostgreSQL integration and `go vet ./...` on checkpoint `52d945d9ea067430aea094464e54580d48f0da33`. Frontend CI [run 43797513589](https://github.com/TheSumitNain/school-management-system/actions/runs/43797513589) passed production build and all 11 Playwright tests on checkpoint `4634742e7fb3c231a0e6ef3b5a1b0697a8ac3e23`. Authenticated local API/database acceptance remains outstanding.
+
+
+## Basic Details and Physical Details boundary regression coverage — 2026-11-16
+
+- The Basic Details PostgreSQL integration test rejects a future date of birth through the repository API.
+- The Physical Details PostgreSQL integration test rejects an invalid weight, a missing measurement date and a future measurement date. Existing checks continue to cover height range/precision and attempts to save an empty measurement.
+- Backend CI [run 43798404680](https://github.com/TheSumitNain/school-management-system/actions/runs/43798404680) passed the complete migration chain, PostgreSQL integration suite and `go vet ./...` on checkpoint `c5f0f4107e653fcd76d7bc5b2afcd2107cbe0f99`. Authenticated local API/database acceptance remains outstanding.
