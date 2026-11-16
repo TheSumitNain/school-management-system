@@ -372,6 +372,23 @@ func TestStudentProfileRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("archived student's enrollment status/end date = %q/%s; want withdrawn and end date >= %s",
 			archivedEnrollmentStatus, archivedEnrollmentEnd.Format("2006-01-02"), admissionDate.Format("2006-01-02"))
 	}
+	// A retry after a successful archive must return the archived record and
+	// must not duplicate the archive audit event or alter enrollment history.
+	retriedArchive, retryErr := repo.ArchiveStudent(ctx, actorID, schoolID, student.ID)
+	if retryErr != nil || retriedArchive == nil || retriedArchive.ID != student.ID || retriedArchive.Status != "archived" {
+		t.Fatalf("retry archived student operation: student=%+v err=%v", retriedArchive, retryErr)
+	}
+	var archiveAuditCount int
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*) FROM audit_events
+		 WHERE school_id=$1 AND actor_principal_id=$2
+		   AND action='school.student.archived' AND resource_id=$3
+	`, schoolID, actorID, fmt.Sprint(student.ID)).Scan(&archiveAuditCount); err != nil {
+		t.Fatalf("inspect student archive audit after retry: %v", err)
+	}
+	if archiveAuditCount != 1 {
+		t.Fatalf("student archive audit count after retry = %d, want exactly one", archiveAuditCount)
+	}
 	var preservedEnrollmentCount int
 	if err := tx.QueryRow(ctx, `
 		SELECT COUNT(*) FROM student_enrollments WHERE id=$1 AND student_id=$2
