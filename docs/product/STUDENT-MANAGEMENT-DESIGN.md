@@ -396,3 +396,9 @@ Apply this standard consistently to initial admission, returning enrollment, pro
 - Backend repository integration tests reject malformed guardian email values, including display-name and comma-separated multiple-address inputs, as well as over-limit Unicode values.
 - Parent Details Playwright coverage applies the same malformed email cases to both shared guardian profile edits and new guardian creation. It verifies inline errors and that invalid submissions do not change the mocked persisted guardian profile or create a guardian.
 - Checkpoint `da85edc9f020c7db2d0b474c4855e3be7249bf80`: Frontend CI [run 43724412256](https://github.com/TheSumitNain/school-management-system/actions/runs/43724412256) passed production build and all 11 Playwright tests; Backend CI [run 43724412200](https://github.com/TheSumitNain/school-management-system/actions/runs/43724412200) passed migrations, PostgreSQL integration tests and `go vet ./...`. Authenticated local API/database acceptance remains outstanding.
+
+
+## Promotion and attendance history integrity — 2026-11-16
+
+- A promotion may not close its source enrollment before attendance already recorded for that enrollment. The backend rejects such a retroactive promotion; the source enrollment and destination-year history remain unchanged.
+- PostgreSQL integration coverage verifies the rejection using a destination academic-year date that otherwise passes normal year-boundary validation. Backend CI [run 43794753873](https://github.com/TheSumitNain/school-management-system/actions/runs/43794753873) passed migrations, PostgreSQL integration and `go vet ./...` on checkpoint `60674df6b419a5504d4d11813f7354ecbe3058ae`.
