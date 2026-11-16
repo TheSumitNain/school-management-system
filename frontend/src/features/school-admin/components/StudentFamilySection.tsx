@@ -1,10 +1,17 @@
 import { useDeferredValue, useEffect, useState, type FormEvent } from "react";
+
+function guardianEmailFieldError(error: unknown): string | undefined {
+  if (!error || typeof error !== "object" || !("fieldErrors" in error)) return undefined;
+  const fieldErrors = (error as { fieldErrors?: unknown }).fieldErrors;
+  if (!fieldErrors || typeof fieldErrors !== "object") return undefined;
+  const message = (fieldErrors as Record<string, unknown>).email_address;
+  return typeof message === "string" ? message : undefined;
+}
 import { Modal } from "../../../shared/components/Modal";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { Select } from "../../../shared/components/Select";
 import { StudentFieldLabel } from "./StudentFieldLabel";
 import type { StudentProfile } from "../api";
-import { ApiError } from "../../../lib/api";
 import {
   useCreateSchoolGuardianMutation,
   useUpdateSchoolGuardianMutation,
@@ -175,8 +182,9 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
       setShowCreateGuardian(false);
       setFeedback({ kind: "success", message: "Guardian contact created. Select the relationship details and link it to this student." });
     } catch (error) {
-      if (error instanceof ApiError && error.fieldErrors.email_address) {
-        setNewGuardianEmailError(error.fieldErrors.email_address);
+      const emailFieldError = guardianEmailFieldError(error);
+      if (emailFieldError) {
+        setNewGuardianEmailError(emailFieldError);
         setFeedback(null);
       } else {
         setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Guardian contact could not be saved." });
@@ -250,8 +258,9 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
       setFeedback({ kind: "success", message: "Guardian profile updated. Changes apply to every student linked to this guardian." });
     } catch (error) {
       setConfirmSharedGuardianSave(false);
-      if (error instanceof ApiError && error.fieldErrors.email_address) {
-        setEditGuardianEmailError(error.fieldErrors.email_address);
+      const emailFieldError = guardianEmailFieldError(error);
+      if (emailFieldError) {
+        setEditGuardianEmailError(emailFieldError);
         setEditGuardianError("");
       } else {
         setEditGuardianError(error instanceof Error ? error.message : "Guardian profile could not be updated.");
