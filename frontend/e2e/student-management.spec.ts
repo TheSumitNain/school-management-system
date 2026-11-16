@@ -1082,6 +1082,17 @@ test("standalone enrollment validates admission and roll number before saving", 
     if (path === "/school/enrollments" && method === "POST") {
       const input = request.postDataJSON() as Record<string, unknown>;
       requests.push(input);
+      if (requests.length === 1) {
+        await route.fulfill({
+          status: 400,
+          json: {
+            status: "error",
+            message: "Admission date must not be later than enrollment start date.",
+            field_errors: { admission_date: "Admission date cannot be later than the enrollment start date." },
+          },
+        });
+        return;
+      }
       await route.fulfill({ json: { enrollment: { id: 501, school_id: 10, student_id: student.id, ...input, status: "active" } } });
       return;
     }
@@ -1127,6 +1138,15 @@ test("standalone enrollment validates admission and roll number before saving", 
     student_id: 44, academic_year_id: 7, section_id: 12,
     admission_number: "ADM-2027-044", roll_number: null,
   });
+  await expect(page.getByText("Admission date cannot be later than the enrollment start date.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Unable to create the enrollment.")).toHaveCount(0);
+
+  await saveButton.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Enrollment submit button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect.poll(() => requests.length).toBe(2);
   await expect(page.getByText("Student enrolled successfully.")).toBeVisible();
 });
  
