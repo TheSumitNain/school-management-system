@@ -399,6 +399,17 @@ func (r *AcademicRepository) PromoteStudentEnrollment(ctx context.Context, actor
 	}
 	if !yearActive { return nil, ErrInvalidAcademicInput }
 	if err = validateEnrollmentDateRange(admissionDate, enrolledAt, yearStartsOn, yearEndsOn); err != nil { return nil, err }
+	// A promotion closes the source enrollment on enrolledAt. Do not allow a
+	// retroactive end date that would place already-recorded attendance outside
+	// the enrollment period enforced for every new attendance write.
+	var hasAttendanceAfterPromotionDate bool
+	if err = tx.QueryRow(ctx, `SELECT EXISTS(
+		SELECT 1 FROM attendance_records
+		 WHERE school_id=$1 AND enrollment_id=$2 AND attendance_date>$3
+	)`, schoolID, sourceEnrollmentID, enrolledAt).Scan(&hasAttendanceAfterPromotionDate); err != nil {
+		return nil, fmt.Errorf("check attendance before student promotion: %w", err)
+	}
+	if hasAttendanceAfterPromotionDate { return nil, ErrInvalidAcademicInput }
 	var classID int64
 	if err = tx.QueryRow(ctx, `SELECT class_id FROM sections WHERE id=$1 AND school_id=$2 AND academic_year_id=$3 AND is_active=TRUE FOR UPDATE`, destinationSectionID, schoolID, destinationYearID).Scan(&classID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) { return nil, ErrAcademicNotFound }
