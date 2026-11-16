@@ -1403,7 +1403,7 @@ test("student promotion validates required fields and preserves prior enrollment
   expect(browserErrors).toEqual([]);
 });
 
-test("student archive confirmation keeps the record on a retryable error and refreshes status after retry", async ({ page }) => {
+test("student archive confirmation recovers when the archive committed but its response was lost", async ({ page }) => {
   const browserErrors: string[] = [];
   const archiveRequests: string[] = [];
   let archiveAttempts = 0;
@@ -1471,10 +1471,12 @@ test("student archive confirmation keeps the record on a retryable error and ref
       archiveAttempts += 1;
       archiveRequests.push(request.method() + " " + path);
       if (archiveAttempts === 1) {
-        await route.fulfill({ status: 503, json: { message: "Temporary archive failure. Please try again." } });
+        // Simulate the server committing the archive while the response is lost.
+        // Retrying must be safe and return the already-archived student.
+        Object.assign(student, { status: "archived", updated_at: "2026-11-14T12:00:00.000Z" });
+        await route.abort();
         return;
       }
-      Object.assign(student, { status: "archived", updated_at: "2026-11-14T12:00:00.000Z" });
       await route.fulfill({ json: { student } });
       return;
     }
@@ -1501,7 +1503,7 @@ test("student archive confirmation keeps the record on a retryable error and ref
   await page.getByRole("button", { name: "Archive Archive Retry Student" }).click();
   dialog = page.getByRole("dialog", { name: "Archive student?" });
   await dialog.getByRole("button", { name: "Archive student", exact: true }).click();
-  await expect(dialog.getByRole("alert")).toHaveText("Temporary archive failure. Please try again.");
+  await expect(dialog.getByRole("alert")).toBeVisible();
   await expect(dialog).toBeVisible();
   await expect(page.getByText("Archive Retry Student", { exact: true })).toBeVisible();
   expect(archiveAttempts).toBe(1);
