@@ -181,6 +181,12 @@ func TestStudentBasicDetailsV37PostgresIntegration(t *testing.T) {
 		t.Fatalf("date of birth older than 130 years error = %v, want invalid input", saveErr)
 	}
 
+	invalidBirthDate := time.Now().UTC().AddDate(0, 0, 1)
+	if _, saveErr := repository.SaveStudentBasicDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
+		&invalidBirthDate, nil, nil, nil, nil, nil, nil, nil); !errors.Is(saveErr, ErrInvalidAcademicInput) {
+		t.Fatalf("out-of-range birth date error = %v, want invalid input", saveErr)
+	}
+
 	for _, field := range []struct {
 		name string
 		place, nationality, religion, registration *string
