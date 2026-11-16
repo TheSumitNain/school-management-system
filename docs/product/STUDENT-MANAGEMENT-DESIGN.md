@@ -409,3 +409,10 @@ Apply this standard consistently to initial admission, returning enrollment, pro
 - The promotion API rejects a promotion date earlier than attendance already recorded for the source enrollment. It returns a field-specific `admission_date` error rather than a generic academic-input message.
 - The promotion dialog renders the server error beneath the date picker, retains all other entered values, clears the error when the date is changed and permits retry.
 - Backend PostgreSQL integration and frontend Playwright coverage verify rejection without partial history changes, inline error display and successful retry. Backend CI [run 43795365553](https://github.com/TheSumitNain/school-management-system/actions/runs/43795365553) and Frontend CI [run 43795365580](https://github.com/TheSumitNain/school-management-system/actions/runs/43795365580) both passed on checkpoint `ec6a9d4a9d4204674feb3c24d03c95862a453e46`. Authenticated local API/database acceptance remains outstanding.
+
+
+## Guardian email server-side validation — 2026-11-16
+
+- Invalid guardian email input has a dedicated repository error classification, separate from unrelated guardian validation errors. The API maps it to `field_errors.email_address`.
+- The create and shared-profile edit forms display server-side email errors inline without clearing the other entered guardian details. The user can correct the email and retry.
+- Backend integration coverage rejects malformed email on both guardian creation and update; handler coverage checks the field-error contract; frontend Playwright covers server rejection, inline feedback and successful retry. Backend CI [run 43796041256](https://github.com/TheSumitNain/school-management-system/actions/runs/43796041256) and Frontend CI [run 43796041255](https://github.com/TheSumitNain/school-management-system/actions/runs/43796041255) both passed on checkpoint `947f6f2c37ab8c5d2edfe3ac50530010cbaf446e`. Authenticated local API/database acceptance remains outstanding.
