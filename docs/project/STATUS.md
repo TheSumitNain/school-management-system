@@ -1153,3 +1153,11 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Extended Physical Details integration coverage for invalid weight, missing measurement date and future measurement date, in addition to the existing height/precision and empty-measurement checks.
 - Backend CI **PASS** on exact checkpoint `c5f0f4107e653fcd76d7bc5b2afcd2107cbe0f99` — [run 43798404680](https://github.com/TheSumitNain/school-management-system/actions/runs/43798404680): full migration chain, PostgreSQL integration tests and `go vet ./...` passed.
 - These are backend CI checks. Authenticated acceptance against the user's local API/database remains outstanding.
+
+
+## Student Management — school registration number server-side field validation (2026-11-16)
+
+- Duplicate school registration numbers now have a dedicated `ErrStudentRegistrationNumberConflict` classification based on the named PostgreSQL unique index. The API returns a specific `field_errors.school_registration_number` response instead of a generic academic conflict.
+- Basic Details maps the API field error directly beneath School registration number using the shared `ApiError` contract. The form preserves other entered values and supports correction/retry.
+- PostgreSQL integration coverage verifies duplicate registration rejection through the repository API; handler tests verify the field-error response; Playwright exercises the actual server field-error payload and confirms no duplicate value is persisted.
+- Verified checkpoint `63c8d98fd70615a62d139028a5ad0060171496c5`: Backend CI **PASS** — [run 43799163105](https://github.com/TheSumitNain/school-management-system/actions/runs/43799163105), full migrations, PostgreSQL integration tests and `go vet ./...`; Frontend CI **PASS** — [run 43799163073](https://github.com/TheSumitNain/school-management-system/actions/runs/43799163073), production build and all Student Management Playwright tests. Authenticated local API/database acceptance remains outstanding.
