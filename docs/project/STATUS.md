@@ -1168,3 +1168,10 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - No timezone behavior has been changed. The product has not yet defined whether date-only validation is school-timezone based, user-local, or governed by an explicit application default; hard-coding a timezone would be speculative.
 - Before implementation, define the canonical timezone policy for school date-only fields and apply it consistently to frontend bounds, API parsing, repository validation and tests. Keep this as an acceptance risk until that decision is made.
 - Authenticated local API/database and browser acceptance remains outstanding; passing CI does not replace that verification.
+
+## Student Management — admission and enrollment date ordering (2026-11-16)
+
+- Repository validation now rejects an admission date later than the enrollment start date, while allowing the same date or an earlier admission date within the selected academic year.
+- Migration V46 adds a NOT VALID database CHECK constraint so new and updated enrollment rows enforce the same rule without blocking deployment on legacy rows that may need separate review.
+- Added unit coverage for same-day, earlier-admission, later-admission and out-of-year cases, plus PostgreSQL integration coverage for the named database constraint.
+- CI verification is pending for the new code and migration. Authenticated local API/database/browser acceptance remains outstanding.
