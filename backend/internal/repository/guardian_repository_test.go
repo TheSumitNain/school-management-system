@@ -69,6 +69,9 @@ func TestNormalizeGuardianEmail(t *testing.T) {
 				t.Fatalf("normalizeGuardianEmail() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if tt.wantErr {
+				if !errors.Is(err, ErrInvalidGuardianEmail) {
+					t.Fatalf("normalizeGuardianEmail() error = %v, want ErrInvalidGuardianEmail", err)
+				}
 				return
 			}
 			if tt.wantNil {
