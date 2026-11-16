@@ -41,6 +41,12 @@ func TestStudentEnrollmentAdmissionV31SchemaPostgresIntegration(t *testing.T) {
 				   AND conname = 'student_enrollments_admission_identity_pair'
 				   AND contype = 'c'
 			)
+			AND EXISTS (
+				SELECT 1 FROM pg_constraint
+				 WHERE conrelid = 'public.student_enrollments'::regclass
+				   AND conname = 'student_enrollments_admission_not_after_enrollment'
+				   AND contype = 'c' AND NOT convalidated
+			)
 	`).Scan(&ready)
 	if err != nil {
 		t.Fatalf("inspect V31 enrollment admission schema: %v", err)
@@ -162,6 +168,13 @@ func TestStudentEnrollmentAdmissionV31SchemaPostgresIntegration(t *testing.T) {
 	duplicate := "adm-v31-" + suffix
 	assertConstraintViolation("same-year normalized duplicate", "23505", func() error {
 		return createEnrollment(studentTwo, yearOne, classID, sectionOne, &duplicate, &admissionDate)
+	})
+
+	// An admission identity cannot be dated after the enrollment starts.
+	// Keep the invalid write isolated so the remaining legacy-pair checks run.
+	admissionAfterEnrollment := "2026-04-02"
+	assertConstraintViolation("admission date after enrollment date", "23514", func() error {
+		return createEnrollment(studentTwo, yearOne, classID, sectionOne, &admissionNumber, &admissionAfterEnrollment)
 	})
 
 	// Historical rows without proven year-specific admission identity remain
