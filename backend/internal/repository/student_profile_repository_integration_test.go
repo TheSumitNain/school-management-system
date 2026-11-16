@@ -412,6 +412,44 @@ func TestStudentProfileRepositoryPostgresIntegration(t *testing.T) {
 	`, "Student Profile Isolation "+suffix, "SPI-"+suffix).Scan(&otherSchoolID); err != nil {
 		t.Fatalf("create isolation school: %v", err)
 	}
+	// Seed a complete foreign-school enrollment so the history API is tested
+	// against real data, not only an empty foreign-school scope.
+	var foreignStudentID, foreignYearID, foreignClassID, foreignSectionID int64
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO students(school_id,admission_number,full_name)
+		VALUES($1,$2,'Foreign Enrollment Student') RETURNING id
+	`, otherSchoolID, "FOREIGN-ENROLL-"+suffix).Scan(&foreignStudentID); err != nil {
+		t.Fatalf("create foreign enrollment student: %v", err)
+	}
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO academic_years(school_id,name,starts_on,ends_on,status,is_current)
+		VALUES($1,$2,DATE '2026-04-01',DATE '2027-03-31','active',FALSE) RETURNING id
+	`, otherSchoolID, "Foreign Enrollment Year "+suffix).Scan(&foreignYearID); err != nil {
+		t.Fatalf("create foreign enrollment year: %v", err)
+	}
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO classes(school_id,name) VALUES($1,$2) RETURNING id
+	`, otherSchoolID, "Foreign Enrollment Class "+suffix).Scan(&foreignClassID); err != nil {
+		t.Fatalf("create foreign enrollment class: %v", err)
+	}
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO sections(school_id,academic_year_id,class_id,name)
+		VALUES($1,$2,$3,'A') RETURNING id
+	`, otherSchoolID, foreignYearID, foreignClassID).Scan(&foreignSectionID); err != nil {
+		t.Fatalf("create foreign enrollment section: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO student_enrollments(school_id,student_id,academic_year_id,class_id,section_id,admission_number,admission_date,enrolled_at)
+		VALUES($1,$2,$3,$4,$5,$6,DATE '2026-04-01',DATE '2026-04-01')
+	`, otherSchoolID, foreignStudentID, foreignYearID, foreignClassID, foreignSectionID, "FOREIGN-ENROLL-"+suffix); err != nil {
+		t.Fatalf("create foreign enrollment record: %v", err)
+	}
+	if items, err := repo.ListStudentEnrollments(ctx, actorID, schoolID, 0, foreignStudentID); !errors.Is(err, ErrAcademicNotFound) || len(items) != 0 {
+		t.Fatalf("foreign student enrollment history error = %v items=%d; want not found and no data", err, len(items))
+	}
+	if items, err := repo.ListStudentEnrollments(ctx, actorID, otherSchoolID, 0, 0); !errors.Is(err, ErrAcademicAccessDenied) || len(items) != 0 {
+		t.Fatalf("cross-school enrollment directory error = %v items=%d; want access denied and no data", err, len(items))
+	}
 	if _, err := repo.GetStudent(ctx, actorID, otherSchoolID, student.ID); !errors.Is(err, ErrAcademicAccessDenied) {
 		t.Fatalf("cross-school student lookup error = %v, want access denied", err)
 	}
