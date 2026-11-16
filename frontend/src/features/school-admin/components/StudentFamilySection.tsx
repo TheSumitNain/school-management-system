@@ -4,6 +4,7 @@ import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { Select } from "../../../shared/components/Select";
 import { StudentFieldLabel } from "./StudentFieldLabel";
 import type { StudentProfile } from "../api";
+import { ApiError } from "../../../lib/api";
 import {
   useCreateSchoolGuardianMutation,
   useUpdateSchoolGuardianMutation,
@@ -174,7 +175,12 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
       setShowCreateGuardian(false);
       setFeedback({ kind: "success", message: "Guardian contact created. Select the relationship details and link it to this student." });
     } catch (error) {
-      setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Guardian contact could not be saved." });
+      if (error instanceof ApiError && error.fieldErrors.email_address) {
+        setNewGuardianEmailError(error.fieldErrors.email_address);
+        setFeedback(null);
+      } else {
+        setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Guardian contact could not be saved." });
+      }
     }
   }
 
@@ -244,7 +250,12 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
       setFeedback({ kind: "success", message: "Guardian profile updated. Changes apply to every student linked to this guardian." });
     } catch (error) {
       setConfirmSharedGuardianSave(false);
-      setEditGuardianError(error instanceof Error ? error.message : "Guardian profile could not be updated.");
+      if (error instanceof ApiError && error.fieldErrors.email_address) {
+        setEditGuardianEmailError(error.fieldErrors.email_address);
+        setEditGuardianError("");
+      } else {
+        setEditGuardianError(error instanceof Error ? error.message : "Guardian profile could not be updated.");
+      }
     }
   }
 
