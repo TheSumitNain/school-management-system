@@ -104,6 +104,14 @@ func TestStudentMedicalPhysicalDetailsV36PostgresIntegration(t *testing.T) {
 		*updatedMedical.History[0].Allergies != allergies {
 		t.Fatalf("medical profile update must preserve previous version: %+v", updatedMedical)
 	}
+	unchangedMedical, err := repo.SaveStudentMedicalDetails(ctx, actorPrincipalID, schoolID, studentID,
+		&bloodGroup, &updatedAllergies, &conditions, &medications, &emergencyNotes)
+	if err != nil {
+		t.Fatalf("save unchanged medical profile: %v", err)
+	}
+	if unchangedMedical.VersionNumber != 2 || len(unchangedMedical.History) != 1 {
+		t.Fatalf("saving unchanged medical details must not create a new version: %+v", unchangedMedical)
+	}
 	loadedMedical, err = repo.GetStudentMedicalDetails(ctx, actorPrincipalID, schoolID, studentID)
 	if err != nil || loadedMedical.VersionNumber != 2 || len(loadedMedical.History) != 1 {
 		t.Fatalf("read versioned medical profile: item=%+v err=%v", loadedMedical, err)
