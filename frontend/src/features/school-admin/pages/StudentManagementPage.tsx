@@ -199,7 +199,13 @@ export function StudentManagementPage({ permissions }: Props) {
       setFeedback({ kind: "success", message: "Student enrolled successfully." });
     } catch (error) {
       if (error instanceof ApiError && Object.keys(error.fieldErrors).length > 0) {
-        setFieldErrors(current => ({ ...current, ...error.fieldErrors }));
+        const apiFieldErrors = { ...error.fieldErrors };
+        // The API calls this date admission_date; this form exposes one enrolled_at control.
+        if (apiFieldErrors.admission_date) {
+          apiFieldErrors.enrolled_at = apiFieldErrors.admission_date;
+          delete apiFieldErrors.admission_date;
+        }
+        setFieldErrors(current => ({ ...current, ...apiFieldErrors }));
         setFeedback(null);
       } else {
         setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to create the enrollment." });
