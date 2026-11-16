@@ -138,6 +138,51 @@ func TestStudentProfileRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("create combined admission with maximum Unicode field lengths: result=%+v err=%v", admission, err)
 	}
 
+	// Promotion must not shorten an enrollment past attendance already recorded
+	// for it. The destination year deliberately overlaps the source year so
+	// the date is otherwise valid and this specifically exercises the history
+	// boundary rather than ordinary academic-year date validation.
+	attendanceDate := time.Now().UTC().Truncate(24 * time.Hour)
+	if _, err := repo.MarkAttendance(ctx, actorID, schoolID, admission.Enrollment.ID, attendanceDate, "present", nil); err != nil {
+		t.Fatalf("mark attendance before promotion boundary test: %v", err)
+	}
+	destinationStartsOn := attendanceDate.AddDate(0, 0, -1)
+	destinationEndsOn := destinationStartsOn.AddDate(1, 0, -1)
+	var destinationYearID, destinationSectionID int64
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO academic_years(school_id,name,starts_on,ends_on,status,is_current)
+		VALUES($1,$2,$3,$4,'active',FALSE) RETURNING id
+	`, schoolID, "Promotion Attendance Boundary "+suffix, destinationStartsOn, destinationEndsOn).Scan(&destinationYearID); err != nil {
+		t.Fatalf("create overlapping destination academic year: %v", err)
+	}
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO sections(school_id,academic_year_id,class_id,name)
+		VALUES($1,$2,$3,$4) RETURNING id
+	`, schoolID, destinationYearID, admissionClassID, "Promotion "+suffix).Scan(&destinationSectionID); err != nil {
+		t.Fatalf("create overlapping destination section: %v", err)
+	}
+	if _, err := repo.PromoteStudentEnrollment(ctx, actorID, schoolID, admission.Enrollment.ID,
+		destinationYearID, destinationSectionID, nil, "PROMOTED-"+suffix,
+		destinationStartsOn, destinationStartsOn); !errors.Is(err, ErrInvalidAcademicInput) {
+		t.Fatalf("promote before recorded attendance error = %v, want invalid input", err)
+	}
+	var sourceEnrollmentStatus string
+	var destinationEnrollmentCount int
+	if err := tx.QueryRow(ctx, `
+		SELECT status FROM student_enrollments WHERE id=$1
+	`, admission.Enrollment.ID).Scan(&sourceEnrollmentStatus); err != nil {
+		t.Fatalf("read source enrollment after rejected promotion: %v", err)
+	}
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*) FROM student_enrollments WHERE student_id=$1 AND academic_year_id=$2
+	`, admission.Student.ID, destinationYearID).Scan(&destinationEnrollmentCount); err != nil {
+		t.Fatalf("count destination enrollments after rejected promotion: %v", err)
+	}
+	if sourceEnrollmentStatus != "active" || destinationEnrollmentCount != 0 {
+		t.Fatalf("rejected promotion changed history: source status=%q destination enrollments=%d",
+			sourceEnrollmentStatus, destinationEnrollmentCount)
+	}
+
 	// A school may admit a student into a future active academic year before
 	// that year becomes current. The directory and profile must still resolve
 	// the year-scoped admission identity instead of showing an empty number.
