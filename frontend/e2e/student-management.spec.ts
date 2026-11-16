@@ -1183,6 +1183,7 @@ test("student directory remains view-only when update and archive permissions ar
 
 test("student promotion validates required fields and preserves prior enrollment history", async ({ page }) => {
   const promotionRequests: Record<string, unknown>[] = [];
+  let rejectPromotionOnce = true;
   const enrollments: Record<string, unknown>[] = [{
     id: 100, school_id: 10, student_id: 91, student_name: "Promotion Test Student", student_status: "active",
     academic_year_id: 6, section_id: 61, class_name_snapshot: "Class 1", section_name_snapshot: "A",
@@ -1243,6 +1244,18 @@ test("student promotion validates required fields and preserves prior enrollment
     if (path === "/school/enrollments/100/promote" && request.method() === "POST") {
       const input = request.postDataJSON() as Record<string, unknown>;
       promotionRequests.push(input);
+      if (rejectPromotionOnce) {
+        rejectPromotionOnce = false;
+        await route.fulfill({
+          status: 400,
+          json: {
+            status: "error",
+            message: "Promotion date cannot be earlier than attendance already recorded for this enrollment",
+            field_errors: { admission_date: "Choose a promotion date on or after the latest attendance recorded for this enrollment." },
+          },
+        });
+        return;
+      }
       Object.assign(enrollments[0], { status: "promoted", ended_at: input.admission_date });
       enrollments.push({
         id: 101, school_id: 10, student_id: 91, student_status: "active", academic_year_id: 7, section_id: 72,
@@ -1299,12 +1312,24 @@ test("student promotion validates required fields and preserves prior enrollment
     if (!form) throw new Error("Promotion submit button is not associated with its form.");
     form.requestSubmit(button as HTMLButtonElement);
   });
+  await expect(dialog.getByText("Choose a promotion date on or after the latest attendance recorded for this enrollment.")).toBeVisible();
   await expect.poll(() => promotionRequests.length).toBe(1);
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "Admission and promotion date" }).click();
+  await dialog.getByRole("button", { name: /17 November 2026/ }).click();
+  await expect(dialog.getByText("Choose a promotion date on or after the latest attendance recorded for this enrollment.")).toHaveCount(0);
+  await promoteButton.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Promotion submit button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect.poll(() => promotionRequests.length).toBe(2);
   expect(promotionRequests[0]).toMatchObject({
     academic_year_id: 7, section_id: 72, admission_number: "ADM-2026-091", roll_number: null,
   });
   expect(promotionRequests[0].admission_date).toBeTruthy();
-  expect(promotionRequests[0].enrolled_at).toBe(promotionRequests[0].admission_date);
+  expect(promotionRequests[1].admission_date).toBe("2026-11-17");
+  expect(promotionRequests[1].enrolled_at).toBe(promotionRequests[1].admission_date);
   await expect(page.getByText("Student promoted successfully. Previous academic history has been preserved.")).toBeVisible();
   await expect(page.getByText("ADM-OLD-091")).toBeVisible();
   await expect(page.getByText("ADM-2026-091")).toBeVisible();
