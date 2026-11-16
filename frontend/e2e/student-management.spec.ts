@@ -687,6 +687,19 @@ test("student admission, profile navigation and parent details render without br
     expect(guardianLink.mobile_number).toBe("9876543210");
     expect(guardianLink.email_address).toBe("ramesh@example.test");
   }
+  await page.getByPlaceholder("guardian@example.com").fill("server-invalid@example.test");
+  await saveGuardianDetails.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Guardian details submit button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect(page.getByRole("dialog", { name: "Update shared guardian profile?" })).toBeVisible();
+  await page.getByRole("button", { name: "Update all linked records" }).click();
+  await expect(page.getByText("Enter a valid email address using one address only.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Update shared guardian profile?" })).toHaveCount(0);
+  expect(guardianUpdates).toHaveLength(0);
+  expect(guardianLink.email_address).toBe("ramesh@example.test");
+
   await page.getByPlaceholder("guardian@example.com").fill("ramesh.updated@example.test");
   await page.getByPlaceholder("Mobile number").fill("अ".repeat(31));
   await page.getByPlaceholder("Optional alternate number").fill("अ".repeat(31));
@@ -1479,6 +1492,7 @@ test("staff can create a guardian contact and link it to a student with relation
   const guardianUpdates: Record<string, unknown>[] = [];
   const guardianLinks: Record<string, unknown>[] = [];
   let failGuardianLinkConflict = false;
+  let rejectSharedGuardianEmailOnce = true;
   let rejectGuardianEmailOnce = true;
   const guardian = {
     id: 45, school_id: 10, full_name: "Nisha Verma", mobile_number: "9876501234",
@@ -1576,6 +1590,17 @@ test("staff can create a guardian contact and link it to a student with relation
     }
     if (path === "/school/guardians/45" && request.method() === "PATCH") {
       const input = request.postDataJSON() as Record<string, unknown>;
+      if (rejectSharedGuardianEmailOnce && input.email_address === "server-invalid@example.test") {
+        rejectSharedGuardianEmailOnce = false;
+        await route.fulfill({
+          status: 400,
+          json: {
+            message: "Enter a valid guardian email address",
+            field_errors: { email_address: "Enter a valid email address using one address only." },
+          },
+        });
+        return;
+      }
       guardianUpdates.push(input);
       Object.assign(guardian, input);
       for (const link of guardianLinks) {
