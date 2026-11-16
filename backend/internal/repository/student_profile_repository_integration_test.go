@@ -163,8 +163,8 @@ func TestStudentProfileRepositoryPostgresIntegration(t *testing.T) {
 	}
 	if _, err := repo.PromoteStudentEnrollment(ctx, actorID, schoolID, admission.Enrollment.ID,
 		destinationYearID, destinationSectionID, nil, "PROMOTED-"+suffix,
-		destinationStartsOn, destinationStartsOn); !errors.Is(err, ErrInvalidAcademicInput) {
-		t.Fatalf("promote before recorded attendance error = %v, want invalid input", err)
+		destinationStartsOn, destinationStartsOn); !errors.Is(err, ErrPromotionBeforeAttendance) {
+		t.Fatalf("promote before recorded attendance error = %v, want promotion-before-attendance", err)
 	}
 	var sourceEnrollmentStatus string
 	var destinationEnrollmentCount int
