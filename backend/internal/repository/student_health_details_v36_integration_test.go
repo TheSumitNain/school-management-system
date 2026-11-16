@@ -138,6 +138,14 @@ func TestStudentMedicalPhysicalDetailsV36PostgresIntegration(t *testing.T) {
 	if err != nil || loadedPhysical.ID != physical.ID || loadedPhysical.HeightCM == nil || *loadedPhysical.HeightCM != height || len(loadedPhysical.History) != 1 {
 		t.Fatalf("read physical profile: item=%+v err=%v", loadedPhysical, err)
 	}
+	unchangedPhysical, err := repo.SaveStudentPhysicalDetails(ctx, actorPrincipalID, schoolID, studentID,
+		&height, &weight, &measuredOn, &vision, &physicalNotes)
+	if err != nil {
+		t.Fatalf("retry unchanged physical measurement: %v", err)
+	}
+	if unchangedPhysical.ID != physical.ID || len(unchangedPhysical.History) != 1 {
+		t.Fatalf("repeating the latest physical PUT must not create a duplicate measurement: %+v", unchangedPhysical)
+	}
 	nextHeight := 133.25
 	nextMeasuredOn := today
 	nextVision := "V36 next vision measurement " + suffix
