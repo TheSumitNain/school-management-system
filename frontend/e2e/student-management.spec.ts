@@ -1479,6 +1479,7 @@ test("staff can create a guardian contact and link it to a student with relation
   const guardianUpdates: Record<string, unknown>[] = [];
   const guardianLinks: Record<string, unknown>[] = [];
   let failGuardianLinkConflict = false;
+  let rejectGuardianEmailOnce = true;
   const guardian = {
     id: 45, school_id: 10, full_name: "Nisha Verma", mobile_number: "9876501234",
     email_address: "nisha.verma@example.test", alternate_mobile_number: null,
@@ -1558,6 +1559,17 @@ test("staff can create a guardian contact and link it to a student with relation
     }
     if (path === "/school/guardians" && request.method() === "POST") {
       const input = request.postDataJSON() as Record<string, unknown>;
+      if (rejectGuardianEmailOnce && input.email_address === "server-invalid@example.test") {
+        rejectGuardianEmailOnce = false;
+        await route.fulfill({
+          status: 400,
+          json: {
+            message: "Enter a valid guardian email address",
+            field_errors: { email_address: "Enter a valid email address using one address only." },
+          },
+        });
+        return;
+      }
       guardianCreates.push(input);
       await route.fulfill({ json: { guardian } });
       return;
@@ -1663,6 +1675,11 @@ test("staff can create a guardian contact and link it to a student with relation
     await expect(page.getByText("Enter a valid email address.", { exact: true })).toBeVisible();
     expect(guardianCreates).toHaveLength(0);
   }
+
+  await page.getByPlaceholder("guardian@example.com").fill("server-invalid@example.test");
+  await page.getByRole("button", { name: "Save guardian contact" }).click();
+  await expect(page.getByText("Enter a valid email address using one address only.", { exact: true })).toBeVisible();
+  expect(guardianCreates).toHaveLength(0);
 
   await page.getByPlaceholder("guardian@example.com").fill("nisha.verma@example.test");
   await page.getByRole("button", { name: "Save guardian contact" }).click();
