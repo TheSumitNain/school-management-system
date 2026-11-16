@@ -458,9 +458,9 @@ func (r *AcademicRepository) loadStudentEnrollmentCurriculum(ctx context.Context
 		rows, err := r.db.Query(ctx, `
 			SELECT curriculum_subject_id
 			  FROM student_enrollment_subject_selections
-			 WHERE enrollment_curriculum_id=$1 AND revoked_at IS NULL
+			 WHERE enrollment_curriculum_id=$1 AND school_id=$2 AND revoked_at IS NULL
 			 ORDER BY curriculum_subject_id
-		`, assignmentID)
+		`, assignmentID, schoolID)
 		if err != nil {
 			return nil, fmt.Errorf("load selected optional subjects: %w", err)
 		}
@@ -660,22 +660,22 @@ func (r *AcademicRepository) SaveStudentEnrollmentSubjects(
 	if hasActiveAssignment && activeCurriculumID != curriculumID {
 		if _, err := tx.Exec(ctx, `
 			UPDATE student_enrollment_subject_selections SET revoked_at=NOW()
-			 WHERE enrollment_curriculum_id=$1 AND revoked_at IS NULL
-		`, activeAssignmentID); err != nil {
+			 WHERE enrollment_curriculum_id=$1 AND school_id=$2 AND revoked_at IS NULL
+		`, activeAssignmentID, schoolID); err != nil {
 			return nil, academicWriteError(err)
 		}
 		if _, err := tx.Exec(ctx, `
 			UPDATE student_enrollment_curricula SET status='replaced',revoked_at=NOW()
-			 WHERE id=$1 AND status='active'
-		`, activeAssignmentID); err != nil {
+			 WHERE id=$1 AND school_id=$2 AND status='active'
+		`, activeAssignmentID, schoolID); err != nil {
 			return nil, academicWriteError(err)
 		}
 		hasActiveAssignment = false
 	} else if hasActiveAssignment {
 		if _, err := tx.Exec(ctx, `
 			UPDATE student_enrollment_subject_selections SET revoked_at=NOW()
-			 WHERE enrollment_curriculum_id=$1 AND revoked_at IS NULL
-		`, activeAssignmentID); err != nil {
+			 WHERE enrollment_curriculum_id=$1 AND school_id=$2 AND revoked_at IS NULL
+		`, activeAssignmentID, schoolID); err != nil {
 			return nil, academicWriteError(err)
 		}
 	}

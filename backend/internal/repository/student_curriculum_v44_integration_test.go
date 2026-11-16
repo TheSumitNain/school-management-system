@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -139,6 +140,24 @@ func TestStudentCurriculumV44PostgresIntegration(t *testing.T) {
 	curriculumView, err := academicRepo.GetStudentEnrollmentCurriculum(ctx, actorPrincipalID, schoolID, enrollmentID)
 	if err != nil {
 		t.Fatalf("read student enrollment curriculum: %v", err)
+	}
+
+	// Curriculum and selected-subject data must remain isolated even when a
+	// caller supplies another school's scope with valid local record IDs.
+	foreignSchoolID := schoolID + 999999
+	if _, err := academicRepo.GetStudentEnrollmentCurriculum(ctx, actorPrincipalID, foreignSchoolID, enrollmentID); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("cross-school enrollment curriculum read error = %v, want access denied", err)
+	}
+	if _, err := academicRepo.SaveStudentEnrollmentSubjects(ctx, actorPrincipalID, foreignSchoolID,
+		enrollmentID, curriculumID, []int64{optionalCurriculumSubjectID}); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("cross-school enrollment subject update error = %v, want access denied", err)
+	}
+	if _, err := academicRepo.ListClassCurricula(ctx, actorPrincipalID, foreignSchoolID, yearID, classID); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("cross-school class curriculum list error = %v, want access denied", err)
+	}
+	if _, err := academicRepo.SaveClassCurriculum(ctx, actorPrincipalID, foreignSchoolID, yearID, classID,
+		nil, []CurriculumSubjectInput{{SubjectID: subjectID}}); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("cross-school class curriculum save error = %v, want access denied", err)
 	}
 
 	if curriculumView.EnrollmentID != enrollmentID || curriculumView.StudentID != studentID ||
