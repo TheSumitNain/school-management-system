@@ -220,11 +220,11 @@ func (r *AcademicRepository) SaveStudentMedicalDetails(
 		return nil, err
 	}
 	if existing != nil &&
-		sameOptionalMedicalText(existing.BloodGroup, bloodGroup) &&
-		sameOptionalMedicalText(existing.Allergies, allergies) &&
-		sameOptionalMedicalText(existing.KnownConditions, knownConditions) &&
-		sameOptionalMedicalText(existing.OngoingMedications, ongoingMedications) &&
-		sameOptionalMedicalText(existing.EmergencyMedicalNotes, emergencyNotes) {
+		sameOptionalText(existing.BloodGroup, bloodGroup) &&
+		sameOptionalText(existing.Allergies, allergies) &&
+		sameOptionalText(existing.KnownConditions, knownConditions) &&
+		sameOptionalText(existing.OngoingMedications, ongoingMedications) &&
+		sameOptionalText(existing.EmergencyMedicalNotes, emergencyNotes) {
 		// Saving an unchanged profile must not create a duplicate historical
 		// version or an update audit event.
 		item, err := loadStudentMedicalDetails(ctx, tx, schoolID, studentID)
@@ -294,7 +294,14 @@ func (r *AcademicRepository) SaveStudentMedicalDetails(
 	return item, nil
 }
 
-func sameOptionalMedicalText(left, right *string) bool {
+func sameOptionalFloat64(left, right *float64) bool {
+	if left == nil || right == nil {
+		return left == nil && right == nil
+	}
+	return *left == *right
+}
+
+func sameOptionalText(left, right *string) bool {
 	if left == nil || right == nil {
 		return left == nil && right == nil
 	}
@@ -442,6 +449,22 @@ func (r *AcademicRepository) SaveStudentPhysicalDetails(
 	}
 	if !active {
 		return nil, ErrInvalidAcademicInput
+	}
+	current, err := loadStudentPhysicalDetails(ctx, tx, schoolID, studentID)
+	if err != nil {
+		return nil, fmt.Errorf("read current student physical details: %w", err)
+	}
+	if current.ID > 0 && sameOptionalFloat64(current.HeightCM, heightCM) &&
+		sameOptionalFloat64(current.WeightKG, weightKG) &&
+		current.MeasuredOn != nil &&
+		current.MeasuredOn.UTC().Format("2006-01-02") == measuredOn.UTC().Format("2006-01-02") &&
+		sameOptionalText(current.VisionNotes, visionNotes) &&
+		sameOptionalText(current.PhysicalNotes, physicalNotes) {
+		// PUT retries with the same latest measurement must be idempotent.
+		if err := tx.Commit(ctx); err != nil {
+			return nil, fmt.Errorf("commit unchanged student physical details: %w", err)
+		}
+		return current, nil
 	}
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO student_physical_details
