@@ -907,6 +907,14 @@ test("student admission, profile navigation and parent details render without br
   });
   await expect(page.getByText("Enter a valid email address.", { exact: true })).toBeVisible();
   expect(contactDetails.primary_phone).toBeNull();
+  await page.getByPlaceholder("student@example.com").fill("server-invalid@example.test");
+  await contactSaveButton.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Contact save button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect(page.locator("#student-contact-email-error")).toHaveText("Enter a valid email address using one address only.");
+  expect(contactDetails.primary_phone).toBeNull();
   await page.getByPlaceholder("student@example.com").fill("student@example.test");
   const contactReadsBeforeFocus = observedStudentDetailGets.filter(item => item === "contact-details").length;
   await invalidateProfileQueries(page, "students");
