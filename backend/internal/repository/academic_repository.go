@@ -22,6 +22,7 @@ var (
 	ErrStudentRegistrationNumberConflict = errors.New("student school registration number already exists in this school")
 	ErrInvalidStudentContactEmail = errors.New("invalid student contact email")
 	ErrPromotionBeforeAttendance = errors.New("promotion date precedes recorded attendance")
+	ErrAdmissionAfterEnrollmentDate = errors.New("admission date is after enrollment start date")
 	ErrInvalidAcademicInput = errors.New("invalid academic input")
 )
 
@@ -166,6 +167,8 @@ func academicWriteError(err error) error {
 				return ErrAcademicRollNumberConflict
 			case "ux_student_basic_details_school_registration_number":
 				return ErrStudentRegistrationNumberConflict
+			case "student_enrollments_admission_not_after_enrollment":
+				return ErrAdmissionAfterEnrollmentDate
 			default:
 				return ErrAcademicConflict
 			}
