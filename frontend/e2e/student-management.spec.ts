@@ -37,6 +37,7 @@ test("student admission, profile navigation and parent details render without br
   const observedStudentDetailGets: string[] = [];
   const guardianHistoryRequests: (string | null)[] = [];
   const guardianLinkUpdateRequests: Record<string, unknown>[] = [];
+  const guardianProfileUpdateRequests: Record<string, unknown>[] = [];
   let rejectSharedGuardianEmailOnce = true;
   let curriculumAssigned = false;
   let curriculumReads = 0;
@@ -382,6 +383,7 @@ test("student admission, profile navigation and parent details render without br
         });
         return;
       }
+      guardianProfileUpdateRequests.push(input);
       Object.assign(guardianLink, {
         guardian_name: input.full_name, mobile_number: input.mobile_number,
         email_address: input.email_address, alternate_mobile_number: input.alternate_mobile_number,
@@ -709,7 +711,7 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("button", { name: "Update all linked records" }).click();
   await expect(page.getByText("Enter a valid email address using one address only.", { exact: true })).toBeVisible();
   await expect(page.getByRole("dialog", { name: "Update shared guardian profile?" })).toHaveCount(0);
-  expect(guardianUpdates).toHaveLength(0);
+  expect(guardianProfileUpdateRequests).toHaveLength(0);
   expect(guardianLink.email_address).toBe("ramesh@example.test");
 
   await page.getByPlaceholder("guardian@example.com").fill("ramesh.updated@example.test");
