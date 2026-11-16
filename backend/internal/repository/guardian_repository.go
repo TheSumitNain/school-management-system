@@ -20,6 +20,7 @@ var (
 	ErrGuardianNotFound = errors.New("guardian record not found")
 	ErrGuardianConflict = errors.New("guardian record conflicts with an existing relationship")
 	ErrInvalidGuardianInput = errors.New("invalid guardian data")
+	ErrInvalidGuardianEmail = errors.New("invalid guardian email address")
 )
 
 type Guardian struct {
@@ -195,11 +196,11 @@ func normalizeGuardianEmail(email *string) (*string, error) {
 		return nil, nil
 	}
 	if utf8.RuneCountInString(value) > 254 {
-		return nil, ErrInvalidGuardianInput
+		return nil, ErrInvalidGuardianEmail
 	}
 	parsed, err := mail.ParseAddress(value)
 	if err != nil || parsed.Address != value {
-		return nil, ErrInvalidGuardianInput
+		return nil, ErrInvalidGuardianEmail
 	}
 	return &value, nil
 }
