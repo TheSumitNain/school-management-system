@@ -1100,3 +1100,10 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Backend PostgreSQL integration coverage now rejects malformed guardian email values, including a display-name address and a comma-separated multiple-address value, in addition to the existing over-limit Unicode email and malformed single-address cases. The repository rejects these inputs before issuing a database write.
 - Parent Details browser coverage exercises the same invalid email categories in both shared guardian profile editing and new guardian creation, verifies field-level errors, and confirms no profile/create request changes persisted data for invalid input.
 - Test checkpoint: `da85edc9f020c7db2d0b474c4855e3be7249bf80`. Frontend CI **PASS** — [run 43724412256](https://github.com/TheSumitNain/school-management-system/actions/runs/43724412256): production build and all 11 Playwright tests passed. Backend CI **PASS** — [run 43724412200](https://github.com/TheSumitNain/school-management-system/actions/runs/43724412200): full migration chain, PostgreSQL integration tests and `go vet ./...` passed. These remain CI/mocked-browser checks; authenticated acceptance against the user's local API/database remains outstanding.
+
+
+## Student Management — promotion preserves recorded attendance boundaries (2026-11-16)
+
+- Promotion now checks the source enrollment's existing attendance before shortening its end date. A promotion date earlier than any already-recorded attendance is rejected, preventing historical attendance from becoming inconsistent with the enrollment period.
+- PostgreSQL integration coverage creates an attendance record, attempts an otherwise date-valid promotion before that attendance, and verifies the source enrollment remains active with no destination enrollment created.
+- Backend CI **PASS** on checkpoint `60674df6b419a5504d4d11813f7354ecbe3058ae` — [run 43794753873](https://github.com/TheSumitNain/school-management-system/actions/runs/43794753873): full migration chain, PostgreSQL integration tests and `go vet ./...` passed. Authenticated acceptance against the user's local API/database remains outstanding.
