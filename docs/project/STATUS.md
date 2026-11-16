@@ -1145,3 +1145,11 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Student contact email validation now has a dedicated `ErrInvalidStudentContactEmail` classification. The API maps it to `field_errors.email_address`; the Address & Communication form displays the server error directly below Email and preserves the entered values for correction and retry.
 - Backend integration and handler tests cover the specific validation contract. The Playwright acceptance journey simulates a server-side email rejection, verifies inline feedback and confirms no contact data was persisted before a corrected retry.
 - Verified checkpoint `52d945d9ea067430aea094464e54580d48f0da33`: Backend CI **PASS** — [run 43797770850](https://github.com/TheSumitNain/school-management-system/actions/runs/43797770850), full migrations, PostgreSQL integration tests and `go vet ./...`. Frontend CI **PASS** — [run 43797513589](https://github.com/TheSumitNain/school-management-system/actions/runs/43797513589), production build and all 11 Playwright tests on frontend checkpoint `4634742e7fb3c231a0e6ef3b5a1b0697a8ac3e23`. Authenticated acceptance against the user's local API/database remains outstanding.
+
+
+## Student Management — basic-details and physical-measurement boundary tests (2026-11-16)
+
+- Extended PostgreSQL integration coverage for Basic Details to verify that a future date of birth is rejected by repository validation before persistence.
+- Extended Physical Details integration coverage for invalid weight, missing measurement date and future measurement date, in addition to the existing height/precision and empty-measurement checks.
+- Backend CI **PASS** on exact checkpoint `c5f0f4107e653fcd76d7bc5b2afcd2107cbe0f99` — [run 43798404680](https://github.com/TheSumitNain/school-management-system/actions/runs/43798404680): full migration chain, PostgreSQL integration tests and `go vet ./...` passed.
+- These are backend CI checks. Authenticated acceptance against the user's local API/database remains outstanding.
