@@ -19,6 +19,7 @@ var (
 	ErrAcademicConflict = errors.New("academic resource conflicts with an existing record")
 	ErrAcademicAdmissionNumberConflict = errors.New("academic admission number already exists in this school year")
 	ErrAcademicRollNumberConflict = errors.New("academic roll number already exists in this active section")
+	ErrStudentRegistrationNumberConflict = errors.New("student school registration number already exists in this school")
 	ErrInvalidStudentContactEmail = errors.New("invalid student contact email")
 	ErrPromotionBeforeAttendance = errors.New("promotion date precedes recorded attendance")
 	ErrInvalidAcademicInput = errors.New("invalid academic input")
@@ -163,6 +164,8 @@ func academicWriteError(err error) error {
 				return ErrAcademicAdmissionNumberConflict
 			case "ux_student_enrollments_active_roll":
 				return ErrAcademicRollNumberConflict
+			case "ux_student_basic_details_school_registration_number":
+				return ErrStudentRegistrationNumberConflict
 			default:
 				return ErrAcademicConflict
 			}
