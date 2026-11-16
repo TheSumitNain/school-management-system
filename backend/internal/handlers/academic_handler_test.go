@@ -33,6 +33,12 @@ func TestAcademicErrorReturnsFieldSpecificAdmissionConflicts(t *testing.T) {
 			wantStatus: http.StatusConflict,
 		},
 		{
+			name:       "invalid student contact email",
+			err:        repository.ErrInvalidStudentContactEmail,
+			wantField:  "email_address",
+			wantStatus: http.StatusBadRequest,
+		},
+		{
 			name:       "promotion before recorded attendance",
 			err:        repository.ErrPromotionBeforeAttendance,
 			wantField:  "admission_date",
