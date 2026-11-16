@@ -1161,3 +1161,10 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Basic Details maps the API field error directly beneath School registration number using the shared `ApiError` contract. The form preserves other entered values and supports correction/retry.
 - PostgreSQL integration coverage verifies duplicate registration rejection through the repository API; handler tests verify the field-error response; Playwright exercises the actual server field-error payload and confirms no duplicate value is persisted.
 - Verified checkpoint `63c8d98fd70615a62d139028a5ad0060171496c5`: Backend CI **PASS** — [run 43799163105](https://github.com/TheSumitNain/school-management-system/actions/runs/43799163105), full migrations, PostgreSQL integration tests and `go vet ./...`; Frontend CI **PASS** — [run 43799163073](https://github.com/TheSumitNain/school-management-system/actions/runs/43799163073), production build and all Student Management Playwright tests. Authenticated local API/database acceptance remains outstanding.
+
+## Student Management — date-only timezone acceptance risk (2026-11-16)
+
+- Audit identified a calendar-date consistency risk in Date of Birth and Physical Details measurement dates: the browser date picker uses the user's local calendar date, while backend future-date checks compare UTC calendar dates. In timezones ahead of UTC, a valid local “today” can be interpreted as a future UTC date during the local early-morning window.
+- No timezone behavior has been changed. The product has not yet defined whether date-only validation is school-timezone based, user-local, or governed by an explicit application default; hard-coding a timezone would be speculative.
+- Before implementation, define the canonical timezone policy for school date-only fields and apply it consistently to frontend bounds, API parsing, repository validation and tests. Keep this as an acceptance risk until that decision is made.
+- Authenticated local API/database and browser acceptance remains outstanding; passing CI does not replace that verification.
