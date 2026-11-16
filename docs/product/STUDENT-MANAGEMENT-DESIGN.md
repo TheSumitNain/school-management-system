@@ -458,3 +458,7 @@ Apply this standard consistently to initial admission, returning enrollment, pro
 Date of Birth and Physical Details measurement dates are calendar dates, not timestamps. Frontend date-picker bounds currently use the browser's local calendar date, while backend future-date validation uses UTC calendar dates. These rules can disagree for users in timezones ahead of UTC during the local early-morning window.
 
 Do not resolve this by silently hard-coding a timezone. Before changing behavior, define the canonical policy (school timezone, user-local timezone, or an explicit application default), then use the same date-only semantics in the frontend, API parsing, repository validation and automated tests. Until then, treat the mismatch as a known acceptance risk and do not claim date handling is fully verified.
+
+## Admission date and enrollment start date ordering
+
+For every student enrollment, the admission date must be on or before the enrollment start date. Both dates must also fall within the selected academic year. The same-day case is valid; a prior admission date is valid when the enrollment begins later in that year. The backend validates this rule and the database enforces it for new and updated rows. Historical rows are not automatically validated by migration V46 and require separate review if legacy cleanup is needed.
