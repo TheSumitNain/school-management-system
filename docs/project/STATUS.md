@@ -1174,4 +1174,5 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Repository validation now rejects an admission date later than the enrollment start date, while allowing the same date or an earlier admission date within the selected academic year.
 - Migration V46 adds a NOT VALID database CHECK constraint so new and updated enrollment rows enforce the same rule without blocking deployment on legacy rows that may need separate review.
 - Added unit coverage for same-day, earlier-admission, later-admission and out-of-year cases, plus PostgreSQL integration coverage for the named database constraint.
+- The repository returns a dedicated admission-date ordering error and the API maps it to `field_errors.admission_date`, so callers receive a precise field-level correction instead of a generic academic validation response.
 - CI verification is pending for the new code and migration. Authenticated local API/database/browser acceptance remains outstanding.
