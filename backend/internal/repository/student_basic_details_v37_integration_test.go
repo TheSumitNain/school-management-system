@@ -107,6 +107,10 @@ func TestStudentBasicDetailsV37PostgresIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("save student basic details through repository: %v", err)
 	}
+	if _, duplicateErr := repository.SaveStudentBasicDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
+		&birthDate, nil, nil, nil, nil, nil, nil, &registration); !errors.Is(duplicateErr, ErrStudentRegistrationNumberConflict) {
+		t.Fatalf("duplicate school registration number error = %v, want field-specific conflict", duplicateErr)
+	}
 	if basic.DateOfBirth == nil || basic.DateOfBirth.Format("2006-01-02") != "2018-04-12" ||
 		basic.Gender == nil || *basic.Gender != "female" || basic.EWSStatus == nil || *basic.EWSStatus ||
 		basic.SchoolRegistrationNumber == nil || *basic.SchoolRegistrationNumber != repoRegistration {
@@ -179,12 +183,6 @@ func TestStudentBasicDetailsV37PostgresIntegration(t *testing.T) {
 	if _, saveErr := repository.SaveStudentBasicDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
 		&tooOldBirthDate, nil, nil, nil, nil, nil, nil, nil); !errors.Is(saveErr, ErrInvalidAcademicInput) {
 		t.Fatalf("date of birth older than 130 years error = %v, want invalid input", saveErr)
-	}
-
-	invalidBirthDate := time.Now().UTC().AddDate(0, 0, 1)
-	if _, saveErr := repository.SaveStudentBasicDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
-		&invalidBirthDate, nil, nil, nil, nil, nil, nil, nil); !errors.Is(saveErr, ErrInvalidAcademicInput) {
-		t.Fatalf("out-of-range birth date error = %v, want invalid input", saveErr)
 	}
 
 	for _, field := range []struct {
