@@ -1184,3 +1184,11 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Backend CI **PASS** — [run 43807314486](https://github.com/TheSumitNain/school-management-system/actions/runs/43807314486): full migration chain, PostgreSQL integration tests, Go tests and go vet ./....
 - Frontend CI **PASS** — [run 43807314407](https://github.com/TheSumitNain/school-management-system/actions/runs/43807314407): production build and Student Management Playwright browser acceptance tests.
 - Both workflows tested code commit 8b968c6c95da9d5d9f1e4ccb0b10efa857c5b9ab. Authenticated local API/database/browser acceptance on the developer's local environment remains outstanding.
+
+## Student Management — unchanged medical profile save (2026-11-16)
+
+- Audit found that submitting an unchanged Medical Details form created another version of the current medical profile and copied the same prior values into immutable history, even though no medical data had changed.
+- The repository now compares normalized values while holding the student/current-profile locks. An unchanged save returns the existing current profile and history without creating a new history row, incrementing the version, or writing a medical-update audit event. Actual changes retain the existing append-only history behavior.
+- Added PostgreSQL integration coverage that saves the exact same medical values after a real update and verifies the version remains 2 with exactly one prior history entry. Existing audit-count assertions also verify the no-op did not create another update event.
+- Backend CI **PASS** on test commit `2b1d9935ceb532133d7ff54f51ce6b6ad606a2d6` — [run 43808235755](https://github.com/TheSumitNain/school-management-system/actions/runs/43808235755): full migration chain, Go tests including PostgreSQL integration, and `go vet ./...` passed.
+- Authenticated local API/database/browser acceptance remains outstanding; CI used an ephemeral database.
