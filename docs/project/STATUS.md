@@ -1207,3 +1207,13 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Verified checkpoint `98205a858a12bd5eb3b508167bbfa3b2d61bd67f`: Backend CI **PASS** — [run 43810025268](https://github.com/TheSumitNain/school-management-system/actions/runs/43810025268), full migration chain, Go tests including PostgreSQL integration, and `go vet ./...` passed.
 - Existing integration tests were also reviewed for cross-school read/write isolation in Basic Details, Contact Details, Address/Locations and Medical/Physical Details; no additional defect was confirmed in this pass.
 - Authenticated local API/database/browser acceptance remains outstanding. CI uses an ephemeral database and does not replace local acceptance.
+
+## Student Management — safe archive retry after a lost response (2026-11-16)
+
+- Audit of the archive confirmation flow identified a retry edge case: the database could commit an archive while the HTTP response was lost. Retrying then returned not-found because the student was already archived, leaving the UI unable to confirm the completed operation.
+- `ArchiveStudent` is now idempotent. When the authorized school-scoped student is already archived, the repository returns the existing archived profile without changing enrollment history or writing a duplicate archive audit event. First-time archive behavior remains transactional: archive the student, withdraw active enrollment(s), preserve history, and write one audit event.
+- PostgreSQL integration coverage archives a student, retries the same operation, verifies the archived profile is returned, checks that exactly one archive audit event exists, and confirms enrollment history remains preserved.
+- Playwright now simulates the server committing the archive while the response is lost, then retries and verifies the UI completes successfully and refreshes the archived status.
+- Backend CI **PASS** — [run 43810799396](https://github.com/TheSumitNain/school-management-system/actions/runs/43810799396): full migration chain, Go tests including PostgreSQL integration, and `go vet ./...`.
+- Frontend CI **PASS** — [run 43810799453](https://github.com/TheSumitNain/school-management-system/actions/runs/43810799453): TypeScript/Vite production build and Student Management Playwright browser acceptance tests.
+- Tested code checkpoint: `b6d06783d848078f11db2101dc40b9cecd934e1d`. Authenticated acceptance against the user's local API/database remains outstanding.
