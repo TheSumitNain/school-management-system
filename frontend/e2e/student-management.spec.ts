@@ -39,6 +39,7 @@ test("student admission, profile navigation and parent details render without br
   const guardianLinkUpdateRequests: Record<string, unknown>[] = [];
   const guardianProfileUpdateRequests: Record<string, unknown>[] = [];
   let rejectSharedGuardianEmailOnce = true;
+  let rejectStudentContactEmailOnce = true;
   let curriculumAssigned = false;
   let curriculumReads = 0;
   let medicalDetailReads = 0;
@@ -311,7 +312,16 @@ test("student admission, profile navigation and parent details render without br
       }
       if (subpath === "contact-details") {
         if (method === "PUT") {
-          Object.assign(contactDetails, request.postDataJSON() as Record<string, unknown>);
+          const input = request.postDataJSON() as Record<string, unknown>;
+          if (rejectStudentContactEmailOnce && input.email_address === "server-invalid@example.test") {
+            rejectStudentContactEmailOnce = false;
+            await route.fulfill({ status: 400, json: {
+              message: "Enter a valid student email address",
+              field_errors: { email_address: "Enter a valid email address using one address only." },
+            } });
+            return;
+          }
+          Object.assign(contactDetails, input);
         }
         await route.fulfill({ json: { contact_details: contactDetails } });
         return;
