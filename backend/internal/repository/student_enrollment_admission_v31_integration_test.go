@@ -10,9 +10,9 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-// TestStudentEnrollmentAdmissionV31SchemaPostgresIntegration verifies both
-// the additive schema and its year-scoped admission identity constraints.
-func TestStudentEnrollmentAdmissionV31SchemaPostgresIntegration(t *testing.T) {
+// TestStudentEnrollmentAdmissionSchemaV31AndV46PostgresIntegration verifies
+// year-scoped admission identity and admission/enrollment date-order constraints.
+func TestStudentEnrollmentAdmissionSchemaV31AndV46PostgresIntegration(t *testing.T) {
 	_, pool, userID := newPostgresIntegrationRepository(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -49,10 +49,10 @@ func TestStudentEnrollmentAdmissionV31SchemaPostgresIntegration(t *testing.T) {
 			)
 	`).Scan(&ready)
 	if err != nil {
-		t.Fatalf("inspect V31 enrollment admission schema: %v", err)
+		t.Fatalf("inspect enrollment admission schema: %v", err)
 	}
 	if !ready {
-		t.Fatal("V31 enrollment admission columns, constraints, or year-scoped unique index are missing")
+		t.Fatal("Enrollment admission columns, constraints, or year-scoped unique index are missing")
 	}
 
 	// Keep all fixture records rollback-scoped: this test must not leave test
