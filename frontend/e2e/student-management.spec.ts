@@ -1316,7 +1316,7 @@ test("student promotion validates required fields and preserves prior enrollment
   await expect.poll(() => promotionRequests.length).toBe(1);
   await expect(dialog).toBeVisible();
   await dialog.getByRole("button", { name: "Admission and promotion date" }).click();
-  await dialog.getByRole("button", { name: /17 November 2026/ }).click();
+  await dialog.getByRole("button", { name: /November 17, 2026/ }).click();
   await expect(dialog.getByText("Choose a promotion date on or after the latest attendance recorded for this enrollment.")).toHaveCount(0);
   await promoteButton.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
