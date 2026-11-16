@@ -211,16 +211,16 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 	tooLongUnicodeEmail := strings.Repeat("अ", 255) + "@example.invalid"
 	if _, err := repo.SaveGuardian(ctx, targetPrincipalID, schoolID, guardian.ID,
 		"Guardian One", &mobile, &tooLongUnicodeEmail, &alternateMobile,
-		&occupation, &education, &workplace, "active"); !errors.Is(err, ErrInvalidGuardianInput) {
-		t.Fatalf("save guardian with over-limit Unicode email error = %v, want invalid input", err)
+		&occupation, &education, &workplace, "active"); !errors.Is(err, ErrInvalidGuardianEmail) {
+		t.Fatalf("save guardian with over-limit Unicode email error = %v, want invalid email", err)
 	}
 
 	for _, invalidEmail := range []string{"not-an-email", "Guardian <guardian@example.invalid>", "guardian@example.invalid,other@example.invalid"} {
 		for _, existingGuardianID := range []int64{0, guardian.ID} {
 			if _, err := repo.SaveGuardian(ctx, targetPrincipalID, schoolID, existingGuardianID,
 				"Guardian One", &mobile, &invalidEmail, &alternateMobile,
-				&occupation, &education, &workplace, "active"); !errors.Is(err, ErrInvalidGuardianInput) {
-				t.Errorf("save guardian (id=%d) with invalid email %q error = %v, want invalid input", existingGuardianID, invalidEmail, err)
+				&occupation, &education, &workplace, "active"); !errors.Is(err, ErrInvalidGuardianEmail) {
+				t.Errorf("save guardian (id=%d) with invalid email %q error = %v, want invalid email", existingGuardianID, invalidEmail, err)
 			}
 		}
 	}
