@@ -277,6 +277,16 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("cross-school student link error = %v, want not found", err)
 	}
 
+	if links, err := repo.ListStudentGuardians(ctx, targetPrincipalID, schoolID, foreignStudentID, true); !errors.Is(err, ErrGuardianNotFound) || len(links) != 0 {
+		t.Fatalf("cross-school student guardian list error = %v links=%d; want not found and no data", err, len(links))
+	}
+	if related, err := repo.ListStudentRelatedStudents(ctx, targetPrincipalID, schoolID, foreignStudentID); !errors.Is(err, ErrGuardianNotFound) || len(related) != 0 {
+		t.Fatalf("cross-school related-student list error = %v items=%d; want not found and no data", err, len(related))
+	}
+	if guardians, total, err := repo.ListGuardians(ctx, targetPrincipalID, otherSchoolID, "", "", 10, 0); !errors.Is(err, ErrGuardianAccessDenied) || len(guardians) != 0 || total != 0 {
+		t.Fatalf("cross-school guardian directory error = %v items=%d total=%d; want access denied and no data", err, len(guardians), total)
+	}
+
 	firstLink, err := repo.LinkStudentGuardian(ctx, targetPrincipalID, schoolID,
 		studentID, guardian.ID, "father", true, true)
 	if err != nil {
