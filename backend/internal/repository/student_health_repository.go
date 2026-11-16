@@ -219,6 +219,23 @@ func (r *AcademicRepository) SaveStudentMedicalDetails(
 	if err != nil {
 		return nil, err
 	}
+	if existing != nil &&
+		sameOptionalMedicalText(existing.BloodGroup, bloodGroup) &&
+		sameOptionalMedicalText(existing.Allergies, allergies) &&
+		sameOptionalMedicalText(existing.KnownConditions, knownConditions) &&
+		sameOptionalMedicalText(existing.OngoingMedications, ongoingMedications) &&
+		sameOptionalMedicalText(existing.EmergencyMedicalNotes, emergencyNotes) {
+		// Saving an unchanged profile must not create a duplicate historical
+		// version or an update audit event.
+		item, err := loadStudentMedicalDetails(ctx, tx, schoolID, studentID)
+		if err != nil {
+			return nil, fmt.Errorf("read unchanged student medical details: %w", err)
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return nil, fmt.Errorf("commit unchanged student medical details: %w", err)
+		}
+		return item, nil
+	}
 	if existing == nil {
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO student_medical_details
@@ -275,6 +292,13 @@ func (r *AcademicRepository) SaveStudentMedicalDetails(
 		return nil, fmt.Errorf("commit student medical details: %w", err)
 	}
 	return item, nil
+}
+
+func sameOptionalMedicalText(left, right *string) bool {
+	if left == nil || right == nil {
+		return left == nil && right == nil
+	}
+	return *left == *right
 }
 
 func loadStudentMedicalCurrentForUpdate(ctx context.Context, tx pgx.Tx, schoolID, studentID int64) (*StudentMedicalDetails, error) {
