@@ -101,7 +101,8 @@ func validateEnrollmentDateRange(admissionDate, enrolledAt, yearStartsOn, yearEn
 		date := value.Format("2006-01-02")
 		return date >= yearStartsOn.Format("2006-01-02") && date <= yearEndsOn.Format("2006-01-02")
 	}
-	if !within(admissionDate) || !within(enrolledAt) {
+	if !within(admissionDate) || !within(enrolledAt) ||
+		admissionDate.Format("2006-01-02") > enrolledAt.Format("2006-01-02") {
 		return ErrInvalidAcademicInput
 	}
 	return nil
