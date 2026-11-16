@@ -1217,3 +1217,16 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Backend CI **PASS** — [run 43810799396](https://github.com/TheSumitNain/school-management-system/actions/runs/43810799396): full migration chain, Go tests including PostgreSQL integration, and `go vet ./...`.
 - Frontend CI **PASS** — [run 43810799453](https://github.com/TheSumitNain/school-management-system/actions/runs/43810799453): TypeScript/Vite production build and Student Management Playwright browser acceptance tests.
 - Tested code checkpoint: `b6d06783d848078f11db2101dc40b9cecd934e1d`. Authenticated acceptance against the user's local API/database remains outstanding.
+
+## Student Management — enrollment history school isolation (2026-11-16)
+
+- Added PostgreSQL integration coverage with a real foreign-school student and enrollment record. A caller scoped to its own school cannot retrieve that foreign student's enrollment history; the repository returns not-found with no rows. Supplying the other school's scope is rejected with access-denied and no data.
+- Backend CI **PASS** — [run 43811188398](https://github.com/TheSumitNain/school-management-system/actions/runs/43811188398): full migration chain, Go tests including PostgreSQL integration, and `go vet ./...`.
+- Tested code checkpoint: `c8436ea635a4727ea41023908f4778cae0dbb369`. Authenticated local API/database/browser acceptance remains outstanding.
+
+## Student Management — curriculum school isolation and scoped writes (2026-11-16)
+
+- Added explicit `school_id` predicates to selected-subject reads, selection-history revocations, and curriculum-assignment replacement writes. These operations now consistently constrain both the enrollment-assignment identifier and tenant scope.
+- Added PostgreSQL integration assertions that cross-school requests cannot read a student's selected curriculum, update subject selections, list class curricula, or save a class curriculum using another school's scope.
+- Backend CI **PASS** — [run 43811590860](https://github.com/TheSumitNain/school-management-system/actions/runs/43811590860): full migration chain, Go tests including PostgreSQL integration, and `go vet ./...`.
+- Tested code checkpoint: `3aa23a8a8a2110094bfc4a6de935c0650057e4b8`. Authenticated local API/database/browser acceptance remains outstanding.
