@@ -159,6 +159,20 @@ func TestStudentMedicalPhysicalDetailsV36PostgresIntegration(t *testing.T) {
 		&invalidPrecision, nil, &measuredOn, nil, nil); !errors.Is(err, ErrInvalidAcademicInput) {
 		t.Fatalf("measurement precision error = %v, want invalid input", err)
 	}
+	invalidWeight := 0.5
+	if _, err := repo.SaveStudentPhysicalDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
+		nil, &invalidWeight, &measuredOn, nil, nil); !errors.Is(err, ErrInvalidAcademicInput) {
+		t.Fatalf("invalid weight error = %v, want invalid input", err)
+	}
+	if _, err := repo.SaveStudentPhysicalDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
+		&height, nil, nil, nil, nil); !errors.Is(err, ErrInvalidAcademicInput) {
+		t.Fatalf("missing measurement date error = %v, want invalid input", err)
+	}
+	futureMeasurementDate := time.Now().UTC().AddDate(0, 0, 1)
+	if _, err := repo.SaveStudentPhysicalDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
+		&height, nil, &futureMeasurementDate, nil, nil); !errors.Is(err, ErrInvalidAcademicInput) {
+		t.Fatalf("future measurement date error = %v, want invalid input", err)
+	}
 	futureMeasuredOn := today.AddDate(0, 0, 1)
 	if _, err := repo.SaveStudentPhysicalDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
 		&height, nil, &futureMeasuredOn, nil, nil); !errors.Is(err, ErrInvalidAcademicInput) {
