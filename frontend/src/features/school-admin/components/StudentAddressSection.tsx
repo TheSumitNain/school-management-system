@@ -21,6 +21,14 @@ type Props = {
   onClose: () => void;
 };
 
+function studentContactEmailFieldError(error: unknown): string | undefined {
+  if (!error || typeof error !== "object" || !("fieldErrors" in error)) return undefined;
+  const fieldErrors = (error as { fieldErrors?: unknown }).fieldErrors;
+  if (!fieldErrors || typeof fieldErrors !== "object") return undefined;
+  const message = (fieldErrors as Record<string, unknown>).email_address;
+  return typeof message === "string" ? message : undefined;
+}
+
 function textValue(value?: string | null) {
   return value ?? "";
 }
@@ -258,7 +266,13 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
       });
       setFeedback({ kind: "success", message: "Student contact details saved." });
     } catch (error) {
-      setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Contact details could not be saved." });
+      const emailError = studentContactEmailFieldError(error);
+      if (emailError) {
+        setContactErrors(current => ({ ...current, emailAddress: emailError }));
+        setFeedback(null);
+      } else {
+        setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Contact details could not be saved." });
+      }
     }
   }
 
