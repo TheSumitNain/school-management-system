@@ -399,6 +399,10 @@ func TestStudentProfileRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("cross-school student lookup error = %v, want access denied", err)
 	}
 
+	if items, total, err := repo.ListStudents(ctx, actorID, otherSchoolID, "", "", 20, 0); !errors.Is(err, ErrAcademicAccessDenied) || len(items) != 0 || total != 0 {
+		t.Fatalf("cross-school student directory error = %v items=%d total=%d; want access denied and no data", err, len(items), total)
+	}
+
 	if _, err := repo.UpdateStudent(ctx, actorID, otherSchoolID, student.ID, "Cross School Update Must Fail"); !errors.Is(err, ErrAcademicAccessDenied) {
 		t.Fatalf("cross-school student update error = %v, want access denied", err)
 	}
