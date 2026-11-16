@@ -444,3 +444,11 @@ Apply this standard consistently to initial admission, returning enrollment, pro
 - The Basic Details PostgreSQL integration test rejects a future date of birth through the repository API.
 - The Physical Details PostgreSQL integration test rejects an invalid weight, a missing measurement date and a future measurement date. Existing checks continue to cover height range/precision and attempts to save an empty measurement.
 - Backend CI [run 43798404680](https://github.com/TheSumitNain/school-management-system/actions/runs/43798404680) passed the complete migration chain, PostgreSQL integration suite and `go vet ./...` on checkpoint `c5f0f4107e653fcd76d7bc5b2afcd2107cbe0f99`. Authenticated local API/database acceptance remains outstanding.
+
+
+## School registration number server-side field validation — 2026-11-16
+
+- The unique index `ux_student_basic_details_school_registration_number` is mapped to a dedicated repository conflict, and the API returns `field_errors.school_registration_number`.
+- Basic Details reads the typed `ApiError` field error and displays it beneath the registration-number input rather than inferring the field from a generic conflict message. Other entered values remain available for correction and retry.
+- PostgreSQL integration tests verify duplicate rejection through the repository API; handler tests assert the field response; Playwright simulates the actual field-error payload and verifies no duplicate value is persisted.
+- Backend CI [run 43799163105](https://github.com/TheSumitNain/school-management-system/actions/runs/43799163105) and Frontend CI [run 43799163073](https://github.com/TheSumitNain/school-management-system/actions/runs/43799163073) both passed on checkpoint `63c8d98fd70615a62d139028a5ad0060171496c5`. Authenticated local API/database acceptance remains outstanding.
