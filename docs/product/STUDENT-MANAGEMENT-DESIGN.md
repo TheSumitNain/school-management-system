@@ -452,3 +452,9 @@ Apply this standard consistently to initial admission, returning enrollment, pro
 - Basic Details reads the typed `ApiError` field error and displays it beneath the registration-number input rather than inferring the field from a generic conflict message. Other entered values remain available for correction and retry.
 - PostgreSQL integration tests verify duplicate rejection through the repository API; handler tests assert the field response; Playwright simulates the actual field-error payload and verifies no duplicate value is persisted.
 - Backend CI [run 43799163105](https://github.com/TheSumitNain/school-management-system/actions/runs/43799163105) and Frontend CI [run 43799163073](https://github.com/TheSumitNain/school-management-system/actions/runs/43799163073) both passed on checkpoint `63c8d98fd70615a62d139028a5ad0060171496c5`. Authenticated local API/database acceptance remains outstanding.
+
+## Date-only timezone policy — decision pending
+
+Date of Birth and Physical Details measurement dates are calendar dates, not timestamps. Frontend date-picker bounds currently use the browser's local calendar date, while backend future-date validation uses UTC calendar dates. These rules can disagree for users in timezones ahead of UTC during the local early-morning window.
+
+Do not resolve this by silently hard-coding a timezone. Before changing behavior, define the canonical policy (school timezone, user-local timezone, or an explicit application default), then use the same date-only semantics in the frontend, API parsing, repository validation and automated tests. Until then, treat the mismatch as a known acceptance risk and do not claim date handling is fully verified.
