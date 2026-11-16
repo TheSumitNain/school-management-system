@@ -1176,3 +1176,11 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Added unit coverage for same-day, earlier-admission, later-admission and out-of-year cases, plus PostgreSQL integration coverage for the named database constraint.
 - The repository returns a dedicated admission-date ordering error and the API maps it to `field_errors.admission_date`, so callers receive a precise field-level correction instead of a generic academic validation response.
 - Backend CI **PASS** on code commit `1f1147d6e4914d0e8fd02f8eea7a8b7f882c3676` — [run 43804202314](https://github.com/TheSumitNain/school-management-system/actions/runs/43804202314): complete migration chain including V46, all Go tests including PostgreSQL integration, and `go vet ./...` passed. Latest branch HEAD at this documentation update is `3bcd5bbe15873141522cd714d92ce6ee2a6c097e` (docs-only after the tested code commit). Authenticated local API/database/browser acceptance remains outstanding.
+
+## Student Management — enrollment date field-error mapping (2026-11-16)
+
+- The enrollment form exposes one date control (enrolled_at) while the backend's admission/enrollment ordering validation identifies the same field as admission_date. The frontend now maps that API field error to the visible enrollment date control, preserving inline field-level feedback.
+- Added Playwright coverage that returns the API error shape (field_errors.admission_date), verifies the message appears at the enrollment date field, and retries successfully without losing the form values.
+- Backend CI **PASS** — [run 43807314486](https://github.com/TheSumitNain/school-management-system/actions/runs/43807314486): full migration chain, PostgreSQL integration tests, Go tests and go vet ./....
+- Frontend CI **PASS** — [run 43807314407](https://github.com/TheSumitNain/school-management-system/actions/runs/43807314407): production build and Student Management Playwright browser acceptance tests.
+- Both workflows tested code commit 8b968c6c95da9d5d9f1e4ccb0b10efa857c5b9ab. Authenticated local API/database/browser acceptance on the developer's local environment remains outstanding.
