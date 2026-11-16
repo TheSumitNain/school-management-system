@@ -423,3 +423,10 @@ Apply this standard consistently to initial admission, returning enrollment, pro
 - Guardian create and shared-profile update return a specific `email_address` field error for malformed email. The frontend displays the server error under the email field while preserving other form values for correction and retry.
 - The Playwright test now asserts against the actual shared guardian profile update request collection; the prior failure was a test-only undefined variable.
 - Checkpoint `42e25772be3aa3f9f75690b99fd7459f8203e5a2`: Frontend CI [run 43796919939](https://github.com/TheSumitNain/school-management-system/actions/runs/43796919939) passed the production build and all 11 Playwright tests; Backend CI [run 43796919839](https://github.com/TheSumitNain/school-management-system/actions/runs/43796919839) passed the full migration chain, PostgreSQL integration tests and `go vet ./...`. Authenticated local API/database acceptance remains outstanding.
+
+
+## Guardian email server validation — create and shared-profile edit (2026-11-16)
+
+- The repository returns a dedicated invalid-email sentinel; the API responds with `field_errors.email_address` for both guardian create and update requests.
+- The create and shared-profile edit forms show the server error directly under the email field. Other form values remain intact; an invalid shared-profile update does not change the saved guardian details. Correcting the email clears the inline error and allows retry.
+- PostgreSQL integration tests cover malformed and over-limit emails on create/update. Handler tests cover POST and PATCH field-error responses. Playwright covers both create and shared edit server-error recovery paths. Backend CI [run 43796919839](https://github.com/TheSumitNain/school-management-system/actions/runs/43796919839) and Frontend CI [run 43796919939](https://github.com/TheSumitNain/school-management-system/actions/runs/43796919939) both passed on checkpoint `42e25772be3aa3f9f75690b99fd7459f8203e5a2`. Authenticated local API/database acceptance remains outstanding.
