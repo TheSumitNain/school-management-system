@@ -116,8 +116,8 @@ func TestStudentContactDetailsV35PostgresIntegration(t *testing.T) {
 	}
 	invalidEmail := "Student <student@example.test>"
 	if _, err := repository.SaveStudentContactDetails(ctx, actorPrincipalID, schoolID, studentTwo,
-		nil, nil, &invalidEmail); !errors.Is(err, ErrInvalidAcademicInput) {
-		t.Fatalf("display-name email error = %v, want invalid input", err)
+		nil, nil, &invalidEmail); !errors.Is(err, ErrInvalidStudentContactEmail) {
+		t.Fatalf("display-name email error = %v, want invalid student contact email", err)
 	}
 	var updateAuditCount int
 	if err := tx.QueryRow(ctx, `
