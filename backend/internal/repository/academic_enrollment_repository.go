@@ -409,7 +409,7 @@ func (r *AcademicRepository) PromoteStudentEnrollment(ctx context.Context, actor
 	)`, schoolID, sourceEnrollmentID, enrolledAt).Scan(&hasAttendanceAfterPromotionDate); err != nil {
 		return nil, fmt.Errorf("check attendance before student promotion: %w", err)
 	}
-	if hasAttendanceAfterPromotionDate { return nil, ErrInvalidAcademicInput }
+	if hasAttendanceAfterPromotionDate { return nil, ErrPromotionBeforeAttendance }
 	var classID int64
 	if err = tx.QueryRow(ctx, `SELECT class_id FROM sections WHERE id=$1 AND school_id=$2 AND academic_year_id=$3 AND is_active=TRUE FOR UPDATE`, destinationSectionID, schoolID, destinationYearID).Scan(&classID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) { return nil, ErrAcademicNotFound }
