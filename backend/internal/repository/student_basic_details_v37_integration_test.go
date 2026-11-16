@@ -170,6 +170,17 @@ func TestStudentBasicDetailsV37PostgresIntegration(t *testing.T) {
 		unicodeBasic.SchoolRegistrationNumber == nil || len([]rune(*unicodeBasic.SchoolRegistrationNumber)) != 50 {
 		t.Fatalf("basic-details fields must preserve exact Unicode limits: %+v", unicodeBasic)
 	}
+	futureBirthDate := time.Now().UTC().AddDate(0, 0, 1)
+	if _, saveErr := repository.SaveStudentBasicDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
+		&futureBirthDate, nil, nil, nil, nil, nil, nil, nil); !errors.Is(saveErr, ErrInvalidAcademicInput) {
+		t.Fatalf("future date of birth error = %v, want invalid input", saveErr)
+	}
+	tooOldBirthDate := time.Now().UTC().AddDate(-131, 0, 0)
+	if _, saveErr := repository.SaveStudentBasicDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
+		&tooOldBirthDate, nil, nil, nil, nil, nil, nil, nil); !errors.Is(saveErr, ErrInvalidAcademicInput) {
+		t.Fatalf("date of birth older than 130 years error = %v, want invalid input", saveErr)
+	}
+
 	for _, field := range []struct {
 		name string
 		place, nationality, religion, registration *string
