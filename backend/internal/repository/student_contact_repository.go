@@ -97,7 +97,7 @@ func (r *AcademicRepository) SaveStudentContactDetails(
 	if emailAddress != nil {
 		parsed, parseErr := mail.ParseAddress(*emailAddress)
 		if parseErr != nil || parsed.Address != *emailAddress {
-			return nil, ErrInvalidAcademicInput
+			return nil, ErrInvalidStudentContactEmail
 		}
 	}
 
