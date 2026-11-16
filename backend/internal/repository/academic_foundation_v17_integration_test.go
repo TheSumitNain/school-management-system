@@ -814,8 +814,8 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	}
 	invalidEmail := "not-an-email"
 	if _, err := academicRepo.SaveStudentContactDetails(ctx, actorPrincipalID, schoolID,
-		combined.Student.ID, &primaryPhone, nil, &invalidEmail); !errors.Is(err, ErrInvalidAcademicInput) {
-		t.Fatalf("invalid student email error = %v, want invalid input", err)
+		combined.Student.ID, &primaryPhone, nil, &invalidEmail); !errors.Is(err, ErrInvalidStudentContactEmail) {
+		t.Fatalf("invalid student email error = %v, want ErrInvalidStudentContactEmail", err)
 	}
 	var legacyAdmissionIsNull bool
 	if err := tx.QueryRow(ctx, `SELECT admission_number IS NULL FROM students WHERE id=$1`,
