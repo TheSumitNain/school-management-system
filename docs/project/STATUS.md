@@ -1192,3 +1192,10 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Added PostgreSQL integration coverage that saves the exact same medical values after a real update and verifies the version remains 2 with exactly one prior history entry. Existing audit-count assertions also verify the no-op did not create another update event.
 - Backend CI **PASS** on test commit `2b1d9935ceb532133d7ff54f51ce6b6ad606a2d6` — [run 43808235755](https://github.com/TheSumitNain/school-management-system/actions/runs/43808235755): full migration chain, Go tests including PostgreSQL integration, and `go vet ./...` passed.
 - Authenticated local API/database/browser acceptance remains outstanding; CI used an ephemeral database.
+
+## Student Management — physical measurement retry safety (2026-11-16)
+
+- The physical-details API now treats a repeated save of the latest measurement with the same date and values as an idempotent retry. It returns the existing measurement without appending a duplicate history row or creating another `school.student.physical_details.recorded` audit event. A changed measurement remains a new immutable history entry.
+- Added PostgreSQL integration coverage for repeating both the initial measurement and the latest updated measurement; assertions verify that the measurement ID and history length remain unchanged. The existing audit-count assertion confirms only actual measurements are recorded.
+- Backend CI **PASS** on code commit `79136223528e4a472ee101c2dac7f87cabfc4fac` — [run 43808861512](https://github.com/TheSumitNain/school-management-system/actions/runs/43808861512): full migration chain, Go tests including PostgreSQL integration, and `go vet ./...` passed.
+- Latest branch HEAD before this documentation update: `79136223528e4a472ee101c2dac7f87cabfc4fac`. Authenticated local API/database/browser acceptance remains outstanding.
