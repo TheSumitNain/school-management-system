@@ -160,7 +160,7 @@ func TestStudentMedicalPhysicalDetailsV36PostgresIntegration(t *testing.T) {
 		updatedPhysical.History[1].HeightCM == nil || *updatedPhysical.History[1].HeightCM != height {
 		t.Fatalf("physical measurement history did not preserve prior measurement: %+v", updatedPhysical)
 	}
-	unchangedPhysical, err := repo.SaveStudentPhysicalDetails(ctx, actorPrincipalID, schoolID, studentID,
+	unchangedPhysical, err = repo.SaveStudentPhysicalDetails(ctx, actorPrincipalID, schoolID, studentID,
 		&nextHeight, &weight, &nextMeasuredOn, &nextVision, &nextPhysicalNotes)
 	if err != nil {
 		t.Fatalf("save unchanged physical measurement: %v", err)
