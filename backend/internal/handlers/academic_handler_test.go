@@ -32,6 +32,12 @@ func TestAcademicErrorReturnsFieldSpecificAdmissionConflicts(t *testing.T) {
 			wantField:  "roll_number",
 			wantStatus: http.StatusConflict,
 		},
+		{
+			name:       "promotion before recorded attendance",
+			err:        repository.ErrPromotionBeforeAttendance,
+			wantField:  "admission_date",
+			wantStatus: http.StatusBadRequest,
+		},
 	}
 
 	for _, tt := range tests {
