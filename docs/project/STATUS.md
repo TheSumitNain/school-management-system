@@ -1123,3 +1123,10 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - The guardian API returns an `email_address` field error. Both create and shared-profile edit forms display that server error beneath the email input, preserve the other entered guardian details, and allow correction/retry.
 - Repository integration tests cover malformed email rejection for both create and update. Handler tests assert the field-specific response; Playwright verifies server-side rejection, inline display, correction and successful create.
 - Checkpoint `947f6f2c37ab8c5d2edfe3ac50530010cbaf446e`: Backend CI **PASS** — [run 43796041256](https://github.com/TheSumitNain/school-management-system/actions/runs/43796041256), full migrations, PostgreSQL integration and `go vet ./...`; Frontend CI **PASS** — [run 43796041255](https://github.com/TheSumitNain/school-management-system/actions/runs/43796041255), production build and all 11 Playwright tests. Authenticated local API/database acceptance remains outstanding.
+
+
+## Student Management — guardian email server-error regression verified (2026-11-16)
+
+- Guardian create and shared-profile update now expose malformed email as the specific `email_address` field error; the frontend maps the API field error beneath the email input and preserves other entered values.
+- Corrected the Playwright assertion to track the actual shared-profile update request collection. The earlier frontend failure was a test variable-name error; no product-code rollback was needed.
+- Verified checkpoint `42e25772be3aa3f9f75690b99fd7459f8203e5a2`: Frontend CI **PASS** — [run 43796919939](https://github.com/TheSumitNain/school-management-system/actions/runs/43796919939), production build and all 11 Playwright tests; Backend CI **PASS** — [run 43796919839](https://github.com/TheSumitNain/school-management-system/actions/runs/43796919839), full migration chain, PostgreSQL integration tests and `go vet ./...`. These are CI checks; authenticated acceptance against the user's local API/database remains outstanding.
