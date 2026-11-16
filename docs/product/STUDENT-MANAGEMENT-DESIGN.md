@@ -402,3 +402,10 @@ Apply this standard consistently to initial admission, returning enrollment, pro
 
 - A promotion may not close its source enrollment before attendance already recorded for that enrollment. The backend rejects such a retroactive promotion; the source enrollment and destination-year history remain unchanged.
 - PostgreSQL integration coverage verifies the rejection using a destination academic-year date that otherwise passes normal year-boundary validation. Backend CI [run 43794753873](https://github.com/TheSumitNain/school-management-system/actions/runs/43794753873) passed migrations, PostgreSQL integration and `go vet ./...` on checkpoint `60674df6b419a5504d4d11813f7354ecbe3058ae`.
+
+
+## Promotion attendance validation and field-level recovery — 2026-11-16
+
+- The promotion API rejects a promotion date earlier than attendance already recorded for the source enrollment. It returns a field-specific `admission_date` error rather than a generic academic-input message.
+- The promotion dialog renders the server error beneath the date picker, retains all other entered values, clears the error when the date is changed and permits retry.
+- Backend PostgreSQL integration and frontend Playwright coverage verify rejection without partial history changes, inline error display and successful retry. Backend CI [run 43795365553](https://github.com/TheSumitNain/school-management-system/actions/runs/43795365553) and Frontend CI [run 43795365580](https://github.com/TheSumitNain/school-management-system/actions/runs/43795365580) both passed on checkpoint `ec6a9d4a9d4204674feb3c24d03c95862a453e46`. Authenticated local API/database acceptance remains outstanding.
