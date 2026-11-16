@@ -19,6 +19,7 @@ var (
 	ErrAcademicConflict = errors.New("academic resource conflicts with an existing record")
 	ErrAcademicAdmissionNumberConflict = errors.New("academic admission number already exists in this school year")
 	ErrAcademicRollNumberConflict = errors.New("academic roll number already exists in this active section")
+	ErrPromotionBeforeAttendance = errors.New("promotion date precedes recorded attendance")
 	ErrInvalidAcademicInput = errors.New("invalid academic input")
 )
 
