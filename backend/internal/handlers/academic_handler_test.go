@@ -33,6 +33,12 @@ func TestAcademicErrorReturnsFieldSpecificAdmissionConflicts(t *testing.T) {
 			wantStatus: http.StatusConflict,
 		},
 		{
+			name:       "duplicate school registration number",
+			err:        repository.ErrStudentRegistrationNumberConflict,
+			wantField:  "school_registration_number",
+			wantStatus: http.StatusConflict,
+		},
+		{
 			name:       "invalid student contact email",
 			err:        repository.ErrInvalidStudentContactEmail,
 			wantField:  "email_address",
