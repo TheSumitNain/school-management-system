@@ -297,7 +297,24 @@ func (r *AcademicRepository) ArchiveStudent(
 		studentID, schoolID,
 	))
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, ErrAcademicNotFound
+		// Archive is an idempotent operation. A client may retry after the
+		// database committed but the HTTP response was lost; return the
+		// already-archived record without duplicating enrollment or audit work.
+		student, err = scanStudentProfile(tx.QueryRow(ctx, `
+			SELECT `+studentProfileColumns+`
+			  FROM students
+			 WHERE id = $1 AND school_id = $2 AND status = 'archived'
+		`, studentID, schoolID))
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrAcademicNotFound
+		}
+		if err != nil {
+			return nil, fmt.Errorf("load already archived student: %w", err)
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return nil, fmt.Errorf("commit idempotent student archive read: %w", err)
+		}
+		return student, nil
 	}
 	if err != nil {
 		return nil, academicWriteError(err)
