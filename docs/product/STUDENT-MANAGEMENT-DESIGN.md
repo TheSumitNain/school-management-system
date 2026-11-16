@@ -430,3 +430,10 @@ Apply this standard consistently to initial admission, returning enrollment, pro
 - The repository returns a dedicated invalid-email sentinel; the API responds with `field_errors.email_address` for both guardian create and update requests.
 - The create and shared-profile edit forms show the server error directly under the email field. Other form values remain intact; an invalid shared-profile update does not change the saved guardian details. Correcting the email clears the inline error and allows retry.
 - PostgreSQL integration tests cover malformed and over-limit emails on create/update. Handler tests cover POST and PATCH field-error responses. Playwright covers both create and shared edit server-error recovery paths. Backend CI [run 43796919839](https://github.com/TheSumitNain/school-management-system/actions/runs/43796919839) and Frontend CI [run 43796919939](https://github.com/TheSumitNain/school-management-system/actions/runs/43796919939) both passed on checkpoint `42e25772be3aa3f9f75690b99fd7459f8203e5a2`. Authenticated local API/database acceptance remains outstanding.
+
+
+## Student contact email server-error handling — 2026-11-16
+
+- Malformed student contact email now returns a dedicated `email_address` field error from the backend rather than a generic academic validation response. The frontend renders it under Email and preserves the contact form values for correction and retry.
+- PostgreSQL integration and handler tests cover the backend contract. Playwright verifies server rejection, inline field feedback, no persisted mutation on rejection and successful corrected save.
+- Backend CI [run 43797770850](https://github.com/TheSumitNain/school-management-system/actions/runs/43797770850) passed migrations, PostgreSQL integration and `go vet ./...` on checkpoint `52d945d9ea067430aea094464e54580d48f0da33`. Frontend CI [run 43797513589](https://github.com/TheSumitNain/school-management-system/actions/runs/43797513589) passed production build and all 11 Playwright tests on checkpoint `4634742e7fb3c231a0e6ef3b5a1b0697a8ac3e23`. Authenticated local API/database acceptance remains outstanding.
