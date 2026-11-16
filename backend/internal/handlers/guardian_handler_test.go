@@ -131,7 +131,7 @@ func TestGuardianHandlerSaveCreateAndUpdate(t *testing.T) {
 	}
 	service.err = repository.ErrInvalidGuardianEmail
 	rec = httptest.NewRecorder()
-	router.ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/guardians/9", strings.NewReader(`{"full_name":"A Parent","email_address":"invalid"}`)))
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/guardians/9", strings.NewReader(`{"full_name":"A Parent","email_address":"invalid","status":"active"}`)))
 	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), `"field_errors":{"email_address":"Enter a valid email address using one address only."}`) {
 		t.Fatalf("invalid guardian email update status=%d body=%s", rec.Code, rec.Body.String())
 	}
