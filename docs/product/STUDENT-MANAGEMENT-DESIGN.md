@@ -416,3 +416,10 @@ Apply this standard consistently to initial admission, returning enrollment, pro
 - Invalid guardian email input has a dedicated repository error classification, separate from unrelated guardian validation errors. The API maps it to `field_errors.email_address`.
 - The create and shared-profile edit forms display server-side email errors inline without clearing the other entered guardian details. The user can correct the email and retry.
 - Backend integration coverage rejects malformed email on both guardian creation and update; handler coverage checks the field-error contract; frontend Playwright covers server rejection, inline feedback and successful retry. Backend CI [run 43796041256](https://github.com/TheSumitNain/school-management-system/actions/runs/43796041256) and Frontend CI [run 43796041255](https://github.com/TheSumitNain/school-management-system/actions/runs/43796041255) both passed on checkpoint `947f6f2c37ab8c5d2edfe3ac50530010cbaf446e`. Authenticated local API/database acceptance remains outstanding.
+
+
+## Guardian email server-error regression verified — 2026-11-16
+
+- Guardian create and shared-profile update return a specific `email_address` field error for malformed email. The frontend displays the server error under the email field while preserving other form values for correction and retry.
+- The Playwright test now asserts against the actual shared guardian profile update request collection; the prior failure was a test-only undefined variable.
+- Checkpoint `42e25772be3aa3f9f75690b99fd7459f8203e5a2`: Frontend CI [run 43796919939](https://github.com/TheSumitNain/school-management-system/actions/runs/43796919939) passed the production build and all 11 Playwright tests; Backend CI [run 43796919839](https://github.com/TheSumitNain/school-management-system/actions/runs/43796919839) passed the full migration chain, PostgreSQL integration tests and `go vet ./...`. Authenticated local API/database acceptance remains outstanding.
