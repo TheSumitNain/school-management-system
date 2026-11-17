@@ -115,6 +115,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
     setEditingGuardianID(0);
     setEditingLinkID(0);
     setEditRelationshipForm({ relationship_type: "", is_primary_contact: false, is_emergency_contact: false });
+    setEditRelationshipCustom("");
     setEditRelationshipError("");
     setEditRelationshipFieldError("");
     setEditGuardianForm({
@@ -313,10 +314,11 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
   function beginEditRelationship(link: (typeof allLinks)[number]) {
     setEditingLinkID(link.id);
     setEditRelationshipForm({
-      relationship_type: link.relationship_type,
+      relationship_type: ["Father","Mother","Step-father","Step-mother","Grandfather","Grandmother","Brother","Sister","Uncle","Aunt","Legal Guardian","Foster Parent"].includes(link.relationship_type) ? link.relationship_type : "Other",
       is_primary_contact: link.is_primary_contact,
       is_emergency_contact: link.is_emergency_contact,
     });
+    setEditRelationshipCustom(["Father","Mother","Step-father","Step-mother","Grandfather","Grandmother","Brother","Sister","Uncle","Aunt","Legal Guardian","Foster Parent"].includes(link.relationship_type) ? "" : link.relationship_type);
     setEditRelationshipError("");
     setEditRelationshipFieldError("");
   }
@@ -327,11 +329,12 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
     setEditRelationshipFieldError("");
     if (!canManage || editingLinkID <= 0) return;
     const relationship = editRelationshipForm.relationship_type.trim();
-    if (!relationship) {
-      setEditRelationshipFieldError("Relationship to this student is required.");
+    const resolvedRelationship = relationship === "Other" ? editRelationshipCustom.trim() : relationship;
+    if (!resolvedRelationship) {
+      setEditRelationshipFieldError("Choose or specify the relationship to this student.");
       return;
     }
-    if (Array.from(relationship).length > 40) {
+    if (Array.from(resolvedRelationship).length > 40) {
       setEditRelationshipFieldError("Relationship must be 40 characters or fewer.");
       return;
     }
