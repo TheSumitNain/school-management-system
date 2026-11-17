@@ -30,7 +30,7 @@ export function StudentFieldLabel({ label, required = false, conditional = false
             onClick={event => { event.preventDefault(); event.stopPropagation(); setHintOpen(open => !open); }}
             onKeyDown={event => {
               if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setHintOpen(open => !open); }
-              if (event.key === "Escape") setHintOpen(false);
+              if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); setHintOpen(false); }
             }}
           >
             <Info size={14} aria-hidden="true" />
