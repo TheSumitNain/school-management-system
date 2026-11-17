@@ -4,7 +4,7 @@
 
 - The guardian-link transaction now rechecks the guardian's active status under a FOR SHARE row lock after it has serialized on the owning student row. This closes a time-of-check/time-of-use race where a guardian could be deactivated after the initial active check but before a link was inserted.
 - Added PostgreSQL integration coverage proving an inactive guardian cannot be linked. The lock also keeps the active status stable through link commit; guardian profile updates wait rather than racing the link.
-- Verification: pending backend CI on this code checkpoint. Authenticated live acceptance remains outstanding.
+- First backend CI run [44011948819](https://github.com/TheSumitNain/school-management-system/actions/runs/44011948819) exposed a stale aggregate guardian-contact audit expectation: the new deactivate/reactivate fixture correctly emits two additional profile audit events. The integration assertion is being aligned to the expected total of seven; no production-code failure was reported. Authenticated live acceptance remains outstanding.
 
 ## Active handover — Student Management (2026-11-15)
 

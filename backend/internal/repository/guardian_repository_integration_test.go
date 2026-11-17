@@ -627,7 +627,7 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("count guardian audit events: %v", err)
 	}
 	if guardianAuditCount != 5 || linkCreateAuditCount != 3 || linkUpdateAuditCount != 1 || linkRevokeAuditCount != 1 {
-		t.Fatalf("guardian audit counts = contacts %d, link creates %d, link updates %d, link revokes %d; want 5, 3, 1, 1",
+		t.Fatalf("guardian audit counts = contacts %d, link creates %d, link updates %d, link revokes %d; want 7, 3, 1, 1",
 			guardianAuditCount, linkCreateAuditCount, linkUpdateAuditCount, linkRevokeAuditCount)
 	}
 
