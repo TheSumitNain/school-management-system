@@ -213,6 +213,33 @@ func TestStudentProfileRepositoryPostgresIntegration(t *testing.T) {
 	if !foundWithoutOtherYearEnrollment {
 		t.Fatal("student identity should remain in the directory even without an enrollment in the selected year")
 	}
+
+	// Directory pagination must preserve the filtered total across pages, and
+	// reject unsupported status/limit/offset values before querying records.
+	firstDirectoryPage, firstDirectoryTotal, err := repo.ListStudents(
+		ctx, actorID, schoolID, admissionYearID, unicodeAdmissionNumber, "active", 1, 0,
+	)
+	if err != nil || firstDirectoryTotal != 1 || len(firstDirectoryPage) != 1 ||
+		firstDirectoryPage[0].ID != admission.Student.ID {
+		t.Fatalf("first filtered directory page: items=%+v total=%d err=%v",
+			firstDirectoryPage, firstDirectoryTotal, err)
+	}
+	pastDirectoryPage, pastDirectoryTotal, err := repo.ListStudents(
+		ctx, actorID, schoolID, admissionYearID, unicodeAdmissionNumber, "active", 1, 1,
+	)
+	if err != nil || pastDirectoryTotal != firstDirectoryTotal || len(pastDirectoryPage) != 0 {
+		t.Fatalf("directory page beyond filtered results: items=%+v total=%d err=%v",
+			pastDirectoryPage, pastDirectoryTotal, err)
+	}
+	if _, _, err := repo.ListStudents(ctx, actorID, schoolID, admissionYearID, "", "deleted", 10, 0); !errors.Is(err, ErrInvalidAcademicInput) {
+		t.Fatalf("unsupported directory status error = %v, want invalid input", err)
+	}
+	if _, _, err := repo.ListStudents(ctx, actorID, schoolID, admissionYearID, "", "active", 101, 0); !errors.Is(err, ErrInvalidAcademicInput) {
+		t.Fatalf("directory limit above maximum error = %v, want invalid input", err)
+	}
+	if _, _, err := repo.ListStudents(ctx, actorID, schoolID, admissionYearID, "", "active", 10, -1); !errors.Is(err, ErrInvalidAcademicInput) {
+		t.Fatalf("negative directory offset error = %v, want invalid input", err)
+	}
 	if _, _, err := repo.ListStudents(ctx, actorID, schoolID, -1, "", "active", 10, 0); !errors.Is(err, ErrInvalidAcademicInput) {
 		t.Fatalf("negative directory academic year error = %v, want invalid input", err)
 	}
