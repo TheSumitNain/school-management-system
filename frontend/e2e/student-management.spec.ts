@@ -2832,3 +2832,50 @@ test("student directory returns to the last valid page when archiving empties th
   await expect(page.getByRole("button", { name: "Next" })).toBeDisabled();
   await expect.poll(() => requestedOffsets.slice(-2)).toEqual([40, 20]);
 });
+
+test("student directory sends wildcard characters as literal search text", async ({ page }) => {
+  const receivedQueries: string[] = [];
+  await page.route("**/api/**", async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname.replace(/^\\/api/, "");
+    const method = request.method();
+    if (path === "/auth/refresh") {
+      await route.fulfill({ status: 401, json: { message: "No active session" } });
+      return;
+    }
+    if (path === "/auth/login" && method === "POST") {
+      await route.fulfill({ json: {
+        access_token: "e2e-literal-search-token", token_type: "Bearer",
+        principal: { principal_id: 161, principal_type: "staff", status: "active", school_id: 10 },
+      } });
+      return;
+    }
+    if (path === "/auth/me") {
+      await route.fulfill({ json: {
+        principal_id: 161, principal_type: "staff", school_id: 10, username: "e2e-literal-search",
+        permissions: ["students.read_sensitive", "academic_years.read"],
+      } });
+      return;
+    }
+    if (path === "/school/academic-years" && method === "GET") {
+      await route.fulfill({ json: { academic_years: [academicYear] } });
+      return;
+    }
+    if (path === "/school/students" && method === "GET") {
+      receivedQueries.push(url.searchParams.get("q") ?? "");
+      await route.fulfill({ json: { students: [], pagination: { limit: 20, offset: 0, total: 0 } } });
+      return;
+    }
+    await route.fulfill({ status: 404, json: { message: `Unmocked E2E API request: ${method} ${path}` } });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Username").fill("e2e-literal-search");
+  await page.getByLabel("Password").fill("E2E-only-password");
+  await page.getByRole("button", { name: /Continue/ }).click();
+  await page.getByRole("button", { name: "Students" }).click();
+  const literalSearch = String.raw`Updated%_\\`;
+  await page.getByRole("textbox", { name: "Search students" }).fill(literalSearch);
+  await expect.poll(() => receivedQueries.at(-1)).toBe(literalSearch);
+});
