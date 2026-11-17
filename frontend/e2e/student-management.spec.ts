@@ -1342,6 +1342,10 @@ test("student directory remains view-only when update and archive permissions ar
 test("student promotion validates required fields and preserves prior enrollment history", async ({ page }) => {
   const promotionRequests: Record<string, unknown>[] = [];
   let rejectPromotionOnce = true;
+  let promotionStartedResolve!: () => void;
+  let releasePromotionResolve!: () => void;
+  const promotionStarted = new Promise<void>(resolve => { promotionStartedResolve = resolve; });
+  const promotionGate = new Promise<void>(resolve => { releasePromotionResolve = resolve; });
   const enrollments: Record<string, unknown>[] = [{
     id: 100, school_id: 10, student_id: 91, student_name: "Promotion Test Student", student_status: "active",
     academic_year_id: 6, section_id: 61, class_name_snapshot: "Class 1", section_name_snapshot: "A",
@@ -1414,6 +1418,8 @@ test("student promotion validates required fields and preserves prior enrollment
         });
         return;
       }
+      promotionStartedResolve();
+      await promotionGate;
       Object.assign(enrollments[0], { status: "promoted", ended_at: input.admission_date });
       enrollments.push({
         id: 101, school_id: 10, student_id: 91, student_status: "active", academic_year_id: 7, section_id: 72,
@@ -1482,6 +1488,13 @@ test("student promotion validates required fields and preserves prior enrollment
     form.requestSubmit(button as HTMLButtonElement);
   });
   await expect.poll(() => promotionRequests.length).toBe(2);
+  await promotionStarted;
+  await expect(dialog.getByRole("button", { name: "Destination academic year", exact: true })).toBeDisabled();
+  await expect(dialog.getByRole("button", { name: "Destination class and section", exact: true })).toBeDisabled();
+  await expect(dialog.getByPlaceholder("e.g. ADM-2027-001")).toBeDisabled();
+  await expect(dialog.getByPlaceholder("Leave blank for automatic assignment")).toBeDisabled();
+  await expect(dialog.getByRole("button", { name: "Admission and promotion date" })).toBeDisabled();
+  releasePromotionResolve();
   expect(promotionRequests[0]).toMatchObject({
     academic_year_id: 7, section_id: 72, admission_number: "ADM-2026-091", roll_number: null,
   });
