@@ -42,14 +42,14 @@ func scanStudentProfile(row interface{ Scan(...any) error }) (*StudentProfile, e
 // limited to admission number and student name; guardian/contact data is not
 // joined into this basic listing.
 func (r *AcademicRepository) ListStudents(
-	ctx context.Context, actorID, schoolID int64, search, status string, limit, offset int,
+	ctx context.Context, actorID, schoolID, academicYearID int64, search, status string, limit, offset int,
 ) ([]StudentProfile, int64, error) {
 	if r == nil || r.db == nil {
 		return nil, 0, ErrAcademicAccessDenied
 	}
 	search = strings.TrimSpace(search)
 	status = strings.TrimSpace(strings.ToLower(status))
-	if utf8.RuneCountInString(search) > 100 || (status != "" && status != "active" && status != "inactive" && status != "archived") ||
+	if academicYearID < 0 || utf8.RuneCountInString(search) > 100 || (status != "" && status != "active" && status != "inactive" && status != "archived") ||
 		limit < 1 || limit > 100 || offset < 0 {
 		return nil, 0, ErrInvalidAcademicInput
 	}
@@ -61,6 +61,17 @@ func (r *AcademicRepository) ListStudents(
 	if err := authorizeAcademic(ctx, tx, actorID, schoolID, "students.read_sensitive"); err != nil {
 		return nil, 0, err
 	}
+	if academicYearID > 0 {
+		var yearExists bool
+		if err := tx.QueryRow(ctx, `
+			SELECT EXISTS (SELECT 1 FROM academic_years WHERE id=$1 AND school_id=$2)
+		`, academicYearID, schoolID).Scan(&yearExists); err != nil {
+			return nil, 0, fmt.Errorf("validate student directory academic year: %w", err)
+		}
+		if !yearExists {
+			return nil, 0, ErrInvalidAcademicInput
+		}
+	}
 	var total int64
 	if err := tx.QueryRow(ctx, `
 		SELECT COUNT(*)
@@ -71,22 +82,25 @@ func (r *AcademicRepository) ListStudents(
 			JOIN academic_years ay
 			  ON ay.id=e.academic_year_id AND ay.school_id=e.school_id
 			WHERE e.school_id=st.school_id AND e.student_id=st.id
-			ORDER BY (e.status='active') DESC, ay.is_current DESC, e.enrolled_at DESC, e.id DESC
+			  AND ($2=0 OR e.academic_year_id=$2)
+			ORDER BY (e.status='active') DESC,
+			         CASE WHEN $2=0 THEN ay.is_current ELSE FALSE END DESC,
+			         e.enrolled_at DESC, e.id DESC
 			LIMIT 1
 		) current_enrollment ON TRUE
 		WHERE st.school_id = $1
-		  AND ($2 = '' OR st.status = $2)
-		  AND ($3 = '' OR
+		  AND ($3 = '' OR st.status = $3)
+		  AND ($4 = '' OR
 		       COALESCE(current_enrollment.admission_number,
-		                CASE WHEN current_enrollment.id IS NULL THEN st.admission_number END, '')
-		         ILIKE '%' || $3 || '%' OR st.full_name ILIKE '%' || $3 || '%')
-	`, schoolID, status, search).Scan(&total); err != nil {
+		                CASE WHEN current_enrollment.id IS NULL AND $2=0 THEN st.admission_number END, '')
+		         ILIKE '%' || $4 || '%' OR st.full_name ILIKE '%' || $4 || '%')
+	`, schoolID, academicYearID, status, search).Scan(&total); err != nil {
 		return nil, 0, fmt.Errorf("count students: %w", err)
 	}
 	rows, err := tx.Query(ctx, `
 		SELECT st.id, st.school_id,
 		       COALESCE(current_enrollment.admission_number,
-		                CASE WHEN current_enrollment.id IS NULL THEN st.admission_number END, ''),
+		                CASE WHEN current_enrollment.id IS NULL AND $2=0 THEN st.admission_number END, ''),
 		       st.full_name, st.status, st.created_at, st.updated_at
 		FROM students st
 		LEFT JOIN LATERAL (
@@ -95,18 +109,21 @@ func (r *AcademicRepository) ListStudents(
 			JOIN academic_years ay
 			  ON ay.id=e.academic_year_id AND ay.school_id=e.school_id
 			WHERE e.school_id=st.school_id AND e.student_id=st.id
-			ORDER BY (e.status='active') DESC, ay.is_current DESC, e.enrolled_at DESC, e.id DESC
+			  AND ($2=0 OR e.academic_year_id=$2)
+			ORDER BY (e.status='active') DESC,
+			         CASE WHEN $2=0 THEN ay.is_current ELSE FALSE END DESC,
+			         e.enrolled_at DESC, e.id DESC
 			LIMIT 1
 		) current_enrollment ON TRUE
 		WHERE st.school_id = $1
-		  AND ($2 = '' OR st.status = $2)
-		  AND ($3 = '' OR
+		  AND ($3 = '' OR st.status = $3)
+		  AND ($4 = '' OR
 		       COALESCE(current_enrollment.admission_number,
-		                CASE WHEN current_enrollment.id IS NULL THEN st.admission_number END, '')
-		         ILIKE '%' || $3 || '%' OR st.full_name ILIKE '%' || $3 || '%')
+		                CASE WHEN current_enrollment.id IS NULL AND $2=0 THEN st.admission_number END, '')
+		         ILIKE '%' || $4 || '%' OR st.full_name ILIKE '%' || $4 || '%')
 		ORDER BY LOWER(st.full_name), st.id
-		LIMIT $4 OFFSET $5
-	`, schoolID, status, search, limit, offset)
+		LIMIT $5 OFFSET $6
+	`, schoolID, academicYearID, status, search, limit, offset)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list students: %w", err)
 	}
