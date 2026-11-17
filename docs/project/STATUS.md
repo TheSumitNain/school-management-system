@@ -1236,11 +1236,13 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 
 - Updating a student's Basic Details with the exact same normalized name now returns the existing school-scoped active profile without changing `updated_at` or inserting another `school.student.updated` audit event. Real changes continue to update the record and create one audit event.
 - Added PostgreSQL integration coverage that performs a real name update, retries the identical payload, and verifies the student ID/name remain stable, the timestamp does not advance, and the audit count remains exactly one.
-- Backend CI verification is pending for the resulting code checkpoint. Authenticated acceptance against the user's local API/database/browser remains outstanding.
+- Backend CI **PASS** — [run 44007420006](https://github.com/TheSumitNain/school-management-system/actions/runs/44007420006): full migrations, Go tests including PostgreSQL integration, and `go vet ./...`.
+- Tested code checkpoint: `522f2c6a378a1ff1f052fbd8436200e98aadd2e4`. Authenticated acceptance against the user's local API/database/browser remains outstanding.
 
  
 ## Student Management — guardian relationship save retry safety (2026-11-17)
 
 - Re-saving an unchanged active student–guardian relationship now returns the existing school-scoped link without advancing its timestamp or inserting a duplicate relationship-update audit event. When a relationship genuinely changes, primary-contact serialization and the existing audit behavior are preserved.
 - PostgreSQL integration coverage repeats an identical relationship update and verifies the link, timestamp and audit count remain unchanged.
-- Backend CI verification is pending for this follow-up checkpoint. Authenticated local API/database/browser acceptance remains outstanding.
+- Backend CI **PASS** — [run 44007696968](https://github.com/TheSumitNain/school-management-system/actions/runs/44007696968): full migrations, Go tests including PostgreSQL integration, and `go vet ./...`.
+- Tested code checkpoint: `709dd194e16d7c5e2215bdcca6c2b1473a2318f6`. Authenticated local API/database/browser acceptance remains outstanding.
