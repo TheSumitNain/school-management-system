@@ -13,6 +13,7 @@ type Props = {
 export function StudentFieldLabel({ label, required = false, conditional = false, hint }: Props) {
   const hintID = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const pointerInteractionRef = useRef(false);
   const [hintOpen, setHintOpen] = useState(false);
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const status = required ? "Required" : conditional ? "Required when used" : "Optional";
@@ -52,12 +53,20 @@ export function StudentFieldLabel({ label, required = false, conditional = false
             aria-label={"Help for " + label}
             aria-expanded={hintOpen}
             aria-describedby={hintOpen ? hintID : undefined}
+            onPointerDown={() => { pointerInteractionRef.current = true; }}
+            onPointerCancel={() => { pointerInteractionRef.current = false; }}
             onMouseEnter={() => setHintOpen(true)}
             onMouseLeave={() => { if (document.activeElement !== triggerRef.current) setHintOpen(false); }}
-            onFocus={() => setHintOpen(true)}
-            onBlur={() => setHintOpen(false)}
-            onClick={() => setHintOpen(true)}
-            onKeyDown={event => { if (event.key === "Escape") setHintOpen(false); }}
+            onFocus={() => { if (!pointerInteractionRef.current) setHintOpen(true); }}
+            onBlur={() => { pointerInteractionRef.current = false; setHintOpen(false); }}
+            onClick={() => { pointerInteractionRef.current = false; setHintOpen(open => !open); }}
+            onKeyDown={event => {
+              if (event.key === "Escape") setHintOpen(false);
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                setHintOpen(true);
+              }
+            }}
           >
             <Info size={14} aria-hidden="true" />
           </button>
