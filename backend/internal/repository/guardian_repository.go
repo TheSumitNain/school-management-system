@@ -313,6 +313,31 @@ func (r *AcademicRepository) LinkStudentGuardian(ctx context.Context,actorID,sch
 	if !active{return nil,ErrGuardianNotFound}
 	// Serialize primary-contact selection for a student.
 	if err=tx.QueryRow(ctx,`SELECT id FROM students WHERE id=$1 AND school_id=$2 AND status='active' FOR UPDATE`,studentID,schoolID).Scan(new(int64));err!=nil{return nil,guardianWriteError(err)}
+
+	// A client may retry after the link was committed but its response was
+	// lost. Resolve the active pair before clearing another primary contact
+	// or attempting a duplicate insert.
+	var existing StudentGuardian
+	existingErr := tx.QueryRow(ctx,`SELECT sg.id,sg.student_id,sg.guardian_id,g.full_name,g.status,g.mobile_number,g.email_address,
+		g.alternate_mobile_number,g.occupation,g.education,g.workplace_name,
+		sg.relationship_type,sg.is_primary_contact,sg.is_emergency_contact,sg.created_at,sg.revoked_at
+		FROM student_guardians sg JOIN guardians g ON g.id=sg.guardian_id AND g.school_id=sg.school_id
+		WHERE sg.school_id=$1 AND sg.student_id=$2 AND sg.guardian_id=$3 AND sg.revoked_at IS NULL
+		FOR UPDATE OF sg`,schoolID,studentID,guardianID).Scan(
+		&existing.ID,&existing.StudentID,&existing.GuardianID,&existing.GuardianName,&existing.GuardianStatus,
+		&existing.MobileNumber,&existing.EmailAddress,&existing.AlternateMobileNumber,&existing.Occupation,
+		&existing.Education,&existing.WorkplaceName,&existing.RelationshipType,&existing.IsPrimaryContact,
+		&existing.IsEmergencyContact,&existing.CreatedAt,&existing.RevokedAt)
+	if existingErr == nil {
+		if existing.RelationshipType != relationship || existing.IsPrimaryContact != primary || existing.IsEmergencyContact != emergency {
+			return nil,ErrGuardianConflict
+		}
+		if err=tx.Commit(ctx);err!=nil{return nil,fmt.Errorf("commit unchanged student guardian link: %w",err)}
+		return &existing,nil
+	}
+	if !errors.Is(existingErr,pgx.ErrNoRows) {
+		return nil,fmt.Errorf("load existing student guardian link: %w",existingErr)
+	}
 	if primary { if _,err=tx.Exec(ctx,`UPDATE student_guardians SET is_primary_contact=FALSE,updated_at=NOW() WHERE school_id=$1 AND student_id=$2 AND revoked_at IS NULL`,schoolID,studentID);err!=nil{return nil,fmt.Errorf("clear prior primary contact: %w",err)} }
 	var v StudentGuardian
 	err=tx.QueryRow(ctx,`INSERT INTO student_guardians(school_id,student_id,guardian_id,relationship_type,is_primary_contact,is_emergency_contact)

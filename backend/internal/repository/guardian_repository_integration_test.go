@@ -302,6 +302,33 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("unexpected first student-guardian link: %+v", firstLink)
 	}
 
+	var linkUpdatedAt time.Time
+	var linkCreatedAuditCount int
+	if err := tx.QueryRow(ctx, `SELECT updated_at FROM student_guardians WHERE id=$1 AND school_id=$2`, firstLink.ID, schoolID).Scan(&linkUpdatedAt); err != nil {
+		t.Fatalf("read newly linked guardian timestamp: %v", err)
+	}
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM audit_events WHERE school_id=$1 AND actor_principal_id=$2 AND action='school.student_guardian_link_created' AND resource_id=$3`,
+		schoolID,targetPrincipalID,fmt.Sprint(firstLink.ID)).Scan(&linkCreatedAuditCount); err != nil {
+		t.Fatalf("count guardian link creation audit events: %v", err)
+	}
+	retriedLink, err := repo.LinkStudentGuardian(ctx,targetPrincipalID,schoolID,studentID,guardian.ID,"father",true,true)
+	if err != nil || retriedLink == nil || retriedLink.ID != firstLink.ID {
+		t.Fatalf("retry identical student guardian link: link=%+v err=%v",retriedLink,err)
+	}
+	var retryLinkUpdatedAt time.Time
+	var retryLinkAuditCount int
+	if err := tx.QueryRow(ctx, `SELECT updated_at FROM student_guardians WHERE id=$1 AND school_id=$2`, firstLink.ID, schoolID).Scan(&retryLinkUpdatedAt); err != nil {
+		t.Fatalf("read guardian timestamp after identical link retry: %v",err)
+	}
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM audit_events WHERE school_id=$1 AND actor_principal_id=$2 AND action='school.student_guardian_link_created' AND resource_id=$3`,
+		schoolID,targetPrincipalID,fmt.Sprint(firstLink.ID)).Scan(&retryLinkAuditCount); err != nil {
+		t.Fatalf("count guardian link creation audit events after retry: %v",err)
+	}
+	if !retryLinkUpdatedAt.Equal(linkUpdatedAt) || retryLinkAuditCount != linkCreatedAuditCount || linkCreatedAuditCount != 1 {
+		t.Fatalf("identical guardian link retry changed timestamp/audit count: before=%s after=%s audits before=%d after=%d",
+			linkUpdatedAt,retryLinkUpdatedAt,linkCreatedAuditCount,retryLinkAuditCount)
+	}
+
 	if _, err := repo.UpdateStudentGuardianLink(ctx, teacherPrincipalID, schoolID, firstLink.ID, "father", false, false); !errors.Is(err, ErrGuardianAccessDenied) {
 		t.Fatalf("Teacher must not update guardian relationship: %v", err)
 	}
