@@ -488,7 +488,7 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	if _, err := teacherAcademicRepo.GetStudent(ctx, teacherPrincipalID, schoolID, studentID); !errors.Is(err, ErrAcademicAccessDenied) {
 		t.Fatalf("teacher full student profile access error = %v, want ErrAcademicAccessDenied", err)
 	}
-	if _, _, err := teacherAcademicRepo.ListStudents(ctx, teacherPrincipalID, schoolID, "", "active", 10, 0); !errors.Is(err, ErrAcademicAccessDenied) {
+	if _, _, err := teacherAcademicRepo.ListStudents(ctx, teacherPrincipalID, schoolID, 0, "", "active", 10, 0); !errors.Is(err, ErrAcademicAccessDenied) {
 		t.Fatalf("teacher full student directory access error = %v, want ErrAcademicAccessDenied", err)
 	}
 	unassignedHistory, err := teacherAcademicRepo.ListStudentEnrollments(ctx, teacherPrincipalID, schoolID, 0, studentID)
