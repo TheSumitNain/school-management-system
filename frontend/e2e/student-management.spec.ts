@@ -575,6 +575,21 @@ test("student admission, profile navigation and parent details render without br
   failStudentReads.delete("basic-details");
   await page.getByRole("button", { name: "Retry loading details" }).click();
   await expect(basicSave).toBeEnabled();
+
+  // Field help must be available to pointer/touch users and keyboard users,
+  // not only as a hover tooltip.
+  const dobHelp = page.getByRole("button", { name: "Help for Date of birth" });
+  await dobHelp.click();
+  await expect(dobHelp).toHaveAttribute("aria-expanded", "true");
+  await expect(dobHelp.locator("xpath=following-sibling::*[@role='tooltip']")).toContainText("future dates are not allowed");
+  await dobHelp.click();
+  await expect(dobHelp).toHaveAttribute("aria-expanded", "false");
+  await dobHelp.focus();
+  await dobHelp.press("Enter");
+  await expect(dobHelp).toHaveAttribute("aria-expanded", "true");
+  await dobHelp.press("Escape");
+  await expect(dobHelp).toHaveAttribute("aria-expanded", "false");
+
   await page.getByPlaceholder("Enter student's full name").fill("Aarav Sharma Updated");
   await page.getByRole("button", { name: "Save student name" }).click();
   await expect(page.getByText("Student name saved.")).toBeVisible();
