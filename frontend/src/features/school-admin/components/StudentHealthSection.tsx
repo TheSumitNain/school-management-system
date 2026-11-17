@@ -35,9 +35,13 @@ function localDateValue() {
 function numberValue(value?: number | null) {
   return value == null ? "" : String(value);
 }
-function dateLabel(value?: string | null) {
+function dateLabel(value?: string | null, calendarDate = false) {
   if (!value) return "—";
-  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  // DATE columns are serialized from Go time.Time as midnight timestamps; retain
+  // their calendar day instead of applying the viewer's timezone offset.
+  const dateOnly = calendarDate
+    ? /^(\d{4})-(\d{2})-(\d{2})(?:T00:00:00(?:\.0+)?(?:Z|\+00:00))?$/.exec(value)
+    : null;
   const parsed = dateOnly
     ? new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]))
     : new Date(value);
@@ -273,7 +277,7 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
                 <div className="student-health-history-list">
                   {physicalQuery.data.physical_details.history.filter(record => record.id !== physicalQuery.data?.physical_details.id).map(record => (
                     <article key={record.id}>
-                      <strong>Measured {dateLabel(record.measured_on)}</strong>
+                      <strong>Measured {dateLabel(record.measured_on, true)}</strong>
                       <dl>
                         <div><dt>Height</dt><dd>{record.height_cm == null ? "—" : record.height_cm + " cm"}</dd></div>
                         <div><dt>Weight</dt><dd>{record.weight_kg == null ? "—" : record.weight_kg + " kg"}</dd></div>
