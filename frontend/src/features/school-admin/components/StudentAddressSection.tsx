@@ -443,7 +443,7 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
                 <div><button type="button" className="app-modal-cancel" onClick={() => setPendingDeactivate(null)} disabled={busy}>Cancel</button><button type="button" className="secondary" onClick={() => void confirmDeactivateLocation()} disabled={busy}>{deactivateLocation.isPending ? "Deactivating…" : "Confirm deactivation"}</button></div>
               </div>}
               {(statesQuery.isError || districtsQuery.isError || subdistrictsQuery.isError || localitiesQuery.isError) && <div className="student-feedback error" role="alert"><p>Location options could not be loaded.</p><button type="button" className="student-secondary" onClick={() => { void statesQuery.refetch(); if (stateID) void districtsQuery.refetch(); if (districtID) void subdistrictsQuery.refetch(); if (subdistrictID) void localitiesQuery.refetch(); }}>Retry location loading</button></div>}
-              {!statesQuery.isLoading && !statesQuery.isError && states.length === 0 && <p className="student-address-note">No shared States / UTs are available yet. Add a missing State / UT to this school’s location list, or load the approved reference catalogue.</p>}
+              {!statesQuery.isLoading && !statesQuery.isError && states.length === 0 && <p className="student-location-empty-state" role="status"><strong>No State / UT options are configured.</strong> Add the missing State / UT to this school’s location list, or load the approved reference catalogue.</p>}
               {showLocationCreator && canUpdate && canAddLocation && (
                 <div className="student-location-create">
                   <strong>Add {nextLocationLabel.toLowerCase()} for this school</strong>
