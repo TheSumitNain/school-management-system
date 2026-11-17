@@ -62,6 +62,9 @@ func (r *AcademicRepository) ListStudents(
 		return nil, 0, err
 	}
 	if academicYearID > 0 {
+		if err := authorizeAcademic(ctx, tx, actorID, schoolID, "academic_years.read"); err != nil {
+			return nil, 0, err
+		}
 		var yearExists bool
 		if err := tx.QueryRow(ctx, `
 			SELECT EXISTS (SELECT 1 FROM academic_years WHERE id=$1 AND school_id=$2)
