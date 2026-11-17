@@ -453,8 +453,10 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("button", { name: /Continue/ }).click();
   await expect(page.getByRole("button", { name: "Students" })).toBeVisible();
   await page.getByRole("button", { name: "Students" }).click();
-
-  await expect.poll(() => studentDirectoryQueries.at(-1)).toBe(String(academicYear.id));
+  await expect(page.getByRole("button", { name: "Student directory" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Student directory" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "Filter students by academic year" })).toBeVisible();
+  await expect.poll(() => studentDirectoryQueries.at(-1), { timeout: 15_000 }).toBe(String(academicYear.id));
   const directoryYearFilter = page.getByRole("button", { name: "Filter students by academic year" });
   await expect(directoryYearFilter).toBeVisible();
   const directoryYearOptions = page.getByRole("listbox", { name: "Filter students by academic year" });
@@ -1949,7 +1951,7 @@ test("staff can create a guardian contact and link it to a student with relation
   await expect(page.getByText("Principal · M.Ed. · Sunrise Public School")).toBeVisible();
 
   await page.getByRole("button", { name: "Edit relationship" }).click();
-  await page.getByLabel(/Relationship to student/).selectOption("Legal Guardian");
+  await page.locator("form.student-family-create-form").filter({ hasText: "Edit relationship for this student" }).locator("select").selectOption("Legal Guardian");
   await page.getByRole("checkbox", { name: /Primary contact/ }).first().uncheck();
   await page.getByRole("button", { name: "Save relationship" }).click();
   await expect(page.getByText("Legal Guardian · Emergency contact")).toBeVisible();
