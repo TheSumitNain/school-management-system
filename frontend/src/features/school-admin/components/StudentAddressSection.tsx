@@ -219,21 +219,35 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
       setFieldError("Complete State → District → Sub-District / Tehsil → Village / City, or clear the location selection.");
       return;
     }
+    const addressInput = sameAsCurrent && addressType === "permanent"
+      ? { same_as_current: true as const }
+      : {
+          address_line_1: line1.trim() || null,
+          address_line_2: line2.trim() || null,
+          area_mohalla: areaMohalla.trim() || null,
+          landmark: landmark.trim() || null,
+          postal_code: postalCode.trim() || null,
+          location_id: localityID || null,
+          same_as_current: false as const,
+        };
+    const unchanged = addressInput.same_as_current
+      ? Boolean(selectedAddress?.same_as_current)
+      : (selectedAddress?.address_line_1 ?? null) === addressInput.address_line_1 &&
+        (selectedAddress?.address_line_2 ?? null) === addressInput.address_line_2 &&
+        (selectedAddress?.area_mohalla ?? null) === addressInput.area_mohalla &&
+        (selectedAddress?.landmark ?? null) === addressInput.landmark &&
+        (selectedAddress?.postal_code ?? null) === addressInput.postal_code &&
+        (selectedAddress?.location_id ?? null) === addressInput.location_id &&
+        !selectedAddress?.same_as_current;
+    if (unchanged) {
+      setFeedback({ kind: "success", message: "No changes to save." });
+      return;
+    }
     try {
       await saveAddress.mutateAsync({
         studentID: student.id,
         addressType,
-        input: sameAsCurrent && addressType === "permanent"
-          ? { same_as_current: true }
-          : {
-              address_line_1: line1.trim() || null,
-              address_line_2: line2.trim() || null,
-              area_mohalla: areaMohalla.trim() || null,
-              landmark: landmark.trim() || null,
-              postal_code: postalCode.trim() || null,
-              location_id: localityID || null,
-              same_as_current: false,
-            },
+        input: addressInput,
       });
       setFeedback({ kind: "success", message: addressType === "current" ? "Current address saved." : "Permanent address saved." });
     } catch (error) {
@@ -255,14 +269,23 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
     }
     setContactErrors(errors);
     if (Object.keys(errors).length > 0) return;
+    const contactInput = {
+      primary_phone: primaryPhone.trim() || null,
+      alternate_phone: alternatePhone.trim() || null,
+      email_address: emailAddress.trim() || null,
+    };
+    const savedContact = contactQuery.data?.contact_details;
+    const unchanged = (savedContact?.primary_phone ?? null) === contactInput.primary_phone &&
+      (savedContact?.alternate_phone ?? null) === contactInput.alternate_phone &&
+      (savedContact?.email_address ?? null) === contactInput.email_address;
+    if (unchanged) {
+      setFeedback({ kind: "success", message: "No changes to save." });
+      return;
+    }
     try {
       await saveContact.mutateAsync({
         studentID: student.id,
-        input: {
-          primary_phone: primaryPhone.trim() || null,
-          alternate_phone: alternatePhone.trim() || null,
-          email_address: emailAddress.trim() || null,
-        },
+        input: contactInput,
       });
       setFeedback({ kind: "success", message: "Student contact details saved." });
     } catch (error) {
