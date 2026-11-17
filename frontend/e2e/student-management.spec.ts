@@ -517,6 +517,9 @@ test("student admission, profile navigation and parent details render without br
   });
 
   await expect(page.getByRole("button", { name: "Edit profile for Aarav Sharma" })).toBeVisible();
+  await page.getByRole("button", { name: "Enrollments", exact: true }).click();
+  await expect(page.getByText("14 Nov 2026", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Student directory", exact: true }).click();
   await page.getByRole("button", { name: "View profile for Aarav Sharma" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Academic history", exact: true })).toBeVisible();
