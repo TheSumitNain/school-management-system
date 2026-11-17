@@ -2074,6 +2074,7 @@ test("switching student profiles clears unsaved basic-details drafts and validat
     const match = path.match(/^\/school\/students\/(\d+)(?:\/(.*))?$/);
     if (match) {
       const studentID = Number(match[1]);
+      const subpath = match[2] ?? "";
 
       if (subpath === "enrollments" && method === "GET") {
         await route.fulfill({ json: { enrollments: [] } });
