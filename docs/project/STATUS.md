@@ -1393,3 +1393,10 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Tested code checkpoint: `cb72cd96d5dc477225d1ad59c0fb80336eb50428`. These are CI/mocked-browser results; authenticated acceptance against the user's local API/database/browser remains outstanding.
 
 - This is a code-level contract review, not authenticated local API/database/browser acceptance. The outstanding school-local timezone policy for date-of-birth future-date validation remains unresolved.
+
+## Student Management — medical and physical read-retry coverage (2026-11-17)
+
+- Extended the Student Management Playwright profile-state scenario to simulate temporary server failures when loading restricted Medical Details and Physical Details.
+- The test holds each failure through the query client's configured automatic retry, verifies the visible error/retry state, then explicitly retries and confirms the form becomes available. This checks the user-facing recovery action rather than allowing an automatic retry to mask it.
+- Code checkpoint: `c4f7ff5523709be0c68ed44039d3b05156ca6ef9`. Frontend and backend CI were running when this entry was recorded; results will be recorded after completion.
+- Authenticated acceptance against the user's local API/database/browser remains outstanding.
