@@ -56,7 +56,7 @@ export function StudentFieldLabel({ label, required = false, conditional = false
             onMouseLeave={() => setHintOpen(false)}
             onFocus={() => setHintOpen(true)}
             onBlur={() => setHintOpen(false)}
-            onClick={() => setHintOpen(open => !open)}
+            onClick={() => setHintOpen(true)}
             onKeyDown={event => { if (event.key === "Escape") setHintOpen(false); }}
           >
             <Info size={14} aria-hidden="true" />
