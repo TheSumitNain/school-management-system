@@ -2875,7 +2875,7 @@ test("student directory sends wildcard characters as literal search text", async
   await page.getByLabel("Password").fill("E2E-only-password");
   await page.getByRole("button", { name: /Continue/ }).click();
   await page.getByRole("button", { name: "Students" }).click();
-  const literalSearch = "Updated%_\\\";
+  const literalSearch = "Updated%_\\";
   await page.getByRole("textbox", { name: "Search students" }).fill(literalSearch);
   await expect.poll(() => receivedQueries.at(-1)).toBe(literalSearch);
 });
