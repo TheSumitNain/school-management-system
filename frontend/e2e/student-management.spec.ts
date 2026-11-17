@@ -139,7 +139,7 @@ test("student admission, profile navigation and parent details render without br
       return;
     }
     if (path === "/school/academic-years") {
-      await route.fulfill({ json: { academic_years: [academicYear] } });
+      await route.fulfill({ json: { academic_years: [academicYear, previousAcademicYear] } });
       return;
     }
     if (path === "/school/sections") {
