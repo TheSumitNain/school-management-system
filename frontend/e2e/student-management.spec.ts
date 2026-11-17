@@ -2409,7 +2409,7 @@ test("archived student profile sections remain readable but cannot be changed", 
   await page.route("**/api/**", async route => {
     const request = route.request();
     const url = new URL(request.url());
-    const path = url.pathname.replace(/^\\/api/, "");
+    const path = url.pathname.startsWith("/api") ? url.pathname.slice(4) : url.pathname;
     const method = request.method();
     if (["POST", "PUT", "PATCH", "DELETE"].includes(method)) attemptedWrites.push(method + " " + path);
 
@@ -2447,8 +2447,8 @@ test("archived student profile sections remain readable but cannot be changed", 
       await route.fulfill({ json: { locations: [] } });
       return;
     }
-    const match = path.match(/^\\/school\\/students\\/(\\d+)(?:\\/(.*))?$/);
-    if (match && Number(match[1]) === archivedStudent.id) {
+    if (path.startsWith("/school/students/41/")) {
+      const subpath = path.slice("/school/students/41/".length);
       const subpath = match[2] ?? "";
       if (subpath === "enrollments" && method === "GET") {
         await route.fulfill({ json: { enrollments: [] } });
