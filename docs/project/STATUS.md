@@ -1411,5 +1411,5 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 ## Student Management — directory pagination and filter reset coverage (2026-11-17)
 
 - Added focused Playwright coverage for the student directory's 20-row pagination and verified that search, status, and academic-year filter changes reset the offset to page one. The scenario checks filtered rows, totals, and request parameters. Added PostgreSQL integration assertions that page totals remain stable beyond the last result and that invalid status, limit, and offset values are rejected.
-- Code checkpoint: `104e4f7a7cbea6178a922725520ba26cb752b2f7`. Frontend CI for the expanded Playwright filter scenario and backend CI for the pagination integration assertions are running against the updated code checkpoint; record their results here after completion.
+- Code checkpoint: `df76f760a56bae1d1f28926db1d113328e9b2df4`. Frontend CI for the expanded Playwright filter scenario and backend CI for the pagination integration assertions are running against the updated code checkpoint; record their results here after completion.
 - This is mocked-browser regression coverage. Authenticated acceptance against the user's local API/database/browser remains outstanding.
