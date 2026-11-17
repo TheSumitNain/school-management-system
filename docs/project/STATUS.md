@@ -3,10 +3,10 @@
 - Added an Academic Year filter to the student directory for users with `academic_years.read`. The selected year controls which enrollment admission number is displayed and searched; name and student-status filtering continue to work across the school-scoped student identity list.
 - Students without an enrollment in the selected year remain visible and are clearly shown as **Not enrolled**. The directory does not borrow an admission number from another academic year or from the legacy student-level field when a specific year is selected.
 - The API accepts optional `academic_year_id`, validates that the year belongs to the current school, and applies the same year-scoped enrollment projection to both count and page queries. Omitting the parameter preserves the existing current/preferred-enrollment behavior for clients without the year filter.
-- Added PostgreSQL integration coverage for selected-year admission search, exclusion of another year's admission number, blank admission number for students without a selected-year enrollment, and invalid year input. Added Playwright coverage for changing the directory year and displaying **Not enrolled** for a student admitted in a different year.
+- Added PostgreSQL integration coverage for selected-year admission search, exclusion of another year's admission number, blank admission number for students without a selected-year enrollment, invalid year input, and rejection of an academic-year ID owned by another school. Added Playwright coverage for changing the directory year and displaying **Not enrolled** for a student admitted in a different year.
 - Frontend CI **PASS** — [run 44035062609](https://github.com/TheSumitNain/school-management-system/actions/runs/44035062609): TypeScript/Vite production build, design-token check, and all 12 Student Management browser tests.
-- Backend CI **PASS** — [run 44035062605](https://github.com/TheSumitNain/school-management-system/actions/runs/44035062605): complete migration chain, all Go tests including PostgreSQL integration, and `go vet ./...`.
-- Tested code checkpoint: `b765fb53c36341c02f9631a4b3112e5bdfca73ed`. Authenticated acceptance against the user's local API/database/browser remains outstanding.
+- Backend CI **PASS** — [run 44035425610](https://github.com/TheSumitNain/school-management-system/actions/runs/44035425610): complete migration chain, all Go tests including PostgreSQL integration, and `go vet ./...`.
+- Tested code checkpoint: `685797376023b7f06ed8e88fb5ced692c1cf89ab`. Authenticated acceptance against the user's local API/database/browser remains outstanding.
 
 ### Student Management — archived attendance history retention (2026-11-17)
 
