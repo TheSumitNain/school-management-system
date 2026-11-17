@@ -186,17 +186,41 @@ func TestStudentProfileRepositoryPostgresIntegration(t *testing.T) {
 	// A school may admit a student into a future active academic year before
 	// that year becomes current. The directory and profile must still resolve
 	// the year-scoped admission identity instead of showing an empty number.
-	futureYearItems, futureYearTotal, err := repo.ListStudents(ctx, actorID, schoolID, unicodeAdmissionNumber, "active", 10, 0)
+	futureYearItems, futureYearTotal, err := repo.ListStudents(ctx, actorID, schoolID, admissionYearID, unicodeAdmissionNumber, "active", 10, 0)
 	if err != nil || futureYearTotal != 1 || len(futureYearItems) != 1 ||
 		futureYearItems[0].ID != admission.Student.ID || futureYearItems[0].AdmissionNumber != unicodeAdmissionNumber {
-		t.Fatalf("directory lookup for non-current-year admission: items=%+v total=%d err=%v",
+		t.Fatalf("directory lookup for selected-year admission: items=%+v total=%d err=%v",
 			futureYearItems, futureYearTotal, err)
+	}
+	otherYearItems, otherYearTotal, err := repo.ListStudents(ctx, actorID, schoolID, destinationYearID, unicodeAdmissionNumber, "active", 10, 0)
+	if err != nil || otherYearTotal != 0 || len(otherYearItems) != 0 {
+		t.Fatalf("selected-year admission search must not match a different year's number: items=%+v total=%d err=%v",
+			otherYearItems, otherYearTotal, err)
+	}
+	otherYearDirectory, _, err := repo.ListStudents(ctx, actorID, schoolID, destinationYearID, "", "active", 100, 0)
+	if err != nil {
+		t.Fatalf("list students for another academic year: %v", err)
+	}
+	foundWithoutOtherYearEnrollment := false
+	for _, item := range otherYearDirectory {
+		if item.ID == admission.Student.ID {
+			foundWithoutOtherYearEnrollment = true
+			if item.AdmissionNumber != "" {
+				t.Fatalf("student without enrollment in selected year exposed another year's admission number %q", item.AdmissionNumber)
+			}
+		}
+	}
+	if !foundWithoutOtherYearEnrollment {
+		t.Fatal("student identity should remain in the directory even without an enrollment in the selected year")
+	}
+	if _, _, err := repo.ListStudents(ctx, actorID, schoolID, -1, "", "active", 10, 0); !errors.Is(err, ErrInvalidAcademicInput) {
+		t.Fatalf("negative directory academic year error = %v, want invalid input", err)
 	}
 	futureYearProfile, err := repo.GetStudent(ctx, actorID, schoolID, admission.Student.ID)
 	if err != nil || futureYearProfile.AdmissionNumber != unicodeAdmissionNumber {
 		t.Fatalf("profile lookup for non-current-year admission: profile=%+v err=%v", futureYearProfile, err)
 	}
-	if _, _, err := repo.ListStudents(ctx, actorID, schoolID, strings.Repeat("अ", 101), "active", 10, 0); !errors.Is(err, ErrInvalidAcademicInput) {
+	if _, _, err := repo.ListStudents(ctx, actorID, schoolID, 0, strings.Repeat("अ", 101), "active", 10, 0); !errors.Is(err, ErrInvalidAcademicInput) {
 		t.Fatalf("directory search over 100 Unicode characters error = %v, want invalid input", err)
 	}
 	if _, err := repo.CreateStudentAdmission(ctx, actorID, schoolID, strings.Repeat("अ", 201),
