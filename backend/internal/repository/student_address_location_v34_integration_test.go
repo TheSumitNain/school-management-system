@@ -280,6 +280,28 @@ func TestStudentAddressLocationV34PostgresIntegration(t *testing.T) {
 		savedAddress.AddressType != "current" || savedAddress.SameAsCurrent {
 		t.Fatalf("unexpected saved current address: %+v", savedAddress)
 	}
+
+	// Repeating the same address save must not update its timestamp or append
+	// another audit event.
+	var savedAddressUpdatedAt time.Time
+	if err := tx.QueryRow(ctx, `SELECT updated_at FROM student_addresses WHERE id=$1`, savedAddress.ID).Scan(&savedAddressUpdatedAt); err != nil {
+		t.Fatalf("read saved address timestamp: %v", err)
+	}
+	retriedAddress, err := repository.SaveStudentAddress(ctx, actorPrincipalID, schoolID, studentID,
+		"current", &updatedLine1, nil, &updatedArea, nil, &updatedPostal, nil, false)
+	if err != nil {
+		t.Fatalf("retry identical student address save: %v", err)
+	}
+	if retriedAddress.ID != savedAddress.ID {
+		t.Fatalf("identical address retry changed record ID: got %d want %d", retriedAddress.ID, savedAddress.ID)
+	}
+	var retriedAddressUpdatedAt time.Time
+	if err := tx.QueryRow(ctx, `SELECT updated_at FROM student_addresses WHERE id=$1`, savedAddress.ID).Scan(&retriedAddressUpdatedAt); err != nil {
+		t.Fatalf("read retried address timestamp: %v", err)
+	}
+	if !retriedAddressUpdatedAt.Equal(savedAddressUpdatedAt) {
+		t.Fatalf("identical address retry changed updated_at: before=%s after=%s", savedAddressUpdatedAt, retriedAddressUpdatedAt)
+	}
 	var permanentSameAsCurrent bool
 	if err := tx.QueryRow(ctx, `
 		SELECT same_as_current FROM student_addresses
