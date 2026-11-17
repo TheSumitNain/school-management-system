@@ -272,12 +272,21 @@ test("student admission, profile navigation and parent details render without br
       if (subpath === "enrollments") {
         await route.fulfill({
           json: {
-            enrollments: [{
-              id: 100 + studentID, student_id: studentID, academic_year_id: academicYear.id,
-              class_name_snapshot: section.class_name, section_name_snapshot: section.name,
-              admission_number: students.find(item => item.id === studentID)?.admission_number ?? "ADM-E2E-001",
-              admission_date: "2026-11-14T00:00:00Z", status: "active", enrolled_at: "2026-11-14T00:00:00Z",
-            }],
+            enrollments: [
+              {
+                id: 100 + studentID, student_id: studentID, academic_year_id: academicYear.id,
+                class_name_snapshot: section.class_name, section_name_snapshot: section.name,
+                admission_number: students.find(item => item.id === studentID)?.admission_number ?? "ADM-E2E-001",
+                admission_date: "2026-11-14T00:00:00Z", status: "active", enrolled_at: "2026-11-14T00:00:00Z",
+              },
+              ...(studentID === 1 ? [{
+                id: 99, student_id: studentID, academic_year_id: 6,
+                class_name_snapshot: "Nursery", section_name_snapshot: "B",
+                admission_number: "ADM-2025-001", admission_date: "2025-04-01T00:00:00Z",
+                status: "promoted", enrolled_at: "2025-04-01T00:00:00Z",
+                ended_at: "2026-03-31T00:00:00Z",
+              }] : []),
+            ],
           },
         });
         return;
@@ -536,6 +545,7 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByRole("heading", { name: "Academic history", exact: true })).toBeVisible();
   const profileDialog = page.getByRole("dialog", { name: /Student profile/ });
   await expect(profileDialog.getByText("14 Nov 2026", { exact: true })).toHaveCount(2);
+  await expect(profileDialog.getByText("31 Mar 2026", { exact: true })).toBeVisible();
   const curriculumPanel = page.getByRole("region", { name: "Curriculum and subject choices" });
   await expect(curriculumPanel.getByText("Mathematics")).toBeVisible();
   await expect(curriculumPanel.getByText("This curriculum is available for the selected class and academic year. Saving subject choices will assign it to this student’s enrollment.")).toBeVisible();
