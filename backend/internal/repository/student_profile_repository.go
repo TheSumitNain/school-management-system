@@ -338,23 +338,14 @@ func (r *AcademicRepository) ArchiveStudent(
 	}
 	// Closing the permanent student record must also close any current-year
 	// enrollment. Keep every enrollment row and its attendance history intact.
-	// Preserve every recorded attendance date, including an explicitly
-	// future-dated mark, inside the enrollment period when closing the record.
-	// GREATEST also protects future-dated admissions archived before their
-	// first attendance day.
+	// Closing the permanent student record must also close any current-year
+	// enrollment. Keep every enrollment row and its attendance history intact.
+	// GREATEST protects the enrollment end-date constraint for future-dated
+	// admissions that are archived before their first attendance day.
 	if _, err := tx.Exec(ctx, `
 		UPDATE student_enrollments
 		   SET status = 'withdrawn',
-		       ended_at = GREATEST(
-		           CURRENT_DATE,
-		           enrolled_at,
-		           COALESCE((
-		               SELECT MAX(a.attendance_date)
-		                 FROM attendance_records a
-		                WHERE a.school_id = student_enrollments.school_id
-		                  AND a.enrollment_id = student_enrollments.id
-		           ), enrolled_at)
-		       ),
+		       ended_at = GREATEST(CURRENT_DATE, enrolled_at),
 		       updated_at = NOW()
 		 WHERE school_id = $1 AND student_id = $2 AND status = 'active'
 	`, schoolID, student.ID); err != nil {
