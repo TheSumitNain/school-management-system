@@ -148,6 +148,17 @@ test("student admission, profile navigation and parent details render without br
       await route.fulfill({ json: { students, pagination: { limit: 20, offset: 0, total: students.length } } });
       return;
     }
+    if (path === "/school/enrollments" && method === "GET") {
+      await route.fulfill({ json: { enrollments: students.map(student => ({
+        id: 100 + student.id, school_id: 10, student_id: student.id,
+        student_name: student.full_name, student_status: student.status,
+        academic_year_id: academicYear.id, section_id: section.id,
+        class_name_snapshot: section.class_name, section_name_snapshot: section.name,
+        admission_number: student.admission_number, admission_date: "2026-11-14T00:00:00Z",
+        status: "active", enrolled_at: "2026-11-14T00:00:00Z", ended_at: null,
+      })) } });
+      return;
+    }
     if (path === "/school/students" && method === "POST") {
       if (failAdmissionNumberConflict) {
         await route.fulfill({
