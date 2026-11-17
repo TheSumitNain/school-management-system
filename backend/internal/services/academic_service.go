@@ -46,7 +46,7 @@ type academicRepository interface {
 	GetStudentPhysicalDetails(context.Context,int64,int64,int64)(*repository.StudentPhysicalDetails,error)
 	SaveStudentPhysicalDetails(context.Context,int64,int64,int64,*float64,*float64,*time.Time,*string,*string)(*repository.StudentPhysicalDetails,error)
 
-	ListStudents(context.Context,int64,int64,string,string,int,int)([]repository.StudentProfile,int64,error)
+	ListStudents(context.Context,int64,int64,int64,string,string,int,int)([]repository.StudentProfile,int64,error)
 	GetStudent(context.Context,int64,int64,int64)(*repository.StudentProfile,error)
 	CreateStudent(context.Context,int64,int64,string,string)(*repository.StudentProfile,error)
 	UpdateStudent(context.Context,int64,int64,int64,string)(*repository.StudentProfile,error)
@@ -150,9 +150,9 @@ func (s *AcademicService) CreateStudentAdmission(ctx context.Context, actorID, s
 	return s.repository.CreateStudentAdmission(ctx, actorID, schoolID, fullName, admissionNumber, yearID, sectionID, rollNumber, admissionDate)
 }
 
-func (s *AcademicService) ListStudents(ctx context.Context, actorID, schoolID int64, search, status string, limit, offset int) ([]repository.StudentProfile, int64, error) {
+func (s *AcademicService) ListStudents(ctx context.Context, actorID, schoolID, academicYearID int64, search, status string, limit, offset int) ([]repository.StudentProfile, int64, error) {
 	if s == nil || s.repository == nil { return nil, 0, repository.ErrAcademicAccessDenied }
-	return s.repository.ListStudents(ctx, actorID, schoolID, search, status, limit, offset)
+	return s.repository.ListStudents(ctx, actorID, schoolID, academicYearID, search, status, limit, offset)
 }
 func (s *AcademicService) GetStudent(ctx context.Context, actorID, schoolID, studentID int64) (*repository.StudentProfile, error) {
 	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
