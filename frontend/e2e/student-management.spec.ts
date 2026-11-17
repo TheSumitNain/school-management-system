@@ -596,6 +596,7 @@ test("student admission, profile navigation and parent details render without br
 
   // Field help must be available to pointer/touch users and keyboard users,
   // not only as a hover tooltip.
+  await expect(page.locator(".student-field-hint__tooltip")).toHaveCount(0);
   const dobHelp = page.getByRole("button", { name: "Help for Date of birth" });
   await dobHelp.click();
   await expect(dobHelp).toHaveAttribute("aria-expanded", "true");
