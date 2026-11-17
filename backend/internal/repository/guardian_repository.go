@@ -219,19 +219,31 @@ func (r *AcademicRepository) SaveGuardian(ctx context.Context, actorID,schoolID,
 	tx,err:=r.db.Begin(ctx);if err!=nil{return nil,fmt.Errorf("begin guardian save: %w",err)};defer func(){_=tx.Rollback(ctx)}()
 	if err=authorizeGuardian(ctx,tx,actorID,schoolID,"guardians.manage");err!=nil{return nil,err}
 	var v Guardian
+	changed := true
 	if guardianID==0{
 		err=tx.QueryRow(ctx,`INSERT INTO guardians(school_id,full_name,mobile_number,email_address,alternate_mobile_number,occupation,education,workplace_name,status)
 			VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id,school_id,full_name,mobile_number,email_address,alternate_mobile_number,occupation,education,workplace_name,status,created_at,updated_at`,
 			schoolID,fullName,mobile,email,alternateMobile,occupation,education,workplace,status).Scan(&v.ID,&v.SchoolID,&v.FullName,&v.MobileNumber,&v.EmailAddress,&v.AlternateMobileNumber,&v.Occupation,&v.Education,&v.WorkplaceName,&v.Status,&v.CreatedAt,&v.UpdatedAt)
 	}else{
 		err=tx.QueryRow(ctx,`UPDATE guardians SET full_name=$3,mobile_number=$4,email_address=$5,alternate_mobile_number=$6,occupation=$7,education=$8,workplace_name=$9,status=$10,updated_at=NOW()
-			WHERE school_id=$1 AND id=$2 RETURNING id,school_id,full_name,mobile_number,email_address,alternate_mobile_number,occupation,education,workplace_name,status,created_at,updated_at`,
+			WHERE school_id=$1 AND id=$2
+			  AND (full_name,mobile_number,email_address,alternate_mobile_number,occupation,education,workplace_name,status)
+			      IS DISTINCT FROM ($3,$4,$5,$6,$7,$8,$9,$10)
+			RETURNING id,school_id,full_name,mobile_number,email_address,alternate_mobile_number,occupation,education,workplace_name,status,created_at,updated_at`,
 			schoolID,guardianID,fullName,mobile,email,alternateMobile,occupation,education,workplace,status).Scan(&v.ID,&v.SchoolID,&v.FullName,&v.MobileNumber,&v.EmailAddress,&v.AlternateMobileNumber,&v.Occupation,&v.Education,&v.WorkplaceName,&v.Status,&v.CreatedAt,&v.UpdatedAt)
+		if errors.Is(err,pgx.ErrNoRows) {
+			changed = false
+			err=tx.QueryRow(ctx,`SELECT id,school_id,full_name,mobile_number,email_address,alternate_mobile_number,occupation,education,workplace_name,status,created_at,updated_at
+				FROM guardians WHERE school_id=$1 AND id=$2`,schoolID,guardianID).
+				Scan(&v.ID,&v.SchoolID,&v.FullName,&v.MobileNumber,&v.EmailAddress,&v.AlternateMobileNumber,&v.Occupation,&v.Education,&v.WorkplaceName,&v.Status,&v.CreatedAt,&v.UpdatedAt)
+		}
 	}
 	if err!=nil{return nil,guardianWriteError(err)}
-	action:="school.guardian.updated";if guardianID==0{action="school.guardian.created"}
-	if _,err=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
-		VALUES($1,$2,$3,'guardian',$4,'success',jsonb_build_object('status',$5::text))`,actorID,schoolID,action,fmt.Sprint(v.ID),v.Status);err!=nil{return nil,fmt.Errorf("audit guardian save: %w",err)}
+	if changed {
+		action:="school.guardian.updated";if guardianID==0{action="school.guardian.created"}
+		if _,err=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
+			VALUES($1,$2,$3,'guardian',$4,'success',jsonb_build_object('status',$5::text))`,actorID,schoolID,action,fmt.Sprint(v.ID),v.Status);err!=nil{return nil,fmt.Errorf("audit guardian save: %w",err)}
+	}
 	if err=tx.Commit(ctx);err!=nil{return nil,fmt.Errorf("commit guardian save: %w",err)}
 	return &v,nil
 }
