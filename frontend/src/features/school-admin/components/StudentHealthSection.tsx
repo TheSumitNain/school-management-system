@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { ApiError } from "../../../lib/api";
 import { DatePicker } from "../../../shared/components/DatePicker";
 import { Modal } from "../../../shared/components/Modal";
 import { Select } from "../../../shared/components/Select";
@@ -191,6 +192,12 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
       });
       setFeedback({ kind: "success", message: "Physical details saved." });
     } catch (error) {
+      const measuredOnError = error instanceof ApiError ? error.fieldErrors.measured_on : undefined;
+      if (measuredOnError) {
+        setPhysicalErrors(current => ({ ...current, measuredOn: measuredOnError }));
+        setFeedback(null);
+        return;
+      }
       setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Physical details could not be saved." });
     }
   }

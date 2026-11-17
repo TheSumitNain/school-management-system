@@ -32,6 +32,7 @@ test("student admission, profile navigation and parent details render without br
   const failStudentReads = new Set<string>();
   let failRegistrationConflict = false;
   let failDateOfBirthValidation = false;
+  let failMeasurementDateValidation = false;
   let failAdmissionNumberConflict = false;
   let failRollNumberConflict = false;
   const failedStudentReads: string[] = [];
@@ -346,6 +347,10 @@ test("student admission, profile navigation and parent details render without br
       }
       if (subpath === "physical-details") {
         if (method === "GET") physicalDetailReads++;
+        if (method === "PUT" && failMeasurementDateValidation) {
+          await route.fulfill({ status: 400, json: { message: "Enter a valid measurement date", field_errors: { measured_on: "Measurement date is required and cannot be in the future." } } });
+          return;
+        }
         if (method === "PUT") {
           const input = request.postDataJSON() as Record<string, unknown>;
           Object.assign(physicalDetails, input, { id: 701, school_id: 10, student_id: studentID });
@@ -1016,6 +1021,15 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByText("Use no more than 1,000 characters.")).toBeVisible();
   expect(physicalDetails.height_cm).toBeNull();
   await page.getByPlaceholder("Optional vision-related notes").fill("अ".repeat(1000));
+  failMeasurementDateValidation = true;
+  await physicalSaveButton.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Physical save button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect(page.getByText("Measurement date is required and cannot be in the future.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Measurement date", exact: true })).toHaveAttribute("aria-invalid", "true");
+  failMeasurementDateValidation = false;
   await physicalSaveButton.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
     if (!form) throw new Error("Physical save button is not associated with its form.");

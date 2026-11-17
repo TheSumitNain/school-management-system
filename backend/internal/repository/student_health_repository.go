@@ -408,7 +408,7 @@ func (r *AcademicRepository) SaveStudentPhysicalDetails(
 		return nil, ErrAcademicAccessDenied
 	}
 	if measuredOn == nil || measuredOn.UTC().Format("2006-01-02") > time.Now().UTC().Format("2006-01-02") {
-		return nil, ErrInvalidAcademicInput
+		return nil, ErrInvalidStudentMeasurementDate
 	}
 	if heightCM != nil && (*heightCM < 20 || *heightCM > 250 ||
 		math.Abs(*heightCM*100-math.Round(*heightCM*100)) > 1e-8) {

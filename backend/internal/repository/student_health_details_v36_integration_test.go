@@ -194,12 +194,12 @@ func TestStudentMedicalPhysicalDetailsV36PostgresIntegration(t *testing.T) {
 	}
 	futureMeasurementDate := time.Now().UTC().AddDate(0, 0, 1)
 	if _, err := repo.SaveStudentPhysicalDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
-		&height, nil, &futureMeasurementDate, nil, nil); !errors.Is(err, ErrInvalidAcademicInput) {
+		&height, nil, &futureMeasurementDate, nil, nil); !errors.Is(err, ErrInvalidStudentMeasurementDate) {
 		t.Fatalf("future measurement date error = %v, want invalid input", err)
 	}
 	futureMeasuredOn := today.AddDate(0, 0, 1)
 	if _, err := repo.SaveStudentPhysicalDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
-		&height, nil, &futureMeasuredOn, nil, nil); !errors.Is(err, ErrInvalidAcademicInput) {
+		&height, nil, &futureMeasuredOn, nil, nil); !errors.Is(err, ErrInvalidStudentMeasurementDate) {
 		t.Fatalf("future measurement date error = %v, want invalid input", err)
 	}
 

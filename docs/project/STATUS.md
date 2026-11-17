@@ -1271,3 +1271,10 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Backend CI **PASS** — [run 44009150470](https://github.com/TheSumitNain/school-management-system/actions/runs/44009150470): full migrations, Go tests including PostgreSQL integration, and `go vet ./...`.
 - Frontend CI **PASS** — [run 44009150439](https://github.com/TheSumitNain/school-management-system/actions/runs/44009150439): TypeScript/Vite production build and Student Management Playwright browser acceptance.
 - Tested code checkpoint: `16b2b3fd6daf057a38d524a954f4dae5098d7050`. Local authenticated API/database/browser acceptance remains outstanding.
+
+ 
+## Student Management — physical measurement date field validation (2026-11-17)
+
+- Invalid or missing physical measurement dates now return a dedicated API field error. The Physical Details form displays the message directly beneath the measurement date picker and marks the control invalid.
+- Added repository and handler regression coverage and a Playwright case for a server-returned measurement-date validation error.
+- Backend and frontend CI verification is pending. Local authenticated API/database/browser acceptance remains outstanding.
