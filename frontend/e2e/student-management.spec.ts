@@ -2829,6 +2829,6 @@ test("student directory returns to the last valid page when archiving empties th
   await expect(page.getByText("Directory Student 41 has been archived.")).toBeVisible();
   await expect(page.getByText("Directory Student 21", { exact: true })).toBeVisible();
   await expect(page.getByText("Showing 21–40 of 40")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Next" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Next" })).toBeDisabled();
   await expect.poll(() => requestedOffsets.slice(-2)).toEqual([40, 20]);
 });
