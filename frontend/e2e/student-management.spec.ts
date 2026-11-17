@@ -2273,6 +2273,8 @@ test("switching student profiles clears address, contact, medical and physical d
   const browserErrors: string[] = [];
   page.on("pageerror", error => browserErrors.push(error.message));
   const writeRequests: string[] = [];
+  let failMedicalReadOnce = false;
+  let failPhysicalReadOnce = false;
   const students: Student[] = [
     { id: 31, school_id: 10, admission_number: "ADM-STATE-A", full_name: "State Student A", status: "active", created_at: "2026-01-01T00:00:00.000Z", updated_at: "2026-01-01T00:00:00.000Z" },
     { id: 32, school_id: 10, admission_number: "ADM-STATE-B", full_name: "State Student B", status: "active", created_at: "2026-01-02T00:00:00.000Z", updated_at: "2026-01-02T00:00:00.000Z" },
@@ -2372,10 +2374,20 @@ test("switching student profiles clears address, contact, medical and physical d
         return;
       }
       if (subpath === "medical-details" && method === "GET") {
+        if (failMedicalReadOnce) {
+          failMedicalReadOnce = false;
+          await route.fulfill({ status: 503, json: { message: "Temporary medical read failure." } });
+          return;
+        }
         await route.fulfill({ json: { medical_details: medicalFor(studentID) } });
         return;
       }
       if (subpath === "physical-details" && method === "GET") {
+        if (failPhysicalReadOnce) {
+          failPhysicalReadOnce = false;
+          await route.fulfill({ status: 503, json: { message: "Temporary physical read failure." } });
+          return;
+        }
         await route.fulfill({ json: { physical_details: physicalFor(studentID) } });
         return;
       }
@@ -2431,10 +2443,14 @@ test("switching student profiles clears address, contact, medical and physical d
   await page.getByRole("button", { name: "Close dialog" }).click();
 
   await page.getByRole("button", { name: "View profile for State Student A" }).click();
+  failMedicalReadOnce = true;
   await page.getByRole("button", { name: /Medical & physical/ }).click();
   const healthDialog = page.getByRole("dialog", { name: "Medical & Physical Details" });
   await expect(healthDialog).toBeVisible();
+  await expect(healthDialog.getByRole("alert")).toContainText("Temporary medical read failure.");
+  await healthDialog.getByRole("button", { name: "Retry loading medical details" }).click();
   const allergies = page.getByPlaceholder("Record known allergies, if any");
+  await expect(allergies).toBeVisible();
   await allergies.fill("अ".repeat(2001));
   const saveMedical = healthDialog.getByRole("button", { name: "Save medical details" });
   await saveMedical.evaluate(button => {
@@ -2444,7 +2460,10 @@ test("switching student profiles clears address, contact, medical and physical d
   });
   await expect(healthDialog.getByText("Use no more than 2,000 characters.", { exact: true })).toBeVisible();
 
+  failPhysicalReadOnce = true;
   await healthDialog.getByRole("button", { name: "Physical details" }).click();
+  await expect(healthDialog.getByRole("alert")).toContainText("Temporary physical read failure.");
+  await healthDialog.getByRole("button", { name: "Retry loading physical details" }).click();
   const height = page.getByPlaceholder("e.g. 132.5");
   await height.fill("500");
   const savePhysical = healthDialog.getByRole("button", { name: "Save physical details" });
