@@ -313,6 +313,13 @@ The latest screen/code review found two concrete UX gaps and records the current
 
 Automated frontend coverage now exercises the archived-state rule independently of missing permissions: the mocked staff principal has `students.update` and `students.archive`, archives a student after a conflict/retry, reopens the archived profile, confirms saved Basic Details hydrate, and verifies that edit/save controls remain unavailable. This is a mocked API workflow only; the checklist below still requires live authenticated API/database acceptance.
 
+### Follow-up validation and CI checkpoint — 2026-11-17
+
+- Basic Details API field-error handling was generalized to map every supported server field error to its matching form control. The existing browser regression still verifies date-of-birth and duplicate-registration-number errors, correction/retry, and preservation of other entered fields.
+- A subsequent end-to-end review rechecked address and contact hydration, field-length validation, invalid-email handling, cascading location completion, same-as-current permanent address, medical/physical validation, and unchanged-draft preservation during background refetch. Existing Playwright scenarios cover these flows; no additional defect was confirmed in this pass.
+- Frontend CI [44027107826](https://github.com/TheSumitNain/school-management-system/actions/runs/44027107826) and Backend CI [44027107816](https://github.com/TheSumitNain/school-management-system/actions/runs/44027107816) both passed on code checkpoint `cb72cd96d5dc477225d1ad59c0fb80336eb50428`. The frontend run includes the Student Management Playwright suite; the backend run includes migrations, PostgreSQL integration tests and `go vet ./...`.
+- This automated checkpoint does not replace live authenticated acceptance. The checklist below remains intentionally unchecked until the corresponding local school database/API/browser checks are performed and recorded. No attendance UI work is included in this phase.
+
 ### Required acceptance checks before Student Management is called complete
 
 - [ ] Directory View and Edit actions open the correct profile workflow; no legacy name-only edit route remains reachable.
