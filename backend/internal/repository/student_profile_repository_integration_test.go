@@ -393,7 +393,7 @@ func TestStudentProfileRepositoryPostgresIntegration(t *testing.T) {
 	found := false
 	for _, item := range items { if item.ID == student.ID { found = true } }
 	if !found { t.Fatalf("student %d missing from school-scoped search: %+v", student.ID, items) }
-	for _, literalPattern := range []string{"Updated%", "Updated_", `Updated\\`} {
+	for _, literalPattern := range []string{"Updated%", "Updated_", `Updated\`} {
 		wildcardItems, wildcardTotal, err := repo.ListStudents(ctx, actorID, schoolID, 0, literalPattern, "active", 10, 0)
 		if err != nil || wildcardTotal != 0 || len(wildcardItems) != 0 {
 			t.Fatalf("directory search must treat wildcard characters literally for %q: items=%+v total=%d err=%v", literalPattern, wildcardItems, wildcardTotal, err)
