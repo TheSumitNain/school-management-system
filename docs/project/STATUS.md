@@ -1,5 +1,14 @@
 # Project Status
 
+### Student Management — location parent lifecycle locking (2026-11-17)
+
+- Audit found that the V34 hierarchy trigger used `FOR KEY SHARE` when validating a parent location. That lock is compatible with the `NO KEY UPDATE` lock taken when a parent is deactivated by changing only `is_active`, leaving a concurrency window between child creation and parent deactivation.
+- Migration V47 changes the parent validation lock to `FOR SHARE`. This serializes child creation against parent deactivation while preserving the existing hierarchy, school-ownership and historical-address rules. The down migration restores the V34 lock mode.
+- Added PostgreSQL integration coverage that verifies the applied hierarchy trigger uses `FOR SHARE` and no longer uses `FOR KEY SHARE`.
+- Backend CI **PASS** — [run 44022744861](https://github.com/TheSumitNain/school-management-system/actions/runs/44022744861): all migrations, Go tests including PostgreSQL integration, and `go vet ./...`.
+- Verified code checkpoint: `b62fb966927f4bc3b43824f082bc87b09fc864d2`. Authenticated local API/database/browser acceptance remains outstanding.
+
+
 ### Guardian-link concurrency hardening (2026-11-17)
 
 - The guardian-link transaction now rechecks the guardian's active status under a FOR SHARE row lock after it has serialized on the owning student row. This closes a time-of-check/time-of-use race where a guardian could be deactivated after the initial active check but before a link was inserted.
