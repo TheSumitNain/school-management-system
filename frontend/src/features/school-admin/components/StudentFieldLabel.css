@@ -1,9 +1,6 @@
-.student-field-label{display:inline-flex;align-items:center;flex-wrap:wrap;gap:6px;min-width:0;color:var(--color-text)}
-.student-field-label__name{font-weight:650}
-.student-field-label__status{display:inline-flex;align-items:center;padding:2px 6px;border:1px solid var(--color-border);border-radius:999px;color:var(--color-text-muted);font-size:10px;font-weight:600;line-height:1.3}
-.student-field-label__status.is-required{border-color:var(--color-border);color:var(--color-text)}
-.student-field-hint{position:relative;display:inline-flex;align-items:center}
-.student-field-hint__trigger{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;color:var(--color-text-muted);cursor:help}
-.student-field-hint__trigger:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px}
-.student-field-hint__tooltip{display:none;position:absolute;z-index:30;left:0;bottom:calc(100% + 8px);width:min(270px,75vw);padding:10px;border:1px solid var(--color-border);border-radius:9px;background:var(--color-surface);box-shadow:var(--shadow-md);color:var(--color-text);font-size:11px;font-weight:400;line-height:1.5}
-.student-field-hint:hover .student-field-hint__tooltip,.student-field-hint:focus-within .student-field-hint__tooltip,.student-field-hint__tooltip.is-open{display:block}
+.student-field-label{position:relative}
+.student-field-hint{position:static}
+.student-field-hint__trigger{display:inline-grid;place-items:center;width:22px;height:22px;padding:0;border:0;border-radius:50%;background:transparent;color:var(--color-text-muted);cursor:help;transition:background-color .14s ease,color .14s ease}
+.student-field-hint__trigger:hover{background:var(--color-surface-subtle);color:var(--color-primary)}
+.student-field-hint__trigger:focus-visible{outline:2px solid var(--color-focus);outline-offset:2px}
+.student-field-hint__tooltip{position:fixed;z-index:2000;display:block;width:min(270px,calc(100vw - 24px));max-width:270px;padding:10px 12px;border:1px solid var(--color-border);border-radius:9px;background:var(--color-surface);box-shadow:var(--shadow-lg,var(--shadow-md));color:var(--color-text);font-size:11px;font-weight:400;line-height:1.55;pointer-events:none}
