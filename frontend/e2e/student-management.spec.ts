@@ -2449,7 +2449,6 @@ test("archived student profile sections remain readable but cannot be changed", 
     }
     if (path.startsWith("/school/students/41/")) {
       const subpath = path.slice("/school/students/41/".length);
-      const subpath = match[2] ?? "";
       if (subpath === "enrollments" && method === "GET") {
         await route.fulfill({ json: { enrollments: [] } });
         return;
