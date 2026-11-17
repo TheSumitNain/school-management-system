@@ -2954,4 +2954,10 @@ test("enrollment directory pagination requests only the selected page", async ({
   await expect(page.getByText("Enrollment Student 21", { exact: true })).toBeVisible();
   await expect(page.getByText("Showing 21–40 of 45")).toBeVisible();
   await expect.poll(() => requestedPages.at(-1)).toEqual({ offset: 20, yearID: 0 });
+
+  await page.getByRole("button", { name: "Filter enrollments by academic year" }).click();
+  await page.getByRole("listbox", { name: "Filter enrollments by academic year" }).getByRole("option", { name: "2025–2026" }).click();
+  await expect(page.getByText("Previous Year Enrollment", { exact: true })).toBeVisible();
+  await expect(page.getByText("Showing 1–1 of 1")).toBeVisible();
+  await expect.poll(() => requestedPages.at(-1)).toEqual({ offset: 0, yearID: previousAcademicYear.id });
 });

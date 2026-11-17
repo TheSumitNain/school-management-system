@@ -62,6 +62,7 @@ export function StudentManagementPage({ permissions }: Props) {
   const [directoryAcademicYearID, setDirectoryAcademicYearID] = useState<number | null>(null);
   const [offset, setOffset] = useState(0);
   const [enrollmentOffset, setEnrollmentOffset] = useState(0);
+  const [enrollmentDirectoryYearID, setEnrollmentDirectoryYearID] = useState(0);
   const [action, setAction] = useState<StudentAction>(null);
   const [showEnrollment, setShowEnrollment] = useState(false);
   const [addressStudent, setAddressStudent] = useState<StudentProfile | null>(null);
@@ -84,7 +85,7 @@ export function StudentManagementPage({ permissions }: Props) {
   const filters = useMemo(() => ({ q: deferredSearch, status, academicYearID: directoryAcademicYearID ?? undefined, limit: STUDENT_DIRECTORY_PAGE_SIZE, offset }), [deferredSearch, status, directoryAcademicYearID, offset]);
   const studentsQuery = useSchoolStudentsQuery(filters, canReadStudents && tab === "students");
   const studentOptionsQuery = useSchoolStudentsQuery({ q: deferredStudentSearch, status: "active", limit: STUDENT_DIRECTORY_PAGE_SIZE, offset: 0 }, canReadStudents && showEnrollment);
-  const enrollmentQuery = useSchoolStudentEnrollmentDirectoryQuery(academicYearID, STUDENT_DIRECTORY_PAGE_SIZE, enrollmentOffset, canReadEnrollments && tab === "enrollments");
+  const enrollmentQuery = useSchoolStudentEnrollmentDirectoryQuery(enrollmentDirectoryYearID, STUDENT_DIRECTORY_PAGE_SIZE, enrollmentOffset, canReadEnrollments && tab === "enrollments");
   const yearsQuery = useSchoolStudentAcademicYearsQuery(canReadYears && (tab === "students" || canReadEnrollments || showEnrollment || action === "create"));
   const sectionsQuery = useSchoolStudentSectionsQuery(academicYearID, (showEnrollment || action === "create") && canReadSections);
   const createStudent = useCreateSchoolStudentMutation();
@@ -315,7 +316,7 @@ export function StudentManagementPage({ permissions }: Props) {
       {total > 0 && <div className="student-pagination"><span>{`Showing ${offset + 1}–${Math.min(offset + STUDENT_DIRECTORY_PAGE_SIZE, total)} of ${total}`}</span>{pageCount > 1 && <div><button type="button" className="student-secondary" disabled={offset === 0 || studentsQuery.isFetching} onClick={() => setOffset(Math.max(0, offset - STUDENT_DIRECTORY_PAGE_SIZE))}>Previous</button><span>Page {Math.floor(offset / STUDENT_DIRECTORY_PAGE_SIZE) + 1} of {pageCount}</span><button type="button" className="student-secondary" disabled={offset + STUDENT_DIRECTORY_PAGE_SIZE >= total || studentsQuery.isFetching} onClick={() => setOffset(offset + STUDENT_DIRECTORY_PAGE_SIZE)}>Next</button></div>}</div>}
     </>}
     {tab === "enrollments" && canReadEnrollments && <>
-      <div className="student-toolbar"><label><StudentFieldLabel label="Academic year" hint="Optional filter. Choose an academic year to narrow the directory, or leave “All academic years” selected." /><Select ariaLabel="Filter enrollments by academic year" value={String(academicYearID)} onChange={value=>{setAcademicYearID(Number(value));setEnrollmentOffset(0);}} options={[{value:"0",label:"All academic years"},...years.map(year=>({value:String(year.id),label:year.name}))]}/></label><button type="button" className="student-secondary" onClick={() => void enrollmentQuery.refetch()} disabled={enrollmentQuery.isFetching}><RefreshCw size={15}/> Refresh</button></div>
+      <div className="student-toolbar"><label><StudentFieldLabel label="Academic year" hint="Optional filter. Choose an academic year to narrow the directory, or leave “All academic years” selected." /><Select ariaLabel="Filter enrollments by academic year" value={String(enrollmentDirectoryYearID)} onChange={value=>{setEnrollmentDirectoryYearID(Number(value));setEnrollmentOffset(0);}} options={[{value:"0",label:"All academic years"},...years.map(year=>({value:String(year.id),label:year.name}))]}/></label><button type="button" className="student-secondary" onClick={() => void enrollmentQuery.refetch()} disabled={enrollmentQuery.isFetching}><RefreshCw size={15}/> Refresh</button></div>
       {enrollmentQuery.isLoading ? <div className="student-state">Loading enrollments…</div> :
        enrollmentQuery.isError ? <div className="student-state error" role="alert"><p>{enrollmentQuery.error.message}</p><button className="student-secondary" onClick={() => void enrollmentQuery.refetch()}>Try again</button></div> :
        enrollments.length === 0 ? <div className="student-state"><GraduationCap size={28}/><b>No enrollments found</b><span>Enrollments appear here after students are assigned to a class section.</span></div> :
