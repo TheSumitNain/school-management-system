@@ -736,7 +736,7 @@ test("student admission, profile navigation and parent details render without br
 
   await page.getByRole("button", { name: "Edit relationship" }).click();
   const relationshipForm = page.locator(".student-family-create-form").filter({ has: page.getByRole("heading", { name: "Edit relationship for this student" }) });
-  const relationshipSelect = relationshipForm.getByLabel(/Relationship to student/);
+  const relationshipSelect = relationshipForm.locator("select");
   await relationshipSelect.selectOption("Other");
   const relationshipInput = relationshipForm.getByPlaceholder("Specify relationship");
   await relationshipInput.fill("अ".repeat(41));
