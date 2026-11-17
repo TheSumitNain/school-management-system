@@ -1,3 +1,10 @@
+### Student Management — attendance authorization and date-boundary audit (2026-11-17)
+
+- Reviewed attendance repository and route authorization: list requires `attendance.read`; marking accepts `attendance.mark` or `attendance.correct_past` according to the attendance date; updates accept `attendance.update_same_day` or `attendance.correct_past`. Repository checks additionally restrict records to the caller's school and authorized School Admin / assigned Teacher section scope.
+- Attendance writes lock the student row before checking the enrollment and inserting a mark, and audit events are written in the same transaction. Updates lock the attendance row and audit the correction transactionally. Attendance status and remarks are validated server-side; remarks are limited to 500 Unicode characters.
+- Confirmed an outstanding shared timezone-policy dependency: attendance classifies past dates with PostgreSQL `CURRENT_DATE`; DOB and physical measurement future-date validation also depend on database date. Until the product defines the authoritative school-local timezone and its configuration, do not hardcode a timezone or silently change date-boundary behavior. This remains a product/runtime acceptance decision, not a speculative code fix.
+- No new confirmed tenant-isolation or permission defect found in this pass. Authenticated local API/database/browser acceptance remains pending.
+
 ### Student Management — archived-profile and directory behavior audit (2026-11-17)
 
 - Reviewed the student directory's status/search/pagination contract against the repository query: status is restricted to active/inactive/archived, search is bounded to 100 Unicode characters and matches student name plus the selected/current enrollment admission number, results are school-scoped and deterministically ordered, and page size is bounded to 1–100. The frontend sends a 20-row page and resets the offset when search/status filters change.
