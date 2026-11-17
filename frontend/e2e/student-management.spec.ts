@@ -2792,7 +2792,7 @@ test("archived student profile sections remain readable but cannot be changed", 
   expect(attemptedWrites).toEqual([]);
 });
 
-test("student directory pagination advances and resets when search changes", async ({ page }) => {
+test("student directory pagination resets when search, status or academic-year filters change", async ({ page }) => {
   const requestedDirectoryFilters: Array<{ offset: string; status: string; academicYearID: string }> = [];
   await page.route("**/api/**", async route => {
     const request = route.request();
