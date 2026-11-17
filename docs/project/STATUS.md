@@ -1400,3 +1400,10 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - The test holds each failure through the query client's configured automatic retry, verifies the visible error/retry state, then explicitly retries and confirms the form becomes available. This checks the user-facing recovery action rather than allowing an automatic retry to mask it.
 - Code checkpoint: `c4f7ff5523709be0c68ed44039d3b05156ca6ef9`. Frontend CI passed (TypeScript/Vite production build and Student Management Playwright browser acceptance): https://github.com/TheSumitNain/school-management-system/actions/runs/44051159786. Backend CI passed (full PostgreSQL migration chain, Go tests including PostgreSQL integration, and `go vet ./...`): https://github.com/TheSumitNain/school-management-system/actions/runs/44051159743.
 - Authenticated acceptance against the user's local API/database/browser remains outstanding.
+
+## Student Management — promotion form save-state locking (2026-11-17)
+
+- Audit found the destination class/section selector remained interactive while a promotion request was pending, even though the other promotion fields and modal close action were locked. This could let the visible destination differ from the submitted destination while the request was in flight.
+- Updated the selector to disable during the mutation. Extended the promotion Playwright scenario to hold a successful promotion response and assert that the academic-year selector, section selector, admission/roll fields, and promotion date control all remain disabled until the request completes.
+- Code checkpoint: `b1ea5d9e3de2551650e42b52bbb84e19e6f922ef`. Frontend and backend CI are pending for this checkpoint.
+- Authenticated acceptance against the user's local API/database/browser remains outstanding.
