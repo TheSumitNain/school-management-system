@@ -314,6 +314,14 @@ func (r *AcademicRepository) LinkStudentGuardian(ctx context.Context,actorID,sch
 	// Serialize primary-contact selection for a student.
 	if err=tx.QueryRow(ctx,`SELECT id FROM students WHERE id=$1 AND school_id=$2 AND status='active' FOR UPDATE`,studentID,schoolID).Scan(new(int64));err!=nil{return nil,guardianWriteError(err)}
 
+	// Recheck and lock the guardian after acquiring the student lock. The
+	// initial existence check above is not sufficient: a concurrent profile
+	// update could deactivate the guardian while this transaction waits for
+	// the student row. FOR SHARE makes the active-state check stable until the
+	// link transaction commits, while allowing other links to read the guardian.
+	if err=tx.QueryRow(ctx,`SELECT status='active' FROM guardians WHERE id=$1 AND school_id=$2 FOR SHARE`,guardianID,schoolID).Scan(&active);err!=nil{return nil,guardianWriteError(err)}
+	if !active{return nil,ErrGuardianNotFound}
+
 	// A client may retry after the link was committed but its response was
 	// lost. Resolve the active pair before clearing another primary contact
 	// or attempting a duplicate insert.

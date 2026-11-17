@@ -256,6 +256,21 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 	`, schoolID, "GUARDIAN-"+suffix).Scan(&studentID); err != nil {
 		t.Fatalf("create same-school student fixture: %v", err)
 	}
+	// An inactive guardian must not be linked, even if the caller had
+	// previously loaded the active guardian profile.
+	if _, err := repo.SaveGuardian(ctx, targetPrincipalID, schoolID, guardian.ID,
+		"Guardian One Updated", &mobile, &email, &alternateMobile, &occupation, &education, &workplace, "inactive"); err != nil {
+		t.Fatalf("deactivate guardian before link rejection check: %v", err)
+	}
+	if _, err := repo.LinkStudentGuardian(ctx, targetPrincipalID, schoolID,
+		studentID, guardian.ID, "father", false, false); !errors.Is(err, ErrGuardianNotFound) {
+		t.Fatalf("link inactive guardian error = %v, want ErrGuardianNotFound", err)
+	}
+	if _, err := repo.SaveGuardian(ctx, targetPrincipalID, schoolID, guardian.ID,
+		"Guardian One Updated", &mobile, &email, &alternateMobile, &occupation, &education, &workplace, "active"); err != nil {
+		t.Fatalf("reactivate guardian after link rejection check: %v", err)
+	}
+
 	var otherSchoolID, foreignStudentID int64
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO schools (name, code, status)

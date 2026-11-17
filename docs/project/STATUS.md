@@ -1,5 +1,11 @@
 # Project Status
 
+### Guardian-link concurrency hardening (2026-11-17)
+
+- The guardian-link transaction now rechecks the guardian's active status under a FOR SHARE row lock after it has serialized on the owning student row. This closes a time-of-check/time-of-use race where a guardian could be deactivated after the initial active check but before a link was inserted.
+- Added PostgreSQL integration coverage proving an inactive guardian cannot be linked. The lock also keeps the active status stable through link commit; guardian profile updates wait rather than racing the link.
+- Verification: pending backend CI on this code checkpoint. Authenticated live acceptance remains outstanding.
+
 ## Active handover — Student Management (2026-11-15)
 
 **Current focus:** finish Student Management only. Parent OTP/SMS/login remains deferred until after the school dashboard; Parent Details in the student record remain required.
