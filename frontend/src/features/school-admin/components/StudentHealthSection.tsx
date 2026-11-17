@@ -37,7 +37,10 @@ function numberValue(value?: number | null) {
 }
 function dateLabel(value?: string | null) {
   if (!value) return "—";
-  const parsed = new Date(value);
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  const parsed = dateOnly
+    ? new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]))
+    : new Date(value);
   return Number.isNaN(parsed.getTime())
     ? value
     : new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(parsed);
