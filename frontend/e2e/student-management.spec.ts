@@ -604,7 +604,7 @@ test("student admission, profile navigation and parent details render without br
   const dobHelp = page.getByRole("button", { name: "Help for Date of birth" });
   await dobHelp.click();
   await expect(dobHelp).toHaveAttribute("aria-expanded", "true");
-  await expect(dobHelp.locator("xpath=following-sibling::*[@role='tooltip']")).toContainText("future dates are not allowed");
+  await expect(page.getByRole("tooltip")).toContainText("future dates are not allowed");
   await dobHelp.click();
   await expect(dobHelp).toHaveAttribute("aria-expanded", "false");
   await dobHelp.focus();
