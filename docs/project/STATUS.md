@@ -1246,3 +1246,10 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - PostgreSQL integration coverage repeats an identical relationship update and verifies the link, timestamp and audit count remain unchanged.
 - Backend CI **PASS** — [run 44007696968](https://github.com/TheSumitNain/school-management-system/actions/runs/44007696968): full migrations, Go tests including PostgreSQL integration, and `go vet ./...`.
 - Tested code checkpoint: `709dd194e16d7c5e2215bdcca6c2b1473a2318f6`. Authenticated local API/database/browser acceptance remains outstanding.
+
+ 
+## Student Management — basic profile-details retry safety (2026-11-17)
+
+- An unchanged Basic Details save now skips the upsert update, timestamp mutation and duplicate sensitive-profile audit event. Actual field changes continue to update the profile and record one audit event.
+- PostgreSQL integration coverage retries the exact normalized payload and checks the original profile timestamp and single audit event are preserved.
+- Backend CI verification is pending. Local authenticated API/database/browser acceptance remains outstanding.

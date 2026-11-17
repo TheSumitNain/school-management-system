@@ -128,7 +128,8 @@ func (r *AcademicRepository) SaveStudentBasicDetails(
 	}
 	if !active { return nil, ErrInvalidAcademicInput }
 
-	if _, err := tx.Exec(ctx, `
+	var changedID int64
+	writeErr := tx.QueryRow(ctx, `
 		INSERT INTO student_basic_details
 			(school_id,student_id,date_of_birth,place_of_birth,gender,nationality,religion,
 			 social_category,ews_status,school_registration_number,created_by_principal_id,updated_by_principal_id)
@@ -144,26 +145,38 @@ func (r *AcademicRepository) SaveStudentBasicDetails(
 			school_registration_number=EXCLUDED.school_registration_number,
 			updated_by_principal_id=EXCLUDED.updated_by_principal_id,
 			updated_at=NOW()
+		 WHERE (student_basic_details.date_of_birth,student_basic_details.place_of_birth,
+		        student_basic_details.gender,student_basic_details.nationality,student_basic_details.religion,
+		        student_basic_details.social_category,student_basic_details.ews_status,
+		        student_basic_details.school_registration_number)
+		       IS DISTINCT FROM
+		       (EXCLUDED.date_of_birth,EXCLUDED.place_of_birth,EXCLUDED.gender,EXCLUDED.nationality,
+		        EXCLUDED.religion,EXCLUDED.social_category,EXCLUDED.ews_status,EXCLUDED.school_registration_number)
+		RETURNING id
 	`, schoolID, studentID, dateOfBirth, placeOfBirth, gender, nationality, religion,
-		socialCategory, ewsStatus, registrationNumber, actorID); err != nil {
-		return nil, academicWriteError(err)
+		socialCategory, ewsStatus, registrationNumber, actorID).Scan(&changedID)
+	changed := writeErr == nil
+	if writeErr != nil && !errors.Is(writeErr, pgx.ErrNoRows) {
+		return nil, academicWriteError(writeErr)
 	}
-	if _, err := tx.Exec(ctx, `
-		INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
-		SELECT $1,$2,'school.student.basic_details.updated','student_basic_details',bd.id::text,'success',
-		       jsonb_build_object(
-		           'has_date_of_birth',bd.date_of_birth IS NOT NULL,
-		           'has_place_of_birth',bd.place_of_birth IS NOT NULL,
-		           'has_gender',bd.gender IS NOT NULL,
-		           'has_nationality',bd.nationality IS NOT NULL,
-		           'has_religion',bd.religion IS NOT NULL,
-		           'has_social_category',bd.social_category IS NOT NULL,
-		           'has_ews_status',bd.ews_status IS NOT NULL,
-		           'has_school_registration_number',bd.school_registration_number IS NOT NULL
-		       )
-		  FROM student_basic_details bd WHERE bd.school_id=$2 AND bd.student_id=$3
-	`, actorID, schoolID, studentID); err != nil {
-		return nil, fmt.Errorf("audit student basic details: %w", err)
+	if changed {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
+			SELECT $1,$2,'school.student.basic_details.updated','student_basic_details',bd.id::text,'success',
+			       jsonb_build_object(
+			           'has_date_of_birth',bd.date_of_birth IS NOT NULL,
+			           'has_place_of_birth',bd.place_of_birth IS NOT NULL,
+			           'has_gender',bd.gender IS NOT NULL,
+			           'has_nationality',bd.nationality IS NOT NULL,
+			           'has_religion',bd.religion IS NOT NULL,
+			           'has_social_category',bd.social_category IS NOT NULL,
+			           'has_ews_status',bd.ews_status IS NOT NULL,
+			           'has_school_registration_number',bd.school_registration_number IS NOT NULL
+			       )
+			  FROM student_basic_details bd WHERE bd.school_id=$2 AND bd.student_id=$3
+		`, actorID, schoolID, studentID); err != nil {
+			return nil, fmt.Errorf("audit student basic details: %w", err)
+		}
 	}
 	var item StudentBasicDetails
 	if err := tx.QueryRow(ctx, `

@@ -149,6 +149,26 @@ func TestStudentBasicDetailsV37PostgresIntegration(t *testing.T) {
 	if auditCount != 1 || strings.Contains(auditMetadata, placeOfBirth) || strings.Contains(auditMetadata, nationality) {
 		t.Fatalf("basic profile audit must record field presence only: count=%d metadata=%s", auditCount, auditMetadata)
 	}
+
+	// A lost response followed by an identical retry must not rewrite the
+	// basic-details timestamp or append another sensitive-profile audit event.
+	unchangedBasic, err := repository.SaveStudentBasicDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
+		&birthDate, &placeOfBirth, ptrString("female"), &nationality, &religion, &category, &ews, &repoRegistration)
+	if err != nil || unchangedBasic == nil || unchangedBasic.ID != basic.ID {
+		t.Fatalf("retry identical student basic details: item=%+v err=%v", unchangedBasic, err)
+	}
+	var retryAuditCount int
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*) FROM audit_events
+		 WHERE school_id=$1 AND actor_principal_id=$2
+		   AND action='school.student.basic_details.updated' AND resource_id=$3
+	`, schoolID, actorPrincipalID, fmt.Sprint(basic.ID)).Scan(&retryAuditCount); err != nil {
+		t.Fatalf("count basic details audit events after identical retry: %v", err)
+	}
+	if !unchangedBasic.UpdatedAt.Equal(loadedBasic.UpdatedAt) || retryAuditCount != auditCount || retryAuditCount != 1 {
+		t.Fatalf("identical basic-details retry changed timestamp/audit count: before=%s after=%s audits before=%d after=%d",
+			loadedBasic.UpdatedAt, unchangedBasic.UpdatedAt, auditCount, retryAuditCount)
+	}
 	if _, err := repository.GetStudentBasicDetails(ctx, actorPrincipalID, schoolID+999999, secondStudentID); !errors.Is(err, ErrAcademicAccessDenied) {
 		t.Fatalf("cross-school basic details read error = %v, want access denied", err)
 	}
