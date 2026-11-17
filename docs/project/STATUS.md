@@ -118,7 +118,7 @@ Student profile/basic details; address and contact; Parent/Guardian create/edit/
 
 ### Remaining before completion
 
-- Complete authenticated browser/live acceptance against the local API for admission, profile edit/reload, Parent Details load/edit/save/reload, address/contact, medical/physical history, enrollment/promotion/curriculum, permissions, and inactive/archived read-only states.
+- Complete authenticated browser/live acceptance against the local API for admission, profile edit/reload, Parent Details load/edit/save/reload, address/contact, medical/physical history, enrollment/promotion/curriculum and permissions. Mocked Playwright CI now covers inactive/archived read-only boundaries, including archived Basic Details, Address, Medical/Physical and Parent Details; repeat these checks against the live local API before sign-off.
 - Basic Details, Parent Details, Address, Contact, Medical and Physical cross-student draft/error isolation are now explicitly covered by passing Playwright tests.
 - Record exact live acceptance results and any remaining defect; only then mark Student Management complete.
 - Background-refetch draft preservation is already covered by the mocked Playwright journey for basic details, Parent Details, address, contact, medical, physical, and enrollment curriculum/subject choices; it is not a substitute for authenticated live acceptance.
@@ -132,13 +132,13 @@ At every new session, reconcile this file, Student Management design docs, backe
 
 **Source of truth:** this section is the first document to reconcile at the start of every new work session. Read this file, the Student Management design, relevant backend/frontend testing docs, and the latest GitHub Actions runs before changing code. Do not restart an already completed audit or treat an earlier green run as proof for a newer commit.
 
-**Last reconciled:** 2026-11-15  
+**Last reconciled:** 2026-11-17  
 **Repository:** `TheSumitNain/school-management-system`  
 **Reviewed branch:** `work`  
 **Branch:** `work`.  
 **Latest frontend/browser checkpoint:** `6ede320fdcdf332c1bb56b6e172ff4f8a5c88333`. Frontend CI run `44015996045` PASS (production build and all 11 Playwright tests, including Asia/Kolkata date-only calendar rendering and archived-student read-only coverage across profile sections).  
-**Latest backend security-test checkpoint:** `6ede320fdcdf332c1bb56b6e172ff4f8a5c88333`. Backend CI run `44015996051` PASS (full migration chain, PostgreSQL integration tests and `go vet ./...`), including cross-school student identity/basic/contact/address/medical/physical data, enrollment history/create/promotion, location directory operations, guardian ownership/relationship isolation, cross-school guardian-revoke denial, archived-student attendance rejection, independent guardian/student-basic permission checks for related-student routes, and attendance route permission alternatives. These are separate checkpoints because the latest changes added backend tests/docs only; frontend source is unchanged.  
-**Latest Student Management acceptance:** cross-student draft/error isolation for Basic Details, Parent Details, Address, Contact, Medical and Physical; background-refetch draft preservation for profile sections and enrollment subject choices; guardian lifecycle and relationship history; academic-year enrollment, promotion and versioned curriculum choices. The Playwright API is mocked and CI PostgreSQL is ephemeral, so authenticated live acceptance against the user's local API/database remains outstanding.  
+**Latest backend security-test checkpoint:** `6ede320fdcdf332c1bb56b6e172ff4f8a5c88333`. Backend CI run `44015996051` PASS (full migration chain, PostgreSQL integration tests and `go vet ./...`), including cross-school student identity/basic/contact/address/medical/physical data, enrollment history/create/promotion, location directory operations, guardian ownership/relationship isolation, cross-school guardian-revoke denial, archived-student attendance rejection, independent guardian/student-basic permission checks for related-student routes, and attendance route permission alternatives. 
+**Latest Student Management acceptance:** 11 mocked Playwright tests pass, covering cross-student draft/error isolation for Basic Details, Parent Details, Address, Contact, Medical and Physical; background-refetch draft preservation; guardian lifecycle and relationship history; academic-year enrollment, promotion and versioned curriculum choices; date-only calendar display under `Asia/Kolkata`; and archived-student read-only behavior across profile sections. The Playwright API is mocked and CI PostgreSQL is ephemeral, so authenticated live acceptance against the user's local API/database remains outstanding.  
 **Location master data:** V40/V42 provide the State/UT baseline and source-reference history. The all-India LGD hierarchy is not imported; `backend/cmd/lgdvalidate` remains a read-only normalized-CSV validator. No persistent database writes or migrations are authorized by this status update.
 
 ## Student Management — profile form refetch resilience (2026-11-15)
