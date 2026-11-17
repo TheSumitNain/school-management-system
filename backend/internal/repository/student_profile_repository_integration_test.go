@@ -393,9 +393,11 @@ func TestStudentProfileRepositoryPostgresIntegration(t *testing.T) {
 	found := false
 	for _, item := range items { if item.ID == student.ID { found = true } }
 	if !found { t.Fatalf("student %d missing from school-scoped search: %+v", student.ID, items) }
-	wildcardItems, wildcardTotal, err := repo.ListStudents(ctx, actorID, schoolID, 0, "Updated%", "active", 10, 0)
-	if err != nil || wildcardTotal != 0 || len(wildcardItems) != 0 {
-		t.Fatalf("directory search must treat percent as a literal character: items=%+v total=%d err=%v", wildcardItems, wildcardTotal, err)
+	for _, literalPattern := range []string{"Updated%", "Updated_", `Updated\\`} {
+		wildcardItems, wildcardTotal, err := repo.ListStudents(ctx, actorID, schoolID, 0, literalPattern, "active", 10, 0)
+		if err != nil || wildcardTotal != 0 || len(wildcardItems) != 0 {
+			t.Fatalf("directory search must treat wildcard characters literally for %q: items=%+v total=%d err=%v", literalPattern, wildcardItems, wildcardTotal, err)
+		}
 	}
 	if items, total, err := repo.ListStudents(ctx, actorID, schoolID, 0, strings.Repeat("%", 100), "active", 10, 0); err != nil || total != 0 || len(items) != 0 {
 		t.Fatalf("directory search must allow 100 literal wildcard characters: items=%+v total=%d err=%v", items, total, err)
@@ -418,8 +420,8 @@ func TestStudentProfileRepositoryPostgresIntegration(t *testing.T) {
 	); err != nil {
 		t.Fatalf("inspect student profile/directory read audits: %v", err)
 	}
-	if profileReadAuditCount != 2 || directoryReadAuditCount != 8 || directoryResultCount != 3 {
-		t.Fatalf("student read audit counts profile=%d directory=%d directory result_count=%d; want 2,8,3",
+	if profileReadAuditCount != 2 || directoryReadAuditCount != 10 || directoryResultCount != 3 {
+		t.Fatalf("student read audit counts profile=%d directory=%d directory result_count=%d; want 2,10,3",
 			profileReadAuditCount, directoryReadAuditCount, directoryResultCount)
 	}
 	if readAuditContainsStudentData {
