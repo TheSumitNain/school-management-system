@@ -122,20 +122,31 @@ export function StudentBasicDetailsSection({ student, canUpdate, onStudentNameCh
     if (Array.from(values.school_registration_number.trim()).length > 50) nextErrors.school_registration_number = "Registration number must be 50 characters or fewer.";
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) return;
+    const input = {
+      date_of_birth: values.date_of_birth || null,
+      place_of_birth: values.place_of_birth.trim() || null,
+      gender: values.gender || null,
+      nationality: values.nationality.trim() || null,
+      religion: values.religion.trim() || null,
+      social_category: values.social_category || null,
+      ews_status: values.ews_status === "" ? null : values.ews_status === "yes",
+      school_registration_number: values.school_registration_number.trim() || null,
+    };
+    const current = query.data?.basic_details;
+    const unchanged = (current?.date_of_birth?.slice(0, 10) ?? null) === input.date_of_birth &&
+      (current?.place_of_birth ?? null) === input.place_of_birth &&
+      (current?.gender ?? null) === input.gender &&
+      (current?.nationality ?? null) === input.nationality &&
+      (current?.religion ?? null) === input.religion &&
+      (current?.social_category ?? null) === input.social_category &&
+      (current?.ews_status ?? null) === input.ews_status &&
+      (current?.school_registration_number ?? null) === input.school_registration_number;
+    if (unchanged) {
+      setFeedback({ kind: "success", message: "No changes to save." });
+      return;
+    }
     try {
-      await save.mutateAsync({
-        studentID: student.id,
-        input: {
-          date_of_birth: values.date_of_birth || null,
-          place_of_birth: values.place_of_birth.trim() || null,
-          gender: values.gender || null,
-          nationality: values.nationality.trim() || null,
-          religion: values.religion.trim() || null,
-          social_category: values.social_category || null,
-          ews_status: values.ews_status === "" ? null : values.ews_status === "yes",
-          school_registration_number: values.school_registration_number.trim() || null,
-        },
-      });
+      await save.mutateAsync({ studentID: student.id, input });
       setFeedback({ kind: "success", message: "Basic details saved." });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Basic details could not be saved.";
