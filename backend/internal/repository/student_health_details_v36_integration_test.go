@@ -189,8 +189,8 @@ func TestStudentMedicalPhysicalDetailsV36PostgresIntegration(t *testing.T) {
 		t.Fatalf("invalid weight error = %v, want invalid input", err)
 	}
 	if _, err := repo.SaveStudentPhysicalDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
-		&height, nil, nil, nil, nil); !errors.Is(err, ErrInvalidAcademicInput) {
-		t.Fatalf("missing measurement date error = %v, want invalid input", err)
+		&height, nil, nil, nil, nil); !errors.Is(err, ErrInvalidStudentMeasurementDate) {
+		t.Fatalf("missing measurement date error = %v, want measurement-date field error", err)
 	}
 	futureMeasurementDate := time.Now().UTC().AddDate(0, 0, 1)
 	if _, err := repo.SaveStudentPhysicalDetails(ctx, actorPrincipalID, schoolID, secondStudentID,

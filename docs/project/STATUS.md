@@ -1277,4 +1277,4 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 
 - Invalid or missing physical measurement dates now return a dedicated API field error. The Physical Details form displays the message directly beneath the measurement date picker and marks the control invalid.
 - Added repository and handler regression coverage and a Playwright case for a server-returned measurement-date validation error.
-- Backend and frontend CI verification is pending. Local authenticated API/database/browser acceptance remains outstanding.
+- The first CI run exposed a stale integration-test expectation for missing measurement dates; the expectation has been corrected. Backend and frontend CI re-verification is pending. Local authenticated API/database/browser acceptance remains outstanding.
