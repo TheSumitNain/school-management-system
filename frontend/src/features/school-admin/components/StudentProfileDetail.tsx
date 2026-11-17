@@ -20,7 +20,15 @@ type Props = {
 
 function dateLabel(value?: string | null) {
   if (!value) return "—";
-  const parsed = new Date(value);
+
+  // API date-only fields (DATE columns) must be formatted as calendar dates,
+  // not parsed as UTC instants. Parsing YYYY-MM-DD with new Date() shifts the
+  // displayed day in positive-offset time zones such as India.
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  const parsed = dateOnly
+    ? new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]))
+    : new Date(value);
+
   return Number.isNaN(parsed.getTime())
     ? value
     : new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(parsed);
