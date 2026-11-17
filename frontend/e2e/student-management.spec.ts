@@ -2505,7 +2505,8 @@ test("archived student profile sections remain readable but cannot be changed", 
   await page.getByRole("button", { name: /Continue/ }).click();
   await page.getByRole("button", { name: "Students" }).click();
   await page.getByRole("button", { name: "View profile for Archived Student" }).click();
-  await expect(page.getByText("archived", { exact: true })).toBeVisible();
+  const profileDialog = page.getByRole("dialog", { name: "Student profile" });
+  await expect(profileDialog.getByText("archived", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Basic details" }).click();
   const basicDialog = page.getByRole("dialog", { name: "Basic Details" });
