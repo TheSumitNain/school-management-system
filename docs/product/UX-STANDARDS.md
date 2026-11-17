@@ -95,3 +95,26 @@ Inline controls remain appropriate for high-frequency, low-complexity actions su
 - Do not change the user's scroll position when showing or hiding navigation. Reveal the navigation when keyboard focus enters it, and keep it visible at the top of the page.
 - Ignore tiny scroll movements to prevent flicker, support narrow screens with horizontally scrollable tabs where needed, and respect reduced-motion preferences.
 - Apply this pattern consistently to long tabbed workflows where it improves navigation; do not add it to short pages that do not need it.
+
+## 11. Help tooltips, links and contextual notices
+
+- Help icons start closed. Opening a dialog or automatically focusing a form control must never open a tooltip as a side effect.
+- Help content opens only through intentional pointer hover, keyboard focus or touch/click interaction. Every trigger has an accessible name and expanded/description semantics.
+- Tooltips must remain readable within the viewport and must not be clipped by modal, card, table or scrolling-container overflow. Reposition them above/below and horizontally as needed; users must not need to scroll the form merely to read help.
+- Action links such as **Create location selection**, **Add missing State/UT** or similar secondary workflow actions must look interactive: theme-aware link color, clear hover/focus state and underline or equivalent non-color affordance. Do not style a navigation/action link as plain body text.
+- Reference-data guidance must communicate its meaning explicitly. Use distinct information, warning and error treatments with a short heading or icon plus explanatory text and the next action. Never rely on color alone or render a missing-reference warning as an unstyled small-print sentence.
+
+## 12. Save only actual changes
+
+- Opening an edit dialog may perform the GET requests required to load the record and its supporting choices. It must not perform create, update, delete, archive, link or other write requests.
+- Changing fields in a draft must not call a write endpoint. Writes occur only after the user explicitly submits the relevant action.
+- Before sending an update, compare the normalized draft with the persisted values. If nothing changed, show a concise **No changes to save** message and do not send PUT/PATCH.
+- Apply the same rule to basic details, address, contact, medical, physical, guardian relationship and shared guardian profile forms. Preserve intentional append-only actions (for example, creating a new dated measurement) only when the user actually changes the record/date and submits it.
+- A GET caused by opening a modal or refreshing stale data is expected; a write caused solely by opening a modal is a defect. Tests must assert both behaviours separately.
+
+## 13. Predefined relationship and classification choices
+
+- Use a predefined select for common structured relationships instead of requiring free-text entry for standard values.
+- Guardian relationship choices should include Father, Mother, Step-father, Step-mother, Grandfather, Grandmother, Brother, Sister, Uncle, Aunt, Legal Guardian, Foster Parent and Other.
+- When Other is selected, reveal a clearly labelled custom relationship field and validate its length. Preserve existing custom values when editing historical records.
+- Do not invent guardian identity or contact details from the relationship choice; guardian name, phone and email remain user-entered family information.
