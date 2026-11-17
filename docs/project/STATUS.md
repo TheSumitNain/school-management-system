@@ -1286,3 +1286,12 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Backend CI **PASS** — [run 44009887924](https://github.com/TheSumitNain/school-management-system/actions/runs/44009887924): full migrations, Go tests including PostgreSQL integration, and `go vet ./...`.
 - Frontend CI **PASS** — [run 44009644248](https://github.com/TheSumitNain/school-management-system/actions/runs/44009644248): TypeScript/Vite production build and Student Management Playwright browser acceptance.
 - Tested code checkpoint: `7774dcd77fa1917923d3198f9b5b0b17e6e613b9`. Local authenticated API/database/browser acceptance remains outstanding.
+
+## Student Management — date-only API calendar rendering (2026-11-17)
+
+- PostgreSQL DATE fields represented by Go time.Time can reach the frontend as midnight timestamps. Formatting those values as instants can shift the displayed calendar day in browsers west of UTC.
+- Student academic history, the enrollment directory, and physical-measurement history now explicitly format date-only fields as calendar dates. Actual timestamps such as record creation and medical-history change times continue to use timezone-aware instant formatting.
+- Playwright now runs the Student Management suite in America/Los_Angeles and uses midnight-UTC timestamp fixtures matching the API shape. Coverage verifies the enrollment directory, student academic history, and historical physical-measurement date.
+- Frontend CI **PASS** — [run 44016765201](https://github.com/TheSumitNain/school-management-system/actions/runs/44016765201): TypeScript/Vite production build and Student Management Playwright browser acceptance.
+- Backend CI **PASS** — [run 44016765225](https://github.com/TheSumitNain/school-management-system/actions/runs/44016765225): full migrations, Go tests including PostgreSQL integration, and go vet ./....
+- Tested code checkpoint: 77aec36840f4bf4282e516b97679c84609c2704e. Authenticated acceptance against the user's local API/database/browser remains outstanding. The separate school-timezone policy for future-date validation remains unresolved; this change addresses display only.
