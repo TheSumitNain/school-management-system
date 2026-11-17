@@ -2537,7 +2537,7 @@ test("archived student profile sections remain readable but cannot be changed", 
   await expect(healthDialog.getByRole("button", { name: "Save physical details" })).toHaveCount(0);
   await healthDialog.getByRole("button", { name: "Close dialog" }).click();
 
-  await page.getByRole("button", { name: /Parents & Siblings/ }).click();
+  await page.getByRole("button", { name: /Parents & Siblings/i }).click();
   const familyDialog = page.getByRole("dialog", { name: /Parents & Siblings/ });
   await expect(familyDialog).toBeVisible();
   await expect(familyDialog.getByRole("button", { name: "Create a new guardian contact" })).toHaveCount(0);
