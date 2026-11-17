@@ -57,6 +57,7 @@ export function StudentManagementPage({ permissions }: Props) {
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search.trim());
   const [status, setStatus] = useState("");
+  const [directoryAcademicYearID, setDirectoryAcademicYearID] = useState<number | null>(null);
   const [offset, setOffset] = useState(0);
   const [action, setAction] = useState<StudentAction>(null);
   const [showEnrollment, setShowEnrollment] = useState(false);
@@ -77,11 +78,11 @@ export function StudentManagementPage({ permissions }: Props) {
   const [studentToArchive, setStudentToArchive] = useState<StudentProfile | null>(null);
   const [archiveError, setArchiveError] = useState("");
 
-  const filters = useMemo(() => ({ q: deferredSearch, status, limit: 20, offset }), [deferredSearch, status, offset]);
+  const filters = useMemo(() => ({ q: deferredSearch, status, academicYearID: directoryAcademicYearID ?? undefined, limit: 20, offset }), [deferredSearch, status, directoryAcademicYearID, offset]);
   const studentsQuery = useSchoolStudentsQuery(filters, canReadStudents && tab === "students");
   const studentOptionsQuery = useSchoolStudentsQuery({ q: deferredStudentSearch, status: "active", limit: 20, offset: 0 }, canReadStudents && showEnrollment);
   const enrollmentQuery = useSchoolStudentEnrollmentsQuery(academicYearID, canReadEnrollments && tab === "enrollments");
-  const yearsQuery = useSchoolStudentAcademicYearsQuery(canReadYears && (canReadEnrollments || showEnrollment || action === "create"));
+  const yearsQuery = useSchoolStudentAcademicYearsQuery(canReadYears && (tab === "students" || canReadEnrollments || showEnrollment || action === "create"));
   const sectionsQuery = useSchoolStudentSectionsQuery(academicYearID, (showEnrollment || action === "create") && canReadSections);
   const createStudent = useCreateSchoolStudentMutation();
   const archiveStudent = useArchiveSchoolStudentMutation();
@@ -96,6 +97,11 @@ export function StudentManagementPage({ permissions }: Props) {
   const selectedAcademicYear = years.find(year => year.id === academicYearID);
   const academicYearStart = selectedAcademicYear?.starts_on?.slice(0, 10);
   const academicYearEnd = selectedAcademicYear?.ends_on?.slice(0, 10);
+
+  useEffect(() => {
+    if (directoryAcademicYearID !== null || years.length === 0) return;
+    setDirectoryAcademicYearID(years.find(year => year.is_current)?.id ?? years[0].id);
+  }, [directoryAcademicYearID, years]);
 
   useEffect(() => {
     if ((action === "create" || showEnrollment) && academicYearID === 0 && activeYears.length > 0) {
@@ -275,15 +281,17 @@ export function StudentManagementPage({ permissions }: Props) {
     <ConfirmDialog open={Boolean(studentToArchive)} title="Archive student?" description={studentToArchive ? `Archive ${studentToArchive.full_name}? Any active enrollment will be closed as withdrawn. The student record, enrollment history and existing attendance records will be retained; no new enrollment or attendance can be recorded.` : ""} confirmLabel="Archive student" pending={archiveStudent.isPending} error={archiveError || undefined} onCancel={() => {setStudentToArchive(null);setArchiveError("");}} onConfirm={() => void confirmArchive()}/>
     {tab === "students" && canReadStudents && <>
       <div className="student-toolbar">
-        <label className="student-search"><Search size={16}/><input aria-label="Search students" maxLength={100} placeholder="Search name or admission number" value={search} onChange={event => { setSearch(event.target.value); setOffset(0); }}/></label>
+        <label className="student-search"><Search size={16}/><input aria-label="Search students" maxLength={100} placeholder="Search student name or selected year's admission number" value={search} onChange={event => { setSearch(event.target.value); setOffset(0); }}/></label>
+        {canReadYears && years.length > 0 && <label><StudentFieldLabel label="Academic year" hint="Choose which academic year's admission number to display and search. Students without an enrollment in this year remain in the directory." /><Select ariaLabel="Filter students by academic year" value={String(directoryAcademicYearID ?? years.find(year => year.is_current)?.id ?? years[0].id)} onChange={value => { setDirectoryAcademicYearID(Number(value)); setOffset(0); }} options={years.map(year => ({value:String(year.id),label:year.name+(year.is_current?" · Current":"")}))}/></label>}
+        {canReadYears && yearsQuery.isError && <div className="student-feedback error" role="alert"><p>{yearsQuery.error.message}</p><button type="button" className="student-secondary" onClick={() => void yearsQuery.refetch()} disabled={yearsQuery.isFetching}>Retry loading academic years</button></div>}
         <Select ariaLabel="Filter by student status" value={status} onChange={value => { setStatus(value); setOffset(0); }} placeholder="All statuses" options={[{value:"",label:"All statuses"},{value:"active",label:"Active"},{value:"inactive",label:"Inactive"},{value:"archived",label:"Archived"}]} />
         <button type="button" className="student-secondary" onClick={() => void studentsQuery.refetch()} disabled={studentsQuery.isFetching}><RefreshCw size={15}/> Refresh</button>
       </div>
       {studentsQuery.isLoading ? <div className="student-state">Loading student records…</div> :
        studentsQuery.isError ? <div className="student-state error" role="alert"><p>{studentsQuery.error.message}</p><button className="student-secondary" onClick={() => void studentsQuery.refetch()}>Try again</button></div> :
-       students.length === 0 ? <div className="student-state"><Users size={28}/><b>No students found</b><span>{search || status ? "Try changing the search or status filter." : "Add the first student record to get started."}</span></div> :
+       students.length === 0 ? <div className="student-state"><Users size={28}/><b>No students found</b><span>{search || status || directoryAcademicYearID !== null ? "Try changing the search, academic year or status filter." : "Add the first student record to get started."}</span></div> :
        <section className="student-table-wrap"><table className="student-table"><thead><tr><th>Student</th><th>Admission no.</th><th>Status</th><th>Actions</th></tr></thead><tbody>
-        {students.map(item => <tr key={item.id}><td data-label="Student"><b>{item.full_name}</b><small>Student ID #{item.id}</small></td><td data-label="Admission no.">{item.admission_number}</td><td data-label="Status"><span className={"student-status " + item.status}>{item.status}</span></td><td data-label="Actions"><div className="student-row-actions">{canReadStudents && <button type="button" title="View student profile" aria-label={`View profile for ${item.full_name}`} onClick={() => setProfileStudent(item)}><Eye size={15}/></button>}{canReadStudents && canUpdate && item.status === "active" && <button type="button" title="Edit student profile sections" aria-label={`Edit profile for ${item.full_name}`} onClick={() => setProfileStudent(item)}><Pencil size={15}/></button>}{canArchive && item.status !== "archived" && <button type="button" className="archive" title="Archive student" aria-label={`Archive ${item.full_name}`} onClick={() => void archive(item)}><Archive size={15}/></button>}</div></td></tr>)}
+        {students.map(item => <tr key={item.id}><td data-label="Student"><b>{item.full_name}</b><small>Student ID #{item.id}</small></td><td data-label="Admission no.">{item.admission_number || "Not enrolled"}</td><td data-label="Status"><span className={"student-status " + item.status}>{item.status}</span></td><td data-label="Actions"><div className="student-row-actions">{canReadStudents && <button type="button" title="View student profile" aria-label={`View profile for ${item.full_name}`} onClick={() => setProfileStudent(item)}><Eye size={15}/></button>}{canReadStudents && canUpdate && item.status === "active" && <button type="button" title="Edit student profile sections" aria-label={`Edit profile for ${item.full_name}`} onClick={() => setProfileStudent(item)}><Pencil size={15}/></button>}{canArchive && item.status !== "archived" && <button type="button" className="archive" title="Archive student" aria-label={`Archive ${item.full_name}`} onClick={() => void archive(item)}><Archive size={15}/></button>}</div></td></tr>)}
        </tbody></table></section>}
       {total > 0 && <div className="student-pagination"><span>{`Showing ${offset + 1}–${Math.min(offset + 20, total)} of ${total}`}</span>{pageCount > 1 && <div><button type="button" className="student-secondary" disabled={offset === 0 || studentsQuery.isFetching} onClick={() => setOffset(Math.max(0, offset - 20))}>Previous</button><span>Page {Math.floor(offset / 20) + 1} of {pageCount}</span><button type="button" className="student-secondary" disabled={offset + 20 >= total || studentsQuery.isFetching} onClick={() => setOffset(offset + 20)}>Next</button></div>}</div>}
     </>}
