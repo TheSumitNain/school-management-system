@@ -2411,7 +2411,7 @@ test("archived student profile sections remain readable but cannot be changed", 
     const url = new URL(request.url());
     const path = url.pathname.startsWith("/api") ? url.pathname.slice(4) : url.pathname;
     const method = request.method();
-    if (["POST", "PUT", "PATCH", "DELETE"].includes(method)) attemptedWrites.push(method + " " + path);
+    if (path !== "/auth/login" && ["POST", "PUT", "PATCH", "DELETE"].includes(method)) attemptedWrites.push(method + " " + path);
 
     if (path === "/auth/refresh") {
       await route.fulfill({ status: 401, json: { message: "No active session" } });
