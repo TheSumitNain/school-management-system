@@ -48,6 +48,9 @@ func (r *AcademicRepository) ListStudents(
 		return nil, 0, ErrAcademicAccessDenied
 	}
 	search = strings.TrimSpace(search)
+	// Treat user input literally in ILIKE patterns; %, _ and backslash are
+	// ordinary search characters, not caller-controlled SQL wildcard syntax.
+	search = strings.NewReplacer(`\\`, `\\\\`, `%`, `\\%`, `_`, `\\_`).Replace(search)
 	status = strings.TrimSpace(strings.ToLower(status))
 	if academicYearID < 0 || utf8.RuneCountInString(search) > 100 || (status != "" && status != "active" && status != "inactive" && status != "archived") ||
 		limit < 1 || limit > 100 || offset < 0 {
@@ -96,7 +99,7 @@ func (r *AcademicRepository) ListStudents(
 		  AND ($4 = '' OR
 		       COALESCE(current_enrollment.admission_number,
 		                CASE WHEN current_enrollment.id IS NULL AND $2=0 THEN st.admission_number END, '')
-		         ILIKE '%' || $4 || '%' OR st.full_name ILIKE '%' || $4 || '%')
+		         ILIKE '%' || $4 || '%' ESCAPE '\\' OR st.full_name ILIKE '%' || $4 || '%' ESCAPE '\\')
 	`, schoolID, academicYearID, status, search).Scan(&total); err != nil {
 		return nil, 0, fmt.Errorf("count students: %w", err)
 	}
@@ -123,7 +126,7 @@ func (r *AcademicRepository) ListStudents(
 		  AND ($4 = '' OR
 		       COALESCE(current_enrollment.admission_number,
 		                CASE WHEN current_enrollment.id IS NULL AND $2=0 THEN st.admission_number END, '')
-		         ILIKE '%' || $4 || '%' OR st.full_name ILIKE '%' || $4 || '%')
+		         ILIKE '%' || $4 || '%' ESCAPE '\\' OR st.full_name ILIKE '%' || $4 || '%' ESCAPE '\\')
 		ORDER BY LOWER(st.full_name), st.id
 		LIMIT $5 OFFSET $6
 	`, schoolID, academicYearID, status, search, limit, offset)
