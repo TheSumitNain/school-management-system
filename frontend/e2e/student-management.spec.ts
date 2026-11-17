@@ -2398,3 +2398,143 @@ test("switching student profiles clears address, contact, medical and physical d
   expect(writeRequests).toEqual([]);
   expect(browserErrors).toEqual([]);
 });
+
+
+test("archived student profile sections remain readable but cannot be changed", async ({ page }) => {
+  const archivedStudent = {
+    id: 41, school_id: 10, admission_number: "ADM-ARCHIVED-41", full_name: "Archived Student",
+    status: "archived", created_at: "2026-01-01T00:00:00.000Z", updated_at: "2026-01-02T00:00:00.000Z",
+  };
+  const attemptedWrites: string[] = [];
+  await page.route("**/api/**", async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname.replace(/^\\/api/, "");
+    const method = request.method();
+    if (["POST", "PUT", "PATCH", "DELETE"].includes(method)) attemptedWrites.push(method + " " + path);
+
+    if (path === "/auth/refresh") {
+      await route.fulfill({ status: 401, json: { message: "No active session" } });
+      return;
+    }
+    if (path === "/auth/login" && method === "POST") {
+      await route.fulfill({ json: {
+        access_token: "e2e-archived-student-token", token_type: "Bearer",
+        principal: { principal_id: 141, principal_type: "staff", status: "active", school_id: 10 },
+      } });
+      return;
+    }
+    if (path === "/auth/me") {
+      await route.fulfill({ json: {
+        principal_id: 141, principal_type: "staff", school_id: 10, username: "e2e-archived-student",
+        permissions: ["students.read_sensitive", "students.read_basic", "students.update", "guardians.read", "guardians.manage"],
+      } });
+      return;
+    }
+    if (path === "/school/students" && method === "GET") {
+      await route.fulfill({ json: { students: [archivedStudent], pagination: { limit: 20, offset: 0, total: 1 } } });
+      return;
+    }
+    if (path === "/school/academic-years") {
+      await route.fulfill({ json: { academic_years: [] } });
+      return;
+    }
+    if (path === "/school/guardians" && method === "GET") {
+      await route.fulfill({ json: { guardians: [], total: 0 } });
+      return;
+    }
+    if (path === "/school/locations") {
+      await route.fulfill({ json: { locations: [] } });
+      return;
+    }
+    const match = path.match(/^\\/school\\/students\\/(\\d+)(?:\\/(.*))?$/);
+    if (match && Number(match[1]) === archivedStudent.id) {
+      const subpath = match[2] ?? "";
+      if (subpath === "enrollments" && method === "GET") {
+        await route.fulfill({ json: { enrollments: [] } });
+        return;
+      }
+      if (subpath === "basic-details" && method === "GET") {
+        await route.fulfill({ json: { basic_details: {
+          id: 41, school_id: 10, student_id: 41, date_of_birth: null, place_of_birth: null,
+          gender: null, nationality: null, religion: null, social_category: null,
+          ews_status: null, school_registration_number: null,
+        } } });
+        return;
+      }
+      if (subpath === "addresses" && method === "GET") {
+        await route.fulfill({ json: { addresses: [] } });
+        return;
+      }
+      if (subpath === "contact-details" && method === "GET") {
+        await route.fulfill({ json: { contact_details: {
+          id: 0, school_id: 10, student_id: 41, primary_phone: null, alternate_phone: null, email_address: null,
+        } } });
+        return;
+      }
+      if (subpath === "medical-details" && method === "GET") {
+        await route.fulfill({ json: { medical_details: {
+          id: 0, school_id: 10, student_id: 41, version_number: 0, blood_group: null,
+          allergies: null, known_conditions: null, ongoing_medications: null,
+          emergency_medical_notes: null, history: [],
+        } } });
+        return;
+      }
+      if (subpath === "physical-details" && method === "GET") {
+        await route.fulfill({ json: { physical_details: {
+          id: 0, school_id: 10, student_id: 41, height_cm: null, weight_kg: null,
+          measured_on: null, vision_notes: null, physical_notes: null, history: [],
+        } } });
+        return;
+      }
+      if (subpath === "guardians" && method === "GET") {
+        await route.fulfill({ json: { student_guardians: [] } });
+        return;
+      }
+      if (subpath === "related-students" && method === "GET") {
+        await route.fulfill({ json: { related_students: [] } });
+        return;
+      }
+    }
+    await route.fulfill({ status: 404, json: { message: `Unmocked E2E API request: ${method} ${path}` } });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Username").fill("e2e-archived-student");
+  await page.getByLabel("Password").fill("E2E-only-password");
+  await page.getByRole("button", { name: /Continue/ }).click();
+  await page.getByRole("button", { name: "Students" }).click();
+  await page.getByRole("button", { name: "View profile for Archived Student" }).click();
+  await expect(page.getByText("archived", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Basic details" }).click();
+  const basicDialog = page.getByRole("dialog", { name: "Basic Details" });
+  await expect(basicDialog).toBeVisible();
+  await expect(basicDialog.getByRole("button", { name: "Save basic details" })).toHaveCount(0);
+  await expect(basicDialog.getByText(/View-only access/)).toBeVisible();
+  await basicDialog.getByRole("button", { name: "Close dialog" }).click();
+
+  await page.getByRole("button", { name: /Address & communication/ }).click();
+  const addressDialog = page.getByRole("dialog", { name: "Address & Communication" });
+  await expect(addressDialog).toBeVisible();
+  await expect(addressDialog.getByRole("button", { name: "Save address" })).toHaveCount(0);
+  await expect(addressDialog.getByRole("button", { name: "Save contact details" })).toHaveCount(0);
+  await expect(addressDialog.getByText(/View-only access/)).toBeVisible();
+  await addressDialog.getByRole("button", { name: "Close dialog" }).click();
+
+  await page.getByRole("button", { name: /Medical & physical/ }).click();
+  const healthDialog = page.getByRole("dialog", { name: "Medical & Physical Details" });
+  await expect(healthDialog).toBeVisible();
+  await expect(healthDialog.getByRole("button", { name: "Save medical details" })).toHaveCount(0);
+  await expect(healthDialog.getByText(/View-only access/)).toBeVisible();
+  await healthDialog.getByRole("button", { name: "Physical details" }).click();
+  await expect(healthDialog.getByRole("button", { name: "Save physical details" })).toHaveCount(0);
+  await healthDialog.getByRole("button", { name: "Close dialog" }).click();
+
+  await page.getByRole("button", { name: /Parents & Siblings/ }).click();
+  const familyDialog = page.getByRole("dialog", { name: /Parents & Siblings/ });
+  await expect(familyDialog).toBeVisible();
+  await expect(familyDialog.getByRole("button", { name: "Create a new guardian contact" })).toHaveCount(0);
+  await expect(familyDialog.getByText(/view-only|read-only/i)).toBeVisible();
+  expect(attemptedWrites).toEqual([]);
+});
