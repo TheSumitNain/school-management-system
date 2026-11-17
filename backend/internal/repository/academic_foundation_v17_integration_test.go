@@ -737,7 +737,7 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 		t.Fatalf("preserve manual roll number override: enrollment=%+v err=%v", manualEnrollment, err)
 	}
 	directoryMatches, directoryTotal, err := academicRepo.ListStudents(
-		ctx, actorPrincipalID, schoolID, combinedNumber, "active", 20, 0,
+		ctx, actorPrincipalID, schoolID, apiYear.ID, combinedNumber, "active", 20, 0,
 	)
 	if err != nil || directoryTotal != 1 || len(directoryMatches) != 1 ||
 		directoryMatches[0].ID != combined.Student.ID || directoryMatches[0].AdmissionNumber != combinedNumber {
