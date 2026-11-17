@@ -620,7 +620,7 @@ test("student admission, profile navigation and parent details render without br
   const activeDOBDay = dobCalendar.locator('button[tabindex="0"]');
   const initialDOBDay = await activeDOBDay.getAttribute("aria-label");
   await expect(activeDOBDay).toBeFocused();
-  await activeDOBDay.press("ArrowRight");
+  await activeDOBDay.press("ArrowLeft");
   const nextDOBDay = dobCalendar.locator('button[tabindex="0"]');
   await expect(nextDOBDay).not.toHaveAttribute("aria-label", initialDOBDay ?? "");
   await expect(nextDOBDay).toBeFocused();
