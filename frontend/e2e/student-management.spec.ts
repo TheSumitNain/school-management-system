@@ -1,7 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// Exercise date-only rendering in the school's primary positive-offset timezone.
-test.use({ timezoneId: "Asia/Kolkata" });
+// SQL DATE values are serialized as midnight UTC timestamps. A negative-offset
+// browser timezone reproduces the previous-day display regression.
+test.use({ timezoneId: "America/Los_Angeles" });
 
 async function invalidateProfileQueries(page: Page, family: "students" | "guardians") {
   await page.evaluate(async (queryFamily) => {
@@ -264,7 +265,7 @@ test("student admission, profile navigation and parent details render without br
               id: 100 + studentID, student_id: studentID, academic_year_id: academicYear.id,
               class_name_snapshot: section.class_name, section_name_snapshot: section.name,
               admission_number: students.find(item => item.id === studentID)?.admission_number ?? "ADM-E2E-001",
-              admission_date: "2026-11-14", status: "active", enrolled_at: "2026-11-14",
+              admission_date: "2026-11-14T00:00:00Z", status: "active", enrolled_at: "2026-11-14T00:00:00Z",
             }],
           },
         });
@@ -2237,7 +2238,7 @@ test("switching student profiles clears address, contact, medical and physical d
   const physicalFor = (studentID: number) => ({
     id: studentID * 40, school_id: 10, student_id: studentID,
     height_cm: studentID === 32 ? 140 : null, weight_kg: null,
-    measured_on: studentID === 32 ? "2026-11-10" : null,
+    measured_on: studentID === 32 ? "2026-11-10T00:00:00Z" : null,
     vision_notes: studentID === 32 ? "Student B saved vision record" : null,
     physical_notes: null, history: [],
   });
@@ -2400,6 +2401,7 @@ test("switching student profiles clears address, contact, medical and physical d
   await page.getByRole("button", { name: "Physical details" }).click();
   await expect(page.getByPlaceholder("e.g. 132.5")).toHaveValue("140");
   await expect(page.getByPlaceholder("Optional vision-related notes")).toHaveValue("Student B saved vision record");
+  await expect(healthDialog.getByText("Measured 10 Nov 2026", { exact: true })).toBeVisible();
   await expect(page.getByText("Height must be between 20 and 250 cm.", { exact: true })).toHaveCount(0);
   expect(writeRequests).toEqual([]);
   expect(browserErrors).toEqual([]);
