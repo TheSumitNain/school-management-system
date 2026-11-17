@@ -386,6 +386,13 @@ func TestStudentProfileRepositoryPostgresIntegration(t *testing.T) {
 	if err != nil || archiveEnrollment == nil || archiveEnrollment.Status != "active" {
 		t.Fatalf("create active enrollment for archive test: enrollment=%+v err=%v", archiveEnrollment, err)
 	}
+	// Future-dated attendance is allowed for the current enrollment. Archiving
+	// must not truncate its historical validity boundary before this record.
+	futureAttendanceDate := time.Now().UTC().AddDate(0, 0, 7).Truncate(24 * time.Hour)
+	if _, err := repo.MarkAttendance(ctx, actorID, schoolID, archiveEnrollment.ID,
+		futureAttendanceDate, "present", nil); err != nil {
+		t.Fatalf("mark future-dated attendance before archive: %v", err)
+	}
 	archived, err := repo.ArchiveStudent(ctx, actorID, schoolID, student.ID)
 	if err != nil || archived.Status != "archived" { t.Fatalf("archive student: student=%+v err=%v", archived, err) }
 	var archivedEnrollmentStatus string
@@ -395,9 +402,9 @@ func TestStudentProfileRepositoryPostgresIntegration(t *testing.T) {
 	`, archiveEnrollment.ID, schoolID).Scan(&archivedEnrollmentStatus, &archivedEnrollmentEnd); err != nil {
 		t.Fatalf("read enrollment after student archive: %v", err)
 	}
-	if archivedEnrollmentStatus != "withdrawn" || archivedEnrollmentEnd.Before(admissionDate) {
-		t.Fatalf("archived student's enrollment status/end date = %q/%s; want withdrawn and end date >= %s",
-			archivedEnrollmentStatus, archivedEnrollmentEnd.Format("2006-01-02"), admissionDate.Format("2006-01-02"))
+	if archivedEnrollmentStatus != "withdrawn" || archivedEnrollmentEnd.Before(futureAttendanceDate) {
+		t.Fatalf("archived student's enrollment status/end date = %q/%s; want withdrawn and end date >= latest attendance %s",
+			archivedEnrollmentStatus, archivedEnrollmentEnd.Format("2006-01-02"), futureAttendanceDate.Format("2006-01-02"))
 	}
 	// A retry after a successful archive must return the archived record and
 	// must not duplicate the archive audit event or alter enrollment history.
