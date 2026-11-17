@@ -1,3 +1,10 @@
+### Student Management — archived attendance history retention (2026-11-17)
+
+- Strengthened the existing PostgreSQL archive lifecycle integration test to record a real attendance mark before archiving the student, then assert that the attendance row remains present after the student's active enrollment is withdrawn.
+- The same test still verifies the archive retry is idempotent, the historical enrollment row remains, and any new attendance mark against the archived student is rejected.
+- Backend CI **PASS** — [run 44032472405](https://github.com/TheSumitNain/school-management-system/actions/runs/44032472405): complete migration chain, all Go tests including PostgreSQL integration, and `go vet ./...`.
+- Tested code checkpoint: `b00b52464376a41453de02be774ae6e1a2801989`. This uses the disposable CI PostgreSQL database; authenticated acceptance against the user's local API/database remains outstanding.
+
 ### Student Management — archive/attendance concurrency regression (2026-11-17)
 
 - Added a real PostgreSQL two-operation race test. It holds the permanent student row lock, queues archive first, then queues an attendance mark behind it, and releases the lock. The test verifies archive commits, the waiting attendance mark rechecks the now-archived student and returns `ErrAttendanceNotFound`, the enrollment is withdrawn, and no attendance row is inserted.
