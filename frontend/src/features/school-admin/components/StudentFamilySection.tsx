@@ -496,7 +496,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
                     <option value="Uncle">Uncle</option><option value="Aunt">Aunt</option>
                     <option value="Legal Guardian">Legal Guardian</option><option value="Foster Parent">Foster Parent</option>
                     <option value="Other">Other</option></select></label>
-              {relationshipType === "Other" && <label><StudentFieldLabel label="Specify relationship" required/><input value={customRelationship} maxLength={40} onChange={event => { setCustomRelationship(event.target.value); setRelationshipError(""); }} placeholder="Enter relationship"/></label>}
+              {relationshipType === "Other" && <label><StudentFieldLabel label="Specify relationship" required/><input value={customRelationship} onChange={event => { setCustomRelationship(event.target.value); setRelationshipError(""); }} placeholder="Enter relationship"/></label>}
               {relationshipError && <small id="student-guardian-relationship-error" className="app-field-error">{relationshipError}</small>}
               <div className="student-family-checks">
                 <label><input type="checkbox" checked={primaryContact} onChange={event => setPrimaryContact(event.target.checked)}/> <StudentFieldLabel label="Primary contact" hint="Optional. Mark this guardian as a primary school contact for the student." /></label>
