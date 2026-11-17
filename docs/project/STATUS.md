@@ -1,3 +1,11 @@
+### Student Management — field-help keyboard accessibility (2026-11-17)
+
+- Extended the Student Management browser acceptance journey to verify that contextual field help opens by click/tap, can be opened by keyboard activation, and closes with Escape.
+- The new browser test exposed a real dialog interaction defect: Escape from an open field-help tooltip bubbled to the parent modal and closed the entire Basic Details dialog. The field-help handler now prevents default Escape handling and stops propagation, so Escape dismisses only the tooltip while preserving the form and its unsaved state.
+- Frontend CI **PASS** — [run 44030621918](https://github.com/TheSumitNain/school-management-system/actions/runs/44030621918): TypeScript/Vite production build and all Student Management Playwright acceptance tests.
+- Backend CI **PASS** — [run 44030621916](https://github.com/TheSumitNain/school-management-system/actions/runs/44030621916): complete migration chain, Go tests including PostgreSQL integration, and `go vet ./...`.
+- Tested code checkpoint: `68c7b3ac7d89897b5b0738b3aef189752efc3b10`. CI browser tests use mocked API responses; authenticated acceptance against the user's local API/database/browser remains outstanding.
+
 ### Student Management — combined admission and enrollment audit (2026-11-17)
 
 - Rechecked the combined admission handler, service contract and PostgreSQL repository transaction. A new student identity and first academic-year enrollment are committed together; authorization, active academic-year validation, school/year-scoped active section validation, roll-number allocation, both audit events and the enrollment insert all occur in the same transaction. A failure before commit rolls back the combined operation.
