@@ -1,0 +1,2 @@
+DROP INDEX IF EXISTS ix_student_enrollments_school_year_enrolled_at;
+DROP INDEX IF EXISTS ix_student_enrollments_school_enrolled_at;
