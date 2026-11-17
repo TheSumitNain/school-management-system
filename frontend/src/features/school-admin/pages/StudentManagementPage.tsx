@@ -29,6 +29,16 @@ function localDateValue() {
   return [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-");
 }
 
+function dateLabel(value: string) {
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  const parsed = dateOnly
+    ? new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]))
+    : new Date(value);
+  return Number.isNaN(parsed.getTime())
+    ? value
+    : new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(parsed);
+}
+
 export function StudentManagementPage({ permissions }: Props) {
   const canReadStudents = permissions.includes("students.read_sensitive");
   const canReadEnrollments = permissions.includes("students.read_basic");
@@ -279,7 +289,7 @@ export function StudentManagementPage({ permissions }: Props) {
        enrollmentQuery.isError ? <div className="student-state error" role="alert"><p>{enrollmentQuery.error.message}</p><button className="student-secondary" onClick={() => void enrollmentQuery.refetch()}>Try again</button></div> :
        enrollments.length === 0 ? <div className="student-state"><GraduationCap size={28}/><b>No enrollments found</b><span>Enrollments appear here after students are assigned to a class section.</span></div> :
        <section className="student-table-wrap"><table className="student-table"><thead><tr><th>Student</th><th>Admission no.</th><th>Class / section</th><th>Roll number</th><th>Status</th><th>Enrolled on</th><th>Actions</th></tr></thead><tbody>
-        {enrollments.map(item => <tr key={item.id}><td data-label="Student"><b>{item.student_name || (item.student_id ? `Student #${item.student_id}` : "Assigned student")}</b></td><td data-label="Admission no.">{item.admission_number || "—"}</td><td data-label="Class / section">{item.class_name_snapshot} · {item.section_name_snapshot}</td><td data-label="Roll number">{item.roll_number || "—"}</td><td data-label="Status"><span className={"student-status " + item.status}>{item.status}</span></td><td data-label="Enrolled on">{new Intl.DateTimeFormat("en-IN",{dateStyle:"medium"}).format(new Date(item.enrolled_at))}</td><td data-label="Actions">{canUpdate && canReadYears && canReadSections && item.status === "active" && item.student_status === "active" && item.student_id && item.academic_year_id ? <button type="button" className="student-secondary" onClick={() => setPromotionEnrollment(item)}>Promote</button> : "—"}</td></tr>)}
+        {enrollments.map(item => <tr key={item.id}><td data-label="Student"><b>{item.student_name || (item.student_id ? `Student #${item.student_id}` : "Assigned student")}</b></td><td data-label="Admission no.">{item.admission_number || "—"}</td><td data-label="Class / section">{item.class_name_snapshot} · {item.section_name_snapshot}</td><td data-label="Roll number">{item.roll_number || "—"}</td><td data-label="Status"><span className={"student-status " + item.status}>{item.status}</span></td><td data-label="Enrolled on">{dateLabel(item.enrolled_at)}</td><td data-label="Actions">{canUpdate && canReadYears && canReadSections && item.status === "active" && item.student_status === "active" && item.student_id && item.academic_year_id ? <button type="button" className="student-secondary" onClick={() => setPromotionEnrollment(item)}>Promote</button> : "—"}</td></tr>)}
        </tbody></table></section>}
     </>}
     {profileStudent && <StudentProfileDetail
