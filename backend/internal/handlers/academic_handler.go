@@ -199,6 +199,14 @@ func parseEnrollmentDate(raw string) (time.Time, error) {
 func (h *AcademicHandler) ListStudentEnrollments(c *gin.Context) {
 	actor, school, ok := h.ready(c); if !ok { return }
 	yearID, valid := queryPositiveID(c, "academic_year_id"); if !valid { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid academic_year_id"}); return }
+	items, err := h.service.ListStudentEnrollments(c.Request.Context(), actor, school, yearID, 0)
+	if err != nil { academicError(c, err, "Student enrollment"); return }
+	c.JSON(http.StatusOK, gin.H{"status":"success","enrollments":items})
+}
+
+func (h *AcademicHandler) ListStudentEnrollmentDirectory(c *gin.Context) {
+	actor, school, ok := h.ready(c); if !ok { return }
+	yearID, valid := queryPositiveID(c, "academic_year_id"); if !valid { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid academic_year_id"}); return }
 	limit := 20
 	if raw := c.Query("limit"); raw != "" {
 		parsed, err := strconv.Atoi(raw)

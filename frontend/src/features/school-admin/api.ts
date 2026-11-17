@@ -233,10 +233,14 @@ export function updateSchoolStudent(studentID: number, input: { full_name: strin
 export function archiveSchoolStudent(studentID: number) {
   return api<{ student: StudentProfile }>(`/school/students/${studentID}/archive`, { method: "POST" });
 }
-export function getSchoolStudentEnrollments(academicYearID = 0, limit = 20, offset = 0, signal?: AbortSignal) {
+export function getSchoolStudentEnrollments(academicYearID = 0, signal?: AbortSignal) {
+  const query = academicYearID > 0 ? `?academic_year_id=${academicYearID}` : "";
+  return api<StudentEnrollmentListResponse>("/school/enrollments" + query, { signal });
+}
+export function getSchoolStudentEnrollmentDirectory(academicYearID = 0, limit = 20, offset = 0, signal?: AbortSignal) {
   const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
   if (academicYearID > 0) params.set("academic_year_id", String(academicYearID));
-  return api<StudentEnrollmentListResponse>(`/school/enrollments?${params.toString()}`, { signal });
+  return api<StudentEnrollmentListResponse>(`/school/enrollment-directory?${params.toString()}`, { signal });
 }
 export function getSchoolStudentEnrollmentHistory(studentID: number, signal?: AbortSignal) {
   return api<StudentEnrollmentListResponse>(`/school/students/${studentID}/enrollments`, { signal });

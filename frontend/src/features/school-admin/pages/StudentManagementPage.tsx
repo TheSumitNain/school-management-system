@@ -2,7 +2,7 @@ import { useDeferredValue, useEffect, useMemo, useState, type FormEvent } from "
 import { Archive, Eye, GraduationCap, Pencil, Plus, RefreshCw, Search, Users } from "lucide-react";
 import {
   useArchiveSchoolStudentMutation, useCreateSchoolStudentEnrollmentMutation, useCreateSchoolStudentMutation,
-  useSchoolStudentAcademicYearsQuery, useSchoolStudentEnrollmentsQuery, useSchoolStudentSectionsQuery,
+  useSchoolStudentAcademicYearsQuery, useSchoolStudentEnrollmentDirectoryQuery, useSchoolStudentSectionsQuery,
   useSchoolStudentsQuery,
 } from "../queries";
 import type { StudentEnrollment, StudentProfile } from "../api";
@@ -84,7 +84,7 @@ export function StudentManagementPage({ permissions }: Props) {
   const filters = useMemo(() => ({ q: deferredSearch, status, academicYearID: directoryAcademicYearID ?? undefined, limit: STUDENT_DIRECTORY_PAGE_SIZE, offset }), [deferredSearch, status, directoryAcademicYearID, offset]);
   const studentsQuery = useSchoolStudentsQuery(filters, canReadStudents && tab === "students");
   const studentOptionsQuery = useSchoolStudentsQuery({ q: deferredStudentSearch, status: "active", limit: STUDENT_DIRECTORY_PAGE_SIZE, offset: 0 }, canReadStudents && showEnrollment);
-  const enrollmentQuery = useSchoolStudentEnrollmentsQuery(academicYearID, STUDENT_DIRECTORY_PAGE_SIZE, enrollmentOffset, canReadEnrollments && tab === "enrollments");
+  const enrollmentQuery = useSchoolStudentEnrollmentDirectoryQuery(academicYearID, STUDENT_DIRECTORY_PAGE_SIZE, enrollmentOffset, canReadEnrollments && tab === "enrollments");
   const yearsQuery = useSchoolStudentAcademicYearsQuery(canReadYears && (tab === "students" || canReadEnrollments || showEnrollment || action === "create"));
   const sectionsQuery = useSchoolStudentSectionsQuery(academicYearID, (showEnrollment || action === "create") && canReadSections);
   const createStudent = useCreateSchoolStudentMutation();

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  getSchoolClassCurricula, getSchoolStudentEnrollmentCurriculum, saveSchoolClassCurriculum,
+  getSchoolClassCurricula, getSchoolStudentEnrollmentCurriculum, getSchoolStudentEnrollmentDirectory, saveSchoolClassCurriculum,
   saveSchoolStudentEnrollmentSubjects,
   createSchoolStaff, disableSchoolStaff, enableSchoolStaff, getSchoolStaff,
   resetSchoolStaffPassword, updateSchoolStaff,
@@ -65,7 +65,8 @@ export const guardianQueryKeys = {
 export const schoolStudentQueryKeys = {
   all: [...schoolAdminQueryKeys.all, "students"] as const,
   list: (filters: { q: string; status: string; academicYearID?: number; limit: number; offset: number }) => [...schoolStudentQueryKeys.all, "list", filters] as const,
-  enrollments: (academicYearID: number, limit: number, offset: number) => [...schoolStudentQueryKeys.all, "enrollments", academicYearID, limit, offset] as const,
+  enrollments: (academicYearID: number) => [...schoolStudentQueryKeys.all, "enrollments", academicYearID] as const,
+  enrollmentDirectory: (academicYearID: number, limit: number, offset: number) => [...schoolStudentQueryKeys.all, "enrollment-directory", academicYearID, limit, offset] as const,
   enrollmentHistory: (studentID: number) => [...schoolStudentQueryKeys.all, "enrollment-history", studentID] as const,
   curriculum: (enrollmentID: number) => [...schoolStudentQueryKeys.all, "curriculum", enrollmentID] as const,
   curricula: () => [...schoolStudentQueryKeys.all, "curriculum"] as const,
@@ -85,10 +86,18 @@ export function useSchoolStudentsQuery(filters: { q: string; status: string; aca
     staleTime: 15_000,
   });
 }
-export function useSchoolStudentEnrollmentsQuery(academicYearID: number, limit = 20, offset = 0, enabled = true) {
+export function useSchoolStudentEnrollmentsQuery(academicYearID: number, enabled = true) {
   return useQuery({
-    queryKey: schoolStudentQueryKeys.enrollments(academicYearID, limit, offset),
-    queryFn: ({ signal }) => getSchoolStudentEnrollments(academicYearID, limit, offset, signal),
+    queryKey: schoolStudentQueryKeys.enrollments(academicYearID),
+    queryFn: ({ signal }) => getSchoolStudentEnrollments(academicYearID, signal),
+    enabled,
+    staleTime: 15_000,
+  });
+}
+export function useSchoolStudentEnrollmentDirectoryQuery(academicYearID: number, limit = 20, offset = 0, enabled = true) {
+  return useQuery({
+    queryKey: schoolStudentQueryKeys.enrollmentDirectory(academicYearID, limit, offset),
+    queryFn: ({ signal }) => getSchoolStudentEnrollmentDirectory(academicYearID, limit, offset, signal),
     enabled,
     staleTime: 15_000,
   });
