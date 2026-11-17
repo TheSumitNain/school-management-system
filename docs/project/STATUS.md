@@ -1437,4 +1437,4 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 
 - Added two reversible PostgreSQL indexes for the paginated enrollment directory's stable `enrolled_at DESC, id DESC` ordering: one scoped by school for the all-years view, and one scoped by school plus academic year for the filtered view. This avoids relying on the section-oriented enrollment index or sorting the entire school history for these access patterns.
 - Added a PostgreSQL integration assertion that both indexes are present after the full migration chain. No API response, authorization predicate, or student-history behavior changed.
-- Validation: pending backend migration/integration CI.
+- Backend CI **PASS** — full migration chain (including V48), PostgreSQL integration tests including the new index-presence assertion, and `go vet ./...` ([run 44066803600](https://github.com/TheSumitNain/school-management-system/actions/runs/44066803600)).
