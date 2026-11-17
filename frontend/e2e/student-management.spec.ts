@@ -617,6 +617,18 @@ test("student admission, profile navigation and parent details render without br
     return { yesterday: label(-1), tomorrow: label(1) };
   });
   const dobCalendar = page.getByRole("dialog", { name: "Choose date of birth" });
+  const activeDOBDay = dobCalendar.locator('button[tabindex="0"]');
+  const initialDOBDay = await activeDOBDay.getAttribute("aria-label");
+  await expect(activeDOBDay).toBeFocused();
+  await activeDOBDay.press("ArrowRight");
+  const nextDOBDay = dobCalendar.locator('button[tabindex="0"]');
+  await expect(nextDOBDay).not.toHaveAttribute("aria-label", initialDOBDay ?? "");
+  await expect(nextDOBDay).toBeFocused();
+  await nextDOBDay.press("Escape");
+  await expect(dobCalendar).toBeHidden();
+  const dobTrigger = page.getByRole("button", { name: "Date of birth", exact: true });
+  await expect(dobTrigger).toBeFocused();
+  await dobTrigger.click();
   await expect(dobCalendar.getByRole("button", { name: dobLabels.tomorrow })).toBeDisabled();
   await dobCalendar.getByRole("button", { name: dobLabels.yesterday }).click();
   await expect(dobCalendar).toBeHidden();
