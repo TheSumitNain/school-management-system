@@ -1407,3 +1407,9 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Updated the selector to disable during the mutation. Extended the promotion Playwright scenario to hold a successful promotion response and assert that the academic-year selector, section selector, admission/roll fields, and promotion date control all remain disabled until the request completes.
 - Code checkpoint: `b1ea5d9e3de2551650e42b52bbb84e19e6f922ef`. Frontend CI **PASS** — [run 44052042190](https://github.com/TheSumitNain/school-management-system/actions/runs/44052042190): TypeScript/Vite production build and Student Management Playwright browser acceptance. Backend CI **PASS** — [run 44052042241](https://github.com/TheSumitNain/school-management-system/actions/runs/44052042241): complete PostgreSQL migration chain, Go tests including PostgreSQL integration, and `go vet ./...`.
 - Authenticated acceptance against the user's local API/database/browser remains outstanding.
+
+## Student Management — directory pagination and search reset coverage (2026-11-17)
+
+- Added a focused Playwright scenario for the student directory's 20-row pagination: it verifies the second page loads the correct range and offset, then confirms changing the search term resets pagination to the first page and removes unavailable navigation controls.
+- Code checkpoint: `ed22d8d7235199e59d2e82df8218258c2631e070`. Frontend CI run 44052720314 and backend CI run 44052720379 were triggered; results are pending.
+- This is mocked-browser regression coverage. Authenticated acceptance against the user's local API/database/browser remains outstanding.
