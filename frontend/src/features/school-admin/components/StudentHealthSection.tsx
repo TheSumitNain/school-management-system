@@ -127,11 +127,15 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
     setMedicalErrors(errors);
     if (Object.keys(errors).length > 0) return;
     const current = medicalQuery.data?.medical_details;
-    if (current && (current.blood_group ?? "") === bloodGroup &&
-      (current.allergies ?? "") === allergies.trim() &&
-      (current.known_conditions ?? "") === knownConditions.trim() &&
-      (current.ongoing_medications ?? "") === ongoingMedications.trim() &&
-      (current.emergency_medical_notes ?? "") === emergencyNotes.trim()) {
+    const unchanged = current
+      ? (current.blood_group ?? "") === bloodGroup &&
+        (current.allergies ?? "") === allergies.trim() &&
+        (current.known_conditions ?? "") === knownConditions.trim() &&
+        (current.ongoing_medications ?? "") === ongoingMedications.trim() &&
+        (current.emergency_medical_notes ?? "") === emergencyNotes.trim()
+      : !bloodGroup && !allergies.trim() && !knownConditions.trim() &&
+        !ongoingMedications.trim() && !emergencyNotes.trim();
+    if (unchanged) {
       setFeedback({ kind: "success", message: "No changes to save." });
       return;
     }
