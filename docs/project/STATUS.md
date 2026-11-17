@@ -1398,5 +1398,5 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 
 - Extended the Student Management Playwright profile-state scenario to simulate temporary server failures when loading restricted Medical Details and Physical Details.
 - The test holds each failure through the query client's configured automatic retry, verifies the visible error/retry state, then explicitly retries and confirms the form becomes available. This checks the user-facing recovery action rather than allowing an automatic retry to mask it.
-- Code checkpoint: `c4f7ff5523709be0c68ed44039d3b05156ca6ef9`. Frontend and backend CI were running when this entry was recorded; results will be recorded after completion.
+- Code checkpoint: `c4f7ff5523709be0c68ed44039d3b05156ca6ef9`. Frontend CI passed (TypeScript/Vite production build and Student Management Playwright browser acceptance): https://github.com/TheSumitNain/school-management-system/actions/runs/44051159786. Backend CI passed (full PostgreSQL migration chain, Go tests including PostgreSQL integration, and `go vet ./...`): https://github.com/TheSumitNain/school-management-system/actions/runs/44051159743.
 - Authenticated acceptance against the user's local API/database/browser remains outstanding.
