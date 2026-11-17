@@ -2652,7 +2652,7 @@ test("archived student profile sections remain readable but cannot be changed", 
 });
 
 test("student directory pagination advances and resets when search changes", async ({ page }) => {
-  const requestedOffsets: string[] = [];
+  const requestedDirectoryFilters: Array<{ offset: string; status: string; academicYearID: string }> = [];
   await page.route("**/api/**", async route => {
     const request = route.request();
     const url = new URL(request.url());
@@ -2677,20 +2677,27 @@ test("student directory pagination advances and resets when search changes", asy
       return;
     }
     if (path === "/school/academic-years" && method === "GET") {
-      await route.fulfill({ json: { academic_years: [academicYear] } });
+      await route.fulfill({ json: { academic_years: [academicYear, previousAcademicYear] } });
       return;
     }
     if (path === "/school/students" && method === "GET") {
       const offset = Number(url.searchParams.get("offset") ?? "0");
       const query = url.searchParams.get("q") ?? "";
-      requestedOffsets.push(String(offset));
+      const status = url.searchParams.get("status") ?? "";
+      const academicYearID = url.searchParams.get("academic_year_id") ?? "";
+      requestedDirectoryFilters.push({ offset: String(offset), status, academicYearID });
+      const filtered = Boolean(query || status || (academicYearID && academicYearID !== String(academicYear.id)));
       const rows = query
         ? [{ id: 99, school_id: 10, admission_number: "ADM-SEARCH-99", full_name: "Search Match Student", status: "active", created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" }]
-        : Array.from({ length: 20 }, (_, index) => {
-            const id = offset + index + 1;
-            return { id, school_id: 10, admission_number: `ADM-${id}`, full_name: `Directory Student ${id}`, status: "active", created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" };
-          });
-      await route.fulfill({ json: { students: rows, pagination: { limit: 20, offset, total: query ? 1 : 45 } } });
+        : status
+          ? [{ id: 98, school_id: 10, admission_number: "ADM-INACTIVE-98", full_name: "Inactive Filter Student", status: "inactive", created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" }]
+          : academicYearID && academicYearID !== String(academicYear.id)
+            ? [{ id: 97, school_id: 10, admission_number: "ADM-PREVIOUS-97", full_name: "Previous Year Student", status: "active", created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" }]
+            : Array.from({ length: 20 }, (_, index) => {
+                const id = offset + index + 1;
+                return { id, school_id: 10, admission_number: `ADM-${id}`, full_name: `Directory Student ${id}`, status: "active", created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" };
+              });
+      await route.fulfill({ json: { students: rows, pagination: { limit: 20, offset, total: filtered ? 1 : 45 } } });
       return;
     }
     await route.fulfill({ status: 404, json: { message: `Unmocked E2E API request: ${method} ${path}` } });
@@ -2706,12 +2713,39 @@ test("student directory pagination advances and resets when search changes", asy
   await page.getByRole("button", { name: "Next" }).click();
   await expect(page.getByText("Directory Student 21", { exact: true })).toBeVisible();
   await expect(page.getByText("Showing 21–40 of 45")).toBeVisible();
-  await expect.poll(() => requestedOffsets.at(-1)).toBe("20");
+  await expect.poll(() => requestedDirectoryFilters.at(-1)?.offset).toBe("20");
 
   await page.getByRole("textbox", { name: "Search students" }).fill("Search Match");
   await expect(page.getByText("Search Match Student", { exact: true })).toBeVisible();
   await expect(page.getByText("Showing 1–1 of 1")).toBeVisible();
-  await expect.poll(() => requestedOffsets.at(-1)).toBe("0");
+  await expect.poll(() => requestedDirectoryFilters.at(-1)?.offset).toBe("0");
   await expect(page.getByRole("button", { name: "Previous" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Next" })).toHaveCount(0);
+
+  await page.getByRole("textbox", { name: "Search students" }).fill("");
+  await expect(page.getByText("Showing 1–20 of 45")).toBeVisible();
+  await page.getByRole("button", { name: "Next" }).click();
+  await expect(page.getByText("Showing 21–40 of 45")).toBeVisible();
+
+  const statusFilter = page.getByRole("button", { name: "Filter by student status" });
+  await statusFilter.click();
+  const statusOptions = page.getByRole("listbox", { name: "Filter by student status" });
+  await expect(statusOptions).toBeVisible();
+  await statusOptions.getByRole("option", { name: "Inactive" }).click();
+  await expect(page.getByText("Inactive Filter Student", { exact: true })).toBeVisible();
+  await expect(page.getByText("Showing 1–1 of 1")).toBeVisible();
+  await expect.poll(() => requestedDirectoryFilters.at(-1)).toEqual({ offset: "0", status: "inactive", academicYearID: String(academicYear.id) });
+
+  await statusFilter.click();
+  await page.getByRole("listbox", { name: "Filter by student status" }).getByRole("option", { name: "All statuses" }).click();
+  await expect(page.getByText("Showing 1–20 of 45")).toBeVisible();
+  await page.getByRole("button", { name: "Next" }).click();
+  await expect(page.getByText("Showing 21–40 of 45")).toBeVisible();
+
+  const yearFilter = page.getByRole("button", { name: "Filter students by academic year" });
+  await yearFilter.click();
+  await page.getByRole("listbox", { name: "Filter students by academic year" }).getByRole("option", { name: "2025–2026" }).click();
+  await expect(page.getByText("Previous Year Student", { exact: true })).toBeVisible();
+  await expect(page.getByText("Showing 1–1 of 1")).toBeVisible();
+  await expect.poll(() => requestedDirectoryFilters.at(-1)).toEqual({ offset: "0", status: "", academicYearID: String(previousAcademicYear.id) });
 });
