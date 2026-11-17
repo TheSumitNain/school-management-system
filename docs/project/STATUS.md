@@ -1187,7 +1187,7 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 
 - The enrollment form exposes one date control (enrolled_at) while the backend's admission/enrollment ordering validation identifies the same field as admission_date. The frontend now maps that API field error to the visible enrollment date control, preserving inline field-level feedback.
 - Added Playwright coverage that returns the API error shape (field_errors.admission_date), verifies the message appears at the enrollment date field, and retries successfully without losing the form values.
-- Backend CI **PASS** — [run 43807314486](https://github.com/TheSumitNain/school-management-system/actions/runs/43807314486): full migration chain, PostgreSQL integration tests, Go tests and go vet ./....
+- Backend CI **PASS** — [run 43807314486](https://github.com/TheSumitNain/school-management-system/actions/runs/43807314486): full migration chain, PostgreSQL integration tests, Go tests and go vet ./...
 - Frontend CI **PASS** — [run 43807314407](https://github.com/TheSumitNain/school-management-system/actions/runs/43807314407): production build and Student Management Playwright browser acceptance tests.
 - Both workflows tested code commit 8b968c6c95da9d5d9f1e4ccb0b10efa857c5b9ab. Authenticated local API/database/browser acceptance on the developer's local environment remains outstanding.
 
