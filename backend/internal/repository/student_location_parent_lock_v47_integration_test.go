@@ -39,17 +39,28 @@ func TestStudentLocationParentDeactivationWaitsForConcurrentChildV47PostgresInte
     ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
     defer cancel()
 
-    var parentID int64
+    var parentID, childID int64
     if err := pool.QueryRow(ctx, "INSERT INTO student_locations(school_id,parent_id,country_code,level,name) VALUES(NULL,NULL,'IN','state',$1) RETURNING id",
         fmt.Sprintf("V47 concurrent parent %d", time.Now().UnixNano())).Scan(&parentID); err != nil {
         t.Fatalf("create V47 parent location: %v", err)
     }
 
+    defer func() {
+        cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 3*time.Second)
+        defer cleanupCancel()
+        if childID > 0 {
+            _, _ = pool.Exec(cleanupCtx, "UPDATE student_locations SET is_active=FALSE WHERE id=$1 AND is_active=TRUE", childID)
+        }
+        if parentID > 0 {
+            _, _ = pool.Exec(cleanupCtx, "UPDATE student_locations SET is_active=FALSE WHERE id=$1 AND is_active=TRUE", parentID)
+        }
+    }()
+
     childTx, err := pool.Begin(ctx)
     if err != nil { t.Fatalf("begin child transaction: %v", err) }
     defer func() { _ = childTx.Rollback(ctx) }()
-    if _, err := childTx.Exec(ctx, "INSERT INTO student_locations(school_id,parent_id,country_code,level,name) VALUES(NULL,$1,'IN','district',$2)",
-        parentID, fmt.Sprintf("V47 concurrent child %d", time.Now().UnixNano())); err != nil {
+    if err := childTx.QueryRow(ctx, "INSERT INTO student_locations(school_id,parent_id,country_code,level,name) VALUES(NULL,$1,'IN','district',$2) RETURNING id",
+        parentID, fmt.Sprintf("V47 concurrent child %d", time.Now().UnixNano())).Scan(&childID); err != nil {
         t.Fatalf("insert child while retaining parent lock: %v", err)
     }
 
