@@ -1,7 +1,7 @@
 # Student Management — Domain and Database Design
 
 **Status:** Approved design baseline; core Student Management implementation and mocked browser acceptance are substantially verified in CI; authenticated live acceptance against the local API/database remains outstanding.  
-**Last reconciled:** 2026-11-15  
+**Last reconciled:** 2026-11-17  
 **Scope:** Phase 1 School Admin student admission, profiles, academic-year enrollment, curriculum selection and related school workflows.
 
 This document defines the intended domain model and safe implementation sequence. Implementation notes below distinguish completed code paths from work still awaiting local verification or future phases. The ordered migration chain and automated tests remain authoritative for actual implementation.
