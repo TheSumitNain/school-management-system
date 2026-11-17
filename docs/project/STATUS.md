@@ -1,3 +1,10 @@
+### Student Management — archived-profile and directory behavior audit (2026-11-17)
+
+- Reviewed the student directory's status/search/pagination contract against the repository query: status is restricted to active/inactive/archived, search is bounded to 100 Unicode characters and matches student name plus the selected/current enrollment admission number, results are school-scoped and deterministically ordered, and page size is bounded to 1–100. The frontend sends a 20-row page and resets the offset when search/status filters change.
+- Reviewed archived-profile navigation and mutation gates: archived students remain viewable; Basic Details, Address, Medical/Physical and Parent Details management controls are disabled by the active-status checks, while guardian history remains readable when the caller has guardian-read permission. Guardian relationship/profile mutation controls are gated separately by active student status and guardian-manage permission.
+- Archive mutation invalidates the student query namespace, refreshing directory and enrollment data. Existing archive transaction/idempotency and history-retention integration coverage remains the authoritative backend check.
+- No new defect demonstrated in this pass; no speculative code change made. Local authenticated browser acceptance remains pending.
+
 # Project Status
 
 ### Student Management — location parent lifecycle locking (2026-11-17)
