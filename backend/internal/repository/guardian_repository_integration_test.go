@@ -337,6 +337,26 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 	if sharedUpdate.ID != guardian.ID {
 		t.Fatalf("shared guardian update changed identity: %+v", sharedUpdate)
 	}
+
+	var sharedGuardianUpdatedAt time.Time
+	if err := tx.QueryRow(ctx, `SELECT updated_at FROM guardians WHERE id=$1`, guardian.ID).Scan(&sharedGuardianUpdatedAt); err != nil {
+		t.Fatalf("read shared guardian timestamp: %v", err)
+	}
+	// The same shared-profile payload may be submitted from either linked
+	// student's edit flow; it must not create a second update/audit event.
+	sharedRetry, err := repo.SaveGuardian(ctx, targetPrincipalID, schoolID, guardian.ID,
+		"Shared Guardian Profile Updated", &sharedMobile, &email, &alternateMobile,
+		&sharedOccupation, &education, &workplace, "active")
+	if err != nil || sharedRetry.ID != guardian.ID {
+		t.Fatalf("retry identical shared guardian profile save: guardian=%+v err=%v", sharedRetry, err)
+	}
+	var sharedRetryUpdatedAt time.Time
+	if err := tx.QueryRow(ctx, `SELECT updated_at FROM guardians WHERE id=$1`, guardian.ID).Scan(&sharedRetryUpdatedAt); err != nil {
+		t.Fatalf("read retried shared guardian timestamp: %v", err)
+	}
+	if !sharedRetryUpdatedAt.Equal(sharedGuardianUpdatedAt) {
+		t.Fatalf("identical shared guardian save changed updated_at: before=%s after=%s", sharedGuardianUpdatedAt, sharedRetryUpdatedAt)
+	}
 	studentLinksAfterSharedEdit, err := repo.ListStudentGuardians(ctx, targetPrincipalID, schoolID, studentID, false)
 	if err != nil || len(studentLinksAfterSharedEdit) != 1 ||
 		studentLinksAfterSharedEdit[0].GuardianName != "Shared Guardian Profile Updated" ||
