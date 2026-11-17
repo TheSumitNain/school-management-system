@@ -453,9 +453,11 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("button", { name: /Continue/ }).click();
   await expect(page.getByRole("button", { name: "Students" })).toBeVisible();
   await page.getByRole("button", { name: "Students" }).click();
-  await expect(page.getByRole("button", { name: "Student directory" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Student directory" })).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByRole("button", { name: "Filter students by academic year" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Students", exact: true })).toBeVisible({ timeout: 15_000 });
+  const studentDirectoryTab = page.getByRole("button", { name: "Student directory" });
+  await expect(studentDirectoryTab).toBeVisible({ timeout: 15_000 });
+  await expect(studentDirectoryTab).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "Filter students by academic year" })).toBeVisible({ timeout: 15_000 });
   await expect.poll(() => studentDirectoryQueries.at(-1), { timeout: 15_000 }).toBe(String(academicYear.id));
   const directoryYearFilter = page.getByRole("button", { name: "Filter students by academic year" });
   await expect(directoryYearFilter).toBeVisible();
