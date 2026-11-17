@@ -739,6 +739,8 @@ test("student admission, profile navigation and parent details render without br
   const relationshipSelect = relationshipForm.locator("select");
   await relationshipSelect.selectOption("Other");
   const relationshipInput = relationshipForm.getByPlaceholder("Specify relationship");
+  // Simulate an over-limit value to exercise submit-time validation; the real maxlength still prevents normal over-typing.
+  await relationshipInput.evaluate(input => input.removeAttribute("maxlength"));
   await relationshipInput.fill("अ".repeat(41));
   const saveRelationship = relationshipForm.getByRole("button", { name: "Save relationship" });
   await saveRelationship.evaluate(button => {
