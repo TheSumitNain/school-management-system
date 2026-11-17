@@ -23,6 +23,7 @@ type Student = {
 };
 
 const academicYear = { id: 7, name: "2026–2027", starts_on: "2026-04-01", ends_on: "2027-03-31", status: "active", is_current: true };
+const previousAcademicYear = { id: 6, name: "2025–2026", starts_on: "2025-04-01", ends_on: "2026-03-31", status: "inactive", is_current: false };
 const section = { id: 12, academic_year_id: 7, class_id: 3, class_name: "Class 1", name: "A", is_active: true };
 
 test("student admission, profile navigation and parent details render without browser errors", async ({ page }) => {
@@ -32,6 +33,7 @@ test("student admission, profile navigation and parent details render without br
 
   let nextStudentID = 1;
   const students: Student[] = [];
+  const studentDirectoryQueries: string[] = [];
   const createdAdmissions: Record<string, unknown>[] = [];
   const failStudentReads = new Set<string>();
   let failRegistrationConflict = false;
@@ -137,7 +139,7 @@ test("student admission, profile navigation and parent details render without br
       return;
     }
     if (path === "/school/academic-years") {
-      await route.fulfill({ json: { academic_years: [academicYear] } });
+      await route.fulfill({ json: { academic_years: [academicYear, previousAcademicYear] } });
       return;
     }
     if (path === "/school/sections") {
@@ -145,6 +147,7 @@ test("student admission, profile navigation and parent details render without br
       return;
     }
     if (path === "/school/students" && method === "GET") {
+      studentDirectoryQueries.push(url.searchParams.get("academic_year_id") ?? "");
       await route.fulfill({ json: { students, pagination: { limit: 20, offset: 0, total: students.length } } });
       return;
     }
@@ -445,6 +448,16 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("button", { name: /Continue/ }).click();
   await expect(page.getByRole("button", { name: "Students" })).toBeVisible();
   await page.getByRole("button", { name: "Students" }).click();
+
+  const directoryYearFilter = page.getByRole("button", { name: "Filter students by academic year" });
+  await expect(directoryYearFilter).toBeVisible();
+  await expect.poll(() => studentDirectoryQueries.at(-1)).toBe(String(academicYear.id));
+  await directoryYearFilter.click();
+  await page.getByRole("option", { name: previousAcademicYear.name }).click();
+  await expect.poll(() => studentDirectoryQueries.at(-1)).toBe(String(previousAcademicYear.id));
+  await directoryYearFilter.click();
+  await page.getByRole("option", { name: academicYear.name }).click();
+  await expect.poll(() => studentDirectoryQueries.at(-1)).toBe(String(academicYear.id));
 
   await page.getByRole("button", { name: /New admission/ }).click();
   await page.getByPlaceholder("e.g. Aarav Sharma").fill("Aarav Sharma");
