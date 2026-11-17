@@ -119,7 +119,7 @@ export function StudentPromotionDialog({ enrollment, academicYears, academicYear
           </label>
           <label><StudentFieldLabel label="Destination class / section" required hint="Choose a section that belongs to the selected destination academic year." />
             <Select ariaLabel="Destination class and section" value={sectionID} invalid={Boolean(errors.section_id)} describedBy={errors.section_id ? "promotion-section-error" : undefined}
-              onChange={value => { setSectionID(value); clearError("section_id"); }} disabled={!academicYearID || sectionsQuery.isLoading || sectionsQuery.isError || sections.length === 0}
+              onChange={value => { setSectionID(value); clearError("section_id"); }} disabled={busy || !academicYearID || sectionsQuery.isLoading || sectionsQuery.isError || sections.length === 0}
               options={sections.map(section => ({ value: String(section.id), label: section.class_name + " · " + section.name }))} placeholder="Select section" />
             {errors.section_id && <small id="promotion-section-error" className="app-field-error">{errors.section_id}</small>}
             {sectionsQuery.isLoading && <small>Loading destination sections…</small>}
