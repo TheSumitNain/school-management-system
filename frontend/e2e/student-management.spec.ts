@@ -1,5 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 
+// Exercise date-only rendering in the school's primary positive-offset timezone.
+test.use({ timezoneId: "Asia/Kolkata" });
+
 async function invalidateProfileQueries(page: Page, family: "students" | "guardians") {
   await page.evaluate(async (queryFamily) => {
     const moduleUrl = new URL("/src/app/providers.tsx", window.location.origin).href;
@@ -516,6 +519,8 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("button", { name: "View profile for Aarav Sharma" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Academic history", exact: true })).toBeVisible();
+  const profileDialog = page.getByRole("dialog", { name: /Student profile/ });
+  await expect(profileDialog.getByText("14 Nov 2026", { exact: true })).toHaveCount(2);
   const curriculumPanel = page.getByRole("region", { name: "Curriculum and subject choices" });
   await expect(curriculumPanel.getByText("Mathematics")).toBeVisible();
   await expect(curriculumPanel.getByText("This curriculum is available for the selected class and academic year. Saving subject choices will assign it to this student’s enrollment.")).toBeVisible();
