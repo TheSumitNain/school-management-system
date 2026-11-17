@@ -4,3 +4,7 @@
 .student-field-hint__trigger:hover{background:var(--color-surface-subtle);color:var(--color-primary)}
 .student-field-hint__trigger:focus-visible{outline:2px solid var(--color-focus);outline-offset:2px}
 .student-field-hint__tooltip{position:fixed;z-index:2000;display:block;width:min(270px,calc(100vw - 24px));max-width:270px;padding:10px 12px;border:1px solid var(--color-border);border-radius:9px;background:var(--color-surface);box-shadow:var(--shadow-lg,var(--shadow-md));color:var(--color-text);font-size:11px;font-weight:400;line-height:1.55;pointer-events:none}
+
+.student-field-label__name{font-weight:650}
+.student-field-label__status{display:inline-flex;align-items:center;padding:2px 6px;border:1px solid var(--color-border);border-radius:999px;color:var(--color-text-muted);font-size:10px;font-weight:600;line-height:1.3}
+.student-field-label__status.is-required{border-color:var(--color-border);color:var(--color-text)}
