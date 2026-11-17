@@ -1418,4 +1418,4 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 
 - Hardened student directory search so user-entered `%`, `_` and backslash characters are treated as literal characters instead of `ILIKE` wildcard syntax. This prevents a typed search from unexpectedly broadening to unrelated student/admission records. The same escaped search pattern is used for both the filtered total and the returned page.
 - Added PostgreSQL integration coverage confirming that a search containing a literal percent sign does not match records that merely share the preceding text.
-- Code checkpoint: `689e1bdd352d46f820b362c964000b1c17e2a173`. Backend CI is pending; record the result after completion.
+- Code checkpoint: `36a29a0b557dc8c70f12575af4a50d9eec6487fc`. The search-length limit is checked against the original user input before wildcard escaping; integration coverage includes 100 literal wildcard characters at the limit. Backend CI is pending; record the result after completion.
