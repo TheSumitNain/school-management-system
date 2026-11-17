@@ -124,7 +124,8 @@ func (r *AcademicRepository) SaveStudentContactDetails(
 		return nil, ErrInvalidAcademicInput
 	}
 
-	if _, err := tx.Exec(ctx, `
+	var changedID int64
+	writeErr := tx.QueryRow(ctx, `
 		INSERT INTO student_contact_details
 			(school_id,student_id,primary_phone,alternate_phone,email_address)
 		VALUES($1,$2,$3,$4,$5)
@@ -133,21 +134,32 @@ func (r *AcademicRepository) SaveStudentContactDetails(
 			alternate_phone=EXCLUDED.alternate_phone,
 			email_address=EXCLUDED.email_address,
 			updated_at=NOW()
-	`, schoolID, studentID, primaryPhone, alternatePhone, emailAddress); err != nil {
-		return nil, academicWriteError(err)
+		 WHERE student_contact_details.school_id=EXCLUDED.school_id
+		   AND (student_contact_details.primary_phone,
+		        student_contact_details.alternate_phone,
+		        student_contact_details.email_address)
+		       IS DISTINCT FROM
+		       (EXCLUDED.primary_phone,EXCLUDED.alternate_phone,EXCLUDED.email_address)
+		RETURNING id
+	`, schoolID, studentID, primaryPhone, alternatePhone, emailAddress).Scan(&changedID)
+	changed := writeErr == nil
+	if writeErr != nil && !errors.Is(writeErr, pgx.ErrNoRows) {
+		return nil, academicWriteError(writeErr)
 	}
-	if _, err := tx.Exec(ctx, `
-		INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
-		SELECT $1,$2,'school.student.contact_details.updated','student_contact_details',cd.id::text,'success',
-		       jsonb_build_object(
-		           'has_primary_phone',cd.primary_phone IS NOT NULL,
-		           'has_alternate_phone',cd.alternate_phone IS NOT NULL,
-		           'has_email',cd.email_address IS NOT NULL
-		       )
-		  FROM student_contact_details cd
-		 WHERE cd.school_id=$2 AND cd.student_id=$3
-	`, actorID, schoolID, studentID); err != nil {
-		return nil, fmt.Errorf("audit student contact details update: %w", err)
+	if changed {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
+			SELECT $1,$2,'school.student.contact_details.updated','student_contact_details',cd.id::text,'success',
+			       jsonb_build_object(
+			           'has_primary_phone',cd.primary_phone IS NOT NULL,
+			           'has_alternate_phone',cd.alternate_phone IS NOT NULL,
+			           'has_email',cd.email_address IS NOT NULL
+			       )
+			  FROM student_contact_details cd
+			 WHERE cd.school_id=$2 AND cd.student_id=$3
+		`, actorID, schoolID, studentID); err != nil {
+			return nil, fmt.Errorf("audit student contact details update: %w", err)
+		}
 	}
 	var item StudentContactDetails
 	if err := tx.QueryRow(ctx, `
