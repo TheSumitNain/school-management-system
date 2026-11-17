@@ -2097,13 +2097,7 @@ test("switching student profiles clears unsaved basic-details drafts and validat
       const subpath = match[2] ?? "";
 
       if (subpath === "enrollments" && method === "GET") {
-        await route.fulfill({ json: { enrollments: [{
-          id: 99, student_id: 41, academic_year_id: 6,
-          class_name_snapshot: "Nursery", section_name_snapshot: "B",
-          admission_number: "ADM-2025-041", admission_date: "2025-04-01T00:00:00Z",
-          status: "promoted", enrolled_at: "2025-04-01T00:00:00Z",
-          ended_at: "2026-03-31T00:00:00Z",
-        }] } });
+        await route.fulfill({ json: { enrollments: [] } });
         return;
       }
       if (subpath === "basic-details" && method === "GET") {
@@ -2484,7 +2478,13 @@ test("archived student profile sections remain readable but cannot be changed", 
     if (path.startsWith("/school/students/41/")) {
       const subpath = path.slice("/school/students/41/".length);
       if (subpath === "enrollments" && method === "GET") {
-        await route.fulfill({ json: { enrollments: [] } });
+        await route.fulfill({ json: { enrollments: [{
+          id: 99, student_id: 41, academic_year_id: 6,
+          class_name_snapshot: "Nursery", section_name_snapshot: "B",
+          admission_number: "ADM-2025-041", admission_date: "2025-04-01T00:00:00Z",
+          status: "promoted", enrolled_at: "2025-04-01T00:00:00Z",
+          ended_at: "2026-03-31T00:00:00Z",
+        }] } });
         return;
       }
       if (subpath === "basic-details" && method === "GET") {
