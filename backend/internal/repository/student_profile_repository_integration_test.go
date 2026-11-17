@@ -393,6 +393,10 @@ func TestStudentProfileRepositoryPostgresIntegration(t *testing.T) {
 	found := false
 	for _, item := range items { if item.ID == student.ID { found = true } }
 	if !found { t.Fatalf("student %d missing from school-scoped search: %+v", student.ID, items) }
+	wildcardItems, wildcardTotal, err := repo.ListStudents(ctx, actorID, schoolID, 0, "Updated%", "active", 10, 0)
+	if err != nil || wildcardTotal != 0 || len(wildcardItems) != 0 {
+		t.Fatalf("directory search must treat percent as a literal character: items=%+v total=%d err=%v", wildcardItems, wildcardTotal, err)
+	}
 
 	var profileReadAuditCount, directoryReadAuditCount int
 	var directoryResultCount int
