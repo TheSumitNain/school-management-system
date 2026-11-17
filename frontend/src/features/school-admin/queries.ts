@@ -77,7 +77,7 @@ export const schoolStudentQueryKeys = {
   physicalDetails: (studentID: number) => [...schoolStudentQueryKeys.all, "physical-details", studentID] as const,
   locations: (filters: { parentID?: number; level?: string; q?: string }) => [...schoolStudentQueryKeys.all, "locations", filters] as const,
 };
-export function useSchoolStudentsQuery(filters: { q: string; status: string; limit: number; offset: number }, enabled = true) {
+export function useSchoolStudentsQuery(filters: { q: string; status: string; academicYearID?: number; limit: number; offset: number }, enabled = true) {
   return useQuery({
     queryKey: schoolStudentQueryKeys.list(filters),
     queryFn: ({ signal }) => getSchoolStudents(filters, signal),
