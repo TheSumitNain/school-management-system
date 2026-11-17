@@ -1230,3 +1230,10 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Added PostgreSQL integration assertions that cross-school requests cannot read a student's selected curriculum, update subject selections, list class curricula, or save a class curriculum using another school's scope.
 - Backend CI **PASS** — [run 43811590860](https://github.com/TheSumitNain/school-management-system/actions/runs/43811590860): full migration chain, Go tests including PostgreSQL integration, and `go vet ./...`.
 - Tested code checkpoint: `3aa23a8a8a2110094bfc4a6de935c0650057e4b8`. Authenticated local API/database/browser acceptance remains outstanding.
+
+ 
+## Student Management — basic-details save retry safety (2026-11-17)
+
+- Updating a student's Basic Details with the exact same normalized name now returns the existing school-scoped active profile without changing `updated_at` or inserting another `school.student.updated` audit event. Real changes continue to update the record and create one audit event.
+- Added PostgreSQL integration coverage that performs a real name update, retries the identical payload, and verifies the student ID/name remain stable, the timestamp does not advance, and the audit count remains exactly one.
+- Backend CI verification is pending for the resulting code checkpoint. Authenticated acceptance against the user's local API/database/browser remains outstanding.

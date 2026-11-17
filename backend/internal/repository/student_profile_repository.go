@@ -252,11 +252,29 @@ func (r *AcademicRepository) UpdateStudent(
 	student, err := scanStudentProfile(tx.QueryRow(ctx, `
 		UPDATE students SET full_name = $3, updated_at = NOW()
 		WHERE id = $1 AND school_id = $2 AND status = 'active'
+		  AND full_name IS DISTINCT FROM $3
 		RETURNING `+studentProfileColumns,
 		studentID, schoolID, fullName,
 	))
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, ErrAcademicNotFound
+		// A retry after a committed update must not create another audit event
+		// or advance updated_at. Return the current school-scoped active row.
+		student, err = scanStudentProfile(tx.QueryRow(ctx, `
+			SELECT `+studentProfileColumns+`
+			  FROM students
+			 WHERE id = $1 AND school_id = $2 AND status = 'active'
+			   AND full_name = $3
+		`, studentID, schoolID, fullName))
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrAcademicNotFound
+		}
+		if err != nil {
+			return nil, fmt.Errorf("load unchanged student profile: %w", err)
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return nil, fmt.Errorf("commit unchanged student profile read: %w", err)
+		}
+		return student, nil
 	}
 	if err != nil {
 		return nil, academicWriteError(err)
@@ -272,7 +290,6 @@ func (r *AcademicRepository) UpdateStudent(
 	}
 	return student, nil
 }
-
 func (r *AcademicRepository) ArchiveStudent(
 	ctx context.Context, actorID, schoolID, studentID int64,
 ) (*StudentProfile, error) {

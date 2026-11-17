@@ -310,6 +310,33 @@ func TestStudentProfileRepositoryPostgresIntegration(t *testing.T) {
 	if err != nil || updated.FullName != "Student One Updated" {
 		t.Fatalf("update student: student=%+v err=%v", updated, err)
 	}
+
+	var studentUpdatedAt time.Time
+	var studentUpdateAuditCount int
+	if err := tx.QueryRow(ctx, `SELECT updated_at FROM students WHERE id=$1 AND school_id=$2`, student.ID, schoolID).Scan(&studentUpdatedAt); err != nil {
+		t.Fatalf("read student updated_at after actual update: %v", err)
+	}
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM audit_events WHERE school_id=$1 AND actor_principal_id=$2 AND action='school.student.updated' AND resource_id=$3`,
+		schoolID, actorID, fmt.Sprint(student.ID)).Scan(&studentUpdateAuditCount); err != nil {
+		t.Fatalf("count student update audit events: %v", err)
+	}
+	unchangedRetry, err := repo.UpdateStudent(ctx, actorID, schoolID, student.ID, "Student One Updated")
+	if err != nil || unchangedRetry == nil || unchangedRetry.ID != student.ID || unchangedRetry.FullName != "Student One Updated" {
+		t.Fatalf("retry identical student basic-details update: student=%+v err=%v", unchangedRetry, err)
+	}
+	var retryUpdatedAt time.Time
+	var retryAuditCount int
+	if err := tx.QueryRow(ctx, `SELECT updated_at FROM students WHERE id=$1 AND school_id=$2`, student.ID, schoolID).Scan(&retryUpdatedAt); err != nil {
+		t.Fatalf("read student updated_at after identical retry: %v", err)
+	}
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM audit_events WHERE school_id=$1 AND actor_principal_id=$2 AND action='school.student.updated' AND resource_id=$3`,
+		schoolID, actorID, fmt.Sprint(student.ID)).Scan(&retryAuditCount); err != nil {
+		t.Fatalf("count student update audit events after identical retry: %v", err)
+	}
+	if !retryUpdatedAt.Equal(studentUpdatedAt) || retryAuditCount != studentUpdateAuditCount || studentUpdateAuditCount != 1 {
+		t.Fatalf("identical student update retry changed timestamp/audit count: timestamp before=%s after=%s audits before=%d after=%d",
+			studentUpdatedAt, retryUpdatedAt, studentUpdateAuditCount, retryAuditCount)
+	}
 	items, total, err := repo.ListStudents(ctx, actorID, schoolID, "Updated", "active", 10, 0)
 	if err != nil || total < 1 { t.Fatalf("search students: total=%d err=%v", total, err) }
 	found := false
