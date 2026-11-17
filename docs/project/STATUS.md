@@ -1268,4 +1268,6 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 
 - Invalid or out-of-range dates of birth now return a dedicated API field error, and the Basic Details form displays that error directly beneath the date picker with invalid-state accessibility attributes. Other generic academic validation errors remain separate.
 - Added repository and handler regression coverage plus a Playwright case for the server-returned date-of-birth error.
-- Backend and frontend CI verification is pending. Local authenticated API/database/browser acceptance remains outstanding.
+- Backend CI **PASS** — [run 44009150470](https://github.com/TheSumitNain/school-management-system/actions/runs/44009150470): full migrations, Go tests including PostgreSQL integration, and `go vet ./...`.
+- Frontend CI **PASS** — [run 44009150439](https://github.com/TheSumitNain/school-management-system/actions/runs/44009150439): TypeScript/Vite production build and Student Management Playwright browser acceptance.
+- Tested code checkpoint: `16b2b3fd6daf057a38d524a954f4dae5098d7050`. Local authenticated API/database/browser acceptance remains outstanding.
