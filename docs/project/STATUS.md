@@ -1,4 +1,13 @@
-### Student Management — academic-year-scoped student directory (2026-11-17)
+#### Student Management — guardian, health, promotion and profile follow-up audit (2026-11-17)
+
+- Rechecked Parent Details create/edit/link/revoke validation, shared-guardian confirmation, relationship-specific primary/emergency flags, inactive/archived mutation gates, history visibility and related-student permission messaging. The form clears student-specific drafts when switching students; no confirmed defect found.
+- Rechecked Medical & Physical details loading/retry, field-level limits, decimal precision, measurement-date requirements, future-date rejection, unchanged-value no-op behavior and student-switch/background-refetch draft preservation. No confirmed defect found. School-local timezone policy remains unresolved; date-boundary behavior must not be changed by hardcoding a timezone.
+- Rechecked promotion destination-year filtering, section ownership/loading/retry, admission-number and roll-number validation, promotion-date bounds, API field-error mapping and transaction-backed history preservation. No confirmed defect found.
+- Rechecked curriculum subject selection against enrollment identity, saved-choice synchronization, group minimum/maximum constraints, history display, and inactive-student/enrollment read-only behavior. No confirmed defect found.
+- Rechecked profile summary and year-wise academic history for permission gating, loading/error retry, current-year enrollment status, historical admission number/date, class/section snapshots and lifecycle dates.
+- This was a source-level review; it does not replace authenticated browser acceptance against the local API/database. No speculative behavior changes were made.
+
+## Student Management — academic-year-scoped student directory (2026-11-17)
 
 - Added an Academic Year filter to the student directory for users with `academic_years.read`. The selected year controls which enrollment admission number is displayed and searched; name and student-status filtering continue to work across the school-scoped student identity list.
 - Students without an enrollment in the selected year remain visible and are clearly shown as **Not enrolled**. The directory does not borrow an admission number from another academic year or from the legacy student-level field when a specific year is selected.
