@@ -196,12 +196,12 @@ func TestStudentBasicDetailsV37PostgresIntegration(t *testing.T) {
 	}
 	futureBirthDate := time.Now().UTC().AddDate(0, 0, 1)
 	if _, saveErr := repository.SaveStudentBasicDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
-		&futureBirthDate, nil, nil, nil, nil, nil, nil, nil); !errors.Is(saveErr, ErrInvalidAcademicInput) {
+		&futureBirthDate, nil, nil, nil, nil, nil, nil, nil); !errors.Is(saveErr, ErrInvalidStudentDateOfBirth) {
 		t.Fatalf("future date of birth error = %v, want invalid input", saveErr)
 	}
 	tooOldBirthDate := time.Now().UTC().AddDate(-131, 0, 0)
 	if _, saveErr := repository.SaveStudentBasicDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
-		&tooOldBirthDate, nil, nil, nil, nil, nil, nil, nil); !errors.Is(saveErr, ErrInvalidAcademicInput) {
+		&tooOldBirthDate, nil, nil, nil, nil, nil, nil, nil); !errors.Is(saveErr, ErrInvalidStudentDateOfBirth) {
 		t.Fatalf("date of birth older than 130 years error = %v, want invalid input", saveErr)
 	}
 

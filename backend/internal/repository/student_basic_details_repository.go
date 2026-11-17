@@ -107,7 +107,7 @@ func (r *AcademicRepository) SaveStudentBasicDetails(
 		birthDate := dateOfBirth.UTC().Format("2006-01-02")
 		today := time.Now().UTC()
 		if birthDate > today.Format("2006-01-02") || birthDate < today.AddDate(-130, 0, 0).Format("2006-01-02") {
-			return nil, ErrInvalidAcademicInput
+			return nil, ErrInvalidStudentDateOfBirth
 		}
 	}
 

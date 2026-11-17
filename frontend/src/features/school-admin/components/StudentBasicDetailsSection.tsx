@@ -139,9 +139,14 @@ export function StudentBasicDetailsSection({ student, canUpdate, onStudentNameCh
       setFeedback({ kind: "success", message: "Basic details saved." });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Basic details could not be saved.";
+      const dateOfBirthError = error instanceof ApiError ? error.fieldErrors.date_of_birth : undefined;
       const registrationError = error instanceof ApiError ? error.fieldErrors.school_registration_number : undefined;
-      if (registrationError) {
-        setErrors(current => ({ ...current, school_registration_number: registrationError }));
+      if (dateOfBirthError || registrationError) {
+        setErrors(current => ({
+          ...current,
+          ...(dateOfBirthError ? { date_of_birth: dateOfBirthError } : {}),
+          ...(registrationError ? { school_registration_number: registrationError } : {}),
+        }));
         setFeedback(null);
         return;
       }
@@ -164,7 +169,7 @@ export function StudentBasicDetailsSection({ student, canUpdate, onStudentNameCh
           {nameError && <small id="student-basic-name-error" className="app-field-error" role="alert">{nameError}</small>}
           {canUpdate && <button type="button" className="student-link-button" onClick={() => void saveStudentName()} disabled={busy || fullName.trim() === student.full_name}>Save student name</button>}
         </label>
-        <div className="student-basic-date-field"><StudentFieldLabel label="Date of birth" hint="Optional. Choose a valid date from the past 130 years; future dates are not allowed." /><DatePicker ariaLabel="Date of birth" value={values.date_of_birth} min={earliestDateOfBirth()} max={localDateValue()} onChange={value => update("date_of_birth", value)} placeholder="Choose date of birth" disabled={!canUpdate || query.isLoading || query.isError || busy}/></div>
+        <div className="student-basic-date-field"><StudentFieldLabel label="Date of birth" hint="Optional. Choose a valid date from the past 130 years; future dates are not allowed." /><DatePicker ariaLabel="Date of birth" value={values.date_of_birth} min={earliestDateOfBirth()} max={localDateValue()} invalid={Boolean(errors.date_of_birth)} describedBy={errors.date_of_birth ? "student-basic-date_of_birth-error" : undefined} onChange={value => update("date_of_birth", value)} placeholder="Choose date of birth" disabled={!canUpdate || query.isLoading || query.isError || busy}/>{fieldError("date_of_birth")}</div>
         <label><StudentFieldLabel label="Place of birth" hint="Optional. Enter a city, district or place name. Maximum 120 characters." /><input value={values.place_of_birth} aria-invalid={Boolean(errors.place_of_birth)} aria-describedby={errors.place_of_birth ? "student-basic-place_of_birth-error" : undefined} disabled={!canUpdate || query.isLoading || query.isError || busy} onChange={event => update("place_of_birth", event.target.value)} placeholder="City, district or place"/>{fieldError("place_of_birth")}</label>
         <div className="student-basic-select-field"><StudentFieldLabel label="Gender" hint="Optional. Choose the value provided by the family; “Prefer not to say” is available." /><Select ariaLabel="Gender" value={values.gender} disabled={!canUpdate || query.isLoading || query.isError || busy} onChange={value => update("gender", value)} placeholder="Not specified" options={[{value:"female",label:"Female"},{value:"male",label:"Male"},{value:"other",label:"Other"},{value:"not_specified",label:"Prefer not to say"}]}/></div>
         <label><StudentFieldLabel label="Nationality" hint="Optional. Enter a nationality such as Indian. Maximum 80 characters." /><input value={values.nationality} aria-invalid={Boolean(errors.nationality)} aria-describedby={errors.nationality ? "student-basic-nationality-error" : undefined} disabled={!canUpdate || query.isLoading || query.isError || busy} onChange={event => update("nationality", event.target.value)} placeholder="e.g. Indian"/>{fieldError("nationality")}</label>

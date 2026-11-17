@@ -31,6 +31,7 @@ test("student admission, profile navigation and parent details render without br
   const createdAdmissions: Record<string, unknown>[] = [];
   const failStudentReads = new Set<string>();
   let failRegistrationConflict = false;
+  let failDateOfBirthValidation = false;
   let failAdmissionNumberConflict = false;
   let failRollNumberConflict = false;
   const failedStudentReads: string[] = [];
@@ -266,6 +267,10 @@ test("student admission, profile navigation and parent details render without br
         return;
       }
       if (subpath === "basic-details") {
+        if (method === "PUT" && failDateOfBirthValidation) {
+          await route.fulfill({ status: 400, json: { message: "Enter a valid date of birth", field_errors: { date_of_birth: "Date of birth must be within the past 130 years and cannot be in the future." } } });
+          return;
+        }
         if (method === "PUT" && failRegistrationConflict) {
           await route.fulfill({ status: 409, json: { message: "School registration number is already used by another student", field_errors: { school_registration_number: "This registration number is already in use for another student in this school." } } });
           return;
@@ -577,6 +582,15 @@ test("student admission, profile navigation and parent details render without br
   await expect(dobCalendar).toBeHidden();
   await expect(page.getByRole("button", { name: "Date of birth", exact: true })).toContainText(/\d{2} [A-Za-z]{3} \d{4}/);
   const basicSaveButton = page.getByRole("button", { name: "Save basic details" });
+  failDateOfBirthValidation = true;
+  await basicSaveButton.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Basic details save button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect(page.getByText("Date of birth must be within the past 130 years and cannot be in the future.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Date of birth", exact: true })).toHaveAttribute("aria-invalid", "true");
+  failDateOfBirthValidation = false;
   await page.getByPlaceholder("City, district or place").fill("अ".repeat(121));
   await basicSaveButton.evaluate(button => {
     const form = (button as HTMLButtonElement).form;

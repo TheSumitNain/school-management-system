@@ -1260,4 +1260,12 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 
 - Repeating the exact same active student–guardian link request now returns the existing link instead of surfacing a duplicate-pair conflict. It does not clear/rewrite the primary contact or emit another creation audit event. A conflicting payload for an already-active pair remains a conflict.
 - PostgreSQL integration coverage retries the exact same link and verifies stable identity, timestamp and single creation audit event.
-- Backend CI verification is pending. Local authenticated API/database/browser acceptance remains outstanding.
+- Backend CI **PASS** — [run 44008653061](https://github.com/TheSumitNain/school-management-system/actions/runs/44008653061): full migrations, Go tests including PostgreSQL integration, and `go vet ./...`.
+- Tested code checkpoint: `844c53d13650f30fb9abab22dad4ff2523246f67`. Local authenticated API/database/browser acceptance remains outstanding.
+
+ 
+## Student Management — date-of-birth field validation (2026-11-17)
+
+- Invalid or out-of-range dates of birth now return a dedicated API field error, and the Basic Details form displays that error directly beneath the date picker with invalid-state accessibility attributes. Other generic academic validation errors remain separate.
+- Added repository and handler regression coverage plus a Playwright case for the server-returned date-of-birth error.
+- Backend and frontend CI verification is pending. Local authenticated API/database/browser acceptance remains outstanding.

@@ -21,6 +21,7 @@ var (
 	ErrAcademicRollNumberConflict = errors.New("academic roll number already exists in this active section")
 	ErrStudentRegistrationNumberConflict = errors.New("student school registration number already exists in this school")
 	ErrInvalidStudentContactEmail = errors.New("invalid student contact email")
+	ErrInvalidStudentDateOfBirth = errors.New("invalid student date of birth")
 	ErrPromotionBeforeAttendance = errors.New("promotion date precedes recorded attendance")
 	ErrAdmissionAfterEnrollmentDate = errors.New("admission date is after enrollment start date")
 	ErrInvalidAcademicInput = errors.New("invalid academic input")
