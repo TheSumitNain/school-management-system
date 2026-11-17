@@ -210,10 +210,11 @@ export type StudentAcademicYear = { id: number; name: string; starts_on: string;
 export type StudentSection = { id: number; academic_year_id: number; class_id: number; class_name: string; name: string; is_active: boolean };
 export type StudentClass = { id: number; name: string; is_active: boolean };
 
-export function getSchoolStudents(filters: { q?: string; status?: string; limit?: number; offset?: number }, signal?: AbortSignal) {
+export function getSchoolStudents(filters: { q?: string; status?: string; academicYearID?: number; limit?: number; offset?: number }, signal?: AbortSignal) {
   const params = new URLSearchParams();
   if (filters.q) params.set("q", filters.q);
   if (filters.status) params.set("status", filters.status);
+  if (filters.academicYearID) params.set("academic_year_id", String(filters.academicYearID));
   params.set("limit", String(filters.limit ?? 20));
   params.set("offset", String(filters.offset ?? 0));
   return api<StudentListResponse>("/school/students?" + params.toString(), { signal });
