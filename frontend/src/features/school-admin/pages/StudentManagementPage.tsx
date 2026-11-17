@@ -24,6 +24,8 @@ type Props = { permissions: string[] };
 type StudentAction = "create" | null;
 type Tab = "students" | "enrollments";
 
+const STUDENT_DIRECTORY_PAGE_SIZE = 20;
+
 function localDateValue() {
   const now = new Date();
   return [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-");
@@ -78,9 +80,9 @@ export function StudentManagementPage({ permissions }: Props) {
   const [studentToArchive, setStudentToArchive] = useState<StudentProfile | null>(null);
   const [archiveError, setArchiveError] = useState("");
 
-  const filters = useMemo(() => ({ q: deferredSearch, status, academicYearID: directoryAcademicYearID ?? undefined, limit: 20, offset }), [deferredSearch, status, directoryAcademicYearID, offset]);
+  const filters = useMemo(() => ({ q: deferredSearch, status, academicYearID: directoryAcademicYearID ?? undefined, limit: STUDENT_DIRECTORY_PAGE_SIZE, offset }), [deferredSearch, status, directoryAcademicYearID, offset]);
   const studentsQuery = useSchoolStudentsQuery(filters, canReadStudents && tab === "students");
-  const studentOptionsQuery = useSchoolStudentsQuery({ q: deferredStudentSearch, status: "active", limit: 20, offset: 0 }, canReadStudents && showEnrollment);
+  const studentOptionsQuery = useSchoolStudentsQuery({ q: deferredStudentSearch, status: "active", limit: STUDENT_DIRECTORY_PAGE_SIZE, offset: 0 }, canReadStudents && showEnrollment);
   const enrollmentQuery = useSchoolStudentEnrollmentsQuery(academicYearID, canReadEnrollments && tab === "enrollments");
   const yearsQuery = useSchoolStudentAcademicYearsQuery(canReadYears && (tab === "students" || canReadEnrollments || showEnrollment || action === "create"));
   const sectionsQuery = useSchoolStudentSectionsQuery(academicYearID, (showEnrollment || action === "create") && canReadSections);
@@ -102,6 +104,13 @@ export function StudentManagementPage({ permissions }: Props) {
     if (directoryAcademicYearID !== null || years.length === 0) return;
     setDirectoryAcademicYearID(years.find(year => year.is_current)?.id ?? years[0].id);
   }, [directoryAcademicYearID, years]);
+
+  useEffect(() => {
+    const page = studentsQuery.data?.pagination;
+    if (!page || studentsQuery.isFetching) return;
+    const lastPageOffset = Math.max(0, Math.ceil(page.total / STUDENT_DIRECTORY_PAGE_SIZE) - 1) * STUDENT_DIRECTORY_PAGE_SIZE;
+    if (offset > lastPageOffset) setOffset(lastPageOffset);
+  }, [studentsQuery.data, studentsQuery.isFetching, offset]);
 
   useEffect(() => {
     if ((action === "create" || showEnrollment) && academicYearID === 0 && activeYears.length > 0) {
@@ -293,7 +302,7 @@ export function StudentManagementPage({ permissions }: Props) {
        <section className="student-table-wrap"><table className="student-table"><thead><tr><th>Student</th><th>Admission no.</th><th>Status</th><th>Actions</th></tr></thead><tbody>
         {students.map(item => <tr key={item.id}><td data-label="Student"><b>{item.full_name}</b><small>Student ID #{item.id}</small></td><td data-label="Admission no.">{item.admission_number || "Not enrolled"}</td><td data-label="Status"><span className={"student-status " + item.status}>{item.status}</span></td><td data-label="Actions"><div className="student-row-actions">{canReadStudents && <button type="button" title="View student profile" aria-label={`View profile for ${item.full_name}`} onClick={() => setProfileStudent(item)}><Eye size={15}/></button>}{canReadStudents && canUpdate && item.status === "active" && <button type="button" title="Edit student profile sections" aria-label={`Edit profile for ${item.full_name}`} onClick={() => setProfileStudent(item)}><Pencil size={15}/></button>}{canArchive && item.status !== "archived" && <button type="button" className="archive" title="Archive student" aria-label={`Archive ${item.full_name}`} onClick={() => void archive(item)}><Archive size={15}/></button>}</div></td></tr>)}
        </tbody></table></section>}
-      {total > 0 && <div className="student-pagination"><span>{`Showing ${offset + 1}–${Math.min(offset + 20, total)} of ${total}`}</span>{pageCount > 1 && <div><button type="button" className="student-secondary" disabled={offset === 0 || studentsQuery.isFetching} onClick={() => setOffset(Math.max(0, offset - 20))}>Previous</button><span>Page {Math.floor(offset / 20) + 1} of {pageCount}</span><button type="button" className="student-secondary" disabled={offset + 20 >= total || studentsQuery.isFetching} onClick={() => setOffset(offset + 20)}>Next</button></div>}</div>}
+      {total > 0 && <div className="student-pagination"><span>{`Showing ${offset + 1}–${Math.min(offset + STUDENT_DIRECTORY_PAGE_SIZE, total)} of ${total}`}</span>{pageCount > 1 && <div><button type="button" className="student-secondary" disabled={offset === 0 || studentsQuery.isFetching} onClick={() => setOffset(Math.max(0, offset - STUDENT_DIRECTORY_PAGE_SIZE))}>Previous</button><span>Page {Math.floor(offset / 20) + 1} of {pageCount}</span><button type="button" className="student-secondary" disabled={offset + STUDENT_DIRECTORY_PAGE_SIZE >= total || studentsQuery.isFetching} onClick={() => setOffset(offset + STUDENT_DIRECTORY_PAGE_SIZE)}>Next</button></div>}</div>}
     </>}
     {tab === "enrollments" && canReadEnrollments && <>
       <div className="student-toolbar"><label><StudentFieldLabel label="Academic year" hint="Optional filter. Choose an academic year to narrow the directory, or leave “All academic years” selected." /><Select ariaLabel="Filter enrollments by academic year" value={String(academicYearID)} onChange={value=>setAcademicYearID(Number(value))} options={[{value:"0",label:"All academic years"},...years.map(year=>({value:String(year.id),label:year.name}))]}/></label><button type="button" className="student-secondary" onClick={() => void enrollmentQuery.refetch()} disabled={enrollmentQuery.isFetching}><RefreshCw size={15}/> Refresh</button></div>
