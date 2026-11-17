@@ -2243,7 +2243,12 @@ test("switching student profiles clears address, contact, medical and physical d
     height_cm: studentID === 32 ? 140 : null, weight_kg: null,
     measured_on: studentID === 32 ? "2026-11-10T00:00:00Z" : null,
     vision_notes: studentID === 32 ? "Student B saved vision record" : null,
-    physical_notes: null, history: [],
+    physical_notes: null,
+    history: studentID === 32 ? [{
+      id: studentID * 40 - 1, height_cm: 138, weight_kg: 30,
+      measured_on: "2026-11-10T00:00:00Z", vision_notes: "Previous vision record",
+      physical_notes: null, recorded_by_principal_id: 131, created_at: "2026-11-10T10:00:00Z",
+    }] : [],
   });
 
   await page.route("**/api/**", async route => {
@@ -2404,6 +2409,7 @@ test("switching student profiles clears address, contact, medical and physical d
   await page.getByRole("button", { name: "Physical details" }).click();
   await expect(page.getByPlaceholder("e.g. 132.5")).toHaveValue("140");
   await expect(page.getByPlaceholder("Optional vision-related notes")).toHaveValue("Student B saved vision record");
+  await healthDialog.getByText("Previous physical measurements (1)", { exact: true }).click();
   await expect(healthDialog.getByText("Measured 10 Nov 2026", { exact: true })).toBeVisible();
   await expect(page.getByText("Height must be between 20 and 250 cm.", { exact: true })).toHaveCount(0);
   expect(writeRequests).toEqual([]);
