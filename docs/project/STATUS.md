@@ -1,3 +1,11 @@
+### Student Management — combined admission and enrollment audit (2026-11-17)
+
+- Rechecked the combined admission handler, service contract and PostgreSQL repository transaction. A new student identity and first academic-year enrollment are committed together; authorization, active academic-year validation, school/year-scoped active section validation, roll-number allocation, both audit events and the enrollment insert all occur in the same transaction. A failure before commit rolls back the combined operation.
+- Confirmed the permanent student row deliberately keeps its legacy admission-number column NULL; the admission number is stored on the first year-specific enrollment and projected into the returned student/profile representation. This preserves the approved one-student-identity / one-enrollment-per-academic-year model.
+- Verified server-side Unicode character limits for student name (200), year-specific admission number (50) and optional roll number (30), including maximum-length Hindi test values. The first enrollment date is parsed as strict YYYY-MM-DD and checked against the selected active academic year's date range.
+- Confirmed duplicate admission-number and active section roll-number conflicts map to their corresponding field-level API errors. No confirmed defect was found in this pass; no speculative code change was made.
+- This source/test audit does not replace authenticated local API/database/browser acceptance, which remains outstanding. School-local timezone policy for database-current-date boundaries also remains unresolved and must not be hardcoded.
+
 ### Student Management — attendance authorization and date-boundary audit (2026-11-17)
 
 - Reviewed attendance repository and route authorization: list requires `attendance.read`; marking accepts `attendance.mark` or `attendance.correct_past` according to the attendance date; updates accept `attendance.update_same_day` or `attendance.correct_past`. Repository checks additionally restrict records to the caller's school and authorized School Admin / assigned Teacher section scope.
