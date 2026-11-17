@@ -48,11 +48,12 @@ func (r *AcademicRepository) ListStudents(
 		return nil, 0, ErrAcademicAccessDenied
 	}
 	search = strings.TrimSpace(search)
+	searchLength := utf8.RuneCountInString(search)
 	// Treat user input literally in ILIKE patterns; %, _ and backslash are
 	// ordinary search characters, not caller-controlled SQL wildcard syntax.
 	search = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(search)
 	status = strings.TrimSpace(strings.ToLower(status))
-	if academicYearID < 0 || utf8.RuneCountInString(search) > 100 || (status != "" && status != "active" && status != "inactive" && status != "archived") ||
+	if academicYearID < 0 || searchLength > 100 || (status != "" && status != "active" && status != "inactive" && status != "archived") ||
 		limit < 1 || limit > 100 || offset < 0 {
 		return nil, 0, ErrInvalidAcademicInput
 	}
