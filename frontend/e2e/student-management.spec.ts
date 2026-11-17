@@ -452,11 +452,14 @@ test("student admission, profile navigation and parent details render without br
   const directoryYearFilter = page.getByRole("button", { name: "Filter students by academic year" });
   await expect(directoryYearFilter).toBeVisible();
   await expect.poll(() => studentDirectoryQueries.at(-1)).toBe(String(academicYear.id));
+  const directoryYearOptions = page.getByRole("listbox", { name: "Filter students by academic year" });
   await directoryYearFilter.click();
-  await page.getByRole("option", { name: previousAcademicYear.name }).click();
+  await expect(directoryYearOptions).toBeVisible();
+  await directoryYearOptions.getByRole("option").nth(1).click();
   await expect.poll(() => studentDirectoryQueries.at(-1)).toBe(String(previousAcademicYear.id));
   await directoryYearFilter.click();
-  await page.getByRole("option", { name: academicYear.name }).click();
+  await expect(directoryYearOptions).toBeVisible();
+  await directoryYearOptions.getByRole("option").first().click();
   await expect.poll(() => studentDirectoryQueries.at(-1)).toBe(String(academicYear.id));
 
   await page.getByRole("button", { name: /New admission/ }).click();
