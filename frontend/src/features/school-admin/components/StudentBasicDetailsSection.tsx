@@ -139,14 +139,18 @@ export function StudentBasicDetailsSection({ student, canUpdate, onStudentNameCh
       setFeedback({ kind: "success", message: "Basic details saved." });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Basic details could not be saved.";
-      const dateOfBirthError = error instanceof ApiError ? error.fieldErrors.date_of_birth : undefined;
-      const registrationError = error instanceof ApiError ? error.fieldErrors.school_registration_number : undefined;
-      if (dateOfBirthError || registrationError) {
-        setErrors(current => ({
-          ...current,
-          ...(dateOfBirthError ? { date_of_birth: dateOfBirthError } : {}),
-          ...(registrationError ? { school_registration_number: registrationError } : {}),
-        }));
+      const serverFieldErrors = error instanceof ApiError ? error.fieldErrors : {};
+      const mappedErrors: Partial<Record<keyof Values, string>> = {};
+      const supportedFields: (keyof Values)[] = [
+        "date_of_birth", "place_of_birth", "gender", "nationality",
+        "religion", "social_category", "ews_status", "school_registration_number",
+      ];
+      for (const key of supportedFields) {
+        const fieldMessage = serverFieldErrors[key];
+        if (fieldMessage) mappedErrors[key] = fieldMessage;
+      }
+      if (Object.keys(mappedErrors).length > 0) {
+        setErrors(current => ({ ...current, ...mappedErrors }));
         setFeedback(null);
         return;
       }
