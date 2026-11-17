@@ -24,10 +24,10 @@ export function StudentFieldLabel({ label, required = false, conditional = false
       if (!rect) return;
       const width = Math.min(270, window.innerWidth - 24);
       const left = Math.max(12, Math.min(rect.left, window.innerWidth - width - 12));
-      const estimatedHeight = 96;
-      const top = rect.bottom + estimatedHeight + 12 <= window.innerHeight
+      const tooltipHeight = document.getElementById(hintID)?.getBoundingClientRect().height ?? 96;
+      const top = rect.bottom + tooltipHeight + 12 <= window.innerHeight
         ? rect.bottom + 8
-        : Math.max(8, rect.top - estimatedHeight - 8);
+        : Math.max(8, rect.top - tooltipHeight - 8);
       setPosition({ top, left });
     };
     updatePosition();
@@ -53,7 +53,7 @@ export function StudentFieldLabel({ label, required = false, conditional = false
             aria-expanded={hintOpen}
             aria-describedby={hintOpen ? hintID : undefined}
             onMouseEnter={() => setHintOpen(true)}
-            onMouseLeave={() => setHintOpen(false)}
+            onMouseLeave={() => { if (document.activeElement !== triggerRef.current) setHintOpen(false); }}
             onFocus={() => setHintOpen(true)}
             onBlur={() => setHintOpen(false)}
             onClick={() => setHintOpen(true)}
