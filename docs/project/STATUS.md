@@ -1413,3 +1413,9 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Added focused Playwright coverage for the student directory's 20-row pagination, search/status/academic-year filter resets, and recovery when archiving the only student on the final page reduces the total. The directory now clamps an out-of-range offset to the last valid page after refreshed results arrive, avoiding an invalid range such as `41–40 of 40`. Added PostgreSQL integration assertions that filtered totals remain stable beyond the last result and invalid status, limit, and offset values are rejected.
 - Code checkpoint: `a5a1d0ab002660042b6fe81839fcaafd087d8aac`. Frontend CI **PASS** — [run 44055551562](https://github.com/TheSumitNain/school-management-system/actions/runs/44055551562): TypeScript/Vite production build and all Student Management Playwright browser acceptance tests. Backend CI **PASS** — [run 44055551417](https://github.com/TheSumitNain/school-management-system/actions/runs/44055551417): complete PostgreSQL migration chain, Go tests including PostgreSQL integration, and `go vet ./...`.
 - This is mocked-browser regression coverage. Authenticated acceptance against the user's local API/database/browser remains outstanding.
+
+## Student Management — literal directory search matching (2026-11-17)
+
+- Hardened student directory search so user-entered `%`, `_` and backslash characters are treated as literal characters instead of `ILIKE` wildcard syntax. This prevents a typed search from unexpectedly broadening to unrelated student/admission records. The same escaped search pattern is used for both the filtered total and the returned page.
+- Added PostgreSQL integration coverage confirming that a search containing a literal percent sign does not match records that merely share the preceding text.
+- Code checkpoint: `689e1bdd352d46f820b362c964000b1c17e2a173`. Backend CI is pending; record the result after completion.
