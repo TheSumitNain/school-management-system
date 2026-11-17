@@ -64,7 +64,7 @@ export const guardianQueryKeys = {
 
 export const schoolStudentQueryKeys = {
   all: [...schoolAdminQueryKeys.all, "students"] as const,
-  list: (filters: { q: string; status: string; limit: number; offset: number }) => [...schoolStudentQueryKeys.all, "list", filters] as const,
+  list: (filters: { q: string; status: string; academicYearID?: number; limit: number; offset: number }) => [...schoolStudentQueryKeys.all, "list", filters] as const,
   enrollments: (academicYearID: number) => [...schoolStudentQueryKeys.all, "enrollments", academicYearID] as const,
   enrollmentHistory: (studentID: number) => [...schoolStudentQueryKeys.all, "enrollment-history", studentID] as const,
   curriculum: (enrollmentID: number) => [...schoolStudentQueryKeys.all, "curriculum", enrollmentID] as const,
