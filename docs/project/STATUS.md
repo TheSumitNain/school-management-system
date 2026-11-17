@@ -5,8 +5,9 @@
 - Audit found that the V34 hierarchy trigger used `FOR KEY SHARE` when validating a parent location. That lock is compatible with the `NO KEY UPDATE` lock taken when a parent is deactivated by changing only `is_active`, leaving a concurrency window between child creation and parent deactivation.
 - Migration V47 changes the parent validation lock to `FOR SHARE`. This serializes child creation against parent deactivation while preserving the existing hierarchy, school-ownership and historical-address rules. The down migration restores the V34 lock mode.
 - Added PostgreSQL integration coverage that verifies the applied hierarchy trigger uses `FOR SHARE` and no longer uses `FOR KEY SHARE`.
-- Backend CI **PASS** — [run 44022744861](https://github.com/TheSumitNain/school-management-system/actions/runs/44022744861): all migrations, Go tests including PostgreSQL integration, and `go vet ./...`.
-- Verified code checkpoint: `b62fb966927f4bc3b43824f082bc87b09fc864d2`. Authenticated local API/database/browser acceptance remains outstanding.
+- Added a two-transaction concurrency regression test: child creation holds the parent `FOR SHARE` lock while parent deactivation attempts its update; after the child commits, deactivation must resume, observe the active child and fail without deactivating the parent. Test fixtures are deactivated during cleanup.
+- Backend CI **PASS** — [run 44024624805](https://github.com/TheSumitNain/school-management-system/actions/runs/44024624805): all migrations, Go tests including the concurrent PostgreSQL integration test, and `go vet ./...`.
+- Verified code checkpoint: `08158bd53c03a73d1090d759f1efdee3447bf4ae`. Authenticated local API/database/browser acceptance remains outstanding.
 
 
 ### Guardian-link concurrency hardening (2026-11-17)
