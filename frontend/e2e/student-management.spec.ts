@@ -731,7 +731,9 @@ test("student admission, profile navigation and parent details render without br
 
   await page.getByRole("button", { name: "Edit relationship" }).click();
   const relationshipForm = page.locator(".student-family-create-form").filter({ has: page.getByRole("heading", { name: "Edit relationship for this student" }) });
-  const relationshipInput = relationshipForm.getByPlaceholder("Father, Mother, Legal Guardian…");
+  const relationshipSelect = relationshipForm.getByLabel(/Relationship to student/);
+  await relationshipSelect.selectOption("Other");
+  const relationshipInput = relationshipForm.getByPlaceholder("Specify relationship");
   await relationshipInput.fill("अ".repeat(41));
   const saveRelationship = relationshipForm.getByRole("button", { name: "Save relationship" });
   await saveRelationship.evaluate(button => {
@@ -741,11 +743,11 @@ test("student admission, profile navigation and parent details render without br
   });
   await expect(relationshipForm.getByText("Relationship must be 40 characters or fewer.", { exact: true })).toBeVisible();
   expect(guardianLinkUpdateRequests).toHaveLength(0);
-  await relationshipInput.fill("Legal Guardian");
+  await relationshipSelect.selectOption("Legal Guardian");
   const guardianReadsBeforeFocus = guardianHistoryRequests.length;
   await invalidateProfileQueries(page, "guardians");
   await expect.poll(() => guardianHistoryRequests.length).toBeGreaterThan(guardianReadsBeforeFocus);
-  await expect(relationshipInput).toHaveValue("Legal Guardian");
+  await expect(relationshipSelect).toHaveValue("Legal Guardian");
   await relationshipForm.getByRole("checkbox", { name: /Primary contact/ }).uncheck();
   await relationshipForm.getByRole("checkbox", { name: /Emergency contact/ }).uncheck();
   await saveRelationship.evaluate(button => {
@@ -1945,7 +1947,7 @@ test("staff can create a guardian contact and link it to a student with relation
   await expect(page.getByText("Principal · M.Ed. · Sunrise Public School")).toBeVisible();
 
   await page.getByRole("button", { name: "Edit relationship" }).click();
-  await page.getByPlaceholder("Father, Mother, Legal Guardian…").fill("Legal Guardian");
+  await page.getByLabel(/Relationship to student/).selectOption("Legal Guardian");
   await page.getByRole("checkbox", { name: /Primary contact/ }).first().uncheck();
   await page.getByRole("button", { name: "Save relationship" }).click();
   await expect(page.getByText("Legal Guardian · Emergency contact")).toBeVisible();
