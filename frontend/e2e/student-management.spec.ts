@@ -2734,7 +2734,7 @@ test("student directory pagination resets when search, status or academic-year f
   await statusOptions.getByRole("option", { name: "Inactive" }).click();
   await expect(page.getByText("Inactive Filter Student", { exact: true })).toBeVisible();
   await expect(page.getByText("Showing 1–1 of 1")).toBeVisible();
-  await expect.poll(() => requestedDirectoryFilters.at(-1)).toEqual({ offset: "0", status: "inactive", academicYearID: "" });
+  await expect.poll(() => requestedDirectoryFilters.at(-1)).toEqual({ offset: "0", status: "inactive", academicYearID: String(academicYear.id) });
 
   await statusFilter.click();
   await page.getByRole("listbox", { name: "Filter by student status" }).getByRole("option", { name: "All statuses" }).click();
