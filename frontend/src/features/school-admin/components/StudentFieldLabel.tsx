@@ -73,7 +73,11 @@ export function StudentFieldLabel({ label, required = false, conditional = false
               setHintOpen(open => !open);
             }}
             onKeyDown={event => {
-              if (event.key === "Escape") setHintOpen(false);
+              if (event.key === "Escape" && hintOpen) {
+                event.preventDefault();
+                event.stopPropagation();
+                setHintOpen(false);
+              }
               if (event.key === "Enter" || event.key === " ") {
                 event.preventDefault();
                 setHintOpen(true);
