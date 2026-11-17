@@ -18,13 +18,15 @@ type Props = {
   onClose: () => void;
 };
 
-function dateLabel(value?: string | null) {
+function dateLabel(value?: string | null, calendarDate = false) {
   if (!value) return "—";
 
-  // API date-only fields (DATE columns) must be formatted as calendar dates,
-  // not parsed as UTC instants. Parsing YYYY-MM-DD with new Date() shifts the
-  // displayed day in positive-offset time zones such as India.
-  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  // PostgreSQL DATE values are scanned into time.Time by the API and may arrive
+  // as midnight UTC timestamps. Preserve their calendar day instead of treating
+  // midnight UTC as an instant in the viewer's timezone.
+  const dateOnly = calendarDate
+    ? /^(\d{4})-(\d{2})-(\d{2})(?:T00:00:00(?:\.0+)?(?:Z|\+00:00))?$/.exec(value)
+    : null;
   const parsed = dateOnly
     ? new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]))
     : new Date(value);
@@ -102,11 +104,11 @@ export function StudentProfileDetail({
                   </div>
                   <dl className="student-profile-facts">
                     <div><dt>Admission number</dt><dd>{enrollment.admission_number || "Not recorded"}</dd></div>
-                    <div><dt>Admission date</dt><dd>{dateLabel(enrollment.admission_date)}</dd></div>
+                    <div><dt>Admission date</dt><dd>{dateLabel(enrollment.admission_date, true)}</dd></div>
                     <div><dt>Class / section</dt><dd>{enrollment.class_name_snapshot} · {enrollment.section_name_snapshot}</dd></div>
                     <div><dt>Roll number</dt><dd>{enrollment.roll_number || "—"}</dd></div>
-                    <div><dt>Enrolled on</dt><dd>{dateLabel(enrollment.enrolled_at)}</dd></div>
-                    <div><dt>Ended on</dt><dd>{dateLabel(enrollment.ended_at)}</dd></div>
+                    <div><dt>Enrolled on</dt><dd>{dateLabel(enrollment.enrolled_at, true)}</dd></div>
+                    <div><dt>Ended on</dt><dd>{dateLabel(enrollment.ended_at, true)}</dd></div>
                   </dl>
                   {canReadSubjects && <StudentEnrollmentSubjectsPanel
                     enrollmentID={enrollment.id}
