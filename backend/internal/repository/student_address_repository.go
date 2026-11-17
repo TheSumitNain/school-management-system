@@ -9,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type StudentLocation struct {
@@ -420,13 +421,18 @@ func (r *AcademicRepository) SaveStudentAddress(
 		return nil, fmt.Errorf("check existing student address: %w", err)
 	}
 	var writeErr error
+	changed := true
 	if addressExists {
-		_, writeErr = tx.Exec(ctx, `
+		var tag pgconn.CommandTag
+		tag, writeErr = tx.Exec(ctx, `
 			UPDATE student_addresses SET
 				address_line_1=$4,address_line_2=$5,area_mohalla=$6,landmark=$7,
 				postal_code=$8,location_id=$9,same_as_current=$10,updated_at=NOW()
 			WHERE school_id=$1 AND student_id=$2 AND address_type=$3
+			  AND (address_line_1,address_line_2,area_mohalla,landmark,postal_code,location_id,same_as_current)
+			      IS DISTINCT FROM ($4,$5,$6,$7,$8,$9,$10)
 		`, schoolID, studentID, addressType, line1, line2, areaMohalla, landmark, postalCode, locationID, sameAsCurrent)
+		changed = tag.RowsAffected() > 0
 	} else {
 		_, writeErr = tx.Exec(ctx, `
 			INSERT INTO student_addresses
@@ -437,14 +443,16 @@ func (r *AcademicRepository) SaveStudentAddress(
 	if writeErr != nil {
 		return nil, academicWriteError(writeErr)
 	}
-	if _, err := tx.Exec(ctx, `
-		INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
-		SELECT $1,$2,'school.student.address.updated','student_address',sa.id::text,'success',
-		       jsonb_build_object('address_type',$3::text,'same_as_current',$4::boolean)
-		  FROM student_addresses sa
-		 WHERE sa.school_id=$2 AND sa.student_id=$5 AND sa.address_type=$3
-	`, actorID, schoolID, addressType, sameAsCurrent, studentID); err != nil {
-		return nil, fmt.Errorf("audit student address update: %w", err)
+	if changed {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
+			SELECT $1,$2,'school.student.address.updated','student_address',sa.id::text,'success',
+			       jsonb_build_object('address_type',$3::text,'same_as_current',$4::boolean)
+			  FROM student_addresses sa
+			 WHERE sa.school_id=$2 AND sa.student_id=$5 AND sa.address_type=$3
+		`, actorID, schoolID, addressType, sameAsCurrent, studentID); err != nil {
+			return nil, fmt.Errorf("audit student address update: %w", err)
+		}
 	}
 	item, err := scanStudentAddress(tx.QueryRow(ctx, studentAddressSelect+` AND sa.address_type=$3`, schoolID, studentID, addressType))
 	if err != nil {
