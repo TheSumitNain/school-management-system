@@ -77,3 +77,6 @@
     white-space: normal;
   }
 }
+
+/* Help tips are portalled to the document so scroll containers cannot clip them. */
+.app-modal{isolation:isolate}
