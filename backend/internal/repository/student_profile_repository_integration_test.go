@@ -397,6 +397,9 @@ func TestStudentProfileRepositoryPostgresIntegration(t *testing.T) {
 	if err != nil || wildcardTotal != 0 || len(wildcardItems) != 0 {
 		t.Fatalf("directory search must treat percent as a literal character: items=%+v total=%d err=%v", wildcardItems, wildcardTotal, err)
 	}
+	if items, total, err := repo.ListStudents(ctx, actorID, schoolID, 0, strings.Repeat("%", 100), "active", 10, 0); err != nil || total != 0 || len(items) != 0 {
+		t.Fatalf("directory search must allow 100 literal wildcard characters: items=%+v total=%d err=%v", items, total, err)
+	}
 
 	var profileReadAuditCount, directoryReadAuditCount int
 	var directoryResultCount int
