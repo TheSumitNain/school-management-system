@@ -32,7 +32,7 @@ export function Modal({ open, title, description, onClose, children, closeDisabl
     document.body.style.overflow = "hidden";
     const frame = window.requestAnimationFrame(() => {
       const first = dialogRef.current?.querySelector<HTMLElement>(
-        "input:not([disabled]):not([type='hidden']), select:not([disabled]), textarea:not([disabled]), button:not([disabled]):not(.app-modal-close), [tabindex]:not([tabindex='-1'])",
+        "input:not([disabled]):not([type='hidden']), select:not([disabled]), textarea:not([disabled]), button:not([disabled]):not(.app-modal-close)",
       ) ?? dialogRef.current?.querySelector<HTMLElement>(".app-modal-close");
       first?.focus();
     });
