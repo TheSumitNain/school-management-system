@@ -320,6 +320,16 @@ Automated frontend coverage now exercises the archived-state rule independently 
 - Frontend CI [44027107826](https://github.com/TheSumitNain/school-management-system/actions/runs/44027107826) and Backend CI [44027107816](https://github.com/TheSumitNain/school-management-system/actions/runs/44027107816) both passed on code checkpoint `cb72cd96d5dc477225d1ad59c0fb80336eb50428`. The frontend run includes the Student Management Playwright suite; the backend run includes migrations, PostgreSQL integration tests and `go vet ./...`.
 - This automated checkpoint does not replace live authenticated acceptance. The checklist below remains intentionally unchecked until the corresponding local school database/API/browser checks are performed and recorded. No attendance UI work is included in this phase.
 
+### Enrollment lifecycle and directory audit — 2026-11-17
+
+- Re-reviewed the production enrollment repository and the V17 PostgreSQL integration workflow for first admission, standalone enrollment, promotion, directory projection, and archive.
+- Confirmed the intended lock order for promotion and standalone enrollment: resolve the school-scoped student, lock the permanent student row, then lock the active source enrollment; destination section allocation is serialized by locking the section row. Archive and attendance writes also lock the student row, so their critical updates serialize against promotion/attendance lifecycle changes.
+- Promotion rejects inactive students, same-year destinations, dates before the source enrollment, invalid destination-year dates, and dates earlier than already-recorded attendance. The UI maps the API's `admission_date` field error to the promotion date control and retains the entered form values for correction/retry.
+- The V17 integration workflow verifies successful promotion, destination-year admission number and roll allocation, school-boundary denial, privacy-safe promotion audit metadata, preservation of prior enrollment rows, and rejection of promotion for an inactive student. The Playwright scenario separately verifies the server-returned promotion-date error and correction/retry.
+- Archive remains transactional and idempotent: active enrollments are withdrawn, historical enrollment rows remain, and subsequent attendance marking for an archived student is rejected. Existing integration coverage verifies these postconditions. A separate live authenticated archive-versus-attendance race acceptance check remains part of the outstanding manual checklist.
+- Directory query handling was rechecked: repository validation bounds search length, status, page size and offset; count and page queries share the same school-scoped search predicate and deterministic ordering; read audit metadata records only section and result count.
+- No confirmed defect was found in this review. No speculative change was made; live authenticated acceptance remains outstanding.
+
 ### Required acceptance checks before Student Management is called complete
 
 - [ ] Directory View and Edit actions open the correct profile workflow; no legacy name-only edit route remains reachable.
