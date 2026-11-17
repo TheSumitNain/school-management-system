@@ -642,6 +642,7 @@ func TestAcademicRoutesEnforceResourcePermissions(t *testing.T) {
 		{http.MethodPost, "/school/class-incharge-assignments", "class_incharge_assignments.manage", `{"academic_year_id":1,"section_id":1,"teacher_principal_id":1}`},
 		{http.MethodDelete, "/school/class-incharge-assignments/1", "class_incharge_assignments.manage", ""},
 		{http.MethodGet, "/school/enrollments", "students.read_basic", ""},
+		{http.MethodGet, "/school/enrollment-directory", "students.read_basic", ""},
 		{http.MethodPost, "/school/enrollments", "students.create", `{"student_id":1,"academic_year_id":1,"section_id":1,"enrolled_at":"2028-04-01"}`},
 		{http.MethodGet, "/school/students/1/enrollments", "students.read_basic", ""},
 		{http.MethodPost, "/school/enrollments/1/promote", "students.update", `{"academic_year_id":2,"section_id":2,"enrolled_at":"2029-04-01"}`},

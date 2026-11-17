@@ -1168,6 +1168,10 @@ test("standalone enrollment validates admission and roll number before saving", 
       await route.fulfill({ json: { students: [student], pagination: { limit: 20, offset: 0, total: 1 } } });
       return;
     }
+    if (path === "/school/enrollment-directory" && method === "GET") {
+      await route.fulfill({ json: { enrollments: [], pagination: { limit: 20, offset: 0, total: 0 } } });
+      return;
+    }
     if (path === "/school/enrollments" && method === "GET") {
       await route.fulfill({ json: { enrollments: [] } });
       return;
