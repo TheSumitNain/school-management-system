@@ -8,8 +8,8 @@ import (
 )
 
 // TestStudentLocationHierarchyParentLockV47PostgresIntegration verifies that
-// V47 strengthens the hierarchy trigger's parent lock so parent deactivation
-// cannot race with insertion of an active child location.
+// V47 changes the hierarchy trigger's parent lock to FOR SHARE. This lock
+// conflicts with the NO KEY UPDATE lock taken by parent deactivation.
 func TestStudentLocationHierarchyParentLockV47PostgresIntegration(t *testing.T) {
     _, pool, _ := newPostgresIntegrationRepository(t)
     ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
