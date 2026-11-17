@@ -118,3 +118,38 @@ func TestAcademicErrorDoesNotMislabelGenericUniqueConflict(t *testing.T) {
 		t.Fatalf("generic academic conflict must not claim a specific field: %#v", payload)
 	}
 }
+
+func TestParseEnrollmentDateAcceptsOnlyValidCalendarDates(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		want    string
+		wantErr bool
+	}{
+		{name: "valid date", input: "2026-11-17", want: "2026-11-17"},
+		{name: "trim surrounding whitespace", input: " 2026-11-17 ", want: "2026-11-17"},
+		{name: "leap day", input: "2028-02-29", want: "2028-02-29"},
+		{name: "empty", input: "", wantErr: true},
+		{name: "invalid leap day", input: "2027-02-29", wantErr: true},
+		{name: "impossible day", input: "2026-11-31", wantErr: true},
+		{name: "timestamp is not a date-only API value", input: "2026-11-17T00:00:00Z", wantErr: true},
+		{name: "locale date is not accepted", input: "17/11/2026", wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := parseEnrollmentDate(tt.input)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("parseEnrollmentDate(%q) = %v, want error", tt.input, got)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("parseEnrollmentDate(%q): %v", tt.input, err)
+			}
+			if formatted := got.Format("2006-01-02"); formatted != tt.want {
+				t.Fatalf("parsed date = %q, want %q", formatted, tt.want)
+			}
+		})
+	}
+}
