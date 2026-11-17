@@ -189,7 +189,7 @@ export type StudentEnrollment = {
   enrolled_at: string;
   ended_at?: string | null;
 };
-export type StudentEnrollmentListResponse = { enrollments: StudentEnrollment[] };
+export type StudentEnrollmentListResponse = { enrollments: StudentEnrollment[]; pagination?: { limit: number; offset: number; total: number } };
 export type CurriculumOptionalGroup = { id: number; name: string; min_selections: number; max_selections: number };
 export type CurriculumSubject = {
   id: number; subject_id: number; name: string; code?: string | null;
@@ -233,9 +233,10 @@ export function updateSchoolStudent(studentID: number, input: { full_name: strin
 export function archiveSchoolStudent(studentID: number) {
   return api<{ student: StudentProfile }>(`/school/students/${studentID}/archive`, { method: "POST" });
 }
-export function getSchoolStudentEnrollments(academicYearID = 0, signal?: AbortSignal) {
-  const query = academicYearID > 0 ? `?academic_year_id=${academicYearID}` : "";
-  return api<StudentEnrollmentListResponse>("/school/enrollments" + query, { signal });
+export function getSchoolStudentEnrollments(academicYearID = 0, limit = 20, offset = 0, signal?: AbortSignal) {
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  if (academicYearID > 0) params.set("academic_year_id", String(academicYearID));
+  return api<StudentEnrollmentListResponse>(`/school/enrollments?${params.toString()}`, { signal });
 }
 export function getSchoolStudentEnrollmentHistory(studentID: number, signal?: AbortSignal) {
   return api<StudentEnrollmentListResponse>(`/school/students/${studentID}/enrollments`, { signal });

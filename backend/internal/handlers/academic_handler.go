@@ -31,6 +31,7 @@ type AcademicManagementService interface {
 	CreateClassInchargeAssignment(context.Context,int64,int64,int64,int64,int64)(*repository.ClassInchargeAssignment,error)
 	RevokeClassInchargeAssignment(context.Context,int64,int64,int64)error
 	ListStudentEnrollments(context.Context,int64,int64,int64,int64)([]repository.StudentEnrollment,error)
+	ListStudentEnrollmentDirectory(context.Context,int64,int64,int64,int,int)([]repository.StudentEnrollment,int64,error)
 	ListClassCurricula(context.Context,int64,int64,int64,int64)([]repository.ClassCurriculum,error)
 	SaveClassCurriculum(context.Context,int64,int64,int64,int64,[]repository.CurriculumOptionalGroupInput,[]repository.CurriculumSubjectInput)(*repository.ClassCurriculum,error)
 	GetStudentEnrollmentCurriculum(context.Context,int64,int64,int64)(*repository.StudentEnrollmentCurriculum,error)
@@ -198,9 +199,21 @@ func parseEnrollmentDate(raw string) (time.Time, error) {
 func (h *AcademicHandler) ListStudentEnrollments(c *gin.Context) {
 	actor, school, ok := h.ready(c); if !ok { return }
 	yearID, valid := queryPositiveID(c, "academic_year_id"); if !valid { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid academic_year_id"}); return }
-	items, err := h.service.ListStudentEnrollments(c.Request.Context(), actor, school, yearID, 0)
+	limit := 20
+	if raw := c.Query("limit"); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil || parsed < 1 || parsed > 100 { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid limit"}); return }
+		limit = parsed
+	}
+	offset := 0
+	if raw := c.Query("offset"); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil || parsed < 0 { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid offset"}); return }
+		offset = parsed
+	}
+	items, total, err := h.service.ListStudentEnrollmentDirectory(c.Request.Context(), actor, school, yearID, limit, offset)
 	if err != nil { academicError(c, err, "Student enrollment"); return }
-	c.JSON(http.StatusOK, gin.H{"status":"success","enrollments":items})
+	c.JSON(http.StatusOK, gin.H{"status":"success","enrollments":items,"pagination":gin.H{"limit":limit,"offset":offset,"total":total}})
 }
 
 func (h *AcademicHandler) ListStudentEnrollmentHistory(c *gin.Context) {

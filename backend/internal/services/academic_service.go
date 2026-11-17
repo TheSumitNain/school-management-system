@@ -25,6 +25,7 @@ type academicRepository interface {
 	CreateClassInchargeAssignment(context.Context,int64,int64,int64,int64,int64)(*repository.ClassInchargeAssignment,error)
 	RevokeClassInchargeAssignment(context.Context,int64,int64,int64)error
 	ListStudentEnrollments(context.Context,int64,int64,int64,int64)([]repository.StudentEnrollment,error)
+	ListStudentEnrollmentDirectory(context.Context,int64,int64,int64,int,int)([]repository.StudentEnrollment,int64,error)
 	ListClassCurricula(context.Context,int64,int64,int64,int64)([]repository.ClassCurriculum,error)
 	SaveClassCurriculum(context.Context,int64,int64,int64,int64,[]repository.CurriculumOptionalGroupInput,[]repository.CurriculumSubjectInput)(*repository.ClassCurriculum,error)
 	GetStudentEnrollmentCurriculum(context.Context,int64,int64,int64)(*repository.StudentEnrollmentCurriculum,error)
@@ -136,6 +137,10 @@ func (s *AcademicService) RevokeClassInchargeAssignment(ctx context.Context,acto
 func (s *AcademicService) ListStudentEnrollments(ctx context.Context, actorID, schoolID, yearID, studentID int64) ([]repository.StudentEnrollment, error) {
 	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
 	return s.repository.ListStudentEnrollments(ctx, actorID, schoolID, yearID, studentID)
+}
+func (s *AcademicService) ListStudentEnrollmentDirectory(ctx context.Context, actorID, schoolID, yearID int64, limit, offset int) ([]repository.StudentEnrollment, int64, error) {
+	if s == nil || s.repository == nil { return nil, 0, repository.ErrAcademicAccessDenied }
+	return s.repository.ListStudentEnrollmentDirectory(ctx, actorID, schoolID, yearID, limit, offset)
 }
 func (s *AcademicService) CreateStudentEnrollment(ctx context.Context, actorID, schoolID, studentID, yearID, sectionID int64, rollNumber *string, admissionNumber string, admissionDate, enrolledAt time.Time) (*repository.StudentEnrollment, error) {
 	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }

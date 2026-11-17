@@ -1425,3 +1425,10 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Source review found that the School Admin enrollment tab currently loads every visible enrollment in one response when no academic-year filter is selected. The query is tenant- and teacher-scope constrained, but it has no page-size/offset bound; historical enrollment growth can therefore increase response size and browser rendering work over time.
 - This is a scalability follow-up, not a demonstrated correctness or authorization defect. Student profile enrollment history remains a separate per-student view and should retain its complete history semantics.
 - Follow-up implementation should add bounded pagination and a total count to the enrollment directory endpoint/UI, preserve the existing year filter and teacher roster privacy projection, and leave the per-student academic history endpoint unchanged. No behavior was changed in this review.
+
+## Student Management — bounded enrollment directory pagination (2026-11-17)
+
+- Added a separate paginated enrollment-directory repository/service path with a default page size of 20, a maximum page size of 100, total-count metadata, stable newest-enrollment-first ordering, and offset support. The existing complete per-student enrollment-history method and endpoint are unchanged.
+- Reused the existing school-admin and teacher class-incharge/subject-assignment visibility predicates and the existing minimal roster JSON projection. Directory reads have a distinct audit action and record page size, offset, returned count, total count, and academic-year filter state.
+- Added PostgreSQL integration assertions for teacher visibility, count stability on an out-of-range page, and invalid page bounds. Frontend query keys now include year, page size and offset; changing academic year resets the directory to its first page.
+- Validation status: awaiting GitHub CI for this change. Local authenticated browser/API acceptance remains outstanding.

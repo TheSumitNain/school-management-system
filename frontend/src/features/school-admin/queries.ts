@@ -65,7 +65,7 @@ export const guardianQueryKeys = {
 export const schoolStudentQueryKeys = {
   all: [...schoolAdminQueryKeys.all, "students"] as const,
   list: (filters: { q: string; status: string; academicYearID?: number; limit: number; offset: number }) => [...schoolStudentQueryKeys.all, "list", filters] as const,
-  enrollments: (academicYearID: number) => [...schoolStudentQueryKeys.all, "enrollments", academicYearID] as const,
+  enrollments: (academicYearID: number, limit: number, offset: number) => [...schoolStudentQueryKeys.all, "enrollments", academicYearID, limit, offset] as const,
   enrollmentHistory: (studentID: number) => [...schoolStudentQueryKeys.all, "enrollment-history", studentID] as const,
   curriculum: (enrollmentID: number) => [...schoolStudentQueryKeys.all, "curriculum", enrollmentID] as const,
   curricula: () => [...schoolStudentQueryKeys.all, "curriculum"] as const,
@@ -85,10 +85,10 @@ export function useSchoolStudentsQuery(filters: { q: string; status: string; aca
     staleTime: 15_000,
   });
 }
-export function useSchoolStudentEnrollmentsQuery(academicYearID: number, enabled = true) {
+export function useSchoolStudentEnrollmentsQuery(academicYearID: number, limit = 20, offset = 0, enabled = true) {
   return useQuery({
-    queryKey: schoolStudentQueryKeys.enrollments(academicYearID),
-    queryFn: ({ signal }) => getSchoolStudentEnrollments(academicYearID, signal),
+    queryKey: schoolStudentQueryKeys.enrollments(academicYearID, limit, offset),
+    queryFn: ({ signal }) => getSchoolStudentEnrollments(academicYearID, limit, offset, signal),
     enabled,
     staleTime: 15_000,
   });

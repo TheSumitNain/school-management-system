@@ -423,6 +423,11 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 		_ = subjectOnlyScope.Rollback(ctx)
 		t.Fatal("subject-only teacher enrollment was not marked for minimal-field serialization")
 	}
+	subjectOnlyPage, subjectOnlyTotal, err := teacherAcademicRepo.ListStudentEnrollmentDirectory(ctx, teacherPrincipalID, schoolID, 0, 10, 0)
+	if err != nil || subjectOnlyTotal != 1 || len(subjectOnlyPage) != 1 || !subjectOnlyPage[0].basicRosterOnly {
+		_ = subjectOnlyScope.Rollback(ctx)
+		t.Fatalf("subject-only paginated roster=%+v total=%d err=%v; want one minimal visible row", subjectOnlyPage, subjectOnlyTotal, err)
+	}
 	encodedRoster, err := json.Marshal(subjectOnlyEnrollments[0])
 	if err != nil {
 		_ = subjectOnlyScope.Rollback(ctx)
@@ -459,6 +464,20 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	}
 	if teacherEnrollments[0].basicRosterOnly {
 		t.Fatal("class-in-charge teacher was incorrectly restricted to the subject-only roster")
+	}
+	teacherPage, teacherTotal, err := teacherAcademicRepo.ListStudentEnrollmentDirectory(ctx, teacherPrincipalID, schoolID, 0, 1, 0)
+	if err != nil || teacherTotal != 1 || len(teacherPage) != 1 || teacherPage[0].SectionID != section2 || teacherPage[0].basicRosterOnly {
+		t.Fatalf("teacher enrollment directory page=%+v total=%d err=%v; want one full visible enrollment", teacherPage, teacherTotal, err)
+	}
+	outOfRangePage, outOfRangeTotal, err := teacherAcademicRepo.ListStudentEnrollmentDirectory(ctx, teacherPrincipalID, schoolID, 0, 1, 1)
+	if err != nil || outOfRangeTotal != 1 || len(outOfRangePage) != 0 {
+		t.Fatalf("out-of-range teacher page=%+v total=%d err=%v; want empty page with total 1", outOfRangePage, outOfRangeTotal, err)
+	}
+	if _, _, err := teacherAcademicRepo.ListStudentEnrollmentDirectory(ctx, teacherPrincipalID, schoolID, 0, 0, 0); !errors.Is(err, ErrInvalidAcademicInput) {
+		t.Fatalf("zero enrollment directory limit error=%v; want ErrInvalidAcademicInput", err)
+	}
+	if _, _, err := teacherAcademicRepo.ListStudentEnrollmentDirectory(ctx, teacherPrincipalID, schoolID, 0, 10, -1); !errors.Is(err, ErrInvalidAcademicInput) {
+		t.Fatalf("negative enrollment directory offset error=%v; want ErrInvalidAcademicInput", err)
 	}
 	var teacherHistoryAuditCount int
 	var teacherHistoryAuditResultCount int
