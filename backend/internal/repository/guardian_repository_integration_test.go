@@ -429,6 +429,35 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 		!editedLink.IsPrimaryContact || editedLink.IsEmergencyContact {
 		t.Fatalf("unexpected edited guardian relationship: %+v", editedLink)
 	}
+
+	var relationshipUpdatedAt time.Time
+	var relationshipAuditCount int
+	if err := tx.QueryRow(ctx, `SELECT updated_at FROM student_guardians WHERE id=$1 AND school_id=$2`, firstLink.ID, schoolID).Scan(&relationshipUpdatedAt); err != nil {
+		t.Fatalf("read guardian relationship updated_at: %v", err)
+	}
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM audit_events WHERE school_id=$1 AND actor_principal_id=$2 AND action='school.student_guardian_link_updated' AND resource_id=$3`,
+		schoolID, targetPrincipalID, fmt.Sprint(firstLink.ID)).Scan(&relationshipAuditCount); err != nil {
+		t.Fatalf("count guardian relationship update audit events: %v", err)
+	}
+	unchangedLink, err := repo.UpdateStudentGuardianLink(ctx, targetPrincipalID, schoolID,
+		firstLink.ID, "legal guardian", true, false)
+	if err != nil || unchangedLink == nil || unchangedLink.ID != firstLink.ID ||
+		unchangedLink.RelationshipType != "legal guardian" || !unchangedLink.IsPrimaryContact || unchangedLink.IsEmergencyContact {
+		t.Fatalf("retry identical student guardian relationship update: link=%+v err=%v", unchangedLink, err)
+	}
+	var retryRelationshipUpdatedAt time.Time
+	var retryRelationshipAuditCount int
+	if err := tx.QueryRow(ctx, `SELECT updated_at FROM student_guardians WHERE id=$1 AND school_id=$2`, firstLink.ID, schoolID).Scan(&retryRelationshipUpdatedAt); err != nil {
+		t.Fatalf("read guardian relationship updated_at after retry: %v", err)
+	}
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM audit_events WHERE school_id=$1 AND actor_principal_id=$2 AND action='school.student_guardian_link_updated' AND resource_id=$3`,
+		schoolID, targetPrincipalID, fmt.Sprint(firstLink.ID)).Scan(&retryRelationshipAuditCount); err != nil {
+		t.Fatalf("count guardian relationship update audit events after retry: %v", err)
+	}
+	if !retryRelationshipUpdatedAt.Equal(relationshipUpdatedAt) || retryRelationshipAuditCount != relationshipAuditCount || relationshipAuditCount != 1 {
+		t.Fatalf("identical guardian relationship retry changed timestamp/audit count: timestamp before=%s after=%s audits before=%d after=%d",
+			relationshipUpdatedAt, retryRelationshipUpdatedAt, relationshipAuditCount, retryRelationshipAuditCount)
+	}
 	active, err := repo.ListStudentGuardians(ctx, targetPrincipalID, schoolID, studentID, false)
 	if err != nil || len(active) != 2 {
 		t.Fatalf("list active links after relationship update: items=%+v err=%v", active, err)

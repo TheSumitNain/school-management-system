@@ -372,7 +372,33 @@ func (r *AcademicRepository) UpdateStudentGuardianLink(ctx context.Context, acto
 		return nil, guardianWriteError(err)
 	}
 
-	if primary {
+	if oldRelationship == relationship && oldPrimary == primary && oldEmergency == emergency {
+		// A repeated relationship save can follow a committed update whose
+		// response was lost. Return the current relationship without touching
+		// updated_at or emitting a duplicate audit event.
+		var unchanged StudentGuardian
+		err = tx.QueryRow(ctx, `SELECT sg.id,sg.student_id,sg.guardian_id,g.full_name,g.status,
+			g.mobile_number,g.email_address,g.alternate_mobile_number,g.occupation,g.education,g.workplace_name,
+			sg.relationship_type,sg.is_primary_contact,sg.is_emergency_contact,sg.created_at,sg.revoked_at
+			FROM student_guardians sg
+			JOIN guardians g ON g.id=sg.guardian_id AND g.school_id=sg.school_id
+			WHERE sg.id=$1 AND sg.school_id=$2 AND sg.student_id=$3 AND sg.revoked_at IS NULL`,
+			linkID, schoolID, studentID).Scan(
+			&unchanged.ID, &unchanged.StudentID, &unchanged.GuardianID, &unchanged.GuardianName,
+			&unchanged.GuardianStatus, &unchanged.MobileNumber, &unchanged.EmailAddress,
+			&unchanged.AlternateMobileNumber, &unchanged.Occupation, &unchanged.Education,
+			&unchanged.WorkplaceName, &unchanged.RelationshipType, &unchanged.IsPrimaryContact,
+			&unchanged.IsEmergencyContact, &unchanged.CreatedAt, &unchanged.RevokedAt)
+		if err != nil {
+			return nil, guardianWriteError(err)
+		}
+		if err = tx.Commit(ctx); err != nil {
+			return nil, fmt.Errorf("commit unchanged student guardian relationship: %w", err)
+		}
+		return &unchanged, nil
+	}
+
+	if primary && !oldPrimary {
 		if _, err = tx.Exec(ctx, `UPDATE student_guardians SET is_primary_contact=FALSE,updated_at=NOW()
 			WHERE school_id=$1 AND student_id=$2 AND id<>$3 AND revoked_at IS NULL AND is_primary_contact=TRUE`,
 			schoolID, studentID, linkID); err != nil {
