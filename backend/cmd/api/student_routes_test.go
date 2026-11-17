@@ -106,3 +106,38 @@ func TestStudentRoutesEnforceLivePermissions(t *testing.T) {
 		})
 	}
 }
+
+
+func TestStudentDirectoryRejectsInvalidAcademicYearFilter(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	validator := fakeTokenValidator{claims: &services.TokenClaims{
+		RegisteredClaims: jwt.RegisteredClaims{Subject: "31"},
+		PrincipalType: "staff",
+		TokenVersion: 1,
+	}}
+	principal := &models.AuthPrincipal{
+		ID: 31, Type: "staff", Status: "active", TokenVersion: 1,
+		SchoolID: 8, Username: "school.admin",
+	}
+	router, err := setupRouterWithHandlers(
+		fakeDatabase{}, nil, validator,
+		fakePrincipalLoader{principal: principal},
+		fakePermissionLoader{permissions: []string{"students.read_sensitive"}},
+		nil, nil, nil, handlers.NewAcademicHandler(services.NewAcademicService(nil)),
+		fakeAdminSessionActivityTracker{adminPrincipalID: -1, familyID: "00000000-0000-4000-8000-000000000031"},
+	)
+	if err != nil {
+		t.Fatalf("setup router: %v", err)
+	}
+	for _, value := range []string{"not-a-number", "0", "-1"} {
+		t.Run(value, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/school/students?academic_year_id="+value, nil)
+			req.Header.Set("Authorization", "Bearer valid-test-token")
+			rec := httptest.NewRecorder()
+			router.ServeHTTP(rec, req)
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("invalid academic_year_id %q: status=%d body=%s; want 400", value, rec.Code, rec.Body.String())
+			}
+		})
+	}
+}
