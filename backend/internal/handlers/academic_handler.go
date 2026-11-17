@@ -51,7 +51,7 @@ type AcademicManagementService interface {
 	SaveStudentMedicalDetails(context.Context,int64,int64,int64,*string,*string,*string,*string,*string)(*repository.StudentMedicalDetails,error)
 	GetStudentPhysicalDetails(context.Context,int64,int64,int64)(*repository.StudentPhysicalDetails,error)
 	SaveStudentPhysicalDetails(context.Context,int64,int64,int64,*float64,*float64,*time.Time,*string,*string)(*repository.StudentPhysicalDetails,error)
-	ListStudents(context.Context,int64,int64,string,string,int,int)([]repository.StudentProfile,int64,error)
+	ListStudents(context.Context,int64,int64,int64,string,string,int,int)([]repository.StudentProfile,int64,error)
 	GetStudent(context.Context,int64,int64,int64)(*repository.StudentProfile,error)
 	CreateStudent(context.Context,int64,int64,string,string)(*repository.StudentProfile,error)
 	UpdateStudent(context.Context,int64,int64,int64,string)(*repository.StudentProfile,error)
@@ -513,7 +513,9 @@ func (h *AcademicHandler) ListStudents(c *gin.Context) {
 		if err != nil { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid offset"}); return }
 		offset = value
 	}
-	items, total, err := h.service.ListStudents(c.Request.Context(), actor, school,
+	yearID, valid := queryPositiveID(c, "academic_year_id")
+	if !valid { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid academic_year_id"}); return }
+	items, total, err := h.service.ListStudents(c.Request.Context(), actor, school, yearID,
 		c.Query("q"), c.Query("status"), limit, offset)
 	if err != nil { academicError(c, err, "Student"); return }
 	c.JSON(http.StatusOK, gin.H{"status":"success","students":items,"pagination":gin.H{
