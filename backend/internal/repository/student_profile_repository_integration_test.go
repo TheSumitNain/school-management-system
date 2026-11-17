@@ -386,6 +386,13 @@ func TestStudentProfileRepositoryPostgresIntegration(t *testing.T) {
 	if err != nil || archiveEnrollment == nil || archiveEnrollment.Status != "active" {
 		t.Fatalf("create active enrollment for archive test: enrollment=%+v err=%v", archiveEnrollment, err)
 	}
+	var archiveAttendanceDay time.Time
+	if err := tx.QueryRow(ctx, "SELECT CURRENT_DATE").Scan(&archiveAttendanceDay); err != nil {
+		t.Fatalf("read database date for archive attendance history: %v", err)
+	}
+	if _, err := repo.MarkAttendance(ctx, actorID, schoolID, archiveEnrollment.ID, archiveAttendanceDay, "present", nil); err != nil {
+		t.Fatalf("mark attendance before archive: %v", err)
+	}
 	archived, err := repo.ArchiveStudent(ctx, actorID, schoolID, student.ID)
 	if err != nil || archived.Status != "archived" { t.Fatalf("archive student: student=%+v err=%v", archived, err) }
 	var archivedEnrollmentStatus string
@@ -421,6 +428,12 @@ func TestStudentProfileRepositoryPostgresIntegration(t *testing.T) {
 		SELECT COUNT(*) FROM student_enrollments WHERE id=$1 AND student_id=$2
 	`, archiveEnrollment.ID, student.ID).Scan(&preservedEnrollmentCount); err != nil || preservedEnrollmentCount != 1 {
 		t.Fatalf("archived enrollment history count=%d err=%v; want preserved row", preservedEnrollmentCount, err)
+	}
+	var preservedAttendanceCount int
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*) FROM attendance_records WHERE school_id=$1 AND enrollment_id=$2
+	`, schoolID, archiveEnrollment.ID).Scan(&preservedAttendanceCount); err != nil || preservedAttendanceCount != 1 {
+		t.Fatalf("archived attendance history count=%d err=%v; want exactly one preserved row", preservedAttendanceCount, err)
 	}
 	if _, err := repo.UpdateStudent(ctx, actorID, schoolID, student.ID, "Should Not Update"); !errors.Is(err, ErrAcademicNotFound) {
 		t.Fatalf("update archived student error = %v, want not found", err)
