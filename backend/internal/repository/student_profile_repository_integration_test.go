@@ -511,6 +511,9 @@ func TestStudentProfileRepositoryPostgresIntegration(t *testing.T) {
 	if items, err := repo.ListStudentEnrollments(ctx, actorID, schoolID, 0, foreignStudentID); !errors.Is(err, ErrAcademicNotFound) || len(items) != 0 {
 		t.Fatalf("foreign student enrollment history error = %v items=%d; want not found and no data", err, len(items))
 	}
+	if items, total, err := repo.ListStudents(ctx, actorID, schoolID, foreignYearID, "", "", 20, 0); !errors.Is(err, ErrInvalidAcademicInput) || len(items) != 0 || total != 0 {
+		t.Fatalf("foreign academic year directory filter error = %v items=%d total=%d; want invalid input and no data", err, len(items), total)
+	}
 	if items, err := repo.ListStudentEnrollments(ctx, actorID, otherSchoolID, 0, 0); !errors.Is(err, ErrAcademicAccessDenied) || len(items) != 0 {
 		t.Fatalf("cross-school enrollment directory error = %v items=%d; want access denied and no data", err, len(items))
 	}
