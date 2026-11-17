@@ -1,3 +1,10 @@
+### Student Management — archive/attendance concurrency regression (2026-11-17)
+
+- Added a real PostgreSQL two-operation race test. It holds the permanent student row lock, queues archive first, then queues an attendance mark behind it, and releases the lock. The test verifies archive commits, the waiting attendance mark rechecks the now-archived student and returns `ErrAttendanceNotFound`, the enrollment is withdrawn, and no attendance row is inserted.
+- This turns the archive-versus-new-attendance lock-order guarantee from source-level reasoning into an automated concurrency regression check. Existing attendance history is not deleted by archive.
+- Backend CI **PASS** — [run 44032106922](https://github.com/TheSumitNain/school-management-system/actions/runs/44032106922): complete migration chain, all Go tests including PostgreSQL integration, and `go vet ./...`.
+- Tested code checkpoint: `7d8e66cc32a5f90908e331766c56db2d433c5264`. Authenticated acceptance against the user's local API/database/browser remains outstanding; CI uses an ephemeral PostgreSQL database.
+
 ### Student Management — date-picker keyboard and modal focus safety (2026-11-17)
 
 - Extended browser acceptance for the Date of Birth picker to verify keyboard day navigation, Escape dismissal and focus restoration to the date trigger.
