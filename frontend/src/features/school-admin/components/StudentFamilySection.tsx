@@ -237,6 +237,20 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
     setEditGuardianEmailError(emailError);
     setEditGuardianFieldErrors(fieldErrors);
     if (nameError || emailError || Object.keys(fieldErrors).length > 0) return;
+    const originalGuardian = allLinks.find(link => link.guardian_id === editingGuardianID);
+    if (originalGuardian &&
+      originalGuardian.guardian_name === editGuardianForm.full_name.trim() &&
+      (originalGuardian.mobile_number ?? "") === editGuardianForm.mobile_number.trim() &&
+      (originalGuardian.email_address ?? "") === editGuardianForm.email_address.trim() &&
+      (originalGuardian.alternate_mobile_number ?? "") === editGuardianForm.alternate_mobile_number.trim() &&
+      (originalGuardian.occupation ?? "") === editGuardianForm.occupation.trim() &&
+      (originalGuardian.education ?? "") === editGuardianForm.education.trim() &&
+      (originalGuardian.workplace_name ?? "") === editGuardianForm.workplace_name.trim() &&
+      originalGuardian.guardian_status === editGuardianForm.status) {
+      setEditingGuardianID(0);
+      setFeedback({ kind: "success", message: "No changes to save." });
+      return;
+    }
     setConfirmSharedGuardianSave(true);
   }
 
@@ -336,6 +350,15 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
     }
     if (Array.from(resolvedRelationship).length > 40) {
       setEditRelationshipFieldError("Relationship must be 40 characters or fewer.");
+      return;
+    }
+    const originalLink = allLinks.find(link => link.id === editingLinkID);
+    if (originalLink &&
+      originalLink.relationship_type === resolvedRelationship &&
+      originalLink.is_primary_contact === editRelationshipForm.is_primary_contact &&
+      originalLink.is_emergency_contact === editRelationshipForm.is_emergency_contact) {
+      setEditingLinkID(0);
+      setFeedback({ kind: "success", message: "No changes to save." });
       return;
     }
     try {
