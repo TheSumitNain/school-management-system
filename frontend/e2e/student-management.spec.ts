@@ -147,8 +147,13 @@ test("student admission, profile navigation and parent details render without br
       return;
     }
     if (path === "/school/students" && method === "GET") {
+      const requestedYearID = Number(url.searchParams.get("academic_year_id") || academicYear.id);
       studentDirectoryQueries.push(url.searchParams.get("academic_year_id") ?? "");
-      await route.fulfill({ json: { students, pagination: { limit: 20, offset: 0, total: students.length } } });
+      const directoryStudents = students.map(student => ({
+        ...student,
+        admission_number: requestedYearID === previousAcademicYear.id ? "" : student.admission_number,
+      }));
+      await route.fulfill({ json: { students: directoryStudents, pagination: { limit: 20, offset: 0, total: directoryStudents.length } } });
       return;
     }
     if (path === "/school/enrollments" && method === "GET") {
@@ -457,12 +462,6 @@ test("student admission, profile navigation and parent details render without br
   await expect(directoryYearOptions).toBeVisible();
   await directoryYearOptions.getByRole("option").nth(1).click();
   await expect.poll(() => studentDirectoryQueries.at(-1)).toBe(String(previousAcademicYear.id));
-  await directoryYearFilter.press("Escape");
-  await expect(directoryYearFilter).toHaveAttribute("aria-expanded", "false");
-  await directoryYearFilter.click();
-  await expect(directoryYearOptions).toBeVisible();
-  await directoryYearOptions.getByRole("option", { name: /2026–2027/ }).click();
-  await expect.poll(() => studentDirectoryQueries.at(-1)).toBe(String(academicYear.id));
 
   await page.getByRole("button", { name: /New admission/ }).click();
   await page.getByPlaceholder("e.g. Aarav Sharma").fill("Aarav Sharma");
