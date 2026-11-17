@@ -457,6 +457,8 @@ test("student admission, profile navigation and parent details render without br
   await expect(directoryYearOptions).toBeVisible();
   await directoryYearOptions.getByRole("option").nth(1).click();
   await expect.poll(() => studentDirectoryQueries.at(-1)).toBe(String(previousAcademicYear.id));
+  await directoryYearFilter.press("Escape");
+  await expect(directoryYearFilter).toHaveAttribute("aria-expanded", "false");
   await directoryYearFilter.click();
   await expect(directoryYearOptions).toBeVisible();
   await directoryYearOptions.getByRole("option").first().click();
