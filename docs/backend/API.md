@@ -26,6 +26,13 @@ Implemented route groups include:
 - Student admission/profile and enrollment/promotion/history foundations.
 - Student profile sections: optional basic details, address and contact details, guardian relationships, and restricted medical/physical details.
 - Assigned-section teacher enrollment roster.
+
+### Student enrollment directory and history
+
+- `GET /school/enrollment-directory` lists the School Admin Student Management enrollment directory. Optional query parameters: `academic_year_id` (positive ID; omitted means all years), `limit` (default 20, allowed 1–100), and `offset` (default 0, non-negative). The response contains `enrollments` plus `pagination: { limit, offset, total }`; rows are ordered by `enrolled_at DESC, id DESC`.
+- Access requires `students.read_basic` and the authenticated principal's own school. School Admins receive the enrollment view; Teachers see only enrollments in their active class-incharge or subject-assigned sections. Subject-only Teachers receive the minimal roster projection (student name, roll number, class name and section name), not admission identifiers or student IDs.
+- `GET /school/students/:studentID/enrollments` remains the complete per-student enrollment history. It is intentionally not paginated so the profile can show the full academic history. The separate `/school/enrollments` roster endpoint remains available to existing section-roster consumers; do not substitute it for the bounded directory endpoint in Student Management.
+
 - Attendance listing, marking and correction.
 - Timetable current-year lookup, period definitions and weekly section schedules.
 - Guardian management.
