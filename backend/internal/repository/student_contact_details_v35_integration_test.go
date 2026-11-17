@@ -107,6 +107,28 @@ func TestStudentContactDetailsV35PostgresIntegration(t *testing.T) {
 		t.Fatalf("unexpected saved student contact details: %+v", savedContact)
 	}
 
+	// Retrying an identical save is a no-op: it must not change the record
+	// timestamp or append a duplicate update audit event.
+	var savedUpdatedAt time.Time
+	if err := tx.QueryRow(ctx, `SELECT updated_at FROM student_contact_details WHERE id=$1`, savedContact.ID).Scan(&savedUpdatedAt); err != nil {
+		t.Fatalf("read saved contact timestamp: %v", err)
+	}
+	retriedContact, err := repository.SaveStudentContactDetails(ctx, actorPrincipalID, schoolID, studentTwo,
+		&updatedPhone, &phone, &updatedEmail)
+	if err != nil {
+		t.Fatalf("retry identical student contact save: %v", err)
+	}
+	var retriedUpdatedAt time.Time
+	if retriedContact.ID != savedContact.ID {
+		t.Fatalf("identical contact retry changed record ID: got %d want %d", retriedContact.ID, savedContact.ID)
+	}
+	if err := tx.QueryRow(ctx, `SELECT updated_at FROM student_contact_details WHERE id=$1`, savedContact.ID).Scan(&retriedUpdatedAt); err != nil {
+		t.Fatalf("read retried contact timestamp: %v", err)
+	}
+	if !retriedUpdatedAt.Equal(savedUpdatedAt) {
+		t.Fatalf("identical contact retry changed updated_at: before=%s after=%s", savedUpdatedAt, retriedUpdatedAt)
+	}
+
 	// Repository validation is authoritative even when a caller bypasses the
 	// frontend's field-level limits and email-format checks.
 	overlongPhone := strings.Repeat("अ", 31)
