@@ -2749,3 +2749,86 @@ test("student directory pagination resets when search, status or academic-year f
   await expect(page.getByText("Showing 1–1 of 1")).toBeVisible();
   await expect.poll(() => requestedDirectoryFilters.at(-1)).toEqual({ offset: "0", status: "", academicYearID: String(previousAcademicYear.id) });
 });
+
+test("student directory returns to the last valid page when archiving empties the current page", async ({ page }) => {
+  let directoryTotal = 41;
+  const requestedOffsets: number[] = [];
+  const student = {
+    id: 41, school_id: 10, admission_number: "ADM-041",
+    full_name: "Directory Student 41", status: "active",
+    created_at: "2026-11-14T00:00:00.000Z", updated_at: "2026-11-14T00:00:00.000Z",
+  };
+
+  await page.route("**/api/**", async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname.replace(/^\\/api/, "");
+    const method = request.method();
+    if (path === "/auth/refresh") {
+      await route.fulfill({ status: 401, json: { message: "No active session" } });
+      return;
+    }
+    if (path === "/auth/login" && method === "POST") {
+      await route.fulfill({ json: {
+        access_token: "e2e-directory-archive-token", token_type: "Bearer",
+        principal: { principal_id: 152, principal_type: "staff", status: "active", school_id: 10 },
+      } });
+      return;
+    }
+    if (path === "/auth/me") {
+      await route.fulfill({ json: {
+        principal_id: 152, principal_type: "staff", school_id: 10, username: "e2e-directory-archive",
+        permissions: ["students.read_sensitive", "students.archive", "academic_years.read"],
+      } });
+      return;
+    }
+    if (path === "/school/academic-years" && method === "GET") {
+      await route.fulfill({ json: { academic_years: [academicYear] } });
+      return;
+    }
+    if (path === "/school/students" && method === "GET") {
+      const offset = Number(url.searchParams.get("offset") ?? "0");
+      requestedOffsets.push(offset);
+      const count = Math.max(0, Math.min(20, directoryTotal - offset));
+      const rows = Array.from({ length: count }, (_, index) => {
+        const id = offset + index + 1;
+        return {
+          id, school_id: 10, admission_number: `ADM-${String(id).padStart(3, "0")}`,
+          full_name: `Directory Student ${id}`, status: "active",
+          created_at: "2026-11-14T00:00:00.000Z", updated_at: "2026-11-14T00:00:00.000Z",
+        };
+      });
+      await route.fulfill({ json: { students: rows, pagination: { limit: 20, offset, total: directoryTotal } } });
+      return;
+    }
+    if (path === "/school/students/41/archive" && method === "POST") {
+      directoryTotal = 40;
+      Object.assign(student, { status: "archived", updated_at: "2026-11-17T12:00:00.000Z" });
+      await route.fulfill({ json: { student } });
+      return;
+    }
+    await route.fulfill({ status: 404, json: { message: `Unmocked E2E API request: ${method} ${path}` } });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Username").fill("e2e-directory-archive");
+  await page.getByLabel("Password").fill("E2E-only-password");
+  await page.getByRole("button", { name: /Continue/ }).click();
+  await page.getByRole("button", { name: "Students" }).click();
+  await expect(page.getByText("Showing 1–20 of 41")).toBeVisible();
+  await page.getByRole("button", { name: "Next" }).click();
+  await expect(page.getByText("Showing 21–40 of 41")).toBeVisible();
+  await page.getByRole("button", { name: "Next" }).click();
+  await expect(page.getByText("Directory Student 41", { exact: true })).toBeVisible();
+  await expect(page.getByText("Showing 41–41 of 41")).toBeVisible();
+  await expect.poll(() => requestedOffsets.at(-1)).toBe(40);
+
+  await page.getByRole("button", { name: "Archive Directory Student 41" }).click();
+  const dialog = page.getByRole("dialog", { name: "Archive student?" });
+  await dialog.getByRole("button", { name: "Archive student", exact: true }).click();
+  await expect(page.getByText("Directory Student 41 has been archived.")).toBeVisible();
+  await expect(page.getByText("Directory Student 21", { exact: true })).toBeVisible();
+  await expect(page.getByText("Showing 21–40 of 40")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Next" })).toHaveCount(0);
+  await expect.poll(() => requestedOffsets.slice(-2)).toEqual([40, 20]);
+});
