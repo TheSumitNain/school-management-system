@@ -156,7 +156,7 @@ test("student admission, profile navigation and parent details render without br
       await route.fulfill({ json: { students: directoryStudents, pagination: { limit: 20, offset: 0, total: directoryStudents.length } } });
       return;
     }
-    if (path === "/school/enrollments" && method === "GET") {
+    if (path === "/school/enrollment-directory" && method === "GET") {
       await route.fulfill({ json: { enrollments: students.map(student => ({
         id: 100 + student.id, school_id: 10, student_id: student.id,
         student_name: student.full_name, student_status: student.status,
@@ -164,7 +164,7 @@ test("student admission, profile navigation and parent details render without br
         class_name_snapshot: section.class_name, section_name_snapshot: section.name,
         admission_number: student.admission_number, admission_date: "2026-11-14T00:00:00Z",
         status: "active", enrolled_at: "2026-11-14T00:00:00Z", ended_at: null,
-      })) } });
+      })), pagination: { limit: 20, offset: Number(url.searchParams.get("offset") || 0), total: students.length } } });
       return;
     }
     if (path === "/school/students" && method === "POST") {
@@ -1403,7 +1403,7 @@ test("student promotion validates required fields and preserves prior enrollment
       await route.fulfill({ json: { students: [], pagination: { limit: 20, offset: 0, total: 0 } } });
       return;
     }
-    if (path === "/school/enrollments" && request.method() === "GET") {
+    if (path === "/school/enrollment-directory" && request.method() === "GET") {
       await route.fulfill({ json: { enrollments, pagination: { limit: 20, offset: 0, total: enrollments.length } } });
       return;
     }
@@ -2030,7 +2030,7 @@ test("staff with guardian management permission cannot change an inactive studen
       await route.fulfill({ json: { sections: [] } });
       return;
     }
-    if (path === "/school/enrollments" && request.method() === "GET") {
+    if (path === "/school/enrollment-directory" && request.method() === "GET") {
       await route.fulfill({ json: { enrollments: [{
         id: 9400, school_id: 10, student_id: 94, student_name: "Inactive Family Student",
         student_status: "inactive", academic_year_id: 6, class_id: 3, section_id: 61,
@@ -2882,4 +2882,76 @@ test("student directory sends wildcard characters as literal search text", async
   const literalSearch = "Updated%_\\";
   await page.getByRole("textbox", { name: "Search students" }).fill(literalSearch);
   await expect.poll(() => receivedQueries.at(-1)).toBe(literalSearch);
+});
+
+
+test("enrollment directory pagination requests only the selected page", async ({ page }) => {
+  const requestedPages: Array<{ offset: number; yearID: number }> = [];
+  await page.route("**/api/**", async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname.replace(/^\/api/, "");
+    const method = request.method();
+    if (path === "/auth/refresh") {
+      await route.fulfill({ status: 401, json: { message: "No active session" } });
+      return;
+    }
+    if (path === "/auth/login" && method === "POST") {
+      await route.fulfill({ json: {
+        access_token: "e2e-enrollment-pagination-token", token_type: "Bearer",
+        principal: { principal_id: 171, principal_type: "staff", status: "active", school_id: 10 },
+      } });
+      return;
+    }
+    if (path === "/auth/me") {
+      await route.fulfill({ json: {
+        principal_id: 171, principal_type: "staff", school_id: 10, username: "e2e-enrollment-pagination",
+        permissions: ["students.read_sensitive", "students.read_basic", "academic_years.read"],
+      } });
+      return;
+    }
+    if (path === "/school/academic-years") {
+      await route.fulfill({ json: { academic_years: [academicYear, previousAcademicYear] } });
+      return;
+    }
+    if (path === "/school/students" && method === "GET") {
+      await route.fulfill({ json: { students: [], pagination: { limit: 20, offset: 0, total: 0 } } });
+      return;
+    }
+    if (path === "/school/enrollment-directory" && method === "GET") {
+      const offset = Number(url.searchParams.get("offset") ?? "0");
+      const yearID = Number(url.searchParams.get("academic_year_id") ?? "0");
+      requestedPages.push({ offset, yearID });
+      const total = yearID === previousAcademicYear.id ? 1 : 45;
+      const count = Math.max(0, Math.min(20, total - offset));
+      const enrollments = Array.from({ length: count }, (_, index) => {
+        const id = offset + index + 1;
+        return {
+          id: 5000 + id, school_id: 10, student_id: id,
+          student_name: yearID === previousAcademicYear.id ? "Previous Year Enrollment" : `Enrollment Student ${id}`,
+          student_status: "active", academic_year_id: yearID || academicYear.id,
+          class_id: 3, section_id: 12, roll_number: String(id),
+          class_name_snapshot: "Class 1", section_name_snapshot: "A",
+          admission_number: `ADM-${id}`, admission_date: "2026-04-01",
+          status: "active", enrolled_at: "2026-04-01T00:00:00.000Z", ended_at: null,
+        };
+      });
+      await route.fulfill({ json: { enrollments, pagination: { limit: 20, offset, total } } });
+      return;
+    }
+    await route.fulfill({ status: 404, json: { message: `Unmocked E2E API request: ${method} ${path}` } });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Username").fill("e2e-enrollment-pagination");
+  await page.getByLabel("Password").fill("E2E-only-password");
+  await page.getByRole("button", { name: /Continue/ }).click();
+  await page.getByRole("button", { name: "Students" }).click();
+  await page.getByRole("button", { name: "Enrollments" }).click();
+  await expect(page.getByText("Enrollment Student 1", { exact: true })).toBeVisible();
+  await expect(page.getByText("Showing 1–20 of 45")).toBeVisible();
+  await page.getByRole("button", { name: "Next" }).click();
+  await expect(page.getByText("Enrollment Student 21", { exact: true })).toBeVisible();
+  await expect(page.getByText("Showing 21–40 of 45")).toBeVisible();
+  await expect.poll(() => requestedPages.at(-1)).toEqual({ offset: 20, yearID: 0 });
 });
