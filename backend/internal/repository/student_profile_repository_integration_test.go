@@ -337,7 +337,7 @@ func TestStudentProfileRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("identical student update retry changed timestamp/audit count: timestamp before=%s after=%s audits before=%d after=%d",
 			studentUpdatedAt, retryUpdatedAt, studentUpdateAuditCount, retryAuditCount)
 	}
-	items, total, err := repo.ListStudents(ctx, actorID, schoolID, "Updated", "active", 10, 0)
+	items, total, err := repo.ListStudents(ctx, actorID, schoolID, 0, "Updated", "active", 10, 0)
 	if err != nil || total < 1 { t.Fatalf("search students: total=%d err=%v", total, err) }
 	found := false
 	for _, item := range items { if item.ID == student.ID { found = true } }
