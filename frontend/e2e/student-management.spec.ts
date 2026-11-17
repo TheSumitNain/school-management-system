@@ -2650,3 +2650,68 @@ test("archived student profile sections remain readable but cannot be changed", 
   await expect(familyDialog.getByText(/view-only|read-only/i)).toBeVisible();
   expect(attemptedWrites).toEqual([]);
 });
+
+test("student directory pagination advances and resets when search changes", async ({ page }) => {
+  const requestedOffsets: string[] = [];
+  await page.route("**/api/**", async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname.replace(/^\/api/, "");
+    const method = request.method();
+    if (path === "/auth/refresh") {
+      await route.fulfill({ status: 401, json: { message: "No active session" } });
+      return;
+    }
+    if (path === "/auth/login" && method === "POST") {
+      await route.fulfill({ json: {
+        access_token: "e2e-directory-pagination-token", token_type: "Bearer",
+        principal: { principal_id: 151, principal_type: "staff", status: "active", school_id: 10 },
+      } });
+      return;
+    }
+    if (path === "/auth/me") {
+      await route.fulfill({ json: {
+        principal_id: 151, principal_type: "staff", school_id: 10, username: "e2e-directory-pagination",
+        permissions: ["students.read_sensitive", "academic_years.read"],
+      } });
+      return;
+    }
+    if (path === "/school/academic-years" && method === "GET") {
+      await route.fulfill({ json: { academic_years: [academicYear] } });
+      return;
+    }
+    if (path === "/school/students" && method === "GET") {
+      const offset = Number(url.searchParams.get("offset") ?? "0");
+      const query = url.searchParams.get("q") ?? "";
+      requestedOffsets.push(String(offset));
+      const rows = query
+        ? [{ id: 99, school_id: 10, admission_number: "ADM-SEARCH-99", full_name: "Search Match Student", status: "active", created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" }]
+        : Array.from({ length: 20 }, (_, index) => {
+            const id = offset + index + 1;
+            return { id, school_id: 10, admission_number: `ADM-${id}`, full_name: `Directory Student ${id}`, status: "active", created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" };
+          });
+      await route.fulfill({ json: { students: rows, pagination: { limit: 20, offset, total: query ? 1 : 45 } } });
+      return;
+    }
+    await route.fulfill({ status: 404, json: { message: `Unmocked E2E API request: ${method} ${path}` } });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Username").fill("e2e-directory-pagination");
+  await page.getByLabel("Password").fill("E2E-only-password");
+  await page.getByRole("button", { name: /Continue/ }).click();
+  await page.getByRole("button", { name: "Students" }).click();
+  await expect(page.getByText("Directory Student 1", { exact: true })).toBeVisible();
+  await expect(page.getByText("Showing 1–20 of 45")).toBeVisible();
+  await page.getByRole("button", { name: "Next" }).click();
+  await expect(page.getByText("Directory Student 21", { exact: true })).toBeVisible();
+  await expect(page.getByText("Showing 21–40 of 45")).toBeVisible();
+  await expect.poll(() => requestedOffsets.at(-1)).toBe("20");
+
+  await page.getByRole("textbox", { name: "Search students" }).fill("Search Match");
+  await expect(page.getByText("Search Match Student", { exact: true })).toBeVisible();
+  await expect(page.getByText("Showing 1–1 of 1")).toBeVisible();
+  await expect.poll(() => requestedOffsets.at(-1)).toBe("0");
+  await expect(page.getByRole("button", { name: "Previous" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Next" })).toHaveCount(0);
+});
