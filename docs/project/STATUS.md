@@ -1,3 +1,12 @@
+### Student Management — date-picker keyboard and modal focus safety (2026-11-17)
+
+- Extended browser acceptance for the Date of Birth picker to verify keyboard day navigation, Escape dismissal and focus restoration to the date trigger.
+- The test exposed a shared DatePicker defect: its document-level Escape listener closed the calendar but allowed the same Escape event to reach the parent Modal, which closed the entire student form before focus could return to the date trigger.
+- DatePicker now handles Escape in the document capture phase and stops the event before the parent modal's keyboard handler. The calendar closes, focus returns to its trigger, and the surrounding form remains open.
+- Frontend CI **PASS** — [run 44031469376](https://github.com/TheSumitNain/school-management-system/actions/runs/44031469376): TypeScript/Vite production build and all 12 Playwright tests passed, including the new DatePicker keyboard and focus assertions.
+- Backend CI **PASS** — [run 44031469470](https://github.com/TheSumitNain/school-management-system/actions/runs/44031469470): complete migration chain, Go tests including PostgreSQL integration, and `go vet ./...`.
+- Tested code checkpoint: `8b777ae1d9656d2c6a6d082ec5244326d4e371c1`. CI browser tests use mocked API responses; authenticated acceptance against the user's local API/database/browser remains outstanding.
+
 ### Student Management — field-help keyboard accessibility (2026-11-17)
 
 - Extended the Student Management browser acceptance journey to verify that contextual field help opens by click/tap, can be opened by keyboard activation, and closes with Escape.
