@@ -85,6 +85,7 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
     const closeOnEscape = (event: globalThis.KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
+        event.stopImmediatePropagation();
         shouldRestoreTriggerFocus.current = true;
         setOpen(false);
       }
