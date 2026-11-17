@@ -1323,3 +1323,10 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Frontend CI **PASS** — [run 44018618470](https://github.com/TheSumitNain/school-management-system/actions/runs/44018618470): TypeScript/Vite production build and Student Management Playwright browser acceptance.
 - Backend CI **PASS** — [run 44018618455](https://github.com/TheSumitNain/school-management-system/actions/runs/44018618455): full migrations, Go tests including PostgreSQL integration, and `go vet ./...`.
 - Tested code checkpoint: 90f314c6dce921be40c555103dc362c3a3416c83. Authenticated acceptance against the user's local API/database/browser remains outstanding. The separate school-timezone policy for future-date validation remains unresolved; this change addresses display only.
+
+## Student Management — Basic Details API/UI contract audit (2026-11-17)
+
+- Reviewed the Basic Details repository, handler and edit form together. The backend normalizes and enforces the documented Unicode-character limits (place of birth 120, nationality 80, religion 80, school registration number 50), restricts gender/social-category values, validates date of birth, and enforces school-scoped registration-number uniqueness.
+- The form validates text lengths before submission and maps the server's date-of-birth and duplicate-registration-number field errors directly beneath their respective controls. Failed profile reads disable the profile save flow rather than submitting against an unknown baseline; successful unchanged saves remain idempotent and do not create duplicate audit events.
+- Sensitive reads and writes retain the existing permission checks and privacy-safe audit metadata. No confirmed regression was found in this pass; no speculative code change was made.
+- This is a code-level contract review, not authenticated local API/database/browser acceptance. The outstanding school-local timezone policy for date-of-birth future-date validation remains unresolved.
