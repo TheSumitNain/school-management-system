@@ -3,6 +3,7 @@ import { ApiError } from "../../../lib/api";
 import { DatePicker } from "../../../shared/components/DatePicker";
 import { Modal } from "../../../shared/components/Modal";
 import { StudentFieldLabel } from "./StudentFieldLabel";
+import { notifyToast } from "../../../shared/notifications";
 import { Select } from "../../../shared/components/Select";
 import type { StudentProfile } from "../api";
 import { useSaveSchoolStudentBasicDetailsMutation, useSchoolStudentBasicDetailsQuery, useUpdateSchoolStudentMutation } from "../queries";
@@ -44,10 +45,18 @@ export function StudentBasicDetailsSection({ student, canUpdate, onStudentNameCh
   const updateStudent = useUpdateSchoolStudentMutation();
   const [fullName, setFullName] = useState(student.full_name);
   const [nameError, setNameError] = useState("");
-  const [nameFeedback, setNameFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
+  const [nameFeedback, setNameFeedbackState] = useState<{ kind: "success" | "error"; message: string } | null>(null);
+  const setNameFeedback = (next: typeof nameFeedback) => {
+    setNameFeedbackState(next);
+    if (next) notifyToast(next.kind, next.message);
+  };
   const [values, setValues] = useState<Values>(emptyValues);
   const [errors, setErrors] = useState<Partial<Record<keyof Values, string>>>({});
-  const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
+  const [feedback, setFeedbackState] = useState<{ kind: "success" | "error"; message: string } | null>(null);
+  const setFeedback = (next: typeof feedback) => {
+    setFeedbackState(next);
+    if (next) notifyToast(next.kind === "success" && next.message.startsWith("No changes to save") ? "info" : next.kind, next.message);
+  };
   const busy = save.isPending || updateStudent.isPending;
 
   useEffect(() => {
@@ -175,8 +184,6 @@ export function StudentBasicDetailsSection({ student, canUpdate, onStudentNameCh
     <Modal open title="Basic Details" description={student.full_name + " · Optional personal details can be completed later."} onClose={onClose} closeDisabled={busy}>
       {query.isLoading && <p className="student-address-note">Loading basic details…</p>}
       {query.isError && <div className="student-feedback error" role="alert"><p>{query.error.message}</p><button type="button" className="student-secondary" onClick={() => void query.refetch()} disabled={query.isFetching}>Retry loading details</button></div>}
-      {nameFeedback && <p className={nameFeedback.kind === "error" ? "student-feedback error" : "student-feedback success"} role={nameFeedback.kind === "error" ? "alert" : "status"}>{nameFeedback.message}</p>}
-      {feedback && <p className={feedback.kind === "error" ? "student-feedback error" : "student-feedback success"} role={feedback.kind === "error" ? "alert" : "status"}>{feedback.message}</p>}
       <form className="student-basic-details-form" onSubmit={submit} noValidate>
         <label><StudentFieldLabel label="Student name" required hint="Enter the student’s full name as it should appear in school records. Maximum 200 characters." />
           <input value={fullName} disabled={!canUpdate || busy} aria-invalid={Boolean(nameError)} aria-describedby={nameError ? "student-basic-name-error" : undefined}
