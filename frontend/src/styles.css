@@ -213,6 +213,7 @@ button:disabled {
 }
 .shell {
   min-height: 100vh;
+  background: var(--color-background);
 }
 .sidebar {
   width: 250px;
@@ -329,6 +330,9 @@ button:disabled {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  background: var(--color-background);
+  color: var(--color-text);
+  transition: background-color 160ms ease, color 160ms ease;
 }
 .topbar {
   height: 68px;
