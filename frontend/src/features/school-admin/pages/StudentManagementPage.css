@@ -613,3 +613,74 @@
     grid-column: 1 / -1;
   }
 }
+
+
+/* Directory filters follow the shared dashboard control sizing. */
+@media (min-width: 721px) {
+  .student-directory-toolbar {
+    grid-template-columns: minmax(240px, 340px) minmax(280px, 1fr);
+    grid-template-areas:
+      "search year"
+      "status refresh";
+    align-items: center;
+    gap: 8px 14px;
+    margin: 8px 0 10px;
+  }
+  .student-directory-toolbar > .student-search {
+    width: 100%;
+    max-width: 340px;
+    min-height: 38px;
+    padding-inline: 10px;
+    border-radius: 8px;
+    box-shadow: none;
+  }
+  .student-directory-toolbar > .student-search:focus-within {
+    border-color: var(--color-border);
+    outline: 0;
+    box-shadow: none;
+  }
+  .student-directory-toolbar > .student-search input,
+  .student-directory-toolbar > .student-search input:focus,
+  .student-directory-toolbar > .student-search input:focus-visible {
+    min-width: 0;
+    padding-block: 8px;
+    border: 0;
+    outline: 0;
+    box-shadow: none;
+  }
+  .student-directory-toolbar > .student-year-filter {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 5px;
+    min-width: 0;
+  }
+  .student-directory-toolbar > .student-year-filter .student-field-label {
+    display: inline-grid;
+    grid-template-columns: max-content max-content;
+    grid-template-areas: "name name" "status hint";
+    justify-content: start;
+    align-items: center;
+    column-gap: 5px;
+    row-gap: 2px;
+    white-space: nowrap;
+  }
+  .student-directory-toolbar > .student-year-filter .app-select {
+    width: 100%;
+    min-width: 0;
+  }
+  .student-directory-toolbar > .student-status-filter {
+    width: 180px;
+    max-width: 180px;
+    min-width: 180px;
+  }
+  .student-directory-toolbar > .student-directory-refresh {
+    justify-self: start;
+    min-width: 112px;
+  }
+}
+@media (min-width: 721px) and (max-width: 900px) {
+  .student-directory-toolbar {
+    grid-template-columns: minmax(210px, 1fr) minmax(240px, 1fr);
+  }
+  .student-directory-toolbar > .student-search { max-width: none; }
+}
