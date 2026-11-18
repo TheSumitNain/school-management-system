@@ -18,7 +18,7 @@ BEGIN
         SELECT 1 FROM student_guardians existing
          WHERE existing.school_id = NEW.school_id
            AND existing.student_id = NEW.student_id
-           AND existing.relationship_type = NEW.relationship_type
+           AND LOWER(BTRIM(existing.relationship_type)) = LOWER(BTRIM(NEW.relationship_type))
            AND existing.revoked_at IS NULL
            AND existing.id IS DISTINCT FROM NEW.id
     ) THEN
