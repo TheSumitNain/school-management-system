@@ -24,6 +24,8 @@ import {
   useSchoolStudentRelatedStudentsQuery,
 } from "../queries";
 
+const guardianRelationshipTypes = ["Father", "Mother", "Grandfather", "Grandmother", "Brother", "Sister", "Uncle", "Aunt"] as const;
+
 type Props = {
   student: StudentProfile;
   canManage: boolean;
@@ -87,6 +89,18 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
   const updateLink = useUpdateSchoolStudentGuardianMutation();
 
   const allLinks = linksQuery.data?.student_guardians ?? [];
+  const activeRelationshipTypes = new Set(allLinks.filter(link => !link.revoked_at).map(link => link.relationship_type.toLocaleLowerCase()));
+  const editRelationshipTypes = new Set(allLinks.filter(link => !link.revoked_at && link.id !== editingLinkID).map(link => link.relationship_type.toLocaleLowerCase()));
+  const linkRelationshipOptions = guardianRelationshipTypes.map(value => ({
+    value,
+    label: activeRelationshipTypes.has(value.toLocaleLowerCase()) ? value + " (already linked)" : value,
+    disabled: activeRelationshipTypes.has(value.toLocaleLowerCase()),
+  }));
+  const editRelationshipOptions = guardianRelationshipTypes.map(value => ({
+    value,
+    label: editRelationshipTypes.has(value.toLocaleLowerCase()) ? value + " (already linked)" : value,
+    disabled: editRelationshipTypes.has(value.toLocaleLowerCase()),
+  }));
   const visibleLinks = includeHistory ? allLinks : allLinks.filter(link => !link.revoked_at);
   // A revoked relationship is history, not a permanent ban on re-linking.
   // V12 keeps history rows while its partial unique index protects active pairs.
@@ -431,7 +445,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
                 {canManage && editingLinkID === link.id && !link.revoked_at && (
                   <form className="student-family-create-form" onSubmit={saveEditedRelationship} noValidate>
                     <h4>Edit relationship for this student</h4>
-                    <div className="student-family-relationship-field"><StudentFieldLabel label="Relationship to student" required hint="Choose one of the available family relationships." /><Select ariaLabel="Relationship to student" value={editRelationshipForm.relationship_type} disabled={busy} invalid={Boolean(editRelationshipFieldError)} describedBy={editRelationshipFieldError ? "edit-student-guardian-relationship-error" : undefined} onChange={value => { setEditRelationshipForm(current => ({ ...current, relationship_type: value })); setEditRelationshipFieldError(""); }} placeholder="Select relationship" options={[{value:"Father",label:"Father"},{value:"Mother",label:"Mother"},{value:"Grandfather",label:"Grandfather"},{value:"Grandmother",label:"Grandmother"},{value:"Brother",label:"Brother"},{value:"Sister",label:"Sister"},{value:"Uncle",label:"Uncle"},{value:"Aunt",label:"Aunt"}]}/>{editRelationshipFieldError && <small id="edit-student-guardian-relationship-error" className="app-field-error">{editRelationshipFieldError}</small>}</div>
+                    <div className="student-family-relationship-field"><StudentFieldLabel label="Relationship to student" required hint="Choose one of the available family relationships." /><Select ariaLabel="Relationship to student" value={editRelationshipForm.relationship_type} disabled={busy} invalid={Boolean(editRelationshipFieldError)} describedBy={editRelationshipFieldError ? "edit-student-guardian-relationship-error" : undefined} onChange={value => { setEditRelationshipForm(current => ({ ...current, relationship_type: value })); setEditRelationshipFieldError(""); }} placeholder="Select relationship" options={editRelationshipOptions}/>{editRelationshipFieldError && <small id="edit-student-guardian-relationship-error" className="app-field-error">{editRelationshipFieldError}</small>}</div>
                     <div className="student-family-checks" role="group" aria-label="Guardian contact roles">
                       <button type="button" className="student-family-check-option" role="checkbox" aria-checked={editRelationshipForm.is_primary_contact} disabled={busy} onClick={() => setEditRelationshipForm(current => ({ ...current, is_primary_contact: !current.is_primary_contact }))}>
                         <span className="student-family-check-mark" aria-hidden="true">{editRelationshipForm.is_primary_contact ? "✓" : ""}</span>
@@ -481,7 +495,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
               {guardianSelectError && <small id="student-guardian-select-error" className="app-field-error">{guardianSelectError}</small>}
               {guardiansQuery.isError && <div className="student-feedback error" role="alert"><p>{guardiansQuery.error.message}</p><button type="button" className="student-secondary" onClick={() => void guardiansQuery.refetch()} disabled={guardiansQuery.isFetching}>Retry loading guardian contacts</button></div>}
               {!guardiansQuery.isLoading && !guardiansQuery.isError && guardianOptions.length === 0 && <p className="student-address-note">No unlinked active guardian contacts match this search. You can create a new contact below.</p>}
-              <label><StudentFieldLabel label="Relationship to student" required hint="Choose one of the available family relationships." /><Select ariaLabel="Relationship to student" value={relationshipType} invalid={Boolean(relationshipError)} describedBy={relationshipError ? "student-guardian-relationship-error" : undefined} onChange={value => { setRelationshipType(value); setRelationshipError(""); }} placeholder="Select relationship" options={[{value:"Father",label:"Father"},{value:"Mother",label:"Mother"},{value:"Grandfather",label:"Grandfather"},{value:"Grandmother",label:"Grandmother"},{value:"Brother",label:"Brother"},{value:"Sister",label:"Sister"},{value:"Uncle",label:"Uncle"},{value:"Aunt",label:"Aunt"}]}/>{relationshipError && <small id="student-guardian-relationship-error" className="app-field-error">{relationshipError}</small>}</label>
+              <label><StudentFieldLabel label="Relationship to student" required hint="Choose one of the available family relationships." /><Select ariaLabel="Relationship to student" value={relationshipType} invalid={Boolean(relationshipError)} describedBy={relationshipError ? "student-guardian-relationship-error" : undefined} onChange={value => { setRelationshipType(value); setRelationshipError(""); }} placeholder="Select relationship" options={linkRelationshipOptions}/>{relationshipError && <small id="student-guardian-relationship-error" className="app-field-error">{relationshipError}</small>}</label>
               
               
               <div className="student-family-checks" role="group" aria-label="Guardian contact roles">
