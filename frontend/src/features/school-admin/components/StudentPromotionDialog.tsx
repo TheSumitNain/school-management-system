@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { DatePicker } from "../../../shared/components/DatePicker";
+import { schoolDateValue } from "../../../shared/date/schoolDate";
 import { ApiError } from "../../../lib/api";
 import { Modal } from "../../../shared/components/Modal";
 import { Select } from "../../../shared/components/Select";
@@ -17,8 +18,7 @@ type Props = {
 };
 
 function localDateValue() {
-  const now = new Date();
-  return [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-");
+  return schoolDateValue();
 }
 
 export function StudentPromotionDialog({ enrollment, academicYears, academicYearsError, onRetryAcademicYears, onClose, onPromoted }: Props) {
