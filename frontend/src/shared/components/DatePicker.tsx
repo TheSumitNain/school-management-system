@@ -1,5 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { schoolDateValue } from "../date/schoolDate";
 import "./DatePicker.css";
 
 type Props = {
@@ -24,6 +25,7 @@ const fromISO = (value: string) => {
   const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
   return toISO(date) === value ? date : null;
 };
+const todayAsDate = () => fromISO(schoolDateValue()) ?? new Date();
 const startOfMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1);
 const addMonths = (date: Date, amount: number) => new Date(date.getFullYear(), date.getMonth() + amount, 1);
 const withDayInMonth = (month: Date, day: number) =>
@@ -56,8 +58,8 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
   const gridId = useId();
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<CalendarView>("days");
-  const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(selected ?? new Date()));
-  const [activeDate, setActiveDate] = useState(() => toISO(clampToBounds(selected ?? new Date(), min, max)));
+  const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(selected ?? todayAsDate()));
+  const [activeDate, setActiveDate] = useState(() => toISO(clampToBounds(selected ?? todayAsDate(), min, max)));
   const year = visibleMonth.getFullYear();
   const monthLabel = visibleMonth.toLocaleDateString(undefined, { month: "long" });
   const yearRangeStart = Math.floor(year / 10) * 10;
@@ -65,7 +67,7 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
   const maxYear = max ? Number(max.slice(0, 4)) : 2100;
   const firstWeekday = (visibleMonth.getDay() + 6) % 7;
   const daysInMonth = new Date(year, visibleMonth.getMonth() + 1, 0).getDate();
-  const today = toISO(new Date());
+  const today = schoolDateValue();
   const weeks = useMemo(() => {
     const days = [
       ...Array.from({ length: firstWeekday }, () => null as number | null),
@@ -108,7 +110,7 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
   }, [open]);
 
   function openCalendar() {
-    const initial = clampToBounds(selected ?? new Date(), min, max);
+    const initial = clampToBounds(selected ?? todayAsDate(), min, max);
     setVisibleMonth(startOfMonth(initial));
     setActiveDate(toISO(initial));
     setView("days");
@@ -282,7 +284,7 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
 
           <div className="app-date-footer">
             <button type="button" onClick={() => { onChange(""); closeAndRestoreFocus(); }} disabled={!value}>Clear date</button>
-            <button type="button" onClick={() => { if (isWithinBounds(new Date(), min, max)) onChange(today); setVisibleMonth(startOfMonth(new Date())); setView("days"); closeAndRestoreFocus(); }} disabled={!isWithinBounds(new Date(), min, max)}>Today</button>
+            <button type="button" onClick={() => { const current = todayAsDate(); if (isWithinBounds(current, min, max)) onChange(today); setVisibleMonth(startOfMonth(current)); setView("days"); closeAndRestoreFocus(); }} disabled={!isWithinBounds(todayAsDate(), min, max)}>Today</button>
           </div>
         </div>
       )}
