@@ -38,6 +38,7 @@ func guardianError(c *gin.Context,err error,resource string){
 	case errors.Is(err,repository.ErrGuardianAccessDenied):c.JSON(http.StatusForbidden,gin.H{"status":"error","message":"Guardian operation is not authorized"})
 	case errors.Is(err,repository.ErrGuardianNotFound):c.JSON(http.StatusNotFound,gin.H{"status":"error","message":resource+" not found"})
 	case errors.Is(err,repository.ErrInvalidGuardianEmail):c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Enter a valid guardian email address","field_errors":gin.H{"email_address":"Enter a valid email address using one address only."}})
+	case errors.Is(err,repository.ErrGuardianRelationshipConflict):c.JSON(http.StatusConflict,gin.H{"status":"error","message":"This relationship type is already linked to this student"})
 	case errors.Is(err,repository.ErrGuardianConflict):c.JSON(http.StatusConflict,gin.H{"status":"error","message":resource+" conflicts with an existing record"})
 	case errors.Is(err,repository.ErrInvalidGuardianInput):c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid guardian data"})
 	default:c.JSON(http.StatusInternalServerError,gin.H{"status":"error","message":"Unable to process "+strings.ToLower(resource)+" request"})
