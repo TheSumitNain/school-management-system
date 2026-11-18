@@ -296,9 +296,8 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
     if (!canManage || linksQuery.isLoading || linksQuery.isError || guardiansQuery.isLoading || guardiansQuery.isError) return;
     if (!selectedGuardianID) setGuardianSelectError("Choose a guardian.");
     const resolvedRelationship = relationshipType.trim();
-    if (!resolvedRelationship) setRelationshipError("Choose or specify the relationship to this student.");
-    else if (Array.from(resolvedRelationship).length > 40) setRelationshipError("Relationship must be 40 characters or fewer.");
-    if (!selectedGuardianID || !resolvedRelationship || Array.from(resolvedRelationship).length > 40) return;
+    if (!resolvedRelationship) setRelationshipError("Choose a relationship to this student.");
+    if (!selectedGuardianID || !resolvedRelationship) return;
     try {
       await linkGuardian.mutateAsync({
         studentID: student.id,
@@ -334,7 +333,6 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
       is_primary_contact: link.is_primary_contact,
       is_emergency_contact: link.is_emergency_contact,
     });
-    setEditRelationshipCustom(["Father","Mother","Grandfather","Grandmother","Brother","Sister","Uncle","Aunt"].includes(link.relationship_type) ? "" : "");
     setEditRelationshipError("");
     setEditRelationshipFieldError("");
   }
@@ -347,10 +345,6 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
     const resolvedRelationship = editRelationshipForm.relationship_type.trim();
     if (!resolvedRelationship) {
       setEditRelationshipFieldError("Choose or specify the relationship to this student.");
-      return;
-    }
-    if (Array.from(resolvedRelationship).length > 40) {
-      setEditRelationshipFieldError("Relationship must be 40 characters or fewer.");
       return;
     }
     const originalLink = allLinks.find(link => link.id === editingLinkID);
