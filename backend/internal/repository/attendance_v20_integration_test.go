@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 )
@@ -22,6 +23,27 @@ func TestAttendanceV20SchemaPostgresIntegration(t *testing.T) {
 	if err != nil { t.Fatalf("inspect V20 attendance schema: %v", err) }
 	if !ready { t.Fatal("V20 attendance schema, unique index, or validation trigger is missing") }
 }
+
+
+func TestAttendanceUsesAsiaKolkataCalendarPostgresIntegration(t *testing.T) {
+	_, pool, _ := newPostgresIntegrationRepository(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var definition string
+	if err := pool.QueryRow(ctx, `
+		SELECT pg_get_functiondef('public.validate_v20_attendance_record()'::regprocedure)
+	`).Scan(&definition); err != nil {
+		t.Fatalf("load attendance validation function: %v", err)
+	}
+	if !strings.Contains(definition, "Asia/Kolkata") {
+		t.Fatal("attendance database trigger must validate future dates using the Asia/Kolkata school calendar")
+	}
+	if strings.Contains(definition, "NEW.attendance_date > CURRENT_DATE") {
+		t.Fatal("attendance database trigger must not use the PostgreSQL session CURRENT_DATE")
+	}
+}
+
 
 
 func TestAdminIdleTimeoutV21SchemaPostgresIntegration(t *testing.T) {
