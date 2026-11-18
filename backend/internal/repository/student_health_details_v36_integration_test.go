@@ -28,6 +28,18 @@ func TestStudentMedicalPhysicalDetailsV36PostgresIntegration(t *testing.T) {
 	if !ready {
 		t.Fatal("V36 medical and physical profile schema is missing")
 	}
+	var measuredOnConstraint string
+	if err := pool.QueryRow(ctx, `
+		SELECT pg_get_constraintdef(oid)
+		FROM pg_constraint
+		WHERE conrelid='student_physical_details'::regclass
+		  AND conname='student_physical_details_measured_on_not_future'
+	`).Scan(&measuredOnConstraint); err != nil {
+		t.Fatalf("read physical measurement date constraint: %v", err)
+	}
+	if !strings.Contains(measuredOnConstraint, "Asia/Kolkata") {
+		t.Fatalf("physical measurement date constraint must use the Asia/Kolkata calendar date, got %q", measuredOnConstraint)
+	}
 
 	tx, err := pool.Begin(ctx)
 	if err != nil {
@@ -199,11 +211,6 @@ func TestStudentMedicalPhysicalDetailsV36PostgresIntegration(t *testing.T) {
 		&height, nil, &futureMeasurementDate, nil, nil); !errors.Is(err, ErrInvalidStudentMeasurementDate) {
 		t.Fatalf("future measurement date error = %v, want invalid input", err)
 	}
-	futureMeasuredOn := today.AddDate(0, 0, 1)
-	if _, err := repo.SaveStudentPhysicalDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
-		&height, nil, &futureMeasuredOn, nil, nil); !errors.Is(err, ErrInvalidStudentMeasurementDate) {
-		t.Fatalf("future measurement date error = %v, want invalid input", err)
-	}
 
 	// Text limits are Unicode code-point limits, not UTF-8 byte or UTF-16 code-unit limits.
 	maxMedicalText := strings.Repeat("अ", 2000)
@@ -274,6 +281,10 @@ func TestStudentMedicalPhysicalDetailsV36PostgresIntegration(t *testing.T) {
 			t.Fatalf("%s: release savepoint: %v", label, err)
 		}
 	}
+	assertRejected("future physical measurement date database constraint",
+		`INSERT INTO student_physical_details(school_id,student_id,height_cm,measured_on,recorded_by_principal_id)
+			 VALUES($1,$2,132.5,(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date + 1,$3)`,
+		schoolID, secondStudentID, actorPrincipalID)
 	assertRejected("invalid blood group database constraint",
 		`INSERT INTO student_medical_details(school_id,student_id,blood_group)
 		 VALUES($1,$2,'INVALID')`, schoolID, secondStudentID)
