@@ -156,7 +156,7 @@ export function TimetableManagementPage({ permissions }: Props) {
       await saveTimetablePeriod({ academic_year_id: yearID, period_number: number, name: periodDraft.name.trim(), starts_at: periodDraft.starts_at, ends_at: periodDraft.ends_at, is_break: periodDraft.is_break });
       setDialog(null);
       notifyToast("success", "Timetable period saved.");
-      setFeedback({ kind: "success", message: "Timetable period saved." });
+      setFeedback(null);
       await loadSchedule(yearID);
     } catch (reason) {
       setFeedback({ kind: "error", message: errorText(reason) });
@@ -188,7 +188,7 @@ export function TimetableManagementPage({ permissions }: Props) {
       });
       setDialog(null);
       notifyToast("success", "Class added to the weekly timetable.");
-      setFeedback({ kind: "success", message: "Class added to the weekly timetable." });
+      setFeedback(null);
       await loadSchedule(yearID, sectionID);
     } catch (reason) {
       setFeedback({ kind: "error", message: errorText(reason) });
@@ -201,7 +201,7 @@ export function TimetableManagementPage({ permissions }: Props) {
     try {
       await deleteTimetableEntry(entry.id, yearID);
       notifyToast("success", "Timetable entry removed.");
-      setFeedback({ kind: "success", message: "Timetable entry removed." });
+      setFeedback(null);
       await loadSchedule(yearID, sectionID);
     } catch (reason) {
       setFeedback({ kind: "error", message: errorText(reason) });
