@@ -14,10 +14,12 @@ type Props = {
   placeholder?: string;
 };
 
+type CalendarView = "days" | "months" | "years";
+
 const pad = (value: number) => String(value).padStart(2, "0");
 const toISO = (date: Date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 const fromISO = (value: string) => {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  const match = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(value);
   if (!match) return null;
   const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
   return toISO(date) === value ? date : null;
@@ -41,6 +43,8 @@ const monthHasAvailableDate = (month: Date, min?: string, max?: string) => {
   const last = toISO(new Date(month.getFullYear(), month.getMonth() + 1, 0));
   return (!min || last >= min) && (!max || first <= max);
 };
+const yearHasAvailableDate = (year: number, min?: string, max?: string) =>
+  (!min || year >= Number(min.slice(0, 4))) && (!max || year <= Number(max.slice(0, 4)));
 
 export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = false, invalid = false, describedBy, placeholder = "Choose date" }: Props) {
   const selected = fromISO(value);
@@ -51,11 +55,16 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
   const shouldRestoreTriggerFocus = useRef(false);
   const gridId = useId();
   const [open, setOpen] = useState(false);
+  const [view, setView] = useState<CalendarView>("days");
   const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(selected ?? new Date()));
   const [activeDate, setActiveDate] = useState(() => toISO(clampToBounds(selected ?? new Date(), min, max)));
-  const monthLabel = visibleMonth.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  const year = visibleMonth.getFullYear();
+  const monthLabel = visibleMonth.toLocaleDateString(undefined, { month: "long" });
+  const yearRangeStart = Math.floor(year / 10) * 10;
+  const minYear = min ? Number(min.slice(0, 4)) : 1900;
+  const maxYear = max ? Number(max.slice(0, 4)) : 2100;
   const firstWeekday = (visibleMonth.getDay() + 6) % 7;
-  const daysInMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 0).getDate();
+  const daysInMonth = new Date(year, visibleMonth.getMonth() + 1, 0).getDate();
   const today = toISO(new Date());
   const weeks = useMemo(() => {
     const days = [
@@ -102,6 +111,7 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
     const initial = clampToBounds(selected ?? new Date(), min, max);
     setVisibleMonth(startOfMonth(initial));
     setActiveDate(toISO(initial));
+    setView("days");
     shouldFocusActiveDate.current = true;
     setOpen(true);
   }
@@ -114,6 +124,24 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
     setVisibleMonth(nextMonth);
     setActiveDate(toISO(nextDate));
     shouldFocusActiveDate.current = true;
+  }
+
+  function changeYear(nextYear: number) {
+    if (!yearHasAvailableDate(nextYear, min, max)) return;
+    const nextMonth = new Date(nextYear, visibleMonth.getMonth(), 1);
+    const nextDate = clampToBounds(withDayInMonth(nextMonth, fromISO(activeDate)?.getDate() ?? 1), min, max);
+    setVisibleMonth(startOfMonth(nextDate));
+    setActiveDate(toISO(nextDate));
+    setView("days");
+  }
+
+  function changeDecade(offset: number) {
+    const nextStart = yearRangeStart + offset * 10;
+    if (nextStart + 9 < minYear || nextStart > maxYear) return;
+    const firstAvailable = Math.max(nextStart, minYear);
+    const nextYear = Math.min(Math.max(year, firstAvailable), Math.min(nextStart + 9, maxYear));
+    changeYear(nextYear);
+    setView("years");
   }
 
   function closeAndRestoreFocus() {
@@ -142,8 +170,7 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
     }
     event.preventDefault();
     const bounded = clampToBounds(next, min, max);
-    const nextMonth = startOfMonth(bounded);
-    setVisibleMonth(nextMonth);
+    setVisibleMonth(startOfMonth(bounded));
     setActiveDate(toISO(bounded));
     shouldFocusActiveDate.current = true;
   }
@@ -168,44 +195,94 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
       {open && (
         <div className="app-date-popover" role="dialog" aria-label={`Choose ${ariaLabel.toLowerCase()}`}>
           <div className="app-date-header">
-            <button type="button" onClick={() => changeMonth(-1)} aria-label="Previous month" disabled={!monthHasAvailableDate(addMonths(visibleMonth, -1), min, max)}><ChevronLeft size={17}/></button>
-            <strong id={gridId} aria-live="polite">{monthLabel}</strong>
-            <button type="button" onClick={() => changeMonth(1)} aria-label="Next month" disabled={!monthHasAvailableDate(addMonths(visibleMonth, 1), min, max)}><ChevronRight size={17}/></button>
+            {view === "days" && (
+              <>
+                <button type="button" onClick={() => changeMonth(-1)} aria-label="Previous month" disabled={!monthHasAvailableDate(addMonths(visibleMonth, -1), min, max)}><ChevronLeft size={17}/></button>
+                <div className="app-date-heading">
+                  <button type="button" className="app-date-view-button" onClick={() => setView("months")} aria-label="Choose month">{monthLabel}</button>
+                  <button type="button" className="app-date-view-button" onClick={() => setView("years")} aria-label="Choose year">{year}</button>
+                </div>
+                <button type="button" onClick={() => changeMonth(1)} aria-label="Next month" disabled={!monthHasAvailableDate(addMonths(visibleMonth, 1), min, max)}><ChevronRight size={17}/></button>
+              </>
+            )}
+            {view === "months" && (
+              <>
+                <button type="button" onClick={() => changeYear(year - 1)} aria-label="Previous year" disabled={!yearHasAvailableDate(year - 1, min, max)}><ChevronLeft size={17}/></button>
+                <button type="button" className="app-date-view-button" onClick={() => setView("years")} aria-label="Choose year">{year}</button>
+                <button type="button" onClick={() => changeYear(year + 1)} aria-label="Next year" disabled={!yearHasAvailableDate(year + 1, min, max)}><ChevronRight size={17}/></button>
+              </>
+            )}
+            {view === "years" && (
+              <>
+                <button type="button" onClick={() => changeDecade(-1)} aria-label="Previous decade" disabled={yearRangeStart <= minYear}><ChevronLeft size={17}/></button>
+                <strong aria-live="polite">{Math.max(yearRangeStart, minYear)}–{Math.min(yearRangeStart + 9, maxYear)}</strong>
+                <button type="button" onClick={() => changeDecade(1)} aria-label="Next decade" disabled={yearRangeStart + 9 >= maxYear}><ChevronRight size={17}/></button>
+              </>
+            )}
           </div>
-          <div className="app-date-grid" role="grid" aria-labelledby={gridId}>
-            <div className="app-date-row app-date-weekdays" role="row">
-              {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(day => <span key={day} className="app-date-weekday" role="columnheader">{day}</span>)}
-            </div>
-            {weeks.map((week, weekIndex) => (
-              <div className="app-date-row" role="row" key={weekIndex}>
-                {week.map((day, dayIndex) => {
-                  if (day === null) return <span key={`empty-${weekIndex}-${dayIndex}`} className="app-date-empty" role="gridcell" aria-disabled="true" />;
-                  const date = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth(), day);
-                  const iso = toISO(date);
-                  const unavailable = !isWithinBounds(date, min, max);
-                  const isSelected = iso === value;
-                  return (
-                    <div key={iso} role="gridcell" aria-selected={isSelected} aria-disabled={unavailable || undefined}>
-                      <button
-                        ref={element => { if (element) dayRefs.current.set(iso, element); else dayRefs.current.delete(iso); }}
-                        type="button"
-                        tabIndex={iso === activeDate && !unavailable ? 0 : -1}
-                        aria-label={date.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
-                        aria-current={iso === today ? "date" : undefined}
-                        disabled={unavailable}
-                        className="app-date-day"
-                        onKeyDown={event => handleDayKeyDown(event, date)}
-                        onClick={() => chooseDay(date)}
-                      >{day}</button>
-                    </div>
-                  );
-                })}
+
+          {view === "days" && (
+            <div className="app-date-grid" role="grid" aria-labelledby={gridId}>
+              <div className="app-date-row app-date-weekdays" role="row">
+                {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(day => <span key={day} className="app-date-weekday" role="columnheader">{day}</span>)}
               </div>
-            ))}
-          </div>
+              {weeks.map((week, weekIndex) => (
+                <div className="app-date-row" role="row" key={weekIndex}>
+                  {week.map((day, dayIndex) => {
+                    if (day === null) return <span key={`empty-${weekIndex}-${dayIndex}`} className="app-date-empty" role="gridcell" aria-disabled="true" />;
+                    const date = new Date(year, visibleMonth.getMonth(), day);
+                    const iso = toISO(date);
+                    const unavailable = !isWithinBounds(date, min, max);
+                    const isSelected = iso === value;
+                    return (
+                      <div key={iso} role="gridcell" aria-selected={isSelected} aria-disabled={unavailable || undefined}>
+                        <button
+                          ref={element => { if (element) dayRefs.current.set(iso, element); else dayRefs.current.delete(iso); }}
+                          type="button"
+                          tabIndex={iso === activeDate && !unavailable ? 0 : -1}
+                          aria-label={date.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+                          aria-current={iso === today ? "date" : undefined}
+                          disabled={unavailable}
+                          className="app-date-day"
+                          onKeyDown={event => handleDayKeyDown(event, date)}
+                          onClick={() => chooseDay(date)}
+                        >{day}</button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {view === "months" && (
+            <div className="app-date-choice-grid app-date-month-grid" role="group" aria-label="Months">
+              {Array.from({ length: 12 }, (_, monthIndex) => {
+                const monthDate = new Date(year, monthIndex, 1);
+                const unavailable = !monthHasAvailableDate(monthDate, min, max);
+                return <button key={monthIndex} type="button" className="app-date-choice" disabled={unavailable} aria-pressed={monthIndex === visibleMonth.getMonth()} onClick={() => {
+                  const nextMonth = new Date(year, monthIndex, 1);
+                  const nextDate = clampToBounds(withDayInMonth(nextMonth, fromISO(activeDate)?.getDate() ?? 1), min, max);
+                  setVisibleMonth(startOfMonth(nextDate));
+                  setActiveDate(toISO(nextDate));
+                  setView("days");
+                }}>{monthDate.toLocaleDateString(undefined, { month: "short" })}</button>;
+              })}
+            </div>
+          )}
+
+          {view === "years" && (
+            <div className="app-date-choice-grid app-date-year-grid" role="group" aria-label="Years">
+              {Array.from({ length: 10 }, (_, index) => yearRangeStart + index).map(itemYear => {
+                const unavailable = itemYear < minYear || itemYear > maxYear || !yearHasAvailableDate(itemYear, min, max);
+                return <button key={itemYear} type="button" className="app-date-choice" disabled={unavailable} aria-pressed={itemYear === year} onClick={() => changeYear(itemYear)}>{itemYear}</button>;
+              })}
+            </div>
+          )}
+
           <div className="app-date-footer">
             <button type="button" onClick={() => { onChange(""); closeAndRestoreFocus(); }} disabled={!value}>Clear date</button>
-            <button type="button" onClick={() => { if (isWithinBounds(new Date(), min, max)) onChange(today); setVisibleMonth(startOfMonth(new Date())); closeAndRestoreFocus(); }} disabled={!isWithinBounds(new Date(), min, max)}>Today</button>
+            <button type="button" onClick={() => { if (isWithinBounds(new Date(), min, max)) onChange(today); setVisibleMonth(startOfMonth(new Date())); setView("days"); closeAndRestoreFocus(); }} disabled={!isWithinBounds(new Date(), min, max)}>Today</button>
           </div>
         </div>
       )}
