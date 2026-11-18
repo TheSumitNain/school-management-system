@@ -182,7 +182,7 @@ func (r *AcademicRepository) UpdateAttendance(ctx context.Context,actorID,school
 		WHERE a.id=$1 AND a.school_id=$2 FOR UPDATE OF a`,recordID,schoolID).Scan(&sectionID,&day)
 	if errors.Is(err,pgx.ErrNoRows){return nil,ErrAttendanceNotFound};if err!=nil{return nil,fmt.Errorf("load attendance for update: %w",err)}
 	var isPast bool
-	if err=tx.QueryRow(ctx,`SELECT $1::date < CURRENT_DATE`,day.Format("2006-01-02")).Scan(&isPast);err!=nil{return nil,fmt.Errorf("classify attendance date: %w",err)}
+	if err=tx.QueryRow(ctx,`SELECT $1::date < $2::date`,day.Format("2006-01-02"),schooltime.TodayDate()).Scan(&isPast);err!=nil{return nil,fmt.Errorf("classify attendance date: %w",err)}
 	permission:="attendance.update_same_day";if isPast{permission="attendance.correct_past"}
 	if err=attendancePermission(ctx,tx,actorID,schoolID,permission);err!=nil{return nil,err}
 	allowed,err:=attendanceSectionAllowed(ctx,tx,actorID,schoolID,sectionID);if err!=nil{return nil,err};if !allowed{return nil,ErrAttendanceAccessDenied}
