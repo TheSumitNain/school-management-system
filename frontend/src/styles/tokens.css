@@ -11,7 +11,9 @@
   --color-primary-hover: #1e3a8a;
   --color-secondary: #475569;
   --color-accent: #ccfbf1;
-  --color-background: #f8fafc;
+  --color-background: #f1f5f9;
+  --color-workspace: #f1f5f9;
+  --color-topbar-background: #ffffff;
   --color-surface: #ffffff;
   --color-surface-muted: #f1f5f9;
   --color-text: #172033;
@@ -54,6 +56,8 @@
   --color-secondary: #cbd5e1;
   --color-accent: #134e4a;
   --color-background: #0b1220;
+  --color-workspace: #0b1220;
+  --color-topbar-background: #111c2e;
   --color-surface: #111c2e;
   --color-surface-muted: #1b2a3f;
   --color-text: #e5edf7;
