@@ -1,4 +1,5 @@
 import { Clock3, Monitor, Moon, Sun } from "lucide-react";
+import { notifyToast } from "../../../shared/notifications";
 import { useThemeStore, type ThemePalette, type ThemePreference } from "../../theme/theme-store";
 
 const modes: { value: ThemePreference; label: string; description: string; icon: typeof Sun }[] = [
@@ -49,7 +50,7 @@ export function SettingsPage() {
         <p>Choose Light or Dark, follow your device setting, or let SchoolDesk switch automatically on a daily schedule. Your choice is saved automatically.</p>
         <div className="appearance-options">
           {modes.map(({ value, label, description, icon: Icon }) => (
-            <button key={value} type="button" className="appearance-option" aria-pressed={preference === value} onClick={() => setPreference(value)}>
+            <button key={value} type="button" className="appearance-option" aria-pressed={preference === value} onClick={() => { setPreference(value); notifyToast("success", "Appearance mode updated."); }}>
               <Icon size={18} />
               <strong>{label}</strong>
               <small>{description}</small>
@@ -60,11 +61,11 @@ export function SettingsPage() {
           <div className="theme-schedule" aria-label="Automatic theme schedule">
             <div className="theme-schedule-field">
               <label htmlFor="theme-dark-start">Turn Dark Mode on</label>
-              <input id="theme-dark-start" type="time" value={darkStart} onChange={(event) => setSchedule(event.target.value, lightStart)} />
+              <input id="theme-dark-start" type="time" value={darkStart} onChange={(event) => { setSchedule(event.target.value, lightStart); notifyToast("success", "Theme schedule updated."); }} />
             </div>
             <div className="theme-schedule-field">
               <label htmlFor="theme-light-start">Turn Light Mode on</label>
-              <input id="theme-light-start" type="time" value={lightStart} onChange={(event) => setSchedule(darkStart, event.target.value)} />
+              <input id="theme-light-start" type="time" value={lightStart} onChange={(event) => { setSchedule(darkStart, event.target.value); notifyToast("success", "Theme schedule updated."); }} />
             </div>
             <p className={scheduleValid ? "theme-schedule-help" : "theme-schedule-help theme-schedule-error"}>
               {scheduleValid
@@ -79,7 +80,7 @@ export function SettingsPage() {
         <p>Choose a coordinated color system for the workspace, header, navigation and interface accents.</p>
         <div className="palette-options">
           {palettes.map(({ value, label }) => (
-            <button key={value} type="button" className="palette-option" aria-pressed={palette === value} onClick={() => setPalette(value)}>
+            <button key={value} type="button" className="palette-option" aria-pressed={palette === value} onClick={() => { setPalette(value); notifyToast("success", "Brand palette updated."); }}>
               <span className={`palette-swatch palette-swatch-${value}`} aria-hidden="true" />
               {label}
             </button>
