@@ -980,3 +980,34 @@ td b {
 @media (max-width: 700px) {
   .content > .heading { margin-bottom: 12px; }
 }
+
+
+/* One vertical rhythm for page headers across all authenticated modules. */
+.content > .heading {
+  margin-top: 0;
+  margin-bottom: 16px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.content > .heading > div,
+.content > .heading > div:first-child {
+  min-width: 0;
+}
+.search input,
+.search input:focus,
+.search input:focus-visible,
+.student-search input,
+.student-search input:focus,
+.student-search input:focus-visible {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+.search:focus-within,
+.student-search:focus-within {
+  outline: none !important;
+  box-shadow: none !important;
+}
