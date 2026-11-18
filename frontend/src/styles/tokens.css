@@ -405,3 +405,91 @@
 :root[data-palette="mint"] { --palette-preview-8: #10b981; }
 :root[data-palette="royal"] { --palette-preview-9: #315b91; }
 :root[data-palette="pearl"] { --palette-preview-10: #8a6d3b; }
+
+
+/*
+ * Palette-aware application frame surfaces.
+ * Palette selection changes the page canvas and header as well as accents.
+ * Dark mode keeps the same palette hue with appropriately deep surfaces.
+ */
+:root[data-palette="midnight"] {
+  --color-workspace: #eff6ff;
+  --color-topbar-background: #dbeafe;
+}
+:root[data-palette="green"] {
+  --color-workspace: #f0fdf4;
+  --color-topbar-background: #dcfce7;
+}
+:root[data-palette="indigo"] {
+  --color-workspace: #eef2ff;
+  --color-topbar-background: #e0e7ff;
+}
+:root[data-palette="teal"] {
+  --color-workspace: #ecfeff;
+  --color-topbar-background: #cffafe;
+}
+:root[data-palette="rose"] {
+  --color-workspace: #fff1f2;
+  --color-topbar-background: #ffe4e6;
+}
+:root[data-palette="sky"] {
+  --color-workspace: #f0f9ff;
+  --color-topbar-background: #e0f2fe;
+}
+:root[data-palette="amber"] {
+  --color-workspace: #fffbeb;
+  --color-topbar-background: #fef3c7;
+}
+:root[data-palette="mint"] {
+  --color-workspace: #ecfdf5;
+  --color-topbar-background: #d1fae5;
+}
+:root[data-palette="royal"] {
+  --color-workspace: #eff6ff;
+  --color-topbar-background: #dbeafe;
+}
+:root[data-palette="pearl"] {
+  --color-workspace: #faf7ef;
+  --color-topbar-background: #f3ead8;
+}
+
+:root[data-theme="dark"][data-palette="midnight"] {
+  --color-workspace: #0b1729;
+  --color-topbar-background: #122541;
+}
+:root[data-theme="dark"][data-palette="green"] {
+  --color-workspace: #071b14;
+  --color-topbar-background: #0b2b20;
+}
+:root[data-theme="dark"][data-palette="indigo"] {
+  --color-workspace: #11112b;
+  --color-topbar-background: #1c1b45;
+}
+:root[data-theme="dark"][data-palette="teal"] {
+  --color-workspace: #071b22;
+  --color-topbar-background: #0b2b36;
+}
+:root[data-theme="dark"][data-palette="rose"] {
+  --color-workspace: #260d18;
+  --color-topbar-background: #3a1223;
+}
+:root[data-theme="dark"][data-palette="sky"] {
+  --color-workspace: #091b2a;
+  --color-topbar-background: #102b40;
+}
+:root[data-theme="dark"][data-palette="amber"] {
+  --color-workspace: #21180a;
+  --color-topbar-background: #35250e;
+}
+:root[data-theme="dark"][data-palette="mint"] {
+  --color-workspace: #071d16;
+  --color-topbar-background: #0c3023;
+}
+:root[data-theme="dark"][data-palette="royal"] {
+  --color-workspace: #0d1929;
+  --color-topbar-background: #172c47;
+}
+:root[data-theme="dark"][data-palette="pearl"] {
+  --color-workspace: #1d1911;
+  --color-topbar-background: #302719;
+}
