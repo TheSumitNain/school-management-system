@@ -252,24 +252,21 @@
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  gap:7px;
-  width:auto;
-  min-width:88px;
+  width:36px;
+  min-width:36px;
   min-height:36px;
-  padding:0 12px;
-  border:1px solid var(--color-brand);
+  padding:0;
+  border:1px solid var(--color-brand-border);
   border-radius:9px;
-  background:var(--color-brand);
-  color:var(--color-on-brand);
-  font-size:12px;
-  font-weight:750;
-  line-height:1;
+  background:var(--color-surface);
+  color:var(--color-brand);
   cursor:pointer;
-  transition:background-color .14s ease,border-color .14s ease,box-shadow .14s ease,transform .14s ease;
+  transition:background-color .14s ease,border-color .14s ease,color .14s ease,box-shadow .14s ease,transform .14s ease;
 }
 .student-row-actions .student-profile-open:hover{
-  border-color:var(--color-brand-hover,var(--color-brand));
-  background:var(--color-brand-hover,var(--color-brand));
+  border-color:var(--color-brand);
+  background:var(--color-brand-subtle);
+  color:var(--color-brand);
   box-shadow:var(--shadow-sm);
 }
 .student-row-actions .student-profile-open:active{transform:translateY(1px)}
@@ -360,7 +357,7 @@
 .student-family-card-actions{gap:8px}
 .student-family-card-actions .student-link-button{min-height:36px;padding:7px 4px}
 @media(max-width:600px){
-  .student-row-actions .student-profile-open{min-width:82px;min-height:38px}
+  .student-row-actions .student-profile-open{width:38px;min-width:38px;min-height:38px}
   .student-profile-actions button.secondary{width:100%;min-height:44px;justify-content:flex-start}
   .student-address-form .app-modal-actions,
   .student-basic-details-form .app-modal-actions{display:grid;grid-template-columns:1fr}
