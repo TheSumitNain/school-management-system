@@ -8,6 +8,7 @@ import {
 import type { StudentEnrollment, StudentProfile } from "../api";
 import { Select } from "../../../shared/components/Select";
 import { DatePicker } from "../../../shared/components/DatePicker";
+import { schoolDateValue } from "../../../shared/date/schoolDate";
 import { Modal } from "../../../shared/components/Modal";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { StudentFieldLabel } from "../components/StudentFieldLabel";
@@ -27,8 +28,7 @@ type Tab = "students" | "enrollments";
 const STUDENT_DIRECTORY_PAGE_SIZE = 20;
 
 function localDateValue() {
-  const now = new Date();
-  return [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-");
+  return schoolDateValue();
 }
 
 function dateLabel(value: string, calendarDate = false) {
