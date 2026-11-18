@@ -594,6 +594,7 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByRole("dialog", { name: "Basic Details" }).locator(".student-field-hint__tooltip")).toHaveCount(0);
   await expect.poll(() => observedStudentDetailGets).toContain("basic-details");
   await expect.poll(() => failedStudentReads).toContain("basic-details");
+  await expect(page.getByRole("button", { name: "Save student name" })).toHaveCount(0);
   const basicSave = page.getByRole("button", { name: "Save basic details" });
   await expect(page.getByRole("alert")).toBeVisible();
   await expect(basicSave).toBeDisabled();
