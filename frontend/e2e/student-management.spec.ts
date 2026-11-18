@@ -1351,8 +1351,7 @@ test("student directory remains view-only when update and archive permissions ar
   await page.getByRole("button", { name: "Students" }).click();
 
   await expect(page.getByText("View Only Student")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Manage profile for View Only Student" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Manage profile for View Only Student" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Manage profile for View Only Student" })).toHaveCount(1);
   await expect(page.getByRole("button", { name: "Archive View Only Student" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /New admission/ })).toHaveCount(0);
   await page.getByRole("button", { name: "Manage profile for View Only Student" }).click();
