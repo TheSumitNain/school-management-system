@@ -35,6 +35,8 @@ These requirements apply to every frontend page and shared component:
 - **Accessibility:** provide keyboard navigation, visible focus indicators, sufficient contrast in every theme, semantic controls and labels, and reduced-motion support. Do not communicate status by color alone.
 
 ### Application frame surfaces (mandatory)
+- Brand palette selection must also update the workspace canvas and top-header surface with coordinated palette-tinted colors in both light and dark modes; changing only the sidebar, buttons, or cards is incomplete. Preserve readable contrast between the canvas, header, and raised cards.
+
 
 - Treat the authenticated dashboard as three visibly themed regions: navigation sidebar, top header, and the full workspace canvas. Light/Dark/System must update all three immediately.
 - The top header uses the dedicated topbar surface token; the workspace canvas behind and around page content uses the workspace background token. Cards and form panels use raised surface tokens, retaining clear but restrained contrast against the canvas.
