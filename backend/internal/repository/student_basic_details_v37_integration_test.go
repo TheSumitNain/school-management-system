@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"school-management-system/internal/schooltime"
 )
 
 // TestStudentBasicDetailsV37PostgresIntegration verifies optional basic-profile
@@ -72,6 +74,14 @@ func TestStudentBasicDetailsV37PostgresIntegration(t *testing.T) {
 	}
 
 	registration := "SR-" + suffix
+	var birthDateConstraint string
+	if err := pool.QueryRow(ctx, `SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conrelid='student_basic_details'::regclass AND conname='student_basic_details_birth_date'`).Scan(&birthDateConstraint); err != nil {
+		t.Fatalf("read birth-date constraint: %v", err)
+	}
+	if !strings.Contains(birthDateConstraint, "Asia/Kolkata") {
+		t.Fatalf("birth-date constraint must use the Asia/Kolkata calendar date, got %q", birthDateConstraint)
+	}
+
 	var detailID int64
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO student_basic_details
@@ -194,12 +204,12 @@ func TestStudentBasicDetailsV37PostgresIntegration(t *testing.T) {
 		unicodeBasic.SchoolRegistrationNumber == nil || len([]rune(*unicodeBasic.SchoolRegistrationNumber)) != 50 {
 		t.Fatalf("basic-details fields must preserve exact Unicode limits: %+v", unicodeBasic)
 	}
-	futureBirthDate := time.Now().UTC().AddDate(0, 0, 1)
+	futureBirthDate := schooltime.Today().AddDate(0, 0, 1)
 	if _, saveErr := repository.SaveStudentBasicDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
 		&futureBirthDate, nil, nil, nil, nil, nil, nil, nil); !errors.Is(saveErr, ErrInvalidStudentDateOfBirth) {
 		t.Fatalf("future date of birth error = %v, want invalid input", saveErr)
 	}
-	tooOldBirthDate := time.Now().UTC().AddDate(-131, 0, 0)
+	tooOldBirthDate := schooltime.Today().AddDate(-131, 0, 0)
 	if _, saveErr := repository.SaveStudentBasicDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
 		&tooOldBirthDate, nil, nil, nil, nil, nil, nil, nil); !errors.Is(saveErr, ErrInvalidStudentDateOfBirth) {
 		t.Fatalf("date of birth older than 130 years error = %v, want invalid input", saveErr)
@@ -247,7 +257,7 @@ func TestStudentBasicDetailsV37PostgresIntegration(t *testing.T) {
 		 VALUES($1,$2,'unknown',$3,$3)`, schoolID, secondStudentID, actorPrincipalID)
 	assertRejected("future date of birth",
 		`INSERT INTO student_basic_details(school_id,student_id,date_of_birth,created_by_principal_id,updated_by_principal_id)
-		 VALUES($1,$2,CURRENT_DATE + 1,$3,$3)`, schoolID, secondStudentID, actorPrincipalID)
+		 VALUES($1,$2,(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date + 1,$3,$3)`, schoolID, secondStudentID, actorPrincipalID)
 	assertRejected("school registration number blank",
 		`UPDATE student_basic_details SET school_registration_number='   ' WHERE id=$1`, detailID)
 	assertRejected("basic details delete",
