@@ -1,4 +1,5 @@
 import { Fragment, useMemo, useState, type FormEvent } from "react";
+import { notifyToast } from "../../../shared/notifications";
 import { KeyRound, LockKeyhole, Pencil, Plus, Search, Shield, ShieldCheck, UserCheck, UserMinus } from "lucide-react";
 import { StaffRoleAssignments } from "../components/StaffRoleAssignments";
 import { StaffPermissionOverrides } from "../components/StaffPermissionOverrides";
@@ -87,15 +88,19 @@ export function StaffManagementPage({ permissions }: Props) {
     try {
       if (action === "create") {
         await create.mutateAsync({ username, initial_password: password, full_name: fullName, employee_code: employeeCode, designation, mobile_number: mobileNumber, email, joining_date: joiningDate || undefined });
+        notifyToast("success", "Changes saved successfully.");
         setFeedback({ kind: "success", message: "Employee profile and staff login created. The staff member must change the initial password after signing in." });
       } else if (action === "edit" && selected) {
         await update.mutateAsync({ principalID: selected.principal_id, username, full_name: fullName, employee_code: employeeCode, designation, mobile_number: mobileNumber, email, joining_date: joiningDate || undefined, employment_status: employmentStatus as "active" | "inactive" });
+        notifyToast("success", "Changes saved successfully.");
         setFeedback({ kind: "success", message: "Employee profile and login details updated." });
       } else if (action === "reset" && selected) {
         await reset.mutateAsync({ principalID: selected.principal_id, newPassword: password });
+        notifyToast("success", "Changes saved successfully.");
         setFeedback({ kind: "success", message: "Password reset. The staff member must change it at next sign-in." });
       } else if (action === "enable" && selected) {
         await enable.mutateAsync({ principalID: selected.principal_id, temporaryPassword: password });
+        notifyToast("success", "Changes saved successfully.");
         setFeedback({ kind: "success", message: "Staff account enabled. A password change is required at next sign-in." });
       }
       closeAction();
@@ -118,6 +123,7 @@ export function StaffManagementPage({ permissions }: Props) {
     try {
       await disable.mutateAsync(item.principal_id);
       setStaffToDisable(null);
+      notifyToast("success", "Changes saved successfully.");
       setFeedback({ kind: "success", message: `${item.username} has been disabled and active sessions revoked.` });
     } catch (error) {
       setDisableError(error instanceof Error ? error.message : "Unable to disable this account. Please try again.");
