@@ -6,8 +6,9 @@
 - Added shared backend `internal/schooltime` helpers with embedded timezone data and deterministic midnight-boundary tests; frontend date bounds, default dates and DatePicker Today use the same timezone.
 - Date-of-birth and physical-measurement future-date validation now use the school calendar date. Attendance mark and correction permission checks use it as well.
 - Added migration V49 to make the database attendance validation trigger and DOB/physical-measurement CHECK constraints use the `Asia/Kolkata` calendar date rather than PostgreSQL session `CURRENT_DATE`, plus PostgreSQL integration coverage for these rules.
-- Added frontend browser-timezone regression coverage using a negative-offset browser timezone.
-- Migration V49 still needs to be applied to local development/test databases, and the latest CI plus authenticated local API/PostgreSQL/browser acceptance must pass before this work is considered verified.
+- Added frontend browser-timezone regression coverage using a negative-offset browser timezone. Fixed the physical-measurement idempotency comparison to compare stored date-only calendar values without UTC conversion; its PostgreSQL retry test now passes under the IST policy.
+- Backend CI **PASS** — [run 44266629951](https://github.com/TheSumitNain/school-management-system/actions/runs/44266629951): V49 migration chain, Go/PostgreSQL integration suite, and `go vet ./...`. Frontend CI **PASS** — [run 44266398402](https://github.com/TheSumitNain/school-management-system/actions/runs/44266398402): production build and Student Management browser tests.
+- Migration V49 still needs to be applied to local development/test databases. Authenticated local API/PostgreSQL/browser acceptance remains outstanding.
 - Per-school IANA timezone configuration remains a future requirement before onboarding schools outside India.
 
 ## 2026-11-14 — School Admin guardian permissions (V39)
