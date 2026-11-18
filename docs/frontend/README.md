@@ -199,3 +199,15 @@ The optional curriculum subject-selection boundary test was first added in `7439
 
 
 The final optional subject-selection boundary test commit `2b7e6c38f34f1ba28ca38dd3f3e527392b77fd26` passed Frontend CI [run 43719842826](https://github.com/TheSumitNain/school-management-system/actions/runs/43719842826): Vite production build and all 11 Playwright tests passed, including minimum/maximum selection boundaries and the exact-one-subject validation message. The subsequent backend-only tenant-isolation and route-permission tests passed Backend CI [run 43722175627](https://github.com/TheSumitNain/school-management-system/actions/runs/43722175627) on commit `0dbc82e4b4962d6f7d4158674d56b719198a75e6`: complete migration chain, PostgreSQL integration suite and `go vet ./...`, including cross-school student/profile/enrollment/location boundaries. Frontend source was unchanged by those backend-only commits.
+
+
+## Dashboard-wide page and control styling
+
+- Use one compact page-heading pattern across authenticated dashboard pages. Do not repeat the eyebrow/category label or a second descriptive sentence directly under the page title when the navigation and page title already establish context.
+- Keep page titles aligned consistently and avoid decorative sub-header/divider rows that reduce the usable workspace. Preserve meaningful tabs, section boundaries, table headers, and accessibility landmarks.
+- Search controls across modules must share the same height, border, radius, typography, icon spacing, and focus behavior. Keep search widths content-appropriate instead of stretching them across unused space.
+- Search focus must not create a thick outline around both the input and its wrapper. Use a restrained, consistent focus treatment that remains clearly visible and keyboard accessible.
+- Filter controls must use compact, purpose-sized widths; do not let a short option such as “All statuses” expand to fill a full toolbar row.
+- Field labels with Required/Optional status and help icons use a consistent two-line arrangement: field name on the first line, status and help affordance together on the second line. Apply the same pattern in directory filters and forms.
+- When a page needs multiple toolbar rows, align related controls deliberately and preserve a predictable responsive order. Student Directory uses Search + Academic Year on row one and Status + Refresh on row two; keep Enrollments toolbar behavior independent.
+- Prefer shared global styles and reusable controls over page-specific visual overrides. Any module-specific layout should change only arrangement, not the shared control appearance.
