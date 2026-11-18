@@ -1,7 +1,16 @@
+## Student Management — system-wide school calendar timezone (2026-11-18)
+
+- Product decision confirmed: use `Asia/Kolkata` (Indian Standard Time) as the single school calendar timezone for the current India-focused release. Haryana, Delhi, Mumbai and Kolkata share this timezone.
+- Added a shared backend `schooltime` package. It embeds Go timezone data so Windows/Linux hosts do not depend on an installed OS timezone database, and includes a fixed IST fallback because India has no daylight-saving transitions.
+- Date of birth (including the 130-year lower bound), physical measurement future-date validation, and attendance past-date permission classification now use the same IST calendar date. Attendance no longer relies on PostgreSQL session/server `CURRENT_DATE`.
+- Added deterministic timezone-boundary tests for the instant immediately before and at Indian midnight, plus the helper's local-midnight behavior.
+- This is a system-wide default, not a per-school setting. If schools outside India are onboarded, add an explicit per-school IANA timezone configuration before relying on local date boundaries for those schools.
+- Local authenticated API/PostgreSQL/browser acceptance and CI for this checkpoint are pending; do not treat this source change as verified until those checks pass.
+
 #### Student Management — guardian, health, promotion and profile follow-up audit (2026-11-17)
 
 - Rechecked Parent Details create/edit/link/revoke validation, shared-guardian confirmation, relationship-specific primary/emergency flags, inactive/archived mutation gates, history visibility and related-student permission messaging. The form clears student-specific drafts when switching students; no confirmed defect found.
-- Rechecked Medical & Physical details loading/retry, field-level limits, decimal precision, measurement-date requirements, future-date rejection, unchanged-value no-op behavior and student-switch/background-refetch draft preservation. No confirmed defect found. School-local timezone policy remains unresolved; date-boundary behavior must not be changed by hardcoding a timezone.
+- Rechecked Medical & Physical details loading/retry, field-level limits, decimal precision, measurement-date requirements, future-date rejection, unchanged-value no-op behavior and student-switch/background-refetch draft preservation. No confirmed defect found. School calendar timezone is standardized to `Asia/Kolkata` (IST); DOB and physical-measurement future-date validation use this policy.
 - Rechecked promotion destination-year filtering, section ownership/loading/retry, admission-number and roll-number validation, promotion-date bounds, API field-error mapping and transaction-backed history preservation. No confirmed defect found.
 - Rechecked curriculum subject selection against enrollment identity, saved-choice synchronization, group minimum/maximum constraints, history display, and inactive-student/enrollment read-only behavior. No confirmed defect found.
 - Rechecked profile summary and year-wise academic history for permission gating, loading/error retry, current-year enrollment status, historical admission number/date, class/section snapshots and lifecycle dates.
@@ -60,7 +69,7 @@
 
 - Reviewed attendance repository and route authorization: list requires `attendance.read`; marking accepts `attendance.mark` or `attendance.correct_past` according to the attendance date; updates accept `attendance.update_same_day` or `attendance.correct_past`. Repository checks additionally restrict records to the caller's school and authorized School Admin / assigned Teacher section scope.
 - Attendance writes lock the student row before checking the enrollment and inserting a mark, and audit events are written in the same transaction. Updates lock the attendance row and audit the correction transactionally. Attendance status and remarks are validated server-side; remarks are limited to 500 Unicode characters.
-- Confirmed an outstanding shared timezone-policy dependency: attendance classifies past dates with PostgreSQL `CURRENT_DATE`; DOB and physical measurement future-date validation also depend on database date. Until the product defines the authoritative school-local timezone and its configuration, do not hardcode a timezone or silently change date-boundary behavior. This remains a product/runtime acceptance decision, not a speculative code fix.
+- Confirmed an outstanding shared timezone-policy dependency: attendance classifies past dates with PostgreSQL `CURRENT_DATE`; DOB and physical measurement future-date validation also depend on database date. The product has now adopted `Asia/Kolkata` as the current system-wide school calendar timezone. Attendance past-date authorization compares against that school-local date, not the database server's `CURRENT_DATE`. This remains a product/runtime acceptance decision, not a speculative code fix.
 - No new confirmed tenant-isolation or permission defect found in this pass. Authenticated local API/database/browser acceptance remains pending.
 
 ### Student Management — archived-profile and directory behavior audit (2026-11-17)
@@ -1392,7 +1401,7 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Backend CI **PASS** — [run 44027107816](https://github.com/TheSumitNain/school-management-system/actions/runs/44027107816): complete migration chain, Go tests including PostgreSQL integration, and `go vet ./...`.
 - Tested code checkpoint: `cb72cd96d5dc477225d1ad59c0fb80336eb50428`. These are CI/mocked-browser results; authenticated acceptance against the user's local API/database/browser remains outstanding.
 
-- This is a code-level contract review, not authenticated local API/database/browser acceptance. The outstanding school-local timezone policy for date-of-birth future-date validation remains unresolved.
+- This is a code-level contract review, not authenticated local API/database/browser acceptance. The school-wide `Asia/Kolkata` policy now governs date-of-birth future-date validation.
 
 ## Student Management — medical and physical read-retry coverage (2026-11-17)
 
