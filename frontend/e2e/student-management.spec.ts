@@ -2991,3 +2991,20 @@ test("enrollment directory pagination requests only the selected page", async ({
   await expect(page.getByText("Showing 1–1 of 1")).toBeVisible();
   await expect.poll(() => requestedPages.at(-1)).toEqual({ offset: 0, yearID: previousAcademicYear.id });
 });
+
+test("global notifications remain visible within a narrow mobile viewport", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto("/");
+  await page.evaluate(() => {
+    window.dispatchEvent(new CustomEvent("sms:toast", {
+      detail: { kind: "success", message: "Responsive notification check" },
+    }));
+  });
+  const notification = page.getByRole("status").filter({ hasText: "Responsive notification check" });
+  await expect(notification).toBeVisible();
+  const bounds = await notification.boundingBox();
+  expect(bounds).not.toBeNull();
+  expect(bounds!.x).toBeGreaterThanOrEqual(0);
+  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(375);
+  expect(bounds!.y).toBeLessThan(100);
+});
