@@ -38,16 +38,19 @@ export function Select({
     };
     const closeOnEscape = (event: globalThis.KeyboardEvent) => {
       if (event.key === "Escape") {
+        // Run before the shared Modal's document listener so Escape dismisses
+        // the popup without also dismissing the containing dialog.
         event.preventDefault();
+        event.stopPropagation();
         setOpen(false);
         rootRef.current?.querySelector<HTMLButtonElement>(".app-select-trigger")?.focus();
       }
     };
     document.addEventListener("pointerdown", closeOnOutsidePointer);
-    document.addEventListener("keydown", closeOnEscape);
+    document.addEventListener("keydown", closeOnEscape, true);
     return () => {
       document.removeEventListener("pointerdown", closeOnOutsidePointer);
-      document.removeEventListener("keydown", closeOnEscape);
+      document.removeEventListener("keydown", closeOnEscape, true);
     };
   }, [open]);
 
