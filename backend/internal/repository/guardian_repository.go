@@ -15,6 +15,23 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
+
+ // NormalizeGuardianRelationship accepts only the approved family relationship vocabulary.
+func NormalizeGuardianRelationship(value string) (string, error) {
+	value = strings.TrimSpace(value)
+	switch {
+	case strings.EqualFold(value, "Father"): return "Father", nil
+	case strings.EqualFold(value, "Mother"): return "Mother", nil
+	case strings.EqualFold(value, "Grandfather"): return "Grandfather", nil
+	case strings.EqualFold(value, "Grandmother"): return "Grandmother", nil
+	case strings.EqualFold(value, "Brother"): return "Brother", nil
+	case strings.EqualFold(value, "Sister"): return "Sister", nil
+	case strings.EqualFold(value, "Uncle"): return "Uncle", nil
+	case strings.EqualFold(value, "Aunt"): return "Aunt", nil
+	default: return "", ErrInvalidGuardianInput
+	}
+}
+
 var (
 	ErrGuardianAccessDenied = errors.New("guardian operation is not authorized")
 	ErrGuardianNotFound = errors.New("guardian record not found")
@@ -302,8 +319,8 @@ func (r *AcademicRepository) ListStudentRelatedStudents(ctx context.Context,acto
 
 func (r *AcademicRepository) LinkStudentGuardian(ctx context.Context,actorID,schoolID,studentID,guardianID int64,relationship string,primary,emergency bool)(*StudentGuardian,error){
 	if r==nil||r.db==nil{return nil,ErrGuardianAccessDenied}
-	relationship=strings.TrimSpace(relationship)
-	if studentID<=0||guardianID<=0||relationship==""||len([]rune(relationship))>40{return nil,ErrInvalidGuardianInput}
+	relationship, normalizeErr := NormalizeGuardianRelationship(relationship)
+	if normalizeErr != nil || studentID <= 0 || guardianID <= 0 { return nil, ErrInvalidGuardianInput }
 	tx,err:=r.db.Begin(ctx);if err!=nil{return nil,fmt.Errorf("begin student guardian link: %w",err)};defer func(){_=tx.Rollback(ctx)}()
 	if err=authorizeGuardian(ctx,tx,actorID,schoolID,"guardians.manage");err!=nil{return nil,err}
 	var active bool
@@ -370,10 +387,8 @@ func (r *AcademicRepository) UpdateStudentGuardianLink(ctx context.Context, acto
 	if r == nil || r.db == nil {
 		return nil, ErrGuardianAccessDenied
 	}
-	relationship = strings.TrimSpace(relationship)
-	if linkID <= 0 || relationship == "" || len([]rune(relationship)) > 40 {
-		return nil, ErrInvalidGuardianInput
-	}
+	relationship, normalizeErr := NormalizeGuardianRelationship(relationship)
+	if normalizeErr != nil || linkID <= 0 { return nil, ErrInvalidGuardianInput }
 
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
