@@ -52,13 +52,15 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
   const [editingGuardianID, setEditingGuardianID] = useState(0);
   const [editingLinkID, setEditingLinkID] = useState(0);
   const [editRelationshipForm, setEditRelationshipForm] = useState({ relationship_type: "", is_primary_contact: false, is_emergency_contact: false });
-  const [editRelationshipError, setEditRelationshipError] = useState("");
+  const [editRelationshipError, setEditRelationshipErrorState] = useState("");
+  const setEditRelationshipError = (message: string) => { setEditRelationshipErrorState(message); if (message) notifyToast("error", message); };
   const [editRelationshipFieldError, setEditRelationshipFieldError] = useState("");
   const [editGuardianForm, setEditGuardianForm] = useState({
     full_name: "", mobile_number: "", email_address: "", alternate_mobile_number: "",
     occupation: "", education: "", workplace_name: "", status: "active" as "active" | "inactive" | "archived",
   });
-  const [editGuardianError, setEditGuardianError] = useState("");
+  const [editGuardianError, setEditGuardianErrorState] = useState("");
+  const setEditGuardianError = (message: string) => { setEditGuardianErrorState(message); if (message) notifyToast("error", message); };
   const [editGuardianNameError, setEditGuardianNameError] = useState("");
   const [editGuardianEmailError, setEditGuardianEmailError] = useState("");
   const [confirmSharedGuardianSave, setConfirmSharedGuardianSave] = useState(false);
