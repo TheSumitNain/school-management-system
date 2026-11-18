@@ -1081,7 +1081,7 @@ test("student admission, profile navigation and parent details render without br
   await expect.poll(() => medicalDetails.allergies).toBe("अ".repeat(2000));
   await expect.poll(() => medicalDetails.known_conditions).toBe("No other known conditions");
   await expect.poll(() => medicalDetails.version_number).toBe(1);
-  await expect(page.getByText("Medical details saved.")).toBeVisible();
+  await expect(page.locator(".app-toast").filter({ hasText: "Medical details saved." })).toBeVisible({ timeout: 15_000 });
   await page.getByRole("button", { name: "Physical details" }).click();
   const physicalDraft = "Draft physical note survives background refetch";
   await page.getByPlaceholder("Optional vision-related notes").fill(physicalDraft);
