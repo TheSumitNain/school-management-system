@@ -924,3 +924,59 @@ td b {
 @media (prefers-reduced-motion: reduce) {
   .app-toast { animation: none; }
 }
+
+
+/* Dashboard-wide page heading and search control standards. */
+.content > .heading {
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.content > .heading .eyebrow,
+.content > .heading p {
+  display: none;
+}
+.content > .heading h1 {
+  margin: 0;
+  font-size: clamp(22px, 2vw, 26px);
+  line-height: 1.2;
+  letter-spacing: -.03em;
+}
+.search,
+.student-search {
+  box-sizing: border-box;
+  min-height: 38px;
+  border: 1px solid var(--color-border, var(--line));
+  border-radius: 8px;
+  background: var(--color-surface);
+  box-shadow: none;
+  color: var(--color-text-muted);
+}
+.search:focus-within,
+.student-search:focus-within {
+  border-color: var(--color-border, var(--line));
+  outline: 0;
+  box-shadow: none;
+}
+.search input,
+.student-search input {
+  min-width: 0;
+  min-height: 0;
+  border: 0;
+  outline: 0;
+  box-shadow: none;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+}
+.search input:focus,
+.search input:focus-visible,
+.student-search input:focus,
+.student-search input:focus-visible {
+  border: 0;
+  outline: 0;
+  box-shadow: none;
+}
+@media (max-width: 700px) {
+  .content > .heading { margin-bottom: 12px; }
+}
