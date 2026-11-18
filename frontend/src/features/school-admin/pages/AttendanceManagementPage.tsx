@@ -92,7 +92,7 @@ export function AttendanceManagementPage({ permissions }: Props) {
       }
       setDrafts(current => { const next = { ...current }; delete next[enrollmentID]; return next; });
       notifyToast("success", "Attendance saved successfully.");
-      setFeedback({ kind: "success", message: "Attendance saved successfully." });
+      setFeedback(null);
     } catch (error) {
       setFeedback({ kind: "error", message: errorMessage(error) });
     }
