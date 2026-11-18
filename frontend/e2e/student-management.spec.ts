@@ -640,6 +640,15 @@ test("student admission, profile navigation and parent details render without br
     return { yesterday: label(-1), tomorrow: label(1) };
   });
   const dobCalendar = page.getByRole("dialog", { name: "Choose date of birth" });
+  await dobCalendar.getByRole("button", { name: "Choose year" }).click();
+  await dobCalendar.getByRole("button", { name: "Previous decade" }).click();
+  await dobCalendar.getByRole("button", { name: "Previous decade" }).click();
+  await dobCalendar.getByRole("button", { name: "Previous decade" }).click();
+  await dobCalendar.getByRole("button", { name: "1999", exact: true }).click();
+  await expect(dobCalendar.getByRole("button", { name: "Choose year" })).toHaveText("1999");
+  await page.keyboard.press("Escape");
+  await expect(dobCalendar).toBeHidden();
+  await page.getByRole("button", { name: "Date of birth", exact: true }).click();
   const activeDOBDay = dobCalendar.locator('button[tabindex="0"]');
   const initialDOBDay = await activeDOBDay.getAttribute("aria-label");
   await expect(activeDOBDay).toBeFocused();
