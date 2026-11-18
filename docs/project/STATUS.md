@@ -7,6 +7,7 @@
 - This is a system-wide default, not a per-school setting. If schools outside India are onboarded, add an explicit per-school IANA timezone configuration before relying on local date boundaries for those schools.
 - Backend CI **PASS** — [run 44266629951](https://github.com/TheSumitNain/school-management-system/actions/runs/44266629951): migration chain including V49, all Go tests including PostgreSQL integration, and `go vet ./...`.
 - Frontend CI **PASS** — [run 44266398402](https://github.com/TheSumitNain/school-management-system/actions/runs/44266398402): TypeScript/Vite production build and all Student Management browser tests.
+- Verified backend checkpoint: `ad322818a129d40d0fc285ab7a119a742e80fac6`; frontend checkpoint: `8fe05148e0a0bd712274737813cb502b448be7d2`.
 - Migration V49 has not yet been applied to the user's local databases. Authenticated local API/PostgreSQL/browser acceptance remains outstanding; CI uses disposable databases and mocked browser APIs.
 
 #### Student Management — guardian, health, promotion and profile follow-up audit (2026-11-17)
