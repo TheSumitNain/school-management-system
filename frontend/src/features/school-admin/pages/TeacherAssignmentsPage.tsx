@@ -120,7 +120,7 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
         academic_year_id: Number(yearID), section_id: Number(sectionID),
         subject_id: Number(subjectID), teacher_principal_id: Number(teacherID),
       });
-      notifyToast("success", "Changes saved successfully.");
+      notifyToast("success", "Teacher assigned to the subject and section.");
       setFeedback({ kind: "success", message: "Teacher assigned to the subject and section." });
       setSubjectDialogOpen(false);
       setSubjectID(""); setTeacherID(""); setFieldErrors({});
@@ -144,7 +144,7 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
         academic_year_id: Number(inchargeYearID), section_id: Number(inchargeSectionID),
         teacher_principal_id: Number(inchargeTeacherID),
       });
-      notifyToast("success", "Changes saved successfully.");
+      notifyToast("success", "Class in-charge assigned successfully.");
       setFeedback({ kind: "success", message: "Class in-charge assigned successfully." });
       setInchargeDialogOpen(false);
       setInchargeTeacherID(""); setFieldErrors({});
@@ -162,7 +162,7 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
       await revokeTeacherSubjectAssignment(target.id);
       setSubjectToRevoke(null);
       setSubjectRevokeError("");
-      notifyToast("success", "Changes saved successfully.");
+      notifyToast("success", "Subject assignment revoked. Its history has been retained.");
       setFeedback({ kind: "success", message: "Subject assignment revoked. Its history has been retained." });
       await load();
     } catch (error) {
@@ -178,7 +178,7 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
       await revokeClassInchargeAssignment(target.id);
       setInchargeToRevoke(null);
       setInchargeRevokeError("");
-      notifyToast("success", "Changes saved successfully.");
+      notifyToast("success", "Class in-charge assignment revoked. Its history has been retained.");
       setFeedback({ kind: "success", message: "Class in-charge assignment revoked. Its history has been retained." });
       await load();
     } catch (error) {
