@@ -73,10 +73,8 @@ export function PlatformAdminPage({ permissions }: Props) {
       });
       formElement.reset();
       setAdminDialogOpen(false);
-      setFeedback({
-        kind: "success",
-        message: `Platform Admin ${result.admin.email} created. MFA enrollment is required at first sign-in.`,
-      });
+      notifyToast("success", `Platform Admin ${result.admin.email} created. MFA enrollment is required at first sign-in.`);
+      setFeedback(null);
     } catch (error) {
       setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to create Platform Admin." });
     }
@@ -105,10 +103,8 @@ export function PlatformAdminPage({ permissions }: Props) {
       });
       formElement.reset();
       setSchoolDialogOpen(false);
-      setFeedback({
-        kind: "success",
-        message: `School ${result.school.name} (${result.school.code}) created. School Admin username: ${result.school_admin.username}. They must change the initial password after sign-in.`,
-      });
+      notifyToast("success", `School ${result.school.name} (${result.school.code}) created. School Admin username: ${result.school_admin.username}. They must change the initial password after sign-in.`);
+      setFeedback(null);
     } catch (error) {
       setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to onboard school." });
     }
