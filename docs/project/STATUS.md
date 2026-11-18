@@ -2,7 +2,7 @@
 
 - Product decision confirmed: use `Asia/Kolkata` (Indian Standard Time) as the single school calendar timezone for the current India-focused release. Haryana, Delhi, Mumbai and Kolkata share this timezone.
 - Added a shared backend `schooltime` package. It embeds Go timezone data so Windows/Linux hosts do not depend on an installed OS timezone database, and includes a fixed IST fallback because India has no daylight-saving transitions.
-- Date of birth (including the 130-year lower bound), physical measurement future-date validation, and attendance past-date permission classification now use the same IST calendar date. Attendance no longer relies on PostgreSQL session/server `CURRENT_DATE`.
+- Date of birth (including the 130-year lower bound), physical measurement future-date validation, attendance past-date permission classification, frontend date bounds/defaults, and the DatePicker Today action now use the same IST calendar date. Attendance no longer relies on PostgreSQL session/server `CURRENT_DATE`.
 - Added deterministic timezone-boundary tests for the instant immediately before and at Indian midnight, plus the helper's local-midnight behavior.
 - This is a system-wide default, not a per-school setting. If schools outside India are onboarded, add an explicit per-school IANA timezone configuration before relying on local date boundaries for those schools.
 - Local authenticated API/PostgreSQL/browser acceptance and CI for this checkpoint are pending; do not treat this source change as verified until those checks pass.
