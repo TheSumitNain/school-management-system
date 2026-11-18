@@ -34,6 +34,12 @@ These requirements apply to every frontend page and shared component:
 - **Polished alignment and interaction:** maintain consistent grids, spacing, alignment, responsive behavior, transitions and interaction feedback. Avoid layout shifts, clipped content, overlapping elements, flicker and inconsistent page-to-page behavior.
 - **Accessibility:** provide keyboard navigation, visible focus indicators, sufficient contrast in every theme, semantic controls and labels, and reduced-motion support. Do not communicate status by color alone.
 
+### Application frame surfaces (mandatory)
+
+- Treat the authenticated dashboard as three visibly themed regions: navigation sidebar, top header, and the full workspace canvas. Light/Dark/System must update all three immediately.
+- The top header uses the dedicated topbar surface token; the workspace canvas behind and around page content uses the workspace background token. Cards and form panels use raised surface tokens, retaining clear but restrained contrast against the canvas.
+- Apply the frame backgrounds at the shared application-shell level, not as page-specific fixes. Verify that short pages, long pages, scrolling, and mobile layouts do not expose a stale light-colored strip or canvas.
+
 ### Full-workspace theme coverage (mandatory)
 
 - Light/Dark/System appearance applies to the entire authenticated workspace, not only the sidebar or navigation. The shell and main content column must use the semantic page-background and text tokens so the full area behind page content visibly changes with the selected appearance.
