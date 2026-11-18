@@ -1,8 +1,16 @@
 import { expect, test, type Page } from "@playwright/test";
+import { schoolDateValue, schoolDateValueYearsAgo } from "../src/shared/date/schoolDate";
 
 // SQL DATE values are serialized as midnight UTC timestamps. A negative-offset
 // browser timezone reproduces the previous-day display regression.
 test.use({ timezoneId: "America/Los_Angeles" });
+
+test("school calendar date helpers use Asia/Kolkata midnight", () => {
+  expect(schoolDateValue(new Date("2026-11-17T18:29:59.000Z"))).toBe("2026-11-17");
+  expect(schoolDateValue(new Date("2026-11-17T18:30:00.000Z"))).toBe("2026-11-18");
+  // 2024-02-29 in IST minus 130 years clamps to the last valid day of February.
+  expect(schoolDateValueYearsAgo(130, new Date("2024-02-28T18:30:00.000Z"))).toBe("1894-02-28");
+});
 
 async function invalidateProfileQueries(page: Page, family: "students" | "guardians") {
   await page.evaluate(async (queryFamily) => {
@@ -636,8 +644,13 @@ test("student admission, profile navigation and parent details render without br
   await expect.poll(() => students[0]?.full_name).toBe("Aarav Sharma Updated");
   await page.getByRole("button", { name: "Date of birth", exact: true }).click();
   const dobLabels = await page.evaluate(() => {
+    const parts = new Intl.DateTimeFormat("en", {
+      timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit",
+    }).formatToParts(new Date());
+    const part = (type: string) => Number(parts.find(item => item.type === type)?.value);
+    const today = new Date(part("year"), part("month") - 1, part("day"));
     const label = (offset: number) => {
-      const date = new Date();
+      const date = new Date(today);
       date.setDate(date.getDate() + offset);
       return date.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
     };
