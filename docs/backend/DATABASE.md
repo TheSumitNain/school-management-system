@@ -7,7 +7,7 @@ The initial deployment direction is one shared database and schema with strict s
 
 ## Calendar date policy
 
-The current product-wide school calendar timezone is `Asia/Kolkata` (IST). Date-only rules must derive the calendar day from the shared backend `internal/schooltime` package; do not rely on the PostgreSQL session timezone, database-server `CURRENT_DATE`, or the Go host's local timezone. Attendance past-date permission classification uses the same application-derived IST date. This is a deliberate current-release default, not yet a per-school configuration. Add persisted per-school IANA timezone configuration before onboarding schools outside India.
+The current product-wide school calendar timezone is `Asia/Kolkata` (IST). Date-only application rules must derive the calendar day from the shared backend `internal/schooltime` package; database constraints for date of birth, physical measurements and attendance use the explicit `Asia/Kolkata` calendar date rather than the PostgreSQL session timezone or database-server `CURRENT_DATE`. Do not rely on the Go host's local timezone. Attendance past-date permission classification uses the same application-derived IST date. This is a deliberate current-release default, not yet a per-school configuration. Add persisted per-school IANA timezone configuration before onboarding schools outside India.
 
 ## Migration safety rules
 
