@@ -547,7 +547,7 @@ test("student admission, profile navigation and parent details render without br
   });
   await expect.poll(() => createdAdmissions.length).toBe(1);
 
-  await expect(page.getByText("Student admitted and enrolled for the selected academic year.")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Notifications" }).getByText("Student admitted and enrolled for the selected academic year.")).toBeVisible();
   await expect(page.getByText("Aarav Sharma")).toBeVisible();
   expect(createdAdmissions).toHaveLength(1);
   expect(createdAdmissions[0]).toMatchObject({
