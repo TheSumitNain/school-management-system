@@ -26,8 +26,8 @@ func TestGuardianWriteErrorClassifiesActiveParentLinkAsConflict(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := guardianWriteError(&pgconn.PgError{Code: "P0001", Message: tt.message})
-			if !errors.Is(err, ErrGuardianConflict) {
-				t.Fatalf("guardianWriteError() = %v, want ErrGuardianConflict", err)
+			if !errors.Is(err, ErrGuardianRelationshipConflict) {
+				t.Fatalf("guardianWriteError() = %v, want ErrGuardianRelationshipConflict", err)
 			}
 		})
 	}
