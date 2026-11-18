@@ -355,6 +355,8 @@ button:disabled {
   display: flex;
   gap: 20px;
   align-items: center;
+  margin-left: auto;
+  flex: 0 0 auto;
 }
 .top-right span,
 .top-right button:not(.theme-mode-toggle) {
