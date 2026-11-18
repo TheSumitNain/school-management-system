@@ -1,6 +1,7 @@
 import { useEffect, type PropsWithChildren } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useThemeStore, resolveTheme } from "../features/theme/theme-store";
+import { ToastViewport } from "../shared/components/ToastViewport";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -37,7 +38,7 @@ function ThemeController({ children }: PropsWithChildren) {
     return () => media.removeEventListener("change", apply);
   }, [preference, palette]);
 
-  return children;
+  return <>{children}<ToastViewport /></>;
 }
 
 export function AppProviders({ children }: PropsWithChildren) {
