@@ -204,12 +204,14 @@ func TestStudentBasicDetailsV37PostgresIntegration(t *testing.T) {
 		unicodeBasic.SchoolRegistrationNumber == nil || len([]rune(*unicodeBasic.SchoolRegistrationNumber)) != 50 {
 		t.Fatalf("basic-details fields must preserve exact Unicode limits: %+v", unicodeBasic)
 	}
-	futureBirthDate := schooltime.Today().AddDate(0, 0, 1)
+	today, dateErr := time.Parse("2006-01-02", schooltime.TodayDate())
+	if dateErr != nil { t.Fatalf("parse IST school date: %v", dateErr) }
+	futureBirthDate := today.AddDate(0, 0, 1)
 	if _, saveErr := repository.SaveStudentBasicDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
 		&futureBirthDate, nil, nil, nil, nil, nil, nil, nil); !errors.Is(saveErr, ErrInvalidStudentDateOfBirth) {
 		t.Fatalf("future date of birth error = %v, want invalid input", saveErr)
 	}
-	tooOldBirthDate := schooltime.Today().AddDate(-131, 0, 0)
+	tooOldBirthDate := today.AddDate(-131, 0, 0)
 	if _, saveErr := repository.SaveStudentBasicDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
 		&tooOldBirthDate, nil, nil, nil, nil, nil, nil, nil); !errors.Is(saveErr, ErrInvalidStudentDateOfBirth) {
 		t.Fatalf("date of birth older than 130 years error = %v, want invalid input", saveErr)
