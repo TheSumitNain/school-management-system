@@ -788,8 +788,16 @@ test("student admission, profile navigation and parent details render without br
   await invalidateProfileQueries(page, "guardians");
   await expect.poll(() => guardianHistoryRequests.length).toBeGreaterThan(guardianReadsBeforeFocus);
   await expect(relationshipSelect).toContainText("Legal Guardian");
-  await relationshipForm.getByRole("checkbox", { name: /Primary contact/ }).uncheck();
-  await relationshipForm.getByRole("checkbox", { name: /Emergency contact/ }).uncheck();
+  const editPrimaryRole = relationshipForm.getByRole("checkbox", { name: /Primary contact/ });
+  const editEmergencyRole = relationshipForm.getByRole("checkbox", { name: /Emergency contact/ });
+  await editPrimaryRole.check();
+  await expect(editPrimaryRole).toBeChecked();
+  await editPrimaryRole.uncheck();
+  await expect(editPrimaryRole).not.toBeChecked();
+  await editEmergencyRole.check();
+  await expect(editEmergencyRole).toBeChecked();
+  await editEmergencyRole.uncheck();
+  await expect(editEmergencyRole).not.toBeChecked();
   await saveRelationship.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
     if (!form) throw new Error("Relationship submit button is not associated with its form.");
@@ -1919,8 +1927,12 @@ test("staff can create a guardian contact and link it to a student with relation
   await familyDialog.getByRole("option", { name: "Mother", exact: true }).click();
   await expect(page.getByText("First person the school should contact for routine communication.", { exact: false })).toBeVisible();
   await expect(page.getByText("Person the school may contact if the student is ill, injured, or there is an urgent situation.", { exact: false })).toBeVisible();
-  await page.getByRole("checkbox", { name: /Primary contact/ }).check();
-  await page.getByRole("checkbox", { name: /Emergency contact/ }).check();
+  const linkPrimaryRole = familyDialog.getByRole("checkbox", { name: /Primary contact/ });
+  const linkEmergencyRole = familyDialog.getByRole("checkbox", { name: /Emergency contact/ });
+  await linkPrimaryRole.check();
+  await expect(linkPrimaryRole).toBeChecked();
+  await linkEmergencyRole.check();
+  await expect(linkEmergencyRole).toBeChecked();
   failGuardianLinkConflict = true;
   await page.getByRole("button", { name: "Link guardian", exact: true }).click();
   await expect(page.getByText("This guardian is already linked to this student. Review the existing relationships before adding another link.", { exact: true })).toBeVisible();
