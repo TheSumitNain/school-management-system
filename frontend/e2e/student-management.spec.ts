@@ -738,6 +738,11 @@ test("student admission, profile navigation and parent details render without br
   const relationshipForm = page.locator(".student-family-create-form").filter({ has: page.getByRole("heading", { name: "Edit relationship for this student" }) });
   const relationshipSelect = relationshipForm.getByRole("button", { name: "Relationship to student" });
   await relationshipSelect.click();
+  await expect(relationshipForm.getByRole("listbox", { name: "Relationship to student" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog", { name: /Parents & Siblings/i })).toBeVisible();
+  await expect(relationshipSelect).toHaveAttribute("aria-expanded", "false");
+  await relationshipSelect.click();
   await relationshipForm.getByRole("option", { name: "Other", exact: true }).click();
   const relationshipInput = relationshipForm.getByPlaceholder("Specify relationship");
   // Simulate an over-limit value to exercise submit-time validation; the real maxlength still prevents normal over-typing.
