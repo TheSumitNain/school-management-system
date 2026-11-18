@@ -68,7 +68,7 @@ export function RoleManagementPage({ permissions }: Props) {
       setCreateDialogOpen(false);
       setNameError("");
       notifyToast("success", "Custom role created.");
-      setFeedback("Custom role created. Add only the permissions delegated to this school.");
+      setFeedback("");
       await queryClient.invalidateQueries({ queryKey: ["school-admin", "roles"] });
       setSelectedRoleID(result.role.id);
     },
@@ -81,7 +81,7 @@ export function RoleManagementPage({ permissions }: Props) {
       setGrantDialogOpen(false);
       setGrantFieldError("");
       notifyToast("success", "Permission granted.");
-      setFeedback("Permission granted. It is effective only while its exact delegation remains active.");
+      setFeedback("");
       await queryClient.invalidateQueries({ queryKey: ["school-admin", "role-permissions", selectedRoleID] });
     },
   });
@@ -90,7 +90,7 @@ export function RoleManagementPage({ permissions }: Props) {
     onSuccess: async () => {
       setPermissionToRevoke(null);
       notifyToast("success", "Permission grant removed.");
-      setFeedback("Permission grant removed.");
+      setFeedback("");
       await queryClient.invalidateQueries({ queryKey: ["school-admin", "role-permissions", selectedRoleID] });
     },
   });
