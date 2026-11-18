@@ -7,6 +7,7 @@ import {
 import type { AttendanceRecord } from "../api";
 import { Select } from "../../../shared/components/Select";
 import { DatePicker } from "../../../shared/components/DatePicker";
+import { schoolDateValue } from "../../../shared/date/schoolDate";
 import "./AttendanceManagementPage.css";
 
 type Props = { permissions: string[] };
@@ -18,8 +19,7 @@ const statuses = [
   { value: "excused", label: "Excused" },
 ];
 function localDateValue() {
-  const now = new Date();
-  return [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-");
+  return schoolDateValue();
 }
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Attendance could not be saved. Please try again.";
