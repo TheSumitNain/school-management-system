@@ -122,10 +122,6 @@ export function StudentBasicDetailsSection({ student, canUpdate, onStudentNameCh
       (current?.social_category ?? null) === input.social_category &&
       (current?.ews_status ?? null) === input.ews_status &&
       (current?.school_registration_number ?? null) === input.school_registration_number;
-    if (unchanged) {
-      setFeedback({ kind: "success", message: "No changes to save." });
-      return;
-    }
     const nameChanged = trimmedName !== student.full_name;
     if (nameChanged) {
       try {
