@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { notifyToast } from "../../../shared/notifications";
 import { CalendarDays, BookOpen, Layers3, FlaskConical, Pencil, Plus, RefreshCw, UsersRound } from "lucide-react";
 import { TeacherAssignmentsPage } from "./TeacherAssignmentsPage";
 import { ClassCurriculumSetupPanel } from "./ClassCurriculumSetupPanel";
@@ -123,6 +124,7 @@ export function AcademicStructurePage({permissions}:Props) {
     else body={name,subject_code:String(form.get("subject_code")??"").trim()||null,is_active:form.get("is_active")==="true"};
     if(Object.keys(errors).length){setFieldErrors(errors);return;}
     setFieldErrors({});setSaving(true);setFeedback(null);
+    notifyToast("success", "Changes saved successfully.");
     try{await api(path,{method,body:JSON.stringify(body)});setAction(null);setFeedback({kind:"success",message:"Academic information saved successfully."});await load();}
     catch(e){setFeedback({kind:"error",message:e instanceof Error?e.message:"Unable to save academic information."});}
     finally{setSaving(false);}
