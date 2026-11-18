@@ -1,3 +1,11 @@
+## Student Management — approved guardian relationship vocabulary (2026-11-18)
+
+- Standardized the guardian relationship selector to exactly eight options: Father, Mother, Grandfather, Grandmother, Brother, Sister, Uncle and Aunt.
+- Removed Step-father, Step-mother, Legal Guardian, Foster Parent and free-text Other from new links and relationship edits.
+- Enforced the same case-insensitive allowlist in the backend service and repository; accepted values are stored in canonical title case. Unsupported API values are rejected.
+- Existing guardian links and history are preserved; this change does not revoke, delete or rewrite existing records.
+- Added backend unit coverage for all eight accepted values and rejected legacy/free-text values. Updated Student Management browser coverage to assert the selector contains exactly eight options.
+
 ## Student Management — system-wide school calendar timezone (2026-11-18)
 
 - Product decision confirmed: use `Asia/Kolkata` (Indian Standard Time) as the single school calendar timezone for the current India-focused release. Haryana, Delhi, Mumbai and Kolkata share this timezone.
