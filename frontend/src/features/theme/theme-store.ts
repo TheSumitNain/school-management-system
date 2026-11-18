@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
 export type ThemePreference = "light" | "dark" | "system";
-export type ThemePalette = "midnight" | "green" | "indigo" | "teal" | "rose" | "sky" | "amber" | "mint" | "royal" | "pearl";
+export type ThemePalette = "cobalt" | "alpine" | "evergreen" | "lagoon" | "iris" | "amethyst" | "blush" | "terracotta" | "saffron" | "dune" | "glacier" | "obsidian" | "graphite" | "ruby" | "copper";
 
 type ThemeState = {
   preference: ThemePreference;
@@ -15,7 +15,7 @@ export const useThemeStore = create<ThemeState>()(
   persist(
     (set) => ({
       preference: "system",
-      palette: "midnight",
+      palette: "cobalt",
       setPreference: (preference) => set({ preference }),
       setPalette: (palette) => set({ palette }),
     }),
@@ -27,20 +27,11 @@ export const useThemeStore = create<ThemeState>()(
         preference: state.preference,
         palette: state.palette,
       }),
-      version: 3,
+      version: 4,
       migrate: (persistedState) => {
         const state = persistedState as { preference?: ThemePreference; palette?: string };
-        const validPalettes: ThemePalette[] = ["midnight", "green", "indigo", "teal", "rose", "sky", "amber", "mint", "royal", "pearl"];
-        const palette: ThemePalette = state.palette === "navy" || state.palette === "ruby"
-          ? "midnight"
-          : state.palette === "purple" || state.palette === "copper" || state.palette === "graphite"
-            ? "indigo"
-            : state.palette === "slate"
-              ? "mint"
-            : validPalettes.includes(state.palette as ThemePalette)
-              ? state.palette as ThemePalette
-              : "midnight";
-        return { ...state, palette };
+        const validPalettes: ThemePalette[] = ["cobalt", "alpine", "evergreen", "lagoon", "iris", "amethyst", "blush", "terracotta", "saffron", "dune", "glacier", "obsidian", "graphite", "ruby", "copper"];
+        return { ...state, palette: validPalettes.includes(state.palette as ThemePalette) ? state.palette as ThemePalette : "cobalt" };
       },
     },
   ),
