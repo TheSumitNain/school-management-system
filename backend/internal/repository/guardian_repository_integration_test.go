@@ -464,6 +464,9 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 	if _, err := repo.LinkStudentGuardian(ctx, targetPrincipalID, schoolID, studentID, thirdGuardianID, "Father", false, false); !errors.Is(err, ErrGuardianRelationshipConflict) {
 		t.Fatalf("second active Father relationship error = %v, want ErrGuardianRelationshipConflict", err)
 	}
+	if _, err := repo.UpdateStudentGuardianLink(ctx, targetPrincipalID, schoolID, firstLink.ID, "Mother", false, false); !errors.Is(err, ErrGuardianRelationshipConflict) {
+		t.Fatalf("editing Father link to an already-active Mother relationship error = %v, want ErrGuardianRelationshipConflict", err)
+	}
 	duplicateRelationshipSavepoint, err := tx.Begin(ctx)
 	if err != nil {
 		t.Fatalf("begin duplicate relationship constraint savepoint: %v", err)
