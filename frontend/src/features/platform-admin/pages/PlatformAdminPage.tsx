@@ -125,7 +125,7 @@ export function PlatformAdminPage({ permissions }: Props) {
         can_override_users: canOverrideUsers,
       });
       notifyToast("success", "Permission delegated to the selected school.");
-      setFeedback({ kind: "success", message: "Permission delegated to the selected school." });
+      setFeedback(null);
     } catch (error) {
       setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to delegate permission." });
     }
@@ -137,7 +137,7 @@ export function PlatformAdminPage({ permissions }: Props) {
     try {
       await revokeDelegation.mutateAsync({ delegationID, schoolID: selectedSchoolID });
       notifyToast("success", `${permissionKey} delegation revoked.`);
-      setFeedback({ kind: "success", message: `${permissionKey} delegation revoked.` });
+      setFeedback(null);
     } catch (error) {
       setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to revoke permission." });
     }
@@ -153,7 +153,7 @@ export function PlatformAdminPage({ permissions }: Props) {
       await deactivateAdmin.mutateAsync(target.principalID);
       setAdminToDeactivate(null);
       notifyToast("success", `${target.email} was deactivated and their active sessions were revoked.`);
-      setFeedback({ kind: "success", message: `${target.email} was deactivated and their active sessions were revoked.` });
+      setFeedback(null);
     } catch (error) {
       setDeactivateError(error instanceof Error ? error.message : "Unable to deactivate Platform Admin. Please try again.");
     }
