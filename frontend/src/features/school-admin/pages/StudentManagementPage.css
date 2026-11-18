@@ -416,3 +416,134 @@
   .student-row-actions .student-profile-open,
   .student-row-actions button.archive{transition:none}
 }
+
+
+/* Compact student directory workspace: prioritize visible student rows on desktop. */
+@media (min-width: 721px) {
+  .student-page .heading {
+    margin-bottom: 8px;
+    align-items: center;
+  }
+  .student-page .heading .eyebrow {
+    display: none;
+  }
+  .student-page .heading h1 {
+    margin: 0;
+    font-size: clamp(22px, 2vw, 27px);
+    line-height: 1.2;
+  }
+  .student-page .heading p {
+    display: none;
+  }
+  .student-tabs {
+    gap: 2px;
+    margin: 8px 0 10px;
+    padding: 3px;
+  }
+  .student-tabs button {
+    min-height: 34px;
+    padding: 7px 12px;
+    font-size: 11px;
+  }
+  .student-toolbar {
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) minmax(230px, 280px) minmax(145px, 165px) auto;
+    align-items: end;
+    gap: 8px;
+    margin: 8px 0 10px;
+  }
+  .student-toolbar .student-search {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    min-height: 38px;
+    padding-inline: 10px;
+  }
+  .student-toolbar .student-search input {
+    min-width: 0;
+    padding-block: 8px;
+  }
+  .student-toolbar > label.student-year-filter {
+    display: grid;
+    grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+    flex: initial;
+    font-size: 11px;
+  }
+  .student-toolbar > label.student-year-filter .student-field-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+    white-space: nowrap;
+  }
+  .student-toolbar > label.student-year-filter .student-field-label__status {
+    padding: 1px 5px;
+    font-size: 9px;
+  }
+  .student-toolbar > label.student-year-filter .student-field-hint__trigger {
+    width: 18px;
+    height: 18px;
+  }
+  .student-toolbar > label.student-year-filter .app-select {
+    min-width: 0;
+    width: 100%;
+  }
+  .student-toolbar .student-status-filter {
+    width: 100%;
+    min-width: 0;
+  }
+  .student-toolbar .app-select-trigger {
+    min-height: 38px;
+    padding: 7px 9px;
+    font-size: 11px;
+  }
+  .student-toolbar > .student-secondary {
+    min-height: 38px;
+    padding: 7px 10px;
+    white-space: nowrap;
+    justify-self: end;
+  }
+  .student-table th,
+  .student-table td {
+    padding-top: 9px;
+    padding-bottom: 9px;
+  }
+  .student-row-actions {
+    gap: 3px;
+  }
+  .student-row-actions .student-profile-open,
+  .student-row-actions button.archive {
+    flex-basis: 28px;
+    width: 28px;
+    min-width: 28px;
+    height: 28px;
+    min-height: 28px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    box-shadow: none;
+  }
+  .student-row-actions .student-profile-open:hover {
+    border: 0;
+    background: var(--color-brand-subtle);
+    box-shadow: none;
+  }
+  .student-row-actions button.archive:hover {
+    border: 0;
+    background: var(--color-danger-soft);
+    box-shadow: none;
+  }
+}
+@media (min-width: 721px) and (max-width: 1040px) {
+  .student-toolbar {
+    grid-template-columns: minmax(180px, 1fr) minmax(210px, 1fr) minmax(135px, 160px) auto;
+  }
+}
+@media (max-width: 720px) {
+  .student-page .heading p {
+    display: block;
+  }
+}
