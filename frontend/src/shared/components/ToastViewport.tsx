@@ -12,7 +12,9 @@ const iconByKind = {
 } satisfies Record<ToastKind, typeof CheckCircle2>;
 
 function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: number) => void }) {
-  const [paused, setPaused] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const paused = hovered || focused;
   const Icon = iconByKind[toast.kind];
 
   useEffect(() => {
@@ -28,11 +30,11 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: number)
       role={toast.kind === "error" ? "alert" : "status"}
       aria-live={toast.kind === "error" ? "assertive" : "polite"}
       aria-atomic="true"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-      onFocus={() => setPaused(true)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onFocus={() => setFocused(true)}
       onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setPaused(false);
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocused(false);
       }}
     >
       <Icon className="app-toast-icon" size={20} aria-hidden="true" />
