@@ -45,7 +45,7 @@ export function StudentBasicDetailsSection({ student, canUpdate, onStudentNameCh
   const [errors, setErrors] = useState<Partial<Record<keyof Values, string>>>({});
   const [feedback, setFeedbackState] = useState<{ kind: "success" | "error"; message: string } | null>(null);
   const setFeedback = (next: typeof feedback) => {
-    setFeedbackState(next);
+    setFeedbackState(next?.kind === "error" ? next : null);
     if (next) notifyToast(next.kind === "success" && next.message.startsWith("No changes to save") ? "info" : next.kind, next.message);
   };
   const busy = save.isPending || updateStudent.isPending;
