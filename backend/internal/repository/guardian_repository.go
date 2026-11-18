@@ -36,6 +36,7 @@ var (
 	ErrGuardianAccessDenied = errors.New("guardian operation is not authorized")
 	ErrGuardianNotFound = errors.New("guardian record not found")
 	ErrGuardianConflict = errors.New("guardian record conflicts with an existing relationship")
+	ErrGuardianRelationshipConflict = errors.New("student already has an active guardian for this relationship type")
 	ErrInvalidGuardianInput = errors.New("invalid guardian data")
 	ErrInvalidGuardianEmail = errors.New("invalid guardian email address")
 )
@@ -155,9 +156,8 @@ func guardianWriteError(err error) error {
 		case "23505": return ErrGuardianConflict
 		case "23503", "23514", "22001", "P0001":
 			message := strings.ToLower(pgErr.Message)
-			if strings.Contains(message, "active parent link") || strings.Contains(message, "active guardian relationship type") {
-				return ErrGuardianConflict
-			}
+			if strings.Contains(message, "active guardian relationship type") { return ErrGuardianRelationshipConflict }
+			if strings.Contains(message, "active parent link") { return ErrGuardianConflict }
 			if strings.Contains(message, "revocation") || strings.Contains(message, "same-school") {
 				return ErrGuardianAccessDenied
 			}
