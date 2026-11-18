@@ -2,6 +2,10 @@
 
 The backend is the currently implemented application surface. It uses Go, Gin, PostgreSQL and pgx/pgxpool.
 
+## School calendar timezone
+
+The current India-focused release uses `Asia/Kolkata` (IST) as the system-wide school calendar timezone. Date-only business rules such as date-of-birth and physical-measurement future-date validation, and attendance past-date authorization, must use the shared `internal/schooltime` package rather than the host timezone or PostgreSQL `CURRENT_DATE`. Do not add a per-school or user-local timezone assumption without an explicit product decision. Before onboarding schools outside India, introduce a persisted per-school IANA timezone and migrate these rules consistently.
+
 ## Reference documents
 
 - [API contract](API.md)
