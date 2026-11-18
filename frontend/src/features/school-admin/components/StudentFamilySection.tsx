@@ -95,7 +95,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
 
   const allLinks = linksQuery.data?.student_guardians ?? [];
   const activeRelationshipTypes = new Set(allLinks.filter(link => !link.revoked_at).map(link => canonicalGuardianRelationship(link.relationship_type).toLocaleLowerCase()));
-  const editRelationshipTypes = new Set(allLinks.filter(link => !link.revoked_at && link.id !== editingLinkID).map(link => link.relationship_type.toLocaleLowerCase()));
+  const editRelationshipTypes = new Set(allLinks.filter(link => !link.revoked_at && link.id !== editingLinkID).map(link => canonicalGuardianRelationship(link.relationship_type).toLocaleLowerCase()));
   const linkRelationshipOptions = guardianRelationshipTypes.map(value => ({
     value,
     label: activeRelationshipTypes.has(value.toLocaleLowerCase()) ? value + " (already linked)" : value,
