@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"school-management-system/internal/schooltime"
+
 	"github.com/jackc/pgx/v5"
 )
 
@@ -104,8 +106,8 @@ func (r *AcademicRepository) SaveStudentBasicDetails(
 		} else { socialCategory = &value }
 	}
 	if dateOfBirth != nil {
-		birthDate := dateOfBirth.UTC().Format("2006-01-02")
-		today := time.Now().UTC()
+		birthDate := dateOfBirth.Format("2006-01-02")
+		today := schooltime.Today()
 		if birthDate > today.Format("2006-01-02") || birthDate < today.AddDate(-130, 0, 0).Format("2006-01-02") {
 			return nil, ErrInvalidStudentDateOfBirth
 		}
