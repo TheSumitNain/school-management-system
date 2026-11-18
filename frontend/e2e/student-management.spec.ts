@@ -3007,4 +3007,17 @@ test("global notifications remain visible within a narrow mobile viewport", asyn
   expect(bounds!.x).toBeGreaterThanOrEqual(0);
   expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(375);
   expect(bounds!.y).toBeLessThan(100);
+
+  await page.evaluate(() => {
+    ["Queued notification two", "Queued notification three", "Queued notification four"].forEach(message => {
+      window.dispatchEvent(new CustomEvent("sms:toast", {
+        detail: { kind: "info", message },
+      }));
+    });
+  });
+  const viewport = page.locator(".app-toast-viewport");
+  await expect(viewport.locator(".app-toast")).toHaveCount(3);
+  await expect(viewport.getByText("Queued notification four")).toHaveCount(0);
+  await viewport.locator(".app-toast-dismiss").first().click();
+  await expect(viewport.getByText("Queued notification four")).toBeVisible();
 });
