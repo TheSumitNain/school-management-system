@@ -769,25 +769,15 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByRole("dialog", { name: /Parents & Siblings/i })).toBeVisible();
   await expect(relationshipSelect).toHaveAttribute("aria-expanded", "false");
   await relationshipSelect.click();
-  await relationshipForm.getByRole("option", { name: "Other", exact: true }).click();
-  const relationshipInput = relationshipForm.getByPlaceholder("Specify relationship");
-  // Simulate an over-limit value to exercise submit-time validation; the real maxlength still prevents normal over-typing.
-  await relationshipInput.evaluate(input => input.removeAttribute("maxlength"));
-  await relationshipInput.fill("अ".repeat(41));
+  const editRelationshipOptions = relationshipForm.getByRole("listbox", { name: "Relationship to student" }).getByRole("option");
+  await expect(editRelationshipOptions).toHaveCount(8);
+  await expect(relationshipForm.getByRole("option", { name: "Other", exact: true })).toHaveCount(0);
+  await relationshipForm.getByRole("option", { name: "Grandfather", exact: true }).click();
   const saveRelationship = relationshipForm.getByRole("button", { name: "Save relationship" });
-  await saveRelationship.evaluate(button => {
-    const form = (button as HTMLButtonElement).form;
-    if (!form) throw new Error("Relationship submit button is not associated with its form.");
-    form.requestSubmit(button as HTMLButtonElement);
-  });
-  await expect(relationshipForm.getByText("Relationship must be 40 characters or fewer.", { exact: true })).toBeVisible();
-  expect(guardianLinkUpdateRequests).toHaveLength(0);
-  await relationshipSelect.click();
-  await relationshipForm.getByRole("option", { name: "Legal Guardian", exact: true }).click();
   const guardianReadsBeforeFocus = guardianHistoryRequests.length;
   await invalidateProfileQueries(page, "guardians");
   await expect.poll(() => guardianHistoryRequests.length).toBeGreaterThan(guardianReadsBeforeFocus);
-  await expect(relationshipSelect).toContainText("Legal Guardian");
+  await expect(relationshipSelect).toContainText("Grandfather");
   const editPrimaryRole = relationshipForm.getByRole("checkbox", { name: /Primary contact/ });
   const editEmergencyRole = relationshipForm.getByRole("checkbox", { name: /Emergency contact/ });
   await editPrimaryRole.check();
@@ -803,10 +793,10 @@ test("student admission, profile navigation and parent details render without br
     if (!form) throw new Error("Relationship submit button is not associated with its form.");
     form.requestSubmit(button as HTMLButtonElement);
   });
-  await expect.poll(() => guardianLink.relationship_type).toBe("Legal Guardian");
+  await expect.poll(() => guardianLink.relationship_type).toBe("Grandfather");
   expect(guardianLinkUpdateRequests).toHaveLength(1);
   expect(guardianLinkUpdateRequests[0]).toMatchObject({
-    relationship_type: "Legal Guardian", is_primary_contact: false, is_emergency_contact: false,
+    relationship_type: "Grandfather", is_primary_contact: false, is_emergency_contact: false,
   });
   await expect(page.locator(".student-family-card > div > span").filter({ hasText: /^Legal Guardian$/ })).toBeVisible();
   await page.getByRole("button", { name: "Edit shared guardian details" }).click();
@@ -892,7 +882,7 @@ test("student admission, profile navigation and parent details render without br
   expect(guardianLink).toMatchObject({
     alternate_mobile_number: "9999987654", occupation: "Engineer",
     education: "Postgraduate", workplace_name: "City Hospital",
-    relationship_type: "Legal Guardian", is_primary_contact: false, is_emergency_contact: false,
+    relationship_type: "Grandfather", is_primary_contact: false, is_emergency_contact: false,
   });
   await expect(page.getByText("Guardian profile updated. Changes apply to every student linked to this guardian.")).toBeVisible();
 
@@ -923,7 +913,7 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByRole("dialog", { name: /Parents & Siblings/i })).toBeVisible();
   await page.getByLabel("Show revoked history").check();
   await expect(page.getByText("Ramesh Sharma")).toBeVisible();
-  await expect(page.getByRole("article").getByText("Legal Guardian", { exact: true })).toBeVisible();
+  await expect(page.getByRole("article").getByText("Grandfather", { exact: true })).toBeVisible();
   await expect(page.getByText("Ramesh Sharma Updated")).toBeVisible();
   await expect(page.getByText(/9999912345/)).toBeVisible();
   await expect(page.getByText(/9999987654/)).toBeVisible();
@@ -1918,12 +1908,9 @@ test("staff can create a guardian contact and link it to a student with relation
 
   const linkRelationshipSelect = familyDialog.locator("form.student-family-link-form").getByRole("button", { name: "Relationship to student", exact: true });
   await linkRelationshipSelect.click();
-  await familyDialog.getByRole("option", { name: "Other", exact: true }).click();
-  await familyDialog.getByPlaceholder("Enter relationship").fill("अ".repeat(41));
-  await page.getByRole("button", { name: "Link guardian", exact: true }).click();
-  await expect(page.getByText("Relationship must be 40 characters or fewer.", { exact: true })).toBeVisible();
-  expect(guardianLinks).toHaveLength(0);
-  await linkRelationshipSelect.click();
+  const linkRelationshipOptions = familyDialog.getByRole("listbox", { name: "Relationship to student" }).getByRole("option");
+  await expect(linkRelationshipOptions).toHaveCount(8);
+  await expect(familyDialog.getByRole("option", { name: "Other", exact: true })).toHaveCount(0);
   await familyDialog.getByRole("option", { name: "Mother", exact: true }).click();
   await expect(page.getByText("First person the school should contact for routine communication.", { exact: false })).toBeVisible();
   await expect(page.getByText("Person the school may contact if the student is ill, injured, or there is an urgent situation.", { exact: false })).toBeVisible();
@@ -2006,10 +1993,10 @@ test("staff can create a guardian contact and link it to a student with relation
   await page.getByRole("button", { name: "Edit relationship" }).click();
   const editRelationshipForm = page.locator("form.student-family-create-form").filter({ hasText: "Edit relationship for this student" });
   await editRelationshipForm.getByRole("button", { name: "Relationship to student", exact: true }).click();
-  await editRelationshipForm.getByRole("option", { name: "Legal Guardian", exact: true }).click();
+  await editRelationshipForm.getByRole("option", { name: "Grandfather", exact: true }).click();
   await page.getByRole("checkbox", { name: /Primary contact/ }).first().uncheck();
   await page.getByRole("button", { name: "Save relationship" }).click();
-  await expect(page.getByText("Legal Guardian · Emergency contact")).toBeVisible();
+  await expect(page.getByText("Aunt · Emergency contact")).toBeVisible();
 
   await page.getByRole("button", { name: "Close dialog" }).click();
   await page.getByRole("button", { name: /Parents & siblings/i }).click();
