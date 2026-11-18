@@ -470,7 +470,7 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 	}
 	_, duplicateRelationshipErr := duplicateRelationshipSavepoint.Exec(ctx, `
 		INSERT INTO student_guardians (school_id, student_id, guardian_id, relationship_type)
-		VALUES ($1, $2, $3, 'Father')
+		VALUES ($1, $2, $3, 'father')
 	`, schoolID, studentID, thirdGuardianID)
 	if duplicateRelationshipErr == nil || !strings.Contains(duplicateRelationshipErr.Error(), "active guardian relationship type already exists") {
 		_ = duplicateRelationshipSavepoint.Rollback(ctx)
@@ -478,6 +478,21 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 	}
 	if err := duplicateRelationshipSavepoint.Rollback(ctx); err != nil {
 		t.Fatalf("rollback duplicate relationship constraint savepoint: %v", err)
+	}
+	invalidRelationshipSavepoint, err := tx.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin invalid relationship constraint savepoint: %v", err)
+	}
+	_, invalidRelationshipErr := invalidRelationshipSavepoint.Exec(ctx, `
+		INSERT INTO student_guardians (school_id, student_id, guardian_id, relationship_type)
+		VALUES ($1, $2, $3, 'Step-father')
+	`, schoolID, studentID, thirdGuardianID)
+	if invalidRelationshipErr == nil || !strings.Contains(invalidRelationshipErr.Error(), "guardian relationship type is not allowed") {
+		_ = invalidRelationshipSavepoint.Rollback(ctx)
+		t.Fatalf("unsupported guardian relationship error = %v, want database allowlist rejection", invalidRelationshipErr)
+	}
+	if err := invalidRelationshipSavepoint.Rollback(ctx); err != nil {
+		t.Fatalf("rollback invalid relationship constraint savepoint: %v", err)
 	}
 
 	editedLink, err := repo.UpdateStudentGuardianLink(ctx, targetPrincipalID, schoolID,
