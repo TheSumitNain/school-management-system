@@ -8,7 +8,10 @@
 .app-date-popover{position:absolute;z-index:60;top:calc(100% + 5px);left:0;width:min(296px,calc(100vw - 32px));padding:12px;border:1px solid var(--color-border);border-radius:var(--radius-lg,12px);background:var(--color-surface);color:var(--color-text);box-shadow:var(--shadow-md)}
 .app-date-header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
 .app-date-header strong{font-size:13px;font-weight:700}
+.app-date-heading{display:flex;align-items:center;justify-content:center;gap:4px;flex:1}
 .app-date-header button,.app-date-footer button{display:inline-flex;align-items:center;justify-content:center;min-width:32px;min-height:30px;padding:5px 8px;border:1px solid var(--color-border);border-radius:7px;background:var(--color-surface-muted);color:var(--color-text);font:inherit;cursor:pointer}
+.app-date-header .app-date-view-button{min-width:0;border-color:transparent;background:transparent;font-size:13px;font-weight:700}
+.app-date-header .app-date-view-button:hover{border-color:var(--color-border);background:var(--color-surface-muted)}
 .app-date-header button:disabled,.app-date-footer button:disabled{opacity:.4;cursor:not-allowed}
 .app-date-grid{display:flex;flex-direction:column;gap:3px}
 .app-date-row{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
@@ -19,6 +22,11 @@
 .app-date-day[aria-current="date"]:not(:disabled){border-color:var(--color-focus);color:var(--color-primary);font-weight:700}
 .app-date-day:disabled{opacity:.28;cursor:not-allowed}
 .app-date-row [aria-selected="true"]>.app-date-day{border-color:var(--color-action);background:var(--color-action);color:var(--color-on-brand);font-weight:700}
+.app-date-choice-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.app-date-choice{min-height:39px;padding:6px 4px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-surface);color:var(--color-text);font:inherit;font-size:12px;font-weight:600;cursor:pointer}
+.app-date-choice:hover:not(:disabled){border-color:var(--color-focus);background:var(--color-surface-muted)}
+.app-date-choice[aria-pressed="true"]{border-color:var(--color-action);background:var(--color-action);color:var(--color-on-brand)}
+.app-date-choice:disabled{opacity:.35;cursor:not-allowed}
 .app-date-footer{display:flex;justify-content:space-between;gap:8px;margin-top:10px;padding-top:9px;border-top:1px solid var(--color-border)}
 .app-date-footer button{font-size:11px}
 @media(prefers-reduced-motion:reduce){.app-date-trigger{transition:none}}
