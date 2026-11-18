@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { notifyToast } from "../../../shared/notifications";
 import { Building2, Eye, EyeOff, KeyRound, ShieldCheck, UserPlus, Users } from "lucide-react";
 import {
   useCreatePlatformAdminMutation,
@@ -127,6 +128,7 @@ export function PlatformAdminPage({ permissions }: Props) {
         can_assign_to_roles: canAssignToRoles,
         can_override_users: canOverrideUsers,
       });
+      notifyToast("success", "Changes saved successfully.");
       setFeedback({ kind: "success", message: "Permission delegated to the selected school." });
     } catch (error) {
       setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to delegate permission." });
@@ -138,6 +140,7 @@ export function PlatformAdminPage({ permissions }: Props) {
     setFeedback(null);
     try {
       await revokeDelegation.mutateAsync({ delegationID, schoolID: selectedSchoolID });
+      notifyToast("success", "Changes saved successfully.");
       setFeedback({ kind: "success", message: `${permissionKey} delegation revoked.` });
     } catch (error) {
       setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to revoke permission." });
@@ -153,6 +156,7 @@ export function PlatformAdminPage({ permissions }: Props) {
     try {
       await deactivateAdmin.mutateAsync(target.principalID);
       setAdminToDeactivate(null);
+      notifyToast("success", "Changes saved successfully.");
       setFeedback({ kind: "success", message: `${target.email} was deactivated and their active sessions were revoked.` });
     } catch (error) {
       setDeactivateError(error instanceof Error ? error.message : "Unable to deactivate Platform Admin. Please try again.");
