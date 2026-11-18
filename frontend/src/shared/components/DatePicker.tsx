@@ -198,7 +198,7 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
             {view === "days" && (
               <>
                 <button type="button" onClick={() => changeMonth(-1)} aria-label="Previous month" disabled={!monthHasAvailableDate(addMonths(visibleMonth, -1), min, max)}><ChevronLeft size={17}/></button>
-                <div className="app-date-heading">
+                <div className="app-date-heading" id={gridId}>
                   <button type="button" className="app-date-view-button" onClick={() => setView("months")} aria-label="Choose month">{monthLabel}</button>
                   <button type="button" className="app-date-view-button" onClick={() => setView("years")} aria-label="Choose year">{year}</button>
                 </div>
