@@ -331,6 +331,11 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
       setFeedback({ kind: "success", message: "Guardian linked to this student." });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Guardian could not be linked.";
+      if (/this relationship type is already linked to this student/i.test(message)) {
+        setRelationshipError("This relationship is already linked to this student. Choose another available relationship.");
+        setFeedback(null);
+        return;
+      }
       if (/student guardian relationship conflicts with an existing record/i.test(message)) {
         setGuardianSelectError("This guardian is already linked to this student. Review the existing relationships before adding another link.");
         setFeedback(null);
