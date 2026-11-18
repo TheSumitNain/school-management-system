@@ -10,3 +10,18 @@
 .student-field-label__status.is-required{border-color:var(--color-border);color:var(--color-text)}
 
 .student-field-hint__tooltip{max-height:min(50vh,240px);overflow:auto;overscroll-behavior:contain}
+
+/* Field labels consistently place optional/required status and help on row two. */
+.student-field-label {
+  display: inline-grid;
+  grid-template-columns: max-content max-content;
+  grid-template-areas: "name name" "status hint";
+  align-items: center;
+  justify-content: start;
+  column-gap: 5px;
+  row-gap: 2px;
+  vertical-align: middle;
+}
+.student-field-label__name { grid-area: name; }
+.student-field-label__status { grid-area: status; justify-self: start; }
+.student-field-hint { grid-area: hint; justify-self: start; }
