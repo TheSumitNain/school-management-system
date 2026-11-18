@@ -36,8 +36,6 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
   const deferredSearch = useDeferredValue(search.trim());
   const [selectedGuardianID, setSelectedGuardianID] = useState(0);
   const [relationshipType, setRelationshipType] = useState("");
-  const [customRelationship, setCustomRelationship] = useState("");
-  const [editRelationshipCustom, setEditRelationshipCustom] = useState("");
   const [primaryContact, setPrimaryContact] = useState(false);
   const [emergencyContact, setEmergencyContact] = useState(false);
   const [includeHistory, setIncludeHistory] = useState(false);
@@ -107,7 +105,6 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
     setSearch("");
     setSelectedGuardianID(0);
     setRelationshipType("");
-    setCustomRelationship("");
     setPrimaryContact(false);
     setEmergencyContact(false);
     setIncludeHistory(false);
@@ -122,7 +119,6 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
     setEditingGuardianID(0);
     setEditingLinkID(0);
     setEditRelationshipForm({ relationship_type: "", is_primary_contact: false, is_emergency_contact: false });
-    setEditRelationshipCustom("");
     setEditRelationshipError("");
     setEditRelationshipFieldError("");
     setEditGuardianForm({
@@ -299,7 +295,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
     setRelationshipError("");
     if (!canManage || linksQuery.isLoading || linksQuery.isError || guardiansQuery.isLoading || guardiansQuery.isError) return;
     if (!selectedGuardianID) setGuardianSelectError("Choose a guardian.");
-    const resolvedRelationship = relationshipType === "Other" ? customRelationship.trim() : relationshipType.trim();
+    const resolvedRelationship = relationshipType.trim();
     if (!resolvedRelationship) setRelationshipError("Choose or specify the relationship to this student.");
     else if (Array.from(resolvedRelationship).length > 40) setRelationshipError("Relationship must be 40 characters or fewer.");
     if (!selectedGuardianID || !resolvedRelationship || Array.from(resolvedRelationship).length > 40) return;
@@ -315,8 +311,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
       });
       setSelectedGuardianID(0);
       setRelationshipType("");
-      setCustomRelationship("");
-      setPrimaryContact(false);
+        setPrimaryContact(false);
       setEmergencyContact(false);
       setGuardianSelectError("");
       setRelationshipError("");
@@ -335,11 +330,11 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
   function beginEditRelationship(link: (typeof allLinks)[number]) {
     setEditingLinkID(link.id);
     setEditRelationshipForm({
-      relationship_type: ["Father","Mother","Step-father","Step-mother","Grandfather","Grandmother","Brother","Sister","Uncle","Aunt","Legal Guardian","Foster Parent"].includes(link.relationship_type) ? link.relationship_type : "Other",
+      relationship_type: ["Father","Mother","Grandfather","Grandmother","Brother","Sister","Uncle","Aunt"].includes(link.relationship_type) ? link.relationship_type : "",
       is_primary_contact: link.is_primary_contact,
       is_emergency_contact: link.is_emergency_contact,
     });
-    setEditRelationshipCustom(["Father","Mother","Step-father","Step-mother","Grandfather","Grandmother","Brother","Sister","Uncle","Aunt","Legal Guardian","Foster Parent"].includes(link.relationship_type) ? "" : link.relationship_type);
+    setEditRelationshipCustom(["Father","Mother","Grandfather","Grandmother","Brother","Sister","Uncle","Aunt"].includes(link.relationship_type) ? "" : "");
     setEditRelationshipError("");
     setEditRelationshipFieldError("");
   }
@@ -349,8 +344,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
     setEditRelationshipError("");
     setEditRelationshipFieldError("");
     if (!canManage || editingLinkID <= 0) return;
-    const relationship = editRelationshipForm.relationship_type.trim();
-    const resolvedRelationship = relationship === "Other" ? editRelationshipCustom.trim() : relationship;
+    const resolvedRelationship = editRelationshipForm.relationship_type.trim();
     if (!resolvedRelationship) {
       setEditRelationshipFieldError("Choose or specify the relationship to this student.");
       return;
@@ -443,7 +437,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
                 {canManage && editingLinkID === link.id && !link.revoked_at && (
                   <form className="student-family-create-form" onSubmit={saveEditedRelationship} noValidate>
                     <h4>Edit relationship for this student</h4>
-                    <div className="student-family-relationship-field"><StudentFieldLabel label="Relationship to student" required hint="Choose the guardian's relationship to this student. Select Other to enter a custom relationship." /><Select ariaLabel="Relationship to student" value={editRelationshipForm.relationship_type} disabled={busy} invalid={Boolean(editRelationshipFieldError)} describedBy={editRelationshipFieldError ? "edit-student-guardian-relationship-error" : undefined} onChange={value => { setEditRelationshipForm(current => ({ ...current, relationship_type: value })); setEditRelationshipFieldError(""); }} placeholder="Select relationship" options={[{value:"Father",label:"Father"},{value:"Mother",label:"Mother"},{value:"Step-father",label:"Step-father"},{value:"Step-mother",label:"Step-mother"},{value:"Grandfather",label:"Grandfather"},{value:"Grandmother",label:"Grandmother"},{value:"Brother",label:"Brother"},{value:"Sister",label:"Sister"},{value:"Uncle",label:"Uncle"},{value:"Aunt",label:"Aunt"},{value:"Legal Guardian",label:"Legal Guardian"},{value:"Foster Parent",label:"Foster Parent"},{value:"Other",label:"Other"}]}/>{editRelationshipForm.relationship_type === "Other" && <input disabled={busy} value={editRelationshipCustom} maxLength={40} onChange={event => setEditRelationshipCustom(event.target.value)} placeholder="Specify relationship"/>}{editRelationshipFieldError && <small id="edit-student-guardian-relationship-error" className="app-field-error">{editRelationshipFieldError}</small>}</div>
+                    <div className="student-family-relationship-field"><StudentFieldLabel label="Relationship to student" required hint="Choose one of the available family relationships." /><Select ariaLabel="Relationship to student" value={editRelationshipForm.relationship_type} disabled={busy} invalid={Boolean(editRelationshipFieldError)} describedBy={editRelationshipFieldError ? "edit-student-guardian-relationship-error" : undefined} onChange={value => { setEditRelationshipForm(current => ({ ...current, relationship_type: value })); setEditRelationshipFieldError(""); }} placeholder="Select relationship" options={[{value:"Father",label:"Father"},{value:"Mother",label:"Mother"},{value:"Grandfather",label:"Grandfather"},{value:"Grandmother",label:"Grandmother"},{value:"Brother",label:"Brother"},{value:"Sister",label:"Sister"},{value:"Uncle",label:"Uncle"},{value:"Aunt",label:"Aunt"}]}/>{editRelationshipFieldError && <small id="edit-student-guardian-relationship-error" className="app-field-error">{editRelationshipFieldError}</small>}</div>
                     <div className="student-family-checks" role="group" aria-label="Guardian contact roles">
                       <button type="button" className="student-family-check-option" role="checkbox" aria-checked={editRelationshipForm.is_primary_contact} disabled={busy} onClick={() => setEditRelationshipForm(current => ({ ...current, is_primary_contact: !current.is_primary_contact }))}>
                         <span className="student-family-check-mark" aria-hidden="true">{editRelationshipForm.is_primary_contact ? "✓" : ""}</span>
@@ -493,8 +487,8 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
               {guardianSelectError && <small id="student-guardian-select-error" className="app-field-error">{guardianSelectError}</small>}
               {guardiansQuery.isError && <div className="student-feedback error" role="alert"><p>{guardiansQuery.error.message}</p><button type="button" className="student-secondary" onClick={() => void guardiansQuery.refetch()} disabled={guardiansQuery.isFetching}>Retry loading guardian contacts</button></div>}
               {!guardiansQuery.isLoading && !guardiansQuery.isError && guardianOptions.length === 0 && <p className="student-address-note">No unlinked active guardian contacts match this search. You can create a new contact below.</p>}
-              <label><StudentFieldLabel label="Relationship to student" required hint="Choose the guardian's relationship to this student. Select Other to enter a custom relationship." /><Select ariaLabel="Relationship to student" value={relationshipType} invalid={Boolean(relationshipError)} describedBy={relationshipError ? "student-guardian-relationship-error" : undefined} onChange={value => { setRelationshipType(value); setRelationshipError(""); }} placeholder="Select relationship" options={[{value:"Father",label:"Father"},{value:"Mother",label:"Mother"},{value:"Step-father",label:"Step-father"},{value:"Step-mother",label:"Step-mother"},{value:"Grandfather",label:"Grandfather"},{value:"Grandmother",label:"Grandmother"},{value:"Brother",label:"Brother"},{value:"Sister",label:"Sister"},{value:"Uncle",label:"Uncle"},{value:"Aunt",label:"Aunt"},{value:"Legal Guardian",label:"Legal Guardian"},{value:"Foster Parent",label:"Foster Parent"},{value:"Other",label:"Other"}]}/>{relationshipError && <small id="student-guardian-relationship-error" className="app-field-error">{relationshipError}</small>}</label>
-              {relationshipType === "Other" && <label><StudentFieldLabel label="Specify relationship" required/><input value={customRelationship} onChange={event => { setCustomRelationship(event.target.value); setRelationshipError(""); }} placeholder="Enter relationship"/></label>}
+              <label><StudentFieldLabel label="Relationship to student" required hint="Choose one of the available family relationships." /><Select ariaLabel="Relationship to student" value={relationshipType} invalid={Boolean(relationshipError)} describedBy={relationshipError ? "student-guardian-relationship-error" : undefined} onChange={value => { setRelationshipType(value); setRelationshipError(""); }} placeholder="Select relationship" options={[{value:"Father",label:"Father"},{value:"Mother",label:"Mother"},{value:"Grandfather",label:"Grandfather"},{value:"Grandmother",label:"Grandmother"},{value:"Brother",label:"Brother"},{value:"Sister",label:"Sister"},{value:"Uncle",label:"Uncle"},{value:"Aunt",label:"Aunt"}]}/>{relationshipError && <small id="student-guardian-relationship-error" className="app-field-error">{relationshipError}</small>}</label>
+              
               
               <div className="student-family-checks" role="group" aria-label="Guardian contact roles">
                 <button type="button" className="student-family-check-option" role="checkbox" aria-checked={primaryContact} disabled={busy} onClick={() => setPrimaryContact(value => !value)}>
