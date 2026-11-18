@@ -34,6 +34,12 @@ These requirements apply to every frontend page and shared component:
 - **Polished alignment and interaction:** maintain consistent grids, spacing, alignment, responsive behavior, transitions and interaction feedback. Avoid layout shifts, clipped content, overlapping elements, flicker and inconsistent page-to-page behavior.
 - **Accessibility:** provide keyboard navigation, visible focus indicators, sufficient contrast in every theme, semantic controls and labels, and reduced-motion support. Do not communicate status by color alone.
 
+### Full-workspace theme coverage (mandatory)
+
+- Light/Dark/System appearance applies to the entire authenticated workspace, not only the sidebar or navigation. The shell and main content column must use the semantic page-background and text tokens so the full area behind page content visibly changes with the selected appearance.
+- Keep the top bar, cards, panels, tables, form controls, dialogs, overlays, menus, tooltips, loading states and empty/error states on their appropriate semantic surface tokens. Do not hard-code a light background on a page container.
+- Switching appearance must update the workspace immediately without navigation or a page reload. Verify both desktop and mobile layouts, including the area around the centered page content and below short pages.
+
 ## Cross-browser and cross-device UI consistency (mandatory)
 
 The application must present one coherent, theme-matched interface across supported browsers and devices, including Chrome, Edge, Firefox, Safari and Apple platforms. Treat browser/OS defaults as implementation differences to manage, not as the product design.
