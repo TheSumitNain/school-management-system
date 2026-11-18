@@ -11,6 +11,7 @@ import { DatePicker } from "../../../shared/components/DatePicker";
 import { schoolDateValue } from "../../../shared/date/schoolDate";
 import { Modal } from "../../../shared/components/Modal";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
+import { notifyToast } from "../../../shared/notifications";
 import { StudentFieldLabel } from "../components/StudentFieldLabel";
 import { StudentAddressSection } from "../components/StudentAddressSection";
 import { StudentBasicDetailsSection } from "../components/StudentBasicDetailsSection";
@@ -176,7 +177,8 @@ export function StudentManagementPage({ permissions }: Props) {
           roll_number: rollNumber || null,
           admission_date: enrolledAt,
         });
-        setFeedback({ kind: "success", message: "Student admitted and enrolled for the selected academic year." });
+        notifyToast("success", "Student admitted and enrolled for the selected academic year.");
+        setFeedback(null);
       }
       setAction(null);
     } catch (error) {
@@ -197,7 +199,8 @@ export function StudentManagementPage({ permissions }: Props) {
     try {
       await archiveStudent.mutateAsync(item.id);
       setStudentToArchive(null);
-      setFeedback({ kind: "success", message: `${item.full_name} has been archived.` });
+      notifyToast("success", `${item.full_name} has been archived.`);
+      setFeedback(null);
     } catch (error) {
       setArchiveError(error instanceof Error ? error.message : "Unable to archive this student. Please try again.");
     }
@@ -236,7 +239,8 @@ export function StudentManagementPage({ permissions }: Props) {
       setSelectedStudentID("");
       setSelectedSectionID("");
       setEnrolledAt(localDateValue());
-      setFeedback({ kind: "success", message: "Student enrolled successfully." });
+      notifyToast("success", "Student enrolled successfully.");
+      setFeedback(null);
     } catch (error) {
       if (error instanceof ApiError && Object.keys(error.fieldErrors).length > 0) {
         const apiFieldErrors = { ...error.fieldErrors };
@@ -348,7 +352,7 @@ export function StudentManagementPage({ permissions }: Props) {
       academicYearsError={yearsQuery.isError ? yearsQuery.error.message : undefined}
       onRetryAcademicYears={() => void yearsQuery.refetch()}
       onClose={() => setPromotionEnrollment(null)}
-      onPromoted={() => { setPromotionEnrollment(null); setFeedback({ kind: "success", message: "Student promoted successfully. Previous academic history has been preserved." }); }}
+      onPromoted={() => { setPromotionEnrollment(null); notifyToast("success", "Student promoted successfully. Previous academic history has been preserved."); }}
     />}
   </div>;
 }
