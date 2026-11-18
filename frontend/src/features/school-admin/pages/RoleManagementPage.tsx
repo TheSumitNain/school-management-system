@@ -1,4 +1,5 @@
 import { useMemo, useState, type FormEvent } from "react";
+import { notifyToast } from "../../../shared/notifications";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Plus, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
 import {
@@ -66,6 +67,7 @@ export function RoleManagementPage({ permissions }: Props) {
       setName("");
       setCreateDialogOpen(false);
       setNameError("");
+      notifyToast("success", "Custom role created.");
       setFeedback("Custom role created. Add only the permissions delegated to this school.");
       await queryClient.invalidateQueries({ queryKey: ["school-admin", "roles"] });
       setSelectedRoleID(result.role.id);
@@ -78,6 +80,7 @@ export function RoleManagementPage({ permissions }: Props) {
       setPermissionKey("");
       setGrantDialogOpen(false);
       setGrantFieldError("");
+      notifyToast("success", "Permission granted.");
       setFeedback("Permission granted. It is effective only while its exact delegation remains active.");
       await queryClient.invalidateQueries({ queryKey: ["school-admin", "role-permissions", selectedRoleID] });
     },
@@ -86,6 +89,7 @@ export function RoleManagementPage({ permissions }: Props) {
     mutationFn: (key: string) => revokeCustomRolePermission(selectedRoleID!, key),
     onSuccess: async () => {
       setPermissionToRevoke(null);
+      notifyToast("success", "Permission grant removed.");
       setFeedback("Permission grant removed.");
       await queryClient.invalidateQueries({ queryKey: ["school-admin", "role-permissions", selectedRoleID] });
     },
