@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"school-management-system/internal/schooltime"
+
 	"github.com/jackc/pgx/v5"
 )
 
@@ -407,7 +409,7 @@ func (r *AcademicRepository) SaveStudentPhysicalDetails(
 	if r == nil || r.db == nil || studentID <= 0 {
 		return nil, ErrAcademicAccessDenied
 	}
-	if measuredOn == nil || measuredOn.UTC().Format("2006-01-02") > time.Now().UTC().Format("2006-01-02") {
+	if measuredOn == nil || measuredOn.Format("2006-01-02") > schooltime.TodayDate() {
 		return nil, ErrInvalidStudentMeasurementDate
 	}
 	if heightCM != nil && (*heightCM < 20 || *heightCM > 250 ||
