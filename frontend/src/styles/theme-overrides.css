@@ -1,3 +1,32 @@
+/* The selected appearance covers the complete application frame. */
+html,
+body,
+#root {
+  min-height: 100%;
+  background: var(--color-workspace);
+  color: var(--color-text);
+}
+
+.shell,
+.main {
+  min-height: 100vh;
+  background-color: var(--color-workspace);
+  color: var(--color-text);
+}
+
+.main > .topbar {
+  background-color: var(--color-topbar-background);
+  color: var(--color-text);
+  border-bottom-color: var(--color-border);
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.main > .content {
+  background-color: var(--color-workspace);
+  color: var(--color-text);
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
 /*
  * Cross-theme component rules.
  * Keep all theme-specific colors in tokens.css; this file contains structure
