@@ -1026,3 +1026,50 @@ td b {
   outline: none !important;
   box-shadow: none !important;
 }
+
+
+.theme-schedule {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 220px));
+  gap: 12px;
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface-muted);
+}
+.theme-schedule-field {
+  display: grid;
+  gap: 7px;
+}
+.theme-schedule-field label {
+  color: var(--color-text);
+  font-size: 11px;
+  font-weight: 600;
+}
+.theme-schedule-field input {
+  width: 100%;
+  min-height: 38px;
+  padding: 7px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  accent-color: var(--color-brand);
+  color-scheme: inherit;
+}
+.theme-schedule-field input:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+.theme-schedule-help {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+.theme-schedule-error { color: var(--color-danger); }
+@media (max-width: 640px) {
+  .theme-schedule { grid-template-columns: 1fr; }
+}
