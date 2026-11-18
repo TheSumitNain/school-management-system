@@ -1975,7 +1975,7 @@ test("staff can create a guardian contact and link it to a student with relation
 
   await page.getByRole("button", { name: "Edit relationship" }).click();
   const editRelationshipForm = page.locator("form.student-family-create-form").filter({ hasText: "Edit relationship for this student" });
-  await editRelationshipForm.getByRole("button", { name: "Relationship to student" }).click();
+  await editRelationshipForm.getByRole("button", { name: "Relationship to student", exact: true }).click();
   await editRelationshipForm.getByRole("option", { name: "Legal Guardian", exact: true }).click();
   await page.getByRole("checkbox", { name: /Primary contact/ }).first().uncheck();
   await page.getByRole("button", { name: "Save relationship" }).click();
