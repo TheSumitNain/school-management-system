@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Modal } from "../../../shared/components/Modal";
 import { Select } from "../../../shared/components/Select";
 import { StudentFieldLabel } from "./StudentFieldLabel";
+import { notifyToast } from "../../../shared/notifications";
 import type { StudentLocation, StudentProfile } from "../api";
 import {
   useCreateSchoolStudentLocationMutation,
@@ -63,7 +64,11 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
   const [fieldError, setFieldError] = useState("");
   const [addressErrors, setAddressErrors] = useState<{ line1?: string; line2?: string; areaMohalla?: string; landmark?: string; postalCode?: string }>({});
   const [newLocationNameError, setNewLocationNameError] = useState("");
-  const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
+  const [feedback, setFeedbackState] = useState<{ kind: "success" | "error"; message: string } | null>(null);
+  const setFeedback = (next: typeof feedback) => {
+    setFeedbackState(next);
+    if (next) notifyToast(next.kind === "success" && next.message.startsWith("No changes to save") ? "info" : next.kind, next.message);
+  };
 
   const addressesQuery = useSchoolStudentAddressesQuery(student.id, !showContactDetails);
   const contactQuery = useSchoolStudentContactDetailsQuery(student.id, showContactDetails);
@@ -380,7 +385,6 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
       closeDisabled={busy}
     >
       {!showContactDetails && addressesQuery.isLoading && <p className="student-address-note">Loading saved address details…</p>}{!showContactDetails && addressesQuery.isError && <div className="student-feedback error" role="alert"><p>{addressesQuery.error.message}</p><button type="button" className="student-secondary" onClick={() => void addressesQuery.refetch()} disabled={addressesQuery.isFetching}>Retry loading addresses</button></div>}
-      {feedback && <p className={feedback.kind === "error" ? "student-feedback error" : "student-feedback success"} role={feedback.kind === "error" ? "alert" : "status"}>{feedback.message}</p>}
       <div className="student-address-tabs" role="group" aria-label="Student profile section">
         <button type="button" className={!showContactDetails && addressType === "current" ? "active" : ""} aria-pressed={!showContactDetails && addressType === "current"} onClick={() => { setShowContactDetails(false); setAddressType("current"); setFeedback(null); }}>Current address</button>
         <button type="button" className={!showContactDetails && addressType === "permanent" ? "active" : ""} aria-pressed={!showContactDetails && addressType === "permanent"} onClick={() => { setShowContactDetails(false); setAddressType("permanent"); setFeedback(null); }}>Permanent address</button>
