@@ -1917,6 +1917,8 @@ test("staff can create a guardian contact and link it to a student with relation
   expect(guardianLinks).toHaveLength(0);
   await linkRelationshipSelect.click();
   await familyDialog.getByRole("option", { name: "Mother", exact: true }).click();
+  await expect(page.getByText("First person the school should contact for routine communication.", { exact: false })).toBeVisible();
+  await expect(page.getByText("Person the school may contact if the student is ill, injured, or there is an urgent situation.", { exact: false })).toBeVisible();
   await page.getByRole("checkbox", { name: /Primary contact/ }).check();
   await page.getByRole("checkbox", { name: /Emergency contact/ }).check();
   failGuardianLinkConflict = true;
