@@ -67,7 +67,7 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
   const [physicalErrors, setPhysicalErrors] = useState<{ heightCM?: string; weightKG?: string; measuredOn?: string; visionNotes?: string; physicalNotes?: string }>({});
   const [feedback, setFeedbackState] = useState<{ kind: "success" | "error"; message: string } | null>(null);
   const setFeedback = (next: typeof feedback) => {
-    setFeedbackState(next);
+    setFeedbackState(next?.kind === "error" ? next : null);
     if (next) notifyToast(next.kind === "success" && next.message.startsWith("No changes to save") ? "info" : next.kind, next.message);
   };
 
