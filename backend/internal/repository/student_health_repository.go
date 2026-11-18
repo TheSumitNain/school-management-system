@@ -459,7 +459,7 @@ func (r *AcademicRepository) SaveStudentPhysicalDetails(
 	if current.ID > 0 && sameOptionalFloat64(current.HeightCM, heightCM) &&
 		sameOptionalFloat64(current.WeightKG, weightKG) &&
 		current.MeasuredOn != nil &&
-		current.MeasuredOn.UTC().Format("2006-01-02") == measuredOn.UTC().Format("2006-01-02") &&
+		current.MeasuredOn.Format("2006-01-02") == measuredOn.Format("2006-01-02") &&
 		sameOptionalText(current.VisionNotes, visionNotes) &&
 		sameOptionalText(current.PhysicalNotes, physicalNotes) {
 		// PUT retries with the same latest measurement must be idempotent.
