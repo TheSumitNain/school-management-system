@@ -798,7 +798,7 @@ test("student admission, profile navigation and parent details render without br
   expect(guardianLinkUpdateRequests[0]).toMatchObject({
     relationship_type: "Grandfather", is_primary_contact: false, is_emergency_contact: false,
   });
-  await expect(page.locator(".student-family-card > div > span").filter({ hasText: /^Legal Guardian$/ })).toBeVisible();
+  await expect(page.locator(".student-family-card > div > span").filter({ hasText: /^Grandfather$/ })).toBeVisible();
   await page.getByRole("button", { name: "Edit shared guardian details" }).click();
   await expect(page.getByRole("heading", { name: "Edit shared guardian profile" })).toBeVisible();
   await expect(page.getByText("These contact and profile details are shared across all students linked to this guardian.")).toBeVisible();
@@ -1993,7 +1993,7 @@ test("staff can create a guardian contact and link it to a student with relation
   await page.getByRole("button", { name: "Edit relationship" }).click();
   const editRelationshipForm = page.locator("form.student-family-create-form").filter({ hasText: "Edit relationship for this student" });
   await editRelationshipForm.getByRole("button", { name: "Relationship to student", exact: true }).click();
-  await editRelationshipForm.getByRole("option", { name: "Grandfather", exact: true }).click();
+  await editRelationshipForm.getByRole("option", { name: "Aunt", exact: true }).click();
   await page.getByRole("checkbox", { name: /Primary contact/ }).first().uncheck();
   await page.getByRole("button", { name: "Save relationship" }).click();
   await expect(page.getByText("Aunt · Emergency contact")).toBeVisible();
@@ -2004,7 +2004,7 @@ test("staff can create a guardian contact and link it to a student with relation
   await expect(page.getByText("Nisha Verma Updated", { exact: true })).toBeVisible();
   await expect(page.getByText("9876501235 · Alt: 9876501236 · nisha.verma@example.test")).toBeVisible();
   await expect(page.getByText("Principal · M.Ed. · Sunrise Public School")).toBeVisible();
-  await expect(page.getByText("Legal Guardian · Emergency contact")).toBeVisible();
+  await expect(page.getByText("Aunt · Emergency contact")).toBeVisible();
 
   // A full browser reload must restore the persisted guardian and relationship
   // from the API, not merely retain the previous React component's local state.
@@ -2021,7 +2021,7 @@ test("staff can create a guardian contact and link it to a student with relation
   await expect(page.getByText("Nisha Verma Updated", { exact: true })).toBeVisible();
   await expect(page.getByText("9876501235 · Alt: 9876501236 · nisha.verma@example.test")).toBeVisible();
   await expect(page.getByText("Principal · M.Ed. · Sunrise Public School")).toBeVisible();
-  await expect(page.getByText("Legal Guardian · Emergency contact")).toBeVisible();
+  await expect(page.getByText("Aunt · Emergency contact")).toBeVisible();
   await expect(familyDialog.getByText("Other Guardian Student", { exact: true })).toBeVisible();
 
   // The same guardian's updated contact profile is shared with the second
