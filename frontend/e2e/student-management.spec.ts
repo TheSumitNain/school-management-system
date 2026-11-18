@@ -65,7 +65,7 @@ test("student admission, profile navigation and parent details render without br
     id: 501, student_id: 1, guardian_id: 22, guardian_name: "Ramesh Sharma", guardian_status: "active" as const,
     mobile_number: "9876543210", email_address: "ramesh@example.test", alternate_mobile_number: null,
     occupation: "Teacher", education: "Graduate", workplace_name: "Local School",
-    relationship_type: "Father", is_primary_contact: true, is_emergency_contact: true,
+    relationship_type: " father ", is_primary_contact: true, is_emergency_contact: true,
     created_at: "2026-11-14T00:00:00.000Z", revoked_at: null,
   };
   const contactDetails: Record<string, unknown> = {
