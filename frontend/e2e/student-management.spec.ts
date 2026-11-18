@@ -882,7 +882,7 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByRole("dialog", { name: /Parents & Siblings/i })).toBeVisible();
   await page.getByLabel("Show revoked history").check();
   await expect(page.getByText("Ramesh Sharma")).toBeVisible();
-  await expect(page.getByText("Legal Guardian", { exact: true })).toBeVisible();
+  await expect(page.getByRole("article").getByText("Legal Guardian", { exact: true })).toBeVisible();
   await expect(page.getByText("Ramesh Sharma Updated")).toBeVisible();
   await expect(page.getByText(/9999912345/)).toBeVisible();
   await expect(page.getByText(/9999987654/)).toBeVisible();
