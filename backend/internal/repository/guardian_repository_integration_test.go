@@ -308,7 +308,7 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("link guardian to student: %v", err)
 	}
 	if firstLink.ID <= 0 || !firstLink.IsPrimaryContact || !firstLink.IsEmergencyContact ||
-		firstLink.RelationshipType != "father" || firstLink.GuardianName != "Guardian One Updated" ||
+		firstLink.RelationshipType != "Father" || firstLink.GuardianName != "Guardian One Updated" ||
 		firstLink.GuardianStatus != "active" ||
 		firstLink.AlternateMobileNumber == nil || *firstLink.AlternateMobileNumber != alternateMobile ||
 		firstLink.Occupation == nil || *firstLink.Occupation != occupation ||
@@ -403,14 +403,14 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 	if err != nil || len(studentLinksAfterSharedEdit) != 1 ||
 		studentLinksAfterSharedEdit[0].GuardianName != "Shared Guardian Profile Updated" ||
 		studentLinksAfterSharedEdit[0].MobileNumber == nil || *studentLinksAfterSharedEdit[0].MobileNumber != sharedMobile ||
-		studentLinksAfterSharedEdit[0].RelationshipType != "father" ||
+		studentLinksAfterSharedEdit[0].RelationshipType != "Father" ||
 		!studentLinksAfterSharedEdit[0].IsPrimaryContact || !studentLinksAfterSharedEdit[0].IsEmergencyContact {
 		t.Fatalf("shared profile update was not reflected without changing first student's relationship: links=%+v err=%v", studentLinksAfterSharedEdit, err)
 	}
 	relatedLinksAfterSharedEdit, err := repo.ListStudentGuardians(ctx, targetPrincipalID, schoolID, relatedStudentID, false)
 	if err != nil || len(relatedLinksAfterSharedEdit) != 1 ||
 		relatedLinksAfterSharedEdit[0].GuardianName != "Shared Guardian Profile Updated" ||
-		relatedLinksAfterSharedEdit[0].RelationshipType != "father" ||
+		relatedLinksAfterSharedEdit[0].RelationshipType != "Father" ||
 		!relatedLinksAfterSharedEdit[0].IsPrimaryContact || relatedLinksAfterSharedEdit[0].IsEmergencyContact {
 		t.Fatalf("shared profile update changed or failed to propagate to related student's relationship: links=%+v err=%v", relatedLinksAfterSharedEdit, err)
 	}
@@ -452,7 +452,7 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 		INSERT INTO student_guardians (
 			school_id, student_id, guardian_id, relationship_type,
 			is_primary_contact, is_emergency_contact
-		) VALUES ($1, $2, $3, 'guardian', TRUE, FALSE)
+		) VALUES ($1, $2, $3, 'Aunt', TRUE, FALSE)
 	`, schoolID, studentID, thirdGuardianID)
 	if duplicatePrimaryErr == nil || !strings.Contains(duplicatePrimaryErr.Error(), "ux_student_guardians_active_primary_per_student") {
 		_ = savepoint.Rollback(ctx)
@@ -461,13 +461,31 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 	if err := savepoint.Rollback(ctx); err != nil {
 		t.Fatalf("rollback primary-contact constraint savepoint: %v", err)
 	}
+	if _, err := repo.LinkStudentGuardian(ctx, targetPrincipalID, schoolID, studentID, thirdGuardianID, "Father", false, false); !errors.Is(err, ErrGuardianConflict) {
+		t.Fatalf("second active Father relationship error = %v, want ErrGuardianConflict", err)
+	}
+	duplicateRelationshipSavepoint, err := tx.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin duplicate relationship constraint savepoint: %v", err)
+	}
+	_, duplicateRelationshipErr := duplicateRelationshipSavepoint.Exec(ctx, `
+		INSERT INTO student_guardians (school_id, student_id, guardian_id, relationship_type)
+		VALUES ($1, $2, $3, 'Father')
+	`, schoolID, studentID, thirdGuardianID)
+	if duplicateRelationshipErr == nil || !strings.Contains(duplicateRelationshipErr.Error(), "active guardian relationship type already exists") {
+		_ = duplicateRelationshipSavepoint.Rollback(ctx)
+		t.Fatalf("duplicate active relationship error = %v, want relationship-type trigger rejection", duplicateRelationshipErr)
+	}
+	if err := duplicateRelationshipSavepoint.Rollback(ctx); err != nil {
+		t.Fatalf("rollback duplicate relationship constraint savepoint: %v", err)
+	}
 
 	editedLink, err := repo.UpdateStudentGuardianLink(ctx, targetPrincipalID, schoolID,
-		firstLink.ID, "legal guardian", true, false)
+		firstLink.ID, "grandfather", true, false)
 	if err != nil {
 		t.Fatalf("update student-specific guardian relationship: %v", err)
 	}
-	if editedLink.ID != firstLink.ID || editedLink.RelationshipType != "legal guardian" ||
+	if editedLink.ID != firstLink.ID || editedLink.RelationshipType != "Grandfather" ||
 		!editedLink.IsPrimaryContact || editedLink.IsEmergencyContact {
 		t.Fatalf("unexpected edited guardian relationship: %+v", editedLink)
 	}
@@ -482,9 +500,9 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("count guardian relationship update audit events: %v", err)
 	}
 	unchangedLink, err := repo.UpdateStudentGuardianLink(ctx, targetPrincipalID, schoolID,
-		firstLink.ID, "legal guardian", true, false)
+		firstLink.ID, "grandfather", true, false)
 	if err != nil || unchangedLink == nil || unchangedLink.ID != firstLink.ID ||
-		unchangedLink.RelationshipType != "legal guardian" || !unchangedLink.IsPrimaryContact || unchangedLink.IsEmergencyContact {
+		unchangedLink.RelationshipType != "Grandfather" || !unchangedLink.IsPrimaryContact || unchangedLink.IsEmergencyContact {
 		t.Fatalf("retry identical student guardian relationship update: link=%+v err=%v", unchangedLink, err)
 	}
 	var retryRelationshipUpdatedAt time.Time
@@ -510,7 +528,7 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 		}
 	}
 	relatedLink, err := repo.ListStudentGuardians(ctx, targetPrincipalID, schoolID, relatedStudentID, false)
-	if err != nil || len(relatedLink) != 1 || relatedLink[0].RelationshipType != "father" ||
+	if err != nil || len(relatedLink) != 1 || relatedLink[0].RelationshipType != "Father" ||
 		!relatedLink[0].IsPrimaryContact || relatedLink[0].IsEmergencyContact {
 		t.Fatalf("editing one student's relationship changed another student's shared guardian link: links=%+v err=%v", relatedLink, err)
 	}
@@ -700,11 +718,11 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 	// Re-linking after revocation creates a new active relationship while
 	// retaining the original revoked row as immutable history.
 	relinked, err := repo.LinkStudentGuardian(ctx, targetPrincipalID, schoolID,
-		studentID, guardian.ID, "mother", false, true)
+		studentID, guardian.ID, "father", false, true)
 	if err != nil || relinked == nil {
 		t.Fatalf("re-link guardian after revocation: link=%+v err=%v", relinked, err)
 	}
-	if relinked.ID == firstLink.ID || relinked.RelationshipType != "mother" ||
+	if relinked.ID == firstLink.ID || relinked.RelationshipType != "Father" ||
 		relinked.IsPrimaryContact || !relinked.IsEmergencyContact {
 		t.Fatalf("unexpected replacement guardian relationship: %+v", relinked)
 	}
