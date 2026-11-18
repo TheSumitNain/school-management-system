@@ -275,7 +275,7 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
             <div className="app-date-choice-grid app-date-year-grid" role="group" aria-label="Years">
               {Array.from({ length: 10 }, (_, index) => yearRangeStart + index).map(itemYear => {
                 const unavailable = itemYear < minYear || itemYear > maxYear || !yearHasAvailableDate(itemYear, min, max);
-                return <button key={itemYear} type="button" className="app-date-choice" disabled={unavailable} aria-pressed={itemYear === year} onClick={() => changeYear(itemYear)}>{itemYear}</button>;
+                return <button key={itemYear} type="button" className="app-date-choice" disabled={unavailable} aria-pressed={itemYear === year} onClick={() => { changeYear(itemYear); setView("days"); }}>{itemYear}</button>;
               })}
             </div>
           )}
