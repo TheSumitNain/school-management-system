@@ -225,3 +225,6 @@ The final optional subject-selection boundary test commit `2b7e6c38f34f1ba28ca38
 - Do not repeat the current page name in a `Workspace / Page` breadcrumb when the page itself already displays its title. Keep one clear page title in the page content.
 - Do not show decorative session-status text such as “Secure session” in the authenticated header. Security is enforced by the authentication system and does not need a redundant status label in the workspace UI.
 - Keep the authenticated header limited to useful global controls (currently the theme toggle and Sign out), plus the mobile navigation control. Apply this shared rule to every authenticated dashboard page and role.
+
+- The authenticated app shell uses a single page heading inside the page content; do not repeat the current page name in a `Workspace / Page` breadcrumb. Keep the top bar free of decorative session-status text such as “Secure session”.
+- Keep the Light/Dark theme toggle and the single Sign out action together at the far right of the top bar on every authenticated page. Do not place a duplicate Sign out action in the sidebar.
