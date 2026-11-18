@@ -112,7 +112,7 @@ func TestGuardianWriteErrorClassifiesDuplicateActiveRelationshipTypeAsConflict(t
 		Code: "P0001",
 		Message: "active guardian relationship type already exists for this student",
 	})
-	if !errors.Is(err, ErrGuardianConflict) {
-		t.Fatalf("guardianWriteError() = %v, want ErrGuardianConflict", err)
+	if !errors.Is(err, ErrGuardianRelationshipConflict) {
+		t.Fatalf("guardianWriteError() = %v, want ErrGuardianRelationshipConflict", err)
 	}
 }
