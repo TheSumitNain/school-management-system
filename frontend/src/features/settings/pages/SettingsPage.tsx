@@ -1,10 +1,11 @@
-import { Monitor, Moon, Sun } from "lucide-react";
+import { Clock3, Monitor, Moon, Sun } from "lucide-react";
 import { useThemeStore, type ThemePalette, type ThemePreference } from "../../theme/theme-store";
 
 const modes: { value: ThemePreference; label: string; description: string; icon: typeof Sun }[] = [
   { value: "light", label: "Light", description: "A bright, clear workspace.", icon: Sun },
   { value: "dark", label: "Dark", description: "A darker interface for low-light use.", icon: Moon },
   { value: "system", label: "System", description: "Follow your device appearance setting.", icon: Monitor },
+  { value: "schedule", label: "Automatic schedule", description: "Switch between Light and Dark at set times.", icon: Clock3 },
 ];
 const palettes: { value: ThemePalette; label: string }[] = [
   { value: "cobalt", label: "Cobalt" },
@@ -29,6 +30,10 @@ export function SettingsPage() {
   const setPreference = useThemeStore((state) => state.setPreference);
   const palette = useThemeStore((state) => state.palette);
   const setPalette = useThemeStore((state) => state.setPalette);
+  const darkStart = useThemeStore((state) => state.darkStart);
+  const lightStart = useThemeStore((state) => state.lightStart);
+  const setSchedule = useThemeStore((state) => state.setSchedule);
+  const scheduleValid = darkStart !== lightStart;
 
   return (
     <div className="content appearance-page">
@@ -41,7 +46,7 @@ export function SettingsPage() {
       </div>
       <section className="appearance-section" aria-labelledby="appearance-mode-title">
         <h2 id="appearance-mode-title">Appearance mode</h2>
-        <p>Choose Light or Dark, or let SchoolDesk follow your device setting. Your choice is saved automatically.</p>
+        <p>Choose Light or Dark, follow your device setting, or let SchoolDesk switch automatically on a daily schedule. Your choice is saved automatically.</p>
         <div className="appearance-options">
           {modes.map(({ value, label, description, icon: Icon }) => (
             <button key={value} type="button" className="appearance-option" aria-pressed={preference === value} onClick={() => setPreference(value)}>
@@ -51,6 +56,23 @@ export function SettingsPage() {
             </button>
           ))}
         </div>
+        {preference === "schedule" && (
+          <div className="theme-schedule" aria-label="Automatic theme schedule">
+            <div className="theme-schedule-field">
+              <label htmlFor="theme-dark-start">Turn Dark Mode on</label>
+              <input id="theme-dark-start" type="time" value={darkStart} onChange={(event) => setSchedule(event.target.value, lightStart)} />
+            </div>
+            <div className="theme-schedule-field">
+              <label htmlFor="theme-light-start">Turn Light Mode on</label>
+              <input id="theme-light-start" type="time" value={lightStart} onChange={(event) => setSchedule(darkStart, event.target.value)} />
+            </div>
+            <p className={scheduleValid ? "theme-schedule-help" : "theme-schedule-help theme-schedule-error"}>
+              {scheduleValid
+                ? "Uses this device's local time and updates automatically, even if the Settings page is closed."
+                : "Choose two different times so the automatic schedule can switch correctly."}
+            </p>
+          </div>
+        )}
       </section>
       <section className="appearance-section" aria-labelledby="brand-palette-title">
         <h2 id="brand-palette-title">Brand palette</h2>
