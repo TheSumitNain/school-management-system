@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"school-management-system/internal/schooltime"
 )
 
 func TestStudentMedicalPhysicalDetailsV36PostgresIntegration(t *testing.T) {
@@ -118,8 +120,7 @@ func TestStudentMedicalPhysicalDetailsV36PostgresIntegration(t *testing.T) {
 	}
 
 	height, weight := 132.5, 31.25
-	today := time.Now().UTC()
-	today = time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, time.UTC)
+	today := schooltime.Today()
 	measuredOn := today.AddDate(0, 0, -1)
 	vision := "V36 private vision note " + suffix
 	physicalNotes := "V36 private physical note " + suffix
@@ -192,7 +193,7 @@ func TestStudentMedicalPhysicalDetailsV36PostgresIntegration(t *testing.T) {
 		&height, nil, nil, nil, nil); !errors.Is(err, ErrInvalidStudentMeasurementDate) {
 		t.Fatalf("missing measurement date error = %v, want measurement-date field error", err)
 	}
-	futureMeasurementDate := time.Now().UTC().AddDate(0, 0, 1)
+	futureMeasurementDate := schooltime.Today().AddDate(0, 0, 1)
 	if _, err := repo.SaveStudentPhysicalDetails(ctx, actorPrincipalID, schoolID, secondStudentID,
 		&height, nil, &futureMeasurementDate, nil, nil); !errors.Is(err, ErrInvalidStudentMeasurementDate) {
 		t.Fatalf("future measurement date error = %v, want invalid input", err)
