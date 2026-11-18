@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-18 — Global action notifications and student UX fixes
+
+- Connected successful actions across Platform Admin, School Admin, Settings, Student, Staff, Academic Structure, Attendance, Roles, Teacher Assignments and Timetable pages to the application-wide ToastViewport with action-specific messages.
+- Student admission success now appears as a global toast instead of a modal-local success message; student profile section saves use global success notifications while validation remains inline.
+- Reworked guardian primary/emergency contact controls as independent accessible checkboxes with visible explanations; clarified single-primary-contact behavior and emergency-contact purpose.
+- Stabilized School Registration Number label, Optional indicator and help-icon alignment in the Basic Details modal; added browser coverage for global admission toast and guardian role controls.
+
 ## 2026-11-18 — System-wide school calendar timezone (IST)
 
 - Standardized the current India-focused release on `Asia/Kolkata` for school calendar dates across Haryana, Delhi, Mumbai, Kolkata and other Indian locations.
