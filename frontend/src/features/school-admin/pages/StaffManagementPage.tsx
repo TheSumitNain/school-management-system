@@ -89,19 +89,19 @@ export function StaffManagementPage({ permissions }: Props) {
       if (action === "create") {
         await create.mutateAsync({ username, initial_password: password, full_name: fullName, employee_code: employeeCode, designation, mobile_number: mobileNumber, email, joining_date: joiningDate || undefined });
         notifyToast("success", "Employee profile and staff login created. The staff member must change the initial password after signing in.");
-        setFeedback({ kind: "success", message: "Employee profile and staff login created. The staff member must change the initial password after signing in." });
+        setFeedback(null);
       } else if (action === "edit" && selected) {
         await update.mutateAsync({ principalID: selected.principal_id, username, full_name: fullName, employee_code: employeeCode, designation, mobile_number: mobileNumber, email, joining_date: joiningDate || undefined, employment_status: employmentStatus as "active" | "inactive" });
         notifyToast("success", "Employee profile and login details updated.");
-        setFeedback({ kind: "success", message: "Employee profile and login details updated." });
+        setFeedback(null);
       } else if (action === "reset" && selected) {
         await reset.mutateAsync({ principalID: selected.principal_id, newPassword: password });
         notifyToast("success", "Password reset. The staff member must change it at next sign-in.");
-        setFeedback({ kind: "success", message: "Password reset. The staff member must change it at next sign-in." });
+        setFeedback(null);
       } else if (action === "enable" && selected) {
         await enable.mutateAsync({ principalID: selected.principal_id, temporaryPassword: password });
         notifyToast("success", "Staff account enabled. A password change is required at next sign-in.");
-        setFeedback({ kind: "success", message: "Staff account enabled. A password change is required at next sign-in." });
+        setFeedback(null);
       }
       closeAction();
     } catch (error) {
@@ -124,7 +124,7 @@ export function StaffManagementPage({ permissions }: Props) {
       await disable.mutateAsync(item.principal_id);
       setStaffToDisable(null);
       notifyToast("success", `${item.username} has been disabled and active sessions revoked.`);
-      setFeedback({ kind: "success", message: `${item.username} has been disabled and active sessions revoked.` });
+      setFeedback(null);
     } catch (error) {
       setDisableError(error instanceof Error ? error.message : "Unable to disable this account. Please try again.");
     }
