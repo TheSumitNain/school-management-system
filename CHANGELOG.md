@@ -5,7 +5,7 @@
 - Standardized the current India-focused release on `Asia/Kolkata` for school calendar dates across Haryana, Delhi, Mumbai, Kolkata and other Indian locations.
 - Added shared backend `internal/schooltime` helpers with embedded timezone data and deterministic midnight-boundary tests; frontend date bounds, default dates and DatePicker Today use the same timezone.
 - Date-of-birth and physical-measurement future-date validation now use the school calendar date. Attendance mark and correction permission checks use it as well.
-- Added migration V49 to make the database attendance validation trigger use the `Asia/Kolkata` calendar date rather than PostgreSQL session `CURRENT_DATE`, plus PostgreSQL integration coverage for the trigger definition.
+- Added migration V49 to make the database attendance validation trigger and DOB/physical-measurement CHECK constraints use the `Asia/Kolkata` calendar date rather than PostgreSQL session `CURRENT_DATE`, plus PostgreSQL integration coverage for these rules.
 - Added frontend browser-timezone regression coverage using a negative-offset browser timezone.
 - Migration V49 still needs to be applied to local development/test databases, and the latest CI plus authenticated local API/PostgreSQL/browser acceptance must pass before this work is considered verified.
 - Per-school IANA timezone configuration remains a future requirement before onboarding schools outside India.
