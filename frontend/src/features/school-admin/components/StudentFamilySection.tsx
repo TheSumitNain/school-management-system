@@ -445,14 +445,14 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
                     <h4>Edit relationship for this student</h4>
                     <label><StudentFieldLabel label="Relationship to student" required hint="Choose the guardian's relationship to this student. Select Other to enter a custom relationship." /><Select ariaLabel="Relationship to student" value={editRelationshipForm.relationship_type} disabled={busy} invalid={Boolean(editRelationshipFieldError)} describedBy={editRelationshipFieldError ? "edit-student-guardian-relationship-error" : undefined} onChange={value => { setEditRelationshipForm(current => ({ ...current, relationship_type: value })); setEditRelationshipFieldError(""); }} placeholder="Select relationship" options={[{value:"Father",label:"Father"},{value:"Mother",label:"Mother"},{value:"Step-father",label:"Step-father"},{value:"Step-mother",label:"Step-mother"},{value:"Grandfather",label:"Grandfather"},{value:"Grandmother",label:"Grandmother"},{value:"Brother",label:"Brother"},{value:"Sister",label:"Sister"},{value:"Uncle",label:"Uncle"},{value:"Aunt",label:"Aunt"},{value:"Legal Guardian",label:"Legal Guardian"},{value:"Foster Parent",label:"Foster Parent"},{value:"Other",label:"Other"}]}/>{editRelationshipForm.relationship_type === "Other" && <input disabled={busy} value={editRelationshipCustom} maxLength={40} onChange={event => setEditRelationshipCustom(event.target.value)} placeholder="Specify relationship"/>}{editRelationshipFieldError && <small id="edit-student-guardian-relationship-error" className="app-field-error">{editRelationshipFieldError}</small>}</label>
                     <div className="student-family-checks" role="group" aria-label="Guardian contact roles">
-                      <div className="student-family-check-option">
-                        <input id="edit-guardian-primary-contact" type="checkbox" checked={editRelationshipForm.is_primary_contact} disabled={busy} onChange={event => setEditRelationshipForm(current => ({ ...current, is_primary_contact: event.target.checked }))}/>
-                        <div><label htmlFor="edit-guardian-primary-contact">Primary contact</label><small>First person the school should contact for routine communication. Only one active guardian can be primary; selecting this replaces the previous primary contact for this student.</small></div>
-                      </div>
-                      <div className="student-family-check-option">
-                        <input id="edit-guardian-emergency-contact" type="checkbox" checked={editRelationshipForm.is_emergency_contact} disabled={busy} onChange={event => setEditRelationshipForm(current => ({ ...current, is_emergency_contact: event.target.checked }))}/>
-                        <div><label htmlFor="edit-guardian-emergency-contact">Emergency contact</label><small>Person the school may contact if the student is ill, injured, or there is an urgent situation. A guardian can be both primary and emergency contact.</small></div>
-                      </div>
+                      <label className="student-family-check-option">
+                        <input type="checkbox" checked={editRelationshipForm.is_primary_contact} disabled={busy} onChange={event => setEditRelationshipForm(current => ({ ...current, is_primary_contact: event.target.checked }))}/>
+                        <span><strong>Primary contact</strong><small>First person the school should contact for routine communication. Only one active guardian can be primary; selecting this replaces the previous primary contact for this student.</small></span>
+                      </label>
+                      <label className="student-family-check-option">
+                        <input type="checkbox" checked={editRelationshipForm.is_emergency_contact} disabled={busy} onChange={event => setEditRelationshipForm(current => ({ ...current, is_emergency_contact: event.target.checked }))}/>
+                        <span><strong>Emergency contact</strong><small>Person the school may contact if the student is ill, injured, or there is an urgent situation. A guardian can be both primary and emergency contact.</small></span>
+                      </label>
                     </div>
                     {editRelationshipError && <small className="app-field-error" role="alert">{editRelationshipError}</small>}
                     <div className="student-family-card-actions">
@@ -497,14 +497,14 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
               {relationshipType === "Other" && <label><StudentFieldLabel label="Specify relationship" required/><input value={customRelationship} onChange={event => { setCustomRelationship(event.target.value); setRelationshipError(""); }} placeholder="Enter relationship"/></label>}
               
               <div className="student-family-checks" role="group" aria-label="Guardian contact roles">
-                <div className="student-family-check-option">
-                  <input id="new-guardian-primary-contact" type="checkbox" checked={primaryContact} disabled={busy} onChange={event => setPrimaryContact(event.target.checked)}/>
-                  <div><label htmlFor="new-guardian-primary-contact">Primary contact</label><small>First person the school should contact for routine communication. Only one active guardian can be primary; selecting this replaces the previous primary contact for this student.</small></div>
-                </div>
-                <div className="student-family-check-option">
-                  <input id="new-guardian-emergency-contact" type="checkbox" checked={emergencyContact} disabled={busy} onChange={event => setEmergencyContact(event.target.checked)}/>
-                  <div><label htmlFor="new-guardian-emergency-contact">Emergency contact</label><small>Person the school may contact if the student is ill, injured, or there is an urgent situation. A guardian can be both primary and emergency contact.</small></div>
-                </div>
+                <label className="student-family-check-option">
+                  <input type="checkbox" checked={primaryContact} disabled={busy} onChange={event => setPrimaryContact(event.target.checked)}/>
+                  <span><strong>Primary contact</strong><small>First person the school should contact for routine communication. Only one active guardian can be primary; selecting this replaces the previous primary contact for this student.</small></span>
+                </label>
+                <label className="student-family-check-option">
+                  <input type="checkbox" checked={emergencyContact} disabled={busy} onChange={event => setEmergencyContact(event.target.checked)}/>
+                  <span><strong>Emergency contact</strong><small>Person the school may contact if the student is ill, injured, or there is an urgent situation. A guardian can be both primary and emergency contact.</small></span>
+                </label>
               </div>
               
               <button type="submit" className="primary" disabled={busy || linksQuery.isLoading || linksQuery.isError || guardiansQuery.isLoading || guardiansQuery.isError}>{linkGuardian.isPending ? "Linking…" : "Link guardian"}</button>
