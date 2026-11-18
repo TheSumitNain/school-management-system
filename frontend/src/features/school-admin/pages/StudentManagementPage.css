@@ -684,3 +684,37 @@
   }
   .student-directory-toolbar > .student-search { max-width: none; }
 }
+
+
+/* Match Staff list action buttons: compact bordered icon controls. */
+@media (min-width: 721px) {
+  .student-row-actions .student-profile-open,
+  .student-row-actions button.archive {
+    flex-basis: 31px;
+    width: 31px;
+    min-width: 31px;
+    height: 31px;
+    min-height: 31px;
+    border: 1px solid var(--color-border);
+    border-radius: 7px;
+    background: var(--color-surface);
+    box-shadow: none;
+  }
+  .student-row-actions .student-profile-open:hover,
+  .student-row-actions button.archive:hover {
+    border-color: var(--color-brand);
+    background: var(--color-background);
+    box-shadow: none;
+  }
+  .student-row-actions button.archive:hover {
+    border-color: var(--color-danger);
+    background: var(--color-danger-soft);
+  }
+  .student-directory-toolbar > .student-directory-refresh {
+    justify-self: end;
+  }
+}
+.student-page > .heading {
+  margin-top: 0;
+  margin-bottom: 16px;
+}
