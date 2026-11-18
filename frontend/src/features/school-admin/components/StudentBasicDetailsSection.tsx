@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { ApiError } from "../../../lib/api";
 import { DatePicker } from "../../../shared/components/DatePicker";
+import { schoolDateValue, schoolDateValueYearsAgo } from "../../../shared/date/schoolDate";
 import { Modal } from "../../../shared/components/Modal";
 import { StudentFieldLabel } from "./StudentFieldLabel";
 import { notifyToast } from "../../../shared/notifications";
@@ -14,15 +15,10 @@ type Values = {
   religion: string; social_category: string; ews_status: string; school_registration_number: string;
 };
 function localDateValue() {
-  const now = new Date();
-  return [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-");
+  return schoolDateValue();
 }
 function earliestDateOfBirth() {
-  const now = new Date();
-  const year = now.getFullYear() - 130;
-  const month = now.getMonth();
-  const day = Math.min(now.getDate(), new Date(year, month + 1, 0).getDate());
-  return [year, String(month + 1).padStart(2, "0"), String(day).padStart(2, "0")].join("-");
+  return schoolDateValueYearsAgo(130);
 }
 const emptyValues: Values = {
   date_of_birth: "", place_of_birth: "", gender: "", nationality: "",
