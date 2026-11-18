@@ -724,8 +724,8 @@
 .student-family-checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .student-family-check-option{display:flex;align-items:flex-start;gap:10px;min-width:0;padding:12px;border:1px solid var(--color-border);border-radius:10px;background:var(--color-surface)}
 .student-family-check-option>input{flex:0 0 18px;width:18px;height:18px;min-height:18px;margin:2px 0 0;accent-color:var(--color-brand);cursor:pointer}
-.student-family-check-option>div{display:grid;gap:4px;min-width:0}
-.student-family-check-option label{display:inline!important;cursor:pointer;color:var(--color-text);font-size:12px;font-weight:700;line-height:1.4}
+.student-family-check-option>span{display:grid;gap:4px;min-width:0;cursor:pointer}
+.student-family-check-option strong{color:var(--color-text);font-size:12px;font-weight:700;line-height:1.4}
 .student-family-check-option small{color:var(--color-text-muted);font-size:11px;font-weight:400;line-height:1.5}
 .student-family-check-option:has(input:focus-visible){outline:3px solid var(--color-focus);outline-offset:2px}
 @media(max-width:720px){.student-family-checks{grid-template-columns:1fr}}
