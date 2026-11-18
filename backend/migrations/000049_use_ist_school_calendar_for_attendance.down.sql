@@ -28,6 +28,9 @@ BEGIN
 END;
 $v20$;
 
+ALTER TABLE student_physical_details
+    DROP CONSTRAINT IF EXISTS student_physical_details_measured_on_not_future;
+
 -- Restore the original V37 database-session-date DOB constraint.
 ALTER TABLE student_basic_details
     DROP CONSTRAINT student_basic_details_birth_date;
