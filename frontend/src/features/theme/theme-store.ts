@@ -68,7 +68,9 @@ export function resolveTheme(
   };
   const darkMinute = toMinutes(darkStart);
   const lightMinute = toMinutes(lightStart);
-  if (darkMinute === lightMinute) return "light";
+  if (darkMinute === lightMinute) {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
 
   const currentMinute = now.getHours() * 60 + now.getMinutes();
   const isDark = darkMinute < lightMinute
