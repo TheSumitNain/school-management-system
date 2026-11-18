@@ -548,12 +548,12 @@ test("student admission, profile navigation and parent details render without br
     roll_number: "01",
   });
 
-  await expect(page.getByRole("button", { name: "Edit profile for Aarav Sharma" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Manage profile for Aarav Sharma" })).toBeVisible();
   await expect(page.getByText("Not enrolled", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Enrollments", exact: true }).click();
   await expect(page.getByText("14 Nov 2026", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Student directory", exact: true }).click();
-  await page.getByRole("button", { name: "View profile for Aarav Sharma" }).click();
+  await page.getByRole("button", { name: "Manage profile for Aarav Sharma" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Academic history", exact: true })).toBeVisible();
   const profileDialog = page.getByRole("dialog", { name: /Student profile/ });
@@ -1351,11 +1351,11 @@ test("student directory remains view-only when update and archive permissions ar
   await page.getByRole("button", { name: "Students" }).click();
 
   await expect(page.getByText("View Only Student")).toBeVisible();
-  await expect(page.getByRole("button", { name: "View profile for View Only Student" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Edit profile for View Only Student" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Manage profile for View Only Student" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Manage profile for View Only Student" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Archive View Only Student" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /New admission/ })).toHaveCount(0);
-  await page.getByRole("button", { name: "View profile for View Only Student" }).click();
+  await page.getByRole("button", { name: "Manage profile for View Only Student" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
   await page.getByRole("button", { name: /Parents & siblings/i }).click();
   await expect(page.getByRole("dialog", { name: "Parents & Siblings" })).toBeVisible();
@@ -1647,10 +1647,10 @@ test("student archive confirmation recovers when the archive committed but its r
   await expect.poll(() => archiveAttempts).toBe(2);
   await expect(page.getByText("Archive Retry Student has been archived.")).toBeVisible();
   await expect(page.getByText("archived", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Edit profile for Archive Retry Student" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Manage profile for Archive Retry Student" })).toBeVisible();
   expect(archiveRequests).toHaveLength(2);
 
-  await page.getByRole("button", { name: "View profile for Archive Retry Student" }).click();
+  await page.getByRole("button", { name: "Manage profile for Archive Retry Student" }).click();
   await page.getByRole("button", { name: "Basic details" }).click();
   await expect(page.getByText("View-only access. Student update permission is required to edit these details.")).toBeVisible();
   await expect(page.getByPlaceholder("City, district or place")).toHaveValue("Ambala");
@@ -1837,7 +1837,7 @@ test("staff can create a guardian contact and link it to a student with relation
   await page.getByLabel("Password").fill("E2E-only-password");
   await page.getByRole("button", { name: /Continue/ }).click();
   await page.getByRole("button", { name: "Students" }).click();
-  await page.getByRole("button", { name: "View profile for Guardian Workflow Student" }).click();
+  await page.getByRole("button", { name: "Manage profile for Guardian Workflow Student" }).click();
   await page.getByRole("button", { name: /Parents & siblings/i }).click();
   const familyDialog = page.getByRole("dialog", { name: "Parents & Siblings" });
   await expect(familyDialog).toBeVisible();
@@ -1998,7 +1998,7 @@ test("staff can create a guardian contact and link it to a student with relation
   await page.getByRole("button", { name: /Continue/ }).click();
   await expect(page.getByRole("button", { name: "Students" })).toBeVisible();
   await page.getByRole("button", { name: "Students" }).click();
-  await page.getByRole("button", { name: "View profile for Guardian Workflow Student" }).click();
+  await page.getByRole("button", { name: "Manage profile for Guardian Workflow Student" }).click();
   await page.getByRole("button", { name: /Parents & siblings/i }).click();
   await expect(page.getByRole("dialog", { name: "Parents & Siblings" })).toBeVisible();
   await expect(page.getByText("Nisha Verma Updated", { exact: true })).toBeVisible();
@@ -2011,7 +2011,7 @@ test("staff can create a guardian contact and link it to a student with relation
   // student, but that student's own relationship type and flags remain intact.
   await page.getByRole("button", { name: "Close dialog" }).click();
   await page.getByRole("button", { name: "Close dialog" }).click();
-  await page.getByRole("button", { name: "View profile for Other Guardian Student" }).click();
+  await page.getByRole("button", { name: "Manage profile for Other Guardian Student" }).click();
   await page.getByRole("button", { name: /Parents & siblings/i }).click();
   await expect(page.getByRole("dialog", { name: "Parents & Siblings" })).toBeVisible();
   await expect(page.getByText("Nisha Verma Updated", { exact: true })).toBeVisible();
@@ -2118,8 +2118,8 @@ test("staff with guardian management permission cannot change an inactive studen
   await page.getByLabel("Password").fill("E2E-only-password");
   await page.getByRole("button", { name: /Continue/ }).click();
   await page.getByRole("button", { name: "Students" }).click();
-  await expect(page.getByRole("button", { name: "Edit profile for Inactive Family Student" })).toHaveCount(0);
-  await page.getByRole("button", { name: "View profile for Inactive Family Student" }).click();
+  await expect(page.getByRole("button", { name: "Manage profile for Inactive Family Student" })).toBeVisible();
+  await page.getByRole("button", { name: "Manage profile for Inactive Family Student" }).click();
   await page.getByRole("button", { name: "Basic details" }).click();
   await expect(page.getByText("View-only access. Student update permission is required to edit these details.")).toBeVisible();
   await expect(page.getByRole("button", { name: "Save basic details" })).toHaveCount(0);
@@ -2213,7 +2213,7 @@ test("switching student profiles clears unsaved basic-details drafts and validat
   await expect(page.getByRole("button", { name: "Students" })).toBeVisible();
   await page.getByRole("button", { name: "Students" }).click();
 
-  await page.getByRole("button", { name: "View profile for Student A" }).click();
+  await page.getByRole("button", { name: "Manage profile for Student A" }).click();
   await page.getByRole("button", { name: "Basic details" }).click();
   const placeOfBirth = page.getByPlaceholder("City, district or place");
   await expect(placeOfBirth).toBeVisible();
@@ -2225,7 +2225,7 @@ test("switching student profiles clears unsaved basic-details drafts and validat
   await page.getByRole("button", { name: "Close dialog" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
   await page.getByRole("button", { name: "Close dialog" }).click();
-  await page.getByRole("button", { name: "View profile for Student B" }).click();
+  await page.getByRole("button", { name: "Manage profile for Student B" }).click();
   await page.getByRole("button", { name: "Basic details" }).click();
 
   await expect(page.getByPlaceholder("City, district or place")).toHaveValue("Ambala, Haryana");
@@ -2296,7 +2296,7 @@ test("switching student Parent Details clears unsaved guardian drafts and field 
   await expect(page.getByRole("button", { name: "Students" })).toBeVisible();
   await page.getByRole("button", { name: "Students" }).click();
 
-  await page.getByRole("button", { name: "View profile for Family Student A" }).click();
+  await page.getByRole("button", { name: "Manage profile for Family Student A" }).click();
   await page.getByRole("button", { name: /Parents & Siblings/i }).click();
   await page.getByRole("button", { name: "Create a new guardian contact" }).click();
   await page.getByPlaceholder("Guardian full name").fill("अ".repeat(201));
@@ -2305,7 +2305,7 @@ test("switching student Parent Details clears unsaved guardian drafts and field 
 
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByRole("button", { name: "Close dialog" }).click();
-  await page.getByRole("button", { name: "View profile for Family Student B" }).click();
+  await page.getByRole("button", { name: "Manage profile for Family Student B" }).click();
   await page.getByRole("button", { name: /Parents & Siblings/i }).click();
   await page.getByRole("button", { name: "Create a new guardian contact" }).click();
 
@@ -2447,7 +2447,7 @@ test("switching student profiles clears address, contact, medical and physical d
   await expect(page.getByRole("button", { name: "Students" })).toBeVisible();
   await page.getByRole("button", { name: "Students" }).click();
 
-  await page.getByRole("button", { name: "View profile for State Student A" }).click();
+  await page.getByRole("button", { name: "Manage profile for State Student A" }).click();
   await page.getByRole("button", { name: /Address & communication/ }).click();
   const addressDialog = page.getByRole("dialog", { name: "Address & Communication" });
   await expect(addressDialog).toBeVisible();
@@ -2475,7 +2475,7 @@ test("switching student profiles clears address, contact, medical and physical d
 
   await addressDialog.getByRole("button", { name: "Close dialog" }).click();
   await page.getByRole("button", { name: "Close dialog" }).click();
-  await page.getByRole("button", { name: "View profile for State Student B" }).click();
+  await page.getByRole("button", { name: "Manage profile for State Student B" }).click();
   await page.getByRole("button", { name: /Address & communication/ }).click();
   await expect(page.getByRole("dialog", { name: "Address & Communication" })).toBeVisible();
   await expect(page.getByPlaceholder("House number, street or building")).toHaveValue("Student B saved address");
@@ -2487,7 +2487,7 @@ test("switching student profiles clears address, contact, medical and physical d
   await page.getByRole("button", { name: "Close dialog" }).click();
   await page.getByRole("button", { name: "Close dialog" }).click();
 
-  await page.getByRole("button", { name: "View profile for State Student A" }).click();
+  await page.getByRole("button", { name: "Manage profile for State Student A" }).click();
   failMedicalReads = true;
   await page.getByRole("button", { name: /Medical & physical/ }).click();
   const healthDialog = page.getByRole("dialog", { name: "Medical & Physical Details" });
@@ -2524,7 +2524,7 @@ test("switching student profiles clears address, contact, medical and physical d
 
   await healthDialog.getByRole("button", { name: "Close dialog" }).click();
   await page.getByRole("button", { name: "Close dialog" }).click();
-  await page.getByRole("button", { name: "View profile for State Student B" }).click();
+  await page.getByRole("button", { name: "Manage profile for State Student B" }).click();
   await page.getByRole("button", { name: /Medical & physical/ }).click();
   await expect(page.getByPlaceholder("Record known allergies, if any")).toHaveValue("Student B saved allergy record");
   await expect(page.getByText("Use no more than 2,000 characters.", { exact: true })).toHaveCount(0);
@@ -2648,7 +2648,7 @@ test("archived student profile sections remain readable but cannot be changed", 
   await page.getByLabel("Password").fill("E2E-only-password");
   await page.getByRole("button", { name: /Continue/ }).click();
   await page.getByRole("button", { name: "Students" }).click();
-  await page.getByRole("button", { name: "View profile for Archived Student" }).click();
+  await page.getByRole("button", { name: "Manage profile for Archived Student" }).click();
   const profileDialog = page.getByRole("dialog", { name: "Student profile" });
   await expect(profileDialog.getByText("archived", { exact: true })).toBeVisible();
   await expect(profileDialog.getByText("31 Mar 2026", { exact: true })).toBeVisible();
