@@ -232,3 +232,5 @@ The final optional subject-selection boundary test commit `2b7e6c38f34f1ba28ca38
 
 - Roles & Permissions must use the shared page-heading vertical rhythm; do not combine a page-specific heading margin with the page grid gap.
 - Settings must use the same outer content width and left/right gutters as other dashboard pages. Section spacing should be controlled by one layout gap, not stacked section margins.
+
+- Roles & Permissions page must not introduce extra top padding; its page title must start at the same vertical position as other authenticated dashboard page titles.
