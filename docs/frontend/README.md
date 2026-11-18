@@ -211,3 +211,11 @@ The final optional subject-selection boundary test commit `2b7e6c38f34f1ba28ca38
 - Field labels with Required/Optional status and help icons use a consistent two-line arrangement: field name on the first line, status and help affordance together on the second line. Apply the same pattern in directory filters and forms.
 - When a page needs multiple toolbar rows, align related controls deliberately and preserve a predictable responsive order. Student Directory uses Search + Academic Year on row one and Status + Refresh on row two; keep Enrollments toolbar behavior independent.
 - Prefer shared global styles and reusable controls over page-specific visual overrides. Any module-specific layout should change only arrangement, not the shared control appearance.
+
+
+### Shared layout refinements
+
+- Keep the top and bottom spacing of page headers consistent across dashboard modules; page-specific styles must not introduce arbitrary heading margins.
+- Student directory row action icon buttons use the same compact bordered geometry and interaction treatment as Staff list action buttons.
+- Search inputs must not show a second nested browser border/rectangle on focus. Keep a single consistent wrapper control and an accessible keyboard focus treatment.
+- Place Student Directory Refresh at the far right of its second toolbar row, aligned with the compact status filter row.
