@@ -560,3 +560,56 @@
     grid-template-columns: minmax(220px, 1fr) minmax(230px, 280px) minmax(145px, 165px) auto;
   }
 }
+
+
+/* Directory toolbar intentionally uses two balanced desktop rows:
+   search + academic year, then status + refresh. */
+@media (min-width: 721px) {
+  .student-directory-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      "search year"
+      "status refresh";
+    align-items: center;
+    gap: 8px 12px;
+  }
+  .student-directory-toolbar > .student-search {
+    grid-area: search;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+  }
+  .student-directory-toolbar > .student-year-filter {
+    grid-area: year;
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    flex: initial;
+  }
+  .student-directory-toolbar > .student-year-filter .student-field-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+  }
+  .student-directory-toolbar > .student-year-filter .app-select {
+    width: 100%;
+    min-width: 0;
+  }
+  .student-directory-toolbar > .student-status-filter {
+    grid-area: status;
+    width: 100%;
+    min-width: 0;
+  }
+  .student-directory-toolbar > .student-directory-refresh {
+    grid-area: refresh;
+    justify-self: start;
+    min-width: 112px;
+  }
+  .student-directory-toolbar > .student-feedback.error {
+    grid-column: 1 / -1;
+  }
+}
