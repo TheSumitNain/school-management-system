@@ -4,6 +4,7 @@ import { DatePicker } from "../../../shared/components/DatePicker";
 import { Modal } from "../../../shared/components/Modal";
 import { Select } from "../../../shared/components/Select";
 import { StudentFieldLabel } from "./StudentFieldLabel";
+import { notifyToast } from "../../../shared/notifications";
 import type { StudentProfile } from "../api";
 import {
   useSaveSchoolStudentMedicalDetailsMutation,
@@ -64,7 +65,11 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
   const [physicalNotes, setPhysicalNotes] = useState("");
   const [medicalErrors, setMedicalErrors] = useState<{ allergies?: string; knownConditions?: string; ongoingMedications?: string; emergencyNotes?: string }>({});
   const [physicalErrors, setPhysicalErrors] = useState<{ heightCM?: string; weightKG?: string; measuredOn?: string; visionNotes?: string; physicalNotes?: string }>({});
-  const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
+  const [feedback, setFeedbackState] = useState<{ kind: "success" | "error"; message: string } | null>(null);
+  const setFeedback = (next: typeof feedback) => {
+    setFeedbackState(next);
+    if (next) notifyToast(next.kind === "success" && next.message.startsWith("No changes to save") ? "info" : next.kind, next.message);
+  };
 
   const medicalQuery = useSchoolStudentMedicalDetailsQuery(student.id, section === "medical");
   const physicalQuery = useSchoolStudentPhysicalDetailsQuery(student.id, section === "physical");
@@ -221,7 +226,6 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
       onClose={onClose}
       closeDisabled={busy}
     >
-      {feedback && <p className={feedback.kind === "error" ? "student-feedback error" : "student-feedback success"} role={feedback.kind === "error" ? "alert" : "status"}>{feedback.message}</p>}
       <p className="student-health-privacy-note">Optional school-entered information only. This section does not create medical diagnoses or automated health assessments. Teachers do not have access to these records.</p>
       <div className="student-address-tabs" role="group" aria-label="Health profile section">
         <button type="button" className={section === "medical" ? "active" : ""} aria-pressed={section === "medical"} onClick={() => { setSection("medical"); setFeedback(null); }}>Medical details</button>
