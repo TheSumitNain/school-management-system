@@ -1,3 +1,12 @@
+## Guardian relationship uniqueness (2026-11-18)
+
+- Approved exactly eight relationship types: Father, Mother, Grandfather, Grandmother, Brother, Sister, Uncle and Aunt.
+- Each student may have at most one active guardian link for a given relationship type. The same type can be used by different students.
+- Frontend disables relationship types already active for the selected student; Edit excludes the current link while checking other active links.
+- Backend validates the allowlist and maps database duplicate-relationship rejection to a conflict response.
+- V50 migration adds a serialized database trigger for new links and relationship-type changes. Existing duplicate active rows are deliberately retained; edits to their contact flags and revocation/history remain possible. No guardian link is automatically deleted or revoked.
+- Added automated coverage for duplicate conflict classification and browser-level disabled-option behavior. CI verification is pending.
+
 ## Student Management — approved guardian relationship vocabulary (2026-11-18)
 
 - Standardized the guardian relationship selector to exactly eight options: Father, Mother, Grandfather, Grandmother, Brother, Sister, Uncle and Aunt.
