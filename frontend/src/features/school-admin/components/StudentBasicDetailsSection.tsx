@@ -45,11 +45,6 @@ export function StudentBasicDetailsSection({ student, canUpdate, onStudentNameCh
   const updateStudent = useUpdateSchoolStudentMutation();
   const [fullName, setFullName] = useState(student.full_name);
   const [nameError, setNameError] = useState("");
-  const [nameFeedback, setNameFeedbackState] = useState<{ kind: "success" | "error"; message: string } | null>(null);
-  const setNameFeedback = (next: typeof nameFeedback) => {
-    setNameFeedbackState(next);
-    if (next) notifyToast(next.kind, next.message);
-  };
   const [values, setValues] = useState<Values>(emptyValues);
   const [errors, setErrors] = useState<Partial<Record<keyof Values, string>>>({});
   const [feedback, setFeedbackState] = useState<{ kind: "success" | "error"; message: string } | null>(null);
@@ -62,7 +57,6 @@ export function StudentBasicDetailsSection({ student, canUpdate, onStudentNameCh
   useEffect(() => {
     setFullName(student.full_name);
     setNameError("");
-    setNameFeedback(null);
     setFeedback(null);
   }, [student.id]);
 
@@ -88,32 +82,6 @@ export function StudentBasicDetailsSection({ student, canUpdate, onStudentNameCh
     setErrors({});
   }, [student.id, basicDetailsSnapshot]);
 
-  async function saveStudentName() {
-    const trimmed = fullName.trim();
-    if (!trimmed) {
-      setNameError("Student name is required.");
-      return;
-    }
-    if (Array.from(trimmed).length > 200) {
-      setNameError("Student name must be 200 characters or fewer.");
-      return;
-    }
-    if (trimmed === student.full_name) {
-      setNameError("");
-      setNameFeedback(null);
-      return;
-    }
-    setNameError("");
-    setNameFeedback(null);
-    try {
-      await updateStudent.mutateAsync({ studentID: student.id, fullName: trimmed });
-      setFullName(trimmed);
-      onStudentNameChange(trimmed);
-      setNameFeedback({ kind: "success", message: "Student name saved." });
-    } catch (error) {
-      setNameFeedback({ kind: "error", message: error instanceof Error ? error.message : "Student name could not be saved." });
-    }
-  }
 
   function update<K extends keyof Values>(key: K, value: Values[K]) {
     setValues(current => ({ ...current, [key]: value }));
@@ -124,6 +92,10 @@ export function StudentBasicDetailsSection({ student, canUpdate, onStudentNameCh
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canUpdate || query.isLoading || query.isError) return;
+    const trimmedName = fullName.trim();
+    if (!trimmedName) { setNameError("Student name is required."); return; }
+    if (Array.from(trimmedName).length > 200) { setNameError("Student name must be 200 characters or fewer."); return; }
+    setNameError("");
     const nextErrors: Partial<Record<keyof Values, string>> = {};
     if (Array.from(values.place_of_birth.trim()).length > 120) nextErrors.place_of_birth = "Place of birth must be 120 characters or fewer.";
     if (Array.from(values.nationality.trim()).length > 80) nextErrors.nationality = "Nationality must be 80 characters or fewer.";
@@ -154,9 +126,25 @@ export function StudentBasicDetailsSection({ student, canUpdate, onStudentNameCh
       setFeedback({ kind: "success", message: "No changes to save." });
       return;
     }
+    const nameChanged = trimmedName !== student.full_name;
+    if (nameChanged) {
+      try {
+        await updateStudent.mutateAsync({ studentID: student.id, fullName: trimmedName });
+        setFullName(trimmedName);
+        onStudentNameChange(trimmedName);
+      } catch (error) {
+        notifyToast("error", error instanceof Error ? error.message : "Student name could not be saved.");
+        return;
+      }
+    }
+    if (unchanged) {
+      if (nameChanged) notifyToast("success", "Student name saved.");
+      else setFeedback({ kind: "success", message: "No changes to save." });
+      return;
+    }
     try {
       await save.mutateAsync({ studentID: student.id, input });
-      setFeedback({ kind: "success", message: "Basic details saved." });
+      setFeedback({ kind: "success", message: nameChanged ? "Student name and basic details saved." : "Basic details saved." });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Basic details could not be saved.";
       const serverFieldErrors = error instanceof ApiError ? error.fieldErrors : {};
@@ -189,7 +177,6 @@ export function StudentBasicDetailsSection({ student, canUpdate, onStudentNameCh
           <input value={fullName} disabled={!canUpdate || busy} aria-invalid={Boolean(nameError)} aria-describedby={nameError ? "student-basic-name-error" : undefined}
             onChange={event => { setFullName(event.target.value); setNameError(""); setNameFeedback(null); }} placeholder="Enter student's full name" />
           {nameError && <small id="student-basic-name-error" className="app-field-error" role="alert">{nameError}</small>}
-          {canUpdate && <button type="button" className="student-link-button" onClick={() => void saveStudentName()} disabled={busy || fullName.trim() === student.full_name}>Save student name</button>}
         </label>
         <div className="student-basic-date-field"><StudentFieldLabel label="Date of birth" hint="Optional. Choose a valid date from the past 130 years; future dates are not allowed." /><DatePicker ariaLabel="Date of birth" value={values.date_of_birth} min={earliestDateOfBirth()} max={localDateValue()} invalid={Boolean(errors.date_of_birth)} describedBy={errors.date_of_birth ? "student-basic-date_of_birth-error" : undefined} onChange={value => update("date_of_birth", value)} placeholder="Choose date of birth" disabled={!canUpdate || query.isLoading || query.isError || busy}/>{fieldError("date_of_birth")}</div>
         <label><StudentFieldLabel label="Place of birth" hint="Optional. Enter a city, district or place name. Maximum 120 characters." /><input value={values.place_of_birth} aria-invalid={Boolean(errors.place_of_birth)} aria-describedby={errors.place_of_birth ? "student-basic-place_of_birth-error" : undefined} disabled={!canUpdate || query.isLoading || query.isError || busy} onChange={event => update("place_of_birth", event.target.value)} placeholder="City, district or place"/>{fieldError("place_of_birth")}</label>
