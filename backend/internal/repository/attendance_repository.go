@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"school-management-system/internal/schooltime"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 )
@@ -151,7 +153,7 @@ func (r *AcademicRepository) MarkAttendance(ctx context.Context,actorID,schoolID
 		FOR UPDATE OF st`,enrollmentID,schoolID).Scan(&sectionID)
 	if errors.Is(err,pgx.ErrNoRows){return nil,ErrAttendanceNotFound};if err!=nil{return nil,fmt.Errorf("load attendance enrollment: %w",err)}
 	var isPast bool
-	if err=tx.QueryRow(ctx,`SELECT $1::date < CURRENT_DATE`,day.Format("2006-01-02")).Scan(&isPast);err!=nil{return nil,fmt.Errorf("classify attendance date: %w",err)}
+	if err=tx.QueryRow(ctx,`SELECT $1::date < $2::date`,day.Format("2006-01-02"),schooltime.TodayDate()).Scan(&isPast);err!=nil{return nil,fmt.Errorf("classify attendance date: %w",err)}
 	permission:="attendance.mark";if isPast{permission="attendance.correct_past"}
 	if err=attendancePermission(ctx,tx,actorID,schoolID,permission);err!=nil{return nil,err}
 	allowed,err:=attendanceSectionAllowed(ctx,tx,actorID,schoolID,sectionID);if err!=nil{return nil,err};if !allowed{return nil,ErrAttendanceAccessDenied}
