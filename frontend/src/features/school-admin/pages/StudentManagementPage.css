@@ -729,3 +729,10 @@
 .student-family-check-option small{color:var(--color-text-muted);font-size:11px;font-weight:400;line-height:1.5}
 .student-family-check-option:has(input:focus-visible){outline:3px solid var(--color-focus);outline-offset:2px}
 @media(max-width:720px){.student-family-checks{grid-template-columns:1fr}}
+
+
+/* Keep the long registration label, optional badge and help icon aligned in the basic-details modal. */
+.student-basic-details-form .student-basic-registration-field>.student-field-label{display:grid;width:max-content;max-width:100%;grid-template-columns:max-content max-content;grid-template-areas:"name name" "status hint";align-items:center;justify-content:start;justify-items:start;column-gap:6px;row-gap:3px}
+.student-basic-details-form .student-basic-registration-field .student-field-label__status,.student-basic-details-form .student-basic-registration-field .student-field-hint{align-self:center}
+.student-basic-details-form .student-basic-registration-field .student-field-label__status{white-space:nowrap}
+.student-basic-details-form .student-basic-registration-field .student-field-hint__trigger{display:inline-grid;place-items:center;vertical-align:middle}
