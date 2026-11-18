@@ -461,8 +461,8 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 	if err := savepoint.Rollback(ctx); err != nil {
 		t.Fatalf("rollback primary-contact constraint savepoint: %v", err)
 	}
-	if _, err := repo.LinkStudentGuardian(ctx, targetPrincipalID, schoolID, studentID, thirdGuardianID, "Father", false, false); !errors.Is(err, ErrGuardianConflict) {
-		t.Fatalf("second active Father relationship error = %v, want ErrGuardianConflict", err)
+	if _, err := repo.LinkStudentGuardian(ctx, targetPrincipalID, schoolID, studentID, thirdGuardianID, "Father", false, false); !errors.Is(err, ErrGuardianRelationshipConflict) {
+		t.Fatalf("second active Father relationship error = %v, want ErrGuardianRelationshipConflict", err)
 	}
 	duplicateRelationshipSavepoint, err := tx.Begin(ctx)
 	if err != nil {
