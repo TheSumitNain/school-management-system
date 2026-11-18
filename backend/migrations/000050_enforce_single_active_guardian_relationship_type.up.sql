@@ -8,6 +8,23 @@ BEGIN
        AND NEW.revoked_at IS NOT DISTINCT FROM OLD.revoked_at THEN
         RETURN NEW;
     END IF;
+    IF LOWER(BTRIM(NEW.relationship_type)) NOT IN (
+        'father', 'mother', 'grandfather', 'grandmother',
+        'brother', 'sister', 'uncle', 'aunt'
+    ) THEN
+        RAISE EXCEPTION USING ERRCODE = '23514',
+            MESSAGE = 'guardian relationship type is not allowed';
+    END IF;
+    NEW.relationship_type := CASE LOWER(BTRIM(NEW.relationship_type))
+        WHEN 'father' THEN 'Father'
+        WHEN 'mother' THEN 'Mother'
+        WHEN 'grandfather' THEN 'Grandfather'
+        WHEN 'grandmother' THEN 'Grandmother'
+        WHEN 'brother' THEN 'Brother'
+        WHEN 'sister' THEN 'Sister'
+        WHEN 'uncle' THEN 'Uncle'
+        WHEN 'aunt' THEN 'Aunt'
+    END;
     IF NEW.revoked_at IS NOT NULL THEN
         RETURN NEW;
     END IF;
