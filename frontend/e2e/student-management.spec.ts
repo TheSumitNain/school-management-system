@@ -767,7 +767,7 @@ test("student admission, profile navigation and parent details render without br
   expect(guardianLinkUpdateRequests[0]).toMatchObject({
     relationship_type: "Legal Guardian", is_primary_contact: false, is_emergency_contact: false,
   });
-  await expect(page.getByText("Legal Guardian", { exact: true })).toBeVisible();
+  await expect(page.locator(".student-family-card > div > span").filter({ hasText: /^Legal Guardian$/ })).toBeVisible();
   await page.getByRole("button", { name: "Edit shared guardian details" }).click();
   await expect(page.getByRole("heading", { name: "Edit shared guardian profile" })).toBeVisible();
   await expect(page.getByText("These contact and profile details are shared across all students linked to this guardian.")).toBeVisible();
