@@ -468,6 +468,8 @@ test("student admission, profile navigation and parent details render without br
   await expect.poll(() => studentDirectoryQueries.at(-1)).toBe(String(previousAcademicYear.id));
 
   await page.getByRole("button", { name: /New admission/ }).click();
+  const admissionDialog = page.getByRole("dialog", { name: "New student admission" });
+  await expect(admissionDialog.locator(".student-field-hint__tooltip")).toHaveCount(0);
   await page.getByPlaceholder("e.g. Aarav Sharma").fill("Aarav Sharma");
   await page.getByPlaceholder("e.g. ADM-2026-001").fill("ADM-E2E-001");
   await page.getByRole("button", { name: "Admission academic year" }).click();
@@ -589,6 +591,7 @@ test("student admission, profile navigation and parent details render without br
   failStudentReads.add("basic-details");
   await page.getByRole("button", { name: /Basic details/ }).click();
   await expect(page.getByRole("dialog", { name: "Basic Details" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Basic Details" }).locator(".student-field-hint__tooltip")).toHaveCount(0);
   await expect.poll(() => observedStudentDetailGets).toContain("basic-details");
   await expect.poll(() => failedStudentReads).toContain("basic-details");
   const basicSave = page.getByRole("button", { name: "Save basic details" });
