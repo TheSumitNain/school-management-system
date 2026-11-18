@@ -64,7 +64,7 @@ export function ToastViewport() {
   const dismiss = (id: number) => setToasts(current => current.filter(toast => toast.id !== id));
 
   return (
-    <div className="app-toast-viewport" aria-label="Notifications">
+    <div className="app-toast-viewport" role="region" aria-label="Notifications">
       {toasts.slice(0, 3).map(toast => <ToastItem key={toast.id} toast={toast} onDismiss={dismiss} />)}
     </div>
   );
