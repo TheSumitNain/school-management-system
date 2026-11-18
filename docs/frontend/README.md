@@ -205,6 +205,7 @@ Do not create frontend routes, forms, mock authentication or placeholder flows f
 
 - Keep the authenticated header appearance control compact: it only switches between Light and Dark mode. Do not place palette selection or a multi-option appearance menu in the header.
 - Put detailed appearance preferences in the authenticated Settings page: Light/Dark/System mode and the 15 approved brand palettes. Existing saved palette IDs that are no longer supported must safely migrate to Cobalt without resetting the user's appearance mode.
+- Appearance preferences also support an optional Automatic schedule. Users choose local device times for Dark Mode and Light Mode; settings persist in the existing `schooldesk.theme` store, and the active theme updates while the app remains open. The compact header toggle remains a direct manual Light/Dark control; using it switches the preference to that explicit mode.
 - Reuse the existing persisted Zustand theme store (`schooldesk.theme`). Moving controls must not reset saved mode or palette preferences.
 - Keep the compact Light/Dark toggle accessible by keyboard and provide a clear accessible name describing the mode it will switch to.
 
