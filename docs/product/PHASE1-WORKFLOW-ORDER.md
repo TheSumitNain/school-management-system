@@ -80,6 +80,7 @@ A task is not complete merely because a database table, API route or frontend pa
 2. Require only the minimum basic identity fields needed to create the student; allow address, guardian, medical, physical and document sections to be completed later.
 3. Assign an admission number to the enrollment for the selected academic year. Do not treat admission number as a permanent student identity or enforce school-wide uniqueness across all years.
 4. Capture guardian/contact details as student relationship data where needed for school administration. This does not enable parent login, OTP or SMS.
+   - Guardian relationships are limited to Father, Mother, Grandfather, Grandmother, Brother, Sister, Uncle and Aunt. Each student may have at most one active guardian link for each relationship type. The backend database guard and frontend selector enforce this; revoked history remains available. Existing duplicate active links are preserved for explicit review and are not automatically revoked.
    - Approved relationship choices are limited to Father, Mother, Grandfather, Grandmother, Brother, Sister, Uncle and Aunt. The same allowlist is enforced by frontend and backend; legacy relationship history is preserved and is not automatically rewritten.
 5. Support student search, profile sections, academic history and school-/role-/field-level authorization.
 
