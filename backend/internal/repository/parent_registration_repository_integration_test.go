@@ -109,7 +109,7 @@ func TestParentRegistrationRepositoryPostgresIntegration(t *testing.T) {
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO student_guardians
 				(school_id, student_id, guardian_id, relationship_type)
-			VALUES ($1, $2, $3, 'guardian')
+			VALUES ($1, $2, $3, 'Father')
 		`, guardianSchoolIDs[i], studentIDs[i], guardianIDs[i]); err != nil {
 			t.Fatalf("create official student-guardian relationship %d: %v", i, err)
 		}
@@ -260,7 +260,7 @@ func TestParentRegistrationConcurrentSameMobilePostgresIntegration(t *testing.T)
 	if _, err := fixtureTx.Exec(ctx, `
 		INSERT INTO student_guardians
 			(school_id, student_id, guardian_id, relationship_type)
-		VALUES ($1, $2, $3, 'guardian')
+		VALUES ($1, $2, $3, 'Father')
 	`, schoolID, studentID, guardianID); err != nil {
 		t.Fatalf("create official student-guardian relationship: %v", err)
 	}
