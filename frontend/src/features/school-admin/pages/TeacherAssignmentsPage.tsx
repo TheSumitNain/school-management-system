@@ -121,7 +121,7 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
         subject_id: Number(subjectID), teacher_principal_id: Number(teacherID),
       });
       notifyToast("success", "Teacher assigned to the subject and section.");
-      setFeedback({ kind: "success", message: "Teacher assigned to the subject and section." });
+      setFeedback(null);
       setSubjectDialogOpen(false);
       setSubjectID(""); setTeacherID(""); setFieldErrors({});
       await load();
@@ -145,7 +145,7 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
         teacher_principal_id: Number(inchargeTeacherID),
       });
       notifyToast("success", "Class in-charge assigned successfully.");
-      setFeedback({ kind: "success", message: "Class in-charge assigned successfully." });
+      setFeedback(null);
       setInchargeDialogOpen(false);
       setInchargeTeacherID(""); setFieldErrors({});
       await load();
@@ -163,7 +163,7 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
       setSubjectToRevoke(null);
       setSubjectRevokeError("");
       notifyToast("success", "Subject assignment revoked. Its history has been retained.");
-      setFeedback({ kind: "success", message: "Subject assignment revoked. Its history has been retained." });
+      setFeedback(null);
       await load();
     } catch (error) {
       setSubjectRevokeError(error instanceof Error ? error.message : "Unable to revoke assignment. Please try again.");
@@ -179,7 +179,7 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
       setInchargeToRevoke(null);
       setInchargeRevokeError("");
       notifyToast("success", "Class in-charge assignment revoked. Its history has been retained.");
-      setFeedback({ kind: "success", message: "Class in-charge assignment revoked. Its history has been retained." });
+      setFeedback(null);
       await load();
     } catch (error) {
       setInchargeRevokeError(error instanceof Error ? error.message : "Unable to revoke assignment. Please try again.");
