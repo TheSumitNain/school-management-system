@@ -5,7 +5,7 @@
 - Date of birth (including the 130-year lower bound), physical measurement future-date validation, attendance past-date permission classification, frontend date bounds/defaults, and the DatePicker Today action now use the same IST calendar date. Forward migration V49 also changes the PostgreSQL DOB CHECK constraint from session-dependent `CURRENT_DATE` to the explicit `Asia/Kolkata` date. Attendance no longer relies on PostgreSQL session/server `CURRENT_DATE`.
 - Added deterministic backend and frontend timezone-boundary tests for the instant immediately before and at Indian midnight, updated date-validation integration fixtures to use IST, and asserted that the applied PostgreSQL DOB constraint names `Asia/Kolkata`.
 - This is a system-wide default, not a per-school setting. If schools outside India are onboarded, add an explicit per-school IANA timezone configuration before relying on local date boundaries for those schools.
-- Local authenticated API/PostgreSQL/browser acceptance and CI for this checkpoint are pending; do not treat this source change as verified until those checks pass.
+- Migration V49 has been added but has not yet been applied to the user's local databases. Local authenticated API/PostgreSQL/browser acceptance and CI for the latest checkpoint are pending; do not treat this source change as verified until those checks pass.
 
 #### Student Management — guardian, health, promotion and profile follow-up audit (2026-11-17)
 
