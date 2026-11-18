@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { notifyToast } from "../../../shared/notifications";
 import { CalendarClock, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { Modal } from "../../../shared/components/Modal";
 import { Select } from "../../../shared/components/Select";
@@ -154,6 +155,7 @@ export function TimetableManagementPage({ permissions }: Props) {
     try {
       await saveTimetablePeriod({ academic_year_id: yearID, period_number: number, name: periodDraft.name.trim(), starts_at: periodDraft.starts_at, ends_at: periodDraft.ends_at, is_break: periodDraft.is_break });
       setDialog(null);
+      notifyToast("success", "Changes saved successfully.");
       setFeedback({ kind: "success", message: "Timetable period saved." });
       await loadSchedule(yearID);
     } catch (reason) {
@@ -185,6 +187,7 @@ export function TimetableManagementPage({ permissions }: Props) {
         period_id: period.id, day_of_week: Number(entryDraft.day_of_week), room: entryDraft.room.trim() || null,
       });
       setDialog(null);
+      notifyToast("success", "Changes saved successfully.");
       setFeedback({ kind: "success", message: "Class added to the weekly timetable." });
       await loadSchedule(yearID, sectionID);
     } catch (reason) {
@@ -197,6 +200,7 @@ export function TimetableManagementPage({ permissions }: Props) {
     setFeedback(null);
     try {
       await deleteTimetableEntry(entry.id, yearID);
+      notifyToast("success", "Changes saved successfully.");
       setFeedback({ kind: "success", message: "Timetable entry removed." });
       await loadSchedule(yearID, sectionID);
     } catch (reason) {
