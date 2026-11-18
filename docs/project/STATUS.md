@@ -63,13 +63,13 @@
 - Confirmed the permanent student row deliberately keeps its legacy admission-number column NULL; the admission number is stored on the first year-specific enrollment and projected into the returned student/profile representation. This preserves the approved one-student-identity / one-enrollment-per-academic-year model.
 - Verified server-side Unicode character limits for student name (200), year-specific admission number (50) and optional roll number (30), including maximum-length Hindi test values. The first enrollment date is parsed as strict YYYY-MM-DD and checked against the selected active academic year's date range.
 - Confirmed duplicate admission-number and active section roll-number conflicts map to their corresponding field-level API errors. No confirmed defect was found in this pass; no speculative code change was made.
-- This source/test audit does not replace authenticated local API/database/browser acceptance, which remains outstanding. School-local timezone policy for database-current-date boundaries also remains unresolved and must not be hardcoded.
+- This source/test audit does not replace authenticated local API/database/browser acceptance, which remains outstanding. The `Asia/Kolkata` policy is now implemented for date-boundary validation; authenticated local acceptance remains outstanding.
 
 ### Student Management — attendance authorization and date-boundary audit (2026-11-17)
 
 - Reviewed attendance repository and route authorization: list requires `attendance.read`; marking accepts `attendance.mark` or `attendance.correct_past` according to the attendance date; updates accept `attendance.update_same_day` or `attendance.correct_past`. Repository checks additionally restrict records to the caller's school and authorized School Admin / assigned Teacher section scope.
 - Attendance writes lock the student row before checking the enrollment and inserting a mark, and audit events are written in the same transaction. Updates lock the attendance row and audit the correction transactionally. Attendance status and remarks are validated server-side; remarks are limited to 500 Unicode characters.
-- Confirmed an outstanding shared timezone-policy dependency: attendance classifies past dates with PostgreSQL `CURRENT_DATE`; DOB and physical measurement future-date validation also depend on database date. The product has now adopted `Asia/Kolkata` as the current system-wide school calendar timezone. Attendance past-date authorization compares against that school-local date, not the database server's `CURRENT_DATE`. This remains a product/runtime acceptance decision, not a speculative code fix.
+- Confirmed an outstanding shared timezone-policy dependency: attendance classifies past dates with PostgreSQL `CURRENT_DATE`; DOB and physical measurement future-date validation also depend on database date. The product has now adopted `Asia/Kolkata` as the current system-wide school calendar timezone. Attendance past-date authorization compares against that school-local date, not the database server's `CURRENT_DATE`. The shared `schooltime` implementation and boundary unit tests now encode this decision; CI and local acceptance remain pending.
 - No new confirmed tenant-isolation or permission defect found in this pass. Authenticated local API/database/browser acceptance remains pending.
 
 ### Student Management — archived-profile and directory behavior audit (2026-11-17)
@@ -1262,8 +1262,7 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 ## Student Management — date-only timezone acceptance risk (2026-11-16)
 
 - Audit identified a calendar-date consistency risk in Date of Birth and Physical Details measurement dates: the browser date picker uses the user's local calendar date, while backend future-date checks compare UTC calendar dates. In timezones ahead of UTC, a valid local “today” can be interpreted as a future UTC date during the local early-morning window.
-- No timezone behavior has been changed. The product has not yet defined whether date-only validation is school-timezone based, user-local, or governed by an explicit application default; hard-coding a timezone would be speculative.
-- Before implementation, define the canonical timezone policy for school date-only fields and apply it consistently to frontend bounds, API parsing, repository validation and tests. Keep this as an acceptance risk until that decision is made.
+- Resolution (2026-11-18): the product selected `Asia/Kolkata` as the system-wide school calendar timezone. The implementation and regression coverage are recorded in the current timezone section at the top of this document.
 - Authenticated local API/database and browser acceptance remains outstanding; passing CI does not replace that verification.
 
 ## Student Management — admission and enrollment date ordering (2026-11-16)
@@ -1389,7 +1388,7 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Archived student profile browser coverage now verifies the historical enrollment `ended_at` calendar date in the America/Los_Angeles timezone, alongside the existing enrollment and physical-history date checks.
 - Frontend CI **PASS** — [run 44018618470](https://github.com/TheSumitNain/school-management-system/actions/runs/44018618470): TypeScript/Vite production build and Student Management Playwright browser acceptance.
 - Backend CI **PASS** — [run 44018618455](https://github.com/TheSumitNain/school-management-system/actions/runs/44018618455): full migrations, Go tests including PostgreSQL integration, and `go vet ./...`.
-- Tested code checkpoint: 90f314c6dce921be40c555103dc362c3a3416c83. Authenticated acceptance against the user's local API/database/browser remains outstanding. The separate school-timezone policy for future-date validation remains unresolved; this change addresses display only.
+- Tested code checkpoint: 90f314c6dce921be40c555103dc362c3a3416c83. Authenticated acceptance against the user's local API/database/browser remains outstanding. The separate school-timezone policy was subsequently resolved as `Asia/Kolkata` and implemented; this change addresses display only.
 
 ## Student Management — Basic Details API/UI contract audit (2026-11-17)
 
