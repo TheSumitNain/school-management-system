@@ -228,3 +228,7 @@ The final optional subject-selection boundary test commit `2b7e6c38f34f1ba28ca38
 
 - The authenticated app shell uses a single page heading inside the page content; do not repeat the current page name in a `Workspace / Page` breadcrumb. Keep the top bar free of decorative session-status text such as “Secure session”.
 - Keep the Light/Dark theme toggle and the single Sign out action together at the far right of the top bar on every authenticated page. Do not place a duplicate Sign out action in the sidebar.
+
+
+- Roles & Permissions must use the shared page-heading vertical rhythm; do not combine a page-specific heading margin with the page grid gap.
+- Settings must use the same outer content width and left/right gutters as other dashboard pages. Section spacing should be controlled by one layout gap, not stacked section margins.
