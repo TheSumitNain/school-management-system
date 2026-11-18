@@ -1927,6 +1927,9 @@ test("staff can create a guardian contact and link it to a student with relation
   failGuardianLinkConflict = false;
   await page.getByRole("button", { name: "Link guardian", exact: true }).click();
   await expect.poll(() => guardianLinks.length).toBe(2);
+  await linkRelationshipSelect.click();
+  await expect(familyDialog.getByRole("option", { name: "Mother (already linked)", exact: true })).toBeDisabled();
+  await page.keyboard.press("Escape");
   expect(guardianLinks.find(link => Number(link.student_id) === 93)).toMatchObject({
     guardian_id: 45, relationship_type: "Mother",
     is_primary_contact: true, is_emergency_contact: true,
