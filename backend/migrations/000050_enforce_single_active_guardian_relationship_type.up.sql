@@ -4,7 +4,7 @@ CREATE OR REPLACE FUNCTION enforce_single_active_guardian_relationship_type()
 RETURNS TRIGGER LANGUAGE plpgsql AS $v50$
 BEGIN
     IF TG_OP = 'UPDATE'
-       AND NEW.relationship_type IS NOT DISTINCT FROM OLD.relationship_type
+       AND LOWER(BTRIM(NEW.relationship_type)) IS NOT DISTINCT FROM LOWER(BTRIM(OLD.relationship_type))
        AND NEW.revoked_at IS NOT DISTINCT FROM OLD.revoked_at THEN
         RETURN NEW;
     END IF;
