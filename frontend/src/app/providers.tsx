@@ -23,20 +23,26 @@ const queryClient = new QueryClient({
 function ThemeController({ children }: PropsWithChildren) {
   const preference = useThemeStore((state) => state.preference);
   const palette = useThemeStore((state) => state.palette);
+  const darkStart = useThemeStore((state) => state.darkStart);
+  const lightStart = useThemeStore((state) => state.lightStart);
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const apply = () => {
-      const theme = resolveTheme(preference);
+      const theme = resolveTheme(preference, darkStart, lightStart);
       document.documentElement.dataset.theme = theme;
       document.documentElement.dataset.palette = palette;
       document.documentElement.style.colorScheme = theme;
     };
     apply();
-    if (preference !== "system") return;
-    media.addEventListener("change", apply);
-    return () => media.removeEventListener("change", apply);
-  }, [preference, palette]);
+
+    if (preference === "system") media.addEventListener("change", apply);
+    const scheduleTimer = preference === "schedule" ? window.setInterval(apply, 30_000) : undefined;
+    return () => {
+      if (preference === "system") media.removeEventListener("change", apply);
+      if (scheduleTimer !== undefined) window.clearInterval(scheduleTimer);
+    };
+  }, [preference, palette, darkStart, lightStart]);
 
   return <>{children}<ToastViewport /></>;
 }
