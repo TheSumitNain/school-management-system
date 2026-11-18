@@ -7,16 +7,21 @@ const modes: { value: ThemePreference; label: string; description: string; icon:
   { value: "system", label: "System", description: "Follow your device appearance setting.", icon: Monitor },
 ];
 const palettes: { value: ThemePalette; label: string }[] = [
-  { value: "royal", label: "Classic Royal Blue" },
-  { value: "teal", label: "Ocean Teal" },
-  { value: "midnight", label: "Midnight Blue" },
-  { value: "green", label: "Forest Green" },
-  { value: "indigo", label: "Indigo" },
-  { value: "sky", label: "Sky Blue" },
-  { value: "mint", label: "Mint Green" },
-  { value: "rose", label: "Rose Blush" },
-  { value: "amber", label: "Warm Amber" },
-  { value: "pearl", label: "Pearl & Gold" },
+  { value: "cobalt", label: "Cobalt" },
+  { value: "alpine", label: "Alpine" },
+  { value: "evergreen", label: "Evergreen" },
+  { value: "lagoon", label: "Lagoon" },
+  { value: "iris", label: "Iris" },
+  { value: "amethyst", label: "Amethyst" },
+  { value: "blush", label: "Blush" },
+  { value: "terracotta", label: "Terracotta" },
+  { value: "saffron", label: "Saffron" },
+  { value: "dune", label: "Dune" },
+  { value: "glacier", label: "Glacier" },
+  { value: "obsidian", label: "Obsidian" },
+  { value: "graphite", label: "Graphite" },
+  { value: "ruby", label: "Ruby" },
+  { value: "copper", label: "Copper" },
 ];
 
 export function SettingsPage() {
@@ -49,7 +54,7 @@ export function SettingsPage() {
       </section>
       <section className="appearance-section" aria-labelledby="brand-palette-title">
         <h2 id="brand-palette-title">Brand palette</h2>
-        <p>Select the accent color used across navigation, buttons and highlights.</p>
+        <p>Choose a coordinated color system for the workspace, header, navigation and interface accents.</p>
         <div className="palette-options">
           {palettes.map(({ value, label }) => (
             <button key={value} type="button" className="palette-option" aria-pressed={palette === value} onClick={() => setPalette(value)}>
