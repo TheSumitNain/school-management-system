@@ -547,3 +547,16 @@
     display: block;
   }
 }
+
+
+/* Keep the enrollments toolbar in its original responsive flow. */
+@media (min-width: 721px) {
+  .student-toolbar:not(.student-directory-toolbar) {
+    display: flex;
+    flex-wrap: wrap;
+  }
+  .student-directory-toolbar {
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) minmax(230px, 280px) minmax(145px, 165px) auto;
+  }
+}
