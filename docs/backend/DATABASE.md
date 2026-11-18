@@ -5,6 +5,10 @@ PostgreSQL is accessed through pgx/pgxpool. Schema changes are maintained as ver
 
 The initial deployment direction is one shared database and schema with strict school-level ownership enforced by the backend.
 
+## Calendar date policy
+
+The current product-wide school calendar timezone is `Asia/Kolkata` (IST). Date-only rules must derive the calendar day from the shared backend `internal/schooltime` package; do not rely on the PostgreSQL session timezone, database-server `CURRENT_DATE`, or the Go host's local timezone. Attendance past-date permission classification uses the same application-derived IST date. This is a deliberate current-release default, not yet a per-school configuration. Add persisted per-school IANA timezone configuration before onboarding schools outside India.
+
 ## Migration safety rules
 
 1. Inspect the current migration files and their ordering before changing schema.
