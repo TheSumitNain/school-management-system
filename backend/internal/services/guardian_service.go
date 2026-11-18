@@ -47,11 +47,15 @@ func(s *GuardianService) ListStudentRelatedStudents(ctx context.Context,actor,sc
 }
 func(s *GuardianService) LinkStudentGuardian(ctx context.Context,actor,school,student,guardian int64,relation string,primary,emergency bool)(*repository.StudentGuardian,error){
 	if s==nil||s.repository==nil{return nil,repository.ErrGuardianAccessDenied}
-	return s.repository.LinkStudentGuardian(ctx,actor,school,student,guardian,strings.TrimSpace(relation),primary,emergency)
+	normalized, err := repository.NormalizeGuardianRelationship(relation)
+	if err != nil { return nil, err }
+	return s.repository.LinkStudentGuardian(ctx, actor, school, student, guardian, normalized, primary, emergency)
 }
 func(s *GuardianService) UpdateStudentGuardianLink(ctx context.Context,actor,school,link int64,relation string,primary,emergency bool)(*repository.StudentGuardian,error){
 	if s==nil||s.repository==nil{return nil,repository.ErrGuardianAccessDenied}
-	return s.repository.UpdateStudentGuardianLink(ctx,actor,school,link,strings.TrimSpace(relation),primary,emergency)
+	normalized, err := repository.NormalizeGuardianRelationship(relation)
+	if err != nil { return nil, err }
+	return s.repository.UpdateStudentGuardianLink(ctx, actor, school, link, normalized, primary, emergency)
 }
 func(s *GuardianService) RevokeStudentGuardianLink(ctx context.Context,actor,school,link int64,reason string)error{
 	if s==nil||s.repository==nil{return repository.ErrGuardianAccessDenied}
