@@ -91,7 +91,7 @@ export function AttendanceManagementPage({ permissions }: Props) {
         await markMutation.mutateAsync({ enrollment_id: enrollmentID, attendance_date: date, status: draft.status, remarks: draft.remarks || null });
       }
       setDrafts(current => { const next = { ...current }; delete next[enrollmentID]; return next; });
-      notifyToast("success", "Changes saved successfully.");
+      notifyToast("success", "Attendance saved successfully.");
       setFeedback({ kind: "success", message: "Attendance saved successfully." });
     } catch (error) {
       setFeedback({ kind: "error", message: errorMessage(error) });
