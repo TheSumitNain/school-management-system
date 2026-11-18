@@ -788,9 +788,9 @@ td b {
 }
 .theme-mode-toggle:hover { background: var(--color-surface-muted); color: var(--color-text); }
 .theme-mode-toggle:focus-visible { outline: 3px solid var(--color-brand-border); outline-offset: 2px; }
-.appearance-page { max-width: 920px; }
+.appearance-page { max-width: 1240px; }
 .appearance-section {
-  margin-top: 22px;
+  margin-top: 0;
   padding: 22px;
   border: 1px solid var(--color-border);
   border-radius: 13px;
