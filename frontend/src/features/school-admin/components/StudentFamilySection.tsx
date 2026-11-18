@@ -11,6 +11,7 @@ import { Modal } from "../../../shared/components/Modal";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { Select } from "../../../shared/components/Select";
 import { StudentFieldLabel } from "./StudentFieldLabel";
+import { notifyToast } from "../../../shared/notifications";
 import type { StudentProfile } from "../api";
 import {
   useCreateSchoolGuardianMutation,
@@ -70,7 +71,11 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
   const [newGuardianFieldErrors, setNewGuardianFieldErrors] = useState<Record<string, string>>({});
   const [editGuardianFieldErrors, setEditGuardianFieldErrors] = useState<Record<string, string>>({});
   const [revokeReasonError, setRevokeReasonError] = useState("");
-  const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
+  const [feedback, setFeedbackState] = useState<{ kind: "success" | "error"; message: string } | null>(null);
+  const setFeedback = (next: typeof feedback) => {
+    setFeedbackState(next);
+    if (next) notifyToast(next.kind === "success" && next.message.startsWith("No changes to save") ? "info" : next.kind, next.message);
+  };
 
   const linksQuery = useSchoolStudentGuardiansQuery(student.id, includeHistory);
   const guardiansQuery = useSchoolGuardiansQuery({ q: deferredSearch, status: "active" }, canManage);
@@ -407,7 +412,6 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
       onClose={onClose}
       closeDisabled={busy}
     >
-      {feedback && <p className={feedback.kind === "error" ? "student-feedback error" : "student-feedback success"} role={feedback.kind === "error" ? "alert" : "status"}>{feedback.message}</p>}
       <section className="student-family-section">
         <div className="student-family-heading">
           <div><h3>Parents / guardians</h3><p>Link existing school contacts or create a new guardian contact. Phone and email values may be shared by family members.</p></div>
