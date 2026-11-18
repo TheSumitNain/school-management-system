@@ -86,3 +86,23 @@ func TestNormalizeGuardianEmail(t *testing.T) {
 		})
 	}
 }
+
+func TestNormalizeGuardianRelationshipAllowsOnlyApprovedOptions(t *testing.T) {
+	tests := []struct { input, want string; wantErr bool }{
+		{"Father","Father",false}, {" mother ","Mother",false},
+		{"GRANDFATHER","Grandfather",false}, {"Grandmother","Grandmother",false},
+		{"Brother","Brother",false}, {"Sister","Sister",false},
+		{"Uncle","Uncle",false}, {"Aunt","Aunt",false},
+		{"Step-father","",true}, {"Step-mother","",true},
+		{"Legal Guardian","",true}, {"Foster Parent","",true},
+		{"Other","",true}, {"","",true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got, err := NormalizeGuardianRelationship(tt.input)
+			if (err != nil) != tt.wantErr { t.Fatalf("error = %v, wantErr %v", err, tt.wantErr) }
+			if !tt.wantErr && got != tt.want { t.Fatalf("got %q, want %q", got, tt.want) }
+			if tt.wantErr && !errors.Is(err, ErrInvalidGuardianInput) { t.Fatalf("error = %v, want ErrInvalidGuardianInput", err) }
+		})
+	}
+}
