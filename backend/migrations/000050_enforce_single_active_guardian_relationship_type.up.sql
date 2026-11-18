@@ -8,6 +8,9 @@ BEGIN
        AND NEW.revoked_at IS NOT DISTINCT FROM OLD.revoked_at THEN
         RETURN NEW;
     END IF;
+    IF NEW.revoked_at IS NOT NULL THEN
+        RETURN NEW;
+    END IF;
     IF LOWER(BTRIM(NEW.relationship_type)) NOT IN (
         'father', 'mother', 'grandfather', 'grandmother',
         'brother', 'sister', 'uncle', 'aunt'
@@ -25,9 +28,6 @@ BEGIN
         WHEN 'uncle' THEN 'Uncle'
         WHEN 'aunt' THEN 'Aunt'
     END;
-    IF NEW.revoked_at IS NOT NULL THEN
-        RETURN NEW;
-    END IF;
     PERFORM 1 FROM students
      WHERE id = NEW.student_id AND school_id = NEW.school_id
      FOR UPDATE;
