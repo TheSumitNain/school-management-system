@@ -4,7 +4,9 @@ import { resolveTheme, useThemeStore } from "../../features/theme/theme-store";
 export function ThemeToggle() {
   const preference = useThemeStore((state) => state.preference);
   const setPreference = useThemeStore((state) => state.setPreference);
-  const activeTheme = resolveTheme(preference);
+  const darkStart = useThemeStore((state) => state.darkStart);
+  const lightStart = useThemeStore((state) => state.lightStart);
+  const activeTheme = resolveTheme(preference, darkStart, lightStart);
   const nextTheme = activeTheme === "dark" ? "light" : "dark";
 
   return (
