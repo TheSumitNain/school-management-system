@@ -284,3 +284,22 @@
   --shadow-sidebar: 12px 0 40px rgb(0 0 0 / 28%);
 }
 
+
+/* All palette swatches remain visible regardless of the currently selected palette. */
+:root {
+  --palette-preview-cobalt: #2563EB;
+  --palette-preview-alpine: #475569;
+  --palette-preview-evergreen: #15803D;
+  --palette-preview-lagoon: #0F766E;
+  --palette-preview-iris: #4F46E5;
+  --palette-preview-amethyst: #7E22CE;
+  --palette-preview-blush: #BE185D;
+  --palette-preview-terracotta: #C2410C;
+  --palette-preview-saffron: #B45309;
+  --palette-preview-dune: #8B6B45;
+  --palette-preview-glacier: #0369A1;
+  --palette-preview-obsidian: #475569;
+  --palette-preview-graphite: #52525B;
+  --palette-preview-ruby: #BE123C;
+  --palette-preview-copper: #9A3412;
+}
