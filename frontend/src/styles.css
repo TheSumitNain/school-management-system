@@ -871,7 +871,7 @@ td b {
   border-radius: 11px;
   background: var(--color-surface);
   color: var(--color-text);
-  box-shadow: var(--shadow-lg, 0 12px 34px rgb(0 0 0 / 16%));
+  box-shadow: var(--shadow-md);
   pointer-events: auto;
   animation: app-toast-enter 180ms ease-out;
 }
