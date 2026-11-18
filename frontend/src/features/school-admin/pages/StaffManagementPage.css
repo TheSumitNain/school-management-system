@@ -30,3 +30,21 @@
     width: 100%;
   }
 }
+
+
+/* Remove the browser's inner focus rectangle; keep focus on the shared wrapper. */
+.staff-management-page .search input,
+.staff-management-page .search input:focus,
+.staff-management-page .search input:focus-visible {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+.staff-management-page .search:focus-within {
+  border-color: var(--color-border);
+  outline: none !important;
+  box-shadow: none !important;
+}
