@@ -219,3 +219,9 @@ The final optional subject-selection boundary test commit `2b7e6c38f34f1ba28ca38
 - Student directory row action icon buttons use the same compact bordered geometry and interaction treatment as Staff list action buttons.
 - Search inputs must not show a second nested browser border/rectangle on focus. Keep a single consistent wrapper control and an accessible keyboard focus treatment.
 - Place Student Directory Refresh at the far right of its second toolbar row, aligned with the compact status filter row.
+
+### Minimal authenticated dashboard header
+
+- Do not repeat the current page name in a `Workspace / Page` breadcrumb when the page itself already displays its title. Keep one clear page title in the page content.
+- Do not show decorative session-status text such as “Secure session” in the authenticated header. Security is enforced by the authentication system and does not need a redundant status label in the workspace UI.
+- Keep the authenticated header limited to useful global controls (currently the theme toggle and Sign out), plus the mobile navigation control. Apply this shared rule to every authenticated dashboard page and role.
