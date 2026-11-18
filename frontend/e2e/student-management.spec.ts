@@ -736,7 +736,7 @@ test("student admission, profile navigation and parent details render without br
 
   await page.getByRole("button", { name: "Edit relationship" }).click();
   const relationshipForm = page.locator(".student-family-create-form").filter({ has: page.getByRole("heading", { name: "Edit relationship for this student" }) });
-  const relationshipSelect = relationshipForm.getByRole("button", { name: "Relationship to student" });
+  const relationshipSelect = relationshipForm.getByRole("button", { name: "Relationship to student", exact: true });
   await relationshipSelect.click();
   await expect(relationshipForm.getByRole("listbox", { name: "Relationship to student" })).toBeVisible();
   await page.keyboard.press("Escape");
@@ -1883,12 +1883,15 @@ test("staff can create a guardian contact and link it to a student with relation
     email_address: "nisha.verma@example.test", status: "active",
   });
 
-  await familyDialog.locator("form.student-family-link-form select").selectOption("Other");
+  const linkRelationshipSelect = familyDialog.locator("form.student-family-link-form").getByRole("button", { name: "Relationship to student", exact: true });
+  await linkRelationshipSelect.click();
+  await familyDialog.getByRole("option", { name: "Other", exact: true }).click();
   await familyDialog.getByPlaceholder("Enter relationship").fill("अ".repeat(41));
   await page.getByRole("button", { name: "Link guardian", exact: true }).click();
   await expect(page.getByText("Relationship must be 40 characters or fewer.", { exact: true })).toBeVisible();
   expect(guardianLinks).toHaveLength(0);
-  await familyDialog.locator("form.student-family-link-form select").selectOption("Mother");
+  await linkRelationshipSelect.click();
+  await familyDialog.getByRole("option", { name: "Mother", exact: true }).click();
   await page.getByRole("checkbox", { name: /Primary contact/ }).check();
   await page.getByRole("checkbox", { name: /Emergency contact/ }).check();
   failGuardianLinkConflict = true;
@@ -2298,7 +2301,7 @@ test("switching student Parent Details clears unsaved guardian drafts and field 
   await page.getByRole("button", { name: "Create a new guardian contact" }).click();
 
   await expect(page.getByPlaceholder("Guardian full name")).toHaveValue("");
-  await expect(page.locator("form.student-family-link-form select").first()).toHaveValue("");
+  await expect(page.locator("form.student-family-link-form").getByRole("button", { name: "Relationship to student", exact: true })).toContainText("Select relationship");
   await expect(page.getByText("Guardian name must be 200 characters or fewer.", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("dialog", { name: /Parents & Siblings/i })).toContainText("Family Student B");
 });
