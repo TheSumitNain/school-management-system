@@ -26,6 +26,11 @@ import {
 
 const guardianRelationshipTypes = ["Father", "Mother", "Grandfather", "Grandmother", "Brother", "Sister", "Uncle", "Aunt"] as const;
 
+function canonicalGuardianRelationship(value: string): string {
+  const normalized = value.trim().toLocaleLowerCase();
+  return guardianRelationshipTypes.find(option => option.toLocaleLowerCase() === normalized) ?? value.trim();
+}
+
 type Props = {
   student: StudentProfile;
   canManage: boolean;
@@ -89,7 +94,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
   const updateLink = useUpdateSchoolStudentGuardianMutation();
 
   const allLinks = linksQuery.data?.student_guardians ?? [];
-  const activeRelationshipTypes = new Set(allLinks.filter(link => !link.revoked_at).map(link => link.relationship_type.toLocaleLowerCase()));
+  const activeRelationshipTypes = new Set(allLinks.filter(link => !link.revoked_at).map(link => canonicalGuardianRelationship(link.relationship_type).toLocaleLowerCase()));
   const editRelationshipTypes = new Set(allLinks.filter(link => !link.revoked_at && link.id !== editingLinkID).map(link => link.relationship_type.toLocaleLowerCase()));
   const linkRelationshipOptions = guardianRelationshipTypes.map(value => ({
     value,
@@ -348,7 +353,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
   function beginEditRelationship(link: (typeof allLinks)[number]) {
     setEditingLinkID(link.id);
     setEditRelationshipForm({
-      relationship_type: ["Father","Mother","Grandfather","Grandmother","Brother","Sister","Uncle","Aunt"].includes(link.relationship_type) ? link.relationship_type : "",
+      relationship_type: guardianRelationshipTypes.includes(canonicalGuardianRelationship(link.relationship_type) as (typeof guardianRelationshipTypes)[number]) ? canonicalGuardianRelationship(link.relationship_type) : "",
       is_primary_contact: link.is_primary_contact,
       is_emergency_contact: link.is_emergency_contact,
     });
@@ -368,7 +373,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
     }
     const originalLink = allLinks.find(link => link.id === editingLinkID);
     if (originalLink &&
-      originalLink.relationship_type === resolvedRelationship &&
+      canonicalGuardianRelationship(originalLink.relationship_type) === resolvedRelationship &&
       originalLink.is_primary_contact === editRelationshipForm.is_primary_contact &&
       originalLink.is_emergency_contact === editRelationshipForm.is_emergency_contact) {
       setEditingLinkID(0);
@@ -434,7 +439,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
               <article className="student-family-card" key={link.id}>
                 <div>
                   <strong>{link.guardian_name}</strong>
-                  <span>{link.relationship_type}{link.is_primary_contact ? " · Primary contact" : ""}{link.is_emergency_contact ? " · Emergency contact" : ""}</span>
+                  <span>{canonicalGuardianRelationship(link.relationship_type)}{link.is_primary_contact ? " · Primary contact" : ""}{link.is_emergency_contact ? " · Emergency contact" : ""}</span>
                   <span>{link.mobile_number || "No phone"}{link.alternate_mobile_number ? " · Alt: " + link.alternate_mobile_number : ""}{link.email_address ? " · " + link.email_address : ""}</span>
                   {(link.occupation || link.education || link.workplace_name) && <small>{[link.occupation, link.education, link.workplace_name].filter(Boolean).join(" · ")}</small>}
                   {link.revoked_at && <small>Revoked {new Date(link.revoked_at).toLocaleDateString()}</small>}
