@@ -171,7 +171,7 @@ export function StudentBasicDetailsSection({ student, canUpdate, onStudentNameCh
       <form className="student-basic-details-form" onSubmit={submit} noValidate>
         <label><StudentFieldLabel label="Student name" required hint="Enter the student’s full name as it should appear in school records. Maximum 200 characters." />
           <input value={fullName} disabled={!canUpdate || busy} aria-invalid={Boolean(nameError)} aria-describedby={nameError ? "student-basic-name-error" : undefined}
-            onChange={event => { setFullName(event.target.value); setNameError(""); setNameFeedback(null); }} placeholder="Enter student's full name" />
+            onChange={event => { setFullName(event.target.value); setNameError(""); }} placeholder="Enter student's full name" />
           {nameError && <small id="student-basic-name-error" className="app-field-error" role="alert">{nameError}</small>}
         </label>
         <div className="student-basic-date-field"><StudentFieldLabel label="Date of birth" hint="Optional. Choose a valid date from the past 130 years; future dates are not allowed." /><DatePicker ariaLabel="Date of birth" value={values.date_of_birth} min={earliestDateOfBirth()} max={localDateValue()} invalid={Boolean(errors.date_of_birth)} describedBy={errors.date_of_birth ? "student-basic-date_of_birth-error" : undefined} onChange={value => update("date_of_birth", value)} placeholder="Choose date of birth" disabled={!canUpdate || query.isLoading || query.isError || busy}/>{fieldError("date_of_birth")}</div>
