@@ -63,6 +63,16 @@ These standards exist so school owners, administrators, teachers and other in-sc
 - Handle loading, background refresh, empty, validation, API/server, network/offline, permission, success and session-expiry states.
 - Do not rely only on color or transient toast notifications.
 
+## 5A. Global notifications
+
+- Use the shared global toast viewport for concise success, information, warning and non-field/server error feedback across the application; do not create page-specific toast systems.
+- Position notifications at the viewport's top-right on larger screens and adapt them to a full-width, safe-area-aware stack on narrow screens. They must remain fixed while a page or modal scrolls and must not be clipped by dialogs or scrolling containers.
+- Show no more than three notifications at once; queue additional notifications. Deduplicate identical active messages.
+- Success and information notifications may dismiss after approximately five seconds; warnings remain longer; errors remain visible long enough to read and can always be dismissed manually. Pause dismissal while a notification is hovered or focused.
+- Use clear text and a distinct icon plus semantic status styling; never communicate type by color alone. Support keyboard dismissal, visible focus, screen-reader announcements and reduced-motion preferences.
+- Keep field validation directly beneath its field. Keep recoverable workflow guidance near the affected control when it is needed to complete the task; global notifications supplement, not replace, inline validation or persistent page-level errors.
+- Use an information notification, not a green success notification, for no-op outcomes such as **No changes to save**. Do not issue a write request for a no-op save.
+
 ## 6. Review gate
 
 Before a page or workflow is considered complete, review every user action and form against this document. Record intentional exceptions with their usability reason. Verify desktop/tablet/mobile, keyboard and screen-reader operation, both themes, failed requests, retries and duplicate-click behavior. Run the production TypeScript/Vite build and relevant tests. A page is not complete merely because its API call succeeds.
