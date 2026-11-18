@@ -310,7 +310,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
       });
       setSelectedGuardianID(0);
       setRelationshipType("");
-        setPrimaryContact(false);
+      setPrimaryContact(false);
       setEmergencyContact(false);
       setGuardianSelectError("");
       setRelationshipError("");
@@ -344,7 +344,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
     if (!canManage || editingLinkID <= 0) return;
     const resolvedRelationship = editRelationshipForm.relationship_type.trim();
     if (!resolvedRelationship) {
-      setEditRelationshipFieldError("Choose or specify the relationship to this student.");
+      setEditRelationshipFieldError("Choose a relationship to this student.");
       return;
     }
     const originalLink = allLinks.find(link => link.id === editingLinkID);
