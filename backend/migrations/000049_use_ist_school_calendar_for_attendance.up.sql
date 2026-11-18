@@ -41,3 +41,8 @@ ALTER TABLE student_basic_details
         date_of_birth IS NULL
         OR date_of_birth <= (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date
     );
+
+-- Keep physical measurement dates on the same school-local calendar day.
+ALTER TABLE student_physical_details
+    ADD CONSTRAINT student_physical_details_measured_on_not_future
+    CHECK (measured_on <= (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date);
