@@ -835,16 +835,21 @@ td b {
   font-weight: 600;
 }
 .palette-swatch { width: 18px; height: 18px; border-radius: 6px; flex: none; background: var(--color-brand); }
-.palette-swatch-midnight { background: var(--palette-preview-1); }
-.palette-swatch-green { background: var(--palette-preview-2); }
-.palette-swatch-indigo { background: var(--palette-preview-3); }
-.palette-swatch-teal { background: var(--palette-preview-4); }
-.palette-swatch-rose { background: var(--palette-preview-5); }
-.palette-swatch-sky { background: var(--palette-preview-6); }
-.palette-swatch-amber { background: var(--palette-preview-7); }
-.palette-swatch-mint { background: var(--palette-preview-8); }
-.palette-swatch-royal { background: var(--palette-preview-9); }
-.palette-swatch-pearl { background: var(--palette-preview-10); }
+.palette-swatch-cobalt { background: var(--palette-preview-cobalt); }
+.palette-swatch-alpine { background: var(--palette-preview-alpine); }
+.palette-swatch-evergreen { background: var(--palette-preview-evergreen); }
+.palette-swatch-lagoon { background: var(--palette-preview-lagoon); }
+.palette-swatch-iris { background: var(--palette-preview-iris); }
+.palette-swatch-amethyst { background: var(--palette-preview-amethyst); }
+.palette-swatch-blush { background: var(--palette-preview-blush); }
+.palette-swatch-terracotta { background: var(--palette-preview-terracotta); }
+.palette-swatch-saffron { background: var(--palette-preview-saffron); }
+.palette-swatch-dune { background: var(--palette-preview-dune); }
+.palette-swatch-glacier { background: var(--palette-preview-glacier); }
+.palette-swatch-obsidian { background: var(--palette-preview-obsidian); }
+.palette-swatch-graphite { background: var(--palette-preview-graphite); }
+.palette-swatch-ruby { background: var(--palette-preview-ruby); }
+.palette-swatch-copper { background: var(--palette-preview-copper); }
 @media (max-width: 640px) {
   .appearance-options { grid-template-columns: 1fr; }
   .palette-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
