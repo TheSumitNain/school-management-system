@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { ApiError } from "../../../lib/api";
 import { DatePicker } from "../../../shared/components/DatePicker";
+import { schoolDateValue } from "../../../shared/date/schoolDate";
 import { Modal } from "../../../shared/components/Modal";
 import { Select } from "../../../shared/components/Select";
 import { StudentFieldLabel } from "./StudentFieldLabel";
@@ -29,8 +30,7 @@ function characterCount(value: string) {
   return Array.from(value).length;
 }
 function localDateValue() {
-  const now = new Date();
-  return [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-");
+  return schoolDateValue();
 }
 
 function numberValue(value?: number | null) {
