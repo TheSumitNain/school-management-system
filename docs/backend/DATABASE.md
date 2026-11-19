@@ -171,6 +171,14 @@ An LGD importer must resolve parent references by source code, validate the enti
 
 Use `backend/.env.example` as the configuration reference. Keep local `.env` files and all passwords, JWT secrets, TOTP encryption keys and other credentials out of Git.
 
+### Curriculum subject classification (V52)
+
+- `class_curriculum_subjects.is_optional` explicitly distinguishes compulsory subjects (`FALSE`) from optional subjects (`TRUE`).
+- Optional subjects may be standalone (`optional_group_id IS NULL`) or belong to an optional group. Group membership continues to use the existing min/max selection rules.
+- V52 backfills existing grouped subjects as optional, leaves existing ungrouped subjects compulsory, and updates the enrollment-selection trigger to permit standalone optional choices while still rejecting compulsory subjects.
+- A compatibility trigger automatically marks any subject inserted with an optional-group ID as optional. Curriculum versions and enrollment selection history remain protected by the existing immutability/append-only rules.
+- V52 is additive and reversible; do not edit the already-applied V44 migration.
+
 ## Required database verification
 
 - Fresh-database up migration.
