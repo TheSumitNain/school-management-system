@@ -24,6 +24,37 @@
 .student-location-confirm>div{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
 
 .student-family-section{display:grid;gap:12px;padding:14px 0;border-bottom:1px solid var(--line)}
+
+/* Semantic family-panel accents use shared theme tokens, never fixed palette colours. */
+.student-family-section--guardians{
+  padding:14px;
+  border:1px solid var(--color-info-border,var(--color-border));
+  border-left:3px solid var(--color-info,var(--color-brand));
+  border-radius:12px;
+  background:color-mix(in srgb,var(--color-info-soft,var(--color-brand-subtle)) 22%,var(--color-surface));
+}
+.student-family-section--related{
+  padding:14px;
+  border:1px solid var(--color-warning-border,var(--color-border));
+  border-left:3px solid var(--color-warning,var(--color-brand));
+  border-radius:12px;
+  background:color-mix(in srgb,var(--color-warning-soft,var(--color-brand-subtle)) 22%,var(--color-surface));
+}
+.student-family-link-form--accent{
+  border-color:var(--color-info-border,var(--color-border));
+  border-left:3px solid var(--color-info,var(--color-brand));
+  background:color-mix(in srgb,var(--color-info-soft,var(--color-brand-subtle)) 28%,var(--color-surface));
+}
+.student-family-create-form--new{
+  border-color:color-mix(in srgb,var(--color-violet,var(--color-brand)) 35%,var(--color-border));
+  border-left:3px solid var(--color-violet,var(--color-brand));
+  background:color-mix(in srgb,var(--color-violet-soft,var(--color-brand-subtle)) 28%,var(--color-surface));
+}
+.student-family-card{
+  border-color:var(--color-border);
+  background:var(--color-surface);
+}
+
 .student-family-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
 .student-family-heading h3,.student-family-link-form h4,.student-family-create-form h4{margin:0 0 4px;font-size:13px;color:var(--color-text)}
 .student-family-heading p{margin:0;color:var(--muted);font-size:11px;line-height:1.5}
@@ -761,6 +792,7 @@
 .app-modal-content .student-revoke-form .app-modal-actions{margin-top:2px}
 .app-modal-content .student-revoke-form .app-modal-cancel{border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text);transition:background-color .15s,border-color .15s,color .15s}
 .app-modal-content .student-revoke-form .app-modal-cancel:hover:not(:disabled){border-color:var(--color-focus);background:var(--color-surface-muted,var(--color-background))}
-.app-modal-content .student-revoke-form .app-modal-confirm{border:1px solid var(--color-danger);background:var(--color-danger);color:var(--color-on-brand);transition:filter .15s,box-shadow .15s}
-.app-modal-content .student-revoke-form .app-modal-confirm:hover:not(:disabled){filter:brightness(.94);box-shadow:var(--shadow-sm)}
+.app-modal-content .student-revoke-form .app-modal-confirm{border:1px solid var(--color-danger-border,var(--color-danger));background:var(--color-danger-soft,var(--color-surface));color:var(--color-danger);transition:background-color .15s,border-color .15s,box-shadow .15s}
+.app-modal-content .student-revoke-form .app-modal-confirm:hover:not(:disabled){border-color:var(--color-danger);background:color-mix(in srgb,var(--color-danger-soft,var(--color-surface)) 72%,var(--color-danger));box-shadow:var(--shadow-sm)}
+.app-modal-content .student-revoke-form .app-modal-confirm:focus-visible{outline:3px solid var(--color-focus);outline-offset:2px}
 .app-modal-content .student-revoke-form .app-modal-actions>button:disabled{opacity:.55;cursor:not-allowed}
