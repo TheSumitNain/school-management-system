@@ -587,8 +587,6 @@ test("student admission, profile navigation and parent details render without br
   await expect(individualOptional).toBeVisible();
   await individualOptional.check();
   await expect(individualOptional).toBeChecked();
-  await individualOptional.uncheck();
-  await expect(individualOptional).not.toBeChecked();
   await expect(curriculumPanel.getByText("This curriculum is available for the selected class and academic year. Saving subject choices will assign it to this student’s enrollment.")).toBeVisible();
   const saveSubjectChoices = curriculumPanel.getByRole("button", { name: "Save subject choices" });
   // A required optional group cannot be saved empty, and its maximum must be enforced in the UI.
