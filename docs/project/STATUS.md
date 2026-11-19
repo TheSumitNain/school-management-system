@@ -6,7 +6,7 @@
 - PostgreSQL V51 adds school-scoped partial unique indexes and a preflight. It does not merge/delete records; if existing duplicates are found, migration stops and requires manual review. The same contact may exist in separate schools.
 - Alternate mobile is not a login identifier and is excluded from the uniqueness rule.
 - Future Parent Login reuses the existing guardian mobile/email; no separate contact details are collected. Contact ownership must be verified, and a future School Admin setting controls whether parent login is allowed. Parent OTP/SMS remains deferred.
-- Implementation commits are in progress. Do not apply V51 to a persistent local database until duplicate preflight is reviewed and a verified restorable backup exists. Backend/frontend tests and CI verification are pending.
+- V51 migration, backend uniqueness checks, HTTP field errors, frontend create/edit inline feedback, regression tests and product/backend/frontend documentation have been committed to `work`. Do not apply V51 to a persistent local database until duplicate preflight is reviewed and a verified restorable backup exists. Backend/frontend tests and CI verification are still pending.
 
 ## Guardian relationship uniqueness and legacy duplicate handling (2026-11-19)
 
