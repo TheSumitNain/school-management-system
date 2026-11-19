@@ -1707,6 +1707,7 @@ test("staff can create a guardian contact and link it to a student with relation
   const guardianUpdates: Record<string, unknown>[] = [];
   const guardianLinks: Record<string, unknown>[] = [];
   let failGuardianLinkConflict = false;
+  let failGuardianRelationshipConflict = false;
   let rejectGuardianEmailOnce = true;
   const guardian = {
     id: 45, school_id: 10, full_name: "Nisha Verma", mobile_number: "9876501234",
@@ -1830,6 +1831,10 @@ test("staff can create a guardian contact and link it to a student with relation
       return;
     }
     if (path === "/school/students/93/guardians" && request.method() === "POST") {
+      if (failGuardianRelationshipConflict) {
+        await route.fulfill({ status: 409, json: { message: "This relationship type is already linked to this student" } });
+        return;
+      }
       if (failGuardianLinkConflict) {
         await route.fulfill({ status: 409, json: { message: "Student guardian relationship conflicts with an existing record" } });
         return;
@@ -1937,6 +1942,11 @@ test("staff can create a guardian contact and link it to a student with relation
   await expect(page.getByText("This guardian is already linked to this student. Review the existing relationships before adding another link.", { exact: true })).toBeVisible();
   expect(guardianLinks).toHaveLength(0);
   failGuardianLinkConflict = false;
+  failGuardianRelationshipConflict = true;
+  await page.getByRole("button", { name: "Link guardian", exact: true }).click();
+  await expect(page.getByText("This relationship is already linked to this student. Choose another available relationship.", { exact: true })).toBeVisible();
+  expect(guardianLinks).toHaveLength(0);
+  failGuardianRelationshipConflict = false;
   await page.getByRole("button", { name: "Link guardian", exact: true }).click();
   await expect.poll(() => guardianLinks.length).toBe(2);
   await linkRelationshipSelect.click();
