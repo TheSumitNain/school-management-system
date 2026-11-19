@@ -257,8 +257,10 @@ test("student admission, profile navigation and parent details render without br
           enrollment_id: enrollmentID, student_id: studentID, student_status: "active", enrollment_status: "active",
           academic_year_id: 7, class_id: 3, assigned: curriculumAssigned, curriculum,
           selected_optional_subject_ids: savedCurriculumSelections,
-          selection_history: savedCurriculumSelections.map(() => ({
-            curriculum_version: 1, subject_name: "Hindi", selected_at: "2026-11-14T00:00:00.000Z",
+          selection_history: savedCurriculumSelections.map(subjectID => ({
+            curriculum_version: 1,
+            subject_name: subjectID === 904 ? "Computer Applications" : subjectID === 902 ? "Hindi" : "Sanskrit",
+            selected_at: "2026-11-14T00:00:00.000Z",
           })),
         } } });
         return;
@@ -602,8 +604,12 @@ test("student admission, profile navigation and parent details render without br
   await expect(saveSubjectChoices).toBeEnabled();
   await saveSubjectChoices.click();
   await expect(curriculumPanel.getByText("Assigned", { exact: true })).toBeVisible();
-  await expect(curriculumPanel.getByText("Previous subject choices (1)")).toBeVisible();
-  await curriculumPanel.getByText("Previous subject choices (1)").click();
+  // Both the standalone optional and grouped optional choice are persisted
+  // as separate history rows for the assigned curriculum.
+  expect(savedCurriculumSelections).toEqual([904, 902]);
+  await expect(curriculumPanel.getByText("Previous subject choices (2)")).toBeVisible();
+  await curriculumPanel.getByText("Previous subject choices (2)").click();
+  await expect(curriculumPanel.getByText("Computer Applications · curriculum v1 · Current")).toBeVisible();
   await expect(curriculumPanel.getByText("Hindi · curriculum v1 · Current")).toBeVisible();
   await curriculumPanel.getByRole("checkbox", { name: /Hindi/ }).uncheck();
   await curriculumPanel.getByRole("checkbox", { name: /Sanskrit/ }).check();
