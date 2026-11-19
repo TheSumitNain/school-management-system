@@ -927,7 +927,15 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByText("Guardian profile updated. Changes apply to every student linked to this guardian.")).toBeVisible();
 
   await guardianCard.getByRole("button", { name: "Revoke link" }).click();
-  const revokeDialog = page.getByRole("alertdialog", { name: "Revoke guardian relationship" });
+  const revokeDialog = page.getByRole("dialog", { name: "Revoke guardian relationship" });
+  await expect(revokeDialog).toBeVisible();
+  await expect(revokeDialog).toContainText("Ramesh Sharma Updated");
+  await expect(revokeDialog.getByPlaceholder("Explain why this link is being revoked")).toBeFocused();
+  await revokeDialog.getByRole("button", { name: "Cancel" }).click();
+  await expect(revokeDialog).toBeHidden();
+  expect(guardianLink.revoked_at).toBeNull();
+
+  await guardianCard.getByRole("button", { name: "Revoke link" }).click();
   await expect(revokeDialog).toBeVisible();
   await revokeDialog.getByRole("button", { name: "Confirm revoke" }).click();
   await expect(revokeDialog.getByText("A reason is required to revoke this relationship.")).toBeVisible();
