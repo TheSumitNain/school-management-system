@@ -257,3 +257,8 @@ The final optional subject-selection boundary test commit `2b7e6c38f34f1ba28ca38
 - Authenticated page navigation uses browser-history URLs so refresh, direct links, and Back/Forward preserve the current module. Keep the page state synchronized with the URL; do not reset a valid deep link to Dashboard during initial session restoration.
 - Loading states must preserve the authenticated application frame (sidebar and top bar) and use a page-specific, responsive skeleton matching the destination module. Never show the Dashboard skeleton for another module's lazy load.
 - Settings appearance mode and brand-palette choices use responsive grids with consistent visible spacing between cards and between adjacent settings sections.
+
+
+## Guardian contact fields
+
+In Student Management → Parents & Siblings, guardian full names may repeat, but a non-empty mobile number and a non-empty email address must each be unique within the school. Both fields are optional. When a duplicate is found, show the server field error directly beneath the matching input and explain that the user can enter another contact address or leave the field blank. Do not automatically merge or replace an existing guardian. Mobile formatting variants for the same Indian number must be treated as the same identifier; email matching is case-insensitive. Alternate mobile is not a Parent Login identifier.
