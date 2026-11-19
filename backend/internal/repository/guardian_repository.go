@@ -233,18 +233,12 @@ func normalizeGuardianMobile(mobile *string) (*string, error) {
 			return nil, ErrInvalidGuardianInput
 		}
 	}
-	normalized := digits.String()
-	if normalized == "" {
+	if digits.Len() == 0 {
 		return nil, ErrInvalidGuardianInput
 	}
-	// The current product is India-focused. Treat local 10-digit numbers,
-	// 0-prefixed numbers and +91-prefixed numbers as the same contact.
-	if len(normalized) == 12 && strings.HasPrefix(normalized, "91") {
-		normalized = normalized[2:]
-	} else if len(normalized) == 11 && strings.HasPrefix(normalized, "0") {
-		normalized = normalized[1:]
-	}
-	return &normalized, nil
+	// Preserve the guardian's entered display format. The database's
+	// normalize_guardian_mobile() function supplies the canonical uniqueness key.
+	return &value, nil
 }
 
 func normalizeGuardianEmail(email *string) (*string, error) {
