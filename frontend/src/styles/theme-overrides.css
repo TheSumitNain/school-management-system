@@ -357,7 +357,7 @@ input[type="radio"]:checked::before {
   background: var(--color-on-brand);
 }
 
-input[type="checkbox"],
+input[type="checkbox"]:disabled,
 input[type="radio"]:disabled {
   opacity: .55;
   cursor: not-allowed;
