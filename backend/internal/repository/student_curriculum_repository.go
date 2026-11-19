@@ -324,14 +324,14 @@ func (r *AcademicRepository) saveSectionClassCurriculum(
 	if err := tx.QueryRow(ctx, `
 		SELECT COALESCE(MAX(version_number),0)+1
 		  FROM class_curricula
-		 WHERE school_id=$1 AND academic_year_id=$2 AND class_id=$3 AND section_id=$4
-	`, schoolID, academicYearID, classID, sectionID).Scan(&version); err != nil {
+		 WHERE school_id=$1 AND academic_year_id=$2 AND class_id=$3 AND section_id IS NOT DISTINCT FROM $4
+	`, schoolID, academicYearID, classID, sectionScope).Scan(&version); err != nil {
 		return nil, fmt.Errorf("allocate curriculum version: %w", err)
 	}
 	if _, err := tx.Exec(ctx, `
 		UPDATE class_curricula SET status='retired'
-		 WHERE school_id=$1 AND academic_year_id=$2 AND class_id=$3 AND section_id=$4 AND status='active'
-	`, schoolID, academicYearID, classID, sectionID); err != nil {
+		 WHERE school_id=$1 AND academic_year_id=$2 AND class_id=$3 AND section_id IS NOT DISTINCT FROM $4 AND status='active'
+	`, schoolID, academicYearID, classID, sectionScope); err != nil {
 		return nil, academicWriteError(err)
 	}
 	var curriculumID int64
