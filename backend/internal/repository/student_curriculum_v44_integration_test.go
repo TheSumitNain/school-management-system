@@ -57,9 +57,9 @@ func TestStudentCurriculumV44PostgresIntegration(t *testing.T) {
 
 	var curriculumID, groupID, optionalCurriculumSubjectID, standaloneCurriculumSubjectID, compulsoryCurriculumSubjectID int64
 	if err := tx.QueryRow(ctx, `
-		INSERT INTO class_curricula(school_id,academic_year_id,class_id,version_number,created_by_principal_id)
-		VALUES($1,$2,$3,1,$4) RETURNING id
-	`, schoolID, yearID, classID, actorPrincipalID).Scan(&curriculumID); err != nil { t.Fatalf("create class curriculum: %v", err) }
+		INSERT INTO class_curricula(school_id,academic_year_id,class_id,section_id,version_number,created_by_principal_id)
+		VALUES($1,$2,$3,$4,1,$5) RETURNING id
+	`, schoolID, yearID, classID, sectionID, actorPrincipalID).Scan(&curriculumID); err != nil { t.Fatalf("create class curriculum: %v", err) }
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO class_curriculum_optional_groups(school_id,curriculum_id,name,min_selections,max_selections)
 		VALUES($1,$2,'Language',1,1) RETURNING id
