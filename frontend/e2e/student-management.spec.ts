@@ -53,6 +53,7 @@ test("student admission, profile navigation and parent details render without br
   const observedStudentDetailGets: string[] = [];
   const guardianHistoryRequests: (string | null)[] = [];
   const guardianLinkUpdateRequests: Record<string, unknown>[] = [];
+  let failGuardianRelationshipUpdateConflict = false;
   const guardianProfileUpdateRequests: Record<string, unknown>[] = [];
   let rejectSharedGuardianEmailOnce = true;
   let rejectStudentContactEmailOnce = true;
@@ -419,6 +420,10 @@ test("student admission, profile navigation and parent details render without br
         relationship_type: string; is_primary_contact: boolean; is_emergency_contact: boolean;
       };
       guardianLinkUpdateRequests.push(input);
+      if (failGuardianRelationshipUpdateConflict && input.relationship_type === "Mother") {
+        await route.fulfill({ status: 409, json: { message: "This relationship type is already linked to this student" } });
+        return;
+      }
       Object.assign(guardianLink, input);
       await route.fulfill({ json: { student_guardian: guardianLink } });
       return;
@@ -794,8 +799,19 @@ test("student admission, profile navigation and parent details render without br
   const editRelationshipOptions = relationshipForm.getByRole("listbox", { name: "Relationship to student" }).getByRole("option");
   await expect(editRelationshipOptions).toHaveCount(8);
   await expect(relationshipForm.getByRole("option", { name: "Other", exact: true })).toHaveCount(0);
-  await relationshipForm.getByRole("option", { name: "Grandfather", exact: true }).click();
+  await relationshipForm.getByRole("option", { name: "Mother", exact: true }).click();
   const saveRelationship = relationshipForm.getByRole("button", { name: "Save relationship" });
+  failGuardianRelationshipUpdateConflict = true;
+  await saveRelationship.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Relationship submit button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect(relationshipForm.getByText("Another active guardian already uses this relationship. Choose another available relationship.", { exact: true })).toBeVisible();
+  expect(guardianLink.relationship_type).toBe(" father ");
+  failGuardianRelationshipUpdateConflict = false;
+  await relationshipSelect.click();
+  await relationshipForm.getByRole("option", { name: "Grandfather", exact: true }).click();
   const guardianReadsBeforeFocus = guardianHistoryRequests.length;
   await invalidateProfileQueries(page, "guardians");
   await expect.poll(() => guardianHistoryRequests.length).toBeGreaterThan(guardianReadsBeforeFocus);
