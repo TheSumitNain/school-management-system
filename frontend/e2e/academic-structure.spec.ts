@@ -61,8 +61,8 @@ test("class curriculum validates each optional-group field and locks the editor 
         optional_groups: [{ id: 801, name: "Second language", min_selections: 1, max_selections: 2 }],
         subjects: [
           { id: 901, subject_id: 91, name: "Mathematics", is_compulsory: false, is_optional: true },
-          { id: 902, subject_id: 92, name: "Hindi", optional_group_id: 801, optional_group_name: "Second language", is_compulsory: false },
-          { id: 903, subject_id: 93, name: "Sanskrit", optional_group_id: 801, optional_group_name: "Second language", is_compulsory: false },
+          { id: 902, subject_id: 92, name: "Hindi", optional_group_id: 801, optional_group_name: "Second language", is_compulsory: false, is_optional: true },
+          { id: 903, subject_id: 93, name: "Sanskrit", optional_group_id: 801, optional_group_name: "Second language", is_compulsory: false, is_optional: true },
         ],
       }] : [] } });
       return;
@@ -128,7 +128,10 @@ test("class curriculum validates each optional-group field and locks the editor 
 
   releaseSaveResolve();
   await expect(page.getByText("Curriculum version saved. Existing versions and assigned student choices are preserved.")).toBeVisible();
-  await expect(page.getByText(/Version 1 · active · 3 subjects · 1 optional groups/)).toBeVisible();
+  await expect(page.getByText("Version 1", { exact: true })).toBeVisible();
+  await expect(page.getByText("3 subjects · 1 optional groups", { exact: true })).toBeVisible();
+  await expect(page.getByText("Mathematics · Optional", { exact: true })).toBeVisible();
+  await expect(page.getByText("Hindi · Second language", { exact: true })).toBeVisible();
   expect(savedPayload).toMatchObject({
     academic_year_id: 7,
     class_id: 3,
