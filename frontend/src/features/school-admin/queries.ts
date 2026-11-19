@@ -70,7 +70,7 @@ export const schoolStudentQueryKeys = {
   enrollmentHistory: (studentID: number) => [...schoolStudentQueryKeys.all, "enrollment-history", studentID] as const,
   curriculum: (enrollmentID: number) => [...schoolStudentQueryKeys.all, "curriculum", enrollmentID] as const,
   curricula: () => [...schoolStudentQueryKeys.all, "curriculum"] as const,
-  classCurricula: (yearID: number, classID: number) => [...schoolStudentQueryKeys.all, "class-curricula", yearID, classID] as const,
+  classCurricula: (yearID: number, classID: number, sectionID: number) => [...schoolStudentQueryKeys.all, "class-curricula", yearID, classID, sectionID] as const,
   years: () => [...schoolStudentQueryKeys.all, "academic-years"] as const,
   sections: (academicYearID: number) => [...schoolStudentQueryKeys.all, "sections", academicYearID] as const,
   addresses: (studentID: number) => [...schoolStudentQueryKeys.all, "addresses", studentID] as const,
@@ -335,11 +335,11 @@ export function useUpdateSchoolAttendanceMutation() {
     updateSchoolAttendance(attendanceID, { status, remarks }));
 }
 
-export function useSchoolClassCurriculaQuery(academicYearID: number, classID: number, enabled = true) {
+export function useSchoolClassCurriculaQuery(academicYearID: number, classID: number, sectionID: number, enabled = true) {
   return useQuery({
-    queryKey: schoolStudentQueryKeys.classCurricula(academicYearID, classID),
-    queryFn: ({ signal }) => getSchoolClassCurricula(academicYearID, classID, signal),
-    enabled: enabled && academicYearID > 0 && classID > 0,
+    queryKey: schoolStudentQueryKeys.classCurricula(academicYearID, classID, sectionID),
+    queryFn: ({ signal }) => getSchoolClassCurricula(academicYearID, classID, sectionID, signal),
+    enabled: enabled && academicYearID > 0 && classID > 0 && sectionID > 0,
     staleTime: 15_000,
   });
 }
@@ -357,7 +357,7 @@ export function useSaveSchoolClassCurriculumMutation() {
     mutationFn: saveSchoolClassCurriculum,
     onSuccess: async (_data, input) => {
       await Promise.all([
-        client.invalidateQueries({ queryKey: schoolStudentQueryKeys.classCurricula(input.academic_year_id, input.class_id) }),
+        client.invalidateQueries({ queryKey: schoolStudentQueryKeys.classCurricula(input.academic_year_id, input.class_id, input.section_id) }),
         client.invalidateQueries({ queryKey: schoolStudentQueryKeys.curricula() }),
       ]);
     },
