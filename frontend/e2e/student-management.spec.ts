@@ -832,8 +832,9 @@ test("student admission, profile navigation and parent details render without br
     form.requestSubmit(button as HTMLButtonElement);
   });
   await expect.poll(() => guardianLink.relationship_type).toBe("Grandfather");
-  expect(guardianLinkUpdateRequests).toHaveLength(1);
-  expect(guardianLinkUpdateRequests[0]).toMatchObject({
+  expect(guardianLinkUpdateRequests).toHaveLength(2);
+  expect(guardianLinkUpdateRequests[0]).toMatchObject({ relationship_type: "Mother" });
+  expect(guardianLinkUpdateRequests[1]).toMatchObject({
     relationship_type: "Grandfather", is_primary_contact: false, is_emergency_contact: false,
   });
   await expect(page.locator(".student-family-card > div > span").filter({ hasText: /^Grandfather$/ })).toBeVisible();
