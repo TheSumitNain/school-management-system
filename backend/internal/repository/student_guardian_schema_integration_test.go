@@ -76,23 +76,35 @@ func TestStudentGuardianFoundationPostgresIntegration(t *testing.T) {
 		}
 	}
 
-	// Shared mobile details are allowed in school contact records. These
-	// records are not authenticated parent identities.
+	// Guardian contacts may share a name, but a non-empty mobile number is
+	// unique within the school. The same number remains valid in another school.
 	var guardian1, guardian2 int64
 	for _, target := range []struct {
-		name string
-		out  *int64
+		name   string
+		mobile string
+		out    *int64
 	}{
-		{"Guardian One", &guardian1},
-		{"Guardian Two", &guardian2},
+		{"Guardian One", "+911234567890", &guardian1},
+		{"Guardian Two", "+919876543210", &guardian2},
 	} {
 		if err := tx.QueryRow(ctx,
 			`INSERT INTO guardians (school_id, full_name, mobile_number)
 			 VALUES ($1, $2, $3) RETURNING id`,
-			schoolID1, target.name, "+911234567890",
+			schoolID1, target.name, target.mobile,
 		).Scan(target.out); err != nil {
 			t.Fatalf("create guardian %q: %v", target.name, err)
 		}
+	}
+	if err := expectRejected(`INSERT INTO guardians (school_id, full_name, mobile_number) VALUES ($1, 'Duplicate Mobile', $2)`, schoolID1, "+91 12345-67890"); err == nil {
+		t.Fatal("expected duplicate normalized mobile within one school to be rejected")
+	}
+	var otherSchoolGuardian int64
+	if err := tx.QueryRow(ctx,
+		`INSERT INTO guardians (school_id, full_name, mobile_number)
+		 VALUES ($1, 'Same Mobile Other School', $2) RETURNING id`,
+		schoolID2, "+91 12345-67890",
+	).Scan(&otherSchoolGuardian); err != nil {
+		t.Fatalf("same normalized mobile in another school should be allowed: %v", err)
 	}
 
 	// Many-to-many: one student may have multiple guardians, and one guardian
