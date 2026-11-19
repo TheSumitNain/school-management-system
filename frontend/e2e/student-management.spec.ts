@@ -948,7 +948,10 @@ test("student admission, profile navigation and parent details render without br
   await expect.poll(() => guardianLink.revoked_at).toBe("2026-11-14T12:00:00.000Z");
   await expect(page.getByText("Guardian relationship revoked. Its history is preserved.")).toBeVisible();
   await expect(page.getByText("Ramesh Sharma Updated")).toHaveCount(0);
-  await page.getByLabel("Show revoked history").check();
+  const historyToggle = page.getByLabel("Show revoked history");
+  await historyToggle.check();
+  await expect(historyToggle).toBeChecked();
+  await expect.poll(() => historyToggle.evaluate(element => getComputedStyle(element, "::before").content)).not.toBe("none");
   await expect.poll(() => guardianHistoryRequests[guardianHistoryRequests.length - 1]).toBe("true");
   expect(guardianHistoryRequests[0]).toBeNull();
   await expect(page.getByText("Ramesh Sharma Updated")).toBeVisible();
