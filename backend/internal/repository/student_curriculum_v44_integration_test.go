@@ -22,7 +22,7 @@ func TestStudentCurriculumV44PostgresIntegration(t *testing.T) {
 		t.Fatalf("load integration actor: %v", err)
 	}
 	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
-	var yearID, classID, sectionID, subjectID, compulsorySubjectID, studentID, enrollmentID int64
+	var yearID, classID, sectionID, subjectID, standaloneSubjectID, compulsorySubjectID, studentID, enrollmentID int64
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO academic_years(school_id,name,starts_on,ends_on,status)
 		VALUES($1,$2,DATE '2026-04-01',DATE '2027-03-31','active') RETURNING id
@@ -39,6 +39,9 @@ func TestStudentCurriculumV44PostgresIntegration(t *testing.T) {
 	`, schoolID, "V44 Optional "+suffix, "OPT-"+suffix).Scan(&subjectID); err != nil { t.Fatalf("create optional subject: %v", err) }
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO subjects(school_id,name,subject_code) VALUES($1,$2,$3) RETURNING id
+	`, schoolID, "V44 Standalone "+suffix, "STO-"+suffix).Scan(&standaloneSubjectID); err != nil { t.Fatalf("create standalone optional subject: %v", err) }
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO subjects(school_id,name,subject_code) VALUES($1,$2,$3) RETURNING id
 	`, schoolID, "V44 Compulsory "+suffix, "CMP-"+suffix).Scan(&compulsorySubjectID); err != nil { t.Fatalf("create compulsory subject: %v", err) }
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO students(school_id,admission_number,full_name)
@@ -52,7 +55,7 @@ func TestStudentCurriculumV44PostgresIntegration(t *testing.T) {
 		t.Fatalf("create active enrollment: %v", err)
 	}
 
-	var curriculumID, groupID, optionalCurriculumSubjectID, compulsoryCurriculumSubjectID int64
+	var curriculumID, groupID, optionalCurriculumSubjectID, standaloneCurriculumSubjectID, compulsoryCurriculumSubjectID int64
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO class_curricula(school_id,academic_year_id,class_id,version_number,created_by_principal_id)
 		VALUES($1,$2,$3,1,$4) RETURNING id
@@ -65,6 +68,10 @@ func TestStudentCurriculumV44PostgresIntegration(t *testing.T) {
 		INSERT INTO class_curriculum_subjects(school_id,curriculum_id,subject_id,optional_group_id,subject_name_snapshot,subject_code_snapshot)
 		VALUES($1,$2,$3,$4,'Optional Language','OPT-SNAPSHOT') RETURNING id
 	`, schoolID, curriculumID, subjectID, groupID).Scan(&optionalCurriculumSubjectID); err != nil { t.Fatalf("create optional curriculum subject: %v", err) }
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO class_curriculum_subjects(school_id,curriculum_id,subject_id,is_optional,subject_name_snapshot)
+		VALUES($1,$2,$3,TRUE,'Standalone Optional') RETURNING id
+	`, schoolID, curriculumID, standaloneSubjectID).Scan(&standaloneCurriculumSubjectID); err != nil { t.Fatalf("create standalone optional curriculum subject: %v", err) }
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO class_curriculum_subjects(school_id,curriculum_id,subject_id,subject_name_snapshot)
 		VALUES($1,$2,$3,'Compulsory Language') RETURNING id
@@ -83,6 +90,15 @@ func TestStudentCurriculumV44PostgresIntegration(t *testing.T) {
 		VALUES($1,$2,$3,$4,'Optional Language','OPT-SNAPSHOT',$5) RETURNING id
 	`, schoolID, assignmentID, curriculumID, optionalCurriculumSubjectID, actorPrincipalID).Scan(&selectionID); err != nil {
 		t.Fatalf("save optional subject choice: %v", err)
+	}
+	var standaloneSelectionID int64
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO student_enrollment_subject_selections
+			(school_id,enrollment_curriculum_id,curriculum_id,curriculum_subject_id,
+			 subject_name_snapshot,selected_by_principal_id)
+		VALUES($1,$2,$3,$4,'Standalone Optional',$5) RETURNING id
+	`, schoolID, assignmentID, curriculumID, standaloneCurriculumSubjectID, actorPrincipalID).Scan(&standaloneSelectionID); err != nil {
+		t.Fatalf("save standalone optional subject choice: %v", err)
 	}
 
 	// Give the integration actor the production School Admin grant so the
@@ -161,8 +177,8 @@ func TestStudentCurriculumV44PostgresIntegration(t *testing.T) {
 	}
 
 	if curriculumView.EnrollmentID != enrollmentID || curriculumView.StudentID != studentID ||
-		!curriculumView.Assigned || len(curriculumView.SelectedOptionalSubjectIDs) != 1 ||
-		curriculumView.SelectedOptionalSubjectIDs[0] != optionalCurriculumSubjectID || len(curriculumView.SelectionHistory) != 1 {
+		!curriculumView.Assigned || len(curriculumView.SelectedOptionalSubjectIDs) != 2 ||
+		len(curriculumView.SelectionHistory) != 2 {
 		t.Fatalf("student enrollment curriculum view = %+v; expected assigned curriculum, one selected option and one history row", curriculumView)
 	}
 	var curriculumReadAuditCount, auditedSelectionCount, auditedHistoryCount int
@@ -179,7 +195,7 @@ func TestStudentCurriculumV44PostgresIntegration(t *testing.T) {
 	); err != nil {
 		t.Fatalf("read student enrollment curriculum audit: %v", err)
 	}
-	if curriculumReadAuditCount != 1 || auditedSelectionCount != 1 || auditedHistoryCount != 1 {
+	if curriculumReadAuditCount != 1 || auditedSelectionCount != 2 || auditedHistoryCount != 2 {
 		t.Fatalf("student enrollment curriculum audit count=%d selected=%d history=%d; want 1, 1, 1",
 			curriculumReadAuditCount, auditedSelectionCount, auditedHistoryCount)
 	}
@@ -214,6 +230,9 @@ func TestStudentCurriculumV44PostgresIntegration(t *testing.T) {
 
 	if _, err := tx.Exec(ctx, `UPDATE student_enrollment_subject_selections SET revoked_at=NOW() WHERE id=$1`, selectionID); err != nil {
 		t.Fatalf("revoke optional subject choice: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `UPDATE student_enrollment_subject_selections SET revoked_at=NOW() WHERE id=$1`, standaloneSelectionID); err != nil {
+		t.Fatalf("revoke standalone optional subject choice: %v", err)
 	}
 	if _, err := tx.Exec(ctx, `
 		UPDATE student_enrollment_curricula SET status='replaced',revoked_at=NOW() WHERE id=$1
