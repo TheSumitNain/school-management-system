@@ -24,6 +24,9 @@ BEGIN
 END;
 $v44$;
 
+DROP TRIGGER IF EXISTS trg_set_v52_group_subject_optional ON class_curriculum_subjects;
+DROP FUNCTION IF EXISTS set_v52_group_subject_optional();
+
 ALTER TABLE class_curriculum_subjects
     DROP CONSTRAINT IF EXISTS class_curriculum_subjects_group_requires_optional;
 ALTER TABLE class_curriculum_subjects
