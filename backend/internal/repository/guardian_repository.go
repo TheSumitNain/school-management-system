@@ -8,6 +8,7 @@ import (
 	"strings"
 	"unicode/utf8"
 	"time"
+	"unicode"
 
 	"school-management-system/internal/models"
 
@@ -36,6 +37,8 @@ var (
 	ErrGuardianAccessDenied = errors.New("guardian operation is not authorized")
 	ErrGuardianNotFound = errors.New("guardian record not found")
 	ErrGuardianConflict = errors.New("guardian record conflicts with an existing relationship")
+	ErrGuardianMobileInUse = errors.New("guardian mobile number is already used by another guardian")
+	ErrGuardianEmailInUse = errors.New("guardian email address is already used by another guardian")
 	ErrGuardianRelationshipConflict = errors.New("student already has an active guardian for this relationship type")
 	ErrInvalidGuardianInput = errors.New("invalid guardian data")
 	ErrInvalidGuardianEmail = errors.New("invalid guardian email address")
@@ -153,7 +156,15 @@ func guardianWriteError(err error) error {
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {
 		switch pgErr.Code {
-		case "23505": return ErrGuardianConflict
+		case "23505":
+			switch pgErr.ConstraintName {
+			case "ux_guardians_school_mobile_unique":
+				return ErrGuardianMobileInUse
+			case "ux_guardians_school_email_unique":
+				return ErrGuardianEmailInUse
+			default:
+				return ErrGuardianConflict
+			}
 		case "23503", "23514", "22001", "P0001":
 			message := strings.ToLower(pgErr.Message)
 			if strings.Contains(message, "active guardian relationship type") || strings.Contains(message, "active parent link") { return ErrGuardianRelationshipConflict }
@@ -203,6 +214,39 @@ func (r *AcademicRepository) GetGuardian(ctx context.Context, actorID, schoolID,
 	return &v,nil
 }
 
+func normalizeGuardianMobile(mobile *string) (*string, error) {
+	if mobile == nil {
+		return nil, nil
+	}
+	value := strings.TrimSpace(*mobile)
+	if value == "" {
+		return nil, nil
+	}
+	var digits strings.Builder
+	for _, r := range value {
+		switch {
+		case r >= '0' && r <= '9':
+			digits.WriteRune(r)
+		case unicode.IsSpace(r) || strings.ContainsRune("+()-./", r):
+			// Ignore common display formatting before enforcing uniqueness.
+		default:
+			return nil, ErrInvalidGuardianInput
+		}
+	}
+	normalized := digits.String()
+	if normalized == "" {
+		return nil, ErrInvalidGuardianInput
+	}
+	// The current product is India-focused. Treat local 10-digit numbers,
+	// 0-prefixed numbers and +91-prefixed numbers as the same contact.
+	if len(normalized) == 12 && strings.HasPrefix(normalized, "91") {
+		normalized = normalized[2:]
+	} else if len(normalized) == 11 && strings.HasPrefix(normalized, "0") {
+		normalized = normalized[1:]
+	}
+	return &normalized, nil
+}
+
 func normalizeGuardianEmail(email *string) (*string, error) {
 	if email == nil {
 		return nil, nil
@@ -218,6 +262,7 @@ func normalizeGuardianEmail(email *string) (*string, error) {
 	if err != nil || parsed.Address != value {
 		return nil, ErrInvalidGuardianEmail
 	}
+	value = strings.ToLower(value)
 	return &value, nil
 }
 
@@ -225,7 +270,14 @@ func (r *AcademicRepository) SaveGuardian(ctx context.Context, actorID,schoolID,
 	if r==nil||r.db==nil{return nil,ErrGuardianAccessDenied}
 	fullName=strings.TrimSpace(fullName);status=strings.TrimSpace(status)
 	if fullName==""||len([]rune(fullName))>200||(status!="active"&&status!="inactive"&&status!="archived"){return nil,ErrInvalidGuardianInput}
-	if mobile!=nil{v:=strings.TrimSpace(*mobile);if v==""{mobile=nil}else if utf8.RuneCountInString(v)>30{return nil,ErrInvalidGuardianInput}else{mobile=&v}}
+	if mobile != nil && utf8.RuneCountInString(strings.TrimSpace(*mobile)) > 30 {
+		return nil, ErrInvalidGuardianInput
+	}
+	normalizedMobile, mobileErr := normalizeGuardianMobile(mobile)
+	if mobileErr != nil {
+		return nil, mobileErr
+	}
+	mobile = normalizedMobile
 	normalizedEmail, emailErr := normalizeGuardianEmail(email)
 	if emailErr != nil {
 		return nil, emailErr
@@ -234,6 +286,29 @@ func (r *AcademicRepository) SaveGuardian(ctx context.Context, actorID,schoolID,
 	for _, field := range []*struct{ value **string; max int }{{&alternateMobile,30},{&occupation,120},{&education,120},{&workplace,160}} { if *field.value != nil { value:=strings.TrimSpace(**field.value); if value=="" { *field.value=nil } else if len([]rune(value))>field.max { return nil,ErrInvalidGuardianInput } else { *field.value=&value } } }
 	tx,err:=r.db.Begin(ctx);if err!=nil{return nil,fmt.Errorf("begin guardian save: %w",err)};defer func(){_=tx.Rollback(ctx)}()
 	if err=authorizeGuardian(ctx,tx,actorID,schoolID,"guardians.manage");err!=nil{return nil,err}
+	// Friendly field-specific checks complement the unique indexes below. The
+	// indexes remain authoritative for concurrent requests and direct writes.
+	var duplicate bool
+	if mobile != nil {
+		if err = tx.QueryRow(ctx, `SELECT EXISTS (
+			SELECT 1 FROM guardians
+			 WHERE school_id=$1 AND id<>$2
+			   AND normalize_guardian_mobile(mobile_number)=normalize_guardian_mobile($3)
+		)`, schoolID, guardianID, *mobile).Scan(&duplicate); err != nil {
+			return nil, fmt.Errorf("check guardian mobile uniqueness: %w", err)
+		}
+		if duplicate { return nil, ErrGuardianMobileInUse }
+	}
+	if email != nil {
+		if err = tx.QueryRow(ctx, `SELECT EXISTS (
+			SELECT 1 FROM guardians
+			 WHERE school_id=$1 AND id<>$2
+			   AND lower(btrim(email_address))=lower(btrim($3))
+		)`, schoolID, guardianID, *email).Scan(&duplicate); err != nil {
+			return nil, fmt.Errorf("check guardian email uniqueness: %w", err)
+		}
+		if duplicate { return nil, ErrGuardianEmailInUse }
+	}
 	var v Guardian
 	changed := true
 	if guardianID==0{
