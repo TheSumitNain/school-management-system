@@ -1754,6 +1754,8 @@ test("staff can create a guardian contact and link it to a student with relation
   let failGuardianLinkConflict = false;
   let failGuardianRelationshipConflict = false;
   let rejectGuardianEmailOnce = true;
+  let rejectGuardianMobileDuplicateOnce = true;
+  let rejectGuardianEmailDuplicateOnce = true;
   const guardian = {
     id: 45, school_id: 10, full_name: "Nisha Verma", mobile_number: "9876501234",
     email_address: "nisha.verma@example.test", alternate_mobile_number: null,
@@ -1833,6 +1835,22 @@ test("staff can create a guardian contact and link it to a student with relation
     }
     if (path === "/school/guardians" && request.method() === "POST") {
       const input = request.postDataJSON() as Record<string, unknown>;
+      if (rejectGuardianMobileDuplicateOnce && input.mobile_number === "9876500000") {
+        rejectGuardianMobileDuplicateOnce = false;
+        await route.fulfill({ status: 409, json: {
+          message: "This mobile number is already registered with another guardian. Use another contact number or leave this field blank.",
+          field_errors: { mobile_number: "This mobile number is already used by another guardian. Use another contact number or leave this field blank." },
+        } });
+        return;
+      }
+      if (rejectGuardianEmailDuplicateOnce && input.email_address === "already-used@example.test") {
+        rejectGuardianEmailDuplicateOnce = false;
+        await route.fulfill({ status: 409, json: {
+          message: "This email address is already registered with another guardian. Use another email address or leave this field blank.",
+          field_errors: { email_address: "This email address is already used by another guardian. Use another email address or leave this field blank." },
+        } });
+        return;
+      }
       if (rejectGuardianEmailOnce && input.email_address === "server-invalid@example.test") {
         rejectGuardianEmailOnce = false;
         await route.fulfill({
@@ -1972,6 +1990,18 @@ test("staff can create a guardian contact and link it to a student with relation
   await page.getByPlaceholder("guardian@example.com").fill("server-invalid@example.test");
   await page.getByRole("button", { name: "Save guardian contact" }).click();
   await expect(page.getByText("Enter a valid email address using one address only.", { exact: true })).toBeVisible();
+  expect(guardianCreates).toHaveLength(0);
+
+  await page.getByPlaceholder("guardian@example.com").fill("");
+  await page.getByPlaceholder("Mobile number").fill("9876500000");
+  await page.getByRole("button", { name: "Save guardian contact" }).click();
+  await expect(page.getByText("This mobile number is already used by another guardian. Use another contact number or leave this field blank.", { exact: true })).toBeVisible();
+  expect(guardianCreates).toHaveLength(0);
+
+  await page.getByPlaceholder("Mobile number").fill("");
+  await page.getByPlaceholder("guardian@example.com").fill("already-used@example.test");
+  await page.getByRole("button", { name: "Save guardian contact" }).click();
+  await expect(page.getByText("This email address is already used by another guardian. Use another email address or leave this field blank.", { exact: true })).toBeVisible();
   expect(guardianCreates).toHaveLength(0);
 
   await page.getByPlaceholder("guardian@example.com").fill("nisha.verma@example.test");
