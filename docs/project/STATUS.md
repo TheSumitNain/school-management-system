@@ -1,3 +1,12 @@
+## Section-wise Class Curriculum (2026-11-19)
+
+- In progress: Class Curriculum is being changed from class/year scope to Academic Year + Class + Section scope. The approved UX is a three-level selector; Class 11 Art, Commerce and Science must have separate curricula.
+- Added V53 schema migration and rollback. Existing class-level curriculum records remain NULL-scoped and are not copied, deleted or reassigned. New section curricula use composite section/school/year/class integrity, section-scoped version numbering and one-active-version enforcement.
+- Backend repository, service and HTTP handlers now accept section IDs for curriculum list/save. Student enrollment lookup resolves only the exact enrollment section; the database assignment trigger rejects cross-section assignments. Historical legacy assignments remain readable.
+- Frontend API/query cache and editor now include the section selection. Responsive filter styling was updated for the three selectors. Compulsory, standalone Optional and Optional Group remain supported.
+- Added integration coverage for independent section version/list isolation and for rejecting an assignment from another section. Route tests now include section IDs.
+- Not yet verified: complete migration chain, Go unit/integration tests, Go vet, frontend typecheck/build and Playwright E2E. Do not apply V53 to local databases or enter curriculum data until these checks pass and the user has pulled the verified checkpoint.
+
 ## Class curriculum subject types and editor styling (2026-11-19)
 
 - In progress: Class Curriculum now has an explicit three-way subject type in the editor: Compulsory, standalone Optional, and Optional Group. A grouped subject is also optional; only grouped subjects participate in the group's min/max choice limits. Standalone optional subjects can be selected independently per student.
