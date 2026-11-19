@@ -252,7 +252,7 @@ export function getSchoolClassCurricula(academicYearID: number, classID: number,
 export function saveSchoolClassCurriculum(input: {
   academic_year_id: number; class_id: number;
   optional_groups: Array<{ name: string; min_selections: number; max_selections: number }>;
-  subjects: Array<{ subject_id: number; optional_group?: string }>;
+  subjects: Array<{ subject_id: number; is_optional?: boolean; optional_group?: string }>;
 }) {
   return api<{ curriculum: ClassCurriculum }>("/school/class-curricula", { method: "POST", body: JSON.stringify(input) });
 }
