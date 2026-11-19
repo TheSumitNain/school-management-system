@@ -1,3 +1,11 @@
+## Class curriculum subject types and editor styling (2026-11-19)
+
+- In progress: Class Curriculum now has an explicit three-way subject type in the editor: Compulsory, standalone Optional, and Optional Group. A grouped subject is also optional; only grouped subjects participate in the group's min/max choice limits. Standalone optional subjects can be selected independently per student.
+- Added additive/reversible V52 migration. Existing grouped subjects are backfilled as optional, existing ungrouped subjects remain compulsory, and the database selection guard now permits standalone optional choices while still rejecting compulsory choices. A compatibility trigger marks legacy/direct inserts with a group as optional.
+- Backend curriculum read/write and enrollment-selection validation now use the explicit optional flag. Added a PostgreSQL integration scenario for standalone optional selection and adjusted Parent registration fixtures to respect V51 school-scoped guardian contact uniqueness (same mobile remains valid in different schools).
+- Updated the Class Curriculum UI selector and responsive panel styling. Frontend E2E now exercises compulsory, standalone optional and grouped optional subjects.
+- Verification is pending: wait for Backend CI and Frontend CI on the latest `work` commit, fix any failures, then verify the local database migration and authenticated School Admin browser flow before entering curriculum dummy data.
+
 ## Guardian contact identity and uniqueness (2026-11-19)
 
 - Approved rule: guardian full names may repeat; mobile number and email address are independently optional but must each be unique within the same school when supplied.
