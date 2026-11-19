@@ -790,8 +790,8 @@ test("student admission, profile navigation and parent details render without br
   await relationshipSelect.click();
   const editRelationshipList = relationshipForm.getByRole("listbox", { name: "Relationship to student" });
   await expect(editRelationshipList).toBeVisible();
-  await expect(editRelationshipList.getByRole("option", { name: "Father", exact: true })).toBeDisabled();
-  await expect(editRelationshipList.getByRole("option", { name: "Father", exact: true })).toHaveAttribute("aria-selected", "true");
+  await expect(editRelationshipList.getByRole("option", { name: "Father (already linked)", exact: true })).toBeDisabled();
+  await expect(editRelationshipList.getByRole("option", { name: "Father (already linked)", exact: true })).toHaveAttribute("aria-selected", "true");
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog", { name: /Parents & Siblings/i })).toBeVisible();
   await expect(relationshipSelect).toHaveAttribute("aria-expanded", "false");
