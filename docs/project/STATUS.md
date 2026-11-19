@@ -1,3 +1,13 @@
+## Guardian contact identity and uniqueness (2026-11-19)
+
+- Approved rule: guardian full names may repeat; mobile number and email address are independently optional but must each be unique within the same school when supplied.
+- Duplicate mobile/email saves are rejected on both create and shared-profile edit. The matching field receives an inline error: use another contact address or leave the field blank.
+- Mobile comparison removes common display formatting and treats Indian 10-digit, leading-zero and +91-prefixed representations as the same number, while preserving the entered display value. Email comparison is trimmed and case-insensitive.
+- PostgreSQL V51 adds school-scoped partial unique indexes and a preflight. It does not merge/delete records; if existing duplicates are found, migration stops and requires manual review. The same contact may exist in separate schools.
+- Alternate mobile is not a login identifier and is excluded from the uniqueness rule.
+- Future Parent Login reuses the existing guardian mobile/email; no separate contact details are collected. Contact ownership must be verified, and a future School Admin setting controls whether parent login is allowed. Parent OTP/SMS remains deferred.
+- Implementation commits are in progress. Do not apply V51 to a persistent local database until duplicate preflight is reviewed and a verified restorable backup exists. Backend/frontend tests and CI verification are pending.
+
 ## Guardian relationship uniqueness and legacy duplicate handling (2026-11-19)
 
 - Approved exactly eight relationship types: Father, Mother, Grandfather, Grandmother, Brother, Sister, Uncle and Aunt.
