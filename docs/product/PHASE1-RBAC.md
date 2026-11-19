@@ -64,3 +64,11 @@ Parent is not an active Phase 1 login role. **Do not implement Parent OTP authen
 ## Implementation caveat
 
 These are approved rules, not proof of complete enforcement across all modules. Every new route and repository operation must add explicit tenant/resource/assignment/field checks and corresponding positive and negative tests.
+## School Admin permission-management experience
+
+- The School Admin can create school-specific custom roles and grant only permissions that the Platform Admin has actively delegated to the school for role assignment.
+- Built-in system roles (including the standard Teacher role) are protected; do not expose direct editing of their permission bundles. Use a school custom role or a justified individual staff override when an authorized exception is needed.
+- Staff Management supports assigning/removing roles and individual permission overrides. Overrides are limited by active, exact delegation, require a reason, and follow DENY-over-ALLOW precedence. They never bypass school ownership, resource assignments, field-level controls or account status.
+- A class-in-charge assignment is a resource-scope relationship, not a blanket permission. It must restrict class/section data to the exact active assignment. Subject teachers remain limited to their assigned subjects/classes/sections.
+- The product should eventually provide a clear School Admin access matrix showing, per module and action, what each role can view/create/edit/delete, plus a preview of effective access for a selected staff member. This is a usability enhancement; do not imply that the current UI already offers a complete matrix.
+- Keep medical, guardian-contact, document and other sensitive student fields separately protected. A roster permission must not silently imply full Student Profile access.
