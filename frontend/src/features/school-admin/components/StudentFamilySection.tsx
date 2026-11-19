@@ -95,6 +95,15 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
 
   const allLinks = linksQuery.data?.student_guardians ?? [];
   const activeRelationshipTypes = new Set(allLinks.filter(link => !link.revoked_at).map(link => canonicalGuardianRelationship(link.relationship_type).toLocaleLowerCase()));
+  const activeRelationshipCounts = new Map<string, number>();
+  for (const link of allLinks) {
+    if (link.revoked_at) continue;
+    const relationship = canonicalGuardianRelationship(link.relationship_type).toLocaleLowerCase();
+    activeRelationshipCounts.set(relationship, (activeRelationshipCounts.get(relationship) ?? 0) + 1);
+  }
+  const duplicateRelationshipTypes = [...activeRelationshipCounts.entries()]
+    .filter(([, count]) => count > 1)
+    .map(([relationship]) => guardianRelationshipTypes.find(value => value.toLocaleLowerCase() === relationship) ?? relationship);
   const editRelationshipTypes = new Set(allLinks.filter(link => !link.revoked_at && link.id !== editingLinkID).map(link => canonicalGuardianRelationship(link.relationship_type).toLocaleLowerCase()));
   const linkRelationshipOptions = guardianRelationshipTypes.map(value => ({
     value,
@@ -431,6 +440,9 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
           <div><h3>Parents / guardians</h3><p>Link existing school contacts or create a new guardian contact. Phone and email values may be shared by family members.</p></div>
           <label className="student-address-same"><input type="checkbox" checked={includeHistory} onChange={event => setIncludeHistory(event.target.checked)}/> Show revoked history</label>
         </div>
+        {duplicateRelationshipTypes.length > 0 && <p className="student-address-note" role="status">
+          Existing duplicate active relationships found: {duplicateRelationshipTypes.join(", ")}. Review the guardian details and revoke only the incorrect link. No records have been removed automatically.
+        </p>}
         {linksQuery.isLoading ? <p className="student-address-note">Loading guardian relationships…</p> :
           linksQuery.isError ? <div className="student-feedback error" role="alert"><p>{linksQuery.error.message}</p><button type="button" className="student-secondary" onClick={() => void linksQuery.refetch()} disabled={linksQuery.isFetching}>Retry loading guardian relationships</button></div> :
           visibleLinks.length === 0 ? <p className="student-address-note">No guardian relationships are linked to this student yet.</p> :
