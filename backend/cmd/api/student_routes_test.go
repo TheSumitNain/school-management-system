@@ -54,8 +54,8 @@ func TestStudentRoutesEnforceLivePermissions(t *testing.T) {
 		{method: http.MethodPut, path: "/school/students/1/contact-details", permission: "students.update", additionalPermissions: []string{"students.read_sensitive"}, body: `{}`},
 		{method: http.MethodPut, path: "/school/students/1/medical-details", permission: "students.update", additionalPermissions: []string{"students.read_sensitive"}, body: `{}`},
 		{method: http.MethodPut, path: "/school/students/1/physical-details", permission: "students.update", additionalPermissions: []string{"students.read_sensitive"}, body: `{"measured_on":"2026-11-15","height_cm":120}`},
-		{method: http.MethodGet, path: "/school/class-curricula?academic_year_id=1&class_id=2", permission: "subjects.read"},
-		{method: http.MethodPost, path: "/school/class-curricula", permission: "subjects.manage", body: `{"academic_year_id":1,"class_id":2,"subjects":[{"subject_id":3}]}`},
+		{method: http.MethodGet, path: "/school/class-curricula?academic_year_id=1&class_id=2&section_id=4", permission: "subjects.read"},
+		{method: http.MethodPost, path: "/school/class-curricula", permission: "subjects.manage", body: `{"academic_year_id":1,"class_id":2,"section_id":4,"subjects":[{"subject_id":3}]}`},
 		{method: http.MethodGet, path: "/school/enrollments/1/curriculum", permission: "subjects.read", additionalPermissions: []string{"students.read_basic"}},
 		{method: http.MethodPut, path: "/school/enrollments/1/subjects", permission: "students.update", additionalPermissions: []string{"subjects.read", "students.read_basic"}, body: `{"curriculum_id":1,"selected_optional_subject_ids":[]}`},
 	}
