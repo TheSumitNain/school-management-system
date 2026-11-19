@@ -2049,6 +2049,20 @@ test("staff can create a guardian contact and link it to a student with relation
   await expect(page.getByText("Aunt · Emergency contact")).toBeVisible();
   await expect(familyDialog.getByText("Other Guardian Student", { exact: true })).toBeVisible();
 
+  // Legacy duplicate active links remain visible and are flagged for explicit
+  // review; opening history must not silently revoke or delete either record.
+  guardianLinks.push({
+    id: 955, student_id: 93, guardian_id: 46, guardian_name: "Amit Verma",
+    guardian_status: "active", mobile_number: "9876500046", email_address: null,
+    alternate_mobile_number: null, occupation: null, education: null, workplace_name: null,
+    relationship_type: " aunt ", is_primary_contact: false, is_emergency_contact: false,
+    revoked_at: null,
+  });
+  await familyDialog.getByLabel("Show revoked history").check();
+  await expect(familyDialog.getByRole("status").filter({ hasText: "Existing duplicate active relationships found: Aunt" })).toBeVisible();
+  await expect(familyDialog.getByText("Aunt", { exact: true })).toHaveCount(2);
+  expect(guardianLinks.filter(link => Number(link.student_id) === 93 && !link.revoked_at)).toHaveLength(2);
+
   // The same guardian's updated contact profile is shared with the second
   // student, but that student's own relationship type and flags remain intact.
   await page.getByRole("button", { name: "Close dialog" }).click();
