@@ -402,7 +402,13 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
       setEditRelationshipError("");
       setFeedback({ kind: "success", message: "This student's guardian relationship details were updated. Other students linked to the same guardian were not changed." });
     } catch (error) {
-      setEditRelationshipError(error instanceof Error ? error.message : "Guardian relationship could not be updated.");
+      const message = error instanceof Error ? error.message : "Guardian relationship could not be updated.";
+      if (/this relationship type is already linked to this student/i.test(message)) {
+        setEditRelationshipFieldError("Another active guardian already uses this relationship. Choose another available relationship.");
+        setEditRelationshipError("");
+        return;
+      }
+      setEditRelationshipError(message);
     }
   }
 
