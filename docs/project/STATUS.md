@@ -7,8 +7,9 @@
 - Backend validates the allowlist and maps database duplicate-relationship rejection to HTTP 409. The V50 trigger serializes writes on the student row and rejects a second active link of the same relationship type, including writes that bypass the repository.
 - Existing duplicate active rows are deliberately retained for human review. Contact-flag edits and revocation/history remain possible; no guardian link is automatically deleted or revoked. The known local duplicate records still require the school/user to identify which guardian is correct before revoking an incorrect link.
 - Added PostgreSQL integration coverage for duplicate inserts and edits, handler coverage for the HTTP 409 response, and Playwright coverage for legacy whitespace/case normalization, all eight choices, disabled duplicate options, and keeping the current relationship selectable in Edit.
-- Backend CI **PASS** — [run 44445586729](https://github.com/TheSumitNain/school-management-system/actions/runs/44445586729), checkpoint `195d2f60b0c6a4c48fd710ed5d9e1d6e0146281d`.
-- Frontend CI **PASS** — [run 44445434384](https://github.com/TheSumitNain/school-management-system/actions/runs/44445434384), checkpoint `d53bc814145b0cd5ea24601b4937d78e44d8df17`.
+- Backend CI **PASS** — [run 44448918406](https://github.com/TheSumitNain/school-management-system/actions/runs/44448918406), checkpoint `14972b8de6c4a96537016c5eac8592ab9d682d42`.
+- Frontend CI **PASS** — [run 44448918434](https://github.com/TheSumitNain/school-management-system/actions/runs/44448918434), checkpoint `14972b8de6c4a96537016c5eac8592ab9d682d42`. The edit-mode browser assertion now checks the rendered `Father (already linked)` label while retaining the disabled and selected-state checks.
+
 - Local app and test databases were migrated through V50 and the user verified full Go tests, `go vet`, frontend typecheck and production build. Authenticated browser acceptance against the local app remains a separate final acceptance step.
 
 ## Student Management — approved guardian relationship vocabulary (2026-11-18)
