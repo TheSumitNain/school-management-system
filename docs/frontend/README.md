@@ -178,6 +178,10 @@ Do not ask the user for repeated screenshots or uploads when command output, log
 9. Verify responsive behavior at mobile, tablet and desktop widths, in every supported theme.
 10. Verify production build, bundle size, route loading, browser workflows and graceful error recovery; ensure backend authorization remains effective when UI controls are bypassed.
 
+## Section-wise Class Curriculum
+
+The School Admin Class Curriculum editor follows Academic Year → Class → Section. Each section (including distinct streams such as Class 11 Art, Commerce and Science) has an independent version history and saved subject set. Changing the selected year or class clears dependent selections. The editor must keep the three subject types: Compulsory, standalone Optional and Optional Group. The curriculum API query key and request include the section ID; never cache or display curriculum versions using only year and class. Student enrollment curriculum data is resolved by the student's assigned section in the backend.
+
 ## Frontend verification and Student Management browser acceptance
 
 Run from `frontend`:
