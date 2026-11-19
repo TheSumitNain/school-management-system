@@ -45,6 +45,7 @@ type ClassCurriculum struct {
 	SchoolID       int64                     `json:"school_id"`
 	AcademicYearID int64                     `json:"academic_year_id"`
 	ClassID        int64                     `json:"class_id"`
+	SectionID      *int64                    `json:"section_id,omitempty"`
 	VersionNumber  int                       `json:"version_number"`
 	Status         string                    `json:"status"`
 	CreatedAt      time.Time                 `json:"created_at"`
@@ -67,6 +68,7 @@ type StudentEnrollmentCurriculum struct {
 	EnrollmentStatus           string                           `json:"enrollment_status"`
 	AcademicYearID             int64                            `json:"academic_year_id"`
 	ClassID                    int64                            `json:"class_id"`
+	SectionID                  int64                            `json:"section_id"`
 	Curriculum                 *ClassCurriculum                 `json:"curriculum,omitempty"`
 	AvailableCurriculum        *ClassCurriculum                 `json:"available_curriculum,omitempty"`
 	Assigned                   bool                             `json:"assigned"`
@@ -77,11 +79,11 @@ type StudentEnrollmentCurriculum struct {
 func loadClassCurriculum(ctx context.Context, db repositoryDB, curriculumID, schoolID int64) (*ClassCurriculum, error) {
 	var item ClassCurriculum
 	err := db.QueryRow(ctx, `
-		SELECT id, school_id, academic_year_id, class_id, version_number, status, created_at
+		SELECT id, school_id, academic_year_id, class_id, section_id, version_number, status, created_at
 		  FROM class_curricula
 		 WHERE id=$1 AND school_id=$2
 	`, curriculumID, schoolID).Scan(
-		&item.ID, &item.SchoolID, &item.AcademicYearID, &item.ClassID,
+		&item.ID, &item.SchoolID, &item.AcademicYearID, &item.ClassID, &item.SectionID,
 		&item.VersionNumber, &item.Status, &item.CreatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -190,6 +192,37 @@ func (r *AcademicRepository) SaveClassCurriculum(
 	ctx context.Context, actorID, schoolID, academicYearID, classID int64,
 	groups []CurriculumOptionalGroupInput, subjects []CurriculumSubjectInput,
 ) (*ClassCurriculum, error) {
+	return r.saveSectionClassCurriculum(ctx, actorID, schoolID, academicYearID, classID, 0, groups, subjects)
+}
+
+func (r *AcademicRepository) ListSectionClassCurricula(ctx context.Context, actorID, schoolID, academicYearID, classID, sectionID int64) ([]ClassCurriculum, error) {
+	if r == nil || r.db == nil { return nil, ErrAcademicAccessDenied }
+	if academicYearID <= 0 || classID <= 0 || sectionID <= 0 { return nil, ErrInvalidAcademicInput }
+	if err := authorizeAcademic(ctx, r.db, actorID, schoolID, "subjects.read"); err != nil { return nil, err }
+	rows, err := r.db.Query(ctx, `
+		SELECT id FROM class_curricula
+		 WHERE school_id=$1 AND academic_year_id=$2 AND class_id=$3 AND section_id=$4
+		 ORDER BY version_number DESC
+	`, schoolID, academicYearID, classID, sectionID)
+	if err != nil { return nil, fmt.Errorf("list section curricula: %w", err) }
+	defer rows.Close()
+	ids := make([]int64, 0)
+	for rows.Next() { var id int64; if err := rows.Scan(&id); err != nil { return nil, fmt.Errorf("scan section curriculum ID: %w", err) }; ids = append(ids, id) }
+	if err := rows.Err(); err != nil { return nil, fmt.Errorf("iterate section curricula: %w", err) }
+	items := make([]ClassCurriculum, 0, len(ids))
+	for _, id := range ids { item, err := loadClassCurriculum(ctx, r.db, id, schoolID); if err != nil { return nil, err }; items = append(items, *item) }
+	return items, nil
+}
+
+func (r *AcademicRepository) SaveSectionClassCurriculum(ctx context.Context, actorID, schoolID, academicYearID, classID, sectionID int64, groups []CurriculumOptionalGroupInput, subjects []CurriculumSubjectInput) (*ClassCurriculum, error) {
+	if sectionID <= 0 { return nil, ErrInvalidAcademicInput }
+	return r.saveSectionClassCurriculum(ctx, actorID, schoolID, academicYearID, classID, sectionID, groups, subjects)
+}
+
+func (r *AcademicRepository) saveSectionClassCurriculum(
+	ctx context.Context, actorID, schoolID, academicYearID, classID, sectionID int64,
+	groups []CurriculumOptionalGroupInput, subjects []CurriculumSubjectInput,
+) (*ClassCurriculum, error) {
 	if r == nil || r.db == nil {
 		return nil, ErrAcademicAccessDenied
 	}
@@ -259,10 +292,17 @@ func (r *AcademicRepository) SaveClassCurriculum(
 	if err := tx.QueryRow(ctx, `
 		SELECT id FROM academic_years WHERE id=$1 AND school_id=$2 AND status <> 'closed' FOR UPDATE
 	`, academicYearID, schoolID).Scan(&lockedYearID); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrAcademicNotFound
-		}
+		if errors.Is(err, pgx.ErrNoRows) { return nil, ErrAcademicNotFound }
 		return nil, fmt.Errorf("lock curriculum academic year: %w", err)
+	}
+	var lockedSectionID int64
+	if err := tx.QueryRow(ctx, `
+		SELECT id FROM sections
+		 WHERE id=$1 AND school_id=$2 AND academic_year_id=$3 AND class_id=$4 AND is_active=TRUE
+		 FOR UPDATE
+	`, sectionID, schoolID, academicYearID, classID).Scan(&lockedSectionID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) { return nil, ErrAcademicNotFound }
+		return nil, fmt.Errorf("lock curriculum section: %w", err)
 	}
 	subjectIDs := make([]int64, 0, len(normalizedSubjects))
 	for _, subject := range normalizedSubjects {
@@ -281,21 +321,21 @@ func (r *AcademicRepository) SaveClassCurriculum(
 	if err := tx.QueryRow(ctx, `
 		SELECT COALESCE(MAX(version_number),0)+1
 		  FROM class_curricula
-		 WHERE school_id=$1 AND academic_year_id=$2 AND class_id=$3
-	`, schoolID, academicYearID, classID).Scan(&version); err != nil {
+		 WHERE school_id=$1 AND academic_year_id=$2 AND class_id=$3 AND section_id=$4
+	`, schoolID, academicYearID, classID, sectionID).Scan(&version); err != nil {
 		return nil, fmt.Errorf("allocate curriculum version: %w", err)
 	}
 	if _, err := tx.Exec(ctx, `
 		UPDATE class_curricula SET status='retired'
-		 WHERE school_id=$1 AND academic_year_id=$2 AND class_id=$3 AND status='active'
-	`, schoolID, academicYearID, classID); err != nil {
+		 WHERE school_id=$1 AND academic_year_id=$2 AND class_id=$3 AND section_id=$4 AND status='active'
+	`, schoolID, academicYearID, classID, sectionID); err != nil {
 		return nil, academicWriteError(err)
 	}
 	var curriculumID int64
 	if err := tx.QueryRow(ctx, `
-		INSERT INTO class_curricula(school_id,academic_year_id,class_id,version_number,status,created_by_principal_id)
-		VALUES($1,$2,$3,$4,'active',$5) RETURNING id
-	`, schoolID, academicYearID, classID, version, actorID).Scan(&curriculumID); err != nil {
+		INSERT INTO class_curricula(school_id,academic_year_id,class_id,section_id,version_number,status,created_by_principal_id)
+		VALUES($1,$2,$3,$4,$5,'active',$6) RETURNING id
+	`, schoolID, academicYearID, classID, sectionID, version, actorID).Scan(&curriculumID); err != nil {
 		return nil, academicWriteError(err)
 	}
 	groupIDs := make(map[string]int64, len(groupByName))
@@ -327,9 +367,9 @@ func (r *AcademicRepository) SaveClassCurriculum(
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
 		VALUES($1,$2,'school.class_curriculum.created','class_curriculum',$3,'success',
-		       jsonb_build_object('academic_year_id',$4::bigint,'class_id',$5::bigint,'version',$6::integer,
-		                          'subject_count',$7::integer,'optional_group_count',$8::integer))
-	`, actorID, schoolID, fmt.Sprint(curriculumID), academicYearID, classID, version, len(subjects), len(groups)); err != nil {
+		       jsonb_build_object('academic_year_id',$4::bigint,'class_id',$5::bigint,'section_id',$6::bigint,'version',$7::integer,
+		                          'subject_count',$8::integer,'optional_group_count',$9::integer))
+	`, actorID, schoolID, fmt.Sprint(curriculumID), academicYearID, classID, sectionID, version, len(subjects), len(groups)); err != nil {
 		return nil, fmt.Errorf("audit class curriculum save: %w", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -411,11 +451,11 @@ func (r *AcademicRepository) loadStudentEnrollmentCurriculum(ctx context.Context
 	item.SelectedOptionalSubjectIDs = make([]int64, 0)
 	item.SelectionHistory = make([]StudentSubjectSelectionHistory, 0)
 	if err := r.db.QueryRow(ctx, `
-		SELECT e.academic_year_id,e.class_id,e.status,st.status
+		SELECT e.academic_year_id,e.class_id,e.section_id,e.status,st.status
 		  FROM student_enrollments e
 		  JOIN students st ON st.id=e.student_id AND st.school_id=e.school_id
 		 WHERE e.id=$1 AND e.school_id=$2
-	`, enrollmentID, schoolID).Scan(&item.AcademicYearID, &item.ClassID, &item.EnrollmentStatus, &item.StudentStatus); err != nil {
+	`, enrollmentID, schoolID).Scan(&item.AcademicYearID, &item.ClassID, &item.SectionID, &item.EnrollmentStatus, &item.StudentStatus); err != nil {
 		return nil, fmt.Errorf("load student enrollment curriculum context: %w", err)
 	}
 	var assignmentID, curriculumID int64
@@ -426,8 +466,8 @@ func (r *AcademicRepository) loadStudentEnrollmentCurriculum(ctx context.Context
 	if errors.Is(err, pgx.ErrNoRows) {
 		err = r.db.QueryRow(ctx, `
 			SELECT id FROM class_curricula
-			 WHERE school_id=$1 AND academic_year_id=$2 AND class_id=$3 AND status='active'
-		`, schoolID, item.AcademicYearID, item.ClassID).Scan(&curriculumID)
+			 WHERE school_id=$1 AND academic_year_id=$2 AND class_id=$3 AND section_id=$4 AND status='active'
+		`, schoolID, item.AcademicYearID, item.ClassID, item.SectionID).Scan(&curriculumID)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return &item, nil
 		}
@@ -447,8 +487,8 @@ func (r *AcademicRepository) loadStudentEnrollmentCurriculum(ctx context.Context
 		var activeCurriculumID int64
 		activeErr := r.db.QueryRow(ctx, `
 			SELECT id FROM class_curricula
-			 WHERE school_id=$1 AND academic_year_id=$2 AND class_id=$3 AND status='active'
-		`, schoolID, item.AcademicYearID, item.ClassID).Scan(&activeCurriculumID)
+			 WHERE school_id=$1 AND academic_year_id=$2 AND class_id=$3 AND section_id=$4 AND status='active'
+		`, schoolID, item.AcademicYearID, item.ClassID, item.SectionID).Scan(&activeCurriculumID)
 		if activeErr != nil && !errors.Is(activeErr, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("load current class curriculum version: %w", activeErr)
 		}
