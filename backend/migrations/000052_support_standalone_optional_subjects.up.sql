@@ -38,3 +38,20 @@ $v52$;
 
 COMMENT ON COLUMN class_curriculum_subjects.is_optional IS
     'True for standalone optional subjects and subjects belonging to an optional group; false for compulsory subjects.';
+
+-- Keep legacy/direct SQL writers compatible: a subject placed in a group is optional.
+CREATE OR REPLACE FUNCTION set_v52_group_subject_optional()
+RETURNS trigger
+LANGUAGE plpgsql AS $v52$
+BEGIN
+    IF NEW.optional_group_id IS NOT NULL THEN
+        NEW.is_optional := TRUE;
+    END IF;
+    RETURN NEW;
+END;
+$v52$;
+
+CREATE TRIGGER trg_set_v52_group_subject_optional
+BEFORE INSERT OR UPDATE OF optional_group_id, is_optional
+ON class_curriculum_subjects
+FOR EACH ROW EXECUTE FUNCTION set_v52_group_subject_optional();
