@@ -1756,6 +1756,7 @@ test("staff can create a guardian contact and link it to a student with relation
   let rejectGuardianEmailOnce = true;
   let rejectGuardianMobileDuplicateOnce = true;
   let rejectGuardianEmailDuplicateOnce = true;
+  let rejectSharedGuardianMobileDuplicateOnce = true;
   const guardian = {
     id: 45, school_id: 10, full_name: "Nisha Verma", mobile_number: "9876501234",
     email_address: "nisha.verma@example.test", alternate_mobile_number: null,
@@ -1868,6 +1869,14 @@ test("staff can create a guardian contact and link it to a student with relation
     }
     if (path === "/school/guardians/45" && request.method() === "PATCH") {
       const input = request.postDataJSON() as Record<string, unknown>;
+      if (rejectSharedGuardianMobileDuplicateOnce && input.mobile_number === "9876500000") {
+        rejectSharedGuardianMobileDuplicateOnce = false;
+        await route.fulfill({ status: 409, json: {
+          message: "This mobile number is already registered with another guardian. Use another contact number or leave this field blank.",
+          field_errors: { mobile_number: "This mobile number is already used by another guardian. Use another contact number or leave this field blank." },
+        } });
+        return;
+      }
       guardianUpdates.push(input);
       Object.assign(guardian, input);
       for (const link of guardianLinks) {
@@ -2078,6 +2087,13 @@ test("staff can create a guardian contact and link it to a student with relation
   await expect(page.getByText("Occupation must be 120 characters or fewer.", { exact: true })).toBeVisible();
   await expect(page.getByText("Education must be 120 characters or fewer.", { exact: true })).toBeVisible();
   await expect(page.getByText("Workplace must be 160 characters or fewer.", { exact: true })).toBeVisible();
+  expect(guardianUpdates).toHaveLength(0);
+
+  await editGuardianMobile.fill("9876500000");
+  await page.getByRole("button", { name: "Save guardian details" }).click();
+  await expect(page.getByRole("dialog", { name: "Update shared guardian profile?" })).toBeVisible();
+  await page.getByRole("button", { name: "Update all linked records" }).click();
+  await expect(page.getByText("This mobile number is already used by another guardian. Use another contact number or leave this field blank.", { exact: true })).toBeVisible();
   expect(guardianUpdates).toHaveLength(0);
 
   await editGuardianName.fill("Nisha Verma Updated");
