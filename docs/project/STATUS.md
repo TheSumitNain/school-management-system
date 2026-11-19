@@ -4,7 +4,11 @@
 - Added additive/reversible V52 migration. Existing grouped subjects are backfilled as optional, existing ungrouped subjects remain compulsory, and the database selection guard now permits standalone optional choices while still rejecting compulsory choices. A compatibility trigger marks legacy/direct inserts with a group as optional.
 - Backend curriculum read/write and enrollment-selection validation now use the explicit optional flag. Added a PostgreSQL integration scenario for standalone optional selection and adjusted Parent registration fixtures to respect V51 school-scoped guardian contact uniqueness (same mobile remains valid in different schools).
 - Updated the Class Curriculum UI selector and responsive panel styling. Frontend E2E now exercises compulsory, standalone optional and grouped optional subjects.
-- Verification is pending: wait for Backend CI and Frontend CI on the latest `work` commit, fix any failures, then verify the local database migration and authenticated School Admin browser flow before entering curriculum dummy data.
+- Backend CI **PASS** — latest checkpoint `fd5e9c85b6135fcf2e6c6ed328fe145cc3be7601`: complete migration chain through V52, Go tests including PostgreSQL integration, and `go vet`.
+- Frontend TypeScript/Vite production build **PASS** at the same checkpoint. Playwright browser acceptance is still running; it must pass before treating the frontend work as verified.
+- Follow-up UI work: Student Enrollment now displays standalone Optional subjects as individual checkboxes (previously only grouped options were rendered), with clear compulsory/optional/group sections and responsive styles. Class Curriculum now summarizes compulsory, individual optional and grouped counts and shows subject classifications in saved-version cards.
+- Added/updated Playwright coverage for standalone optional selection and saved curriculum subject classifications.
+- Next: confirm Frontend CI browser tests, then pull `work`, inspect local changes before merging, run local typecheck/build and apply V52 to the already-restored local app/test databases. Finally verify curriculum save and student-level compulsory/individual/group selection in the authenticated School Admin browser flow before entering dummy curriculum data.
 
 ## Guardian contact identity and uniqueness (2026-11-19)
 
