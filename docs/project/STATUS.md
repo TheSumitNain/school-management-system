@@ -1,7 +1,7 @@
 ## Guardian contact identity and uniqueness (2026-11-19)
 
 - Approved rule: guardian full names may repeat; mobile number and email address are independently optional but must each be unique within the same school when supplied.
-- Duplicate mobile/email saves are rejected on both create and shared-profile edit. The matching field receives an inline error: use another contact address or leave the field blank.
+- Duplicate mobile/email saves are rejected on both create and shared-profile edit. The matching field receives an inline error: use another contact address or leave that field blank.
 - Mobile comparison removes common display formatting and treats Indian 10-digit, leading-zero and +91-prefixed representations as the same number, while preserving the entered display value. Email comparison is trimmed and case-insensitive.
 - PostgreSQL V51 adds school-scoped partial unique indexes and a preflight. It does not merge/delete records; if existing duplicates are found, migration stops and requires manual review. The same contact may exist in separate schools.
 - Alternate mobile is not a login identifier and is excluded from the uniqueness rule.
