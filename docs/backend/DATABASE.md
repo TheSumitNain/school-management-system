@@ -5,6 +5,10 @@ PostgreSQL is accessed through pgx/pgxpool. Schema changes are maintained as ver
 
 The initial deployment direction is one shared database and schema with strict school-level ownership enforced by the backend.
 
+## Section-scoped class curricula
+
+Migration V53 adds nullable `class_curricula.section_id` with a composite foreign key to `sections(id, school_id, academic_year_id, class_id)`. NULL is reserved for pre-V53 legacy class-level curricula and their historical assignments; the migration does not rewrite or delete those rows. All new application curriculum writes require a real active section. Version numbers and the single-active-version constraint are scoped by school, academic year, class and section. The enrollment assignment trigger rejects a curriculum whose section differs from the enrollment section. Student curriculum lookup selects only the exact enrollment section and does not use legacy class-level records as a fallback. Rollback may be blocked after section-specific versions exist with colliding version numbers, because merging those scopes would destroy version identity.
+
 ## Calendar date policy
 
 The current product-wide school calendar timezone is `Asia/Kolkata` (IST). Date-only application rules must derive the calendar day from the shared backend `internal/schooltime` package; database constraints for date of birth, physical measurements and attendance use the explicit `Asia/Kolkata` calendar date rather than the PostgreSQL session timezone or database-server `CURRENT_DATE`. Do not rely on the Go host's local timezone. Attendance past-date permission classification uses the same application-derived IST date. This is a deliberate current-release default, not yet a per-school configuration. Add persisted per-school IANA timezone configuration before onboarding schools outside India.
