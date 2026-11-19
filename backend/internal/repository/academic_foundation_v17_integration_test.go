@@ -1067,8 +1067,8 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 		len(assignedV1.SelectionHistory) != 1 || assignedV1.SelectionHistory[0].RevokedAt != nil {
 		t.Fatalf("assign first curriculum and persist optional choice: item=%+v err=%v", assignedV1, err)
 	}
-	curriculumV2, err := academicRepo.SaveClassCurriculum(ctx, actorPrincipalID, schoolID,
-		enrollmentYearID, sourceClassID,
+	curriculumV2, err := academicRepo.SaveSectionClassCurriculum(ctx, actorPrincipalID, schoolID,
+		enrollmentYearID, sourceClassID, sourceSectionID,
 		[]CurriculumOptionalGroupInput{{Name: "Electives", MinSelections: 1, MaxSelections: 1}},
 		[]CurriculumSubjectInput{
 			{SubjectID: subjectAltID},
