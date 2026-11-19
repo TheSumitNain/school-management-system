@@ -1912,6 +1912,19 @@ test("staff can create a guardian contact and link it to a student with relation
   const familyDialog = page.getByRole("dialog", { name: "Parents & Siblings" });
   await expect(familyDialog).toBeVisible();
   await expect(page.getByText(/Staff-managed guardian records only/)).toBeVisible();
+  const guardianPanel = familyDialog.locator(".student-family-section--guardians");
+  const relatedPanel = familyDialog.locator(".student-family-section--related");
+  const linkPanel = familyDialog.locator(".student-family-link-form--accent");
+  await expect(guardianPanel).toBeVisible();
+  await expect(relatedPanel).toBeVisible();
+  await expect(linkPanel).toBeVisible();
+  const lightPanelStyle = await guardianPanel.evaluate(element => getComputedStyle(element).backgroundColor);
+  await page.locator("html").evaluate(element => element.setAttribute("data-theme", "dark"));
+  const darkPanelStyle = await guardianPanel.evaluate(element => getComputedStyle(element).backgroundColor);
+  expect(darkPanelStyle).not.toBe("rgba(0, 0, 0, 0)");
+  expect(darkPanelStyle).not.toBe(lightPanelStyle);
+  await page.locator("html").evaluate(element => element.setAttribute("data-theme", "light"));
+  await expect(guardianPanel).toBeVisible();
 
   await page.getByRole("button", { name: "Create a new guardian contact" }).click();
   await page.getByPlaceholder("Guardian full name").fill("अ".repeat(201));
