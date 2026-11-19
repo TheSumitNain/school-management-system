@@ -193,7 +193,7 @@ export type StudentEnrollmentListResponse = { enrollments: StudentEnrollment[]; 
 export type CurriculumOptionalGroup = { id: number; name: string; min_selections: number; max_selections: number };
 export type CurriculumSubject = {
   id: number; subject_id: number; name: string; code?: string | null;
-  optional_group_id?: number | null; optional_group_name?: string | null; is_compulsory: boolean;
+  optional_group_id?: number | null; optional_group_name?: string | null; is_compulsory: boolean; is_optional: boolean;
 };
 export type ClassCurriculum = {
   id: number; school_id: number; academic_year_id: number; class_id: number;
