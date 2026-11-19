@@ -205,9 +205,15 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 	// Mobile formatting and email casing must not create a second guardian
 	// identity within the same school. Names remain non-unique.
 	formattedDuplicateMobile := "+91 12345-67890"
-	if _, err := repo.SaveGuardian(ctx, targetPrincipalID, schoolID, 0,
+ 	if _, err := repo.SaveGuardian(ctx, targetPrincipalID, schoolID, 0,
 		"Different Guardian Name", &formattedDuplicateMobile, nil, nil, nil, nil, nil, "active"); !errors.Is(err, ErrGuardianMobileInUse) {
-		t.Fatalf("create guardian with duplicate normalized mobile error = %v, want ErrGuardianMobileInUse", err)
+		t.Fatalf("create guardian with duplicate formatted mobile error = %v, want ErrGuardianMobileInUse", err)
+	}
+	for _, equivalentMobile := range []string{"1234567890", "01234567890"} {
+		if _, err := repo.SaveGuardian(ctx, targetPrincipalID, schoolID, 0,
+			"Another Person", &equivalentMobile, nil, nil, nil, nil, nil, "active"); !errors.Is(err, ErrGuardianMobileInUse) {
+			t.Errorf("create guardian with equivalent mobile %q error = %v, want ErrGuardianMobileInUse", equivalentMobile, err)
+		}
 	}
 	uppercaseDuplicateEmail := strings.ToUpper(email)
 	if _, err := repo.SaveGuardian(ctx, targetPrincipalID, schoolID, 0,
