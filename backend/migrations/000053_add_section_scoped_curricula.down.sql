@@ -12,9 +12,6 @@ CREATE UNIQUE INDEX ux_class_curricula_one_active
     ON class_curricula (school_id, academic_year_id, class_id)
     WHERE status = 'active';
 
-CREATE INDEX ix_class_curricula_school_year_class
-    ON class_curricula (school_id, academic_year_id, class_id, version_number DESC);
-
 ALTER TABLE class_curricula
     DROP CONSTRAINT IF EXISTS class_curricula_section_scope_fkey,
     DROP COLUMN IF EXISTS section_id;
