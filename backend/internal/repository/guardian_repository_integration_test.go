@@ -202,6 +202,43 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("unexpected created guardian: %+v", guardian)
 	}
 
+	// Mobile formatting and email casing must not create a second guardian
+	// identity within the same school. Names remain non-unique.
+	formattedDuplicateMobile := "+91 12345-67890"
+	if _, err := repo.SaveGuardian(ctx, targetPrincipalID, schoolID, 0,
+		"Different Guardian Name", &formattedDuplicateMobile, nil, nil, nil, nil, nil, "active"); !errors.Is(err, ErrGuardianMobileInUse) {
+		t.Fatalf("create guardian with duplicate normalized mobile error = %v, want ErrGuardianMobileInUse", err)
+	}
+	uppercaseDuplicateEmail := strings.ToUpper(email)
+	if _, err := repo.SaveGuardian(ctx, targetPrincipalID, schoolID, 0,
+		"Another Guardian Name", nil, &uppercaseDuplicateEmail, nil, nil, nil, nil, "active"); !errors.Is(err, ErrGuardianEmailInUse) {
+		t.Fatalf("create guardian with duplicate case-insensitive email error = %v, want ErrGuardianEmailInUse", err)
+	}
+
+	// The unique indexes must also reject duplicate values when the repository
+	// is bypassed. Savepoints isolate each expected PostgreSQL constraint error.
+	mobileSavepoint, err := tx.Begin(ctx)
+	if err != nil { t.Fatalf("begin duplicate-mobile index savepoint: %v", err) }
+	_, duplicateMobileIndexErr := mobileSavepoint.Exec(ctx,
+		`INSERT INTO guardians (school_id, full_name, mobile_number) VALUES ($1, 'Direct Duplicate Mobile', $2)`,
+		schoolID, formattedDuplicateMobile)
+	if duplicateMobileIndexErr == nil || !strings.Contains(duplicateMobileIndexErr.Error(), "ux_guardians_school_mobile_unique") {
+		_ = mobileSavepoint.Rollback(ctx)
+		t.Fatalf("direct duplicate mobile insert error = %v, want ux_guardians_school_mobile_unique violation", duplicateMobileIndexErr)
+	}
+	if err := mobileSavepoint.Rollback(ctx); err != nil { t.Fatalf("rollback duplicate-mobile savepoint: %v", err) }
+
+	emailSavepoint, err := tx.Begin(ctx)
+	if err != nil { t.Fatalf("begin duplicate-email index savepoint: %v", err) }
+	_, duplicateEmailIndexErr := emailSavepoint.Exec(ctx,
+		`INSERT INTO guardians (school_id, full_name, email_address) VALUES ($1, 'Direct Duplicate Email', $2)`,
+		schoolID, uppercaseDuplicateEmail)
+	if duplicateEmailIndexErr == nil || !strings.Contains(duplicateEmailIndexErr.Error(), "ux_guardians_school_email_unique") {
+		_ = emailSavepoint.Rollback(ctx)
+		t.Fatalf("direct duplicate email insert error = %v, want ux_guardians_school_email_unique violation", duplicateEmailIndexErr)
+	}
+	if err := emailSavepoint.Rollback(ctx); err != nil { t.Fatalf("rollback duplicate-email savepoint: %v", err) }
+
 	tooLongUnicodeMobile := strings.Repeat("९", 31)
 	if _, err := repo.SaveGuardian(ctx, targetPrincipalID, schoolID, guardian.ID,
 		"Guardian One", &tooLongUnicodeMobile, &email, &alternateMobile,
