@@ -135,6 +135,22 @@ func TestGuardianHandlerSaveCreateAndUpdate(t *testing.T) {
 	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), `"field_errors":{"email_address":"Enter a valid email address using one address only."}`) {
 		t.Fatalf("invalid guardian email update status=%d body=%s", rec.Code, rec.Body.String())
 	}
+
+	for _, tc := range []struct {
+		err error
+		field string
+		message string
+	}{
+		{repository.ErrGuardianMobileInUse, "mobile_number", "This mobile number is already used by another guardian. Use another contact number or leave this field blank."},
+		{repository.ErrGuardianEmailInUse, "email_address", "This email address is already used by another guardian. Use another email address or leave this field blank."},
+	} {
+		service.err = tc.err
+		rec = httptest.NewRecorder()
+		router.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/guardians", strings.NewReader(`{"full_name":"A Parent"}`)))
+		if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), `"field_errors":{"`+tc.field+`":"`+tc.message+`"}`) {
+			t.Errorf("duplicate guardian %s status=%d body=%s", tc.field, rec.Code, rec.Body.String())
+		}
+	}
 	service.err = nil
 
 	for _, tc := range []struct{ path, body string }{
