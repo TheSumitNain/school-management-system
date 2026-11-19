@@ -82,13 +82,30 @@ export function StudentEnrollmentSubjectsPanel({
       )}
       {!data?.assigned && <p className="student-address-note">This curriculum is available for the selected class and academic year. Saving subject choices will assign it to this student’s enrollment.</p>}
       {movingToNewVersion && <p className="student-address-note">Saving this version replaces the assigned curriculum while preserving previous subject-choice history.</p>}
-      <div className="student-subject-list">
-        {curriculum.subjects.filter(subject => subject.is_compulsory).map(subject => (
-          <div className="student-subject-row" key={subject.id}>
-            <span>{subject.name}</span><span className="student-address-note">Compulsory</span>
+      <section className="student-subject-section" aria-label="Compulsory subjects">
+        <h4>Compulsory subjects <span>Included automatically</span></h4>
+        <div className="student-subject-list">
+          {curriculum.subjects.filter(subject => subject.is_compulsory).map(subject => (
+            <div className="student-subject-row" key={subject.id}>
+              <span>{subject.name}{subject.code ? " (" + subject.code + ")" : ""}</span><span className="student-subject-type-badge compulsory">Compulsory</span>
+            </div>
+          ))}
+        </div>
+      </section>
+      {curriculum.subjects.some(subject => subject.is_optional && !subject.optional_group_id) && (
+        <section className="student-subject-section" aria-label="Individual optional subjects">
+          <h4>Optional subjects <span>Choose individually</span></h4>
+          <div className="student-subject-list">
+            {curriculum.subjects.filter(subject => subject.is_optional && !subject.optional_group_id).map(subject => (
+              <label className="student-subject-option student-subject-standalone" key={subject.id}>
+                <input type="checkbox" disabled={!canEdit || save.isPending} checked={selected.includes(subject.id)} onChange={event => toggle(subject.id, event.target.checked)} />
+                <span>{subject.name}{subject.code ? " (" + subject.code + ")" : ""}</span>
+                <span className="student-subject-type-badge optional">Optional</span>
+              </label>
+            ))}
           </div>
-        ))}
-      </div>
+        </section>
+      )}
       {grouped.map(([groupID, group]) => (
         <fieldset className="student-subject-group" key={groupID} disabled={!canEdit || save.isPending}>
           <legend>{group.name} <span>Choose {group.min === group.max ? group.min : group.min + "–" + group.max}</span></legend>
