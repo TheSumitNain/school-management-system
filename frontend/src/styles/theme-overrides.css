@@ -568,3 +568,13 @@ input[type="radio"] {
  .page-skeleton-table-head,.page-skeleton-table-row { min-width: 540px; }
 }
 @media (prefers-reduced-motion: reduce) { .loading-nav .skeleton,.loading-user .skeleton { animation: none; } }
+
+@media (max-width: 740px) {
+ .loading-mobile-menu { display: block; width: 34px; height: 30px; border-radius: 8px; }
+ .loading-topbar-mark { margin-left: auto; width: 90px; }
+}
+@media (min-width: 741px) {
+ .loading-mobile-menu { display: none; }
+}
+.page-skeleton:not(.students-skeleton) .page-skeleton-table-head,
+.page-skeleton:not(.students-skeleton) .page-skeleton-table-row { grid-template-columns: repeat(4,minmax(0,1fr)); }
