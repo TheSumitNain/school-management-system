@@ -245,9 +245,10 @@ test("student admission, profile navigation and parent details render without br
         created_at: "2026-11-14T00:00:00.000Z",
         optional_groups: [{ id: 801, name: "Second language", min_selections: 1, max_selections: 1 }],
         subjects: [
-          { id: 901, subject_id: 91, name: "Mathematics", is_compulsory: true },
-          { id: 902, subject_id: 92, name: "Hindi", optional_group_id: 801, optional_group_name: "Second language", is_compulsory: false },
-          { id: 903, subject_id: 93, name: "Sanskrit", optional_group_id: 801, optional_group_name: "Second language", is_compulsory: false },
+          { id: 901, subject_id: 91, name: "Mathematics", is_compulsory: true, is_optional: false },
+          { id: 902, subject_id: 92, name: "Hindi", optional_group_id: 801, optional_group_name: "Second language", is_compulsory: false, is_optional: true },
+          { id: 903, subject_id: 93, name: "Sanskrit", optional_group_id: 801, optional_group_name: "Second language", is_compulsory: false, is_optional: true },
+          { id: 904, subject_id: 94, name: "Computer Applications", is_compulsory: false, is_optional: true },
         ],
       };
       if (curriculumEnrollmentMatch[2] === "curriculum" && method === "GET") {
@@ -582,6 +583,12 @@ test("student admission, profile navigation and parent details render without br
   await expect(profileDialog.getByText("14 Nov 2026", { exact: true })).toHaveCount(2);
   const curriculumPanel = page.getByRole("region", { name: "Curriculum and subject choices" });
   await expect(curriculumPanel.getByText("Mathematics")).toBeVisible();
+  const individualOptional = curriculumPanel.getByRole("checkbox", { name: /Computer Applications/ });
+  await expect(individualOptional).toBeVisible();
+  await individualOptional.check();
+  await expect(individualOptional).toBeChecked();
+  await individualOptional.uncheck();
+  await expect(individualOptional).not.toBeChecked();
   await expect(curriculumPanel.getByText("This curriculum is available for the selected class and academic year. Saving subject choices will assign it to this student’s enrollment.")).toBeVisible();
   const saveSubjectChoices = curriculumPanel.getByRole("button", { name: "Save subject choices" });
   // A required optional group cannot be saved empty, and its maximum must be enforced in the UI.
