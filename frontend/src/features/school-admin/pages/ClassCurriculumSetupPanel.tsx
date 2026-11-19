@@ -29,7 +29,7 @@ export function ClassCurriculumSetupPanel({ years, classes, subjects, canManage 
     const counts = new Map<string, number>();
     for (const id of included) {
       const name = (groupBySubject[id] ?? "").trim().toLowerCase();
-      if (name) counts.set(name, (counts.get(name) ?? 0) + 1);
+      if (name && name !== "__standalone_optional__") counts.set(name, (counts.get(name) ?? 0) + 1);
     }
     return counts;
   }, [included, groupBySubject]);
@@ -67,7 +67,7 @@ export function ClassCurriculumSetupPanel({ years, classes, subjects, canManage 
     const groupNames = new Set(groups.map(group => group.name.trim().toLowerCase()));
     const payloadSubjects = included.map(subjectID => {
       const optionalGroup = (groupBySubject[subjectID] ?? "").trim();
-      return { subject_id: subjectID, ...(optionalGroup ? { optional_group: optionalGroup } : {}) };
+      return { subject_id: subjectID, is_optional: Boolean(optionalGroup), ...(optionalGroup && optionalGroup !== "__standalone_optional__" ? { optional_group: optionalGroup } : {}) };
     });
     if (payloadSubjects.some(subject => subject.optional_group && !groupNames.has(subject.optional_group.toLowerCase()))) {
       nextErrors.subjects = "Every optional subject must belong to a configured optional group.";
@@ -141,7 +141,8 @@ export function ClassCurriculumSetupPanel({ years, classes, subjects, canManage 
                   {checked && <label className="curriculum-subject-group-select">Type
                     <select disabled={save.isPending} value={groupValue} onChange={event => { setGroupBySubject(current => ({ ...current, [subject.id]: event.target.value })); setFieldErrors(current => ({ ...current, subjects: undefined })); }}>
                       <option value="">Compulsory</option>
-                      {groups.filter(group => group.name.trim()).map((group, index) => <option key={index} value={group.name}>{group.name}</option>)}
+                      <option value="__standalone_optional__">Optional (individual choice)</option>
+                      {groups.filter(group => group.name.trim()).map((group, index) => <option key={index} value={group.name}>Optional group: {group.name}</option>)}
                     </select>
                   </label>}
                 </div>
