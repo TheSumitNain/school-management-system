@@ -554,12 +554,21 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
                 <button type="submit" className="secondary" disabled={busy}>{createGuardian.isPending ? "Saving…" : "Save guardian contact"}</button>
               </form>
             )}
-            {pendingRevokeID > 0 && (
-              <div className="student-location-confirm" role="alertdialog" aria-label="Revoke guardian relationship">
-                <label><StudentFieldLabel label="Reason for revocation" required hint="Explain why this guardian relationship is being revoked. Maximum 500 characters; the reason is retained in the audit/history." /><input value={revokeReason} aria-invalid={Boolean(revokeReasonError)} aria-describedby={revokeReasonError ? "student-guardian-revoke-reason-error" : undefined} onChange={event => { setRevokeReason(event.target.value); setRevokeReasonError(""); }} placeholder="Explain why this link is being revoked"/>{revokeReasonError && <small id="student-guardian-revoke-reason-error" className="app-field-error">{revokeReasonError}</small>}</label>
-                <div><button type="button" className="app-modal-cancel" onClick={() => { setPendingRevokeID(0); setRevokeReasonError(""); }} disabled={busy}>Cancel</button><button type="button" className="secondary" onClick={() => void confirmRevoke()} disabled={busy}>{revokeLink.isPending ? "Revoking…" : "Confirm revoke"}</button></div>
-              </div>
-            )}
+            <Modal
+              open={pendingRevokeID > 0}
+              title="Revoke guardian relationship"
+              description={`Revoke the link for ${visibleLinks.find(link => link.id === pendingRevokeID)?.guardian_name ?? "this guardian"}? The guardian contact and other students’ links will not be deleted. This student’s relationship history will be preserved.`}
+              onClose={() => { if (!busy) { setPendingRevokeID(0); setRevokeReasonError(""); } }}
+              closeDisabled={revokeLink.isPending}
+            >
+              <form className="student-revoke-form" onSubmit={event => { event.preventDefault(); void confirmRevoke(); }} noValidate>
+                <label><StudentFieldLabel label="Reason for revocation" required hint="Explain why this guardian relationship is being revoked. Maximum 500 characters; the reason is retained in the audit/history." /><input autoFocus value={revokeReason} aria-invalid={Boolean(revokeReasonError)} aria-describedby={revokeReasonError ? "student-guardian-revoke-reason-error" : undefined} onChange={event => { setRevokeReason(event.target.value); setRevokeReasonError(""); }} placeholder="Explain why this link is being revoked"/>{revokeReasonError && <small id="student-guardian-revoke-reason-error" className="app-field-error">{revokeReasonError}</small>}</label>
+                <div className="app-modal-actions">
+                  <button type="button" className="app-modal-cancel" onClick={() => { setPendingRevokeID(0); setRevokeReasonError(""); }} disabled={busy}>Cancel</button>
+                  <button type="submit" className="app-modal-confirm" disabled={busy}>{revokeLink.isPending ? "Revoking…" : "Confirm revoke"}</button>
+                </div>
+              </form>
+            </Modal>
           </>
         )}
         {!canManage && <p className="student-address-note">View-only access. Guardian records can be changed only for active students and require guardian management permission.</p>}
