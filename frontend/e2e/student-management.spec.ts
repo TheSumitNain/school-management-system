@@ -760,11 +760,23 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByText("Father · Primary contact · Emergency contact")).toBeVisible();
   await expect(page.getByText("Other students sharing a guardian")).toBeVisible();
 
+  // A legacy value with mixed case/whitespace must still block a duplicate
+  // Father link, while the existing relationship remains selectable for edit.
+  const addRelationshipSelect = page.getByRole("button", { name: "Relationship to student", exact: true });
+  await addRelationshipSelect.click();
+  const addRelationshipList = page.getByRole("listbox", { name: "Relationship to student" });
+  await expect(addRelationshipList.getByRole("option")).toHaveCount(8);
+  await expect(addRelationshipList.getByRole("option", { name: "Father (already linked)" })).toBeDisabled();
+  await page.keyboard.press("Escape");
+
   await page.getByRole("button", { name: "Edit relationship" }).click();
   const relationshipForm = page.locator(".student-family-create-form").filter({ has: page.getByRole("heading", { name: "Edit relationship for this student" }) });
   const relationshipSelect = relationshipForm.getByRole("button", { name: "Relationship to student", exact: true });
   await relationshipSelect.click();
-  await expect(relationshipForm.getByRole("listbox", { name: "Relationship to student" })).toBeVisible();
+  const editRelationshipList = relationshipForm.getByRole("listbox", { name: "Relationship to student" });
+  await expect(editRelationshipList).toBeVisible();
+  await expect(editRelationshipList.getByRole("option", { name: "Father", exact: true })).toBeEnabled();
+  await expect(editRelationshipList.getByRole("option", { name: "Father", exact: true })).toHaveAttribute("aria-selected", "true");
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog", { name: /Parents & Siblings/i })).toBeVisible();
   await expect(relationshipSelect).toHaveAttribute("aria-expanded", "false");
