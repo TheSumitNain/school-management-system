@@ -188,6 +188,14 @@ func TestGuardianHandlerGetAndStudentRelationshipLifecycle(t *testing.T) {
 		t.Fatalf("link status=%d service=%+v body=%s", rec.Code, service, rec.Body.String())
 	}
 
+	service.err = repository.ErrGuardianRelationshipConflict
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/students/22/guardians", strings.NewReader(`{"guardian_id":10,"relationship_type":"mother"}`)))
+	if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), "This relationship type is already linked to this student") {
+		t.Fatalf("duplicate relationship status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	service.err = nil
+
 	rec = httptest.NewRecorder()
 	router.ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/links/14", strings.NewReader(`{"relationship_type":"mother","is_primary_contact":true,"is_emergency_contact":false}`)))
 	if rec.Code != http.StatusOK || service.linkID != 14 || service.relationship != "mother" || !service.primary || service.emergency {
