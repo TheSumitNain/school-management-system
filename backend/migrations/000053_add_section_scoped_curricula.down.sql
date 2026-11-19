@@ -1,5 +1,29 @@
 -- V53 rollback. Existing NULL-scoped legacy curricula and historical
 -- enrollment assignments remain unchanged.
+
+-- Section-scoped version sequences cannot always be represented by the old
+-- class-only unique keys. Refuse rollback rather than silently merging scopes.
+DO $v53_rollback$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+          FROM class_curricula
+         WHERE status = 'active'
+         GROUP BY school_id, academic_year_id, class_id
+        HAVING COUNT(*) > 1
+    ) THEN
+        RAISE EXCEPTION 'cannot roll back V53: multiple active section curricula exist for one class/year';
+    END IF;
+    IF EXISTS (
+        SELECT 1
+          FROM class_curricula
+         GROUP BY school_id, academic_year_id, class_id, version_number
+        HAVING COUNT(*) > 1
+    ) THEN
+        RAISE EXCEPTION 'cannot roll back V53: section version numbers collide within a class/year';
+    END IF;
+END;
+$v53_rollback$;
 DROP INDEX IF EXISTS ix_class_curricula_section_versions;
 DROP INDEX IF EXISTS ux_class_curricula_one_active;
 DROP INDEX IF EXISTS ux_class_curricula_scope_version;
