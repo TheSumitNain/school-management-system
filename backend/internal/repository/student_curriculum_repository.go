@@ -319,7 +319,7 @@ func (r *AcademicRepository) SaveClassCurriculum(
 			INSERT INTO class_curriculum_subjects
 				(school_id,curriculum_id,subject_id,optional_group_id,is_optional,subject_name_snapshot,subject_code_snapshot)
 			SELECT $1,$2,id,$3,$4,name,subject_code FROM subjects
-			 WHERE id=$4 AND school_id=$1 AND is_active=TRUE
+			 WHERE id=$5 AND school_id=$1 AND is_active=TRUE
 		`, schoolID, curriculumID, groupID, subject.IsOptional, subject.SubjectID); err != nil {
 			return nil, academicWriteError(err)
 		}
