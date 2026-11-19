@@ -38,6 +38,14 @@ These rules apply to every new or modified domain, not only student and guardian
 - Preserve historical facts. Do not rewrite old academic-year admission identities, guardian relationship periods or measurements to make current screens appear simpler.
 
 
+### Guardian contact uniqueness (V51)
+
+- Guardian mobile and email are optional, but each non-empty value is unique within its school across all guardian statuses. Guardian names and alternate mobile numbers are not unique identifiers.
+- The database function normalize_guardian_mobile removes display punctuation and normalizes Indian 10-digit, leading-zero and +91-prefixed forms before comparison. The original entered display value is retained in guardians.mobile_number.
+- Email uniqueness uses lower(btrim(email_address)). Both constraints are partial unique indexes so NULL/blank optional values remain allowed.
+- V51 preflights existing data and refuses to apply if duplicate school/mobile or school/email groups exist. It does not merge, delete, or rewrite legacy contacts. Resolve any reported duplicates manually and rerun the migration.
+- The down migration removes only the two indexes and normalization function; it does not alter guardian records.
+
 ### Guardian primary-contact invariant (V43)
 - A student may have at most one active primary guardian contact. PostgreSQL enforces this with the partial unique index `ux_student_guardians_active_primary_per_student` over `(school_id, student_id)`, restricted to non-revoked rows marked primary.
 - The migration performs a duplicate-data preflight and fails with a clear error instead of silently choosing or demoting a guardian if legacy rows violate the invariant.
