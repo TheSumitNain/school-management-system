@@ -314,7 +314,8 @@ body,
   color: var(--color-text);
 }
 
-:where(input[type="checkbox"], input[type="radio"]) {
+input[type="checkbox"],
+input[type="radio"] {
   appearance: none;
   -webkit-appearance: none;
   display: inline-grid;
@@ -330,16 +331,16 @@ body,
   cursor: pointer;
 }
 
-:where(input[type="checkbox"]) { border-radius: 4px; }
-:where(input[type="radio"]) { border-radius: 50%; }
+input[type="checkbox"] { border-radius: 4px; }
+input[type="radio"] { border-radius: 50%; }
 
-:where(input[type="checkbox"]):checked,
-:where(input[type="radio"]):checked {
+input[type="checkbox"]:checked,
+input[type="radio"]:checked {
   border-color: var(--color-action);
   background-color: var(--color-action);
 }
 
-:where(input[type="checkbox"]):checked::before {
+input[type="checkbox"]:checked::before {
   content: "";
   width: 8px;
   height: 4px;
@@ -348,7 +349,7 @@ body,
   transform: rotate(-45deg) translateY(-1px);
 }
 
-:where(input[type="radio"]):checked::before {
+input[type="radio"]:checked::before {
   content: "";
   width: 7px;
   height: 7px;
@@ -356,7 +357,8 @@ body,
   background: var(--color-on-brand);
 }
 
-:where(input[type="checkbox"], input[type="radio"]):disabled {
+input[type="checkbox"],
+input[type="radio"]:disabled {
   opacity: .55;
   cursor: not-allowed;
 }
@@ -419,12 +421,13 @@ body,
 :where(*)::-webkit-scrollbar-thumb:hover { background: var(--color-text-muted); background-clip: padding-box; }
 
 @media (forced-colors: active) {
-  :where(input[type="checkbox"], input[type="radio"]) {
+  input[type="checkbox"],
+input[type="radio"] {
     forced-color-adjust: auto;
     border: 1px solid ButtonText;
   }
-  :where(input[type="checkbox"]):checked,
-  :where(input[type="radio"]):checked {
+  input[type="checkbox"]:checked,
+  input[type="radio"]:checked {
     background: Highlight;
     border-color: Highlight;
   }
