@@ -167,6 +167,17 @@ The directory opens a student profile detail view with permanent identity and ac
 
 The directory should support year-scoped admission-number search and filters, alongside student name/status search. A student without a current-year enrollment must not be silently represented as enrolled in the current year.
 
+### Guardian contact identity and uniqueness (approved 2026-11-19; V51)
+
+- A guardian contact represents one person within one school. Guardian names are not unique; different people may have the same name.
+- Mobile number and email address are optional independently. If supplied, each is unique within that school across active, inactive and archived guardian records. A guardian may have neither contact value and still be created and linked.
+- Mobile comparison ignores common display formatting and treats a 10-digit Indian number, its leading-zero form and its +91-prefixed form as the same number. The entered display value is preserved. Email comparison trims surrounding whitespace and is case-insensitive.
+- A duplicate mobile or email blocks the save and produces an inline field error explaining that the user must enter another contact address or leave that field blank. Existing guardian records are not silently merged, overwritten, deleted or revoked.
+- The backend performs field-specific checks and PostgreSQL unique partial indexes enforce the same school-scoped rule, including concurrent or direct database writes. The uniqueness scope is school-specific; the same verified contact may appear in separate school records.
+- The alternate mobile field is a secondary contact detail, not a Parent Login identifier, and is not part of this uniqueness rule.
+- V51 performs a duplicate-data preflight and stops without changing existing guardian records if legacy duplicate mobile/email groups exist. Those records require human review before retrying the migration.
+- Future Parent Login must reuse the mobile/email already stored on the guardian record; it must not collect a second set of contact details. Login requires verified contact ownership. A School Admin-controlled parent-login setting will govern eligibility. Parent OTP/SMS and parent-facing login remain deferred until that phase is approved.
+
 ## 5. Authorization, privacy and audit
 
 - Every query and mutation is school-scoped at the repository/database boundary.
