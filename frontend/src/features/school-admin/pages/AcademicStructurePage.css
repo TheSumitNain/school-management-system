@@ -77,3 +77,38 @@
  .curriculum-subject-row{align-items:stretch}
  .curriculum-subject-group-select{grid-template-columns:1fr;width:100%}
 }
+
+
+/* Curriculum editor information hierarchy and saved-version detail cards. */
+.curriculum-existing .curriculum-version-list{display:grid;gap:9px;margin:0;padding:0;list-style:none}
+.curriculum-existing .curriculum-version-list>li{display:grid;gap:9px;padding:12px;border:1px solid var(--color-border);border-radius:10px;background:var(--color-surface)}
+.curriculum-version-heading{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.curriculum-version-heading strong{color:var(--color-text);font-size:12px}
+.curriculum-version-heading small{margin-left:auto;color:var(--color-text-muted);font-size:10px}
+.curriculum-version-status{padding:3px 8px;border-radius:999px;font-size:10px;font-weight:700;text-transform:capitalize}
+.curriculum-version-status.active{background:color-mix(in srgb,var(--color-success) 12%,var(--color-surface));color:var(--color-success)}
+.curriculum-version-status.retired{background:var(--color-surface-muted);color:var(--color-text-muted)}
+.curriculum-version-subjects{display:flex;flex-wrap:wrap;gap:6px}
+.curriculum-version-subject{padding:4px 8px;border:1px solid var(--color-border);border-radius:7px;color:var(--color-text-muted);font-size:10px;line-height:1.35}
+.curriculum-version-subject.compulsory{border-color:color-mix(in srgb,var(--color-success) 28%,var(--color-border));background:color-mix(in srgb,var(--color-success) 7%,var(--color-surface))}
+.curriculum-version-subject.optional{border-color:color-mix(in srgb,var(--color-focus) 28%,var(--color-border));background:color-mix(in srgb,var(--color-focus) 7%,var(--color-surface))}
+.curriculum-version-subject.grouped{border-color:color-mix(in srgb,var(--color-accent) 40%,var(--color-border));background:color-mix(in srgb,var(--color-accent) 14%,var(--color-surface))}
+.curriculum-subject-picker-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;grid-column:1/-1}
+.curriculum-subject-picker-heading h3{margin:0 0 4px}
+.curriculum-subject-picker-heading p{margin:0;color:var(--color-text-muted);font-size:11px;line-height:1.45}
+.curriculum-subject-picker-heading>span{flex:0 0 auto;padding:5px 9px;border:1px solid var(--color-border);border-radius:999px;background:var(--color-surface);color:var(--color-text-muted);font-size:10px;font-weight:700}
+.curriculum-subject-summary{display:flex;flex-wrap:wrap;gap:7px;grid-column:1/-1}
+.curriculum-subject-summary>span{display:inline-flex;align-items:center;gap:5px;padding:5px 9px;border:1px solid var(--color-border);border-radius:999px;background:var(--color-surface);color:var(--color-text-muted);font-size:10px}
+.curriculum-subject-summary strong{color:var(--color-text);font-size:11px}
+.curriculum-subject-summary .compulsory{border-color:color-mix(in srgb,var(--color-success) 30%,var(--color-border))}
+.curriculum-subject-summary .individual{border-color:color-mix(in srgb,var(--color-focus) 30%,var(--color-border))}
+.curriculum-subject-summary .grouped{border-color:color-mix(in srgb,var(--color-accent) 42%,var(--color-border))}
+.curriculum-subject-row{transition:border-color .14s ease,background-color .14s ease,box-shadow .14s ease}
+.curriculum-subject-row:has(>label:first-child input:checked){border-color:color-mix(in srgb,var(--color-focus) 45%,var(--color-border));background:color-mix(in srgb,var(--color-accent) 18%,var(--color-surface))}
+.curriculum-subject-group-select select{max-width:100%}
+@media(max-width:560px){
+ .curriculum-subject-picker-heading{align-items:flex-start;flex-direction:column}
+ .curriculum-version-heading small{width:100%;margin-left:0}
+ .curriculum-subject-summary{gap:5px}
+ .curriculum-subject-summary>span{padding:5px 7px}
+}
