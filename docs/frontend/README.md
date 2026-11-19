@@ -130,6 +130,7 @@ These rules apply to every role and every screen. Treat them as acceptance crite
 - Destructive or irreversible actions must never be triggered by a single ambiguous click. Do not silently discard unsaved changes.
 - Confirmation forms for destructive actions must open in the shared, centred Modal/ConfirmDialog layer rather than appearing at the bottom of a long page or list. Keep the selected record context, consequence, required reason and field-level validation inside the dialog; move focus into the dialog when it opens, prevent dismissal while the mutation is pending, and restore focus to the initiating action when it closes. Use a clearly styled secondary Cancel button and a visually distinct destructive confirmation button. Cancel must close the dialog without changing data.
 - All controls must have labels, keyboard operation, visible focus, accessible names and touch-friendly targets. Respect reduced-motion preferences.
+- Native checkbox and radio visuals are owned by the shared theme stylesheet. Checked-state selectors must retain enough CSS specificity to prevent page-level input rules from hiding the selected background or check mark. Any checkbox change must be tested for both its functional state and its visible checked indicator in the browser; do not accept a passing data/action assertion alone.
 - Keep navigation and common actions consistent across roles; show only actions the current user can access, while the backend remains authoritative.
 
 ### Self-explanatory workflows, dialogs and field-level validation (mandatory)
