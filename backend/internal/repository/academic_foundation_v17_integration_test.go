@@ -1033,6 +1033,33 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	if optionalV1ID == 0 || compulsoryV1ID == 0 {
 		t.Fatal("first curriculum did not return both compulsory and optional subjects")
 	}
+
+	// A second section in the same class must have its own independent
+	// curriculum version sequence and must never appear in the first section's
+	// curriculum list.
+	var isolatedSectionID int64
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO sections(school_id,academic_year_id,class_id,name)
+		VALUES($1,$2,$3,$4) RETURNING id
+	`, schoolID, enrollmentYearID, sourceClassID, "Curriculum-"+fmt.Sprint(time.Now().UnixNano())).Scan(&isolatedSectionID); err != nil {
+		t.Fatalf("create isolated curriculum section: %v", err)
+	}
+	isolatedCurriculum, err := academicRepo.SaveSectionClassCurriculum(ctx, actorPrincipalID, schoolID,
+		enrollmentYearID, sourceClassID, isolatedSectionID, nil,
+		[]CurriculumSubjectInput{{SubjectID: subjectID}})
+	if err != nil || isolatedCurriculum == nil || isolatedCurriculum.VersionNumber != 1 {
+		t.Fatalf("create independent section curriculum: curriculum=%+v err=%v", isolatedCurriculum, err)
+	}
+	firstSectionCurricula, err := academicRepo.ListSectionClassCurricula(ctx, actorPrincipalID, schoolID,
+		enrollmentYearID, sourceClassID, sourceSectionID)
+	if err != nil || len(firstSectionCurricula) != 1 || firstSectionCurricula[0].ID != curriculumV1.ID {
+		t.Fatalf("first section curriculum isolation: curricula=%+v err=%v", firstSectionCurricula, err)
+	}
+	secondSectionCurricula, err := academicRepo.ListSectionClassCurricula(ctx, actorPrincipalID, schoolID,
+		enrollmentYearID, sourceClassID, isolatedSectionID)
+	if err != nil || len(secondSectionCurricula) != 1 || secondSectionCurricula[0].ID != isolatedCurriculum.ID {
+		t.Fatalf("second section curriculum isolation: curricula=%+v err=%v", secondSectionCurricula, err)
+	}
 	// A principal from this school must not read or mutate curriculum data
 	// through another school's tenant scope, even when supplied valid local IDs.
 	if _, err := academicRepo.GetStudentEnrollmentCurriculum(ctx, actorPrincipalID, otherSchoolID, currentEnrollmentID); !errors.Is(err, ErrAcademicAccessDenied) {
