@@ -1073,3 +1073,12 @@ td b {
 @media (max-width: 640px) {
   .theme-schedule { grid-template-columns: 1fr; }
 }
+
+/* Settings and page-specific loading layout rhythm. */
+.appearance-page > .appearance-section + .appearance-section { margin-top: 20px; }
+.palette-options { gap: 16px; }
+.palette-option { min-width: 0; }
+@media (max-width: 640px) {
+  .palette-options { gap: 12px; }
+  .appearance-page > .appearance-section + .appearance-section { margin-top: 14px; }
+}
