@@ -209,6 +209,7 @@ func (r *AcademicRepository) ListSectionClassCurricula(ctx context.Context, acto
 	ids := make([]int64, 0)
 	for rows.Next() { var id int64; if err := rows.Scan(&id); err != nil { return nil, fmt.Errorf("scan section curriculum ID: %w", err) }; ids = append(ids, id) }
 	if err := rows.Err(); err != nil { return nil, fmt.Errorf("iterate section curricula: %w", err) }
+	rows.Close()
 	items := make([]ClassCurriculum, 0, len(ids))
 	for _, id := range ids { item, err := loadClassCurriculum(ctx, r.db, id, schoolID); if err != nil { return nil, err }; items = append(items, *item) }
 	return items, nil
