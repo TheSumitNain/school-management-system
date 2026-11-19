@@ -49,6 +49,9 @@ Parent is not an active Phase 1 login role. **Do not implement Parent OTP authen
 - No separate student login accounts or student passwords are part of Phase 1.
 - Parent OTP authentication and OTP/SMS delivery are deferred. Do not implement them during the current school-dashboard workstream.
 - Parent identity is intended to be linked only after OTP verification and a matching official guardian relationship when Phase 2 is approved.
+- Parent Login must reuse the mobile number and/or email already stored on the guardian contact; do not collect a second set of contact details during account creation. Guardian mobile/email are optional but school-unique when present, so one contact value identifies at most one guardian record within that school.
+- A future School Admin-controlled setting will enable or disable Parent Login eligibility for the school. A guardian with neither mobile nor email remains a valid school contact but cannot sign in. Contact ownership must be verified before an identifier is activated for login.
+- A verified parent identity may link to the corresponding guardian records in multiple schools and access only the children whose official links are currently active.
 - One parent may have multiple linked children, including across schools; both parents may have separate verified accounts for one child.
 - Every parent request must re-check the current authenticated parent-child relationship server-side.
 - Parent-facing interfaces and login workflows remain paused until Phase 1 school web delivery is complete.
