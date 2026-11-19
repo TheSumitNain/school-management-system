@@ -6,24 +6,28 @@ import {
 
 type Year = { id: number; name: string; status: string };
 type SchoolClass = { id: number; name: string; is_active: boolean };
+type Section = { id: number; academic_year_id: number; class_id: number; name: string; medium?: "hindi" | "english" | null; is_active: boolean };
 type Subject = { id: number; name: string; subject_code?: string; is_active: boolean };
 type Group = { name: string; min_selections: number; max_selections: number };
 type GroupFieldErrors = { name?: string; min?: string; max?: string; subjects?: string };
-type Props = { years: Year[]; classes: SchoolClass[]; subjects: Subject[]; canManage: boolean };
+type Props = { years: Year[]; classes: SchoolClass[]; sections: Section[]; subjects: Subject[]; canManage: boolean };
 
-export function ClassCurriculumSetupPanel({ years, classes, subjects, canManage }: Props) {
+export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, canManage }: Props) {
   const [yearID, setYearID] = useState("");
   const [classID, setClassID] = useState("");
+  const [sectionID, setSectionID] = useState("");
   const [groups, setGroups] = useState<Group[]>([]);
   const [included, setIncluded] = useState<number[]>([]);
   const [groupBySubject, setGroupBySubject] = useState<Record<number, string>>({});
   const [error, setError] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<{ year?: string; class?: string; subjects?: string; groups: Record<number, GroupFieldErrors> }>({ groups: {} });
+  const [fieldErrors, setFieldErrors] = useState<{ year?: string; class?: string; section?: string; subjects?: string; groups: Record<number, GroupFieldErrors> }>({ groups: {} });
   const [success, setSuccess] = useState("");
   const save = useSaveSchoolClassCurriculumMutation();
   const yearNumber = Number(yearID);
   const classNumber = Number(classID);
-  const curriculaQuery = useSchoolClassCurriculaQuery(yearNumber, classNumber);
+  const sectionNumber = Number(sectionID);
+  const availableSections = sections.filter(section => section.is_active && section.academic_year_id === yearNumber && section.class_id === classNumber);
+  const curriculaQuery = useSchoolClassCurriculaQuery(yearNumber, classNumber, sectionNumber);
   const activeSubjects = subjects.filter(subject => subject.is_active);
   const compulsoryCount = included.filter(id => !(groupBySubject[id] ?? "").trim()).length;
   const individualOptionalCount = included.filter(id => groupBySubject[id] === "__standalone_optional__").length;
@@ -48,6 +52,7 @@ export function ClassCurriculumSetupPanel({ years, classes, subjects, canManage 
     const nextErrors: { year?: string; class?: string; subjects?: string; groups: Record<number, GroupFieldErrors> } = { groups: {} };
     if (!yearNumber) nextErrors.year = "Select an academic year.";
     if (!classNumber) nextErrors.class = "Select a class.";
+    if (!sectionNumber) nextErrors.section = "Select a section.";
     if (included.length === 0) nextErrors.subjects = "Select at least one subject for this curriculum.";
     const normalized = new Set<string>();
     for (const [index, group] of groups.entries()) {
@@ -76,10 +81,11 @@ export function ClassCurriculumSetupPanel({ years, classes, subjects, canManage 
       nextErrors.subjects = "Every optional subject must belong to a configured optional group.";
     }
     setFieldErrors(nextErrors);
-    if (nextErrors.year || nextErrors.class || nextErrors.subjects || Object.keys(nextErrors.groups).length > 0) return;
+    if (nextErrors.year || nextErrors.class || nextErrors.section || nextErrors.subjects || Object.keys(nextErrors.groups).length > 0) return;
     save.mutate({
       academic_year_id: yearNumber,
       class_id: classNumber,
+      section_id: sectionNumber,
       optional_groups: groups.map(group => ({ ...group, name: group.name.trim() })),
       subjects: payloadSubjects,
     }, {
@@ -90,7 +96,7 @@ export function ClassCurriculumSetupPanel({ years, classes, subjects, canManage 
 
   return (
     <section className="table-panel curriculum-setup-panel">
-      <div className="toolbar"><div><h2>Class curriculum</h2><small>Configure compulsory and optional subjects for a class in an academic year.</small></div></div>
+      <div className="toolbar"><div><h2>Section-wise curriculum</h2><small>Configure an independent curriculum for each section within an academic year and class.</small></div></div>
       <div className="curriculum-filters">
         <label>Academic year
           <select disabled={save.isPending} value={yearID} onChange={event => { setYearID(event.target.value); setIncluded([]); setGroupBySubject({}); setGroups([]); setError(""); setSuccess(""); setFieldErrors({ groups: {} }); }} required>
@@ -100,19 +106,27 @@ export function ClassCurriculumSetupPanel({ years, classes, subjects, canManage 
           {fieldErrors.year && <small className="app-field-error" role="alert">{fieldErrors.year}</small>}
         </label>
         <label>Class
-          <select disabled={save.isPending} value={classID} onChange={event => { setClassID(event.target.value); setIncluded([]); setGroupBySubject({}); setGroups([]); setError(""); setSuccess(""); setFieldErrors({ groups: {} }); }} required>
+          <select disabled={save.isPending} value={classID} onChange={event => { setClassID(event.target.value); setSectionID(""); setIncluded([]); setGroupBySubject({}); setGroups([]); setError(""); setSuccess(""); setFieldErrors({ groups: {} }); }} required>
             <option value="">Select class</option>
             {classes.filter(item => item.is_active).map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
           </select>
           {fieldErrors.class && <small className="app-field-error" role="alert">{fieldErrors.class}</small>}
         </label>
+        <label>Section
+          <select disabled={save.isPending || !yearNumber || !classNumber} value={sectionID} onChange={event => { setSectionID(event.target.value); setIncluded([]); setGroupBySubject({}); setGroups([]); setError(""); setSuccess(""); setFieldErrors({ groups: {} }); }} required>
+            <option value="">Select section</option>
+            {availableSections.map(item => <option key={item.id} value={item.id}>{item.name}{item.medium ? " · " + item.medium : ""}</option>)}
+          </select>
+          {fieldErrors.section && <small className="app-field-error" role="alert">{fieldErrors.section}</small>}
+          {yearNumber > 0 && classNumber > 0 && availableSections.length === 0 && <small className="app-field-error">No active sections are configured for this class and academic year.</small>}
+        </label>
       </div>
-      {yearNumber > 0 && classNumber > 0 && (
+      {yearNumber > 0 && classNumber > 0 && sectionNumber > 0 && (
         <section className="curriculum-existing">
           <h3>Saved curriculum versions</h3>
           {curriculaQuery.isLoading ? <p>Loading saved versions…</p> :
             curriculaQuery.isError ? <div className="student-feedback error" role="alert"><p>{curriculaQuery.error.message}</p><button type="button" className="academic-refresh" onClick={() => void curriculaQuery.refetch()}>Retry</button></div> :
-            (curriculaQuery.data?.curricula ?? []).length === 0 ? <p>No curriculum configured for this class and year.</p> :
+            (curriculaQuery.data?.curricula ?? []).length === 0 ? <p>No curriculum configured for this section.</p> :
             <ul className="curriculum-version-list">{curriculaQuery.data?.curricula.map(item => (
               <li key={item.id}>
                 <div className="curriculum-version-heading">
@@ -133,7 +147,7 @@ export function ClassCurriculumSetupPanel({ years, classes, subjects, canManage 
       )}
       {canManage ? (
         <form onSubmit={submit} className="curriculum-editor">
-          <div className="toolbar"><div><h3>Create next version</h3><small>Saving creates a new immutable version; it never overwrites past student choices.</small></div>
+          <div className="toolbar"><div><h3>Create next version</h3><small>For the selected section only. Saving creates a new immutable version and preserves past student choices.</small></div>
             <button type="button" className="academic-add" onClick={addGroup} disabled={save.isPending}>Add optional group</button>
           </div>
           {groups.map((group, index) => (
@@ -191,7 +205,7 @@ export function ClassCurriculumSetupPanel({ years, classes, subjects, canManage 
           {fieldErrors.subjects && <p className="app-field-error" role="alert">{fieldErrors.subjects}</p>}
           {error && <p className="app-field-error" role="alert">{error}</p>}
           {success && <p className="student-success" role="status">{success}</p>}
-          <button type="submit" className="primary academic-add" disabled={save.isPending || !yearNumber || !classNumber}>{save.isPending ? "Saving curriculum…" : "Save curriculum version"}</button>
+          <button type="submit" className="primary academic-add" disabled={save.isPending || !yearNumber || !classNumber || !sectionNumber}>{save.isPending ? "Saving curriculum…" : "Save curriculum version"}</button>
         </form>
       ) : <p className="table-message">You have read-only access to class curricula.</p>}
     </section>
