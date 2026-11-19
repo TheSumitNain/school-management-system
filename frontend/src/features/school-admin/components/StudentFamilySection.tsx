@@ -441,7 +441,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
       onClose={onClose}
       closeDisabled={busy}
     >
-      <section className="student-family-section">
+      <section className="student-family-section student-family-section--guardians">
         <div className="student-family-heading">
           <div><h3>Parents / guardians</h3><p>Link existing school contacts or create a new guardian contact. Phone and email values may be shared by family members.</p></div>
           <label className="student-address-same"><input type="checkbox" checked={includeHistory} onChange={event => setIncludeHistory(event.target.checked)}/> Show revoked history</label>
@@ -515,7 +515,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
         }
         {canManage && (
           <>
-            <form className="student-family-link-form" onSubmit={linkSelectedGuardian} noValidate>
+            <form className="student-family-link-form student-family-link-form--accent" onSubmit={linkSelectedGuardian} noValidate>
               <h4>Link a guardian</h4>
               <label><StudentFieldLabel label="Search active guardian contacts" hint="Search existing active guardian contacts by name, phone or email." /><input value={search} onChange={event => { setSearch(event.target.value); setSelectedGuardianID(0); setGuardianSelectError(""); }} placeholder="Search by name, phone or email"/></label>
               <StudentFieldLabel label="Guardian contact" required hint="Choose an existing active guardian contact. If the contact does not exist, create it below first." />
@@ -541,7 +541,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
               <button type="button" className="student-link-button" onClick={() => { setShowCreateGuardian(value => !value); setNewGuardianNameError(""); setNewGuardianEmailError(""); setNewGuardianFieldErrors({}); }}>Create a new guardian contact</button>
             </form>
             {showCreateGuardian && (
-              <form className="student-family-create-form" onSubmit={saveGuardian} noValidate>
+              <form className="student-family-create-form student-family-create-form--new" onSubmit={saveGuardian} noValidate>
                 <h4>New guardian contact</h4>
                 <label><StudentFieldLabel label="Full name" required hint="Enter the guardian’s full name as provided by the family. Maximum 200 characters." /><input name="guardian_full_name" disabled={busy} value={newGuardianName} aria-invalid={Boolean(newGuardianNameError)} aria-describedby={newGuardianNameError ? "student-guardian-name-error" : undefined} onChange={event => { setNewGuardianName(event.target.value); setNewGuardianNameError(""); }} placeholder="Guardian full name"/>{newGuardianNameError && <small id="student-guardian-name-error" className="app-field-error">{newGuardianNameError}</small>}</label>
                 <label><StudentFieldLabel label="Mobile number" hint="Optional contact number. Up to 30 characters; household members may share a number." /><input disabled={busy} value={newGuardianMobile} aria-invalid={Boolean(newGuardianFieldErrors.mobile_number)} aria-describedby={newGuardianFieldErrors.mobile_number ? "new-guardian-mobile-error" : undefined} onChange={event => { setNewGuardianMobile(event.target.value); setNewGuardianFieldErrors(current => ({...current,mobile_number:""})); }} placeholder="Mobile number"/>{newGuardianFieldErrors.mobile_number && <small id="new-guardian-mobile-error" className="app-field-error">{newGuardianFieldErrors.mobile_number}</small>}</label>
@@ -574,7 +574,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
         {!canManage && <p className="student-address-note">View-only access. Guardian records can be changed only for active students and require guardian management permission.</p>}
       </section>
 
-      <section className="student-family-section">
+      <section className="student-family-section student-family-section--related">
         <div className="student-family-heading"><div><h3>Other students sharing a guardian</h3><p>This is derived from active guardian links. It does not assume a biological sibling relationship.</p></div></div>
         {!canReadRelatedStudents ? <p className="student-address-note">Basic student read permission is required to view related student records.</p> : relatedQuery.isLoading ? <p className="student-address-note">Loading related students…</p> :
           relatedQuery.isError ? <div className="student-feedback error" role="alert"><p>{relatedQuery.error.message}</p><button type="button" className="student-secondary" onClick={() => void relatedQuery.refetch()} disabled={relatedQuery.isFetching}>Retry loading related students</button></div> :
