@@ -196,7 +196,7 @@ export type CurriculumSubject = {
   optional_group_id?: number | null; optional_group_name?: string | null; is_compulsory: boolean; is_optional: boolean;
 };
 export type ClassCurriculum = {
-  id: number; school_id: number; academic_year_id: number; class_id: number;
+  id: number; school_id: number; academic_year_id: number; class_id: number; section_id?: number | null;
   version_number: number; status: "active" | "retired" | string; created_at: string;
   optional_groups: CurriculumOptionalGroup[]; subjects: CurriculumSubject[];
 };
@@ -245,12 +245,12 @@ export function getSchoolStudentEnrollmentDirectory(academicYearID = 0, limit = 
 export function getSchoolStudentEnrollmentHistory(studentID: number, signal?: AbortSignal) {
   return api<StudentEnrollmentListResponse>(`/school/students/${studentID}/enrollments`, { signal });
 }
-export function getSchoolClassCurricula(academicYearID: number, classID: number, signal?: AbortSignal) {
-  const params = new URLSearchParams({ academic_year_id: String(academicYearID), class_id: String(classID) });
+export function getSchoolClassCurricula(academicYearID: number, classID: number, sectionID: number, signal?: AbortSignal) {
+  const params = new URLSearchParams({ academic_year_id: String(academicYearID), class_id: String(classID), section_id: String(sectionID) });
   return api<{ curricula: ClassCurriculum[] }>(`/school/class-curricula?${params.toString()}`, { signal });
 }
 export function saveSchoolClassCurriculum(input: {
-  academic_year_id: number; class_id: number;
+  academic_year_id: number; class_id: number; section_id: number;
   optional_groups: Array<{ name: string; min_selections: number; max_selections: number }>;
   subjects: Array<{ subject_id: number; is_optional?: boolean; optional_group?: string }>;
 }) {
