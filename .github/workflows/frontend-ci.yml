@@ -37,10 +37,8 @@ jobs:
       - name: Install pinned Playwright test runner
         run: npm install --no-save --package-lock=false @playwright/test@1.56.1
         working-directory: frontend
-      - name: Configure package mirror retries
-        run: echo 'Acquire::Retries "5";' | sudo tee /etc/apt/apt.conf.d/80-retries
       - name: Install Chromium for browser acceptance tests
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
         working-directory: frontend
       - name: Run Student Management browser acceptance tests
         run: npm run test:e2e
