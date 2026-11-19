@@ -68,6 +68,13 @@ test("student admission, profile navigation and parent details render without br
     relationship_type: " father ", is_primary_contact: true, is_emergency_contact: true,
     created_at: "2026-11-14T00:00:00.000Z", revoked_at: null,
   };
+  const legacyDuplicateGuardianLink = {
+    id: 502, student_id: 1, guardian_id: 23, guardian_name: "Meena Sharma", guardian_status: "active" as const,
+    mobile_number: "9876500023", email_address: "meena@example.test", alternate_mobile_number: null,
+    occupation: "Homemaker", education: null, workplace_name: null,
+    relationship_type: "FATHER ", is_primary_contact: false, is_emergency_contact: false,
+    created_at: "2026-11-14T00:00:00.000Z", revoked_at: null,
+  };
   const contactDetails: Record<string, unknown> = {
     id: 601, school_id: 10, student_id: 1, primary_phone: null, alternate_phone: null, email_address: null,
   };
@@ -313,7 +320,7 @@ test("student admission, profile navigation and parent details render without br
       }
       if (subpath === "guardians" || subpath === "related-students") {
         if (subpath === "guardians") guardianHistoryRequests.push(url.searchParams.get("include_history"));
-        await route.fulfill({ json: subpath === "guardians" ? { student_guardians: [guardianLink] } : { related_students: [] } });
+        await route.fulfill({ json: subpath === "guardians" ? { student_guardians: [guardianLink, legacyDuplicateGuardianLink] } : { related_students: [] } });
         return;
       }
       if (subpath === "addresses") {
@@ -759,6 +766,9 @@ test("student admission, profile navigation and parent details render without br
   expect(guardianHistoryRequests[0]).toBeNull();
   await expect(page.getByText("Father · Primary contact · Emergency contact")).toBeVisible();
   await expect(page.getByText("Other students sharing a guardian")).toBeVisible();
+  await expect(page.getByText("Existing duplicate active relationships found: Father. Review the guardian details and revoke only the incorrect link. No records have been removed automatically.")).toBeVisible();
+  await expect(page.getByText("Meena Sharma", { exact: true })).toBeVisible();
+  const guardianCard = page.locator(".student-family-card").filter({ hasText: "Ramesh Sharma" });
 
   // A legacy value with mixed case/whitespace must still block a duplicate
   // Father link, while the existing relationship remains selectable for edit.
@@ -769,13 +779,13 @@ test("student admission, profile navigation and parent details render without br
   await expect(addRelationshipList.getByRole("option", { name: "Father (already linked)" })).toBeDisabled();
   await page.keyboard.press("Escape");
 
-  await page.getByRole("button", { name: "Edit relationship" }).click();
+  await guardianCard.getByRole("button", { name: "Edit relationship" }).click();
   const relationshipForm = page.locator(".student-family-create-form").filter({ has: page.getByRole("heading", { name: "Edit relationship for this student" }) });
   const relationshipSelect = relationshipForm.getByRole("button", { name: "Relationship to student", exact: true });
   await relationshipSelect.click();
   const editRelationshipList = relationshipForm.getByRole("listbox", { name: "Relationship to student" });
   await expect(editRelationshipList).toBeVisible();
-  await expect(editRelationshipList.getByRole("option", { name: "Father", exact: true })).toBeEnabled();
+  await expect(editRelationshipList.getByRole("option", { name: "Father", exact: true })).toBeDisabled();
   await expect(editRelationshipList.getByRole("option", { name: "Father", exact: true })).toHaveAttribute("aria-selected", "true");
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog", { name: /Parents & Siblings/i })).toBeVisible();
@@ -811,7 +821,8 @@ test("student admission, profile navigation and parent details render without br
     relationship_type: "Grandfather", is_primary_contact: false, is_emergency_contact: false,
   });
   await expect(page.locator(".student-family-card > div > span").filter({ hasText: /^Grandfather$/ })).toBeVisible();
-  await page.getByRole("button", { name: "Edit shared guardian details" }).click();
+  await expect(page.getByText(/Existing duplicate active relationships found/)).toHaveCount(0);
+  await guardianCard.getByRole("button", { name: "Edit shared guardian details" }).click();
   await expect(page.getByRole("heading", { name: "Edit shared guardian profile" })).toBeVisible();
   await expect(page.getByText("These contact and profile details are shared across all students linked to this guardian.")).toBeVisible();
   const guardianNameInput = page.getByPlaceholder("Guardian full name");
@@ -898,7 +909,7 @@ test("student admission, profile navigation and parent details render without br
   });
   await expect(page.getByText("Guardian profile updated. Changes apply to every student linked to this guardian.")).toBeVisible();
 
-  await page.getByRole("button", { name: "Revoke link" }).click();
+  await guardianCard.getByRole("button", { name: "Revoke link" }).click();
   const revokeDialog = page.getByRole("alertdialog", { name: "Revoke guardian relationship" });
   await expect(revokeDialog).toBeVisible();
   await revokeDialog.getByRole("button", { name: "Confirm revoke" }).click();
