@@ -29,3 +29,51 @@
 .curriculum-subject-row>label:first-child{display:flex;align-items:center;gap:10px}
 .curriculum-subject-group-select{display:grid;grid-template-columns:auto minmax(150px,220px);align-items:center;gap:8px;font-size:.9rem}
 @media(max-width:720px){.curriculum-filters{grid-template-columns:1fr}.curriculum-group-editor{grid-template-columns:1fr 1fr}.curriculum-group-editor label:first-child{grid-column:1/-1}.curriculum-subject-row{align-items:flex-start;flex-direction:column}.curriculum-subject-group-select{grid-template-columns:auto minmax(150px,1fr);width:100%}}
+
+
+/* Class curriculum editor: clear hierarchy, comfortable spacing and responsive subject cards. */
+.curriculum-setup-panel{
+  gap:22px;
+  padding:clamp(16px,2.2vw,26px);
+  border:1px solid var(--color-border);
+  border-radius:16px;
+  background:var(--color-surface);
+  box-shadow:0 8px 28px color-mix(in srgb,var(--color-text) 5%,transparent);
+}
+.curriculum-setup-panel>.toolbar,
+.curriculum-editor>.toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.curriculum-setup-panel .toolbar h2{margin:0 0 5px;font:700 18px var(--font-heading);color:var(--color-text)}
+.curriculum-setup-panel .toolbar h3{margin:0 0 5px;font:700 15px var(--font-heading);color:var(--color-text)}
+.curriculum-setup-panel .toolbar small{display:block;max-width:680px;color:var(--color-text-muted);font-size:12px;line-height:1.55}
+.curriculum-filters{max-width:none;grid-template-columns:repeat(2,minmax(220px,360px));gap:16px;padding:16px;border:1px solid var(--color-border);border-radius:12px;background:var(--color-surface-muted)}
+.curriculum-filters label{gap:7px;color:var(--color-text);font-size:12px;font-weight:650}
+.curriculum-filters select,.curriculum-group-editor input,.curriculum-subject-group-select select{min-height:42px;padding:9px 12px;border-radius:9px;font:inherit}
+.curriculum-existing{padding:16px 18px;border-radius:12px;background:var(--color-surface-muted)}
+.curriculum-existing h3{margin:0 0 10px;font:700 14px var(--font-heading)}
+.curriculum-existing li{padding:5px 0;color:var(--color-text-muted);font-size:12px}
+.curriculum-editor{gap:18px;padding-top:4px}
+.curriculum-group-editor{grid-template-columns:minmax(180px,2fr) minmax(120px,.8fr) minmax(120px,.8fr) auto;gap:14px;padding:16px;border-radius:12px;background:var(--color-surface-muted)}
+.curriculum-group-editor legend{padding:0 7px;color:var(--color-text);font-size:12px;font-weight:700}
+.curriculum-group-editor label{gap:7px;color:var(--color-text);font-size:11px}
+.curriculum-group-editor input{width:100%;min-width:0}
+.curriculum-group-editor .academic-edit{min-height:40px;width:auto;padding:8px 12px}
+.curriculum-subject-picker{gap:12px;padding:16px;border:1px solid var(--color-border);border-radius:12px;background:var(--color-surface-muted)}
+.curriculum-subject-picker h3{margin:0;font:700 14px var(--font-heading)}
+.curriculum-subject-row{min-width:0;min-height:62px;padding:11px 13px;border-color:var(--color-border);border-radius:10px;box-shadow:0 1px 2px color-mix(in srgb,var(--color-text) 4%,transparent)}
+.curriculum-subject-row>label:first-child{min-width:0;color:var(--color-text);font-size:12px;font-weight:600}
+.curriculum-subject-row>label:first-child input{width:17px;height:17px;flex:0 0 auto;accent-color:var(--color-primary)}
+.curriculum-subject-group-select{grid-template-columns:auto minmax(180px,260px);gap:10px;color:var(--color-text-muted);font-size:11px;font-weight:650}
+.curriculum-subject-group-select select{width:100%;font-size:11px}
+.curriculum-editor>.primary{justify-self:start;min-height:42px;padding:10px 18px;border-radius:9px;font-size:12px;font-weight:700}
+.curriculum-setup-panel .app-field-error{display:block;margin-top:5px;font-size:11px;line-height:1.4}
+.curriculum-setup-panel :is(input,select,button):focus-visible{outline:3px solid color-mix(in srgb,var(--color-focus) 28%,transparent);outline-offset:2px}
+@media(min-width:900px){.curriculum-subject-picker{grid-template-columns:repeat(2,minmax(0,1fr))}.curriculum-subject-picker h3,.curriculum-subject-picker>p{grid-column:1/-1}}
+@media(max-width:720px){
+ .curriculum-setup-panel{padding:14px;border-radius:12px}
+ .curriculum-filters{grid-template-columns:1fr;padding:12px}
+ .curriculum-group-editor{grid-template-columns:1fr 1fr}
+ .curriculum-group-editor label:first-child{grid-column:1/-1}
+ .curriculum-group-editor .academic-edit{grid-column:1/-1;justify-self:start}
+ .curriculum-subject-row{align-items:stretch}
+ .curriculum-subject-group-select{grid-template-columns:1fr;width:100%}
+}
