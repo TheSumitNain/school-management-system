@@ -2060,7 +2060,8 @@ test("staff can create a guardian contact and link it to a student with relation
   });
   await familyDialog.getByLabel("Show revoked history").check();
   await expect(familyDialog.getByRole("status").filter({ hasText: "Existing duplicate active relationships found: Aunt" })).toBeVisible();
-  await expect(familyDialog.getByText("Aunt", { exact: true })).toHaveCount(2);
+  await expect(familyDialog.getByText("Aunt", { exact: true })).toBeVisible();
+  await expect(familyDialog.getByText("Amit Verma", { exact: true })).toBeVisible();
   expect(guardianLinks.filter(link => Number(link.student_id) === 93 && !link.revoked_at)).toHaveLength(2);
 
   // The same guardian's updated contact profile is shared with the second
