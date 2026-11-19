@@ -214,6 +214,11 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 		"Another Guardian Name", nil, &uppercaseDuplicateEmail, nil, nil, nil, nil, "active"); !errors.Is(err, ErrGuardianEmailInUse) {
 		t.Fatalf("create guardian with duplicate case-insensitive email error = %v, want ErrGuardianEmailInUse", err)
 	}
+	sameNameGuardian, err := repo.SaveGuardian(ctx, targetPrincipalID, schoolID, 0,
+		"Guardian One", nil, nil, nil, nil, nil, nil, "active")
+	if err != nil || sameNameGuardian == nil || sameNameGuardian.ID == guardian.ID {
+		t.Fatalf("same-name guardian without optional contact values should be allowed: guardian=%+v err=%v", sameNameGuardian, err)
+	}
 
 	// The unique indexes must also reject duplicate values when the repository
 	// is bypassed. Savepoints isolate each expected PostgreSQL constraint error.
@@ -314,6 +319,13 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 		VALUES ($1, $2, 'active') RETURNING id
 	`, "Guardian Isolation "+suffix, "GI-"+suffix).Scan(&otherSchoolID); err != nil {
 		t.Fatalf("create second-school fixture: %v", err)
+	}
+	// Contact identifiers are unique per school, not globally.
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO guardians (school_id, full_name, mobile_number, email_address)
+		VALUES ($1, 'Same Contact in Another School', $2, $3)
+	`, otherSchoolID, mobile, email); err != nil {
+		t.Fatalf("same mobile/email in a different school should be allowed: %v", err)
 	}
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO students (school_id, admission_number, full_name)
