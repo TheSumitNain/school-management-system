@@ -49,7 +49,7 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
     event.preventDefault();
     setError("");
     setSuccess("");
-    const nextErrors: { year?: string; class?: string; subjects?: string; groups: Record<number, GroupFieldErrors> } = { groups: {} };
+    const nextErrors: { year?: string; class?: string; section?: string; subjects?: string; groups: Record<number, GroupFieldErrors> } = { groups: {} };
     if (!yearNumber) nextErrors.year = "Select an academic year.";
     if (!classNumber) nextErrors.class = "Select a class.";
     if (!sectionNumber) nextErrors.section = "Select a section.";
@@ -89,7 +89,7 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
       optional_groups: groups.map(group => ({ ...group, name: group.name.trim() })),
       subjects: payloadSubjects,
     }, {
-      onSuccess: () => { setSuccess("Curriculum version saved. Existing versions and assigned student choices are preserved."); setIncluded([]); setGroupBySubject({}); setGroups([]); setFieldErrors({ groups: {} }); },
+      onSuccess: () => { setSuccess("Curriculum version saved for this section. Existing versions and assigned student choices are preserved."); setIncluded([]); setGroupBySubject({}); setGroups([]); setFieldErrors({ groups: {} }); },
       onError: mutationError => setError(mutationError.message),
     });
   }
@@ -99,7 +99,7 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
       <div className="toolbar"><div><h2>Section-wise curriculum</h2><small>Configure an independent curriculum for each section within an academic year and class.</small></div></div>
       <div className="curriculum-filters">
         <label>Academic year
-          <select disabled={save.isPending} value={yearID} onChange={event => { setYearID(event.target.value); setIncluded([]); setGroupBySubject({}); setGroups([]); setError(""); setSuccess(""); setFieldErrors({ groups: {} }); }} required>
+          <select disabled={save.isPending} value={yearID} onChange={event => { setYearID(event.target.value); setClassID(""); setSectionID(""); setIncluded([]); setGroupBySubject({}); setGroups([]); setError(""); setSuccess(""); setFieldErrors({ groups: {} }); }} required>
             <option value="">Select academic year</option>
             {years.filter(year => year.status !== "closed").map(year => <option key={year.id} value={year.id}>{year.name}</option>)}
           </select>
