@@ -128,6 +128,7 @@ These rules apply to every role and every screen. Treat them as acceptance crite
 - Provide search, filters, pagination and bulk actions only where they materially reduce work. Preserve filter/search state when navigating back where practical.
 - Use plain, concise language. Avoid technical error codes and backend implementation details in normal user-facing messages. Provide a recovery action when possible.
 - Destructive or irreversible actions must never be triggered by a single ambiguous click. Do not silently discard unsaved changes.
+- Confirmation forms for destructive actions must open in the shared, centred Modal/ConfirmDialog layer rather than appearing at the bottom of a long page or list. Keep the selected record context, consequence, required reason and field-level validation inside the dialog; move focus into the dialog when it opens, prevent dismissal while the mutation is pending, and restore focus to the initiating action when it closes. Use a clearly styled secondary Cancel button and a visually distinct destructive confirmation button. Cancel must close the dialog without changing data.
 - All controls must have labels, keyboard operation, visible focus, accessible names and touch-friendly targets. Respect reduced-motion preferences.
 - Keep navigation and common actions consistent across roles; show only actions the current user can access, while the backend remains authoritative.
 
