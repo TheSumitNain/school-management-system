@@ -479,3 +479,20 @@ Do not resolve this by silently hard-coding a timezone. Before changing behavior
 ## Admission date and enrollment start date ordering
 
 For every student enrollment, the admission date must be on or before the enrollment start date. Both dates must also fall within the selected academic year. The same-day case is valid; a prior admission date is valid when the enrollment begins later in that year. The backend validates this rule and migration V46 adds a `NOT VALID` database CHECK constraint: existing rows are not scanned during deployment, but every newly inserted or updated row is checked. Consequently, a legacy row that already violates the rule remains readable but cannot be updated (even for an unrelated column) until its dates are corrected. Review legacy data before adopting V46 on a persistent school database; do not rewrite historical admission dates without an approved data-correction policy.
+## Future: printable complete Student Profile
+
+The existing Student Profile should eventually provide a **Print Complete Profile** action. This is a report/output feature over existing student data, not a second student-entry page.
+
+The report should be organized into readable sections:
+
+- Student identity and basic/personal details.
+- Current academic year, class, section, roll number and admission details, plus year-wise enrollment history.
+- Parents/guardians and sibling/related-student information, including recorded relationship and contact/profile details.
+- Current/permanent address and communication details.
+- Medical profile and dated physical measurements/history, only when the viewer has the corresponding sensitive-data permissions.
+
+Provide a print preview, sensible page breaks, school identity, page numbering, and browser Print / Save as PDF. Support printing the full authorized report or selected authorized sections. Clearly distinguish fields that were not recorded from fields the viewer is not allowed to access.
+
+Authorization must be enforced by the backend for every included section and record. School Admin remains limited to the current school. Teachers/Class In-charge remain restricted by their exact active class/section/subject assignments and separately granted field permissions. Hiding a section in the browser is not sufficient security.
+
+**Status:** Future work only. Do not add a duplicate data-entry page, report route, schema/migration or print UI until Student Management is accepted and this enhancement is explicitly started. Parent OTP/authentication is unrelated and remains deferred.
