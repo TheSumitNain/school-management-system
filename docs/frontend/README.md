@@ -132,6 +132,7 @@ These rules apply to every role and every screen. Treat them as acceptance crite
 - All controls must have labels, keyboard operation, visible focus, accessible names and touch-friendly targets. Respect reduced-motion preferences.
 - Native checkbox and radio visuals are owned by the shared theme stylesheet. Checked-state selectors must retain enough CSS specificity to prevent page-level input rules from hiding the selected background or check mark. Any checkbox change must be tested for both its functional state and its visible checked indicator in the browser; do not accept a passing data/action assertion alone.
 - Keep navigation and common actions consistent across roles; show only actions the current user can access, while the backend remains authoritative.
+- Use semantic theme tokens for page/card accents (brand, info, success, warning, danger, violet, amber) rather than hard-coded palette colours. Accented surfaces must retain readable text, borders and controls in every supported palette and in Light/Dark/System modes; use a neutral surface underneath and subtle semantic borders/tints. Verify representative light and dark rendering when introducing a new accent.
 
 ### Self-explanatory workflows, dialogs and field-level validation (mandatory)
 
