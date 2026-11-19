@@ -1,11 +1,13 @@
 import { useDeferredValue, useEffect, useState, type FormEvent } from "react";
 
-function guardianEmailFieldError(error: unknown): string | undefined {
-  if (!error || typeof error !== "object" || !("fieldErrors" in error)) return undefined;
+function guardianContactFieldErrors(error: unknown): Record<string, string> {
+  if (!error || typeof error !== "object" || !("fieldErrors" in error)) return {};
   const fieldErrors = (error as { fieldErrors?: unknown }).fieldErrors;
-  if (!fieldErrors || typeof fieldErrors !== "object") return undefined;
-  const message = (fieldErrors as Record<string, unknown>).email_address;
-  return typeof message === "string" ? message : undefined;
+  if (!fieldErrors || typeof fieldErrors !== "object") return {};
+  const values = fieldErrors as Record<string, unknown>;
+  return Object.fromEntries(["mobile_number", "email_address"]
+    .filter(key => typeof values[key] === "string")
+    .map(key => [key, values[key] as string]));
 }
 import { Modal } from "../../../shared/components/Modal";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
@@ -217,9 +219,10 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
       setShowCreateGuardian(false);
       setFeedback({ kind: "success", message: "Guardian contact created. Select the relationship details and link it to this student." });
     } catch (error) {
-      const emailFieldError = guardianEmailFieldError(error);
-      if (emailFieldError) {
-        setNewGuardianEmailError(emailFieldError);
+      const contactErrors = guardianContactFieldErrors(error);
+      if (Object.keys(contactErrors).length > 0) {
+        setNewGuardianFieldErrors(current => ({ ...current, ...contactErrors }));
+        if (contactErrors.email_address) setNewGuardianEmailError(contactErrors.email_address);
         setFeedback(null);
       } else {
         setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Guardian contact could not be saved." });
@@ -308,9 +311,10 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
       setFeedback({ kind: "success", message: "Guardian profile updated. Changes apply to every student linked to this guardian." });
     } catch (error) {
       setConfirmSharedGuardianSave(false);
-      const emailFieldError = guardianEmailFieldError(error);
-      if (emailFieldError) {
-        setEditGuardianEmailError(emailFieldError);
+      const contactErrors = guardianContactFieldErrors(error);
+      if (Object.keys(contactErrors).length > 0) {
+        setEditGuardianFieldErrors(current => ({ ...current, ...contactErrors }));
+        if (contactErrors.email_address) setEditGuardianEmailError(contactErrors.email_address);
         setEditGuardianError("");
       } else {
         setEditGuardianError(error instanceof Error ? error.message : "Guardian profile could not be updated.");
@@ -445,7 +449,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
     >
       <section className="student-family-section student-family-section--guardians">
         <div className="student-family-heading">
-          <div><h3>Parents / guardians</h3><p>Link existing school contacts or create a new guardian contact. Phone and email values may be shared by family members.</p></div>
+          <div><h3>Parents / guardians</h3><p>Link an existing school contact or create a new guardian contact. Mobile number and email are optional, but each must be unique within this school. Leave a field blank if no unique contact is available.</p></div>
           <label className="student-address-same"><input type="checkbox" checked={includeHistory} onChange={event => setIncludeHistory(event.target.checked)}/> Show revoked history</label>
         </div>
         {duplicateRelationshipTypes.length > 0 && <p className="student-address-note" role="status">
@@ -498,8 +502,8 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
                     <h4>Edit shared guardian profile</h4>
                     <p className="student-address-note">These contact and profile details are shared across all students linked to this guardian.</p>
                     <label><StudentFieldLabel label="Full name" required hint="Enter the guardian’s full name as provided by the family. Maximum 200 characters." /><input disabled={busy} value={editGuardianForm.full_name} aria-invalid={Boolean(editGuardianNameError)} aria-describedby={editGuardianNameError ? "edit-guardian-name-error" : undefined} onChange={event => { setEditGuardianForm(current => ({ ...current, full_name: event.target.value })); setEditGuardianNameError(""); }} placeholder="Guardian full name"/>{editGuardianNameError && <small id="edit-guardian-name-error" className="app-field-error">{editGuardianNameError}</small>}</label>
-                    <label><StudentFieldLabel label="Mobile number" hint="Optional contact number. Up to 30 characters; household members may share a number." /><input disabled={busy} value={editGuardianForm.mobile_number} aria-invalid={Boolean(editGuardianFieldErrors.mobile_number)} aria-describedby={editGuardianFieldErrors.mobile_number ? "edit-guardian-mobile-error" : undefined} onChange={event => { setEditGuardianForm(current => ({ ...current, mobile_number: event.target.value })); setEditGuardianFieldErrors(current => ({...current,mobile_number:""})); }} placeholder="Mobile number"/>{editGuardianFieldErrors.mobile_number && <small id="edit-guardian-mobile-error" className="app-field-error">{editGuardianFieldErrors.mobile_number}</small>}</label>
-                    <label><StudentFieldLabel label="Email address" hint="Optional. Enter a valid email address; maximum 254 characters." /><input name="edit_guardian_email" disabled={busy} type="email" value={editGuardianForm.email_address} aria-invalid={Boolean(editGuardianEmailError)} aria-describedby={editGuardianEmailError ? "edit-guardian-email-error" : undefined} onChange={event => { setEditGuardianForm(current => ({ ...current, email_address: event.target.value })); setEditGuardianEmailError(""); }} placeholder="guardian@example.com"/>{editGuardianEmailError && <small id="edit-guardian-email-error" className="app-field-error">{editGuardianEmailError}</small>}</label>
+                    <label><StudentFieldLabel label="Mobile number" hint="Optional. Must be unique within this school. If already used by another guardian, use another number or leave this field blank." /><input disabled={busy} value={editGuardianForm.mobile_number} aria-invalid={Boolean(editGuardianFieldErrors.mobile_number)} aria-describedby={editGuardianFieldErrors.mobile_number ? "edit-guardian-mobile-error" : undefined} onChange={event => { setEditGuardianForm(current => ({ ...current, mobile_number: event.target.value })); setEditGuardianFieldErrors(current => ({...current,mobile_number:""})); }} placeholder="Mobile number"/>{editGuardianFieldErrors.mobile_number && <small id="edit-guardian-mobile-error" className="app-field-error">{editGuardianFieldErrors.mobile_number}</small>}</label>
+                    <label><StudentFieldLabel label="Email address" hint="Optional. Must be unique within this school. If already used by another guardian, use another email address or leave this field blank." /><input name="edit_guardian_email" disabled={busy} type="email" value={editGuardianForm.email_address} aria-invalid={Boolean(editGuardianEmailError)} aria-describedby={editGuardianEmailError ? "edit-guardian-email-error" : undefined} onChange={event => { setEditGuardianForm(current => ({ ...current, email_address: event.target.value })); setEditGuardianEmailError(""); }} placeholder="guardian@example.com"/>{editGuardianEmailError && <small id="edit-guardian-email-error" className="app-field-error">{editGuardianEmailError}</small>}</label>
                     <label><StudentFieldLabel label="Alternate mobile number" hint="Optional secondary contact number. Maximum 30 characters." /><input disabled={busy} value={editGuardianForm.alternate_mobile_number} aria-invalid={Boolean(editGuardianFieldErrors.alternate_mobile_number)} aria-describedby={editGuardianFieldErrors.alternate_mobile_number ? "edit-guardian-alt-mobile-error" : undefined} onChange={event => { setEditGuardianForm(current => ({ ...current, alternate_mobile_number: event.target.value })); setEditGuardianFieldErrors(current => ({...current,alternate_mobile_number:""})); }} placeholder="Optional alternate number"/>{editGuardianFieldErrors.alternate_mobile_number && <small id="edit-guardian-alt-mobile-error" className="app-field-error">{editGuardianFieldErrors.alternate_mobile_number}</small>}</label>
                     <label><StudentFieldLabel label="Occupation" hint="Optional. Enter the guardian’s occupation. Maximum 120 characters." /><input disabled={busy} value={editGuardianForm.occupation} aria-invalid={Boolean(editGuardianFieldErrors.occupation)} aria-describedby={editGuardianFieldErrors.occupation ? "edit-guardian-occupation-error" : undefined} onChange={event => { setEditGuardianForm(current => ({ ...current, occupation: event.target.value })); setEditGuardianFieldErrors(current => ({...current,occupation:""})); }} placeholder="e.g. Teacher, Business owner"/>{editGuardianFieldErrors.occupation && <small id="edit-guardian-occupation-error" className="app-field-error">{editGuardianFieldErrors.occupation}</small>}</label>
                     <label><StudentFieldLabel label="Education" hint="Optional highest education information. Maximum 120 characters." /><input disabled={busy} value={editGuardianForm.education} aria-invalid={Boolean(editGuardianFieldErrors.education)} aria-describedby={editGuardianFieldErrors.education ? "edit-guardian-education-error" : undefined} onChange={event => { setEditGuardianForm(current => ({ ...current, education: event.target.value })); setEditGuardianFieldErrors(current => ({...current,education:""})); }} placeholder="Highest education (optional)"/>{editGuardianFieldErrors.education && <small id="edit-guardian-education-error" className="app-field-error">{editGuardianFieldErrors.education}</small>}</label>
