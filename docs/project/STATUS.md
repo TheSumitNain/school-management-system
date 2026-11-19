@@ -1471,3 +1471,19 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Added two reversible PostgreSQL indexes for the paginated enrollment directory's stable `enrolled_at DESC, id DESC` ordering: one scoped by school for the all-years view, and one scoped by school plus academic year for the filtered view. This avoids relying on the section-oriented enrollment index or sorting the entire school history for these access patterns.
 - Added a PostgreSQL integration assertion that both indexes are present after the full migration chain. No API response, authorization predicate, or student-history behavior changed.
 - Backend CI **PASS** — full migration chain (including V48), PostgreSQL integration tests including the new index-presence assertion, and `go vet ./...` ([run 44066803600](https://github.com/TheSumitNain/school-management-system/actions/runs/44066803600)).
+## Future Student Profile print/export — planned, not implemented
+
+- Add a **Print Complete Profile** action from the existing Student Profile; do not create a duplicate student data-entry page.
+- The printable report should assemble the student's already-recorded information into clear sections: identity/basic details, current and historical academic enrollment, parents/guardians and sibling relationships, contact/address, and medical/physical information only when the viewer is explicitly authorized.
+- Include school identity and student identifiers where available, clear missing/not-recorded states, readable page breaks, print preview, page numbering, and browser Print / Save as PDF.
+- Allow a complete report or selected sections only if the permission model authorizes every selected section. Never let print/export bypass backend tenant, assignment, role, field-level or sensitive-data checks.
+- School Admin access remains school-scoped. Class In-charge and other teachers must receive only records and fields permitted for their exact class/section/subject assignments; medical, guardian-contact and other sensitive fields remain separately permission-controlled.
+- This is a future enhancement only. Do not build a new route, report endpoint, print UI or schema/migration until Student Management is accepted and the print work is explicitly started. Parent OTP remains deferred.
+
+## School Admin role and staff permission controls — current capability and gaps
+
+- The School Admin workspace includes a Roles & Permissions page for creating school-specific custom roles and managing permission grants that the Platform Admin has actively delegated to that school. Built-in system roles, including Teacher, are protected and cannot be edited directly from this page.
+- Staff Management includes role assignment and individual permission override workflows. ALLOW/DENY overrides require the relevant permission and an active exact delegation; DENY precedence and backend authorization remain authoritative.
+- Teacher and Class In-charge visibility is not determined by role labels alone. Effective access is the combination of live permissions, school ownership, active class/section/subject assignments, and field-level restrictions. A class-in-charge assignment does not grant access outside its assigned class/section.
+- The current UI is not yet a complete, easy-to-understand access matrix for comparing Teacher vs Class In-charge or configuring every module's view/create/edit/delete rights in one place. Treat a consolidated permission matrix and role preview as a future usability improvement, not an already-delivered feature.
+- Do not grant broad student-profile, guardian-contact, medical, document or other sensitive permissions merely to make a roster or class-in-charge workflow function. Verify each module's backend enforcement and positive/negative role tests before claiming a role can access or edit it.
