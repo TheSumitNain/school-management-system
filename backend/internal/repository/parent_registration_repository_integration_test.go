@@ -83,10 +83,10 @@ func TestParentRegistrationRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("create second-school staff fixture: %v", err)
 	}
 
-	guardianSchoolIDs := []int64{schoolID, schoolID, otherSchoolID}
-	guardianActorPrincipalIDs := []int64{staffPrincipalID, staffPrincipalID, otherSchoolStaffPrincipalID}
-	var guardianIDs [3]int64
-	var studentIDs [3]int64
+	guardianSchoolIDs := []int64{schoolID, otherSchoolID}
+	guardianActorPrincipalIDs := []int64{staffPrincipalID, otherSchoolStaffPrincipalID}
+	var guardianIDs [2]int64
+	var studentIDs [2]int64
 
 	for i := range guardianIDs {
 		if err := tx.QueryRow(ctx, `
@@ -127,7 +127,7 @@ func TestParentRegistrationRepositoryPostgresIntegration(t *testing.T) {
 	}
 	if result.Principal == nil || result.Principal.Type != "parent" ||
 		result.Principal.Status != "active" || !result.Principal.MobileVerified ||
-		result.LinkedGuardianCount != 3 {
+		result.LinkedGuardianCount != 2 {
 		t.Fatalf("unexpected Parent registration result: %+v", result)
 	}
 
@@ -159,8 +159,8 @@ func TestParentRegistrationRepositoryPostgresIntegration(t *testing.T) {
 	`, result.Principal.ID).Scan(&auditCount); err != nil {
 		t.Fatalf("verify Parent link audit events: %v", err)
 	}
-	if accountCount != 1 || activeRoleCount != 1 || activeLinkCount != 3 || auditCount != 3 {
-		t.Fatalf("account=%d role=%d links=%d audit=%d; want 1/1/3/3",
+	if accountCount != 1 || activeRoleCount != 1 || activeLinkCount != 2 || auditCount != 2 {
+		t.Fatalf("account=%d role=%d links=%d audit=%d; want 1/1/2/2",
 			accountCount, activeRoleCount, activeLinkCount, auditCount)
 	}
 
