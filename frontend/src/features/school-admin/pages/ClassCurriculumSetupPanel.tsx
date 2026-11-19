@@ -25,6 +25,9 @@ export function ClassCurriculumSetupPanel({ years, classes, subjects, canManage 
   const classNumber = Number(classID);
   const curriculaQuery = useSchoolClassCurriculaQuery(yearNumber, classNumber);
   const activeSubjects = subjects.filter(subject => subject.is_active);
+  const compulsoryCount = included.filter(id => !(groupBySubject[id] ?? "").trim()).length;
+  const individualOptionalCount = included.filter(id => groupBySubject[id] === "__standalone_optional__").length;
+  const groupedOptionalCount = included.length - compulsoryCount - individualOptionalCount;
   const selectedCounts = useMemo(() => {
     const counts = new Map<string, number>();
     for (const id of included) {
@@ -110,7 +113,22 @@ export function ClassCurriculumSetupPanel({ years, classes, subjects, canManage 
           {curriculaQuery.isLoading ? <p>Loading saved versions…</p> :
             curriculaQuery.isError ? <div className="student-feedback error" role="alert"><p>{curriculaQuery.error.message}</p><button type="button" className="academic-refresh" onClick={() => void curriculaQuery.refetch()}>Retry</button></div> :
             (curriculaQuery.data?.curricula ?? []).length === 0 ? <p>No curriculum configured for this class and year.</p> :
-            <ul>{curriculaQuery.data?.curricula.map(item => <li key={item.id}>Version {item.version_number} · {item.status} · {item.subjects.length} subjects · {item.optional_groups.length} optional groups</li>)}</ul>}
+            <ul className="curriculum-version-list">{curriculaQuery.data?.curricula.map(item => (
+              <li key={item.id}>
+                <div className="curriculum-version-heading">
+                  <strong>Version {item.version_number}</strong>
+                  <span className={"curriculum-version-status " + (item.status === "active" ? "active" : "retired")}>{item.status}</span>
+                  <small>{item.subjects.length} subjects · {item.optional_groups.length} optional groups</small>
+                </div>
+                <div className="curriculum-version-subjects">
+                  {item.subjects.map(subject => (
+                    <span key={subject.id} className={"curriculum-version-subject " + (subject.is_compulsory ? "compulsory" : subject.optional_group_id ? "grouped" : "optional")}>
+                      {subject.name} · {subject.is_compulsory ? "Compulsory" : subject.optional_group_name ? subject.optional_group_name : "Optional"}
+                    </span>
+                  ))}
+                </div>
+              </li>
+            ))}</ul>}
         </section>
       )}
       {canManage ? (
@@ -129,7 +147,15 @@ export function ClassCurriculumSetupPanel({ years, classes, subjects, canManage 
             </fieldset>
           ))}
           <div className="curriculum-subject-picker">
-            <h3>Subjects</h3>
+            <div className="curriculum-subject-picker-heading">
+              <div><h3>Subjects</h3><p>Select the subjects for this class, then choose how each one is assigned.</p></div>
+              <span>{included.length} of {activeSubjects.length} selected</span>
+            </div>
+            <div className="curriculum-subject-summary" aria-live="polite">
+              <span className="compulsory"><strong>{compulsoryCount}</strong> Compulsory</span>
+              <span className="individual"><strong>{individualOptionalCount}</strong> Optional</span>
+              <span className="grouped"><strong>{groupedOptionalCount}</strong> In groups</span>
+            </div>
             {activeSubjects.length === 0 ? <p>Add active subjects in Academic Structure first.</p> : activeSubjects.map(subject => {
               const checked = included.includes(subject.id);
               const groupValue = groupBySubject[subject.id] ?? "";
