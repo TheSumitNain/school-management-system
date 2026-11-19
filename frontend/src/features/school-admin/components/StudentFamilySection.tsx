@@ -228,7 +228,8 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
   }
 
   function beginEditGuardian(link: (typeof allLinks)[number]) {
-    setEditingGuardianID(link.guardian_id);
+    setEditingLinkID(0);
+    setEditingGuardianID(current => current === link.guardian_id ? 0 : link.guardian_id);
     setEditGuardianForm({
       full_name: link.guardian_name,
       mobile_number: link.mobile_number ?? "",
@@ -360,7 +361,8 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
   }
 
   function beginEditRelationship(link: (typeof allLinks)[number]) {
-    setEditingLinkID(link.id);
+    setEditingGuardianID(0);
+    setEditingLinkID(current => current === link.id ? 0 : link.id);
     setEditRelationshipForm({
       relationship_type: guardianRelationshipTypes.includes(canonicalGuardianRelationship(link.relationship_type) as (typeof guardianRelationshipTypes)[number]) ? canonicalGuardianRelationship(link.relationship_type) : "",
       is_primary_contact: link.is_primary_contact,
@@ -465,8 +467,8 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
                 </div>
                 {canManage && !link.revoked_at && (
                   <div className="student-family-card-actions">
-                    <button type="button" className="student-link-button" onClick={() => beginEditRelationship(link)}>Edit relationship</button>
-                    <button type="button" className="student-link-button" onClick={() => beginEditGuardian(link)}>Edit shared guardian details</button>
+                    <button type="button" className="student-link-button" aria-expanded={editingLinkID === link.id} onClick={() => beginEditRelationship(link)}>{editingLinkID === link.id ? "Close relationship editor" : "Edit relationship"}</button>
+                    <button type="button" className="student-link-button" aria-expanded={editingGuardianID === link.guardian_id} onClick={() => beginEditGuardian(link)}>{editingGuardianID === link.guardian_id ? "Close guardian editor" : "Edit shared guardian details"}</button>
                     <button type="button" className="student-link-button" onClick={() => { setPendingRevokeID(link.id); setRevokeReason(""); setRevokeReasonError(""); }}>Revoke link</button>
                   </div>
                 )}
