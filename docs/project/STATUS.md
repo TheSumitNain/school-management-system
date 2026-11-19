@@ -1,11 +1,15 @@
-## Guardian relationship uniqueness (2026-11-18)
+## Guardian relationship uniqueness and legacy duplicate handling (2026-11-19)
 
 - Approved exactly eight relationship types: Father, Mother, Grandfather, Grandmother, Brother, Sister, Uncle and Aunt.
-- Each student may have at most one active guardian link for a given relationship type. The same type can be used by different students.
-- Frontend disables relationship types already active for the selected student; Edit excludes the current link while checking other active links.
-- Backend validates the allowlist and maps database duplicate-relationship rejection to a conflict response.
-- V50 migration adds a serialized database trigger for new links and relationship-type changes. Existing duplicate active rows are deliberately retained; edits to their contact flags and revocation/history remain possible. No guardian link is automatically deleted or revoked.
-- Added automated coverage for duplicate conflict classification and browser-level disabled-option behavior. CI verification is pending.
+- Each student may have at most one active guardian link for a given relationship type. The same relationship type remains valid for different students.
+- Frontend disables relationship types already active for the selected student. While editing a link, the current link is excluded from duplicate detection so its existing relationship remains selectable when it is not duplicated by another active link.
+- Legacy relationship labels are compared and displayed case-insensitively after trimming whitespace (for example, `" father "` displays and behaves as `Father`). New backend writes are normalized to canonical title case.
+- Backend validates the allowlist and maps database duplicate-relationship rejection to HTTP 409. The V50 trigger serializes writes on the student row and rejects a second active link of the same relationship type, including writes that bypass the repository.
+- Existing duplicate active rows are deliberately retained for human review. Contact-flag edits and revocation/history remain possible; no guardian link is automatically deleted or revoked. The known local duplicate records still require the school/user to identify which guardian is correct before revoking an incorrect link.
+- Added PostgreSQL integration coverage for duplicate inserts and edits, handler coverage for the HTTP 409 response, and Playwright coverage for legacy whitespace/case normalization, all eight choices, disabled duplicate options, and keeping the current relationship selectable in Edit.
+- Backend CI **PASS** — [run 44445586729](https://github.com/TheSumitNain/school-management-system/actions/runs/44445586729), checkpoint `195d2f60b0c6a4c48fd710ed5d9e1d6e0146281d`.
+- Frontend CI **PASS** — [run 44445434384](https://github.com/TheSumitNain/school-management-system/actions/runs/44445434384), checkpoint `d53bc814145b0cd5ea24601b4937d78e44d8df17`.
+- Local app and test databases were migrated through V50 and the user verified full Go tests, `go vet`, frontend typecheck and production build. Authenticated browser acceptance against the local app remains a separate final acceptance step.
 
 ## Student Management — approved guardian relationship vocabulary (2026-11-18)
 
