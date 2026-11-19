@@ -931,6 +931,12 @@ test("student admission, profile navigation and parent details render without br
   await expect(revokeDialog).toBeVisible();
   await expect(revokeDialog).toContainText("Ramesh Sharma Updated");
   await expect(revokeDialog.getByPlaceholder("Explain why this link is being revoked")).toBeFocused();
+  const confirmRevokeButton = revokeDialog.getByRole("button", { name: "Confirm revoke" });
+  const revokeButtonBackground = await confirmRevokeButton.evaluate(element => getComputedStyle(element).backgroundColor);
+  const revokeButtonText = await confirmRevokeButton.evaluate(element => getComputedStyle(element).color);
+  expect(revokeButtonBackground).not.toBe("rgba(0, 0, 0, 0)");
+  expect(revokeButtonBackground).not.toBe(await revokeDialog.evaluate(element => getComputedStyle(element).backgroundColor));
+  expect(revokeButtonText).not.toBe(revokeButtonBackground);
   await revokeDialog.getByRole("button", { name: "Cancel" }).click();
   await expect(revokeDialog).toBeHidden();
   expect(guardianLink.revoked_at).toBeNull();
@@ -1918,6 +1924,8 @@ test("staff can create a guardian contact and link it to a student with relation
   await expect(guardianPanel).toBeVisible();
   await expect(relatedPanel).toBeVisible();
   await expect(linkPanel).toBeVisible();
+  const sectionGap = await relatedPanel.evaluate(element => Number.parseFloat(getComputedStyle(element).marginTop));
+  expect(sectionGap).toBeGreaterThanOrEqual(16);
   const lightPanelStyle = await guardianPanel.evaluate(element => getComputedStyle(element).backgroundColor);
   await page.locator("html").evaluate(element => element.setAttribute("data-theme", "dark"));
   const darkPanelStyle = await guardianPanel.evaluate(element => getComputedStyle(element).backgroundColor);
