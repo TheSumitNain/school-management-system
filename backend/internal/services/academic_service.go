@@ -26,8 +26,8 @@ type academicRepository interface {
 	RevokeClassInchargeAssignment(context.Context,int64,int64,int64)error
 	ListStudentEnrollments(context.Context,int64,int64,int64,int64)([]repository.StudentEnrollment,error)
 	ListStudentEnrollmentDirectory(context.Context,int64,int64,int64,int,int)([]repository.StudentEnrollment,int64,error)
-	ListClassCurricula(context.Context,int64,int64,int64,int64)([]repository.ClassCurriculum,error)
-	SaveClassCurriculum(context.Context,int64,int64,int64,int64,[]repository.CurriculumOptionalGroupInput,[]repository.CurriculumSubjectInput)(*repository.ClassCurriculum,error)
+	ListSectionClassCurricula(context.Context,int64,int64,int64,int64,int64)([]repository.ClassCurriculum,error)
+	SaveSectionClassCurriculum(context.Context,int64,int64,int64,int64,int64,[]repository.CurriculumOptionalGroupInput,[]repository.CurriculumSubjectInput)(*repository.ClassCurriculum,error)
 	GetStudentEnrollmentCurriculum(context.Context,int64,int64,int64)(*repository.StudentEnrollmentCurriculum,error)
 	SaveStudentEnrollmentSubjects(context.Context,int64,int64,int64,int64,[]int64)(*repository.StudentEnrollmentCurriculum,error)
 	CreateStudentEnrollment(context.Context,int64,int64,int64,int64,int64,*string,string,time.Time,time.Time)(*repository.StudentEnrollment,error)
@@ -232,13 +232,13 @@ func (s *AcademicService) ArchiveStudent(ctx context.Context, actorID, schoolID,
 	return s.repository.ArchiveStudent(ctx, actorID, schoolID, studentID)
 }
 
-func (s *AcademicService) ListClassCurricula(ctx context.Context, actorID, schoolID, yearID, classID int64) ([]repository.ClassCurriculum, error) {
+func (s *AcademicService) ListSectionClassCurricula(ctx context.Context, actorID, schoolID, yearID, classID, sectionID int64) ([]repository.ClassCurriculum, error) {
 	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
-	return s.repository.ListClassCurricula(ctx, actorID, schoolID, yearID, classID)
+	return s.repository.ListSectionClassCurricula(ctx, actorID, schoolID, yearID, classID, sectionID)
 }
-func (s *AcademicService) SaveClassCurriculum(ctx context.Context, actorID, schoolID, yearID, classID int64, groups []repository.CurriculumOptionalGroupInput, subjects []repository.CurriculumSubjectInput) (*repository.ClassCurriculum, error) {
+func (s *AcademicService) SaveSectionClassCurriculum(ctx context.Context, actorID, schoolID, yearID, classID, sectionID int64, groups []repository.CurriculumOptionalGroupInput, subjects []repository.CurriculumSubjectInput) (*repository.ClassCurriculum, error) {
 	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
-	return s.repository.SaveClassCurriculum(ctx, actorID, schoolID, yearID, classID, groups, subjects)
+	return s.repository.SaveSectionClassCurriculum(ctx, actorID, schoolID, yearID, classID, sectionID, groups, subjects)
 }
 func (s *AcademicService) GetStudentEnrollmentCurriculum(ctx context.Context, actorID, schoolID, enrollmentID int64) (*repository.StudentEnrollmentCurriculum, error) {
 	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
