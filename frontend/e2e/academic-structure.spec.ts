@@ -60,7 +60,7 @@ test("class curriculum validates each optional-group field and locks the editor 
         status: "active", created_at: "2026-11-15T00:00:00.000Z",
         optional_groups: [{ id: 801, name: "Second language", min_selections: 1, max_selections: 2 }],
         subjects: [
-          { id: 901, subject_id: 91, name: "Mathematics", is_compulsory: true },
+          { id: 901, subject_id: 91, name: "Mathematics", is_compulsory: false, is_optional: true },
           { id: 902, subject_id: 92, name: "Hindi", optional_group_id: 801, optional_group_name: "Second language", is_compulsory: false },
           { id: 903, subject_id: 93, name: "Sanskrit", optional_group_id: 801, optional_group_name: "Second language", is_compulsory: false },
         ],
@@ -112,6 +112,7 @@ test("class curriculum validates each optional-group field and locks the editor 
   await minChoices.fill("1");
   await maxChoices.fill("2");
   const subjectRows = page.locator(".curriculum-subject-row");
+  await subjectRows.filter({ hasText: "Mathematics" }).getByLabel("Type").selectOption("__standalone_optional__");
   await subjectRows.filter({ hasText: "Hindi" }).getByLabel("Type").selectOption("Second language");
   await subjectRows.filter({ hasText: "Sanskrit" }).getByLabel("Type").selectOption("Second language");
 
@@ -133,9 +134,9 @@ test("class curriculum validates each optional-group field and locks the editor 
     class_id: 3,
     optional_groups: [{ name: "Second language", min_selections: 1, max_selections: 2 }],
     subjects: [
-      { subject_id: 91 },
-      { subject_id: 92, optional_group: "Second language" },
-      { subject_id: 93, optional_group: "Second language" },
+      { subject_id: 91, is_optional: true },
+      { subject_id: 92, is_optional: true, optional_group: "Second language" },
+      { subject_id: 93, is_optional: true, optional_group: "Second language" },
     ],
   });
   await expect(page.getByLabel("Group name")).toHaveCount(0);
