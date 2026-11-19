@@ -995,10 +995,10 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	`, schoolID, apiStudentID).Scan(&currentEnrollmentID); err != nil {
 		t.Fatalf("find active enrollment before student archive: %v", err)
 	}
-	var sourceClassID int64
+	var sourceClassID, sourceSectionID int64
 	if err := tx.QueryRow(ctx, `
-		SELECT class_id FROM student_enrollments WHERE id=$1 AND school_id=$2
-	`, currentEnrollmentID, schoolID).Scan(&sourceClassID); err != nil {
+		SELECT class_id,section_id FROM student_enrollments WHERE id=$1 AND school_id=$2
+	`, currentEnrollmentID, schoolID).Scan(&sourceClassID, &sourceSectionID); err != nil {
 		t.Fatalf("load source class for inactive-promotion test: %v", err)
 	}
 	// Exercise the V44 curriculum lifecycle through the production repository:
@@ -1011,8 +1011,8 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	`, currentEnrollmentID, schoolID).Scan(&enrollmentYearID); err != nil {
 		t.Fatalf("load active enrollment year for curriculum test: %v", err)
 	}
-	curriculumV1, err := academicRepo.SaveClassCurriculum(ctx, actorPrincipalID, schoolID,
-		enrollmentYearID, sourceClassID,
+	curriculumV1, err := academicRepo.SaveSectionClassCurriculum(ctx, actorPrincipalID, schoolID,
+		enrollmentYearID, sourceClassID, sourceSectionID,
 		[]CurriculumOptionalGroupInput{{Name: "Electives", MinSelections: 1, MaxSelections: 1}},
 		[]CurriculumSubjectInput{
 			{SubjectID: subjectID},
