@@ -19,6 +19,7 @@ type CurriculumOptionalGroupInput struct {
 type CurriculumSubjectInput struct {
 	SubjectID     int64  `json:"subject_id"`
 	OptionalGroup string `json:"optional_group,omitempty"`
+	IsOptional    bool   `json:"is_optional,omitempty"`
 }
 
 type CurriculumOptionalGroup struct {
@@ -36,6 +37,7 @@ type CurriculumSubject struct {
 	OptionalGroupID   *int64  `json:"optional_group_id,omitempty"`
 	OptionalGroupName *string `json:"optional_group_name,omitempty"`
 	IsCompulsory      bool    `json:"is_compulsory"`
+	IsOptional        bool    `json:"is_optional"`
 }
 
 type ClassCurriculum struct {
@@ -115,7 +117,7 @@ func loadClassCurriculum(ctx context.Context, db repositoryDB, curriculumID, sch
 	item.Subjects = make([]CurriculumSubject, 0)
 	subjectRows, err := db.Query(ctx, `
 		SELECT cs.id, cs.subject_id, cs.subject_name_snapshot, cs.subject_code_snapshot,
-		       cs.optional_group_id, g.name
+		       cs.optional_group_id, g.name, cs.is_optional
 		  FROM class_curriculum_subjects cs
 		  LEFT JOIN class_curriculum_optional_groups g
 		    ON g.id=cs.optional_group_id AND g.curriculum_id=cs.curriculum_id AND g.school_id=cs.school_id
@@ -128,11 +130,11 @@ func loadClassCurriculum(ctx context.Context, db repositoryDB, curriculumID, sch
 	for subjectRows.Next() {
 		var subject CurriculumSubject
 		if err := subjectRows.Scan(&subject.ID, &subject.SubjectID, &subject.Name, &subject.Code,
-			&subject.OptionalGroupID, &subject.OptionalGroupName); err != nil {
+			&subject.OptionalGroupID, &subject.OptionalGroupName, &subject.IsOptional); err != nil {
 			subjectRows.Close()
 			return nil, fmt.Errorf("scan curriculum subject: %w", err)
 		}
-		subject.IsCompulsory = subject.OptionalGroupID == nil
+		subject.IsCompulsory = !subject.IsOptional
 		item.Subjects = append(item.Subjects, subject)
 	}
 	if err := subjectRows.Err(); err != nil {
@@ -220,6 +222,7 @@ func (r *AcademicRepository) SaveClassCurriculum(
 		seenSubjects[subject.SubjectID] = struct{}{}
 		subject.OptionalGroup = strings.TrimSpace(subject.OptionalGroup)
 		if subject.OptionalGroup != "" {
+			subject.IsOptional = true
 			key := strings.ToLower(subject.OptionalGroup)
 			if _, exists := groupByName[key]; !exists {
 				return nil, ErrInvalidAcademicInput
@@ -314,10 +317,10 @@ func (r *AcademicRepository) SaveClassCurriculum(
 		}
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO class_curriculum_subjects
-				(school_id,curriculum_id,subject_id,optional_group_id,subject_name_snapshot,subject_code_snapshot)
-			SELECT $1,$2,id,$3,name,subject_code FROM subjects
+				(school_id,curriculum_id,subject_id,optional_group_id,is_optional,subject_name_snapshot,subject_code_snapshot)
+			SELECT $1,$2,id,$3,$4,name,subject_code FROM subjects
 			 WHERE id=$4 AND school_id=$1 AND is_active=TRUE
-		`, schoolID, curriculumID, groupID, subject.SubjectID); err != nil {
+		`, schoolID, curriculumID, groupID, subject.IsOptional, subject.SubjectID); err != nil {
 			return nil, academicWriteError(err)
 		}
 	}
@@ -604,6 +607,7 @@ func (r *AcademicRepository) SaveStudentEnrollmentSubjects(
 		return nil, ErrAcademicNotFound
 	}
 	type option struct {
+		isOptional bool
 		groupID int64
 		name string
 		code *string
@@ -614,7 +618,7 @@ func (r *AcademicRepository) SaveStudentEnrollmentSubjects(
 	groupCounts := make(map[int64]int)
 	groupBounds := make(map[int64]struct{ min, max int })
 	rows, err := tx.Query(ctx, `
-		SELECT cs.id,cs.optional_group_id,cs.subject_name_snapshot,cs.subject_code_snapshot,
+		SELECT cs.id,cs.optional_group_id,cs.is_optional,cs.subject_name_snapshot,cs.subject_code_snapshot,
 		       COALESCE(g.min_selections,0),COALESCE(g.max_selections,0)
 		  FROM class_curriculum_subjects cs
 		  LEFT JOIN class_curriculum_optional_groups g
@@ -627,16 +631,21 @@ func (r *AcademicRepository) SaveStudentEnrollmentSubjects(
 	for rows.Next() {
 		var id int64
 		var groupID *int64
+		var isOptional bool
 		var subjectName string
 		var subjectCode *string
 		var min, max int
-		if err := rows.Scan(&id, &groupID, &subjectName, &subjectCode, &min, &max); err != nil {
+		if err := rows.Scan(&id, &groupID, &isOptional, &subjectName, &subjectCode, &min, &max); err != nil {
 			rows.Close()
 			return nil, fmt.Errorf("scan curriculum subject selection rule: %w", err)
 		}
-		if groupID != nil {
-			options[id] = option{groupID: *groupID, name: subjectName, code: subjectCode, min: min, max: max}
-			groupBounds[*groupID] = struct{ min, max int }{min: min, max: max}
+		if isOptional {
+			item := option{isOptional: true, name: subjectName, code: subjectCode}
+			if groupID != nil {
+				item.groupID, item.min, item.max = *groupID, min, max
+				groupBounds[*groupID] = struct{ min, max int }{min: min, max: max}
+			}
+			options[id] = item
 		}
 	}
 	if err := rows.Err(); err != nil {
@@ -646,10 +655,10 @@ func (r *AcademicRepository) SaveStudentEnrollmentSubjects(
 	rows.Close()
 	for id := range selected {
 		option, exists := options[id]
-		if !exists {
+		if !exists || !option.isOptional {
 			return nil, ErrInvalidAcademicInput
 		}
-		groupCounts[option.groupID]++
+		if option.groupID != 0 { groupCounts[option.groupID]++ }
 	}
 	for groupID, bounds := range groupBounds {
 		count := groupCounts[groupID]
