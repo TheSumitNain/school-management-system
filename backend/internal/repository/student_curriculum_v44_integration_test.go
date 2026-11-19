@@ -22,7 +22,7 @@ func TestStudentCurriculumV44PostgresIntegration(t *testing.T) {
 		t.Fatalf("load integration actor: %v", err)
 	}
 	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
-	var yearID, classID, sectionID, subjectID, standaloneSubjectID, compulsorySubjectID, studentID, enrollmentID int64
+	var yearID, classID, sectionID, secondSectionID, subjectID, standaloneSubjectID, compulsorySubjectID, studentID, enrollmentID, secondStudentID, secondEnrollmentID int64
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO academic_years(school_id,name,starts_on,ends_on,status)
 		VALUES($1,$2,DATE '2026-04-01',DATE '2027-03-31','active') RETURNING id
@@ -34,6 +34,10 @@ func TestStudentCurriculumV44PostgresIntegration(t *testing.T) {
 		INSERT INTO sections(school_id,academic_year_id,class_id,name)
 		VALUES($1,$2,$3,'A') RETURNING id
 	`, schoolID, yearID, classID).Scan(&sectionID); err != nil { t.Fatalf("create section: %v", err) }
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO sections(school_id,academic_year_id,class_id,name)
+		VALUES($1,$2,$3,'B') RETURNING id
+	`, schoolID, yearID, classID).Scan(&secondSectionID); err != nil { t.Fatalf("create second section: %v", err) }
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO subjects(school_id,name,subject_code) VALUES($1,$2,$3) RETURNING id
 	`, schoolID, "V44 Optional "+suffix, "OPT-"+suffix).Scan(&subjectID); err != nil { t.Fatalf("create optional subject: %v", err) }
@@ -53,6 +57,17 @@ func TestStudentCurriculumV44PostgresIntegration(t *testing.T) {
 		VALUES($1,$2,$3,$4,$5,'01',$6,DATE '2026-04-01') RETURNING id
 	`, schoolID, studentID, yearID, classID, sectionID, "V44-ENR-"+suffix).Scan(&enrollmentID); err != nil {
 		t.Fatalf("create active enrollment: %v", err)
+	}
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO students(school_id,admission_number,full_name)
+		VALUES($1,$2,'V44 Different Section Student') RETURNING id
+	`, schoolID, "V44-STU-B-"+suffix).Scan(&secondStudentID); err != nil { t.Fatalf("create second student: %v", err) }
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO student_enrollments
+			(school_id,student_id,academic_year_id,class_id,section_id,roll_number,admission_number,admission_date)
+		VALUES($1,$2,$3,$4,$5,'02',$6,DATE '2026-04-01') RETURNING id
+	`, schoolID, secondStudentID, yearID, classID, secondSectionID, "V44-ENR-B-"+suffix).Scan(&secondEnrollmentID); err != nil {
+		t.Fatalf("create second-section enrollment: %v", err)
 	}
 
 	var curriculumID, groupID, optionalCurriculumSubjectID, standaloneCurriculumSubjectID, compulsoryCurriculumSubjectID int64
@@ -208,6 +223,13 @@ func TestStudentCurriculumV44PostgresIntegration(t *testing.T) {
 		if rollbackErr := savepoint.Rollback(ctx); rollbackErr != nil { t.Fatalf("rollback savepoint for %s: %v", label, rollbackErr) }
 		if opErr == nil { t.Fatalf("%s unexpectedly succeeded", label) }
 	}
+	expectRejected("assigning a different section's curriculum", func() error {
+		_, err := tx.Exec(ctx, `
+			INSERT INTO student_enrollment_curricula(school_id,enrollment_id,curriculum_id,assigned_by_principal_id)
+			VALUES($1,$2,$3,$4)
+		`, schoolID, secondEnrollmentID, curriculumID, actorPrincipalID)
+		return err
+	})
 	expectRejected("editing curriculum subject after assignment", func() error {
 		_, err := tx.Exec(ctx, `UPDATE class_curriculum_subjects SET subject_name_snapshot='Changed' WHERE id=$1`, optionalCurriculumSubjectID)
 		return err
