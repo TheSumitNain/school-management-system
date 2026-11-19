@@ -2089,6 +2089,12 @@ test("staff can create a guardian contact and link it to a student with relation
   await expect(page.getByText("Workplace must be 160 characters or fewer.", { exact: true })).toBeVisible();
   expect(guardianUpdates).toHaveLength(0);
 
+  // Reset every field that was intentionally made invalid above so this
+  // submission reaches the server-side duplicate-contact validation.
+  await editGuardianAlternate.fill("");
+  await editGuardianOccupation.fill("Teacher");
+  await editGuardianEducation.fill("");
+  await editGuardianWorkplace.fill("");
   await editGuardianMobile.fill("9876500000");
   await page.getByRole("button", { name: "Save guardian details" }).click();
   await expect(page.getByRole("dialog", { name: "Update shared guardian profile?" })).toBeVisible();
