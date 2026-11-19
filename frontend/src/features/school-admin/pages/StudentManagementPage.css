@@ -754,3 +754,13 @@
 @media(max-width:720px){
   .student-basic-details-form>.app-modal-actions{grid-column:1 / -1}
 }
+
+/* Guardian revocation uses the shared centred modal, not an inline form below the page. */
+.app-modal-content .student-revoke-form{display:grid;gap:18px}
+.app-modal-content .student-revoke-form>label{display:grid;gap:8px;color:var(--color-text);font-size:12px;font-weight:600}
+.app-modal-content .student-revoke-form .app-modal-actions{margin-top:2px}
+.app-modal-content .student-revoke-form .app-modal-cancel{border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text);transition:background-color .15s,border-color .15s,color .15s}
+.app-modal-content .student-revoke-form .app-modal-cancel:hover:not(:disabled){border-color:var(--color-focus);background:var(--color-surface-muted,var(--color-background))}
+.app-modal-content .student-revoke-form .app-modal-confirm{border:1px solid var(--color-danger);background:var(--color-danger);color:var(--color-on-brand);transition:filter .15s,box-shadow .15s}
+.app-modal-content .student-revoke-form .app-modal-confirm:hover:not(:disabled){filter:brightness(.94);box-shadow:var(--shadow-sm)}
+.app-modal-content .student-revoke-form .app-modal-actions>button:disabled{opacity:.55;cursor:not-allowed}
