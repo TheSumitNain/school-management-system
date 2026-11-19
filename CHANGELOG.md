@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-19 — Guardian contact identity rules
+
+- Approved school-scoped uniqueness for non-empty guardian mobile numbers and email addresses. Both fields remain optional; guardian names may repeat.
+- Added V51 preflight and partial unique indexes. Existing duplicate contact groups stop the migration for manual review; no automatic merge, deletion or rewrite is performed.
+- Added backend field-specific duplicate errors, normalized mobile/email comparisons and Student Management inline feedback for create and shared-profile edits.
+- Documented that future Parent Login reuses the guardian's existing verified contact details and is controlled by a future School Admin setting; Parent OTP/SMS remains deferred.
+- Verification is pending. Do not apply V51 to persistent local databases until legacy duplicate review and a verified restorable backup are complete.
+
+
 ## 2026-11-18 — Global action notifications and student UX fixes
 
 - Connected successful actions across Platform Admin, School Admin, Settings, Student, Staff, Academic Structure, Attendance, Roles, Teacher Assignments and Timetable pages to the application-wide ToastViewport with action-specific messages.
