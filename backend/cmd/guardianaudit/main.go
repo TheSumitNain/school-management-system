@@ -58,7 +58,15 @@ func run() error {
 	if err := reportDuplicateGroups(ctx, pool, "mobile", `
 		WITH normalized AS (
 			SELECT school_id, id, full_name,
-			       CASE\n\t\t\t\tWHEN length(regexp_replace(mobile_number, '[^0-9]', '', 'g')) = 12\n\t\t\t\t     AND left(regexp_replace(mobile_number, '[^0-9]', '', 'g'), 2) = '91'\n\t\t\t\tTHEN right(regexp_replace(mobile_number, '[^0-9]', '', 'g'), 10)\n\t\t\t\tWHEN length(regexp_replace(mobile_number, '[^0-9]', '', 'g')) = 11\n\t\t\t\t     AND left(regexp_replace(mobile_number, '[^0-9]', '', 'g'), 1) = '0'\n\t\t\t\tTHEN right(regexp_replace(mobile_number, '[^0-9]', '', 'g'), 10)\n\t\t\t\tELSE NULLIF(regexp_replace(mobile_number, '[^0-9]', '', 'g'), '')\n\t\t\tEND AS contact_key
+			       CASE
+				WHEN length(regexp_replace(mobile_number, '[^0-9]', '', 'g')) = 12
+				     AND left(regexp_replace(mobile_number, '[^0-9]', '', 'g'), 2) = '91'
+				THEN right(regexp_replace(mobile_number, '[^0-9]', '', 'g'), 10)
+				WHEN length(regexp_replace(mobile_number, '[^0-9]', '', 'g')) = 11
+				     AND left(regexp_replace(mobile_number, '[^0-9]', '', 'g'), 1) = '0'
+				THEN right(regexp_replace(mobile_number, '[^0-9]', '', 'g'), 10)
+				ELSE NULLIF(regexp_replace(mobile_number, '[^0-9]', '', 'g'), '')
+			END AS contact_key
 			FROM guardians
 			WHERE mobile_number IS NOT NULL
 		), duplicates AS (
