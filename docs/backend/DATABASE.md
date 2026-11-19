@@ -46,6 +46,41 @@ These rules apply to every new or modified domain, not only student and guardian
 - V51 preflights existing data and refuses to apply if duplicate school/mobile or school/email groups exist. It does not merge, delete, or rewrite legacy contacts. Resolve any reported duplicates manually and rerun the migration.
 - The down migration removes only the two indexes and normalization function; it does not alter guardian records.
 
+Before applying V51 to a persistent database, run these read-only checks and review every returned guardian ID. The mobile expression mirrors the migration's Indian-number normalization:
+
+```sql
+WITH normalized AS (
+    SELECT g.id, g.school_id, g.full_name,
+           CASE
+               WHEN length(digits.mobile) = 12 AND left(digits.mobile, 2) = '91' THEN right(digits.mobile, 10)
+               WHEN length(digits.mobile) = 11 AND left(digits.mobile, 1) = '0' THEN right(digits.mobile, 10)
+               ELSE NULLIF(digits.mobile, '')
+           END AS normalized_mobile
+    FROM guardians g
+    CROSS JOIN LATERAL (
+        SELECT regexp_replace(g.mobile_number, '[^0-9]', '', 'g') AS mobile
+    ) digits
+    WHERE g.mobile_number IS NOT NULL
+)
+SELECT school_id, normalized_mobile,
+       array_agg(id ORDER BY id) AS guardian_ids,
+       array_agg(full_name ORDER BY id) AS guardian_names
+FROM normalized
+WHERE normalized_mobile IS NOT NULL
+GROUP BY school_id, normalized_mobile
+HAVING COUNT(*) > 1;
+
+SELECT school_id, lower(btrim(email_address)) AS normalized_email,
+       array_agg(id ORDER BY id) AS guardian_ids,
+       array_agg(full_name ORDER BY id) AS guardian_names
+FROM guardians
+WHERE email_address IS NOT NULL AND btrim(email_address) <> ''
+GROUP BY school_id, lower(btrim(email_address))
+HAVING COUNT(*) > 1;
+```
+
+Do not resolve these results by deleting or merging contacts automatically. Confirm the correct owner and update/revoke records only through an explicitly reviewed staff workflow.
+
 ### Guardian primary-contact invariant (V43)
 - A student may have at most one active primary guardian contact. PostgreSQL enforces this with the partial unique index `ux_student_guardians_active_primary_per_student` over `(school_id, student_id)`, restricted to non-revoked rows marked primary.
 - The migration performs a duplicate-data preflight and fails with a clear error instead of silently choosing or demoting a guardian if legacy rows violate the invariant.
