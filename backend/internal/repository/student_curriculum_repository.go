@@ -295,14 +295,17 @@ func (r *AcademicRepository) saveSectionClassCurriculum(
 		if errors.Is(err, pgx.ErrNoRows) { return nil, ErrAcademicNotFound }
 		return nil, fmt.Errorf("lock curriculum academic year: %w", err)
 	}
-	var lockedSectionID int64
-	if err := tx.QueryRow(ctx, `
-		SELECT id FROM sections
-		 WHERE id=$1 AND school_id=$2 AND academic_year_id=$3 AND class_id=$4 AND is_active=TRUE
-		 FOR UPDATE
-	`, sectionID, schoolID, academicYearID, classID).Scan(&lockedSectionID); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) { return nil, ErrAcademicNotFound }
-		return nil, fmt.Errorf("lock curriculum section: %w", err)
+	var sectionScope any
+	if sectionID > 0 {
+		if err := tx.QueryRow(ctx, `
+			SELECT id FROM sections
+			 WHERE id=$1 AND school_id=$2 AND academic_year_id=$3 AND class_id=$4 AND is_active=TRUE
+			 FOR UPDATE
+		`, sectionID, schoolID, academicYearID, classID).Scan(&sectionID); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) { return nil, ErrAcademicNotFound }
+			return nil, fmt.Errorf("lock curriculum section: %w", err)
+		}
+		sectionScope = sectionID
 	}
 	subjectIDs := make([]int64, 0, len(normalizedSubjects))
 	for _, subject := range normalizedSubjects {
@@ -335,7 +338,7 @@ func (r *AcademicRepository) saveSectionClassCurriculum(
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO class_curricula(school_id,academic_year_id,class_id,section_id,version_number,status,created_by_principal_id)
 		VALUES($1,$2,$3,$4,$5,'active',$6) RETURNING id
-	`, schoolID, academicYearID, classID, sectionID, version, actorID).Scan(&curriculumID); err != nil {
+	`, schoolID, academicYearID, classID, sectionScope, version, actorID).Scan(&curriculumID); err != nil {
 		return nil, academicWriteError(err)
 	}
 	groupIDs := make(map[string]int64, len(groupByName))
@@ -606,12 +609,12 @@ func (r *AcademicRepository) SaveStudentEnrollmentSubjects(
 	if !studentActive {
 		return nil, ErrAcademicNotFound
 	}
-	var academicYearID, classID int64
+	var academicYearID, classID, sectionID int64
 	var enrollmentStatus string
 	if err := tx.QueryRow(ctx, `
-		SELECT academic_year_id,class_id,status FROM student_enrollments
+		SELECT academic_year_id,class_id,section_id,status FROM student_enrollments
 		 WHERE id=$1 AND school_id=$2 AND student_id=$3 FOR UPDATE
-	`, enrollmentID, schoolID, studentID).Scan(&academicYearID, &classID, &enrollmentStatus); err != nil {
+	`, enrollmentID, schoolID, studentID).Scan(&academicYearID, &classID, &sectionID, &enrollmentStatus); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrAcademicNotFound
 		}
@@ -620,18 +623,18 @@ func (r *AcademicRepository) SaveStudentEnrollmentSubjects(
 	if enrollmentStatus != "active" {
 		return nil, ErrAcademicNotFound
 	}
-	var curriculumYearID, curriculumClassID int64
+	var curriculumYearID, curriculumClassID, curriculumSectionID int64
 	var curriculumStatus string
 	if err := tx.QueryRow(ctx, `
-		SELECT academic_year_id,class_id,status FROM class_curricula
+		SELECT academic_year_id,class_id,COALESCE(section_id,0),status FROM class_curricula
 		 WHERE id=$1 AND school_id=$2 FOR UPDATE
-	`, curriculumID, schoolID).Scan(&curriculumYearID, &curriculumClassID, &curriculumStatus); err != nil {
+	`, curriculumID, schoolID).Scan(&curriculumYearID, &curriculumClassID, &curriculumSectionID, &curriculumStatus); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrAcademicNotFound
 		}
 		return nil, fmt.Errorf("lock student curriculum: %w", err)
 	}
-	if curriculumYearID != academicYearID || curriculumClassID != classID {
+	if curriculumYearID != academicYearID || curriculumClassID != classID || curriculumSectionID != sectionID {
 		return nil, ErrInvalidAcademicInput
 	}
 	var activeAssignmentID, activeCurriculumID int64
