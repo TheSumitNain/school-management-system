@@ -1001,9 +1001,9 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	`, currentEnrollmentID, schoolID).Scan(&sourceClassID, &sourceSectionID); err != nil {
 		t.Fatalf("load source class for inactive-promotion test: %v", err)
 	}
-	// Exercise the V44 curriculum lifecycle through the production repository:
-	// first assignment, read-after-write, version replacement, and immutable
-	// selection history. This uses the active enrollment selected above.
+	// Exercise the current curriculum lifecycle through the production
+	// repository: first assignment, current-choice replacement, confirmed
+	// subject removal and tenant isolation. This uses the active enrollment.
 	var enrollmentYearID int64
 	if err := tx.QueryRow(ctx, `
 		SELECT academic_year_id FROM student_enrollments
