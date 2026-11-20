@@ -99,7 +99,7 @@ export function StudentBasicDetailsSection({ student, canUpdate, onStudentNameCh
     event.preventDefault();
     if (!canUpdate || query.isLoading || query.isError) return;
     const trimmedName = fullName.trim();
-    if (!trimmedName) { setNameError("Student name is required."); return; }
+    if (Array.from(trimmedName).length < 2) { setNameError("Student name must contain at least 2 characters."); return; }
     if (Array.from(trimmedName).length > 200) { setNameError("Student name must be 200 characters or fewer."); return; }
     setNameError("");
     const nextErrors: Partial<Record<keyof Values, string>> = {};
@@ -176,7 +176,7 @@ export function StudentBasicDetailsSection({ student, canUpdate, onStudentNameCh
       {query.isError && <div className="student-feedback error" role="alert"><p>{query.error.message}</p><button type="button" className="student-secondary" onClick={() => void query.refetch()} disabled={query.isFetching}>Retry loading details</button></div>}
       <form className="student-basic-details-form" onSubmit={submit} noValidate>
         <label><StudentFieldLabel label="Student name" required hint="Enter the student’s full name as it should appear in school records. Maximum 200 characters." />
-          <input value={fullName} disabled={!canUpdate || busy} aria-invalid={Boolean(nameError)} aria-describedby={nameError ? "student-basic-name-error" : undefined}
+          <input value={fullName} minLength={2} maxLength={200} disabled={!canUpdate || busy} aria-invalid={Boolean(nameError)} aria-describedby={nameError ? "student-basic-name-error" : undefined}
             onChange={event => { setFullName(event.target.value); setNameError(""); }} placeholder="Enter student's full name" />
           {nameError && <small id="student-basic-name-error" className="app-field-error" role="alert">{nameError}</small>}
         </label>
