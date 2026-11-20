@@ -39,33 +39,35 @@ test("school workspace pages stay within narrow, tablet, and desktop viewports",
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 
   const pages = [
-    { label: "Staff", heading: /staff/i },
-    { label: "Roles & permissions", heading: /roles/i },
-    { label: "Academics", heading: /academic structure/i },
-    { label: "Students", heading: /students/i },
-    { label: "Attendance", heading: /attendance/i },
-    { label: "Timetable", heading: /timetable/i },
-    { label: "Settings", heading: /settings/i },
+    { path: "/staff", heading: /staff management/i },
+    { path: "/roles", heading: /roles/i },
+    { path: "/academics", heading: /academic structure/i },
+    { path: "/students", heading: /students/i },
+    { path: "/attendance", heading: /attendance/i },
+    { path: "/timetable", heading: /timetable/i },
+    { path: "/settings", heading: /settings/i },
   ];
   const widths = [320, 360, 390, 768, 1024, 1440];
 
   for (const width of widths) {
     await page.setViewportSize({ width, height: 900 });
     for (const item of pages) {
-      if (width <= 740) await page.locator(".mobile-menu").click();
-      await page.getByRole("button", { name: item.label, exact: true }).click();
+      await page.goto(item.path);
       await expect(page.getByRole("heading", { level: 1, name: item.heading })).toBeVisible();
       await expect.poll(
         () => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
-        { message: `${item.label} should not cause page-level horizontal overflow at ${width}px` },
+        { message: `${item.path} should not cause page-level horizontal overflow at ${width}px` },
       ).toBe(true);
     }
   }
 
   await page.setViewportSize({ width: 844, height: 390 });
   for (const item of pages) {
-    await page.getByRole("button", { name: item.label, exact: true }).click();
+    await page.goto(item.path);
     await expect(page.getByRole("heading", { level: 1, name: item.heading })).toBeVisible();
-    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await expect.poll(
+      () => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+      { message: `${item.path} should not cause page-level horizontal overflow in landscape` },
+    ).toBe(true);
   }
 });
