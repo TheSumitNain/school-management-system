@@ -787,6 +787,19 @@
 .student-subject-group legend{font-size:12px}
 .student-subject-group .student-subject-option{min-height:38px}
 .student-subject-group .student-subject-option:has(input:checked){background:color-mix(in srgb,var(--color-accent) 24%,var(--color-surface))}
+
+/* Keep nested profile grids from expanding beyond the mobile modal content box. */
+.student-profile-detail,
+.student-profile-summary,
+.student-profile-history,
+.student-profile-history-list,
+.student-profile-enrollment,
+.student-enrollment-subjects,
+.student-subject-section,
+.student-subject-list,
+.student-subject-group{min-width:0}
+.student-subject-option{min-width:0;flex-wrap:wrap}
+.student-subject-option>span:first-of-type{min-width:0;overflow-wrap:anywhere}
 @media(max-width:560px){.student-subject-section>h4{align-items:flex-start;flex-direction:column;gap:2px}}
 
 
