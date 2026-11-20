@@ -67,6 +67,19 @@ func TestSchoolOnboardingServiceRejectsInvalidInputBeforeRepository(t *testing.T
 	}
 }
 
+
+func TestSchoolOnboardingServiceRejectsTooShortSchoolNameBeforeRepository(t *testing.T) {
+	repo := &fakeSchoolOnboardingRepository{}
+	service := NewSchoolOnboardingService(repo, alwaysClearPasswordChecker{})
+	_, err := service.CreateSchoolWithAdmin(context.Background(), 9, SchoolOnboardingInput{
+		Name: "a", Code: "SCH-4", AdminUsername: "admin.user",
+		AdminInitialPassword: "StrongUnique!Pass123",
+	})
+	if !errors.Is(err, ErrInvalidSchoolOnboarding) || repo.called {
+		t.Fatalf("one-character school name must be rejected before repository call, err=%v called=%v", err, repo.called)
+	}
+}
+
 func TestSchoolOnboardingServiceRejectsWeakPasswordBeforeRepository(t *testing.T) {
 	repo := &fakeSchoolOnboardingRepository{}
 	service := NewSchoolOnboardingService(repo)
