@@ -128,3 +128,23 @@ Inline controls remain appropriate for high-frequency, low-complexity actions su
 - Guardian relationship choices should include Father, Mother, Step-father, Step-mother, Grandfather, Grandmother, Brother, Sister, Uncle, Aunt, Legal Guardian, Foster Parent and Other.
 - When Other is selected, reveal a clearly labelled custom relationship field and validate its length. Preserve existing custom values when editing historical records.
 - Do not invent guardian identity or contact details from the relationship choice; guardian name, phone and email remain user-entered family information.
+
+## 8. Content-first responsive layout (mandatory)
+
+- Never force cards, tables, sidebars, forms, fields or buttons into one line by shrinking them below readable or usable dimensions.
+- When a row does not fit, wrap to the next line with consistent spacing. Let content determine component height; avoid fixed heights that clip text or controls.
+- Reflow card grids to fewer columns on tablet and one column on narrow phones. Keep every card's content and actions available.
+- Preserve all table columns, headers and cell values. When a table cannot fit, place it in an intentional, touch-friendly horizontal scroll region; do not hide columns, clip data, or squeeze columns until values become unreadable.
+- Navigation may become a mobile drawer or a contained horizontal tab strip, but every item must remain reachable.
+- Form fields, labels, helper text, Required/Optional markers and info icons must wrap and remain visible. Keep the label/status/help controls visually grouped with a consistent small gap and aligned centers.
+- Long names, identifiers and other important data must wrap or remain inspectable in full; do not silently truncate essential values.
+- Verify narrow portrait, tablet, desktop and landscape layouts. Page-level overflow must be avoided without disabling intentional table/tab scrolling.
+
+## 9. Mutation toast coverage (mandatory)
+
+- Audit every add/create, edit/update, remove/delete, archive/restore, assign/unassign, promote and bulk mutation on each in-scope page.
+- On confirmed success, show one concise global success toast that names what changed and, where useful, the affected record.
+- On failure, show a useful error toast or persistent form-level error with a recovery hint; keep field-specific errors beside their fields.
+- Do not show success for a failed, cancelled, pending or no-op operation. Do not send writes for no-op saves.
+- Destructive actions require an in-app confirmation that explains the impact; after completion, the toast must describe the actual result.
+- Test duplicate submissions, loading/disabled states, server validation, network errors and retry behavior.
