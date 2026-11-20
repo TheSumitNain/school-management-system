@@ -60,7 +60,7 @@ func (s *SchoolOnboardingService) CreateSchoolWithAdmin(ctx context.Context, act
 	name := strings.TrimSpace(input.Name)
 	code := strings.ToUpper(strings.TrimSpace(input.Code))
 	username := strings.ToLower(strings.TrimSpace(input.AdminUsername))
-	if name == "" || len(name) > 150 ||
+	if len([]rune(name)) < 2 || len([]rune(name)) > 150 ||
 		!schoolCodePattern.MatchString(code) ||
 		!staffUsernamePattern.MatchString(username) {
 		return nil, ErrInvalidSchoolOnboarding
