@@ -14,6 +14,7 @@ import {
 } from "../queries";
 import { Modal } from "../../../shared/components/Modal";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
+import { ApiError } from "../../../lib/api";
 import "./PlatformAdminPage.css";
 
 type Props = { permissions: string[] };
@@ -79,6 +80,13 @@ export function PlatformAdminPage({ permissions }: Props) {
       setFeedback(null);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to create Platform Admin.";
+      if (error instanceof ApiError) {
+        const mapped: Record<string, string> = {};
+        for (const key of ["email", "password"]) {
+          if (error.fieldErrors[key]) mapped[key] = error.fieldErrors[key];
+        }
+        if (Object.keys(mapped).length) setFieldErrors(current => ({ ...current, ...mapped }));
+      }
       notifyToast("error", message);
       setFeedback({ kind: "error", message });
     }
@@ -111,6 +119,13 @@ export function PlatformAdminPage({ permissions }: Props) {
       setFeedback(null);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to onboard school.";
+      if (error instanceof ApiError) {
+        const mapped: Record<string, string> = {};
+        for (const key of ["name", "code", "school_admin_username", "school_admin_initial_password"]) {
+          if (error.fieldErrors[key]) mapped[key] = error.fieldErrors[key];
+        }
+        if (Object.keys(mapped).length) setFieldErrors(current => ({ ...current, ...mapped }));
+      }
       notifyToast("error", message);
       setFeedback({ kind: "error", message });
     }
