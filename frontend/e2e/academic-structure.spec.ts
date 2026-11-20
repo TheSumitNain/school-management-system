@@ -260,7 +260,7 @@ test("section curriculum validates optional groups, edits in place, and confirms
 
   await page.getByRole("button", { name: "Remove group" }).click();
   await page.getByRole("button", { name: "Save curriculum changes" }).click();
-  await expect(page.getByText("Curriculum changes saved successfully.")).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Curriculum changes saved successfully." })).toBeVisible({ timeout: 10_000 });
   await expect(page.locator(".curriculum-existing").getByText("2 subjects · 0 optional groups", { exact: true })).toBeVisible();
   expect(groupRemovalSavePayload).toMatchObject({
     academic_year_id: 7, class_id: 3, section_id: 44,
