@@ -103,21 +103,7 @@ CREATE OR REPLACE FUNCTION guard_v55_student_subject_selection_update()
 RETURNS trigger
 LANGUAGE plpgsql AS $v55$
 BEGIN
-    IF NEW.id IS DISTINCT FROM OLD.id
-       OR NEW.school_id IS DISTINCT FROM OLD.school_id
-       OR NEW.enrollment_curriculum_id IS DISTINCT FROM OLD.enrollment_curriculum_id
-       OR NEW.curriculum_id IS DISTINCT FROM OLD.curriculum_id
-       OR NEW.curriculum_subject_id IS DISTINCT FROM OLD.curriculum_subject_id
-       OR NEW.subject_name_snapshot IS DISTINCT FROM OLD.subject_name_snapshot
-       OR NEW.subject_code_snapshot IS DISTINCT FROM OLD.subject_code_snapshot
-       OR NEW.selected_by_principal_id IS DISTINCT FROM OLD.selected_by_principal_id
-       OR NEW.selected_at IS DISTINCT FROM OLD.selected_at THEN
-        RAISE EXCEPTION 'student subject selection identity and snapshot are immutable';
-    END IF;
-    IF OLD.revoked_at IS NOT NULL OR NEW.revoked_at IS NULL THEN
-        RAISE EXCEPTION 'student subject selection revocation is one-way';
-    END IF;
-    RETURN NEW;
+    RAISE EXCEPTION 'student subject choices are current-state rows; update by replacing the row instead of retaining history';
 END;
 $v55$;
 
@@ -145,3 +131,5 @@ $v55$;
 
 COMMENT ON TABLE class_curriculum_subjects IS
     'Current editable curriculum subjects. Confirmed removals delete the subject and its current student choices; no curriculum-selection history is retained.';
+COMMENT ON TABLE student_enrollment_subject_selections IS
+    'Current optional subject choices for active enrollment curricula. Saving changes replaces current rows; no selection history is retained.';
