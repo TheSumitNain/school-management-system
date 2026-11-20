@@ -175,9 +175,9 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
     setFieldErrors(nextErrors);
     if (nextErrors.year || nextErrors.class || nextErrors.section || nextErrors.subjects || Object.keys(nextErrors.groups).length > 0) {
       window.requestAnimationFrame(() => {
-        const firstInvalid = document.querySelector<HTMLElement>('[aria-invalid="true"], [data-validation-error="true"]');
+        const firstInvalid = document.querySelector('[aria-invalid="true"], [data-validation-error="true"]') as HTMLElement | null;
         firstInvalid?.scrollIntoView({ behavior: "smooth", block: "center" });
-        firstInvalid?.focus({ preventScroll: true });
+        firstInvalid?.focus();
       });
       return;
     }
