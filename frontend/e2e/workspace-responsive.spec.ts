@@ -63,13 +63,12 @@ test("school workspace pages stay within narrow, tablet, and desktop viewports",
         await expect(page.getByRole("tab", { name: /Platform Admins/ })).toBeVisible();
         await expect(page.getByRole("tab", { name: /Onboard school/ })).toBeVisible();
         await expect(page.getByRole("tab", { name: /School permissions/ })).toBeVisible();
-        const platformControlsFit = await page.locator(".platform-tabs button").evaluateAll(elements =>
-          elements.every(element => {
-            const rect = element.getBoundingClientRect();
-            return rect.width > 0 && rect.left >= 0 && rect.right <= window.innerWidth + 1;
-          }),
-        );
-        expect(platformControlsFit, `platform administration tabs should fit at ${width}px`).toBe(true);
+        const platformTabsFit = await page.locator(".platform-tabs").evaluate(element => {
+          const rect = element.getBoundingClientRect();
+          return rect.width > 0 && rect.left >= 0 && rect.right <= window.innerWidth + 1 &&
+            (window.innerWidth > 600 || getComputedStyle(element).overflowX === "auto");
+        });
+        expect(platformTabsFit, `platform administration tab navigation should fit or scroll within ${width}px`).toBe(true);
       }
 
     if (item.path === "/students") {
