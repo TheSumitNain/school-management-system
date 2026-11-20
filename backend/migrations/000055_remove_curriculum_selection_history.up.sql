@@ -10,7 +10,16 @@ BEGIN
         IF TG_TABLE_NAME = 'class_curriculum_subjects' THEN
             RETURN OLD;
         END IF;
-        RAISE EXCEPTION 'class curriculum optional groups cannot be deleted';
+        IF TG_TABLE_NAME = 'class_curriculum_optional_groups'
+           AND NOT EXISTS (
+               SELECT 1 FROM class_curriculum_subjects cs
+                WHERE cs.optional_group_id=OLD.id
+                  AND cs.curriculum_id=OLD.curriculum_id
+                  AND cs.school_id=OLD.school_id
+           ) THEN
+            RETURN OLD;
+        END IF;
+        RAISE EXCEPTION 'optional groups can only be deleted after all subjects are ungrouped or removed';
     END IF;
 
     IF TG_OP = 'INSERT' THEN
@@ -30,8 +39,9 @@ BEGIN
            OR NEW.subject_code_snapshot IS DISTINCT FROM OLD.subject_code_snapshot THEN
             RAISE EXCEPTION 'curriculum subject source and snapshots are immutable';
         END IF;
-        IF (NEW.optional_group_id IS DISTINCT FROM OLD.optional_group_id
-            OR NEW.is_optional IS DISTINCT FROM OLD.is_optional)
+        IF (NEW.is_optional IS DISTINCT FROM OLD.is_optional
+            OR (NEW.optional_group_id IS DISTINCT FROM OLD.optional_group_id
+                AND NEW.optional_group_id IS NOT NULL))
            AND EXISTS (
                SELECT 1
                  FROM student_enrollment_subject_selections s
