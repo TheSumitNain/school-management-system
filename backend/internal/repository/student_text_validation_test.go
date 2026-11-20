@@ -58,8 +58,8 @@ func TestValidStudentFullName(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			if got := validStudentFullName(test.name); got != test.want {
-				t.Fatalf("validStudentFullName(%q) = %v, want %v", test.name, got, test.want)
+			if got := validFullName(test.name); got != test.want {
+				t.Fatalf("validFullName(%q) = %v, want %v", test.name, got, test.want)
 			}
 		})
 	}
