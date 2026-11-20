@@ -130,3 +130,8 @@ $v54$;
 
 COMMENT ON COLUMN class_curriculum_subjects.is_active IS
     'False means the subject was removed from the editable curriculum; historical student selections remain linked and revoked.';
+
+COMMENT ON TABLE class_curricula IS
+    'One editable current curriculum per school, academic year, class and section. version_number is retained for compatibility with pre-V54 historical records.';
+COMMENT ON TABLE class_curriculum_subjects IS
+    'Current curriculum subjects; removed subjects are soft-deactivated and remain linked to revoked student-selection history.';
