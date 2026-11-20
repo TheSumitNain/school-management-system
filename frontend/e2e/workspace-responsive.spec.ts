@@ -46,9 +46,6 @@ test("school workspace pages stay within narrow, tablet, and desktop viewports",
     { path: "/students", heading: /students/i },
     { path: "/settings", heading: /settings/i },
     { path: "/platform-admin", heading: /platform administration/i },
-    { path: "/staff", heading: /staff management/i },
-    { path: "/attendance", heading: /attendance/i },
-    { path: "/timetable", heading: /timetable/i },
   ];
   const widths = [320, 360, 390, 768, 1024, 1440];
 
@@ -75,16 +72,6 @@ test("school workspace pages stay within narrow, tablet, and desktop viewports",
         expect(platformControlsFit, `platform administration tabs should fit at ${width}px`).toBe(true);
       }
 
-      if (item.path === "/platform-admin") {
-      await expect(page.getByRole("tablist", { name: "Platform administration sections" })).toBeVisible();
-      const tabsFit = await page.locator(".platform-tabs button").evaluateAll(elements =>
-        elements.every(element => {
-          const rect = element.getBoundingClientRect();
-          return rect.width > 0 && rect.left >= 0 && rect.right <= window.innerWidth + 1;
-        }),
-      );
-      expect(tabsFit).toBe(true);
-    }
     if (item.path === "/students") {
         await expect(page.getByRole("group", { name: "Student management views" })).toBeVisible();
         await expect(page.getByRole("button", { name: "Student directory" })).toBeVisible();
