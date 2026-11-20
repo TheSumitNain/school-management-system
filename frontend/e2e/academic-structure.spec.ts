@@ -116,7 +116,12 @@ test("section curriculum validates optional groups, edits in place, and confirms
   await page.getByLabel("Password").fill("E2E-only-password");
   await page.getByRole("button", { name: /Continue/ }).click();
   await page.getByRole("button", { name: "Academics" }).click();
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("tab", { name: "Class curriculum" }).click();
+  const academicTabs = page.getByRole("tablist", { name: "Academic structure" });
+  await expect.poll(() => academicTabs.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(true);
+  await expect(page.getByRole("tab", { name: "Class curriculum" })).toBeInViewport();
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 
   const yearSelect = page.getByLabel("Academic year");
   const classSelect = page.getByLabel("Class");
@@ -144,6 +149,15 @@ test("section curriculum validates optional groups, edits in place, and confirms
   await expect(emptyGroupError).toBeVisible();
   await expect(emptyGroupError).toHaveCSS("color", "rgb(168, 70, 70)");
   await expect(page.locator(".curriculum-group-editor")).toHaveAttribute("aria-invalid", "true");
+  const groupCard = page.locator(".curriculum-group-editor");
+  const assignmentBox = groupCard.locator(".curriculum-group-subject-assignment");
+  const removeGroupButton = groupCard.getByRole("button", { name: "Remove group" });
+  const assignmentBounds = await assignmentBox.boundingBox();
+  const removeBounds = await removeGroupButton.boundingBox();
+  expect(assignmentBounds).not.toBeNull();
+  expect(removeBounds).not.toBeNull();
+  expect(assignmentBounds!.width).toBeGreaterThan(removeBounds!.width);
+  expect(removeBounds!.x + removeBounds!.width).toBeGreaterThan(assignmentBounds!.x + assignmentBounds!.width - 8);
   await expect(page.getByRole("button", { name: "Save curriculum" })).toBeEnabled();
 
   await minChoices.fill("2");
