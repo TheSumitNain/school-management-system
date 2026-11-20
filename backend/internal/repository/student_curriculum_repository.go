@@ -449,6 +449,20 @@ func (r *AcademicRepository) SaveSectionClassCurriculumWithConfirmations(ctx con
 		}
 	}
 
+	// Groups removed in the editor are deleted after their subjects have been
+	// ungrouped or removed. The database guard permits deletion only when no
+	// curriculum subject still references the group.
+	if _, err := tx.Exec(ctx, `
+		DELETE FROM class_curriculum_optional_groups g
+		 WHERE g.curriculum_id=$1 AND g.school_id=$2
+		   AND NOT EXISTS (
+		       SELECT 1 FROM class_curriculum_subjects cs
+		        WHERE cs.optional_group_id=g.id
+		          AND cs.curriculum_id=g.curriculum_id
+		          AND cs.school_id=g.school_id
+		   )
+	`, curriculumID, schoolID); err != nil { return nil, academicWriteError(err) }
+
 	action := "school.class_curriculum.created"
 	if !created { action = "school.class_curriculum.updated" }
 	if _, err := tx.Exec(ctx, `
