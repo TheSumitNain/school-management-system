@@ -140,3 +140,5 @@ $v55$;
 
 COMMENT ON TABLE class_curriculum_subjects IS
     'Current curriculum subjects; removed subjects are soft-deactivated and remain linked to revoked student-selection history.';
+COMMENT ON TABLE student_enrollment_subject_selections IS
+    'Append-only optional subject choices tied to a specific enrollment and curriculum version.';
