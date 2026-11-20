@@ -216,14 +216,17 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
       subjects: payloadSubjects,
     };
 
-    const persistedSignature = currentCurriculum ? curriculumSignature({
+    // The mutation success handler records the exact payload that the server accepted.
+    // Prefer that baseline over query data, which may still be a stale pre-mutation snapshot
+    // while React Query's invalidation/refetch is settling.
+    const persistedSignature = lastSavedSignatureRef.current ?? (currentCurriculum ? curriculumSignature({
       optional_groups: currentCurriculum.optional_groups,
       subjects: currentCurriculum.subjects.map(subject => ({
         subject_id: subject.subject_id,
         is_optional: subject.is_optional,
         ...(subject.optional_group_name ? { optional_group: subject.optional_group_name } : {}),
       })),
-    }) : lastSavedSignatureRef.current;
+    }) : null);
     if (persistedSignature !== null && persistedSignature === curriculumSignature(input)) {
       lastSavedSignatureRef.current = persistedSignature;
       notifyToast("info", "No changes to save.");
