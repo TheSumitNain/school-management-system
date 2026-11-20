@@ -15,6 +15,21 @@ type Section = { id: number; academic_year_id: number; class_id: number; name: s
 type Subject = { id: number; name: string; subject_code?: string; is_active: boolean };
 type Group = { name: string; min_selections: number; max_selections: number };
 type GroupFieldErrors = { name?: string; min?: string; max?: string; subjects?: string };
+
+function curriculumSignature(input: Pick<CurriculumSaveInput, "optional_groups" | "subjects">) {
+  const optional_groups = input.optional_groups.map(group => ({
+    name: group.name.trim(),
+    min_selections: group.min_selections,
+    max_selections: group.max_selections,
+  })).sort((a, b) => a.name.localeCompare(b.name));
+  const subjects = input.subjects.map(subject => ({
+    subject_id: subject.subject_id,
+    is_optional: Boolean(subject.is_optional),
+    optional_group: subject.optional_group ?? "",
+  })).sort((a, b) => a.subject_id - b.subject_id);
+  return JSON.stringify({ optional_groups, subjects });
+}
+
 type Props = { years: Year[]; classes: SchoolClass[]; sections: Section[]; subjects: Subject[]; canManage: boolean };
 
 export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, canManage }: Props) {
@@ -31,6 +46,7 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
   const [fieldErrors, setFieldErrors] = useState<{ year?: string; class?: string; section?: string; subjects?: string; groups: Record<number, GroupFieldErrors> }>({ groups: {} });
   const curriculumSummaryRef = useRef<HTMLElement>(null);
   const groupEditorRefs = useRef<Array<HTMLFieldSetElement | null>>([]);
+  const lastSavedSignature = useRef<string | null>(null);
   const [newGroupIndex, setNewGroupIndex] = useState<number | null>(null);
   const save = useSaveSchoolClassCurriculumMutation();
   const preview = usePreviewSchoolClassCurriculumRemovalMutation();
@@ -57,6 +73,14 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
   useEffect(() => {
     if (curriculaQuery.isLoading || curriculaQuery.isError || loadedCurriculumID === (currentCurriculum?.id ?? 0)) return;
     const curriculum = currentCurriculum;
+    lastSavedSignature.current = curriculum ? curriculumSignature({
+      optional_groups: curriculum.optional_groups,
+      subjects: curriculum.subjects.map(subject => ({
+        subject_id: subject.subject_id,
+        is_optional: !subject.is_compulsory,
+        ...(subject.optional_group_name ? { optional_group: subject.optional_group_name } : {}),
+      })),
+    }) : null;
     setIncluded(curriculum?.subjects.map(subject => subject.subject_id) ?? []);
     setGroups(curriculum?.optional_groups.map(group => ({
       name: group.name,
@@ -110,6 +134,7 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
       })),
     }, {
       onSuccess: () => {
+        lastSavedSignature.current = curriculumSignature(input);
         const message = confirmations.length > 0
           ? "Curriculum updated. Confirmed subject removals and affected student choices have been applied."
           : currentCurriculum
@@ -190,36 +215,9 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
       subjects: payloadSubjects,
     };
 
-    if (currentCurriculum) {
-      const normalizeGroups = (items: Array<{ name: string; min_selections: number; max_selections: number }>) =>
-        items.map(item => ({
-          name: item.name.trim(),
-          min_selections: item.min_selections,
-          max_selections: item.max_selections,
-        })).sort((a, b) => a.name.localeCompare(b.name));
-      const normalizeSubjects = (items: Array<{ subject_id: number; is_optional?: boolean; optional_group?: string }>) =>
-        items.map(item => ({
-          subject_id: item.subject_id,
-          is_optional: Boolean(item.is_optional),
-          optional_group: item.optional_group ?? "",
-        })).sort((a, b) => a.subject_id - b.subject_id);
-      const existingSubjects = currentCurriculum.subjects.map(subject => ({
-        subject_id: subject.subject_id,
-        is_optional: !subject.is_compulsory,
-        optional_group: subject.optional_group_name ?? "",
-      }));
-      const existingGroups = currentCurriculum.optional_groups.map(group => ({
-        name: group.name,
-        min_selections: group.min_selections,
-        max_selections: group.max_selections,
-      }));
-      if (
-        JSON.stringify(normalizeGroups(input.optional_groups)) === JSON.stringify(normalizeGroups(existingGroups)) &&
-        JSON.stringify(normalizeSubjects(input.subjects)) === JSON.stringify(normalizeSubjects(existingSubjects))
-      ) {
-        notifyToast("info", "No changes to save.");
-        return;
-      }
+    if (currentCurriculum && lastSavedSignature.current === curriculumSignature(input)) {
+      notifyToast("info", "No changes to save.");
+      return;
     }
 
     const removedSubjectIDs = (currentCurriculum?.subjects ?? [])
