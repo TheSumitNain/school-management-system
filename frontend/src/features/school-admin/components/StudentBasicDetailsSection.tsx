@@ -46,7 +46,7 @@ export function StudentBasicDetailsSection({ student, canUpdate, onStudentNameCh
   const [feedback, setFeedbackState] = useState<{ kind: "success" | "error"; message: string } | null>(null);
   const setFeedback = (next: typeof feedback) => {
     setFeedbackState(next?.kind === "error" ? next : null);
-    if (next) notifyToast(next.kind === "success" && next.message.startsWith("No changes to save") ? "info" : next.kind, next.message);
+    if (next) notifyToast(next.kind === "success" && next.message.startsWith("No change to save") ? "info" : next.kind, next.message);
   };
   const busy = save.isPending || updateStudent.isPending;
   const savedBasic = query.data?.basic_details;
@@ -141,7 +141,7 @@ export function StudentBasicDetailsSection({ student, canUpdate, onStudentNameCh
     }
     if (unchanged) {
       if (nameChanged) notifyToast("success", "Student name saved.");
-      else setFeedback({ kind: "success", message: "No changes to save." });
+      else setFeedback({ kind: "success", message: "No change to save." });
       return;
     }
     try {
