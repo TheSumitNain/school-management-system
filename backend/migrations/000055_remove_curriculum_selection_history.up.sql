@@ -93,6 +93,8 @@ $v55$;
 -- V44's selection-history guard includes UPDATE/DELETE. Remove its DELETE
 -- protection so current choices can be replaced; keep INSERT validation and
 -- restore update protection without preserving revoked selection rows.
+DROP INDEX IF EXISTS ix_student_enrollment_subject_selection_history;
+
 DO $v55$
 DECLARE
     trigger_row RECORD;
