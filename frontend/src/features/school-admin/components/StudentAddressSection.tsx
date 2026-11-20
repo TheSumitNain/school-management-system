@@ -67,7 +67,7 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
   const [feedback, setFeedbackState] = useState<{ kind: "success" | "error"; message: string } | null>(null);
   const setFeedback = (next: typeof feedback) => {
     setFeedbackState(next?.kind === "error" ? next : null);
-    if (next) notifyToast(next.kind === "success" && next.message.startsWith("No changes to save") ? "info" : next.kind, next.message);
+    if (next) notifyToast(next.kind === "success" && next.message.startsWith("No change to save") ? "info" : next.kind, next.message);
   };
 
   const addressesQuery = useSchoolStudentAddressesQuery(student.id, !showContactDetails);
@@ -258,7 +258,7 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
         (selectedAddress?.location_id ?? null) === addressInput.location_id &&
         !selectedAddress?.same_as_current;
     if (unchanged) {
-      setFeedback({ kind: "success", message: "No changes to save." });
+      setFeedback({ kind: "success", message: "No change to save." });
       return;
     }
     try {
@@ -300,7 +300,7 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
       (savedContact?.alternate_phone ?? null) === contactInput.alternate_phone &&
       (savedContact?.email_address ?? null) === contactInput.email_address;
     if (unchanged) {
-      setFeedback({ kind: "success", message: "No changes to save." });
+      setFeedback({ kind: "success", message: "No change to save." });
       return;
     }
     try {
