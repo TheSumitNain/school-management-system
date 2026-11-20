@@ -97,5 +97,24 @@ test("school workspace pages stay within narrow, tablet, and desktop viewports",
       () => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
       { message: `${item.path} should not cause page-level horizontal overflow in landscape` },
     ).toBe(true);
+    if (item.path === "/students") {
+      await expect(page.getByRole("group", { name: "Student management views" })).toBeVisible();
+      await expect(page.getByRole("textbox", { name: "Search students" })).toBeVisible();
+      await expect.poll(() => page.locator(".student-toolbar").evaluate(element => {
+        const rect = element.getBoundingClientRect();
+        return rect.left >= 0 && rect.right <= window.innerWidth + 1;
+      })).toBe(true);
+    }
+    if (item.path === "/settings") {
+      await expect(page.locator(".appearance-option")).toHaveCount(4);
+      await expect(page.locator(".palette-option")).toHaveCount(15);
+      const controlsFit = await page.locator(".appearance-option, .palette-option").evaluateAll(elements =>
+        elements.every(element => {
+          const rect = element.getBoundingClientRect();
+          return rect.width > 0 && rect.left >= 0 && rect.right <= window.innerWidth + 1;
+        }),
+      );
+      expect(controlsFit).toBe(true);
+    }
   }
 });
