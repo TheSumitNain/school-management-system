@@ -1655,20 +1655,17 @@ test("student promotion validates required fields and preserves prior enrollment
   await expect(dialog.getByText("Enter the admission number for the destination year.")).toBeVisible();
 
   await dialog.getByPlaceholder("e.g. ADM-2027-001").fill("अ".repeat(51));
-  await promoteButton.evaluate(button => {
-    const form = (button as HTMLButtonElement).form;
-    if (!form) throw new Error("Promotion submit button is not associated with its form.");
-    form.requestSubmit(button as HTMLButtonElement);
-  });
-  await expect(dialog.getByText("Admission number must be 50 characters or fewer.", { exact: true })).toBeVisible();
-  await dialog.getByPlaceholder("e.g. ADM-2027-001").fill("ADM-2026-091");
   await dialog.getByPlaceholder("Leave blank for automatic assignment").fill("अ".repeat(31));
   await promoteButton.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
     if (!form) throw new Error("Promotion submit button is not associated with its form.");
     form.requestSubmit(button as HTMLButtonElement);
   });
+  await expect(dialog.getByText("Admission number must be 50 characters or fewer.", { exact: true })).toBeVisible();
   await expect(dialog.getByText("Roll number must be 30 characters or fewer.", { exact: true })).toBeVisible();
+  await expect(dialog.getByPlaceholder("e.g. ADM-2027-001")).toHaveAttribute("aria-invalid", "true");
+  await expect(dialog.getByPlaceholder("Leave blank for automatic assignment")).toHaveAttribute("aria-invalid", "true");
+  await dialog.getByPlaceholder("e.g. ADM-2027-001").fill("ADM-2026-091");
   await dialog.getByPlaceholder("Leave blank for automatic assignment").fill("");
   await promoteButton.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
