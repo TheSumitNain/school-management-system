@@ -9,6 +9,7 @@ test("section curriculum validates optional groups, edits in place, and confirms
   let createPayload: Record<string, unknown> | null = null;
   let removalPreviewPayload: Record<string, unknown> | null = null;
   let removalSavePayload: Record<string, unknown> | null = null;
+  let groupRemovalSavePayload: Record<string, unknown> | null = null;
   let curriculumSaved = false;
   let saveCount = 0;
   let currentCurriculum: Record<string, unknown> = {
@@ -83,13 +84,23 @@ test("section curriculum validates optional groups, edits in place, and confirms
         saveStartedResolve();
         await saveGate;
         curriculumSaved = true;
-      } else {
+      } else if (saveCount === 1) {
         removalSavePayload = payload;
         currentCurriculum = {
           ...currentCurriculum,
           subjects: [
             { id: 901, subject_id: 91, name: "Mathematics", is_compulsory: false, is_optional: true },
             { id: 903, subject_id: 93, name: "Sanskrit", optional_group_id: 801, optional_group_name: "Second language", is_compulsory: false, is_optional: true },
+          ],
+        };
+      } else {
+        groupRemovalSavePayload = payload;
+        currentCurriculum = {
+          ...currentCurriculum,
+          optional_groups: [],
+          subjects: [
+            { id: 901, subject_id: 91, name: "Mathematics", is_compulsory: false, is_optional: true },
+            { id: 903, subject_id: 93, name: "Sanskrit", is_compulsory: false, is_optional: true },
           ],
         };
       }
@@ -188,6 +199,19 @@ test("section curriculum validates optional groups, edits in place, and confirms
     subjects: [
       { subject_id: 91, is_optional: true },
       { subject_id: 93, is_optional: true, optional_group: "Second language" },
+    ],
+  });
+
+  await page.getByRole("button", { name: "Remove group" }).click();
+  await page.getByRole("button", { name: "Save curriculum changes" }).click();
+  await expect(page.getByText("Curriculum saved successfully. Existing student selections are preserved except the subjects you confirmed for removal.")).toBeVisible();
+  await expect(page.locator(".curriculum-existing").getByText("2 subjects · 0 optional groups", { exact: true })).toBeVisible();
+  expect(groupRemovalSavePayload).toMatchObject({
+    academic_year_id: 7, class_id: 3, section_id: 44,
+    optional_groups: [],
+    subjects: [
+      { subject_id: 91, is_optional: true },
+      { subject_id: 93, is_optional: true },
     ],
   });
   expect(browserErrors).toEqual([]);
