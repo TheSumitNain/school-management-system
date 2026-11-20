@@ -277,8 +277,11 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
     event.preventDefault();
     if (!canUpdate || contactQuery.isLoading || contactQuery.isError) return;
     const errors: { primaryPhone?: string; alternatePhone?: string; emailAddress?: string } = {};
-    if (Array.from(primaryPhone.trim()).length > 30) errors.primaryPhone = "Phone number must be 30 characters or fewer.";
-    if (Array.from(alternatePhone.trim()).length > 30) errors.alternatePhone = "Phone number must be 30 characters or fewer.";
+    const normalizePhone = (value: string) => value.replace(/[\s()-]/g, "");
+    const primaryPhoneValue = primaryPhone.trim();
+    const alternatePhoneValue = alternatePhone.trim();
+    if (primaryPhoneValue.length > 30 || (primaryPhoneValue && !/^\+?[0-9]{10,15}$/.test(normalizePhone(primaryPhoneValue)))) errors.primaryPhone = "Enter a valid phone number with 10–15 digits; an optional + country prefix is allowed.";
+    if (alternatePhoneValue.length > 30 || (alternatePhoneValue && !/^\+?[0-9]{10,15}$/.test(normalizePhone(alternatePhoneValue)))) errors.alternatePhone = "Enter a valid alternate phone number with 10–15 digits; an optional + country prefix is allowed.";
     const emailInput = event.currentTarget.elements.namedItem("student_email_address") as HTMLInputElement | null;
     if (Array.from(emailAddress.trim()).length > 254) {
       errors.emailAddress = "Email address must be 254 characters or fewer.";
@@ -310,6 +313,7 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
       const emailError = studentContactEmailFieldError(error);
       if (emailError) {
         setContactErrors(current => ({ ...current, emailAddress: emailError }));
+        notifyToast("error", emailError);
         setFeedback(null);
       } else {
         setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Contact details could not be saved." });
