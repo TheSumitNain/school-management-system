@@ -252,7 +252,7 @@ test("section curriculum validates optional groups, edits in place, and confirms
 test("all academic structure tabs remain navigable across responsive viewports", async ({ page }) => {
   await page.route("**/api/**", async route => {
     const url = new URL(route.request().url());
-    const path = url.pathname.replace(/^\\/api/, "");
+    const path = url.pathname.replace(/^\/api/, "");
     if (path === "/auth/refresh") {
       await route.fulfill({ status: 401, json: { message: "No active session" } });
       return;
