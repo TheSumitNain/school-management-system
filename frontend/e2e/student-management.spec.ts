@@ -1381,6 +1381,10 @@ test("student admission, profile navigation and parent details render without br
     form.requestSubmit(button as HTMLButtonElement);
   });
   await expect(page.getByText("Use no more than 2,000 characters.")).toBeVisible();
+  const allergiesField = page.getByPlaceholder("Record known allergies, if any");
+  await expect(allergiesField).toHaveAttribute("aria-invalid", "true");
+  await expect(allergiesField).toHaveAttribute("aria-describedby", "student-allergies-error");
+  await expect(page.locator('#student-allergies-error[role="alert"]')).toBeVisible();
   expect(medicalDetails.version_number).toBe(0);
   await page.getByPlaceholder("Record known allergies, if any").fill("अ".repeat(2000));
   await page.getByPlaceholder("Record school-relevant conditions, if any").fill("No other known conditions");
