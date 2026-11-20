@@ -908,8 +908,16 @@ test("student admission, profile navigation and parent details render without br
   const editRelationshipOptions = relationshipForm.getByRole("listbox", { name: "Relationship to student" }).getByRole("option");
   await expect(editRelationshipOptions).toHaveCount(8);
   await expect(relationshipForm.getByRole("option", { name: "Other", exact: true })).toHaveCount(0);
-  await relationshipForm.getByRole("option", { name: "Mother", exact: true }).click();
   const saveRelationship = relationshipForm.getByRole("button", { name: "Save relationship" });
+  await expect(saveRelationship).toBeDisabled();
+  await saveRelationship.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Relationship submit button is not associated with its form.");
+    form.requestSubmit();
+  });
+  await expect(page.getByRole("status").filter({ hasText: "No change to save." })).toBeVisible({ timeout: 10_000 });
+  expect(guardianLinkUpdateRequests).toHaveLength(0);
+  await relationshipForm.getByRole("option", { name: "Mother", exact: true }).click();
   failGuardianRelationshipUpdateConflict = true;
   await saveRelationship.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
@@ -953,8 +961,16 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByText("These contact and profile details are shared across all students linked to this guardian.")).toBeVisible();
   const guardianNameInput = page.getByPlaceholder("Guardian full name");
   await expect(guardianNameInput).toHaveValue("Ramesh Sharma");
-  await guardianNameInput.fill("अ".repeat(201));
   const saveGuardianDetails = page.getByRole("button", { name: "Save guardian details" });
+  await expect(saveGuardianDetails).toBeDisabled();
+  await saveGuardianDetails.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Guardian details submit button is not associated with its form.");
+    form.requestSubmit();
+  });
+  await expect(page.getByRole("status").filter({ hasText: "No change to save." })).toBeVisible({ timeout: 10_000 });
+  expect(guardianProfileUpdateRequests).toHaveLength(0);
+  await guardianNameInput.fill("अ".repeat(201));
   await saveGuardianDetails.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
     if (!form) throw new Error("Guardian details submit button is not associated with its form.");
