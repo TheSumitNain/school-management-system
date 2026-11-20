@@ -121,9 +121,12 @@ test("section curriculum validates optional groups, edits in place, and confirms
   const yearSelect = page.getByLabel("Academic year");
   const classSelect = page.getByLabel("Class");
   const sectionSelect = page.getByLabel("Section");
-  await yearSelect.selectOption("7");
-  await classSelect.selectOption("3");
-  await sectionSelect.selectOption("44");
+  await yearSelect.click();
+  await page.getByRole("option", { name: "2026–2027" }).click();
+  await classSelect.click();
+  await page.getByRole("option", { name: "Class 1" }).click();
+  await sectionSelect.click();
+  await page.getByRole("option", { name: "A · english" }).click();
   await page.getByRole("button", { name: "Add optional group" }).click();
 
   const groupName = page.getByLabel("Group name");
@@ -132,7 +135,10 @@ test("section curriculum validates optional groups, edits in place, and confirms
   await groupName.fill("Second language");
 
   await page.getByRole("button", { name: "Save curriculum" }).click();
-  await expect(page.getByText("Assign at least one subject to this optional group.", { exact: true })).toBeVisible();
+  const emptyGroupError = page.getByText("Assign at least one subject to this optional group.", { exact: true });
+  await expect(emptyGroupError).toBeVisible();
+  await expect(emptyGroupError).toHaveCSS("color", "rgb(185, 28, 28)");
+  await expect(page.locator(".curriculum-group-editor")).toHaveAttribute("aria-invalid", "true");
   await expect(page.getByRole("button", { name: "Save curriculum" })).toBeEnabled();
 
   await minChoices.fill("2");

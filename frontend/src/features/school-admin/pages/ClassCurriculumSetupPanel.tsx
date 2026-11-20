@@ -157,7 +157,14 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
       nextErrors.subjects = "Every optional subject must belong to a configured optional group.";
     }
     setFieldErrors(nextErrors);
-    if (nextErrors.year || nextErrors.class || nextErrors.section || nextErrors.subjects || Object.keys(nextErrors.groups).length > 0) return;
+    if (nextErrors.year || nextErrors.class || nextErrors.section || nextErrors.subjects || Object.keys(nextErrors.groups).length > 0) {
+      window.requestAnimationFrame(() => {
+        const firstInvalid = document.querySelector('[aria-invalid="true"], [data-validation-error="true"]');
+        firstInvalid?.scrollIntoView({ behavior: "smooth", block: "center" });
+        firstInvalid?.focus({ preventScroll: true });
+      });
+      return;
+    }
 
     const input: CurriculumSaveInput = {
       academic_year_id: yearNumber,
@@ -264,7 +271,7 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
             <button type="button" className="academic-refresh academic-add" onClick={addGroup} disabled={busy}>Add optional group</button>
           </div>
           {groups.map((group, index) => (
-            <fieldset className="curriculum-group-editor" key={index}>
+            <fieldset className="curriculum-group-editor" key={index} tabIndex={-1} data-validation-error={fieldErrors.groups[index]?.subjects ? "true" : undefined} aria-invalid={Boolean(fieldErrors.groups[index]?.subjects)} aria-describedby={fieldErrors.groups[index]?.subjects ? `curriculum-group-${index}-subjects-error` : undefined}>
               <legend>Optional group {index + 1}</legend>
               <label>Group name<input disabled={busy} value={group.name} maxLength={100} placeholder="e.g. Skill Subject" aria-invalid={Boolean(fieldErrors.groups[index]?.name)} aria-describedby={fieldErrors.groups[index]?.name ? `curriculum-group-${index}-name-error` : undefined} onChange={event => {
                 const nextName = event.target.value;
@@ -278,7 +285,10 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
               }} />{fieldErrors.groups[index]?.name && <small id={`curriculum-group-${index}-name-error`} className="app-field-error" role="alert">{fieldErrors.groups[index].name}</small>}</label>
               <label>Minimum choices<input disabled={busy} type="number" min={0} max={150} value={group.min_selections} aria-invalid={Boolean(fieldErrors.groups[index]?.min)} aria-describedby={fieldErrors.groups[index]?.min ? `curriculum-group-${index}-min-error` : undefined} onChange={event => { setGroups(current => current.map((item, i) => i === index ? { ...item, min_selections: Number(event.target.value) } : item)); setFieldErrors(current => ({ ...current, groups: { ...current.groups, [index]: { ...current.groups[index], min: undefined } } })); }} />{fieldErrors.groups[index]?.min && <small id={`curriculum-group-${index}-min-error`} className="app-field-error" role="alert">{fieldErrors.groups[index].min}</small>}</label>
               <label>Maximum choices<input disabled={busy} type="number" min={1} max={150} value={group.max_selections} aria-invalid={Boolean(fieldErrors.groups[index]?.max)} aria-describedby={fieldErrors.groups[index]?.max ? `curriculum-group-${index}-max-error` : undefined} onChange={event => { setGroups(current => current.map((item, i) => i === index ? { ...item, max_selections: Number(event.target.value) } : item)); setFieldErrors(current => ({ ...current, groups: { ...current.groups, [index]: { ...current.groups[index], min: undefined, max: undefined } } })); }} />{fieldErrors.groups[index]?.max && <small id={`curriculum-group-${index}-max-error`} className="app-field-error" role="alert">{fieldErrors.groups[index].max}</small>}</label>
-              {fieldErrors.groups[index]?.subjects && <small className="app-field-error" role="alert">{fieldErrors.groups[index].subjects}</small>}
+              <div className="curriculum-group-subject-assignment" aria-label={`Subject assignment for optional group ${index + 1}`}>
+                <span>Subject assignment</span>
+                {fieldErrors.groups[index]?.subjects && <small id={`curriculum-group-${index}-subjects-error`} className="app-field-error" role="alert">{fieldErrors.groups[index].subjects}</small>}
+              </div>
               <button type="button" className="academic-edit" disabled={busy} onClick={() => {
                 const removedName = group.name.trim().toLowerCase();
                 setGroups(current => current.filter((_, i) => i !== index));

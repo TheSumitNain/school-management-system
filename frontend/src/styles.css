@@ -1082,3 +1082,24 @@ td b {
   .palette-options { gap: 12px; }
   .appearance-page > .appearance-section + .appearance-section { margin-top: 14px; }
 }
+
+
+/* Consistent inline field validation across all forms. */
+.app-field-error {
+  display: block;
+  margin-top: 6px;
+  color: #b91c1c;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+.curriculum-group-subject-assignment {
+  display: grid;
+  gap: 4px;
+  margin: 2px 0 12px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+.curriculum-group-editor[aria-invalid="true"] {
+  border-color: var(--color-danger);
+}
