@@ -690,6 +690,7 @@ test("student admission, profile navigation and parent details render without br
   await curriculumPanel.getByRole("checkbox", { name: /Sanskrit/ }).uncheck();
   await expect(saveSubjectChoices).toBeEnabled();
   await saveSubjectChoices.click();
+  await expect(page.getByRole("status").filter({ hasText: "Student subject choices saved successfully." })).toBeVisible({ timeout: 10_000 });
   await expect(curriculumPanel.getByText("Assigned", { exact: true })).toBeVisible();
   // Standalone and grouped optional choices are persisted as current rows;
   // no previous-choice history is exposed in Student Management.
