@@ -127,3 +127,12 @@
 .academic-page .academic-add:disabled{cursor:not-allowed;opacity:.55}
 @keyframes curriculum-new-group-enter{from{opacity:.65;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @media(prefers-reduced-motion:reduce){.curriculum-group-editor.is-new{animation:none}.academic-page .academic-add{transition:none}}
+
+
+/* Keep optional-group validation separate from its destructive action. */
+.curriculum-group-subject-assignment{grid-column:1/-2;min-width:0;align-self:center}
+.curriculum-group-subject-assignment .app-field-error{margin-top:4px}
+@media(max-width:720px){
+ .curriculum-group-subject-assignment{grid-column:1/-1}
+ .curriculum-group-editor .academic-edit{grid-column:1/-1;justify-self:end}
+}
