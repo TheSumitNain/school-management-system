@@ -64,3 +64,8 @@ $v52$;
 
 ALTER TABLE class_curriculum_subjects
     DROP COLUMN is_active;
+
+COMMENT ON TABLE class_curricula IS
+    'Immutable, versioned school/year/class subject curricula; a new version supersedes the previous active version.';
+COMMENT ON TABLE class_curriculum_subjects IS
+    'Compulsory subjects (no optional group) and optional subject choices for one curriculum version.';
