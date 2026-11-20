@@ -60,6 +60,7 @@ test("student admission, profile navigation and parent details render without br
   let curriculumAssigned = false;
   let curriculumReads = 0;
   let curriculumSubjectWrites = 0;
+  let failCurriculumSubjectSave = false;
   let medicalDetailReads = 0;
   let physicalDetailReads = 0;
   let medicalDetailWrites = 0;
@@ -269,6 +270,10 @@ test("student admission, profile navigation and parent details render without br
       if (curriculumEnrollmentMatch[2] === "subjects" && method === "PUT") {
         const input = request.postDataJSON() as { selected_optional_subject_ids: number[] };
         curriculumSubjectWrites++;
+        if (failCurriculumSubjectSave) {
+          await route.fulfill({ status: 500, json: { message: "Unable to save student subject choices. Please try again." } });
+          return;
+        }
         curriculumAssigned = true;
         savedCurriculumSelections = input.selected_optional_subject_ids;
         await route.fulfill({ json: { enrollment_curriculum: {
@@ -696,6 +701,20 @@ test("student admission, profile navigation and parent details render without br
   // no previous-choice history is exposed in Student Management.
   expect(savedCurriculumSelections).toEqual([904, 902]);
   await expect(curriculumPanel.getByText(/Previous subject choices/)).toHaveCount(0);
+
+  // A failed save must show both the global error notification and inline recovery context.
+  await curriculumPanel.getByRole("checkbox", { name: /Hindi/ }).uncheck();
+  await curriculumPanel.getByRole("checkbox", { name: /Sanskrit/ }).check();
+  failCurriculumSubjectSave = true;
+  await saveSubjectChoices.click();
+  const subjectSaveError = "Unable to save student subject choices. Please try again.";
+  await expect(page.getByRole("alert").filter({ hasText: subjectSaveError })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("status").filter({ hasText: subjectSaveError })).toBeVisible({ timeout: 10_000 });
+  expect(savedCurriculumSelections).toEqual([904, 902]);
+  failCurriculumSubjectSave = false;
+  await curriculumPanel.getByRole("checkbox", { name: /Sanskrit/ }).uncheck();
+  await curriculumPanel.getByRole("checkbox", { name: /Hindi/ }).check();
+  await expect(saveSubjectChoices).toBeDisabled();
   // Reverting an edit back to the saved selection must disable Save and never write again.
   await expect(saveSubjectChoices).toBeDisabled();
   await curriculumPanel.getByRole("checkbox", { name: /Hindi/ }).uncheck();
