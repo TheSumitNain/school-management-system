@@ -21,7 +21,7 @@ These standards exist so school owners, administrators, teachers and other in-sc
 - Date controls must explain what date is expected through a contextual prompt or adjacent helper text. For native date/time/number controls where browsers may hide or ignore placeholders, provide visible helper text with a concrete format/example.
 - Optional fields must say they are optional in the label or nearby helper text and, where useful, show an example placeholder.
 - Keep placeholders concise and context-specific, preserve persistent labels, and ensure placeholder/helper contrast is readable in every theme. Existing values, validation messages and accessible descriptions must remain visible and must not depend on placeholder text.
-- Provide examples and helper text for non-obvious formats, length limits and constraints.
+- Provide examples and helper text for non-obvious formats, length limits and constraints. Define meaningful minimum and maximum lengths for names and identifiers; do not accept one-character values for names that represent real-world entities (for example, subject, class, role or school names) unless the domain explicitly allows them. Enforce the same constraints in the backend.
 - On submit, validate all fields and display every detected error together directly below its corresponding field.
 - A generic top/bottom error box must never be the only indication of field validation errors.
 - Associate each field message through `aria-describedby`, set `aria-invalid` when invalid and use actionable wording.

@@ -12,6 +12,7 @@ test("section curriculum validates optional groups, edits in place, and confirms
   let groupRemovalSavePayload: Record<string, unknown> | null = null;
   let curriculumSaved = false;
   let saveCount = 0;
+  let subjectWriteCount = 0;
   let currentCurriculum: Record<string, unknown> = {
     id: 701, school_id: 10, academic_year_id: 7, class_id: 3, section_id: 44,
     version_number: 1, status: "active", created_at: "2026-11-15T00:00:00.000Z",
@@ -60,7 +61,12 @@ test("section curriculum validates optional groups, edits in place, and confirms
       await route.fulfill({ json: { sections: [{ id: 44, academic_year_id: 7, class_id: 3, name: "A", medium: "english", is_active: true }] } });
       return;
     }
-    if (path === "/school/subjects") {
+    if (path === "/school/subjects" && method === "POST") {
+      subjectWriteCount += 1;
+      await route.fulfill({ status: 201, json: { status: "success", subject: { id: 94, name: "Art", is_active: true } } });
+      return;
+    }
+    if (path === "/school/subjects" && method === "GET") {
       await route.fulfill({ json: { subjects: [
         { id: 91, name: "Mathematics", subject_code: "MATH", is_active: true },
         { id: 92, name: "Hindi", subject_code: "HIN", is_active: true },
@@ -116,6 +122,14 @@ test("section curriculum validates optional groups, edits in place, and confirms
   await page.getByLabel("Password").fill("E2E-only-password");
   await page.getByRole("button", { name: /Continue/ }).click();
   await page.getByRole("button", { name: "Academics" }).click();
+  await page.getByRole("tab", { name: "Subjects" }).click();
+  await page.getByRole("button", { name: "Add subject" }).click();
+  const subjectDialog = page.getByRole("dialog", { name: "Add subject" });
+  await subjectDialog.getByLabel("Name").fill("a");
+  await subjectDialog.getByRole("button", { name: "Save changes" }).click();
+  await expect(subjectDialog.getByText("Subject name must contain at least 2 characters.")).toBeVisible();
+  expect(subjectWriteCount).toBe(0);
+  await subjectDialog.getByRole("button", { name: "Cancel" }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("tab", { name: "Class curriculum" }).click();
   const academicTabs = page.getByRole("tablist", { name: "Academic structure" });

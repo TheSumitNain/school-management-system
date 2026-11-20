@@ -619,7 +619,7 @@ test("student admission, profile navigation and parent details render without br
   await expect.poll(() => failedStudentReads).toContain("basic-details");
   await expect(page.getByRole("button", { name: "Save student name" })).toHaveCount(0);
   const basicSave = page.getByRole("button", { name: "Save basic details" });
-  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(page.locator(".student-feedback.error")).toBeVisible();
   await expect(basicSave).toBeDisabled();
   failStudentReads.delete("basic-details");
   await page.getByRole("button", { name: "Retry loading details" }).click();

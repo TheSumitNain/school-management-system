@@ -321,7 +321,7 @@ func (r *AcademicRepository) SaveSubject(ctx context.Context, actorID, schoolID,
 	if r == nil || r.db == nil { return nil, ErrAcademicAccessDenied }
 	name=strings.TrimSpace(name)
 	if code!=nil { value:=strings.TrimSpace(*code); if value=="" { code=nil } else if len(value)>40 { return nil,ErrInvalidAcademicInput } else { code=&value } }
-	if name==""||len(name)>120{return nil,ErrInvalidAcademicInput}
+	if len([]rune(name))<2||len([]rune(name))>120{return nil,ErrInvalidAcademicInput}
 	tx,err:=r.db.Begin(ctx);if err!=nil{return nil,fmt.Errorf("begin subject save: %w",err)}
 	defer func(){_ = tx.Rollback(ctx)}()
 	if err=authorizeAcademic(ctx,tx,actorID,schoolID,"subjects.manage");err!=nil{return nil,err}

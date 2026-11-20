@@ -62,7 +62,7 @@ These standards apply to every frontend feature and page. A feature must reuse s
 - Audit every create, add, edit, update, remove, delete, archive, restore, assign, unassign, reset and bulk action on every in-scope page.
 - Each completed mutation must show a concise global toast naming the action and affected record/context, only after the server confirms success.
 - A failed mutation must show a useful error toast or persistent form-level error with a recovery hint; field-specific server errors remain directly below their fields.
-- A no-op save must not send a write request or show a success toast; use a neutral informational message when user feedback is needed.
+- A no-op save must be disabled whenever the form can determine it is unchanged, and must be blocked again in the submit handler as a final guard. It must not send a write request or show a success toast; show a neutral informational toast such as **No change to save**.
 - Destructive actions require a clear confirmation step and the success toast must describe what was actually removed/changed. Never show success when a request failed, was cancelled or only partially completed.
 - Verify duplicate clicks, pending/loading state, network/server failures, validation failures and retry behavior. Avoid duplicate success banners and duplicate toasts for the same action.
 
