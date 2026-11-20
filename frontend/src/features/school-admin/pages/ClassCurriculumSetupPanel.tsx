@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Select } from "../../../shared/components/Select";
 import { notifyToast } from "../../../shared/notifications";
+import { Modal } from "../../../shared/components/Modal";
 import {
   usePreviewSchoolClassCurriculumRemovalMutation,
   useSaveSchoolClassCurriculumMutation,
@@ -101,11 +102,10 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
         notifyToast("success", message);
         setPendingSave(null);
         setPendingRemovalImpacts(null);
-        if (!currentCurriculum) {
-          window.requestAnimationFrame(() => {
-            curriculumSummaryRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-          });
-        }
+        window.requestAnimationFrame(() => {
+          window.scrollTo({ top: 0, behavior: "smooth" });
+          curriculumSummaryRef.current?.focus({ preventScroll: true });
+        });
       },
       onError: mutationError => {
         if (mutationError.message.toLowerCase().includes("affected-student count changed")) {
@@ -296,28 +296,31 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
           </button>
         </form>
       ) : <p className="table-message">You have read-only access to class curricula.</p>}
-      {pendingRemovalImpacts && pendingSave && (
-        <div className="student-modal-backdrop" role="presentation">
-          <section className="student-modal" role="dialog" aria-modal="true" aria-labelledby="curriculum-removal-title">
-            <div className="toolbar"><div><h3 id="curriculum-removal-title">Confirm subject removal</h3><small>These subjects will be removed from the curriculum and from affected students' active selections.</small></div></div>
-            {pendingRemovalImpacts.length === 0 ? <p>No currently assigned students were found for the removed subjects.</p> : (
-              <ul className="curriculum-version-list">
-                {pendingRemovalImpacts.map(item => <li key={item.subject_id}>
-                  <strong>{item.subject_name}</strong>
-                  <p><strong>{item.affected_students}</strong> affected students</p>
-                </li>)}
-              </ul>
-            )}
-            <p>Confirming permanently removes these subjects and the affected students’ current choices. No curriculum or subject-selection history will be kept.</p>
-            <div className="toolbar">
-              <button type="button" className="academic-edit" disabled={busy} onClick={() => { setPendingSave(null); setPendingRemovalImpacts(null); }}>Cancel</button>
-              <button type="button" className="primary academic-add" disabled={busy} onClick={() => persist(pendingSave, pendingRemovalImpacts)}>
-                {save.isPending ? "Applying changes…" : "Confirm and save"}
-              </button>
-            </div>
-          </section>
-        </div>
-      )}
+      <Modal
+        open={Boolean(pendingSave && pendingRemovalImpacts !== null)}
+        title="Confirm subject removal"
+        description="These subjects will be removed from the curriculum and from affected students' active selections."
+        onClose={() => { if (!busy) { setPendingSave(null); setPendingRemovalImpacts(null); } }}
+        closeDisabled={busy}
+      >
+        {pendingRemovalImpacts && pendingSave && <>
+          {pendingRemovalImpacts.length === 0 ? <p>No currently assigned students were found for the removed subjects.</p> : (
+            <ul className="curriculum-version-list">
+              {pendingRemovalImpacts.map(item => <li key={item.subject_id}>
+                <strong>{item.subject_name}</strong>
+                <p><strong>{item.affected_students}</strong> affected students</p>
+              </li>)}
+            </ul>
+          )}
+          <p>Confirming permanently removes these subjects and the affected students’ current choices. No curriculum or subject-selection history will be kept.</p>
+          <div className="app-modal-actions">
+            <button type="button" className="app-modal-cancel" disabled={busy} onClick={() => { setPendingSave(null); setPendingRemovalImpacts(null); }}>Cancel</button>
+            <button type="button" className="primary app-modal-confirm" disabled={busy} onClick={() => persist(pendingSave, pendingRemovalImpacts)}>
+              {save.isPending ? "Applying changes…" : "Confirm and save"}
+            </button>
+          </div>
+        </>}
+      </Modal>
     </section>
   );
 }
