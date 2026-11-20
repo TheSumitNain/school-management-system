@@ -54,13 +54,13 @@ func (h *PlatformAdminLifecycleHandler) Create(c *gin.Context) {
 	if err!=nil {
 		switch {
 		case errors.Is(err,services.ErrInvalidPlatformAdminAccount),errors.Is(err,services.ErrInvalidPassword):
-			c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Valid email and password meeting the password policy are required"})
+			c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Valid email and password meeting the password policy are required","field_errors":gin.H{"email":"Enter a valid email address.","password":"Enter a password that meets the password policy."}})
 		case errors.Is(err,services.ErrCompromisedPassword):
-			c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Password has appeared in a known data breach"})
+			c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Password has appeared in a known data breach","field_errors":gin.H{"password":"This password has appeared in a known data breach. Choose another password."}})
 		case errors.Is(err,services.ErrPasswordBreachCheckUnavailable):
 			c.JSON(http.StatusServiceUnavailable,gin.H{"status":"error","message":"Password security check is unavailable"})
 		case errors.Is(err,services.ErrPlatformAdminEmailTaken):
-			c.JSON(http.StatusConflict,gin.H{"status":"error","message":"Platform Admin email already exists"})
+			c.JSON(http.StatusConflict,gin.H{"status":"error","message":"Platform Admin email already exists","field_errors":gin.H{"email":"A Platform Admin already uses this email address."}})
 		default:
 			c.JSON(http.StatusForbidden,gin.H{"status":"error","message":"Platform Admin creation was not authorized"})
 		}

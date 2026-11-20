@@ -97,9 +97,9 @@ func (h *RoleHandler) CreateRole(c *gin.Context) {
 	case err == nil:
 		c.JSON(http.StatusCreated, gin.H{"status": "success", "role": role})
 	case errors.Is(err, services.ErrInvalidCustomRole):
-		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Role name must contain 2–120 characters"})
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Role name must contain 2–120 characters", "field_errors": gin.H{"name": "Enter a role name containing 2–120 characters."}})
 	case errors.Is(err, repository.ErrRoleNameTaken):
-		c.JSON(http.StatusConflict, gin.H{"status": "error", "message": "A role with this name already exists"})
+		c.JSON(http.StatusConflict, gin.H{"status": "error", "message": "A role with this name already exists", "field_errors": gin.H{"name": "A role with this name already exists."}})
 	case errors.Is(err, repository.ErrRolePermissionDenied):
 		c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": "Custom role creation is not authorized"})
 	default:
@@ -141,7 +141,7 @@ func (h *RoleHandler) GrantSchoolPermissionDelegation(c *gin.Context) {
 		return
 	}
 	if request.PermissionKey == "" || (!request.CanAssignToRoles && !request.CanOverrideUsers) {
-		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "A permission and at least one delegation capability are required"})
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "A permission and at least one delegation capability are required", "field_errors": gin.H{"permission_key": "Choose a permission to delegate."}})
 		return
 	}
 	delegation, err := h.service.GrantSchoolPermissionDelegation(
@@ -152,11 +152,11 @@ func (h *RoleHandler) GrantSchoolPermissionDelegation(c *gin.Context) {
 	case err == nil:
 		c.JSON(http.StatusCreated, gin.H{"status": "success", "delegation": delegation})
 	case errors.Is(err, services.ErrInvalidCustomRole):
-		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid delegation request"})
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid delegation request", "field_errors": gin.H{"permission_key": "Choose a valid permission to delegate."}})
 	case errors.Is(err, repository.ErrRoleNotFound):
 		c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": "School or delegable permission not found"})
 	case errors.Is(err, repository.ErrDelegationAlreadyActive):
-		c.JSON(http.StatusConflict, gin.H{"status": "error", "message": "An active delegation already exists for this school permission"})
+		c.JSON(http.StatusConflict, gin.H{"status": "error", "message": "An active delegation already exists for this school permission", "field_errors": gin.H{"permission_key": "This permission is already actively delegated to the school."}})
 	case errors.Is(err, repository.ErrRolePermissionDenied):
 		c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": "Permission delegation is not authorized"})
 	default:

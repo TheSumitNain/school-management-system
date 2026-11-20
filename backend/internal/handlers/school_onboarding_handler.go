@@ -62,15 +62,15 @@ func (h *SchoolOnboardingHandler) Create(c *gin.Context) {
 		case errors.Is(err, services.ErrInvalidSchoolOnboarding):
 			c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "School name, code or School Admin username is invalid"})
 		case errors.Is(err, services.ErrInvalidPassword):
-			c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "School Admin initial password must meet the password policy"})
+			c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "School Admin initial password must meet the password policy", "field_errors": gin.H{"school_admin_initial_password": "Enter a password that meets the password policy."}})
 		case errors.Is(err, services.ErrCompromisedPassword):
-			c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "School Admin initial password has appeared in known data breaches. Choose a different password."})
+			c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "School Admin initial password has appeared in known data breaches. Choose a different password.", "field_errors": gin.H{"school_admin_initial_password": "This password has appeared in a known data breach. Choose another password."}})
 		case errors.Is(err, services.ErrPasswordBreachCheckUnavailable):
 			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Password safety verification is temporarily unavailable. Try again shortly."})
 		case errors.Is(err, repository.ErrSchoolCodeTaken):
-			c.JSON(http.StatusConflict, gin.H{"status": "error", "message": "School code is already in use"})
+			c.JSON(http.StatusConflict, gin.H{"status": "error", "message": "School code is already in use", "field_errors": gin.H{"code": "This school code is already in use."}})
 		case errors.Is(err, repository.ErrUsernameTaken):
-			c.JSON(http.StatusConflict, gin.H{"status": "error", "message": "School Admin username is already in use"})
+			c.JSON(http.StatusConflict, gin.H{"status": "error", "message": "School Admin username is already in use", "field_errors": gin.H{"school_admin_username": "This username is already in use."}})
 		default:
 			// Keep internal database/service details out of the HTTP response, but log
 			// the wrapped error so operators can diagnose failed onboarding attempts.
