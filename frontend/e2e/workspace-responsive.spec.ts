@@ -34,6 +34,20 @@ test("school workspace pages stay within narrow, tablet, and desktop viewports",
   });
 
   await page.goto("/");
+  for (const width of [320, 360, 390, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
+    await expect.poll(
+      () => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+      { message: `login page should not cause horizontal overflow at ${width}px` },
+    ).toBe(true);
+    const loginCardFits = await page.locator(".login-card").evaluate(element => {
+      const rect = element.getBoundingClientRect();
+      return rect.width > 0 && rect.left >= 0 && rect.right <= window.innerWidth + 1;
+    });
+    expect(loginCardFits, `login card should fit within ${width}px`).toBe(true);
+  }
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.getByLabel("Username").fill("e2e-responsive-admin");
   await page.getByLabel("Password").fill("E2E-only-password");
   await page.getByRole("button", { name: /Continue/ }).click();
