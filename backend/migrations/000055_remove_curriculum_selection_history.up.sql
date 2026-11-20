@@ -90,9 +90,9 @@ BEGIN
 END;
 $v55$;
 
--- Some V44 schemas use a combined UPDATE/DELETE trigger to enforce
--- append-only selection history. Drop only triggers that include DELETE;
--- retain INSERT validation and restore equivalent UPDATE protection below.
+-- V44's selection-history guard includes UPDATE/DELETE. Remove its DELETE
+-- protection so current choices can be replaced; keep INSERT validation and
+-- restore update protection without preserving revoked selection rows.
 DO $v55$
 DECLARE
     trigger_row RECORD;
