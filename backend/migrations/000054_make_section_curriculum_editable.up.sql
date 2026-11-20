@@ -85,7 +85,20 @@ BEGIN
                      AND s.revoked_at IS NULL
                      AND cs.is_active=TRUE
                      AND cs.optional_group_id=OLD.id
-              ) NOT BETWEEN NEW.min_selections AND NEW.max_selections
+              ) > 0
+                AND (
+                  SELECT COUNT(*)
+                    FROM student_enrollment_subject_selections s
+                    JOIN class_curriculum_subjects cs
+                      ON cs.id=s.curriculum_subject_id
+                     AND cs.curriculum_id=s.curriculum_id
+                     AND cs.school_id=s.school_id
+                   WHERE s.enrollment_curriculum_id=ec.id
+                     AND s.school_id=ec.school_id
+                     AND s.revoked_at IS NULL
+                     AND cs.is_active=TRUE
+                     AND cs.optional_group_id=OLD.id
+                ) NOT BETWEEN NEW.min_selections AND NEW.max_selections
        ) THEN
         RAISE EXCEPTION 'optional group limits would invalidate existing student selections';
     END IF;
