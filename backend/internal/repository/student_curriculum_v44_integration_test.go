@@ -250,11 +250,17 @@ func TestStudentCurriculumV44PostgresIntegration(t *testing.T) {
 		return err
 	})
 
-	if _, err := tx.Exec(ctx, `UPDATE student_enrollment_subject_selections SET revoked_at=NOW() WHERE id=$1`, selectionID); err != nil {
-		t.Fatalf("revoke optional subject choice: %v", err)
+	// Subject choices are current state, not history. Remove both rows before
+	// replacing the enrollment's curriculum assignment.
+	if _, err := tx.Exec(ctx, `DELETE FROM student_enrollment_subject_selections WHERE id = ANY($1)`, []int64{selectionID, standaloneSelectionID}); err != nil {
+		t.Fatalf("delete current optional subject choices: %v", err)
 	}
-	if _, err := tx.Exec(ctx, `UPDATE student_enrollment_subject_selections SET revoked_at=NOW() WHERE id=$1`, standaloneSelectionID); err != nil {
-		t.Fatalf("revoke standalone optional subject choice: %v", err)
+	var remainingChoices int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*)::integer FROM student_enrollment_subject_selections WHERE enrollment_curriculum_id=$1`, assignmentID).Scan(&remainingChoices); err != nil {
+		t.Fatalf("count current optional subject choices after deletion: %v", err)
+	}
+	if remainingChoices != 0 {
+		t.Fatalf("current optional subject choices remaining = %d, want 0", remainingChoices)
 	}
 	if _, err := tx.Exec(ctx, `
 		UPDATE student_enrollment_curricula SET status='replaced',revoked_at=NOW() WHERE id=$1
