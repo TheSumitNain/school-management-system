@@ -34,10 +34,9 @@ export function Modal({ open, title, description, onClose, children, closeDisabl
       // A reused modal may retain its previous scroll position. Reset it on
       // every open so the sticky header cannot cover the first content controls.
       dialogRef.current?.scrollTo({ top: 0 });
-      const first = dialogRef.current?.querySelector<HTMLElement>(
-        "input:not([disabled]):not([type='hidden']), select:not([disabled]), textarea:not([disabled]), button:not([disabled]):not(.app-modal-close):not([aria-label^='Help for '])",
-      ) ?? dialogRef.current?.querySelector<HTMLElement>(".app-modal-close");
-      first?.focus();
+      // Focus the dialog itself without scrolling its first field underneath
+      // the sticky header. Inner navigation tabs must remain visible/clickable.
+      dialogRef.current?.focus({ preventScroll: true });
     });
     const onKeyDown = (event: KeyboardEvent) => {
       if (openModalStack[openModalStack.length - 1] !== modalID) return;
@@ -68,7 +67,7 @@ export function Modal({ open, title, description, onClose, children, closeDisabl
     <div className="app-modal-backdrop" onMouseDown={event => {
       if (event.target === event.currentTarget && !closeDisabled && openModalStack[openModalStack.length - 1] === modalID) onClose();
     }}>
-      <div ref={dialogRef} className="app-modal" role="dialog" aria-modal="true" aria-labelledby={titleID} aria-describedby={description ? descriptionID : undefined}>
+      <div ref={dialogRef} className="app-modal" role="dialog" tabIndex={-1} aria-modal="true" aria-labelledby={titleID} aria-describedby={description ? descriptionID : undefined}>
         <header className="app-modal-header">
           <div><h2 id={titleID}>{title}</h2>{description && <p id={descriptionID}>{description}</p>}</div>
           <button type="button" className="app-modal-close" aria-label="Close dialog" onClick={onClose} disabled={closeDisabled}><X size={18}/></button>
