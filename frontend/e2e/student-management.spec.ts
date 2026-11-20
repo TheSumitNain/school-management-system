@@ -59,6 +59,7 @@ test("student admission, profile navigation and parent details render without br
   let rejectStudentContactEmailOnce = true;
   let curriculumAssigned = false;
   let curriculumReads = 0;
+  let curriculumSubjectWrites = 0;
   let medicalDetailReads = 0;
   let physicalDetailReads = 0;
   let savedCurriculumSelections: number[] = [];
@@ -265,6 +266,7 @@ test("student admission, profile navigation and parent details render without br
       }
       if (curriculumEnrollmentMatch[2] === "subjects" && method === "PUT") {
         const input = request.postDataJSON() as { selected_optional_subject_ids: number[] };
+        curriculumSubjectWrites++;
         curriculumAssigned = true;
         savedCurriculumSelections = input.selected_optional_subject_ids;
         await route.fulfill({ json: { enrollment_curriculum: {
@@ -613,6 +615,13 @@ test("student admission, profile navigation and parent details render without br
   // no previous-choice history is exposed in Student Management.
   expect(savedCurriculumSelections).toEqual([904, 902]);
   await expect(curriculumPanel.getByText(/Previous subject choices/)).toHaveCount(0);
+  // Reverting an edit back to the saved selection must disable Save and never write again.
+  await expect(saveSubjectChoices).toBeDisabled();
+  await curriculumPanel.getByRole("checkbox", { name: /Hindi/ }).uncheck();
+  await expect(saveSubjectChoices).toBeEnabled();
+  await curriculumPanel.getByRole("checkbox", { name: /Hindi/ }).check();
+  await expect(saveSubjectChoices).toBeDisabled();
+  expect(curriculumSubjectWrites).toBe(1);
   await curriculumPanel.getByRole("checkbox", { name: /Hindi/ }).uncheck();
   await curriculumPanel.getByRole("checkbox", { name: /Sanskrit/ }).check();
   const readsBeforeRefresh = curriculumReads;
