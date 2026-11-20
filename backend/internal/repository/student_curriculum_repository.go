@@ -64,14 +64,6 @@ type ClassCurriculum struct {
 	Subjects       []CurriculumSubject       `json:"subjects"`
 }
 
-type StudentSubjectSelectionHistory struct {
-	CurriculumVersion int        `json:"curriculum_version"`
-	SubjectName       string     `json:"subject_name"`
-	SubjectCode       *string    `json:"subject_code,omitempty"`
-	SelectedAt        time.Time  `json:"selected_at"`
-	RevokedAt         *time.Time `json:"revoked_at,omitempty"`
-}
-
 type StudentEnrollmentCurriculum struct {
 	EnrollmentID               int64                            `json:"enrollment_id"`
 	StudentID                  int64                            `json:"student_id"`
@@ -84,7 +76,6 @@ type StudentEnrollmentCurriculum struct {
 	AvailableCurriculum        *ClassCurriculum                 `json:"available_curriculum,omitempty"`
 	Assigned                   bool                             `json:"assigned"`
 	SelectedOptionalSubjectIDs []int64                          `json:"selected_optional_subject_ids"`
-	SelectionHistory           []StudentSubjectSelectionHistory `json:"selection_history"`
 }
 
 func loadClassCurriculum(ctx context.Context, db repositoryDB, curriculumID, schoolID int64) (*ClassCurriculum, error) {
@@ -544,7 +535,6 @@ func (r *AcademicRepository) loadStudentEnrollmentCurriculum(ctx context.Context
 	item.EnrollmentID = enrollmentID
 	item.StudentID = studentID
 	item.SelectedOptionalSubjectIDs = make([]int64, 0)
-	item.SelectionHistory = make([]StudentSubjectSelectionHistory, 0)
 	if err := r.db.QueryRow(ctx, `
 		SELECT e.academic_year_id,e.class_id,e.section_id,e.status,st.status
 		  FROM student_enrollments e
@@ -616,7 +606,6 @@ func (r *AcademicRepository) loadStudentEnrollmentCurriculum(ctx context.Context
 		}
 		rows.Close()
 	}
-	// Selection history is intentionally not retained or returned.
 	return &item, nil
 }
 
