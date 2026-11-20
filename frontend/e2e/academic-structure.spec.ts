@@ -172,7 +172,7 @@ test("section curriculum validates optional groups, edits in place, and confirms
   await page.getByRole("checkbox", { name: /Hindi/ }).uncheck();
   await page.getByRole("button", { name: "Save curriculum changes" }).click();
   await expect(page.getByRole("heading", { name: "Confirm subject removal" })).toBeVisible();
-  await expect(page.getByText("Hindi", { exact: true })).toBeVisible();
+  await expect(page.getByRole("dialog").getByText("Hindi", { exact: true })).toBeVisible();
   await expect(page.getByText("2 affected students", { exact: true })).toBeVisible();
   expect(removalPreviewPayload).toMatchObject({
     academic_year_id: 7, class_id: 3, section_id: 44, subject_ids: [92],
