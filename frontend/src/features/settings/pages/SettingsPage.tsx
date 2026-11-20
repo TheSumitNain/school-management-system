@@ -71,7 +71,7 @@ export function SettingsPage() {
         <p>Choose Light or Dark, follow your device setting, or let SchoolDesk switch automatically on a daily schedule. Your choice is saved automatically.</p>
         <div className="appearance-options">
           {modes.map(({ value, label, description, icon: Icon }) => (
-            <button key={value} type="button" className="appearance-option" aria-pressed={preference === value} onClick={() => changePreference(value)>
+            <button key={value} type="button" className="appearance-option" aria-pressed={preference === value} onClick={() => changePreference(value)}>
               <Icon size={18} />
               <strong>{label}</strong>
               <small>{description}</small>
@@ -101,7 +101,7 @@ export function SettingsPage() {
         <p>Choose a coordinated color system for the workspace, header, navigation and interface accents.</p>
         <div className="palette-options">
           {palettes.map(({ value, label }) => (
-            <button key={value} type="button" className="palette-option" aria-pressed={palette === value} onClick={() => changePalette(value)>
+            <button key={value} type="button" className="palette-option" aria-pressed={palette === value} onClick={() => changePalette(value)}>
               <span className={`palette-swatch palette-swatch-${value}`} aria-hidden="true" />
               {label}
             </button>
