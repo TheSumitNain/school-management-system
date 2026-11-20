@@ -975,6 +975,9 @@ test("student admission, profile navigation and parent details render without br
   });
   await expect(page.getByRole("status").filter({ hasText: "No change to save." })).toBeVisible({ timeout: 10_000 });
   expect(guardianProfileUpdateRequests).toHaveLength(0);
+  // A no-op submit intentionally closes the shared guardian editor; reopen it before validation.
+  await guardianCard.getByRole("button", { name: "Edit shared guardian details" }).click();
+  await expect(guardianNameInput).toBeVisible();
   await guardianNameInput.fill("अ".repeat(201));
   await saveGuardianDetails.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
