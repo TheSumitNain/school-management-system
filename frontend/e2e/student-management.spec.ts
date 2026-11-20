@@ -1212,6 +1212,17 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByText("Area / mohalla must be 120 characters or fewer.", { exact: true })).toBeVisible();
   await expect(page.getByText("Landmark must be 120 characters or fewer.", { exact: true })).toBeVisible();
   await expect(page.getByText("PIN / postal code must be 20 characters or fewer.", { exact: true })).toBeVisible();
+  for (const field of [
+    { locator: page.getByPlaceholder("House number, street or building"), errorID: "student-address-line1-error" },
+    { locator: page.getByPlaceholder("Apartment, floor or additional details"), errorID: "student-address-line2-error" },
+    { locator: page.getByPlaceholder("Local area or mohalla"), errorID: "student-address-area-error" },
+    { locator: page.getByPlaceholder("Nearby landmark"), errorID: "student-address-landmark-error" },
+    { locator: page.getByPlaceholder("PIN or postal code"), errorID: "student-address-postal-error" },
+  ]) {
+    await expect(field.locator).toHaveAttribute("aria-invalid", "true");
+    await expect(field.locator).toHaveAttribute("aria-describedby", field.errorID);
+    await expect(page.locator(`#${field.errorID}[role="alert"]`)).toBeVisible();
+  }
   expect(addresses).toHaveLength(0);
   await page.getByPlaceholder("House number, street or building").fill("House 12, Main Road");
   await page.getByPlaceholder("Apartment, floor or additional details").fill("");
