@@ -618,7 +618,9 @@ test("student admission, profile navigation and parent details render without br
   // Reverting an edit back to the saved selection must disable Save and never write again.
   await expect(saveSubjectChoices).toBeDisabled();
   await curriculumPanel.getByRole("checkbox", { name: /Hindi/ }).uncheck();
+  await curriculumPanel.getByRole("checkbox", { name: /Sanskrit/ }).check();
   await expect(saveSubjectChoices).toBeEnabled();
+  await curriculumPanel.getByRole("checkbox", { name: /Sanskrit/ }).uncheck();
   await curriculumPanel.getByRole("checkbox", { name: /Hindi/ }).check();
   await expect(saveSubjectChoices).toBeDisabled();
   expect(curriculumSubjectWrites).toBe(1);
