@@ -174,10 +174,10 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
           min_selections: item.min_selections,
           max_selections: item.max_selections,
         })).sort((a, b) => a.name.localeCompare(b.name));
-      const normalizeSubjects = (items: Array<{ subject_id: number; is_optional: boolean; optional_group?: string }>) =>
+      const normalizeSubjects = (items: Array<{ subject_id: number; is_optional?: boolean; optional_group?: string }>) =>
         items.map(item => ({
           subject_id: item.subject_id,
-          is_optional: item.is_optional,
+          is_optional: Boolean(item.is_optional),
           optional_group: item.optional_group ?? "",
         })).sort((a, b) => a.subject_id - b.subject_id);
       const existingSubjects = currentCurriculum.subjects.map(subject => ({
