@@ -166,6 +166,39 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
       optional_groups: groups.map(group => ({ ...group, name: group.name.trim() })),
       subjects: payloadSubjects,
     };
+
+    if (currentCurriculum) {
+      const normalizeGroups = (items: Array<{ name: string; min_selections: number; max_selections: number }>) =>
+        items.map(item => ({
+          name: item.name.trim(),
+          min_selections: item.min_selections,
+          max_selections: item.max_selections,
+        })).sort((a, b) => a.name.localeCompare(b.name));
+      const normalizeSubjects = (items: Array<{ subject_id: number; is_optional: boolean; optional_group?: string }>) =>
+        items.map(item => ({
+          subject_id: item.subject_id,
+          is_optional: item.is_optional,
+          optional_group: item.optional_group ?? "",
+        })).sort((a, b) => a.subject_id - b.subject_id);
+      const existingSubjects = currentCurriculum.subjects.map(subject => ({
+        subject_id: subject.subject_id,
+        is_optional: !subject.is_compulsory,
+        optional_group: subject.optional_group_name ?? "",
+      }));
+      const existingGroups = currentCurriculum.optional_groups.map(group => ({
+        name: group.name,
+        min_selections: group.min_selections,
+        max_selections: group.max_selections,
+      }));
+      if (
+        JSON.stringify(normalizeGroups(input.optional_groups)) === JSON.stringify(normalizeGroups(existingGroups)) &&
+        JSON.stringify(normalizeSubjects(input.subjects)) === JSON.stringify(normalizeSubjects(existingSubjects))
+      ) {
+        notifyToast("info", "No changes to save.");
+        return;
+      }
+    }
+
     const removedSubjectIDs = (currentCurriculum?.subjects ?? [])
       .filter(subject => !included.includes(subject.subject_id))
       .map(subject => subject.subject_id);
