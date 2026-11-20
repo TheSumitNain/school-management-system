@@ -2193,6 +2193,21 @@ test("staff can create a guardian contact and link it to a student with relation
   await expect(page.getByText("Occupation must be 120 characters or fewer.", { exact: true })).toBeVisible();
   await expect(page.getByText("Education must be 120 characters or fewer.", { exact: true })).toBeVisible();
   await expect(page.getByText("Workplace must be 160 characters or fewer.", { exact: true })).toBeVisible();
+  const invalidGuardianFields = [
+    { placeholder: "Guardian full name", errorId: "student-guardian-name-error" },
+    { placeholder: "Mobile number", errorId: "new-guardian-mobile-error" },
+    { placeholder: "guardian@example.com", errorId: "student-guardian-email-error" },
+    { placeholder: "Optional alternate number", errorId: "new-guardian-alt-mobile-error" },
+    { placeholder: "e.g. Teacher, Business owner", errorId: "new-guardian-occupation-error" },
+    { placeholder: "Highest education (optional)", errorId: "new-guardian-education-error" },
+    { placeholder: "Organization name (optional)", errorId: "new-guardian-workplace-error" },
+  ];
+  for (const field of invalidGuardianFields) {
+    const control = page.getByPlaceholder(field.placeholder);
+    await expect(control).toHaveAttribute("aria-invalid", "true");
+    await expect(control).toHaveAttribute("aria-describedby", field.errorId);
+    await expect(page.locator(`#${field.errorId}[role="alert"]`)).toBeVisible();
+  }
   expect(guardianCreates).toHaveLength(0);
 
   await page.getByPlaceholder("Guardian full name").fill("Nisha Verma");
