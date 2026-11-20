@@ -6,7 +6,8 @@
 - Before removal, the UI requests an impact preview. The backend counts active students who selected an optional subject, or active assigned students for a compulsory subject. The save request must include the reviewed count; the backend recalculates it under the curriculum lock and rejects stale/missing confirmation.
 - Confirmed removals revoke affected active optional selections and deactivate the curriculum subject in the same transaction. The student remains assigned to the same curriculum record; other subject selections are preserved.
 - Group-limit edits are rejected if they would invalidate existing active student choices. Changing a subject's optional/group classification is rejected while students have active selections for that subject.
-- Implementation is in progress on `work`; complete migration-chain, PostgreSQL integration, `go vet`, frontend typecheck/build, Playwright and authenticated local browser acceptance are still required. Do not claim this workflow verified or enter more curriculum data until those checks pass.
+- Automated CI **PASS** on code commit `382b100e0ff52b79b6901520399a44648c126780`: complete migration chain through V54, PostgreSQL integration tests, `go vet`, TypeScript/Vite production build and all Student Management Playwright tests.
+- Remaining: pull `work` locally, create and verify fresh backups of both local databases, apply V54 to test and app databases, restart the API, and perform authenticated local browser acceptance. CI does not migrate or modify the user's local databases.
 
 ## Class curriculum subject types and editor styling (2026-11-19)
 
@@ -847,7 +848,7 @@ Before production acceptance, complete the pending persistent-session/MFA browse
 
 ## Student Management readiness checkpoint — 2026-11-15
 
-**Code and CI state:** Student Management workflows on `work` include admission and yearly enrollment/promotion, identity/basic details, address/location, contact, medical/physical details, guardian contact profiles, student-specific guardian relationships, related-student lookup, history/revocation, live permissions and audit behavior. V44 adds versioned class/year curricula, compulsory subjects, configurable optional groups, enrollment-specific choices and append-only replacement history. Parent Details remains staff-managed; Parent OTP/SMS/login is deferred. Inactive/archived student records retain read-only family access while writes are blocked at both UI and repository layers.
+**Code and CI state:** Student Management workflows on `work` include admission and yearly enrollment/promotion, identity/basic details, address/location, contact, medical/physical details, guardian contact profiles, student-specific guardian relationships, related-student lookup, history/revocation, live permissions and audit behavior. Class Curriculum is section-scoped and has one editable current record per academic year/class/section. V54 preserves student assignments while supporting confirmed subject removal, active-selection revocation and append-only selection history. Compulsory subjects, standalone optional subjects and configurable optional groups remain supported. Parent Details remains staff-managed; Parent OTP/SMS/login is deferred. Inactive/archived student records retain read-only family access while writes are blocked at both UI and repository layers.
 
 **Latest automated verification:** Frontend CI run `43694724225` passed the design-token check, TypeScript/Vite production build and all 8 Playwright tests (7 Student Management journeys plus the Academic Structure curriculum editor journey). Backend CI run `43693986179` passed the complete migration chain on ephemeral PostgreSQL, backend unit/integration tests and `go vet` on backend code commit `938573ca866a73f71e8645f7ec7076f2ccea4b2a`; the subsequent backend change only clarified a code comment. These are automated CI results, not a live test of the user's local installation.
 
@@ -1061,7 +1062,7 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 
 ## Remaining approved Student Management scope — curriculum and subject selection
 
-- The class/year curriculum and enrollment-specific subject-choice workflow is now implemented. Compulsory subjects are inherited from the curriculum; optional groups carry configurable minimum/maximum selection rules; each student choice is tied to a specific academic-year enrollment and immutable curriculum version. Revisions create a new version and preserve prior selection history rather than rewriting it.
+- The Academic Year + Class + Section curriculum and enrollment-specific subject-choice workflow is implemented. Each section has one editable current curriculum record; ordinary edits do not create new versions or reassign students. Compulsory subjects are inherited from the curriculum; standalone optional subjects and optional groups carry the configured student-choice rules. Each student choice remains tied to its academic-year enrollment. Confirmed subject removal revokes affected active choices and preserves the historical selection record.
 - Repository integration tests verify first assignment, read-after-write, version replacement, old-choice revocation/history, invalid selection rejection, tenant isolation and rejection of reversion to a retired version. See the V44 completion and CI entries below.
 - Student transport, app-permission and document-upload submodules remain outside this immediate completion target; secure document upload is deferred. Parent OTP/SMS/login remains deferred.
 
