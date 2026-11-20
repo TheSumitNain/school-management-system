@@ -215,5 +215,10 @@ test("section curriculum validates optional groups, edits in place, and confirms
       { subject_id: 93, is_optional: true },
     ],
   });
+
+  await page.getByRole("button", { name: "Save curriculum changes" }).click();
+  await expect(page.getByText("No changes to save.", { exact: true })).toBeVisible();
+  expect(saveCount).toBe(3);
+
   expect(browserErrors).toEqual([]);
 });
