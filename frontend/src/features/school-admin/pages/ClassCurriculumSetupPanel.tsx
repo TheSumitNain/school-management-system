@@ -1,8 +1,10 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
+  usePreviewSchoolClassCurriculumRemovalMutation,
   useSaveSchoolClassCurriculumMutation,
   useSchoolClassCurriculaQuery,
 } from "../queries";
+import type { CurriculumRemovalImpact, CurriculumSaveInput } from "../api";
 
 type Year = { id: number; name: string; status: string };
 type SchoolClass = { id: number; name: string; is_active: boolean };
@@ -19,16 +21,22 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
   const [groups, setGroups] = useState<Group[]>([]);
   const [included, setIncluded] = useState<number[]>([]);
   const [groupBySubject, setGroupBySubject] = useState<Record<number, string>>({});
+  const [loadedCurriculumID, setLoadedCurriculumID] = useState<number | null>(null);
+  const [pendingSave, setPendingSave] = useState<CurriculumSaveInput | null>(null);
+  const [pendingRemovalImpacts, setPendingRemovalImpacts] = useState<CurriculumRemovalImpact[] | null>(null);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{ year?: string; class?: string; section?: string; subjects?: string; groups: Record<number, GroupFieldErrors> }>({ groups: {} });
   const [success, setSuccess] = useState("");
   const save = useSaveSchoolClassCurriculumMutation();
+  const preview = usePreviewSchoolClassCurriculumRemovalMutation();
   const yearNumber = Number(yearID);
   const classNumber = Number(classID);
   const sectionNumber = Number(sectionID);
   const availableSections = sections.filter(section => section.is_active && section.academic_year_id === yearNumber && section.class_id === classNumber);
   const curriculaQuery = useSchoolClassCurriculaQuery(yearNumber, classNumber, sectionNumber);
+  const currentCurriculum = (curriculaQuery.data?.curricula ?? []).find(item => item.status === "active") ?? null;
   const activeSubjects = subjects.filter(subject => subject.is_active);
+  const busy = save.isPending || preview.isPending;
   const compulsoryCount = included.filter(id => !(groupBySubject[id] ?? "").trim()).length;
   const individualOptionalCount = included.filter(id => groupBySubject[id] === "__standalone_optional__").length;
   const groupedOptionalCount = included.length - compulsoryCount - individualOptionalCount;
@@ -41,10 +49,59 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
     return counts;
   }, [included, groupBySubject]);
 
+  useEffect(() => {
+    if (curriculaQuery.isLoading || curriculaQuery.isError || loadedCurriculumID === (currentCurriculum?.id ?? 0)) return;
+    const curriculum = currentCurriculum;
+    setIncluded(curriculum?.subjects.map(subject => subject.subject_id) ?? []);
+    setGroups(curriculum?.optional_groups.map(group => ({
+      name: group.name,
+      min_selections: group.min_selections,
+      max_selections: group.max_selections,
+    })) ?? []);
+    setGroupBySubject(Object.fromEntries((curriculum?.subjects ?? []).map(subject => [
+      subject.subject_id,
+      subject.optional_group_name ?? (subject.is_optional ? "__standalone_optional__" : ""),
+    ])));
+    setLoadedCurriculumID(curriculum?.id ?? 0);
+    setFieldErrors({ groups: {} });
+    setError("");
+    setSuccess("");
+  }, [curriculaQuery.isLoading, curriculaQuery.isError, currentCurriculum?.id, loadedCurriculumID]);
+
+  function clearEditorForScopeChange() {
+    setLoadedCurriculumID(null);
+    setIncluded([]);
+    setGroupBySubject({});
+    setGroups([]);
+    setPendingSave(null);
+    setPendingRemovalImpacts(null);
+    setError("");
+    setSuccess("");
+    setFieldErrors({ groups: {} });
+  }
+
   function addGroup() {
     setGroups(current => [...current, { name: "", min_selections: 1, max_selections: 1 }]);
     setFieldErrors(current => ({ ...current, groups: {} }));
   }
+
+  function persist(input: CurriculumSaveInput, confirmations: CurriculumRemovalImpact[] = []) {
+    save.mutate({
+      ...input,
+      removal_confirmations: confirmations.map(item => ({
+        subject_id: item.subject_id,
+        affected_students: item.affected_students,
+      })),
+    }, {
+      onSuccess: () => {
+        setSuccess("Curriculum saved successfully. Existing student selections are preserved except the subjects you confirmed for removal.");
+        setPendingSave(null);
+        setPendingRemovalImpacts(null);
+      },
+      onError: mutationError => setError(mutationError.message),
+    });
+  }
+
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
@@ -75,45 +132,64 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
     const groupNames = new Set(groups.map(group => group.name.trim().toLowerCase()));
     const payloadSubjects = included.map(subjectID => {
       const optionalGroup = (groupBySubject[subjectID] ?? "").trim();
-      return { subject_id: subjectID, is_optional: Boolean(optionalGroup), ...(optionalGroup && optionalGroup !== "__standalone_optional__" ? { optional_group: optionalGroup } : {}) };
+      return {
+        subject_id: subjectID,
+        is_optional: Boolean(optionalGroup),
+        ...(optionalGroup && optionalGroup !== "__standalone_optional__" ? { optional_group: optionalGroup } : {}),
+      };
     });
     if (payloadSubjects.some(subject => subject.optional_group && !groupNames.has(subject.optional_group.toLowerCase()))) {
       nextErrors.subjects = "Every optional subject must belong to a configured optional group.";
     }
     setFieldErrors(nextErrors);
     if (nextErrors.year || nextErrors.class || nextErrors.section || nextErrors.subjects || Object.keys(nextErrors.groups).length > 0) return;
-    save.mutate({
+
+    const input: CurriculumSaveInput = {
       academic_year_id: yearNumber,
       class_id: classNumber,
       section_id: sectionNumber,
       optional_groups: groups.map(group => ({ ...group, name: group.name.trim() })),
       subjects: payloadSubjects,
+    };
+    const removedSubjectIDs = (currentCurriculum?.subjects ?? [])
+      .filter(subject => !included.includes(subject.subject_id))
+      .map(subject => subject.subject_id);
+    if (removedSubjectIDs.length === 0) {
+      persist(input);
+      return;
+    }
+    setPendingSave(input);
+    preview.mutate({
+      academic_year_id: yearNumber,
+      class_id: classNumber,
+      section_id: sectionNumber,
+      subject_ids: removedSubjectIDs,
     }, {
-      onSuccess: () => { setSuccess("Curriculum version saved for this section. Existing versions and assigned student choices are preserved."); setIncluded([]); setGroupBySubject({}); setGroups([]); setFieldErrors({ groups: {} }); },
-      onError: mutationError => setError(mutationError.message),
+      onSuccess: result => setPendingRemovalImpacts(result.impacts),
+      onError: mutationError => { setPendingSave(null); setError(mutationError.message); },
     });
   }
 
   return (
     <section className="table-panel curriculum-setup-panel">
-      <div className="toolbar"><div><h2>Section-wise curriculum</h2><small>Configure an independent curriculum for each section within an academic year and class.</small></div></div>
+      <div className="toolbar"><div><h2>Section-wise curriculum</h2><small>One editable curriculum for each academic year, class and section.</small></div></div>
       <div className="curriculum-filters">
         <label>Academic year
-          <select disabled={save.isPending} value={yearID} onChange={event => { setYearID(event.target.value); setClassID(""); setSectionID(""); setIncluded([]); setGroupBySubject({}); setGroups([]); setError(""); setSuccess(""); setFieldErrors({ groups: {} }); }} required>
+          <select disabled={busy} value={yearID} onChange={event => { setYearID(event.target.value); setClassID(""); setSectionID(""); clearEditorForScopeChange(); }} required>
             <option value="">Select academic year</option>
             {years.filter(year => year.status !== "closed").map(year => <option key={year.id} value={year.id}>{year.name}</option>)}
           </select>
           {fieldErrors.year && <small className="app-field-error" role="alert">{fieldErrors.year}</small>}
         </label>
         <label>Class
-          <select disabled={save.isPending} value={classID} onChange={event => { setClassID(event.target.value); setSectionID(""); setIncluded([]); setGroupBySubject({}); setGroups([]); setError(""); setSuccess(""); setFieldErrors({ groups: {} }); }} required>
+          <select disabled={busy} value={classID} onChange={event => { setClassID(event.target.value); setSectionID(""); clearEditorForScopeChange(); }} required>
             <option value="">Select class</option>
             {classes.filter(item => item.is_active).map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
           </select>
           {fieldErrors.class && <small className="app-field-error" role="alert">{fieldErrors.class}</small>}
         </label>
         <label>Section
-          <select disabled={save.isPending || !yearNumber || !classNumber} value={sectionID} onChange={event => { setSectionID(event.target.value); setIncluded([]); setGroupBySubject({}); setGroups([]); setError(""); setSuccess(""); setFieldErrors({ groups: {} }); }} required>
+          <select disabled={busy || !yearNumber || !classNumber} value={sectionID} onChange={event => { setSectionID(event.target.value); clearEditorForScopeChange(); }} required>
             <option value="">Select section</option>
             {availableSections.map(item => <option key={item.id} value={item.id}>{item.name}{item.medium ? " · " + item.medium : ""}</option>)}
           </select>
@@ -123,54 +199,49 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
       </div>
       {yearNumber > 0 && classNumber > 0 && sectionNumber > 0 && (
         <section className="curriculum-existing">
-          <h3>Saved curriculum versions</h3>
-          {curriculaQuery.isLoading ? <p>Loading saved versions…</p> :
+          <h3>Current curriculum</h3>
+          {curriculaQuery.isLoading ? <p>Loading curriculum…</p> :
             curriculaQuery.isError ? <div className="student-feedback error" role="alert"><p>{curriculaQuery.error.message}</p><button type="button" className="academic-refresh" onClick={() => void curriculaQuery.refetch()}>Retry</button></div> :
-            (curriculaQuery.data?.curricula ?? []).length === 0 ? <p>No curriculum configured for this section.</p> :
-            <ul className="curriculum-version-list">{curriculaQuery.data?.curricula.map(item => (
-              <li key={item.id}>
-                <div className="curriculum-version-heading">
-                  <strong>Version {item.version_number}</strong>
-                  <span className={"curriculum-version-status " + (item.status === "active" ? "active" : "retired")}>{item.status}</span>
-                  <small>{item.subjects.length} subjects · {item.optional_groups.length} optional groups</small>
-                </div>
-                <div className="curriculum-version-subjects">
-                  {item.subjects.map(subject => (
-                    <span key={subject.id} className={"curriculum-version-subject " + (subject.is_compulsory ? "compulsory" : subject.optional_group_id ? "grouped" : "optional")}>
-                      {subject.name} · {subject.is_compulsory ? "Compulsory" : subject.optional_group_name ? subject.optional_group_name : "Optional"}
-                    </span>
-                  ))}
-                </div>
-              </li>
-            ))}</ul>}
+            !currentCurriculum ? <p>No curriculum configured for this section yet.</p> :
+            <div>
+              <p><strong>{currentCurriculum.subjects.length} subjects</strong> · {currentCurriculum.optional_groups.length} optional groups</p>
+              <div className="curriculum-version-subjects">
+                {currentCurriculum.subjects.map(subject => (
+                  <span key={subject.id} className={"curriculum-version-subject " + (subject.is_compulsory ? "compulsory" : subject.optional_group_id ? "grouped" : "optional")}>
+                    {subject.name} · {subject.is_compulsory ? "Compulsory" : subject.optional_group_name ?? "Optional"}
+                  </span>
+                ))}
+              </div>
+            </div>}
         </section>
       )}
       {canManage ? (
         <form onSubmit={submit} className="curriculum-editor">
-          <div className="toolbar"><div><h3>Create next version</h3><small>For the selected section only. Saving creates a new immutable version and preserves past student choices.</small></div>
-            <button type="button" className="academic-add" onClick={addGroup} disabled={save.isPending}>Add optional group</button>
+          <div className="toolbar"><div><h3>{currentCurriculum ? "Edit curriculum" : "Create curriculum"}</h3><small>Changes update this section's existing curriculum. No new version is created.</small></div>
+            <button type="button" className="academic-add" onClick={addGroup} disabled={busy}>Add optional group</button>
           </div>
           {groups.map((group, index) => (
             <fieldset className="curriculum-group-editor" key={index}>
               <legend>Optional group {index + 1}</legend>
-              <label>Group name<input disabled={save.isPending} value={group.name} maxLength={100} placeholder="e.g. Second language" aria-invalid={Boolean(fieldErrors.groups[index]?.name)} aria-describedby={fieldErrors.groups[index]?.name ? `curriculum-group-${index}-name-error` : undefined} onChange={event => { const nextName = event.target.value; setGroups(current => current.map((item, i) => i === index ? { ...item, name: nextName } : item)); setGroupBySubject(current => {
-                const previousName = group.name.trim();
-                if (!previousName) return current;
-                return Object.fromEntries(Object.entries(current).map(([id, name]) => [
-                  id,
-                  name === previousName ? (nextName.trim() ? nextName : "__standalone_optional__") : name,
-                ]));
-              }); setFieldErrors(current => ({ ...current, subjects: undefined, groups: { ...current.groups, [index]: { ...current.groups[index], name: undefined, min: undefined, max: undefined, subjects: undefined } } })); }} />{fieldErrors.groups[index]?.name && <small id={`curriculum-group-${index}-name-error`} className="app-field-error" role="alert">{fieldErrors.groups[index].name}</small>}</label>
-              <label>Minimum choices<input disabled={save.isPending} type="number" min={0} max={150} value={group.min_selections} aria-invalid={Boolean(fieldErrors.groups[index]?.min)} aria-describedby={fieldErrors.groups[index]?.min ? `curriculum-group-${index}-min-error` : undefined} onChange={event => { setGroups(current => current.map((item, i) => i === index ? { ...item, min_selections: Number(event.target.value) } : item)); setFieldErrors(current => ({ ...current, groups: { ...current.groups, [index]: { ...current.groups[index], min: undefined } } })); }} />{fieldErrors.groups[index]?.min && <small id={`curriculum-group-${index}-min-error`} className="app-field-error" role="alert">{fieldErrors.groups[index].min}</small>}</label>
-              <label>Maximum choices<input disabled={save.isPending} type="number" min={1} max={150} value={group.max_selections} aria-invalid={Boolean(fieldErrors.groups[index]?.max)} aria-describedby={fieldErrors.groups[index]?.max ? `curriculum-group-${index}-max-error` : undefined} onChange={event => { setGroups(current => current.map((item, i) => i === index ? { ...item, max_selections: Number(event.target.value) } : item)); setFieldErrors(current => ({ ...current, groups: { ...current.groups, [index]: { ...current.groups[index], min: undefined, max: undefined } } })); }} />{fieldErrors.groups[index]?.max && <small id={`curriculum-group-${index}-max-error`} className="app-field-error" role="alert">{fieldErrors.groups[index].max}</small>}</label>
+              <label>Group name<input disabled={busy} value={group.name} maxLength={100} placeholder="e.g. Skill Subject" aria-invalid={Boolean(fieldErrors.groups[index]?.name)} aria-describedby={fieldErrors.groups[index]?.name ? `curriculum-group-${index}-name-error` : undefined} onChange={event => {
+                const nextName = event.target.value;
+                setGroups(current => current.map((item, i) => i === index ? { ...item, name: nextName } : item));
+                setGroupBySubject(current => {
+                  const previousName = group.name.trim();
+                  if (!previousName) return current;
+                  return Object.fromEntries(Object.entries(current).map(([id, name]) => [id, name === previousName ? (nextName.trim() ? nextName : "__standalone_optional__") : name]));
+                });
+                setFieldErrors(current => ({ ...current, subjects: undefined, groups: { ...current.groups, [index]: { ...current.groups[index], name: undefined, min: undefined, max: undefined, subjects: undefined } } }));
+              }} />{fieldErrors.groups[index]?.name && <small id={`curriculum-group-${index}-name-error`} className="app-field-error" role="alert">{fieldErrors.groups[index].name}</small>}</label>
+              <label>Minimum choices<input disabled={busy} type="number" min={0} max={150} value={group.min_selections} aria-invalid={Boolean(fieldErrors.groups[index]?.min)} aria-describedby={fieldErrors.groups[index]?.min ? `curriculum-group-${index}-min-error` : undefined} onChange={event => { setGroups(current => current.map((item, i) => i === index ? { ...item, min_selections: Number(event.target.value) } : item)); setFieldErrors(current => ({ ...current, groups: { ...current.groups, [index]: { ...current.groups[index], min: undefined } } })); }} />{fieldErrors.groups[index]?.min && <small id={`curriculum-group-${index}-min-error`} className="app-field-error" role="alert">{fieldErrors.groups[index].min}</small>}</label>
+              <label>Maximum choices<input disabled={busy} type="number" min={1} max={150} value={group.max_selections} aria-invalid={Boolean(fieldErrors.groups[index]?.max)} aria-describedby={fieldErrors.groups[index]?.max ? `curriculum-group-${index}-max-error` : undefined} onChange={event => { setGroups(current => current.map((item, i) => i === index ? { ...item, max_selections: Number(event.target.value) } : item)); setFieldErrors(current => ({ ...current, groups: { ...current.groups, [index]: { ...current.groups[index], min: undefined, max: undefined } } })); }} />{fieldErrors.groups[index]?.max && <small id={`curriculum-group-${index}-max-error`} className="app-field-error" role="alert">{fieldErrors.groups[index].max}</small>}</label>
               {fieldErrors.groups[index]?.subjects && <small className="app-field-error" role="alert">{fieldErrors.groups[index].subjects}</small>}
-              <button type="button" className="academic-edit" disabled={save.isPending} onClick={() => { const removedName = group.name.trim().toLowerCase(); setGroups(current => current.filter((_, i) => i !== index)); setGroupBySubject(current => {
-                if (!removedName) return current;
-                return Object.fromEntries(Object.entries(current).map(([id, name]) => [
-                  id,
-                  name.trim().toLowerCase() === removedName ? "__standalone_optional__" : name,
-                ]));
-              }); setFieldErrors(current => ({ ...current, groups: {} })); }}>Remove group</button>
+              <button type="button" className="academic-edit" disabled={busy} onClick={() => {
+                const removedName = group.name.trim().toLowerCase();
+                setGroups(current => current.filter((_, i) => i !== index));
+                setGroupBySubject(current => Object.fromEntries(Object.entries(current).map(([id, name]) => [id, name.trim().toLowerCase() === removedName ? "__standalone_optional__" : name])));
+                setFieldErrors(current => ({ ...current, groups: {} }));
+              }}>Remove group</button>
             </fieldset>
           ))}
           <div className="curriculum-subject-picker">
@@ -188,11 +259,14 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
               const groupValue = groupBySubject[subject.id] ?? "";
               return (
                 <div className="curriculum-subject-row" key={subject.id}>
-                  <label><input type="checkbox" disabled={save.isPending} checked={checked} onChange={event => { setIncluded(current => event.target.checked ? [...current, subject.id] : current.filter(id => id !== subject.id)); setFieldErrors(current => ({ ...current, subjects: undefined, groups: Object.fromEntries(Object.entries(current.groups).map(([key, errors]) => [key, { ...errors, min: undefined, max: undefined, subjects: undefined }])) })); }} />
+                  <label><input type="checkbox" disabled={busy} checked={checked} onChange={event => {
+                    setIncluded(current => event.target.checked ? [...current, subject.id] : current.filter(id => id !== subject.id));
+                    setFieldErrors(current => ({ ...current, subjects: undefined, groups: Object.fromEntries(Object.entries(current.groups).map(([key, errors]) => [key, { ...errors, min: undefined, max: undefined, subjects: undefined }])) }));
+                  }} />
                     <span>{subject.name}{subject.subject_code ? " (" + subject.subject_code + ")" : ""}</span>
                   </label>
                   {checked && <label className="curriculum-subject-group-select">Type
-                    <select disabled={save.isPending} value={groupValue} onChange={event => { setGroupBySubject(current => ({ ...current, [subject.id]: event.target.value })); setFieldErrors(current => ({ ...current, subjects: undefined })); }}>
+                    <select disabled={busy} value={groupValue} onChange={event => { setGroupBySubject(current => ({ ...current, [subject.id]: event.target.value })); setFieldErrors(current => ({ ...current, subjects: undefined })); }}>
                       <option value="">Compulsory</option>
                       <option value="__standalone_optional__">Optional (individual choice)</option>
                       {groups.filter(group => group.name.trim()).map((group, index) => <option key={index} value={group.name}>Optional group: {group.name}</option>)}
@@ -205,9 +279,33 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
           {fieldErrors.subjects && <p className="app-field-error" role="alert">{fieldErrors.subjects}</p>}
           {error && <p className="app-field-error" role="alert">{error}</p>}
           {success && <p className="student-success" role="status">{success}</p>}
-          <button type="submit" className="primary academic-add" disabled={save.isPending || !yearNumber || !classNumber || !sectionNumber}>{save.isPending ? "Saving curriculum…" : "Save curriculum version"}</button>
+          <button type="submit" className="primary academic-add" disabled={busy || !yearNumber || !classNumber || !sectionNumber || curriculaQuery.isLoading}>
+            {busy ? "Saving curriculum…" : currentCurriculum ? "Save curriculum changes" : "Save curriculum"}
+          </button>
         </form>
       ) : <p className="table-message">You have read-only access to class curricula.</p>}
+      {pendingRemovalImpacts && pendingSave && (
+        <div className="student-modal-backdrop" role="presentation">
+          <section className="student-modal" role="dialog" aria-modal="true" aria-labelledby="curriculum-removal-title">
+            <div className="toolbar"><div><h3 id="curriculum-removal-title">Confirm subject removal</h3><small>These subjects will be removed from the curriculum and from affected students' active selections.</small></div></div>
+            {pendingRemovalImpacts.length === 0 ? <p>No currently assigned students were found for the removed subjects.</p> : (
+              <ul className="curriculum-version-list">
+                {pendingRemovalImpacts.map(item => <li key={item.subject_id}>
+                  <strong>{item.subject_name}</strong>
+                  <p><strong>{item.affected_students}</strong> affected students</p>
+                </li>)}
+              </ul>
+            )}
+            <p>This action cannot be undone for active selections. Historical selection records will remain available in the student's history.</p>
+            <div className="toolbar">
+              <button type="button" className="academic-edit" disabled={busy} onClick={() => { setPendingSave(null); setPendingRemovalImpacts(null); }}>Cancel</button>
+              <button type="button" className="primary academic-add" disabled={busy} onClick={() => persist(pendingSave, pendingRemovalImpacts)}>
+                {save.isPending ? "Applying changes…" : "Confirm and save"}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </section>
   );
 }
