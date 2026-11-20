@@ -62,6 +62,8 @@ test("student admission, profile navigation and parent details render without br
   let curriculumSubjectWrites = 0;
   let medicalDetailReads = 0;
   let physicalDetailReads = 0;
+  let medicalDetailWrites = 0;
+  let physicalDetailWrites = 0;
   let savedCurriculumSelections: number[] = [];
   const guardianLink = {
     id: 501, student_id: 1, guardian_id: 22, guardian_name: "Ramesh Sharma", guardian_status: "active" as const,
@@ -381,6 +383,7 @@ test("student admission, profile navigation and parent details render without br
       if (subpath === "medical-details") {
         if (method === "GET") medicalDetailReads++;
         if (method === "PUT") {
+          medicalDetailWrites++;
           const input = request.postDataJSON() as Record<string, unknown>;
           const previousVersion = { ...medicalDetails, changed_by_principal_id: 101, changed_at: "2026-11-14T00:00:00.000Z" };
           Object.assign(medicalDetails, input, { id: 901, school_id: 10, student_id: studentID, version_number: Number(medicalDetails.version_number) + 1 });
@@ -398,6 +401,7 @@ test("student admission, profile navigation and parent details render without br
           return;
         }
         if (method === "PUT") {
+          physicalDetailWrites++;
           const input = request.postDataJSON() as Record<string, unknown>;
           Object.assign(physicalDetails, input, { id: 701, school_id: 10, student_id: studentID });
           physicalDetails.history = [{
@@ -1469,6 +1473,15 @@ test("student admission, profile navigation and parent details render without br
   await expect.poll(() => medicalDetails.known_conditions).toBe("No other known conditions");
   await expect.poll(() => medicalDetails.version_number).toBe(1);
   await expect(page.locator(".app-toast").filter({ hasText: "Medical details saved." })).toBeVisible({ timeout: 15_000 });
+  const medicalWritesAfterSave = medicalDetailWrites;
+  await expect(medicalSaveButton).toBeDisabled();
+  await medicalSaveButton.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Medical save button is not associated with its form.");
+    form.requestSubmit();
+  });
+  await expect(page.getByRole("status").filter({ hasText: "No change to save." })).toBeVisible({ timeout: 10_000 });
+  expect(medicalDetailWrites).toBe(medicalWritesAfterSave);
   await page.getByRole("button", { name: "Physical details" }).click();
   const physicalDraft = "Draft physical note survives background refetch";
   await page.getByPlaceholder("Optional vision-related notes").fill(physicalDraft);
@@ -1539,6 +1552,15 @@ test("student admission, profile navigation and parent details render without br
   });
   await expect.poll(() => physicalDetails.height_cm).toBe(132.5);
   await expect(page.getByText("Physical details saved.")).toBeVisible();
+  const physicalWritesAfterSave = physicalDetailWrites;
+  await expect(physicalSaveButton).toBeDisabled();
+  await physicalSaveButton.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Physical save button is not associated with its form.");
+    form.requestSubmit();
+  });
+  await expect(page.getByRole("status").filter({ hasText: "No change to save." })).toBeVisible({ timeout: 10_000 });
+  expect(physicalDetailWrites).toBe(physicalWritesAfterSave);
   await page.getByRole("button", { name: "Close dialog" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
 
