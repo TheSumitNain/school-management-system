@@ -502,13 +502,6 @@
     flex: initial;
     font-size: 11px;
   }
-  .student-toolbar > label.student-year-filter .student-field-label {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    min-width: 0;
-    white-space: nowrap;
-  }
   .student-toolbar > label.student-year-filter .student-field-label__status {
     padding: 1px 5px;
     font-size: 9px;
@@ -619,12 +612,6 @@
     min-width: 0;
     flex: initial;
   }
-  .student-directory-toolbar > .student-year-filter .student-field-label {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    white-space: nowrap;
-  }
   .student-directory-toolbar > .student-year-filter .app-select {
     width: 100%;
     min-width: 0;
@@ -683,16 +670,6 @@
     grid-template-columns: minmax(0, 1fr);
     gap: 5px;
     min-width: 0;
-  }
-  .student-directory-toolbar > .student-year-filter .student-field-label {
-    display: inline-grid;
-    grid-template-columns: max-content max-content;
-    grid-template-areas: "name name" "status hint";
-    justify-content: start;
-    align-items: center;
-    column-gap: 5px;
-    row-gap: 2px;
-    white-space: nowrap;
   }
   .student-directory-toolbar > .student-year-filter .app-select {
     width: 100%;
@@ -766,7 +743,7 @@
 
 
 /* Keep the long registration label, optional badge and help icon aligned in the basic-details modal. */
-.student-basic-details-form .student-basic-registration-field>.student-field-label{display:grid;width:max-content;max-width:100%;grid-template-columns:max-content max-content;grid-template-areas:"name name" "status hint";align-items:center;justify-content:start;justify-items:start;column-gap:6px;row-gap:3px}
+.student-basic-details-form .student-basic-registration-field>.student-field-label{display:grid;width:max-content;max-width:100%;grid-template-columns:max-content max-content;grid-template-areas:"name name" "status hint";align-items:center;justify-content:start;justify-items:start;column-gap:4px;row-gap:1px}
 .student-basic-details-form .student-basic-registration-field .student-field-label__status,.student-basic-details-form .student-basic-registration-field .student-field-hint{align-self:center}
 .student-basic-details-form .student-basic-registration-field .student-field-label__status{white-space:nowrap}
 .student-basic-details-form .student-basic-registration-field .student-field-hint__trigger{display:inline-grid;place-items:center;vertical-align:middle}
