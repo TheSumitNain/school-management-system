@@ -131,7 +131,7 @@ The target model should represent:
 - Curriculum subject rows linked to the school subject catalogue.
 - Compulsory versus optional subjects.
 - Optional subject groups with explicit selection rules (for example, choose one from a group).
-- Student subject selections linked to the specific `student_enrollments` row.
+- Current student optional choices linked to the active `student_enrollment_curricula` assignment for the student's enrollment; replacing choices does not retain prior choice rows.
 
 Teacher subject assignments must be checked against the applicable academic-year/class/section curriculum, not merely against an active subject and section. Each scope has one current editable curriculum record; edits update that record in place and do not create curriculum versions or edit history. Student optional choices represent current state only: saving replaces prior choice rows, and a confirmed subject removal deletes linked choices after the affected-student count is reviewed. No student subject-selection history is retained.
 
