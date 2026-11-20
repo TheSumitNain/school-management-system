@@ -360,17 +360,17 @@ func (r *AcademicRepository) SaveSectionClassCurriculumWithConfirmations(ctx con
 		`, schoolID, academicYearID, classID, sectionID, actorID).Scan(&curriculumID); err != nil { return nil, academicWriteError(err) }
 	}
 
-	type existingSubject struct { id int64; subjectID int64; optional bool; groupID *int64 }
+	type existingSubject struct { id int64; subjectID int64; optional bool; groupID *int64; active bool }
 	existing := make(map[int64]existingSubject)
 	if !created {
 		rows, err := tx.Query(ctx, `
-			SELECT id,subject_id,is_optional,optional_group_id
+			SELECT id,subject_id,is_optional,optional_group_id,is_active
 			  FROM class_curriculum_subjects WHERE curriculum_id=$1 AND school_id=$2 FOR UPDATE
 		`, curriculumID, schoolID)
 		if err != nil { return nil, fmt.Errorf("lock existing curriculum subjects: %w", err) }
 		for rows.Next() {
 			var item existingSubject
-			if err := rows.Scan(&item.id,&item.subjectID,&item.optional,&item.groupID); err != nil { rows.Close(); return nil, fmt.Errorf("scan existing curriculum subject: %w", err) }
+			if err := rows.Scan(&item.id,&item.subjectID,&item.optional,&item.groupID,&item.active); err != nil { rows.Close(); return nil, fmt.Errorf("scan existing curriculum subject: %w", err) }
 			existing[item.subjectID] = item
 		}
 		if err := rows.Err(); err != nil { rows.Close(); return nil, fmt.Errorf("iterate existing curriculum subjects: %w", err) }
@@ -381,8 +381,10 @@ func (r *AcademicRepository) SaveSectionClassCurriculumWithConfirmations(ctx con
 	removedCurriculumSubjectIDs := make([]int64, 0)
 	for subjectID, item := range existing {
 		if _, keep := seenSubjects[subjectID]; !keep {
-			removedIDs = append(removedIDs, subjectID)
 			removedCurriculumSubjectIDs = append(removedCurriculumSubjectIDs, item.id)
+			if item.active {
+				removedIDs = append(removedIDs, subjectID)
+			}
 		}
 	}
 	if len(removedIDs) > 0 {
@@ -400,8 +402,12 @@ func (r *AcademicRepository) SaveSectionClassCurriculumWithConfirmations(ctx con
 			if !ok { return nil, ErrCurriculumRemovalConfirmationRequired }
 			if count != impact.AffectedStudents { return nil, ErrCurriculumRemovalImpactChanged }
 		}
-		// Confirmed removals permanently remove the current subject and its
-		// student choices. No curriculum or selection history is retained.
+	} else if len(confirmations) > 0 {
+		return nil, ErrInvalidAcademicInput
+	}
+	if len(removedCurriculumSubjectIDs) > 0 {
+		// Confirmed active removals and cleanup of legacy soft-deactivated
+		// subjects permanently remove current subject rows and linked choices.
 		if _, err := tx.Exec(ctx, `
 			DELETE FROM student_enrollment_subject_selections
 			 WHERE school_id=$1 AND curriculum_subject_id=ANY($2::bigint[])
@@ -410,8 +416,6 @@ func (r *AcademicRepository) SaveSectionClassCurriculumWithConfirmations(ctx con
 			DELETE FROM class_curriculum_subjects
 			 WHERE curriculum_id=$1 AND school_id=$2 AND id=ANY($3::bigint[])
 		`, curriculumID, schoolID, removedCurriculumSubjectIDs); err != nil { return nil, academicWriteError(err) }
-	} else if len(confirmations) > 0 {
-		return nil, ErrInvalidAcademicInput
 	}
 
 	groupIDs := make(map[string]int64, len(groupByName))
