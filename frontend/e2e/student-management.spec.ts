@@ -1054,6 +1054,18 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByText("Occupation must be 120 characters or fewer.", { exact: true })).toBeVisible();
   await expect(page.getByText("Education must be 120 characters or fewer.", { exact: true })).toBeVisible();
   await expect(page.getByText("Workplace must be 160 characters or fewer.", { exact: true })).toBeVisible();
+  for (const [placeholder, errorId] of [
+    ["Mobile number", "edit-guardian-mobile-error"],
+    ["Optional alternate number", "edit-guardian-alt-mobile-error"],
+    ["e.g. Teacher, Business owner", "edit-guardian-occupation-error"],
+    ["Highest education (optional)", "edit-guardian-education-error"],
+    ["Organization name (optional)", "edit-guardian-workplace-error"],
+  ] as const) {
+    const field = page.getByPlaceholder(placeholder);
+    await expect(field).toHaveAttribute("aria-invalid", "true");
+    await expect(field).toHaveAttribute("aria-describedby", errorId);
+    await expect(page.locator(`#${errorId}`)).toHaveAttribute("role", "alert");
+  }
   await expect(page.getByRole("dialog", { name: "Update shared guardian profile?" })).toHaveCount(0);
   await page.getByPlaceholder("Mobile number").fill("9999912345");
   await page.getByPlaceholder("Optional alternate number").fill("9999987654");
