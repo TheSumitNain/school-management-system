@@ -626,6 +626,40 @@ test("student admission, profile navigation and parent details render without br
       expect(layout.actionColumns, "profile actions should use one column on phone widths").toBe(1);
     }
   }
+  // Exercise the nested student edit dialogs too: their forms are substantially
+  // wider than the profile summary and must remain usable on narrow screens.
+  for (const [trigger, title] of [
+    ["Address & communication", "Address & Communication"],
+    ["Medical & physical", "Medical & Physical Details"],
+  ] as const) {
+    await profileDialog.getByRole("button", { name: trigger, exact: true }).click();
+    const nestedDialog = page.getByRole("dialog", { name: title });
+    await expect(nestedDialog).toBeVisible();
+    for (const width of [320, 360, 390, 768, 1024, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      const layout = await nestedDialog.evaluate(dialog => {
+        const rect = dialog.getBoundingClientRect();
+        const content = dialog.querySelector<HTMLElement>(".app-modal-content");
+        const overflowing = content ? Array.from(content.querySelectorAll<HTMLElement>("*"))
+          .filter(element => element.scrollWidth > element.clientWidth + 1)
+          .map(element => ({
+            tag: element.tagName.toLowerCase(),
+            className: typeof element.className === "string" ? element.className : "",
+            clientWidth: element.clientWidth,
+            scrollWidth: element.scrollWidth,
+          })).slice(0, 8) : [];
+        return {
+          dialogFits: rect.left >= 0 && rect.right <= window.innerWidth + 1,
+          contentFits: Boolean(content && content.scrollWidth <= content.clientWidth + 1),
+          overflowing,
+        };
+      });
+      expect(layout.dialogFits, `${title} dialog should fit at ${width}px`).toBe(true);
+      expect(layout.contentFits, `${title} content should not overflow at ${width}px: ${JSON.stringify(layout.overflowing)}`).toBe(true);
+    }
+    await nestedDialog.getByRole("button", { name: "Close dialog" }).click();
+    await expect(profileDialog).toBeVisible();
+  }
   await page.setViewportSize({ width: 1440, height: 900 });
   await expect(profileDialog.getByText("14 Nov 2026", { exact: true })).toHaveCount(2);
   const curriculumPanel = page.getByRole("region", { name: "Curriculum and subject choices" });
