@@ -1,11 +1,12 @@
-## Section-wise Class Curriculum (2026-11-19)
+## Editable section-wise Class Curriculum (2026-11-20)
 
-- In progress: Class Curriculum is being changed from class/year scope to Academic Year + Class + Section scope. The approved UX is a three-level selector; Class 11 Art, Commerce and Science must have separate curricula.
-- Added V53 schema migration and rollback. Existing class-level curriculum records remain NULL-scoped and are not copied, deleted or reassigned. New section curricula use composite section/school/year/class integrity, section-scoped version numbering and one-active-version enforcement.
-- Backend repository, service and HTTP handlers now accept section IDs for curriculum list/save. Student enrollment lookup resolves only the exact enrollment section; the database assignment trigger rejects cross-section assignments. Historical legacy assignments remain readable.
-- Frontend API/query cache and editor now include the section selection. Responsive filter styling was updated for the three selectors. Compulsory, standalone Optional and Optional Group remain supported.
-- Added integration coverage for independent section version/list isolation and for rejecting an assignment from another section. Route tests now include section IDs.
-- Not yet verified: complete migration chain, Go unit/integration tests, Go vet, frontend typecheck/build and Playwright E2E. Do not apply V53 to local databases or enter curriculum data until these checks pass and the user has pulled the verified checkpoint.
+- Approved product decision: one current curriculum per Academic Year + Class + Section. The School Admin edits that same record; normal curriculum changes do not create V2/V3 versions or reassign student enrollments.
+- Class 11 Art, Commerce and Science remain independent section curricula. Compulsory, standalone Optional and Optional Group subject types remain supported.
+- V54 adds soft deactivation for curriculum subjects and database guards for safe in-place edits. Removed curriculum subjects are never physically deleted; historical student-selection records remain linked and retain their revocation timestamp.
+- Before removal, the UI requests an impact preview. The backend counts active students who selected an optional subject, or active assigned students for a compulsory subject. The save request must include the reviewed count; the backend recalculates it under the curriculum lock and rejects stale/missing confirmation.
+- Confirmed removals revoke affected active optional selections and deactivate the curriculum subject in the same transaction. The student remains assigned to the same curriculum record; other subject selections are preserved.
+- Group-limit edits are rejected if they would invalidate existing active student choices. Changing a subject's optional/group classification is rejected while students have active selections for that subject.
+- Implementation is in progress on `work`; complete migration-chain, PostgreSQL integration, `go vet`, frontend typecheck/build, Playwright and authenticated local browser acceptance are still required. Do not claim this workflow verified or enter more curriculum data until those checks pass.
 
 ## Class curriculum subject types and editor styling (2026-11-19)
 
