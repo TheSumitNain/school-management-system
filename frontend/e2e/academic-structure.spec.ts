@@ -170,6 +170,7 @@ test("section curriculum validates optional groups, edits in place, and confirms
   });
 
   await page.getByRole("checkbox", { name: /Hindi/ }).uncheck();
+  await maxChoices.fill("1");
   await page.getByRole("button", { name: "Save curriculum changes" }).click();
   await expect(page.getByRole("heading", { name: "Confirm subject removal" })).toBeVisible();
   await expect(page.getByRole("dialog").getByText("Hindi", { exact: true })).toBeVisible();
