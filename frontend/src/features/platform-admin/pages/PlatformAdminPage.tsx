@@ -93,7 +93,7 @@ export function PlatformAdminPage({ permissions }: Props) {
     const username = String(form.get("school_admin_username") ?? "").trim();
     const password = String(form.get("school_admin_initial_password") ?? "");
     const errors: Record<string, string> = {};
-    if (!name) errors.name = "Enter the school name.";
+    if (Array.from(name).length < 2 || Array.from(name).length > 150) errors.name = "School name must contain 2–150 characters.";
     if (!/^[A-Za-z0-9][A-Za-z0-9_-]{1,49}$/.test(code)) errors.code = "Use 2–50 letters, numbers, underscores or hyphens; start with a letter or number.";
     if (!/^[A-Za-z0-9][A-Za-z0-9._-]{2,31}$/.test(username)) errors.school_admin_username = "Use 3–32 letters, numbers, dots, underscores or hyphens.";
     if (password.length < 12) errors.school_admin_initial_password = "Password must contain at least 12 characters.";
