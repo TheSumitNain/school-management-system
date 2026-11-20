@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { notifyToast } from "../../../shared/notifications";
+import { ApiError } from "../../../lib/api";
 import { Building2, Eye, EyeOff, KeyRound, ShieldCheck, UserPlus, Users } from "lucide-react";
 import {
   useCreatePlatformAdminMutation,
@@ -222,23 +223,23 @@ export function PlatformAdminPage({ permissions }: Props) {
               : !activeSchools.length ? <div className="table-message">No active schools are available for permission delegation.</div>
               : <>
                 <label className="platform-select-label">School
-                  <select value={selectedSchoolID ?? ""} onChange={event => { setSelectedSchoolID(Number(event.target.value) || null); setFeedback(null); }}>
+                  <select value={selectedSchoolID ?? ""} aria-invalid={Boolean(fieldErrors.school)} aria-describedby={fieldErrors.school?"delegation-school-error":undefined} onChange={event => { setSelectedSchoolID(Number(event.target.value) || null); setFieldErrors(current=>({...current,school:""})); setFeedback(null); }}>
                     {activeSchools.map(school => <option key={school.id} value={school.id}>{school.name} · {school.code} · {school.status}</option>)}
                   </select>
                 </label>
                 {permissionQuery.isPending ? <div className="table-message">Loading delegable permissions…</div>
                   : permissionQuery.error ? <div className="table-message error-text">{permissionQuery.error instanceof Error ? permissionQuery.error.message : "Unable to load permission catalogue."}<button className="platform-inline-button" onClick={() => void permissionQuery.refetch()}>Retry</button></div>
-                  : delegablePermissions.length === 0 ? <div className="table-message">No active school permissions are currently marked as delegable.</div> : <form onSubmit={grantPermission}>
+                  : delegablePermissions.length === 0 ? <div className="table-message">No active school permissions are currently marked as delegable.</div> : <form onSubmit={grantPermission} noValidate>
                   <label>Permission
-                    <select value={selectedPermission} onChange={event => setSelectedPermission(event.target.value)} required>
+                    <select value={selectedPermission} aria-invalid={Boolean(fieldErrors.permission_key)} aria-describedby={fieldErrors.permission_key?"delegation-permission-error":undefined} onChange={event => {setSelectedPermission(event.target.value);setFieldErrors(current=>({...current,permission_key:""}));}} required>
                       <option value="">Select a delegable permission</option>
                       {delegablePermissions.map(permission => <option key={permission.permission_key} value={permission.permission_key}>{permission.permission_key}</option>)}
                     </select>
                   </label>
                   {selectedPermission && <p className="platform-permission-description">{delegablePermissions.find(item => item.permission_key === selectedPermission)?.description}</p>}
                   <div className="platform-delegation-options">
-                    <label><input type="checkbox" checked={canAssignToRoles} onChange={event => setCanAssignToRoles(event.target.checked)}/> School Admin can assign it to custom roles</label>
-                    <label><input type="checkbox" checked={canOverrideUsers} onChange={event => setCanOverrideUsers(event.target.checked)}/> School Admin can grant individual user overrides</label>
+                    <label><input type="checkbox" checked={canAssignToRoles} onChange={event => {setCanAssignToRoles(event.target.checked);setFieldErrors(current=>({...current,capabilities:""}));}}/> School Admin can assign it to custom roles</label>
+                    <label><input type="checkbox" checked={canOverrideUsers} onChange={event => {setCanOverrideUsers(event.target.checked);setFieldErrors(current=>({...current,capabilities:""}));}}/> School Admin can grant individual user overrides</label>
                   </div>
                   <button className="primary" type="submit" disabled={grantDelegation.isPending || !selectedPermission || (!canAssignToRoles && !canOverrideUsers)}>
                     {grantDelegation.isPending ? "Delegating…" : "Grant permission to school"}
