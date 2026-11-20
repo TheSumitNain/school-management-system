@@ -172,6 +172,18 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
       });
       setFeedback({ kind: "success", message: "Medical details saved." });
     } catch (error) {
+      const serverErrors = error instanceof ApiError ? error.fieldErrors : {};
+      const mappedErrors: typeof medicalErrors = {
+        ...(serverErrors.allergies ? { allergies: serverErrors.allergies } : {}),
+        ...(serverErrors.known_conditions ? { knownConditions: serverErrors.known_conditions } : {}),
+        ...(serverErrors.ongoing_medications ? { ongoingMedications: serverErrors.ongoing_medications } : {}),
+        ...(serverErrors.emergency_medical_notes ? { emergencyNotes: serverErrors.emergency_medical_notes } : {}),
+      };
+      if (Object.keys(mappedErrors).length > 0) {
+        setMedicalErrors(current => ({ ...current, ...mappedErrors }));
+        setFeedback(null);
+        return;
+      }
       setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Medical details could not be saved." });
     }
   }
