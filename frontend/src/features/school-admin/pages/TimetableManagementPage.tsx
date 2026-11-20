@@ -145,7 +145,7 @@ export function TimetableManagementPage({ permissions }: Props) {
     const number = Number(periodDraft.period_number);
     if (!Number.isInteger(number) || number <= 0) errors.period_number = "Enter a positive whole period number.";
     else if (periods.some(period => period.period_number === number)) errors.period_number = "This period number is already in use for the selected year.";
-    if (!periodDraft.name.trim()) errors.name = "Enter a period name.";
+    if (Array.from(periodDraft.name.trim()).length < 2) errors.name = "Period name must contain at least 2 characters.";
     if (!periodDraft.starts_at) errors.starts_at = "Choose a start time.";
     if (!periodDraft.ends_at) errors.ends_at = "Choose an end time.";
     else if (periodDraft.starts_at && periodDraft.ends_at <= periodDraft.starts_at) errors.ends_at = "End time must be later than start time.";
@@ -159,7 +159,9 @@ export function TimetableManagementPage({ permissions }: Props) {
       setFeedback(null);
       await loadSchedule(yearID);
     } catch (reason) {
-      setFeedback({ kind: "error", message: errorText(reason) });
+      const message = errorText(reason);
+      notifyToast("error", message);
+      setFeedback({ kind: "error", message });
     } finally { setSaving(false); }
   }
 
@@ -191,7 +193,9 @@ export function TimetableManagementPage({ permissions }: Props) {
       setFeedback(null);
       await loadSchedule(yearID, sectionID);
     } catch (reason) {
-      setFeedback({ kind: "error", message: errorText(reason) });
+      const message = errorText(reason);
+      notifyToast("error", message);
+      setFeedback({ kind: "error", message });
     } finally { setSaving(false); }
   }
 
