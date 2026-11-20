@@ -225,6 +225,7 @@ export function PlatformAdminPage({ permissions }: Props) {
                   <select value={selectedSchoolID ?? ""} aria-invalid={Boolean(fieldErrors.school)} aria-describedby={fieldErrors.school?"delegation-school-error":undefined} onChange={event => { setSelectedSchoolID(Number(event.target.value) || null); setFieldErrors(current=>({...current,school:""})); setFeedback(null); }}>
                     {activeSchools.map(school => <option key={school.id} value={school.id}>{school.name} · {school.code} · {school.status}</option>)}
                   </select>
+                  {fieldErrors.school&&<small className="app-field-error" id="delegation-school-error" role="alert">{fieldErrors.school}</small>}
                 </label>
                 {permissionQuery.isPending ? <div className="table-message">Loading delegable permissions…</div>
                   : permissionQuery.error ? <div className="table-message error-text">{permissionQuery.error instanceof Error ? permissionQuery.error.message : "Unable to load permission catalogue."}<button className="platform-inline-button" onClick={() => void permissionQuery.refetch()}>Retry</button></div>
