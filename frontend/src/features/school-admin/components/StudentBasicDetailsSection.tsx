@@ -161,9 +161,11 @@ export function StudentBasicDetailsSection({ student, canUpdate, onStudentNameCh
       }
       if (Object.keys(mappedErrors).length > 0) {
         setErrors(current => ({ ...current, ...mappedErrors }));
+        if (nameChanged) notifyToast("success", "Student name saved. Review the basic-details fields that need attention.");
         setFeedback(null);
         return;
       }
+      if (nameChanged) notifyToast("success", "Student name saved. Basic details could not be saved.");
       setFeedback({ kind: "error", message });
     }
   }
