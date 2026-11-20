@@ -576,6 +576,9 @@ test("student admission, profile navigation and parent details render without br
   const profileDialog = page.getByRole("dialog", { name: /Student profile/ });
   await expect(profileDialog.getByText("14 Nov 2026", { exact: true })).toHaveCount(2);
   const curriculumPanel = page.getByRole("region", { name: "Curriculum and subject choices" });
+  await expect(curriculumPanel.getByText("Curriculum", { exact: true })).toBeVisible();
+  await expect(curriculumPanel.getByText(/Version \d+/)).toHaveCount(0);
+  await expect(curriculumPanel.getByText("Curriculum version", { exact: true })).toHaveCount(0);
   await expect(curriculumPanel.getByText("Mathematics")).toBeVisible();
   const individualOptional = curriculumPanel.getByRole("checkbox", { name: /Computer Applications/ });
   await expect(individualOptional).toBeVisible();
