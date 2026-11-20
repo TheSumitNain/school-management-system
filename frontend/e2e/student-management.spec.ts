@@ -1008,6 +1008,10 @@ test("student admission, profile navigation and parent details render without br
   await expect(addressSave).toBeDisabled();
   failStudentReads.delete("addresses");
   await page.getByRole("button", { name: "Retry loading addresses" }).click();
+  // Wait until the failed read has actually recovered before editing. Otherwise
+  // the successful query response can reset the form while the test is typing.
+  await expect(page.getByRole("button", { name: "Retry loading addresses" })).toHaveCount(0);
+  await expect(page.getByPlaceholder("House number, street or building")).toBeEnabled();
   await expect(addressSave).toBeDisabled();
   await addressSave.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
