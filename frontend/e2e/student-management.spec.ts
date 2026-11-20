@@ -1153,6 +1153,9 @@ test("student admission, profile navigation and parent details render without br
   // for the response to finish before checking the mutation's success toast.
   await expect.poll(() => contactDetails.primary_phone).toBe("9876501234");
   await expect.poll(() => contactDetailsWriteCompleted).toBe(true);
+  // The response has reached the mock, but React Query still has to finish
+  // its awaited invalidation and the component's success callback.
+  await expect(contactSaveButton).toBeEnabled();
   await expect(page.getByRole("status").filter({ hasText: "Student contact details saved." })).toBeVisible();
   await page.getByRole("button", { name: "Close dialog" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
