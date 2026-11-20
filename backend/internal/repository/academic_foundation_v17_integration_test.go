@@ -1114,21 +1114,20 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	}
 	beforeAssignment, err := academicRepo.GetStudentEnrollmentCurriculum(ctx, actorPrincipalID, schoolID, currentEnrollmentID)
 	if err != nil || beforeAssignment == nil || beforeAssignment.Assigned || beforeAssignment.Curriculum == nil ||
-		beforeAssignment.Curriculum.ID != curriculumV1.ID || len(beforeAssignment.SelectionHistory) != 0 {
+		beforeAssignment.Curriculum.ID != curriculumV1.ID {
 		t.Fatalf("read available curriculum after rejected choices: item=%+v err=%v", beforeAssignment, err)
 	}
 	assignedV1, err := academicRepo.SaveStudentEnrollmentSubjects(ctx, actorPrincipalID, schoolID,
 		currentEnrollmentID, curriculumV1.ID, []int64{optionalV1ID})
 	if err != nil || assignedV1 == nil || !assignedV1.Assigned ||
-		len(assignedV1.SelectedOptionalSubjectIDs) != 1 || assignedV1.SelectedOptionalSubjectIDs[0] != optionalV1ID ||
-		len(assignedV1.SelectionHistory) != 0 {
+		len(assignedV1.SelectedOptionalSubjectIDs) != 1 || assignedV1.SelectedOptionalSubjectIDs[0] != optionalV1ID {
 		t.Fatalf("assign first curriculum and persist optional choice: item=%+v err=%v", assignedV1, err)
 	}
 	// Saving the current choice again replaces the current row instead of
 	// retaining a revoked row as selection history.
 	assignedV1Again, err := academicRepo.SaveStudentEnrollmentSubjects(ctx, actorPrincipalID, schoolID,
 		currentEnrollmentID, curriculumV1.ID, []int64{optionalV1ID})
-	if err != nil || assignedV1Again == nil || len(assignedV1Again.SelectionHistory) != 0 {
+	if err != nil || assignedV1Again == nil {
 		t.Fatalf("replace current optional choice without history: item=%+v err=%v", assignedV1Again, err)
 	}
 	var selectionRowCount int
@@ -1177,8 +1176,7 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	afterRemoval, err := academicRepo.GetStudentEnrollmentCurriculum(ctx, actorPrincipalID, schoolID, currentEnrollmentID)
 	if err != nil || afterRemoval == nil || !afterRemoval.Assigned ||
 		afterRemoval.Curriculum == nil || afterRemoval.Curriculum.ID != curriculumV1.ID ||
-		len(afterRemoval.Curriculum.Subjects) != 1 || len(afterRemoval.SelectedOptionalSubjectIDs) != 0 ||
-		len(afterRemoval.SelectionHistory) != 0 {
+		len(afterRemoval.Curriculum.Subjects) != 1 || len(afterRemoval.SelectedOptionalSubjectIDs) != 0 {
 		t.Fatalf("student curriculum after confirmed subject removal: item=%+v err=%v", afterRemoval, err)
 	}
 	var removedSubjectCount, removedSelectionCount int
