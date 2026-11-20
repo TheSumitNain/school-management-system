@@ -604,13 +604,17 @@ test("student admission, profile navigation and parent details render without br
         contentFits: Boolean(content && content.scrollWidth <= content.clientWidth + 1),
         actionsFit: Boolean(actions && actions.getBoundingClientRect().right <= dialogRect.right + 1),
         buttonsFit: actionRects.every(Boolean),
+        actionDisplay: actions ? getComputedStyle(actions).display : "missing",
         actionColumns: actions ? getComputedStyle(actions).gridTemplateColumns.split(" ").length : 0,
       };
     });
     expect(layout.dialogFits, `student profile dialog should fit at ${width}px`).toBe(true);
     expect(layout.contentFits, `student profile content should not overflow at ${width}px`).toBe(true);
     expect(layout.actionsFit && layout.buttonsFit, `student profile actions should fit at ${width}px`).toBe(true);
-    if (width <= 600) expect(layout.actionColumns, "profile actions should stack on phone widths").toBe(1);
+    if (width <= 600) {
+      expect(layout.actionDisplay, "profile actions should use a stacked layout on phone widths").toBe("grid");
+      expect(layout.actionColumns, "profile actions should use one column on phone widths").toBe(1);
+    }
   }
   await page.setViewportSize({ width: 1440, height: 900 });
   await expect(profileDialog.getByText("14 Nov 2026", { exact: true })).toHaveCount(2);
