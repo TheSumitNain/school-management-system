@@ -46,7 +46,6 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
   const [fieldErrors, setFieldErrors] = useState<{ year?: string; class?: string; section?: string; subjects?: string; groups: Record<number, GroupFieldErrors> }>({ groups: {} });
   const curriculumSummaryRef = useRef<HTMLElement>(null);
   const groupEditorRefs = useRef<Array<HTMLFieldSetElement | null>>([]);
-  const lastSavedSignature = useRef<string | null>(null);
   const [newGroupIndex, setNewGroupIndex] = useState<number | null>(null);
   const save = useSaveSchoolClassCurriculumMutation();
   const preview = usePreviewSchoolClassCurriculumRemovalMutation();
@@ -73,14 +72,6 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
   useEffect(() => {
     if (curriculaQuery.isLoading || curriculaQuery.isError || loadedCurriculumID === (currentCurriculum?.id ?? 0)) return;
     const curriculum = currentCurriculum;
-    lastSavedSignature.current = curriculum ? curriculumSignature({
-      optional_groups: curriculum.optional_groups,
-      subjects: curriculum.subjects.map(subject => ({
-        subject_id: subject.subject_id,
-        is_optional: !subject.is_compulsory,
-        ...(subject.optional_group_name ? { optional_group: subject.optional_group_name } : {}),
-      })),
-    }) : null;
     setIncluded(curriculum?.subjects.map(subject => subject.subject_id) ?? []);
     setGroups(curriculum?.optional_groups.map(group => ({
       name: group.name,
@@ -134,7 +125,6 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
       })),
     }, {
       onSuccess: () => {
-        lastSavedSignature.current = curriculumSignature(input);
         const message = confirmations.length > 0
           ? "Curriculum updated. Confirmed subject removals and affected student choices have been applied."
           : currentCurriculum
@@ -215,7 +205,15 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
       subjects: payloadSubjects,
     };
 
-    if (currentCurriculum && lastSavedSignature.current === curriculumSignature(input)) {
+    const savedCurriculumSignature = currentCurriculum ? curriculumSignature({
+      optional_groups: currentCurriculum.optional_groups,
+      subjects: currentCurriculum.subjects.map(subject => ({
+        subject_id: subject.subject_id,
+        is_optional: subject.is_optional,
+        ...(subject.optional_group_name ? { optional_group: subject.optional_group_name } : {}),
+      })),
+    }) : null;
+    if (currentCurriculum && savedCurriculumSignature === curriculumSignature(input)) {
       notifyToast("info", "No changes to save.");
       return;
     }
