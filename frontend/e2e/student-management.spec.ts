@@ -631,6 +631,7 @@ test("student admission, profile navigation and parent details render without br
   for (const [trigger, title] of [
     ["Address & communication", "Address & Communication"],
     ["Medical & physical", "Medical & Physical Details"],
+    ["Parents & siblings", "Parents & Siblings"],
   ] as const) {
     await profileDialog.getByRole("button", { name: trigger, exact: true }).click();
     const nestedDialog = page.getByRole("dialog", { name: title });
