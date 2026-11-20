@@ -1291,6 +1291,16 @@ test("student admission, profile navigation and parent details render without br
   });
   await expect(page.getByText("Phone number must be 30 characters or fewer.")).toHaveCount(2);
   await expect(page.getByText("Email address must be 254 characters or fewer.", { exact: true })).toBeVisible();
+  const invalidContactFields = [
+    { locator: page.getByPlaceholder("Primary contact number"), errorID: "student-primary-phone-error" },
+    { locator: page.getByPlaceholder("Alternate contact number"), errorID: "student-alternate-phone-error" },
+    { locator: page.getByPlaceholder("student@example.com"), errorID: "student-contact-email-error" },
+  ];
+  for (const field of invalidContactFields) {
+    await expect(field.locator).toHaveAttribute("aria-invalid", "true");
+    await expect(field.locator).toHaveAttribute("aria-describedby", field.errorID);
+    await expect(page.locator(`#${field.errorID}[role="alert"]`)).toBeVisible();
+  }
   expect(contactDetails.primary_phone).toBeNull();
   await page.getByPlaceholder("Primary contact number").fill("9876501234");
   await page.getByPlaceholder("Alternate contact number").fill("");
