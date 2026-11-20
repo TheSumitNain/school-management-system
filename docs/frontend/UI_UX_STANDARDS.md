@@ -22,6 +22,7 @@ These standards apply to every frontend feature and page. A feature must reuse s
 - Use the global `notifyToast` / `ToastViewport` pattern for successful create, update, and delete operations and for actionable mutation failures.
 - Emit success notifications only after the server confirms the operation. Never show success optimistically before a request completes.
 - Toasts supplement, rather than replace, inline field errors and important contextual information. Avoid duplicate persistent success banners for the same operation.
+- The notification viewport keeps the newest three distinct toasts visible; a new success or error must never be hidden behind older notifications.
 - Use clear, concise messages that identify what changed. Use error styling for failures and do not hide server validation details.
 
 ## Destructive and consequential actions
