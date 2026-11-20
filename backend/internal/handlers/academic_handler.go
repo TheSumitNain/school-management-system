@@ -70,6 +70,14 @@ func academicActor(c *gin.Context)(int64,int64,bool){
 	return actor,school,ao&&so&&aok&&sok&&actor>0&&school>0
 }
 func academicID(c *gin.Context,key string)(int64,bool){v,e:=strconv.ParseInt(c.Param(key),10,64);return v,e==nil&&v>0}
+func validateStudentFullNameRequest(c *gin.Context, fullName string) bool {
+	length := len([]rune(strings.TrimSpace(fullName)))
+	if length < 2 || length > 200 {
+		c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Student name must contain 2–200 characters","field_errors":gin.H{"full_name":"Enter a student name containing 2–200 characters."}})
+		return false
+	}
+	return true
+}
 func academicError(c *gin.Context,err error,resource string){
 	switch{
 	case errors.Is(err,repository.ErrAcademicAccessDenied):c.JSON(http.StatusForbidden,gin.H{"status":"error","message":"Academic operation is not authorized"})
@@ -248,6 +256,7 @@ func (h *AcademicHandler) CreateStudentAdmission(c *gin.Context) {
 		AdmissionDate string `json:"admission_date"`
 	}
 	if c.ShouldBindJSON(&req) != nil { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid request body"}); return }
+	if !validateStudentFullNameRequest(c, req.FullName) { return }
 	admissionDate, err := parseEnrollmentDate(req.AdmissionDate)
 	if err != nil { academicError(c, err, "Student admission"); return }
 	result, err := h.service.CreateStudentAdmission(c.Request.Context(), actor, school,
@@ -570,6 +579,7 @@ func (h *AcademicHandler) CreateStudent(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid request body"})
 		return
 	}
+	if !validateStudentFullNameRequest(c, req.FullName) { return }
 	item, err := h.service.CreateStudent(c.Request.Context(), actor, school, req.AdmissionNumber, req.FullName)
 	if err != nil { academicError(c, err, "Student"); return }
 	c.JSON(http.StatusCreated, gin.H{"status":"success","student":item})
@@ -585,6 +595,7 @@ func (h *AcademicHandler) UpdateStudent(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid request body"})
 		return
 	}
+	if !validateStudentFullNameRequest(c, req.FullName) { return }
 	item, err := h.service.UpdateStudent(c.Request.Context(), actor, school, studentID, req.FullName)
 	if err != nil { academicError(c, err, "Student"); return }
 	c.JSON(http.StatusOK, gin.H{"status":"success","student":item})
