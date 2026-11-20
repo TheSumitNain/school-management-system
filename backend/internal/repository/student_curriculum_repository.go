@@ -255,8 +255,8 @@ func curriculumRemovalImpacts(ctx context.Context, db repositoryDB, schoolID, cu
 	rows, err := db.Query(ctx, `
 		SELECT cs.subject_id, cs.subject_name_snapshot,
 		       CASE WHEN cs.is_optional
-		            THEN COUNT(DISTINCT e.student_id) FILTER (WHERE s.id IS NOT NULL AND st.id IS NOT NULL)
-		            ELSE COUNT(DISTINCT e.student_id) FILTER (WHERE st.id IS NOT NULL)
+		            THEN COUNT(DISTINCT e.student_id) FILTER (WHERE ec.curriculum_id=cs.curriculum_id AND s.id IS NOT NULL AND st.id IS NOT NULL)
+		            ELSE COUNT(DISTINCT e.student_id) FILTER (WHERE st.id IS NOT NULL AND (ec.id IS NULL OR ec.curriculum_id=cs.curriculum_id))
 		       END::integer AS affected_students
 		  FROM class_curriculum_subjects cs
 		  JOIN class_curricula cc
@@ -267,8 +267,7 @@ func curriculumRemovalImpacts(ctx context.Context, db repositoryDB, schoolID, cu
 		  LEFT JOIN students st
 		    ON st.id=e.student_id AND st.school_id=e.school_id AND st.status='active'
 		  LEFT JOIN student_enrollment_curricula ec
-		    ON ec.enrollment_id=e.id AND ec.school_id=e.school_id
-		   AND ec.curriculum_id=cs.curriculum_id AND ec.status='active'
+		    ON ec.enrollment_id=e.id AND ec.school_id=e.school_id AND ec.status='active'
 		  LEFT JOIN student_enrollment_subject_selections s
 		    ON s.enrollment_curriculum_id=ec.id AND s.curriculum_id=cs.curriculum_id
 		   AND s.curriculum_subject_id=cs.id AND s.school_id=cs.school_id AND s.revoked_at IS NULL
