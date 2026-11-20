@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -398,16 +397,15 @@ func (r *AcademicRepository) SaveSectionClassCurriculumWithConfirmations(ctx con
 			if !ok { return nil, ErrCurriculumRemovalConfirmationRequired }
 			if count != impact.AffectedStudents { return nil, ErrCurriculumRemovalImpactChanged }
 		}
+		// Confirmed removals permanently remove the current subject and its
+		// student choices. No curriculum or selection history is retained.
 		if _, err := tx.Exec(ctx, `
-			UPDATE student_enrollment_subject_selections s SET revoked_at=NOW()
-			  FROM student_enrollment_curricula ec
-			 WHERE ec.id=s.enrollment_curriculum_id AND ec.school_id=s.school_id
-			   AND ec.curriculum_id=$1 AND ec.status='active'
-			   AND s.curriculum_subject_id=ANY($2::bigint[]) AND s.revoked_at IS NULL
-		`, curriculumID, removedCurriculumSubjectIDs); err != nil { return nil, academicWriteError(err) }
+			DELETE FROM student_enrollment_subject_selections
+			 WHERE school_id=$1 AND curriculum_subject_id=ANY($2::bigint[])
+		`, schoolID, removedCurriculumSubjectIDs); err != nil { return nil, academicWriteError(err) }
 		if _, err := tx.Exec(ctx, `
-			UPDATE class_curriculum_subjects SET is_active=FALSE
-			 WHERE curriculum_id=$1 AND school_id=$2 AND id=ANY($3::bigint[]) AND is_active=TRUE
+			DELETE FROM class_curriculum_subjects
+			 WHERE curriculum_id=$1 AND school_id=$2 AND id=ANY($3::bigint[])
 		`, curriculumID, schoolID, removedCurriculumSubjectIDs); err != nil { return nil, academicWriteError(err) }
 	} else if len(confirmations) > 0 {
 		return nil, ErrInvalidAcademicInput
@@ -455,16 +453,14 @@ func (r *AcademicRepository) SaveSectionClassCurriculumWithConfirmations(ctx con
 
 	action := "school.class_curriculum.created"
 	if !created { action = "school.class_curriculum.updated" }
-	confirmationJSON, err := json.Marshal(confirmations)
-	if err != nil { return nil, fmt.Errorf("encode curriculum removal audit details: %w", err) }
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
 		VALUES($1,$2,$3,'class_curriculum',$4,'success',
 		       jsonb_build_object('academic_year_id',$5::bigint,'class_id',$6::bigint,'section_id',$7::bigint,
 		                          'subject_count',$8::integer,'optional_group_count',$9::integer,
-		                          'removed_subject_ids',$10::bigint[],'removal_confirmations',$11::jsonb))
+		                          'removed_subject_count',$10::integer))
 	`, actorID, schoolID, action, fmt.Sprint(curriculumID), academicYearID, classID, sectionID,
-		len(subjects), len(groups), removedIDs, string(confirmationJSON)); err != nil {
+		len(subjects), len(groups), len(removedIDs)); err != nil {
 		return nil, fmt.Errorf("audit editable class curriculum save: %w", err)
 	}
 	if err := tx.Commit(ctx); err != nil { return nil, fmt.Errorf("commit editable class curriculum save: %w", err) }
@@ -493,10 +489,9 @@ func (r *AcademicRepository) GetStudentEnrollmentCurriculum(ctx context.Context,
 		INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
 		VALUES($1,$2,'school.student.enrollment_curriculum.read','student_enrollment',$3,'success',
 		       jsonb_build_object('selected_optional_subject_count',$4::integer,
-		                          'selection_history_count',$5::integer,
-		                          'has_curriculum',$6::boolean))
+		                          'has_curriculum',$5::boolean))
 	`, actorID, schoolID, fmt.Sprint(enrollmentID), len(item.SelectedOptionalSubjectIDs),
-		len(item.SelectionHistory), item.Curriculum != nil); err != nil {
+		item.Curriculum != nil); err != nil {
 		return nil, fmt.Errorf("audit student enrollment curriculum read: %w", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -614,31 +609,7 @@ func (r *AcademicRepository) loadStudentEnrollmentCurriculum(ctx context.Context
 		}
 		rows.Close()
 	}
-	historyRows, err := r.db.Query(ctx, `
-		SELECT cc.version_number,s.subject_name_snapshot,s.subject_code_snapshot,s.selected_at,s.revoked_at
-		  FROM student_enrollment_curricula ec
-		  JOIN class_curricula cc ON cc.id=ec.curriculum_id AND cc.school_id=ec.school_id
-		  JOIN student_enrollment_subject_selections s
-		    ON s.enrollment_curriculum_id=ec.id AND s.curriculum_id=ec.curriculum_id AND s.school_id=ec.school_id
-		 WHERE ec.enrollment_id=$1 AND ec.school_id=$2
-		 ORDER BY s.selected_at DESC,s.id DESC
-	`, enrollmentID, schoolID)
-	if err != nil {
-		return nil, fmt.Errorf("load student subject selection history: %w", err)
-	}
-	for historyRows.Next() {
-		var history StudentSubjectSelectionHistory
-		if err := historyRows.Scan(&history.CurriculumVersion, &history.SubjectName, &history.SubjectCode, &history.SelectedAt, &history.RevokedAt); err != nil {
-			historyRows.Close()
-			return nil, fmt.Errorf("scan student subject selection history: %w", err)
-		}
-		item.SelectionHistory = append(item.SelectionHistory, history)
-	}
-	if err := historyRows.Err(); err != nil {
-		historyRows.Close()
-		return nil, fmt.Errorf("iterate student subject selection history: %w", err)
-	}
-	historyRows.Close()
+	// Selection history is intentionally not retained or returned.
 	return &item, nil
 }
 
