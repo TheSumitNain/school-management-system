@@ -126,8 +126,12 @@ test("section curriculum validates optional groups, edits in place, and confirms
   await page.getByRole("button", { name: "Add subject" }).click();
   const subjectDialog = page.getByRole("dialog", { name: "Add subject" });
   await subjectDialog.getByLabel("Name").fill("a");
+  await expect(subjectDialog.locator("form")).toHaveJSProperty("noValidate", true);
   await subjectDialog.getByRole("button", { name: "Save changes" }).click();
-  await expect(subjectDialog.getByText("Subject name must contain at least 2 characters.")).toBeVisible();
+  const subjectNameError = subjectDialog.getByText("Subject name must contain at least 2 characters.");
+  await expect(subjectNameError).toBeVisible();
+  await expect(subjectNameError).toHaveCSS("color", "rgb(168, 70, 70)");
+  await expect(subjectDialog.getByLabel("Name")).toHaveAttribute("aria-invalid", "true");
   expect(subjectWriteCount).toBe(0);
   await subjectDialog.getByRole("button", { name: "Cancel" }).click();
   await page.getByRole("button", { name: "Edit Mathematics" }).click();
