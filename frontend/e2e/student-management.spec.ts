@@ -933,6 +933,9 @@ test("student admission, profile navigation and parent details render without br
     form.requestSubmit(button as HTMLButtonElement);
   });
   await expect(relationshipForm.getByText("Another active guardian already uses this relationship. Choose another available relationship.", { exact: true })).toBeVisible();
+  await expect(relationshipSelect).toHaveAttribute("aria-invalid", "true");
+  await expect(relationshipSelect).toHaveAttribute("aria-describedby", "edit-student-guardian-relationship-error");
+  await expect(relationshipForm.locator('#edit-student-guardian-relationship-error[role="alert"]')).toBeVisible();
   expect(guardianLink.relationship_type).toBe(" father ");
   failGuardianRelationshipUpdateConflict = false;
   await relationshipSelect.click();
@@ -2318,6 +2321,10 @@ test("staff can create a guardian contact and link it to a student with relation
   await page.getByPlaceholder("Organization name (optional)").fill("");
   await page.getByRole("button", { name: "Save guardian contact" }).click();
   await expect(page.getByText("Enter a valid email address.", { exact: true })).toBeVisible();
+  const newGuardianEmailInput = page.getByPlaceholder("guardian@example.com");
+  await expect(newGuardianEmailInput).toHaveAttribute("aria-invalid", "true");
+  await expect(newGuardianEmailInput).toHaveAttribute("aria-describedby", "student-guardian-email-error");
+  await expect(page.locator('#student-guardian-email-error[role="alert"]')).toBeVisible();
   expect(guardianCreates).toHaveLength(0);
   for (const invalidEmail of ["Guardian <guardian@example.test>", "guardian@example.test,other@example.test"]) {
     await page.getByPlaceholder("guardian@example.com").fill(invalidEmail);
