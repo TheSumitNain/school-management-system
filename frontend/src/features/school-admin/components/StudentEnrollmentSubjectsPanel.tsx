@@ -65,8 +65,10 @@ export function StudentEnrollmentSubjectsPanel({
         selected_optional_subject_ids: selected,
       });
       notifyToast("success", "Student subject choices saved successfully.");
-    } catch {
-      // The mutation error remains visible beside the save action.
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to save student subject choices. Please try again.";
+      notifyToast("error", message);
+      // Keep the inline error beside the save action as well.
     }
   }
 
