@@ -92,6 +92,7 @@ export function StudentPromotionDialog({ enrollment, academicYears, academicYear
       onPromoted();
     } catch (error) {
       if (error instanceof ApiError && Object.keys(error.fieldErrors).length > 0) {
+        notifyToast("error", error.message);
         setErrors(current => ({ ...current, ...error.fieldErrors }));
         setFeedback("");
       } else {
