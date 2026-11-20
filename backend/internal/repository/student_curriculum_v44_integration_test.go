@@ -192,27 +192,27 @@ func TestStudentCurriculumV44PostgresIntegration(t *testing.T) {
 	}
 
 	if curriculumView.EnrollmentID != enrollmentID || curriculumView.StudentID != studentID ||
-		!curriculumView.Assigned || len(curriculumView.SelectedOptionalSubjectIDs) != 2 ||
-		len(curriculumView.SelectionHistory) != 2 {
-		t.Fatalf("student enrollment curriculum view = %+v; expected assigned curriculum, one selected option and one history row", curriculumView)
+		!curriculumView.Assigned || len(curriculumView.SelectedOptionalSubjectIDs) != 2 {
+		t.Fatalf("student enrollment curriculum view = %+v; expected assigned curriculum with two current optional choices and no history field", curriculumView)
 	}
-	var curriculumReadAuditCount, auditedSelectionCount, auditedHistoryCount int
+	var curriculumReadAuditCount, auditedSelectionCount int
+	var hasHistoryAuditField bool
 	if err := tx.QueryRow(ctx, `
 		SELECT COUNT(*)::integer,
 		       COALESCE(MAX((metadata->>'selected_optional_subject_count')::integer),-1),
-		       COALESCE(MAX((metadata->>'selection_history_count')::integer),-1)
+		       COALESCE(BOOL_OR(metadata ? 'selection_history_count'),false)
 		  FROM audit_events
 		 WHERE school_id=$1 AND actor_principal_id=$2
 		   AND action='school.student.enrollment_curriculum.read'
 		   AND resource_type='student_enrollment' AND resource_id=$3
 	`, schoolID, actorPrincipalID, fmt.Sprint(enrollmentID)).Scan(
-		&curriculumReadAuditCount, &auditedSelectionCount, &auditedHistoryCount,
+		&curriculumReadAuditCount, &auditedSelectionCount, &hasHistoryAuditField,
 	); err != nil {
 		t.Fatalf("read student enrollment curriculum audit: %v", err)
 	}
-	if curriculumReadAuditCount != 1 || auditedSelectionCount != 2 || auditedHistoryCount != 2 {
-		t.Fatalf("student enrollment curriculum audit count=%d selected=%d history=%d; want 1, 1, 1",
-			curriculumReadAuditCount, auditedSelectionCount, auditedHistoryCount)
+	if curriculumReadAuditCount != 1 || auditedSelectionCount != 2 || hasHistoryAuditField {
+		t.Fatalf("student enrollment curriculum audit count=%d selected=%d contains_history_field=%t; want 1, 2, false",
+			curriculumReadAuditCount, auditedSelectionCount, hasHistoryAuditField)
 	}
 
 	expectRejected := func(label string, operation func() error) {
