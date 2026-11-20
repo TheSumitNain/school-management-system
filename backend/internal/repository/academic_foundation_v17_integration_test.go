@@ -1132,6 +1132,28 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 		len(afterRemoval.SelectionHistory) != 1 || afterRemoval.SelectionHistory[0].RevokedAt == nil {
 		t.Fatalf("student curriculum after confirmed subject removal: item=%+v err=%v", afterRemoval, err)
 	}
+	var removedSubjectActive bool
+	if err := tx.QueryRow(ctx, `SELECT is_active FROM class_curriculum_subjects WHERE id=$1 AND curriculum_id=$2`, optionalV1ID, curriculumV1.ID).Scan(&removedSubjectActive); err != nil {
+		t.Fatalf("read soft-deactivated curriculum subject: %v", err)
+	}
+	if removedSubjectActive {
+		t.Fatal("confirmed removed curriculum subject remains active")
+	}
+	var removalAuditCount int
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*)::integer
+		  FROM audit_events
+		 WHERE school_id=$1 AND actor_principal_id=$2
+		   AND action='school.class_curriculum.updated'
+		   AND resource_type='class_curriculum' AND resource_id=$3
+		   AND metadata->'removed_subject_ids' @> to_jsonb(ARRAY[$4::bigint])
+		   AND metadata->'removal_confirmations' @> jsonb_build_array(jsonb_build_object('subject_id',$4::bigint,'affected_students',1))
+	`, schoolID, actorPrincipalID, fmt.Sprint(curriculumV1.ID), subjectAltID).Scan(&removalAuditCount); err != nil {
+		t.Fatalf("read confirmed curriculum-removal audit: %v", err)
+	}
+	if removalAuditCount != 1 {
+		t.Fatalf("confirmed curriculum-removal audit count = %d, want 1", removalAuditCount)
+	}
 
 	var promotionSectionID int64
 	if err := tx.QueryRow(ctx, `
