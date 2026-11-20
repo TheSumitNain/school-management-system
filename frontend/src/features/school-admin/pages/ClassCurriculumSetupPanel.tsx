@@ -306,7 +306,7 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
         </section>
       )}
       {canManage ? (
-        <form onSubmit={submit} className="curriculum-editor">
+        <form onSubmit={submit} className="curriculum-editor" noValidate>
           <div className="toolbar"><div><h3>{currentCurriculum ? "Edit curriculum" : "Create curriculum"}</h3><small>Changes update this section's existing curriculum. No new version is created.</small></div>
             <button type="button" className="academic-refresh academic-add" onClick={addGroup} disabled={busy} aria-controls="curriculum-optional-groups">Add optional group</button>
           </div>
