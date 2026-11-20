@@ -21,7 +21,7 @@ export function StudentEnrollmentSubjectsPanel({
   const [targetCurriculumID, setTargetCurriculumID] = useState(0);
   const data = query.data?.enrollment_curriculum;
   const curriculum = [data?.curriculum, data?.available_curriculum].find(item => item?.id === targetCurriculumID) ?? data?.curriculum ?? data?.available_curriculum;
-  const movingToNewVersion = Boolean(data?.available_curriculum && targetCurriculumID === data.available_curriculum.id);
+  const movingToCurrentCurriculum = Boolean(data?.available_curriculum && targetCurriculumID === data.available_curriculum.id);
   const selectedVersionIsAssigned = Boolean(data?.assigned && data.curriculum?.id === targetCurriculumID);
   // Query refetches can replace the selected-ID array with a new reference
   // even when its values have not changed. Track the saved values rather than
@@ -65,7 +65,7 @@ export function StudentEnrollmentSubjectsPanel({
   return (
     <section className="student-enrollment-subjects" aria-label="Curriculum and subject choices">
       <div className="student-profile-enrollment-heading">
-        <strong>Curriculum · Version {curriculum.version_number}</strong>
+        <strong>Curriculum</strong>
         <span className={"student-status " + (selectedVersionIsAssigned ? "active" : "pending")}>{selectedVersionIsAssigned ? "Assigned" : "Available"}</span>
         <button type="button" className="student-link-button" onClick={() => void query.refetch()} disabled={query.isFetching || save.isPending} aria-label="Refresh curriculum and subject choices">
           {query.isFetching ? "Refreshing…" : "Refresh"}
@@ -73,15 +73,15 @@ export function StudentEnrollmentSubjectsPanel({
       </div>
       <p className="student-address-note">Compulsory subjects are included automatically. Optional choices follow the school's selection limits.</p>
       {data?.curriculum && data.available_curriculum && (
-        <label className="student-curriculum-version-select">Curriculum version
+        <label className="student-curriculum-version-select">Curriculum assignment
           <select value={targetCurriculumID} onChange={event => { const nextID = Number(event.target.value); setTargetCurriculumID(nextID); setSelected(nextID === data.curriculum?.id ? (data.selected_optional_subject_ids ?? []) : []); }}>
-            <option value={data.curriculum.id}>Assigned version {data.curriculum.version_number}</option>
-            <option value={data.available_curriculum.id}>New version {data.available_curriculum.version_number}</option>
+            <option value={data.curriculum.id}>Currently assigned curriculum</option>
+            <option value={data.available_curriculum.id}>Current section curriculum</option>
           </select>
         </label>
       )}
       {!data?.assigned && <p className="student-address-note">This curriculum is available for the selected class and academic year. Saving subject choices will assign it to this student’s enrollment.</p>}
-      {movingToNewVersion && <p className="student-address-note">Saving this version replaces the assigned curriculum while preserving previous subject-choice history.</p>}
+      {movingToCurrentCurriculum && <p className="student-address-note">Saving switches this enrollment to the current section curriculum. Its current optional subject choices will be replaced; previous subject choices are not retained.</p>}
       <section className="student-subject-section" aria-label="Compulsory subjects">
         <h4>Compulsory subjects <span>Included automatically</span></h4>
         <div className="student-subject-list">
