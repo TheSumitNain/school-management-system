@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { notifyToast } from "../../../shared/notifications";
 import { DatePicker } from "../../../shared/components/DatePicker";
 import { schoolDateValue } from "../../../shared/date/schoolDate";
 import { ApiError } from "../../../lib/api";
@@ -94,7 +95,9 @@ export function StudentPromotionDialog({ enrollment, academicYears, academicYear
         setErrors(current => ({ ...current, ...error.fieldErrors }));
         setFeedback("");
       } else {
-        setFeedback(error instanceof Error ? error.message : "Student promotion could not be completed.");
+        const message = error instanceof Error ? error.message : "Student promotion could not be completed.";
+        notifyToast("error", message);
+        setFeedback(message);
       }
     }
   }
