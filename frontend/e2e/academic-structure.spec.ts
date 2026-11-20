@@ -163,7 +163,8 @@ test("section curriculum validates optional groups, edits in place, and confirms
   await expect(page.getByRole("button", { name: "Add optional group" })).toBeDisabled();
 
   releaseSaveResolve();
-  await expect(page.getByText("Curriculum saved successfully. Existing student selections are preserved except the subjects you confirmed for removal.")).toBeVisible();
+  await expect(page.getByText("New curriculum created successfully.")).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   await expect(page.getByRole("heading", { name: "Edit curriculum" })).toBeVisible();
   await expect(page.getByText("3 subjects · 1 optional groups", { exact: true })).toBeVisible();
   await expect(page.locator(".curriculum-existing").getByText("Mathematics · Optional", { exact: true })).toBeVisible();
@@ -191,7 +192,7 @@ test("section curriculum validates optional groups, edits in place, and confirms
   });
 
   await page.getByRole("button", { name: "Confirm and save" }).click();
-  await expect(page.getByText("Curriculum saved successfully. Existing student selections are preserved except the subjects you confirmed for removal.")).toBeVisible();
+  await expect(page.getByText("Curriculum updated. Confirmed subject removals and affected student choices have been applied.")).toBeVisible();
   await expect(page.locator(".curriculum-existing").getByText("Hindi", { exact: false })).toHaveCount(0);
   expect(removalSavePayload).toMatchObject({
     academic_year_id: 7, class_id: 3, section_id: 44,
@@ -204,7 +205,7 @@ test("section curriculum validates optional groups, edits in place, and confirms
 
   await page.getByRole("button", { name: "Remove group" }).click();
   await page.getByRole("button", { name: "Save curriculum changes" }).click();
-  await expect(page.getByText("Curriculum saved successfully. Existing student selections are preserved except the subjects you confirmed for removal.")).toBeVisible();
+  await expect(page.getByText("Curriculum changes saved successfully.")).toBeVisible();
   await expect(page.locator(".curriculum-existing").getByText("2 subjects · 0 optional groups", { exact: true })).toBeVisible();
   expect(groupRemovalSavePayload).toMatchObject({
     academic_year_id: 7, class_id: 3, section_id: 44,
