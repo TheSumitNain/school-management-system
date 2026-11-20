@@ -917,7 +917,10 @@ test("student admission, profile navigation and parent details render without br
   });
   await expect(page.getByRole("status").filter({ hasText: "No change to save." })).toBeVisible({ timeout: 10_000 });
   expect(guardianLinkUpdateRequests).toHaveLength(0);
-  if (await relationshipSelect.getAttribute("aria-expanded") !== "true") await relationshipSelect.click();
+  // A no-op submit intentionally exits edit mode; reopen before testing server validation.
+  await guardianCard.getByRole("button", { name: "Edit relationship" }).click();
+  await expect(relationshipForm).toBeVisible();
+  await relationshipSelect.click();
   await expect(editRelationshipList).toBeVisible();
   await editRelationshipList.getByRole("option", { name: "Mother", exact: true }).click();
   failGuardianRelationshipUpdateConflict = true;
