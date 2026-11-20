@@ -258,12 +258,16 @@ func curriculumRemovalImpacts(ctx context.Context, db repositoryDB, schoolID, cu
 		            ELSE COUNT(DISTINCT e.student_id) FILTER (WHERE st.id IS NOT NULL)
 		       END::integer AS affected_students
 		  FROM class_curriculum_subjects cs
-		  LEFT JOIN student_enrollment_curricula ec
-		    ON ec.curriculum_id=cs.curriculum_id AND ec.school_id=cs.school_id AND ec.status='active'
+		  JOIN class_curricula cc
+		    ON cc.id=cs.curriculum_id AND cc.school_id=cs.school_id
 		  LEFT JOIN student_enrollments e
-		    ON e.id=ec.enrollment_id AND e.school_id=ec.school_id AND e.status='active'
+		    ON e.school_id=cc.school_id AND e.academic_year_id=cc.academic_year_id
+		   AND e.class_id=cc.class_id AND e.section_id=cc.section_id AND e.status='active'
 		  LEFT JOIN students st
 		    ON st.id=e.student_id AND st.school_id=e.school_id AND st.status='active'
+		  LEFT JOIN student_enrollment_curricula ec
+		    ON ec.enrollment_id=e.id AND ec.school_id=e.school_id
+		   AND ec.curriculum_id=cs.curriculum_id AND ec.status='active'
 		  LEFT JOIN student_enrollment_subject_selections s
 		    ON s.enrollment_curriculum_id=ec.id AND s.curriculum_id=cs.curriculum_id
 		   AND s.curriculum_subject_id=cs.id AND s.school_id=cs.school_id AND s.revoked_at IS NULL
