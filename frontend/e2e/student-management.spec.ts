@@ -1884,12 +1884,13 @@ test("student promotion validates required fields and preserves prior enrollment
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Destination academic year", exact: true })).toBeVisible();
   const promoteButton = dialog.getByRole("button", { name: "Promote student" });
+  const destinationSection = dialog.getByRole("button", { name: "Destination class and section", exact: true });
+  await expect(destinationSection).toBeEnabled();
   await promoteButton.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
     if (!form) throw new Error("Promotion submit button is not associated with its form.");
     form.requestSubmit(button as HTMLButtonElement);
   });
-  const destinationSection = dialog.getByRole("button", { name: "Destination class and section", exact: true });
   await expect(dialog.getByText("Select a destination class and section.", { exact: true })).toBeVisible();
   await expect(destinationSection).toHaveAttribute("aria-invalid", "true");
   await expect(destinationSection).toHaveAttribute("aria-describedby", "promotion-section-error");
