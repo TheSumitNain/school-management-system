@@ -52,6 +52,23 @@ export function StudentEnrollmentSubjectsPanel({
     setSelected(current => checked ? [...current, id] : current.filter(value => value !== id));
   }
 
+  async function saveSubjectChoices() {
+    if (selectionUnchanged) {
+      notifyToast("info", "No change to save.");
+      return;
+    }
+    try {
+      await save.mutateAsync({
+        enrollmentID,
+        curriculum_id: targetCurriculumID || curriculum.id,
+        selected_optional_subject_ids: selected,
+      });
+      notifyToast("success", "Student subject choices saved successfully.");
+    } catch {
+      // The mutation error remains visible beside the save action.
+    }
+  }
+
   if (query.isLoading) return <p className="student-address-note">Loading curriculum and subject choices…</p>;
   if (query.isError) return <div className="student-feedback error" role="alert"><p>{query.error.message}</p><button type="button" className="student-secondary" onClick={() => void query.refetch()}>Retry</button></div>;
   if (!curriculum) return <p className="student-address-note">No curriculum has been configured for this class and academic year yet.</p>;
@@ -128,10 +145,7 @@ export function StudentEnrollmentSubjectsPanel({
       {canEdit ? (
         <div className="student-subject-actions">
           {save.isError && <p className="student-field-error" role="alert">{save.error.message}</p>}
-          <button type="button" className="student-secondary" disabled={invalidGroups.length > 0 || save.isPending || selectionUnchanged} onClick={() => {
-            if (selectionUnchanged) { notifyToast("info", "No change to save."); return; }
-            save.mutate({ enrollmentID, curriculum_id: targetCurriculumID || curriculum.id, selected_optional_subject_ids: selected });
-          }}>
+          <button type="button" className="student-secondary" disabled={invalidGroups.length > 0 || save.isPending || selectionUnchanged} onClick={() => void saveSubjectChoices()}>
             {save.isPending ? "Saving…" : "Save subject choices"}
           </button>
         </div>
