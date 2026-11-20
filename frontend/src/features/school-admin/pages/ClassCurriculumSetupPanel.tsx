@@ -173,6 +173,7 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
       const key = group.name.trim().toLowerCase();
       const errors: GroupFieldErrors = {};
       if (!key) errors.name = "Enter a name for this optional group.";
+      else if (Array.from(key).length < 2) errors.name = "Optional group name must contain at least 2 characters.";
       else if (normalized.has(key)) errors.name = "Optional group names must be unique.";
       else normalized.add(key);
       if (group.min_selections < 0) errors.min = "Minimum choices cannot be negative.";

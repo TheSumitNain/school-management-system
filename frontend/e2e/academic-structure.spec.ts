@@ -164,6 +164,9 @@ test("section curriculum validates optional groups, edits in place, and confirms
   await expect(newGroupCard).toBeInViewport();
   const minChoices = page.getByLabel("Minimum choices");
   const maxChoices = page.getByLabel("Maximum choices");
+  await groupName.fill("a");
+  await page.getByRole("button", { name: "Save curriculum" }).click();
+  await expect(page.getByText("Optional group name must contain at least 2 characters.", { exact: true })).toBeVisible();
   await groupName.fill("Second language");
 
   await page.getByRole("button", { name: "Save curriculum" }).click();
@@ -214,6 +217,7 @@ test("section curriculum validates optional groups, edits in place, and confirms
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   await expect(page.getByRole("heading", { name: "Edit curriculum" })).toBeVisible();
   await expect(page.getByText("3 subjects · 1 optional groups", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save curriculum changes" })).toBeDisabled();
   await expect(page.locator(".curriculum-existing").getByText("Mathematics · Optional", { exact: true })).toBeVisible();
   await expect(page.locator(".curriculum-existing").getByText("Hindi · Second language", { exact: true })).toBeVisible();
   expect(createPayload).toMatchObject({

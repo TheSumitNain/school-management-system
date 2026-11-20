@@ -287,7 +287,7 @@ func (r *AcademicRepository) SaveSectionClassCurriculumWithConfirmations(ctx con
 	for _, group := range groups {
 		group.Name = strings.TrimSpace(group.Name)
 		key := strings.ToLower(group.Name)
-		if group.Name == "" || len([]rune(group.Name)) > 100 || group.MinSelections < 0 || group.MaxSelections < 1 || group.MinSelections > group.MaxSelections || key == "" { return nil, ErrInvalidAcademicInput }
+		if len([]rune(group.Name)) < 2 || len([]rune(group.Name)) > 100 || group.MinSelections < 0 || group.MaxSelections < 1 || group.MinSelections > group.MaxSelections || key == "" { return nil, ErrInvalidAcademicInput }
 		if _, exists := groupByName[key]; exists { return nil, ErrInvalidAcademicInput }
 		groupByName[key] = group
 	}
