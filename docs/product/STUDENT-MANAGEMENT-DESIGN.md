@@ -135,7 +135,7 @@ The target model should represent:
 
 Teacher subject assignments must be checked against the applicable academic-year/class/section curriculum, not merely against an active subject and section. Each scope has one current editable curriculum record; edits update that record in place and do not create curriculum versions or edit history. Student optional choices represent current state only: saving replaces prior choice rows, and a confirmed subject removal deletes linked choices after the affected-student count is reviewed. Removing an optional group converts its subjects to standalone optional choices and preserves current selections; empty group records are deleted. No student subject-selection history is retained.
 
-The exact rules for optional groups (minimum/maximum choices, mutually exclusive choices, and whether selection can change mid-year) must be explicit in the domain service and covered by database/application tests before enabling the UI.
+Current optional-group behavior is enforced in the domain service and database: minimum/maximum selection bounds are validated on save; active selections cannot be invalidated by changing a subject between compulsory/optional or moving it into another group; ungrouping a selected optional subject preserves the choice as a standalone optional subject. Student choices may be changed during the active enrollment, and saving replaces the previous current choices rather than retaining a separate history.
 
 ## 4. Combined admission and profile workflow
 
