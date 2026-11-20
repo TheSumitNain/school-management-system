@@ -15,6 +15,7 @@ import {
 import { Select } from "../../../shared/components/Select";
 import { Modal } from "../../../shared/components/Modal";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
+import { ApiError } from "../../../lib/api";
 import "./RoleManagementPage.css";
 
 type Props = { permissions: string[] };
@@ -72,7 +73,10 @@ export function RoleManagementPage({ permissions }: Props) {
       await queryClient.invalidateQueries({ queryKey: ["school-admin", "roles"] });
       setSelectedRoleID(result.role.id);
     },
-    onError: error => notifyToast("error", error instanceof Error ? error.message : "Unable to create this role."),
+    onError: error => {
+      if (error instanceof ApiError && error.fieldErrors.name) setNameError(error.fieldErrors.name);
+      notifyToast("error", error instanceof Error ? error.message : "Unable to create this role.");
+    },
   });
   const grant = useMutation({
     mutationFn: (input: { permission_key: string; delegation_id: number }) =>
@@ -85,7 +89,10 @@ export function RoleManagementPage({ permissions }: Props) {
       setFeedback("");
       await queryClient.invalidateQueries({ queryKey: ["school-admin", "role-permissions", selectedRoleID] });
     },
-    onError: error => notifyToast("error", error instanceof Error ? error.message : "Unable to grant this permission."),
+    onError: error => {
+      if (error instanceof ApiError && error.fieldErrors.permission_key) setGrantFieldError(error.fieldErrors.permission_key);
+      notifyToast("error", error instanceof Error ? error.message : "Unable to grant this permission.");
+    },
   });
   const revoke = useMutation({
     mutationFn: (key: string) => revokeCustomRolePermission(selectedRoleID!, key),
