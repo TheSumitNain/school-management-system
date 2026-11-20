@@ -36,7 +36,7 @@ test("school workspace pages stay within narrow, tablet, and desktop viewports",
   await page.goto("/");
   for (const width of [320, 360, 390, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 900 });
-    await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Sign in to your workspace" })).toBeVisible();
     await expect.poll(
       () => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
       { message: `login page should not cause horizontal overflow at ${width}px` },
