@@ -80,6 +80,7 @@ test("student admission, profile navigation and parent details render without br
     id: 601, school_id: 10, student_id: 1, primary_phone: null, alternate_phone: null, email_address: null,
   };
   let contactDetailsWriteCount = 0;
+  let contactDetailsWriteCompleted = false;
   const basicDetails: Record<string, unknown> = {
     id: 1, school_id: 10, student_id: 1, date_of_birth: null, place_of_birth: null,
     gender: null, nationality: null, religion: null, social_category: null,
@@ -368,6 +369,9 @@ test("student admission, profile navigation and parent details render without br
             return;
           }
           Object.assign(contactDetails, input);
+          await route.fulfill({ json: { contact_details: contactDetails } });
+          contactDetailsWriteCompleted = true;
+          return;
         }
         await route.fulfill({ json: { contact_details: contactDetails } });
         return;
@@ -1145,11 +1149,11 @@ test("student admission, profile navigation and parent details render without br
     if (!form) throw new Error("Contact save button is not associated with its form.");
     form.requestSubmit(button as HTMLButtonElement);
   });
+  // The mock mutates its in-memory record before fulfilling the request. Wait
+  // for the response to finish before checking the mutation's success toast.
   await expect.poll(() => contactDetails.primary_phone).toBe("9876501234");
-  // The mock records the write before the mutation's success callback and toast
-  // finish; wait for the save control to leave its pending state before asserting.
-  await expect(contactSaveButton).toBeEnabled();
-  await expect(page.getByText("Student contact details saved.")).toBeVisible();
+  await expect.poll(() => contactDetailsWriteCompleted).toBe(true);
+  await expect(page.getByRole("status").filter({ hasText: "Student contact details saved." })).toBeVisible();
   await page.getByRole("button", { name: "Close dialog" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
 
