@@ -239,7 +239,10 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
               <button type="button" className="academic-edit" disabled={busy} onClick={() => {
                 const removedName = group.name.trim().toLowerCase();
                 setGroups(current => current.filter((_, i) => i !== index));
-                setGroupBySubject(current => Object.fromEntries(Object.entries(current).map(([id, name]) => [id, name.trim().toLowerCase() === removedName ? "__standalone_optional__" : name])));
+                setGroupBySubject(current => {
+                  if (!removedName) return current;
+                  return Object.fromEntries(Object.entries(current).map(([id, name]) => [id, name.trim().toLowerCase() === removedName ? "__standalone_optional__" : name]));
+                });
                 setFieldErrors(current => ({ ...current, groups: {} }));
               }}>Remove group</button>
             </fieldset>
@@ -279,7 +282,7 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
           {fieldErrors.subjects && <p className="app-field-error" role="alert">{fieldErrors.subjects}</p>}
           {error && <p className="app-field-error" role="alert">{error}</p>}
           {success && <p className="student-success" role="status">{success}</p>}
-          <button type="submit" className="primary academic-add" disabled={busy || !yearNumber || !classNumber || !sectionNumber || curriculaQuery.isLoading}>
+          <button type="submit" className="primary academic-add" disabled={busy || !yearNumber || !classNumber || !sectionNumber || curriculaQuery.isLoading || curriculaQuery.isError}>
             {busy ? "Saving curriculum…" : currentCurriculum ? "Save curriculum changes" : "Save curriculum"}
           </button>
         </form>
