@@ -1050,6 +1050,36 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	if err != nil || isolatedCurriculum == nil || isolatedCurriculum.VersionNumber != 1 {
 		t.Fatalf("create independent section curriculum: curriculum=%+v err=%v", isolatedCurriculum, err)
 	}
+	// V54 could leave soft-deactivated subject rows behind. V55 must clean
+	// those legacy rows during an ordinary edit without asking for a second
+	// removal confirmation or preserving selection history.
+	var legacyInactiveSubjectID int64
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO class_curriculum_subjects
+			(school_id,curriculum_id,subject_id,optional_group_id,is_optional,
+			 subject_name_snapshot,subject_code_snapshot,is_active)
+		SELECT $1,$2,id,NULL,FALSE,name,subject_code,FALSE
+		  FROM subjects WHERE id=$3 AND school_id=$1
+		RETURNING id
+	`, schoolID, isolatedCurriculum.ID, subjectAltID).Scan(&legacyInactiveSubjectID); err != nil {
+		t.Fatalf("create legacy soft-deactivated curriculum subject: %v", err)
+	}
+	cleanedLegacyCurriculum, err := academicRepo.SaveSectionClassCurriculum(ctx, actorPrincipalID, schoolID,
+		enrollmentYearID, sourceClassID, isolatedSectionID, nil,
+		[]CurriculumSubjectInput{{SubjectID: subjectID}})
+	if err != nil || cleanedLegacyCurriculum == nil || len(cleanedLegacyCurriculum.Subjects) != 1 {
+		t.Fatalf("edit curriculum with legacy inactive subject: curriculum=%+v err=%v", cleanedLegacyCurriculum, err)
+	}
+	var legacyInactiveCount int
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*)::integer FROM class_curriculum_subjects
+		 WHERE id=$1 AND curriculum_id=$2
+	`, legacyInactiveSubjectID, isolatedCurriculum.ID).Scan(&legacyInactiveCount); err != nil {
+		t.Fatalf("verify legacy inactive subject cleanup: %v", err)
+	}
+	if legacyInactiveCount != 0 {
+		t.Fatalf("legacy inactive curriculum subject rows remaining = %d, want 0", legacyInactiveCount)
+	}
 	firstSectionCurricula, err := academicRepo.ListSectionClassCurricula(ctx, actorPrincipalID, schoolID,
 		enrollmentYearID, sourceClassID, sourceSectionID)
 	if err != nil || len(firstSectionCurricula) != 1 || firstSectionCurricula[0].ID != curriculumV1.ID {
