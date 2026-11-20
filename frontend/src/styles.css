@@ -1093,6 +1093,19 @@ td b {
   font-weight: 600;
   line-height: 1.45;
 }
+input[aria-invalid="true"],
+select[aria-invalid="true"],
+textarea[aria-invalid="true"],
+[role="combobox"][aria-invalid="true"] {
+  border-color: var(--color-danger) !important;
+  box-shadow: 0 0 0 1px var(--color-danger);
+}
+input[aria-invalid="true"]:focus,
+select[aria-invalid="true"]:focus,
+textarea[aria-invalid="true"]:focus,
+[role="combobox"][aria-invalid="true"]:focus {
+  outline-color: var(--color-danger);
+}
 .curriculum-group-subject-assignment {
   display: grid;
   gap: 4px;
