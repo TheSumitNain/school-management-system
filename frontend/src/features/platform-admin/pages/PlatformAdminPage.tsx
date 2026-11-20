@@ -33,6 +33,8 @@ export function PlatformAdminPage({ permissions }: Props) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [adminToDeactivate, setAdminToDeactivate] = useState<{ principalID: number; email: string } | null>(null);
   const [deactivateError, setDeactivateError] = useState("");
+  const [delegationToRevoke, setDelegationToRevoke] = useState<{ id: number; permissionKey: string } | null>(null);
+  const [revokeError, setRevokeError] = useState("");
   const [selectedSchoolID, setSelectedSchoolID] = useState<number | null>(null);
   const [selectedPermission, setSelectedPermission] = useState("");
   const [canAssignToRoles, setCanAssignToRoles] = useState(true);
@@ -76,7 +78,9 @@ export function PlatformAdminPage({ permissions }: Props) {
       notifyToast("success", `Platform Admin ${result.admin.email} created. MFA enrollment is required at first sign-in.`);
       setFeedback(null);
     } catch (error) {
-      setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to create Platform Admin." });
+      const message = error instanceof Error ? error.message : "Unable to create Platform Admin.";
+      notifyToast("error", message);
+      setFeedback({ kind: "error", message });
     }
   }
 
@@ -106,7 +110,9 @@ export function PlatformAdminPage({ permissions }: Props) {
       notifyToast("success", `School ${result.school.name} (${result.school.code}) created. School Admin username: ${result.school_admin.username}. They must change the initial password after sign-in.`);
       setFeedback(null);
     } catch (error) {
-      setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to onboard school." });
+      const message = error instanceof Error ? error.message : "Unable to onboard school.";
+      notifyToast("error", message);
+      setFeedback({ kind: "error", message });
     }
   }
 
@@ -127,19 +133,31 @@ export function PlatformAdminPage({ permissions }: Props) {
       notifyToast("success", "Permission delegated to the selected school.");
       setFeedback(null);
     } catch (error) {
-      setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to delegate permission." });
+      const message = error instanceof Error ? error.message : "Unable to delegate permission.";
+      notifyToast("error", message);
+      setFeedback({ kind: "error", message });
     }
   }
 
-  async function revokePermission(delegationID: number, permissionKey: string) {
-    if (selectedSchoolID === null || !window.confirm(`Revoke ${permissionKey} from this school? Existing role grants and user overrides tied to this delegation will stop authorizing access.`)) return;
+  function revokePermission(delegationID: number, permissionKey: string) {
+    setRevokeError("");
+    setDelegationToRevoke({ id: delegationID, permissionKey });
+  }
+  async function confirmRevokePermission() {
+    if (!delegationToRevoke || selectedSchoolID === null) return;
+    const target = delegationToRevoke;
+    setRevokeError("");
     setFeedback(null);
     try {
-      await revokeDelegation.mutateAsync({ delegationID, schoolID: selectedSchoolID });
-      notifyToast("success", `${permissionKey} delegation revoked.`);
+      await revokeDelegation.mutateAsync({ delegationID: target.id, schoolID: selectedSchoolID });
+      setDelegationToRevoke(null);
+      notifyToast("success", `${target.permissionKey} delegation revoked.`);
       setFeedback(null);
     } catch (error) {
-      setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to revoke permission." });
+      const message = error instanceof Error ? error.message : "Unable to revoke permission.";
+      notifyToast("error", message);
+      setRevokeError(message);
+      setFeedback({ kind: "error", message });
     }
   }
 
@@ -155,7 +173,9 @@ export function PlatformAdminPage({ permissions }: Props) {
       notifyToast("success", `${target.email} was deactivated and their active sessions were revoked.`);
       setFeedback(null);
     } catch (error) {
-      setDeactivateError(error instanceof Error ? error.message : "Unable to deactivate Platform Admin. Please try again.");
+      const message = error instanceof Error ? error.message : "Unable to deactivate Platform Admin. Please try again.";
+      notifyToast("error", message);
+      setDeactivateError(message);
     }
   }
 
@@ -262,6 +282,7 @@ export function PlatformAdminPage({ permissions }: Props) {
         </form>
       </Modal>
       <ConfirmDialog open={Boolean(adminToDeactivate)} title="Deactivate Platform Admin?" description={adminToDeactivate ? `Deactivate ${adminToDeactivate.email}? Their active sessions will be revoked and they will no longer be able to access platform administration.` : ""} confirmLabel="Deactivate account" pending={deactivateAdmin.isPending} error={deactivateError || undefined} onCancel={() => {setAdminToDeactivate(null);setDeactivateError("");}} onConfirm={() => void confirmDeactivate()}/>
+      <ConfirmDialog open={delegationToRevoke !== null} title="Revoke school permission?" description={delegationToRevoke ? `Revoke ${delegationToRevoke.permissionKey} from this school? Existing role grants and user overrides tied to this delegation will stop authorizing access.` : ""} confirmLabel="Revoke permission" pending={revokeDelegation.isPending} error={revokeError || undefined} onCancel={() => { setDelegationToRevoke(null); setRevokeError(""); }} onConfirm={() => void confirmRevokePermission()}/>
     </div>
   );
 }
