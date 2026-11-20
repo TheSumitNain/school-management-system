@@ -41,3 +41,26 @@ func TestNormalizeAddressText(t *testing.T) {
 		}
 	})
 }
+
+func TestValidStudentFullName(t *testing.T) {
+	tests := []struct {
+		name string
+		want bool
+	}{
+		{name: "", want: false},
+		{name: " ", want: false},
+		{name: "a", want: false},
+		{name: "अ", want: false},
+		{name: "AB", want: true},
+		{name: " आरव ", want: true},
+		{name: strings.Repeat("अ", 200), want: true},
+		{name: strings.Repeat("अ", 201), want: false},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := validStudentFullName(test.name); got != test.want {
+				t.Fatalf("validStudentFullName(%q) = %v, want %v", test.name, got, test.want)
+			}
+		})
+	}
+}
