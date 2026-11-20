@@ -1400,6 +1400,14 @@ test("student admission, profile navigation and parent details render without br
   });
   await expect(page.getByText("Height must be between 20 and 250 cm.")).toBeVisible();
   await expect(page.getByText("Measurement date is required.")).toBeVisible();
+  for (const field of [
+    { locator: page.getByPlaceholder("e.g. 132.5"), errorID: "student-height-error" },
+    { locator: page.getByRole("button", { name: "Measurement date", exact: true }), errorID: "student-measured-on-error" },
+  ]) {
+    await expect(field.locator).toHaveAttribute("aria-invalid", "true");
+    await expect(field.locator).toHaveAttribute("aria-describedby", field.errorID);
+    await expect(page.locator(`#${field.errorID}[role="alert"]`)).toBeVisible();
+  }
   await page.getByPlaceholder("e.g. 132.5").fill("132.5");
   await page.getByRole("button", { name: "Measurement date", exact: true }).click();
   await page.getByRole("button", { name: "Today" }).click();
@@ -1420,6 +1428,8 @@ test("student admission, profile navigation and parent details render without br
   });
   await expect(page.getByText("Measurement date is required and cannot be in the future.", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Measurement date", exact: true })).toHaveAttribute("aria-invalid", "true");
+  await expect(page.getByRole("button", { name: "Measurement date", exact: true })).toHaveAttribute("aria-describedby", "student-measured-on-error");
+  await expect(page.locator('#student-measured-on-error[role="alert"]')).toBeVisible();
   failMeasurementDateValidation = false;
   await physicalSaveButton.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
@@ -1793,8 +1803,14 @@ test("student promotion validates required fields and preserves prior enrollment
   });
   await expect(dialog.getByText("Admission number must be 50 characters or fewer.", { exact: true })).toBeVisible();
   await expect(dialog.getByText("Roll number must be 30 characters or fewer.", { exact: true })).toBeVisible();
-  await expect(dialog.getByPlaceholder("e.g. ADM-2027-001")).toHaveAttribute("aria-invalid", "true");
-  await expect(dialog.getByPlaceholder("Leave blank for automatic assignment")).toHaveAttribute("aria-invalid", "true");
+  for (const field of [
+    { locator: dialog.getByPlaceholder("e.g. ADM-2027-001"), errorID: "promotion-admission-error" },
+    { locator: dialog.getByPlaceholder("Leave blank for automatic assignment"), errorID: "promotion-roll-error" },
+  ]) {
+    await expect(field.locator).toHaveAttribute("aria-invalid", "true");
+    await expect(field.locator).toHaveAttribute("aria-describedby", field.errorID);
+    await expect(dialog.locator(`#${field.errorID}[role="alert"]`)).toBeVisible();
+  }
   await dialog.getByPlaceholder("e.g. ADM-2027-001").fill("ADM-2026-091");
   await dialog.getByPlaceholder("Leave blank for automatic assignment").fill("");
   await promoteButton.evaluate(button => {
@@ -1803,6 +1819,10 @@ test("student promotion validates required fields and preserves prior enrollment
     form.requestSubmit(button as HTMLButtonElement);
   });
   await expect(dialog.getByText("Choose a promotion date on or after the latest attendance recorded for this enrollment.")).toBeVisible();
+  const promotionDate = dialog.getByRole("button", { name: "Admission and promotion date" });
+  await expect(promotionDate).toHaveAttribute("aria-invalid", "true");
+  await expect(promotionDate).toHaveAttribute("aria-describedby", "promotion-date-error");
+  await expect(dialog.locator('#promotion-date-error[role="alert"]')).toBeVisible();
   await expect.poll(() => promotionRequests.length).toBe(1);
   await expect(dialog).toBeVisible();
   await dialog.getByRole("button", { name: "Admission and promotion date" }).click();
