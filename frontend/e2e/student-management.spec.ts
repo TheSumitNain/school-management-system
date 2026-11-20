@@ -886,6 +886,8 @@ test("student admission, profile navigation and parent details render without br
   await page.getByPlaceholder("e.g. Indian").fill("Indian");
   await page.getByPlaceholder("Optional", { exact: true }).fill("");
   await page.getByPlaceholder("Optional school SR number").fill("SR-E2E-001");
+  // The name is saved first; a later basic-details failure must report the partial success accurately.
+  await studentNameInput.fill("Aarav Sharma Partial");
   failRegistrationConflict = true;
   await basicSaveButton.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
@@ -893,8 +895,11 @@ test("student admission, profile navigation and parent details render without br
     form.requestSubmit(button as HTMLButtonElement);
   });
   await expect(page.getByText("This registration number is already in use for another student in this school.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Student name saved. Review the basic-details fields that need attention." })).toBeVisible();
+  await expect.poll(() => students[0]?.full_name).toBe("Aarav Sharma Partial");
   expect(basicDetails.school_registration_number).toBeNull();
   failRegistrationConflict = false;
+  await studentNameInput.fill("Aarav Sharma Updated");
   await page.getByRole("button", { name: "Gender", exact: true }).click();
   await page.getByRole("option", { name: "Male", exact: true }).click();
   await basicSaveButton.evaluate(button => {
