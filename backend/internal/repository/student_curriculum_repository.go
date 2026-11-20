@@ -458,7 +458,7 @@ func (r *AcademicRepository) SaveSectionClassCurriculumWithConfirmations(ctx con
 		                          'subject_count',$8::integer,'optional_group_count',$9::integer,
 		                          'removed_subject_count',$10::integer))
 	`, actorID, schoolID, action, fmt.Sprint(curriculumID), academicYearID, classID, sectionID,
-		len(subjects), len(groups), len(removedIDs)); err != nil {
+		len(subjects), len(groups), len(removedCurriculumSubjectIDs)); err != nil {
 		return nil, fmt.Errorf("audit editable class curriculum save: %w", err)
 	}
 	if err := tx.Commit(ctx); err != nil { return nil, fmt.Errorf("commit editable class curriculum save: %w", err) }
