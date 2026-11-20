@@ -811,3 +811,32 @@
 .student-subject-group .student-subject-option{min-height:38px}
 .student-subject-group .student-subject-option:has(input:checked){background:color-mix(in srgb,var(--color-accent) 24%,var(--color-surface))}
 @media(max-width:560px){.student-subject-section>h4{align-items:flex-start;flex-direction:column;gap:2px}}
+
+
+/* Preserve complete student data and let action groups wrap naturally. */
+.student-heading-actions,
+.student-form-actions,
+.student-row-actions {
+  flex-wrap: wrap;
+}
+.student-form-actions > *,
+.student-row-actions > * {
+  max-width: 100%;
+}
+.student-table td {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 720px) {
+  .student-table td {
+    min-width: 0;
+  }
+  .student-table td::before {
+    flex: 0 0 min(38%, 140px);
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .student-table td > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
