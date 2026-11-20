@@ -22,7 +22,7 @@ export function StudentEnrollmentSubjectsPanel({
   const data = query.data?.enrollment_curriculum;
   const curriculum = [data?.curriculum, data?.available_curriculum].find(item => item?.id === targetCurriculumID) ?? data?.curriculum ?? data?.available_curriculum;
   const movingToCurrentCurriculum = Boolean(data?.available_curriculum && targetCurriculumID === data.available_curriculum.id);
-  const selectedVersionIsAssigned = Boolean(data?.assigned && data.curriculum?.id === targetCurriculumID);
+  const selectedCurriculumIsAssigned = Boolean(data?.assigned && data.curriculum?.id === targetCurriculumID);
   // Query refetches can replace the selected-ID array with a new reference
   // even when its values have not changed. Track the saved values rather than
   // the array identity so background refetches never discard unsaved edits.
@@ -66,7 +66,7 @@ export function StudentEnrollmentSubjectsPanel({
     <section className="student-enrollment-subjects" aria-label="Curriculum and subject choices">
       <div className="student-profile-enrollment-heading">
         <strong>Curriculum</strong>
-        <span className={"student-status " + (selectedVersionIsAssigned ? "active" : "pending")}>{selectedVersionIsAssigned ? "Assigned" : "Available"}</span>
+        <span className={"student-status " + (selectedCurriculumIsAssigned ? "active" : "pending")}>{selectedCurriculumIsAssigned ? "Assigned" : "Available"}</span>
         <button type="button" className="student-link-button" onClick={() => void query.refetch()} disabled={query.isFetching || save.isPending} aria-label="Refresh curriculum and subject choices">
           {query.isFetching ? "Refreshing…" : "Refresh"}
         </button>
