@@ -1374,19 +1374,31 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("button", { name: "Blood group", exact: true }).click();
   await page.getByRole("option", { name: "O+" }).click();
   await page.getByPlaceholder("Record known allergies, if any").fill("अ".repeat(2001));
+  await page.getByPlaceholder("Record school-relevant conditions, if any").fill("अ".repeat(2001));
+  await page.getByPlaceholder("Record medication information provided by the family").fill("अ".repeat(2001));
+  await page.getByPlaceholder("Only essential emergency information").fill("अ".repeat(2001));
   const medicalSaveButton = page.getByRole("button", { name: "Save medical details" });
   await medicalSaveButton.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
     if (!form) throw new Error("Medical save button is not associated with its form.");
     form.requestSubmit(button as HTMLButtonElement);
   });
-  await expect(page.getByText("Use no more than 2,000 characters.")).toBeVisible();
-  const allergiesField = page.getByPlaceholder("Record known allergies, if any");
-  await expect(allergiesField).toHaveAttribute("aria-invalid", "true");
-  await expect(allergiesField).toHaveAttribute("aria-describedby", "student-allergies-error");
-  await expect(page.locator('#student-allergies-error[role="alert"]')).toBeVisible();
+  await expect(page.getByText("Use no more than 2,000 characters.")).toHaveCount(4);
+  for (const field of [
+    { locator: page.getByPlaceholder("Record known allergies, if any"), errorID: "student-allergies-error" },
+    { locator: page.getByPlaceholder("Record school-relevant conditions, if any"), errorID: "student-conditions-error" },
+    { locator: page.getByPlaceholder("Record medication information provided by the family"), errorID: "student-medications-error" },
+    { locator: page.getByPlaceholder("Only essential emergency information"), errorID: "student-emergency-notes-error" },
+  ]) {
+    await expect(field.locator).toHaveAttribute("aria-invalid", "true");
+    await expect(field.locator).toHaveAttribute("aria-describedby", field.errorID);
+    await expect(page.locator(`#${field.errorID}[role="alert"]`)).toBeVisible();
+  }
   expect(medicalDetails.version_number).toBe(0);
   await page.getByPlaceholder("Record known allergies, if any").fill("अ".repeat(2000));
+  await page.getByPlaceholder("Record school-relevant conditions, if any").fill("No other known conditions");
+  await page.getByPlaceholder("Record medication information provided by the family").fill("");
+  await page.getByPlaceholder("Only essential emergency information").fill("");
   await page.getByPlaceholder("Record school-relevant conditions, if any").fill("No other known conditions");
   await medicalSaveButton.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
@@ -1427,14 +1439,25 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("button", { name: "Measurement date", exact: true }).click();
   await page.getByRole("button", { name: "Today" }).click();
   await page.getByPlaceholder("Optional vision-related notes").fill("अ".repeat(1001));
+  await page.getByPlaceholder("Optional physical details provided by the family").fill("अ".repeat(2001));
   await physicalSaveButton.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
     if (!form) throw new Error("Physical save button is not associated with its form.");
     form.requestSubmit(button as HTMLButtonElement);
   });
   await expect(page.getByText("Use no more than 1,000 characters.")).toBeVisible();
+  await expect(page.getByText("Use no more than 2,000 characters.")).toBeVisible();
+  for (const field of [
+    { locator: page.getByPlaceholder("Optional vision-related notes"), errorID: "student-vision-notes-error" },
+    { locator: page.getByPlaceholder("Optional physical details provided by the family"), errorID: "student-physical-notes-error" },
+  ]) {
+    await expect(field.locator).toHaveAttribute("aria-invalid", "true");
+    await expect(field.locator).toHaveAttribute("aria-describedby", field.errorID);
+    await expect(page.locator(`#${field.errorID}[role="alert"]`)).toBeVisible();
+  }
   expect(physicalDetails.height_cm).toBeNull();
   await page.getByPlaceholder("Optional vision-related notes").fill("अ".repeat(1000));
+  await page.getByPlaceholder("Optional physical details provided by the family").fill("");
   failMeasurementDateValidation = true;
   await physicalSaveButton.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
