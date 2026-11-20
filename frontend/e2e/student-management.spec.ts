@@ -1232,6 +1232,16 @@ test("student admission, profile navigation and parent details render without br
   await page.getByLabel("Search States / UTs").fill("Haryana");
   await page.getByRole("button", { name: "State or Union Territory", exact: true }).click();
   await page.getByRole("option", { name: "Haryana" }).click();
+  await page.getByRole("button", { name: "Add missing district", exact: true }).click();
+  const newLocationNameField = page.getByPlaceholder("Enter district");
+  await page.getByRole("button", { name: "Add location", exact: true }).click();
+  await expect(newLocationNameField).toHaveAttribute("aria-invalid", "true");
+  await expect(newLocationNameField).toHaveAttribute("aria-describedby", "student-location-name-error");
+  await expect(page.locator('#student-location-name-error[role="alert"]')).toHaveText("Enter the new location name.");
+  await newLocationNameField.fill("अ".repeat(121));
+  await page.getByRole("button", { name: "Add location", exact: true }).click();
+  await expect(page.locator('#student-location-name-error[role="alert"]')).toHaveText("Location name must be 120 characters or fewer.");
+  await newLocationNameField.fill("Ambala");
   const addressSaveButton = page.getByRole("button", { name: "Save address" });
   await addressSaveButton.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
