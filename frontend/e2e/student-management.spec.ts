@@ -84,6 +84,7 @@ test("student admission, profile navigation and parent details render without br
     gender: null, nationality: null, religion: null, social_category: null,
     ews_status: null, school_registration_number: null,
   };
+  let basicDetailsWriteCount = 0;
   const physicalDetails: Record<string, unknown> = {
     id: 0, school_id: 10, student_id: 1, height_cm: null, weight_kg: null, measured_on: null,
     vision_notes: null, physical_notes: null, history: [],
@@ -310,7 +311,10 @@ test("student admission, profile navigation and parent details render without br
           await route.fulfill({ status: 409, json: { message: "School registration number is already used by another student", field_errors: { school_registration_number: "This registration number is already in use for another student in this school." } } });
           return;
         }
-        if (method === "PUT") Object.assign(basicDetails, request.postDataJSON() as Record<string, unknown>);
+        if (method === "PUT") {
+          basicDetailsWriteCount++;
+          Object.assign(basicDetails, request.postDataJSON() as Record<string, unknown>);
+        }
         await route.fulfill({ json: { basic_details: basicDetails } });
         return;
       }
@@ -755,6 +759,15 @@ test("student admission, profile navigation and parent details render without br
   expect(basicDetails).toMatchObject({ nationality: "Indian", gender: "male" });
   expect(basicDetails.date_of_birth).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   await expect(page.getByRole("status").filter({ hasText: "Basic details saved." })).toBeVisible({ timeout: 10_000 });
+  const basicDetailsWritesAfterSave = basicDetailsWriteCount;
+  await expect(basicSaveButton).toBeDisabled();
+  await basicSaveButton.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Basic details save button is not associated with its form.");
+    form.requestSubmit();
+  });
+  await expect(page.getByRole("status").filter({ hasText: "No change to save." })).toBeVisible({ timeout: 10_000 });
+  expect(basicDetailsWriteCount).toBe(basicDetailsWritesAfterSave);
   await page.getByRole("button", { name: "Close dialog" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
   await expect(page.getByText("Aarav Sharma Updated · Permanent student identity and year-wise academic history")).toBeVisible();
