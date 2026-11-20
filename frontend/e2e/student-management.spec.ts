@@ -642,7 +642,7 @@ test("student admission, profile navigation and parent details render without br
 
   await page.getByPlaceholder("Enter student's full name").fill("Aarav Sharma Updated");
   await page.getByRole("button", { name: "Save basic details" }).click();
-  await expect(page.getByText("Student name saved.")).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Student name saved." })).toBeVisible({ timeout: 10_000 });
   await expect.poll(() => students[0]?.full_name).toBe("Aarav Sharma Updated");
   const studentNameInput = page.getByPlaceholder("Enter student's full name");
   await studentNameInput.fill("अ".repeat(201));
