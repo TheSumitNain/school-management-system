@@ -242,7 +242,7 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
     }) : null);
     if (persistedSignature !== null && persistedSignature === curriculumSignature(input)) {
       lastSavedSignatureRef.current = persistedSignature;
-      notifyToast("info", "No changes to save.");
+      notifyToast("info", "No change to save.");
       return;
     }
 
