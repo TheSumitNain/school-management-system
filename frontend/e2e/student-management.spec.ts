@@ -2121,13 +2121,11 @@ test("staff can create a guardian contact and link it to a student with relation
   await expect(editGuardianMobile).toHaveValue("9876501234");
   await expect(editGuardianEmail).toHaveValue("nisha.verma@example.test");
 
-  // An unchanged shared guardian profile must close without opening the
-  // cross-student confirmation or issuing a PATCH request.
-  await page.getByRole("button", { name: "Save guardian details" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "No change to save." })).toBeVisible();
+  // An unchanged shared guardian profile keeps Save disabled and must not
+  // open the cross-student confirmation or issue a PATCH request.
+  await expect(page.getByRole("button", { name: "Save guardian details" })).toBeDisabled();
   await expect(page.getByRole("dialog", { name: "Update shared guardian profile?" })).toHaveCount(0);
   expect(guardianUpdates).toHaveLength(0);
-  await page.getByRole("button", { name: "Edit shared guardian details" }).click();
 
   await editGuardianMobile.fill("अ".repeat(31));
   await editGuardianAlternate.fill("अ".repeat(31));
