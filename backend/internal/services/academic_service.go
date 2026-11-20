@@ -240,6 +240,14 @@ func (s *AcademicService) SaveSectionClassCurriculum(ctx context.Context, actorI
 	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
 	return s.repository.SaveSectionClassCurriculum(ctx, actorID, schoolID, yearID, classID, sectionID, groups, subjects)
 }
+func (s *AcademicService) SaveSectionClassCurriculumWithConfirmations(ctx context.Context, actorID, schoolID, yearID, classID, sectionID int64, groups []repository.CurriculumOptionalGroupInput, subjects []repository.CurriculumSubjectInput, confirmations []repository.CurriculumRemovalConfirmation) (*repository.ClassCurriculum, error) {
+	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
+	return s.repository.SaveSectionClassCurriculumWithConfirmations(ctx, actorID, schoolID, yearID, classID, sectionID, groups, subjects, confirmations)
+}
+func (s *AcademicService) PreviewSectionCurriculumRemoval(ctx context.Context, actorID, schoolID, yearID, classID, sectionID int64, subjectIDs []int64) ([]repository.CurriculumRemovalImpact, error) {
+	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
+	return s.repository.PreviewSectionCurriculumRemoval(ctx, actorID, schoolID, yearID, classID, sectionID, subjectIDs)
+}
 func (s *AcademicService) GetStudentEnrollmentCurriculum(ctx context.Context, actorID, schoolID, enrollmentID int64) (*repository.StudentEnrollmentCurriculum, error) {
 	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
 	return s.repository.GetStudentEnrollmentCurriculum(ctx, actorID, schoolID, enrollmentID)
