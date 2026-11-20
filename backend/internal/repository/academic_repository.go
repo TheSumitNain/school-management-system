@@ -17,6 +17,8 @@ var (
 	ErrAcademicAccessDenied = errors.New("academic operation is not authorized")
 	ErrAcademicNotFound = errors.New("academic resource not found")
 	ErrAcademicConflict = errors.New("academic resource conflicts with an existing record")
+	ErrCurriculumRemovalConfirmationRequired = errors.New("curriculum subject removal requires explicit confirmation")
+	ErrCurriculumRemovalImpactChanged = errors.New("curriculum removal impact changed; review the affected student count again")
 	ErrAcademicAdmissionNumberConflict = errors.New("academic admission number already exists in this school year")
 	ErrAcademicRollNumberConflict = errors.New("academic roll number already exists in this active section")
 	ErrStudentRegistrationNumberConflict = errors.New("student school registration number already exists in this school")
