@@ -247,3 +247,78 @@ test("section curriculum validates optional groups, edits in place, and confirms
 
   expect(browserErrors).toEqual([]);
 });
+
+
+test("all academic structure tabs remain navigable across responsive viewports", async ({ page }) => {
+  await page.route("**/api/**", async route => {
+    const url = new URL(route.request().url());
+    const path = url.pathname.replace(/^\\/api/, "");
+    if (path === "/auth/refresh") {
+      await route.fulfill({ status: 401, json: { message: "No active session" } });
+      return;
+    }
+    if (path === "/auth/login" && route.request().method() === "POST") {
+      await route.fulfill({ json: {
+        access_token: "e2e-academic-responsive-token", token_type: "Bearer",
+        principal: { principal_id: 113, principal_type: "staff", status: "active", school_id: 10 },
+      } });
+      return;
+    }
+    if (path === "/auth/me") {
+      await route.fulfill({ json: {
+        principal_id: 113, principal_type: "staff", school_id: 10, username: "e2e-academic-responsive",
+        permissions: ["academic_years.read", "classes.read", "subjects.read", "teacher_assignments.read"],
+      } });
+      return;
+    }
+    if (path === "/school/academic-years") {
+      await route.fulfill({ json: { academic_years: [] } });
+      return;
+    }
+    if (path === "/school/classes") {
+      await route.fulfill({ json: { classes: [] } });
+      return;
+    }
+    if (path === "/school/sections") {
+      await route.fulfill({ json: { sections: [] } });
+      return;
+    }
+    if (path === "/school/subjects") {
+      await route.fulfill({ json: { subjects: [] } });
+      return;
+    }
+    await route.fulfill({ status: 200, json: {} });
+  });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await page.getByLabel("Username").fill("e2e-academic-responsive");
+  await page.getByLabel("Password").fill("E2E-only-password");
+  await page.getByRole("button", { name: /Continue/ }).click();
+  await page.getByRole("button", { name: "Academics" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Academic structure" })).toBeVisible();
+
+  const tabNames = ["Academic years", "Classes", "Sections", "Subjects", "Class curriculum", "Teacher assignments"];
+  for (const width of [320, 360, 390, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 844 });
+    for (const name of tabNames) {
+      const tab = page.getByRole("tab", { name });
+      await tab.click();
+      await expect(tab).toHaveAttribute("aria-selected", "true");
+      await expect(tab).toBeInViewport();
+      await expect.poll(
+        () => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+        { message: `Academic structure should not cause page-level horizontal overflow at ${width}px on the ${name} tab` },
+      ).toBe(true);
+    }
+  }
+
+  await page.setViewportSize({ width: 844, height: 390 });
+  for (const name of tabNames) {
+    const tab = page.getByRole("tab", { name });
+    await tab.click();
+    await expect(tab).toHaveAttribute("aria-selected", "true");
+    await expect(tab).toBeInViewport();
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  }
+});
