@@ -72,6 +72,7 @@ export function RoleManagementPage({ permissions }: Props) {
       await queryClient.invalidateQueries({ queryKey: ["school-admin", "roles"] });
       setSelectedRoleID(result.role.id);
     },
+    onError: error => notifyToast("error", error instanceof Error ? error.message : "Unable to create this role."),
   });
   const grant = useMutation({
     mutationFn: (input: { permission_key: string; delegation_id: number }) =>
@@ -84,6 +85,7 @@ export function RoleManagementPage({ permissions }: Props) {
       setFeedback("");
       await queryClient.invalidateQueries({ queryKey: ["school-admin", "role-permissions", selectedRoleID] });
     },
+    onError: error => notifyToast("error", error instanceof Error ? error.message : "Unable to grant this permission."),
   });
   const revoke = useMutation({
     mutationFn: (key: string) => revokeCustomRolePermission(selectedRoleID!, key),
@@ -93,6 +95,7 @@ export function RoleManagementPage({ permissions }: Props) {
       setFeedback("");
       await queryClient.invalidateQueries({ queryKey: ["school-admin", "role-permissions", selectedRoleID] });
     },
+    onError: error => notifyToast("error", error instanceof Error ? error.message : "Unable to remove this permission grant."),
   });
 
   const grants = rolePermissionsQuery.data?.permissions ?? [];
