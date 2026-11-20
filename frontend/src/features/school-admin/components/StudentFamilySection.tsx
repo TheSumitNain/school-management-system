@@ -83,7 +83,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
   const [feedback, setFeedbackState] = useState<{ kind: "success" | "error"; message: string } | null>(null);
   const setFeedback = (next: typeof feedback) => {
     setFeedbackState(next?.kind === "error" ? next : null);
-    if (next) notifyToast(next.kind === "success" && next.message.startsWith("No changes to save") ? "info" : next.kind, next.message);
+    if (next) notifyToast(next.kind === "success" && next.message.startsWith("No change to save") ? "info" : next.kind, next.message);
   };
 
   const linksQuery = useSchoolStudentGuardiansQuery(student.id, includeHistory);
@@ -300,7 +300,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
       (originalGuardian.workplace_name ?? "") === editGuardianForm.workplace_name.trim() &&
       originalGuardian.guardian_status === editGuardianForm.status) {
       setEditingGuardianID(0);
-      setFeedback({ kind: "success", message: "No changes to save." });
+      setFeedback({ kind: "success", message: "No change to save." });
       return;
     }
     setConfirmSharedGuardianSave(true);
@@ -409,7 +409,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
       originalLink.is_primary_contact === editRelationshipForm.is_primary_contact &&
       originalLink.is_emergency_contact === editRelationshipForm.is_emergency_contact) {
       setEditingLinkID(0);
-      setFeedback({ kind: "success", message: "No changes to save." });
+      setFeedback({ kind: "success", message: "No change to save." });
       return;
     }
     try {
