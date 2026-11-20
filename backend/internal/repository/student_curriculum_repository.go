@@ -254,8 +254,8 @@ func curriculumRemovalImpacts(ctx context.Context, db repositoryDB, schoolID, cu
 	rows, err := db.Query(ctx, `
 		SELECT cs.subject_id, cs.subject_name_snapshot,
 		       CASE WHEN cs.is_optional
-		            THEN COUNT(DISTINCT e.student_id) FILTER (WHERE s.id IS NOT NULL)
-		            ELSE COUNT(DISTINCT e.student_id)
+		            THEN COUNT(DISTINCT e.student_id) FILTER (WHERE s.id IS NOT NULL AND st.id IS NOT NULL)
+		            ELSE COUNT(DISTINCT e.student_id) FILTER (WHERE st.id IS NOT NULL)
 		       END::integer AS affected_students
 		  FROM class_curriculum_subjects cs
 		  LEFT JOIN student_enrollment_curricula ec
