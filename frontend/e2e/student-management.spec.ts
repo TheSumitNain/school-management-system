@@ -988,6 +988,9 @@ test("student admission, profile navigation and parent details render without br
     form.requestSubmit(button as HTMLButtonElement);
   });
   await expect(page.getByText("Guardian name must be 200 characters or fewer.", { exact: true })).toBeVisible();
+  await expect(guardianNameInput).toHaveAttribute("aria-invalid", "true");
+  await expect(guardianNameInput).toHaveAttribute("aria-describedby", "edit-guardian-name-error");
+  await expect(page.locator('#edit-guardian-name-error[role="alert"]')).toBeVisible();
   expect(guardianLink.guardian_name).toBe("Ramesh Sharma");
   await guardianNameInput.fill("Ramesh Sharma Updated");
   await page.getByPlaceholder("Mobile number").fill("9999912345");
@@ -998,6 +1001,10 @@ test("student admission, profile navigation and parent details render without br
     form.requestSubmit(button as HTMLButtonElement);
   });
   await expect(page.getByText("Enter a valid email address.", { exact: true })).toBeVisible();
+  const guardianEmailInput = page.getByPlaceholder("guardian@example.com");
+  await expect(guardianEmailInput).toHaveAttribute("aria-invalid", "true");
+  await expect(guardianEmailInput).toHaveAttribute("aria-describedby", "edit-guardian-email-error");
+  await expect(page.locator('#edit-guardian-email-error[role="alert"]')).toBeVisible();
   expect(guardianLink.mobile_number).toBe("9876543210");
   await expect(page.getByRole("dialog", { name: "Update shared guardian profile?" })).toHaveCount(0);
   for (const invalidEmail of ["Guardian <guardian@example.test>", "guardian@example.test,other@example.test"]) {
@@ -1140,11 +1147,18 @@ test("student admission, profile navigation and parent details render without br
 
   await guardianCard.getByRole("button", { name: "Revoke link" }).click();
   await expect(revokeDialog).toBeVisible();
+  const revokeReasonInput = revokeDialog.getByPlaceholder("Explain why this link is being revoked");
   await revokeDialog.getByRole("button", { name: "Confirm revoke" }).click();
   await expect(revokeDialog.getByText("A reason is required to revoke this relationship.")).toBeVisible();
-  await revokeDialog.getByPlaceholder("Explain why this link is being revoked").fill("अ".repeat(501));
+  await expect(revokeReasonInput).toHaveAttribute("aria-invalid", "true");
+  await expect(revokeReasonInput).toHaveAttribute("aria-describedby", "student-guardian-revoke-reason-error");
+  await expect(revokeDialog.locator('#student-guardian-revoke-reason-error[role="alert"]')).toBeVisible();
+  await revokeReasonInput.fill("अ".repeat(501));
   await revokeDialog.getByRole("button", { name: "Confirm revoke" }).click();
   await expect(revokeDialog.getByText("Reason must be 500 characters or fewer.", { exact: true })).toBeVisible();
+  await expect(revokeReasonInput).toHaveAttribute("aria-invalid", "true");
+  await expect(revokeReasonInput).toHaveAttribute("aria-describedby", "student-guardian-revoke-reason-error");
+  await expect(revokeDialog.locator('#student-guardian-revoke-reason-error[role="alert"]')).toBeVisible();
   expect(guardianLink.revoked_at).toBeNull();
   await revokeDialog.getByPlaceholder("Explain why this link is being revoked").fill("Family requested removal of this contact link.");
   await revokeDialog.getByRole("button", { name: "Confirm revoke" }).click();
