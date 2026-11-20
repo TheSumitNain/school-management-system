@@ -1103,3 +1103,29 @@ td b {
 .curriculum-group-editor[aria-invalid="true"] {
   border-color: var(--color-danger);
 }
+
+
+/* Content-first layout defaults: allow rows to wrap instead of compressing or clipping controls. */
+.content,
+.content > *,
+.panel,
+.table-panel,
+.form-panel {
+  min-width: 0;
+}
+.heading,
+.toolbar,
+.table-toolbar {
+  flex-wrap: wrap;
+}
+.heading > *,
+.toolbar > *,
+.table-toolbar > * {
+  min-width: 0;
+}
+.heading h1,
+.heading p,
+.toolbar h2,
+.toolbar small {
+  overflow-wrap: anywhere;
+}
