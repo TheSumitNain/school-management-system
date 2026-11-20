@@ -4,7 +4,7 @@ test("platform administration tabs and onboarding dialog remain responsive", asy
   await page.route("**/api/**", async route => {
     const request = route.request();
     const url = new URL(request.url());
-    const path = url.pathname.replace(/^\\/api/, "");
+    const path = url.pathname.replace(/^\/api/, "");
     const method = request.method();
 
     if (path === "/auth/refresh") {
