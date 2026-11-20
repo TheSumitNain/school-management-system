@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -455,15 +456,16 @@ func (r *AcademicRepository) SaveSectionClassCurriculumWithConfirmations(ctx con
 
 	action := "school.class_curriculum.created"
 	if !created { action = "school.class_curriculum.updated" }
-	var affectedTotal int
-	for _, confirmation := range confirmations { affectedTotal += confirmation.AffectedStudents }
+	confirmationJSON, err := json.Marshal(confirmations)
+	if err != nil { return nil, fmt.Errorf("encode curriculum removal audit details: %w", err) }
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
 		VALUES($1,$2,$3,'class_curriculum',$4,'success',
 		       jsonb_build_object('academic_year_id',$5::bigint,'class_id',$6::bigint,'section_id',$7::bigint,
 		                          'subject_count',$8::integer,'optional_group_count',$9::integer,
-		                          'removed_subject_count',$10::integer,'confirmed_affected_students',$11::integer))
-	`, actorID, schoolID, action, fmt.Sprint(curriculumID), academicYearID, classID, sectionID, len(subjects), len(groups), len(removedIDs), affectedTotal); err != nil {
+		                          'removed_subject_ids',$10::bigint[],'removal_confirmations',$11::jsonb))
+	`, actorID, schoolID, action, fmt.Sprint(curriculumID), academicYearID, classID, sectionID,
+		len(subjects), len(groups), removedIDs, string(confirmationJSON)); err != nil {
 		return nil, fmt.Errorf("audit editable class curriculum save: %w", err)
 	}
 	if err := tx.Commit(ctx); err != nil { return nil, fmt.Errorf("commit editable class curriculum save: %w", err) }
