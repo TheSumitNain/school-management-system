@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  getSchoolClassCurricula, getSchoolStudentEnrollmentCurriculum, getSchoolStudentEnrollmentDirectory, saveSchoolClassCurriculum,
+  getSchoolClassCurricula, getSchoolStudentEnrollmentCurriculum, getSchoolStudentEnrollmentDirectory, previewSchoolClassCurriculumRemoval, saveSchoolClassCurriculum,
   saveSchoolStudentEnrollmentSubjects,
   createSchoolStaff, disableSchoolStaff, enableSchoolStaff, getSchoolStaff,
   resetSchoolStaffPassword, updateSchoolStaff,
@@ -350,6 +350,9 @@ export function useSchoolStudentEnrollmentCurriculumQuery(enrollmentID: number, 
     enabled: enabled && enrollmentID > 0,
     staleTime: 15_000,
   });
+}
+export function usePreviewSchoolClassCurriculumRemovalMutation() {
+  return useMutation({ mutationFn: previewSchoolClassCurriculumRemoval });
 }
 export function useSaveSchoolClassCurriculumMutation() {
   const client = useQueryClient();
