@@ -35,7 +35,6 @@ export function StaffManagementPage({ permissions }: Props) {
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [editHasChanges, setEditHasChanges] = useState(false);
   const [rolesForPrincipal, setRolesForPrincipal] = useState<number | null>(null);
   const [overridesForPrincipal, setOverridesForPrincipal] = useState<number | null>(null);
   const [staffToDisable, setStaffToDisable] = useState<StaffRecord | null>(null);
@@ -52,7 +51,6 @@ export function StaffManagementPage({ permissions }: Props) {
     setAction(next);
     setShowPassword(false);
     setFieldErrors({});
-    setEditHasChanges(false);
     setFeedback(null);
   }
   function closeAction() {
@@ -60,18 +58,6 @@ export function StaffManagementPage({ permissions }: Props) {
     setSelected(null);
     setShowPassword(false);
     setFieldErrors({});
-    setEditHasChanges(false);
-  }
-  function checkEditChanges(form: HTMLFormElement) {
-    if (!selected) return false;
-    const values = new FormData(form);
-    return String(values.get("full_name") ?? "").trim() !== selected.full_name ||
-      String(values.get("employee_code") ?? "").trim() !== selected.employee_code ||
-      String(values.get("designation") ?? "").trim() !== selected.designation ||
-      String(values.get("mobile_number") ?? "").trim() !== selected.mobile_number ||
-      String(values.get("email") ?? "").trim() !== (selected.email ?? "") ||
-      String(values.get("joining_date") ?? "").trim() !== (selected.joining_date?.slice(0, 10) ?? "") ||
-      String(values.get("employment_status") ?? "active") !== (selected.employment_status || "active");
   }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -86,16 +72,11 @@ export function StaffManagementPage({ permissions }: Props) {
     const email = String(form.get("email") ?? "").trim();
     const joiningDate = String(form.get("joining_date") ?? "").trim();
     const employmentStatus = String(form.get("employment_status") ?? "active");
-    if (action === "edit" && !checkEditChanges(event.currentTarget)) {
-      notifyToast("info", "No changes to save.");
-      setEditHasChanges(false);
-      return;
-    }
     if ((action === "create" || action === "edit") && !/^[a-z0-9._-]{3,32}$/.test(username)) nextErrors.username = "Use 3–32 lowercase letters, numbers, dots, underscores or hyphens.";
     if (action === "create" || action === "edit") {
-      if (Array.from(fullName).length < 2 || Array.from(fullName).length > 160) nextErrors.full_name = "Enter the employee's full name (2–160 characters).";
-      if (!/^[A-Za-z0-9][A-Za-z0-9._-]{1,31}$/.test(employeeCode)) nextErrors.employee_code = "Use 2–32 letters, numbers, dots, underscores or hyphens.";
-      if (Array.from(designation).length < 2 || Array.from(designation).length > 100) nextErrors.designation = "Enter a designation (2–100 characters).";
+      if (!fullName || fullName.length > 160) nextErrors.full_name = "Enter the employee's full name (up to 160 characters).";
+      if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/.test(employeeCode)) nextErrors.employee_code = "Use 1–32 letters, numbers, dots, underscores or hyphens.";
+      if (!designation || designation.length > 100) nextErrors.designation = "Enter a designation (up to 100 characters).";
       if (!/^\+?[0-9]{10,15}$/.test(mobileNumber)) nextErrors.mobile_number = "Enter one mobile number with 10–15 digits; an international + prefix is allowed.";
       if (email && (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254)) nextErrors.email = "Enter a valid email address.";
       if (employmentStatus !== "active" && employmentStatus !== "inactive") nextErrors.employment_status = "Choose Active or Inactive.";
@@ -129,7 +110,6 @@ export function StaffManagementPage({ permissions }: Props) {
         setFieldErrors(current => ({ ...current, employee_code: "This employee code is already used in this school." }));
         setFeedback(null);
       } else {
-        notifyToast("error", message);
         setFeedback({ kind: "error", message });
       }
     }
@@ -146,9 +126,7 @@ export function StaffManagementPage({ permissions }: Props) {
       notifyToast("success", `${item.username} has been disabled and active sessions revoked.`);
       setFeedback(null);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to disable this account. Please try again.";
-      notifyToast("error", message);
-      setDisableError(message);
+      setDisableError(error instanceof Error ? error.message : "Unable to disable this account. Please try again.");
     }
   }
 
@@ -173,20 +151,20 @@ export function StaffManagementPage({ permissions }: Props) {
         closeDisabled={pending}
       >
         {feedback?.kind === "error" && <p className="staff-feedback error" role="alert">{feedback.message}</p>}
-        <form onSubmit={submit} onChange={event => { if (action === "edit") setEditHasChanges(checkEditChanges(event.currentTarget)); }} noValidate>
+        <form onSubmit={submit} noValidate>
           {action === "create" && <label>Login username<input name="username" placeholder="e.g. rahul.sharma" minLength={3} maxLength={32} pattern="[a-z0-9._-]{3,32}" autoComplete="off" required aria-invalid={Boolean(fieldErrors.username)} aria-describedby={fieldErrors.username ? "staff-username-error" : "staff-username-help"} onChange={()=>setFieldErrors(current=>({...current,username:""}))}/><small id="staff-username-help">3–32 lowercase letters, numbers, dots, underscores or hyphens. Unique across the platform.</small>{fieldErrors.username && <small className="app-field-error" id="staff-username-error">{fieldErrors.username}</small>}</label>}
           {action === "edit" && <label>Login username<input value={selected?.username ?? ""} disabled/><small>Login identity is managed separately from employee details.</small></label>}
           {(action === "create" || action === "edit") && <>
-            <label>Full name<input name="full_name" placeholder="e.g. Rahul Sharma" defaultValue={selected?.full_name ?? ""} minLength={2} maxLength={160} required aria-invalid={Boolean(fieldErrors.full_name)} onChange={()=>setFieldErrors(current=>({...current,full_name:""}))}/>{fieldErrors.full_name && <small className="app-field-error">{fieldErrors.full_name}</small>}</label>
-            <label>Employee code<input name="employee_code" placeholder="e.g. EMP-001" defaultValue={selected?.employee_code ?? ""} minLength={2} maxLength={32} required aria-invalid={Boolean(fieldErrors.employee_code)} onChange={()=>setFieldErrors(current=>({...current,employee_code:""}))}/><small>Must be unique within this school.</small>{fieldErrors.employee_code && <small className="app-field-error">{fieldErrors.employee_code}</small>}</label>
-            <label>Designation<input name="designation" placeholder="e.g. Mathematics Teacher" defaultValue={selected?.designation ?? ""} minLength={2} maxLength={100} required aria-invalid={Boolean(fieldErrors.designation)} onChange={()=>setFieldErrors(current=>({...current,designation:""}))}/>{fieldErrors.designation && <small className="app-field-error">{fieldErrors.designation}</small>}</label>
+            <label>Full name<input name="full_name" placeholder="e.g. Rahul Sharma" defaultValue={selected?.full_name ?? ""} maxLength={160} required aria-invalid={Boolean(fieldErrors.full_name)} onChange={()=>setFieldErrors(current=>({...current,full_name:""}))}/>{fieldErrors.full_name && <small className="app-field-error">{fieldErrors.full_name}</small>}</label>
+            <label>Employee code<input name="employee_code" placeholder="e.g. EMP-001" defaultValue={selected?.employee_code ?? ""} maxLength={32} required aria-invalid={Boolean(fieldErrors.employee_code)} onChange={()=>setFieldErrors(current=>({...current,employee_code:""}))}/><small>Must be unique within this school.</small>{fieldErrors.employee_code && <small className="app-field-error">{fieldErrors.employee_code}</small>}</label>
+            <label>Designation<input name="designation" placeholder="e.g. Mathematics Teacher" defaultValue={selected?.designation ?? ""} maxLength={100} required aria-invalid={Boolean(fieldErrors.designation)} onChange={()=>setFieldErrors(current=>({...current,designation:""}))}/>{fieldErrors.designation && <small className="app-field-error">{fieldErrors.designation}</small>}</label>
             <label>Mobile number<input name="mobile_number" type="tel" placeholder="e.g. 9876543210" defaultValue={selected?.mobile_number ?? ""} maxLength={16} required aria-invalid={Boolean(fieldErrors.mobile_number)} onChange={()=>setFieldErrors(current=>({...current,mobile_number:""}))}/><small>Enter one contact number (10–15 digits).</small>{fieldErrors.mobile_number && <small className="app-field-error">{fieldErrors.mobile_number}</small>}</label>
             <label>Email address <small>(optional)</small><input name="email" type="email" placeholder="e.g. rahul@example.com" defaultValue={selected?.email ?? ""} maxLength={254} aria-invalid={Boolean(fieldErrors.email)} onChange={()=>setFieldErrors(current=>({...current,email:""}))}/>{fieldErrors.email && <small className="app-field-error">{fieldErrors.email}</small>}</label>
             <label>Joining date <small>(optional)</small><input name="joining_date" type="date" defaultValue={selected?.joining_date ? selected.joining_date.slice(0,10) : ""}/></label>
             {action === "edit" && <label>Employment status<select name="employment_status" defaultValue={selected?.employment_status || "active"}><option value="active">Active</option><option value="inactive">Inactive</option></select><small>Inactive employees cannot sign in. Reactivating employment does not automatically enable a disabled login.</small></label>}
           </>}
           {action !== "edit" && <label>{passwordLabel}<div className="staff-password-field"><input name="password" type={showPassword ? "text" : "password"} placeholder="Enter a strong password (12+ characters)" minLength={12} autoComplete="new-password" required aria-invalid={Boolean(fieldErrors.password)} aria-describedby={fieldErrors.password ? "staff-password-error" : "staff-password-help"} onChange={()=>setFieldErrors(current=>({...current,password:""}))}/><button type="button" onClick={() => setShowPassword(value => !value)} aria-label={showPassword ? "Hide password" : "Show password"}>{showPassword ? "Hide" : "Show"}</button></div><small id="staff-password-help">At least 12 characters. The server also checks password safety and compromised-password status.</small>{fieldErrors.password && <small className="app-field-error" id="staff-password-error">{fieldErrors.password}</small>}</label>}
-          <div className="app-modal-actions"><button className="app-modal-cancel" type="button" onClick={closeAction} disabled={pending}>Cancel</button><button className="primary" type="submit" disabled={pending || (action === "edit" && !editHasChanges)}>{pending ? "Saving…" : action === "reset" ? "Reset password" : action === "enable" ? "Enable account" : "Save changes"}</button></div>
+          <div className="app-modal-actions"><button className="app-modal-cancel" type="button" onClick={closeAction} disabled={pending}>Cancel</button><button className="primary" type="submit" disabled={pending}>{pending ? "Saving…" : action === "reset" ? "Reset password" : action === "enable" ? "Enable account" : "Save changes"}</button></div>
         </form>
       </Modal>
 
