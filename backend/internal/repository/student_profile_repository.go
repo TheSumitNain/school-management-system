@@ -27,6 +27,11 @@ type StudentProfile struct {
 
 const studentProfileColumns = `id, school_id, COALESCE(admission_number, ''), full_name, status, created_at, updated_at`
 
+func validStudentFullName(name string) bool {
+	length := utf8.RuneCountInString(strings.TrimSpace(name))
+	return length >= 2 && length <= 200
+}
+
 func scanStudentProfile(row interface{ Scan(...any) error }) (*StudentProfile, error) {
 	var student StudentProfile
 	if err := row.Scan(
@@ -222,7 +227,7 @@ func (r *AcademicRepository) CreateStudent(
 	}
 	admissionNumber = strings.TrimSpace(admissionNumber)
 	fullName = strings.TrimSpace(fullName)
-	if admissionNumber == "" || utf8.RuneCountInString(admissionNumber) > 50 || fullName == "" || utf8.RuneCountInString(fullName) > 200 {
+	if admissionNumber == "" || utf8.RuneCountInString(admissionNumber) > 50 || !validStudentFullName(fullName) {
 		return nil, ErrInvalidAcademicInput
 	}
 	tx, err := r.db.Begin(ctx)
@@ -262,7 +267,7 @@ func (r *AcademicRepository) UpdateStudent(
 		return nil, ErrAcademicAccessDenied
 	}
 	fullName = strings.TrimSpace(fullName)
-	if studentID <= 0 || fullName == "" || utf8.RuneCountInString(fullName) > 200 {
+	if studentID <= 0 || !validStudentFullName(fullName) {
 		return nil, ErrInvalidAcademicInput
 	}
 	tx, err := r.db.Begin(ctx)
