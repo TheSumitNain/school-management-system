@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { Select } from "../../../shared/components/Select";
+import { notifyToast } from "../../../shared/notifications";
 import {
   usePreviewSchoolClassCurriculumRemovalMutation,
   useSaveSchoolClassCurriculumMutation,
@@ -26,7 +28,7 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
   const [pendingRemovalImpacts, setPendingRemovalImpacts] = useState<CurriculumRemovalImpact[] | null>(null);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{ year?: string; class?: string; section?: string; subjects?: string; groups: Record<number, GroupFieldErrors> }>({ groups: {} });
-  const [success, setSuccess] = useState("");
+  const curriculumSummaryRef = useRef<HTMLElement>(null);
   const save = useSaveSchoolClassCurriculumMutation();
   const preview = usePreviewSchoolClassCurriculumRemovalMutation();
   const yearNumber = Number(yearID);
@@ -74,7 +76,6 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
     setPendingSave(null);
     setPendingRemovalImpacts(null);
     setError("");
-    setSuccess("");
     setFieldErrors({ groups: {} });
   }
 
@@ -92,9 +93,19 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
       })),
     }, {
       onSuccess: () => {
-        setSuccess("Curriculum saved successfully. Existing student selections are preserved except the subjects you confirmed for removal.");
+        const message = confirmations.length > 0
+          ? "Curriculum updated. Confirmed subject removals and affected student choices have been applied."
+          : currentCurriculum
+            ? "Curriculum changes saved successfully."
+            : "New curriculum created successfully.";
+        notifyToast("success", message);
         setPendingSave(null);
         setPendingRemovalImpacts(null);
+        if (!currentCurriculum) {
+          window.requestAnimationFrame(() => {
+            curriculumSummaryRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+          });
+        }
       },
       onError: mutationError => {
         if (mutationError.message.toLowerCase().includes("affected-student count changed")) {
@@ -109,7 +120,6 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
-    setSuccess("");
     const nextErrors: { year?: string; class?: string; section?: string; subjects?: string; groups: Record<number, GroupFieldErrors> } = { groups: {} };
     if (!yearNumber) nextErrors.year = "Select an academic year.";
     if (!classNumber) nextErrors.class = "Select a class.";
@@ -179,30 +189,21 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
       <div className="toolbar"><div><h2>Section-wise curriculum</h2><small>One editable curriculum for each academic year, class and section.</small></div></div>
       <div className="curriculum-filters">
         <label>Academic year
-          <select disabled={busy} value={yearID} onChange={event => { setYearID(event.target.value); setClassID(""); setSectionID(""); clearEditorForScopeChange(); }} required>
-            <option value="">Select academic year</option>
-            {years.filter(year => year.status !== "closed").map(year => <option key={year.id} value={year.id}>{year.name}</option>)}
-          </select>
-          {fieldErrors.year && <small className="app-field-error" role="alert">{fieldErrors.year}</small>}
+          <Select ariaLabel="Curriculum academic year" value={yearID} disabled={busy} invalid={Boolean(fieldErrors.year)} describedBy={fieldErrors.year ? "curriculum-year-error" : undefined} placeholder="Select academic year" options={years.filter(year => year.status !== "closed").map(year => ({ value: String(year.id), label: year.name }))} onChange={value => { setYearID(value); setClassID(""); setSectionID(""); clearEditorForScopeChange(); }} />
+          {fieldErrors.year && <small id="curriculum-year-error" className="app-field-error" role="alert">{fieldErrors.year}</small>}
         </label>
         <label>Class
-          <select disabled={busy} value={classID} onChange={event => { setClassID(event.target.value); setSectionID(""); clearEditorForScopeChange(); }} required>
-            <option value="">Select class</option>
-            {classes.filter(item => item.is_active).map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
-          </select>
-          {fieldErrors.class && <small className="app-field-error" role="alert">{fieldErrors.class}</small>}
+          <Select ariaLabel="Curriculum class" value={classID} disabled={busy} invalid={Boolean(fieldErrors.class)} describedBy={fieldErrors.class ? "curriculum-class-error" : undefined} placeholder="Select class" options={classes.filter(item => item.is_active).map(item => ({ value: String(item.id), label: item.name }))} onChange={value => { setClassID(value); setSectionID(""); clearEditorForScopeChange(); }} />
+          {fieldErrors.class && <small id="curriculum-class-error" className="app-field-error" role="alert">{fieldErrors.class}</small>}
         </label>
         <label>Section
-          <select disabled={busy || !yearNumber || !classNumber} value={sectionID} onChange={event => { setSectionID(event.target.value); clearEditorForScopeChange(); }} required>
-            <option value="">Select section</option>
-            {availableSections.map(item => <option key={item.id} value={item.id}>{item.name}{item.medium ? " · " + item.medium : ""}</option>)}
-          </select>
-          {fieldErrors.section && <small className="app-field-error" role="alert">{fieldErrors.section}</small>}
+          <Select ariaLabel="Curriculum section" value={sectionID} disabled={busy || !yearNumber || !classNumber} invalid={Boolean(fieldErrors.section)} describedBy={fieldErrors.section ? "curriculum-section-error" : undefined} placeholder="Select section" options={availableSections.map(item => ({ value: String(item.id), label: item.name + (item.medium ? " · " + item.medium : "") }))} onChange={value => { setSectionID(value); clearEditorForScopeChange(); }} />
+          {fieldErrors.section && <small id="curriculum-section-error" className="app-field-error" role="alert">{fieldErrors.section}</small>}
           {yearNumber > 0 && classNumber > 0 && availableSections.length === 0 && <small className="app-field-error">No active sections are configured for this class and academic year.</small>}
         </label>
       </div>
       {yearNumber > 0 && classNumber > 0 && sectionNumber > 0 && (
-        <section className="curriculum-existing">
+        <section ref={curriculumSummaryRef} className="curriculum-existing" tabIndex={-1}>
           <h3>Current curriculum</h3>
           {curriculaQuery.isLoading ? <p>Loading curriculum…</p> :
             curriculaQuery.isError ? <div className="student-feedback error" role="alert"><p>{curriculaQuery.error.message}</p><button type="button" className="academic-refresh" onClick={() => void curriculaQuery.refetch()}>Retry</button></div> :
@@ -222,7 +223,7 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
       {canManage ? (
         <form onSubmit={submit} className="curriculum-editor">
           <div className="toolbar"><div><h3>{currentCurriculum ? "Edit curriculum" : "Create curriculum"}</h3><small>Changes update this section's existing curriculum. No new version is created.</small></div>
-            <button type="button" className="academic-add" onClick={addGroup} disabled={busy}>Add optional group</button>
+            <button type="button" className="academic-refresh academic-add" onClick={addGroup} disabled={busy}>Add optional group</button>
           </div>
           {groups.map((group, index) => (
             <fieldset className="curriculum-group-editor" key={index}>
@@ -285,7 +286,6 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
           </div>
           {fieldErrors.subjects && <p className="app-field-error" role="alert">{fieldErrors.subjects}</p>}
           {error && <p className="app-field-error" role="alert">{error}</p>}
-          {success && <p className="student-success" role="status">{success}</p>}
           <button type="submit" className="primary academic-add" disabled={busy || !yearNumber || !classNumber || !sectionNumber || curriculaQuery.isLoading || curriculaQuery.isError}>
             {busy ? "Saving curriculum…" : currentCurriculum ? "Save curriculum changes" : "Save curriculum"}
           </button>
