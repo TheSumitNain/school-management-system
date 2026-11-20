@@ -1094,6 +1094,26 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 		len(assignedV1.SelectionHistory) != 0 {
 		t.Fatalf("assign first curriculum and persist optional choice: item=%+v err=%v", assignedV1, err)
 	}
+	// Saving the current choice again replaces the current row instead of
+	// retaining a revoked row as selection history.
+	assignedV1Again, err := academicRepo.SaveStudentEnrollmentSubjects(ctx, actorPrincipalID, schoolID,
+		currentEnrollmentID, curriculumV1.ID, []int64{optionalV1ID})
+	if err != nil || assignedV1Again == nil || len(assignedV1Again.SelectionHistory) != 0 {
+		t.Fatalf("replace current optional choice without history: item=%+v err=%v", assignedV1Again, err)
+	}
+	var selectionRowCount int
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*)::integer
+		  FROM student_enrollment_subject_selections s
+		  JOIN student_enrollment_curricula ec
+		    ON ec.id=s.enrollment_curriculum_id AND ec.school_id=s.school_id
+		 WHERE ec.enrollment_id=$1 AND ec.school_id=$2
+	`, currentEnrollmentID, schoolID).Scan(&selectionRowCount); err != nil {
+		t.Fatalf("count current student subject choices: %v", err)
+	}
+	if selectionRowCount != 1 {
+		t.Fatalf("student subject choice rows after replacement = %d, want 1 current row and no history", selectionRowCount)
+	}
 	// Editing updates the same section curriculum in place. Removing an
 	// optional subject requires a fresh impact preview and an explicit count
 	// confirmation; the subject and its student choice are permanently deleted.
