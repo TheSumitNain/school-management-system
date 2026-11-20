@@ -360,17 +360,17 @@ func (r *AcademicRepository) SaveSectionClassCurriculumWithConfirmations(ctx con
 		`, schoolID, academicYearID, classID, sectionID, actorID).Scan(&curriculumID); err != nil { return nil, academicWriteError(err) }
 	}
 
-	type existingSubject struct { id int64; subjectID int64; optional bool; groupID *int64; active bool }
+	type existingSubject struct { id int64; subjectID int64; optional bool; groupID *int64 }
 	existing := make(map[int64]existingSubject)
 	if !created {
 		rows, err := tx.Query(ctx, `
-			SELECT id,subject_id,is_optional,optional_group_id,is_active
+			SELECT id,subject_id,is_optional,optional_group_id
 			  FROM class_curriculum_subjects WHERE curriculum_id=$1 AND school_id=$2 FOR UPDATE
 		`, curriculumID, schoolID)
 		if err != nil { return nil, fmt.Errorf("lock existing curriculum subjects: %w", err) }
 		for rows.Next() {
 			var item existingSubject
-			if err := rows.Scan(&item.id,&item.subjectID,&item.optional,&item.groupID,&item.active); err != nil { rows.Close(); return nil, fmt.Errorf("scan existing curriculum subject: %w", err) }
+			if err := rows.Scan(&item.id,&item.subjectID,&item.optional,&item.groupID); err != nil { rows.Close(); return nil, fmt.Errorf("scan existing curriculum subject: %w", err) }
 			existing[item.subjectID] = item
 		}
 		if err := rows.Err(); err != nil { rows.Close(); return nil, fmt.Errorf("iterate existing curriculum subjects: %w", err) }
@@ -380,7 +380,10 @@ func (r *AcademicRepository) SaveSectionClassCurriculumWithConfirmations(ctx con
 	removedIDs := make([]int64, 0)
 	removedCurriculumSubjectIDs := make([]int64, 0)
 	for subjectID, item := range existing {
-		if item.active { if _, keep := seenSubjects[subjectID]; !keep { removedIDs = append(removedIDs, subjectID); removedCurriculumSubjectIDs = append(removedCurriculumSubjectIDs, item.id) } }
+		if _, keep := seenSubjects[subjectID]; !keep {
+			removedIDs = append(removedIDs, subjectID)
+			removedCurriculumSubjectIDs = append(removedCurriculumSubjectIDs, item.id)
+		}
 	}
 	if len(removedIDs) > 0 {
 		impacts, err := curriculumRemovalImpacts(ctx, tx, schoolID, curriculumID, removedIDs)
