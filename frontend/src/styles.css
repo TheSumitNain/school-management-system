@@ -1088,7 +1088,7 @@ td b {
 .app-field-error {
   display: block;
   margin-top: 6px;
-  color: #b91c1c;
+  color: var(--color-danger);
   font-size: 12px;
   font-weight: 600;
   line-height: 1.45;

@@ -137,7 +137,7 @@ test("section curriculum validates optional groups, edits in place, and confirms
   await page.getByRole("button", { name: "Save curriculum" }).click();
   const emptyGroupError = page.getByText("Assign at least one subject to this optional group.", { exact: true });
   await expect(emptyGroupError).toBeVisible();
-  await expect(emptyGroupError).toHaveCSS("color", "rgb(185, 28, 28)");
+  await expect(emptyGroupError).toHaveCSS("color", "rgb(168, 70, 70)");
   await expect(page.locator(".curriculum-group-editor")).toHaveAttribute("aria-invalid", "true");
   await expect(page.getByRole("button", { name: "Save curriculum" })).toBeEnabled();
 

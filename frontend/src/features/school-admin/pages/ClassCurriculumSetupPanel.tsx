@@ -30,6 +30,8 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{ year?: string; class?: string; section?: string; subjects?: string; groups: Record<number, GroupFieldErrors> }>({ groups: {} });
   const curriculumSummaryRef = useRef<HTMLElement>(null);
+  const groupEditorRefs = useRef<Array<HTMLFieldSetElement | null>>([]);
+  const [newGroupIndex, setNewGroupIndex] = useState<number | null>(null);
   const save = useSaveSchoolClassCurriculumMutation();
   const preview = usePreviewSchoolClassCurriculumRemovalMutation();
   const yearNumber = Number(yearID);
@@ -81,9 +83,23 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
   }
 
   function addGroup() {
-    setGroups(current => [...current, { name: "", min_selections: 1, max_selections: 1 }]);
+    setGroups(current => {
+      const nextIndex = current.length;
+      setNewGroupIndex(nextIndex);
+      return [...current, { name: "", min_selections: 1, max_selections: 1 }];
+    });
     setFieldErrors(current => ({ ...current, groups: {} }));
   }
+
+  useEffect(() => {
+    if (newGroupIndex === null) return;
+    const frame = window.requestAnimationFrame(() => {
+      const card = groupEditorRefs.current[newGroupIndex];
+      card?.scrollIntoView({ behavior: "smooth", block: "center" });
+      card?.querySelector<HTMLInputElement>('input:not([type="hidden"])')?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [newGroupIndex, groups.length]);
 
   function persist(input: CurriculumSaveInput, confirmations: CurriculumRemovalImpact[] = []) {
     save.mutate({
@@ -268,11 +284,11 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
       {canManage ? (
         <form onSubmit={submit} className="curriculum-editor">
           <div className="toolbar"><div><h3>{currentCurriculum ? "Edit curriculum" : "Create curriculum"}</h3><small>Changes update this section's existing curriculum. No new version is created.</small></div>
-            <button type="button" className="academic-refresh academic-add" onClick={addGroup} disabled={busy}>Add optional group</button>
+            <button type="button" className="academic-refresh academic-add" onClick={addGroup} disabled={busy} aria-controls="curriculum-optional-groups">Add optional group</button>
           </div>
           {groups.map((group, index) => (
             <fieldset className="curriculum-group-editor" key={index} tabIndex={-1} data-validation-error={fieldErrors.groups[index]?.subjects ? "true" : undefined} aria-invalid={Boolean(fieldErrors.groups[index]?.subjects)} aria-describedby={fieldErrors.groups[index]?.subjects ? `curriculum-group-${index}-subjects-error` : undefined}>
-              <legend>Optional group {index + 1}</legend>
+              <legend>Optional group {index + 1} {newGroupIndex === index && <span className="curriculum-new-group-badge">New group</span>}</legend>
               <label>Group name<input disabled={busy} value={group.name} maxLength={100} placeholder="e.g. Skill Subject" aria-invalid={Boolean(fieldErrors.groups[index]?.name)} aria-describedby={fieldErrors.groups[index]?.name ? `curriculum-group-${index}-name-error` : undefined} onChange={event => {
                 const nextName = event.target.value;
                 setGroups(current => current.map((item, i) => i === index ? { ...item, name: nextName } : item));
