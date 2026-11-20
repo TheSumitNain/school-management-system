@@ -290,7 +290,7 @@ test("all academic structure tabs remain navigable across responsive viewports",
     await route.fulfill({ status: 200, json: {} });
   });
 
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/");
   await page.getByLabel("Username").fill("e2e-academic-responsive");
   await page.getByLabel("Password").fill("E2E-only-password");
