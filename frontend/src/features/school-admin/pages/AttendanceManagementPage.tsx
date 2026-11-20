@@ -76,23 +76,13 @@ export function AttendanceManagementPage({ permissions }: Props) {
     return { status: existing?.status ?? "", remarks: existing?.remarks ?? "" };
   }
   function changeDraft(enrollmentID: number, patch: Partial<Draft>) {
-    const nextDraft = { ...draftFor(enrollmentID), ...patch };
-    const existing = attendanceByEnrollment.get(enrollmentID);
-    setDrafts(current => ({ ...current, [enrollmentID]: nextDraft }));
-    if (existing && nextDraft.status === existing.status && nextDraft.remarks === (existing.remarks ?? "")) {
-      setDrafts(current => { const next = { ...current }; delete next[enrollmentID]; return next; });
-      notifyToast("info", "No changes to save.");
-    }
+    setDrafts(current => ({ ...current, [enrollmentID]: { ...draftFor(enrollmentID), ...patch } }));
     setFeedback(null);
   }
   async function save(enrollmentID: number) {
     const draft = draftFor(enrollmentID);
     if (!draft.status) return;
     const existing = attendanceByEnrollment.get(enrollmentID);
-    if (existing && draft.status === existing.status && draft.remarks === (existing.remarks ?? "")) {
-      notifyToast("info", "No changes to save.");
-      return;
-    }
     setFeedback(null);
     try {
       if (existing) {
@@ -104,9 +94,7 @@ export function AttendanceManagementPage({ permissions }: Props) {
       notifyToast("success", "Attendance saved successfully.");
       setFeedback(null);
     } catch (error) {
-      const message = errorMessage(error);
-      notifyToast("error", message);
-      setFeedback({ kind: "error", message });
+      setFeedback({ kind: "error", message: errorMessage(error) });
     }
   }
 
@@ -174,7 +162,7 @@ export function AttendanceManagementPage({ permissions }: Props) {
                     <td>{enrollment.roll_number || "—"}</td>
                     <td><Select ariaLabel={"Attendance status for " + (enrollment.student_name || "student")} value={draft.status} placeholder="Select status" onChange={value => changeDraft(enrollment.id, { status: value })} disabled={!canSave || busy} options={statuses} /></td>
                     <td><input aria-label={"Remarks for " + (enrollment.student_name || "student")} value={draft.remarks} maxLength={500} onChange={event => changeDraft(enrollment.id, { remarks: event.target.value })} placeholder="e.g. Arrived 15 minutes late (optional)" disabled={!canSave || busy}/></td>
-                    <td><button type="button" className="attendance-save" onClick={() => void save(enrollment.id)} disabled={!canSave || !draft.status || busy || Boolean(existing && draft.status === existing.status && draft.remarks === (existing.remarks ?? ""))}><Check size={14}/>{existing ? "Update" : "Save"}</button></td>
+                    <td><button type="button" className="attendance-save" onClick={() => void save(enrollment.id)} disabled={!canSave || !draft.status || busy}><Check size={14}/>{existing ? "Update" : "Save"}</button></td>
                   </tr>;
                 })}
                 {enrollments.length === 0 && <tr><td colSpan={5}><div className="attendance-empty">No active enrollments found for this section.</div></td></tr>}
