@@ -1094,61 +1094,43 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 		len(assignedV1.SelectionHistory) != 1 || assignedV1.SelectionHistory[0].RevokedAt != nil {
 		t.Fatalf("assign first curriculum and persist optional choice: item=%+v err=%v", assignedV1, err)
 	}
-	curriculumV2, err := academicRepo.SaveSectionClassCurriculum(ctx, actorPrincipalID, schoolID,
-		enrollmentYearID, sourceClassID, sourceSectionID,
-		[]CurriculumOptionalGroupInput{{Name: "Electives", MinSelections: 1, MaxSelections: 1}},
-		[]CurriculumSubjectInput{
-			{SubjectID: subjectAltID},
-			{SubjectID: subjectID, OptionalGroup: "Electives"},
-		},
-	)
-	if err != nil || curriculumV2 == nil || curriculumV2.VersionNumber != 2 {
-		t.Fatalf("create replacement class curriculum version: curriculum=%+v err=%v", curriculumV2, err)
+	// Editing updates the same section curriculum in place. Removing an
+	// optional subject requires a fresh impact preview and an explicit count
+	// confirmation; the active student selection is revoked but its history is
+	// retained.
+	impacts, err := academicRepo.PreviewSectionCurriculumRemoval(ctx, actorPrincipalID, schoolID,
+		enrollmentYearID, sourceClassID, sourceSectionID, []int64{subjectAltID})
+	if err != nil || len(impacts) != 1 || impacts[0].SubjectID != subjectAltID || impacts[0].AffectedStudents != 1 {
+		t.Fatalf("preview optional subject removal: impacts=%+v err=%v", impacts, err)
 	}
-	availableV2, err := academicRepo.GetStudentEnrollmentCurriculum(ctx, actorPrincipalID, schoolID, currentEnrollmentID)
-	if err != nil || availableV2 == nil || !availableV2.Assigned ||
-		availableV2.Curriculum == nil || availableV2.Curriculum.ID != curriculumV1.ID ||
-		availableV2.AvailableCurriculum == nil || availableV2.AvailableCurriculum.ID != curriculumV2.ID {
-		t.Fatalf("read assigned and available curriculum versions: item=%+v err=%v", availableV2, err)
+	updatedWithoutConfirmation, err := academicRepo.SaveSectionClassCurriculum(ctx, actorPrincipalID, schoolID,
+		enrollmentYearID, sourceClassID, sourceSectionID, nil,
+		[]CurriculumSubjectInput{{SubjectID: subjectID}})
+	if updatedWithoutConfirmation != nil || !errors.Is(err, ErrCurriculumRemovalConfirmationRequired) {
+		t.Fatalf("remove selected subject without confirmation: curriculum=%+v err=%v", updatedWithoutConfirmation, err)
 	}
-	var optionalV2ID int64
-	for _, subject := range curriculumV2.Subjects {
-		if !subject.IsCompulsory {
-			optionalV2ID = subject.ID
-		}
+	updatedWithStaleConfirmation, err := academicRepo.SaveSectionClassCurriculumWithConfirmations(ctx, actorPrincipalID, schoolID,
+		enrollmentYearID, sourceClassID, sourceSectionID, nil,
+		[]CurriculumSubjectInput{{SubjectID: subjectID}},
+		[]CurriculumRemovalConfirmation{{SubjectID: subjectAltID, AffectedStudents: 0}})
+	if updatedWithStaleConfirmation != nil || !errors.Is(err, ErrCurriculumRemovalImpactChanged) {
+		t.Fatalf("remove selected subject with stale count: curriculum=%+v err=%v", updatedWithStaleConfirmation, err)
 	}
-	if optionalV2ID == 0 {
-		t.Fatal("replacement curriculum did not return its optional subject")
+	updatedCurriculum, err := academicRepo.SaveSectionClassCurriculumWithConfirmations(ctx, actorPrincipalID, schoolID,
+		enrollmentYearID, sourceClassID, sourceSectionID, nil,
+		[]CurriculumSubjectInput{{SubjectID: subjectID}},
+		[]CurriculumRemovalConfirmation{{SubjectID: subjectAltID, AffectedStudents: 1}})
+	if err != nil || updatedCurriculum == nil || updatedCurriculum.ID != curriculumV1.ID ||
+		updatedCurriculum.VersionNumber != curriculumV1.VersionNumber || len(updatedCurriculum.Subjects) != 1 ||
+		updatedCurriculum.Subjects[0].SubjectID != subjectID {
+		t.Fatalf("update existing curriculum in place: curriculum=%+v err=%v", updatedCurriculum, err)
 	}
-	assignedV2, err := academicRepo.SaveStudentEnrollmentSubjects(ctx, actorPrincipalID, schoolID,
-		currentEnrollmentID, curriculumV2.ID, []int64{optionalV2ID})
-	if err != nil || assignedV2 == nil || !assignedV2.Assigned ||
-		assignedV2.Curriculum == nil || assignedV2.Curriculum.ID != curriculumV2.ID ||
-		len(assignedV2.SelectedOptionalSubjectIDs) != 1 || assignedV2.SelectedOptionalSubjectIDs[0] != optionalV2ID ||
-		len(assignedV2.SelectionHistory) != 2 {
-		t.Fatalf("replace assigned curriculum and preserve selection history: item=%+v err=%v", assignedV2, err)
-	}
-	foundRevokedV1, foundActiveV2 := false, false
-	for _, history := range assignedV2.SelectionHistory {
-		if history.CurriculumVersion == 1 && history.SubjectName != "" && history.RevokedAt != nil {
-			foundRevokedV1 = true
-		}
-		if history.CurriculumVersion == 2 && history.SubjectName != "" && history.RevokedAt == nil {
-			foundActiveV2 = true
-		}
-	}
-	if !foundRevokedV1 || !foundActiveV2 {
-		t.Fatalf("curriculum replacement history missing revoked v1 or active v2 choice: %+v", assignedV2.SelectionHistory)
-	}
-	if _, err := academicRepo.SaveStudentEnrollmentSubjects(ctx, actorPrincipalID, schoolID,
-		currentEnrollmentID, curriculumV1.ID, []int64{optionalV1ID}); !errors.Is(err, ErrAcademicNotFound) {
-		t.Fatalf("reassign retired curriculum v1 after replacement: got %v, want ErrAcademicNotFound", err)
-	}
-	afterRejectedRevert, err := academicRepo.GetStudentEnrollmentCurriculum(ctx, actorPrincipalID, schoolID, currentEnrollmentID)
-	if err != nil || afterRejectedRevert == nil || afterRejectedRevert.Curriculum == nil ||
-		afterRejectedRevert.Curriculum.ID != curriculumV2.ID || len(afterRejectedRevert.SelectionHistory) != 2 ||
-		len(afterRejectedRevert.SelectedOptionalSubjectIDs) != 1 || afterRejectedRevert.SelectedOptionalSubjectIDs[0] != optionalV2ID {
-		t.Fatalf("rejected retired-curriculum reversion changed the active assignment: item=%+v err=%v", afterRejectedRevert, err)
+	afterRemoval, err := academicRepo.GetStudentEnrollmentCurriculum(ctx, actorPrincipalID, schoolID, currentEnrollmentID)
+	if err != nil || afterRemoval == nil || !afterRemoval.Assigned ||
+		afterRemoval.Curriculum == nil || afterRemoval.Curriculum.ID != curriculumV1.ID ||
+		len(afterRemoval.Curriculum.Subjects) != 1 || len(afterRemoval.SelectedOptionalSubjectIDs) != 0 ||
+		len(afterRemoval.SelectionHistory) != 1 || afterRemoval.SelectionHistory[0].RevokedAt == nil {
+		t.Fatalf("student curriculum after confirmed subject removal: item=%+v err=%v", afterRemoval, err)
 	}
 
 	var promotionSectionID int64
