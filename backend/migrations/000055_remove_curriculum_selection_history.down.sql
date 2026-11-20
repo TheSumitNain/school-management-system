@@ -94,33 +94,10 @@ DROP TRIGGER IF EXISTS trg_v55_guard_student_subject_selection_update
     ON student_enrollment_subject_selections;
 DROP FUNCTION IF EXISTS guard_v55_student_subject_selection_update();
 
-CREATE OR REPLACE FUNCTION guard_v55_student_subject_selection_no_delete()
-RETURNS trigger
-LANGUAGE plpgsql AS $v55$
-BEGIN
-    IF TG_OP = 'DELETE' THEN
-        RAISE EXCEPTION 'student subject selection history cannot be deleted';
-    END IF;
-    IF NEW.id IS DISTINCT FROM OLD.id
-       OR NEW.school_id IS DISTINCT FROM OLD.school_id
-       OR NEW.enrollment_curriculum_id IS DISTINCT FROM OLD.enrollment_curriculum_id
-       OR NEW.curriculum_id IS DISTINCT FROM OLD.curriculum_id
-       OR NEW.curriculum_subject_id IS DISTINCT FROM OLD.curriculum_subject_id
-       OR NEW.subject_name_snapshot IS DISTINCT FROM OLD.subject_name_snapshot
-       OR NEW.subject_code_snapshot IS DISTINCT FROM OLD.subject_code_snapshot
-       OR NEW.selected_by_principal_id IS DISTINCT FROM OLD.selected_by_principal_id
-       OR NEW.selected_at IS DISTINCT FROM OLD.selected_at THEN
-        RAISE EXCEPTION 'student subject selection identity and snapshot are immutable';
-    END IF;
-    IF OLD.revoked_at IS NOT NULL OR NEW.revoked_at IS NULL THEN
-        RAISE EXCEPTION 'student subject selection revocation is one-way';
-    END IF;
-    RETURN NEW;
-END;
-$v55$;
-CREATE TRIGGER trg_v55_guard_student_subject_selection_update
+DROP FUNCTION IF EXISTS guard_v55_student_subject_selection_no_delete();
+CREATE TRIGGER trg_guard_v44_enrollment_subject_history
 BEFORE UPDATE OR DELETE ON student_enrollment_subject_selections
-FOR EACH ROW EXECUTE FUNCTION guard_v55_student_subject_selection_no_delete();
+FOR EACH ROW EXECUTE FUNCTION guard_v44_enrollment_subject_history();
 
 DROP TRIGGER IF EXISTS trg_v55_validate_student_subject_selection
     ON student_enrollment_subject_selections;
