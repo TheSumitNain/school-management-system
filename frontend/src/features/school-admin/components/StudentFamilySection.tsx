@@ -193,14 +193,15 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
     setNewGuardianEmailError("");
     if (!canManage) return;
     const nameLength = Array.from(newGuardianName.trim()).length;
-    const nameError = !newGuardianName.trim() ? "Guardian name is required." : nameLength > 200 ? "Guardian name must be 200 characters or fewer." : "";
+    const nameError = nameLength < 2 ? "Guardian name must contain at least 2 characters." : nameLength > 200 ? "Guardian name must be 200 characters or fewer." : "";
     const emailInput = event.currentTarget.elements.namedItem("guardian_email_address") as HTMLInputElement | null;
     const emailLength = Array.from(newGuardianEmail.trim()).length;
     const emailError = emailLength > 254 ? "Email address must be 254 characters or fewer." :
       newGuardianEmail.trim() && emailInput && !emailInput.checkValidity() ? "Enter a valid email address." : "";
     const fieldErrors: Record<string, string> = {};
-    if (Array.from(newGuardianMobile.trim()).length > 30) fieldErrors.mobile_number = "Mobile number must be 30 characters or fewer.";
-    if (Array.from(newGuardianAlternateMobile.trim()).length > 30) fieldErrors.alternate_mobile_number = "Alternate mobile number must be 30 characters or fewer.";
+    const normalizePhone = (value: string) => value.replace(/[\s()-]/g, "");
+    if (newGuardianMobile.trim() && (Array.from(newGuardianMobile.trim()).length > 30 || !/^\+?[0-9]{10,15}$/.test(normalizePhone(newGuardianMobile.trim())))) fieldErrors.mobile_number = "Enter a valid mobile number with 10–15 digits; an optional + country prefix is allowed.";
+    if (newGuardianAlternateMobile.trim() && (Array.from(newGuardianAlternateMobile.trim()).length > 30 || !/^\+?[0-9]{10,15}$/.test(normalizePhone(newGuardianAlternateMobile.trim())))) fieldErrors.alternate_mobile_number = "Enter a valid alternate mobile number with 10–15 digits; an optional + country prefix is allowed.";
     if (Array.from(newGuardianOccupation.trim()).length > 120) fieldErrors.occupation = "Occupation must be 120 characters or fewer.";
     if (Array.from(newGuardianEducation.trim()).length > 120) fieldErrors.education = "Education must be 120 characters or fewer.";
     if (Array.from(newGuardianWorkplace.trim()).length > 160) fieldErrors.workplace_name = "Workplace must be 160 characters or fewer.";
@@ -272,14 +273,15 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
     if (!canManage || editingGuardianID <= 0) return;
     const name = editGuardianForm.full_name.trim();
     const nameLength = Array.from(name).length;
-    const nameError = !name ? "Guardian name is required." : nameLength > 200 ? "Guardian name must be 200 characters or fewer." : "";
+    const nameError = nameLength < 2 ? "Guardian name must contain at least 2 characters." : nameLength > 200 ? "Guardian name must be 200 characters or fewer." : "";
     const emailInput = event.currentTarget.elements.namedItem("edit_guardian_email") as HTMLInputElement | null;
     const emailLength = Array.from(editGuardianForm.email_address.trim()).length;
     const emailError = emailLength > 254 ? "Email address must be 254 characters or fewer." :
       editGuardianForm.email_address.trim() && emailInput && !emailInput.checkValidity() ? "Enter a valid email address." : "";
     const fieldErrors: Record<string, string> = {};
-    if (Array.from(editGuardianForm.mobile_number.trim()).length > 30) fieldErrors.mobile_number = "Mobile number must be 30 characters or fewer.";
-    if (Array.from(editGuardianForm.alternate_mobile_number.trim()).length > 30) fieldErrors.alternate_mobile_number = "Alternate mobile number must be 30 characters or fewer.";
+    const normalizePhone = (value: string) => value.replace(/[\s()-]/g, "");
+    if (editGuardianForm.mobile_number.trim() && (Array.from(editGuardianForm.mobile_number.trim()).length > 30 || !/^\+?[0-9]{10,15}$/.test(normalizePhone(editGuardianForm.mobile_number.trim())))) fieldErrors.mobile_number = "Enter a valid mobile number with 10–15 digits; an optional + country prefix is allowed.";
+    if (editGuardianForm.alternate_mobile_number.trim() && (Array.from(editGuardianForm.alternate_mobile_number.trim()).length > 30 || !/^\+?[0-9]{10,15}$/.test(normalizePhone(editGuardianForm.alternate_mobile_number.trim())))) fieldErrors.alternate_mobile_number = "Enter a valid alternate mobile number with 10–15 digits; an optional + country prefix is allowed.";
     if (Array.from(editGuardianForm.occupation.trim()).length > 120) fieldErrors.occupation = "Occupation must be 120 characters or fewer.";
     if (Array.from(editGuardianForm.education.trim()).length > 120) fieldErrors.education = "Education must be 120 characters or fewer.";
     if (Array.from(editGuardianForm.workplace_name.trim()).length > 160) fieldErrors.workplace_name = "Workplace must be 160 characters or fewer.";
