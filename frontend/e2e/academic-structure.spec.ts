@@ -221,6 +221,7 @@ test("removing a curriculum subject requires showing and confirming the affected
   await page.getByLabel("Password").fill("E2E-only-password");
   await page.getByRole("button", { name: /Continue/ }).click();
   await page.getByRole("button", { name: "Academics" }).click();
+  await expect(page.getByRole("tab", { name: "Class curriculum" })).toBeVisible();
   await page.getByRole("tab", { name: "Class curriculum" }).click();
   await page.getByLabel("Academic year").selectOption("7");
   await page.getByLabel("Class").selectOption("3");
