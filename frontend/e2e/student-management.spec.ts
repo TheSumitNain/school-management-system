@@ -723,7 +723,8 @@ test("student admission, profile navigation and parent details render without br
   await curriculumPanel.getByRole("checkbox", { name: /Sanskrit/ }).uncheck();
   await curriculumPanel.getByRole("checkbox", { name: /Hindi/ }).check();
   await expect(saveSubjectChoices).toBeDisabled();
-  expect(curriculumSubjectWrites).toBe(1);
+  // One successful save and one rejected request were attempted; reverting to saved values adds no write.
+  expect(curriculumSubjectWrites).toBe(2);
   await curriculumPanel.getByRole("checkbox", { name: /Hindi/ }).uncheck();
   await curriculumPanel.getByRole("checkbox", { name: /Sanskrit/ }).check();
   const readsBeforeRefresh = curriculumReads;
