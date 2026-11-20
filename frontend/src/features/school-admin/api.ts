@@ -204,7 +204,6 @@ export type StudentEnrollmentCurriculum = {
   enrollment_id: number; student_id: number; student_status: string; enrollment_status: string;
   academic_year_id: number; class_id: number; section_id: number; curriculum?: ClassCurriculum | null; available_curriculum?: ClassCurriculum | null; assigned: boolean;
   selected_optional_subject_ids: number[];
-  selection_history: Array<{ curriculum_version: number; subject_name: string; subject_code?: string | null; selected_at: string; revoked_at?: string | null }>;
 };
 export type StudentAcademicYear = { id: number; name: string; starts_on: string; ends_on: string; status: string; is_current: boolean };
 export type StudentSection = { id: number; academic_year_id: number; class_id: number; class_name: string; name: string; is_active: boolean };
