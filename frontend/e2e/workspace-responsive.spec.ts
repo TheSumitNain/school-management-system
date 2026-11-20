@@ -39,6 +39,18 @@ test("school workspace pages stay within narrow, tablet, and desktop viewports",
   await page.getByRole("button", { name: /Continue/ }).click();
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 
+  await page.setViewportSize({ width: 390, height: 844 });
+  const openNavigation = page.getByRole("button", { name: "Open navigation" });
+  await expect(openNavigation).toHaveAttribute("aria-expanded", "false");
+  await openNavigation.click();
+  const mainNavigation = page.getByRole("navigation", { name: "Main navigation" });
+  await expect(mainNavigation).toBeVisible();
+  for (const label of ["Dashboard", "Roles & permissions", "Academics", "Students", "Settings"]) {
+    await expect(mainNavigation.getByRole("button", { name: label })).toBeVisible();
+  }
+  await page.getByRole("button", { name: "Close navigation" }).click();
+  await expect(openNavigation).toHaveAttribute("aria-expanded", "false");
+
   const pages = [
     { path: "/", heading: /good (morning|afternoon|evening),/i },
     { path: "/roles", heading: /roles/i },
