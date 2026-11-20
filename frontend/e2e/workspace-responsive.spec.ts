@@ -58,6 +58,34 @@ test("school workspace pages stay within narrow, tablet, and desktop viewports",
         () => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
         { message: `${item.path} should not cause page-level horizontal overflow at ${width}px` },
       ).toBe(true);
+      if (item.path === "/students") {
+        await expect(page.getByRole("group", { name: "Student management views" })).toBeVisible();
+        await expect(page.getByRole("button", { name: "Student directory" })).toBeVisible();
+        await expect(page.getByRole("button", { name: "Enrollments" })).toBeVisible();
+        await expect(page.getByRole("textbox", { name: "Search students" })).toBeVisible();
+        const studentControlsFit = await page.evaluate(() => {
+          return [".student-tabs", ".student-toolbar", ".student-search"].every(selector => {
+            const element = document.querySelector(selector);
+            if (!element) return false;
+            const rect = element.getBoundingClientRect();
+            return rect.left >= 0 && rect.right <= window.innerWidth + 1;
+          });
+        });
+        expect(studentControlsFit, `student navigation and filters should fit at ${width}px`).toBe(true);
+      }
+
+      if (item.path === "/settings") {
+        await expect(page.getByRole("heading", { name: "Appearance mode" })).toBeVisible();
+        await expect(page.locator(".appearance-option")).toHaveCount(4);
+        await expect(page.locator(".palette-option")).toHaveCount(15);
+        const settingsControlsFit = await page.evaluate(() => {
+          return [...document.querySelectorAll(".appearance-option, .palette-option")].every(element => {
+            const rect = element.getBoundingClientRect();
+            return rect.width > 0 && rect.left >= 0 && rect.right <= window.innerWidth + 1;
+          });
+        });
+        expect(settingsControlsFit, `appearance and palette options should fit at ${width}px`).toBe(true);
+      }
     }
   }
 
