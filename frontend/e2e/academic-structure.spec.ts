@@ -43,7 +43,7 @@ test("class curriculum validates each optional-group field and locks the editor 
       return;
     }
     if (path === "/school/sections") {
-      await route.fulfill({ json: { sections: [] } });
+      await route.fulfill({ json: { sections: [{ id: 44, academic_year_id: 7, class_id: 3, name: "A", medium: "english", is_active: true }] } });
       return;
     }
     if (path === "/school/subjects") {
@@ -72,7 +72,7 @@ test("class curriculum validates each optional-group field and locks the editor 
       saveStartedResolve();
       await saveGate;
       curriculumSaved = true;
-      await route.fulfill({ status: 201, json: { status: "success", curriculum: { id: 701, version_number: 1, status: "active" } } });
+      await route.fulfill({ status: 200, json: { status: "success", curriculum: { id: 701, version_number: 1, status: "active" } } });
       return;
     }
     await route.fulfill({ status: 404, json: { message: `Unmocked E2E API request: ${method} ${path}` } });
@@ -87,8 +87,10 @@ test("class curriculum validates each optional-group field and locks the editor 
 
   const yearSelect = page.getByLabel("Academic year");
   const classSelect = page.getByLabel("Class");
+  const sectionSelect = page.getByLabel("Section");
   await yearSelect.selectOption("7");
   await classSelect.selectOption("3");
+  await sectionSelect.selectOption("44");
   await page.getByRole("button", { name: "Add optional group" }).click();
 
   const groupName = page.getByLabel("Group name");
@@ -99,13 +101,13 @@ test("class curriculum validates each optional-group field and locks the editor 
   await page.getByRole("checkbox", { name: /Hindi/ }).check();
   await page.getByRole("checkbox", { name: /Sanskrit/ }).check();
 
-  await page.getByRole("button", { name: "Save curriculum version" }).click();
+  await page.getByRole("button", { name: "Save curriculum" }).click();
   await expect(page.getByText("Assign at least one subject to this optional group.", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Save curriculum version" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Save curriculum" })).toBeEnabled();
 
   await minChoices.fill("2");
   await maxChoices.fill("1");
-  await page.getByRole("button", { name: "Save curriculum version" }).click();
+  await page.getByRole("button", { name: "Save curriculum" }).click();
   await expect(page.getByText("Minimum choices cannot exceed maximum choices.", { exact: true })).toBeVisible();
   await expect(page.getByLabel("Minimum choices")).toHaveAttribute("aria-invalid", "true");
 
@@ -116,7 +118,7 @@ test("class curriculum validates each optional-group field and locks the editor 
   await subjectRows.filter({ hasText: "Hindi" }).getByLabel("Type").selectOption("Second language");
   await subjectRows.filter({ hasText: "Sanskrit" }).getByLabel("Type").selectOption("Second language");
 
-  await page.getByRole("button", { name: "Save curriculum version" }).click();
+  await page.getByRole("button", { name: "Save curriculum" }).click();
   await saveStarted;
   await expect(yearSelect).toBeDisabled();
   await expect(classSelect).toBeDisabled();
@@ -127,14 +129,15 @@ test("class curriculum validates each optional-group field and locks the editor 
   await expect(page.getByRole("button", { name: "Add optional group" })).toBeDisabled();
 
   releaseSaveResolve();
-  await expect(page.getByText("Curriculum version saved. Existing versions and assigned student choices are preserved.")).toBeVisible();
-  await expect(page.getByText("Version 1", { exact: true })).toBeVisible();
+  await expect(page.getByText("Curriculum saved successfully. Existing student selections are preserved except the subjects you confirmed for removal.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Edit curriculum" })).toBeVisible();
   await expect(page.getByText("3 subjects · 1 optional groups", { exact: true })).toBeVisible();
   await expect(page.getByText("Mathematics · Optional", { exact: true })).toBeVisible();
   await expect(page.getByText("Hindi · Second language", { exact: true })).toBeVisible();
   expect(savedPayload).toMatchObject({
     academic_year_id: 7,
     class_id: 3,
+    section_id: 44,
     optional_groups: [{ name: "Second language", min_selections: 1, max_selections: 2 }],
     subjects: [
       { subject_id: 91, is_optional: true },
@@ -142,6 +145,6 @@ test("class curriculum validates each optional-group field and locks the editor 
       { subject_id: 93, is_optional: true, optional_group: "Second language" },
     ],
   });
-  await expect(page.getByLabel("Group name")).toHaveCount(0);
+  await expect(page.getByLabel("Group name")).toHaveValue("Second language");
   expect(browserErrors).toEqual([]);
 });
