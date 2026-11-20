@@ -883,7 +883,7 @@ test("student admission, profile navigation and parent details render without br
     if (!form) throw new Error("Basic details save button is not associated with its form.");
     form.requestSubmit();
   });
-  await expect(page.getByRole("status").filter({ hasText: "No change to save." })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("status").filter({ hasText: /^No change to save\.$/ })).toBeVisible({ timeout: 10_000 });
   expect(basicDetailsWriteCount).toBe(basicDetailsWritesAfterSave);
   await page.getByRole("button", { name: "Close dialog" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
@@ -939,7 +939,7 @@ test("student admission, profile navigation and parent details render without br
     if (!form) throw new Error("Relationship submit button is not associated with its form.");
     form.requestSubmit();
   });
-  await expect(page.getByRole("status").filter({ hasText: "No change to save." })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("status").filter({ hasText: /^No change to save\.$/ })).toBeVisible({ timeout: 10_000 });
   expect(guardianLinkUpdateRequests).toHaveLength(0);
   // A no-op submit intentionally exits edit mode; reopen before testing server validation.
   await guardianCard.getByRole("button", { name: "Edit relationship" }).click();
@@ -1000,7 +1000,7 @@ test("student admission, profile navigation and parent details render without br
     if (!form) throw new Error("Guardian details submit button is not associated with its form.");
     form.requestSubmit();
   });
-  await expect(page.getByRole("status").filter({ hasText: "No change to save." })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("status").filter({ hasText: /^No change to save\.$/ })).toBeVisible({ timeout: 10_000 });
   expect(guardianProfileUpdateRequests).toHaveLength(0);
   // A no-op submit intentionally closes the shared guardian editor; reopen it before validation.
   await guardianCard.getByRole("button", { name: "Edit shared guardian details" }).click();
@@ -1235,7 +1235,7 @@ test("student admission, profile navigation and parent details render without br
     if (!form) throw new Error("Address save button is not associated with its form.");
     form.requestSubmit();
   });
-  await expect(page.getByRole("status").filter({ hasText: "No change to save." })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("status").filter({ hasText: /^No change to save\.$/ })).toBeVisible({ timeout: 10_000 });
   expect(addresses).toHaveLength(0);
   await page.getByPlaceholder("House number, street or building").fill("अ".repeat(201));
   await page.getByPlaceholder("Apartment, floor or additional details").fill("अ".repeat(201));
@@ -1351,7 +1351,7 @@ test("student admission, profile navigation and parent details render without br
     if (!form) throw new Error("Contact save button is not associated with its form.");
     form.requestSubmit();
   });
-  await expect(page.getByRole("status").filter({ hasText: "No change to save." })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("status").filter({ hasText: /^No change to save\.$/ })).toBeVisible({ timeout: 10_000 });
   expect(contactDetailsWriteCount).toBe(0);
   const contactSaveButton = page.getByRole("button", { name: "Save contact details" });
   await page.getByPlaceholder("Primary contact number").fill("अ".repeat(31));
@@ -1480,7 +1480,7 @@ test("student admission, profile navigation and parent details render without br
     if (!form) throw new Error("Medical save button is not associated with its form.");
     form.requestSubmit();
   });
-  await expect(page.getByRole("status").filter({ hasText: "No change to save." })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("status").filter({ hasText: /^No change to save\.$/ })).toBeVisible({ timeout: 10_000 });
   expect(medicalDetailWrites).toBe(medicalWritesAfterSave);
   await page.getByRole("button", { name: "Physical details" }).click();
   const physicalDraft = "Draft physical note survives background refetch";
@@ -1559,7 +1559,7 @@ test("student admission, profile navigation and parent details render without br
     if (!form) throw new Error("Physical save button is not associated with its form.");
     form.requestSubmit();
   });
-  await expect(page.getByRole("status").filter({ hasText: "No change to save." })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("status").filter({ hasText: /^No change to save\.$/ })).toBeVisible({ timeout: 10_000 });
   expect(physicalDetailWrites).toBe(physicalWritesAfterSave);
   await page.getByRole("button", { name: "Close dialog" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
