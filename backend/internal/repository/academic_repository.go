@@ -19,6 +19,7 @@ var (
 	ErrAcademicConflict = errors.New("academic resource conflicts with an existing record")
 	ErrCurriculumRemovalConfirmationRequired = errors.New("curriculum subject removal requires explicit confirmation")
 	ErrCurriculumRemovalImpactChanged = errors.New("curriculum removal impact changed; review the affected student count again")
+	ErrCurriculumSubjectRuleConflict = errors.New("curriculum edit would invalidate active student subject choices")
 	ErrAcademicAdmissionNumberConflict = errors.New("academic admission number already exists in this school year")
 	ErrAcademicRollNumberConflict = errors.New("academic roll number already exists in this active section")
 	ErrStudentRegistrationNumberConflict = errors.New("student school registration number already exists in this school")
@@ -177,7 +178,16 @@ func academicWriteError(err error) error {
 				return ErrAcademicConflict
 			}
 		case "23P01": return ErrAcademicConflict
-		case "23503", "23514", "22001", "22007", "P0001":
+		case "P0001":
+			message := strings.ToLower(pgErr.Message)
+			if strings.Contains(message, "assignment actor") { return ErrAcademicAccessDenied }
+			if strings.Contains(message, "subject choice rules cannot change") ||
+				strings.Contains(message, "optional group limits would invalidate") ||
+				strings.Contains(message, "active student subject selections must be revoked") {
+				return ErrCurriculumSubjectRuleConflict
+			}
+			return ErrInvalidAcademicInput
+		case "23503", "23514", "22001", "22007":
 			if strings.Contains(strings.ToLower(pgErr.Message), "assignment actor") { return ErrAcademicAccessDenied }
 			return ErrInvalidAcademicInput
 		}
