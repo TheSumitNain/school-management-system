@@ -199,8 +199,11 @@ function useStudentMutation<TInput>(mutationFn: (input: TInput) => Promise<unkno
   const client = useQueryClient();
   return useMutation({
     mutationFn,
-    onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: schoolStudentQueryKeys.all });
+    // The write is confirmed by the server before onSuccess runs. Start
+    // background refetches without holding the mutation promise open; callers
+    // can show success feedback immediately while queries refresh.
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: schoolStudentQueryKeys.all });
     },
   });
 }
