@@ -286,8 +286,9 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
           <div className="toolbar"><div><h3>{currentCurriculum ? "Edit curriculum" : "Create curriculum"}</h3><small>Changes update this section's existing curriculum. No new version is created.</small></div>
             <button type="button" className="academic-refresh academic-add" onClick={addGroup} disabled={busy} aria-controls="curriculum-optional-groups">Add optional group</button>
           </div>
+          <div id="curriculum-optional-groups" className="curriculum-optional-groups">
           {groups.map((group, index) => (
-            <fieldset className="curriculum-group-editor" key={index} tabIndex={-1} data-validation-error={fieldErrors.groups[index]?.subjects ? "true" : undefined} aria-invalid={Boolean(fieldErrors.groups[index]?.subjects)} aria-describedby={fieldErrors.groups[index]?.subjects ? `curriculum-group-${index}-subjects-error` : undefined}>
+            <fieldset ref={element => { groupEditorRefs.current[index] = element; }} className={`curriculum-group-editor${newGroupIndex === index ? " is-new" : ""}`} key={index} tabIndex={-1} data-validation-error={fieldErrors.groups[index]?.subjects ? "true" : undefined} aria-invalid={Boolean(fieldErrors.groups[index]?.subjects)} aria-describedby={fieldErrors.groups[index]?.subjects ? `curriculum-group-${index}-subjects-error` : undefined}>
               <legend>Optional group {index + 1} {newGroupIndex === index && <span className="curriculum-new-group-badge">New group</span>}</legend>
               <label>Group name<input disabled={busy} value={group.name} maxLength={100} placeholder="e.g. Skill Subject" aria-invalid={Boolean(fieldErrors.groups[index]?.name)} aria-describedby={fieldErrors.groups[index]?.name ? `curriculum-group-${index}-name-error` : undefined} onChange={event => {
                 const nextName = event.target.value;
@@ -316,6 +317,7 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
               }}>Remove group</button>
             </fieldset>
           ))}
+          </div>
           <div className="curriculum-subject-picker">
             <div className="curriculum-subject-picker-heading">
               <div><h3>Subjects</h3><p>Select the subjects for this class, then choose how each one is assigned.</p></div>
