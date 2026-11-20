@@ -115,7 +115,7 @@ func(h *AcademicHandler) ListClasses(c *gin.Context){
 func(h *AcademicHandler) SaveClass(c *gin.Context){
 	a,s,ok:=h.ready(c);if !ok{return};var id int64;if c.Param("classID")!=""{var valid bool;id,valid=academicID(c,"classID");if !valid{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid class ID"});return}}
 	var req struct{Name string `json:"name"`;DisplayOrder int `json:"display_order"`;IsActive *bool `json:"is_active"`}
-	if c.ShouldBindJSON(&req)!=nil{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid request body"});return};active:=true;if req.IsActive!=nil{active=*req.IsActive}
+	if c.ShouldBindJSON(&req)!=nil{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid request body"});return};if n:=len([]rune(strings.TrimSpace(req.Name)));n<2||n>100{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Class name must contain 2–100 characters","field_errors":gin.H{"name":"Enter a class name containing 2–100 characters."}});return};active:=true;if req.IsActive!=nil{active=*req.IsActive}
 	v,err:=h.service.SaveClass(c.Request.Context(),a,s,id,req.Name,req.DisplayOrder,active);if err!=nil{academicError(c,err,"Class");return};code:=http.StatusOK;if id==0{code=http.StatusCreated};c.JSON(code,gin.H{"status":"success","class":v})
 }
 func(h *AcademicHandler) ListSections(c *gin.Context){
@@ -125,7 +125,7 @@ func(h *AcademicHandler) ListSections(c *gin.Context){
 func(h *AcademicHandler) SaveSection(c *gin.Context){
 	a,s,ok:=h.ready(c);if !ok{return};var id int64;if c.Param("sectionID")!=""{var valid bool;id,valid=academicID(c,"sectionID");if !valid{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid section ID"});return}}
 	var req struct{AcademicYearID int64 `json:"academic_year_id"`;ClassID int64 `json:"class_id"`;Name string `json:"name"`;Medium *string `json:"medium"`;DisplayOrder int `json:"display_order"`;IsActive *bool `json:"is_active"`}
-	if c.ShouldBindJSON(&req)!=nil{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid request body"});return};active:=true;if req.IsActive!=nil{active=*req.IsActive}
+	if c.ShouldBindJSON(&req)!=nil{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid request body"});return};if n:=len([]rune(strings.TrimSpace(req.Name)));n<2||n>120{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Subject name must contain 2–120 characters","field_errors":gin.H{"name":"Enter a subject name containing 2–120 characters."}});return};active:=true;if req.IsActive!=nil{active=*req.IsActive}
 	var v *repository.AcademicSection
 	var err error
 	if saver,ok:=h.service.(interface{SaveSectionWithMedium(context.Context,int64,int64,int64,int64,int64,string,*string,int,bool)(*repository.AcademicSection,error)});ok{
