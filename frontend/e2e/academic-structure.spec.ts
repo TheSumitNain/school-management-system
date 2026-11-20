@@ -129,7 +129,12 @@ test("section curriculum validates optional groups, edits in place, and confirms
   await page.getByRole("option", { name: "A · english" }).click();
   await page.getByRole("button", { name: "Add optional group" }).click();
 
-  const groupName = page.getByLabel("Group name");
+  const newGroupCard = page.locator(".curriculum-group-editor.is-new");
+  const groupName = newGroupCard.getByLabel("Group name");
+  await expect(newGroupCard).toBeVisible();
+  await expect(newGroupCard.getByText("New group")).toBeVisible();
+  await expect(groupName).toBeFocused();
+  await expect(newGroupCard).toBeInViewport();
   const minChoices = page.getByLabel("Minimum choices");
   const maxChoices = page.getByLabel("Maximum choices");
   await groupName.fill("Second language");
