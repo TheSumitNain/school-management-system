@@ -173,7 +173,7 @@ export function StaffManagementPage({ permissions }: Props) {
         closeDisabled={pending}
       >
         {feedback?.kind === "error" && <p className="staff-feedback error" role="alert">{feedback.message}</p>}
-        <form onSubmit={submit} onChange={event => { if (action === "edit") setEditHasChanges(checkEditChanges(event.currentTarget)); }} noValidate>
+        <form onSubmit={submit} onChange={event => { if (action === "edit") setEditHasChanges(current => { const next = checkEditChanges(event.currentTarget); if (current && !next) notifyToast("info", "No changes to save."); return next; }); }} noValidate>
           {action === "create" && <label>Login username<input name="username" placeholder="e.g. rahul.sharma" minLength={3} maxLength={32} pattern="[a-z0-9._-]{3,32}" autoComplete="off" required aria-invalid={Boolean(fieldErrors.username)} aria-describedby={fieldErrors.username ? "staff-username-error" : "staff-username-help"} onChange={()=>setFieldErrors(current=>({...current,username:""}))}/><small id="staff-username-help">3–32 lowercase letters, numbers, dots, underscores or hyphens. Unique across the platform.</small>{fieldErrors.username && <small className="app-field-error" id="staff-username-error">{fieldErrors.username}</small>}</label>}
           {action === "edit" && <label>Login username<input value={selected?.username ?? ""} disabled/><small>Login identity is managed separately from employee details.</small></label>}
           {(action === "create" || action === "edit") && <>
