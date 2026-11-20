@@ -64,9 +64,7 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
     ])));
     setLoadedCurriculumID(curriculum?.id ?? 0);
     setFieldErrors({ groups: {} });
-    setError("");
-    setSuccess("");
-  }, [curriculaQuery.isLoading, curriculaQuery.isError, currentCurriculum?.id, loadedCurriculumID]);
+  }, [curriculaQuery.isLoading, curriculaQuery.isError, currentCurriculum, loadedCurriculumID]);
 
   function clearEditorForScopeChange() {
     setLoadedCurriculumID(null);
@@ -98,7 +96,13 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
         setPendingSave(null);
         setPendingRemovalImpacts(null);
       },
-      onError: mutationError => setError(mutationError.message),
+      onError: mutationError => {
+        if (mutationError.message.toLowerCase().includes("affected-student count changed")) {
+          setPendingSave(null);
+          setPendingRemovalImpacts(null);
+        }
+        setError(mutationError.message);
+      },
     });
   }
 
