@@ -586,6 +586,33 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Academic history", exact: true })).toBeVisible();
   const profileDialog = page.getByRole("dialog", { name: /Student profile/ });
+  // Verify the actual profile dialog and its primary actions at phone, tablet,
+  // and desktop widths; page-level smoke tests alone do not exercise this modal.
+  for (const width of [320, 360, 390, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    const layout = await profileDialog.evaluate(dialog => {
+      const dialogRect = dialog.getBoundingClientRect();
+      const content = dialog.querySelector<HTMLElement>(".app-modal-content");
+      const actions = dialog.querySelector<HTMLElement>(".student-profile-actions");
+      const actionButtons = Array.from(actions?.querySelectorAll("button") ?? []);
+      const actionRects = actionButtons.map(button => {
+        const rect = button.getBoundingClientRect();
+        return rect.left >= 0 && rect.right <= window.innerWidth + 1;
+      });
+      return {
+        dialogFits: dialogRect.left >= 0 && dialogRect.right <= window.innerWidth + 1,
+        contentFits: Boolean(content && content.scrollWidth <= content.clientWidth + 1),
+        actionsFit: Boolean(actions && actions.getBoundingClientRect().right <= dialogRect.right + 1),
+        buttonsFit: actionRects.every(Boolean),
+        actionColumns: actions ? getComputedStyle(actions).gridTemplateColumns.split(" ").length : 0,
+      };
+    });
+    expect(layout.dialogFits, `student profile dialog should fit at ${width}px`).toBe(true);
+    expect(layout.contentFits, `student profile content should not overflow at ${width}px`).toBe(true);
+    expect(layout.actionsFit && layout.buttonsFit, `student profile actions should fit at ${width}px`).toBe(true);
+    if (width <= 600) expect(layout.actionColumns, "profile actions should stack on phone widths").toBe(1);
+  }
+  await page.setViewportSize({ width: 1440, height: 900 });
   await expect(profileDialog.getByText("14 Nov 2026", { exact: true })).toHaveCount(2);
   const curriculumPanel = page.getByRole("region", { name: "Curriculum and subject choices" });
   await expect(curriculumPanel.getByText("Curriculum", { exact: true })).toBeVisible();
