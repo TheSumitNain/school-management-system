@@ -1130,6 +1130,29 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	if err != nil || assignedV1Again == nil {
 		t.Fatalf("replace current optional choice without history: item=%+v err=%v", assignedV1Again, err)
 	}
+	// Removing an optional group converts its subjects to standalone optional
+	// choices. Existing selected choices remain current and the empty group row
+	// is deleted instead of being kept as hidden history.
+	ungroupedCurriculum, err := academicRepo.SaveSectionClassCurriculum(ctx, actorPrincipalID, schoolID,
+		enrollmentYearID, sourceClassID, sourceSectionID, nil,
+		[]CurriculumSubjectInput{{SubjectID: subjectID}, {SubjectID: subjectAltID, IsOptional: true}})
+	if err != nil || ungroupedCurriculum == nil || len(ungroupedCurriculum.Groups) != 0 || len(ungroupedCurriculum.Subjects) != 2 {
+		t.Fatalf("remove optional group and keep standalone subject: curriculum=%+v err=%v", ungroupedCurriculum, err)
+	}
+	var standaloneFound bool
+	for _, subject := range ungroupedCurriculum.Subjects {
+		if subject.SubjectID == subjectAltID && subject.IsOptional && subject.OptionalGroupID == nil {
+			standaloneFound = true
+		}
+	}
+	if !standaloneFound {
+		t.Fatalf("optional subject did not become standalone after group removal: %+v", ungroupedCurriculum.Subjects)
+	}
+	afterUngrouping, err := academicRepo.GetStudentEnrollmentCurriculum(ctx, actorPrincipalID, schoolID, currentEnrollmentID)
+	if err != nil || afterUngrouping == nil || len(afterUngrouping.SelectedOptionalSubjectIDs) != 1 ||
+		afterUngrouping.SelectedOptionalSubjectIDs[0] != optionalV1ID {
+		t.Fatalf("group removal did not preserve current student choice: item=%+v err=%v", afterUngrouping, err)
+	}
 	var selectionRowCount int
 	if err := tx.QueryRow(ctx, `
 		SELECT COUNT(*)::integer
