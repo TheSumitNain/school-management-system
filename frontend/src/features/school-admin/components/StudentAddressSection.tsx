@@ -280,8 +280,10 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
     const normalizePhone = (value: string) => value.replace(/[\s()-]/g, "");
     const primaryPhoneValue = primaryPhone.trim();
     const alternatePhoneValue = alternatePhone.trim();
-    if (primaryPhoneValue.length > 30 || (primaryPhoneValue && !/^\+?[0-9]{10,15}$/.test(normalizePhone(primaryPhoneValue)))) errors.primaryPhone = "Enter a valid phone number with 10–15 digits; an optional + country prefix is allowed.";
-    if (alternatePhoneValue.length > 30 || (alternatePhoneValue && !/^\+?[0-9]{10,15}$/.test(normalizePhone(alternatePhoneValue)))) errors.alternatePhone = "Enter a valid alternate phone number with 10–15 digits; an optional + country prefix is allowed.";
+    if (primaryPhoneValue.length > 30) errors.primaryPhone = "Phone number must be 30 characters or fewer.";
+    else if (primaryPhoneValue && !/^\+?[0-9]{10,15}$/.test(normalizePhone(primaryPhoneValue))) errors.primaryPhone = "Enter a valid phone number with 10–15 digits; an optional + country prefix is allowed.";
+    if (alternatePhoneValue.length > 30) errors.alternatePhone = "Alternate phone number must be 30 characters or fewer.";
+    else if (alternatePhoneValue && !/^\+?[0-9]{10,15}$/.test(normalizePhone(alternatePhoneValue))) errors.alternatePhone = "Enter a valid alternate phone number with 10–15 digits; an optional + country prefix is allowed.";
     const emailInput = event.currentTarget.elements.namedItem("student_email_address") as HTMLInputElement | null;
     if (Array.from(emailAddress.trim()).length > 254) {
       errors.emailAddress = "Email address must be 254 characters or fewer.";
