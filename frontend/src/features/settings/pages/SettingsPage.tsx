@@ -82,11 +82,13 @@ export function SettingsPage() {
           <div className="theme-schedule" aria-label="Automatic theme schedule">
             <div className="theme-schedule-field">
               <label htmlFor="theme-dark-start">Turn Dark Mode on</label>
-              <input id="theme-dark-start" type="time" value={darkStart} onChange={(event) => changeSchedule(event.target.value, lightStart)} />
+              <input id="theme-dark-start" type="time" value={darkStart} aria-invalid={!scheduleValid} aria-describedby={!scheduleValid ? "theme-dark-start-error" : undefined} onChange={(event) => changeSchedule(event.target.value, lightStart)} />
+              {!scheduleValid && <small id="theme-dark-start-error" className="app-field-error" role="alert">Choose a time different from the Light Mode start time.</small>}
             </div>
             <div className="theme-schedule-field">
               <label htmlFor="theme-light-start">Turn Light Mode on</label>
-              <input id="theme-light-start" type="time" value={lightStart} onChange={(event) => changeSchedule(darkStart, event.target.value)} />
+              <input id="theme-light-start" type="time" value={lightStart} aria-invalid={!scheduleValid} aria-describedby={!scheduleValid ? "theme-light-start-error" : undefined} onChange={(event) => changeSchedule(darkStart, event.target.value)} />
+              {!scheduleValid && <small id="theme-light-start-error" className="app-field-error" role="alert">Choose a time different from the Dark Mode start time.</small>}
             </div>
             <p className={scheduleValid ? "theme-schedule-help" : "theme-schedule-help theme-schedule-error"}>
               {scheduleValid
