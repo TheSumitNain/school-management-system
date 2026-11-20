@@ -2393,11 +2393,18 @@ test("staff can create a guardian contact and link it to a student with relation
   failGuardianLinkConflict = true;
   await page.getByRole("button", { name: "Link guardian", exact: true }).click();
   await expect(page.getByText("This guardian is already linked to this student. Review the existing relationships before adding another link.", { exact: true })).toBeVisible();
+  const guardianContactSelect = familyDialog.getByRole("button", { name: "Select guardian", exact: true });
+  await expect(guardianContactSelect).toHaveAttribute("aria-invalid", "true");
+  await expect(guardianContactSelect).toHaveAttribute("aria-describedby", "student-guardian-select-error");
+  await expect(familyDialog.locator('#student-guardian-select-error[role="alert"]')).toBeVisible();
   expect(guardianLinks).toHaveLength(0);
   failGuardianLinkConflict = false;
   failGuardianRelationshipConflict = true;
   await page.getByRole("button", { name: "Link guardian", exact: true }).click();
   await expect(page.getByText("This relationship is already linked to this student. Choose another available relationship.", { exact: true })).toBeVisible();
+  await expect(linkRelationshipSelect).toHaveAttribute("aria-invalid", "true");
+  await expect(linkRelationshipSelect).toHaveAttribute("aria-describedby", "student-guardian-relationship-error");
+  await expect(familyDialog.locator('#student-guardian-relationship-error[role="alert"]')).toBeVisible();
   expect(guardianLinks).toHaveLength(0);
   failGuardianRelationshipConflict = false;
   await page.getByRole("button", { name: "Link guardian", exact: true }).click();
