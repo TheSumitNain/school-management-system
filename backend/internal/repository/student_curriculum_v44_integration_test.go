@@ -168,6 +168,15 @@ func TestStudentCurriculumV44PostgresIntegration(t *testing.T) {
 	}
 
 	academicRepo := &AcademicRepository{db: tx}
+	if _, err := academicRepo.SaveSectionClassCurriculumWithConfirmations(
+		ctx, actorPrincipalID, schoolID, yearID, classID, sectionID,
+		[]CurriculumOptionalGroupInput{{Name: "Empty group", MinSelections: 1, MaxSelections: 1}},
+		[]CurriculumSubjectInput{{SubjectID: compulsorySubjectID}},
+		nil,
+	); !errors.Is(err, ErrInvalidAcademicInput) {
+		t.Fatalf("saving an optional group with no assigned subjects returned %v, want invalid academic input", err)
+	}
+
 	curriculumView, err := academicRepo.GetStudentEnrollmentCurriculum(ctx, actorPrincipalID, schoolID, enrollmentID)
 	if err != nil {
 		t.Fatalf("read student enrollment curriculum: %v", err)
