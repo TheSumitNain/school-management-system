@@ -13,9 +13,10 @@ type Props = {
   children: ReactNode;
   labelledBy?: string;
   closeDisabled?: boolean;
+  initialFocusSelector?: string;
 };
 
-export function Modal({ open, title, description, onClose, children, closeDisabled = false }: Props) {
+export function Modal({ open, title, description, onClose, children, closeDisabled = false, initialFocusSelector }: Props) {
   const modalID = useId();
   const titleID = useId();
   const descriptionID = useId();
@@ -36,7 +37,10 @@ export function Modal({ open, title, description, onClose, children, closeDisabl
       dialogRef.current?.scrollTo({ top: 0 });
       // Focus the dialog itself without scrolling its first field underneath
       // the sticky header. Inner navigation tabs must remain visible/clickable.
-      dialogRef.current?.focus({ preventScroll: true });
+      const initialFocusTarget = initialFocusSelector
+        ? dialogRef.current?.querySelector<HTMLElement>(initialFocusSelector)
+        : null;
+      (initialFocusTarget ?? dialogRef.current)?.focus({ preventScroll: true });
     });
     const onKeyDown = (event: KeyboardEvent) => {
       if (openModalStack[openModalStack.length - 1] !== modalID) return;
@@ -60,7 +64,7 @@ export function Modal({ open, title, description, onClose, children, closeDisabl
       document.body.style.overflow = previousOverflow;
       previousFocus.current?.focus();
     };
-  }, [open, closeDisabled, modalID]);
+  }, [open, closeDisabled, modalID, initialFocusSelector]);
 
   if (!open) return null;
   return createPortal(

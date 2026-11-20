@@ -587,6 +587,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
               description={`Revoke the link for ${visibleLinks.find(link => link.id === pendingRevokeID)?.guardian_name ?? "this guardian"}? The guardian contact and other students’ links will not be deleted. This student’s relationship history will be preserved.`}
               onClose={() => { if (!busy) { setPendingRevokeID(0); setRevokeReasonError(""); } }}
               closeDisabled={revokeLink.isPending}
+              initialFocusSelector='[placeholder="Explain why this link is being revoked"]'
             >
               <form className="student-revoke-form" onSubmit={event => { event.preventDefault(); void confirmRevoke(); }} noValidate>
                 <label><StudentFieldLabel label="Reason for revocation" required hint="Explain why this guardian relationship is being revoked. Maximum 500 characters; the reason is retained in the audit/history." /><input autoFocus value={revokeReason} aria-invalid={Boolean(revokeReasonError)} aria-describedby={revokeReasonError ? "student-guardian-revoke-reason-error" : undefined} onChange={event => { setRevokeReason(event.target.value); setRevokeReasonError(""); }} placeholder="Explain why this link is being revoked"/>{revokeReasonError && <small id="student-guardian-revoke-reason-error" className="app-field-error" role="alert">{revokeReasonError}</small>}</label>
