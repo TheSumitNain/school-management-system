@@ -596,13 +596,10 @@ test("student admission, profile navigation and parent details render without br
   await expect(saveSubjectChoices).toBeEnabled();
   await saveSubjectChoices.click();
   await expect(curriculumPanel.getByText("Assigned", { exact: true })).toBeVisible();
-  // Both the standalone optional and grouped optional choice are persisted
-  // as separate history rows for the assigned curriculum.
+  // Standalone and grouped optional choices are persisted as current rows;
+  // no previous-choice history is exposed in Student Management.
   expect(savedCurriculumSelections).toEqual([904, 902]);
-  await expect(curriculumPanel.getByText("Previous subject choices (2)")).toBeVisible();
-  await curriculumPanel.getByText("Previous subject choices (2)").click();
-  await expect(curriculumPanel.getByText("Computer Applications · curriculum v1 · Current")).toBeVisible();
-  await expect(curriculumPanel.getByText("Hindi · curriculum v1 · Current")).toBeVisible();
+  await expect(curriculumPanel.getByText(/Previous subject choices/)).toHaveCount(0);
   await curriculumPanel.getByRole("checkbox", { name: /Hindi/ }).uncheck();
   await curriculumPanel.getByRole("checkbox", { name: /Sanskrit/ }).check();
   const readsBeforeRefresh = curriculumReads;
