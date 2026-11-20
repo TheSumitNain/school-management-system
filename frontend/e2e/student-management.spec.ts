@@ -599,9 +599,19 @@ test("student admission, profile navigation and parent details render without br
         const rect = button.getBoundingClientRect();
         return rect.left >= 0 && rect.right <= window.innerWidth + 1;
       });
+      const overflowing = content ? Array.from(content.querySelectorAll<HTMLElement>("*"))
+        .filter(element => element.scrollWidth > element.clientWidth + 1)
+        .map(element => ({
+          tag: element.tagName.toLowerCase(),
+          className: typeof element.className === "string" ? element.className : "",
+          text: (element.textContent ?? "").trim().slice(0, 70),
+          clientWidth: element.clientWidth,
+          scrollWidth: element.scrollWidth,
+        })).slice(0, 8) : [];
       return {
         dialogFits: dialogRect.left >= 0 && dialogRect.right <= window.innerWidth + 1,
         contentFits: Boolean(content && content.scrollWidth <= content.clientWidth + 1),
+        overflowing,
         actionsFit: Boolean(actions && actions.getBoundingClientRect().right <= dialogRect.right + 1),
         buttonsFit: actionRects.every(Boolean),
         actionDisplay: actions ? getComputedStyle(actions).display : "missing",
@@ -609,7 +619,7 @@ test("student admission, profile navigation and parent details render without br
       };
     });
     expect(layout.dialogFits, `student profile dialog should fit at ${width}px`).toBe(true);
-    expect(layout.contentFits, `student profile content should not overflow at ${width}px`).toBe(true);
+    expect(layout.contentFits, `student profile content should not overflow at ${width}px: ${JSON.stringify(layout.overflowing)}`).toBe(true);
     expect(layout.actionsFit && layout.buttonsFit, `student profile actions should fit at ${width}px`).toBe(true);
     if (width <= 600) {
       expect(layout.actionDisplay, "profile actions should use a stacked layout on phone widths").toBe("grid");
