@@ -29,6 +29,11 @@ BEGIN
     END IF;
 
     IF TG_TABLE_NAME = 'class_curriculum_subjects' THEN
+        IF NEW.subject_id IS DISTINCT FROM OLD.subject_id
+           OR NEW.subject_name_snapshot IS DISTINCT FROM OLD.subject_name_snapshot
+           OR NEW.subject_code_snapshot IS DISTINCT FROM OLD.subject_code_snapshot THEN
+            RAISE EXCEPTION 'curriculum subject source and snapshots are immutable';
+        END IF;
         IF (NEW.optional_group_id IS DISTINCT FROM OLD.optional_group_id
             OR NEW.is_optional IS DISTINCT FROM OLD.is_optional)
            AND EXISTS (
