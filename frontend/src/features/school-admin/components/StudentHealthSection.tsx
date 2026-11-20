@@ -68,7 +68,7 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
   const [feedback, setFeedbackState] = useState<{ kind: "success" | "error"; message: string } | null>(null);
   const setFeedback = (next: typeof feedback) => {
     setFeedbackState(next?.kind === "error" ? next : null);
-    if (next) notifyToast(next.kind === "success" && next.message.startsWith("No changes to save") ? "info" : next.kind, next.message);
+    if (next) notifyToast(next.kind === "success" && next.message.startsWith("No change to save") ? "info" : next.kind, next.message);
   };
 
   const medicalQuery = useSchoolStudentMedicalDetailsQuery(student.id, section === "medical");
@@ -156,7 +156,7 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
       : !bloodGroup && !allergies.trim() && !knownConditions.trim() &&
         !ongoingMedications.trim() && !emergencyNotes.trim();
     if (unchanged) {
-      setFeedback({ kind: "success", message: "No changes to save." });
+      setFeedback({ kind: "success", message: "No change to save." });
       return;
     }
     try {
@@ -207,7 +207,7 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
       (current.measured_on ?? "").slice(0, 10) === measuredOn &&
       (current.vision_notes ?? "") === visionNotes.trim() &&
       (current.physical_notes ?? "") === physicalNotes.trim()) {
-      setFeedback({ kind: "success", message: "No changes to save. A new measurement is recorded only when details or date change." });
+      setFeedback({ kind: "success", message: "No change to save. A new measurement is recorded only when details or date change." });
       return;
     }
     try {
