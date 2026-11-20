@@ -75,39 +75,27 @@ BEGIN
        AND EXISTS (
            SELECT 1
              FROM student_enrollment_curricula ec
+             CROSS JOIN LATERAL (
+                 SELECT COUNT(*)::integer AS selected_count
+                   FROM student_enrollment_subject_selections s
+                   JOIN class_curriculum_subjects cs
+                     ON cs.id=s.curriculum_subject_id
+                    AND cs.curriculum_id=s.curriculum_id
+                    AND cs.school_id=s.school_id
+                  WHERE s.enrollment_curriculum_id=ec.id
+                    AND s.school_id=ec.school_id
+                    AND s.revoked_at IS NULL
+                    AND cs.is_active=TRUE
+                    AND cs.optional_group_id=OLD.id
+             ) group_choices
             WHERE ec.curriculum_id=OLD.curriculum_id
               AND ec.school_id=OLD.school_id
               AND ec.status='active'
-              AND (
-                  SELECT COUNT(*)
-                    FROM student_enrollment_subject_selections s
-                    JOIN class_curriculum_subjects cs
-                      ON cs.id=s.curriculum_subject_id
-                     AND cs.curriculum_id=s.curriculum_id
-                     AND cs.school_id=s.school_id
-                   WHERE s.enrollment_curriculum_id=ec.id
-                     AND s.school_id=ec.school_id
-                     AND s.revoked_at IS NULL
-                     AND cs.is_active=TRUE
-                     AND cs.optional_group_id=OLD.id
-              ) > 0
-                AND (
-                  SELECT COUNT(*)
-                    FROM student_enrollment_subject_selections s
-                    JOIN class_curriculum_subjects cs
-                      ON cs.id=s.curriculum_subject_id
-                     AND cs.curriculum_id=s.curriculum_id
-                     AND cs.school_id=s.school_id
-                   WHERE s.enrollment_curriculum_id=ec.id
-                     AND s.school_id=ec.school_id
-                     AND s.revoked_at IS NULL
-                     AND cs.is_active=TRUE
-                     AND cs.optional_group_id=OLD.id
-                ) NOT BETWEEN NEW.min_selections AND NEW.max_selections
+              AND group_choices.selected_count > 0
+              AND group_choices.selected_count NOT BETWEEN NEW.min_selections AND NEW.max_selections
        ) THEN
         RAISE EXCEPTION 'optional group limits would invalidate existing student selections';
     END IF;
-
     RETURN NEW;
 END;
 $v54$;
