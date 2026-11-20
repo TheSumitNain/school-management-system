@@ -34,6 +34,7 @@ These standards apply to every frontend feature and page. A feature must reuse s
 
 - After creating a record, refresh the displayed data and bring the newly created record into view. For long pages, scroll the relevant result/list region into view rather than leaving the user at the form footer.
 - After editing, keep the updated record visible and preserve the user's context.
+- On modal open, move focus deliberately: simple task forms should focus their primary input; dialogs with internal tab navigation or complex sections should focus the dialog container so sticky headers and tabs remain visible. Use an explicit initial-focus target when needed and prevent focus from scrolling content beneath sticky headers.
 - After closing a modal, restore focus to the control that opened it. After inline actions, maintain a predictable keyboard and screen-reader focus order.
 - Respect reduced-motion preferences when using smooth scrolling or transitions.
 
