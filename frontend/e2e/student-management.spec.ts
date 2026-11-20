@@ -1419,6 +1419,7 @@ test("student admission, profile navigation and parent details render without br
   await expect.poll(() => physicalDetailReads).toBeGreaterThan(physicalReadsBeforeFocus);
   await expect(page.getByPlaceholder("Optional vision-related notes")).toHaveValue(physicalDraft);
   await page.getByPlaceholder("e.g. 132.5").fill("500");
+  await page.getByPlaceholder("e.g. 31.25").fill("301");
   const physicalSaveButton = page.getByRole("button", { name: "Save physical details" });
   await physicalSaveButton.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
@@ -1426,9 +1427,11 @@ test("student admission, profile navigation and parent details render without br
     form.requestSubmit(button as HTMLButtonElement);
   });
   await expect(page.getByText("Height must be between 20 and 250 cm.")).toBeVisible();
+  await expect(page.getByText("Weight must be between 1 and 300 kg.")).toBeVisible();
   await expect(page.getByText("Measurement date is required.")).toBeVisible();
   for (const field of [
     { locator: page.getByPlaceholder("e.g. 132.5"), errorID: "student-height-error" },
+    { locator: page.getByPlaceholder("e.g. 31.25"), errorID: "student-weight-error" },
     { locator: page.getByRole("button", { name: "Measurement date", exact: true }), errorID: "student-measured-on-error" },
   ]) {
     await expect(field.locator).toHaveAttribute("aria-invalid", "true");
@@ -1436,6 +1439,7 @@ test("student admission, profile navigation and parent details render without br
     await expect(page.locator(`#${field.errorID}[role="alert"]`)).toBeVisible();
   }
   await page.getByPlaceholder("e.g. 132.5").fill("132.5");
+  await page.getByPlaceholder("e.g. 31.25").fill("");
   await page.getByRole("button", { name: "Measurement date", exact: true }).click();
   await page.getByRole("button", { name: "Today" }).click();
   await page.getByPlaceholder("Optional vision-related notes").fill("अ".repeat(1001));
