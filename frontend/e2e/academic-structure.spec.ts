@@ -271,7 +271,7 @@ test("section curriculum validates optional groups, edits in place, and confirms
     ],
   });
 
-  await page.getByRole("button", { name: "Save curriculum changes" }).click();
+  await page.locator(".curriculum-editor").evaluate((form: HTMLFormElement) => form.requestSubmit());
   await expect(page.getByRole("status").filter({ hasText: "No change to save." })).toBeVisible({ timeout: 10_000 });
   expect(saveCount).toBe(3);
 
