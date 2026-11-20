@@ -130,6 +130,14 @@ test("section curriculum validates optional groups, edits in place, and confirms
   await expect(subjectDialog.getByText("Subject name must contain at least 2 characters.")).toBeVisible();
   expect(subjectWriteCount).toBe(0);
   await subjectDialog.getByRole("button", { name: "Cancel" }).click();
+  await page.getByRole("button", { name: "Edit Mathematics" }).click();
+  const editSubjectDialog = page.getByRole("dialog", { name: "Edit subject" });
+  const editSubjectSave = editSubjectDialog.getByRole("button", { name: "Save changes" });
+  await expect(editSubjectSave).toBeDisabled();
+  await editSubjectDialog.locator("form").evaluate(form => form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  await expect(page.locator(".app-toast").filter({ hasText: "No change to save." })).toBeVisible();
+  expect(subjectWriteCount).toBe(0);
+  await editSubjectDialog.getByRole("button", { name: "Cancel" }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("tab", { name: "Class curriculum" }).click();
   const academicTabs = page.getByRole("tablist", { name: "Academic structure" });

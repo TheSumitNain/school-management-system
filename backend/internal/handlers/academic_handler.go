@@ -103,7 +103,7 @@ func(h *AcademicHandler) SaveAcademicYear(c *gin.Context){
 	a,s,ok:=h.ready(c);if !ok{return};var id int64
 	if c.Param("yearID")!=""{var valid bool;id,valid=academicID(c,"yearID");if !valid{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid academic year ID"});return}}
 	var req struct{Name string `json:"name"`;StartsOn string `json:"starts_on"`;EndsOn string `json:"ends_on"`;Status string `json:"status"`;IsCurrent bool `json:"is_current"`}
-	if c.ShouldBindJSON(&req)!=nil{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid request body"});return}
+	if c.ShouldBindJSON(&req)!=nil{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid request body"});return};if len([]rune(strings.TrimSpace(req.Name)))<4||len([]rune(strings.TrimSpace(req.Name)))>80{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Academic year name must contain 4–80 characters","field_errors":gin.H{"name":"Enter an academic year name containing 4–80 characters."}});return}
 	start,e1:=time.Parse("2006-01-02",req.StartsOn);end,e2:=time.Parse("2006-01-02",req.EndsOn)
 	if e1!=nil||e2!=nil{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Dates must use YYYY-MM-DD"});return}
 	v,err:=h.service.SaveAcademicYear(c.Request.Context(),a,s,id,req.Name,start,end,req.Status,req.IsCurrent);if err!=nil{academicError(c,err,"Academic year");return}

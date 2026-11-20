@@ -212,7 +212,7 @@ func (r *AcademicRepository) ListAcademicYears(ctx context.Context, actorID, sch
 func (r *AcademicRepository) SaveAcademicYear(ctx context.Context, actorID, schoolID, id int64, name string, startsOn, endsOn time.Time, status string, current bool) (*AcademicYear,error) {
 	if r == nil || r.db == nil { return nil, ErrAcademicAccessDenied }
 	name = strings.TrimSpace(name); status = strings.TrimSpace(status)
-	if name == "" || len(name)>80 || !endsOn.After(startsOn) || (status!="planned" && status!="active" && status!="closed") || (current && status!="active") { return nil,ErrInvalidAcademicInput }
+	if len([]rune(name))<4 || len([]rune(name))>80 || !endsOn.After(startsOn) || (status!="planned" && status!="active" && status!="closed") || (current && status!="active") { return nil,ErrInvalidAcademicInput }
 	tx,err:=r.db.Begin(ctx); if err!=nil{return nil,fmt.Errorf("begin academic year save: %w",err)}; defer func(){_ = tx.Rollback(ctx)}()
 	if err=authorizeAcademic(ctx,tx,actorID,schoolID,"academic_years.manage"); err!=nil{return nil,err}
 	if id>0 {
@@ -248,7 +248,7 @@ func (r *AcademicRepository) ListClasses(ctx context.Context, actorID,schoolID i
 func (r *AcademicRepository) SaveClass(ctx context.Context, actorID, schoolID, id int64, name string, order int, active bool) (*AcademicClass, error) {
 	if r == nil || r.db == nil { return nil, ErrAcademicAccessDenied }
 	name = strings.TrimSpace(name)
-	if name == "" || len(name) > 100 || order < 0 { return nil, ErrInvalidAcademicInput }
+	if len([]rune(name)) < 2 || len([]rune(name)) > 100 || order < 0 { return nil, ErrInvalidAcademicInput }
 	tx, err := r.db.Begin(ctx); if err != nil { return nil, fmt.Errorf("begin class save: %w", err) }
 	defer func(){ _ = tx.Rollback(ctx) }()
 	if err = authorizeAcademic(ctx, tx, actorID, schoolID, "classes.manage"); err != nil { return nil, err }
