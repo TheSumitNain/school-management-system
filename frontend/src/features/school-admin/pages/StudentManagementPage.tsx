@@ -186,7 +186,9 @@ export function StudentManagementPage({ permissions }: Props) {
         setFieldErrors(current => ({ ...current, ...error.fieldErrors }));
         setFeedback(null);
       } else {
-        setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to save the student record." });
+        const message = error instanceof Error ? error.message : "Unable to save the student record.";
+        notifyToast("error", message);
+        setFeedback({ kind: "error", message });
       }
     }
   }
@@ -202,7 +204,9 @@ export function StudentManagementPage({ permissions }: Props) {
       notifyToast("success", `${item.full_name} has been archived.`);
       setFeedback(null);
     } catch (error) {
-      setArchiveError(error instanceof Error ? error.message : "Unable to archive this student. Please try again.");
+      const message = error instanceof Error ? error.message : "Unable to archive this student. Please try again.";
+      notifyToast("error", message);
+      setArchiveError(message);
     }
   }
   async function submitEnrollment(event: FormEvent<HTMLFormElement>) {
@@ -252,7 +256,9 @@ export function StudentManagementPage({ permissions }: Props) {
         setFieldErrors(current => ({ ...current, ...apiFieldErrors }));
         setFeedback(null);
       } else {
-        setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to create the enrollment." });
+        const message = error instanceof Error ? error.message : "Unable to create the enrollment.";
+        notifyToast("error", message);
+        setFeedback({ kind: "error", message });
       }
     }
   }
