@@ -52,7 +52,7 @@ test("school workspace pages stay within narrow, tablet, and desktop viewports",
   for (const width of widths) {
     await page.setViewportSize({ width, height: 900 });
     for (const item of pages) {
-      await page.goto(item.path);
+      await page.evaluate(path => { window.history.pushState({}, "", path); window.dispatchEvent(new PopStateEvent("popstate")); }, item.path);
       await expect(page.getByRole("heading", { level: 1, name: item.heading })).toBeVisible();
       await expect.poll(
         () => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
@@ -63,7 +63,7 @@ test("school workspace pages stay within narrow, tablet, and desktop viewports",
 
   await page.setViewportSize({ width: 844, height: 390 });
   for (const item of pages) {
-    await page.goto(item.path);
+      await page.evaluate(path => { window.history.pushState({}, "", path); window.dispatchEvent(new PopStateEvent("popstate")); }, item.path);
     await expect(page.getByRole("heading", { level: 1, name: item.heading })).toBeVisible();
     await expect.poll(
       () => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
