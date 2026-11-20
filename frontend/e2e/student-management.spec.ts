@@ -709,7 +709,7 @@ test("student admission, profile navigation and parent details render without br
   await saveSubjectChoices.click();
   const subjectSaveError = "Unable to save student subject choices. Please try again.";
   await expect(page.getByRole("region", { name: "Notifications" }).getByRole("alert").filter({ hasText: subjectSaveError })).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByRole("status").filter({ hasText: subjectSaveError })).toBeVisible({ timeout: 10_000 });
+  await expect(curriculumPanel.getByRole("alert").filter({ hasText: subjectSaveError })).toBeVisible({ timeout: 10_000 });
   expect(savedCurriculumSelections).toEqual([904, 902]);
   failCurriculumSubjectSave = false;
   await curriculumPanel.getByRole("checkbox", { name: /Sanskrit/ }).uncheck();
