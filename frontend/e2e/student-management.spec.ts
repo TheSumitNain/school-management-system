@@ -257,7 +257,6 @@ test("student admission, profile navigation and parent details render without br
           enrollment_id: enrollmentID, student_id: studentID, student_status: "active", enrollment_status: "active",
           academic_year_id: 7, class_id: 3, assigned: curriculumAssigned, curriculum,
           selected_optional_subject_ids: savedCurriculumSelections,
-          selection_history: [],
         } } });
         return;
       }
@@ -269,7 +268,6 @@ test("student admission, profile navigation and parent details render without br
           enrollment_id: enrollmentID, student_id: studentID, student_status: "active", enrollment_status: "active",
           academic_year_id: 7, class_id: 3, assigned: curriculumAssigned, curriculum,
           selected_optional_subject_ids: savedCurriculumSelections,
-          selection_history: [],
         } } });
         return;
       }
