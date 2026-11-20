@@ -127,7 +127,7 @@ The existing `subjects` table remains the school subject catalogue. Add a year/c
 
 The target model should represent:
 
-- A curriculum definition scoped to school, academic year and class.
+- One editable current curriculum definition scoped to school, academic year, class and section.
 - Curriculum subject rows linked to the school subject catalogue.
 - Compulsory versus optional subjects.
 - Optional subject groups with explicit selection rules (for example, choose one from a group).
