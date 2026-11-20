@@ -64,6 +64,7 @@ test("student admission, profile navigation and parent details render without br
   let medicalDetailReads = 0;
   let physicalDetailReads = 0;
   let medicalDetailWrites = 0;
+  let failMedicalAllergySave = false;
   let physicalDetailWrites = 0;
   let savedCurriculumSelections: number[] = [];
   const guardianLink = {
@@ -390,6 +391,14 @@ test("student admission, profile navigation and parent details render without br
         if (method === "PUT") {
           medicalDetailWrites++;
           const input = request.postDataJSON() as Record<string, unknown>;
+          if (failMedicalAllergySave) {
+            failMedicalAllergySave = false;
+            await route.fulfill({ status: 400, json: {
+              message: "Medical details need attention",
+              field_errors: { allergies: "Review the allergy information and try again." },
+            } });
+            return;
+          }
           const previousVersion = { ...medicalDetails, changed_by_principal_id: 101, changed_at: "2026-11-14T00:00:00.000Z" };
           Object.assign(medicalDetails, input, { id: 901, school_id: 10, student_id: studentID, version_number: Number(medicalDetails.version_number) + 1 });
           if (Number(previousVersion.version_number) > 0) {
@@ -1503,6 +1512,21 @@ test("student admission, profile navigation and parent details render without br
   });
   await expect(page.getByRole("status").filter({ hasText: /^No change to save\.$/ })).toBeVisible({ timeout: 10_000 });
   expect(medicalDetailWrites).toBe(medicalWritesAfterSave);
+  const allergiesInput = page.getByPlaceholder("Record known allergies, if any");
+  await allergiesInput.fill("Changed allergy information");
+  failMedicalAllergySave = true;
+  await medicalSaveButton.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Medical save button is not associated with its form.");
+    form.requestSubmit(button as HTMLButtonElement);
+  });
+  await expect(allergiesInput).toHaveAttribute("aria-invalid", "true");
+  await expect(allergiesInput).toHaveAttribute("aria-describedby", "student-allergies-error");
+  await expect(page.locator("#student-allergies-error[role=\"alert\"]")).toHaveText("Review the allergy information and try again.");
+  expect(medicalDetails.allergies).toBe("अ".repeat(2000));
+  expect(medicalDetails.version_number).toBe(1);
+  await allergiesInput.fill("अ".repeat(2000));
+  await expect(medicalSaveButton).toBeDisabled();
   await page.getByRole("button", { name: "Physical details" }).click();
   const physicalDraft = "Draft physical note survives background refetch";
   await page.getByPlaceholder("Optional vision-related notes").fill(physicalDraft);
