@@ -103,6 +103,19 @@ test("school workspace pages stay within narrow, tablet, and desktop viewports",
         await expect(page.getByRole("heading", { name: "Appearance mode" })).toBeVisible();
         await expect(page.locator(".appearance-option")).toHaveCount(4);
         await expect(page.locator(".palette-option")).toHaveCount(15);
+        if (width === 320) {
+          await page.getByRole("button", { name: /Automatic schedule/ }).click();
+          const darkStart = page.getByLabel("Turn Dark Mode on");
+          const lightStart = page.getByLabel("Turn Light Mode on");
+          await darkStart.fill("06:00");
+          await expect(darkStart).toHaveAttribute("aria-invalid", "true");
+          await expect(lightStart).toHaveAttribute("aria-invalid", "true");
+          await expect(page.getByRole("alert").filter({ hasText: "Choose a time different from the Light Mode start time." })).toBeVisible();
+          await expect(page.getByRole("alert").filter({ hasText: "Choose a time different from the Dark Mode start time." })).toBeVisible();
+          await lightStart.fill("07:00");
+          await expect(darkStart).not.toHaveAttribute("aria-invalid", "true");
+          await expect(lightStart).not.toHaveAttribute("aria-invalid", "true");
+        }
         const settingsControlsFit = await page.evaluate(() => {
           return [...document.querySelectorAll(".appearance-option, .palette-option")].every(element => {
             const rect = element.getBoundingClientRect();
