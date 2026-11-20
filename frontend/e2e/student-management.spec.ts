@@ -1276,6 +1276,7 @@ test("student admission, profile navigation and parent details render without br
   await expect(countryCodeField).toHaveAttribute("aria-describedby", "student-country-code-error");
   await expect(page.locator('#student-country-code-error[role="alert"]')).toHaveText("Enter a valid two-letter ISO country code, such as IN.");
   await countryCodeField.fill("IN");
+  await newStateNameField.fill("");
   await page.getByRole("button", { name: "Add missing state / ut", exact: true }).click();
   await page.getByLabel("Search States / UTs").fill("Haryana");
   await page.getByRole("button", { name: "State or Union Territory", exact: true }).click();
