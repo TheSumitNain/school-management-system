@@ -1,5 +1,8 @@
 -- Restore V54's no-delete curriculum and student-selection behavior.
 
+CREATE INDEX IF NOT EXISTS ix_student_enrollment_subject_selection_history
+    ON student_enrollment_subject_selections (enrollment_curriculum_id, selected_at DESC, id DESC);
+
 CREATE OR REPLACE FUNCTION guard_v44_class_curriculum_child()
 RETURNS trigger
 LANGUAGE plpgsql AS $v54$
