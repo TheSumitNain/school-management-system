@@ -4,7 +4,8 @@ test("school workspace pages stay within narrow, tablet, and desktop viewports",
   const permissions = [
     "users.read", "roles.read", "academic_years.read", "classes.read", "subjects.read",
     "teacher_assignments.read", "students.read_basic", "students.read_sensitive",
-    "attendance.read", "timetable.read",
+    "attendance.read", "timetable.read", "platform.admins.manage", "platform.schools.create",
+    "platform.school_admins.create", "platform.permissions.delegate", "platform.schools.read",
   ];
 
   await page.route("**/api/**", async route => {
@@ -39,13 +40,15 @@ test("school workspace pages stay within narrow, tablet, and desktop viewports",
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 
   const pages = [
-    { path: "/staff", heading: /staff management/i },
+    { path: "/", heading: /good (morning|afternoon|evening),/i },
     { path: "/roles", heading: /roles/i },
     { path: "/academics", heading: /academic structure/i },
     { path: "/students", heading: /students/i },
+    { path: "/settings", heading: /settings/i },
+    { path: "/platform-admin", heading: /platform administration/i },
+    { path: "/staff", heading: /staff management/i },
     { path: "/attendance", heading: /attendance/i },
     { path: "/timetable", heading: /timetable/i },
-    { path: "/settings", heading: /settings/i },
   ];
   const widths = [320, 360, 390, 768, 1024, 1440];
 
@@ -58,7 +61,31 @@ test("school workspace pages stay within narrow, tablet, and desktop viewports",
         () => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
         { message: `${item.path} should not cause page-level horizontal overflow at ${width}px` },
       ).toBe(true);
-      if (item.path === "/students") {
+      if (item.path === "/platform-admin") {
+        await expect(page.getByRole("tablist", { name: "Platform administration sections" })).toBeVisible();
+        await expect(page.getByRole("tab", { name: /Platform Admins/ })).toBeVisible();
+        await expect(page.getByRole("tab", { name: /Onboard school/ })).toBeVisible();
+        await expect(page.getByRole("tab", { name: /School permissions/ })).toBeVisible();
+        const platformControlsFit = await page.locator(".platform-tabs button").evaluateAll(elements =>
+          elements.every(element => {
+            const rect = element.getBoundingClientRect();
+            return rect.width > 0 && rect.left >= 0 && rect.right <= window.innerWidth + 1;
+          }),
+        );
+        expect(platformControlsFit, `platform administration tabs should fit at ${width}px`).toBe(true);
+      }
+
+      if (item.path === "/platform-admin") {
+      await expect(page.getByRole("tablist", { name: "Platform administration sections" })).toBeVisible();
+      const tabsFit = await page.locator(".platform-tabs button").evaluateAll(elements =>
+        elements.every(element => {
+          const rect = element.getBoundingClientRect();
+          return rect.width > 0 && rect.left >= 0 && rect.right <= window.innerWidth + 1;
+        }),
+      );
+      expect(tabsFit).toBe(true);
+    }
+    if (item.path === "/students") {
         await expect(page.getByRole("group", { name: "Student management views" })).toBeVisible();
         await expect(page.getByRole("button", { name: "Student directory" })).toBeVisible();
         await expect(page.getByRole("button", { name: "Enrollments" })).toBeVisible();
