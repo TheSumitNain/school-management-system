@@ -2,12 +2,12 @@
 
 - Approved product decision: one current curriculum per Academic Year + Class + Section. The School Admin edits that same record; normal curriculum changes do not create V2/V3 versions or reassign student enrollments.
 - Class 11 Art, Commerce and Science remain independent section curricula. Compulsory, standalone Optional and Optional Group subject types remain supported.
-- V54 adds soft deactivation for curriculum subjects and database guards for safe in-place edits. Removed curriculum subjects are never physically deleted; historical student-selection records remain linked and retain their revocation timestamp.
+- V54 introduced safe in-place editing and V55 supersedes its temporary soft-deactivation/history behavior: confirmed subject removals permanently delete the curriculum subject and linked current student choices. No subject-selection history is retained.
 - Before removal, the UI requests an impact preview. The backend counts active students who selected an optional subject, or all active students in the section who are unassigned or assigned to this curriculum for a compulsory subject. The save request must include the reviewed count; the backend recalculates it under the curriculum lock and rejects stale/missing confirmation.
-- Confirmed removals revoke affected active optional selections and deactivate the curriculum subject in the same transaction. The student remains assigned to the same curriculum record; other subject selections are preserved.
+- Confirmed removals delete linked current optional selections and the curriculum subject in the same transaction. The student remains assigned to the same curriculum record; choices for retained subjects are preserved. Removing an optional group converts its subjects to standalone optional choices and preserves their current selections; the empty group row is deleted.
 - Group-limit edits are rejected if they would invalidate existing active student choices. Changing a subject's optional/group classification is rejected while students have active selections for that subject.
-- Automated CI **PASS** on code commit `382b100e0ff52b79b6901520399a44648c126780`: complete migration chain through V54, PostgreSQL integration tests, `go vet`, TypeScript/Vite production build and all Student Management Playwright tests.
-- Remaining: pull `work` locally, create and verify fresh backups of both local databases, apply V54 to test and app databases, restart the API, and perform authenticated local browser acceptance. CI does not migrate or modify the user's local databases.
+- Earlier CI passed the V54 checkpoint only. V55 and subsequent UI/documentation corrections are newer and have not yet received a confirmed CI result.
+- Remaining: verify latest backend integration and frontend Playwright workflows in CI; only after both pass, pull `work`, create and verify fresh backups of both local databases, apply V54/V55 to test and app databases, restart the API, and perform authenticated local browser acceptance. Local databases remain untouched.
 
 ## Class curriculum subject types and editor styling (2026-11-19)
 
@@ -303,15 +303,15 @@ At every new session, reconcile this file, Student Management design docs, backe
 
 - The enrollment subject-choice panel compares saved optional subject IDs by value rather than array reference when synchronizing query data into form state.
 - An explicit Refresh action refetches the current assignment and available curriculum without discarding an in-progress checkbox draft when the server's saved selections have not changed.
-- Class curriculum editor controls are disabled while a version save is pending, preventing a year/class switch or a new draft from being silently cleared by the previous save's success handler.
-- Playwright coverage verifies subject-choice save/history and preservation of an unsaved choice during an explicit refresh. Frontend CI run `43694724225` passed the production build and all 8 browser tests, including the Student Management curriculum and Academic Structure editor scenarios.
+- Class curriculum editor controls are disabled while a curriculum save is pending, preventing a year/class switch or a new draft from being silently cleared by the previous save's success handler.
+- Historical V44 wording; current Playwright coverage verifies current subject-choice save and preservation of an unsaved choice during explicit refresh, with no selection-history UI. Frontend CI run `43694724225` passed the production build and all 8 browser tests, including the Student Management curriculum and Academic Structure editor scenarios.
 
 ## Student Management — V44 curriculum repository verification added (2026-11-15)
 
 - Added a PostgreSQL integration journey through the production repository for the active student enrollment: create version 1 with compulsory and optional subjects, read the available curriculum before assignment, save an optional choice, and verify read-after-write state.
-- The same journey creates version 2, verifies that the student's existing version remains assigned while the new version is offered, replaces the assignment, and asserts that version 1's choice is retained as revoked history while version 2's choice is current.
+- Historical V44 test scenario; superseded by the current one-record-per-section curriculum model and V55 current-choice-only behavior. No V2/V3 curriculum versions or revoked subject-choice history are part of the current workflow.
 - This is committed test coverage, not a test-pass claim. Run the full backend integration suite against the disposable `school_management_test` database and verify the exact commit's CI before marking this workflow complete.
-- Browser acceptance must still verify curriculum setup, first assignment, replacement, selection-limit errors, history display, inactive-student read-only behavior, and Parent Details load/edit/save/reload. Parent OTP remains deferred.
+- Browser acceptance must verify curriculum setup/editing, first student assignment, selection-limit errors, confirmed subject/group removal, inactive-student read-only behavior, and Parent Details load/edit/save/reload. Student subject-choice history is not displayed or retained. Parent OTP remains deferred.
 
 ## Administrator access correction — School Admin guardian permissions (V39; local verification pending)
 
@@ -1062,30 +1062,30 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 
 ## Remaining approved Student Management scope — curriculum and subject selection
 
-- The Academic Year + Class + Section curriculum and enrollment-specific subject-choice workflow is implemented. Each section has one editable current curriculum record; ordinary edits do not create new versions or reassign students. Compulsory subjects are inherited from the curriculum; standalone optional subjects and optional groups carry the configured student-choice rules. Each student choice remains tied to its academic-year enrollment. Confirmed subject removal revokes affected active choices and preserves the historical selection record.
-- Repository integration tests verify first assignment, read-after-write, version replacement, old-choice revocation/history, invalid selection rejection, tenant isolation and rejection of reversion to a retired version. See the V44 completion and CI entries below.
+- The Academic Year + Class + Section curriculum and enrollment-specific subject-choice workflow is implemented. Each section has one editable current curriculum record; edits do not create new versions or reassign students. Compulsory subjects are inherited from the curriculum; standalone optional subjects and optional groups carry configured student-choice rules. Student choices are current state only. Confirmed subject removal permanently deletes the subject and linked current choices after exact impact confirmation; removing a group makes its subjects standalone optional and preserves their current choices.
+- Repository integration tests verify first assignment, read-after-write, current-choice replacement, confirmed subject removal, optional-group removal, invalid selection rejection and tenant isolation. Legacy V44 version/history behavior is superseded.
 - Student transport, app-permission and document-upload submodules remain outside this immediate completion target; secure document upload is deferred. Parent OTP/SMS/login remains deferred.
 
 ## First curriculum assignment guidance — 2026-11-15
 
-- Corrected the Student Profile curriculum selector so it appears only when an enrollment already has an assigned curriculum and a newer version is available. A first-time assignment no longer displays a misleading empty “Assigned version” option.
-- The confirmation guidance now distinguishes assigning the first curriculum from replacing an existing assignment; prior subject-choice history remains preserved when replacing.
+- Historical V44 selector behavior; current UI identifies the student's current assignment and the current section curriculum without offering curriculum versions.
+- Current guidance distinguishes a first assignment from switching to the current section curriculum; changed subject choices replace the prior current rows and no history is retained.
 - Frontend fix: `cc1340616fa1e73913a6280354a4b00cfa50327d`. Frontend CI run `43692374206` passed the Student Management browser suite and production build, including first-assignment guidance.
 
 ## First student curriculum assignment messaging — 2026-11-15
 
-- Student Enrollment Subjects now explicitly explains that saving the available class/year curriculum will assign it to the enrollment when no curriculum is assigned yet. The replacement-history message is reserved for switching an existing assignment to a newer curriculum version.
+- Student Enrollment Subjects explains first assignment and switching to the current section curriculum. The panel does not refer to newer versions or preserved subject-choice history.
 - Code commit: `9b4ce26355f76a212a3abe5af87c6ebc268977af`. Frontend CI run `43692374206` passed all 7 Student Management Playwright tests, including the first-assignment guidance.
 
 ## Student Management — curriculum cache coherence after class revisions (2026-11-15)
 
-- Fixed a stale-profile edge case: saving a new class/year curriculum version previously refreshed the class-curriculum list but did not invalidate already-open student enrollment curriculum queries. A profile could therefore continue showing the previous available/assigned curriculum until its query became stale or the profile was reopened.
+- Fixed a stale-profile edge case: saving a class/year curriculum previously refreshed the class-curriculum list but did not invalidate already-open student enrollment curriculum queries. A profile could therefore continue showing the previous available/assigned curriculum until its query became stale or the profile was reopened.
 - Class curriculum saves now invalidate both the matching class/year curriculum list and the enrollment-curriculum query family, so open student profiles refetch and expose the latest version state. Student-specific subject saves continue to invalidate only the affected enrollment curriculum.
 - Code commit: `b2d3d225fa50b0800c8ed76e66869c561897cb5c`. Frontend CI run `43692374206` passed the production build and Student Management browser suite; the curriculum cache invalidation behavior is included in the reviewed frontend code.
 
 ## Student Management — enrollment curriculum browser journey (2026-11-15)
 
-- Added the first Student Management Playwright coverage for the enrollment-level curriculum panel: compulsory subject display, first-time assignment guidance, optional-group minimum/maximum count, saving an optional subject, and rendering the assigned state plus saved selection history after the query refetches.
+- Historical V44 test description; the current test asserts compulsory/optional choice behavior, current selection persistence and no previous-choice history.
 - The test uses stateful mocked API responses so the post-save refetch returns the saved assignment and choices instead of resetting to the initial unassigned fixture. It also verifies that an explicit curriculum refresh does not overwrite a different unsaved optional-subject choice.
 - Repository integration coverage rejects missing required optional choices, compulsory-subject IDs and duplicate selected IDs without creating an assignment; rejects cross-school curriculum reads/writes; and prevents reverting an enrollment to a retired curriculum version after replacement while preserving the active version and history.
 - Test commits include `152e0bc044137c1ec07310cf284fcd76d6f4c554`, refresh regression `fec014334c1cf91f8042b4f0e670dbf8de514e30`, invalid-choice checks `b3ea8f92e2c2d55b6038d1516b983b71ca3f2c25`, tenant-isolation checks `1f17c7f6e5baa82fe08ae4029126c90c708bddf1`, retired-version protection `39c9ce1f3cd58e394fa9223009e0c90aa83c1f00`, and final browser locator correction `64adf774ed1f2e94618b0ce8d0ae37ee247e6554`. Frontend CI run `43694724225` passed all 8 Playwright tests, including the new academic-structure curriculum editor scenario; backend CI run `43693986179` passed PostgreSQL integration and `go vet` on backend commit `938573ca866a73f71e8645f7ec7076f2ccea4b2a`. Browser coverage is mocked, not live database acceptance.
@@ -1119,7 +1119,7 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 
 ## Student Management — curriculum editor pending-save protection (2026-11-15)
 
-- Academic year/class selectors and curriculum group/subject controls are disabled while a curriculum version save is in flight. This prevents switching the editor context or changing its draft while the success handler is about to clear the completed form.
+- Academic year/class selectors and curriculum group/subject controls are disabled while a curriculum save is in flight. This prevents switching the editor context or changing its draft while the success handler is about to clear the completed form.
 - Optional-group validation now places name, minimum, maximum and subject-assignment errors beside the corresponding control/group. Dependent errors clear when the group name, selection limits or subject membership changes. Group-name normalization uses locale-independent lowercase to match the Go backend's comparison.
 - Added `frontend/e2e/academic-structure.spec.ts` to exercise group-level subject assignment validation, minimum/maximum field errors, a successful version save, and disabled editor controls while the save is pending.
 - Frontend CI run `43694724225` passed design-token checks, TypeScript/Vite production build and all 8 Playwright tests.
@@ -1183,8 +1183,8 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 ## Student Management — enrollment and curriculum read auditing (2026-11-15)
 
 - Student enrollment history collection and single-student reads write append-only audit events in the same transaction as the authorized query. Metadata contains result counts and filter context, not student names or admission numbers.
-- Student enrollment curriculum reads now emit a dedicated `school.student.enrollment_curriculum.read` event after validating both `students.read_basic` and `subjects.read`. The event records selected-option count, selection-history count and curriculum presence without copying subject names or other student details into metadata. The read is not returned if the audit write fails.
-- PostgreSQL integration coverage verifies single-student enrollment history auditing, teacher-scoped collection auditing, and curriculum selection/history audit metadata.
+- Student enrollment curriculum reads emit a dedicated `school.student.enrollment_curriculum.read` event after validating both `students.read_basic` and `subjects.read`. Audit metadata records the current selected-option count and curriculum presence, without subject names or student choice history. The read is not returned if the audit write fails.
+- PostgreSQL integration coverage verifies single-student enrollment history auditing, teacher-scoped collection auditing, and current curriculum-selection audit metadata.
 - Backend CI run `43702682493` passed the complete migration chain, Go tests including PostgreSQL integration, and `go vet` for code checkpoint `f549674007ff64c79dbb0bcdcc3d27708b1f0baa`. The CI database was ephemeral; the persistent school database was not changed.
 
 
