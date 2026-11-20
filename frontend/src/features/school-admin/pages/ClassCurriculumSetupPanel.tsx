@@ -303,7 +303,7 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
                 </li>)}
               </ul>
             )}
-            <p>This action cannot be undone for active selections. Historical selection records will remain available in the student's history.</p>
+            <p>Confirming permanently removes these subjects and the affected students’ current choices. No curriculum or subject-selection history will be kept.</p>
             <div className="toolbar">
               <button type="button" className="academic-edit" disabled={busy} onClick={() => { setPendingSave(null); setPendingRemovalImpacts(null); }}>Cancel</button>
               <button type="button" className="primary academic-add" disabled={busy} onClick={() => persist(pendingSave, pendingRemovalImpacts)}>
