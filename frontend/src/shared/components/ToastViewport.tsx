@@ -56,7 +56,9 @@ export function ToastViewport() {
       setToasts(current => {
         const duplicate = current.some(toast => toast.kind === detail.kind && toast.message === detail.message);
         if (duplicate) return current;
-        return [...current, { ...detail, id: nextToastID() }];
+        // Keep the newest three notifications. Older messages must never
+        // occupy the visible slots and hide a more recent save/error result.
+        return [...current, { ...detail, id: nextToastID() }].slice(-3);
       });
     };
     window.addEventListener("sms:toast", receive);
@@ -67,7 +69,7 @@ export function ToastViewport() {
 
   return (
     <div className="app-toast-viewport" role="region" aria-label="Notifications">
-      {toasts.slice(0, 3).map(toast => <ToastItem key={toast.id} toast={toast} onDismiss={dismiss} />)}
+      {toasts.map(toast => <ToastItem key={toast.id} toast={toast} onDismiss={dismiss} />)}
     </div>
   );
 }

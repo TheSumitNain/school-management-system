@@ -3264,7 +3264,11 @@ test("global notifications remain visible within a narrow mobile viewport", asyn
   });
   const viewport = page.locator(".app-toast-viewport");
   await expect(viewport.locator(".app-toast")).toHaveCount(3);
-  await expect(viewport.getByText("Queued notification four")).toHaveCount(0);
+  await expect(viewport.getByText("Responsive notification check")).toHaveCount(0);
+  await expect(viewport.getByText("Queued notification two")).toBeVisible();
+  await expect(viewport.getByText("Queued notification three")).toBeVisible();
+  await expect(viewport.getByText("Queued notification four")).toBeVisible();
   await viewport.locator(".app-toast-dismiss").first().click();
+  await expect(viewport.locator(".app-toast")).toHaveCount(2);
   await expect(viewport.getByText("Queued notification four")).toBeVisible();
 });
