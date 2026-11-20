@@ -121,16 +121,6 @@ export function StudentEnrollmentSubjectsPanel({
             : `Select between ${group.min} and ${group.max} subjects in ${group.name}.`}</p>}
         </fieldset>
       ))}
-      {data?.selection_history && data.selection_history.length > 0 && (
-        <details className="student-subject-history">
-          <summary>Previous subject choices ({data.selection_history.length})</summary>
-          <ul>{data.selection_history.map((item, index) => (
-            <li key={item.curriculum_version + "-" + item.subject_name + "-" + index}>
-              {item.subject_name} · curriculum v{item.curriculum_version} · {item.revoked_at ? "Replaced" : "Current"}
-            </li>
-          ))}</ul>
-        </details>
-      )}
       {canEdit ? (
         <div className="student-subject-actions">
           {save.isError && <p className="student-field-error" role="alert">{save.error.message}</p>}
