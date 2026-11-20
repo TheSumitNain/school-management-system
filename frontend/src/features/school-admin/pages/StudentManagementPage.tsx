@@ -183,6 +183,7 @@ export function StudentManagementPage({ permissions }: Props) {
       setAction(null);
     } catch (error) {
       if (error instanceof ApiError && Object.keys(error.fieldErrors).length > 0) {
+        notifyToast("error", error.message);
         setFieldErrors(current => ({ ...current, ...error.fieldErrors }));
         setFeedback(null);
       } else {
@@ -247,6 +248,7 @@ export function StudentManagementPage({ permissions }: Props) {
       setFeedback(null);
     } catch (error) {
       if (error instanceof ApiError && Object.keys(error.fieldErrors).length > 0) {
+        notifyToast("error", error.message);
         const apiFieldErrors = { ...error.fieldErrors };
         // The API calls this date admission_date; this form exposes one enrolled_at control.
         if (apiFieldErrors.admission_date) {
