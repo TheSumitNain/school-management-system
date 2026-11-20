@@ -204,7 +204,10 @@ func (r *AcademicRepository) SaveClassCurriculum(
 	ctx context.Context, actorID, schoolID, academicYearID, classID int64,
 	groups []CurriculumOptionalGroupInput, subjects []CurriculumSubjectInput,
 ) (*ClassCurriculum, error) {
-	return r.saveSectionClassCurriculum(ctx, actorID, schoolID, academicYearID, classID, 0, groups, subjects)
+	if r == nil || r.db == nil { return nil, ErrAcademicAccessDenied }
+	if err := authorizeAcademic(ctx, r.db, actorID, schoolID, "subjects.manage"); err != nil { return nil, err }
+	// New curriculum writes must always be scoped to an explicit section.
+	return nil, ErrInvalidAcademicInput
 }
 
 func (r *AcademicRepository) ListSectionClassCurricula(ctx context.Context, actorID, schoolID, academicYearID, classID, sectionID int64) ([]ClassCurriculum, error) {
