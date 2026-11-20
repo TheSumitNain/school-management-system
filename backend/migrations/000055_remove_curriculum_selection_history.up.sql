@@ -129,6 +129,9 @@ BEGIN
 END;
 $v55$;
 
+COMMENT ON COLUMN class_curriculum_subjects.is_active IS
+    'Compatibility flag for legacy V54 rows. Current edits permanently delete removed subjects; newly saved current subjects remain active.';
+
 COMMENT ON TABLE class_curriculum_subjects IS
     'Current editable curriculum subjects. Confirmed removals delete the subject and its current student choices; no curriculum-selection history is retained.';
 COMMENT ON TABLE student_enrollment_subject_selections IS
