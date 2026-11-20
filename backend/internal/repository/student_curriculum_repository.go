@@ -789,8 +789,8 @@ func (r *AcademicRepository) SaveStudentEnrollmentSubjects(
 		hasActiveAssignment = false
 	} else if hasActiveAssignment {
 		if _, err := tx.Exec(ctx, `
-			UPDATE student_enrollment_subject_selections SET revoked_at=NOW()
-			 WHERE enrollment_curriculum_id=$1 AND school_id=$2 AND revoked_at IS NULL
+			DELETE FROM student_enrollment_subject_selections
+			 WHERE enrollment_curriculum_id=$1 AND school_id=$2
 		`, activeAssignmentID, schoolID); err != nil {
 			return nil, academicWriteError(err)
 		}
