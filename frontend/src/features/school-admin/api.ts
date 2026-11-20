@@ -249,11 +249,19 @@ export function getSchoolClassCurricula(academicYearID: number, classID: number,
   const params = new URLSearchParams({ academic_year_id: String(academicYearID), class_id: String(classID), section_id: String(sectionID) });
   return api<{ curricula: ClassCurriculum[] }>(`/school/class-curricula?${params.toString()}`, { signal });
 }
-export function saveSchoolClassCurriculum(input: {
+export type CurriculumRemovalImpact = { subject_id: number; subject_name: string; affected_students: number };
+export type CurriculumSaveInput = {
   academic_year_id: number; class_id: number; section_id: number;
   optional_groups: Array<{ name: string; min_selections: number; max_selections: number }>;
   subjects: Array<{ subject_id: number; is_optional?: boolean; optional_group?: string }>;
+  removal_confirmations?: Array<{ subject_id: number; affected_students: number }>;
+};
+export function previewSchoolClassCurriculumRemoval(input: {
+  academic_year_id: number; class_id: number; section_id: number; subject_ids: number[];
 }) {
+  return api<{ impacts: CurriculumRemovalImpact[] }>("/school/class-curricula/removal-impact", { method: "POST", body: JSON.stringify(input) });
+}
+export function saveSchoolClassCurriculum(input: CurriculumSaveInput) {
   return api<{ curriculum: ClassCurriculum }>("/school/class-curricula", { method: "POST", body: JSON.stringify(input) });
 }
 export function getSchoolStudentEnrollmentCurriculum(enrollmentID: number, signal?: AbortSignal) {
