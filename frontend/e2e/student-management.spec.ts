@@ -1146,6 +1146,9 @@ test("student admission, profile navigation and parent details render without br
     form.requestSubmit(button as HTMLButtonElement);
   });
   await expect.poll(() => contactDetails.primary_phone).toBe("9876501234");
+  // The mock records the write before the mutation's success callback and toast
+  // finish; wait for the save control to leave its pending state before asserting.
+  await expect(contactSaveButton).toBeEnabled();
   await expect(page.getByText("Student contact details saved.")).toBeVisible();
   await page.getByRole("button", { name: "Close dialog" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
