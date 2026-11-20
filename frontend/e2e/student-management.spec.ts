@@ -817,6 +817,10 @@ test("student admission, profile navigation and parent details render without br
     form.requestSubmit(button as HTMLButtonElement);
   });
   await expect(page.getByText("Place of birth must be 120 characters or fewer.", { exact: true })).toBeVisible();
+  const placeOfBirthInput = page.getByPlaceholder("City, district or place");
+  await expect(placeOfBirthInput).toHaveAttribute("aria-invalid", "true");
+  await expect(placeOfBirthInput).toHaveAttribute("aria-describedby", "student-basic-place_of_birth-error");
+  await expect(page.locator('#student-basic-place_of_birth-error[role="alert"]')).toBeVisible();
   expect(basicDetails.place_of_birth).toBeNull();
   await page.getByPlaceholder("City, district or place").fill("Ambala, Haryana");
   const basicReadsBeforeFocus = observedStudentDetailGets.filter(item => item === "basic-details").length;
@@ -834,6 +838,16 @@ test("student admission, profile navigation and parent details render without br
   await expect(page.getByText("Nationality must be 80 characters or fewer.", { exact: true })).toBeVisible();
   await expect(page.getByText("Religion must be 80 characters or fewer.", { exact: true })).toBeVisible();
   await expect(page.getByText("Registration number must be 50 characters or fewer.", { exact: true })).toBeVisible();
+  const basicTextFieldErrors = [
+    { control: page.getByPlaceholder("e.g. Indian"), errorId: "student-basic-nationality-error" },
+    { control: page.getByPlaceholder("Optional", { exact: true }), errorId: "student-basic-religion-error" },
+    { control: page.getByPlaceholder("Optional school SR number"), errorId: "student-basic-school_registration_number-error" },
+  ];
+  for (const field of basicTextFieldErrors) {
+    await expect(field.control).toHaveAttribute("aria-invalid", "true");
+    await expect(field.control).toHaveAttribute("aria-describedby", field.errorId);
+    await expect(page.locator(`#${field.errorId}[role="alert"]`)).toBeVisible();
+  }
   expect(basicDetails.place_of_birth).toBeNull();
   await page.getByPlaceholder("e.g. Indian").fill("Indian");
   await page.getByPlaceholder("Optional", { exact: true }).fill("");
