@@ -181,6 +181,19 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
     districtID ? districts.find(item => item.id === districtID) :
     stateID ? states.find(item => item.id === stateID) : undefined;
   const busy = saveAddress.isPending || saveContact.isPending || createLocation.isPending || deactivateLocation.isPending;
+  const savedContactDetails = contactQuery.data?.contact_details;
+  const contactUnchanged = (savedContactDetails?.primary_phone ?? null) === (primaryPhone.trim() || null) &&
+    (savedContactDetails?.alternate_phone ?? null) === (alternatePhone.trim() || null) &&
+    (savedContactDetails?.email_address ?? null) === (emailAddress.trim() || null);
+  const addressUnchanged = addressType === "permanent" && sameAsCurrent
+    ? Boolean(selectedAddress?.same_as_current)
+    : (selectedAddress?.address_line_1 ?? null) === (line1.trim() || null) &&
+      (selectedAddress?.address_line_2 ?? null) === (line2.trim() || null) &&
+      (selectedAddress?.area_mohalla ?? null) === (areaMohalla.trim() || null) &&
+      (selectedAddress?.landmark ?? null) === (landmark.trim() || null) &&
+      (selectedAddress?.postal_code ?? null) === (postalCode.trim() || null) &&
+      (selectedAddress?.location_id ?? null) === (localityID || null) &&
+      !selectedAddress?.same_as_current;
 
   function resetChildren(level: "state" | "district" | "subdistrict") {
     if (level === "state") {
@@ -402,7 +415,7 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
           {!canUpdate && <p className="student-address-note">View-only access. Student update permission is required to edit contact details.</p>}
           <div className="app-modal-actions">
             <button type="button" className="app-modal-cancel" onClick={onClose} disabled={busy}>Close</button>
-            {canUpdate && <button className="primary" disabled={busy || contactQuery.isLoading || contactQuery.isError}>{saveContact.isPending ? "Saving…" : "Save contact details"}</button>}
+            {canUpdate && <button className="primary" disabled={busy || contactQuery.isLoading || contactQuery.isError || contactUnchanged}>{saveContact.isPending ? "Saving…" : "Save contact details"}</button>}
           </div>
         </form>
       ) : (
@@ -463,7 +476,7 @@ export function StudentAddressSection({ student, canUpdate, onClose }: Props) {
         {!canUpdate && <p className="student-address-note">View-only access. Student update permission is required to edit addresses or add locations.</p>}
         <div className="app-modal-actions">
           <button type="button" className="app-modal-cancel" onClick={onClose} disabled={busy}>Close</button>
-          {canUpdate && <button className="primary" disabled={busy || addressesQuery.isLoading || addressesQuery.isError}>{saveAddress.isPending ? "Saving…" : "Save address"}</button>}
+          {canUpdate && <button className="primary" disabled={busy || addressesQuery.isLoading || addressesQuery.isError || addressUnchanged}>{saveAddress.isPending ? "Saving…" : "Save address"}</button>}
         </div>
       </form>
       )}

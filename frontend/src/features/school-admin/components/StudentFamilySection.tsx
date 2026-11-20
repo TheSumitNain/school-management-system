@@ -96,6 +96,21 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
   const updateLink = useUpdateSchoolStudentGuardianMutation();
 
   const allLinks = linksQuery.data?.student_guardians ?? [];
+  const editingRelationship = allLinks.find(link => link.id === editingLinkID);
+  const relationshipUnchanged = Boolean(editingRelationship &&
+    canonicalGuardianRelationship(editingRelationship.relationship_type) === editRelationshipForm.relationship_type.trim() &&
+    editingRelationship.is_primary_contact === editRelationshipForm.is_primary_contact &&
+    editingRelationship.is_emergency_contact === editRelationshipForm.is_emergency_contact);
+  const editingSharedGuardian = allLinks.find(link => link.guardian_id === editingGuardianID);
+  const sharedGuardianUnchanged = Boolean(editingSharedGuardian &&
+    editingSharedGuardian.guardian_name === editGuardianForm.full_name.trim() &&
+    (editingSharedGuardian.mobile_number ?? "") === editGuardianForm.mobile_number.trim() &&
+    (editingSharedGuardian.email_address ?? "") === editGuardianForm.email_address.trim() &&
+    (editingSharedGuardian.alternate_mobile_number ?? "") === editGuardianForm.alternate_mobile_number.trim() &&
+    (editingSharedGuardian.occupation ?? "") === editGuardianForm.occupation.trim() &&
+    (editingSharedGuardian.education ?? "") === editGuardianForm.education.trim() &&
+    (editingSharedGuardian.workplace_name ?? "") === editGuardianForm.workplace_name.trim() &&
+    editingSharedGuardian.guardian_status === editGuardianForm.status);
   const activeRelationshipTypes = new Set(allLinks.filter(link => !link.revoked_at).map(link => canonicalGuardianRelationship(link.relationship_type).toLocaleLowerCase()));
   const activeRelationshipCounts = new Map<string, number>();
   for (const link of allLinks) {
@@ -493,7 +508,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
                     {editRelationshipError && <small className="app-field-error" role="alert">{editRelationshipError}</small>}
                     <div className="student-family-card-actions">
                       <button type="button" className="student-link-button" onClick={() => { setEditingLinkID(0); setEditRelationshipError(""); setEditRelationshipFieldError(""); }} disabled={busy}>Cancel</button>
-                      <button type="submit" className="secondary" disabled={busy || linksQuery.isLoading || linksQuery.isError}>{updateLink.isPending ? "Saving…" : "Save relationship"}</button>
+                      <button type="submit" className="secondary" disabled={busy || linksQuery.isLoading || linksQuery.isError || relationshipUnchanged}>{updateLink.isPending ? "Saving…" : "Save relationship"}</button>
                     </div>
                   </form>
                 )}
@@ -511,7 +526,7 @@ export function StudentFamilySection({ student, canManage, canReadRelatedStudent
                     {editGuardianError && <small className="app-field-error" role="alert">{editGuardianError}</small>}
                     <div className="student-family-card-actions">
                       <button type="button" className="student-link-button" onClick={() => { setEditingGuardianID(0); setEditGuardianError(""); setEditGuardianNameError(""); setEditGuardianEmailError(""); setEditGuardianFieldErrors({}); }} disabled={busy}>Cancel</button>
-                      <button type="submit" className="secondary" disabled={busy}>{updateGuardian.isPending ? "Saving…" : "Save guardian details"}</button>
+                      <button type="submit" className="secondary" disabled={busy || sharedGuardianUnchanged}>{updateGuardian.isPending ? "Saving…" : "Save guardian details"}</button>
                     </div>
                   </form>
                 )}

@@ -49,6 +49,16 @@ export function StudentBasicDetailsSection({ student, canUpdate, onStudentNameCh
     if (next) notifyToast(next.kind === "success" && next.message.startsWith("No changes to save") ? "info" : next.kind, next.message);
   };
   const busy = save.isPending || updateStudent.isPending;
+  const savedBasic = query.data?.basic_details;
+  const basicDetailsUnchanged = (savedBasic?.date_of_birth?.slice(0, 10) ?? null) === (values.date_of_birth || null) &&
+    (savedBasic?.place_of_birth ?? null) === (values.place_of_birth.trim() || null) &&
+    (savedBasic?.gender ?? null) === (values.gender || null) &&
+    (savedBasic?.nationality ?? null) === (values.nationality.trim() || null) &&
+    (savedBasic?.religion ?? null) === (values.religion.trim() || null) &&
+    (savedBasic?.social_category ?? null) === (values.social_category || null) &&
+    (savedBasic?.ews_status ?? null) === (values.ews_status === "" ? null : values.ews_status === "yes") &&
+    (savedBasic?.school_registration_number ?? null) === (values.school_registration_number.trim() || null);
+  const noBasicChanges = fullName.trim() === student.full_name && basicDetailsUnchanged;
 
   useEffect(() => {
     setFullName(student.full_name);
@@ -181,7 +191,7 @@ export function StudentBasicDetailsSection({ student, canUpdate, onStudentNameCh
         {!canUpdate && <p className="student-address-note">View-only access. Student update permission is required to edit these details.</p>}
         <div className="app-modal-actions">
           <button type="button" className="app-modal-cancel" onClick={onClose} disabled={busy}>Close</button>
-          {canUpdate && <button type="submit" className="primary" disabled={busy || query.isLoading || query.isError}>{save.isPending ? "Saving…" : "Save basic details"}</button>}
+          {canUpdate && <button type="submit" className="primary" disabled={busy || query.isLoading || query.isError || noBasicChanges}>{save.isPending ? "Saving…" : "Save basic details"}</button>}
         </div>
       </form>
     </Modal>

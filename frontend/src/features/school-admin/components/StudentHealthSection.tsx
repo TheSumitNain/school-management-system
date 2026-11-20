@@ -92,6 +92,21 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
   const saveMedical = useSaveSchoolStudentMedicalDetailsMutation();
   const savePhysical = useSaveSchoolStudentPhysicalDetailsMutation();
   const busy = saveMedical.isPending || savePhysical.isPending;
+  const savedMedical = medicalQuery.data?.medical_details;
+  const medicalUnchanged = (savedMedical?.blood_group ?? "") === bloodGroup &&
+    (savedMedical?.allergies ?? "") === allergies.trim() &&
+    (savedMedical?.known_conditions ?? "") === knownConditions.trim() &&
+    (savedMedical?.ongoing_medications ?? "") === ongoingMedications.trim() &&
+    (savedMedical?.emergency_medical_notes ?? "") === emergencyNotes.trim();
+  const savedPhysical = physicalQuery.data?.physical_details;
+  const currentHeight = heightCM.trim() ? Number(heightCM) : null;
+  const currentWeight = weightKG.trim() ? Number(weightKG) : null;
+  const physicalUnchanged = Boolean(savedPhysical && savedPhysical.id > 0 &&
+    (savedPhysical.height_cm ?? null) === currentHeight &&
+    (savedPhysical.weight_kg ?? null) === currentWeight &&
+    (savedPhysical.measured_on ?? "").slice(0, 10) === measuredOn &&
+    (savedPhysical.vision_notes ?? "") === visionNotes.trim() &&
+    (savedPhysical.physical_notes ?? "") === physicalNotes.trim());
 
   useEffect(() => {
     if (section !== "medical") return;
@@ -263,7 +278,7 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
               {!canUpdate && <p className="student-address-note">View-only access. An active student record and student update permission are required to edit these details.</p>}
               <div className="app-modal-actions">
                 <button type="button" className="app-modal-cancel" onClick={onClose} disabled={busy}>Close</button>
-                {canUpdate && <button className="primary" disabled={busy || medicalQuery.isLoading || medicalQuery.isError}>{saveMedical.isPending ? "Saving…" : "Save medical details"}</button>}
+                {canUpdate && <button className="primary" disabled={busy || medicalQuery.isLoading || medicalQuery.isError || medicalUnchanged}>{saveMedical.isPending ? "Saving…" : "Save medical details"}</button>}
               </div>
             </>
           }
@@ -299,7 +314,7 @@ export function StudentHealthSection({ student, canUpdate, onClose }: Props) {
               {!canUpdate && <p className="student-address-note">View-only access. An active student record and student update permission are required to edit these details.</p>}
               <div className="app-modal-actions">
                 <button type="button" className="app-modal-cancel" onClick={onClose} disabled={busy}>Close</button>
-                {canUpdate && <button className="primary" disabled={busy || physicalQuery.isLoading || physicalQuery.isError}>{savePhysical.isPending ? "Saving…" : "Save physical details"}</button>}
+                {canUpdate && <button className="primary" disabled={busy || physicalQuery.isLoading || physicalQuery.isError || physicalUnchanged}>{savePhysical.isPending ? "Saving…" : "Save physical details"}</button>}
               </div>
             </>
           }

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CurriculumSubject } from "../api";
+import { notifyToast } from "../../../shared/notifications";
 import {
   useSaveSchoolStudentEnrollmentSubjectsMutation,
   useSchoolStudentEnrollmentCurriculumQuery,
@@ -28,6 +29,9 @@ export function StudentEnrollmentSubjectsPanel({
   // the array identity so background refetches never discard unsaved edits.
   const savedSelectionKey = (data?.selected_optional_subject_ids ?? []).join(",");
   const canEdit = canManage && studentStatus === "active" && enrollmentStatus === "active";
+  const savedSelections = data?.selected_optional_subject_ids ?? [];
+  const selectionUnchanged = selectedCurriculumIsAssigned &&
+    [...selected].sort((a, b) => a - b).join(",") === [...savedSelections].sort((a, b) => a - b).join(",");
   const grouped = useMemo(() => {
     const groups = new Map<number, { name: string; min: number; max: number; subjects: CurriculumSubject[] }>();
     for (const group of curriculum?.optional_groups ?? []) {
@@ -124,7 +128,10 @@ export function StudentEnrollmentSubjectsPanel({
       {canEdit ? (
         <div className="student-subject-actions">
           {save.isError && <p className="student-field-error" role="alert">{save.error.message}</p>}
-          <button type="button" className="student-secondary" disabled={invalidGroups.length > 0 || save.isPending} onClick={() => save.mutate({ enrollmentID, curriculum_id: targetCurriculumID || curriculum.id, selected_optional_subject_ids: selected })}>
+          <button type="button" className="student-secondary" disabled={invalidGroups.length > 0 || save.isPending || selectionUnchanged} onClick={() => {
+            if (selectionUnchanged) { notifyToast("info", "No change to save."); return; }
+            save.mutate({ enrollmentID, curriculum_id: targetCurriculumID || curriculum.id, selected_optional_subject_ids: selected });
+          }}>
             {save.isPending ? "Saving…" : "Save subject choices"}
           </button>
         </div>
