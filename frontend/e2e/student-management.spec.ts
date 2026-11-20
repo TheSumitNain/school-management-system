@@ -917,7 +917,7 @@ test("student admission, profile navigation and parent details render without br
   });
   await expect(page.getByRole("status").filter({ hasText: "No change to save." })).toBeVisible({ timeout: 10_000 });
   expect(guardianLinkUpdateRequests).toHaveLength(0);
-  await relationshipForm.getByRole("option", { name: "Mother", exact: true }).click();
+  await editRelationshipList.getByRole("option", { name: "Mother", exact: true }).click();
   failGuardianRelationshipUpdateConflict = true;
   await saveRelationship.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
