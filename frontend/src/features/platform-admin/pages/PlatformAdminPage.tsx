@@ -1,6 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { notifyToast } from "../../../shared/notifications";
-import { ApiError } from "../../../lib/api";
 import { Building2, Eye, EyeOff, KeyRound, ShieldCheck, UserPlus, Users } from "lucide-react";
 import {
   useCreatePlatformAdminMutation,
