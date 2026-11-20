@@ -31,6 +31,9 @@ export function Modal({ open, title, description, onClose, children, closeDisabl
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const frame = window.requestAnimationFrame(() => {
+      // A reused modal may retain its previous scroll position. Reset it on
+      // every open so the sticky header cannot cover the first content controls.
+      dialogRef.current?.scrollTo({ top: 0 });
       const first = dialogRef.current?.querySelector<HTMLElement>(
         "input:not([disabled]):not([type='hidden']), select:not([disabled]), textarea:not([disabled]), button:not([disabled]):not(.app-modal-close):not([aria-label^='Help for '])",
       ) ?? dialogRef.current?.querySelector<HTMLElement>(".app-modal-close");
