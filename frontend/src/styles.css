@@ -307,8 +307,8 @@ button:disabled {
 .user-mini b {
   display: block;
   font-size: 11px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .user-mini small {
   display: block;
