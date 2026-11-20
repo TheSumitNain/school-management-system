@@ -271,6 +271,7 @@ func setupRouterWithHandlers(
 		router.GET("/school/enrollments", academicAuth, middleware.RequirePermission("students.read_basic"), academic.ListStudentEnrollments)
 		router.GET("/school/enrollment-directory", academicAuth, middleware.RequirePermission("students.read_basic"), academic.ListStudentEnrollmentDirectory)
 		router.GET("/school/class-curricula", academicAuth, middleware.RequirePermission("subjects.read"), academic.ListClassCurricula)
+		router.POST("/school/class-curricula/removal-impact", academicAuth, middleware.RequirePermission("subjects.manage"), academic.PreviewClassCurriculumRemoval)
 		router.POST("/school/class-curricula", academicAuth, middleware.RequirePermission("subjects.manage"), academic.SaveClassCurriculum)
 		router.GET("/school/enrollments/:enrollmentID/curriculum", academicAuth, middleware.RequirePermission("subjects.read"), middleware.RequirePermission("students.read_basic"), academic.GetStudentEnrollmentCurriculum)
 		router.PUT("/school/enrollments/:enrollmentID/subjects", academicAuth, middleware.RequirePermission("students.update"), middleware.RequirePermission("subjects.read"), middleware.RequirePermission("students.read_basic"), academic.SaveStudentEnrollmentSubjects)
