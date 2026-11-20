@@ -125,7 +125,7 @@ func (r *AcademicRepository) CreateStudentAdmission(
 		return nil, ErrAcademicAccessDenied
 	}
 	fullName = strings.TrimSpace(fullName)
-	if fullName == "" || utf8.RuneCountInString(fullName) > 200 || yearID <= 0 || sectionID <= 0 {
+	if !validStudentFullName(fullName) || yearID <= 0 || sectionID <= 0 {
 		return nil, ErrInvalidAcademicInput
 	}
 	admissionNumber, err := normalizeEnrollmentAdmission(admissionNumber, admissionDate)
