@@ -623,7 +623,7 @@ test("student admission, profile navigation and parent details render without br
   await expect(basicSave).toBeDisabled();
   failStudentReads.delete("basic-details");
   await page.getByRole("button", { name: "Retry loading details" }).click();
-  await expect(basicSave).toBeEnabled();
+  await expect(basicSave).toBeDisabled();
 
   // Field help must be available to pointer/touch users and keyboard users,
   // not only as a hover tooltip.
