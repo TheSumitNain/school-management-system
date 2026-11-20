@@ -745,6 +745,9 @@ test("student admission, profile navigation and parent details render without br
   await studentNameInput.fill("अ".repeat(201));
   await page.getByRole("button", { name: "Save basic details" }).click();
   await expect(page.getByText("Student name must be 200 characters or fewer.")).toBeVisible();
+  await expect(studentNameInput).toHaveAttribute("aria-invalid", "true");
+  await expect(studentNameInput).toHaveAttribute("aria-describedby", "student-basic-name-error");
+  await expect(page.locator('#student-basic-name-error[role="alert"]')).toBeVisible();
   expect(students[0]?.full_name).toBe("Aarav Sharma Updated");
   await studentNameInput.fill("अ".repeat(200));
   await page.getByRole("button", { name: "Save basic details" }).click();
