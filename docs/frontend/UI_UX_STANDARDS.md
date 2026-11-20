@@ -75,3 +75,14 @@ These standards apply to every frontend feature and page. A feature must reuse s
 - [ ] Destructive operations explain the impact and require explicit confirmation.
 - [ ] Created/updated records are visible after the operation without requiring the user to scroll manually.
 - [ ] Responsive layout remains usable on narrow screens.
+
+
+## Mandatory inline validation and browser-validation policy
+
+- Every form must use custom application validation; set `noValidate` on the form so browser-native validation popups/tooltips never replace the application's field messages.
+- Every invalid field must show a concise, actionable red error message immediately beneath that field. Do not show validation only in a page-level banner, toast, or at the top/bottom of a form.
+- Validate all relevant fields in one submit attempt and display all applicable field errors together. Clear or revalidate each field's message when the user corrects that field.
+- Apply `aria-invalid="true"` and connect the message using `aria-describedby`; visually mark invalid controls with the shared danger border treatment.
+- Map server field errors back to the corresponding visible form field. Use a form-level alert only for errors that cannot be associated with a field; a toast may supplement but must not replace inline field feedback.
+- Custom Select, DatePicker, checkbox groups and other non-native controls must expose the same invalid state and an error directly beneath the control/group.
+- This rule applies to login, password change, create, edit, enrollment, settings and confirmation workflows wherever fields are collected. It must be included in browser acceptance tests.
