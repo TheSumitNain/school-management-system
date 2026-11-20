@@ -1091,13 +1091,12 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 		currentEnrollmentID, curriculumV1.ID, []int64{optionalV1ID})
 	if err != nil || assignedV1 == nil || !assignedV1.Assigned ||
 		len(assignedV1.SelectedOptionalSubjectIDs) != 1 || assignedV1.SelectedOptionalSubjectIDs[0] != optionalV1ID ||
-		len(assignedV1.SelectionHistory) != 1 || assignedV1.SelectionHistory[0].RevokedAt != nil {
+		len(assignedV1.SelectionHistory) != 0 {
 		t.Fatalf("assign first curriculum and persist optional choice: item=%+v err=%v", assignedV1, err)
 	}
 	// Editing updates the same section curriculum in place. Removing an
 	// optional subject requires a fresh impact preview and an explicit count
-	// confirmation; the active student selection is revoked but its history is
-	// retained.
+	// confirmation; the subject and its student choice are permanently deleted.
 	impacts, err := academicRepo.PreviewSectionCurriculumRemoval(ctx, actorPrincipalID, schoolID,
 		enrollmentYearID, sourceClassID, sourceSectionID, []int64{subjectAltID})
 	if err != nil || len(impacts) != 1 || impacts[0].SubjectID != subjectAltID || impacts[0].AffectedStudents != 1 {
@@ -1129,15 +1128,18 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	if err != nil || afterRemoval == nil || !afterRemoval.Assigned ||
 		afterRemoval.Curriculum == nil || afterRemoval.Curriculum.ID != curriculumV1.ID ||
 		len(afterRemoval.Curriculum.Subjects) != 1 || len(afterRemoval.SelectedOptionalSubjectIDs) != 0 ||
-		len(afterRemoval.SelectionHistory) != 1 || afterRemoval.SelectionHistory[0].RevokedAt == nil {
+		len(afterRemoval.SelectionHistory) != 0 {
 		t.Fatalf("student curriculum after confirmed subject removal: item=%+v err=%v", afterRemoval, err)
 	}
-	var removedSubjectActive bool
-	if err := tx.QueryRow(ctx, `SELECT is_active FROM class_curriculum_subjects WHERE id=$1 AND curriculum_id=$2`, optionalV1ID, curriculumV1.ID).Scan(&removedSubjectActive); err != nil {
-		t.Fatalf("read soft-deactivated curriculum subject: %v", err)
+	var removedSubjectCount, removedSelectionCount int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*)::integer FROM class_curriculum_subjects WHERE id=$1 AND curriculum_id=$2`, optionalV1ID, curriculumV1.ID).Scan(&removedSubjectCount); err != nil {
+		t.Fatalf("check permanently removed curriculum subject: %v", err)
 	}
-	if removedSubjectActive {
-		t.Fatal("confirmed removed curriculum subject remains active")
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*)::integer FROM student_enrollment_subject_selections WHERE school_id=$1 AND curriculum_subject_id=$2`, schoolID, optionalV1ID).Scan(&removedSelectionCount); err != nil {
+		t.Fatalf("check permanently removed student subject choices: %v", err)
+	}
+	if removedSubjectCount != 0 || removedSelectionCount != 0 {
+		t.Fatalf("confirmed removal retained subject/selection rows: subjects=%d selections=%d", removedSubjectCount, removedSelectionCount)
 	}
 	var removalAuditCount int
 	if err := tx.QueryRow(ctx, `
@@ -1146,9 +1148,8 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 		 WHERE school_id=$1 AND actor_principal_id=$2
 		   AND action='school.class_curriculum.updated'
 		   AND resource_type='class_curriculum' AND resource_id=$3
-		   AND metadata->'removed_subject_ids' @> to_jsonb(ARRAY[$4::bigint])
-		   AND metadata->'removal_confirmations' @> jsonb_build_array(jsonb_build_object('subject_id',$4::bigint,'affected_students',1))
-	`, schoolID, actorPrincipalID, fmt.Sprint(curriculumV1.ID), subjectAltID).Scan(&removalAuditCount); err != nil {
+		   AND metadata->>'removed_subject_count'='1'
+	`, schoolID, actorPrincipalID, fmt.Sprint(curriculumV1.ID)).Scan(&removalAuditCount); err != nil {
 		t.Fatalf("read confirmed curriculum-removal audit: %v", err)
 	}
 	if removalAuditCount != 1 {
