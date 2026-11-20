@@ -1266,6 +1266,17 @@ test("student admission, profile navigation and parent details render without br
   await page.getByPlaceholder("Local area or mohalla").fill("");
   await page.getByPlaceholder("Nearby landmark").fill("");
   await page.getByPlaceholder("PIN or postal code").fill("");
+  await page.getByRole("button", { name: "Add missing state / ut", exact: true }).click();
+  const newStateNameField = page.getByPlaceholder("Enter state / ut");
+  const countryCodeField = page.getByPlaceholder("IN", { exact: true });
+  await newStateNameField.fill("Test State");
+  await countryCodeField.fill("1N");
+  await page.getByRole("button", { name: "Add location", exact: true }).click();
+  await expect(countryCodeField).toHaveAttribute("aria-invalid", "true");
+  await expect(countryCodeField).toHaveAttribute("aria-describedby", "student-country-code-error");
+  await expect(page.locator('#student-country-code-error[role="alert"]')).toHaveText("Enter a valid two-letter ISO country code, such as IN.");
+  await countryCodeField.fill("IN");
+  await page.getByRole("button", { name: "Add missing state / ut", exact: true }).click();
   await page.getByLabel("Search States / UTs").fill("Haryana");
   await page.getByRole("button", { name: "State or Union Territory", exact: true }).click();
   await page.getByRole("option", { name: "Haryana" }).click();
