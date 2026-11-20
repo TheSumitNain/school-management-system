@@ -193,7 +193,9 @@ export function TimetableManagementPage({ permissions }: Props) {
       setFeedback(null);
       await loadSchedule(yearID, sectionID);
     } catch (reason) {
-      setFeedback({ kind: "error", message: errorText(reason) });
+      const message = errorText(reason);
+      notifyToast("error", message);
+      setFeedback({ kind: "error", message });
     } finally { setSaving(false); }
   }
 
@@ -206,7 +208,9 @@ export function TimetableManagementPage({ permissions }: Props) {
       setFeedback(null);
       await loadSchedule(yearID, sectionID);
     } catch (reason) {
-      setFeedback({ kind: "error", message: errorText(reason) });
+      const message = errorText(reason);
+      notifyToast("error", message);
+      setFeedback({ kind: "error", message });
     }
   }
 
