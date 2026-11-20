@@ -53,6 +53,7 @@ export function StudentEnrollmentSubjectsPanel({
   }
 
   async function saveSubjectChoices() {
+    if (!curriculum) return;
     if (selectionUnchanged) {
       notifyToast("info", "No change to save.");
       return;
