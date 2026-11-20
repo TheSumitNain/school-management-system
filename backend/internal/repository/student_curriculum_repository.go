@@ -351,18 +351,19 @@ func (r *AcademicRepository) SaveSectionClassCurriculumWithConfirmations(ctx con
 		`, schoolID, academicYearID, classID, sectionID, actorID).Scan(&curriculumID); err != nil { return nil, academicWriteError(err) }
 	}
 
-	type existingSubject struct { id int64; subjectID int64; optional bool; groupID *int64; active bool }
+	type existingSubject struct { id int64; active bool }
 	existing := make(map[int64]existingSubject)
 	if !created {
 		rows, err := tx.Query(ctx, `
-			SELECT id,subject_id,is_optional,optional_group_id,is_active
+			SELECT id,subject_id,is_active
 			  FROM class_curriculum_subjects WHERE curriculum_id=$1 AND school_id=$2 FOR UPDATE
 		`, curriculumID, schoolID)
 		if err != nil { return nil, fmt.Errorf("lock existing curriculum subjects: %w", err) }
 		for rows.Next() {
 			var item existingSubject
-			if err := rows.Scan(&item.id,&item.subjectID,&item.optional,&item.groupID,&item.active); err != nil { rows.Close(); return nil, fmt.Errorf("scan existing curriculum subject: %w", err) }
-			existing[item.subjectID] = item
+			var subjectID int64
+			if err := rows.Scan(&item.id,&subjectID,&item.active); err != nil { rows.Close(); return nil, fmt.Errorf("scan existing curriculum subject: %w", err) }
+			existing[subjectID] = item
 		}
 		if err := rows.Err(); err != nil { rows.Close(); return nil, fmt.Errorf("iterate existing curriculum subjects: %w", err) }
 		rows.Close()
