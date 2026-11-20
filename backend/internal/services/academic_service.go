@@ -28,6 +28,8 @@ type academicRepository interface {
 	ListStudentEnrollmentDirectory(context.Context,int64,int64,int64,int,int)([]repository.StudentEnrollment,int64,error)
 	ListSectionClassCurricula(context.Context,int64,int64,int64,int64,int64)([]repository.ClassCurriculum,error)
 	SaveSectionClassCurriculum(context.Context,int64,int64,int64,int64,int64,[]repository.CurriculumOptionalGroupInput,[]repository.CurriculumSubjectInput)(*repository.ClassCurriculum,error)
+	SaveSectionClassCurriculumWithConfirmations(context.Context,int64,int64,int64,int64,int64,[]repository.CurriculumOptionalGroupInput,[]repository.CurriculumSubjectInput,[]repository.CurriculumRemovalConfirmation)(*repository.ClassCurriculum,error)
+	PreviewSectionCurriculumRemoval(context.Context,int64,int64,int64,int64,int64,[]int64)([]repository.CurriculumRemovalImpact,error)
 	GetStudentEnrollmentCurriculum(context.Context,int64,int64,int64)(*repository.StudentEnrollmentCurriculum,error)
 	SaveStudentEnrollmentSubjects(context.Context,int64,int64,int64,int64,[]int64)(*repository.StudentEnrollmentCurriculum,error)
 	CreateStudentEnrollment(context.Context,int64,int64,int64,int64,int64,*string,string,time.Time,time.Time)(*repository.StudentEnrollment,error)
