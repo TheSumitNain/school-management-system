@@ -754,7 +754,7 @@ test("student admission, profile navigation and parent details render without br
   await expect.poll(() => basicDetails.place_of_birth).toBe("Ambala, Haryana");
   expect(basicDetails).toMatchObject({ nationality: "Indian", gender: "male" });
   expect(basicDetails.date_of_birth).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-  await expect(page.getByText("Basic details saved.")).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Basic details saved." })).toBeVisible({ timeout: 10_000 });
   await page.getByRole("button", { name: "Close dialog" }).click();
   await expect(page.getByRole("dialog", { name: /Student profile/ })).toBeVisible();
   await expect(page.getByText("Aarav Sharma Updated · Permanent student identity and year-wise academic history")).toBeVisible();
