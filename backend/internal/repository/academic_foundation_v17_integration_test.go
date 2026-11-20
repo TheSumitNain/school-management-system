@@ -10,8 +10,8 @@ import (
 )
 
 // TestAcademicFoundationAndStudentLifecyclePostgresIntegration exercises
-// academic setup, enrollment history, teacher scope, tenant FKs, and V44
-// curriculum assignment/replacement through the production repository.
+// academic setup, enrollment history, teacher scope, tenant FKs, and the
+// current section-curriculum and student-choice lifecycle through production repositories.
 func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) {
 	_, pool, userID := newPostgresIntegrationRepository(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
@@ -1035,7 +1035,7 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	}
 
 	// A second section in the same class must have its own independent
-	// curriculum version sequence and must never appear in the first section's
+	// current curriculum record and must never appear in the first section's
 	// curriculum list.
 	var isolatedSectionID int64
 	if err := tx.QueryRow(ctx, `
