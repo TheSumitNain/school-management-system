@@ -126,7 +126,9 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
       setSubjectID(""); setTeacherID(""); setFieldErrors({});
       await load();
     } catch (error) {
-      setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to create teacher assignment." });
+      const message = error instanceof Error ? error.message : "Unable to create teacher assignment.";
+      notifyToast("error", message);
+      setFeedback({ kind: "error", message });
     } finally { setSaving(false); }
   }
 
@@ -150,7 +152,9 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
       setInchargeTeacherID(""); setFieldErrors({});
       await load();
     } catch (error) {
-      setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to assign class in-charge." });
+      const message = error instanceof Error ? error.message : "Unable to assign class in-charge.";
+      notifyToast("error", message);
+      setFeedback({ kind: "error", message });
     } finally { setSaving(false); }
   }
 
@@ -166,7 +170,9 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
       setFeedback(null);
       await load();
     } catch (error) {
-      setSubjectRevokeError(error instanceof Error ? error.message : "Unable to revoke assignment. Please try again.");
+      const message = error instanceof Error ? error.message : "Unable to revoke assignment. Please try again.";
+      notifyToast("error", message);
+      setSubjectRevokeError(message);
     } finally { setSaving(false); }
   }
 
@@ -182,7 +188,9 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
       setFeedback(null);
       await load();
     } catch (error) {
-      setInchargeRevokeError(error instanceof Error ? error.message : "Unable to revoke assignment. Please try again.");
+      const message = error instanceof Error ? error.message : "Unable to revoke assignment. Please try again.";
+      notifyToast("error", message);
+      setInchargeRevokeError(message);
     } finally { setSaving(false); }
   }
 
