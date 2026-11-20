@@ -148,3 +148,103 @@ test("class curriculum validates each optional-group field and locks the editor 
   await expect(page.getByLabel("Group name")).toHaveValue("Second language");
   expect(browserErrors).toEqual([]);
 });
+
+
+test("removing a curriculum subject requires showing and confirming the affected-student count", async ({ page }) => {
+  const browserErrors: string[] = [];
+  let removalPreviewPayload: Record<string, unknown> | null = null;
+  let savedPayload: Record<string, unknown> | null = null;
+  let currentCurriculum: Record<string, unknown> = {
+    id: 702, school_id: 10, academic_year_id: 7, class_id: 3, section_id: 44,
+    version_number: 1, status: "active", created_at: "2026-11-15T00:00:00.000Z",
+    optional_groups: [{ id: 802, name: "Skill Subject", min_selections: 1, max_selections: 1 }],
+    subjects: [
+      { id: 911, subject_id: 101, name: "Physics", is_compulsory: true, is_optional: false },
+      { id: 912, subject_id: 102, name: "Mathematics", is_compulsory: false, is_optional: true },
+      { id: 913, subject_id: 103, name: "Computer Science", optional_group_id: 802, optional_group_name: "Skill Subject", is_compulsory: false, is_optional: true },
+    ],
+  };
+
+  page.on("pageerror", error => browserErrors.push(error.message));
+  await page.route("**/api/**", async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname.replace(/^\/api/, "");
+    const method = request.method();
+    if (path === "/auth/refresh") { await route.fulfill({ status: 401, json: { message: "No active session" } }); return; }
+    if (path === "/auth/login" && method === "POST") {
+      await route.fulfill({ json: { access_token: "e2e-curriculum-token", token_type: "Bearer", principal: { principal_id: 111, principal_type: "staff", status: "active", school_id: 10 } } });
+      return;
+    }
+    if (path === "/auth/me") {
+      await route.fulfill({ json: { principal_id: 111, principal_type: "staff", school_id: 10, username: "e2e-academic-admin", permissions: ["academic_years.read", "classes.read", "subjects.read", "subjects.manage"] } });
+      return;
+    }
+    if (path === "/school/academic-years") { await route.fulfill({ json: { academic_years: [{ id: 7, name: "2026–2027", status: "active", is_current: true }] } }); return; }
+    if (path === "/school/classes") { await route.fulfill({ json: { classes: [{ id: 3, name: "Class 11", is_active: true }] } }); return; }
+    if (path === "/school/sections") { await route.fulfill({ json: { sections: [{ id: 44, academic_year_id: 7, class_id: 3, name: "Science", medium: "english", is_active: true }] } }); return; }
+    if (path === "/school/subjects") {
+      await route.fulfill({ json: { subjects: [
+        { id: 101, name: "Physics", subject_code: "PHY", is_active: true },
+        { id: 102, name: "Mathematics", subject_code: "MATH", is_active: true },
+        { id: 103, name: "Computer Science", subject_code: "COMP", is_active: true },
+      ] } });
+      return;
+    }
+    if (path === "/school/class-curricula" && method === "GET") {
+      await route.fulfill({ json: { curricula: [currentCurriculum] } });
+      return;
+    }
+    if (path === "/school/class-curricula/removal-impact" && method === "POST") {
+      removalPreviewPayload = request.postDataJSON() as Record<string, unknown>;
+      await route.fulfill({ json: { impacts: [{ subject_id: 103, subject_name: "Computer Science", affected_students: 3 }] } });
+      return;
+    }
+    if (path === "/school/class-curricula" && method === "POST") {
+      savedPayload = request.postDataJSON() as Record<string, unknown>;
+      currentCurriculum = {
+        ...currentCurriculum,
+        optional_groups: [],
+        subjects: [
+          { id: 911, subject_id: 101, name: "Physics", is_compulsory: true, is_optional: false },
+          { id: 912, subject_id: 102, name: "Mathematics", is_compulsory: false, is_optional: true },
+        ],
+      };
+      await route.fulfill({ status: 200, json: { status: "success", curriculum: currentCurriculum } });
+      return;
+    }
+    await route.fulfill({ status: 404, json: { message: `Unmocked E2E API request: ${method} ${path}` } });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Username").fill("e2e-academic-admin");
+  await page.getByLabel("Password").fill("E2E-only-password");
+  await page.getByRole("button", { name: /Continue/ }).click();
+  await page.getByRole("button", { name: "Academics" }).click();
+  await page.getByRole("tab", { name: "Class curriculum" }).click();
+  await page.getByLabel("Academic year").selectOption("7");
+  await page.getByLabel("Class").selectOption("3");
+  await page.getByLabel("Section").selectOption("44");
+  await expect(page.getByRole("heading", { name: "Edit curriculum" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Remove group" }).click();
+  await page.getByRole("checkbox", { name: /Computer Science/ }).uncheck();
+  await page.getByRole("button", { name: "Save curriculum changes" }).click();
+
+  await expect(page.getByRole("heading", { name: "Confirm subject removal" })).toBeVisible();
+  await expect(page.getByText("Computer Science", { exact: true })).toBeVisible();
+  await expect(page.getByText("3 affected students", { exact: true })).toBeVisible();
+  expect(removalPreviewPayload).toMatchObject({
+    academic_year_id: 7, class_id: 3, section_id: 44, subject_ids: [103],
+  });
+
+  await page.getByRole("button", { name: "Confirm and save" }).click();
+  await expect(page.getByText("Curriculum saved successfully. Existing student selections are preserved except the subjects you confirmed for removal.")).toBeVisible();
+  await expect(page.locator(".curriculum-existing").getByText("Computer Science", { exact: false })).toHaveCount(0);
+  expect(savedPayload).toMatchObject({
+    academic_year_id: 7, class_id: 3, section_id: 44,
+    subjects: [{ subject_id: 101, is_optional: false }, { subject_id: 102, is_optional: true }],
+    removal_confirmations: [{ subject_id: 103, affected_students: 3 }],
+  });
+  expect(browserErrors).toEqual([]);
+});
