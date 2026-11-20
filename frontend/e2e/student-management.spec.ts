@@ -79,6 +79,7 @@ test("student admission, profile navigation and parent details render without br
   const contactDetails: Record<string, unknown> = {
     id: 601, school_id: 10, student_id: 1, primary_phone: null, alternate_phone: null, email_address: null,
   };
+  let contactDetailsWriteCount = 0;
   const basicDetails: Record<string, unknown> = {
     id: 1, school_id: 10, student_id: 1, date_of_birth: null, place_of_birth: null,
     gender: null, nationality: null, religion: null, social_category: null,
@@ -356,6 +357,7 @@ test("student admission, profile navigation and parent details render without br
       }
       if (subpath === "contact-details") {
         if (method === "PUT") {
+          contactDetailsWriteCount++;
           const input = request.postDataJSON() as Record<string, unknown>;
           if (rejectStudentContactEmailOnce && input.email_address === "server-invalid@example.test") {
             rejectStudentContactEmailOnce = false;
@@ -1006,12 +1008,20 @@ test("student admission, profile navigation and parent details render without br
   await expect(addressSave).toBeDisabled();
   failStudentReads.delete("addresses");
   await page.getByRole("button", { name: "Retry loading addresses" }).click();
-  await expect(addressSave).toBeEnabled();
+  await expect(addressSave).toBeDisabled();
+  await addressSave.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Address save button is not associated with its form.");
+    form.requestSubmit();
+  });
+  await expect(page.getByRole("status").filter({ hasText: "No change to save." })).toBeVisible({ timeout: 10_000 });
+  expect(addresses).toHaveLength(0);
   await page.getByPlaceholder("House number, street or building").fill("अ".repeat(201));
   await page.getByPlaceholder("Apartment, floor or additional details").fill("अ".repeat(201));
   await page.getByPlaceholder("Local area or mohalla").fill("अ".repeat(121));
   await page.getByPlaceholder("Nearby landmark").fill("अ".repeat(121));
   await page.getByPlaceholder("PIN or postal code").fill("अ".repeat(21));
+  await expect(addressSave).toBeEnabled();
   await addressSave.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
     if (!form) throw new Error("Address save button is not associated with its form.");
@@ -1081,11 +1091,19 @@ test("student admission, profile navigation and parent details render without br
   await expect(contactSave).toBeDisabled();
   failStudentReads.delete("contact-details");
   await page.getByRole("button", { name: "Retry loading contact details" }).click();
-  await expect(contactSave).toBeEnabled();
+  await expect(contactSave).toBeDisabled();
+  await contactSave.evaluate(button => {
+    const form = (button as HTMLButtonElement).form;
+    if (!form) throw new Error("Contact save button is not associated with its form.");
+    form.requestSubmit();
+  });
+  await expect(page.getByRole("status").filter({ hasText: "No change to save." })).toBeVisible({ timeout: 10_000 });
+  expect(contactDetailsWriteCount).toBe(0);
   const contactSaveButton = page.getByRole("button", { name: "Save contact details" });
   await page.getByPlaceholder("Primary contact number").fill("अ".repeat(31));
   await page.getByPlaceholder("Alternate contact number").fill("अ".repeat(31));
   await page.getByPlaceholder("student@example.com").fill("a".repeat(245) + "@example.test");
+  await expect(contactSaveButton).toBeEnabled();
   await contactSaveButton.evaluate(button => {
     const form = (button as HTMLButtonElement).form;
     if (!form) throw new Error("Contact save button is not associated with its form.");
