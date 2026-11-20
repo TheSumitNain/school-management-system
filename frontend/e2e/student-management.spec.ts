@@ -990,7 +990,32 @@ test("student admission, profile navigation and parent details render without br
     if (!form) throw new Error("Guardian details submit button is not associated with its form.");
     form.requestSubmit(button as HTMLButtonElement);
   });
-  await expect(page.getByRole("dialog", { name: "Update shared guardian profile?" })).toBeVisible();
+  const sharedGuardianConfirm = page.getByRole("dialog", { name: "Update shared guardian profile?" });
+  await expect(sharedGuardianConfirm).toBeVisible();
+  for (const width of [320, 360, 390, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(sharedGuardianConfirm).toBeVisible();
+    const layout = await sharedGuardianConfirm.evaluate(dialog => {
+      const content = dialog.querySelector<HTMLElement>(".app-modal-content");
+      const actions = dialog.querySelector<HTMLElement>(".app-modal-actions");
+      const buttons = Array.from(actions?.querySelectorAll<HTMLElement>("button") ?? []);
+      return {
+        dialogWidth: dialog.clientWidth,
+        dialogScrollWidth: dialog.scrollWidth,
+        contentWidth: content?.clientWidth ?? 0,
+        contentScrollWidth: content?.scrollWidth ?? 0,
+        buttonsInside: buttons.every(button => {
+          const bounds = button.getBoundingClientRect();
+          const parent = dialog.getBoundingClientRect();
+          return bounds.left >= parent.left && bounds.right <= parent.right;
+        }),
+      };
+    });
+    expect(layout.dialogScrollWidth, `shared guardian confirmation overflow at ${width}px`).toBeLessThanOrEqual(layout.dialogWidth);
+    expect(layout.contentScrollWidth, `shared guardian confirmation content overflow at ${width}px`).toBeLessThanOrEqual(layout.contentWidth);
+    expect(layout.buttonsInside, `shared guardian confirmation actions must fit at ${width}px`).toBe(true);
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
   await page.getByRole("button", { name: "Update all linked records" }).click();
   await expect(page.getByText("Enter a valid email address using one address only.", { exact: true })).toBeVisible();
   await expect(page.getByRole("dialog", { name: "Update shared guardian profile?" })).toHaveCount(0);
@@ -1040,6 +1065,30 @@ test("student admission, profile navigation and parent details render without br
   await expect(revokeDialog).toBeVisible();
   await expect(revokeDialog).toContainText("Ramesh Sharma Updated");
   await expect(revokeDialog.getByPlaceholder("Explain why this link is being revoked")).toBeFocused();
+  for (const width of [320, 360, 390, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(revokeDialog).toBeVisible();
+    const layout = await revokeDialog.evaluate(dialog => {
+      const content = dialog.querySelector<HTMLElement>(".app-modal-content");
+      const actions = dialog.querySelector<HTMLElement>(".app-modal-actions");
+      const buttons = Array.from(actions?.querySelectorAll<HTMLElement>("button") ?? []);
+      return {
+        dialogWidth: dialog.clientWidth,
+        dialogScrollWidth: dialog.scrollWidth,
+        contentWidth: content?.clientWidth ?? 0,
+        contentScrollWidth: content?.scrollWidth ?? 0,
+        buttonsInside: buttons.every(button => {
+          const bounds = button.getBoundingClientRect();
+          const parent = dialog.getBoundingClientRect();
+          return bounds.left >= parent.left && bounds.right <= parent.right;
+        }),
+      };
+    });
+    expect(layout.dialogScrollWidth, `revoke dialog horizontal overflow at ${width}px`).toBeLessThanOrEqual(layout.dialogWidth);
+    expect(layout.contentScrollWidth, `revoke content horizontal overflow at ${width}px`).toBeLessThanOrEqual(layout.contentWidth);
+    expect(layout.buttonsInside, `revoke actions must fit at ${width}px`).toBe(true);
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
   const confirmRevokeButton = revokeDialog.getByRole("button", { name: "Confirm revoke" });
   const revokeButtonBackground = await confirmRevokeButton.evaluate(element => getComputedStyle(element).backgroundColor);
   const revokeButtonText = await confirmRevokeButton.evaluate(element => getComputedStyle(element).color);
