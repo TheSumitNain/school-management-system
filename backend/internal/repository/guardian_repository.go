@@ -263,7 +263,7 @@ func normalizeGuardianEmail(email *string) (*string, error) {
 func (r *AcademicRepository) SaveGuardian(ctx context.Context, actorID,schoolID,guardianID int64,fullName string,mobile,email,alternateMobile,occupation,education,workplace *string,status string)(*Guardian,error){
 	if r==nil||r.db==nil{return nil,ErrGuardianAccessDenied}
 	fullName=strings.TrimSpace(fullName);status=strings.TrimSpace(status)
-	if fullName==""||len([]rune(fullName))>200||(status!="active"&&status!="inactive"&&status!="archived"){return nil,ErrInvalidGuardianInput}
+	if !validFullName(fullName)||(status!="active"&&status!="inactive"&&status!="archived"){return nil,ErrInvalidGuardianInput}
 	if mobile != nil && utf8.RuneCountInString(strings.TrimSpace(*mobile)) > 30 {
 		return nil, ErrInvalidGuardianInput
 	}
