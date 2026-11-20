@@ -125,7 +125,7 @@ export function AcademicStructurePage({permissions}:Props) {
     if(Object.keys(errors).length){setFieldErrors(errors);return;}
     setFieldErrors({});setSaving(true);setFeedback(null);
     try{await api(path,{method,body:JSON.stringify(body)});notifyToast("success", "Academic information saved successfully.");setAction(null);setFeedback(null);await load();}
-    catch(e){setFeedback({kind:"error",message:e instanceof Error?e.message:"Unable to save academic information."});}
+    catch(e){const message=e instanceof Error?e.message:"Unable to save academic information.";notifyToast("error",message);setFeedback({kind:"error",message});}
     finally{setSaving(false);}
   }
 
