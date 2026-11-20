@@ -113,6 +113,7 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
           setPendingRemovalImpacts(null);
         }
         setError(mutationError.message);
+        notifyToast("error", mutationError.message);
       },
     });
   }
@@ -180,7 +181,11 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
       subject_ids: removedSubjectIDs,
     }, {
       onSuccess: result => setPendingRemovalImpacts(result.impacts),
-      onError: mutationError => { setPendingSave(null); setError(mutationError.message); },
+      onError: mutationError => {
+        setPendingSave(null);
+        setError(mutationError.message);
+        notifyToast("error", mutationError.message);
+      },
     });
   }
 
