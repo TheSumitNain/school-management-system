@@ -61,6 +61,18 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
   const compulsoryCount = included.filter(id => !(groupBySubject[id] ?? "").trim()).length;
   const individualOptionalCount = included.filter(id => groupBySubject[id] === "__standalone_optional__").length;
   const groupedOptionalCount = included.length - compulsoryCount - individualOptionalCount;
+  const draftSignature = curriculumSignature({
+    optional_groups: groups,
+    subjects: included.map(subjectID => {
+      const optionalGroup = (groupBySubject[subjectID] ?? "").trim();
+      return {
+        subject_id: subjectID,
+        is_optional: Boolean(optionalGroup),
+        ...(optionalGroup && optionalGroup !== "__standalone_optional__" ? { optional_group: optionalGroup } : {}),
+      };
+    }),
+  });
+  const curriculumUnchanged = lastSavedSignatureRef.current !== null && lastSavedSignatureRef.current === draftSignature;
   const selectedCounts = useMemo(() => {
     const counts = new Map<string, number>();
     for (const id of included) {
@@ -364,7 +376,7 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
           </div>
           {fieldErrors.subjects && <p className="app-field-error" role="alert">{fieldErrors.subjects}</p>}
           {error && <p className="app-field-error" role="alert">{error}</p>}
-          <button type="submit" className="primary academic-add" disabled={busy || !yearNumber || !classNumber || !sectionNumber || curriculaQuery.isLoading || curriculaQuery.isError}>
+          <button type="submit" className="primary academic-add" disabled={busy || !yearNumber || !classNumber || !sectionNumber || curriculaQuery.isLoading || curriculaQuery.isError || curriculumUnchanged}>
             {busy ? "Saving curriculum…" : currentCurriculum ? "Save curriculum changes" : "Save curriculum"}
           </button>
         </form>
