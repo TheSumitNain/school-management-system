@@ -1521,3 +1521,12 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Teacher and Class In-charge visibility is not determined by role labels alone. Effective access is the combination of live permissions, school ownership, active class/section/subject assignments, and field-level restrictions. A class-in-charge assignment does not grant access outside its assigned class/section.
 - The current UI is not yet a complete, easy-to-understand access matrix for comparing Teacher vs Class In-charge or configuring every module's view/create/edit/delete rights in one place. Treat a consolidated permission matrix and role preview as a future usability improvement, not an already-delivered feature.
 - Do not grant broad student-profile, guardian-contact, medical, document or other sensitive permissions merely to make a roster or class-in-charge workflow function. Verify each module's backend enforcement and positive/negative role tests before claiming a role can access or edit it.
+
+
+## Student Management — curriculum edit history simplification (2026-11-20)
+
+- Curriculum remains one editable record per academic year/class/section; no V2/V3 versions or curriculum edit history are created.
+- Confirmed subject removal now permanently deletes the current curriculum subject and all linked student optional-choice rows in the same transaction. The existing impact preview and exact affected-student confirmation remain mandatory; stale counts abort the save.
+- Student enrollment curriculum responses no longer load or expose selection history. The standard security audit event remains, with only the curriculum scope and removed-subject count (not removed subject IDs or student choice details).
+- Added reversible migration V55 to allow only this confirmed current-state deletion while retaining selection insert validation and one-way assignment-replacement revocation protections.
+- Backend integration assertions and frontend fixtures were updated. CI is pending; do not apply V54/V55 locally until both backend and frontend CI pass.
