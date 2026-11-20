@@ -1166,6 +1166,22 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	if selectionRowCount != 1 {
 		t.Fatalf("student subject choice rows after replacement = %d, want 1 current row and no history", selectionRowCount)
 	}
+	var currentSelectionID int64
+	if err := tx.QueryRow(ctx, `
+		SELECT s.id
+		  FROM student_enrollment_subject_selections s
+		  JOIN student_enrollment_curricula ec
+		    ON ec.id=s.enrollment_curriculum_id AND ec.school_id=s.school_id
+		 WHERE ec.enrollment_id=$1 AND ec.school_id=$2
+	`, currentEnrollmentID, schoolID).Scan(&currentSelectionID); err != nil {
+		t.Fatalf("load current student choice for no-history guard: %v", err)
+	}
+	expectRejected("mutate current student choice into history", func() error {
+		_, err := tx.Exec(ctx, `
+			UPDATE student_enrollment_subject_selections SET revoked_at=NOW() WHERE id=$1
+		`, currentSelectionID)
+		return err
+	})
 	// Editing updates the same section curriculum in place. Removing an
 	// optional subject requires a fresh impact preview and an explicit count
 	// confirmation; the subject and its student choice are permanently deleted.
