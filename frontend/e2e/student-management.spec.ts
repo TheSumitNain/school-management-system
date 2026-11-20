@@ -2954,6 +2954,20 @@ test("student directory pagination resets when search, status or academic-year f
   await expect(page.getByText("Previous Year Student", { exact: true })).toBeVisible();
   await expect(page.getByText("Showing 1–1 of 1")).toBeVisible();
   await expect.poll(() => requestedDirectoryFilters.at(-1)).toEqual({ offset: "0", status: "", academicYearID: String(previousAcademicYear.id) });
+
+  // The directory must remain within the viewport; wide table content may
+  // scroll inside its own container but must not widen the application page.
+  for (const width of [320, 360, 390, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect.poll(() => page.evaluate(() =>
+      document.documentElement.scrollWidth <= window.innerWidth
+    ), { message: `Student directory must not overflow the page at ${width}px` }).toBe(true);
+    await expect(page.getByRole("heading", { name: "Students" })).toBeVisible();
+  }
+  await page.setViewportSize({ width: 844, height: 390 });
+  await expect.poll(() => page.evaluate(() =>
+    document.documentElement.scrollWidth <= window.innerWidth
+  ), { message: "Student directory must not overflow in landscape" }).toBe(true);
 });
 
 test("student directory returns to the last valid page when archiving empties the current page", async ({ page }) => {
