@@ -805,7 +805,10 @@ test("student admission, profile navigation and parent details render without br
     form.requestSubmit(button as HTMLButtonElement);
   });
   await expect(page.getByText("Date of birth must be within the past 130 years and cannot be in the future.", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Date of birth", exact: true })).toHaveAttribute("aria-invalid", "true");
+  const dobErrorTrigger = page.getByRole("button", { name: "Date of birth", exact: true });
+  await expect(dobErrorTrigger).toHaveAttribute("aria-invalid", "true");
+  await expect(dobErrorTrigger).toHaveAttribute("aria-describedby", "student-basic-date_of_birth-error");
+  await expect(page.locator('#student-basic-date_of_birth-error[role="alert"]')).toBeVisible();
   failDateOfBirthValidation = false;
   await page.getByPlaceholder("City, district or place").fill("अ".repeat(121));
   await basicSaveButton.evaluate(button => {
