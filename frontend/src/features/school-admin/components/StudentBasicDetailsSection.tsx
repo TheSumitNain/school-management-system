@@ -176,7 +176,7 @@ export function StudentBasicDetailsSection({ student, canUpdate, onStudentNameCh
       {query.isError && <div className="student-feedback error" role="alert"><p>{query.error.message}</p><button type="button" className="student-secondary" onClick={() => void query.refetch()} disabled={query.isFetching}>Retry loading details</button></div>}
       <form className="student-basic-details-form" onSubmit={submit} noValidate>
         <label><StudentFieldLabel label="Student name" required hint="Enter the student’s full name as it should appear in school records. Maximum 200 characters." />
-          <input value={fullName} minLength={2} maxLength={200} disabled={!canUpdate || busy} aria-invalid={Boolean(nameError)} aria-describedby={nameError ? "student-basic-name-error" : undefined}
+          <input value={fullName} minLength={2} disabled={!canUpdate || busy} aria-invalid={Boolean(nameError)} aria-describedby={nameError ? "student-basic-name-error" : undefined}
             onChange={event => { setFullName(event.target.value); setNameError(""); }} placeholder="Enter student's full name" />
           {nameError && <small id="student-basic-name-error" className="app-field-error" role="alert">{nameError}</small>}
         </label>
