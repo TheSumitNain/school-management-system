@@ -216,7 +216,16 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
       subjects: payloadSubjects,
     };
 
-    if (lastSavedSignatureRef.current !== null && lastSavedSignatureRef.current === curriculumSignature(input)) {
+    const persistedSignature = currentCurriculum ? curriculumSignature({
+      optional_groups: currentCurriculum.optional_groups,
+      subjects: currentCurriculum.subjects.map(subject => ({
+        subject_id: subject.subject_id,
+        is_optional: subject.is_optional,
+        ...(subject.optional_group_name ? { optional_group: subject.optional_group_name } : {}),
+      })),
+    }) : lastSavedSignatureRef.current;
+    if (persistedSignature !== null && persistedSignature === curriculumSignature(input)) {
+      lastSavedSignatureRef.current = persistedSignature;
       notifyToast("info", "No changes to save.");
       return;
     }
