@@ -204,7 +204,7 @@ export function RoleManagementPage({ permissions }: Props) {
           <label htmlFor="custom-role-name">Role name</label>
           <input id="custom-role-name" value={name} onChange={event => {setName(event.target.value);if(event.target.value.trim().length>=2)setNameError("");}} minLength={2} maxLength={120} placeholder="e.g. Library Coordinator" required aria-invalid={Boolean(nameError)} aria-describedby={nameError ? "custom-role-name-error" : "custom-role-name-help"}/>
           <small id="custom-role-name-help">Use a name that clearly explains what this staff role is responsible for.</small>
-          {nameError && <small className="app-field-error" id="custom-role-name-error">{nameError}</small>}
+          {nameError && <small className="app-field-error" id="custom-role-name-error" role="alert">{nameError}</small>}
           <div className="app-modal-actions"><button type="button" className="app-modal-cancel" onClick={() => setCreateDialogOpen(false)} disabled={create.isPending}>Cancel</button><button className="primary" type="submit" disabled={create.isPending}>{create.isPending?"Creating…":"Create role"}</button></div>
         </form>
       </Modal>
