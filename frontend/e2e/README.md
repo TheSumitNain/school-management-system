@@ -36,6 +36,8 @@ The Playwright package is installed as an ephemeral test tool in CI and is inten
 - Contact phone save and confirmation
 - Medical profile Blood Group / Allergies / Known Conditions save and version increment
 - Physical measurement validation (range + conditional date) and valid save
+- Timetable period form validates all required fields together, associates inline errors with controls, and suppresses native browser validation
+- Platform Admin school-permission delegation maps backend field errors inline and clears stale errors after editing
 - Browser uncaught exceptions
 
 All API calls are intercepted by the test. This is frontend browser acceptance coverage, not a replacement for backend PostgreSQL integration tests or live-browser acceptance against the user's configured school database.
