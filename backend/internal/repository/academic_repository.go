@@ -18,7 +18,7 @@ var (
 	ErrAcademicNotFound = errors.New("academic resource not found")
 	ErrAcademicConflict = errors.New("academic resource conflicts with an existing record")
 	ErrCurriculumRemovalConfirmationRequired = errors.New("curriculum subject removal requires explicit confirmation")
-	ErrCurriculumRemovalImpactChanged = errors.New("curriculum removal impact changed; review the affected student count again")
+	ErrCurriculumRemovalImpactChanged = errors.New("curriculum removal impact changed; review the affected students again")
 	ErrCurriculumSubjectRuleConflict = errors.New("curriculum edit would invalidate active student subject choices")
 	ErrSectionDeactivationConfirmationRequired = errors.New("section deactivation requires dependency preview and confirmation")
 	ErrClassDeactivationConfirmationRequired = errors.New("class deactivation requires dependency preview and confirmation")
