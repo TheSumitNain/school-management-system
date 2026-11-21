@@ -350,18 +350,21 @@ func (r *AcademicRepository) PreviewSectionDeactivation(ctx context.Context, act
 			(SELECT COUNT(*) FROM student_enrollments e WHERE e.school_id=s.school_id AND e.section_id=s.id AND e.status<>'active'),
 			(SELECT COUNT(*) FROM class_curricula cc WHERE cc.school_id=s.school_id AND cc.section_id=s.id AND cc.status='active'),
 			(SELECT COUNT(*) FROM teacher_subject_assignments a WHERE a.school_id=s.school_id AND a.section_id=s.id AND a.revoked_at IS NULL),
-			(SELECT COUNT(*) FROM class_incharge_assignments a WHERE a.school_id=s.school_id AND a.section_id=s.id AND a.revoked_at IS NULL)
+			(SELECT COUNT(*) FROM class_incharge_assignments a WHERE a.school_id=s.school_id AND a.section_id=s.id AND a.revoked_at IS NULL),
+			md5(concat_ws('|',
+				COALESCE((SELECT string_agg(e.id::text || ':' || e.status, ',' ORDER BY e.id) FROM student_enrollments e WHERE e.school_id=s.school_id AND e.section_id=s.id), ''),
+				COALESCE((SELECT string_agg(cc.id::text || ':' || cc.status, ',' ORDER BY cc.id) FROM class_curricula cc WHERE cc.school_id=s.school_id AND cc.section_id=s.id), ''),
+				COALESCE((SELECT string_agg(a.id::text || ':' || COALESCE(a.revoked_at::text,'active'), ',' ORDER BY a.id) FROM teacher_subject_assignments a WHERE a.school_id=s.school_id AND a.section_id=s.id), ''),
+				COALESCE((SELECT string_agg(a.id::text || ':' || COALESCE(a.revoked_at::text,'active'), ',' ORDER BY a.id) FROM class_incharge_assignments a WHERE a.school_id=s.school_id AND a.section_id=s.id), '')
+			))
 		FROM sections s
 		JOIN classes c ON c.id=s.class_id AND c.school_id=s.school_id
 		JOIN academic_years ay ON ay.id=s.academic_year_id AND ay.school_id=s.school_id
 		WHERE s.id=$1 AND s.school_id=$2
 	`, sectionID, schoolID).Scan(&impact.SectionID, &impact.SectionName, &impact.ClassName, &impact.AcademicYearName,
 		&impact.ActiveEnrollmentCount, &impact.HistoricalEnrollmentCount, &impact.ActiveCurriculumCount,
-		&impact.ActiveTeacherAssignmentCount, &impact.ActiveClassInchargeCount)
+		&impact.ActiveTeacherAssignmentCount, &impact.ActiveClassInchargeCount, &impact.ImpactFingerprint)
 	if err != nil { return nil, academicWriteError(err) }
-	impact.ImpactFingerprint, err = sectionDeactivationFingerprint(ctx, tx, schoolID, sectionID)
-	if err != nil { return nil, err }
-
 	rows, err := tx.Query(ctx, `
 		SELECT DISTINCT st.id, st.full_name, COALESCE(e.admission_number,''), e.status
 		FROM student_enrollments e
