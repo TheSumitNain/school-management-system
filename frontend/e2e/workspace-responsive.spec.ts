@@ -204,7 +204,7 @@ test("school workspace pages stay within narrow, tablet, and desktop viewports",
   const permissionSelect = page.getByLabel("Permission", { exact: true });
   await expect(permissionSelect).toHaveAttribute("aria-invalid", "true");
   await expect(permissionSelect).toHaveAttribute("aria-describedby", "delegation-permission-error");
-  await expect(page.locator("#delegation-permission-error[role=\\"alert\\"]")).toHaveText(
+  await expect(page.locator('#delegation-permission-error[role="alert"]')).toHaveText(
     "This permission is already actively delegated to the school.",
   );
   expect(delegationWriteCount).toBe(1);
