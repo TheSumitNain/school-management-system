@@ -32,7 +32,7 @@
 - Added focused styling for the impact review and documented the preview requirements.
 - The final deactivation write now locks the section and all dependent enrollment, curriculum, teacher-assignment and class-in-charge rows, recomputes a dependency fingerprint, rejects stale confirmations, and writes the section state change plus audit event in one transaction. Direct attempts to deactivate an active section without a confirmed preview are rejected.
 - PostgreSQL integration coverage verifies that a dependency added after preview invalidates the old confirmation, a refreshed preview succeeds, the enrollment is retained, and the audit event is recorded. Backend CI passed on checkpoint `71f78e0fdb3efcd215dc7185f33784b2d4e36502`; frontend build and all browser acceptance tests passed on checkpoint `58a8df4637960379d89fe2e61260ea9bf92eca64`.
-- Class deactivation has its own class-wide impact preview and transaction guard; subject deactivation has now been added as a separate master-subject impact flow. See the latest subject checkpoint below; its backend CI is still pending at the time of this status edit.
+- Class and subject deactivation are now also covered by their own impact previews and transaction guards; see the combined verified lifecycle checkpoint at the top of this document.
 
 ## Academic Structure management UX checkpoint (2026-11-21)
 
@@ -45,7 +45,7 @@
 - Frontend CI **PASS** — [run 44859591969](https://github.com/TheSumitNain/school-management-system/actions/runs/44859591969), checkpoint `5cebd996c01986d91cfe41d5ed2e0f34d90ca182`: TypeScript/Vite production build and all 23 Playwright browser acceptance tests passed.
 - Backend CI **PASS** — [run 44859592026](https://github.com/TheSumitNain/school-management-system/actions/runs/44859592026), same checkpoint: complete migration chain, Go tests including PostgreSQL integration, and `go vet` passed.
 - No migration or local database changes were made in this checkpoint.
-- Remaining before calling Academic Structure lifecycle complete: implement the dependency-impact preview and transactional stale-impact confirmation for section, class and subject inactivation; verify exact dependency counts against the live schema; add API/repository integration tests and browser confirmation coverage. Do not hard-delete academic years, classes, sections or subjects.
+- The remaining items in this historical checkpoint were completed in the combined verified lifecycle checkpoint at the top of this document. Do not hard-delete academic years, classes, sections or subjects.
 
 ## Editable section-wise Class Curriculum (2026-11-20)
 
