@@ -81,6 +81,16 @@ func (s *AcademicService) ListSections(ctx context.Context,actorID,schoolID,year
 	if s==nil||s.repository==nil{return nil,repository.ErrAcademicAccessDenied}
 	return s.repository.ListSections(ctx,actorID,schoolID,yearID)
 }
+func (s *AcademicService) PreviewSectionDeactivation(ctx context.Context, actorID, schoolID, sectionID int64) (*repository.SectionDeactivationImpact, error) {
+	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
+	type previewRepository interface {
+		PreviewSectionDeactivation(context.Context, int64, int64, int64) (*repository.SectionDeactivationImpact, error)
+	}
+	repo, ok := s.repository.(previewRepository)
+	if !ok { return nil, repository.ErrAcademicAccessDenied }
+	return repo.PreviewSectionDeactivation(ctx, actorID, schoolID, sectionID)
+}
+
 func (s *AcademicService) SaveSection(ctx context.Context,actorID,schoolID,id,yearID,classID int64,name string,order int,active bool)(*repository.AcademicSection,error){
 	if s==nil||s.repository==nil{return nil,repository.ErrAcademicAccessDenied}
 	return s.repository.SaveSection(ctx,actorID,schoolID,id,yearID,classID,name,order,active)
