@@ -150,10 +150,13 @@ func setupRouterWithHandlers(
 		staffWrite := authMiddleware()
 		router.GET("/school/staff/:principalID/qualifications", staffRead, middleware.RequirePermission("users.read"), staffRecordsHandler.ListQualifications)
 		router.POST("/school/staff/:principalID/qualifications", staffWrite, middleware.RequirePermission("users.update"), staffRecordsHandler.CreateQualification)
+		router.PATCH("/school/staff/:principalID/qualifications/:recordID", staffWrite, middleware.RequirePermission("users.update"), staffRecordsHandler.UpdateQualification)
 		router.GET("/school/staff/:principalID/certifications", staffRead, middleware.RequirePermission("users.read"), staffRecordsHandler.ListCertifications)
 		router.POST("/school/staff/:principalID/certifications", staffWrite, middleware.RequirePermission("users.update"), staffRecordsHandler.CreateCertification)
+		router.PATCH("/school/staff/:principalID/certifications/:recordID", staffWrite, middleware.RequirePermission("users.update"), staffRecordsHandler.UpdateCertification)
 		router.GET("/school/staff/:principalID/experience", staffRead, middleware.RequirePermission("users.read"), staffRecordsHandler.ListExperience)
 		router.POST("/school/staff/:principalID/experience", staffWrite, middleware.RequirePermission("users.update"), staffRecordsHandler.CreateExperience)
+		router.PATCH("/school/staff/:principalID/experience/:recordID", staffWrite, middleware.RequirePermission("users.update"), staffRecordsHandler.UpdateExperience)
 	}
 
 	if roleHandler != nil {
