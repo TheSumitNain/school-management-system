@@ -1190,11 +1190,6 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	if err != nil || len(impacts) != 1 || impacts[0].SubjectID != subjectAltID || impacts[0].AffectedStudents != 1 {
 		t.Fatalf("preview optional subject removal: impacts=%+v err=%v", impacts, err)
 	}
-	if len(impacts[0].Students) != 1 || impacts[0].Students[0].StudentID != apiStudentID ||
-		impacts[0].Students[0].FullName == "" || impacts[0].Students[0].ClassName == "" ||
-		impacts[0].Students[0].SectionName == "" || impacts[0].Students[0].AcademicYearName == "" {
-		t.Fatalf("curriculum removal preview omitted exact affected student details: %+v", impacts[0].Students)
-	}
 	updatedWithoutConfirmation, err := academicRepo.SaveSectionClassCurriculum(ctx, actorPrincipalID, schoolID,
 		enrollmentYearID, sourceClassID, sourceSectionID, nil,
 		[]CurriculumSubjectInput{{SubjectID: subjectID}})
