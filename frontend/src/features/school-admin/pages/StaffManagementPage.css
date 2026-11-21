@@ -130,22 +130,22 @@
 
 .staff-records-panel{display:grid;gap:20px;padding:4px 0}
 .staff-records-heading h3,.staff-record-group-heading h4,.staff-record-form-heading h4{margin:0}
-.staff-records-heading p{margin:5px 0 0;color:var(--text-muted,#687386);font-size:13px}
+.staff-records-heading p{margin:5px 0 0;color:var(--color-text-muted);font-size:13px}
 .staff-record-group{display:grid;gap:10px}
 .staff-record-group-heading,.staff-record-form-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .staff-record-group-heading h4{font-size:14px;font-weight:650}
-.staff-record-empty{margin:0;padding:14px;border:1px dashed var(--border,#d9dee7);border-radius:10px;color:var(--text-muted,#687386);font-size:13px}
-.staff-record-card{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:12px 14px;border:1px solid var(--border,#e0e4eb);border-radius:10px;background:var(--surface,#fff)}
+.staff-record-empty{margin:0;padding:14px;border:1px dashed var(--color-border);border-radius:10px;color:var(--color-text-muted);font-size:13px}
+.staff-record-card{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:12px 14px;border:1px solid var(--color-border);border-radius:10px;background:var(--color-surface)}
 .staff-record-card>div{display:grid;gap:4px;min-width:0}
 .staff-record-card strong{font-size:14px}
-.staff-record-card span,.staff-record-card small{font-size:12px;color:var(--text-muted,#687386);overflow-wrap:anywhere}
-.staff-record-status{flex:0 0 auto;padding:3px 8px;border-radius:999px;background:var(--surface-subtle,#f1f3f6);text-transform:capitalize}
-.staff-record-error{display:flex;align-items:center;justify-content:space-between;gap:10px;color:var(--danger,#b42318);font-size:13px}
-.staff-record-error button,.staff-text-button{border:0;background:transparent;color:var(--accent,#2457c5);cursor:pointer;font:inherit}
-.staff-record-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:16px;border:1px solid var(--border,#d9dee7);border-radius:12px;background:var(--surface-subtle,#f8f9fb)}
+.staff-record-card span,.staff-record-card small{font-size:12px;color:var(--color-text-muted);overflow-wrap:anywhere}
+.staff-record-status{flex:0 0 auto;padding:3px 8px;border-radius:999px;background:var(--color-surface-muted);text-transform:capitalize}
+.staff-record-error{display:flex;align-items:center;justify-content:space-between;gap:10px;color:var(--color-danger);font-size:13px}
+.staff-record-error button,.staff-text-button{border:0;background:transparent;color:var(--color-action);cursor:pointer;font:inherit}
+.staff-record-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:16px;border:1px solid var(--color-border);border-radius:12px;background:var(--color-surface-muted)}
 .staff-record-form-heading,.staff-record-form-actions{grid-column:1/-1}
-.staff-record-form label{display:grid;gap:6px;font-size:12px;font-weight:600;color:var(--text,#273244)}
-.staff-record-form input,.staff-record-form select,.staff-record-form textarea{width:100%;min-width:0;padding:9px 10px;border:1px solid var(--border,#cfd5df);border-radius:8px;background:var(--surface,#fff);color:inherit;font:inherit;font-weight:400}
+.staff-record-form label{display:grid;gap:6px;font-size:12px;font-weight:600;color:var(--color-text)}
+.staff-record-form input,.staff-record-form select,.staff-record-form textarea{width:100%;min-width:0;padding:9px 10px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-surface);color:inherit;font:inherit;font-weight:400}
 .staff-record-form .staff-record-checkbox{display:flex;align-items:center;gap:8px}
 .staff-record-form .staff-record-checkbox input{width:auto}
 .staff-record-form-actions{display:flex;justify-content:flex-end;gap:8px;padding-top:4px}
