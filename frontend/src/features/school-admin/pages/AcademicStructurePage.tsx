@@ -165,9 +165,9 @@ export function AcademicStructurePage({permissions}:Props) {
       }
     }
     setFieldErrors({});setSaving(true);setFeedback(null);
-    try{await api(path,{method,body:JSON.stringify(body)});const resource=action.kind==="year"?"Academic year":action.kind==="class"?"Class":action.kind==="section"?"Section":"Subject";const outcome=id?"updated":"created";const closed=action.kind==="year"&&body.status==="closed";notifyToast("success",closed?`${resource} "${name}" closed and archived successfully.`:`${resource} "${name}" ${outcome} successfully.`);setAction(null);setFeedback(null);await load();}
+    try{await api(path,{method,body:JSON.stringify(body)});const resource=action.kind==="year"?"Academic year":action.kind==="class"?"Class":action.kind==="section"?"Section":"Subject";const outcome=id?"updated":"created";const closed=action.kind==="year"&&body.status==="closed";notifyToast("success",closed?`${resource} "${name}" closed and archived successfully.`:`${resource} "${name}" ${outcome} successfully.`);setAction(null);setFeedback(null);deactivationConfirmedRef.current=false;setSectionDeactivationImpact(null);await load();}
     catch(e){const message=e instanceof Error?e.message:"Unable to save academic information.";if(e instanceof ApiError&&Object.keys(e.fieldErrors).length){setFieldErrors(e.fieldErrors);}notifyToast("error",message);setFeedback({kind:"error",message});}
-    finally{setSaving(false);}
+    finally{setSaving(false);deactivationConfirmedRef.current=false;}
   }
 
   const titles:Record<Kind,string>={year:"Academic years",class:"Classes",section:"Sections",subject:"Subjects",curriculum:"Class curriculum",assignments:"Teacher assignments"};
@@ -216,7 +216,7 @@ export function AcademicStructurePage({permissions}:Props) {
         {action.kind==="subject"&&<label>Subject code<input name="subject_code" placeholder="e.g. MATH or ENG" defaultValue={(currentRecord as Subject|undefined)?.subject_code??""} maxLength={40} onChange={()=>{}}/><small>Optional. Must be unique within this school when provided.</small></label>}
         {action.kind==="section"&&<label>Status<input type="hidden" name="is_active" value={sectionStatus==="active"?"true":"false"}/><Select ariaLabel="Section status" value={sectionStatus} onChange={value=>{setSectionStatus(value as "active"|"inactive");refreshEditDirty({is_active:value==="active"});}} options={[{value:"active",label:"Active"},{value:"inactive",label:"Inactive"}]}/><small>Inactive sections are retained. Existing student records and history are not deleted.</small></label>}
         {(action.kind==="class"||action.kind==="subject")&&<label>Status<input type="hidden" name="is_active" value={recordStatus==="active"?"true":"false"}/><Select ariaLabel="Record status" value={recordStatus} onChange={value=>{setRecordStatus(value as "active"|"inactive");refreshEditDirty({is_active:value==="active"});}} options={[{value:"active",label:"Active"},{value:"inactive",label:"Inactive"}]}/><small>Inactive records are retained; this does not delete existing student or curriculum history.</small></label>}
-        <div className="app-modal-actions"><button type="button" className="app-modal-cancel" onClick={close} disabled={saving}>Cancel</button><button className="primary" type="submit" disabled={saving||(Boolean(currentRecord)&&!formDirty)}>{saving?"Saving…":"Save changes"}</button></div>
+        <div className="app-modal-actions"><button type="button" className="app-modal-cancel" onClick={close} disabled={saving}>Cancel</button><button className="primary" type="submit" disabled={saving||loadingSectionImpact||(Boolean(currentRecord)&&!formDirty)}>{loadingSectionImpact?"Checking impact…":saving?"Saving…":"Save changes"}</button></div>
       </form>
       </>}
     </Modal>
