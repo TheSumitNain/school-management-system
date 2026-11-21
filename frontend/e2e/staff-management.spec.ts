@@ -92,19 +92,31 @@ test("staff creation uses the shared IST date picker and submits its selected da
   await expect(page.getByRole("textbox", { name: "Search staff by name, code, designation or username" })).toBeVisible();
   await page.getByRole("button", { name: "Add staff" }).click();
   const dialog = page.getByRole("dialog", { name: "Add employee" });
-  await dialog.getByLabel("Login username").fill("teacher.one");
   await dialog.getByLabel("Full name").fill("Teacher One");
   await dialog.getByLabel("Employee code").fill("EMP-001");
-  await dialog.getByLabel("Designation").fill("Class Teacher");
   await dialog.getByLabel("Mobile number").fill("9876543210");
-  await dialog.getByLabel("Initial password").fill("E2E-Strong-Password-2026");
+  await dialog.getByRole("button", { name: "Continue" }).click();
+
+  await dialog.getByLabel("Designation").fill("Class Teacher");
   await dialog.getByRole("button", { name: "Joining date" }).click();
   await dialog.getByRole("button", { name: "Today", exact: true }).click();
+  await dialog.getByRole("button", { name: "Continue" }).click();
+
+  await dialog.getByLabel("Login username").fill("teacher.one");
+  await dialog.getByLabel("Initial password").fill("E2E-Strong-Password-2026");
+  await dialog.getByRole("button", { name: "Continue" }).click();
+  await expect(dialog.getByRole("heading", { name: "Review & create" })).toBeVisible();
   await dialog.getByRole("button", { name: "Create employee" }).click();
 
   await expect.poll(() => created.length).toBe(1);
   expect(created[0].joining_date).toBe(schoolDateValue());
   await expect(dialog).toHaveCount(0);
+  const handoff = page.getByRole("dialog", { name: "Share staff login credentials" });
+  await expect(handoff).toBeVisible();
+  await expect(handoff.getByText("teacher.one")).toBeVisible();
+  await expect(handoff.getByRole("button", { name: "Do this later" })).toBeVisible();
+  await handoff.getByRole("button", { name: "Do this later" }).click();
+  await expect(handoff).toHaveCount(0);
   await expect(page.locator('input[type="date"]')).toHaveCount(0);
 });
 
