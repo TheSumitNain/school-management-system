@@ -1,3 +1,12 @@
+## Student Management — page verification checkpoint (2026-11-21)
+
+- Student directory supports search, academic-year and status filters, pagination, new admission, profile editing and safe archive/restore-after-lost-response behavior.
+- Student profile workflows cover Basic Details, Parent Details / guardian relationships and shared guardian profiles, address and contact details, medical and physical details, enrollment history, and curriculum/optional-subject selections with permission-aware access.
+- The Enrollments view supports year filtering, paginated enrollment records, new enrollment, and promotion while preserving prior enrollment history and recorded attendance boundaries.
+- Frontend CI **PASS** — [run 44870000404](https://github.com/TheSumitNain/school-management-system/actions/runs/44870000404), checkpoint `ad383869f1af8cbfca0e069a752c8f79fa79cf07`: TypeScript/Vite build and all **32 Playwright browser acceptance tests** passed, including Parent Details draft isolation, enrollment, promotion, archive recovery, and mobile layout coverage.
+- Backend CI **PASS** — [run 44870000355](https://github.com/TheSumitNain/school-management-system/actions/runs/44870000355), same code checkpoint: full Go tests, PostgreSQL integration tests, and `go vet ./...` passed.
+- Local authenticated browser/API/database acceptance remains for the user to perform. No local database migration or school-data change was made in this checkpoint; verify a restorable backup before applying any pending migrations.
+
 ## Class Curriculum removal review — verified checkpoint (2026-11-21)
 
 - Before a subject is removed from a section curriculum, the preview shows the exact affected-student count and the affected students' names and admission numbers.
