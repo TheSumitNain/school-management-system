@@ -67,7 +67,7 @@ test("Platform Admin accounts can be created and safely deactivated with recover
     await route.fulfill({ status: 404, json: { message: `Unmocked platform admin request: ${method} ${path}` } });
   });
 
-  await signIn(page, "platform-operator");
+  await signIn(page, "platform-operator@example.com");
   await page.getByRole("button", { name: "Create Platform Admin" }).click();
   const createDialog = page.getByRole("dialog", { name: "Create Platform Admin" });
   await createDialog.getByLabel("Email address").fill("security@example.com");
@@ -163,7 +163,7 @@ test("school onboarding refreshes the school list and delegated permissions can 
     await route.fulfill({ status: 404, json: { message: `Unmocked platform school request: ${method} ${path}` } });
   });
 
-  await signIn(page, "platform-onboarder");
+  await signIn(page, "platform-onboarder@example.com");
   await page.getByRole("button", { name: "Onboard school" }).click();
   await page.getByRole("button", { name: "Onboard a new school" }).click();
   const schoolDialog = page.getByRole("dialog", { name: "Onboard a new school" });
