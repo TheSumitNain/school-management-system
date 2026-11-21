@@ -57,8 +57,10 @@ test("subject teacher assignment validates fields, maps server errors and preser
   await expect(dialog.getByText("Select a teacher.")).toBeVisible();
   expect(createCalls).toBe(0);
 
-  await dialog.getByLabel("Subject assignment academic year").click();
-  await page.getByRole("option", { name: "2026–2027" }).click();
+  const subjectYearSelect = dialog.getByLabel("Subject assignment academic year");
+  await subjectYearSelect.click();
+  await dialog.getByRole("option", { name: "2026–2027" }).click();
+  if (await subjectYearSelect.getAttribute("aria-expanded") === "true") await page.keyboard.press("Escape");
   await dialog.getByLabel("Subject assignment section").click();
   await page.getByRole("option", { name: "Class 4 · A" }).click();
   await dialog.getByLabel("Subject").click();
@@ -128,7 +130,7 @@ test("failed assignment refresh clears stale rows and disables new assignment ac
   await expect(page.getByRole("cell", { name: "teacher.one" })).toBeVisible();
 
   failAssignments = true;
-  await page.getByRole("button", { name: "Refresh" }).click();
+  await page.locator(".teacher-assignments .assignment-heading > button").click();
   await expect(page.getByRole("alert").filter({ hasText: "Assignment service temporarily unavailable." })).toBeVisible();
   await expect(page.getByRole("cell", { name: "teacher.one" })).not.toBeVisible();
   await expect(page.getByRole("button", { name: "Assign subject teacher" })).toBeDisabled();
@@ -182,8 +184,10 @@ test("class in-charge assignment validates fields, recovers from server errors a
   await expect(dialog.getByText("Select a teacher.")).toBeVisible();
   expect(createCalls).toBe(0);
 
-  await dialog.getByLabel("Class in-charge academic year").click();
-  await page.getByRole("option", { name: "2026–2027" }).click();
+  const inchargeYearSelect = dialog.getByLabel("Class in-charge academic year");
+  await inchargeYearSelect.click();
+  await dialog.getByRole("option", { name: "2026–2027" }).click();
+  if (await inchargeYearSelect.getAttribute("aria-expanded") === "true") await page.keyboard.press("Escape");
   await dialog.getByLabel("Class in-charge section").click();
   await page.getByRole("option", { name: "Class 4 · A" }).click();
   await dialog.getByLabel("Class in-charge teacher").click();
