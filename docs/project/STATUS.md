@@ -1,3 +1,10 @@
+## Local database migration checkpoint — V56 applied (2026-11-21)
+
+- Applied V56 successfully to the local test database `school_management_test` and application database `school_management`; both were independently checked at schema version `56`, `dirty=false`.
+- Before applying the migration, created fresh V55 backups: `school_management_v55_20261121_133949.backup` and `school_management_test_v55_20261121_133949.backup`.
+- Both backups were restore-tested in separate temporary databases; each restored to V55 with `dirty=false`. Temporary verification databases were dropped after successful checks. Original databases and backup files were not altered.
+- V56 restores append-only curriculum/student subject-selection history. Keep revoked selections and soft-deactivated curriculum subjects; do not downgrade once either kind of history exists.
+
 ## Platform Admin — read-only audit history (2026-11-21)
 
 - Added `GET /platform/audit-events?limit=50&offset=0`, protected by the live `platform.audit.read` permission and a second repository-level active Platform Admin/system-role permission check.
@@ -1642,7 +1649,7 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - The earlier V55 current-state-only policy is superseded. V56 restores append-only student subject-selection history and the V54 soft-deactivation behavior for removed curriculum subjects.
 - Student choice edits now set `revoked_at` on prior active selection rows and insert the replacement current choices. Confirmed curriculum removals revoke affected active choices and set `class_curriculum_subjects.is_active=FALSE`; neither historical row is deleted.
 - The School Admin confirmation continues to show the exact affected-student list and count before any write. The backend recomputes the exact student set under transaction locks, rejects stale confirmations, and writes the audit event in the same transaction.
-- The new PostgreSQL integration assertions verify selection history remains after replacement and removed curriculum subject rows remain stored but inactive. V56 has not been applied to the user's local databases; create and verify restorable backups before applying it.
+- The new PostgreSQL integration assertions verify selection history remains after replacement and removed curriculum subject rows remain stored but inactive. V56 was subsequently applied successfully to both local databases on 2026-11-21. Both `school_management` and `school_management_test` were verified at `56|false`. Before migration, fresh V55 backups were created and independently restored into temporary databases; both restores reported `55|false`. The original databases and backup files were left intact.
 
 ## Student Management — address location validation accessibility (2026-11-21)
 
