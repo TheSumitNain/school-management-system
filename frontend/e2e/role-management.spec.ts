@@ -155,3 +155,60 @@ test("permission delegation load errors are visible and retryable", async ({ pag
   await permissionDialog.getByRole("button", { name: "Try again" }).click();
   await expect(permissionDialog.getByRole("button", { name: "Add delegated permission" })).toBeEnabled();
 });
+
+
+test("read-only role access cannot create roles or change delegated permissions", async ({ page }) => {
+  let delegationRequests = 0;
+  await page.route("**/api/**", async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname.replace(/^\/api/, "");
+    const method = request.method();
+    if (path === "/auth/refresh") { await route.fulfill({ status: 401, json: { message: "No active session" } }); return; }
+    if (path === "/auth/login" && method === "POST") {
+      await route.fulfill({ json: { access_token: "e2e-role-readonly-token", token_type: "Bearer", principal: { principal_id: 133, principal_type: "staff", status: "active", school_id: 10 } } });
+      return;
+    }
+    if (path === "/auth/me") {
+      await route.fulfill({ json: { principal_id: 133, principal_type: "staff", school_id: 10, username: "e2e-role-readonly", permissions: ["roles.read", "permissions.read"] } });
+      return;
+    }
+    if (path === "/school/roles" && method === "GET") {
+      await route.fulfill({ json: { roles: [
+        { id: 2, role_key: "school_admin", name: "School Admin", is_system: true, created_at: "2026-01-01T00:00:00Z" },
+        { id: 9, role_key: "library_coordinator", name: "Library Coordinator", is_system: false, created_at: "2026-01-01T00:00:00Z" },
+      ] } });
+      return;
+    }
+    if (path === "/school/permissions") {
+      await route.fulfill({ json: { permissions: [{ permission_key: "students.read_basic", description: "View basic student information.", is_delegable: true }] } });
+      return;
+    }
+    if (path === "/school/roles/9/permissions" && method === "GET") {
+      await route.fulfill({ json: { permissions: [{ permission_key: "students.read_basic", description: "View basic student information.", delegation_active: true, permission_active: true, created_at: "2026-01-01T00:00:00Z" }] } });
+      return;
+    }
+    if (path === "/school/permission-delegations") {
+      delegationRequests += 1;
+      await route.fulfill({ status: 500, json: { message: "Read-only users must not load delegation controls." } });
+      return;
+    }
+    await route.fulfill({ status: 404, json: { message: `Unmocked E2E API request: ${method} ${path}` } });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Username").fill("e2e-role-readonly");
+  await page.getByLabel("Password").fill("E2E-only-password");
+  await page.getByRole("button", { name: /Continue/ }).click();
+  await page.getByRole("button", { name: "Roles & permissions" }).click();
+
+  await expect(page.getByRole("button", { name: "Create role" })).toHaveCount(0);
+  await expect(page.getByText("Protected built-in role · permissions are managed by the platform.")).toBeVisible();
+  await page.getByRole("button", { name: "Manage permissions" }).click();
+  const permissionDialog = page.getByRole("dialog", { name: "Manage permissions · Library Coordinator" });
+  await expect(permissionDialog.getByText("students.read_basic")).toBeVisible();
+  await expect(permissionDialog.getByText("You can view permissions but do not have both permissions required to change this role.")).toBeVisible();
+  await expect(permissionDialog.getByRole("button", { name: "Add delegated permission" })).toHaveCount(0);
+  await expect(permissionDialog.getByRole("button", { name: "Remove students.read_basic" })).toHaveCount(0);
+  expect(delegationRequests).toBe(0);
+});
