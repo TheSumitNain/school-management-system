@@ -27,6 +27,12 @@ type SectionDeactivationImpact = {
   affected_students:Array<{student_id:number;full_name:string;admission_number:string;enrollment_status:string}>;
   impact_fingerprint:string;
 };
+type SubjectDeactivationImpact = {
+  subject_id:number; subject_name:string; curriculum_subject_count:number; active_teacher_assignment_count:number;
+  active_student_selection_count:number; historical_student_selection_count:number;
+  affected_students:Array<{student_id:number;full_name:string;admission_number:string;class_name:string;section_name:string;academic_year_name:string}>;
+  impact_fingerprint:string;
+};
 type Kind = "year"|"class"|"section"|"subject"|"curriculum"|"assignments";
 type EditableKind = Exclude<Kind, "assignments"|"curriculum">;
 type Action = { kind:EditableKind; record?: Year|SchoolClass|Section|Subject } | null;
@@ -69,6 +75,8 @@ export function AcademicStructurePage({permissions}:Props) {
   const [loadingClassImpact,setLoadingClassImpact]=useState(false);
   const [sectionDeactivationImpact,setSectionDeactivationImpact]=useState<SectionDeactivationImpact|null>(null);
   const [loadingSectionImpact,setLoadingSectionImpact]=useState(false);
+  const [subjectDeactivationImpact,setSubjectDeactivationImpact]=useState<SubjectDeactivationImpact|null>(null);
+  const [loadingSubjectImpact,setLoadingSubjectImpact]=useState(false);
   const deactivationConfirmedRef=useRef(false);
   const deactivationFingerprintRef=useRef("");
 
@@ -125,13 +133,14 @@ export function AcademicStructurePage({permissions}:Props) {
   },[]);
 
   function begin(kind:EditableKind,record?:Year|SchoolClass|Section|Subject){setAction({kind,record});setFormDirty(false);setFieldErrors({});setFeedback(null);setStartsOn(kind==="year"&&record?(record as Year).starts_on.slice(0,10):"");setEndsOn(kind==="year"&&record?(record as Year).ends_on.slice(0,10):"");setYearStatus(kind==="year"&&record?(record as Year).status:"planned");setIsCurrentYear(kind==="year"&&record?(record as Year).is_current:false);setSectionYearID(kind==="section"&&record?String((record as Section).academic_year_id):kind==="section"?(filterYear||String(years.find(item=>item.is_current&&item.status==="active")?.id??"")):"");setSectionClassID(kind==="section"&&record?String((record as Section).class_id):"");setSectionMedium(kind==="section"&&record?((record as Section).medium??""):"");setSectionStatus(kind==="section"&&record?((record as Section).is_active?"active":"inactive"):"active");setRecordStatus((kind==="class"||kind==="subject")&&record?((record as SchoolClass|Subject).is_active?"active":"inactive"):"active");}
-  function close(){setAction(null);setFormDirty(false);setFieldErrors({});setClassDeactivationImpact(null);setSectionDeactivationImpact(null);deactivationConfirmedRef.current=false;deactivationFingerprintRef.current="";}
+  function close(){setAction(null);setFormDirty(false);setFieldErrors({});setClassDeactivationImpact(null);setSectionDeactivationImpact(null);setSubjectDeactivationImpact(null);deactivationConfirmedRef.current=false;deactivationFingerprintRef.current="";}
   async function submit(event:FormEvent<HTMLFormElement>){
     event.preventDefault();if(!action)return;
     const form=new FormData(event.currentTarget);
     const id=action.record?.id;
     const isSectionDeactivation=action.kind==="section"&&Boolean(id)&&(action.record as Section).is_active&&form.get("is_active")==="false";
     const isClassDeactivation=action.kind==="class"&&Boolean(id)&&(action.record as SchoolClass).is_active&&form.get("is_active")==="false";
+    const isSubjectDeactivation=action.kind==="subject"&&Boolean(id)&&(action.record as Subject).is_active&&form.get("is_active")==="false";
     if(isClassDeactivation&&!deactivationConfirmedRef.current){
       setLoadingClassImpact(true);
       try{
@@ -154,6 +163,17 @@ export function AcademicStructurePage({permissions}:Props) {
       }finally{setLoadingSectionImpact(false);}
       return;
     }
+    if(isSubjectDeactivation&&!deactivationConfirmedRef.current){
+      setLoadingSubjectImpact(true);
+      try{
+        const result=await api<{impact:SubjectDeactivationImpact}>(`/school/subjects/${id}/deactivation-impact`);
+        setSubjectDeactivationImpact(result.impact);
+      }catch(e){
+        const message=e instanceof Error?e.message:"Unable to check subject dependencies."; 
+        notifyToast("error",message);setFeedback({kind:"error",message});
+      }finally{setLoadingSubjectImpact(false);}
+      return;
+    }
     const method=id?"PATCH":"POST";
     const path=action.kind==="year"?"/school/academic-years"+(id?"/"+id:"")
       :action.kind==="class"?"/school/classes"+(id?"/"+id:"")
@@ -170,7 +190,7 @@ export function AcademicStructurePage({permissions}:Props) {
     if(action.kind==="year"){const startsOn=String(form.get("starts_on")??"");const endsOn=String(form.get("ends_on")??"");const status=String(form.get("status")??"planned");const isCurrent=isCurrentYear;if(!startsOn)errors.starts_on="Choose the academic year start date.";if(!endsOn)errors.ends_on="Choose the academic year end date.";else if(startsOn&&endsOn<=startsOn)errors.ends_on="The end date must be later than the start date.";if(isCurrent&&status!=="active")errors.status="Only an active academic year can be marked as current.";if(Object.keys(errors).length){setFieldErrors(errors);return;}body={name,starts_on:startsOn,ends_on:endsOn,status,is_current:isCurrent};}
     else if(action.kind==="class")body={name,display_order:Number(form.get("display_order")??0),is_active:form.get("is_active")==="true",...(deactivationFingerprintRef.current?{impact_fingerprint:deactivationFingerprintRef.current}:{})};
     else if(action.kind==="section"){if(!Number(form.get("academic_year_id")))errors.academic_year_id="Select an academic year.";if(!Number(form.get("class_id")))errors.class_id="Select a class.";if(Object.keys(errors).length){setFieldErrors(errors);return;}body={academic_year_id:Number(form.get("academic_year_id")),class_id:Number(form.get("class_id")),name,medium:sectionMedium||null,display_order:Number(form.get("display_order")??0),is_active:form.get("is_active")==="true",...(deactivationFingerprintRef.current?{impact_fingerprint:deactivationFingerprintRef.current}:{})};}
-    else body={name,subject_code:String(form.get("subject_code")??"").trim()||null,is_active:form.get("is_active")==="true"};
+    else body={name,subject_code:String(form.get("subject_code")??"").trim()||null,is_active:form.get("is_active")==="true",...(deactivationFingerprintRef.current?{impact_fingerprint:deactivationFingerprintRef.current}:{})};
     if(Object.keys(errors).length){setFieldErrors(errors);return;}
     if(id&&currentRecord){
       const original:Record<string,unknown>=action.kind==="year"
@@ -239,7 +259,7 @@ export function AcademicStructurePage({permissions}:Props) {
         {action.kind==="subject"&&<label>Subject code<input name="subject_code" placeholder="e.g. MATH or ENG" defaultValue={(currentRecord as Subject|undefined)?.subject_code??""} maxLength={40} onChange={()=>{}}/><small>Optional. Must be unique within this school when provided.</small></label>}
         {action.kind==="section"&&<label>Status<input type="hidden" name="is_active" value={sectionStatus==="active"?"true":"false"}/><Select ariaLabel="Section status" value={sectionStatus} onChange={value=>{setSectionStatus(value as "active"|"inactive");refreshEditDirty({is_active:value==="active"});}} options={[{value:"active",label:"Active"},{value:"inactive",label:"Inactive"}]}/><small>Inactive sections are retained. Existing student records and history are not deleted.</small></label>}
         {(action.kind==="class"||action.kind==="subject")&&<label>Status<input type="hidden" name="is_active" value={recordStatus==="active"?"true":"false"}/><Select ariaLabel="Record status" value={recordStatus} onChange={value=>{setRecordStatus(value as "active"|"inactive");refreshEditDirty({is_active:value==="active"});}} options={[{value:"active",label:"Active"},{value:"inactive",label:"Inactive"}]}/><small>Inactive records are retained; this does not delete existing student or curriculum history.</small></label>}
-        <div className="app-modal-actions"><button type="button" className="app-modal-cancel" onClick={close} disabled={saving}>Cancel</button><button className="primary" type="submit" disabled={saving||loadingSectionImpact||loadingClassImpact||(Boolean(currentRecord)&&!formDirty)}>{loadingClassImpact?"Checking impact…":loadingSectionImpact?"Checking impact…":saving?"Saving…":"Save changes"}</button></div>
+        <div className="app-modal-actions"><button type="button" className="app-modal-cancel" onClick={close} disabled={saving}>Cancel</button><button className="primary" type="submit" disabled={saving||loadingSectionImpact||loadingClassImpact||loadingSubjectImpact||(Boolean(currentRecord)&&!formDirty)}>{loadingClassImpact||loadingSectionImpact||loadingSubjectImpact?"Checking impact…":saving?"Saving…":"Save changes"}</button></div>
       </form>
       </>}
     </Modal>
@@ -274,6 +294,20 @@ export function AcademicStructurePage({permissions}:Props) {
         {sectionDeactivationImpact.affected_students.length>0&&<div><h3>Students with active enrollments ({sectionDeactivationImpact.affected_students.length})</h3><div className="table-scroll"><table><thead><tr><th>Student</th><th>Admission number</th></tr></thead><tbody>{sectionDeactivationImpact.affected_students.map(student=><tr key={student.student_id}><td>{student.full_name}</td><td>{student.admission_number||"—"}</td></tr>)}</tbody></table></div></div>}
         <p><b>Deactivation does not transfer students or revoke assignments automatically.</b> Existing records remain linked for history. Review and plan those follow-up changes separately.</p>
         <div className="app-modal-actions"><button type="button" className="app-modal-cancel" onClick={()=>{setSectionDeactivationImpact(null);deactivationConfirmedRef.current=false;deactivationFingerprintRef.current="";}}>Go back</button><button type="button" className="primary" onClick={()=>{deactivationFingerprintRef.current=sectionDeactivationImpact.impact_fingerprint;deactivationConfirmedRef.current=true;setSectionDeactivationImpact(null);editFormRef.current?.requestSubmit();}}>Confirm deactivation</button></div>
+      </div>}
+    </Modal>
+    <Modal open={Boolean(subjectDeactivationImpact)} title="Review subject deactivation" description="Review every curriculum reference, active teacher assignment and current student choice before deactivating this subject. Existing history will be retained." onClose={()=>{setSubjectDeactivationImpact(null);deactivationConfirmedRef.current=false;deactivationFingerprintRef.current="";}} closeDisabled={saving}>
+      {subjectDeactivationImpact&&<div className="academic-impact-review">
+        <p><b>{subjectDeactivationImpact.subject_name}</b> currently has:</p>
+        <ul>
+          <li><b>{subjectDeactivationImpact.curriculum_subject_count}</b> curriculum references (retained)</li>
+          <li><b>{subjectDeactivationImpact.active_teacher_assignment_count}</b> active teacher-subject assignments (not revoked automatically)</li>
+          <li><b>{subjectDeactivationImpact.active_student_selection_count}</b> active student subject selections</li>
+          <li><b>{subjectDeactivationImpact.historical_student_selection_count}</b> historical student selections retained</li>
+        </ul>
+        {subjectDeactivationImpact.affected_students.length>0&&<div><h3>Students with this active subject choice ({subjectDeactivationImpact.affected_students.length})</h3><div className="table-scroll"><table><thead><tr><th>Student</th><th>Admission number</th><th>Class / Section</th><th>Academic year</th></tr></thead><tbody>{subjectDeactivationImpact.affected_students.map((student,index)=><tr key={student.student_id+"-"+index}><td>{student.full_name}</td><td>{student.admission_number||"—"}</td><td>{student.class_name} / {student.section_name}</td><td>{student.academic_year_name}</td></tr>)}</tbody></table></div></div>}
+        <p><b>No curriculum rows, teacher assignments or student choices will be silently deleted or revoked.</b> Deactivation only prevents future use of this subject; plan any required curriculum/student-choice corrections separately.</p>
+        <div className="app-modal-actions"><button type="button" className="app-modal-cancel" onClick={()=>{setSubjectDeactivationImpact(null);deactivationConfirmedRef.current=false;deactivationFingerprintRef.current="";}}>Go back</button><button type="button" className="primary" onClick={()=>{deactivationFingerprintRef.current=subjectDeactivationImpact.impact_fingerprint;deactivationConfirmedRef.current=true;setSubjectDeactivationImpact(null);editFormRef.current?.requestSubmit();}}>Confirm deactivation</button></div>
       </div>}
     </Modal>
     {loading?<div className="table-message">Loading academic structure…</div>:tab==="year"?<section className="table-panel"><div className="toolbar"><div><h2>Academic years</h2><small>{years.length} records</small></div>{canManageYears&&<button className="primary academic-add" type="button" onClick={()=>begin("year")}><Plus size={15}/> Add academic year</button>}</div>{years.length===0?<div className="table-message">No academic years configured yet.</div>:<div className="table-scroll"><table><thead><tr><th>Name</th><th>Period</th><th>Status</th><th>Current</th>{canManageYears&&<th>Action</th>}</tr></thead><tbody>{years.map(item=><tr key={item.id}><td><b>{item.name}</b></td><td>{item.starts_on.slice(0,10)} – {item.ends_on.slice(0,10)}</td><td><span className={`academic-status-badge status-${item.status}`}>{item.status==="planned"?"Planned":item.status==="active"?"Active":"Closed"}</span></td><td>{item.is_current?"Yes":"—"}</td>{canManageYears&&<td><button type="button" className="academic-edit" disabled={item.status==="closed"} onClick={()=>begin("year",item)} aria-label={"Edit "+item.name}><Pencil size={15}/></button></td>}</tr>)}</tbody></table></div>}</section>
