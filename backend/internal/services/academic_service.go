@@ -73,6 +73,19 @@ func (s *AcademicService) ListClasses(ctx context.Context,actorID,schoolID int64
 	if s==nil||s.repository==nil{return nil,repository.ErrAcademicAccessDenied}
 	return s.repository.ListClasses(ctx,actorID,schoolID)
 }
+func (s *AcademicService) PreviewClassDeactivation(ctx context.Context, actorID, schoolID, classID int64) (*repository.ClassDeactivationImpact, error) {
+	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
+	type previewRepository interface { PreviewClassDeactivation(context.Context,int64,int64,int64)(*repository.ClassDeactivationImpact,error) }
+	repo,ok:=s.repository.(previewRepository);if !ok{return nil,repository.ErrAcademicAccessDenied}
+	return repo.PreviewClassDeactivation(ctx,actorID,schoolID,classID)
+}
+func (s *AcademicService) SaveClassWithDeactivationConfirmation(ctx context.Context, actorID, schoolID, classID int64, name string, order int, fingerprint string) (*repository.AcademicClass,error) {
+	if s==nil||s.repository==nil{return nil,repository.ErrAcademicAccessDenied}
+	type confirmedRepository interface { SaveClassWithDeactivationConfirmation(context.Context,int64,int64,int64,string,int,string)(*repository.AcademicClass,error) }
+	repo,ok:=s.repository.(confirmedRepository);if !ok{return nil,repository.ErrAcademicAccessDenied}
+	return repo.SaveClassWithDeactivationConfirmation(ctx,actorID,schoolID,classID,name,order,fingerprint)
+}
+
 func (s *AcademicService) SaveClass(ctx context.Context,actorID,schoolID,id int64,name string,order int,active bool)(*repository.AcademicClass,error){
 	if s==nil||s.repository==nil{return nil,repository.ErrAcademicAccessDenied}
 	return s.repository.SaveClass(ctx,actorID,schoolID,id,name,order,active)
