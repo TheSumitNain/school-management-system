@@ -258,7 +258,7 @@ test("section curriculum validates optional groups, edits in place, and confirms
   await expect(page.locator(".curriculum-existing").getByText("Hindi", { exact: false })).toHaveCount(0);
   expect(removalSavePayload).toMatchObject({
     academic_year_id: 7, class_id: 3, section_id: 44,
-    removal_confirmations: [{ subject_id: 92, affected_students: 2 }],
+    removal_confirmations: [{ subject_id: 92, affected_students: 2, student_ids: [1001, 1002] }],
     subjects: [
       { subject_id: 91, is_optional: true },
       { subject_id: 93, is_optional: true, optional_group: "Second language" },
