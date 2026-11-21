@@ -1,3 +1,14 @@
+## Staff Management — Add Staff wizard and employee profile shell (2026-11-21)
+
+- Replaced the single-step Add Employee modal flow with the roadmap's four steps: Staff Identity, Employment Details, Login & Access, and Review & Create. Step transitions validate the visible step; server-side validation remains mapped to the relevant fields on final submission.
+- The wizard currently exposes only fields supported by the existing create API: full name, employee code, mobile number, optional email, designation, optional joining date, globally unique username and initial password. New records retain the backend's current Active employment default; no unsupported staff-type, department, profile-only or role-selection fields are fabricated.
+- Added a final review summary using the entered values. The employee and staff login are still created together through the existing transactional endpoint.
+- After successful account creation, an optional one-time credential handoff appears with an explicit Copy credentials / Do this later choice. Nothing is auto-sent; the password is held only in transient component state for this handoff and cleared when the dialog closes. No password is persisted or logged by this UI.
+- Added the eight-tab employee profile shell: Overview, Personal Details, Employment, Qualifications & Experience, Documents, Academic Assignments, Account & Access, and History & Activity. Current profile and employment fields are read from the existing staff record; edit actions continue through the existing validated update endpoint. Role assignment and permission overrides reuse the existing server-authorized components.
+- Qualifications, Documents, staff-scoped Academic Assignments and History & Activity are intentionally marked as pending integration. No fake saves, document uploads or fabricated event history are shown. Document upload remains blocked until private storage and resource-specific access checks exist.
+- Added Playwright coverage for the four-step create flow, review values, one-time handoff, and profile tabs. Tests are committed but not executed in this environment. Latest commit has no reported GitHub status checks; frontend typecheck, production build and browser run remain pending.
+- No backend changes, database migrations, local database changes or edits to Academic, Student Management or Settings were made.
+
 ## Staff Management — workspace rebuild started (2026-11-21)
 
 - Completed a source-level Phase 0 audit and recorded the Keep / Extend / Missing / Needs verification map in [Staff Management — Existing Implementation Audit](../product/STAFF-MANAGEMENT-IMPLEMENTATION-AUDIT.md).
