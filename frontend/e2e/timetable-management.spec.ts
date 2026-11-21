@@ -57,6 +57,7 @@ test("timetable period form validates every required field inline without browse
   const form = page.locator("form.timetable-form");
   await expect(form).toHaveAttribute("novalidate", "");
 
+  await page.getByLabel(/Period number/).fill("");
   await page.getByRole("button", { name: "Save period" }).click();
 
   const fields = [
