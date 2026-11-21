@@ -57,7 +57,7 @@ test("subject teacher assignment validates fields, maps server errors and preser
   await expect(dialog.getByText("Select a teacher.")).toBeVisible();
   expect(createCalls).toBe(0);
 
-  const subjectYearSelect = dialog.getByLabel("Subject assignment academic year");
+  const subjectYearSelect = dialog.locator('button[aria-label="Subject assignment academic year"]');
   await subjectYearSelect.click();
   await dialog.getByRole("option", { name: "2026–2027" }).click();
   if (await subjectYearSelect.getAttribute("aria-expanded") === "true") await page.keyboard.press("Escape");
@@ -184,7 +184,7 @@ test("class in-charge assignment validates fields, recovers from server errors a
   await expect(dialog.getByText("Select a teacher.")).toBeVisible();
   expect(createCalls).toBe(0);
 
-  const inchargeYearSelect = dialog.getByLabel("Class in-charge academic year");
+  const inchargeYearSelect = dialog.locator('button[aria-label="Class in-charge academic year"]');
   await inchargeYearSelect.click();
   await dialog.getByRole("option", { name: "2026–2027" }).click();
   if (await inchargeYearSelect.getAttribute("aria-expanded") === "true") await page.keyboard.press("Escape");
