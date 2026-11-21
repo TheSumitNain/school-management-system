@@ -68,7 +68,8 @@ test("staff creation uses the shared IST date picker and submits its selected da
     await route.fulfill({ json: { staff: rows[0] } });
   });
 
-  await expect(page.getByRole("heading", { name: "Staff management" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Staff Management" })).toBeVisible();
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
   await expect(page.getByRole("textbox", { name: "Search staff by name, code, designation or username" })).toBeVisible();
   await page.getByRole("button", { name: "Add staff" }).click();
   const dialog = page.getByRole("dialog", { name: "Add employee" });
