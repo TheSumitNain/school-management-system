@@ -1848,6 +1848,39 @@ test("standalone enrollment validates admission and roll number before saving", 
   await page.getByRole("button", { name: "Students" }).click();
   await page.getByRole("button", { name: "Enrollments" }).click();
   await page.getByRole("button", { name: "Enroll student" }).click();
+  const enrollmentDialog = page.getByRole("dialog", { name: "Enroll student" });
+  await expect(enrollmentDialog).toBeVisible();
+  for (const width of [320, 360, 390, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    const layout = await enrollmentDialog.evaluate(dialog => {
+      const rect = dialog.getBoundingClientRect();
+      const content = dialog.querySelector<HTMLElement>(".app-modal-content");
+      const controls = Array.from(dialog.querySelectorAll<HTMLElement>("input, button"));
+      const controlsFit = controls.every(control => {
+        const bounds = control.getBoundingClientRect();
+        return bounds.left >= rect.left - 1 && bounds.right <= rect.right + 1 &&
+          control.scrollWidth <= control.clientWidth + 1;
+      });
+      const overflowing = content ? Array.from(content.querySelectorAll<HTMLElement>("*"))
+        .filter(child => child.scrollWidth > child.clientWidth + 1)
+        .map(child => ({
+          tag: child.tagName.toLowerCase(),
+          className: typeof child.className === "string" ? child.className : "",
+          text: (child.textContent ?? "").trim().slice(0, 60),
+          clientWidth: child.clientWidth,
+          scrollWidth: child.scrollWidth,
+        })).slice(0, 8) : [];
+      return {
+        dialogFits: rect.left >= 0 && rect.right <= window.innerWidth + 1,
+        contentFits: Boolean(content && content.scrollWidth <= content.clientWidth + 1),
+        controlsFit,
+        overflowing,
+      };
+    });
+    expect(layout.dialogFits && layout.contentFits && layout.controlsFit,
+      `enrollment dialog should fit at ${width}px: ${JSON.stringify(layout)}`).toBe(true);
+  }
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.getByPlaceholder("Search name or admission number").fill("Existing Student");
   await page.getByRole("button", { name: "Student", exact: true }).click();
   await page.getByRole("option", { name: "Existing Student · ADM-EXISTING-044" }).click();
