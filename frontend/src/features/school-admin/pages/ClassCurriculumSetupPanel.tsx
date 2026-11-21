@@ -56,7 +56,6 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
   const availableSections = sections.filter(section => section.is_active && section.academic_year_id === yearNumber && section.class_id === classNumber);
   const curriculaQuery = useSchoolClassCurriculaQuery(yearNumber, classNumber, sectionNumber);
   const currentCurriculum = (curriculaQuery.data?.curricula ?? []).find(item => item.status === "active") ?? null;
-  const activeSubjects = subjects.filter(subject => subject.is_active);
   const selectableSubjects = subjects.filter(subject => subject.is_active || included.includes(subject.id));
   const busy = save.isPending || preview.isPending;
   const compulsoryCount = included.filter(id => !(groupBySubject[id] ?? "").trim()).length;
