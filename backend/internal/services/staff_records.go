@@ -18,7 +18,9 @@ type staffRecordsRepository interface {
 	ListStaffCertifications(context.Context,int64,int64,int64)([]repository.StaffCertification,error)
 	CreateStaffCertification(context.Context,int64,int64,int64,repository.StaffCertification)(*repository.StaffCertification,error)
 	ListStaffExperience(context.Context,int64,int64,int64)([]repository.StaffExperience,error)
-	CreateStaffExperience(context.Context,int64,int64,int64,repository.StaffExperience)(*repository.StaffExperience,error)
+	CreateStaffExperience(context.Context,int64,int64,int64,repository.StaffExperience)(*repository.StaffExperience,error)	UpdateStaffQualification(context.Context,int64,int64,int64,int64,repository.StaffQualification)(*repository.StaffQualification,error)
+	UpdateStaffCertification(context.Context,int64,int64,int64,int64,repository.StaffCertification)(*repository.StaffCertification,error)
+	UpdateStaffExperience(context.Context,int64,int64,int64,int64,repository.StaffExperience)(*repository.StaffExperience,error)
 }
 
 type StaffRecordsService struct { repository staffRecordsRepository }
