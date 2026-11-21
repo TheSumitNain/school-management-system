@@ -133,8 +133,13 @@ export function PlatformAdminPage({ permissions }: Props) {
 
   async function grantPermission(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (selectedSchoolID === null || !selectedPermission || (!canAssignToRoles && !canOverrideUsers)) {
-      setFeedback({ kind: "error", message: "Choose a school, permission and at least one delegation capability." });
+    const errors: Record<string, string> = {};
+    if (selectedSchoolID === null) errors.school = "Choose a school.";
+    if (!selectedPermission) errors.permission_key = "Choose a permission to delegate.";
+    if (!canAssignToRoles && !canOverrideUsers) errors.capabilities = "Select at least one delegation capability.";
+    setFieldErrors(current => ({ ...current, ...errors, permission_key: errors.permission_key ?? "", capabilities: errors.capabilities ?? "" }));
+    if (Object.keys(errors).length) {
+      setFeedback({ kind: "error", message: "Review the delegation details that need attention." });
       return;
     }
     setFeedback(null);
@@ -145,10 +150,20 @@ export function PlatformAdminPage({ permissions }: Props) {
         can_assign_to_roles: canAssignToRoles,
         can_override_users: canOverrideUsers,
       });
+      setSelectedPermission("");
+      setFieldErrors(current => ({ ...current, permission_key: "", capabilities: "" }));
       notifyToast("success", "Permission delegated to the selected school.");
       setFeedback(null);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to delegate permission.";
+      if (error instanceof ApiError) {
+        const mapped: Record<string, string> = {};
+        if (error.fieldErrors.permission_key) mapped.permission_key = error.fieldErrors.permission_key;
+        if (error.fieldErrors.can_assign_to_roles || error.fieldErrors.can_override_users) {
+          mapped.capabilities = error.fieldErrors.can_assign_to_roles || error.fieldErrors.can_override_users;
+        }
+        if (Object.keys(mapped).length) setFieldErrors(current => ({ ...current, ...mapped }));
+      }
       notifyToast("error", message);
       setFeedback({ kind: "error", message });
     }
@@ -246,16 +261,18 @@ export function PlatformAdminPage({ permissions }: Props) {
                   : permissionQuery.error ? <div className="table-message error-text">{permissionQuery.error instanceof Error ? permissionQuery.error.message : "Unable to load permission catalogue."}<button className="platform-inline-button" onClick={() => void permissionQuery.refetch()}>Retry</button></div>
                   : delegablePermissions.length === 0 ? <div className="table-message">No active school permissions are currently marked as delegable.</div> : <form onSubmit={grantPermission} noValidate>
                   <label>Permission
-                    <select value={selectedPermission} aria-invalid={Boolean(fieldErrors.permission_key)} aria-describedby={fieldErrors.permission_key?"delegation-permission-error":undefined} onChange={event => {setSelectedPermission(event.target.value);setFieldErrors(current=>({...current,permission_key:""}));}} required>
+                    <select value={selectedPermission} aria-invalid={Boolean(fieldErrors.permission_key)} aria-describedby={fieldErrors.permission_key?"delegation-permission-error":undefined} onChange={event => {setSelectedPermission(event.target.value);setFieldErrors(current=>({...current,permission_key:""}));setFeedback(null);}} required>
                       <option value="">Select a delegable permission</option>
                       {delegablePermissions.map(permission => <option key={permission.permission_key} value={permission.permission_key}>{permission.permission_key}</option>)}
                     </select>
+                    {fieldErrors.permission_key && <small className="app-field-error" id="delegation-permission-error" role="alert">{fieldErrors.permission_key}</small>}
                   </label>
                   {selectedPermission && <p className="platform-permission-description">{delegablePermissions.find(item => item.permission_key === selectedPermission)?.description}</p>}
                   <div className="platform-delegation-options">
-                    <label><input type="checkbox" checked={canAssignToRoles} onChange={event => {setCanAssignToRoles(event.target.checked);setFieldErrors(current=>({...current,capabilities:""}));}}/> School Admin can assign it to custom roles</label>
-                    <label><input type="checkbox" checked={canOverrideUsers} onChange={event => {setCanOverrideUsers(event.target.checked);setFieldErrors(current=>({...current,capabilities:""}));}}/> School Admin can grant individual user overrides</label>
+                    <label><input type="checkbox" checked={canAssignToRoles} aria-invalid={Boolean(fieldErrors.capabilities)} aria-describedby={fieldErrors.capabilities?"delegation-capabilities-error":undefined} onChange={event => {setCanAssignToRoles(event.target.checked);setFieldErrors(current=>({...current,capabilities:""}));setFeedback(null);}}/> School Admin can assign it to custom roles</label>
+                    <label><input type="checkbox" checked={canOverrideUsers} aria-invalid={Boolean(fieldErrors.capabilities)} aria-describedby={fieldErrors.capabilities?"delegation-capabilities-error":undefined} onChange={event => {setCanOverrideUsers(event.target.checked);setFieldErrors(current=>({...current,capabilities:""}));setFeedback(null);}}/> School Admin can grant individual user overrides</label>
                   </div>
+                  {fieldErrors.capabilities && <small className="app-field-error" id="delegation-capabilities-error" role="alert">{fieldErrors.capabilities}</small>}
                   <button className="primary" type="submit" disabled={grantDelegation.isPending || !selectedPermission || (!canAssignToRoles && !canOverrideUsers)}>
                     {grantDelegation.isPending ? "Delegating…" : "Grant permission to school"}
                   </button>
