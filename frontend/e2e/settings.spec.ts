@@ -62,7 +62,7 @@ test("appearance mode, palette and automatic schedule save safely on this device
 
   // System mode follows device appearance changes without reloading the app.
   await page.getByRole("button", { name: "Settings" }).click();
-  await page.getByRole("button", { name: /^System\\b/ }).click();
+  await page.getByRole("button", { name: /^System\b/ }).click();
   await page.emulateMedia({ colorScheme: "dark" });
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.emulateMedia({ colorScheme: "light" });
