@@ -203,7 +203,7 @@ export function RoleManagementPage({ permissions }: Props) {
       <Modal open={createDialogOpen} title="Create a custom role" description="Choose a clear name that describes the staff responsibility. Custom roles belong only to this school." onClose={() => setCreateDialogOpen(false)} closeDisabled={create.isPending}>
         {create.isError && <p className="role-error" role="alert">{create.error instanceof Error ? create.error.message : "Unable to create this role. Check the details and try again."}</p>}
         <form onSubmit={submitCreate} noValidate>
-          <label htmlFor="custom-role-name">Role name</label>
+          <label htmlFor="custom-role-name">Role name <span className="role-required">Required</span></label>
           <input id="custom-role-name" value={name} onChange={event => {setName(event.target.value);if(event.target.value.trim().length>=2)setNameError("");}} minLength={2} maxLength={120} placeholder="e.g. Library Coordinator" required aria-invalid={Boolean(nameError)} aria-describedby={nameError ? "custom-role-name-error" : "custom-role-name-help"}/>
           <small id="custom-role-name-help">Use a name that clearly explains what this staff role is responsible for.</small>
           {nameError && <small className="app-field-error" id="custom-role-name-error" role="alert">{nameError}</small>}
@@ -213,7 +213,7 @@ export function RoleManagementPage({ permissions }: Props) {
       <Modal open={grantDialogOpen} title="Grant a delegated permission" description={selectedRole ? `Choose a permission to add to the ${selectedRole.name} role. Only active delegations that allow role assignment are available.` : ""} onClose={()=>setGrantDialogOpen(false)} closeDisabled={grant.isPending}>
         {grant.isError&&<p className="role-error" role="alert">{grant.error instanceof Error?grant.error.message:"Unable to grant this permission. Please try again."}</p>}
         <form className="role-grant-form" onSubmit={submitGrant} noValidate>
-          <label htmlFor="role-permission-select">Permission</label>
+          <label htmlFor="role-permission-select">Permission <span className="role-required">Required</span></label>
           <Select ariaLabel="Permission to grant" invalid={Boolean(grantFieldError)} describedBy={grantFieldError?"role-grant-error":undefined} value={permissionKey} placeholder="Choose an available permission" onChange={value=>{setPermissionKey(value);setGrantFieldError("");}} disabled={grant.isPending||availableDelegations.length===0} options={availableDelegations.map(item=>({value:item.permission_key,label:item.permission_key+(permissionDescription(item.permission_key)?` — ${permissionDescription(item.permission_key)}`:"")}))}/>
           {grantFieldError&&<small className="app-field-error" id="role-grant-error" role="alert">{grantFieldError}</small>}
           {delegationsQuery.isPending&&<small>Loading Platform Admin delegations…</small>}
