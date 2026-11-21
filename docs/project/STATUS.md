@@ -1,3 +1,12 @@
+## Settings / Appearance — page verification checkpoint (2026-11-21)
+
+- Appearance preferences include Light, Dark, System, and Automatic schedule modes, with 15 coordinated brand palettes. Preferences are stored locally on this device; no school database setting is changed.
+- Automatic scheduling validates distinct Dark/Light start times, uses the device's local timezone, and continues updating the application theme while the Settings page is closed. System mode responds to operating-system appearance changes without reloading.
+- Responsive acceptance covers narrow mobile, tablet, desktop, and landscape widths; mode and palette controls remain within the viewport. The schedule form exposes inline validation and accessible error associations.
+- Frontend CI **PASS** — [run 44871312360](https://github.com/TheSumitNain/school-management-system/actions/runs/44871312360), checkpoint `0f77d005b5badca9bc177d8a0832335758d8a268`: TypeScript/Vite build and all **32 Playwright browser acceptance tests** passed, including live system-mode changes and automatic schedule transition after leaving Settings.
+- Backend CI **PASS** — [run 44871312315](https://github.com/TheSumitNain/school-management-system/actions/runs/44871312315), same code checkpoint: full Go tests, PostgreSQL integration tests, and `go vet ./...` passed.
+- Local manual browser acceptance remains for the user. Settings changes are device-local and require no database migration.
+
 ## Student Management — page verification checkpoint (2026-11-21)
 
 - Student directory supports search, academic-year and status filters, pagination, new admission, profile editing and safe archive/restore-after-lost-response behavior.
