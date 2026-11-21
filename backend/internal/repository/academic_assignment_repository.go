@@ -62,6 +62,9 @@ func (r *AcademicRepository) CreateTeacherSubjectAssignment(ctx context.Context,
 	tx,err:=r.db.Begin(ctx);if err!=nil{return nil,fmt.Errorf("begin teacher subject assignment: %w",err)}
 	defer func(){_ = tx.Rollback(ctx)}()
 	if err=authorizeAcademic(ctx,tx,actorID,schoolID,"teacher_assignments.manage");err!=nil{return nil,err}
+	var activeSubject bool
+	if err=tx.QueryRow(ctx,`SELECT is_active FROM subjects WHERE id=$1 AND school_id=$2 FOR SHARE`,subjectID,schoolID).Scan(&activeSubject);err!=nil{return nil,academicWriteError(err)}
+	if !activeSubject{return nil,ErrInactiveSubjectAssignment}
 	var id int64
 	err=tx.QueryRow(ctx,`INSERT INTO teacher_subject_assignments(school_id,academic_year_id,section_id,subject_id,teacher_principal_id,assigned_by_principal_id)
 		VALUES($1,$2,$3,$4,$5,$6) RETURNING id`,schoolID,yearID,sectionID,subjectID,teacherID,actorID).Scan(&id)
