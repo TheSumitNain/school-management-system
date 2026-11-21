@@ -407,7 +407,7 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
               </li>)}
             </ul>
           )}
-          <p>Confirming permanently removes these subjects and the affected students’ current choices. No curriculum or subject-selection history will be kept.</p>
+          <p>Confirming removes these subjects from the active curriculum and revokes affected students’ current choices. The historical curriculum and selection records are retained.</p>
           <div className="app-modal-actions">
             <button type="button" className="app-modal-cancel" disabled={busy} onClick={() => { setPendingSave(null); setPendingRemovalImpacts(null); }}>Cancel</button>
             <button type="button" className="primary app-modal-confirm" disabled={busy} onClick={() => persist(pendingSave, pendingRemovalImpacts)}>
