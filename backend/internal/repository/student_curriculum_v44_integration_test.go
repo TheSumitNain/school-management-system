@@ -344,6 +344,64 @@ func TestStudentCurriculumV44PostgresIntegration(t *testing.T) {
 		t.Fatalf("same-count confirmation with a different student ID returned %v, want stale impact", err)
 	}
 
+	// A reviewed removal revokes current choices and soft-deactivates the
+	// curriculum subject rows without deleting either historical record.
+	removalIDs := []int64{standaloneSubjectID, compulsorySubjectID}
+	removalImpacts, err := curriculumRemovalImpacts(ctx, tx, schoolID, curriculumID, removalIDs)
+	if err != nil {
+		t.Fatalf("recalculate confirmed curriculum removal impact: %v", err)
+	}
+	confirmations := make([]CurriculumRemovalConfirmation, 0, len(removalImpacts))
+	for _, impact := range removalImpacts {
+		studentIDs := make([]int64, 0, len(impact.Students))
+		for _, student := range impact.Students {
+			studentIDs = append(studentIDs, student.StudentID)
+		}
+		confirmations = append(confirmations, CurriculumRemovalConfirmation{
+			SubjectID: impact.SubjectID, AffectedStudents: impact.AffectedStudents, StudentIDs: studentIDs,
+		})
+	}
+	updatedCurriculum, err := academicRepo.SaveSectionClassCurriculumWithConfirmations(
+		ctx, actorPrincipalID, schoolID, yearID, classID, sectionID,
+		[]CurriculumOptionalGroupInput{{Name: "Language", MinSelections: 1, MaxSelections: 1}},
+		[]CurriculumSubjectInput{{SubjectID: subjectID, IsOptional: true, OptionalGroup: "Language"}},
+		confirmations,
+	)
+	if err != nil {
+		t.Fatalf("save explicitly confirmed curriculum subject removals: %v", err)
+	}
+	if len(updatedCurriculum.Subjects) != 1 || updatedCurriculum.Subjects[0].SubjectID != subjectID {
+		t.Fatalf("active curriculum subjects after confirmed removal = %+v, want only retained optional subject %d",
+			updatedCurriculum.Subjects, subjectID)
+	}
+	var retainedRemovedSubjects, activeRemovedSubjects, retainedSelectionHistory, activeRemovedSelections int
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*)::integer, COUNT(*) FILTER (WHERE is_active)::integer
+		  FROM class_curriculum_subjects
+		 WHERE school_id=$1 AND curriculum_id=$2 AND id=ANY($3::bigint[])
+	`, schoolID, curriculumID, []int64{standaloneCurriculumSubjectID, compulsoryCurriculumSubjectID}).Scan(
+		&retainedRemovedSubjects, &activeRemovedSubjects,
+	); err != nil {
+		t.Fatalf("verify soft-deactivated curriculum subjects: %v", err)
+	}
+	if retainedRemovedSubjects != 2 || activeRemovedSubjects != 0 {
+		t.Fatalf("removed curriculum subject rows retained=%d active=%d; want 2 retained and 0 active",
+			retainedRemovedSubjects, activeRemovedSubjects)
+	}
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*)::integer, COUNT(*) FILTER (WHERE revoked_at IS NULL)::integer
+		  FROM student_enrollment_subject_selections
+		 WHERE school_id=$1 AND curriculum_subject_id=$2
+	`, schoolID, standaloneCurriculumSubjectID).Scan(
+		&retainedSelectionHistory, &activeRemovedSelections,
+	); err != nil {
+		t.Fatalf("verify revoked student selection history: %v", err)
+	}
+	if retainedSelectionHistory != 1 || activeRemovedSelections != 0 {
+		t.Fatalf("removed subject selection rows retained=%d active=%d; want 1 retained and 0 active",
+			retainedSelectionHistory, activeRemovedSelections)
+	}
+
 	if _, err := tx.Exec(ctx, `UPDATE students SET status='inactive' WHERE id=$1`, studentID); err != nil { t.Fatalf("make student inactive: %v", err) }
 	expectRejected("assigning curriculum to inactive student", func() error {
 		_, err := tx.Exec(ctx, `
