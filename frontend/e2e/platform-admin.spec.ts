@@ -184,7 +184,7 @@ test("school onboarding refreshes the school list and delegated permissions can 
 
   await page.getByRole("tab", { name: "School permissions" }).click();
   await expect.poll(() => schoolListResponses).toBeGreaterThan(1);
-  const schoolSelect = page.getByLabel("School", { exact: true });
+  const schoolSelect = page.getByRole("combobox", { name: "School" });
   await expect(schoolSelect).toBeVisible();
   await schoolSelect.selectOption("2");
   await expect(schoolSelect).toHaveValue("2");
