@@ -100,3 +100,23 @@
 .staff-credential-handoff dt{color:var(--color-text-muted);font-size:10px;font-weight:600}
 .staff-credential-handoff dd{margin:0;color:var(--color-text);font-size:11px;font-weight:600;overflow-wrap:anywhere}
 @media(max-width:520px){.staff-wizard-progress{gap:4px}.staff-wizard-progress>div{grid-template-columns:24px minmax(0,1fr);gap:4px}.staff-wizard-progress span{width:23px;height:23px}.staff-wizard-progress small{font-size:9px}.staff-credential-handoff dl>div{grid-template-columns:1fr;gap:4px}}
+
+
+/* Staff profile workspace. */
+.staff-profile-tabs{display:flex;gap:5px;overflow-x:auto;padding:0 0 10px;margin:0 0 16px;border-bottom:1px solid var(--color-border);scrollbar-width:thin}
+.staff-profile-tabs button{flex:0 0 auto;min-height:35px;padding:7px 10px;border:1px solid transparent;border-radius:7px;background:transparent;color:var(--color-text-muted);font-size:10px;font-weight:600;white-space:nowrap}
+.staff-profile-tabs button.active{border-color:var(--color-border);background:var(--color-background);color:var(--color-primary)}
+.staff-profile-overview{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.staff-profile-overview>div,.staff-profile-section dl>div{display:grid;gap:5px;padding:12px;border:1px solid var(--color-border);border-radius:9px;background:var(--color-surface)}
+.staff-profile-overview span,.staff-profile-section dt{color:var(--color-text-muted);font-size:10px;font-weight:600}
+.staff-profile-overview strong,.staff-profile-section dd{margin:0;color:var(--color-text);font-size:12px;font-weight:600;overflow-wrap:anywhere}
+.staff-profile-overview>.primary{grid-column:1/-1;justify-self:start}
+.staff-profile-section h3,.staff-profile-placeholder h3{margin:0 0 10px;color:var(--color-text);font:700 14px var(--font-heading)}
+.staff-profile-section dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:0 0 14px}
+.staff-profile-section .primary{margin-top:2px}
+.staff-profile-placeholder{padding:18px;border:1px dashed var(--color-border);border-radius:10px;background:var(--color-background)}
+.staff-profile-placeholder p,.staff-profile-access>p{color:var(--color-text-muted);font-size:11px;line-height:1.65}
+.staff-profile-link{padding:0;border:0;background:transparent;color:var(--color-text);font-size:11px;font-weight:700;text-align:left}
+.staff-profile-link:hover{color:var(--color-primary);text-decoration:underline}
+.staff-profile-access{display:grid;gap:14px}
+@media(max-width:520px){.staff-profile-section dl{grid-template-columns:1fr}.staff-profile-overview{gap:7px}.staff-profile-overview>div{padding:10px}}
