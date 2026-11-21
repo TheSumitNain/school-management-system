@@ -128,6 +128,9 @@ test("staff creation uses the shared IST date picker and submits its selected da
   await dialog.getByLabel("Initial password").fill("E2E-Strong-Password-2026");
   await dialog.getByRole("button", { name: "Continue" }).click();
   await expect(dialog.getByRole("heading", { name: "Review & create" })).toBeVisible();
+  await expect(dialog.getByText("Teacher One", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("EMP-001", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("teacher.one", { exact: true })).toBeVisible();
   await dialog.getByRole("button", { name: "Create employee" }).click();
 
   await expect.poll(() => created.length).toBe(1);
