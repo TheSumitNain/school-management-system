@@ -246,13 +246,13 @@ func (r *UserRepository) UpdateStaffQualification(ctx context.Context, actorID, 
 	if err = authorizeStaffRecord(ctx, tx, actorID, schoolID, staffID, "users.update"); err != nil { return nil, err }
 	var saved StaffQualification
 	err = tx.QueryRow(ctx, `
-		UPDATE staff_qualifications SET qualification_type=$5, qualification_name=$6, specialization=NULLIF($7,''), institution=$8,
-		 board_university=NULLIF($9,''), completion_year=$10, score=$11, score_scale=NULLIF($12,''), credential_reference=NULLIF($13,''), updated_at=NOW()
+		UPDATE staff_qualifications SET qualification_type=$4, qualification_name=$5, specialization=NULLIF($6,''), institution=$7,
+		 board_university=NULLIF($8,''), completion_year=$9, score=$10, score_scale=NULLIF($10,''), credential_reference=NULLIF($10,''), updated_at=NOW()
 		WHERE id=$1 AND school_id=$2 AND staff_principal_id=$3
 		RETURNING id,staff_principal_id,qualification_type,qualification_name,COALESCE(specialization,''),institution,
 		 COALESCE(board_university,''),completion_year,score::float8,COALESCE(score_scale,''),COALESCE(credential_reference,''),
 		 verification_status,created_at,updated_at
-	`, recordID,schoolID,staffID,actorID,item.QualificationType,item.QualificationName,item.Specialization,item.Institution,
+	`, recordID,schoolID,staffID,item.QualificationType,item.QualificationName,item.Specialization,item.Institution,
 		item.BoardUniversity,item.CompletionYear,item.Score,item.ScoreScale,item.CredentialReference).Scan(
 		&saved.ID,&saved.StaffPrincipalID,&saved.QualificationType,&saved.QualificationName,&saved.Specialization,&saved.Institution,
 		&saved.BoardUniversity,&saved.CompletionYear,&saved.Score,&saved.ScoreScale,&saved.CredentialReference,&saved.VerificationStatus,&saved.CreatedAt,&saved.UpdatedAt)
