@@ -133,3 +133,77 @@ test("failed assignment refresh clears stale rows and disables new assignment ac
   await expect(page.getByRole("cell", { name: "teacher.one" })).not.toBeVisible();
   await expect(page.getByRole("button", { name: "Assign subject teacher" })).toBeDisabled();
 });
+
+
+test("class in-charge assignment validates fields, recovers from server errors and revokes with history", async ({ page }) => {
+  let incharges: Array<Record<string, unknown>> = [];
+  let createCalls = 0;
+  let deleteCalls = 0;
+  let failCreate = true;
+  await page.route("**/api/**", async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname.replace(/^\\/api/, "");
+    const method = request.method();
+    if (path === "/auth/refresh") { await route.fulfill({ status: 401, json: { message: "No active session" } }); return; }
+    if (path === "/auth/login" && method === "POST") { await route.fulfill({ json: { access_token: "e2e-incharge-token", token_type: "Bearer", principal: { principal_id: 123, principal_type: "staff", status: "active", school_id: 10 } } }); return; }
+    if (path === "/auth/me") { await route.fulfill({ json: { principal_id: 123, principal_type: "staff", school_id: 10, username: "e2e-incharge", permissions: ["academic_years.read","classes.read","class_incharge_assignments.read","class_incharge_assignments.manage"] } }); return; }
+    if (path === "/school/academic-years") { await route.fulfill({ json: { academic_years: [{ id: 7, name: "2026–2027", starts_on: "2026-04-01", ends_on: "2027-03-31", status: "active", is_current: false }] } }); return; }
+    if (path === "/school/classes") { await route.fulfill({ json: { classes: [{ id: 8, name: "Class 4", is_active: true }] } }); return; }
+    if (path === "/school/sections") { await route.fulfill({ json: { sections: [{ id: 19, academic_year_id: 7, class_id: 8, name: "A", is_active: true }] } }); return; }
+    if (path === "/school/eligible-teachers") { await route.fulfill({ json: { teachers: [{ principal_id: 31, username: "teacher.one" },{ principal_id: 32, username: "teacher.two" }] } }); return; }
+    if (path === "/school/class-incharge-assignments" && method === "GET") { await route.fulfill({ json: { assignments: incharges } }); return; }
+    if (path === "/school/class-incharge-assignments" && method === "POST") {
+      createCalls += 1;
+      const body = request.postDataJSON() as Record<string, unknown>;
+      if (failCreate) { failCreate = false; await route.fulfill({ status: 409, json: { status: "error", message: "This section already has an active class in-charge.", field_errors: { teacher_principal_id: "Choose an eligible teacher for this section." } } }); return; }
+      incharges = [{ id: 51, academic_year_id: 7, section_id: 19, section_name: "A", class_name: "Class 4", teacher_principal_id: Number(body.teacher_principal_id), teacher_username: body.teacher_principal_id === 32 ? "teacher.two" : "teacher.one", revoked_at: null }];
+      await route.fulfill({ status: 201, json: { assignment: incharges[0] } }); return;
+    }
+    if (path === "/school/class-incharge-assignments/51" && method === "DELETE") {
+      deleteCalls += 1;
+      incharges = incharges.map(item => ({ ...item, revoked_at: "2026-11-21T10:00:00Z" }));
+      await route.fulfill({ json: { message: "Class in-charge revoked." } }); return;
+    }
+    await route.fulfill({ status: 404, json: { message: `Unmocked E2E API request: ${method} ${path}` } });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Username").fill("e2e-incharge");
+  await page.getByLabel("Password").fill("E2E-only-password");
+  await page.getByRole("button", { name: /Continue/ }).click();
+  await page.getByRole("button", { name: "Academics" }).click();
+  await page.getByRole("tab", { name: "Teacher assignments" }).click();
+  await page.getByRole("button", { name: "Assign class in-charge" }).click();
+  const dialog = page.getByRole("dialog", { name: "Assign class in-charge" });
+  await dialog.getByRole("button", { name: "Assign in-charge" }).click();
+  await expect(dialog.getByText("Select an academic year.")).toBeVisible();
+  await expect(dialog.getByText("Select a section.")).toBeVisible();
+  await expect(dialog.getByText("Select a teacher.")).toBeVisible();
+  expect(createCalls).toBe(0);
+
+  await dialog.getByLabel("Class in-charge academic year").click();
+  await page.getByRole("option", { name: "2026–2027" }).click();
+  await dialog.getByLabel("Class in-charge section").click();
+  await page.getByRole("option", { name: "Class 4 · A" }).click();
+  await dialog.getByLabel("Class in-charge teacher").click();
+  await page.getByRole("option", { name: "teacher.one" }).click();
+  await dialog.getByRole("button", { name: "Assign in-charge" }).click();
+  await expect(dialog.getByText("Choose an eligible teacher for this section.")).toBeVisible();
+  expect(createCalls).toBe(1);
+
+  await dialog.getByLabel("Class in-charge teacher").click();
+  await page.getByRole("option", { name: "teacher.two" }).click();
+  await dialog.getByRole("button", { name: "Assign in-charge" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Class in-charge assigned successfully." })).toBeVisible();
+  await expect(dialog).not.toBeVisible();
+  await expect(page.getByRole("cell", { name: "teacher.two" })).toBeVisible();
+  expect(createCalls).toBe(2);
+
+  await page.getByRole("button", { name: "Revoke" }).click();
+  const revokeDialog = page.getByRole("dialog", { name: "Revoke class in-charge?" });
+  await revokeDialog.getByRole("button", { name: "Revoke assignment" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Class in-charge assignment revoked. Its history has been retained." })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Revoked", exact: true })).toBeVisible();
+  expect(deleteCalls).toBe(1);
+});
