@@ -135,7 +135,6 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
       const card = groupEditorRefs.current[newGroupIndex];
       card?.scrollIntoView({ behavior: "smooth", block: "center" });
       card?.querySelector<HTMLInputElement>('input:not([type="hidden"])')?.focus({ preventScroll: true });
-      setNewGroupIndex(null);
     });
     return () => window.cancelAnimationFrame(frame);
   }, [newGroupIndex, groups.length]);
@@ -159,6 +158,7 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
         notifyToast("success", message);
         setPendingSave(null);
         setPendingRemovalImpacts(null);
+        setNewGroupIndex(null);
         window.requestAnimationFrame(() => {
           window.scrollTo({ top: 0, behavior: "smooth" });
           curriculumSummaryRef.current?.focus({ preventScroll: true });
