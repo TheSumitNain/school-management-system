@@ -253,7 +253,7 @@ export type CurriculumSaveInput = {
   academic_year_id: number; class_id: number; section_id: number;
   optional_groups: Array<{ name: string; min_selections: number; max_selections: number }>;
   subjects: Array<{ subject_id: number; is_optional?: boolean; optional_group?: string }>;
-  removal_confirmations?: Array<{ subject_id: number; affected_students: number }>;
+  removal_confirmations?: Array<{ subject_id: number; affected_students: number; student_ids: number[] }>;
 };
 export function previewSchoolClassCurriculumRemoval(input: {
   academic_year_id: number; class_id: number; section_id: number; subject_ids: number[];
