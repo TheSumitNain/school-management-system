@@ -20,6 +20,9 @@ type StaffRecordsManagementService interface {
 	CreateCertification(context.Context,int64,int64,int64,repository.StaffCertification)(*repository.StaffCertification,error)
 	ListExperience(context.Context,int64,int64,int64)([]repository.StaffExperience,error)
 	CreateExperience(context.Context,int64,int64,int64,repository.StaffExperience)(*repository.StaffExperience,error)
+	UpdateQualification(context.Context,int64,int64,int64,int64,repository.StaffQualification)(*repository.StaffQualification,error)
+	UpdateCertification(context.Context,int64,int64,int64,int64,repository.StaffCertification)(*repository.StaffCertification,error)
+	UpdateExperience(context.Context,int64,int64,int64,int64,repository.StaffExperience)(*repository.StaffExperience,error)
 }
 
 type StaffRecordsHandler struct { service StaffRecordsManagementService }
@@ -78,4 +81,32 @@ func(h *StaffRecordsHandler) CreateExperience(c *gin.Context){
 	var item repository.StaffExperience;if err:=c.ShouldBindJSON(&item);err!=nil{c.JSON(400,gin.H{"status":"error","message":"Invalid experience request"});return}
 	saved,err:=h.service.CreateExperience(c.Request.Context(),actor,school,staff,item);if err!=nil{h.fail(c,err);return}
 	c.JSON(201,gin.H{"status":"success","experience":saved})
+}
+
+
+func staffRecordID(c *gin.Context)(int64,bool){v,e:=strconv.ParseInt(c.Param("recordID"),10,64);return v,e==nil&&v>0}
+
+func(h *StaffRecordsHandler) UpdateQualification(c *gin.Context){
+	actor,school,ok:=staffRecordActor(c);if !ok{c.JSON(401,gin.H{"status":"error","message":"School staff authentication required"});return}
+	staff,ok:=staffRecordTarget(c);if !ok{c.JSON(400,gin.H{"status":"error","message":"Invalid staff principal ID"});return}
+	record,ok:=staffRecordID(c);if !ok{c.JSON(400,gin.H{"status":"error","message":"Invalid qualification record ID"});return}
+	var item repository.StaffQualification;if err:=c.ShouldBindJSON(&item);err!=nil{c.JSON(400,gin.H{"status":"error","message":"Invalid qualification request"});return}
+	saved,err:=h.service.UpdateQualification(c.Request.Context(),actor,school,staff,record,item);if err!=nil{h.fail(c,err);return}
+	c.JSON(200,gin.H{"status":"success","qualification":saved})
+}
+func(h *StaffRecordsHandler) UpdateCertification(c *gin.Context){
+	actor,school,ok:=staffRecordActor(c);if !ok{c.JSON(401,gin.H{"status":"error","message":"School staff authentication required"});return}
+	staff,ok:=staffRecordTarget(c);if !ok{c.JSON(400,gin.H{"status":"error","message":"Invalid staff principal ID"});return}
+	record,ok:=staffRecordID(c);if !ok{c.JSON(400,gin.H{"status":"error","message":"Invalid certification record ID"});return}
+	var item repository.StaffCertification;if err:=c.ShouldBindJSON(&item);err!=nil{c.JSON(400,gin.H{"status":"error","message":"Invalid certification request"});return}
+	saved,err:=h.service.UpdateCertification(c.Request.Context(),actor,school,staff,record,item);if err!=nil{h.fail(c,err);return}
+	c.JSON(200,gin.H{"status":"success","certification":saved})
+}
+func(h *StaffRecordsHandler) UpdateExperience(c *gin.Context){
+	actor,school,ok:=staffRecordActor(c);if !ok{c.JSON(401,gin.H{"status":"error","message":"School staff authentication required"});return}
+	staff,ok:=staffRecordTarget(c);if !ok{c.JSON(400,gin.H{"status":"error","message":"Invalid staff principal ID"});return}
+	record,ok:=staffRecordID(c);if !ok{c.JSON(400,gin.H{"status":"error","message":"Invalid experience record ID"});return}
+	var item repository.StaffExperience;if err:=c.ShouldBindJSON(&item);err!=nil{c.JSON(400,gin.H{"status":"error","message":"Invalid experience request"});return}
+	saved,err:=h.service.UpdateExperience(c.Request.Context(),actor,school,staff,record,item);if err!=nil{h.fail(c,err);return}
+	c.JSON(200,gin.H{"status":"success","experience":saved})
 }
