@@ -26,6 +26,7 @@ type CurriculumSubjectInput struct {
 type CurriculumRemovalConfirmation struct {
 	SubjectID int64 `json:"subject_id"`
 	AffectedStudents int `json:"affected_students"`
+	StudentIDs []int64 `json:"student_ids"`
 }
 
 type CurriculumRemovalStudent struct {
@@ -420,17 +421,35 @@ func (r *AcademicRepository) SaveSectionClassCurriculumWithConfirmations(ctx con
 	if len(removedIDs) > 0 {
 		impacts, err := curriculumRemovalImpacts(ctx, tx, schoolID, curriculumID, removedIDs)
 		if err != nil { return nil, err }
-		confirmed := make(map[int64]int, len(confirmations))
+		type confirmedRemoval struct {
+			count int
+			studentIDs map[int64]struct{}
+		}
+		confirmed := make(map[int64]confirmedRemoval, len(confirmations))
 		for _, item := range confirmations {
 			if item.SubjectID <= 0 || item.AffectedStudents < 0 { return nil, ErrInvalidAcademicInput }
 			if _, duplicate := confirmed[item.SubjectID]; duplicate { return nil, ErrInvalidAcademicInput }
-			confirmed[item.SubjectID] = item.AffectedStudents
+			ids := make(map[int64]struct{}, len(item.StudentIDs))
+			for _, studentID := range item.StudentIDs {
+				if studentID <= 0 { return nil, ErrInvalidAcademicInput }
+				if _, duplicate := ids[studentID]; duplicate { return nil, ErrInvalidAcademicInput }
+				ids[studentID] = struct{}{}
+			}
+			if item.AffectedStudents != len(ids) { return nil, ErrInvalidAcademicInput }
+			confirmed[item.SubjectID] = confirmedRemoval{count: item.AffectedStudents, studentIDs: ids}
 		}
 		if len(confirmed) != len(impacts) { return nil, ErrCurriculumRemovalConfirmationRequired }
 		for _, impact := range impacts {
-			count, ok := confirmed[impact.SubjectID]
+			confirmation, ok := confirmed[impact.SubjectID]
 			if !ok { return nil, ErrCurriculumRemovalConfirmationRequired }
-			if count != impact.AffectedStudents { return nil, ErrCurriculumRemovalImpactChanged }
+			if confirmation.count != impact.AffectedStudents || len(confirmation.studentIDs) != len(impact.Students) {
+				return nil, ErrCurriculumRemovalImpactChanged
+			}
+			for _, student := range impact.Students {
+				if _, reviewed := confirmation.studentIDs[student.StudentID]; !reviewed {
+					return nil, ErrCurriculumRemovalImpactChanged
+				}
+			}
 		}
 	} else if len(confirmations) > 0 {
 		return nil, ErrInvalidAcademicInput
