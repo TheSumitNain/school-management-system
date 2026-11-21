@@ -228,7 +228,13 @@ test("staff profile creates education, certification and experience records", as
   await expect(dialog.getByText("Enter institution.")).toBeVisible();
   await dialog.locator('input[name="qualification_name"]').fill("M.Sc. Mathematics");
   await dialog.locator('input[name="institution"]').fill("State University");
+  await dialog.locator('input[name="completion_year"]').fill("1899");
+  await dialog.locator('input[name="score"]').fill("8.5");
+  await dialog.getByRole("button", { name: "Save record" }).click();
+  await expect(dialog.getByText("Enter a year between 1900 and 2200.")).toBeVisible();
+  await expect(dialog.getByText("Choose a score scale when a score is entered.")).toBeVisible();
   await dialog.locator('input[name="completion_year"]').fill("2021");
+  await dialog.locator('select[name="score_scale"]').selectOption("cgpa");
   await dialog.getByRole("button", { name: "Save record" }).click();
   await expect(dialog.getByText("M.Sc. Mathematics")).toBeVisible();
 
@@ -247,6 +253,9 @@ test("staff profile creates education, certification and experience records", as
   await dialog.locator('input[name="employer_name"]').fill("Previous School");
   await dialog.locator('input[name="record_designation"]').fill("Science Teacher");
   await dialog.locator('input[name="start_date"]').fill("2018-04-01");
+  await dialog.locator('input[name="end_date"]').fill("2017-03-31");
+  await dialog.getByRole("button", { name: "Save record" }).click();
+  await expect(dialog.getByText("End date must be on or after the start date.")).toBeVisible();
   await dialog.locator('input[name="end_date"]').fill("2021-03-31");
   await dialog.getByRole("button", { name: "Save record" }).click();
   await expect(dialog.getByText("Previous School")).toBeVisible();
