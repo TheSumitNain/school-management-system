@@ -328,7 +328,7 @@ func (r *AcademicRepository) PreviewSectionDeactivation(ctx context.Context, act
 		SELECT DISTINCT st.id, st.full_name, COALESCE(e.admission_number,''), e.status
 		FROM student_enrollments e
 		JOIN students st ON st.id=e.student_id AND st.school_id=e.school_id
-		WHERE e.school_id=$1 AND e.section_id=$2 AND e.status='active' AND st.status='active'
+		WHERE e.school_id=$1 AND e.section_id=$2 AND e.status='active'
 		ORDER BY st.full_name, st.id
 	`, schoolID, sectionID)
 	if err != nil { return nil, fmt.Errorf("load affected section students: %w", err) }
