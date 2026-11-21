@@ -1125,16 +1125,16 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 		len(assignedV1.SelectedOptionalSubjectIDs) != 1 || assignedV1.SelectedOptionalSubjectIDs[0] != optionalV1ID {
 		t.Fatalf("assign first curriculum and persist optional choice: item=%+v err=%v", assignedV1, err)
 	}
-	// Saving the current choice again replaces the current row instead of
-	// retaining a revoked row as selection history.
+	// Saving the current choice again revokes the previous active row and
+	// inserts a new current row while retaining the revoked history.
 	assignedV1Again, err := academicRepo.SaveStudentEnrollmentSubjects(ctx, actorPrincipalID, schoolID,
 		currentEnrollmentID, curriculumV1.ID, []int64{optionalV1ID})
 	if err != nil || assignedV1Again == nil {
 		t.Fatalf("replace current optional choice without history: item=%+v err=%v", assignedV1Again, err)
 	}
 	// Removing an optional group converts its subjects to standalone optional
-	// choices. Existing selected choices remain current and the empty group row
-	// is deleted instead of being kept as hidden history.
+	// choices. Existing selected choices remain current. The empty group row
+	// can be deleted because no curriculum subject row still references it.
 	ungroupedCurriculum, err := academicRepo.SaveSectionClassCurriculum(ctx, actorPrincipalID, schoolID,
 		enrollmentYearID, sourceClassID, sourceSectionID, nil,
 		[]CurriculumSubjectInput{{SubjectID: subjectID}, {SubjectID: subjectAltID, IsOptional: true}})
@@ -1155,18 +1155,19 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 		afterUngrouping.SelectedOptionalSubjectIDs[0] != optionalV1ID {
 		t.Fatalf("group removal did not preserve current student choice: item=%+v err=%v", afterUngrouping, err)
 	}
-	var selectionRowCount int
+	var selectionRowCount, activeSelectionRowCount int
 	if err := tx.QueryRow(ctx, `
-		SELECT COUNT(*)::integer
+		SELECT COUNT(*)::integer, COUNT(*) FILTER (WHERE s.revoked_at IS NULL)::integer
 		  FROM student_enrollment_subject_selections s
 		  JOIN student_enrollment_curricula ec
 		    ON ec.id=s.enrollment_curriculum_id AND ec.school_id=s.school_id
 		 WHERE ec.enrollment_id=$1 AND ec.school_id=$2
-	`, currentEnrollmentID, schoolID).Scan(&selectionRowCount); err != nil {
-		t.Fatalf("count current student subject choices: %v", err)
+	`, currentEnrollmentID, schoolID).Scan(&selectionRowCount, &activeSelectionRowCount); err != nil {
+		t.Fatalf("count current and historical student subject choices: %v", err)
 	}
-	if selectionRowCount != 1 {
-		t.Fatalf("student subject choice rows after replacement = %d, want 1 current row and no history", selectionRowCount)
+	if selectionRowCount != 2 || activeSelectionRowCount != 1 {
+		t.Fatalf("student subject choice rows after replacement total=%d active=%d; want 2 total and 1 current",
+			selectionRowCount, activeSelectionRowCount)
 	}
 	var currentSelectionID int64
 	if err := tx.QueryRow(ctx, `
@@ -1174,14 +1175,23 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 		  FROM student_enrollment_subject_selections s
 		  JOIN student_enrollment_curricula ec
 		    ON ec.id=s.enrollment_curriculum_id AND ec.school_id=s.school_id
-		 WHERE ec.enrollment_id=$1 AND ec.school_id=$2
+		 WHERE ec.enrollment_id=$1 AND ec.school_id=$2 AND s.revoked_at IS NULL
 	`, currentEnrollmentID, schoolID).Scan(&currentSelectionID); err != nil {
-		t.Fatalf("load current student choice for no-history guard: %v", err)
+		t.Fatalf("load current student choice for history guard: %v", err)
 	}
-	expectRejected("mutate current student choice into history", func() error {
+	if _, err := tx.Exec(ctx, `
+		UPDATE student_enrollment_subject_selections SET revoked_at=NOW() WHERE id=$1
+	`, currentSelectionID); err != nil {
+		t.Fatalf("revoke current student choice while retaining history: %v", err)
+	}
+	expectRejected("revoke a student choice more than once", func() error {
 		_, err := tx.Exec(ctx, `
 			UPDATE student_enrollment_subject_selections SET revoked_at=NOW() WHERE id=$1
 		`, currentSelectionID)
+		return err
+	})
+	expectRejected("delete student subject selection history", func() error {
+		_, err := tx.Exec(ctx, `DELETE FROM student_enrollment_subject_selections WHERE id=$1`, currentSelectionID)
 		return err
 	})
 	// Editing updates the same section curriculum in place. Removing an
