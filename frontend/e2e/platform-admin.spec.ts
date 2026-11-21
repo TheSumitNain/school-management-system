@@ -29,7 +29,7 @@ test("Platform Admin accounts can be created and safely deactivated with recover
     const path = url.pathname.replace(/^\/api/, "");
     const method = request.method();
     if (path === "/auth/refresh") { await route.fulfill({ status: 401, json: { message: "No active session" } }); return; }
-    if (path === "/auth/login" && method === "POST") {
+    if (path === "/auth/platform-admin/login" && method === "POST") {
       await route.fulfill({ json: { access_token: "e2e-platform-admin-token", token_type: "Bearer", principal: { principal_id: 101, principal_type: "platform_admin", status: "active" } } });
       return;
     }
@@ -109,7 +109,7 @@ test("school onboarding refreshes the school list and delegated permissions can 
     const path = url.pathname.replace(/^\/api/, "");
     const method = request.method();
     if (path === "/auth/refresh") { await route.fulfill({ status: 401, json: { message: "No active session" } }); return; }
-    if (path === "/auth/login" && method === "POST") {
+    if (path === "/auth/platform-admin/login" && method === "POST") {
       await route.fulfill({ json: { access_token: "e2e-platform-school-token", token_type: "Bearer", principal: { principal_id: 102, principal_type: "platform_admin", status: "active" } } });
       return;
     }
