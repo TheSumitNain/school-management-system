@@ -1,3 +1,13 @@
+## Subject deactivation dependency preview checkpoint (2026-11-21)
+
+- Added a school-scoped `GET /school/subjects/:subjectID/deactivation-impact` endpoint protected by the live `subjects.manage` permission.
+- The preview reports curriculum reference count, active teacher-subject assignments, active and historical student subject selections, and affected students with admission number, class, section and academic year.
+- The Subject editor now fetches the impact before any active-to-inactive write, shows the exact counts and affected student list, supports returning to edit without saving, and submits the reviewed fingerprint only after explicit confirmation.
+- The backend blocks direct unconfirmed subject inactivation. The confirmed transaction locks the subject and its curriculum references, teacher assignments and student selections, recomputes a fingerprint, rejects stale confirmation, changes only the master subject's active state, and writes the audit event in the same transaction. No curriculum rows, assignments or student choices are silently deleted or revoked.
+- Added PostgreSQL integration coverage for preview, stale-fingerprint rejection after an assignment change, successful refreshed confirmation, curriculum-reference retention and audit persistence. Added a handler conflict test and a Playwright subject confirmation/cancel flow.
+- Frontend CI **PASS** — [run 44862271606](https://github.com/TheSumitNain/school-management-system/actions/runs/44862271606), code checkpoint `5b83fe25ed8561b1e13326cc34ae3217703ef4ea`: TypeScript/Vite production build and all Academic Structure browser acceptance tests passed.
+- Backend CI for the current implementation checkpoint `c0bc7fb29c96f8887f199214f6c2dc064d7afc1f` is running; do not treat the backend implementation as verified until that exact run completes successfully. No migration or persistent local database change was made.
+
 ## Section deactivation dependency preview checkpoint (2026-11-21)
 
 - Added a school-scoped, permission-checked API endpoint `GET /school/sections/:sectionID/deactivation-impact`.
@@ -7,7 +17,7 @@
 - Added focused styling for the impact review and documented the preview requirements.
 - The final deactivation write now locks the section and all dependent enrollment, curriculum, teacher-assignment and class-in-charge rows, recomputes a dependency fingerprint, rejects stale confirmations, and writes the section state change plus audit event in one transaction. Direct attempts to deactivate an active section without a confirmed preview are rejected.
 - PostgreSQL integration coverage verifies that a dependency added after preview invalidates the old confirmation, a refreshed preview succeeds, the enrollment is retained, and the audit event is recorded. Backend CI passed on checkpoint `71f78e0fdb3efcd215dc7185f33784b2d4e36502`; frontend build and all browser acceptance tests passed on checkpoint `58a8df4637960379d89fe2e61260ea9bf92eca64`.
-- Do not apply this UI flow to class/subject deactivation until equivalent dependency previews and transactional guards are implemented.
+- Class deactivation has its own class-wide impact preview and transaction guard; subject deactivation has now been added as a separate master-subject impact flow. See the latest subject checkpoint below; its backend CI is still pending at the time of this status edit.
 
 ## Academic Structure management UX checkpoint (2026-11-21)
 
