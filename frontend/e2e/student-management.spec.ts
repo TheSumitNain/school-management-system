@@ -67,7 +67,7 @@ test("student admission, profile navigation and parent details render without br
   let failMedicalAllergySave = false;
   let physicalDetailWrites = 0;
   let savedCurriculumSelections: number[] = [];
-let inactiveMasterSubject = false;
+  let inactiveMasterSubject = false;
   const guardianLink = {
     id: 501, student_id: 1, guardian_id: 22, guardian_name: "Ramesh Sharma", guardian_status: "active" as const,
     mobile_number: "9876543210", email_address: "ramesh@example.test", alternate_mobile_number: null,
