@@ -830,3 +830,18 @@
     max-width: 100%;
   }
 }
+
+
+/* Keep catalogue-state badges and subject labels from widening the student profile on phones. */
+.student-profile-detail,
+.student-profile-history,
+.student-profile-history-list,
+.student-profile-enrollment,
+.student-enrollment-subjects,
+.student-subject-section,
+.student-subject-list{min-width:0;max-width:100%;box-sizing:border-box}
+.student-subject-row,
+.student-subject-option{min-width:0;max-width:100%;flex-wrap:wrap;box-sizing:border-box}
+.student-subject-row>span:first-child,
+.student-subject-option>span{min-width:0;max-width:100%;overflow-wrap:anywhere}
+.student-subject-type-badge{margin-left:0;max-width:100%;white-space:normal;overflow-wrap:anywhere;text-align:center;flex:0 1 auto}
