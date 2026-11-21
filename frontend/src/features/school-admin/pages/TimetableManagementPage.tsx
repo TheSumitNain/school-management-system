@@ -159,7 +159,9 @@ export function TimetableManagementPage({ permissions }: Props) {
       setFeedback(null);
       await loadSchedule(yearID);
     } catch (reason) {
-      setFeedback({ kind: "error", message: errorText(reason) });
+      const message = errorText(reason);
+      notifyToast("error", message);
+      setFeedback({ kind: "error", message });
     } finally { setSaving(false); }
   }
 
@@ -191,7 +193,9 @@ export function TimetableManagementPage({ permissions }: Props) {
       setFeedback(null);
       await loadSchedule(yearID, sectionID);
     } catch (reason) {
-      setFeedback({ kind: "error", message: errorText(reason) });
+      const message = errorText(reason);
+      notifyToast("error", message);
+      setFeedback({ kind: "error", message });
     } finally { setSaving(false); }
   }
 
@@ -204,7 +208,9 @@ export function TimetableManagementPage({ permissions }: Props) {
       setFeedback(null);
       await loadSchedule(yearID, sectionID);
     } catch (reason) {
-      setFeedback({ kind: "error", message: errorText(reason) });
+      const message = errorText(reason);
+      notifyToast("error", message);
+      setFeedback({ kind: "error", message });
     }
   }
 
@@ -227,7 +233,7 @@ export function TimetableManagementPage({ permissions }: Props) {
         <button type="button" className="timetable-refresh" onClick={() => void loadSchedule(yearID)} disabled={loading}><RefreshCw size={15}/> Refresh</button>
       </div>
 
-      {feedback && <div className={"timetable-feedback " + feedback.kind} role="status">{feedback.message}</div>}
+      {feedback && <div className={"timetable-feedback " + feedback.kind} role={feedback.kind === "error" ? "alert" : "status"}>{feedback.message}</div>}
       {error ? <div className="timetable-state error"><b>Could not load timetable</b><span>{error}</span><button type="button" onClick={() => void loadSchedule(yearID)}>Try again</button></div>
         : loading ? <div className="timetable-state"><span className="timetable-spinner"/>Loading timetable…</div>
         : !selectedYear ? <div className="timetable-state"><b>No academic year available</b><span>Create an academic year before setting up a timetable.</span></div>
@@ -250,12 +256,12 @@ export function TimetableManagementPage({ permissions }: Props) {
       {canManage && <div className="timetable-note">Changes are checked against active teacher-subject assignments. A section or teacher cannot be scheduled twice in the same period.</div>}
 
       <Modal open={dialog === "period"} title="Add timetable period" description="Define a school-wide teaching period or break for this academic year." onClose={closeDialog} closeDisabled={saving}>
-        <form className="timetable-form" onSubmit={submitPeriod}>
-          <label>Period number<input type="number" min="1" step="1" value={periodDraft.period_number} placeholder="e.g. 1" onChange={event => { setPeriodDraft(current => ({ ...current, period_number: event.target.value })); setFieldErrors(current => ({ ...current, period_number: "" })); }} aria-invalid={Boolean(fieldErrors.period_number)} required/><small>Enter 1 for the first period, 2 for the second, and so on.</small>{fieldErrors.period_number && <small role="alert">{fieldErrors.period_number}</small>}</label>
-          <label>Period name<input value={periodDraft.name} placeholder="e.g. Period 1 or Lunch Break" maxLength={80} onChange={event => { setPeriodDraft(current => ({ ...current, name: event.target.value })); setFieldErrors(current => ({ ...current, name: "" })); }} aria-invalid={Boolean(fieldErrors.name)} required/>{fieldErrors.name && <small role="alert">{fieldErrors.name}</small>}</label>
+        <form className="timetable-form" onSubmit={submitPeriod} noValidate>
+          <label>Period number<input id="timetable-period-number" type="number" min="1" step="1" value={periodDraft.period_number} placeholder="e.g. 1" onChange={event => { setPeriodDraft(current => ({ ...current, period_number: event.target.value })); setFieldErrors(current => ({ ...current, period_number: "" })); }} aria-invalid={Boolean(fieldErrors.period_number)} aria-describedby={fieldErrors.period_number ? "timetable-period-number-error" : "timetable-period-number-help"} required/><small id="timetable-period-number-help">Enter 1 for the first period, 2 for the second, and so on.</small>{fieldErrors.period_number && <small className="app-field-error" id="timetable-period-number-error" role="alert">{fieldErrors.period_number}</small>}</label>
+          <label>Period name<input id="timetable-period-name" value={periodDraft.name} placeholder="e.g. Period 1 or Lunch Break" maxLength={80} onChange={event => { setPeriodDraft(current => ({ ...current, name: event.target.value })); setFieldErrors(current => ({ ...current, name: "" })); }} aria-invalid={Boolean(fieldErrors.name)} aria-describedby={fieldErrors.name ? "timetable-period-name-error" : undefined} required/>{fieldErrors.name && <small className="app-field-error" id="timetable-period-name-error" role="alert">{fieldErrors.name}</small>}</label>
           <div className="timetable-time-fields">
-            <label>Starts at<input type="time" value={periodDraft.starts_at} placeholder="e.g. 08:00" onChange={event => { setPeriodDraft(current => ({ ...current, starts_at: event.target.value })); setFieldErrors(current => ({ ...current, starts_at: "" })); }} aria-invalid={Boolean(fieldErrors.starts_at)} required/><small>Use the 24-hour clock, for example 08:00.</small>{fieldErrors.starts_at && <small role="alert">{fieldErrors.starts_at}</small>}</label>
-            <label>Ends at<input type="time" value={periodDraft.ends_at} placeholder="e.g. 08:45" onChange={event => { setPeriodDraft(current => ({ ...current, ends_at: event.target.value })); setFieldErrors(current => ({ ...current, ends_at: "" })); }} aria-invalid={Boolean(fieldErrors.ends_at)} required/><small>Use the 24-hour clock, for example 08:45.</small>{fieldErrors.ends_at && <small role="alert">{fieldErrors.ends_at}</small>}</label>
+            <label>Starts at<input id="timetable-period-start" type="time" value={periodDraft.starts_at} placeholder="e.g. 08:00" onChange={event => { setPeriodDraft(current => ({ ...current, starts_at: event.target.value })); setFieldErrors(current => ({ ...current, starts_at: "" })); }} aria-invalid={Boolean(fieldErrors.starts_at)} aria-describedby={fieldErrors.starts_at ? "timetable-period-start-error" : "timetable-period-start-help"} required/><small id="timetable-period-start-help">Use the 24-hour clock, for example 08:00.</small>{fieldErrors.starts_at && <small className="app-field-error" id="timetable-period-start-error" role="alert">{fieldErrors.starts_at}</small>}</label>
+            <label>Ends at<input id="timetable-period-end" type="time" value={periodDraft.ends_at} placeholder="e.g. 08:45" onChange={event => { setPeriodDraft(current => ({ ...current, ends_at: event.target.value })); setFieldErrors(current => ({ ...current, ends_at: "" })); }} aria-invalid={Boolean(fieldErrors.ends_at)} aria-describedby={fieldErrors.ends_at ? "timetable-period-end-error" : "timetable-period-end-help"} required/><small id="timetable-period-end-help">Use the 24-hour clock, for example 08:45.</small>{fieldErrors.ends_at && <small className="app-field-error" id="timetable-period-end-error" role="alert">{fieldErrors.ends_at}</small>}</label>
           </div>
           <label className="timetable-checkbox"><input type="checkbox" checked={periodDraft.is_break} onChange={event => setPeriodDraft(current => ({ ...current, is_break: event.target.checked }))}/> This is a break period</label>
           <div className="timetable-form-actions"><button type="button" className="timetable-secondary" onClick={closeDialog} disabled={saving}>Cancel</button><button type="submit" className="timetable-primary" disabled={saving}>{saving ? "Saving…" : "Save period"}</button></div>
@@ -263,10 +269,10 @@ export function TimetableManagementPage({ permissions }: Props) {
       </Modal>
 
       <Modal open={dialog === "entry"} title="Add class to timetable" description="Choose an active teacher-subject assignment and a free weekly slot." onClose={closeDialog} closeDisabled={saving}>
-        <form className="timetable-form" onSubmit={submitEntry}>
-          <label>Class / section<Select ariaLabel="Class / section" value={entryDraft.section_id} onChange={value => { setEntryDraft(current => ({ ...current, section_id: value, assignment_id: "" })); setFieldErrors(current => ({ ...current, section_id: "", assignment_id: "" })); }} options={sections.map(section => ({ value: String(section.id), label: `${section.class_name} · Section ${section.name}` }))} placeholder="Select section" invalid={Boolean(fieldErrors.section_id)}/>{fieldErrors.section_id && <small role="alert">{fieldErrors.section_id}</small>}</label>
-          <label>Teacher and subject assignment<Select ariaLabel="Teacher and subject assignment" value={entryDraft.assignment_id} onChange={value => { setEntryDraft(current => ({ ...current, assignment_id: value })); setFieldErrors(current => ({ ...current, assignment_id: "" })); }} options={filteredAssignments.map(item => ({ value: String(item.id), label: `${item.subject_name} · ${item.teacher_username}` }))} placeholder="Select assigned teacher and subject" disabled={!entryDraft.section_id} invalid={Boolean(fieldErrors.assignment_id)}/>{fieldErrors.assignment_id && <small role="alert">{fieldErrors.assignment_id}</small>}</label>
-          <label>Period<Select ariaLabel="Teaching period" value={entryDraft.period_id} onChange={value => { setEntryDraft(current => ({ ...current, period_id: value })); setFieldErrors(current => ({ ...current, period_id: "" })); }} options={periods.filter(period => !period.is_break).map(period => ({ value: String(period.id), label: `${period.period_number}. ${period.name} · ${period.starts_at}–${period.ends_at}` }))} placeholder="Select period" invalid={Boolean(fieldErrors.period_id)}/>{fieldErrors.period_id && <small role="alert">{fieldErrors.period_id}</small>}</label>
+        <form className="timetable-form" onSubmit={submitEntry} noValidate>
+          <label>Class / section<Select ariaLabel="Class / section" value={entryDraft.section_id} onChange={value => { setEntryDraft(current => ({ ...current, section_id: value, assignment_id: "" })); setFieldErrors(current => ({ ...current, section_id: "", assignment_id: "" })); }} options={sections.map(section => ({ value: String(section.id), label: `${section.class_name} · Section ${section.name}` }))} placeholder="Select section" invalid={Boolean(fieldErrors.section_id)} describedBy={fieldErrors.section_id ? "timetable-section-error" : undefined}/>{fieldErrors.section_id && <small className="app-field-error" id="timetable-section-error" role="alert">{fieldErrors.section_id}</small>}</label>
+          <label>Teacher and subject assignment<Select ariaLabel="Teacher and subject assignment" value={entryDraft.assignment_id} onChange={value => { setEntryDraft(current => ({ ...current, assignment_id: value })); setFieldErrors(current => ({ ...current, assignment_id: "" })); }} options={filteredAssignments.map(item => ({ value: String(item.id), label: `${item.subject_name} · ${item.teacher_username}` }))} placeholder="Select assigned teacher and subject" disabled={!entryDraft.section_id} invalid={Boolean(fieldErrors.assignment_id)} describedBy={fieldErrors.assignment_id ? "timetable-assignment-error" : undefined}/>{fieldErrors.assignment_id && <small className="app-field-error" id="timetable-assignment-error" role="alert">{fieldErrors.assignment_id}</small>}</label>
+          <label>Period<Select ariaLabel="Teaching period" value={entryDraft.period_id} onChange={value => { setEntryDraft(current => ({ ...current, period_id: value })); setFieldErrors(current => ({ ...current, period_id: "" })); }} options={periods.filter(period => !period.is_break).map(period => ({ value: String(period.id), label: `${period.period_number}. ${period.name} · ${period.starts_at}–${period.ends_at}` }))} placeholder="Select period" invalid={Boolean(fieldErrors.period_id)} describedBy={fieldErrors.period_id ? "timetable-entry-period-error" : undefined}/>{fieldErrors.period_id && <small className="app-field-error" id="timetable-entry-period-error" role="alert">{fieldErrors.period_id}</small>}</label>
           <label>Day of week<Select ariaLabel="Day of week" value={entryDraft.day_of_week} onChange={value => setEntryDraft(current => ({ ...current, day_of_week: value }))} options={weekdays.map((day,index) => ({ value: String(index+1), label: day }))}/>{fieldErrors.day_of_week && <small role="alert">{fieldErrors.day_of_week}</small>}</label>
           <label>Room (optional)<input value={entryDraft.room} maxLength={80} onChange={event => setEntryDraft(current => ({ ...current, room: event.target.value }))} placeholder="e.g. Room 12"/></label>
           <div className="timetable-form-actions"><button type="button" className="timetable-secondary" onClick={closeDialog} disabled={saving}>Cancel</button><button type="submit" className="timetable-primary" disabled={saving}>{saving ? "Saving…" : "Add to timetable"}</button></div>
