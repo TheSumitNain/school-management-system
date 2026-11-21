@@ -1425,5 +1425,22 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	if retainedCurriculumSubjectCount==0||subjectAuditCount!=1 {
 		t.Fatalf("subject deactivation retention/audit: curriculum references=%d audit events=%d; want retained references and one audit",retainedCurriculumSubjectCount,subjectAuditCount)
 	}
+	// Existing students keep their current curriculum snapshot, but a new
+	// enrollment cannot be assigned a curriculum that still references the
+	// now-inactive master subject.
+	var futureStudentID,futureEnrollmentID int64
+	if err:=tx.QueryRow(ctx, `INSERT INTO students(school_id,admission_number,full_name)
+		VALUES($1,$2,'Future Subject Assignment Student') RETURNING id`,schoolID,"FUTURE-SUBJECT-"+suffix).Scan(&futureStudentID);err!=nil {
+		t.Fatalf("create future subject assignment student: %v",err)
+	}
+	if err:=tx.QueryRow(ctx, `INSERT INTO student_enrollments
+		(school_id,student_id,academic_year_id,class_id,section_id,roll_number,admission_number,admission_date)
+		VALUES($1,$2,$3,$4,$5,'98',$6,DATE '2026-04-01') RETURNING id`,
+		schoolID,futureStudentID,enrollmentYearID,sourceClassID,sourceSectionID,"FUTURE-ENR-"+suffix).Scan(&futureEnrollmentID);err!=nil {
+		t.Fatalf("create future subject assignment enrollment: %v",err)
+	}
+	if _,err:=academicRepo.SaveStudentEnrollmentSubjects(ctx,actorPrincipalID,schoolID,futureEnrollmentID,curriculumV1.ID,nil);!errors.Is(err,ErrInactiveSubjectInCurriculum) {
+		t.Fatalf("assign curriculum containing inactive master subject returned %v, want inactive subject conflict",err)
+	}
 
 }
