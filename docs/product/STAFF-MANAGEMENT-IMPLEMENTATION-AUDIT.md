@@ -93,3 +93,16 @@ The current creation API does **not** support a profile without a login account.
 ## 6. Audit limitations
 
 This is a source-level repository audit on the reviewed branch/commit. It does not claim local database state, production behavior or authenticated browser acceptance. Exact Academic Assignment endpoint payloads and permissions, staff-specific upload support, and attendance/timetable reuse contracts still require focused inspection before implementation.
+
+
+## 7. Follow-up implementation checkpoint (2026-11-21)
+
+The initial workspace shell has since been extended on branch `work`:
+
+- The Add Staff modal now follows the four-step roadmap wizard and validates each step before allowing progress. It uses only the fields accepted by the current transactional create endpoint.
+- The final review displays the values entered in the previous steps.
+- Successful creation opens a one-time optional credential handoff with Copy credentials / Do this later. No automatic message provider is assumed; clipboard copy is the only currently implemented handoff.
+- The staff profile now exposes all eight roadmap tabs. Overview, Personal Details and Employment read current API-backed profile values; Account & Access reuses the existing role/override components.
+- Qualifications & Experience, Documents, staff-scoped Academic Assignments and History & Activity remain explicit pending sections because their required backend contracts are not yet available. The UI does not pretend those workflows are implemented.
+- New Playwright tests cover the wizard, credential handoff and profile tab shell. Execution is still pending.
+
