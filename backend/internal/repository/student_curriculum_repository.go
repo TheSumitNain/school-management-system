@@ -333,8 +333,21 @@ func (r *AcademicRepository) SaveSectionClassCurriculumWithConfirmations(ctx con
 
 	subjectIDs := make([]int64, 0, len(normalizedSubjects))
 	for _, subject := range normalizedSubjects { subjectIDs = append(subjectIDs, subject.SubjectID) }
+	// Shared-lock the master subject rows while validating and writing the
+	// curriculum. This serializes curriculum edits with confirmed subject
+	// deactivation and prevents an inactive subject being inserted after the
+	// deactivation transaction has taken its impact snapshot.
 	var activeSubjectCount int
-	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM subjects WHERE school_id=$1 AND is_active=TRUE AND id=ANY($2::bigint[])`, schoolID, subjectIDs).Scan(&activeSubjectCount); err != nil { return nil, fmt.Errorf("validate curriculum subjects: %w", err) }
+	subjectRows, err := tx.Query(ctx, `SELECT id,is_active FROM subjects WHERE school_id=$1 AND id=ANY($2::bigint[]) ORDER BY id FOR SHARE`, schoolID, subjectIDs)
+	if err != nil { return nil, fmt.Errorf("lock curriculum master subjects: %w", err) }
+	for subjectRows.Next() {
+		var subjectID int64
+		var active bool
+		if scanErr := subjectRows.Scan(&subjectID,&active); scanErr != nil { subjectRows.Close(); return nil, fmt.Errorf("scan curriculum master subject: %w", scanErr) }
+		if active { activeSubjectCount++ }
+	}
+	if rowsErr := subjectRows.Err(); rowsErr != nil { subjectRows.Close(); return nil, fmt.Errorf("iterate curriculum master subjects: %w", rowsErr) }
+	subjectRows.Close()
 	if activeSubjectCount != len(subjectIDs) { return nil, ErrAcademicNotFound }
 
 	var curriculumID int64
