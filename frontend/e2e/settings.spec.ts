@@ -22,7 +22,7 @@ test("appearance mode, palette and automatic schedule save safely on this device
   await page.getByRole("button", { name: /Continue/ }).click();
   await page.getByRole("button", { name: "Settings" }).click();
 
-  const darkMode = page.getByRole("button", { name: /Dark/ });
+  const darkMode = page.getByRole("button", { name: /^Dark\\b/ });
   await darkMode.click();
   await expect(darkMode).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByRole("status").filter({ hasText: "Appearance mode updated." })).toBeVisible();
