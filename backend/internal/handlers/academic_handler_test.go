@@ -177,3 +177,28 @@ func TestAcademicErrorRequiresSubjectImpactReview(t *testing.T) {
 		t.Fatalf("unexpected subject deactivation response: %+v", payload)
 	}
 }
+
+func TestAcademicErrorExplainsInactiveSubjectEnrollmentConflicts(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	tests := []struct {
+		err error
+		code string
+	}{
+		{err: repository.ErrInactiveSubjectInCurriculum, code: "inactive_subject_in_curriculum"},
+		{err: repository.ErrInactiveSubjectSelection, code: "inactive_subject_selection"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.code, func(t *testing.T) {
+			recorder := httptest.NewRecorder()
+			ctx, _ := gin.CreateTestContext(recorder)
+			ctx.Request = httptest.NewRequest(http.MethodPut, "/school/enrollments/1/subjects", nil)
+			academicError(ctx, tt.err, "Student subject choices")
+			if recorder.Code != http.StatusConflict {
+				t.Fatalf("status = %d, want %d", recorder.Code, http.StatusConflict)
+			}
+			var payload struct { Code string `json:"code"`; Message string `json:"message"` }
+			if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil { t.Fatalf("decode response: %v", err) }
+			if payload.Code != tt.code || payload.Message == "" { t.Fatalf("unexpected conflict response: %+v", payload) }
+		})
+	}
+}
