@@ -27,21 +27,10 @@ type CurriculumRemovalConfirmation struct {
 	AffectedStudents int `json:"affected_students"`
 }
 
-type CurriculumRemovalAffectedStudent struct {
-	StudentID int64 `json:"student_id"`
-	FullName string `json:"full_name"`
-	AdmissionNumber string `json:"admission_number"`
-	ClassName string `json:"class_name"`
-	SectionName string `json:"section_name"`
-	AcademicYearName string `json:"academic_year_name"`
-}
-
 type CurriculumRemovalImpact struct {
 	SubjectID int64 `json:"subject_id"`
 	SubjectName string `json:"subject_name"`
 	AffectedStudents int `json:"affected_students"`
-	Students []CurriculumRemovalAffectedStudent `json:"students"`
-	isOptional bool
 }
 
 type CurriculumOptionalGroup struct {
@@ -256,7 +245,7 @@ func (r *AcademicRepository) PreviewSectionCurriculumRemoval(ctx context.Context
 
 func curriculumRemovalImpacts(ctx context.Context, db repositoryDB, schoolID, curriculumID int64, subjectIDs []int64) ([]CurriculumRemovalImpact, error) {
 	rows, err := db.Query(ctx, `
-		SELECT cs.subject_id, cs.subject_name_snapshot, cs.is_optional,
+		SELECT cs.subject_id, cs.subject_name_snapshot,
 		       CASE WHEN cs.is_optional
 		            THEN COUNT(DISTINCT e.student_id) FILTER (WHERE ec.curriculum_id=cs.curriculum_id AND s.id IS NOT NULL AND st.id IS NOT NULL)
 		            ELSE COUNT(DISTINCT e.student_id) FILTER (WHERE st.id IS NOT NULL AND (ec.id IS NULL OR ec.curriculum_id=cs.curriculum_id))
@@ -280,60 +269,14 @@ func curriculumRemovalImpacts(ctx context.Context, db repositoryDB, schoolID, cu
 		 ORDER BY lower(cs.subject_name_snapshot), cs.subject_id
 	`, curriculumID, schoolID, subjectIDs)
 	if err != nil { return nil, fmt.Errorf("calculate curriculum removal impact: %w", err) }
+	defer rows.Close()
 	items := make([]CurriculumRemovalImpact, 0)
 	for rows.Next() {
 		var item CurriculumRemovalImpact
-		if err := rows.Scan(&item.SubjectID, &item.SubjectName, &item.isOptional, &item.AffectedStudents); err != nil {
-			rows.Close()
-			return nil, fmt.Errorf("scan curriculum removal impact: %w", err)
-		}
-		item.Students = make([]CurriculumRemovalAffectedStudent, 0)
+		if err := rows.Scan(&item.SubjectID, &item.SubjectName, &item.AffectedStudents); err != nil { return nil, fmt.Errorf("scan curriculum removal impact: %w", err) }
 		items = append(items, item)
 	}
-	if err := rows.Err(); err != nil { rows.Close(); return nil, fmt.Errorf("iterate curriculum removal impact: %w", err) }
-	rows.Close()
-
-	for index := range items {
-		item := &items[index]
-		studentRows, err := db.Query(ctx, `
-			SELECT DISTINCT st.id, st.full_name, COALESCE(e.admission_number,''), c.name, sec.name, ay.name
-			  FROM class_curriculum_subjects cs
-			  JOIN class_curricula cc ON cc.id=cs.curriculum_id AND cc.school_id=cs.school_id
-			  JOIN classes c ON c.id=cc.class_id AND c.school_id=cc.school_id
-			  JOIN sections sec ON sec.id=cc.section_id AND sec.school_id=cc.school_id
-			  JOIN academic_years ay ON ay.id=cc.academic_year_id AND ay.school_id=cc.school_id
-			  JOIN student_enrollments e
-			    ON e.school_id=cc.school_id AND e.academic_year_id=cc.academic_year_id
-			   AND e.class_id=cc.class_id AND e.section_id=cc.section_id AND e.status='active'
-			  JOIN students st ON st.id=e.student_id AND st.school_id=e.school_id AND st.status='active'
-			  LEFT JOIN student_enrollment_curricula ec
-			    ON ec.enrollment_id=e.id AND ec.school_id=e.school_id AND ec.status='active'
-			  LEFT JOIN student_enrollment_subject_selections s
-			    ON s.enrollment_curriculum_id=ec.id AND s.curriculum_id=cs.curriculum_id
-			   AND s.curriculum_subject_id=cs.id AND s.school_id=cs.school_id AND s.revoked_at IS NULL
-			 WHERE cs.curriculum_id=$1 AND cs.school_id=$2 AND cs.subject_id=$3 AND cs.is_active=TRUE
-			   AND CASE WHEN cs.is_optional
-			            THEN ec.curriculum_id=cs.curriculum_id AND s.id IS NOT NULL
-			            ELSE ec.id IS NULL OR ec.curriculum_id=cs.curriculum_id
-			       END
-			 ORDER BY st.full_name, st.id
-		`, curriculumID, schoolID, item.SubjectID)
-		if err != nil { return nil, fmt.Errorf("list affected students for curriculum subject %d: %w", item.SubjectID, err) }
-		for studentRows.Next() {
-			var student CurriculumRemovalAffectedStudent
-			if err := studentRows.Scan(&student.StudentID, &student.FullName, &student.AdmissionNumber,
-				&student.ClassName, &student.SectionName, &student.AcademicYearName); err != nil {
-				studentRows.Close()
-				return nil, fmt.Errorf("scan affected curriculum student: %w", err)
-			}
-			item.Students = append(item.Students, student)
-		}
-		if err := studentRows.Err(); err != nil { studentRows.Close(); return nil, fmt.Errorf("iterate affected curriculum students: %w", err) }
-		studentRows.Close()
-		if len(item.Students) != item.AffectedStudents {
-			return nil, fmt.Errorf("curriculum removal impact count/list mismatch for subject %d: count=%d students=%d", item.SubjectID, item.AffectedStudents, len(item.Students))
-		}
-	}
+	if err := rows.Err(); err != nil { return nil, fmt.Errorf("iterate curriculum removal impact: %w", err) }
 	return items, nil
 }
 
