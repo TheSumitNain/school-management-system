@@ -138,6 +138,10 @@ test("section curriculum validates optional groups, edits in place, and confirms
   const editSubjectDialog = page.getByRole("dialog", { name: "Edit subject" });
   const editSubjectSave = editSubjectDialog.getByRole("button", { name: "Save changes" });
   await expect(editSubjectSave).toBeDisabled();
+  await editSubjectDialog.getByLabel("Subject code").fill("MATH-2");
+  await expect(editSubjectSave).toBeEnabled();
+  await editSubjectDialog.getByLabel("Subject code").fill("MATH");
+  await expect(editSubjectSave).toBeDisabled();
   await editSubjectDialog.locator("form").evaluate(form => form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
   await expect(page.locator(".app-toast").filter({ hasText: "No change to save." })).toBeVisible();
   expect(subjectWriteCount).toBe(0);
