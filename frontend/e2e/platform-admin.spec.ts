@@ -182,7 +182,7 @@ test("school onboarding refreshes the school list and delegated permissions can 
 
   await page.getByRole("tab", { name: "School permissions" }).click();
   await expect.poll(() => schoolListCalls).toBeGreaterThan(1);
-  const schoolSelect = page.getByLabel("School");
+  const schoolSelect = page.getByLabel("School", { exact: true });
   await expect(schoolSelect.locator("option", { hasText: "Sunrise Academy" })).toHaveCount(1);
   await schoolSelect.selectOption("2");
   await page.getByLabel("Permission").selectOption("students.read_basic");
