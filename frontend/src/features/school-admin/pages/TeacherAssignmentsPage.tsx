@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { notifyToast } from "../../../shared/notifications";
 import { Plus, RefreshCw, UserRoundX } from "lucide-react";
-import { api } from "../../../lib/api";
+import { api, ApiError } from "../../../lib/api";
 import {
   createClassInchargeAssignment, createTeacherSubjectAssignment,
   getClassInchargeAssignments, getEligibleSchoolTeachers, getTeacherSubjectAssignments,
@@ -127,8 +127,17 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
       await load();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to create teacher assignment.";
+      const serverErrors = error instanceof ApiError ? error.fieldErrors : {};
+      const mapped: Record<string, string> = {};
+      for (const [serverField, formField] of [
+        ["academic_year_id", "yearID"], ["section_id", "sectionID"],
+        ["subject_id", "subjectID"], ["teacher_principal_id", "teacherID"],
+      ]) {
+        if (serverErrors[serverField]) mapped[formField] = serverErrors[serverField];
+      }
+      if (Object.keys(mapped).length) setFieldErrors(current => ({ ...current, ...mapped }));
+      else setFeedback({ kind: "error", message });
       notifyToast("error", message);
-      setFeedback({ kind: "error", message });
     } finally { setSaving(false); }
   }
 
@@ -153,8 +162,17 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
       await load();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to assign class in-charge.";
+      const serverErrors = error instanceof ApiError ? error.fieldErrors : {};
+      const mapped: Record<string, string> = {};
+      for (const [serverField, formField] of [
+        ["academic_year_id", "inchargeYearID"], ["section_id", "inchargeSectionID"],
+        ["teacher_principal_id", "inchargeTeacherID"],
+      ]) {
+        if (serverErrors[serverField]) mapped[formField] = serverErrors[serverField];
+      }
+      if (Object.keys(mapped).length) setFieldErrors(current => ({ ...current, ...mapped }));
+      else setFeedback({ kind: "error", message });
       notifyToast("error", message);
-      setFeedback({ kind: "error", message });
     } finally { setSaving(false); }
   }
 
