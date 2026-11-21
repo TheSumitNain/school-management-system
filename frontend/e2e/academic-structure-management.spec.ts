@@ -247,7 +247,7 @@ test("section deactivation shows exact dependency counts and active student list
   await editDialog.getByRole("button", { name: "Save changes" }).click();
 
   const impactDialog = page.getByRole("dialog", { name: "Review section deactivation" });
-  await expect(impactDialog.getByText("2", { exact: true })).toBeVisible();
+  await expect(impactDialog.getByText(/2 active student enrollments/)).toBeVisible();
   await expect(impactDialog.getByText("Aarav Sharma")).toBeVisible();
   await expect(impactDialog.getByText("Diya Verma")).toBeVisible();
   await expect(impactDialog.getByText(/does not transfer students or revoke assignments automatically/)).toBeVisible();
