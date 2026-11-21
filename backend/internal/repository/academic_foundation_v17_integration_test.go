@@ -1226,15 +1226,23 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 		len(afterRemoval.Curriculum.Subjects) != 1 || len(afterRemoval.SelectedOptionalSubjectIDs) != 0 {
 		t.Fatalf("student curriculum after confirmed subject removal: item=%+v err=%v", afterRemoval, err)
 	}
-	var removedSubjectCount, removedSelectionCount int
-	if err := tx.QueryRow(ctx, `SELECT COUNT(*)::integer FROM class_curriculum_subjects WHERE id=$1 AND curriculum_id=$2`, optionalV1ID, curriculumV1.ID).Scan(&removedSubjectCount); err != nil {
-		t.Fatalf("check permanently removed curriculum subject: %v", err)
+	var removedSubjectCount, activeRemovedSubjectCount, removedSelectionCount, activeRemovedSelectionCount int
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*)::integer, COUNT(*) FILTER (WHERE is_active)::integer
+		  FROM class_curriculum_subjects WHERE id=$1 AND curriculum_id=$2
+	`, optionalV1ID, curriculumV1.ID).Scan(&removedSubjectCount, &activeRemovedSubjectCount); err != nil {
+		t.Fatalf("check soft-deactivated curriculum subject history: %v", err)
 	}
-	if err := tx.QueryRow(ctx, `SELECT COUNT(*)::integer FROM student_enrollment_subject_selections WHERE school_id=$1 AND curriculum_subject_id=$2`, schoolID, optionalV1ID).Scan(&removedSelectionCount); err != nil {
-		t.Fatalf("check permanently removed student subject choices: %v", err)
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*)::integer, COUNT(*) FILTER (WHERE revoked_at IS NULL)::integer
+		  FROM student_enrollment_subject_selections WHERE school_id=$1 AND curriculum_subject_id=$2
+	`, schoolID, optionalV1ID).Scan(&removedSelectionCount, &activeRemovedSelectionCount); err != nil {
+		t.Fatalf("check revoked student subject selection history: %v", err)
 	}
-	if removedSubjectCount != 0 || removedSelectionCount != 0 {
-		t.Fatalf("confirmed removal retained subject/selection rows: subjects=%d selections=%d", removedSubjectCount, removedSelectionCount)
+	if removedSubjectCount != 1 || activeRemovedSubjectCount != 0 ||
+		removedSelectionCount != 2 || activeRemovedSelectionCount != 0 {
+		t.Fatalf("confirmed removal history subjects=%d active_subjects=%d selections=%d active_selections=%d; want 1/0 and 2/0",
+			removedSubjectCount, activeRemovedSubjectCount, removedSelectionCount, activeRemovedSelectionCount)
 	}
 	var removalAuditCount int
 	if err := tx.QueryRow(ctx, `
