@@ -51,6 +51,25 @@ async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, un
   await page.getByRole("button", { name: "Staff", exact: true }).click();
 }
 
+test("staff workspace opens on a real-data overview and keeps later-phase tabs unavailable", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 111, school_id: 10, username: "teacher.overview",
+    employee_code: "EMP-OV-01", full_name: "Overview Teacher", designation: "Teacher",
+    mobile_number: "9876543210", employment_status: "active", profile_complete: true,
+    status: "disabled", must_change_password: true, created_at: "2026-04-01T00:00:00.000Z",
+  }];
+  await signInAndOpenStaff(page, rows);
+  await expect(page.getByRole("heading", { name: "Staff Management" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "People at a glance" })).toBeVisible();
+  await expect(page.getByText("Total staff")).toBeVisible();
+  await expect(page.locator(".staff-overview-cards article").nth(0).locator("strong")).toHaveText("1");
+  await expect(page.locator(".staff-overview-cards article").nth(1).locator("strong")).toHaveText("1");
+  await expect(page.locator(".staff-overview-cards article").nth(2).locator("strong")).toHaveText("0");
+  await expect(page.getByRole("button", { name: /Attendance/ })).toBeDisabled();
+  await expect(page.getByRole("button", { name: /Leave/ })).toBeDisabled();
+  await expect(page.getByRole("button", { name: /Reports/ })).toBeDisabled();
+});
+
 test("staff creation uses the shared IST date picker and submits its selected date", async ({ page }) => {
   const created: Array<Record<string, unknown>> = [];
   const rows: Array<Record<string, unknown>> = [];
