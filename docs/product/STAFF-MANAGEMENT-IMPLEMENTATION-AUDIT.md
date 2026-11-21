@@ -1,0 +1,95 @@
+# Staff Management — Existing Implementation Audit
+
+**Audit date:** 2026-11-21  
+**Branch reviewed:** `work`  
+**Reviewed commit:** `1ff17d6964f8300cb01fab800e4f4b2c2774ab05`  
+**Purpose:** Phase 0 baseline before rebuilding the School Admin Staff Management experience.
+
+This audit records what exists in the repository today. It is not an implementation-completion claim. The approved [Staff Management Roadmap](./STAFF-MANAGEMENT-ROADMAP.md) remains the product source of truth.
+
+## 1. Current frontend baseline
+
+The current `StaffManagementPage.tsx` is a single directory/table plus modal-driven account/profile actions. It is not the planned Staff Management workspace and will be replaced with a new page structure. The existing API client, query hooks, role/override components and shared UI primitives are reusable integration assets, not a layout constraint.
+
+| Capability | Current state | Decision |
+|---|---|---|
+| Staff directory/list | Exists; search is client-side over loaded rows | Keep API contract; rebuild directory UI and add filters/pagination only with supported backend contracts |
+| Create employee | Exists as one modal; creates employee profile and login together | Extend to approved 4-step wizard; backend must be extended before profile-only/no-login creation is offered |
+| Employee profile fields | Full name, employee code, designation, mobile, optional email/joining date, employment status | Keep supported fields; remaining personal/employment fields are missing |
+| Edit employee profile | Exists in same modal | Rebuild as focused profile-tab forms; preserve server validation mapping |
+| Login username | Set at creation; shown read-only during profile edit | Keep separate from employee profile editing |
+| Login enable/disable | Exists; enable requires temporary password; disable revokes sessions | Keep behavior and consequence confirmations |
+| Password reset | Exists; requires temporary password and forces change at next sign-in | Keep; never expose or persist plaintext credentials after submission |
+| Role assignment | Existing `StaffRoleAssignments` component and role APIs | Keep security behavior; relocate into Account & Access profile tab |
+| Permission overrides | Existing `StaffPermissionOverrides` component with delegation lookup and mandatory reason | Keep security behavior; relocate into Account & Access profile tab |
+| Effective-permission preview | Not present in current Staff page | Missing; implement only against a server-authoritative effective-permission API |
+| Credential sharing | Not present | Missing; secure one-time handoff must be designed before adding a Share action |
+| Overview dashboard | Not present | Missing |
+| Staff profile with 8 tabs | Not present | Missing |
+| Qualifications / certifications | No staff-specific frontend or API contract found in this audit | Missing; define schema, upload and verification contracts |
+| Staff documents | No staff-specific frontend or API contract found in this audit | Missing; define secure file storage/access contract |
+| Academic assignments inside Staff Management | Not present in Staff page | Existing academic assignment domain is in Academic APIs; audit exact read/write contracts and reuse it rather than duplicating models |
+| Staff attendance / leave / workload | Not present in Staff page | P1; audit existing school attendance/timetable capabilities before extending |
+| Reports / import / ID cards / payroll | Not present | Later phases; payroll remains gated on explicit policy approval |
+| Employment history / lifecycle workflow | Not present in Staff page | Missing; design append-only history and transactional audit behavior |
+
+## 2. Existing backend and security contracts to preserve
+
+Repository inspection confirms these current staff operations and constraints:
+
+- `GET /school/staff` lists same-school staff and includes employee profile fields plus `profile_complete`.
+- `POST /school/staff` provisions a staff login and employee profile in one backend transaction. Current required profile fields are full name, employee code, designation and one mobile number; email and joining date are optional. Username and initial password are required.
+- `PATCH /school/staff/:principalID` updates employee profile fields and employment status. Login identity is not changed through this profile update.
+- `DELETE /school/staff/:principalID` disables the account; active sessions are revoked.
+- `POST /school/staff/:principalID/enable` re-enables a disabled login with a new temporary password, subject to a complete Active employee profile.
+- `POST /school/staff/:principalID/password/reset` resets the password and requires a change at next sign-in.
+- Role assignment and individual permission overrides are separate same-school operations protected by live permission/delegation checks.
+- Staff usernames are globally unique and case-insensitive; employee codes are unique within a school.
+- Employment status and login status are distinct. Making an employee Active does not silently re-enable a disabled login. Inactive employees cannot sign in.
+- Backend authorization remains authoritative; frontend permission checks are navigation/action hints only.
+
+The current creation API does **not** support a profile without a login account. Do not show a “Create login: No” path until a reviewed backend/API change supports it transactionally.
+
+## 3. Roadmap mapping: Keep / Extend / Missing / Needs verification
+
+| Roadmap area | Audit result | Next action |
+|---|---|---|
+| Overview tab | Missing | Build after staff summary data contract is agreed; do not invent dashboard counts |
+| Staff Directory tab | Extend | Rebuild page; preserve list API, loading/error/empty handling and permission checks |
+| Add Staff four-step flow | Extend | Build wizard around supported fields; extend backend before exposing unsupported fields or no-login mode |
+| Profile Overview / Personal / Employment | Extend | Build profile route and section forms; mark unsupported fields as unavailable until API/storage exists |
+| Qualifications & Experience | Missing | Phase 1 schema/API/security design |
+| Documents | Missing | Phase 1 secure upload/download contract and authorization |
+| Academic Assignments | Existing domain; Staff UI missing | Inspect current academic assignment APIs, filters, history and constraints; reuse existing Academic Structure |
+| Account & Access | Partially implemented | Preserve roles, overrides, reset, enable/disable; add safe effective-access preview if supported |
+| History & Activity | Missing in staff UI | Define event source and read permissions; never fabricate activity |
+| Attendance | Staff workflow missing | P1 contract audit against existing attendance foundations |
+| Leave | Missing | P1 schema, policy and approval contract |
+| Workload & Timetable | Staff workflow missing | P1 reuse timetable and assignment data |
+| Reports / Import / ID cards | Missing | Later phase |
+| Payroll | Missing | P2 only after policy sign-off |
+
+## 4. Rebuild sequence
+
+1. **Phase 0 — Audit and contract freeze:** this baseline; next inspect exact Academic Assignment APIs, shared routes, permission keys and current E2E fixtures.
+2. **P0 UI foundation:** replace the current single-page layout with the approved seven-tab School Admin workspace and a proper Staff Directory; retain existing server-backed create/edit/account/role/override behavior.
+3. **P0 staff profile:** implement the eight-tab profile shell and complete each section only when its backend contract is available. Do not use fake or local-only saves.
+4. **P0 add-staff wizard:** four steps, including optional login only after backend support; add credential sharing only as a safe one-time handoff with explicit user action.
+5. **P0 academic assignments:** connect to the existing Academic assignment domain after its exact API and permission contract has been verified.
+6. **P1 workflows:** attendance, leave, workload/timetable, reports in roadmap order.
+7. **P2 workflows:** import/export, ID cards and payroll only under their roadmap gates.
+
+## 5. Non-negotiable rebuild safeguards
+
+- Replace only the Staff Management page and its dedicated styles/tests. Do not modify Academic, Student Management or Settings pages as part of this work.
+- Preserve shared API client, session handling, route shell, design tokens, theme store, Modal, ConfirmDialog, DatePicker, Select and toast system.
+- Keep school isolation, globally unique usernames, employee-code uniqueness, live permission checks, role delegation ceilings and audit behavior.
+- All field errors appear beneath their fields; preserve non-secret form values after recoverable failures.
+- Every page must handle loading, refresh, empty, permission denied, API/network failure, success and pending states.
+- Verify responsive desktop/tablet/mobile, Light/Dark/System themes, keyboard/screen-reader behavior, production build and Playwright flows.
+- No fake staff, assignment, attendance, leave or report data may be presented as real.
+- No database migration is authorized by this audit. Any migration must be additive, reviewed, tested against a disposable database, and separately approved before applying to a persistent local database.
+
+## 6. Audit limitations
+
+This is a source-level repository audit on the reviewed branch/commit. It does not claim local database state, production behavior or authenticated browser acceptance. Exact Academic Assignment endpoint payloads and permissions, staff-specific upload support, and attendance/timetable reuse contracts still require focused inspection before implementation.
