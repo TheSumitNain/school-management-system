@@ -221,7 +221,7 @@ export function StaffManagementPage({ permissions }: Props) {
     if (recordFormKind === "qualification") {
       requiredText("qualification_name", "Qualification name", 160);
       requiredText("institution", "Institution", 200);
-      if (yearValue && (!/^\\d{4}$/.test(yearValue) || Number(yearValue) < 1900 || Number(yearValue) > 2200)) errors.completion_year = "Enter a year between 1900 and 2200.";
+      if (yearValue && (!/^\d{4}$/.test(yearValue) || Number(yearValue) < 1900 || Number(yearValue) > 2200)) errors.completion_year = "Enter a year between 1900 and 2200.";
       if (scoreValue && (!Number.isFinite(Number(scoreValue)) || Number(scoreValue) < 0)) errors.score = "Enter a valid non-negative score.";
       if (Boolean(scoreValue) !== Boolean(value("score_scale"))) errors.score_scale = "Choose a score scale when a score is entered.";
       if (value("specialization").length > 160) errors.specialization = "Specialization must be 160 characters or fewer.";
@@ -231,15 +231,15 @@ export function StaffManagementPage({ permissions }: Props) {
       requiredText("certificate_name", "Certificate name", 180);
       requiredText("issuing_organization", "Issuing organization", 200);
       if (value("credential_id").length > 120) errors.credential_id = "Credential ID must be 120 characters or fewer.";
-      if (issueDate && !/^\\d{4}-\\d{2}-\\d{2}$/.test(issueDate)) errors.issue_date = "Enter a valid issue date.";
-      if (expiryDate && !/^\\d{4}-\\d{2}-\\d{2}$/.test(expiryDate)) errors.expiry_date = "Enter a valid expiry date.";
+      if (issueDate && !/^\d{4}-\d{2}-\d{2}$/.test(issueDate)) errors.issue_date = "Enter a valid issue date.";
+      if (expiryDate && !/^\d{4}-\d{2}-\d{2}$/.test(expiryDate)) errors.expiry_date = "Enter a valid expiry date.";
       if (issueDate && expiryDate && expiryDate < issueDate) errors.expiry_date = "Expiry date cannot be before the issue date.";
     } else {
       requiredText("employer_name", "Employer name", 200);
       requiredText("record_designation", "Designation", 120);
-      if (!startDate || !/^\\d{4}-\\d{2}-\\d{2}$/.test(startDate)) errors.start_date = "Enter a valid start date.";
+      if (!startDate || !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) errors.start_date = "Enter a valid start date.";
       if (isCurrent && endDate) errors.end_date = "A current role cannot have an end date.";
-      else if (endDate && (!/^\\d{4}-\\d{2}-\\d{2}$/.test(endDate) || endDate < startDate)) errors.end_date = "End date must be on or after the start date.";
+      else if (endDate && (!/^\d{4}-\d{2}-\d{2}$/.test(endDate) || endDate < startDate)) errors.end_date = "End date must be on or after the start date.";
       if (value("description").length > 2000) errors.description = "Description must be 2,000 characters or fewer.";
     }
     setRecordFieldErrors(errors);
