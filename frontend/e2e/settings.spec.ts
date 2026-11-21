@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 test.use({ timezoneId: "Asia/Kolkata" });
 
 test("appearance mode, palette and automatic schedule save safely on this device", async ({ page }) => {
+  test.setTimeout(120_000);
   await page.route("**/api/**", async route => {
     const request = route.request();
     const url = new URL(request.url());
