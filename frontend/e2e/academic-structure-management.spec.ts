@@ -359,3 +359,95 @@ test("class deactivation requires reviewing sections, enrollments and assignment
   expect(impactCalls).toBe(1);
   expect(patchBody).toMatchObject({ is_active: false, impact_fingerprint: "class-impact-v1" });
 });
+
+
+test("subject deactivation previews curriculum, assignments and active student choices before confirmation", async ({ page }) => {
+  let inactive = false;
+  let impactCalls = 0;
+  let patchBody: Record<string, unknown> | null = null;
+  await page.route("**/api/**", async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname.replace(/^\/api/, "");
+    const method = request.method();
+    if (path === "/auth/refresh") {
+      await route.fulfill({ status: 401, json: { message: "No active session" } });
+      return;
+    }
+    if (path === "/auth/login" && method === "POST") {
+      await route.fulfill({ json: {
+        access_token: "e2e-subject-impact-token", token_type: "Bearer",
+        principal: { principal_id: 118, principal_type: "staff", status: "active", school_id: 10 },
+      } });
+      return;
+    }
+    if (path === "/auth/me") {
+      await route.fulfill({ json: {
+        principal_id: 118, principal_type: "staff", school_id: 10, username: "e2e-subject-impact",
+        permissions: ["subjects.read", "subjects.manage"],
+      } });
+      return;
+    }
+    if (path === "/school/subjects" && method === "GET") {
+      await route.fulfill({ json: { subjects: [{
+        id: 44, name: "Mathematics", subject_code: "MATH", is_active: !inactive,
+      }] } });
+      return;
+    }
+    if (path === "/school/subjects/44/deactivation-impact" && method === "GET") {
+      impactCalls += 1;
+      await route.fulfill({ json: { status: "success", impact: {
+        subject_id: 44, subject_name: "Mathematics", curriculum_subject_count: 2,
+        active_teacher_assignment_count: 3, active_student_selection_count: 2,
+        historical_student_selection_count: 1, impact_fingerprint: "subject-impact-v1",
+        affected_students: [
+          { student_id: 201, full_name: "Aarav Sharma", admission_number: "ADM-201", class_name: "Class 4", section_name: "A", academic_year_name: "2026–2027" },
+          { student_id: 202, full_name: "Diya Verma", admission_number: "ADM-202", class_name: "Class 4", section_name: "B", academic_year_name: "2026–2027" },
+        ],
+      } } });
+      return;
+    }
+    if (path === "/school/subjects/44" && method === "PATCH") {
+      patchBody = request.postDataJSON() as Record<string, unknown>;
+      inactive = true;
+      await route.fulfill({ json: { status: "success", subject: {
+        id: 44, name: "Mathematics", subject_code: "MATH", is_active: false,
+      } } });
+      return;
+    }
+    await route.fulfill({ status: 404, json: { message: `Unmocked E2E API request: ${method} ${path}` } });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Username").fill("e2e-subject-impact");
+  await page.getByLabel("Password").fill("E2E-only-password");
+  await page.getByRole("button", { name: /Continue/ }).click();
+  await page.getByRole("button", { name: "Academics" }).click();
+  await page.getByRole("tab", { name: "Subjects" }).click();
+  await page.getByRole("button", { name: "Edit Mathematics" }).click();
+  const editDialog = page.getByRole("dialog", { name: "Edit subject" });
+  const status = editDialog.getByLabel("Record status");
+  await status.click();
+  await page.getByRole("option", { name: "Inactive" }).click();
+  await editDialog.getByRole("button", { name: "Save changes" }).click();
+
+  const impactDialog = page.getByRole("dialog", { name: "Review subject deactivation" });
+  await expect(impactDialog.getByText(/2 curriculum references/)).toBeVisible();
+  await expect(impactDialog.getByText(/3 active teacher-subject assignments/)).toBeVisible();
+  await expect(impactDialog.getByText(/2 active student subject selections/)).toBeVisible();
+  await expect(impactDialog.getByText("Aarav Sharma")).toBeVisible();
+  await expect(impactDialog.getByText("Diya Verma")).toBeVisible();
+  expect(impactCalls).toBe(1);
+  expect(patchBody).toBeNull();
+
+  await impactDialog.getByRole("button", { name: "Go back" }).click();
+  await expect(editDialog).toBeVisible();
+  expect(patchBody).toBeNull();
+
+  await editDialog.getByRole("button", { name: "Save changes" }).click();
+  const confirmation = page.getByRole("dialog", { name: "Review subject deactivation" });
+  await confirmation.getByRole("button", { name: "Confirm deactivation" }).click();
+  await expect(page.getByRole("status").filter({ hasText: 'Subject "Mathematics" updated successfully.' })).toBeVisible();
+  expect(impactCalls).toBe(2);
+  expect(patchBody).toMatchObject({ is_active: false, impact_fingerprint: "subject-impact-v1" });
+});
