@@ -737,7 +737,7 @@ func (r *AcademicRepository) SaveStudentEnrollmentSubjects(
 	groupBounds := make(map[int64]struct{ min, max int })
 	currentSelected := make(map[int64]struct{})
 	if hasActiveAssignment && activeCurriculumID == curriculumID {
-		currentRows, currentErr := tx.Query(ctx, `SELECT curriculum_subject_id FROM student_enrollment_subject_selections WHERE enrollment_curriculum_id=$1 AND school_id=$2`, activeAssignmentID, schoolID)
+		currentRows, currentErr := tx.Query(ctx, `SELECT curriculum_subject_id FROM student_enrollment_subject_selections WHERE enrollment_curriculum_id=$1 AND school_id=$2 AND revoked_at IS NULL`, activeAssignmentID, schoolID)
 		if currentErr != nil { return nil, fmt.Errorf("load current subject choices before validation: %w", currentErr) }
 		for currentRows.Next() { var currentID int64; if scanErr := currentRows.Scan(&currentID); scanErr != nil { currentRows.Close(); return nil, fmt.Errorf("scan current subject choice: %w", scanErr) }; currentSelected[currentID] = struct{}{} }
 		if rowsErr := currentRows.Err(); rowsErr != nil { currentRows.Close(); return nil, fmt.Errorf("iterate current subject choices: %w", rowsErr) }
