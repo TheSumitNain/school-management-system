@@ -1,6 +1,6 @@
 # Staff Management — Product and Implementation Roadmap
 
-**Status:** Approved planning baseline; implementation has not started against this roadmap.  
+**Status:** Approved planning baseline; Phase 0 audit is complete and the P0 Staff Management workspace rebuild is in progress.  
 **Scope:** Phase 1 School Admin web workspace, with Teacher self-service as a separate future experience.  
 **Last updated:** 2026-11-21
 
