@@ -93,6 +93,7 @@ func academicError(c *gin.Context,err error,resource string){
 	case errors.Is(err,repository.ErrCurriculumRemovalConfirmationRequired):c.JSON(http.StatusConflict,gin.H{"status":"error","code":"curriculum_removal_confirmation_required","message":"Review the affected-student count and confirm each removed subject."})
 	case errors.Is(err,repository.ErrCurriculumRemovalImpactChanged):c.JSON(http.StatusConflict,gin.H{"status":"error","code":"curriculum_removal_impact_changed","message":"The affected-student count changed. Review the updated impact before saving again."})
 	case errors.Is(err,repository.ErrSectionDeactivationConfirmationRequired):c.JSON(http.StatusConflict,gin.H{"status":"error","code":"section_deactivation_confirmation_required","message":"Review the section dependency impact and confirm before deactivating this section."})
+	case errors.Is(err,repository.ErrClassDeactivationConfirmationRequired):c.JSON(http.StatusConflict,gin.H{"status":"error","code":"class_deactivation_confirmation_required","message":"Review the class dependency impact and confirm before deactivating this class."})
 	case errors.Is(err,repository.ErrAcademicImpactChanged):c.JSON(http.StatusConflict,gin.H{"status":"error","code":"academic_impact_changed","message":"The section dependencies changed after preview. Review the updated impact before confirming again."})
 	case errors.Is(err,repository.ErrCurriculumSubjectRuleConflict):c.JSON(http.StatusConflict,gin.H{"status":"error","code":"curriculum_subject_rule_conflict","message":"This edit would invalidate existing student subject choices. Keep the current subject/group rules or remove the subject with confirmation first."})
 	case errors.Is(err,repository.ErrAcademicConflict):c.JSON(http.StatusConflict,gin.H{"status":"error","message":resource+" conflicts with an existing record"})
@@ -122,11 +123,25 @@ func(h *AcademicHandler) SaveAcademicYear(c *gin.Context){
 func(h *AcademicHandler) ListClasses(c *gin.Context){
 	a,s,ok:=h.ready(c);if !ok{return};items,err:=h.service.ListClasses(c.Request.Context(),a,s);if err!=nil{academicError(c,err,"Class");return};c.JSON(http.StatusOK,gin.H{"status":"success","classes":items})
 }
+func(h *AcademicHandler) PreviewClassDeactivation(c *gin.Context) {
+	actor,school,ok:=h.ready(c);if !ok{return}
+	classID,valid:=academicID(c,"classID");if !valid{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid class ID"});return}
+	previewer,ok:=h.service.(interface{PreviewClassDeactivation(context.Context,int64,int64,int64)(*repository.ClassDeactivationImpact,error)})
+	if !ok{c.JSON(http.StatusServiceUnavailable,gin.H{"status":"error","message":"Class dependency preview is unavailable"});return}
+	impact,err:=previewer.PreviewClassDeactivation(c.Request.Context(),actor,school,classID)
+	if err!=nil{academicError(c,err,"Class");return}
+	c.JSON(http.StatusOK,gin.H{"status":"success","impact":impact})
+}
 func(h *AcademicHandler) SaveClass(c *gin.Context){
 	a,s,ok:=h.ready(c);if !ok{return};var id int64;if c.Param("classID")!=""{var valid bool;id,valid=academicID(c,"classID");if !valid{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid class ID"});return}}
-	var req struct{Name string `json:"name"`;DisplayOrder int `json:"display_order"`;IsActive *bool `json:"is_active"`}
+	var req struct{Name string `json:"name"`;DisplayOrder int `json:"display_order"`;IsActive *bool `json:"is_active"`;ImpactFingerprint string `json:"impact_fingerprint"`}
 	if c.ShouldBindJSON(&req)!=nil{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid request body"});return};if n:=len([]rune(strings.TrimSpace(req.Name)));n<2||n>100{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Class name must contain 2–100 characters","field_errors":gin.H{"name":"Enter a class name containing 2–100 characters."}});return};active:=true;if req.IsActive!=nil{active=*req.IsActive}
-	v,err:=h.service.SaveClass(c.Request.Context(),a,s,id,req.Name,req.DisplayOrder,active);if err!=nil{academicError(c,err,"Class");return};code:=http.StatusOK;if id==0{code=http.StatusCreated};c.JSON(code,gin.H{"status":"success","class":v})
+	var v *repository.AcademicClass
+	var err error
+	if !active && id>0 && strings.TrimSpace(req.ImpactFingerprint)!="" {
+		if saver,ok:=h.service.(interface{SaveClassWithDeactivationConfirmation(context.Context,int64,int64,int64,string,int,string)(*repository.AcademicClass,error)});ok { v,err=saver.SaveClassWithDeactivationConfirmation(c.Request.Context(),a,s,id,req.Name,req.DisplayOrder,req.ImpactFingerprint) } else { err=repository.ErrAcademicAccessDenied }
+	}else{ v,err=h.service.SaveClass(c.Request.Context(),a,s,id,req.Name,req.DisplayOrder,active) }
+	if err!=nil{academicError(c,err,"Class");return};code:=http.StatusOK;if id==0{code=http.StatusCreated};c.JSON(code,gin.H{"status":"success","class":v})
 }
 func(h *AcademicHandler) ListSections(c *gin.Context){
 	a,s,ok:=h.ready(c);if !ok{return};yearID:=int64(0);if c.Query("academic_year_id")!=""{v,e:=strconv.ParseInt(c.Query("academic_year_id"),10,64);if e!=nil||v<=0{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid academic_year_id"});return};yearID=v}
