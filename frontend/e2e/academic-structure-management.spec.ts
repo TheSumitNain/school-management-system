@@ -162,3 +162,106 @@ test("closing an academic year archives it without exposing a delete action", as
     status: "closed", is_current: false,
   });
 });
+
+
+test("section deactivation shows exact dependency counts and active student list before saving", async ({ page }) => {
+  let deactivated = false;
+  let impactRequests = 0;
+  let patchRequests = 0;
+  await page.route("**/api/**", async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname.replace(/^\\/api/, "");
+    const method = request.method();
+    if (path === "/auth/refresh") {
+      await route.fulfill({ status: 401, json: { message: "No active session" } });
+      return;
+    }
+    if (path === "/auth/login" && method === "POST") {
+      await route.fulfill({ json: {
+        access_token: "e2e-section-impact-token", token_type: "Bearer",
+        principal: { principal_id: 116, principal_type: "staff", status: "active", school_id: 10 },
+      } });
+      return;
+    }
+    if (path === "/auth/me") {
+      await route.fulfill({ json: {
+        principal_id: 116, principal_type: "staff", school_id: 10, username: "e2e-section-impact",
+        permissions: ["academic_years.read", "classes.read", "classes.manage"],
+      } });
+      return;
+    }
+    if (path === "/school/academic-years") {
+      await route.fulfill({ json: { academic_years: [
+        { id: 7, name: "2026–2027", starts_on: "2026-04-01", ends_on: "2027-03-31", status: "active", is_current: true },
+      ] } });
+      return;
+    }
+    if (path === "/school/classes") {
+      await route.fulfill({ json: { classes: [{ id: 8, name: "Class 4", display_order: 4, is_active: true }] } });
+      return;
+    }
+    if (path === "/school/sections") {
+      await route.fulfill({ json: { sections: [{
+        id: 19, academic_year_id: 7, class_id: 8, name: "C", medium: "english",
+        display_order: 3, is_active: !deactivated,
+      }] } });
+      return;
+    }
+    if (path === "/school/sections/19/deactivation-impact" && method === "GET") {
+      impactRequests += 1;
+      await route.fulfill({ json: { status: "success", impact: {
+        section_id: 19, section_name: "C", class_name: "Class 4", academic_year_name: "2026–2027",
+        active_enrollment_count: 2, historical_enrollment_count: 1, active_curriculum_count: 1,
+        active_teacher_assignment_count: 2, active_class_incharge_count: 1,
+        affected_students: [
+          { student_id: 101, full_name: "Aarav Sharma", admission_number: "ADM-101", enrollment_status: "active" },
+          { student_id: 102, full_name: "Diya Verma", admission_number: "ADM-102", enrollment_status: "active" },
+        ],
+      } } });
+      return;
+    }
+    if (path === "/school/sections/19" && method === "PATCH") {
+      patchRequests += 1;
+      deactivated = true;
+      await route.fulfill({ json: { status: "success", section: {
+        id: 19, academic_year_id: 7, class_id: 8, name: "C", medium: "english",
+        display_order: 3, is_active: false,
+      } } });
+      return;
+    }
+    await route.fulfill({ status: 404, json: { message: `Unmocked E2E API request: ${method} ${path}` } });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Username").fill("e2e-section-impact");
+  await page.getByLabel("Password").fill("E2E-only-password");
+  await page.getByRole("button", { name: /Continue/ }).click();
+  await page.getByRole("button", { name: "Academics" }).click();
+  await page.getByRole("tab", { name: "Sections" }).click();
+  await page.getByRole("button", { name: "Edit C" }).click();
+  const editDialog = page.getByRole("dialog", { name: "Edit section" });
+  const status = editDialog.getByLabel("Section status");
+  await status.click();
+  await page.getByRole("option", { name: "Inactive" }).click();
+  await editDialog.getByRole("button", { name: "Save changes" }).click();
+
+  const impactDialog = page.getByRole("dialog", { name: "Review section deactivation" });
+  await expect(impactDialog.getByText("2", { exact: true })).toBeVisible();
+  await expect(impactDialog.getByText("Aarav Sharma")).toBeVisible();
+  await expect(impactDialog.getByText("Diya Verma")).toBeVisible();
+  await expect(impactDialog.getByText(/does not transfer students or revoke assignments automatically/)).toBeVisible();
+  expect(impactRequests).toBe(1);
+  expect(patchRequests).toBe(0);
+
+  await impactDialog.getByRole("button", { name: "Go back" }).click();
+  await expect(editDialog).toBeVisible();
+  expect(patchRequests).toBe(0);
+
+  await editDialog.getByRole("button", { name: "Save changes" }).click();
+  const confirmation = page.getByRole("dialog", { name: "Review section deactivation" });
+  await confirmation.getByRole("button", { name: "Confirm deactivation" }).click();
+  await expect(page.getByRole("status").filter({ hasText: 'Section "C" updated successfully.' })).toBeVisible();
+  expect(impactRequests).toBe(2);
+  expect(patchRequests).toBe(1);
+});
