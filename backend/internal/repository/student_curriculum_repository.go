@@ -316,7 +316,7 @@ func curriculumRemovalImpacts(ctx context.Context, db repositoryDB, schoolID, cu
 			            THEN ec.curriculum_id=cs.curriculum_id AND s.id IS NOT NULL
 			            ELSE ec.id IS NULL OR ec.curriculum_id=cs.curriculum_id
 			       END
-			 ORDER BY lower(st.full_name), st.id
+			 ORDER BY st.full_name, st.id
 		`, curriculumID, schoolID, item.SubjectID)
 		if err != nil { return nil, fmt.Errorf("list affected students for curriculum subject %d: %w", item.SubjectID, err) }
 		for studentRows.Next() {
