@@ -821,6 +821,11 @@ test("student admission, profile navigation and parent details render without br
   await expect.poll(() => curriculumReads).toBeGreaterThan(readsBeforeRefresh);
   await expect(curriculumPanel.getByRole("checkbox", { name: /Sanskrit/ })).toBeChecked();
   await expect(curriculumPanel.getByRole("checkbox", { name: /Hindi/ })).not.toBeChecked();
+  // A background refresh deliberately preserves unsaved local edits. Restore
+  // the saved choice explicitly before testing removal of an inactive choice.
+  await curriculumPanel.getByRole("checkbox", { name: /Sanskrit/ }).uncheck();
+  await curriculumPanel.getByRole("checkbox", { name: /Hindi/ }).check();
+  await expect(saveSubjectChoices).toBeDisabled();
 
   // A selected optional subject remains checked and removable after its
   // catalogue record becomes inactive; once removed it cannot be selected again.
