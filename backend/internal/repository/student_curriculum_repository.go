@@ -743,14 +743,30 @@ func (r *AcademicRepository) SaveStudentEnrollmentSubjects(
 		if rowsErr := currentRows.Err(); rowsErr != nil { currentRows.Close(); return nil, fmt.Errorf("iterate current subject choices: %w", rowsErr) }
 		currentRows.Close()
 	}
-	if !hasActiveAssignment || activeCurriculumID != curriculumID {
-		var inactiveSubjectCount int
-		if err := tx.QueryRow(ctx, `
-			SELECT COUNT(*)::integer FROM class_curriculum_subjects cs
-			JOIN subjects s ON s.id=cs.subject_id AND s.school_id=cs.school_id
-			WHERE cs.curriculum_id=$1 AND cs.school_id=$2 AND cs.is_active=TRUE AND s.is_active=FALSE
-		`, curriculumID, schoolID).Scan(&inactiveSubjectCount); err != nil { return nil, fmt.Errorf("check inactive master subjects in curriculum: %w", err) }
-		if inactiveSubjectCount > 0 { return nil, ErrInactiveSubjectInCurriculum }
+	// Lock each master subject in shared mode before validating/assigning the
+	// curriculum. Subject deactivation takes an exclusive row lock, so either
+	// this enrollment commits first and invalidates its preview fingerprint, or
+	// this request observes the inactive subject and refuses the assignment.
+	var inactiveSubjectCount int
+	subjectRows, subjectErr := tx.Query(ctx, `
+		SELECT s.id,s.is_active
+		  FROM class_curriculum_subjects cs
+		  JOIN subjects s ON s.id=cs.subject_id AND s.school_id=cs.school_id
+		 WHERE cs.curriculum_id=$1 AND cs.school_id=$2 AND cs.is_active=TRUE
+		 ORDER BY s.id
+		 FOR SHARE OF s
+	`, curriculumID, schoolID)
+	if subjectErr != nil { return nil, fmt.Errorf("lock curriculum master subjects: %w", subjectErr) }
+	for subjectRows.Next() {
+		var masterID int64
+		var masterActive bool
+		if scanErr := subjectRows.Scan(&masterID,&masterActive); scanErr != nil { subjectRows.Close(); return nil, fmt.Errorf("scan locked curriculum master subject: %w", scanErr) }
+		if !masterActive { inactiveSubjectCount++ }
+	}
+	if rowsErr := subjectRows.Err(); rowsErr != nil { subjectRows.Close(); return nil, fmt.Errorf("iterate locked curriculum master subjects: %w", rowsErr) }
+	subjectRows.Close()
+	if (!hasActiveAssignment || activeCurriculumID != curriculumID) && inactiveSubjectCount > 0 {
+		return nil, ErrInactiveSubjectInCurriculum
 	}
 	rows, err := tx.Query(ctx, `
 		SELECT cs.id,cs.optional_group_id,cs.is_optional,cs.subject_name_snapshot,cs.subject_code_snapshot,
