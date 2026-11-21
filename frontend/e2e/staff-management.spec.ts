@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, type Route } from "@playwright/test";
 import { schoolDateValue } from "../src/shared/date/schoolDate";
 
 const staffUser = {
@@ -8,7 +8,7 @@ const staffUser = {
   school_id: 10,
 };
 
-async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, unknown>>) {
+async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, unknown>>, onStaffMutation?: (path: string, route: Route) => Promise<void>) {
   await page.route("**/api/**", async route => {
     const request = route.request();
     const url = new URL(request.url());
@@ -37,6 +37,10 @@ async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, un
       await route.fulfill({ json: { staff: staffRows } });
       return;
     }
+    if (onStaffMutation && (path === "/school/staff" && method === "POST" || /^\\/school\\/staff\\/\\d+$/.test(path) && method === "PATCH")) {
+      await onStaffMutation(path, route);
+      return;
+    }
     await route.fulfill({ status: 404, json: { message: `Unmocked E2E API request: ${method} ${path}` } });
   });
 
@@ -50,11 +54,7 @@ async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, un
 test("staff creation uses the shared IST date picker and submits its selected date", async ({ page }) => {
   const created: Array<Record<string, unknown>> = [];
   const rows: Array<Record<string, unknown>> = [];
-  await page.route("**/api/school/staff", async route => {
-    if (route.request().method() !== "POST") {
-      await route.continue();
-      return;
-    }
+  await signInAndOpenStaff(page, rows, async (_path, route) => {
     const payload = route.request().postDataJSON() as Record<string, unknown>;
     created.push(payload);
     rows.push({
@@ -67,7 +67,6 @@ test("staff creation uses the shared IST date picker and submits its selected da
     });
     await route.fulfill({ json: { staff: rows[0] } });
   });
-  await signInAndOpenStaff(page, rows);
 
   await expect(page.getByRole("heading", { name: "Staff management" })).toBeVisible();
   await expect(page.getByRole("textbox", { name: "Search staff by name, code, designation or username" })).toBeVisible();
@@ -98,15 +97,10 @@ test("staff profile edit uses the shared employment-status select and sends the 
     employment_status: "active", profile_complete: true, status: "active",
     must_change_password: false, created_at: "2026-04-01T00:00:00.000Z",
   }];
-  await page.route("**/api/school/staff/301", async route => {
-    if (route.request().method() !== "PATCH") {
-      await route.continue();
-      return;
-    }
+  await signInAndOpenStaff(page, rows, async (_path, route) => {
     updates.push(route.request().postDataJSON() as Record<string, unknown>);
     await route.fulfill({ json: { staff: { ...rows[0], ...(updates[0] ?? {}) }, message: "Updated" } });
   });
-  await signInAndOpenStaff(page, rows);
 
   await page.getByRole("button", { name: "Edit employee profile for teacher.two" }).click();
   const dialog = page.getByRole("dialog", { name: "Edit employee profile" });
