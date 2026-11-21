@@ -50,6 +50,7 @@ test("timetable period form validates every required field inline without browse
   await page.getByLabel("Username").fill("e2e-timetable-admin");
   await page.getByLabel("Password").fill("E2E-only-password");
   await page.getByRole("button", { name: /Continue/ }).click();
+  await page.evaluate(() => { window.history.pushState({}, "", "/timetable"); window.dispatchEvent(new PopStateEvent("popstate")); });
   await expect(page.getByRole("heading", { level: 1, name: "Timetable" })).toBeVisible();
 
   await page.getByRole("button", { name: "Add period" }).click();
