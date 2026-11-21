@@ -168,7 +168,7 @@ export function StaffManagementPage({ permissions }: Props) {
     if (!credentialHandoff) return;
     try {
       if (!navigator.clipboard?.writeText) throw new Error("Clipboard access is unavailable.");
-      await navigator.clipboard.writeText("School staff login\\nName: " + credentialHandoff.fullName + "\\nUsername: " + credentialHandoff.username + "\\nTemporary password: " + credentialHandoff.password + "\\nChange this password after your first sign-in.");
+      await navigator.clipboard.writeText("School staff login\nName: " + credentialHandoff.fullName + "\nUsername: " + credentialHandoff.username + "\nTemporary password: " + credentialHandoff.password + "\nChange this password after your first sign-in.");
       notifyToast("success", "Credentials copied. Share them only through a verified channel.");
     } catch {
       notifyToast("error", "Clipboard access is unavailable. Use the password-reset flow if needed.");
@@ -250,7 +250,7 @@ export function StaffManagementPage({ permissions }: Props) {
         {credentialHandoff && <section className="staff-credential-handoff"><p>Confirm the staff member's identity and use a trusted channel you have verified. Nothing is sent automatically.</p>
           <dl><div><dt>Staff member</dt><dd>{credentialHandoff.fullName}</dd></div><div><dt>Login username</dt><dd>{credentialHandoff.username}</dd></div><div><dt>Temporary password</dt><dd>{credentialHandoff.password}</dd></div></dl>
           <p className="staff-wizard-note">Do not share credentials in a public or group channel. The staff member must change this password at first sign-in.</p>
-          <div className="app-modal-actions"><button type="button" className="app-modal-cancel" onClick={() => setCredentialHandoff(null)}>Do this later</button><button type="button" className="primary" onClick={() => void copyCredentialHandoff()}}}>Copy credentials</button></div>
+          <div className="app-modal-actions"><button type="button" className="app-modal-cancel" onClick={() => setCredentialHandoff(null)}>Do this later</button><button type="button" className="primary" onClick={() => void copyCredentialHandoff()}>Copy credentials</button></div>
         </section>}
       </Modal>
       {activeTab === "overview" && <section className="staff-overview">
