@@ -1288,4 +1288,56 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 		t.Fatalf("mark attendance for archived student error = %v, want ErrAttendanceNotFound", err)
 	}
 
+	// Section deactivation requires an exact dependency preview. A dependency
+	// added after preview invalidates the confirmation; the refreshed preview
+	// then allows an atomic, audited inactivation without deleting enrollment.
+	initialImpact, err := academicRepo.PreviewSectionDeactivation(ctx, actorPrincipalID, schoolID, promotionSectionID)
+	if err != nil || initialImpact == nil || initialImpact.ImpactFingerprint == "" || initialImpact.ActiveEnrollmentCount != 0 {
+		t.Fatalf("preview empty section deactivation: impact=%+v err=%v", initialImpact, err)
+	}
+	var deactivationStudentID int64
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO students(school_id,admission_number,full_name)
+		VALUES($1,$2,$3) RETURNING id
+	`, schoolID, "DEACTIVATE-"+suffix, "Section Deactivation Student").Scan(&deactivationStudentID); err != nil {
+		t.Fatalf("create student after section impact preview: %v", err)
+	}
+	var deactivationEnrollmentID int64
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO student_enrollments
+			(school_id,student_id,academic_year_id,class_id,section_id,admission_number,admission_date,enrolled_at)
+		VALUES($1,$2,$3,$4,$5,$6,DATE '2030-04-01',DATE '2030-04-01') RETURNING id
+	`, schoolID, deactivationStudentID, switchYear.ID, sourceClassID, promotionSectionID, "DEACTIVATE-ENR-"+suffix).Scan(&deactivationEnrollmentID); err != nil {
+		t.Fatalf("create enrollment after section impact preview: %v", err)
+	}
+	staleSectionSave, err := academicRepo.SaveSectionWithDeactivationConfirmation(ctx, actorPrincipalID, schoolID,
+		promotionSectionID, switchYear.ID, sourceClassID, "Archive Boundary "+suffix, nil, 0, initialImpact.ImpactFingerprint)
+	if staleSectionSave != nil || !errors.Is(err, ErrAcademicImpactChanged) {
+		t.Fatalf("save section with stale dependency preview: section=%+v err=%v", staleSectionSave, err)
+	}
+	refreshedImpact, err := academicRepo.PreviewSectionDeactivation(ctx, actorPrincipalID, schoolID, promotionSectionID)
+	if err != nil || refreshedImpact == nil || refreshedImpact.ActiveEnrollmentCount != 1 ||
+		len(refreshedImpact.AffectedStudents) != 1 || refreshedImpact.AffectedStudents[0].StudentID != deactivationStudentID {
+		t.Fatalf("refresh section impact after new enrollment: impact=%+v err=%v", refreshedImpact, err)
+	}
+	deactivatedSection, err := academicRepo.SaveSectionWithDeactivationConfirmation(ctx, actorPrincipalID, schoolID,
+		promotionSectionID, switchYear.ID, sourceClassID, "Archive Boundary "+suffix, nil, 0, refreshedImpact.ImpactFingerprint)
+	if err != nil || deactivatedSection == nil || deactivatedSection.IsActive {
+		t.Fatalf("confirm section deactivation with current impact: section=%+v err=%v", deactivatedSection, err)
+	}
+	var retainedEnrollmentCount, deactivationAuditCount int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*)::integer FROM student_enrollments WHERE id=$1 AND status='active'`, deactivationEnrollmentID).Scan(&retainedEnrollmentCount); err != nil {
+		t.Fatalf("verify active enrollment retained after section deactivation: %v", err)
+	}
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*)::integer FROM audit_events
+		WHERE school_id=$1 AND actor_principal_id=$2 AND action='school.section.deactivated'
+		  AND resource_type='section' AND resource_id=$3
+	`, schoolID, actorPrincipalID, fmt.Sprint(promotionSectionID)).Scan(&deactivationAuditCount); err != nil {
+		t.Fatalf("verify section deactivation audit event: %v", err)
+	}
+	if retainedEnrollmentCount != 1 || deactivationAuditCount != 1 {
+		t.Fatalf("section deactivation retention/audit: active enrollments=%d audit events=%d; want 1 and 1", retainedEnrollmentCount, deactivationAuditCount)
+	}
+
 }
