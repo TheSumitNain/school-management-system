@@ -200,9 +200,9 @@ test("school workspace pages stay within narrow, tablet, and desktop viewports",
   await page.getByRole("tab", { name: /School permissions/ }).click();
   await expect(page.getByRole("heading", { name: "Delegate school permissions" })).toBeVisible();
   await expect(page.getByRole("option", { name: "students.read_basic" })).toBeAttached();
-  await page.getByLabel("Permission", { exact: true }).selectOption("students.read_basic");
+  await page.locator("#delegation-permission-select").selectOption("students.read_basic");
   await page.getByRole("button", { name: "Grant permission to school" }).click();
-  const permissionSelect = page.getByLabel("Permission", { exact: true });
+  const permissionSelect = page.locator("#delegation-permission-select");
   await expect(permissionSelect).toHaveAttribute("aria-invalid", "true");
   await expect(permissionSelect).toHaveAttribute("aria-describedby", "delegation-permission-error");
   await expect(page.locator('#delegation-permission-error[role="alert"]')).toHaveText(
