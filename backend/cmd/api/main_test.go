@@ -527,6 +527,7 @@ func TestRoleAdministrationRoutesEnforceLivePermissions(t *testing.T) {
 		principalType string
 		permissions []string
 	}{
+		{name: "platform audit history", method: http.MethodGet, path: "/platform/audit-events", principalType: "platform_admin", permissions: []string{"platform.audit.read"}},
 		{name: "platform delegation grant", method: http.MethodPost, path: "/platform/schools/8/permission-delegations", principalType: "platform_admin", permissions: []string{"platform.permissions.delegate"}},
 		{name: "platform delegation revoke", method: http.MethodPost, path: "/platform/permission-delegations/6/revoke", principalType: "platform_admin", permissions: []string{"platform.permissions.delegate"}},
 		{name: "school role list", method: http.MethodGet, path: "/school/roles", principalType: "staff", permissions: []string{"roles.read"}},
@@ -563,7 +564,7 @@ func TestRoleAdministrationRoutesEnforceLivePermissions(t *testing.T) {
 			fakeDatabase{}, nil, validator,
 			fakePrincipalLoader{principal: principal},
 			fakePermissionLoader{permissions: permissions},
-			nil, handlers.NewRoleHandler(nil), fakeAdminSessionActivityTracker{adminPrincipalID: 32, familyID: "00000000-0000-4000-8000-000000000031"},
+			nil, handlers.NewRoleHandler(nil), handlers.NewPlatformAuditHandler(nil), fakeAdminSessionActivityTracker{adminPrincipalID: 32, familyID: "00000000-0000-4000-8000-000000000031"},
 		)
 		if err != nil {
 			t.Fatalf("setup %s router: %v", principalType, err)
