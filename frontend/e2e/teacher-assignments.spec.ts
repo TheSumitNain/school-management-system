@@ -143,7 +143,7 @@ test("class in-charge assignment validates fields, recovers from server errors a
   await page.route("**/api/**", async route => {
     const request = route.request();
     const url = new URL(request.url());
-    const path = url.pathname.replace(/^\\/api/, "");
+    const path = url.pathname.replace(/^\/api/, "");
     const method = request.method();
     if (path === "/auth/refresh") { await route.fulfill({ status: 401, json: { message: "No active session" } }); return; }
     if (path === "/auth/login" && method === "POST") { await route.fulfill({ json: { access_token: "e2e-incharge-token", token_type: "Bearer", principal: { principal_id: 123, principal_type: "staff", status: "active", school_id: 10 } } }); return; }
