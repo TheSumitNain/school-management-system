@@ -18,6 +18,7 @@ type SectionDeactivationImpact = {
   active_enrollment_count:number; historical_enrollment_count:number; active_curriculum_count:number;
   active_teacher_assignment_count:number; active_class_incharge_count:number;
   affected_students:Array<{student_id:number;full_name:string;admission_number:string;enrollment_status:string}>;
+  impact_fingerprint:string;
 };
 type Kind = "year"|"class"|"section"|"subject"|"curriculum"|"assignments";
 type EditableKind = Exclude<Kind, "assignments"|"curriculum">;
@@ -60,6 +61,7 @@ export function AcademicStructurePage({permissions}:Props) {
   const [sectionDeactivationImpact,setSectionDeactivationImpact]=useState<SectionDeactivationImpact|null>(null);
   const [loadingSectionImpact,setLoadingSectionImpact]=useState(false);
   const deactivationConfirmedRef=useRef(false);
+  const deactivationFingerprintRef=useRef("");
 
   async function load() {
     setLoading(true); setError("");
@@ -114,7 +116,7 @@ export function AcademicStructurePage({permissions}:Props) {
   },[]);
 
   function begin(kind:EditableKind,record?:Year|SchoolClass|Section|Subject){setAction({kind,record});setFormDirty(false);setFieldErrors({});setFeedback(null);setStartsOn(kind==="year"&&record?(record as Year).starts_on.slice(0,10):"");setEndsOn(kind==="year"&&record?(record as Year).ends_on.slice(0,10):"");setYearStatus(kind==="year"&&record?(record as Year).status:"planned");setIsCurrentYear(kind==="year"&&record?(record as Year).is_current:false);setSectionYearID(kind==="section"&&record?String((record as Section).academic_year_id):kind==="section"?(filterYear||String(years.find(item=>item.is_current&&item.status==="active")?.id??"")):"");setSectionClassID(kind==="section"&&record?String((record as Section).class_id):"");setSectionMedium(kind==="section"&&record?((record as Section).medium??""):"");setSectionStatus(kind==="section"&&record?((record as Section).is_active?"active":"inactive"):"active");setRecordStatus((kind==="class"||kind==="subject")&&record?((record as SchoolClass|Subject).is_active?"active":"inactive"):"active");}
-  function close(){setAction(null);setFormDirty(false);setFieldErrors({});setSectionDeactivationImpact(null);deactivationConfirmedRef.current=false;}
+  function close(){setAction(null);setFormDirty(false);setFieldErrors({});setSectionDeactivationImpact(null);deactivationConfirmedRef.current=false;deactivationFingerprintRef.current="";}
   async function submit(event:FormEvent<HTMLFormElement>){
     event.preventDefault();if(!action)return;
     const form=new FormData(event.currentTarget);
@@ -146,7 +148,7 @@ export function AcademicStructurePage({permissions}:Props) {
     if(action.kind==="class"||action.kind==="section"){const order=Number(form.get("display_order")??0);if(!Number.isInteger(order)||order<0)errors.display_order="Enter a whole number of zero or greater."; }
     if(action.kind==="year"){const startsOn=String(form.get("starts_on")??"");const endsOn=String(form.get("ends_on")??"");const status=String(form.get("status")??"planned");const isCurrent=isCurrentYear;if(!startsOn)errors.starts_on="Choose the academic year start date.";if(!endsOn)errors.ends_on="Choose the academic year end date.";else if(startsOn&&endsOn<=startsOn)errors.ends_on="The end date must be later than the start date.";if(isCurrent&&status!=="active")errors.status="Only an active academic year can be marked as current.";if(Object.keys(errors).length){setFieldErrors(errors);return;}body={name,starts_on:startsOn,ends_on:endsOn,status,is_current:isCurrent};}
     else if(action.kind==="class")body={name,display_order:Number(form.get("display_order")??0),is_active:form.get("is_active")==="true"};
-    else if(action.kind==="section"){if(!Number(form.get("academic_year_id")))errors.academic_year_id="Select an academic year.";if(!Number(form.get("class_id")))errors.class_id="Select a class.";if(Object.keys(errors).length){setFieldErrors(errors);return;}body={academic_year_id:Number(form.get("academic_year_id")),class_id:Number(form.get("class_id")),name,medium:sectionMedium||null,display_order:Number(form.get("display_order")??0),is_active:form.get("is_active")==="true"};}
+    else if(action.kind==="section"){if(!Number(form.get("academic_year_id")))errors.academic_year_id="Select an academic year.";if(!Number(form.get("class_id")))errors.class_id="Select a class.";if(Object.keys(errors).length){setFieldErrors(errors);return;}body={academic_year_id:Number(form.get("academic_year_id")),class_id:Number(form.get("class_id")),name,medium:sectionMedium||null,display_order:Number(form.get("display_order")??0),is_active:form.get("is_active")==="true",...(deactivationFingerprintRef.current?{impact_fingerprint:deactivationFingerprintRef.current}:{})};}
     else body={name,subject_code:String(form.get("subject_code")??"").trim()||null,is_active:form.get("is_active")==="true"};
     if(Object.keys(errors).length){setFieldErrors(errors);return;}
     if(id&&currentRecord){
@@ -167,7 +169,7 @@ export function AcademicStructurePage({permissions}:Props) {
     setFieldErrors({});setSaving(true);setFeedback(null);
     try{await api(path,{method,body:JSON.stringify(body)});const resource=action.kind==="year"?"Academic year":action.kind==="class"?"Class":action.kind==="section"?"Section":"Subject";const outcome=id?"updated":"created";const closed=action.kind==="year"&&body.status==="closed";notifyToast("success",closed?`${resource} "${name}" closed and archived successfully.`:`${resource} "${name}" ${outcome} successfully.`);setAction(null);setFeedback(null);deactivationConfirmedRef.current=false;setSectionDeactivationImpact(null);await load();}
     catch(e){const message=e instanceof Error?e.message:"Unable to save academic information.";if(e instanceof ApiError&&Object.keys(e.fieldErrors).length){setFieldErrors(e.fieldErrors);}notifyToast("error",message);setFeedback({kind:"error",message});}
-    finally{setSaving(false);deactivationConfirmedRef.current=false;}
+    finally{setSaving(false);deactivationConfirmedRef.current=false;deactivationFingerprintRef.current="";}
   }
 
   const titles:Record<Kind,string>={year:"Academic years",class:"Classes",section:"Sections",subject:"Subjects",curriculum:"Class curriculum",assignments:"Teacher assignments"};
@@ -233,7 +235,7 @@ export function AcademicStructurePage({permissions}:Props) {
         </ul>
         {sectionDeactivationImpact.affected_students.length>0&&<div><h3>Affected active students ({sectionDeactivationImpact.affected_students.length})</h3><div className="table-scroll"><table><thead><tr><th>Student</th><th>Admission number</th></tr></thead><tbody>{sectionDeactivationImpact.affected_students.map(student=><tr key={student.student_id}><td>{student.full_name}</td><td>{student.admission_number||"—"}</td></tr>)}</tbody></table></div></div>}
         <p><b>Deactivation does not transfer students or revoke assignments automatically.</b> Existing records remain linked for history. Review and plan those follow-up changes separately.</p>
-        <div className="app-modal-actions"><button type="button" className="app-modal-cancel" onClick={()=>{setSectionDeactivationImpact(null);deactivationConfirmedRef.current=false;}}>Go back</button><button type="button" className="primary" onClick={()=>{deactivationConfirmedRef.current=true;setSectionDeactivationImpact(null);editFormRef.current?.requestSubmit();}}>Confirm deactivation</button></div>
+        <div className="app-modal-actions"><button type="button" className="app-modal-cancel" onClick={()=>{setSectionDeactivationImpact(null);deactivationConfirmedRef.current=false;}}>Go back</button><button type="button" className="primary" onClick={()=>{deactivationFingerprintRef.current=sectionDeactivationImpact.impact_fingerprint;deactivationConfirmedRef.current=true;setSectionDeactivationImpact(null);editFormRef.current?.requestSubmit();}}>Confirm deactivation</button></div>
       </div>}
     </Modal>
     {loading?<div className="table-message">Loading academic structure…</div>:tab==="year"?<section className="table-panel"><div className="toolbar"><div><h2>Academic years</h2><small>{years.length} records</small></div>{canManageYears&&<button className="primary academic-add" type="button" onClick={()=>begin("year")}><Plus size={15}/> Add academic year</button>}</div>{years.length===0?<div className="table-message">No academic years configured yet.</div>:<div className="table-scroll"><table><thead><tr><th>Name</th><th>Period</th><th>Status</th><th>Current</th>{canManageYears&&<th>Action</th>}</tr></thead><tbody>{years.map(item=><tr key={item.id}><td><b>{item.name}</b></td><td>{item.starts_on.slice(0,10)} – {item.ends_on.slice(0,10)}</td><td><span className={`academic-status-badge status-${item.status}`}>{item.status==="planned"?"Planned":item.status==="active"?"Active":"Closed"}</span></td><td>{item.is_current?"Yes":"—"}</td>{canManageYears&&<td><button type="button" className="academic-edit" disabled={item.status==="closed"} onClick={()=>begin("year",item)} aria-label={"Edit "+item.name}><Pencil size={15}/></button></td>}</tr>)}</tbody></table></div>}</section>
