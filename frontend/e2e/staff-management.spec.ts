@@ -54,6 +54,17 @@ async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, un
         await route.fulfill({ status: 201, json: { [singular]: saved } });
         return;
       }
+      if (method === "PATCH" && staffRecordMatch[3]) {
+        const payload = request.postDataJSON() as Record<string, unknown>;
+        const recordID = Number(staffRecordMatch[3]);
+        const index = staffRecords[collection].findIndex(item => item.id === recordID);
+        if (index < 0) { await route.fulfill({ status: 404, json: { message: "Record not found" } }); return; }
+        const saved = { ...staffRecords[collection][index], ...payload, updated_at: "2026-11-21T01:00:00.000Z" };
+        staffRecords[collection][index] = saved;
+        const singular = collection === "qualifications" ? "qualification" : collection === "certifications" ? "certification" : "experience";
+        await route.fulfill({ status: 200, json: { [singular]: saved } });
+        return;
+      }
     }
     if (onStaffMutation && (path === "/school/staff" && method === "POST" || /^\/school\/staff\/\d+$/.test(path) && method === "PATCH")) {
       await onStaffMutation(path, route);
@@ -237,6 +248,12 @@ test("staff profile creates education, certification and experience records", as
   await dialog.locator('select[name="score_scale"]').selectOption("cgpa");
   await dialog.getByRole("button", { name: "Save record" }).click();
   await expect(dialog.getByText("M.Sc. Mathematics")).toBeVisible();
+  const qualificationCard = dialog.locator(".staff-record-card").filter({ hasText: "M.Sc. Mathematics" });
+  await qualificationCard.getByRole("button", { name: "Edit" }).click();
+  await expect(dialog.locator('input[name="qualification_name"]')).toHaveValue("M.Sc. Mathematics");
+  await dialog.locator('input[name="qualification_name"]').fill("M.Sc. Applied Mathematics");
+  await dialog.getByRole("button", { name: "Save changes" }).click();
+  await expect(dialog.getByText("M.Sc. Applied Mathematics")).toBeVisible();
 
   await dialog.getByRole("button", { name: "Add certification" }).click();
   await dialog.locator('input[name="certificate_name"]').fill("Teacher Training");
@@ -248,6 +265,11 @@ test("staff profile creates education, certification and experience records", as
   await dialog.locator('input[name="expiry_date"]').fill("2027-05-01");
   await dialog.getByRole("button", { name: "Save record" }).click();
   await expect(dialog.getByText("Teacher Training")).toBeVisible();
+  const certificationCard = dialog.locator(".staff-record-card").filter({ hasText: "Teacher Training" });
+  await certificationCard.getByRole("button", { name: "Edit" }).click();
+  await dialog.locator('input[name="certificate_name"]').fill("Advanced Teacher Training");
+  await dialog.getByRole("button", { name: "Save changes" }).click();
+  await expect(dialog.getByText("Advanced Teacher Training")).toBeVisible();
 
   await dialog.getByRole("button", { name: "Add experience" }).click();
   await dialog.locator('input[name="employer_name"]').fill("Previous School");
@@ -259,4 +281,9 @@ test("staff profile creates education, certification and experience records", as
   await dialog.locator('input[name="end_date"]').fill("2021-03-31");
   await dialog.getByRole("button", { name: "Save record" }).click();
   await expect(dialog.getByText("Previous School")).toBeVisible();
+  const experienceCard = dialog.locator(".staff-record-card").filter({ hasText: "Previous School" });
+  await experienceCard.getByRole("button", { name: "Edit" }).click();
+  await dialog.locator('input[name="record_designation"]').fill("Senior Science Teacher");
+  await dialog.getByRole("button", { name: "Save changes" }).click();
+  await expect(dialog.getByText("Senior Science Teacher")).toBeVisible();
 });
