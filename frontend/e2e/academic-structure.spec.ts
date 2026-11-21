@@ -244,7 +244,7 @@ test("section curriculum validates optional groups, edits in place, and confirms
   await expect(page.getByText("2 affected students", { exact: true })).toBeVisible();
   await expect(page.getByText("Aarav Sharma", { exact: true })).toBeVisible();
   await expect(page.getByText("ADM-702", { exact: true })).toBeVisible();
-  await expect(page.getByText("Class 4 · A", { exact: true })).toBeVisible();
+  await expect(page.locator(".curriculum-removal-impact-item").getByText("Class 4 · A", { exact: true })).toHaveCount(2);
   expect(removalPreviewPayload).toMatchObject({
     academic_year_id: 7, class_id: 3, section_id: 44, subject_ids: [92],
   });
