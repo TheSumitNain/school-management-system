@@ -8,9 +8,10 @@ const platformPermissions = [
   "platform.schools.read",
 ];
 
-async function signIn(page: import("@playwright/test").Page, username: string) {
+async function signIn(page: import("@playwright/test").Page, email: string) {
   await page.goto("/");
-  await page.getByLabel("Username").fill(username);
+  await page.getByRole("button", { name: "Platform admin" }).click();
+  await page.getByLabel("Email address").fill(email);
   await page.getByLabel("Password").fill("E2E-only-password");
   await page.getByRole("button", { name: /Continue/ }).click();
   await page.getByRole("button", { name: "Platform Admin" }).click();
