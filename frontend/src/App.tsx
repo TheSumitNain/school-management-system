@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState, type FormEvent } from "react";
-import { BookOpen, Building2, CalendarClock, CalendarDays, CircleHelp, GraduationCap, LayoutDashboard, LogOut, Menu, Settings, ShieldCheck, Users, X, type LucideIcon } from "lucide-react";
+import { BookOpen, Building2, CalendarClock, CalendarDays, CircleHelp, GraduationCap, RefreshCw, LayoutDashboard, LogOut, Menu, Settings, ShieldCheck, Users, X, type LucideIcon } from "lucide-react";
 import { ThemeToggle } from "./shared/components/ThemeToggle";
 import { DashboardSkeleton, PageSkeleton } from "./shared/components/Skeleton";
 import { queryClient } from "./app/providers";
@@ -53,29 +53,40 @@ function Login({onDone}:{onDone:(user:AuthUser)=>void}){
 }
 function greeting(){const h=new Date().getHours();return h<12?"morning":h<17?"afternoon":"evening";}
 function Dashboard({user}:{user:AuthUser}){
- const [metrics,setMetrics]=useState<Metric[]>([]),[loading,setLoading]=useState(true),[errors,setErrors]=useState<string[]>([]);
- useEffect(()=>{let alive=true;async function load(){setLoading(true);const jobs=[
-  {p:"users.read",url:"/school/staff",key:"staff",label:"Staff accounts",note:"People in your school",icon:Users,tone:"blue"},
-  {p:"classes.read",url:"/school/classes",key:"classes",label:"Classes",note:"Academic structure",icon:BookOpen,tone:"violet"}
- ].filter(x=>user.permissions.includes(x.p));
- const results=await Promise.all(jobs.map(async j=>{try{const d=await api<Record<string,unknown>>(j.url);const v=d[j.key];return {metric:{label:j.label,value:String(Array.isArray(v)?v.length:0),note:j.note,icon:j.icon,tone:j.tone} as Metric,error:""};}catch(e){return {metric:null,error:j.label+": "+(e instanceof Error?e.message:"Unavailable")};}}));
- const nextMetrics=results.flatMap(x=>x.metric?[x.metric]:[]);const nextErrors=results.flatMap(x=>x.error?[x.error]:[]);
- if(user.permissions.includes("academic_years.read")){
-  try{
-   const yearsResponse=await api<{academic_years:Array<{id:number;is_current:boolean;status:string}>}>("/school/academic-years");
-   nextMetrics.push({label:"Academic years",value:String(yearsResponse.academic_years.length),note:"School calendar",icon:CalendarDays,tone:"amber"});
-   if(user.permissions.includes("students.read_basic")){
-    const currentYear=yearsResponse.academic_years.find(year=>year.is_current&&year.status==="active");
-    if(currentYear){
-     try{const enrollmentResponse=await api<{enrollments:unknown[]}>(`/school/enrollments?academic_year_id=${currentYear.id}`);nextMetrics.push({label:"Current-year enrollments",value:String(enrollmentResponse.enrollments.length),note:"Students enrolled in the current academic year",icon:GraduationCap,tone:"green"});}
-     catch(e){nextErrors.push("Current-year enrollments: "+(e instanceof Error?e.message:"Unavailable"));}
-    }else{nextMetrics.push({label:"Current-year enrollments",value:"—",note:"Set an active current academic year to view this count",icon:GraduationCap,tone:"green"});}
-   }
-  }catch(e){nextErrors.push("Academic years: "+(e instanceof Error?e.message:"Unavailable"));}
+ const [metrics,setMetrics]=useState<Metric[]>([]),[loading,setLoading]=useState(true),[errors,setErrors]=useState<string[]>([]),[retryKey,setRetryKey]=useState(0);
+ useEffect(()=>{let alive=true;async function load(){
+  setLoading(true);setErrors([]);
+  const jobs=[
+   {p:"users.read",url:"/school/staff",key:"staff",label:"Staff accounts",note:"People in your school",icon:Users,tone:"blue"},
+   {p:"classes.read",url:"/school/classes",key:"classes",label:"Classes",note:"Academic structure",icon:BookOpen,tone:"violet"}
+  ].filter(x=>user.permissions.includes(x.p));
+  const results=await Promise.all(jobs.map(async j=>{try{const d=await api<Record<string,unknown>>(j.url);const v=d[j.key];return {metric:{label:j.label,value:String(Array.isArray(v)?v.length:0),note:j.note,icon:j.icon,tone:j.tone} as Metric,error:""};}catch(e){return {metric:null,error:j.label+": "+(e instanceof Error?e.message:"Unavailable")};}}));
+  const nextMetrics=results.flatMap(x=>x.metric?[x.metric]:[]);const nextErrors=results.flatMap(x=>x.error?[x.error]:[]);
+  if(user.permissions.includes("academic_years.read")){
+   try{
+    const yearsResponse=await api<{academic_years:Array<{id:number;is_current:boolean;status:string}>}>("/school/academic-years");
+    nextMetrics.push({label:"Academic years",value:String(yearsResponse.academic_years.length),note:"School calendar",icon:CalendarDays,tone:"amber"});
+    if(user.permissions.includes("students.read_basic")){
+     const currentYear=yearsResponse.academic_years.find(year=>year.is_current&&year.status==="active");
+     if(currentYear){
+      try{const enrollmentResponse=await api<{enrollments:unknown[]}>(`/school/enrollments?academic_year_id=${currentYear.id}`);nextMetrics.push({label:"Current-year enrollments",value:String(enrollmentResponse.enrollments.length),note:"Students enrolled in the current academic year",icon:GraduationCap,tone:"green"});}
+      catch(e){nextErrors.push("Current-year enrollments: "+(e instanceof Error?e.message:"Unavailable"));}
+     }else{nextMetrics.push({label:"Current-year enrollments",value:"—",note:"Set an active current academic year to view this count",icon:GraduationCap,tone:"green"});}
+    }
+   }catch(e){nextErrors.push("Academic years: "+(e instanceof Error?e.message:"Unavailable"));}
+  }
+  if(!alive)return;setMetrics(nextMetrics);setErrors(nextErrors);setLoading(false);
  }
- if(!alive)return;setMetrics(nextMetrics);setErrors(nextErrors);setLoading(false);}
- void load();return()=>{alive=false;};},[user.permissions]);
- return <div className="content"><div className="heading"><div><span className="eyebrow">OVERVIEW</span><h1>Good {greeting()}, {user.username||"Administrator"}</h1><p>Here’s what’s happening in your school workspace.</p></div><div className="date-chip"><CalendarDays size={16}/>{new Intl.DateTimeFormat("en-IN",{dateStyle:"medium"}).format(new Date())}</div></div>{loading?<DashboardSkeleton/>:<><div className="stats">{metrics.length?metrics.map(m=><article className="stat" key={m.label}><div className="stat-top"><span>{m.label}</span><span className={"stat-icon "+m.tone}><m.icon size={18}/></span></div><strong>{m.value}</strong><small>{m.note}</small></article>):<div className="panel">No overview metrics are available for this account’s permissions.</div>}</div>{errors.length>0&&<div className="notice"><CircleHelp size={17}/><span>{errors.join(" · ")}</span></div>}<section className="welcome"><span className="eyebrow">YOUR WORKSPACE</span><h2>Everything starts with a clear picture.</h2><p>Use the navigation to manage the school areas your account is permitted to access. The API checks authorization again for every operation.</p><div className="welcome-icon"><GraduationCap size={48}/></div></section></>}</div>;
+ void load();return()=>{alive=false;};
+ },[user.permissions,retryKey]);
+ return <div className="content dashboard-page">
+  <div className="heading"><div><span className="eyebrow">OVERVIEW</span><h1>Good {greeting()}, {user.username||"Administrator"}</h1><p>Here’s what’s happening in your school workspace.</p></div><div className="date-chip"><CalendarDays size={16}/><time dateTime={new Date().toISOString()}>{new Intl.DateTimeFormat("en-IN",{dateStyle:"medium"}).format(new Date())}</time></div></div>
+  {loading?<div aria-label="Loading dashboard overview" aria-live="polite"><DashboardSkeleton/></div>:<>
+   {metrics.length>0?<section className="stats" aria-label="School overview metrics">{metrics.map(m=><article className="stat" key={m.label}><div className="stat-top"><span>{m.label}</span><span className={"stat-icon "+m.tone} aria-hidden="true"><m.icon size={18}/></span></div><strong>{m.value}</strong><small>{m.note}</small></article>)}</section>:errors.length===0?<section className="dashboard-empty panel" role="status"><CircleHelp size={22}/><div><h2>No overview metrics available</h2><p>Your account does not currently have permission to view dashboard totals. Use the navigation to open the areas available to your role.</p></div></section>:null}
+   {errors.length>0&&<div className="dashboard-feedback" role="alert" aria-live="assertive"><div className="dashboard-feedback-copy"><CircleHelp size={18} aria-hidden="true"/><div><strong>Some dashboard information could not be loaded.</strong><ul>{errors.map(error=><li key={error}>{error}</li>)}</ul></div></div><button className="dashboard-retry" type="button" onClick={()=>setRetryKey(value=>value+1)}><RefreshCw size={15} aria-hidden="true"/> Retry</button></div>}
+   <section className="welcome"><span className="eyebrow">YOUR WORKSPACE</span><h2>Everything starts with a clear picture.</h2><p>Use the navigation to manage the school areas your account is permitted to access. The API checks authorization again for every operation.</p><div className="welcome-icon" aria-hidden="true"><GraduationCap size={48}/></div></section>
+  </>}
+ </div>;
 }
 function AcademicsPage({permissions}:{permissions:string[]}){return <Suspense fallback={<PageSkeleton page="academics"/>}><AcademicStructurePage permissions={permissions}/></Suspense>;}
 function PasswordChange({onDone,principalType}:{onDone:()=>void;principalType:"staff"|"platform_admin"}){const [current,setCurrent]=useState(""),[next,setNext]=useState(""),[error,setError]=useState(""),[busy,setBusy]=useState(false),[fieldErrors,setFieldErrors]=useState<Record<string,string>>({});async function submit(e:FormEvent){e.preventDefault();const errors:Record<string,string>={};if(!current)errors.current="Enter your current password.";if(next.length<12)errors.next="New password must contain at least 12 characters.";else if(next===current)errors.next="New password must be different from your current password.";setFieldErrors(errors);if(Object.keys(errors).length)return;setBusy(true);setError("");try{await api(principalType==="platform_admin"?"/auth/platform-admin/password/change":"/auth/password/change",{method:"POST",body:JSON.stringify({current_password:current,new_password:next})});onDone();}catch(x){if(x instanceof ApiError&&Object.keys(x.fieldErrors).length){const mapped:Record<string,string>={};if(x.fieldErrors.current_password)mapped.current=x.fieldErrors.current_password;if(x.fieldErrors.new_password)mapped.next=x.fieldErrors.new_password;setFieldErrors(current=>({...current,...mapped}));setError(mapped.current||mapped.next?"":"Password update failed.");}else{const message=x instanceof Error?x.message:"Password update failed.";setError(message);setFieldErrors(current=>({...current,next:message}));}}finally{setBusy(false);}}return <div className="content"><div className="heading"><div><span className="eyebrow">ACCOUNT SECURITY</span><h1>Update your password</h1><p>Your administrator issued a temporary password. Change it to continue.</p></div></div><section className="form-panel"><form onSubmit={submit} noValidate><label>Current password<input type="password" autoComplete="current-password" value={current} aria-invalid={Boolean(fieldErrors.current)} aria-describedby={fieldErrors.current?"password-current-error":undefined} onChange={e=>{setCurrent(e.target.value);setFieldErrors(current=>({...current,current:""}));}} placeholder="Enter your current password" required/>{fieldErrors.current&&<small className="app-field-error" id="password-current-error" role="alert">{fieldErrors.current}</small>}</label><label>New password<input type="password" autoComplete="new-password" minLength={12} value={next} aria-invalid={Boolean(fieldErrors.next)} aria-describedby={fieldErrors.next?"password-next-error":"password-next-help"} onChange={e=>{setNext(e.target.value);setFieldErrors(current=>({...current,next:""}));}} placeholder="Enter a new password (12+ characters)" required/><small id="password-next-help">Use at least 12 characters. The server also checks password safety and compromised-password status.</small>{fieldErrors.next&&<small className="app-field-error" id="password-next-error" role="alert">{fieldErrors.next}</small>}</label>{error&&<div className="alert error" role="alert">{error}</div>}<button className="primary" disabled={busy}>{busy?"Updating…":"Update password"}</button></form></section></div>;}
