@@ -130,6 +130,20 @@ func(h *AcademicHandler) ListSections(c *gin.Context){
 	a,s,ok:=h.ready(c);if !ok{return};yearID:=int64(0);if c.Query("academic_year_id")!=""{v,e:=strconv.ParseInt(c.Query("academic_year_id"),10,64);if e!=nil||v<=0{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid academic_year_id"});return};yearID=v}
 	items,err:=h.service.ListSections(c.Request.Context(),a,s,yearID);if err!=nil{academicError(c,err,"Section");return};c.JSON(http.StatusOK,gin.H{"status":"success","sections":items})
 }
+func(h *AcademicHandler) PreviewSectionDeactivation(c *gin.Context) {
+	actor, school, ok := h.ready(c)
+	if !ok { return }
+	sectionID, valid := academicID(c, "sectionID")
+	if !valid { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid section ID"}); return }
+	previewer, ok := h.service.(interface {
+		PreviewSectionDeactivation(context.Context, int64, int64, int64) (*repository.SectionDeactivationImpact, error)
+	})
+	if !ok { c.JSON(http.StatusServiceUnavailable, gin.H{"status":"error","message":"Section dependency preview is unavailable"}); return }
+	impact, err := previewer.PreviewSectionDeactivation(c.Request.Context(), actor, school, sectionID)
+	if err != nil { academicError(c, err, "Section"); return }
+	c.JSON(http.StatusOK, gin.H{"status":"success","impact":impact})
+}
+
 func(h *AcademicHandler) SaveSection(c *gin.Context){
 	a,s,ok:=h.ready(c);if !ok{return};var id int64;if c.Param("sectionID")!=""{var valid bool;id,valid=academicID(c,"sectionID");if !valid{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid section ID"});return}}
 	var req struct{AcademicYearID int64 `json:"academic_year_id"`;ClassID int64 `json:"class_id"`;Name string `json:"name"`;Medium *string `json:"medium"`;DisplayOrder int `json:"display_order"`;IsActive *bool `json:"is_active"`}
