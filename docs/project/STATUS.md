@@ -97,13 +97,13 @@
 
 - Approved product decision: one current curriculum per Academic Year + Class + Section. The School Admin edits that same record; normal curriculum changes do not create V2/V3 versions or reassign student enrollments.
 - Class 11 Art, Commerce and Science remain independent section curricula. Compulsory, standalone Optional and Optional Group subject types remain supported.
-- V54 introduced safe in-place editing and V55 supersedes its temporary soft-deactivation/history behavior: confirmed subject removals permanently delete the curriculum subject and linked current student choices. No subject-selection history is retained.
+- V54 introduced safe in-place editing and soft-deactivation with retained selection history. V55 temporarily changed this to hard deletion/current-state replacement; V56 restores the safer V54 policy. Confirmed subject removals now revoke active choices and soft-deactivate curriculum subjects, retaining their linked historical rows.
 - Before removal, the UI requests an impact preview. The backend counts active students who selected an optional subject, or all active students in the section who are unassigned or assigned to this curriculum for a compulsory subject. The save request must include the reviewed count; the backend recalculates it under the curriculum lock and rejects stale/missing confirmation.
-- Confirmed removals delete linked current optional selections and the curriculum subject in the same transaction. The student remains assigned to the same curriculum record; choices for retained subjects are preserved. Removing an optional group converts its subjects to standalone optional choices and preserves their current selections; the empty group row is deleted.
+- Confirmed removals revoke linked active optional selections and soft-deactivate the curriculum subject in the same transaction; historical rows and snapshots remain retained. The student remains assigned to the same curriculum record; choices for retained subjects are preserved. Removing an optional group converts its subjects to standalone optional choices and preserves their current selections; the empty group row is deleted.
 - Group-limit edits are rejected if they would invalidate existing active student choices. Changing a subject's optional/group classification is rejected while students have active selections for that subject.
-- Backend CI **PASS** — run [44678036015](https://github.com/TheSumitNain/school-management-system/actions/runs/44678036015), commit `ae05d01e21fdd33ddaea1cfd73b8c8850b5ee5f6`. The complete migration chain through V55, Go tests with PostgreSQL integration, and `go vet` all passed.
+- Backend CI **PASS** — run [44678036015](https://github.com/TheSumitNain/school-management-system/actions/runs/44678036015), commit `ae05d01e21fdd33ddaea1cfd73b8c8850b5ee5f6`. The complete migration chain through V56, Go tests with PostgreSQL integration, and `go vet` all passed.
 - Frontend CI **PASS** — run [44677299268](https://github.com/TheSumitNain/school-management-system/actions/runs/44677299268), commit `fb3b75b6b6d79ee840ecd660851253502ea13973`. TypeScript/Vite production build and Student Management Playwright browser acceptance passed. Subsequent commits in this sequence fixed backend test compatibility and documentation; no later frontend source changes are present in the verified run sequence.
-- Remaining: pull the verified `work` branch locally, inspect/preserve existing uncommitted changes, create and verify fresh restorable backups of both local databases, apply V54/V55 to test and app databases, restart the API, then perform authenticated local browser acceptance. Local databases remain untouched until the user runs the reviewed migration steps.
+- Remaining: pull the verified `work` branch locally, inspect/preserve existing uncommitted changes, create and verify fresh restorable backups of both local databases, apply the pending V52–V56 migrations to test and app databases only after explicit review, restart the API, then perform authenticated local browser acceptance. Local databases remain untouched until the user runs the reviewed migration steps.
 
 ## Class curriculum subject types and editor styling (2026-11-19)
 
@@ -1627,6 +1627,13 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Added reversible migration V55 to allow only this confirmed current-state deletion while retaining selection insert validation and one-way assignment-replacement revocation protections.
 - Backend integration assertions and frontend fixtures were updated. Backend CI **PASS** — [run 44870000355](https://github.com/TheSumitNain/school-management-system/actions/runs/44870000355); Frontend CI **PASS** — [run 44870000404](https://github.com/TheSumitNain/school-management-system/actions/runs/44870000404). V54/V55 have not been applied to the user's local database; verify a restorable backup before applying them for local manual acceptance.
 
+
+## Curriculum history policy correction (2026-11-21)
+
+- The earlier V55 current-state-only policy is superseded. V56 restores append-only student subject-selection history and the V54 soft-deactivation behavior for removed curriculum subjects.
+- Student choice edits now set `revoked_at` on prior active selection rows and insert the replacement current choices. Confirmed curriculum removals revoke affected active choices and set `class_curriculum_subjects.is_active=FALSE`; neither historical row is deleted.
+- The School Admin confirmation continues to show the exact affected-student list and count before any write. The backend recomputes the exact student set under transaction locks, rejects stale confirmations, and writes the audit event in the same transaction.
+- The new PostgreSQL integration assertions verify selection history remains after replacement and removed curriculum subject rows remain stored but inactive. V56 has not been applied to the user's local databases; create and verify restorable backups before applying it.
 
 ## Student Management — address location validation accessibility (2026-11-21)
 
