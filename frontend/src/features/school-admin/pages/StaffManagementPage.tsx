@@ -11,6 +11,8 @@ import type { StaffRecord } from "../api";
 import { ApiError } from "../../../lib/api";
 import { Modal } from "../../../shared/components/Modal";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
+import { DatePicker } from "../../../shared/components/DatePicker";
+import { Select } from "../../../shared/components/Select";
 import "./StaffManagementPage.css";
 
 type Action = "create" | "edit" | "reset" | "enable" | null;
@@ -35,6 +37,8 @@ export function StaffManagementPage({ permissions }: Props) {
   const [selected, setSelected] = useState<StaffRecord | null>(null);
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [joiningDate, setJoiningDate] = useState("");
+  const [employmentStatus, setEmploymentStatus] = useState<"active" | "inactive">("active");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [rolesForPrincipal, setRolesForPrincipal] = useState<number | null>(null);
   const [overridesForPrincipal, setOverridesForPrincipal] = useState<number | null>(null);
@@ -50,6 +54,8 @@ export function StaffManagementPage({ permissions }: Props) {
   function openAction(next: Action, item: StaffRecord | null = null) {
     setSelected(item);
     setAction(next);
+    setJoiningDate(item?.joining_date ? item.joining_date.slice(0, 10) : "");
+    setEmploymentStatus(item?.employment_status === "inactive" ? "inactive" : "active");
     setShowPassword(false);
     setFieldErrors({});
     setFeedback(null);
@@ -57,6 +63,8 @@ export function StaffManagementPage({ permissions }: Props) {
   function closeAction() {
     setAction(null);
     setSelected(null);
+    setJoiningDate("");
+    setEmploymentStatus("active");
     setShowPassword(false);
     setFieldErrors({});
   }
@@ -171,8 +179,8 @@ export function StaffManagementPage({ permissions }: Props) {
             <label>Designation<input name="designation" placeholder="e.g. Mathematics Teacher" defaultValue={selected?.designation ?? ""} maxLength={100} required aria-invalid={Boolean(fieldErrors.designation)} aria-describedby={fieldErrors.designation ? "staff-designation-error" : undefined} onChange={()=>setFieldErrors(current=>({...current,designation:""}))}/>{fieldErrors.designation && <small className="app-field-error" id="staff-designation-error" role="alert">{fieldErrors.designation}</small>}</label>
             <label>Mobile number<input name="mobile_number" type="tel" placeholder="e.g. 9876543210" defaultValue={selected?.mobile_number ?? ""} maxLength={16} required aria-invalid={Boolean(fieldErrors.mobile_number)} aria-describedby={fieldErrors.mobile_number ? "staff-mobile-error" : undefined} onChange={()=>setFieldErrors(current=>({...current,mobile_number:""}))}/><small>Enter one contact number (10–15 digits).</small>{fieldErrors.mobile_number && <small className="app-field-error" id="staff-mobile-error" role="alert">{fieldErrors.mobile_number}</small>}</label>
             <label>Email address <small>(optional)</small><input name="email" type="email" placeholder="e.g. rahul@example.com" defaultValue={selected?.email ?? ""} maxLength={254} aria-invalid={Boolean(fieldErrors.email)} aria-describedby={fieldErrors.email ? "staff-email-error" : undefined} onChange={()=>setFieldErrors(current=>({...current,email:""}))}/>{fieldErrors.email && <small className="app-field-error" id="staff-email-error" role="alert">{fieldErrors.email}</small>}</label>
-            <label>Joining date <small>(optional)</small><input name="joining_date" type="date" defaultValue={selected?.joining_date ? selected.joining_date.slice(0,10) : ""}/></label>
-            {action === "edit" && <label>Employment status<select name="employment_status" defaultValue={selected?.employment_status || "active"}><option value="active">Active</option><option value="inactive">Inactive</option></select><small>Inactive employees cannot sign in. Reactivating employment does not automatically enable a disabled login.</small></label>}
+            <label>Joining date <small>(optional)</small><input type="hidden" name="joining_date" value={joiningDate}/><DatePicker value={joiningDate} onChange={setJoiningDate} ariaLabel="Joining date" placeholder="Select joining date"/></label>
+            {action === "edit" && <label>Employment status<input type="hidden" name="employment_status" value={employmentStatus}/><Select value={employmentStatus} onChange={value => { setEmploymentStatus(value as "active" | "inactive"); setFieldErrors(current => ({ ...current, employment_status: "" })); }} ariaLabel="Employment status" options={[{ value: "active", label: "Active" }, { value: "inactive", label: "Inactive" }]} invalid={Boolean(fieldErrors.employment_status)} describedBy={fieldErrors.employment_status ? "staff-employment-status-error" : undefined}/><small>Inactive employees cannot sign in. Reactivating employment does not automatically enable a disabled login.</small>{fieldErrors.employment_status && <small className="app-field-error" id="staff-employment-status-error" role="alert">{fieldErrors.employment_status}</small>}</label>}
           </>}
           {action !== "edit" && <label>{passwordLabel}<div className="staff-password-field"><input name="password" type={showPassword ? "text" : "password"} placeholder="Enter a strong password (12+ characters)" minLength={12} autoComplete="new-password" required aria-invalid={Boolean(fieldErrors.password)} aria-describedby={fieldErrors.password ? "staff-password-error" : "staff-password-help"} onChange={()=>setFieldErrors(current=>({...current,password:""}))}/><button type="button" onClick={() => setShowPassword(value => !value)} aria-label={showPassword ? "Hide password" : "Show password"}>{showPassword ? "Hide" : "Show"}</button></div><small id="staff-password-help">At least 12 characters. The server also checks password safety and compromised-password status.</small>{fieldErrors.password && <small className="app-field-error" id="staff-password-error" role="alert">{fieldErrors.password}</small>}</label>}
           <div className="app-modal-actions"><button className="app-modal-cancel" type="button" onClick={closeAction} disabled={pending}>Cancel</button><button className="primary" type="submit" disabled={pending}>{pending ? "Saving…" : action === "reset" ? "Reset password" : action === "enable" ? "Enable account" : "Save changes"}</button></div>
@@ -180,13 +188,13 @@ export function StaffManagementPage({ permissions }: Props) {
       </Modal>
 
       <section className="table-panel">
-        <div className="toolbar"><div><h2>All staff</h2><small>{staff.length} accounts</small></div><div className="search"><Search size={16}/><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search by username or status" aria-label="Search staff"/></div></div>
+        <div className="toolbar"><div><h2>All staff</h2><small>{staff.length} accounts</small></div><div className="search"><Search size={16}/><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search by name, code, designation or username" aria-label="Search staff by name, code, designation or username"/></div></div>
         {query.isPending ? <div className="table-message" aria-live="polite">Loading staff accounts…</div>
           : query.isError ? <div className="table-message error-text">{query.error instanceof Error ? query.error.message : "Unable to load staff accounts."}<button className="staff-retry-button" type="button" onClick={() => void query.refetch()}>Try again</button></div>
           : filtered.length === 0 ? <div className="table-message">{search ? "No staff match this search." : "No staff accounts yet. Add the first staff account to get started."}</div>
           : <div className="table-scroll"><table><thead><tr><th>Employee</th><th>Employee code</th><th>Designation</th><th>Mobile</th><th>Login status</th><th>Employment</th><th>Password</th><th>Created</th><th>Actions</th></tr></thead><tbody>
             {filtered.map(item => <Fragment key={item.principal_id}><tr><td><b>{item.full_name || "Profile incomplete"}</b><small className="staff-id">{item.username} · Principal #{item.principal_id}</small></td><td>{item.employee_code || "—"}</td><td>{item.designation || "—"}</td><td>{item.mobile_number || "—"}</td><td><span className={`pill ${item.status === "active" ? "active" : "inactive"}`}>{item.status}</span></td><td>{item.employment_status ? <span className={`pill ${item.employment_status === "active" ? "active" : "inactive"}`}>{item.employment_status}</span> : "Profile pending"}</td><td>{item.must_change_password ? <span className="staff-password-required">Change required</span> : "—"}</td><td>{item.created_at ? new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(new Date(item.created_at)) : "—"}</td><td><div className="staff-row-actions">
-              {canUpdate && <button type="button" onClick={() => openAction("edit", item)} title="Edit username" aria-label={`Edit ${item.username}`}><Pencil size={15}/></button>}
+              {canUpdate && <button type="button" onClick={() => openAction("edit", item)} title="Edit employee profile" aria-label={`Edit employee profile for ${item.username}`}><Pencil size={15}/></button>}
               {canReset && item.status === "active" && <button type="button" onClick={() => openAction("reset", item)} title="Reset password" aria-label={`Reset password for ${item.username}`}><KeyRound size={15}/></button>}
               {canReadRoles && item.status === "active" && <button type="button" className={rolesForPrincipal === item.principal_id ? "selected" : ""} onClick={() => setRolesForPrincipal(item.principal_id)} title="Manage roles" aria-label={`Manage roles for ${item.username}`} aria-expanded={rolesForPrincipal === item.principal_id}><Shield size={15}/></button>}
               {canManageOverrides && item.status === "active" && <button type="button" className={overridesForPrincipal === item.principal_id ? "selected" : ""} onClick={() => setOverridesForPrincipal(item.principal_id)} title="Manage permission overrides" aria-label={`Manage permission overrides for ${item.username}`} aria-expanded={overridesForPrincipal === item.principal_id}><LockKeyhole size={15}/></button>}
