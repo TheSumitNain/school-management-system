@@ -1,3 +1,13 @@
+## Staff Management — workspace rebuild started (2026-11-21)
+
+- Completed a source-level Phase 0 audit and recorded the Keep / Extend / Missing / Needs verification map in [Staff Management — Existing Implementation Audit](../product/STAFF-MANAGEMENT-IMPLEMENTATION-AUDIT.md).
+- Replaced the old single-table page header with a new Staff Management workspace navigation and a data-backed Overview tab. Overview counts come from the existing school staff API; while the query is loading, counts display as a neutral placeholder rather than false zeroes.
+- Added the Staff Directory navigation while retaining the existing employee list, profile edit, account lifecycle, password reset, role assignment and permission-override behavior.
+- Connected the Academic Assignments tab to the existing Teacher Assignments page and its existing school-scoped APIs. The tab is shown only when the viewer has teacher-assignment or class-in-charge read permission. The existing Academic Structure page and its data model were not modified.
+- Attendance, Leave, Workload & Timetable and Reports remain visible as disabled Phase 1 entries; no fake screens or sample operational data were added.
+- Added Playwright coverage for the overview metrics, phase-gated navigation and directory navigation. These tests are committed but have not yet been executed in CI or in the user's local browser. The latest commit has no reported status checks yet.
+- This is only the first workspace-shell milestone. The four-step add-staff wizard, eight-tab staff profile, profile-only creation support, credential handoff, qualifications, documents and lifecycle history remain incomplete. No backend code or database migration was changed.
+
 ## Staff Management — shared control consistency and browser regression coverage (2026-11-21)
 
 - Replaced the Staff Management joining-date native browser control with the shared IST-aware DatePicker, preserving the optional date-only API value.
