@@ -281,6 +281,15 @@
 
 # Project Status
 
+## Staff Management — qualifications/documents contract checkpoint (2026-11-21)
+
+- Source review confirms the existing `staff_profiles` foundation and transactional/audited staff account/profile patterns. No staff qualification/certification/experience schema or API was found.
+- Added `docs/backend/STAFF-QUALIFICATIONS-DOCUMENTS.md` defining school-scoped education, certification and experience records; proposed API and permission contracts; tenant-isolation, verification and audit invariants.
+- Document uploads remain blocked pending a private storage adapter and authorized streaming-download design. No public URLs, web-root uploads or fake upload flows.
+- This is a design/documentation checkpoint only: no migration, backend/frontend runtime code, or local/persistent database was changed. Academic, Student Management and Settings remain untouched.
+
+
+
 ### Student Management — location parent lifecycle locking (2026-11-17)
 
 - Audit found that the V34 hierarchy trigger used `FOR KEY SHARE` when validating a parent location. That lock is compatible with the `NO KEY UPDATE` lock taken when a parent is deactivated by changing only `is_active`, leaving a concurrency window between child creation and parent deactivation.
