@@ -612,11 +612,28 @@ func lockSubjectDeactivationDependencies(ctx context.Context, tx pgx.Tx, schoolI
 	return nil
 }
 
+func lockSubjectDeactivationDependencies(ctx context.Context, tx pgx.Tx, schoolID, subjectID int64) error {
+	for _,query:=range []string{
+		`SELECT id FROM class_curriculum_subjects WHERE school_id=$1 AND subject_id=$2 ORDER BY id FOR UPDATE`,
+		`SELECT sel.id FROM student_enrollment_subject_selections sel
+			JOIN class_curriculum_subjects cs ON cs.id=sel.curriculum_subject_id AND cs.curriculum_id=sel.curriculum_id AND cs.school_id=sel.school_id
+			WHERE sel.school_id=$1 AND cs.subject_id=$2 ORDER BY sel.id FOR UPDATE OF sel`,
+		`SELECT id FROM teacher_subject_assignments WHERE school_id=$1 AND subject_id=$2 ORDER BY id FOR UPDATE`,
+	}{
+		rows,err:=tx.Query(ctx,query,schoolID,subjectID);if err!=nil{return fmt.Errorf("lock subject dependency rows: %w",err)}
+		for rows.Next(){var id int64;if err:=rows.Scan(&id);err!=nil{rows.Close();return fmt.Errorf("scan locked subject dependency: %w",err)}}
+		if err:=rows.Err();err!=nil{rows.Close();return fmt.Errorf("iterate locked subject dependencies: %w",err)}
+		rows.Close()
+	}
+	return nil
+}
+
 func subjectDeactivationFingerprint(ctx context.Context, tx pgx.Tx, schoolID, subjectID int64) (string,error) {
 	var fingerprint string
 	err:=tx.QueryRow(ctx,`
 		SELECT md5(concat_ws('|',
-			COALESCE((SELECT string_agg(cs.id::text || ':' || cs.curriculum_id::text, ',' ORDER BY cs.id) FROM class_curriculum_subjects cs WHERE cs.school_id=$1 AND cs.subject_id=$2),''),
+			COALESCE((SELECT sub.name || ':' || COALESCE(sub.subject_code,'') || ':' || sub.is_active::text FROM subjects sub WHERE sub.school_id=$1 AND sub.id=$2),''),
+			COALESCE((SELECT string_agg(cs.id::text || ':' || cs.curriculum_id::text || ':' || cs.is_active::text, ',' ORDER BY cs.id) FROM class_curriculum_subjects cs WHERE cs.school_id=$1 AND cs.subject_id=$2),''),
 			COALESCE((SELECT string_agg(a.id::text || ':' || COALESCE(a.revoked_at::text,'active'), ',' ORDER BY a.id) FROM teacher_subject_assignments a WHERE a.school_id=$1 AND a.subject_id=$2),''),
 			COALESCE((SELECT string_agg(sel.id::text || ':' || COALESCE(sel.revoked_at::text,'active'), ',' ORDER BY sel.id)
 				FROM student_enrollment_subject_selections sel
@@ -644,7 +661,8 @@ func (r *AcademicRepository) PreviewSubjectDeactivation(ctx context.Context, act
 				JOIN class_curriculum_subjects cs ON cs.id=sel.curriculum_subject_id AND cs.curriculum_id=sel.curriculum_id AND cs.school_id=sel.school_id
 				WHERE sel.school_id=s.school_id AND cs.subject_id=s.id AND sel.revoked_at IS NOT NULL),
 			md5(concat_ws('|',
-				COALESCE((SELECT string_agg(cs.id::text || ':' || cs.curriculum_id::text, ',' ORDER BY cs.id) FROM class_curriculum_subjects cs WHERE cs.school_id=s.school_id AND cs.subject_id=s.id),''),
+				COALESCE((SELECT sub.name || ':' || COALESCE(sub.subject_code,'') || ':' || sub.is_active::text FROM subjects sub WHERE sub.school_id=s.school_id AND sub.id=s.id),''),
+				COALESCE((SELECT string_agg(cs.id::text || ':' || cs.curriculum_id::text || ':' || cs.is_active::text, ',' ORDER BY cs.id) FROM class_curriculum_subjects cs WHERE cs.school_id=s.school_id AND cs.subject_id=s.id),''),
 				COALESCE((SELECT string_agg(a.id::text || ':' || COALESCE(a.revoked_at::text,'active'), ',' ORDER BY a.id) FROM teacher_subject_assignments a WHERE a.school_id=s.school_id AND a.subject_id=s.id),''),
 				COALESCE((SELECT string_agg(sel.id::text || ':' || COALESCE(sel.revoked_at::text,'active'), ',' ORDER BY sel.id)
 					FROM student_enrollment_subject_selections sel
@@ -685,6 +703,7 @@ func (r *AcademicRepository) SaveSubjectWithDeactivationConfirmation(ctx context
 	if err=authorizeAcademic(ctx,tx,actorID,schoolID,"subjects.manage");err!=nil{return nil,err}
 	var lockedID int64
 	if err=tx.QueryRow(ctx,`SELECT id FROM subjects WHERE id=$1 AND school_id=$2 AND is_active=TRUE FOR UPDATE`,subjectID,schoolID).Scan(&lockedID);err!=nil{return nil,academicWriteError(err)}
+	if err=lockSubjectDeactivationDependencies(ctx,tx,schoolID,subjectID);err!=nil{return nil,err}
 	if err=lockSubjectDeactivationDependencies(ctx,tx,schoolID,subjectID);err!=nil{return nil,err}
 	current,err:=subjectDeactivationFingerprint(ctx,tx,schoolID,subjectID);if err!=nil{return nil,err}
 	if current!=fingerprint{return nil,ErrAcademicImpactChanged}
