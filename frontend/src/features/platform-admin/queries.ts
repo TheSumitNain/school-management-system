@@ -47,8 +47,10 @@ export function useDeactivatePlatformAdminMutation() {
 }
 
 export function useOnboardSchoolMutation() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateSchoolInput) => onboardSchool(input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: platformAdminQueryKeys.schools() }),
   });
 }
 
