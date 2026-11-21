@@ -1386,6 +1386,8 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 
 	// Subject deactivation must review curriculum references and active student
 	// choices, reject a stale assignment snapshot, and retain curriculum rows.
+	var preservedSubjectCode string
+	if err:=tx.QueryRow(ctx, `SELECT subject_code FROM subjects WHERE id=$1 AND school_id=$2`,subjectID,schoolID).Scan(&preservedSubjectCode);err!=nil{t.Fatalf("load subject code before deactivation: %v",err)}
 	subjectImpact,err:=academicRepo.PreviewSubjectDeactivation(ctx,actorPrincipalID,schoolID,subjectID)
 	if err!=nil||subjectImpact==nil||subjectImpact.ImpactFingerprint==""||subjectImpact.CurriculumSubjectCount==0 {
 		t.Fatalf("preview subject deactivation: impact=%+v err=%v",subjectImpact,err)
@@ -1395,7 +1397,7 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 		t.Fatalf("change teacher assignment after subject preview: %v",err)
 	}
 	staleSubjectSave,err:=academicRepo.SaveSubjectWithDeactivationConfirmation(ctx,actorPrincipalID,schoolID,
-		subjectID,"Mathematics",nil,subjectImpact.ImpactFingerprint)
+		subjectID,"Mathematics",&preservedSubjectCode,subjectImpact.ImpactFingerprint)
 	if staleSubjectSave!=nil||!errors.Is(err,ErrAcademicImpactChanged) {
 		t.Fatalf("save subject with stale dependency preview: subject=%+v err=%v",staleSubjectSave,err)
 	}
@@ -1404,7 +1406,7 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 		t.Fatalf("refresh subject dependency preview: impact=%+v err=%v",refreshedSubjectImpact,err)
 	}
 	deactivatedSubject,err:=academicRepo.SaveSubjectWithDeactivationConfirmation(ctx,actorPrincipalID,schoolID,
-		subjectID,"Mathematics",nil,refreshedSubjectImpact.ImpactFingerprint)
+		subjectID,"Mathematics",&preservedSubjectCode,refreshedSubjectImpact.ImpactFingerprint)
 	if err!=nil||deactivatedSubject==nil||deactivatedSubject.IsActive {
 		t.Fatalf("confirm subject deactivation with current impact: subject=%+v err=%v",deactivatedSubject,err)
 	}
