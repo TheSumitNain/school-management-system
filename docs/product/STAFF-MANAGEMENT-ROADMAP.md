@@ -102,7 +102,18 @@ Show this step for Teaching staff by default, and for any non-teaching employee 
 | Initial Password | Conditional | Required when current account-provisioning contract requires admin-issued temporary password; validate current password policy and never reveal after save |
 | Role | Conditional | Required when login is enabled; Teacher role by default for teaching staff, otherwise an authorized school role |
 | Require Password Change at First Login | Conditional | Required decision when temporary password is issued; default enabled |
+| Credential Sharing Option | Conditional | After account creation succeeds, offer an explicit **Share Credentials** action; never auto-send |
+| Share Channel / Recipient | Conditional | Show only supported, configured channels; confirm recipient/contact before sharing |
 | Additional Permission Overrides | Optional | Not part of basic add; configure later with reason and delegation checks |
+
+**Credential sharing workflow (required in the login provisioning phase):**
+1. Admin creates staff login credentials and submits the form.
+2. After the backend confirms account creation, show **Share Credentials** and **Do This Later** actions.
+3. Before sharing, show the destination/contact and delivery channel; require explicit admin confirmation.
+4. Do not assume paid SMS/OTP or an external messaging provider. Initially support only channels already available in the project (for example, a secure copy/share handoff). Email or messaging integrations require separate provider approval.
+5. Never store plaintext passwords for later retrieval, log credentials, or put passwords in URLs. If the password cannot safely be re-displayed after creation, provide a one-time credential handoff at creation time or use a secure reset/invitation flow.
+6. Audit who initiated sharing, when, channel, masked destination metadata and outcome—never the password or secret.
+7. Sharing is optional; account creation must succeed if the admin chooses **Do This Later**. Require password change at first login when a temporary password is issued.
 
 Selecting Teacher role does not grant class/subject access. Assignment-scoped access begins only after explicit academic assignments exist. A profile-only employee can be created without login.
 
