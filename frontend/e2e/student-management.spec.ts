@@ -67,6 +67,7 @@ test("student admission, profile navigation and parent details render without br
   let failMedicalAllergySave = false;
   let physicalDetailWrites = 0;
   let savedCurriculumSelections: number[] = [];
+let inactiveMasterSubject = false;
   const guardianLink = {
     id: 501, student_id: 1, guardian_id: 22, guardian_name: "Ramesh Sharma", guardian_status: "active" as const,
     mobile_number: "9876543210", email_address: "ramesh@example.test", alternate_mobile_number: null,
@@ -256,7 +257,7 @@ test("student admission, profile navigation and parent details render without br
           { id: 901, subject_id: 91, name: "Mathematics", is_compulsory: true, is_optional: false },
           { id: 902, subject_id: 92, name: "Hindi", optional_group_id: 801, optional_group_name: "Second language", is_compulsory: false, is_optional: true },
           { id: 903, subject_id: 93, name: "Sanskrit", optional_group_id: 801, optional_group_name: "Second language", is_compulsory: false, is_optional: true },
-          { id: 904, subject_id: 94, name: "Computer Applications", is_compulsory: false, is_optional: true },
+          { id: 904, subject_id: 94, name: "Computer Applications", is_compulsory: false, is_optional: true, master_active: !inactiveMasterSubject },
         ],
       };
       if (curriculumEnrollmentMatch[2] === "curriculum" && method === "GET") {
@@ -789,6 +790,22 @@ test("student admission, profile navigation and parent details render without br
   await expect.poll(() => curriculumReads).toBeGreaterThan(readsBeforeRefresh);
   await expect(curriculumPanel.getByRole("checkbox", { name: /Sanskrit/ })).toBeChecked();
   await expect(curriculumPanel.getByRole("checkbox", { name: /Hindi/ })).not.toBeChecked();
+
+  // A selected optional subject remains checked and removable after its
+  // catalogue record becomes inactive; once removed it cannot be selected again.
+  const readsBeforeInactiveRefresh = curriculumReads;
+  inactiveMasterSubject = true;
+  await curriculumPanel.getByRole("button", { name: "Refresh curriculum and subject choices" }).click();
+  await expect.poll(() => curriculumReads).toBeGreaterThan(readsBeforeInactiveRefresh);
+  const inactiveOptional = curriculumPanel.getByRole("checkbox", { name: /Computer Applications/ });
+  await expect(curriculumPanel.getByText("Inactive catalogue subject")).toBeVisible();
+  await expect(inactiveOptional).toBeChecked();
+  await expect(inactiveOptional).toBeEnabled();
+  await inactiveOptional.uncheck();
+  await saveSubjectChoices.click();
+  await expect(page.getByRole("status").filter({ hasText: "Student subject choices saved successfully." })).toBeVisible({ timeout: 10_000 });
+  expect(savedCurriculumSelections).toEqual([902]);
+  await expect(inactiveOptional).toBeDisabled();
 
   failStudentReads.add("basic-details");
   await page.getByRole("button", { name: /Basic details/ }).click();
