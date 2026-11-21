@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -113,4 +112,3 @@ LIMIT $1 OFFSET $2`, limit, offset)
 	return page, nil
 }
 
-var _ = pgx.ErrNoRows

@@ -17,6 +17,7 @@
 ## Administrative and school routes
 
 Implemented route groups include:
+- Platform-level audit history: `GET /platform/audit-events?limit=50&offset=0` requires `platform.audit.read`, returns only `platform.*` audit actions, and omits raw metadata.
 - Platform Admin account lifecycle and school onboarding.
 - School staff account listing, creation, update, enable/disable and password reset.
 - Staff account creation requires an employee profile in the same transaction: `full_name`, school-unique `employee_code`, `designation`, and exactly one required `mobile_number`, plus the login `username` and `initial_password`. `email` and `joining_date` are optional. The profile is stored separately from login credentials. `GET /school/staff` includes profile fields and `profile_complete`; legacy accounts without profile rows remain visible as incomplete.
