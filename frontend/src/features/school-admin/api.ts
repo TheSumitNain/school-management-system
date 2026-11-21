@@ -589,3 +589,13 @@ export function getStaffExperience(principalID: number, signal?: AbortSignal) {
 export function createStaffExperience(principalID: number, input: Omit<StaffExperience,"id"|"staff_principal_id"|"created_at"|"updated_at">) {
   return api<{ experience: StaffExperience }>(`/school/staff/${principalID}/experience`, { method:"POST", body:JSON.stringify(input) });
 }
+
+export function updateStaffQualification(principalID: number, recordID: number, input: Omit<StaffQualification,"id"|"staff_principal_id"|"verification_status"|"created_at"|"updated_at">) {
+  return api<{ qualification: StaffQualification }>(`/school/staff/${principalID}/qualifications/${recordID}`, { method:"PATCH", body:JSON.stringify(input) });
+}
+export function updateStaffCertification(principalID: number, recordID: number, input: Omit<StaffCertification,"id"|"staff_principal_id"|"verification_status"|"created_at"|"updated_at">) {
+  return api<{ certification: StaffCertification }>(`/school/staff/${principalID}/certifications/${recordID}`, { method:"PATCH", body:JSON.stringify(input) });
+}
+export function updateStaffExperience(principalID: number, recordID: number, input: Omit<StaffExperience,"id"|"staff_principal_id"|"created_at"|"updated_at">) {
+  return api<{ experience: StaffExperience }>(`/school/staff/${principalID}/experience/${recordID}`, { method:"PATCH", body:JSON.stringify(input) });
+}
