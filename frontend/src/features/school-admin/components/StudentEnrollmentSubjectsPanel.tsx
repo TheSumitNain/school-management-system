@@ -32,7 +32,7 @@ export function StudentEnrollmentSubjectsPanel({
   const savedSelections = data?.selected_optional_subject_ids ?? [];
   const selectionUnchanged = selectedCurriculumIsAssigned &&
     [...selected].sort((a, b) => a - b).join(",") === [...savedSelections].sort((a, b) => a - b).join(",");
-  const inactiveCurriculumSubjects = curriculum?.subjects.filter(subject => !subject.master_active) ?? [];
+  const inactiveCurriculumSubjects = curriculum?.subjects.filter(subject => subject.master_active === false) ?? [];
   const grouped = useMemo(() => {
     const groups = new Map<number, { name: string; min: number; max: number; subjects: CurriculumSubject[] }>();
     for (const group of curriculum?.optional_groups ?? []) {
