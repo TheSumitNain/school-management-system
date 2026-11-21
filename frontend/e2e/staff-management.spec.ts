@@ -70,6 +70,28 @@ test("staff workspace opens on a real-data overview and keeps later-phase tabs u
   await expect(page.getByRole("button", { name: /Reports/ })).toBeDisabled();
 });
 
+test("staff directory opens the eight-tab employee profile and shows saved profile details", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 411, school_id: 10, username: "teacher.profile",
+    employee_code: "EMP-PRO-01", full_name: "Profile Teacher", designation: "English Teacher",
+    mobile_number: "9876543212", email: "profile.teacher@example.com",
+    joining_date: "2026-04-01", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false, created_at: "2026-04-01T00:00:00.000Z",
+  }];
+  await signInAndOpenStaff(page, rows);
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Profile Teacher" }).click();
+  const dialog = page.getByRole("dialog", { name: "Profile Teacher" });
+  await expect(dialog.getByRole("navigation", { name: "Staff profile sections" }).getByRole("button")).toHaveCount(8);
+  await expect(dialog.getByText("EMP-PRO-01")).toBeVisible();
+  await dialog.getByRole("button", { name: "Personal Details" }).click();
+  await expect(dialog.getByText("profile.teacher@example.com")).toBeVisible();
+  await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
+  await expect(dialog.getByText(/qualification, certification and experience records need their staff-specific API/)).toBeVisible();
+  await dialog.getByRole("button", { name: "Documents" }).click();
+  await expect(dialog.getByText(/private file storage/)).toBeVisible();
+});
+
 test("staff creation uses the shared IST date picker and submits its selected date", async ({ page }) => {
   const created: Array<Record<string, unknown>> = [];
   const rows: Array<Record<string, unknown>> = [];
