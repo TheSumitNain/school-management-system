@@ -199,6 +199,7 @@ test("school workspace pages stay within narrow, tablet, and desktop viewports",
   await page.evaluate(() => { window.history.pushState({}, "", "/platform-admin"); window.dispatchEvent(new PopStateEvent("popstate")); });
   await page.getByRole("tab", { name: /School permissions/ }).click();
   await expect(page.getByRole("heading", { name: "Delegate school permissions" })).toBeVisible();
+  await expect(page.getByRole("option", { name: "students.read_basic" })).toBeAttached();
   await page.getByLabel("Permission", { exact: true }).selectOption("students.read_basic");
   await page.getByRole("button", { name: "Grant permission to school" }).click();
   const permissionSelect = page.getByLabel("Permission", { exact: true });
