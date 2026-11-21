@@ -96,3 +96,69 @@ test("academic structure create feedback is contextual and failed writes remain 
   expect(writes).toHaveLength(2);
   await expect(subjectDialog.getByLabel("Name")).toHaveValue("Mathematics");
 });
+
+
+test("closing an academic year archives it without exposing a delete action", async ({ page }) => {
+  let yearStatus: "active" | "closed" = "active";
+  let updatePayload: Record<string, unknown> | null = null;
+  await page.route("**/api/**", async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname.replace(/^\/api/, "");
+    const method = request.method();
+    if (path === "/auth/refresh") {
+      await route.fulfill({ status: 401, json: { message: "No active session" } });
+      return;
+    }
+    if (path === "/auth/login" && method === "POST") {
+      await route.fulfill({ json: {
+        access_token: "e2e-academic-year-token", token_type: "Bearer",
+        principal: { principal_id: 115, principal_type: "staff", status: "active", school_id: 10 },
+      } });
+      return;
+    }
+    if (path === "/auth/me") {
+      await route.fulfill({ json: {
+        principal_id: 115, principal_type: "staff", school_id: 10, username: "e2e-academic-year",
+        permissions: ["academic_years.read", "academic_years.manage"],
+      } });
+      return;
+    }
+    if (path === "/school/academic-years" && method === "GET") {
+      await route.fulfill({ json: { academic_years: [{
+        id: 7, name: "2026–2027", starts_on: "2026-04-01", ends_on: "2027-03-31",
+        status: yearStatus, is_current: yearStatus === "active",
+      }] } });
+      return;
+    }
+    if (path === "/school/academic-years/7" && method === "PATCH") {
+      updatePayload = request.postDataJSON() as Record<string, unknown>;
+      yearStatus = "closed";
+      await route.fulfill({ json: { status: "success", academic_year: {
+        id: 7, name: "2026–2027", starts_on: "2026-04-01", ends_on: "2027-03-31",
+        status: "closed", is_current: false,
+      } } });
+      return;
+    }
+    await route.fulfill({ status: 404, json: { message: `Unmocked E2E API request: ${method} ${path}` } });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Username").fill("e2e-academic-year");
+  await page.getByLabel("Password").fill("E2E-only-password");
+  await page.getByRole("button", { name: /Continue/ }).click();
+  await page.getByRole("button", { name: "Academics" }).click();
+  await page.getByRole("button", { name: "Edit 2026–2027" }).click();
+  const dialog = page.getByRole("dialog", { name: "Edit academic year" });
+  await expect(dialog.getByText("Closed academic years are archived and retained for historical records; they cannot be edited or deleted.")).toBeVisible();
+  const status = dialog.getByLabel("Academic year status");
+  await status.click();
+  await page.getByRole("option", { name: "Closed" }).click();
+  await dialog.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Academic year closed and archived successfully." })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Edit 2026–2027" })).toBeDisabled();
+  expect(updatePayload).toMatchObject({
+    name: "2026–2027", starts_on: "2026-04-01", ends_on: "2027-03-31",
+    status: "closed", is_current: false,
+  });
+});
