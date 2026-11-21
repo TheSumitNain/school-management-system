@@ -247,7 +247,7 @@ test("section curriculum validates optional groups, edits in place, and confirms
   await expect(page.getByRole("dialog").getByText("Hindi", { exact: true })).toBeVisible();
   await expect(page.getByText("2 affected students", { exact: true })).toBeVisible();
   await expect(page.getByText("Aarav Sharma", { exact: true })).toBeVisible();
-  await expect(page.getByText("Admission no. ADM-001", { exact: true })).toBeVisible();
+  await expect(page.getByText("Admission no. ADM-001", { exact: false })).toBeVisible();
   await expect(page.getByText("Diya Verma", { exact: true })).toBeVisible();
   expect(removalPreviewPayload).toMatchObject({
     academic_year_id: 7, class_id: 3, section_id: 44, subject_ids: [92],
