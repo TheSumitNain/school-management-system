@@ -303,6 +303,25 @@ func (r *AcademicRepository) ListSections(ctx context.Context,actorID,schoolID,y
 		ORDER BY s.academic_year_id,c.display_order,c.id,s.display_order,s.id`,schoolID,yearID);if err!=nil{return nil,fmt.Errorf("list sections: %w",err)};defer rows.Close()
 	items:=make([]AcademicSection,0);for rows.Next(){var v AcademicSection;if err:=rows.Scan(&v.ID,&v.SchoolID,&v.AcademicYearID,&v.ClassID,&v.ClassName,&v.Name,&v.Medium,&v.DisplayOrder,&v.IsActive,&v.CreatedAt,&v.UpdatedAt);err!=nil{return nil,fmt.Errorf("scan section: %w",err)};items=append(items,v)};if err:=rows.Err();err!=nil{return nil,fmt.Errorf("iterate sections: %w",err)};return items,nil
 }
+func lockSectionDeactivationDependencies(ctx context.Context, tx pgx.Tx, schoolID, sectionID int64) error {
+	for _, query := range []string{
+		`SELECT id FROM student_enrollments WHERE school_id=$1 AND section_id=$2 FOR UPDATE`,
+		`SELECT id FROM class_curricula WHERE school_id=$1 AND section_id=$2 FOR UPDATE`,
+		`SELECT id FROM teacher_subject_assignments WHERE school_id=$1 AND section_id=$2 FOR UPDATE`,
+		`SELECT id FROM class_incharge_assignments WHERE school_id=$1 AND section_id=$2 FOR UPDATE`,
+	} {
+		rows, err := tx.Query(ctx, query, schoolID, sectionID)
+		if err != nil { return fmt.Errorf("lock section dependency rows: %w", err) }
+		for rows.Next() {
+			var id int64
+			if err := rows.Scan(&id); err != nil { rows.Close(); return fmt.Errorf("scan locked section dependency: %w", err) }
+		}
+		if err := rows.Err(); err != nil { rows.Close(); return fmt.Errorf("iterate locked section dependencies: %w", err) }
+		rows.Close()
+	}
+	return nil
+}
+
 func sectionDeactivationFingerprint(ctx context.Context, tx pgx.Tx, schoolID, sectionID int64) (string, error) {
 	var fingerprint string
 	err := tx.QueryRow(ctx, `
@@ -375,6 +394,7 @@ func (r *AcademicRepository) SaveSectionWithDeactivationConfirmation(ctx context
 	if err=authorizeAcademic(ctx,tx,actorID,schoolID,"classes.manage"); err!=nil { return nil,err }
 	var lockedID int64
 	if err=tx.QueryRow(ctx, `SELECT id FROM sections WHERE id=$1 AND school_id=$2 AND academic_year_id=$3 AND class_id=$4 AND is_active=TRUE FOR UPDATE`, id,schoolID,yearID,classID).Scan(&lockedID); err!=nil { return nil,academicWriteError(err) }
+	if err = lockSectionDeactivationDependencies(ctx,tx,schoolID,id); err != nil { return nil,err }
 	currentFingerprint, err := sectionDeactivationFingerprint(ctx,tx,schoolID,id)
 	if err != nil { return nil,err }
 	if currentFingerprint != expectedFingerprint { return nil,ErrAcademicImpactChanged }
