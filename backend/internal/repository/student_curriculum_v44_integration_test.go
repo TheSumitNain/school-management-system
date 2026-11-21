@@ -303,17 +303,25 @@ func TestStudentCurriculumV44PostgresIntegration(t *testing.T) {
 		t.Fatalf("reselecting removed inactive optional subject error = %v, want ErrInactiveSubjectSelection", err)
 	}
 
-	// Subject choices are current state, not history. Remove both rows before
-	// replacing the enrollment's curriculum assignment.
-	if _, err := tx.Exec(ctx, `DELETE FROM student_enrollment_subject_selections WHERE enrollment_curriculum_id=$1`, assignmentID); err != nil {
-		t.Fatalf("delete current optional subject choices: %v", err)
+	// Replacing an enrollment curriculum revokes current choices while
+	// retaining their append-only history.
+	if _, err := tx.Exec(ctx, `
+		UPDATE student_enrollment_subject_selections
+		   SET revoked_at=NOW()
+		 WHERE enrollment_curriculum_id=$1 AND revoked_at IS NULL
+	`, assignmentID); err != nil {
+		t.Fatalf("revoke current optional subject choices: %v", err)
 	}
-	var remainingChoices int
-	if err := tx.QueryRow(ctx, `SELECT COUNT(*)::integer FROM student_enrollment_subject_selections WHERE enrollment_curriculum_id=$1`, assignmentID).Scan(&remainingChoices); err != nil {
-		t.Fatalf("count current optional subject choices after deletion: %v", err)
+	var remainingChoices, retainedHistory int
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*) FILTER (WHERE revoked_at IS NULL)::integer, COUNT(*)::integer
+		  FROM student_enrollment_subject_selections WHERE enrollment_curriculum_id=$1
+	`, assignmentID).Scan(&remainingChoices, &retainedHistory); err != nil {
+		t.Fatalf("count current and historical optional subject choices: %v", err)
 	}
-	if remainingChoices != 0 {
-		t.Fatalf("current optional subject choices remaining = %d, want 0", remainingChoices)
+	if remainingChoices != 0 || retainedHistory < 2 {
+		t.Fatalf("current optional subject choices=%d retained history=%d; want 0 current and at least 2 historical",
+			remainingChoices, retainedHistory)
 	}
 	if _, err := tx.Exec(ctx, `
 		UPDATE student_enrollment_curricula SET status='replaced',revoked_at=NOW() WHERE id=$1
