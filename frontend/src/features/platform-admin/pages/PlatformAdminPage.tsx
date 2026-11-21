@@ -11,6 +11,7 @@ import {
   usePlatformSchoolDelegationsQuery,
   useGrantPlatformSchoolPermissionDelegationMutation,
   useRevokePlatformSchoolPermissionDelegationMutation,
+  usePlatformAuditEventsQuery,
 } from "../queries";
 import { Modal } from "../../../shared/components/Modal";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
@@ -24,8 +25,10 @@ export function PlatformAdminPage({ permissions }: Props) {
   const canOnboardSchool = permissions.includes("platform.schools.create") &&
     permissions.includes("platform.school_admins.create");
   const canDelegate = permissions.includes("platform.permissions.delegate") && permissions.includes("platform.schools.read");
-  const firstTab = canManageAdmins ? "admins" : canOnboardSchool ? "school" : "delegations";
-  const [activeTab, setActiveTab] = useState<"admins" | "school" | "delegations">(firstTab);
+  const canReadAudit = permissions.includes("platform.audit.read");
+  const firstTab = canManageAdmins ? "admins" : canOnboardSchool ? "school" : canDelegate ? "delegations" : "audit";
+  const [activeTab, setActiveTab] = useState<"admins" | "school" | "delegations" | "audit">(firstTab);
+  const [auditOffset, setAuditOffset] = useState(0);
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
   const [showAdminPassword, setShowAdminPassword] = useState(false);
   const [showSchoolAdminPassword, setShowSchoolAdminPassword] = useState(false);
@@ -44,6 +47,7 @@ export function PlatformAdminPage({ permissions }: Props) {
   const schoolsQuery = usePlatformSchoolsQuery(canDelegate);
   const permissionQuery = useDelegableSchoolPermissionsQuery(canDelegate);
   const delegationsQuery = usePlatformSchoolDelegationsQuery(selectedSchoolID, canDelegate);
+  const auditQuery = usePlatformAuditEventsQuery(canReadAudit && activeTab === "audit", auditOffset);
   const grantDelegation = useGrantPlatformSchoolPermissionDelegationMutation();
   const revokeDelegation = useRevokePlatformSchoolPermissionDelegationMutation();
   const delegablePermissions = (permissionQuery.data?.permissions ?? []).filter(item => item.is_delegable);
@@ -228,10 +232,35 @@ export function PlatformAdminPage({ permissions }: Props) {
         {canManageAdmins && <button type="button" role="tab" aria-selected={activeTab === "admins"} className={activeTab === "admins" ? "selected" : ""} onClick={() => { setActiveTab("admins"); setFeedback(null); }}><Users size={16}/> Platform Admins</button>}
         {canOnboardSchool && <button type="button" role="tab" aria-selected={activeTab === "school"} className={activeTab === "school" ? "selected" : ""} onClick={() => { setActiveTab("school"); setFeedback(null); }}><Building2 size={16}/> Onboard school</button>}
         {canDelegate && <button type="button" role="tab" aria-selected={activeTab === "delegations"} className={activeTab === "delegations" ? "selected" : ""} onClick={() => { setActiveTab("delegations"); setFeedback(null); void schoolsQuery.refetch(); void permissionQuery.refetch(); }}><KeyRound size={16}/> School permissions</button>}
+        {canReadAudit && <button type="button" role="tab" aria-selected={activeTab === "audit"} className={activeTab === "audit" ? "selected" : ""} onClick={() => { setActiveTab("audit"); setAuditOffset(0); setFeedback(null); }}><ShieldCheck size={16}/> Audit history</button>}
 
       </div>
 
       {feedback && ((!adminDialogOpen && !schoolDialogOpen) || feedback.kind === "success") && <div className={`platform-feedback ${feedback.kind}`} role="status">{feedback.message}</div>}
+
+      {activeTab === "audit" && canReadAudit && (
+        <section className="table-panel platform-audit-panel">
+          <div className="toolbar"><div><h2>Platform audit history</h2><small>Recent global administration and permission events. School operational events are not shown here.</small></div><span className="platform-count">{auditQuery.data?.total ?? 0} events</span></div>
+          {auditQuery.isPending ? <div className="table-message">Loading platform audit history…</div>
+            : auditQuery.error ? <div className="table-message error-text">{auditQuery.error instanceof Error ? auditQuery.error.message : "Unable to load audit history."}<button className="platform-inline-button" onClick={() => void auditQuery.refetch()}>Retry</button></div>
+            : auditQuery.data?.events.length ? <>
+              <div className="table-scroll"><table><thead><tr><th>Date & time</th><th>Actor</th><th>Action</th><th>Resource</th><th>School</th><th>Outcome</th></tr></thead><tbody>
+                {auditQuery.data.events.map(event => <tr key={event.id}>
+                  <td>{new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(event.created_at))}</td>
+                  <td>{event.actor_email ?? "System"}</td>
+                  <td><b>{event.action}</b></td>
+                  <td>{event.resource_type}{event.resource_id ? ` · #${event.resource_id}` : ""}</td>
+                  <td>{event.school_name ? `${event.school_name}${event.school_code ? ` · ${event.school_code}` : ""}` : "Platform-wide"}</td>
+                  <td><span className={`pill ${event.outcome === "success" ? "active" : "inactive"}`}>{event.outcome}</span></td>
+                </tr>)}
+              </tbody></table></div>
+              <div className="platform-audit-pagination"><span>Showing {auditOffset + 1}–{auditOffset + auditQuery.data.events.length} of {auditQuery.data.total}</span><div>
+                <button type="button" className="platform-inline-button" disabled={auditOffset === 0 || auditQuery.isFetching} onClick={() => setAuditOffset(value => Math.max(0, value - 50))}>Previous</button>
+                <button type="button" className="platform-inline-button" disabled={auditOffset + 50 >= auditQuery.data.total || auditQuery.isFetching} onClick={() => setAuditOffset(value => value + 50)}>Next</button>
+              </div></div>
+            </> : <div className="table-message">No platform audit events have been recorded yet.</div>}
+        </section>
+      )}
 
       {activeTab === "admins" && canManageAdmins && (
         <div className="platform-grid">

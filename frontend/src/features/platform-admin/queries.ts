@@ -6,6 +6,7 @@ import {
   getPlatformSchools,
   getDelegableSchoolPermissions,
   getPlatformSchoolPermissionDelegations,
+  getPlatformAuditEvents,
   grantPlatformSchoolPermissionDelegation,
   revokePlatformSchoolPermissionDelegation,
   onboardSchool,
@@ -21,6 +22,7 @@ export const platformAdminQueryKeys = {
   schools: () => [...platformAdminQueryKeys.all, "schools"] as const,
   delegablePermissions: () => [...platformAdminQueryKeys.all, "delegable-permissions"] as const,
   delegations: (schoolID: number) => [...platformAdminQueryKeys.all, "schools", schoolID, "delegations"] as const,
+  audit: (offset: number) => [...platformAdminQueryKeys.all, "audit", offset] as const,
 };
 
 export function usePlatformAdminsQuery(enabled = true) {
@@ -107,5 +109,14 @@ export function useRevokePlatformSchoolPermissionDelegationMutation() {
   return useMutation({
     mutationFn: (input: { delegationID: number; schoolID: number }) => revokePlatformSchoolPermissionDelegation(input.delegationID),
     onSuccess: (_result, variables) => queryClient.invalidateQueries({ queryKey: platformAdminQueryKeys.delegations(variables.schoolID) }),
+  });
+}
+
+export function usePlatformAuditEventsQuery(enabled = true, offset = 0) {
+  return useQuery({
+    queryKey: platformAdminQueryKeys.audit(offset),
+    queryFn: ({ signal }) => getPlatformAuditEvents(50, offset, signal),
+    enabled,
+    staleTime: 15_000,
   });
 }

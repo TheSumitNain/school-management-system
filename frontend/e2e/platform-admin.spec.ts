@@ -6,6 +6,7 @@ const platformPermissions = [
   "platform.school_admins.create",
   "platform.permissions.delegate",
   "platform.schools.read",
+  "platform.audit.read",
 ];
 
 async function signIn(page: import("@playwright/test").Page, email: string) {
@@ -204,4 +205,52 @@ test("school onboarding refreshes the school list and delegated permissions can 
   await confirmDialog.getByRole("button", { name: "Revoke permission" }).click();
   await expect(page.getByText("No active permission delegations for this school.")).toBeVisible();
   expect(revokeCalls).toBe(1);
+});
+
+test("Platform Admin audit history is read-only, scoped, and paginated", async ({ page }) => {
+  let auditCalls: string[] = [];
+  await page.route("**/api/**", async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname.replace(/^\/api/, "");
+    if (path === "/auth/refresh") { await route.fulfill({ status: 401, json: { message: "No active session" } }); return; }
+    if (path === "/auth/platform-admin/login" && request.method() === "POST") {
+      await route.fulfill({ json: { access_token: "e2e-audit-token", token_type: "Bearer", principal: { principal_id: 103, principal_type: "platform_admin", status: "active" } } });
+      return;
+    }
+    if (path === "/auth/me") {
+      await route.fulfill({ json: { principal_id: 103, principal_type: "platform_admin", username: "audit-reader", permissions: platformPermissions } });
+      return;
+    }
+    if (path === "/platform/admins" && request.method() === "GET") { await route.fulfill({ json: { admins: [] } }); return; }
+    if (path === "/platform/audit-events" && request.method() === "GET") {
+      auditCalls.push(url.search);
+      const offset = Number(url.searchParams.get("offset") ?? 0);
+      await route.fulfill({ json: {
+        status: "success", limit: 50, offset, total: 51,
+        events: [{
+          id: offset ? 2 : 1, actor_email: "root@example.com", school_id: 7,
+          school_name: "Sunrise Public School", school_code: "SUNRISE",
+          action: offset ? "platform.permission_delegation.revoked" : "platform.school.created",
+          resource_type: offset ? "permission_delegation" : "school",
+          resource_id: String(offset ? 301 : 7), outcome: "success",
+          created_at: "2026-11-21T10:00:00Z",
+        }],
+      } });
+      return;
+    }
+    await route.fulfill({ status: 404, json: { message: `Unmocked request: ${request.method()} ${path}` } });
+  });
+
+  await signIn(page, "audit-reader@example.com");
+  await page.getByRole("tab", { name: "Audit history" }).click();
+  await expect(page.getByRole("heading", { name: "Platform audit history" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "platform.school.created" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "root@example.com" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: /Sunrise Public School/ })).toBeVisible();
+  await expect(page.getByText("sensitive", { exact: false })).toHaveCount(0);
+  await page.getByRole("button", { name: "Next" }).click();
+  await expect(page.getByRole("cell", { name: "platform.permission_delegation.revoked" })).toBeVisible();
+  expect(auditCalls.some(call => call.includes("offset=0"))).toBeTruthy();
+  expect(auditCalls.some(call => call.includes("offset=50"))).toBeTruthy();
 });

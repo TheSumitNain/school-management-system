@@ -100,3 +100,25 @@ export function grantPlatformSchoolPermissionDelegation(schoolID: number, input:
 export function revokePlatformSchoolPermissionDelegation(delegationID: number) {
   return api<{ message: string }>(`/platform/permission-delegations/${delegationID}/revoke`, { method: "POST" });
 }
+
+export type PlatformAuditEvent = {
+  id: number;
+  actor_email?: string;
+  school_id?: number;
+  school_name?: string;
+  school_code?: string;
+  action: string;
+  resource_type: string;
+  resource_id?: string;
+  outcome: "success" | "failure";
+  created_at: string;
+};
+export type PlatformAuditResponse = {
+  events: PlatformAuditEvent[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+export function getPlatformAuditEvents(limit = 50, offset = 0, signal?: AbortSignal) {
+  return api<PlatformAuditResponse>(`/platform/audit-events?limit=${limit}&offset=${offset}`, { signal });
+}
