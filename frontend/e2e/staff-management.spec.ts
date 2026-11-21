@@ -37,7 +37,7 @@ async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, un
       await route.fulfill({ json: { staff: staffRows } });
       return;
     }
-    if (onStaffMutation && (path === "/school/staff" && method === "POST" || /^\\/school\\/staff\\/\\d+$/.test(path) && method === "PATCH")) {
+    if (onStaffMutation && (path === "/school/staff" && method === "POST" || /^\/school\/staff\/\d+$/.test(path) && method === "PATCH")) {
       await onStaffMutation(path, route);
       return;
     }
