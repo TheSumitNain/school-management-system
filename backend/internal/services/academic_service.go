@@ -91,6 +91,16 @@ func (s *AcademicService) PreviewSectionDeactivation(ctx context.Context, actorI
 	return repo.PreviewSectionDeactivation(ctx, actorID, schoolID, sectionID)
 }
 
+func (s *AcademicService) SaveSectionWithDeactivationConfirmation(ctx context.Context, actorID, schoolID, id, yearID, classID int64, name string, medium *string, order int, fingerprint string) (*repository.AcademicSection, error) {
+	if s == nil || s.repository == nil { return nil, repository.ErrAcademicAccessDenied }
+	type confirmedRepository interface {
+		SaveSectionWithDeactivationConfirmation(context.Context, int64, int64, int64, int64, int64, string, *string, int, string) (*repository.AcademicSection, error)
+	}
+	repo, ok := s.repository.(confirmedRepository)
+	if !ok { return nil, repository.ErrAcademicAccessDenied }
+	return repo.SaveSectionWithDeactivationConfirmation(ctx, actorID, schoolID, id, yearID, classID, name, medium, order, fingerprint)
+}
+
 func (s *AcademicService) SaveSection(ctx context.Context,actorID,schoolID,id,yearID,classID int64,name string,order int,active bool)(*repository.AcademicSection,error){
 	if s==nil||s.repository==nil{return nil,repository.ErrAcademicAccessDenied}
 	return s.repository.SaveSection(ctx,actorID,schoolID,id,yearID,classID,name,order,active)
