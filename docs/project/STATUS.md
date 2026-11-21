@@ -1,3 +1,12 @@
+## Roles & Permissions — page verification checkpoint (2026-11-21)
+
+- School-specific custom roles can be created with field-level validation, reviewed, and assigned only permissions covered by active Platform Admin delegations that permit role assignment.
+- Permission grants show whether the grant and underlying permission remain active. Removing a grant requires explicit confirmation; failed create/grant/revoke operations remain recoverable and preserve the form context.
+- Built-in system roles are protected from custom-role editing. Read-only users can review role grants but cannot create roles, grant/revoke permissions, or trigger delegation-management requests.
+- Frontend CI **PASS** — [run 44871907536](https://github.com/TheSumitNain/school-management-system/actions/runs/44871907536), checkpoint `3985db10d8b7eab2d35a49e323ddf5c3fd7b4b39`: TypeScript/Vite build and all **34 Playwright browser acceptance tests** passed, including custom-role lifecycle, delegated grant/revoke recovery, delegation-load retry, and read-only access.
+- Backend CI **PASS** — [run 44871612871](https://github.com/TheSumitNain/school-management-system/actions/runs/44871612871), backend code checkpoint `31bf1bc7ddf33d5c4a886393aaf48722613ac2f4`: full Go tests, PostgreSQL integration tests, and `go vet ./...` passed. No backend code changed after that checkpoint.
+- Local authenticated browser acceptance remains for the user; no local database migration or school-data change was made for this page.
+
 ## Dashboard — page verification checkpoint (2026-11-21)
 
 - Dashboard metrics are permission-scoped: staff accounts, classes, academic years, and current-year enrollments are requested only when the signed-in principal has the corresponding permissions.
