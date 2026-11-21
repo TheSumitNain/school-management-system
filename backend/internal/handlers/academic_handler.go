@@ -92,6 +92,8 @@ func academicError(c *gin.Context,err error,resource string){
 	case errors.Is(err,repository.ErrInvalidStudentMeasurementDate):c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Enter a valid measurement date","field_errors":gin.H{"measured_on":"Measurement date is required and cannot be in the future."}})
 	case errors.Is(err,repository.ErrCurriculumRemovalConfirmationRequired):c.JSON(http.StatusConflict,gin.H{"status":"error","code":"curriculum_removal_confirmation_required","message":"Review the affected-student count and confirm each removed subject."})
 	case errors.Is(err,repository.ErrCurriculumRemovalImpactChanged):c.JSON(http.StatusConflict,gin.H{"status":"error","code":"curriculum_removal_impact_changed","message":"The affected-student count changed. Review the updated impact before saving again."})
+	case errors.Is(err,repository.ErrSectionDeactivationConfirmationRequired):c.JSON(http.StatusConflict,gin.H{"status":"error","code":"section_deactivation_confirmation_required","message":"Review the section dependency impact and confirm before deactivating this section."})
+	case errors.Is(err,repository.ErrAcademicImpactChanged):c.JSON(http.StatusConflict,gin.H{"status":"error","code":"academic_impact_changed","message":"The section dependencies changed after preview. Review the updated impact before confirming again."})
 	case errors.Is(err,repository.ErrCurriculumSubjectRuleConflict):c.JSON(http.StatusConflict,gin.H{"status":"error","code":"curriculum_subject_rule_conflict","message":"This edit would invalidate existing student subject choices. Keep the current subject/group rules or remove the subject with confirmation first."})
 	case errors.Is(err,repository.ErrAcademicConflict):c.JSON(http.StatusConflict,gin.H{"status":"error","message":resource+" conflicts with an existing record"})
 	case errors.Is(err,repository.ErrInvalidAcademicInput):c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid academic data"})
@@ -146,11 +148,15 @@ func(h *AcademicHandler) PreviewSectionDeactivation(c *gin.Context) {
 
 func(h *AcademicHandler) SaveSection(c *gin.Context){
 	a,s,ok:=h.ready(c);if !ok{return};var id int64;if c.Param("sectionID")!=""{var valid bool;id,valid=academicID(c,"sectionID");if !valid{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid section ID"});return}}
-	var req struct{AcademicYearID int64 `json:"academic_year_id"`;ClassID int64 `json:"class_id"`;Name string `json:"name"`;Medium *string `json:"medium"`;DisplayOrder int `json:"display_order"`;IsActive *bool `json:"is_active"`}
+	var req struct{AcademicYearID int64 `json:"academic_year_id"`;ClassID int64 `json:"class_id"`;Name string `json:"name"`;Medium *string `json:"medium"`;DisplayOrder int `json:"display_order"`;IsActive *bool `json:"is_active"`;ImpactFingerprint string `json:"impact_fingerprint"`}
 	if c.ShouldBindJSON(&req)!=nil{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid request body"});return};if n:=len([]rune(strings.TrimSpace(req.Name)));n<1||n>40{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Section name must contain 1–40 characters","field_errors":gin.H{"name":"Enter a section name containing 1–40 characters."}});return};active:=true;if req.IsActive!=nil{active=*req.IsActive}
 	var v *repository.AcademicSection
 	var err error
-	if saver,ok:=h.service.(interface{SaveSectionWithMedium(context.Context,int64,int64,int64,int64,int64,string,*string,int,bool)(*repository.AcademicSection,error)});ok{
+	if !active && id>0 && strings.TrimSpace(req.ImpactFingerprint)!="" {
+		if saver,ok:=h.service.(interface{SaveSectionWithDeactivationConfirmation(context.Context,int64,int64,int64,int64,int64,string,*string,int,string)(*repository.AcademicSection,error)});ok {
+			v,err=saver.SaveSectionWithDeactivationConfirmation(c.Request.Context(),a,s,id,req.AcademicYearID,req.ClassID,req.Name,req.Medium,req.DisplayOrder,req.ImpactFingerprint)
+		}else{err=repository.ErrAcademicAccessDenied}
+	}else if saver,ok:=h.service.(interface{SaveSectionWithMedium(context.Context,int64,int64,int64,int64,int64,string,*string,int,bool)(*repository.AcademicSection,error)});ok{
 		v,err=saver.SaveSectionWithMedium(c.Request.Context(),a,s,id,req.AcademicYearID,req.ClassID,req.Name,req.Medium,req.DisplayOrder,active)
 	}else if req.Medium==nil||strings.TrimSpace(*req.Medium)==""{
 		v,err=h.service.SaveSection(c.Request.Context(),a,s,id,req.AcademicYearID,req.ClassID,req.Name,req.DisplayOrder,active)
