@@ -24,6 +24,7 @@ test("appearance mode, palette and automatic schedule save safely on this device
   await page.getByLabel("Password").fill("E2E-only-password");
   await page.getByRole("button", { name: /Continue/ }).click();
   await page.getByRole("button", { name: "Settings" }).click();
+  await expect(page.getByRole("heading", { name: "Settings", exact: true })).toBeVisible();
 
   // Verify the complete Settings surface at compact phone and landscape sizes,
   // not only the page shell's horizontal-overflow smoke test.
