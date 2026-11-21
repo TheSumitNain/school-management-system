@@ -88,14 +88,17 @@ test("custom roles can be created, granted delegated permissions and safely revo
 
   await permissionDialog.getByRole("button", { name: "Add delegated permission" }).click();
   const grantDialog = page.getByRole("dialog", { name: "Grant a delegated permission" });
-  await grantDialog.getByLabel("Permission to grant").click();
+  const permissionSelect = grantDialog.locator('button[aria-label="Permission to grant"]');
+  await permissionSelect.click();
   await grantDialog.getByRole("option", { name: /students.read_basic/ }).click();
+  if (await permissionSelect.getAttribute("aria-expanded") === "true") await page.keyboard.press("Escape");
   await grantDialog.getByRole("button", { name: "Grant permission" }).click();
   await expect(grantDialog.getByText("Select an active permission delegated to this school.")).toBeVisible();
   expect(grantCalls).toBe(1);
 
-  await grantDialog.getByLabel("Permission to grant").click();
+  await permissionSelect.click();
   await grantDialog.getByRole("option", { name: /students.read_basic/ }).click();
+  if (await permissionSelect.getAttribute("aria-expanded") === "true") await page.keyboard.press("Escape");
   await grantDialog.getByRole("button", { name: "Grant permission" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Permission granted." })).toBeVisible();
   expect(grantCalls).toBe(2);
