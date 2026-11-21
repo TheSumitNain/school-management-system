@@ -15,6 +15,7 @@ These standards apply to every frontend feature and page. A feature must reuse s
 - Every form must use explicit, descriptive labels and indicate required fields.
 - Validate all fields together on submit and show each validation message directly below its field. Do not rely only on a page-level error banner.
 - Associate errors with controls using `aria-invalid` and `aria-describedby`; use an accessible form-level message only for non-field/server errors where useful.
+- For cross-field validation, identify the first actionable missing control or the relevant field group, mark that control/group invalid, associate the message with `aria-describedby`, and place the message directly beside the control/group that needs correction.
 - Preserve entered values when validation or server requests fail. Disable relevant controls while a mutation is in progress and show a clear loading label.
 
 ## Feedback and notifications
