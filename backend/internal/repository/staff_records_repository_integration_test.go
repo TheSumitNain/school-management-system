@@ -83,6 +83,22 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
 	if err!=nil{t.Fatalf("create staff experience: %v",err)}
 	if experience.ID<=0{t.Fatalf("unexpected experience response: %+v",experience)}
 
+	updatedQualification,err:=repo.UpdateStaffQualification(ctx,actorID,schoolID,staff.PrincipalID,qualification.ID,StaffQualification{
+		QualificationType:"postgraduate",QualificationName:"M.Sc. Applied Mathematics",Institution:"State University",CompletionYear:&year,Score:&score,ScoreScale:"percentage",
+	})
+	if err!=nil||updatedQualification.QualificationName!="M.Sc. Applied Mathematics"{t.Fatalf("update qualification: item=%+v err=%v",updatedQualification,err)}
+	updatedCertification,err:=repo.UpdateStaffCertification(ctx,actorID,schoolID,staff.PrincipalID,certification.ID,StaffCertification{
+		CertificateName:"Advanced Teacher Training",IssuingOrganization:"State Board",IssueDate:"2022-01-10",ExpiryDate:"2028-01-10",
+	})
+	if err!=nil||updatedCertification.CertificateName!="Advanced Teacher Training"{t.Fatalf("update certification: item=%+v err=%v",updatedCertification,err)}
+	updatedExperience,err:=repo.UpdateStaffExperience(ctx,actorID,schoolID,staff.PrincipalID,experience.ID,StaffExperience{
+		EmployerName:"Previous School",Designation:"Senior Mathematics Teacher",EmploymentType:"permanent",StartDate:"2018-04-01",EndDate:"2021-03-31",
+	})
+	if err!=nil||updatedExperience.Designation!="Senior Mathematics Teacher"{t.Fatalf("update experience: item=%+v err=%v",updatedExperience,err)}
+	if _,err:=repo.UpdateStaffQualification(ctx,actorID,schoolID+1,staff.PrincipalID,qualification.ID,StaffQualification{
+		QualificationType:"postgraduate",QualificationName:"Cross tenant",Institution:"Denied",
+	});!errors.Is(err,ErrStaffRecordAccessDenied){t.Fatalf("cross-school qualification update error=%v",err)}
+
 	qualifications,err:=repo.ListStaffQualifications(ctx,actorID,schoolID,staff.PrincipalID)
 	if err!=nil||len(qualifications)!=1||qualifications[0].ID!=qualification.ID{t.Fatalf("list qualifications: items=%+v err=%v",qualifications,err)}
 	certifications,err:=repo.ListStaffCertifications(ctx,actorID,schoolID,staff.PrincipalID)
@@ -97,5 +113,5 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
 	if err:=tx.QueryRow(ctx,`SELECT COUNT(*) FROM audit_events WHERE actor_principal_id=$1 AND school_id=$2 AND action IN ('staff.qualification.created','staff.certification.created','staff.experience.created')`,actorID,schoolID).Scan(&auditCount);err!=nil{
 		t.Fatalf("count staff record audit events: %v",err)
 	}
-	if auditCount!=3{t.Fatalf("audit count=%d want=3",auditCount)}
+	if auditCount!=6{t.Fatalf("audit count=%d want=6 (three creates and three updates)",auditCount)}
 }
