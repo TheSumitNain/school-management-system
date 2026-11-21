@@ -253,6 +253,16 @@ test("section curriculum validates optional groups, edits in place, and confirms
     academic_year_id: 7, class_id: 3, section_id: 44, subject_ids: [92],
   });
 
+  await page.getByRole("button", { name: "Cancel" }).click();
+  await expect(page.getByRole("dialog", { name: "Confirm subject removal" })).toHaveCount(0);
+  expect(saveCount).toBe(1);
+  expect(removalSavePayload).toBeNull();
+
+  await page.getByRole("button", { name: "Save curriculum changes" }).click();
+  const refreshedRemovalDialog = page.getByRole("dialog", { name: "Confirm subject removal" });
+  await expect(refreshedRemovalDialog).toBeVisible();
+  await expect(refreshedRemovalDialog.getByText("2 affected students", { exact: true })).toBeVisible();
+
   await page.getByRole("button", { name: "Confirm and save" }).click();
   await expect(page.getByText("Curriculum updated. Confirmed subject removals and affected student choices have been applied.")).toBeVisible();
   await expect(page.locator(".curriculum-existing").getByText("Hindi", { exact: false })).toHaveCount(0);
