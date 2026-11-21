@@ -598,21 +598,6 @@ func (r *AcademicRepository) ListSubjects(ctx context.Context,actorID,schoolID i
 }
 
 func lockSubjectDeactivationDependencies(ctx context.Context, tx pgx.Tx, schoolID, subjectID int64) error {
-	queries:=[]struct{name,sql string}{
-		{"teacher assignments",`SELECT id FROM teacher_subject_assignments WHERE school_id=$1 AND subject_id=$2 ORDER BY id FOR UPDATE`},
-		{"curriculum subject references",`SELECT id FROM class_curriculum_subjects WHERE school_id=$1 AND subject_id=$2 ORDER BY id FOR UPDATE`},
-		{"student subject selections",`SELECT sel.id FROM student_enrollment_subject_selections sel JOIN class_curriculum_subjects cs ON cs.id=sel.curriculum_subject_id AND cs.curriculum_id=sel.curriculum_id AND cs.school_id=sel.school_id WHERE sel.school_id=$1 AND cs.subject_id=$2 ORDER BY sel.id FOR UPDATE OF sel`},
-	}
-	for _,item:=range queries{
-		rows,err:=tx.Query(ctx,item.sql,schoolID,subjectID);if err!=nil{return fmt.Errorf("lock subject %s: %w",item.name,err)}
-		for rows.Next(){var id int64;if err:=rows.Scan(&id);err!=nil{rows.Close();return fmt.Errorf("scan locked subject %s: %w",item.name,err)}}
-		if err:=rows.Err();err!=nil{rows.Close();return fmt.Errorf("iterate locked subject %s: %w",item.name,err)}
-		rows.Close()
-	}
-	return nil
-}
-
-func lockSubjectDeactivationDependencies(ctx context.Context, tx pgx.Tx, schoolID, subjectID int64) error {
 	for _,query:=range []string{
 		`SELECT id FROM class_curriculum_subjects WHERE school_id=$1 AND subject_id=$2 ORDER BY id FOR UPDATE`,
 		`SELECT sel.id FROM student_enrollment_subject_selections sel
@@ -703,7 +688,6 @@ func (r *AcademicRepository) SaveSubjectWithDeactivationConfirmation(ctx context
 	if err=authorizeAcademic(ctx,tx,actorID,schoolID,"subjects.manage");err!=nil{return nil,err}
 	var lockedID int64
 	if err=tx.QueryRow(ctx,`SELECT id FROM subjects WHERE id=$1 AND school_id=$2 AND is_active=TRUE FOR UPDATE`,subjectID,schoolID).Scan(&lockedID);err!=nil{return nil,academicWriteError(err)}
-	if err=lockSubjectDeactivationDependencies(ctx,tx,schoolID,subjectID);err!=nil{return nil,err}
 	if err=lockSubjectDeactivationDependencies(ctx,tx,schoolID,subjectID);err!=nil{return nil,err}
 	current,err:=subjectDeactivationFingerprint(ctx,tx,schoolID,subjectID);if err!=nil{return nil,err}
 	if current!=fingerprint{return nil,ErrAcademicImpactChanged}
