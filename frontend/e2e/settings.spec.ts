@@ -3,7 +3,6 @@ import { expect, test } from "@playwright/test";
 test.use({ timezoneId: "Asia/Kolkata" });
 
 test("appearance mode, palette and automatic schedule save safely on this device", async ({ page }) => {
-  await page.clock.install({ time: new Date("2026-11-21T01:00:00.000Z") });
   await page.route("**/api/**", async route => {
     const request = route.request();
     const url = new URL(request.url());
@@ -46,19 +45,29 @@ test("appearance mode, palette and automatic schedule save safely on this device
   await expect(page.getByRole("alert").filter({ hasText: "Choose a time different from the Dark Mode start time." })).toBeVisible();
   await expect(page.getByRole("status").filter({ hasText: "Choose different Dark and Light start times to enable the automatic schedule." })).toBeVisible();
 
-  await lightStart.fill("07:00");
+  const schedule = await page.evaluate(() => {
+    const now = new Date();
+    const nextMinute = new Date(now.getTime() + 60_000);
+    const format = (date: Date) => `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+    return {
+      darkStart: format(now),
+      lightStart: format(nextMinute),
+      waitMs: 60_000 - (now.getSeconds() * 1_000 + now.getMilliseconds()) + 31_000,
+    };
+  });
+  await darkStart.fill(schedule.darkStart);
+  await lightStart.fill(schedule.lightStart);
   await expect(darkStart).toHaveAttribute("aria-invalid", "false");
   await expect(lightStart).toHaveAttribute("aria-invalid", "false");
   await expect(page.getByRole("status").filter({ hasText: "Theme schedule updated." })).toBeVisible();
 
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem("schooldesk.theme") ?? "{}"));
-  expect(persisted.state).toMatchObject({ preference: "schedule", palette: "evergreen", darkStart: "06:00", lightStart: "07:00" });
+  expect(persisted.state).toMatchObject({ preference: "schedule", palette: "evergreen", darkStart: schedule.darkStart, lightStart: schedule.lightStart });
 
   // The schedule must continue updating after leaving Settings.
   await page.getByRole("button", { name: "Dashboard" }).click();
-  await page.clock.setFixedTime(new Date("2026-11-21T01:01:00.000Z"));
-  await page.clock.fastForward("00:30");
+  await page.waitForTimeout(schedule.waitMs);
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
 
   // System mode follows device appearance changes without reloading the app.
