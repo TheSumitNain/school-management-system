@@ -66,6 +66,27 @@ type SectionDeactivationImpact struct {
 	ImpactFingerprint string `json:"impact_fingerprint"`
 }
 
+type ClassDeactivationStudent struct {
+	StudentID int64 `json:"student_id"`
+	FullName string `json:"full_name"`
+	AdmissionNumber string `json:"admission_number"`
+	SectionName string `json:"section_name"`
+	AcademicYearName string `json:"academic_year_name"`
+}
+type ClassDeactivationImpact struct {
+	ClassID int64 `json:"class_id"`
+	ClassName string `json:"class_name"`
+	ActiveSectionCount int64 `json:"active_section_count"`
+	InactiveSectionCount int64 `json:"inactive_section_count"`
+	ActiveEnrollmentCount int64 `json:"active_enrollment_count"`
+	HistoricalEnrollmentCount int64 `json:"historical_enrollment_count"`
+	ActiveCurriculumCount int64 `json:"active_curriculum_count"`
+	ActiveTeacherAssignmentCount int64 `json:"active_teacher_assignment_count"`
+	ActiveClassInchargeCount int64 `json:"active_class_incharge_count"`
+	AffectedStudents []ClassDeactivationStudent `json:"affected_students"`
+	ImpactFingerprint string `json:"impact_fingerprint"`
+}
+
 type AcademicClass struct {
 	ID int64 `json:"id"`
 	SchoolID int64 `json:"school_id"`
@@ -268,6 +289,102 @@ func (r *AcademicRepository) ListClasses(ctx context.Context, actorID,schoolID i
 	rows,err:=r.db.Query(ctx,`SELECT id,school_id,name,display_order,is_active,created_at,updated_at FROM classes WHERE school_id=$1 ORDER BY display_order,id`,schoolID);if err!=nil{return nil,fmt.Errorf("list classes: %w",err)};defer rows.Close()
 	items:=make([]AcademicClass,0);for rows.Next(){var v AcademicClass;if err:=rows.Scan(&v.ID,&v.SchoolID,&v.Name,&v.DisplayOrder,&v.IsActive,&v.CreatedAt,&v.UpdatedAt);err!=nil{return nil,fmt.Errorf("scan class: %w",err)};items=append(items,v)};if err:=rows.Err();err!=nil{return nil,fmt.Errorf("iterate classes: %w",err)};return items,nil
 }
+func classDeactivationFingerprint(ctx context.Context, tx pgx.Tx, schoolID, classID int64) (string,error) {
+	var fingerprint string
+	err:=tx.QueryRow(ctx,`
+		SELECT md5(concat_ws('|',
+			COALESCE((SELECT string_agg(s.id::text || ':' || s.is_active::text, ',' ORDER BY s.id) FROM sections s WHERE s.school_id=$1 AND s.class_id=$2),''),
+			COALESCE((SELECT string_agg(e.id::text || ':' || e.status, ',' ORDER BY e.id) FROM student_enrollments e WHERE e.school_id=$1 AND e.class_id=$2),''),
+			COALESCE((SELECT string_agg(cc.id::text || ':' || cc.status, ',' ORDER BY cc.id) FROM class_curricula cc WHERE cc.school_id=$1 AND cc.class_id=$2),''),
+			COALESCE((SELECT string_agg(a.id::text || ':' || COALESCE(a.revoked_at::text,'active'), ',' ORDER BY a.id) FROM teacher_subject_assignments a JOIN sections s ON s.id=a.section_id AND s.school_id=a.school_id WHERE a.school_id=$1 AND s.class_id=$2),''),
+			COALESCE((SELECT string_agg(a.id::text || ':' || COALESCE(a.revoked_at::text,'active'), ',' ORDER BY a.id) FROM class_incharge_assignments a JOIN sections s ON s.id=a.section_id AND s.school_id=a.school_id WHERE a.school_id=$1 AND s.class_id=$2),'')
+		))
+	`,schoolID,classID).Scan(&fingerprint)
+	if err!=nil{return "",fmt.Errorf("calculate class dependency fingerprint: %w",err)}
+	return fingerprint,nil
+}
+func lockClassDeactivationDependencies(ctx context.Context, tx pgx.Tx, schoolID, classID int64) error {
+	for _,query:=range []string{
+		`SELECT id FROM sections WHERE school_id=$1 AND class_id=$2 ORDER BY id FOR UPDATE`,
+		`SELECT id FROM student_enrollments WHERE school_id=$1 AND class_id=$2 ORDER BY id FOR UPDATE`,
+		`SELECT id FROM class_curricula WHERE school_id=$1 AND class_id=$2 ORDER BY id FOR UPDATE`,
+		`SELECT a.id FROM teacher_subject_assignments a JOIN sections s ON s.id=a.section_id AND s.school_id=a.school_id WHERE a.school_id=$1 AND s.class_id=$2 ORDER BY a.id FOR UPDATE OF a`,
+		`SELECT a.id FROM class_incharge_assignments a JOIN sections s ON s.id=a.section_id AND s.school_id=a.school_id WHERE a.school_id=$1 AND s.class_id=$2 ORDER BY a.id FOR UPDATE OF a`,
+	}{
+		rows,err:=tx.Query(ctx,query,schoolID,classID);if err!=nil{return fmt.Errorf("lock class dependency rows: %w",err)}
+		for rows.Next(){var id int64;if err:=rows.Scan(&id);err!=nil{rows.Close();return fmt.Errorf("scan locked class dependency: %w",err)}}
+		if err:=rows.Err();err!=nil{rows.Close();return fmt.Errorf("iterate locked class dependencies: %w",err)}
+		rows.Close()
+	}
+	return nil
+}
+func (r *AcademicRepository) PreviewClassDeactivation(ctx context.Context, actorID, schoolID, classID int64) (*ClassDeactivationImpact,error) {
+	if r==nil||r.db==nil||classID<=0{return nil,ErrInvalidAcademicInput}
+	tx,err:=r.db.Begin(ctx);if err!=nil{return nil,fmt.Errorf("begin class deactivation preview: %w",err)}
+	defer func(){_ = tx.Rollback(ctx)}()
+	if err=authorizeAcademic(ctx,tx,actorID,schoolID,"classes.manage");err!=nil{return nil,err}
+	var impact ClassDeactivationImpact
+	err=tx.QueryRow(ctx,`
+		SELECT c.id,c.name,
+			(SELECT COUNT(*) FROM sections s WHERE s.school_id=c.school_id AND s.class_id=c.id AND s.is_active=TRUE),
+			(SELECT COUNT(*) FROM sections s WHERE s.school_id=c.school_id AND s.class_id=c.id AND s.is_active=FALSE),
+			(SELECT COUNT(*) FROM student_enrollments e WHERE e.school_id=c.school_id AND e.class_id=c.id AND e.status='active'),
+			(SELECT COUNT(*) FROM student_enrollments e WHERE e.school_id=c.school_id AND e.class_id=c.id AND e.status<>'active'),
+			(SELECT COUNT(*) FROM class_curricula cc WHERE cc.school_id=c.school_id AND cc.class_id=c.id AND cc.status='active'),
+			(SELECT COUNT(*) FROM teacher_subject_assignments a JOIN sections s ON s.id=a.section_id AND s.school_id=a.school_id WHERE a.school_id=c.school_id AND s.class_id=c.id AND a.revoked_at IS NULL),
+			(SELECT COUNT(*) FROM class_incharge_assignments a JOIN sections s ON s.id=a.section_id AND s.school_id=a.school_id WHERE a.school_id=c.school_id AND s.class_id=c.id AND a.revoked_at IS NULL),
+			md5(concat_ws('|',
+				COALESCE((SELECT string_agg(s.id::text || ':' || s.is_active::text, ',' ORDER BY s.id) FROM sections s WHERE s.school_id=c.school_id AND s.class_id=c.id),''),
+				COALESCE((SELECT string_agg(e.id::text || ':' || e.status, ',' ORDER BY e.id) FROM student_enrollments e WHERE e.school_id=c.school_id AND e.class_id=c.id),''),
+				COALESCE((SELECT string_agg(cc.id::text || ':' || cc.status, ',' ORDER BY cc.id) FROM class_curricula cc WHERE cc.school_id=c.school_id AND cc.class_id=c.id),''),
+				COALESCE((SELECT string_agg(a.id::text || ':' || COALESCE(a.revoked_at::text,'active'), ',' ORDER BY a.id) FROM teacher_subject_assignments a JOIN sections s ON s.id=a.section_id AND s.school_id=a.school_id WHERE a.school_id=c.school_id AND s.class_id=c.id),''),
+				COALESCE((SELECT string_agg(a.id::text || ':' || COALESCE(a.revoked_at::text,'active'), ',' ORDER BY a.id) FROM class_incharge_assignments a JOIN sections s ON s.id=a.section_id AND s.school_id=a.school_id WHERE a.school_id=c.school_id AND s.class_id=c.id),'')
+			))
+		FROM classes c WHERE c.id=$1 AND c.school_id=$2
+	`,classID,schoolID).Scan(&impact.ClassID,&impact.ClassName,&impact.ActiveSectionCount,&impact.InactiveSectionCount,
+		&impact.ActiveEnrollmentCount,&impact.HistoricalEnrollmentCount,&impact.ActiveCurriculumCount,
+		&impact.ActiveTeacherAssignmentCount,&impact.ActiveClassInchargeCount,&impact.ImpactFingerprint)
+	if err!=nil{return nil,academicWriteError(err)}
+	rows,err:=tx.Query(ctx,`
+		SELECT DISTINCT st.id,st.full_name,COALESCE(e.admission_number,''),s.name,ay.name
+		FROM student_enrollments e
+		JOIN students st ON st.id=e.student_id AND st.school_id=e.school_id
+		JOIN sections s ON s.id=e.section_id AND s.school_id=e.school_id
+		JOIN academic_years ay ON ay.id=e.academic_year_id AND ay.school_id=e.school_id
+		WHERE e.school_id=$1 AND e.class_id=$2 AND e.status='active'
+		ORDER BY st.full_name,st.id,s.name
+	`,schoolID,classID)
+	if err!=nil{return nil,fmt.Errorf("load affected class students: %w",err)}
+	impact.AffectedStudents=make([]ClassDeactivationStudent,0)
+	for rows.Next(){var item ClassDeactivationStudent;if err:=rows.Scan(&item.StudentID,&item.FullName,&item.AdmissionNumber,&item.SectionName,&item.AcademicYearName);err!=nil{rows.Close();return nil,fmt.Errorf("scan affected class student: %w",err)};impact.AffectedStudents=append(impact.AffectedStudents,item)}
+	if err:=rows.Err();err!=nil{rows.Close();return nil,fmt.Errorf("iterate affected class students: %w",err)}
+	rows.Close()
+	if err=tx.Commit(ctx);err!=nil{return nil,fmt.Errorf("commit class deactivation preview: %w",err)}
+	return &impact,nil
+}
+func (r *AcademicRepository) SaveClassWithDeactivationConfirmation(ctx context.Context, actorID, schoolID, classID int64, name string, order int, expectedFingerprint string) (*AcademicClass,error) {
+	if r==nil||r.db==nil||classID<=0||strings.TrimSpace(expectedFingerprint)==""{return nil,ErrInvalidAcademicInput}
+	name=strings.TrimSpace(name);if len([]rune(name))<2||len([]rune(name))>100||order<0{return nil,ErrInvalidAcademicInput}
+	tx,err:=r.db.Begin(ctx);if err!=nil{return nil,fmt.Errorf("begin confirmed class deactivation: %w",err)}
+	defer func(){_ = tx.Rollback(ctx)}()
+	if err=authorizeAcademic(ctx,tx,actorID,schoolID,"classes.manage");err!=nil{return nil,err}
+	var lockedID int64
+	if err=tx.QueryRow(ctx,`SELECT id FROM classes WHERE id=$1 AND school_id=$2 AND is_active=TRUE FOR UPDATE`,classID,schoolID).Scan(&lockedID);err!=nil{return nil,academicWriteError(err)}
+	if err=lockClassDeactivationDependencies(ctx,tx,schoolID,classID);err!=nil{return nil,err}
+	currentFingerprint,err:=classDeactivationFingerprint(ctx,tx,schoolID,classID);if err!=nil{return nil,err}
+	if currentFingerprint!=expectedFingerprint{return nil,ErrAcademicImpactChanged}
+	var item AcademicClass
+	err=tx.QueryRow(ctx,`UPDATE classes SET name=$3,display_order=$4,is_active=FALSE,updated_at=NOW()
+		WHERE school_id=$1 AND id=$2 RETURNING id,school_id,name,display_order,is_active,created_at,updated_at`,
+		schoolID,classID,name,order).Scan(&item.ID,&item.SchoolID,&item.Name,&item.DisplayOrder,&item.IsActive,&item.CreatedAt,&item.UpdatedAt)
+	if err!=nil{return nil,academicWriteError(err)}
+	if _,err=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
+		VALUES($1,$2,'school.class.deactivated','class',$3,'success',jsonb_build_object('name',$4::text,'impact_fingerprint',$5::text,'is_active',FALSE))`,
+		actorID,schoolID,fmt.Sprint(item.ID),item.Name,currentFingerprint);err!=nil{return nil,fmt.Errorf("audit confirmed class deactivation: %w",err)}
+	if err=tx.Commit(ctx);err!=nil{return nil,fmt.Errorf("commit confirmed class deactivation: %w",err)}
+	return &item,nil
+}
+
 func (r *AcademicRepository) SaveClass(ctx context.Context, actorID, schoolID, id int64, name string, order int, active bool) (*AcademicClass, error) {
 	if r == nil || r.db == nil { return nil, ErrAcademicAccessDenied }
 	name = strings.TrimSpace(name)
@@ -275,6 +392,7 @@ func (r *AcademicRepository) SaveClass(ctx context.Context, actorID, schoolID, i
 	tx, err := r.db.Begin(ctx); if err != nil { return nil, fmt.Errorf("begin class save: %w", err) }
 	defer func(){ _ = tx.Rollback(ctx) }()
 	if err = authorizeAcademic(ctx, tx, actorID, schoolID, "classes.manage"); err != nil { return nil, err }
+	if id>0 && !active { var wasActive bool; checkErr:=tx.QueryRow(ctx, `SELECT is_active FROM classes WHERE id=$1 AND school_id=$2`,id,schoolID).Scan(&wasActive); if checkErr!=nil { return nil,academicWriteError(checkErr) }; if wasActive { return nil,ErrSectionDeactivationConfirmationRequired } }
 	var v AcademicClass
 	if id == 0 {
 		err = tx.QueryRow(ctx, `INSERT INTO classes(school_id,name,display_order,is_active) VALUES($1,$2,$3,$4)
