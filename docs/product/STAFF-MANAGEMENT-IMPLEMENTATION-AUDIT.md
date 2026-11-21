@@ -106,3 +106,11 @@ The initial workspace shell has since been extended on branch `work`:
 - Qualifications & Experience, Documents, staff-scoped Academic Assignments and History & Activity remain explicit pending sections because their required backend contracts are not yet available. The UI does not pretend those workflows are implemented.
 - New Playwright tests cover the wizard, credential handoff and profile tab shell. Execution is still pending.
 
+
+
+## 8. Qualification records API checkpoint (2026-11-21)
+
+- Qualifications, certifications and prior experience now have school-scoped create/list API operations, validation, audit events and PostgreSQL integration coverage. Backend CI passed on `0175725f`, including the full migration chain on a disposable PostgreSQL database, the complete Go test suite and `go vet`.
+- The frontend profile section currently supports create/list only. Edit, verification and archive/delete remain pending. Documents remain unavailable until private storage and authenticated download authorization are implemented.
+- The Add Staff browser suite currently has one unresolved date-picker/wizard progression failure (45 other browser tests passed). A more explicit wizard Continue action is under CI verification on `a9227c8`.
+- These checks do not authorize or imply applying V57 to a user's persistent database. Academic, Student Management and Settings pages remain untouched.
