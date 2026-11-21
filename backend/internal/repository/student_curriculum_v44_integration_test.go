@@ -288,7 +288,7 @@ func TestStudentCurriculumV44PostgresIntegration(t *testing.T) {
 
 	// Subject choices are current state, not history. Remove both rows before
 	// replacing the enrollment's curriculum assignment.
-	if _, err := tx.Exec(ctx, `DELETE FROM student_enrollment_subject_selections WHERE id = ANY($1)`, []int64{selectionID, standaloneSelectionID}); err != nil {
+	if _, err := tx.Exec(ctx, `DELETE FROM student_enrollment_subject_selections WHERE enrollment_curriculum_id=$1`, assignmentID); err != nil {
 		t.Fatalf("delete current optional subject choices: %v", err)
 	}
 	var remainingChoices int
