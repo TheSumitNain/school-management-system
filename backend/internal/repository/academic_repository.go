@@ -20,6 +20,8 @@ var (
 	ErrCurriculumRemovalConfirmationRequired = errors.New("curriculum subject removal requires explicit confirmation")
 	ErrCurriculumRemovalImpactChanged = errors.New("curriculum removal impact changed; review the affected student count again")
 	ErrCurriculumSubjectRuleConflict = errors.New("curriculum edit would invalidate active student subject choices")
+	ErrSectionDeactivationConfirmationRequired = errors.New("section deactivation requires dependency preview and confirmation")
+	ErrAcademicImpactChanged = errors.New("academic dependency impact changed; review the impact again")
 	ErrAcademicAdmissionNumberConflict = errors.New("academic admission number already exists in this school year")
 	ErrAcademicRollNumberConflict = errors.New("academic roll number already exists in this active section")
 	ErrStudentRegistrationNumberConflict = errors.New("student school registration number already exists in this school")
@@ -61,6 +63,7 @@ type SectionDeactivationImpact struct {
 	ActiveTeacherAssignmentCount int64 `json:"active_teacher_assignment_count"`
 	ActiveClassInchargeCount int64 `json:"active_class_incharge_count"`
 	AffectedStudents []SectionDeactivationStudent `json:"affected_students"`
+	ImpactFingerprint string `json:"impact_fingerprint"`
 }
 
 type AcademicClass struct {
@@ -300,6 +303,20 @@ func (r *AcademicRepository) ListSections(ctx context.Context,actorID,schoolID,y
 		ORDER BY s.academic_year_id,c.display_order,c.id,s.display_order,s.id`,schoolID,yearID);if err!=nil{return nil,fmt.Errorf("list sections: %w",err)};defer rows.Close()
 	items:=make([]AcademicSection,0);for rows.Next(){var v AcademicSection;if err:=rows.Scan(&v.ID,&v.SchoolID,&v.AcademicYearID,&v.ClassID,&v.ClassName,&v.Name,&v.Medium,&v.DisplayOrder,&v.IsActive,&v.CreatedAt,&v.UpdatedAt);err!=nil{return nil,fmt.Errorf("scan section: %w",err)};items=append(items,v)};if err:=rows.Err();err!=nil{return nil,fmt.Errorf("iterate sections: %w",err)};return items,nil
 }
+func sectionDeactivationFingerprint(ctx context.Context, tx pgx.Tx, schoolID, sectionID int64) (string, error) {
+	var fingerprint string
+	err := tx.QueryRow(ctx, `
+		SELECT md5(concat_ws('|',
+			COALESCE((SELECT string_agg(e.id::text || ':' || e.status, ',' ORDER BY e.id) FROM student_enrollments e WHERE e.school_id=$1 AND e.section_id=$2), ''),
+			COALESCE((SELECT string_agg(cc.id::text || ':' || cc.status, ',' ORDER BY cc.id) FROM class_curricula cc WHERE cc.school_id=$1 AND cc.section_id=$2), ''),
+			COALESCE((SELECT string_agg(a.id::text || ':' || COALESCE(a.revoked_at::text,'active'), ',' ORDER BY a.id) FROM teacher_subject_assignments a WHERE a.school_id=$1 AND a.section_id=$2), ''),
+			COALESCE((SELECT string_agg(a.id::text || ':' || COALESCE(a.revoked_at::text,'active'), ',' ORDER BY a.id) FROM class_incharge_assignments a WHERE a.school_id=$1 AND a.section_id=$2), '')
+		))
+	`, schoolID, sectionID).Scan(&fingerprint)
+	if err != nil { return "", fmt.Errorf("calculate section dependency fingerprint: %w", err) }
+	return fingerprint, nil
+}
+
 func (r *AcademicRepository) PreviewSectionDeactivation(ctx context.Context, actorID, schoolID, sectionID int64) (*SectionDeactivationImpact, error) {
 	if r == nil || r.db == nil || sectionID <= 0 { return nil, ErrInvalidAcademicInput }
 	tx, err := r.db.Begin(ctx)
@@ -323,6 +340,8 @@ func (r *AcademicRepository) PreviewSectionDeactivation(ctx context.Context, act
 		&impact.ActiveEnrollmentCount, &impact.HistoricalEnrollmentCount, &impact.ActiveCurriculumCount,
 		&impact.ActiveTeacherAssignmentCount, &impact.ActiveClassInchargeCount)
 	if err != nil { return nil, academicWriteError(err) }
+	impact.ImpactFingerprint, err = sectionDeactivationFingerprint(ctx, tx, schoolID, sectionID)
+	if err != nil { return nil, err }
 
 	rows, err := tx.Query(ctx, `
 		SELECT DISTINCT st.id, st.full_name, COALESCE(e.admission_number,''), e.status
@@ -346,6 +365,32 @@ func (r *AcademicRepository) PreviewSectionDeactivation(ctx context.Context, act
 	return &impact, nil
 }
 
+func (r *AcademicRepository) SaveSectionWithDeactivationConfirmation(ctx context.Context, actorID, schoolID, id, yearID, classID int64, name string, medium *string, order int, expectedFingerprint string) (*AcademicSection, error) {
+	if r == nil || r.db == nil || id <= 0 || strings.TrimSpace(expectedFingerprint)=="" { return nil, ErrInvalidAcademicInput }
+	name = strings.TrimSpace(name)
+	if medium != nil { value:=strings.ToLower(strings.TrimSpace(*medium)); if value=="" { medium=nil } else if value!="hindi" && value!="english" { return nil,ErrInvalidAcademicInput } else { medium=&value } }
+	if name == "" || len(name) > 40 || order < 0 || yearID <= 0 || classID <= 0 { return nil, ErrInvalidAcademicInput }
+	tx, err := r.db.Begin(ctx); if err != nil { return nil, fmt.Errorf("begin confirmed section deactivation: %w",err) }
+	defer func(){ _ = tx.Rollback(ctx) }()
+	if err=authorizeAcademic(ctx,tx,actorID,schoolID,"classes.manage"); err!=nil { return nil,err }
+	var lockedID int64
+	if err=tx.QueryRow(ctx, `SELECT id FROM sections WHERE id=$1 AND school_id=$2 AND academic_year_id=$3 AND class_id=$4 AND is_active=TRUE FOR UPDATE`, id,schoolID,yearID,classID).Scan(&lockedID); err!=nil { return nil,academicWriteError(err) }
+	currentFingerprint, err := sectionDeactivationFingerprint(ctx,tx,schoolID,id)
+	if err != nil { return nil,err }
+	if currentFingerprint != expectedFingerprint { return nil,ErrAcademicImpactChanged }
+	var v AcademicSection
+	err=tx.QueryRow(ctx, `UPDATE sections SET name=$4,medium=$5,display_order=$6,is_active=FALSE,updated_at=NOW()
+		WHERE school_id=$1 AND id=$2 AND academic_year_id=$3 AND class_id=$7
+		RETURNING id,school_id,academic_year_id,class_id,name,medium,display_order,is_active,created_at,updated_at`,
+		schoolID,id,yearID,name,medium,order,classID).Scan(&v.ID,&v.SchoolID,&v.AcademicYearID,&v.ClassID,&v.Name,&v.Medium,&v.DisplayOrder,&v.IsActive,&v.CreatedAt,&v.UpdatedAt)
+	if err!=nil { return nil,academicWriteError(err) }
+	if _,err=tx.Exec(ctx, `INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
+		VALUES($1,$2,'school.section.deactivated','section',$3,'success',jsonb_build_object('name',$4::text,'impact_fingerprint',$5::text,'is_active',FALSE))`,
+		actorID,schoolID,fmt.Sprint(v.ID),v.Name,currentFingerprint); err!=nil { return nil,fmt.Errorf("audit confirmed section deactivation: %w",err) }
+	if err=tx.Commit(ctx); err!=nil { return nil,fmt.Errorf("commit confirmed section deactivation: %w",err) }
+	return &v,nil
+}
+
 func (r *AcademicRepository) SaveSection(ctx context.Context, actorID, schoolID, id, yearID, classID int64, name string, order int, active bool) (*AcademicSection, error) {
 	return r.SaveSectionWithMedium(ctx,actorID,schoolID,id,yearID,classID,name,nil,order,active)
 }
@@ -357,6 +402,7 @@ func (r *AcademicRepository) SaveSectionWithMedium(ctx context.Context, actorID,
 	tx, err := r.db.Begin(ctx); if err != nil { return nil, fmt.Errorf("begin section save: %w",err) }
 	defer func(){ _ = tx.Rollback(ctx) }()
 	if err=authorizeAcademic(ctx,tx,actorID,schoolID,"classes.manage"); err!=nil { return nil,err }
+	if id>0 && !active { var wasActive bool; checkErr:=tx.QueryRow(ctx, `SELECT is_active FROM sections WHERE id=$1 AND school_id=$2`,id,schoolID).Scan(&wasActive); if checkErr!=nil { return nil,academicWriteError(checkErr) }; if wasActive { return nil,ErrSectionDeactivationConfirmationRequired } }
 	var v AcademicSection
 	if id==0 {
 		err=tx.QueryRow(ctx,`INSERT INTO sections(school_id,academic_year_id,class_id,name,medium,display_order,is_active)
