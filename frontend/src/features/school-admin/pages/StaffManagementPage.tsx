@@ -42,6 +42,7 @@ export function StaffManagementPage({ permissions }: Props) {
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [createStep, setCreateStep] = useState(1);
+  const [createReview, setCreateReview] = useState<{fullName:string;employeeCode:string;mobileNumber:string;email:string;designation:string;joiningDate:string;username:string} | null>(null);
   const [credentialHandoff, setCredentialHandoff] = useState<{ fullName: string; username: string; password: string } | null>(null);
   const [joiningDate, setJoiningDate] = useState("");
   const [employmentStatus, setEmploymentStatus] = useState<"active" | "inactive">("active");
@@ -65,6 +66,7 @@ export function StaffManagementPage({ permissions }: Props) {
     setEmploymentStatus(item?.employment_status === "inactive" ? "inactive" : "active");
     setShowPassword(false);
     setCreateStep(1);
+    setCreateReview(null);
     setFieldErrors({});
     setFeedback(null);
   }
@@ -105,6 +107,7 @@ export function StaffManagementPage({ permissions }: Props) {
       }
       setFieldErrors(stepErrors);
       if (Object.keys(stepErrors).length) return;
+      if (createStep === 3) setCreateReview({fullName,employeeCode,mobileNumber,email,designation,joiningDate,username});
       setCreateStep(step => Math.min(4, step + 1));
       return;
     }
@@ -210,7 +213,9 @@ export function StaffManagementPage({ permissions }: Props) {
         {action === "create" && <div className="staff-wizard-progress" aria-label="Add staff progress">
           {["Identity", "Employment", "Login & Access", "Review"].map((step, index) => <div key={step} className={createStep === index + 1 ? "current" : createStep > index + 1 ? "complete" : ""} aria-current={createStep === index + 1 ? "step" : undefined}><span>{createStep > index + 1 ? "✓" : index + 1}</span><small>{step}</small></div>)}
         </div>}
-        {action === "create" && createStep === 4 && <section className="staff-wizard-review"><h3>Review & create</h3><p>Check that the employee details and login information are correct before saving.</p><ul><li>Employee profile: identity, contact and employment details</li><li>Login username: entered in Login & Access</li><li>Temporary password: change required at first sign-in</li></ul><p>After creation, you can explicitly copy credentials for a trusted handoff. Nothing is sent automatically.</p></section>}
+        {action === "create" && createStep === 4 && <section className="staff-wizard-review"><h3>Review & create</h3><p>Check the details before creating this employee and login account.</p>
+          <dl>{createReview && <><div><dt>Full name</dt><dd>{createReview.fullName}</dd></div><div><dt>Employee code</dt><dd>{createReview.employeeCode}</dd></div><div><dt>Mobile</dt><dd>{createReview.mobileNumber}</dd></div><div><dt>Email</dt><dd>{createReview.email || "Not provided"}</dd></div><div><dt>Designation</dt><dd>{createReview.designation}</dd></div><div><dt>Joining date</dt><dd>{createReview.joiningDate || "Not set"}</dd></div><div><dt>Login username</dt><dd>{createReview.username}</dd></div></>}</dl>
+          <p>Temporary password change is required at first sign-in. After creation, you can explicitly copy credentials for a trusted handoff. Nothing is sent automatically.</p></section>}
         <form onSubmit={submit} noValidate>
           {action === "create" && <label hidden={createStep !== 3}>Login username<input name="username" placeholder="e.g. rahul.sharma" minLength={3} maxLength={32} pattern="[a-z0-9._-]{3,32}" autoComplete="off" required aria-invalid={Boolean(fieldErrors.username)} aria-describedby={fieldErrors.username ? "staff-username-error" : "staff-username-help"} onChange={()=>setFieldErrors(current=>({...current,username:""}))}/><small id="staff-username-help">3–32 lowercase letters, numbers, dots, underscores or hyphens. Unique across the platform.</small>{fieldErrors.username && <small className="app-field-error" id="staff-username-error" role="alert">{fieldErrors.username}</small>}</label>}
           {action === "edit" && <label>Login username<input value={selected?.username ?? ""} disabled/><small>Login identity is managed separately from employee details.</small></label>}
@@ -235,7 +240,7 @@ export function StaffManagementPage({ permissions }: Props) {
         {credentialHandoff && <section className="staff-credential-handoff"><p>Confirm the staff member's identity and use a trusted channel you have verified. Nothing is sent automatically.</p>
           <dl><div><dt>Staff member</dt><dd>{credentialHandoff.fullName}</dd></div><div><dt>Login username</dt><dd>{credentialHandoff.username}</dd></div><div><dt>Temporary password</dt><dd>{credentialHandoff.password}</dd></div></dl>
           <p className="staff-wizard-note">Do not share credentials in a public or group channel. The staff member must change this password at first sign-in.</p>
-          <div className="app-modal-actions"><button type="button" className="app-modal-cancel" onClick={() => setCredentialHandoff(null)}>Do this later</button><button type="button" className="primary" onClick={() => {void navigator.clipboard.writeText("School staff login\nName: "+credentialHandoff.fullName+"\nUsername: "+credentialHandoff.username+"\nTemporary password: "+credentialHandoff.password+"\nChange this password after your first sign-in.").then(() => notifyToast("success","Credentials copied. Share them only through a verified channel.")).catch(() => notifyToast("error","Clipboard access is unavailable. Use the password-reset flow if needed."));}}>Copy credentials</button></div>
+          <div className="app-modal-actions"><button type="button" className="app-modal-cancel" onClick={() => setCredentialHandoff(null)}>Do this later</button><button type="button" className="primary" onClick={() => {void navigator.clipboard?.writeText("School staff login\nName: "+credentialHandoff.fullName+"\nUsername: "+credentialHandoff.username+"\nTemporary password: "+credentialHandoff.password+"\nChange this password after your first sign-in.").then(() => notifyToast("success","Credentials copied. Share them only through a verified channel.")).catch(() => notifyToast("error","Clipboard access is unavailable. Use the password-reset flow if needed."));}}>Copy credentials</button></div>
         </section>}
       </Modal>
       {activeTab === "overview" && <section className="staff-overview">
