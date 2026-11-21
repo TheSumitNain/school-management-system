@@ -99,6 +99,7 @@ test("school onboarding refreshes the school list and delegated permissions can 
     { id: 1, name: "Sunrise Public School", code: "SUNRISE", status: "active", created_at: "2026-01-01T00:00:00Z" },
   ];
   let schoolListCalls = 0;
+  let schoolListResponses = 0;
   let onboardAttempts = 0;
   let delegation: Record<string, unknown> | null = null;
   let grantCalls = 0;
@@ -122,6 +123,7 @@ test("school onboarding refreshes the school list and delegated permissions can 
     if (path === "/platform/schools" && method === "GET") {
       schoolListCalls += 1;
       await route.fulfill({ json: { schools } });
+      schoolListResponses += 1;
       return;
     }
     if (path === "/platform/permissions/delegable") {
@@ -181,8 +183,9 @@ test("school onboarding refreshes the school list and delegated permissions can 
   expect(onboardAttempts).toBe(2);
 
   await page.getByRole("tab", { name: "School permissions" }).click();
-  await expect.poll(() => schoolListCalls).toBeGreaterThan(1);
+  await expect.poll(() => schoolListResponses).toBeGreaterThan(1);
   const schoolSelect = page.getByLabel("School", { exact: true });
+  await expect(schoolSelect).toBeVisible();
   await schoolSelect.selectOption("2");
   await expect(schoolSelect).toHaveValue("2");
   await page.getByLabel("Permission").selectOption("students.read_basic");
