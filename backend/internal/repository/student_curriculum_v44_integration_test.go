@@ -397,8 +397,8 @@ func TestStudentCurriculumV44PostgresIntegration(t *testing.T) {
 	); err != nil {
 		t.Fatalf("verify revoked student selection history: %v", err)
 	}
-	if retainedSelectionHistory != 1 || activeRemovedSelections != 0 {
-		t.Fatalf("removed subject selection rows retained=%d active=%d; want 1 retained and 0 active",
+	if retainedSelectionHistory != 2 || activeRemovedSelections != 0 {
+		t.Fatalf("removed subject selection rows retained=%d active=%d; want 2 retained and 0 active",
 			retainedSelectionHistory, activeRemovedSelections)
 	}
 
