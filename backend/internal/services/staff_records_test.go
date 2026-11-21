@@ -19,6 +19,9 @@ func(f *fakeStaffRecordsRepository) ListStaffCertifications(context.Context,int6
 func(f *fakeStaffRecordsRepository) CreateStaffCertification(_ context.Context,_,_,_ int64,item repository.StaffCertification)(*repository.StaffCertification,error){f.calls++;f.certification=&item;return &item,nil}
 func(f *fakeStaffRecordsRepository) ListStaffExperience(context.Context,int64,int64,int64)([]repository.StaffExperience,error){return nil,nil}
 func(f *fakeStaffRecordsRepository) CreateStaffExperience(_ context.Context,_,_,_ int64,item repository.StaffExperience)(*repository.StaffExperience,error){f.calls++;f.experience=&item;return &item,nil}
+func(f *fakeStaffRecordsRepository) UpdateStaffQualification(_ context.Context,_,_,_,_ int64,item repository.StaffQualification)(*repository.StaffQualification,error){f.calls++;f.qualification=&item;return &item,nil}
+func(f *fakeStaffRecordsRepository) UpdateStaffCertification(_ context.Context,_,_,_,_ int64,item repository.StaffCertification)(*repository.StaffCertification,error){f.calls++;f.certification=&item;return &item,nil}
+func(f *fakeStaffRecordsRepository) UpdateStaffExperience(_ context.Context,_,_,_,_ int64,item repository.StaffExperience)(*repository.StaffExperience,error){f.calls++;f.experience=&item;return &item,nil}
 
 func TestStaffRecordsServiceValidatesAndNormalizesQualification(t *testing.T){
 	repo:=&fakeStaffRecordsRepository{};svc:=NewStaffRecordsService(repo)
