@@ -1,3 +1,16 @@
+## Academic Structure management UX checkpoint (2026-11-21)
+
+- Updated `AcademicStructurePage` so backend `field_errors` are mapped to the matching inline form fields while preserving entered values; the form-level server message and error toast remain available for recovery.
+- Success notifications now identify the actual academic record and action (create/update/close/archive) rather than showing a generic “saved” message.
+- Academic-year closure is presented as archive/retention, not deletion. Selecting Closed automatically clears the current-year flag; closed years remain visible for historical references and their normal edit action is disabled.
+- Class, section and subject inactive-state helper text explains that the records and existing student/curriculum history are retained; no hard-delete operation was added.
+- Added Playwright coverage for class creation success, subject server-field-error mapping and preserved input, and academic-year close/archive behavior.
+- Added the safe academic-structure lifecycle rules to `docs/product/REQUIREMENTS.md`: no hard-delete for referenced records, dependency impact review, explicit confirmation, transactional stale-impact rechecks and audit logging are required before consequential inactivation/removal.
+- Frontend CI **PASS** — [run 44859591969](https://github.com/TheSumitNain/school-management-system/actions/runs/44859591969), checkpoint `5cebd996c01986d91cfe41d5ed2e0f34d90ca182`: TypeScript/Vite production build and all 23 Playwright browser acceptance tests passed.
+- Backend CI **PASS** — [run 44859592026](https://github.com/TheSumitNain/school-management-system/actions/runs/44859592026), same checkpoint: complete migration chain, Go tests including PostgreSQL integration, and `go vet` passed.
+- No migration or local database changes were made in this checkpoint.
+- Remaining before calling Academic Structure lifecycle complete: implement the dependency-impact preview and transactional stale-impact confirmation for section, class and subject inactivation; verify exact dependency counts against the live schema; add API/repository integration tests and browser confirmation coverage. Do not hard-delete academic years, classes, sections or subjects.
+
 ## Editable section-wise Class Curriculum (2026-11-20)
 
 - Approved product decision: one current curriculum per Academic Year + Class + Section. The School Admin edits that same record; normal curriculum changes do not create V2/V3 versions or reassign student enrollments.
