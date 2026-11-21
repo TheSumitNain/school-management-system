@@ -704,14 +704,16 @@ test("student admission, profile navigation and parent details render without br
           clientWidth: element.clientWidth,
           scrollWidth: element.scrollWidth,
         })).slice(0, 10);
-      const outsideControls = controls.filter(element => !fits(element)).map(element => ({
+      const describeOverflow = (element: HTMLElement) => ({
         tag: element.tagName.toLowerCase(),
         className: typeof element.className === "string" ? element.className : "",
         text: (element.textContent ?? "").trim().slice(0, 50),
         rect: (() => { const bounds = element.getBoundingClientRect(); return { left: bounds.left, right: bounds.right }; })(),
         clientWidth: element.clientWidth,
         scrollWidth: element.scrollWidth,
-      }));
+      });
+      const outsideControls = controls.filter(element => !fits(element)).map(describeOverflow);
+      const outsideRows = rows.filter(element => !fits(element)).map(describeOverflow);
       return {
         panelFits: rect.left >= 0 && rect.right <= window.innerWidth + 1 &&
           panel.scrollWidth <= panel.clientWidth + 1,
