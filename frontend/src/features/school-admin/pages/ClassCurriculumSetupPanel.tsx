@@ -144,6 +144,7 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
       removal_confirmations: confirmations.map(item => ({
         subject_id: item.subject_id,
         affected_students: item.affected_students,
+        student_ids: item.students.map(student => student.student_id),
       })),
     }, {
       onSuccess: () => {
@@ -162,7 +163,7 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
         });
       },
       onError: mutationError => {
-        if (mutationError.message.toLowerCase().includes("affected-student count changed")) {
+        if (mutationError.message.toLowerCase().includes("affected students changed")) {
           setPendingSave(null);
           setPendingRemovalImpacts(null);
         }
