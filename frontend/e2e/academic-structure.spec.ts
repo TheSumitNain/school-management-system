@@ -80,7 +80,7 @@ test("section curriculum validates optional groups, edits in place, and confirms
     }
     if (path === "/school/class-curricula/removal-impact" && method === "POST") {
       removalPreviewPayload = request.postDataJSON() as Record<string, unknown>;
-      await route.fulfill({ json: { impacts: [{ subject_id: 92, subject_name: "Hindi", affected_students: 2 }] } });
+      await route.fulfill({ json: { impacts: [{ subject_id: 92, subject_name: "Hindi", affected_students: 2, students: [{ student_id: 1001, admission_number: "ADM-001", full_name: "Aarav Sharma" }, { student_id: 1002, admission_number: "ADM-002", full_name: "Diya Verma" }] }] } });
       return;
     }
     if (path === "/school/class-curricula" && method === "POST") {
@@ -246,6 +246,9 @@ test("section curriculum validates optional groups, edits in place, and confirms
   await expect(page.getByRole("heading", { name: "Confirm subject removal" })).toBeVisible();
   await expect(page.getByRole("dialog").getByText("Hindi", { exact: true })).toBeVisible();
   await expect(page.getByText("2 affected students", { exact: true })).toBeVisible();
+  await expect(page.getByText("Aarav Sharma", { exact: true })).toBeVisible();
+  await expect(page.getByText("Admission no. ADM-001", { exact: true })).toBeVisible();
+  await expect(page.getByText("Diya Verma", { exact: true })).toBeVisible();
   expect(removalPreviewPayload).toMatchObject({
     academic_year_id: 7, class_id: 3, section_id: 44, subject_ids: [92],
   });
