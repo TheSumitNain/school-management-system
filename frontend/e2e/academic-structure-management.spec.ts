@@ -460,7 +460,7 @@ test("subject deactivation previews active curriculum and student choices before
   await page.route("**/api/**", async route => {
     const request = route.request();
     const url = new URL(request.url());
-    const path = url.pathname.replace(/^\\/api/, "");
+    const path = url.pathname.replace(/^\/api/, "");
     const method = request.method();
     if (path === "/auth/refresh") {
       await route.fulfill({ status: 401, json: { message: "No active session" } });
