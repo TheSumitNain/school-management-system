@@ -4,6 +4,7 @@ import {
   saveSchoolStudentEnrollmentSubjects,
   createSchoolStaff, disableSchoolStaff, enableSchoolStaff, getSchoolStaff,
   resetSchoolStaffPassword, updateSchoolStaff,
+  getStaffQualifications, createStaffQualification, getStaffCertifications, createStaffCertification, getStaffExperience, createStaffExperience,
 } from "./api";
 
 export const schoolAdminQueryKeys = {
@@ -376,4 +377,27 @@ export function useSaveSchoolStudentEnrollmentSubjectsMutation() {
       saveSchoolStudentEnrollmentSubjects(enrollmentID, input),
     onSuccess: (_data, input) => client.invalidateQueries({ queryKey: schoolStudentQueryKeys.curriculum(input.enrollmentID) }),
   });
+}
+
+export function useStaffQualificationsQuery(principalID: number, enabled: boolean) {
+  return useQuery({ queryKey: [...schoolAdminQueryKeys.staff(), principalID, "qualifications"], queryFn: ({signal}) => getStaffQualifications(principalID, signal), enabled: enabled && principalID > 0, staleTime: 15_000 });
+}
+export function useStaffCertificationsQuery(principalID: number, enabled: boolean) {
+  return useQuery({ queryKey: [...schoolAdminQueryKeys.staff(), principalID, "certifications"], queryFn: ({signal}) => getStaffCertifications(principalID, signal), enabled: enabled && principalID > 0, staleTime: 15_000 });
+}
+export function useStaffExperienceQuery(principalID: number, enabled: boolean) {
+  return useQuery({ queryKey: [...schoolAdminQueryKeys.staff(), principalID, "experience"], queryFn: ({signal}) => getStaffExperience(principalID, signal), enabled: enabled && principalID > 0, staleTime: 15_000 });
+}
+function useStaffRecordMutation<TInput>(principalID: number, mutationFn: (input:TInput)=>Promise<unknown>, key: string) {
+  const client = useQueryClient();
+  return useMutation({ mutationFn, onSuccess: () => client.invalidateQueries({queryKey:[...schoolAdminQueryKeys.staff(),principalID,key]}) });
+}
+export function useCreateStaffQualificationMutation(principalID:number) {
+  return useStaffRecordMutation(principalID,(input:Parameters<typeof createStaffQualification>[1])=>createStaffQualification(principalID,input),"qualifications");
+}
+export function useCreateStaffCertificationMutation(principalID:number) {
+  return useStaffRecordMutation(principalID,(input:Parameters<typeof createStaffCertification>[1])=>createStaffCertification(principalID,input),"certifications");
+}
+export function useCreateStaffExperienceMutation(principalID:number) {
+  return useStaffRecordMutation(principalID,(input:Parameters<typeof createStaffExperience>[1])=>createStaffExperience(principalID,input),"experience");
 }
