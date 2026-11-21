@@ -57,7 +57,8 @@ test("appearance mode, palette and automatic schedule save safely on this device
 
   // The schedule must continue updating after leaving Settings.
   await page.getByRole("button", { name: "Dashboard" }).click();
-  await page.clock.fastForward("31 minutes");
+  await page.clock.setFixedTime(new Date("2026-11-21T01:01:00.000Z"));
+  await page.clock.fastForward("00:30");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
 
   // System mode follows device appearance changes without reloading the app.
