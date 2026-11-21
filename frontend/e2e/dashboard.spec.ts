@@ -99,7 +99,7 @@ test("dashboard explains partial loading failures and lets the user retry", asyn
     if (path === "/school/staff") {
       staffRequests += 1;
       if (staffRequests === 1) {
-        await route.fulfill({ status: 503, json: { message: "Staff service is temporarily unavailable." } });
+        await route.fulfill({ status: 503, json: { message: "Staff service is temporarily unavailable while the school workspace is loading. Please retry in a moment or contact your administrator if the problem continues." } });
       } else {
         await route.fulfill({ json: { staff: [{ id: 1 }, { id: 2 }] } });
       }
@@ -120,6 +120,10 @@ test("dashboard explains partial loading failures and lets the user retry", asyn
   const alert = page.getByRole("alert");
   await expect(alert).toContainText("Some dashboard information could not be loaded.");
   await expect(alert).toContainText("Staff accounts:");
+  await page.setViewportSize({ width: 320, height: 720 });
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  const alertFits = await alert.evaluate(element => { const rect = element.getBoundingClientRect(); return rect.left >= 0 && rect.right <= window.innerWidth + 1; });
+  expect(alertFits, "dashboard error feedback should wrap within a 320px viewport").toBe(true);
   await expect(page.locator(".stat").filter({ hasText: "Classes" }).locator("strong")).toHaveText("3");
   await page.getByRole("button", { name: "Retry" }).click();
 
