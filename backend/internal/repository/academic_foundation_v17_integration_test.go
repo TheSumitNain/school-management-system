@@ -1340,4 +1340,48 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 		t.Fatalf("section deactivation retention/audit: active enrollments=%d audit events=%d; want 1 and 1", retainedEnrollmentCount, deactivationAuditCount)
 	}
 
+	// Class deactivation snapshots every section and dependent academic record.
+	// A new section after preview makes the old fingerprint stale; refreshed
+	// confirmation deactivates only the class and retains the section.
+	var deactivationClassID int64
+	if err := tx.QueryRow(ctx, `INSERT INTO classes(school_id,name,display_order) VALUES($1,$2,50) RETURNING id`,
+		schoolID,"Class Deactivation "+suffix).Scan(&deactivationClassID); err != nil {
+		t.Fatalf("create class deactivation fixture: %v",err)
+	}
+	classImpact,err:=academicRepo.PreviewClassDeactivation(ctx,actorPrincipalID,schoolID,deactivationClassID)
+	if err!=nil||classImpact==nil||classImpact.ImpactFingerprint==""||classImpact.ActiveSectionCount!=0 {
+		t.Fatalf("preview empty class deactivation: impact=%+v err=%v",classImpact,err)
+	}
+	var retainedSectionID int64
+	if err:=tx.QueryRow(ctx,`INSERT INTO sections(school_id,academic_year_id,class_id,name)
+		VALUES($1,$2,$3,'A') RETURNING id`,schoolID,switchYear.ID,deactivationClassID).Scan(&retainedSectionID);err!=nil {
+		t.Fatalf("create section after class impact preview: %v",err)
+	}
+	staleClassSave,err:=academicRepo.SaveClassWithDeactivationConfirmation(ctx,actorPrincipalID,schoolID,
+		deactivationClassID,"Class Deactivation "+suffix,50,classImpact.ImpactFingerprint)
+	if staleClassSave!=nil||!errors.Is(err,ErrAcademicImpactChanged) {
+		t.Fatalf("save class with stale dependency preview: class=%+v err=%v",staleClassSave,err)
+	}
+	refreshedClassImpact,err:=academicRepo.PreviewClassDeactivation(ctx,actorPrincipalID,schoolID,deactivationClassID)
+	if err!=nil||refreshedClassImpact==nil||refreshedClassImpact.ActiveSectionCount!=1 {
+		t.Fatalf("refresh class impact after new section: impact=%+v err=%v",refreshedClassImpact,err)
+	}
+	deactivatedClass,err:=academicRepo.SaveClassWithDeactivationConfirmation(ctx,actorPrincipalID,schoolID,
+		deactivationClassID,"Class Deactivation "+suffix,50,refreshedClassImpact.ImpactFingerprint)
+	if err!=nil||deactivatedClass==nil||deactivatedClass.IsActive {
+		t.Fatalf("confirm class deactivation with current impact: class=%+v err=%v",deactivatedClass,err)
+	}
+	var retainedSectionCount,classAuditCount int
+	if err:=tx.QueryRow(ctx,`SELECT COUNT(*)::integer FROM sections WHERE id=$1 AND is_active=TRUE`,retainedSectionID).Scan(&retainedSectionCount);err!=nil {
+		t.Fatalf("verify section retained after class deactivation: %v",err)
+	}
+	if err:=tx.QueryRow(ctx,`SELECT COUNT(*)::integer FROM audit_events
+		WHERE school_id=$1 AND actor_principal_id=$2 AND action='school.class.deactivated'
+		AND resource_type='class' AND resource_id=$3`,schoolID,actorPrincipalID,fmt.Sprint(deactivationClassID)).Scan(&classAuditCount);err!=nil {
+		t.Fatalf("verify class deactivation audit event: %v",err)
+	}
+	if retainedSectionCount!=1||classAuditCount!=1 {
+		t.Fatalf("class deactivation retention/audit: active sections=%d audit events=%d; want 1 and 1",retainedSectionCount,classAuditCount)
+	}
+
 }
