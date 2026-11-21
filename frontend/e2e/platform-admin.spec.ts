@@ -13,6 +13,7 @@ async function signIn(page: import("@playwright/test").Page, username: string) {
   await page.getByLabel("Username").fill(username);
   await page.getByLabel("Password").fill("E2E-only-password");
   await page.getByRole("button", { name: /Continue/ }).click();
+  await page.getByRole("button", { name: "Platform Admin" }).click();
 }
 
 test("Platform Admin accounts can be created and safely deactivated with recoverable failures", async ({ page }) => {
