@@ -11,6 +11,8 @@ import {
   onboardSchool,
   type CreatePlatformAdminInput,
   type CreateSchoolInput,
+  type PlatformSchool,
+  type PlatformSchoolsResponse,
 } from "./api";
 
 export const platformAdminQueryKeys = {
@@ -50,7 +52,14 @@ export function useOnboardSchoolMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateSchoolInput) => onboardSchool(input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: platformAdminQueryKeys.schools() }),
+    onSuccess: result => {
+      queryClient.setQueryData<PlatformSchoolsResponse>(platformAdminQueryKeys.schools(), current => {
+        const schools = current?.schools ?? [];
+        const created = result.school as PlatformSchool;
+        return { schools: [...schools.filter(school => school.id !== created.id), created] };
+      });
+      return queryClient.invalidateQueries({ queryKey: platformAdminQueryKeys.schools() });
+    },
   });
 }
 
