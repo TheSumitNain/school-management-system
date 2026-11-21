@@ -50,7 +50,7 @@ test("appearance mode, palette and automatic schedule save safely on this device
     const nextMinute = new Date(now.getTime() + 60_000);
     const format = (date: Date) => `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
     return {
-      darkStart: format(now),
+      darkStart: format(new Date(now.getTime() - 60_000)),
       lightStart: format(nextMinute),
       waitMs: 60_000 - (now.getSeconds() * 1_000 + now.getMilliseconds()) + 31_000,
     };
