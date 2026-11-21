@@ -235,3 +235,75 @@ func (r *UserRepository) CreateStaffExperience(ctx context.Context, actorID, sch
 }
 
 var _ = pgx.ErrNoRows
+
+
+// Update methods preserve verification state and change only editable staff-supplied fields.
+// The record ID, staff principal ID and school ID are always taken from the route/auth context.
+func (r *UserRepository) UpdateStaffQualification(ctx context.Context, actorID, schoolID, staffID, recordID int64, item StaffQualification) (*StaffQualification, error) {
+	if r == nil || r.db == nil || recordID <= 0 { return nil, ErrStaffRecordAccessDenied }
+	tx, err := r.db.Begin(ctx); if err != nil { return nil, fmt.Errorf("begin staff qualification update: %w", err) }
+	defer func(){ _ = tx.Rollback(ctx) }()
+	if err = authorizeStaffRecord(ctx, tx, actorID, schoolID, staffID, "users.update"); err != nil { return nil, err }
+	var saved StaffQualification
+	err = tx.QueryRow(ctx, `
+		UPDATE staff_qualifications SET qualification_type=$5, qualification_name=$6, specialization=NULLIF($7,''), institution=$8,
+		 board_university=NULLIF($9,''), completion_year=$10, score=$11, score_scale=NULLIF($12,''), credential_reference=NULLIF($13,''), updated_at=NOW()
+		WHERE id=$1 AND school_id=$2 AND staff_principal_id=$3
+		RETURNING id,staff_principal_id,qualification_type,qualification_name,COALESCE(specialization,''),institution,
+		 COALESCE(board_university,''),completion_year,score::float8,COALESCE(score_scale,''),COALESCE(credential_reference,''),
+		 verification_status,created_at,updated_at
+	`, recordID,schoolID,staffID,actorID,item.QualificationType,item.QualificationName,item.Specialization,item.Institution,
+		item.BoardUniversity,item.CompletionYear,item.Score,item.ScoreScale,item.CredentialReference).Scan(
+		&saved.ID,&saved.StaffPrincipalID,&saved.QualificationType,&saved.QualificationName,&saved.Specialization,&saved.Institution,
+		&saved.BoardUniversity,&saved.CompletionYear,&saved.Score,&saved.ScoreScale,&saved.CredentialReference,&saved.VerificationStatus,&saved.CreatedAt,&saved.UpdatedAt)
+	if errors.Is(err, pgx.ErrNoRows) { return nil, ErrInvalidStaffRecord }
+	if err != nil { return nil, fmt.Errorf("update staff qualification: %w", err) }
+	if _,err=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
+		VALUES($1,$2,'staff.qualification.updated','staff_qualification',$3,'success',jsonb_build_object('record_type','qualification'))`,actorID,schoolID,fmt.Sprint(recordID));err!=nil{return nil,fmt.Errorf("audit staff qualification update: %w",err)}
+	if err=tx.Commit(ctx);err!=nil{return nil,fmt.Errorf("commit staff qualification update: %w",err)}
+	return &saved,nil
+}
+
+func (r *UserRepository) UpdateStaffCertification(ctx context.Context, actorID, schoolID, staffID, recordID int64, item StaffCertification) (*StaffCertification, error) {
+	if r == nil || r.db == nil || recordID <= 0 { return nil, ErrStaffRecordAccessDenied }
+	tx,err:=r.db.Begin(ctx);if err!=nil{return nil,fmt.Errorf("begin staff certification update: %w",err)}
+	defer func(){_=tx.Rollback(ctx)}()
+	if err=authorizeStaffRecord(ctx,tx,actorID,schoolID,staffID,"users.update");err!=nil{return nil,err}
+	var saved StaffCertification
+	err=tx.QueryRow(ctx,`
+		UPDATE staff_certifications SET certificate_name=$4,issuing_organization=$5,issue_date=NULLIF($6,'')::date,
+		 expiry_date=NULLIF($7,'')::date,credential_id=NULLIF($8,''),updated_at=NOW()
+		WHERE id=$1 AND school_id=$2 AND staff_principal_id=$3
+		RETURNING id,staff_principal_id,certificate_name,issuing_organization,COALESCE(issue_date::text,''),COALESCE(expiry_date::text,''),
+		 COALESCE(credential_id,''),verification_status,created_at,updated_at
+	`,recordID,schoolID,staffID,item.CertificateName,item.IssuingOrganization,item.IssueDate,item.ExpiryDate,item.CredentialID).Scan(
+		&saved.ID,&saved.StaffPrincipalID,&saved.CertificateName,&saved.IssuingOrganization,&saved.IssueDate,&saved.ExpiryDate,&saved.CredentialID,&saved.VerificationStatus,&saved.CreatedAt,&saved.UpdatedAt)
+	if errors.Is(err,pgx.ErrNoRows){return nil,ErrInvalidStaffRecord}
+	if err!=nil{return nil,fmt.Errorf("update staff certification: %w",err)}
+	if _,err=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
+		VALUES($1,$2,'staff.certification.updated','staff_certification',$3,'success',jsonb_build_object('record_type','certification'))`,actorID,schoolID,fmt.Sprint(recordID));err!=nil{return nil,fmt.Errorf("audit staff certification update: %w",err)}
+	if err=tx.Commit(ctx);err!=nil{return nil,fmt.Errorf("commit staff certification update: %w",err)}
+	return &saved,nil
+}
+
+func (r *UserRepository) UpdateStaffExperience(ctx context.Context, actorID, schoolID, staffID, recordID int64, item StaffExperience) (*StaffExperience, error) {
+	if r==nil||r.db==nil||recordID<=0{return nil,ErrStaffRecordAccessDenied}
+	tx,err:=r.db.Begin(ctx);if err!=nil{return nil,fmt.Errorf("begin staff experience update: %w",err)}
+	defer func(){_=tx.Rollback(ctx)}()
+	if err=authorizeStaffRecord(ctx,tx,actorID,schoolID,staffID,"users.update");err!=nil{return nil,err}
+	var saved StaffExperience
+	err=tx.QueryRow(ctx,`
+		UPDATE staff_experience SET employer_name=$4,designation=$5,employment_type=$6,start_date=$7::date,
+		 end_date=NULLIF($8,'')::date,is_current=$9,description=NULLIF($10,''),updated_at=NOW()
+		WHERE id=$1 AND school_id=$2 AND staff_principal_id=$3
+		RETURNING id,staff_principal_id,employer_name,designation,employment_type,start_date::text,COALESCE(end_date::text,''),
+		 is_current,COALESCE(description,''),created_at,updated_at
+	`,recordID,schoolID,staffID,item.EmployerName,item.Designation,item.EmploymentType,item.StartDate,item.EndDate,item.IsCurrent,item.Description).Scan(
+		&saved.ID,&saved.StaffPrincipalID,&saved.EmployerName,&saved.Designation,&saved.EmploymentType,&saved.StartDate,&saved.EndDate,&saved.IsCurrent,&saved.Description,&saved.CreatedAt,&saved.UpdatedAt)
+	if errors.Is(err,pgx.ErrNoRows){return nil,ErrInvalidStaffRecord}
+	if err!=nil{return nil,fmt.Errorf("update staff experience: %w",err)}
+	if _,err=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
+		VALUES($1,$2,'staff.experience.updated','staff_experience',$3,'success',jsonb_build_object('record_type','experience'))`,actorID,schoolID,fmt.Sprint(recordID));err!=nil{return nil,fmt.Errorf("audit staff experience update: %w",err)}
+	if err=tx.Commit(ctx);err!=nil{return nil,fmt.Errorf("commit staff experience update: %w",err)}
+	return &saved,nil
+}
