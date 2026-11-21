@@ -1,3 +1,13 @@
+## Class Curriculum removal review — verified checkpoint (2026-11-21)
+
+- Before a subject is removed from a section curriculum, the preview shows the exact affected-student count and the affected students' names and admission numbers.
+- The confirmation request includes the reviewed student IDs. The backend recomputes the affected set in the save transaction and rejects a stale confirmation even when the total count is unchanged but the student membership differs.
+- Explicit confirmation is required before the curriculum subject and affected students' current optional choices are removed. The write and its audit event remain transactional; historical curriculum and selection behavior is documented separately from current selections.
+- PostgreSQL integration tests cover affected-student details for optional and compulsory subjects and rejection of a same-count/different-student confirmation. Playwright coverage verifies the impact count, names, admission numbers, and confirmation payload.
+- Frontend CI **PASS** — [run 44869602735](https://github.com/TheSumitNain/school-management-system/actions/runs/44869602735), checkpoint `a63af3500aad45fc1b67bcf78cc1715cb36ebaa2`: TypeScript/Vite production build and all browser acceptance tests passed.
+- Backend CI **PASS** — [run 44869783915](https://github.com/TheSumitNain/school-management-system/actions/runs/44869783915), checkpoint `2d4a35ba3fce3b356283eb4ecda2b6caca52464a`: full Go tests including PostgreSQL integration and `go vet ./...` passed.
+- No local database migration or live school data change was performed as part of this checkpoint. Verify the local backup and apply any pending repository migrations before manual testing.
+
 ## Academic Structure lifecycle safety — verified checkpoint (2026-11-21)
 
 - Academic years close/archive; they are not hard-deleted. Closed years remain readable for historical records, and the current-year flag is cleared when a year is closed.
