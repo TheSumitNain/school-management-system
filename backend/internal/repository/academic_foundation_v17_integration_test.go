@@ -1199,14 +1199,14 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	updatedWithStaleConfirmation, err := academicRepo.SaveSectionClassCurriculumWithConfirmations(ctx, actorPrincipalID, schoolID,
 		enrollmentYearID, sourceClassID, sourceSectionID, nil,
 		[]CurriculumSubjectInput{{SubjectID: subjectID}},
-		[]CurriculumRemovalConfirmation{{SubjectID: subjectAltID, AffectedStudents: 0}})
+		[]CurriculumRemovalConfirmation{{SubjectID: subjectAltID, AffectedStudents: 0, StudentIDs: []int64{}}})
 	if updatedWithStaleConfirmation != nil || !errors.Is(err, ErrCurriculumRemovalImpactChanged) {
 		t.Fatalf("remove selected subject with stale count: curriculum=%+v err=%v", updatedWithStaleConfirmation, err)
 	}
 	updatedCurriculum, err := academicRepo.SaveSectionClassCurriculumWithConfirmations(ctx, actorPrincipalID, schoolID,
 		enrollmentYearID, sourceClassID, sourceSectionID, nil,
 		[]CurriculumSubjectInput{{SubjectID: subjectID}},
-		[]CurriculumRemovalConfirmation{{SubjectID: subjectAltID, AffectedStudents: 1}})
+		[]CurriculumRemovalConfirmation{{SubjectID: subjectAltID, AffectedStudents: 1, StudentIDs: []int64{apiStudentID}}})
 	if err != nil || updatedCurriculum == nil || updatedCurriculum.ID != curriculumV1.ID ||
 		updatedCurriculum.VersionNumber != curriculumV1.VersionNumber || len(updatedCurriculum.Subjects) != 1 ||
 		updatedCurriculum.Subjects[0].SubjectID != subjectID {
