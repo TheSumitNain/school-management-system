@@ -268,3 +268,94 @@ test("section deactivation shows exact dependency counts and active student list
   expect(patchRequests).toBe(1);
   expect(patchBody).toMatchObject({ is_active: false, impact_fingerprint: "section-impact-v1" });
 });
+
+
+test("class deactivation requires reviewing sections, enrollments and assignments", async ({ page }) => {
+  let inactive = false;
+  let impactCalls = 0;
+  let patchBody: Record<string, unknown> | null = null;
+  await page.route("**/api/**", async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname.replace(/^\\/api/, "");
+    const method = request.method();
+    if (path === "/auth/refresh") {
+      await route.fulfill({ status: 401, json: { message: "No active session" } });
+      return;
+    }
+    if (path === "/auth/login" && method === "POST") {
+      await route.fulfill({ json: {
+        access_token: "e2e-class-impact-token", token_type: "Bearer",
+        principal: { principal_id: 117, principal_type: "staff", status: "active", school_id: 10 },
+      } });
+      return;
+    }
+    if (path === "/auth/me") {
+      await route.fulfill({ json: {
+        principal_id: 117, principal_type: "staff", school_id: 10, username: "e2e-class-impact",
+        permissions: ["academic_years.read", "classes.read", "classes.manage"],
+      } });
+      return;
+    }
+    if (path === "/school/academic-years") {
+      await route.fulfill({ json: { academic_years: [
+        { id: 7, name: "2026–2027", starts_on: "2026-04-01", ends_on: "2027-03-31", status: "active", is_current: true },
+      ] } });
+      return;
+    }
+    if (path === "/school/classes" && method === "GET") {
+      await route.fulfill({ json: { classes: [{ id: 8, name: "Class 4", display_order: 4, is_active: !inactive }] } });
+      return;
+    }
+    if (path === "/school/sections") {
+      await route.fulfill({ json: { sections: [] } });
+      return;
+    }
+    if (path === "/school/classes/8/deactivation-impact" && method === "GET") {
+      impactCalls += 1;
+      await route.fulfill({ json: { status: "success", impact: {
+        class_id: 8, class_name: "Class 4", active_section_count: 2, inactive_section_count: 1,
+        active_enrollment_count: 2, historical_enrollment_count: 3, active_curriculum_count: 2,
+        active_teacher_assignment_count: 4, active_class_incharge_count: 2, impact_fingerprint: "class-impact-v1",
+        affected_students: [
+          { student_id: 101, full_name: "Aarav Sharma", admission_number: "ADM-101", section_name: "A", academic_year_name: "2026–2027" },
+          { student_id: 102, full_name: "Diya Verma", admission_number: "ADM-102", section_name: "B", academic_year_name: "2026–2027" },
+        ],
+      } } });
+      return;
+    }
+    if (path === "/school/classes/8" && method === "PATCH") {
+      patchBody = request.postDataJSON() as Record<string, unknown>;
+      inactive = true;
+      await route.fulfill({ json: { status: "success", class: { id: 8, name: "Class 4", display_order: 4, is_active: false } } });
+      return;
+    }
+    await route.fulfill({ status: 404, json: { message: `Unmocked E2E API request: ${method} ${path}` } });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Username").fill("e2e-class-impact");
+  await page.getByLabel("Password").fill("E2E-only-password");
+  await page.getByRole("button", { name: /Continue/ }).click();
+  await page.getByRole("button", { name: "Academics" }).click();
+  await page.getByRole("tab", { name: "Classes" }).click();
+  await page.getByRole("button", { name: "Edit Class 4" }).click();
+  const editDialog = page.getByRole("dialog", { name: "Edit class" });
+  const status = editDialog.getByLabel("Record status");
+  await status.click();
+  await page.getByRole("option", { name: "Inactive" }).click();
+  await editDialog.getByRole("button", { name: "Save changes" }).click();
+
+  const impactDialog = page.getByRole("dialog", { name: "Review class deactivation" });
+  await expect(impactDialog.getByText(/2 active sections/)).toBeVisible();
+  await expect(impactDialog.getByText(/2 active student enrollments/)).toBeVisible();
+  await expect(impactDialog.getByText("Aarav Sharma")).toBeVisible();
+  await expect(impactDialog.getByText("Diya Verma")).toBeVisible();
+  expect(impactCalls).toBe(1);
+  expect(patchBody).toBeNull();
+
+  await impactDialog.getByRole("button", { name: "Confirm deactivation" }).click();
+  await expect(page.getByRole("status").filter({ hasText: 'Class "Class 4" updated successfully.' })).toBeVisible();
+  expect(impactCalls).toBe(1);
+  expect(patchBody).toMatchObject({ is_active: false, impact_fingerprint: "class-impact-v1" });
+});
