@@ -146,3 +146,5 @@
 .academic-impact-review table{width:100%;border-collapse:collapse}
 .academic-impact-review th,.academic-impact-review td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--color-border);font-size:12px}
 .academic-impact-review th{position:sticky;top:0;background:var(--color-surface-muted);font-weight:700}
+
+.curriculum-subject-inactive-note{display:block;margin-top:3px;color:var(--color-text-muted);font-size:10px;line-height:1.4}
