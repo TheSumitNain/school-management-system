@@ -153,3 +153,27 @@ func TestParseEnrollmentDateAcceptsOnlyValidCalendarDates(t *testing.T) {
 		})
 	}
 }
+
+func TestAcademicErrorRequiresSubjectImpactReview(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = httptest.NewRequest(http.MethodPatch, "/school/subjects/44", nil)
+
+	academicError(ctx, repository.ErrSubjectDeactivationConfirmationRequired, "Subject")
+
+	if recorder.Code != http.StatusConflict {
+		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusConflict)
+	}
+	var payload struct {
+		Status string `json:"status"`
+		Code string `json:"code"`
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Status != "error" || payload.Code != "subject_deactivation_confirmation_required" || payload.Message == "" {
+		t.Fatalf("unexpected subject deactivation response: %+v", payload)
+	}
+}
