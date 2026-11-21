@@ -455,14 +455,18 @@ func (r *AcademicRepository) SaveSectionClassCurriculumWithConfirmations(ctx con
 		return nil, ErrInvalidAcademicInput
 	}
 	if len(removedCurriculumSubjectIDs) > 0 {
-		// Confirmed active removals and cleanup of legacy soft-deactivated
-		// subjects permanently remove current subject rows and linked choices.
+		// Keep curriculum and student-choice history. First revoke every active
+		// choice for the removed subjects, then soft-deactivate the curriculum
+		// rows in the same transaction.
 		if _, err := tx.Exec(ctx, `
-			DELETE FROM student_enrollment_subject_selections
+			UPDATE student_enrollment_subject_selections
+			   SET revoked_at=NOW()
 			 WHERE school_id=$1 AND curriculum_subject_id=ANY($2::bigint[])
+		   AND revoked_at IS NULL
 		`, schoolID, removedCurriculumSubjectIDs); err != nil { return nil, academicWriteError(err) }
 		if _, err := tx.Exec(ctx, `
-			DELETE FROM class_curriculum_subjects
+			UPDATE class_curriculum_subjects
+			   SET is_active=FALSE
 			 WHERE curriculum_id=$1 AND school_id=$2 AND id=ANY($3::bigint[])
 		`, curriculumID, schoolID, removedCurriculumSubjectIDs); err != nil { return nil, academicWriteError(err) }
 	}
@@ -879,8 +883,9 @@ func (r *AcademicRepository) SaveStudentEnrollmentSubjects(
 	}
 	if hasActiveAssignment && activeCurriculumID != curriculumID {
 		if _, err := tx.Exec(ctx, `
-			DELETE FROM student_enrollment_subject_selections
-			 WHERE enrollment_curriculum_id=$1 AND school_id=$2
+			UPDATE student_enrollment_subject_selections
+			   SET revoked_at=NOW()
+			 WHERE enrollment_curriculum_id=$1 AND school_id=$2 AND revoked_at IS NULL
 		`, activeAssignmentID, schoolID); err != nil {
 			return nil, academicWriteError(err)
 		}
@@ -893,8 +898,9 @@ func (r *AcademicRepository) SaveStudentEnrollmentSubjects(
 		hasActiveAssignment = false
 	} else if hasActiveAssignment {
 		if _, err := tx.Exec(ctx, `
-			DELETE FROM student_enrollment_subject_selections
-			 WHERE enrollment_curriculum_id=$1 AND school_id=$2
+			UPDATE student_enrollment_subject_selections
+			   SET revoked_at=NOW()
+			 WHERE enrollment_curriculum_id=$1 AND school_id=$2 AND revoked_at IS NULL
 		`, activeAssignmentID, schoolID); err != nil {
 			return nil, academicWriteError(err)
 		}
