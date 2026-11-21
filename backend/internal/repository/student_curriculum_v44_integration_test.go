@@ -116,6 +116,23 @@ func TestStudentCurriculumV44PostgresIntegration(t *testing.T) {
 		t.Fatalf("save standalone optional subject choice: %v", err)
 	}
 
+	impacts, err := curriculumRemovalImpacts(ctx, tx, schoolID, curriculumID, []int64{subjectID, compulsorySubjectID})
+	if err != nil {
+		t.Fatalf("preview affected students for optional and compulsory subject removal: %v", err)
+	}
+	if len(impacts) != 2 {
+		t.Fatalf("curriculum removal impacts = %d, want 2", len(impacts))
+	}
+	for _, impact := range impacts {
+		if impact.AffectedStudents != 1 || len(impact.Students) != 1 {
+			t.Fatalf("subject %d affected count/list = %d/%d, want 1/1", impact.SubjectID, impact.AffectedStudents, len(impact.Students))
+		}
+		student := impact.Students[0]
+		if student.StudentID != studentID || student.AdmissionNumber != "V44-ENR-"+suffix || student.FullName != "V44 Curriculum Student" {
+			t.Fatalf("subject %d affected student = %+v, want the enrolled student details", impact.SubjectID, student)
+		}
+	}
+
 	// Give the integration actor the production School Admin grant so the
 	// read path is exercised with both students.read_basic and subjects.read.
 	var schoolAdminRoleID int64
