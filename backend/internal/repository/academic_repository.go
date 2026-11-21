@@ -21,6 +21,7 @@ var (
 	ErrCurriculumRemovalImpactChanged = errors.New("curriculum removal impact changed; review the affected student count again")
 	ErrCurriculumSubjectRuleConflict = errors.New("curriculum edit would invalidate active student subject choices")
 	ErrSectionDeactivationConfirmationRequired = errors.New("section deactivation requires dependency preview and confirmation")
+	ErrClassDeactivationConfirmationRequired = errors.New("class deactivation requires dependency preview and confirmation")
 	ErrAcademicImpactChanged = errors.New("academic dependency impact changed; review the impact again")
 	ErrAcademicAdmissionNumberConflict = errors.New("academic admission number already exists in this school year")
 	ErrAcademicRollNumberConflict = errors.New("academic roll number already exists in this active section")
@@ -392,7 +393,7 @@ func (r *AcademicRepository) SaveClass(ctx context.Context, actorID, schoolID, i
 	tx, err := r.db.Begin(ctx); if err != nil { return nil, fmt.Errorf("begin class save: %w", err) }
 	defer func(){ _ = tx.Rollback(ctx) }()
 	if err = authorizeAcademic(ctx, tx, actorID, schoolID, "classes.manage"); err != nil { return nil, err }
-	if id>0 && !active { var wasActive bool; checkErr:=tx.QueryRow(ctx, `SELECT is_active FROM classes WHERE id=$1 AND school_id=$2`,id,schoolID).Scan(&wasActive); if checkErr!=nil { return nil,academicWriteError(checkErr) }; if wasActive { return nil,ErrSectionDeactivationConfirmationRequired } }
+	if id>0 && !active { var wasActive bool; checkErr:=tx.QueryRow(ctx, `SELECT is_active FROM classes WHERE id=$1 AND school_id=$2`,id,schoolID).Scan(&wasActive); if checkErr!=nil { return nil,academicWriteError(checkErr) }; if wasActive { return nil,ErrClassDeactivationConfirmationRequired } }
 	var v AcademicClass
 	if id == 0 {
 		err = tx.QueryRow(ctx, `INSERT INTO classes(school_id,name,display_order,is_active) VALUES($1,$2,$3,$4)
