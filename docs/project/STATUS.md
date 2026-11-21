@@ -1,3 +1,12 @@
+## Platform Admin — read-only audit history (2026-11-21)
+
+- Added `GET /platform/audit-events?limit=50&offset=0`, protected by the live `platform.audit.read` permission and a second repository-level active Platform Admin/system-role permission check.
+- The endpoint returns only `platform.*` audit actions initiated by Platform Admin principals or the system bootstrap actor. It includes actor email and school name/code where applicable, but deliberately omits raw audit metadata to avoid exposing unrelated or sensitive payload values.
+- Pagination is bounded to 1–100 events per request. The Platform Admin workspace now includes an Audit history tab with loading, empty, retry, outcome, school context and previous/next states. Audit-only Platform Admin accounts can reach the workspace through permission-aware navigation.
+- Backend CI **PASS** — [run 44882457083](https://github.com/TheSumitNain/school-management-system/actions/runs/44882457083): complete migration chain, Go tests including PostgreSQL integration, and `go vet`.
+- Frontend CI **PASS** — [run 44882457119](https://github.com/TheSumitNain/school-management-system/actions/runs/44882457119): TypeScript/Vite production build and the complete Playwright browser suite, including Platform Admin account lifecycle, school onboarding/delegation and audit-history pagination.
+- Verified code checkpoint: `6534146a1a0acc7c6ac4556a14062b0f32276907`. No database migration or local school-data change was made. Authenticated local browser acceptance remains pending.
+
 ## Roles & Permissions — page verification checkpoint (2026-11-21)
 
 - School-specific custom roles can be created with field-level validation, reviewed, and assigned only permissions covered by active Platform Admin delegations that permit role assignment.
