@@ -71,7 +71,7 @@ test("Platform Admin accounts can be created and safely deactivated with recover
   await page.getByRole("button", { name: "Create Platform Admin" }).click();
   const createDialog = page.getByRole("dialog", { name: "Create Platform Admin" });
   await createDialog.getByLabel("Email address").fill("security@example.com");
-  await createDialog.getByLabel("Initial password").fill("Secure-Initial-Password-2026");
+  await createDialog.locator('input[name="password"]').fill("Secure-Initial-Password-2026");
   await createDialog.getByRole("button", { name: "Create Platform Admin" }).click();
   await expect(createDialog.getByText("This email is already used by a Platform Admin.")).toBeVisible();
   await expect(createDialog.getByLabel("Email address")).toHaveValue("security@example.com");
@@ -164,7 +164,7 @@ test("school onboarding refreshes the school list and delegated permissions can 
   });
 
   await signIn(page, "platform-onboarder@example.com");
-  await page.getByRole("button", { name: "Onboard school" }).click();
+  await page.getByRole("tab", { name: "Onboard school" }).click();
   await page.getByRole("button", { name: "Onboard a new school" }).click();
   const schoolDialog = page.getByRole("dialog", { name: "Onboard a new school" });
   await schoolDialog.getByLabel("School name").fill("Sunrise Academy");
@@ -180,7 +180,7 @@ test("school onboarding refreshes the school list and delegated permissions can 
   await expect(page.getByRole("status").filter({ hasText: "School Sunrise Academy (SUNRISE02) created." })).toBeVisible();
   expect(onboardAttempts).toBe(2);
 
-  await page.getByRole("button", { name: "School permissions" }).click();
+  await page.getByRole("tab", { name: "School permissions" }).click();
   await expect.poll(() => schoolListCalls).toBeGreaterThan(1);
   const schoolSelect = page.getByLabel("School");
   await expect(schoolSelect.locator("option", { hasText: "Sunrise Academy" })).toHaveCount(1);
