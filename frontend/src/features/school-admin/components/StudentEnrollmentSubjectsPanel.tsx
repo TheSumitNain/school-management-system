@@ -113,7 +113,7 @@ export function StudentEnrollmentSubjectsPanel({
         <div className="student-subject-list">
           {curriculum.subjects.filter(subject => subject.is_compulsory).map(subject => (
             <div className="student-subject-row" key={subject.id}>
-              <span>{subject.name}{subject.code ? " (" + subject.code + ")" : ""}</span>{!subject.master_active && <span className="student-subject-type-badge">Inactive catalogue subject</span>}<span className="student-subject-type-badge compulsory">Compulsory</span>
+              <span>{subject.name}{subject.code ? " (" + subject.code + ")" : ""}</span>{subject.master_active === false && <span className="student-subject-type-badge">Inactive catalogue subject</span>}<span className="student-subject-type-badge compulsory">Compulsory</span>
             </div>
           ))}
         </div>
@@ -124,9 +124,9 @@ export function StudentEnrollmentSubjectsPanel({
           <div className="student-subject-list">
             {curriculum.subjects.filter(subject => subject.is_optional && !subject.optional_group_id).map(subject => (
               <label className="student-subject-option student-subject-standalone" key={subject.id}>
-                <input type="checkbox" disabled={!canEdit || save.isPending || (!subject.master_active && !selected.includes(subject.id))} checked={selected.includes(subject.id)} onChange={event => toggle(subject.id, event.target.checked)} />
+                <input type="checkbox" disabled={!canEdit || save.isPending || (subject.master_active === false && !selected.includes(subject.id))} checked={selected.includes(subject.id)} onChange={event => toggle(subject.id, event.target.checked)} />
                 <span>{subject.name}{subject.code ? " (" + subject.code + ")" : ""}</span>
-                {!subject.master_active && <span className="student-subject-type-badge">Inactive catalogue subject</span>}
+                {subject.master_active === false && <span className="student-subject-type-badge">Inactive catalogue subject</span>}
                 <span className="student-subject-type-badge optional">Optional</span>
               </label>
             ))}
@@ -138,9 +138,9 @@ export function StudentEnrollmentSubjectsPanel({
           <legend>{group.name} <span>Choose {group.min === group.max ? group.min : group.min + "–" + group.max}</span></legend>
           {group.subjects.map(subject => (
             <label className="student-subject-option" key={subject.id}>
-              <input type="checkbox" disabled={!canEdit || save.isPending || (!subject.master_active && !selected.includes(subject.id))} checked={selected.includes(subject.id)} onChange={event => toggle(subject.id, event.target.checked)} />
+              <input type="checkbox" disabled={!canEdit || save.isPending || (subject.master_active === false && !selected.includes(subject.id))} checked={selected.includes(subject.id)} onChange={event => toggle(subject.id, event.target.checked)} />
               <span>{subject.name}{subject.code ? " (" + subject.code + ")" : ""}</span>
-              {!subject.master_active && <span className="student-subject-type-badge">Inactive catalogue subject</span>}
+              {subject.master_active === false && <span className="student-subject-type-badge">Inactive catalogue subject</span>}
             </label>
           ))}
           <small>{counts.get(groupID) ?? 0} selected · minimum {group.min}, maximum {group.max}</small>
