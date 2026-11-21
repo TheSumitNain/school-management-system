@@ -54,6 +54,7 @@ func setupRouterWithHandlers(
 	optionalHandlers ...any,
 ) (*gin.Engine, error) {
 	var staffHandler *handlers.StaffHandler
+	var staffRecordsHandler *handlers.StaffRecordsHandler
 	var academicHandler *handlers.AcademicHandler
 	var guardianHandler *handlers.GuardianHandler
 	var attendanceHandler *handlers.AttendanceHandler
@@ -66,6 +67,8 @@ func setupRouterWithHandlers(
 		switch handler := optional.(type) {
 		case *handlers.StaffHandler:
 			staffHandler = handler
+		case *handlers.StaffRecordsHandler:
+			staffRecordsHandler = handler
 		case *handlers.AcademicHandler:
 			academicHandler = handler
 		case *handlers.GuardianHandler:
@@ -140,6 +143,17 @@ func setupRouterWithHandlers(
 			middleware.RequirePermission("users.update"),
 			staffHandler.Enable,
 		)
+	}
+
+	if staffRecordsHandler != nil {
+		staffRead := authMiddleware()
+		staffWrite := authMiddleware()
+		router.GET("/school/staff/:principalID/qualifications", staffRead, middleware.RequirePermission("users.read"), staffRecordsHandler.ListQualifications)
+		router.POST("/school/staff/:principalID/qualifications", staffWrite, middleware.RequirePermission("users.update"), staffRecordsHandler.CreateQualification)
+		router.GET("/school/staff/:principalID/certifications", staffRead, middleware.RequirePermission("users.read"), staffRecordsHandler.ListCertifications)
+		router.POST("/school/staff/:principalID/certifications", staffWrite, middleware.RequirePermission("users.update"), staffRecordsHandler.CreateCertification)
+		router.GET("/school/staff/:principalID/experience", staffRead, middleware.RequirePermission("users.read"), staffRecordsHandler.ListExperience)
+		router.POST("/school/staff/:principalID/experience", staffWrite, middleware.RequirePermission("users.update"), staffRecordsHandler.CreateExperience)
 	}
 
 	if roleHandler != nil {
@@ -543,8 +557,10 @@ func run() error {
 	staffAccountRepo := repository.NewUserRepository(db)
 	staffAccountService := services.NewStaffAccountService(staffAccountRepo)
 	staffHandler := handlers.NewStaffHandler(staffAccountService)
+	staffRecordsService := services.NewStaffRecordsService(staffAccountRepo)
+	staffRecordsHandler := handlers.NewStaffRecordsHandler(staffRecordsService)
 
-	router, err := setupRouterWithHandlers(db, authHandler, tokenService, principalAuthorizationRepo, principalAuthorizationRepo, schoolOnboardingHandler, roleHandler, staffHandler, academicHandler, guardianHandler, attendanceHandler, timetableHandler, platformAdminLifecycleHandler, platformAuditHandler, principalAuthorizationRepo)
+	router, err := setupRouterWithHandlers(db, authHandler, tokenService, principalAuthorizationRepo, principalAuthorizationRepo, schoolOnboardingHandler, roleHandler, staffHandler, academicHandler, guardianHandler, attendanceHandler, timetableHandler, platformAdminLifecycleHandler, platformAuditHandler, principalAuthorizationRepo, staffRecordsHandler)
 
 	if err != nil {
 		return fmt.Errorf("setup router: %w", err)
