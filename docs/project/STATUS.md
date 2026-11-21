@@ -1,3 +1,12 @@
+## Dashboard — page verification checkpoint (2026-11-21)
+
+- Dashboard metrics are permission-scoped: staff accounts, classes, academic years, and current-year enrollments are requested only when the signed-in principal has the corresponding permissions.
+- Current-year enrollment totals are loaded against the active current academic year; when no current year is configured, the dashboard explains why the metric is unavailable. Partial API failures are surfaced without hiding successful metrics.
+- Dedicated Playwright coverage verifies all four metric totals and confirms that the enrollment request uses the selected current academic-year ID. Existing responsive coverage checks dashboard and workspace navigation across mobile, tablet, and desktop widths.
+- Frontend CI **PASS** — [run 44871612842](https://github.com/TheSumitNain/school-management-system/actions/runs/44871612842), checkpoint `31bf1bc7ddf33d5c4a886393aaf48722613ac2f4`: TypeScript/Vite build and all **33 Playwright browser acceptance tests** passed.
+- Backend CI **PASS** — [run 44871612871](https://github.com/TheSumitNain/school-management-system/actions/runs/44871612871), same code checkpoint: full Go tests, PostgreSQL integration tests, and `go vet ./...` passed.
+- Local authenticated browser acceptance remains for the user; no local database migration or school-data change was made for this page.
+
 ## Settings / Appearance — page verification checkpoint (2026-11-21)
 
 - Appearance preferences include Light, Dark, System, and Automatic schedule modes, with 15 coordinated brand palettes. Preferences are stored locally on this device; no school database setting is changed.
