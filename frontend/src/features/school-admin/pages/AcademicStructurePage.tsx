@@ -144,7 +144,7 @@ export function AcademicStructurePage({permissions}:Props) {
       }
     }
     setFieldErrors({});setSaving(true);setFeedback(null);
-    try{await api(path,{method,body:JSON.stringify(body)});const resource=action.kind==="year"?"Academic year":action.kind==="class"?"Class":action.kind==="section"?"Section":"Subject";const outcome=id?"updated":"created";const closed=action.kind==="year"&&body.status==="closed";notifyToast("success",closed?`${resource} closed and archived successfully.`:`${resource} ${outcome} successfully.`);setAction(null);setFeedback(null);await load();}
+    try{await api(path,{method,body:JSON.stringify(body)});const resource=action.kind==="year"?"Academic year":action.kind==="class"?"Class":action.kind==="section"?"Section":"Subject";const outcome=id?"updated":"created";const closed=action.kind==="year"&&body.status==="closed";notifyToast("success",closed?`${resource} "${name}" closed and archived successfully.`:`${resource} "${name}" ${outcome} successfully.`);setAction(null);setFeedback(null);await load();}
     catch(e){const message=e instanceof Error?e.message:"Unable to save academic information.";if(e instanceof ApiError&&Object.keys(e.fieldErrors).length){setFieldErrors(e.fieldErrors);}notifyToast("error",message);setFeedback({kind:"error",message});}
     finally{setSaving(false);}
   }
