@@ -1,3 +1,12 @@
+## Staff Management — qualification records and wizard verification checkpoint (2026-11-21)
+
+- Backend implementation now includes school-scoped create/list APIs for qualifications, certifications and prior experience, with request validation, same-school staff checks and audit events. PostgreSQL integration coverage verifies create/list, audit records and cross-school denial.
+- Backend CI on `0175725f` passed: the complete migration chain (including V57) applied to the disposable PostgreSQL 18 CI database, `go test -count=1 -p 1 ./...` passed, and `go vet ./...` passed. This does not apply V57 to any user/local/persistent database.
+- Frontend TypeScript, Vite production build and design-token checks passed on `0175725f`. Browser acceptance had 45 passing tests and one failing staff wizard date-picker scenario: after selecting Today, the wizard remained on Employment when the test attempted to continue. The latest change `a9227c8` makes Continue an explicit button action rather than a form submit; its CI run is pending.
+- Qualifications & Experience UI currently supports creating/listing records; edit, verification and archive/delete workflows are not complete. Staff Documents remain blocked pending an approved private storage adapter. Staff-scoped academic assignments and History & Activity also remain pending integration.
+- The one-time credential handoff is manual copy / do later only; no credentials are auto-sent and plaintext passwords are not persisted.
+- Academic, Student Management and Settings pages have not been changed. No migration has been run against the user's local or persistent databases.
+
 ## Staff Management — first records API CI checkpoint (2026-11-21)
 
 - Backend CI on `aa0fe50` passed: V57 applied successfully to the disposable CI PostgreSQL database, full `go test -count=1 -p 1 ./...` passed, and `go vet ./...` passed.
