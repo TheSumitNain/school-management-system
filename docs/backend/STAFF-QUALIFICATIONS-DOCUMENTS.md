@@ -1,6 +1,6 @@
 # Staff Qualifications & Documents — Backend Contract
 
-**Status:** Design checkpoint; implementation and migration are not yet present. The next migration slot must be V57 or later, after confirming the exact latest migration in the `work` branch.
+**Status:** V57 schema and initial GET/POST API plus frontend read/create integration are committed on `work`. Migration has NOT been applied to the user's local or persistent databases. CI verification is in progress; update/edit, verification workflow and complete acceptance coverage remain pending.
 **Reviewed branch:** `work`
 **Review date:** 2026-11-21
 
@@ -12,7 +12,7 @@ This contract extends the existing school-scoped `staff_profiles` foundation. It
 - Existing profile fields are employee code, full name, designation, mobile, optional email/joining date, and employment status.
 - Employee codes are unique case-insensitively within a school.
 - Existing account and profile mutations use transactions and append audit events.
-- The Staff Management UI currently exposes a Qualifications & Experience tab, but it must remain explicitly pending until these APIs exist.
+- V57 adds school-scoped education, certification and experience tables. Initial GET/POST APIs and the Staff Management profile tab now use these records; this is a partial milestone, not full CRUD completion.
 - No private staff-document storage/upload/download implementation was found during this source review. Do not implement a public URL, web-root upload, or unauthenticated download.
 
 ## 2. Qualifications & Experience data model
@@ -28,15 +28,15 @@ Proposed table: `staff_qualifications`
 | id | Generated primary key |
 | school_id | Required; derived from authenticated staff context |
 | staff_principal_id | Required; same-school staff profile FK |
-| qualification_level | Required; controlled values: secondary, higher_secondary, diploma, bachelors, masters, doctorate, other |
+| qualification_type | Required; controlled values: school, diploma, undergraduate, postgraduate, doctorate, other |
 | qualification_name | Required; trimmed, 1–160 chars |
 | specialization | Optional; max 160 chars |
-| institution_name | Optional; max 200 chars |
+| institution | Required; max 200 chars |
 | board_or_university | Optional; max 200 chars |
 | completion_year | Optional; valid year within a bounded historical/future range |
 | score_value | Optional; decimal, non-negative |
-| score_scale | Optional; percent, cgpa, grade, other; required when score_value is present |
-| credential_reference | Optional; max 100 chars; do not assume globally unique |
+| score_scale | Optional; percentage, cgpa, gpa, marks, grade; required when score is present |
+| credential_reference | Optional; max 120 chars; do not assume globally unique |
 | verification_status | Required; pending, verified, rejected; default pending |
 | verification_notes | Optional; max 1000 chars; restricted to verifier/admin access |
 | verified_by_principal_id / verified_at | Nullable; set only by verification action |
@@ -46,13 +46,13 @@ Proposed table: `staff_qualifications`
 
 Proposed table: `staff_certifications`
 
-Fields: id, school_id, staff_principal_id, certificate_name (required, 1–160), issuing_organization (optional, max 200), issue_date (optional), expiry_date (optional and not earlier than issue_date), credential_id (optional, max 100), verification_status (pending/verified/rejected; default pending), verification_notes (restricted), verified_by_principal_id, verified_at, created_at, updated_at.
+Fields: id, school_id, staff_principal_id, certificate_name (required, 1–180), issuing_organization (required, max 200), issue_date (optional), expiry_date (optional and not earlier than issue_date), credential_id (optional, max 120), verification_status (pending/verified/rejected; default pending), verification_notes (restricted), verified_by_principal_id, verified_at, created_at, updated_at.
 
 ### 2.3 Previous experience
 
 Proposed table: `staff_experience`
 
-Fields: id, school_id, staff_principal_id, employer_name (required, max 200), designation (required, max 120), employment_type (optional controlled value), start_date (required), end_date (optional and not before start_date), is_current (required; when true end_date must be null), description (optional, max 2000), created_at, updated_at.
+Fields: id, school_id, staff_principal_id, employer_name (required, max 200), designation (required, max 120), employment_type (required controlled value: permanent, contract, part_time, temporary, internship, other), start_date (required), end_date (optional and not before start_date), is_current (required; when true end_date must be null), description (optional, max 2000), created_at, updated_at.
 
 Experience rows are self-reported employment history, not verified facts. Do not imply verification unless an explicit verification workflow is added.
 
@@ -85,7 +85,7 @@ Routes are authenticated School Admin endpoints. School ownership comes only fro
 
 Create/update requests must reject unknown enum values, malformed dates, overlong strings, invalid score/scale combinations, and cross-school target IDs. Return stable field-level validation errors. Use 404 for a target outside the caller's school to avoid confirming its existence.
 
-Permission keys above are proposed new keys, not currently seeded permissions. Add them through an additive migration and ensure School Admin delegation ceilings and permission-catalogue tests cover them. Do not silently reuse `users.update` for sensitive qualification verification.
+The existing School Admin system-role permission bundle is immutable. Initial record read/create uses the already-authorized `users.read` and `users.update` permissions, enforced both by route middleware and repository-level school-admin checks. This does not add any verification privilege. Before implementing edit or verification, define an additive permission/delegation design and obtain explicit approval; do not silently expand School Admin permissions.
 
 ## 4. Documents — storage gate before implementation
 
@@ -117,9 +117,9 @@ No route may return a public storage URL. The download endpoint must stream the 
 ## 5. Verification required before marking complete
 
 Backend:
-- Migration up/down tested on a disposable PostgreSQL database only.
+- V57 migration up/down must be tested on a disposable PostgreSQL database only; the source commit alone is not proof of runtime migration success.
 - Unit tests for validation, enum/date/score combinations and service errors.
-- PostgreSQL integration tests for create/list/update/verify, transactional audit, duplicate/invalid data, inactive staff, and strict tenant isolation.
+- PostgreSQL integration tests for create/list, transactional audit, invalid data, inactive staff, and strict tenant isolation. Update/verify tests are pending because those endpoints are not implemented.
 - Authorization tests for missing permission, DENY override, School Admin delegation and out-of-school target.
 - Document tests for MIME spoofing, size limit, path traversal, unauthorized download, cross-school access, failed upload cleanup and archive audit.
 
@@ -132,7 +132,7 @@ Frontend:
 
 ## 6. Explicit non-actions in this checkpoint
 
-- No migration has been created or applied.
+- V57 migration source is committed but has not been applied to any user database.
 - No local or persistent database was changed.
 - No document upload/download code was added.
 - No Academic, Student Management or Settings files were changed.
