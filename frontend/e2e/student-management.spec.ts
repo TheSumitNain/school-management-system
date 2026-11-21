@@ -516,6 +516,14 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("button", { name: /New admission/ }).click();
   const admissionDialog = page.getByRole("dialog", { name: "New student admission" });
   await expect(admissionDialog.locator(".student-field-hint__tooltip")).toHaveCount(0);
+  for (const label of ["Student full name", "Admission number", "Academic year", "Section", "Admission date"]) {
+    await expect(
+      admissionDialog.locator("label").filter({ hasText: label }).getByText("Required", { exact: true }),
+    ).toBeVisible();
+  }
+  await expect(
+    admissionDialog.locator("label").filter({ hasText: "Roll number" }).getByText("Optional", { exact: true }),
+  ).toBeVisible();
   for (const width of [320, 360, 390, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     const layout = await admissionDialog.evaluate(dialog => {
