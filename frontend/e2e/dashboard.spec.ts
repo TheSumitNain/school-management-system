@@ -69,3 +69,128 @@ test("dashboard shows permission-scoped staff, class and current-year enrollment
   }
   expect(requested).toContain("/school/enrollments?academic_year_id=7");
 });
+
+
+test("dashboard explains partial loading failures and lets the user retry", async ({ page }) => {
+  let staffRequests = 0;
+  await page.route("**/api/**", async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname.replace(/^\/api/, "");
+    if (path === "/auth/refresh") {
+      await route.fulfill({ status: 401, json: { message: "No active session" } });
+      return;
+    }
+    if (path === "/auth/login" && request.method() === "POST") {
+      await route.fulfill({ json: {
+        access_token: "e2e-dashboard-retry-token",
+        token_type: "Bearer",
+        principal: { principal_id: 152, principal_type: "staff", status: "active", school_id: 10 },
+      } });
+      return;
+    }
+    if (path === "/auth/me") {
+      await route.fulfill({ json: {
+        principal_id: 152, principal_type: "staff", school_id: 10,
+        username: "dashboard-retry-admin", permissions: ["users.read", "classes.read"],
+      } });
+      return;
+    }
+    if (path === "/school/staff") {
+      staffRequests += 1;
+      if (staffRequests === 1) {
+        await route.fulfill({ status: 503, json: { message: "Staff service is temporarily unavailable." } });
+      } else {
+        await route.fulfill({ json: { staff: [{ id: 1 }, { id: 2 }] } });
+      }
+      return;
+    }
+    if (path === "/school/classes") {
+      await route.fulfill({ json: { classes: [{ id: 1 }, { id: 2 }, { id: 3 }] } });
+      return;
+    }
+    await route.fulfill({ status: 404, json: { message: `Unmocked dashboard request: ${request.method()} ${path}` } });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Username").fill("dashboard-retry-admin");
+  await page.getByLabel("Password").fill("E2E-only-password");
+  await page.getByRole("button", { name: /Continue/ }).click();
+
+  const alert = page.getByRole("alert");
+  await expect(alert).toContainText("Some dashboard information could not be loaded.");
+  await expect(alert).toContainText("Staff accounts:");
+  await expect(page.locator(".stat").filter({ hasText: "Classes" }).locator("strong")).toHaveText("3");
+  await page.getByRole("button", { name: "Retry" }).click();
+
+  await expect(page.locator(".stat").filter({ hasText: "Staff accounts" }).locator("strong")).toHaveText("2");
+  await expect(page.locator(".stat").filter({ hasText: "Classes" }).locator("strong")).toHaveText("3");
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  expect(staffRequests).toBe(2);
+});
+
+test("dashboard metrics and feedback remain readable without viewport overflow", async ({ page }) => {
+  const permissions = ["users.read", "classes.read", "academic_years.read", "students.read_basic"];
+  await page.route("**/api/**", async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname.replace(/^\/api/, "");
+    if (path === "/auth/refresh") {
+      await route.fulfill({ status: 401, json: { message: "No active session" } });
+      return;
+    }
+    if (path === "/auth/login" && request.method() === "POST") {
+      await route.fulfill({ json: {
+        access_token: "e2e-dashboard-responsive-token",
+        token_type: "Bearer",
+        principal: { principal_id: 153, principal_type: "staff", status: "active", school_id: 10 },
+      } });
+      return;
+    }
+    if (path === "/auth/me") {
+      await route.fulfill({ json: {
+        principal_id: 153, principal_type: "staff", school_id: 10,
+        username: "dashboard-responsive-admin", permissions,
+      } });
+      return;
+    }
+    if (path === "/school/staff") {
+      await route.fulfill({ json: { staff: Array.from({ length: 7 }, (_, index) => ({ id: index + 1 })) } });
+      return;
+    }
+    if (path === "/school/classes") {
+      await route.fulfill({ json: { classes: Array.from({ length: 4 }, (_, index) => ({ id: index + 1 })) } });
+      return;
+    }
+    if (path === "/school/academic-years") {
+      await route.fulfill({ json: { academic_years: [{ id: 7, is_current: true, status: "active" }] } });
+      return;
+    }
+    if (path === "/school/enrollments") {
+      await route.fulfill({ json: { enrollments: Array.from({ length: 18 }, (_, index) => ({ id: index + 1 })) } });
+      return;
+    }
+    await route.fulfill({ status: 404, json: { message: `Unmocked dashboard request: ${request.method()} ${path}` } });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Username").fill("dashboard-responsive-admin");
+  await page.getByLabel("Password").fill("E2E-only-password");
+  await page.getByRole("button", { name: /Continue/ }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(page.locator(".stat")).toHaveCount(4);
+
+  for (const width of [320, 360, 390, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    const cardsFit = await page.locator(".stat").evaluateAll(elements => elements.every(element => {
+      const rect = element.getBoundingClientRect();
+      return rect.width > 0 && rect.left >= 0 && rect.right <= window.innerWidth + 1;
+    }));
+    expect(cardsFit, `dashboard metric cards should fit within ${width}px`).toBe(true);
+  }
+
+  await page.setViewportSize({ width: 844, height: 390 });
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await expect(page.locator(".dashboard-page > .heading p")).toBeVisible();
+});
