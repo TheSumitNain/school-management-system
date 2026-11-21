@@ -1386,11 +1386,11 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 
 	// Subject deactivation must review curriculum references and active student
 	// choices, reject a stale assignment snapshot, and retain curriculum rows.
+	var preservedSubjectCode string
+	if err:=tx.QueryRow(ctx, `SELECT subject_code FROM subjects WHERE id=$1 AND school_id=$2`,subjectID,schoolID).Scan(&preservedSubjectCode);err!=nil{t.Fatalf("load subject code before deactivation: %v",err)}
 	if _,err:=academicRepo.SaveSubject(ctx,actorPrincipalID,schoolID,subjectID,"Mathematics",&preservedSubjectCode,false);!errors.Is(err,ErrSubjectDeactivationConfirmationRequired) {
 		t.Fatalf("direct subject deactivation without preview returned %v, want confirmation required",err)
 	}
-	var preservedSubjectCode string
-	if err:=tx.QueryRow(ctx, `SELECT subject_code FROM subjects WHERE id=$1 AND school_id=$2`,subjectID,schoolID).Scan(&preservedSubjectCode);err!=nil{t.Fatalf("load subject code before deactivation: %v",err)}
 	subjectImpact,err:=academicRepo.PreviewSubjectDeactivation(ctx,actorPrincipalID,schoolID,subjectID)
 	if err!=nil||subjectImpact==nil||subjectImpact.ImpactFingerprint==""||subjectImpact.CurriculumSubjectCount==0 {
 		t.Fatalf("preview subject deactivation: impact=%+v err=%v",subjectImpact,err)
