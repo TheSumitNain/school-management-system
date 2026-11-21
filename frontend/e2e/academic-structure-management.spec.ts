@@ -168,6 +168,7 @@ test("section deactivation shows exact dependency counts and active student list
   let deactivated = false;
   let impactRequests = 0;
   let patchRequests = 0;
+  let patchBody: Record<string, unknown> | null = null;
   await page.route("**/api/**", async route => {
     const request = route.request();
     const url = new URL(request.url());
@@ -213,7 +214,7 @@ test("section deactivation shows exact dependency counts and active student list
       await route.fulfill({ json: { status: "success", impact: {
         section_id: 19, section_name: "C", class_name: "Class 4", academic_year_name: "2026–2027",
         active_enrollment_count: 2, historical_enrollment_count: 1, active_curriculum_count: 1,
-        active_teacher_assignment_count: 2, active_class_incharge_count: 1,
+        active_teacher_assignment_count: 2, active_class_incharge_count: 1, impact_fingerprint: "section-impact-v1",
         affected_students: [
           { student_id: 101, full_name: "Aarav Sharma", admission_number: "ADM-101", enrollment_status: "active" },
           { student_id: 102, full_name: "Diya Verma", admission_number: "ADM-102", enrollment_status: "active" },
@@ -223,6 +224,7 @@ test("section deactivation shows exact dependency counts and active student list
     }
     if (path === "/school/sections/19" && method === "PATCH") {
       patchRequests += 1;
+      patchBody = request.postDataJSON() as Record<string, unknown>;
       deactivated = true;
       await route.fulfill({ json: { status: "success", section: {
         id: 19, academic_year_id: 7, class_id: 8, name: "C", medium: "english",
@@ -264,4 +266,5 @@ test("section deactivation shows exact dependency counts and active student list
   await expect(page.getByRole("status").filter({ hasText: 'Section "C" updated successfully.' })).toBeVisible();
   expect(impactRequests).toBe(2);
   expect(patchRequests).toBe(1);
+  expect(patchBody).toMatchObject({ is_active: false, impact_fingerprint: "section-impact-v1" });
 });
