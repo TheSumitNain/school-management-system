@@ -695,12 +695,33 @@ test("student admission, profile navigation and parent details render without br
         return bounds.left >= rect.left - 1 && bounds.right <= rect.right + 1 &&
           element.scrollWidth <= element.clientWidth + 1;
       };
+      const overflowing = Array.from(panel.querySelectorAll<HTMLElement>("*"))
+        .filter(element => element.scrollWidth > element.clientWidth + 1)
+        .map(element => ({
+          tag: element.tagName.toLowerCase(),
+          className: typeof element.className === "string" ? element.className : "",
+          text: (element.textContent ?? "").trim().slice(0, 70),
+          clientWidth: element.clientWidth,
+          scrollWidth: element.scrollWidth,
+        })).slice(0, 10);
+      const outsideControls = controls.filter(element => !fits(element)).map(element => ({
+        tag: element.tagName.toLowerCase(),
+        className: typeof element.className === "string" ? element.className : "",
+        text: (element.textContent ?? "").trim().slice(0, 50),
+        rect: (() => { const bounds = element.getBoundingClientRect(); return { left: bounds.left, right: bounds.right }; })(),
+        clientWidth: element.clientWidth,
+        scrollWidth: element.scrollWidth,
+      }));
       return {
         panelFits: rect.left >= 0 && rect.right <= window.innerWidth + 1 &&
           panel.scrollWidth <= panel.clientWidth + 1,
         controlsFit: controls.every(fits),
         rowsFit: rows.every(fits),
         pageFits: document.documentElement.scrollWidth <= window.innerWidth + 1,
+        panelWidth: panel.clientWidth,
+        panelScrollWidth: panel.scrollWidth,
+        overflowing,
+        outsideControls,
       };
     });
     expect(layout.panelFits && layout.controlsFit && layout.rowsFit && layout.pageFits,
