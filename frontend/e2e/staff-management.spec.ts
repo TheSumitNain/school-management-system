@@ -83,7 +83,7 @@ test("staff directory opens the eight-tab employee profile and shows saved profi
   await page.getByRole("button", { name: "Profile Teacher" }).click();
   const dialog = page.getByRole("dialog", { name: "Profile Teacher" });
   await expect(dialog.getByRole("navigation", { name: "Staff profile sections" }).getByRole("button")).toHaveCount(8);
-  await expect(dialog.getByText("EMP-PRO-01")).toBeVisible();
+  await expect(dialog.getByText("EMP-PRO-01").first()).toBeVisible();
   await dialog.getByRole("button", { name: "Personal Details" }).click();
   await expect(dialog.getByText("profile.teacher@example.com")).toBeVisible();
   await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
