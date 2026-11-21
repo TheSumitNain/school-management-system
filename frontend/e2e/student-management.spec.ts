@@ -800,6 +800,11 @@ test("student admission, profile navigation and parent details render without br
   const basicSave = page.getByRole("button", { name: "Save basic details" });
   await expect(page.locator(".student-feedback.error")).toBeVisible();
   await expect(basicSave).toBeDisabled();
+
+  failStudentReads.delete("basic-details");
+  await page.getByRole("button", { name: "Retry loading details" }).click();
+  await expect(basicSave).toBeDisabled();
+  await expect(page.getByPlaceholder("Enter student's full name")).toBeVisible();
   // Basic Details is a separate editor modal; verify every control remains
   // inside it at common phone, tablet and desktop widths.
   const basicDetailsDialog = page.getByRole("dialog", { name: "Basic Details" });
@@ -834,9 +839,6 @@ test("student admission, profile navigation and parent details render without br
       `basic details dialog should fit at ${width}px: ${JSON.stringify(layout)}`).toBe(true);
   }
   await page.setViewportSize({ width: 1440, height: 900 });
-  failStudentReads.delete("basic-details");
-  await page.getByRole("button", { name: "Retry loading details" }).click();
-  await expect(basicSave).toBeDisabled();
   // Field help must be available to pointer/touch users and keyboard users,
   // not only as a hover tooltip.
   await expect(page.locator(".student-field-hint__tooltip")).toHaveCount(0);
