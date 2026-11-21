@@ -1580,3 +1580,10 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Student enrollment curriculum responses and the frontend API contract no longer include selection history; the Student Management panel no longer renders previous-choice history. Saving choices replaces current rows, while the standard security audit event records only curriculum scope and removed-subject count (not removed subject IDs or student choice details).
 - Added reversible migration V55 to allow only this confirmed current-state deletion while retaining selection insert validation and one-way assignment-replacement revocation protections.
 - Backend integration assertions and frontend fixtures were updated. CI is pending; do not apply V54/V55 locally until both backend and frontend CI pass.
+
+
+## Student Management — address location validation accessibility (2026-11-21)
+
+- The address form now associates an incomplete State → District → Sub-District / Tehsil → Village / City path error with the first missing location selector, marks that selector invalid, and renders the error directly below it. Choosing the missing level clears the error and invalid state.
+- Added browser acceptance assertions for `aria-invalid`, `aria-describedby`, the inline alert, and clearing the error after the missing district is selected.
+- Frontend CI **PASS** — [run 44865807238](https://github.com/TheSumitNain/school-management-system/actions/runs/44865807238): TypeScript/Vite production build and all **31 Student Management browser acceptance tests** passed. No backend or database changes were made.
