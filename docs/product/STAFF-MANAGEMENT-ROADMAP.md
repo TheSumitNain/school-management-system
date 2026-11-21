@@ -184,6 +184,9 @@ Add a separate repeatable **Certification / Training** record with Certificate N
 
 ### 3.4 Form D — Add / Edit Staff Document (P0)
 
+**Backend security contract:** see [Staff Qualifications & Documents — Backend Contract](../backend/STAFF-QUALIFICATIONS-DOCUMENTS.md). Qualifications, certifications and experience require school-scoped CRUD, verification permissions and transactional audit. Document upload/download remains gated on private storage; do not implement public URLs or mock uploads.
+
+
 | Field | Required? |
 |---|---|
 | Document Type / Category | Required |
