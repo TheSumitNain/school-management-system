@@ -233,6 +233,7 @@ func setupRouterWithHandlers(
 		router.GET("/school/classes", academicAuth, middleware.RequirePermission("classes.read"), academic.ListClasses)
 		router.POST("/school/classes", academicAuth, middleware.RequirePermission("classes.manage"), academic.SaveClass)
 		router.PATCH("/school/classes/:classID", academicAuth, middleware.RequirePermission("classes.manage"), academic.SaveClass)
+		router.GET("/school/classes/:classID/deactivation-impact", academicAuth, middleware.RequirePermission("classes.manage"), academic.PreviewClassDeactivation)
 		router.GET("/school/sections", academicAuth, middleware.RequirePermission("classes.read"), academic.ListSections)
 		router.POST("/school/sections", academicAuth, middleware.RequirePermission("classes.manage"), academic.SaveSection)
 		router.PATCH("/school/sections/:sectionID", academicAuth, middleware.RequirePermission("classes.manage"), academic.SaveSection)
