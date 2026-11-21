@@ -114,3 +114,13 @@ The initial workspace shell has since been extended on branch `work`:
 - The frontend profile section currently supports create/list only. Edit, verification and archive/delete remain pending. Documents remain unavailable until private storage and authenticated download authorization are implemented.
 - The Add Staff browser suite currently has one unresolved date-picker/wizard progression failure (45 other browser tests passed). A more explicit wizard Continue action is under CI verification on `a9227c8`.
 - These checks do not authorize or imply applying V57 to a user's persistent database. Academic, Student Management and Settings pages remain untouched.
+
+
+## 9. Staff record edit workflow checkpoint (2026-11-21)
+
+- Qualifications, certifications and employment experience now support school-scoped PATCH updates in addition to create/list. The repository scopes every update to the record ID, target staff principal and authenticated school, performs live School Admin authorization, preserves verification fields, and writes the corresponding audit event in the same transaction.
+- The profile UI now exposes Edit actions and prefilled forms for all three record types. It reuses the existing validation rules, keeps the form open with entered values after API errors, and refreshes the affected record query after successful saves.
+- Playwright coverage verifies editing each record type. Frontend CI **PASS** — [run 44918115850](https://github.com/TheSumitNain/school-management-system/actions/runs/44918115850), tested frontend checkpoint `a8c6b3e0`: production build and all 46 browser acceptance tests passed.
+- Backend PostgreSQL integration coverage verifies updates, audit events and cross-school update denial. Backend CI **PASS** — [run 44918463838](https://github.com/TheSumitNain/school-management-system/actions/runs/44918463838), checkpoint `66339b2b`: full migration chain on disposable PostgreSQL, full Go tests and `go vet` passed.
+- Verification is intentionally not exposed yet: the current permission catalogue does not include the proposed dedicated `staff.qualifications.verify` key. General `users.update` is not treated as verification authority. Document upload remains blocked pending private storage and authenticated download authorization.
+- No migration was applied to the user's persistent database. Academic, Student Management and Settings pages remain untouched.
