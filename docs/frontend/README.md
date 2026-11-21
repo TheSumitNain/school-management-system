@@ -266,3 +266,15 @@ The final optional subject-selection boundary test commit `2b7e6c38f34f1ba28ca38
 ## Guardian contact fields
 
 In Student Management → Parents & Siblings, guardian full names may repeat, but a non-empty mobile number and a non-empty email address must each be unique within the school. Both fields are optional. When a duplicate is found, show the server field error directly beneath the matching input and explain that the user can enter another contact address or leave the field blank. Do not automatically merge or replace an existing guardian. Mobile formatting variants for the same Indian number must be treated as the same identifier; email matching is case-insensitive. Alternate mobile is not a Parent Login identifier.
+
+## Staff Management roadmap
+
+The approved product and implementation specification is [Staff Management — Product and Implementation Roadmap](../product/STAFF-MANAGEMENT-ROADMAP.md). It is the source of truth for the phase order, seven School Admin workspace tabs, eight staff-profile tabs, all planned forms and required/optional fields, account/access behavior, assignment rules, validation and acceptance gates.
+
+Before modifying Staff Management:
+1. Audit and preserve the current employee CRUD, login provisioning, password reset, role assignment and permission-override behavior.
+2. Map existing frontend/API/database behavior to the roadmap as Keep, Extend, Missing or Needs correction. Do not rebuild existing working behavior.
+3. Implement the approved P0 foundation and teacher academic assignments before P1 attendance, leave and workload features.
+4. Keep Teacher self-service as a separate future dashboard; do not mix it into the School Admin Staff Management tabs.
+5. Apply the complete shared UX, responsive, theme, validation, toast, accessibility and backend authorization standards above.
+6. Update Project Status only with verified implementation and test evidence. The roadmap itself is not evidence that a feature is complete.
