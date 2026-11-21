@@ -282,6 +282,7 @@
 # Project Status
 
 ## Staff Management — qualifications/documents contract checkpoint (2026-11-21)
+- Migration-order correction: project database documentation already describes curriculum migrations through V56. An initially drafted V31 migration pair was removed immediately after detecting the conflict; neither migration was applied to any database. Before adding schema files, verify the exact migration directory head and use the next available version.
 
 - Source review confirms the existing `staff_profiles` foundation and transactional/audited staff account/profile patterns. No staff qualification/certification/experience schema or API was found.
 - Added `docs/backend/STAFF-QUALIFICATIONS-DOCUMENTS.md` defining school-scoped education, certification and experience records; proposed API and permission contracts; tenant-isolation, verification and audit invariants.
