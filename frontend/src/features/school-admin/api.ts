@@ -248,7 +248,7 @@ export function getSchoolClassCurricula(academicYearID: number, classID: number,
   const params = new URLSearchParams({ academic_year_id: String(academicYearID), class_id: String(classID), section_id: String(sectionID) });
   return api<{ curricula: ClassCurriculum[] }>(`/school/class-curricula?${params.toString()}`, { signal });
 }
-export export type CurriculumRemovalImpact = { subject_id: number; subject_name: string; affected_students: number; students: Array<{ student_id: number; full_name: string; admission_number: string; class_name: string; section_name: string; academic_year_name: string }> };
+export type CurriculumRemovalImpact = { subject_id: number; subject_name: string; affected_students: number; students: Array<{ student_id: number; full_name: string; admission_number: string; class_name: string; section_name: string; academic_year_name: string }> };
 export type CurriculumSaveInput = {
   academic_year_id: number; class_id: number; section_id: number;
   optional_groups: Array<{ name: string; min_selections: number; max_selections: number }>;
