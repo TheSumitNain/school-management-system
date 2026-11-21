@@ -7,6 +7,8 @@ import { TeacherAssignmentsPage } from "./TeacherAssignmentsPage";
 import {
   useCreateSchoolStaffMutation, useDisableSchoolStaffMutation, useEnableSchoolStaffMutation,
   useResetSchoolStaffPasswordMutation, useSchoolStaffQuery, useUpdateSchoolStaffMutation,
+  useStaffQualificationsQuery, useStaffCertificationsQuery, useStaffExperienceQuery,
+  useCreateStaffQualificationMutation, useCreateStaffCertificationMutation, useCreateStaffExperienceMutation,
 } from "../queries";
 import type { StaffRecord } from "../api";
 import { ApiError } from "../../../lib/api";
@@ -33,6 +35,16 @@ export function StaffManagementPage({ permissions }: Props) {
   const disable = useDisableSchoolStaffMutation();
   const enable = useEnableSchoolStaffMutation();
   const reset = useResetSchoolStaffPasswordMutation();
+  const staffRecordID = profileFor?.principal_id ?? 0;
+  const staffRecordsEnabled = Boolean(profileFor) && profileTab === "Qualifications & Experience";
+  const qualificationsQuery = useStaffQualificationsQuery(staffRecordID, staffRecordsEnabled);
+  const certificationsQuery = useStaffCertificationsQuery(staffRecordID, staffRecordsEnabled);
+  const experienceQuery = useStaffExperienceQuery(staffRecordID, staffRecordsEnabled);
+  const createQualification = useCreateStaffQualificationMutation(staffRecordID);
+  const createCertification = useCreateStaffCertificationMutation(staffRecordID);
+  const createExperience = useCreateStaffExperienceMutation(staffRecordID);
+  const [recordFormKind, setRecordFormKind] = useState<"qualification" | "certification" | "experience" | null>(null);
+  const [recordError, setRecordError] = useState("");
   const [activeTab, setActiveTab] = useState<"overview" | "directory" | "assignments">("overview");
   const [search, setSearch] = useState("");
   const [action, setAction] = useState<Action>(null);
@@ -58,7 +70,7 @@ export function StaffManagementPage({ permissions }: Props) {
     return staff.filter(item => !term || [item.username, item.full_name, item.employee_code, item.designation, item.mobile_number, item.status, item.employment_status].some(value => value?.toLowerCase().includes(term)));
   }, [staff, search]);
 
-  function openProfile(item: StaffRecord) { setProfileFor(item); setProfileTab("Overview"); }
+  function openProfile(item: StaffRecord) { setProfileFor(item); setProfileTab("Overview"); setRecordFormKind(null); setRecordError(""); }
   function openAction(next: Action, item: StaffRecord | null = null) {
     setSelected(item);
     setAction(next);
@@ -172,6 +184,43 @@ export function StaffManagementPage({ permissions }: Props) {
       notifyToast("success", "Credentials copied. Share them only through a verified channel.");
     } catch {
       notifyToast("error", "Clipboard access is unavailable. Use the password-reset flow if needed.");
+    }
+  }
+  async function submitStaffRecord(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!profileFor || !recordFormKind) return;
+    const form = new FormData(event.currentTarget);
+    const value = (key: string) => String(form.get(key) ?? "").trim();
+    setRecordError("");
+    try {
+      if (recordFormKind === "qualification") {
+        const year = value("completion_year");
+        const score = value("score");
+        await createQualification.mutateAsync({
+          qualification_type: value("qualification_type") as "school" | "diploma" | "undergraduate" | "postgraduate" | "doctorate" | "other",
+          qualification_name: value("qualification_name"), specialization: value("specialization"),
+          institution: value("institution"), board_university: value("board_university"),
+          completion_year: year ? Number(year) : null, score: score ? Number(score) : null,
+          score_scale: score ? value("score_scale") as "percentage" | "cgpa" | "gpa" | "marks" | "grade" : "",
+          credential_reference: value("credential_reference"),
+        });
+      } else if (recordFormKind === "certification") {
+        await createCertification.mutateAsync({
+          certificate_name: value("certificate_name"), issuing_organization: value("issuing_organization"),
+          issue_date: value("issue_date"), expiry_date: value("expiry_date"), credential_id: value("credential_id"),
+        });
+      } else {
+        await createExperience.mutateAsync({
+          employer_name: value("employer_name"), designation: value("record_designation"),
+          employment_type: value("employment_type") as "permanent" | "contract" | "part_time" | "temporary" | "internship" | "other",
+          start_date: value("start_date"), end_date: form.get("is_current") ? "" : value("end_date"),
+          is_current: Boolean(form.get("is_current")), description: value("description"),
+        });
+      }
+      setRecordFormKind(null);
+      notifyToast("success", "Staff record saved.");
+    } catch (error) {
+      setRecordError(error instanceof Error ? error.message : "Unable to save this record. Your entered details are still available.");
     }
   }
   function deactivate(item: StaffRecord) { setDisableError(""); setStaffToDisable(item); }
@@ -300,7 +349,64 @@ export function StaffManagementPage({ permissions }: Props) {
         {profileTab === "Overview" && <section className="staff-profile-overview"><div><span>Employee code</span><strong>{profileFor.employee_code || "Not set"}</strong></div><div><span>Designation</span><strong>{profileFor.designation || "Not set"}</strong></div><div><span>Employment</span><strong>{profileFor.employment_status || "Profile incomplete"}</strong></div><div><span>Login</span><strong>{profileFor.status === "active" ? "Enabled" : "Disabled"}</strong></div><button className="primary" type="button" onClick={() => {const item=profileFor;setProfileFor(null);openAction("edit",item);}}>Edit employee details</button></section>}
         {profileTab === "Personal Details" && <section className="staff-profile-section"><h3>Personal details</h3><dl><div><dt>Full name</dt><dd>{profileFor.full_name || "Not set"}</dd></div><div><dt>Employee code</dt><dd>{profileFor.employee_code || "Not set"}</dd></div><div><dt>Mobile number</dt><dd>{profileFor.mobile_number || "Not set"}</dd></div><div><dt>Email address</dt><dd>{profileFor.email || "Not provided"}</dd></div></dl><button className="primary" type="button" onClick={() => {const item=profileFor;setProfileFor(null);openAction("edit",item);}}>Edit personal details</button></section>}
         {profileTab === "Employment" && <section className="staff-profile-section"><h3>Employment details</h3><dl><div><dt>Designation</dt><dd>{profileFor.designation || "Not set"}</dd></div><div><dt>Joining date</dt><dd>{profileFor.joining_date ? new Intl.DateTimeFormat("en-IN",{dateStyle:"medium"}).format(new Date(profileFor.joining_date)) : "Not provided"}</dd></div><div><dt>Employment status</dt><dd>{profileFor.employment_status || "Profile incomplete"}</dd></div><div><dt>Login status</dt><dd>{profileFor.status === "active" ? "Enabled" : "Disabled"}</dd></div></dl><button className="primary" type="button" onClick={() => {const item=profileFor;setProfileFor(null);openAction("edit",item);}}>Edit employment details</button></section>}
-        {profileTab === "Qualifications & Experience" && <section className="staff-profile-placeholder"><h3>Qualifications & experience</h3><p>This section is part of the approved profile. Qualification, certification and experience records need their staff-specific API and database contract before they can be saved.</p></section>}
+        {profileTab === "Qualifications & Experience" && <section className="staff-records-panel">
+          <div className="staff-records-heading"><div><h3>Qualifications & experience</h3><p>Education, professional certificates and previous employment records for this employee.</p></div></div>
+          <div className="staff-record-group">
+            <div className="staff-record-group-heading"><h4>Education</h4>{canUpdate && <button className="staff-secondary-button" type="button" onClick={() => {setRecordError("");setRecordFormKind("qualification");}}>Add qualification</button>}</div>
+            {qualificationsQuery.isLoading && <p role="status">Loading qualifications…</p>}
+            {qualificationsQuery.isError && <div className="staff-record-error" role="alert"><span>Unable to load qualifications.</span><button type="button" onClick={() => void qualificationsQuery.refetch()}>Retry</button></div>}
+            {!qualificationsQuery.isLoading && !qualificationsQuery.isError && (qualificationsQuery.data?.qualifications.length ?? 0) === 0 && <p className="staff-record-empty">No education records added yet.</p>}
+            {qualificationsQuery.data?.qualifications.map(item => <article className="staff-record-card" key={item.id}><div><strong>{item.qualification_name}</strong><span>{item.institution}{item.completion_year ? ` · ${item.completion_year}` : ""}</span>{item.specialization && <small>{item.specialization}</small>}</div><span className="staff-record-status">{item.verification_status}</span></article>)}
+          </div>
+          <div className="staff-record-group">
+            <div className="staff-record-group-heading"><h4>Certifications</h4>{canUpdate && <button className="staff-secondary-button" type="button" onClick={() => {setRecordError("");setRecordFormKind("certification");}}>Add certification</button>}</div>
+            {certificationsQuery.isLoading && <p role="status">Loading certifications…</p>}
+            {certificationsQuery.isError && <div className="staff-record-error" role="alert"><span>Unable to load certifications.</span><button type="button" onClick={() => void certificationsQuery.refetch()}>Retry</button></div>}
+            {!certificationsQuery.isLoading && !certificationsQuery.isError && (certificationsQuery.data?.certifications.length ?? 0) === 0 && <p className="staff-record-empty">No certifications added yet.</p>}
+            {certificationsQuery.data?.certifications.map(item => <article className="staff-record-card" key={item.id}><div><strong>{item.certificate_name}</strong><span>{item.issuing_organization}</span><small>{item.issue_date || "Issue date not provided"}{item.expiry_date ? ` · Expires ${item.expiry_date}` : ""}</small></div><span className="staff-record-status">{item.verification_status}</span></article>)}
+          </div>
+          <div className="staff-record-group">
+            <div className="staff-record-group-heading"><h4>Employment history</h4>{canUpdate && <button className="staff-secondary-button" type="button" onClick={() => {setRecordError("");setRecordFormKind("experience");}}>Add experience</button>}</div>
+            {experienceQuery.isLoading && <p role="status">Loading experience…</p>}
+            {experienceQuery.isError && <div className="staff-record-error" role="alert"><span>Unable to load experience.</span><button type="button" onClick={() => void experienceQuery.refetch()}>Retry</button></div>}
+            {!experienceQuery.isLoading && !experienceQuery.isError && (experienceQuery.data?.experience.length ?? 0) === 0 && <p className="staff-record-empty">No previous employment records added yet.</p>}
+            {experienceQuery.data?.experience.map(item => <article className="staff-record-card" key={item.id}><div><strong>{item.designation}</strong><span>{item.employer_name} · {item.employment_type.replace("_"," ")}</span><small>{item.start_date} – {item.is_current ? "Present" : item.end_date || "End date not provided"}</small>{item.description && <small>{item.description}</small>}</div></article>)}
+          </div>
+          {!canUpdate && <p className="staff-wizard-note">You have read-only access to these records.</p>}
+          <p className="staff-wizard-note">New records are saved with Pending verification. Existing records are not silently overwritten or deleted.</p>
+          {recordFormKind && <form className="staff-record-form" onSubmit={submitStaffRecord}>
+            <div className="staff-record-form-heading"><h4>{recordFormKind === "qualification" ? "Add education" : recordFormKind === "certification" ? "Add certification" : "Add employment history"}</h4><button type="button" className="staff-text-button" onClick={() => {setRecordFormKind(null);setRecordError("");}}>Cancel</button></div>
+            {recordFormKind === "qualification" && <>
+              <label>Qualification type <select name="qualification_type" required defaultValue="undergraduate"><option value="school">School</option><option value="diploma">Diploma</option><option value="undergraduate">Undergraduate</option><option value="postgraduate">Postgraduate</option><option value="doctorate">Doctorate</option><option value="other">Other</option></select></label>
+              <label>Qualification name <input name="qualification_name" required maxLength={160}/></label>
+              <label>Specialization (optional) <input name="specialization" maxLength={160}/></label>
+              <label>Institution <input name="institution" required maxLength={200}/></label>
+              <label>Board / University (optional) <input name="board_university" maxLength={200}/></label>
+              <label>Completion year (optional) <input name="completion_year" type="number" min="1900" max="2200"/></label>
+              <label>Score (optional) <input name="score" type="number" min="0" step="0.001"/></label>
+              <label>Score scale (required with score) <select name="score_scale" defaultValue=""><option value="">Select scale</option><option value="percentage">Percentage</option><option value="cgpa">CGPA</option><option value="gpa">GPA</option><option value="marks">Marks</option><option value="grade">Grade</option></select></label>
+              <label>Credential reference (optional) <input name="credential_reference" maxLength={120}/></label>
+            </>}
+            {recordFormKind === "certification" && <>
+              <label>Certificate name <input name="certificate_name" required maxLength={180}/></label>
+              <label>Issuing organization <input name="issuing_organization" required maxLength={200}/></label>
+              <label>Issue date (optional) <input name="issue_date" type="date"/></label>
+              <label>Expiry date (optional) <input name="expiry_date" type="date"/></label>
+              <label>Credential ID (optional) <input name="credential_id" maxLength={120}/></label>
+            </>}
+            {recordFormKind === "experience" && <>
+              <label>Employer name <input name="employer_name" required maxLength={200}/></label>
+              <label>Designation <input name="record_designation" required maxLength={120}/></label>
+              <label>Employment type <select name="employment_type" required defaultValue="permanent"><option value="permanent">Permanent</option><option value="contract">Contract</option><option value="part_time">Part time</option><option value="temporary">Temporary</option><option value="internship">Internship</option><option value="other">Other</option></select></label>
+              <label>Start date <input name="start_date" type="date" required/></label>
+              <label>End date (optional) <input name="end_date" type="date"/></label>
+              <label className="staff-record-checkbox"><input name="is_current" type="checkbox"/> This is my current employment</label>
+              <label>Description (optional) <textarea name="description" maxLength={2000} rows={3}/></label>
+            </>}
+            {recordError && <p className="staff-feedback error" role="alert">{recordError}</p>}
+            <div className="staff-record-form-actions"><button type="button" className="staff-secondary-button" onClick={() => {setRecordFormKind(null);setRecordError("");}}>Cancel</button><button className="primary" type="submit" disabled={createQualification.isPending || createCertification.isPending || createExperience.isPending}>{createQualification.isPending || createCertification.isPending || createExperience.isPending ? "Saving…" : "Save record"}</button></div>
+          </form>}
+        </section>}
         {profileTab === "Documents" && <section className="staff-profile-placeholder"><h3>Staff documents</h3><p>Document upload is not enabled yet. It will be added only with private file storage, staff-scoped access checks and secure download authorization.</p></section>}
         {profileTab === "Academic Assignments" && <section className="staff-profile-placeholder"><h3>Academic assignments</h3><p>School-wide teacher and class-in-charge assignment management is available in the workspace tab. A staff-specific assignment view is pending an exact scoped API contract.</p><button type="button" className="staff-secondary-button" onClick={() => {setProfileFor(null);setActiveTab("assignments");}}>Open Academic Assignments workspace</button></section>}
         {profileTab === "Account & Access" && <section className="staff-profile-access">{canReadRoles ? <StaffRoleAssignments staff={profileFor} canAssign={canAssignRoles}/> : <p>You do not have permission to view role assignments.</p>}{canManageOverrides ? <StaffPermissionOverrides staff={profileFor}/> : <p>You do not have permission to manage individual permission overrides.</p>}<p className="staff-wizard-note">Login identity, role grants and individual overrides remain separate from employee profile details.</p></section>}
