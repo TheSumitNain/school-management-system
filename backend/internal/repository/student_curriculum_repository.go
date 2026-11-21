@@ -47,6 +47,7 @@ type CurriculumSubject struct {
 	Code              *string `json:"code,omitempty"`
 	OptionalGroupID   *int64  `json:"optional_group_id,omitempty"`
 	OptionalGroupName *string `json:"optional_group_name,omitempty"`
+	MasterActive      bool    `json:"master_active"`
 	IsCompulsory      bool    `json:"is_compulsory"`
 	IsOptional        bool    `json:"is_optional"`
 }
@@ -122,8 +123,9 @@ func loadClassCurriculum(ctx context.Context, db repositoryDB, curriculumID, sch
 	item.Subjects = make([]CurriculumSubject, 0)
 	subjectRows, err := db.Query(ctx, `
 		SELECT cs.id, cs.subject_id, cs.subject_name_snapshot, cs.subject_code_snapshot,
-		       cs.optional_group_id, g.name, cs.is_optional
+		       cs.optional_group_id, g.name, cs.is_optional, s.is_active
 		  FROM class_curriculum_subjects cs
+		  JOIN subjects s ON s.id=cs.subject_id AND s.school_id=cs.school_id
 		  LEFT JOIN class_curriculum_optional_groups g
 		    ON g.id=cs.optional_group_id AND g.curriculum_id=cs.curriculum_id AND g.school_id=cs.school_id
 		 WHERE cs.curriculum_id=$1 AND cs.school_id=$2 AND cs.is_active=TRUE
@@ -135,7 +137,7 @@ func loadClassCurriculum(ctx context.Context, db repositoryDB, curriculumID, sch
 	for subjectRows.Next() {
 		var subject CurriculumSubject
 		if err := subjectRows.Scan(&subject.ID, &subject.SubjectID, &subject.Name, &subject.Code,
-			&subject.OptionalGroupID, &subject.OptionalGroupName, &subject.IsOptional); err != nil {
+			&subject.OptionalGroupID, &subject.OptionalGroupName, &subject.IsOptional, &subject.MasterActive); err != nil {
 			subjectRows.Close()
 			return nil, fmt.Errorf("scan curriculum subject: %w", err)
 		}
