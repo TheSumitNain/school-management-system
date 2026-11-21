@@ -92,8 +92,8 @@ export function StaffManagementPage({ permissions }: Props) {
       if (createStep === 1) {
         if (!fullName || fullName.length > 160) stepErrors.full_name = "Enter the employee full name (up to 160 characters).";
         if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/.test(employeeCode)) stepErrors.employee_code = "Use 1–32 letters, numbers, dots, underscores or hyphens.";
-        if (!/^\\+?[0-9]{10,15}$/.test(mobileNumber)) stepErrors.mobile_number = "Enter one mobile number with 10–15 digits.";
-        if (email && (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email) || email.length > 254)) stepErrors.email = "Enter a valid email address.";
+        if (!/^\+?[0-9]{10,15}$/.test(mobileNumber)) stepErrors.mobile_number = "Enter one mobile number with 10–15 digits.";
+        if (email && (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254)) stepErrors.email = "Enter a valid email address.";
       }
       if (createStep === 2 && (!designation || designation.length > 100)) stepErrors.designation = "Enter a designation (up to 100 characters).";
       if (createStep === 3) {
