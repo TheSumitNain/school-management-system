@@ -323,6 +323,19 @@ func TestStudentCurriculumV44PostgresIntegration(t *testing.T) {
 		return err
 	})
 
+	_, err = academicRepo.SaveSectionClassCurriculumWithConfirmations(
+		ctx, actorPrincipalID, schoolID, yearID, classID, sectionID,
+		[]CurriculumOptionalGroupInput{{Name: "Language", MinSelections: 1, MaxSelections: 1}},
+		[]CurriculumSubjectInput{
+			{SubjectID: subjectID, IsOptional: true, OptionalGroup: "Language"},
+			{SubjectID: standaloneSubjectID, IsOptional: true},
+		},
+		[]CurriculumRemovalConfirmation{{SubjectID: compulsorySubjectID, AffectedStudents: 1, StudentIDs: []int64{secondStudentID}}},
+	)
+	if !errors.Is(err, ErrCurriculumRemovalImpactChanged) {
+		t.Fatalf("same-count confirmation with a different student ID returned %v, want stale impact", err)
+	}
+
 	if _, err := tx.Exec(ctx, `UPDATE students SET status='inactive' WHERE id=$1`, studentID); err != nil { t.Fatalf("make student inactive: %v", err) }
 	expectRejected("assigning curriculum to inactive student", func() error {
 		_, err := tx.Exec(ctx, `
