@@ -1441,5 +1441,8 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	if _,err:=academicRepo.SaveStudentEnrollmentSubjects(ctx,actorPrincipalID,schoolID,futureEnrollmentID,curriculumV1.ID,nil);!errors.Is(err,ErrInactiveSubjectInCurriculum) {
 		t.Fatalf("assign curriculum containing inactive master subject returned %v, want inactive subject conflict",err)
 	}
+	if _,err:=academicRepo.CreateTeacherSubjectAssignment(ctx,actorPrincipalID,schoolID,year2,section2,subjectID,teacherPrincipalID);!errors.Is(err,ErrInactiveSubjectAssignment) {
+		t.Fatalf("create teacher assignment for inactive subject returned %v, want inactive subject conflict",err)
+	}
 
 }
