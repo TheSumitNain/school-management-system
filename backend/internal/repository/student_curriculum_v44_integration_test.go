@@ -417,7 +417,7 @@ func TestStudentCurriculumV44PostgresIntegration(t *testing.T) {
 		[]CurriculumSubjectInput{{SubjectID: subjectID, IsOptional: true}},
 		nil,
 	)
-	if err != nil || ungroupedCurriculum == nil || len(ungroupedCurriculum.OptionalGroups) != 0 ||
+	if err != nil || ungroupedCurriculum == nil || len(ungroupedCurriculum.Groups) != 0 ||
 		len(ungroupedCurriculum.Subjects) != 1 || ungroupedCurriculum.Subjects[0].OptionalGroupID != nil {
 		t.Fatalf("remove empty optional group and retain standalone subject: curriculum=%+v err=%v",
 			ungroupedCurriculum, err)
