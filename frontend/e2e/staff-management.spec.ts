@@ -92,6 +92,23 @@ test("staff directory opens the eight-tab employee profile and shows saved profi
   await expect(dialog.getByText(/private file storage/)).toBeVisible();
 });
 
+test("add staff wizard validates each step before allowing progress", async ({ page }) => {
+  await signInAndOpenStaff(page, []);
+  await page.getByRole("button", { name: "Add staff" }).click();
+  const dialog = page.getByRole("dialog", { name: "Add employee" });
+  await dialog.getByRole("button", { name: "Continue" }).click();
+  await expect(dialog.getByText("Enter the employee full name (up to 160 characters).")).toBeVisible();
+  await expect(dialog.getByText("Use 1–32 letters, numbers, dots, underscores or hyphens.")).toBeVisible();
+  await expect(dialog.getByText("Enter one mobile number with 10–15 digits.")).toBeVisible();
+
+  await dialog.getByLabel("Full name").fill("Validation Teacher");
+  await dialog.getByLabel("Employee code").fill("EMP-VAL-01");
+  await dialog.getByLabel("Mobile number").fill("9876543219");
+  await dialog.getByRole("button", { name: "Continue" }).click();
+  await dialog.getByRole("button", { name: "Continue" }).click();
+  await expect(dialog.getByText("Enter a designation (up to 100 characters).")).toBeVisible();
+});
+
 test("staff creation uses the shared IST date picker and submits its selected date", async ({ page }) => {
   const created: Array<Record<string, unknown>> = [];
   const rows: Array<Record<string, unknown>> = [];
