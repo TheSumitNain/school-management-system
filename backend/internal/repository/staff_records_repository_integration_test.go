@@ -110,7 +110,7 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("cross-school record read error=%v want ErrStaffRecordAccessDenied",err)
 	}
 	var auditCount int
-	if err:=tx.QueryRow(ctx,`SELECT COUNT(*) FROM audit_events WHERE actor_principal_id=$1 AND school_id=$2 AND action IN ('staff.qualification.created','staff.certification.created','staff.experience.created')`,actorID,schoolID).Scan(&auditCount);err!=nil{
+	if err:=tx.QueryRow(ctx,`SELECT COUNT(*) FROM audit_events WHERE actor_principal_id=$1 AND school_id=$2 AND action IN ('staff.qualification.created','staff.certification.created','staff.experience.created','staff.qualification.updated','staff.certification.updated','staff.experience.updated')`,actorID,schoolID).Scan(&auditCount);err!=nil{
 		t.Fatalf("count staff record audit events: %v",err)
 	}
 	if auditCount!=6{t.Fatalf("audit count=%d want=6 (three creates and three updates)",auditCount)}
