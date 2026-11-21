@@ -22,6 +22,7 @@ var (
 	ErrCurriculumSubjectRuleConflict = errors.New("curriculum edit would invalidate active student subject choices")
 	ErrSectionDeactivationConfirmationRequired = errors.New("section deactivation requires dependency preview and confirmation")
 	ErrClassDeactivationConfirmationRequired = errors.New("class deactivation requires dependency preview and confirmation")
+	ErrSubjectDeactivationConfirmationRequired = errors.New("subject deactivation requires dependency preview and confirmation")
 	ErrAcademicImpactChanged = errors.New("academic dependency impact changed; review the impact again")
 	ErrAcademicAdmissionNumberConflict = errors.New("academic admission number already exists in this school year")
 	ErrAcademicRollNumberConflict = errors.New("academic roll number already exists in this active section")
@@ -85,6 +86,26 @@ type ClassDeactivationImpact struct {
 	ActiveTeacherAssignmentCount int64 `json:"active_teacher_assignment_count"`
 	ActiveClassInchargeCount int64 `json:"active_class_incharge_count"`
 	AffectedStudents []ClassDeactivationStudent `json:"affected_students"`
+	ImpactFingerprint string `json:"impact_fingerprint"`
+}
+
+
+type SubjectDeactivationStudent struct {
+	StudentID int64 `json:"student_id"`
+	FullName string `json:"full_name"`
+	AdmissionNumber string `json:"admission_number"`
+	ClassName string `json:"class_name"`
+	SectionName string `json:"section_name"`
+	AcademicYearName string `json:"academic_year_name"`
+}
+type SubjectDeactivationImpact struct {
+	SubjectID int64 `json:"subject_id"`
+	SubjectName string `json:"subject_name"`
+	CurriculumSubjectCount int64 `json:"curriculum_subject_count"`
+	ActiveTeacherAssignmentCount int64 `json:"active_teacher_assignment_count"`
+	ActiveStudentSelectionCount int64 `json:"active_student_selection_count"`
+	HistoricalStudentSelectionCount int64 `json:"historical_student_selection_count"`
+	AffectedStudents []SubjectDeactivationStudent `json:"affected_students"`
 	ImpactFingerprint string `json:"impact_fingerprint"`
 }
 
@@ -575,6 +596,94 @@ func (r *AcademicRepository) ListSubjects(ctx context.Context,actorID,schoolID i
 	rows,err:=r.db.Query(ctx,`SELECT id,school_id,name,subject_code,is_active,created_at,updated_at FROM subjects WHERE school_id=$1 ORDER BY lower(name),id`,schoolID);if err!=nil{return nil,fmt.Errorf("list subjects: %w",err)};defer rows.Close()
 	items:=make([]AcademicSubject,0);for rows.Next(){var v AcademicSubject;if err:=rows.Scan(&v.ID,&v.SchoolID,&v.Name,&v.Code,&v.IsActive,&v.CreatedAt,&v.UpdatedAt);err!=nil{return nil,fmt.Errorf("scan subject: %w",err)};items=append(items,v)};if err:=rows.Err();err!=nil{return nil,fmt.Errorf("iterate subjects: %w",err)};return items,nil
 }
+
+func subjectDeactivationFingerprint(ctx context.Context, tx pgx.Tx, schoolID, subjectID int64) (string,error) {
+	var fingerprint string
+	err:=tx.QueryRow(ctx,`
+		SELECT md5(concat_ws('|',
+			COALESCE((SELECT string_agg(cs.id::text || ':' || cs.curriculum_id::text, ',' ORDER BY cs.id) FROM class_curriculum_subjects cs WHERE cs.school_id=$1 AND cs.subject_id=$2),''),
+			COALESCE((SELECT string_agg(a.id::text || ':' || COALESCE(a.revoked_at::text,'active'), ',' ORDER BY a.id) FROM teacher_subject_assignments a WHERE a.school_id=$1 AND a.subject_id=$2),''),
+			COALESCE((SELECT string_agg(sel.id::text || ':' || COALESCE(sel.revoked_at::text,'active'), ',' ORDER BY sel.id)
+				FROM student_enrollment_subject_selections sel
+				JOIN class_curriculum_subjects cs ON cs.id=sel.curriculum_subject_id AND cs.curriculum_id=sel.curriculum_id AND cs.school_id=sel.school_id
+				WHERE sel.school_id=$1 AND cs.subject_id=$2),'')
+		))`,schoolID,subjectID).Scan(&fingerprint)
+	if err!=nil{return "",fmt.Errorf("calculate subject deactivation fingerprint: %w",err)}
+	return fingerprint,nil
+}
+
+func (r *AcademicRepository) PreviewSubjectDeactivation(ctx context.Context, actorID, schoolID, subjectID int64) (*SubjectDeactivationImpact,error) {
+	if r==nil||r.db==nil||subjectID<=0{return nil,ErrInvalidAcademicInput}
+	tx,err:=r.db.Begin(ctx);if err!=nil{return nil,fmt.Errorf("begin subject deactivation preview: %w",err)}
+	defer func(){_ = tx.Rollback(ctx)}()
+	if err=authorizeAcademic(ctx,tx,actorID,schoolID,"subjects.manage");err!=nil{return nil,err}
+	var impact SubjectDeactivationImpact
+	err=tx.QueryRow(ctx,`
+		SELECT s.id,s.name,
+			(SELECT COUNT(*) FROM class_curriculum_subjects cs WHERE cs.school_id=s.school_id AND cs.subject_id=s.id),
+			(SELECT COUNT(*) FROM teacher_subject_assignments a WHERE a.school_id=s.school_id AND a.subject_id=s.id AND a.revoked_at IS NULL),
+			(SELECT COUNT(*) FROM student_enrollment_subject_selections sel
+				JOIN class_curriculum_subjects cs ON cs.id=sel.curriculum_subject_id AND cs.curriculum_id=sel.curriculum_id AND cs.school_id=sel.school_id
+				WHERE sel.school_id=s.school_id AND cs.subject_id=s.id AND sel.revoked_at IS NULL),
+			(SELECT COUNT(*) FROM student_enrollment_subject_selections sel
+				JOIN class_curriculum_subjects cs ON cs.id=sel.curriculum_subject_id AND cs.curriculum_id=sel.curriculum_id AND cs.school_id=sel.school_id
+				WHERE sel.school_id=s.school_id AND cs.subject_id=s.id AND sel.revoked_at IS NOT NULL),
+			md5(concat_ws('|',
+				COALESCE((SELECT string_agg(cs.id::text || ':' || cs.curriculum_id::text, ',' ORDER BY cs.id) FROM class_curriculum_subjects cs WHERE cs.school_id=s.school_id AND cs.subject_id=s.id),''),
+				COALESCE((SELECT string_agg(a.id::text || ':' || COALESCE(a.revoked_at::text,'active'), ',' ORDER BY a.id) FROM teacher_subject_assignments a WHERE a.school_id=s.school_id AND a.subject_id=s.id),''),
+				COALESCE((SELECT string_agg(sel.id::text || ':' || COALESCE(sel.revoked_at::text,'active'), ',' ORDER BY sel.id)
+					FROM student_enrollment_subject_selections sel
+					JOIN class_curriculum_subjects cs ON cs.id=sel.curriculum_subject_id AND cs.curriculum_id=sel.curriculum_id AND cs.school_id=sel.school_id
+					WHERE sel.school_id=s.school_id AND cs.subject_id=s.id),'')
+			))
+		FROM subjects s WHERE s.id=$1 AND s.school_id=$2 AND s.is_active=TRUE
+	`,subjectID,schoolID).Scan(&impact.SubjectID,&impact.SubjectName,&impact.CurriculumSubjectCount,&impact.ActiveTeacherAssignmentCount,&impact.ActiveStudentSelectionCount,&impact.HistoricalStudentSelectionCount,&impact.ImpactFingerprint)
+	if err!=nil{return nil,academicWriteError(err)}
+	rows,err:=tx.Query(ctx,`
+		SELECT DISTINCT st.id,st.full_name,COALESCE(e.admission_number,''),cl.name,sec.name,ay.name
+		FROM student_enrollment_subject_selections sel
+		JOIN class_curriculum_subjects cs ON cs.id=sel.curriculum_subject_id AND cs.curriculum_id=sel.curriculum_id AND cs.school_id=sel.school_id
+		JOIN student_enrollment_curricula ec ON ec.id=sel.enrollment_curriculum_id AND ec.curriculum_id=sel.curriculum_id AND ec.school_id=sel.school_id
+		JOIN student_enrollments e ON e.id=ec.enrollment_id AND e.school_id=ec.school_id
+		JOIN students st ON st.id=e.student_id AND st.school_id=e.school_id
+		JOIN classes cl ON cl.id=e.class_id AND cl.school_id=e.school_id
+		JOIN sections sec ON sec.id=e.section_id AND sec.school_id=e.school_id
+		JOIN academic_years ay ON ay.id=e.academic_year_id AND ay.school_id=e.school_id
+		WHERE sel.school_id=$1 AND cs.subject_id=$2 AND sel.revoked_at IS NULL AND ec.status='active'
+		ORDER BY st.full_name,st.id,cl.name,sec.name
+	`,schoolID,subjectID)
+	if err!=nil{return nil,fmt.Errorf("load affected subject students: %w",err)}
+	impact.AffectedStudents=make([]SubjectDeactivationStudent,0)
+	for rows.Next(){var item SubjectDeactivationStudent;if err:=rows.Scan(&item.StudentID,&item.FullName,&item.AdmissionNumber,&item.ClassName,&item.SectionName,&item.AcademicYearName);err!=nil{rows.Close();return nil,fmt.Errorf("scan affected subject student: %w",err)};impact.AffectedStudents=append(impact.AffectedStudents,item)}
+	if err:=rows.Err();err!=nil{rows.Close();return nil,fmt.Errorf("iterate affected subject students: %w",err)}
+	rows.Close()
+	if err=tx.Commit(ctx);err!=nil{return nil,fmt.Errorf("commit subject deactivation preview: %w",err)}
+	return &impact,nil
+}
+
+func (r *AcademicRepository) SaveSubjectWithDeactivationConfirmation(ctx context.Context, actorID, schoolID, subjectID int64, name string, code *string, fingerprint string) (*AcademicSubject,error) {
+	if r==nil||r.db==nil||subjectID<=0||strings.TrimSpace(fingerprint)==""{return nil,ErrInvalidAcademicInput}
+	name=strings.TrimSpace(name);if len([]rune(name))<2||len([]rune(name))>120{return nil,ErrInvalidAcademicInput}
+	if code!=nil{v:=strings.TrimSpace(*code);if v==""{code=nil}else if len(v)>40{return nil,ErrInvalidAcademicInput}else{code=&v}}
+	tx,err:=r.db.Begin(ctx);if err!=nil{return nil,fmt.Errorf("begin confirmed subject deactivation: %w",err)}
+	defer func(){_ = tx.Rollback(ctx)}()
+	if err=authorizeAcademic(ctx,tx,actorID,schoolID,"subjects.manage");err!=nil{return nil,err}
+	var lockedID int64
+	if err=tx.QueryRow(ctx,`SELECT id FROM subjects WHERE id=$1 AND school_id=$2 AND is_active=TRUE FOR UPDATE`,subjectID,schoolID).Scan(&lockedID);err!=nil{return nil,academicWriteError(err)}
+	current,err:=subjectDeactivationFingerprint(ctx,tx,schoolID,subjectID);if err!=nil{return nil,err}
+	if current!=fingerprint{return nil,ErrAcademicImpactChanged}
+	var item AcademicSubject
+	err=tx.QueryRow(ctx,`UPDATE subjects SET name=$3,subject_code=$4,is_active=FALSE,updated_at=NOW()
+		WHERE school_id=$1 AND id=$2 RETURNING id,school_id,name,subject_code,is_active,created_at,updated_at`,
+		schoolID,subjectID,name,code).Scan(&item.ID,&item.SchoolID,&item.Name,&item.Code,&item.IsActive,&item.CreatedAt,&item.UpdatedAt)
+	if err!=nil{return nil,academicWriteError(err)}
+	if _,err=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
+		VALUES($1,$2,'school.subject.deactivated','subject',$3,'success',jsonb_build_object('name',$4::text,'impact_fingerprint',$5::text,'is_active',FALSE))`,
+		actorID,schoolID,fmt.Sprint(item.ID),item.Name,current);err!=nil{return nil,fmt.Errorf("audit confirmed subject deactivation: %w",err)}
+	if err=tx.Commit(ctx);err!=nil{return nil,fmt.Errorf("commit confirmed subject deactivation: %w",err)}
+	return &item,nil
+}
+
 func (r *AcademicRepository) SaveSubject(ctx context.Context, actorID, schoolID, id int64, name string, code *string, active bool) (*AcademicSubject,error) {
 	if r == nil || r.db == nil { return nil, ErrAcademicAccessDenied }
 	name=strings.TrimSpace(name)
@@ -583,6 +692,7 @@ func (r *AcademicRepository) SaveSubject(ctx context.Context, actorID, schoolID,
 	tx,err:=r.db.Begin(ctx);if err!=nil{return nil,fmt.Errorf("begin subject save: %w",err)}
 	defer func(){_ = tx.Rollback(ctx)}()
 	if err=authorizeAcademic(ctx,tx,actorID,schoolID,"subjects.manage");err!=nil{return nil,err}
+	if id>0 && !active { var wasActive bool; checkErr:=tx.QueryRow(ctx, `SELECT is_active FROM subjects WHERE id=$1 AND school_id=$2`,id,schoolID).Scan(&wasActive); if checkErr!=nil{return nil,academicWriteError(checkErr)}; if wasActive{return nil,ErrSubjectDeactivationConfirmationRequired} }
 	var v AcademicSubject
 	if id==0 {
 		err=tx.QueryRow(ctx,`INSERT INTO subjects(school_id,name,subject_code,is_active) VALUES($1,$2,$3,$4)
