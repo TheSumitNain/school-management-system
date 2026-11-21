@@ -43,6 +43,26 @@ type AcademicYear struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+type SectionDeactivationStudent struct {
+	StudentID int64 `json:"student_id"`
+	FullName string `json:"full_name"`
+	AdmissionNumber string `json:"admission_number"`
+	EnrollmentStatus string `json:"enrollment_status"`
+}
+
+type SectionDeactivationImpact struct {
+	SectionID int64 `json:"section_id"`
+	SectionName string `json:"section_name"`
+	ClassName string `json:"class_name"`
+	AcademicYearName string `json:"academic_year_name"`
+	ActiveEnrollmentCount int64 `json:"active_enrollment_count"`
+	HistoricalEnrollmentCount int64 `json:"historical_enrollment_count"`
+	ActiveCurriculumCount int64 `json:"active_curriculum_count"`
+	ActiveTeacherAssignmentCount int64 `json:"active_teacher_assignment_count"`
+	ActiveClassInchargeCount int64 `json:"active_class_incharge_count"`
+	AffectedStudents []SectionDeactivationStudent `json:"affected_students"`
+}
+
 type AcademicClass struct {
 	ID int64 `json:"id"`
 	SchoolID int64 `json:"school_id"`
@@ -280,6 +300,52 @@ func (r *AcademicRepository) ListSections(ctx context.Context,actorID,schoolID,y
 		ORDER BY s.academic_year_id,c.display_order,c.id,s.display_order,s.id`,schoolID,yearID);if err!=nil{return nil,fmt.Errorf("list sections: %w",err)};defer rows.Close()
 	items:=make([]AcademicSection,0);for rows.Next(){var v AcademicSection;if err:=rows.Scan(&v.ID,&v.SchoolID,&v.AcademicYearID,&v.ClassID,&v.ClassName,&v.Name,&v.Medium,&v.DisplayOrder,&v.IsActive,&v.CreatedAt,&v.UpdatedAt);err!=nil{return nil,fmt.Errorf("scan section: %w",err)};items=append(items,v)};if err:=rows.Err();err!=nil{return nil,fmt.Errorf("iterate sections: %w",err)};return items,nil
 }
+func (r *AcademicRepository) PreviewSectionDeactivation(ctx context.Context, actorID, schoolID, sectionID int64) (*SectionDeactivationImpact, error) {
+	if r == nil || r.db == nil || sectionID <= 0 { return nil, ErrInvalidAcademicInput }
+	tx, err := r.db.Begin(ctx)
+	if err != nil { return nil, fmt.Errorf("begin section deactivation preview: %w", err) }
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err = authorizeAcademic(ctx, tx, actorID, schoolID, "classes.manage"); err != nil { return nil, err }
+
+	var impact SectionDeactivationImpact
+	err = tx.QueryRow(ctx, `
+		SELECT s.id, s.name, c.name, ay.name,
+			(SELECT COUNT(*) FROM student_enrollments e WHERE e.school_id=s.school_id AND e.section_id=s.id AND e.status='active'),
+			(SELECT COUNT(*) FROM student_enrollments e WHERE e.school_id=s.school_id AND e.section_id=s.id AND e.status<>'active'),
+			(SELECT COUNT(*) FROM class_curricula cc WHERE cc.school_id=s.school_id AND cc.section_id=s.id AND cc.status='active'),
+			(SELECT COUNT(*) FROM teacher_subject_assignments a WHERE a.school_id=s.school_id AND a.section_id=s.id AND a.revoked_at IS NULL),
+			(SELECT COUNT(*) FROM class_incharge_assignments a WHERE a.school_id=s.school_id AND a.section_id=s.id AND a.revoked_at IS NULL)
+		FROM sections s
+		JOIN classes c ON c.id=s.class_id AND c.school_id=s.school_id
+		JOIN academic_years ay ON ay.id=s.academic_year_id AND ay.school_id=s.school_id
+		WHERE s.id=$1 AND s.school_id=$2
+	`, sectionID, schoolID).Scan(&impact.SectionID, &impact.SectionName, &impact.ClassName, &impact.AcademicYearName,
+		&impact.ActiveEnrollmentCount, &impact.HistoricalEnrollmentCount, &impact.ActiveCurriculumCount,
+		&impact.ActiveTeacherAssignmentCount, &impact.ActiveClassInchargeCount)
+	if err != nil { return nil, academicWriteError(err) }
+
+	rows, err := tx.Query(ctx, `
+		SELECT DISTINCT st.id, st.full_name, COALESCE(e.admission_number,''), e.status
+		FROM student_enrollments e
+		JOIN students st ON st.id=e.student_id AND st.school_id=e.school_id
+		WHERE e.school_id=$1 AND e.section_id=$2 AND e.status='active' AND st.status='active'
+		ORDER BY st.full_name, st.id
+	`, schoolID, sectionID)
+	if err != nil { return nil, fmt.Errorf("load affected section students: %w", err) }
+	defer rows.Close()
+	impact.AffectedStudents = make([]SectionDeactivationStudent, 0)
+	for rows.Next() {
+		var student SectionDeactivationStudent
+		if err := rows.Scan(&student.StudentID, &student.FullName, &student.AdmissionNumber, &student.EnrollmentStatus); err != nil {
+			return nil, fmt.Errorf("scan affected section student: %w", err)
+		}
+		impact.AffectedStudents = append(impact.AffectedStudents, student)
+	}
+	if err := rows.Err(); err != nil { return nil, fmt.Errorf("iterate affected section students: %w", err) }
+	if err = tx.Commit(ctx); err != nil { return nil, fmt.Errorf("commit section deactivation preview: %w", err) }
+	return &impact, nil
+}
+
 func (r *AcademicRepository) SaveSection(ctx context.Context, actorID, schoolID, id, yearID, classID int64, name string, order int, active bool) (*AcademicSection, error) {
 	return r.SaveSectionWithMedium(ctx,actorID,schoolID,id,yearID,classID,name,nil,order,active)
 }
