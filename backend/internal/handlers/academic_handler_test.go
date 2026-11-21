@@ -178,7 +178,7 @@ func TestAcademicErrorRequiresSubjectImpactReview(t *testing.T) {
 	}
 }
 
-func TestAcademicErrorExplainsInactiveSubjectEnrollmentConflicts(t *testing.T) {
+func TestAcademicErrorExplainsInactiveSubjectUseConflicts(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	tests := []struct {
 		err error
@@ -186,6 +186,7 @@ func TestAcademicErrorExplainsInactiveSubjectEnrollmentConflicts(t *testing.T) {
 	}{
 		{err: repository.ErrInactiveSubjectInCurriculum, code: "inactive_subject_in_curriculum"},
 		{err: repository.ErrInactiveSubjectSelection, code: "inactive_subject_selection"},
+		{err: repository.ErrInactiveSubjectAssignment, code: "inactive_subject_assignment"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.code, func(t *testing.T) {
