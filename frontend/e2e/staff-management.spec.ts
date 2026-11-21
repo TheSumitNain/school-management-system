@@ -38,7 +38,7 @@ async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, un
       await route.fulfill({ json: { staff: staffRows } });
       return;
     }
-    const staffRecordMatch = path.match(/^\/school\/staff\/(\d+)\/(qualifications|certifications|experience)$/);
+    const staffRecordMatch = path.match(/^\/school\/staff\/(\d+)\/(qualifications|certifications|experience)(?:\\/(\\d+))?$/);
     if (staffRecordMatch) {
       const principalID = Number(staffRecordMatch[1]);
       const collection = staffRecordMatch[2];
