@@ -1,3 +1,14 @@
+## Staff Management — record edit workflow checkpoint (2026-11-21)
+
+- Added audited PATCH operations for staff qualifications, certifications and employment experience. Each write re-checks live `users.update` authorization, derives school scope from the authenticated context, restricts the target by record + staff + school IDs, preserves verification state, and commits the update with its audit event in one transaction.
+- Added matching prefilled Edit forms in the staff profile. Existing validation is applied to edits; API failures leave entered values available for correction. Playwright coverage edits all three record types and checks the updated values.
+- Frontend CI **PASS** — [run 44918115850](https://github.com/TheSumitNain/school-management-system/actions/runs/44918115850): TypeScript/Vite build and all **46 browser acceptance tests** passed, including qualification, certification and experience edits. The tested frontend checkpoint is `a8c6b3e0`; later branch changes in this checkpoint were backend-only.
+- Backend CI **PASS** — [run 44918463838](https://github.com/TheSumitNain/school-management-system/actions/runs/44918463838), code checkpoint `66339b2b`: full migration chain applied to disposable PostgreSQL, full Go test suite including create/edit/audit/cross-school integration tests, and `go vet ./...` passed.
+- Verification actions remain pending: the permission catalogue does not currently contain the proposed dedicated `staff.qualifications.verify` permission. Do not reuse general `users.update` as verification authority. Staff Documents remain blocked pending private storage and authenticated download authorization.
+- V57 was applied only to the disposable CI database; no persistent/local database migration was run. Academic, Student Management and Settings pages remain untouched.
+
+---
+
 ## Staff Management — qualification records and wizard verification checkpoint (2026-11-21)
 
 - Backend implementation now includes school-scoped create/list APIs for qualifications, certifications and prior experience, with request validation, same-school staff checks and audit events. PostgreSQL integration coverage verifies create/list, audit records and cross-school denial.
