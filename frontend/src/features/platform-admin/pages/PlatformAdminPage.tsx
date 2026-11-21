@@ -34,7 +34,7 @@ export function PlatformAdminPage({ permissions }: Props) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [adminToDeactivate, setAdminToDeactivate] = useState<{ principalID: number; email: string } | null>(null);
   const [deactivateError, setDeactivateError] = useState("");
-  const [delegationToRevoke, setDelegationToRevoke] = useState<{ id: number; permissionKey: string } | null>(null);
+  const [delegationToRevoke, setDelegationToRevoke] = useState<{ id: number; permissionKey: string; schoolID: number } | null>(null);
   const [revokeError, setRevokeError] = useState("");
   const [selectedSchoolID, setSelectedSchoolID] = useState<number | null>(null);
   const [selectedPermission, setSelectedPermission] = useState("");
@@ -50,7 +50,9 @@ export function PlatformAdminPage({ permissions }: Props) {
   const activeSchools = (schoolsQuery.data?.schools ?? []).filter(school => school.status === "active");
 
   useEffect(() => {
-    if (selectedSchoolID === null && activeSchools.length) setSelectedSchoolID(activeSchools[0].id);
+    if (!activeSchools.some(school => school.id === selectedSchoolID)) {
+      setSelectedSchoolID(activeSchools[0]?.id ?? null);
+    }
   }, [selectedSchoolID, activeSchools]);
 
 
@@ -171,16 +173,17 @@ export function PlatformAdminPage({ permissions }: Props) {
   }
 
   function revokePermission(delegationID: number, permissionKey: string) {
+    if (selectedSchoolID === null) return;
     setRevokeError("");
-    setDelegationToRevoke({ id: delegationID, permissionKey });
+    setDelegationToRevoke({ id: delegationID, permissionKey, schoolID: selectedSchoolID });
   }
   async function confirmRevokePermission() {
-    if (!delegationToRevoke || selectedSchoolID === null) return;
+    if (!delegationToRevoke) return;
     const target = delegationToRevoke;
     setRevokeError("");
     setFeedback(null);
     try {
-      await revokeDelegation.mutateAsync({ delegationID: target.id, schoolID: selectedSchoolID });
+      await revokeDelegation.mutateAsync({ delegationID: target.id, schoolID: target.schoolID });
       setDelegationToRevoke(null);
       notifyToast("success", `${target.permissionKey} delegation revoked.`);
       setFeedback(null);
