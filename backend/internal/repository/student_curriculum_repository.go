@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -27,10 +28,17 @@ type CurriculumRemovalConfirmation struct {
 	AffectedStudents int `json:"affected_students"`
 }
 
+type CurriculumRemovalStudent struct {
+	StudentID int64 `json:"student_id"`
+	AdmissionNumber string `json:"admission_number"`
+	FullName string `json:"full_name"`
+}
+
 type CurriculumRemovalImpact struct {
 	SubjectID int64 `json:"subject_id"`
 	SubjectName string `json:"subject_name"`
 	AffectedStudents int `json:"affected_students"`
+	Students []CurriculumRemovalStudent `json:"students"`
 }
 
 type CurriculumOptionalGroup struct {
@@ -246,10 +254,22 @@ func (r *AcademicRepository) PreviewSectionCurriculumRemoval(ctx context.Context
 func curriculumRemovalImpacts(ctx context.Context, db repositoryDB, schoolID, curriculumID int64, subjectIDs []int64) ([]CurriculumRemovalImpact, error) {
 	rows, err := db.Query(ctx, `
 		SELECT cs.subject_id, cs.subject_name_snapshot,
-		       CASE WHEN cs.is_optional
-		            THEN COUNT(DISTINCT e.student_id) FILTER (WHERE ec.curriculum_id=cs.curriculum_id AND s.id IS NOT NULL AND st.id IS NOT NULL)
-		            ELSE COUNT(DISTINCT e.student_id) FILTER (WHERE st.id IS NOT NULL AND (ec.id IS NULL OR ec.curriculum_id=cs.curriculum_id))
-		       END::integer AS affected_students
+		       COUNT(DISTINCT e.student_id) FILTER (WHERE
+		         CASE WHEN cs.is_optional
+		           THEN ec.curriculum_id=cs.curriculum_id AND s.id IS NOT NULL AND st.id IS NOT NULL
+		           ELSE st.id IS NOT NULL AND (ec.id IS NULL OR ec.curriculum_id=cs.curriculum_id)
+		         END
+		       )::integer AS affected_students,
+		       COALESCE(jsonb_agg(DISTINCT jsonb_build_object(
+		         'student_id', st.id,
+		         'admission_number', COALESCE(e.admission_number, st.admission_number, ''),
+		         'full_name', st.full_name
+		       )) FILTER (WHERE
+		         CASE WHEN cs.is_optional
+		           THEN ec.curriculum_id=cs.curriculum_id AND s.id IS NOT NULL AND st.id IS NOT NULL
+		           ELSE st.id IS NOT NULL AND (ec.id IS NULL OR ec.curriculum_id=cs.curriculum_id)
+		         END
+		       ), '[]'::jsonb) AS students
 		  FROM class_curriculum_subjects cs
 		  JOIN class_curricula cc
 		    ON cc.id=cs.curriculum_id AND cc.school_id=cs.school_id
@@ -273,7 +293,10 @@ func curriculumRemovalImpacts(ctx context.Context, db repositoryDB, schoolID, cu
 	items := make([]CurriculumRemovalImpact, 0)
 	for rows.Next() {
 		var item CurriculumRemovalImpact
-		if err := rows.Scan(&item.SubjectID, &item.SubjectName, &item.AffectedStudents); err != nil { return nil, fmt.Errorf("scan curriculum removal impact: %w", err) }
+		var studentsJSON []byte
+		if err := rows.Scan(&item.SubjectID, &item.SubjectName, &item.AffectedStudents, &studentsJSON); err != nil { return nil, fmt.Errorf("scan curriculum removal impact: %w", err) }
+		if err := json.Unmarshal(studentsJSON, &item.Students); err != nil { return nil, fmt.Errorf("decode curriculum removal students: %w", err) }
+		if item.Students == nil { item.Students = []CurriculumRemovalStudent{} }
 		items = append(items, item)
 	}
 	if err := rows.Err(); err != nil { return nil, fmt.Errorf("iterate curriculum removal impact: %w", err) }
