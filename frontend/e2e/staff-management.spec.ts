@@ -9,6 +9,7 @@ const staffUser = {
 };
 
 async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, unknown>>, onStaffMutation?: (path: string, route: Route) => Promise<void>) {
+  const staffRecords: Record<string, Array<Record<string, unknown>>> = { qualifications: [], certifications: [], experience: [] };
   await page.route("**/api/**", async route => {
     const request = route.request();
     const url = new URL(request.url());
@@ -36,6 +37,23 @@ async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, un
     if (path === "/school/staff" && method === "GET") {
       await route.fulfill({ json: { staff: staffRows } });
       return;
+    }
+    const staffRecordMatch = path.match(/^\/school\/staff\/(\d+)\/(qualifications|certifications|experience)$/);
+    if (staffRecordMatch) {
+      const principalID = Number(staffRecordMatch[1]);
+      const collection = staffRecordMatch[2];
+      if (method === "GET") {
+        await route.fulfill({ json: { [collection]: staffRecords[collection] } });
+        return;
+      }
+      if (method === "POST") {
+        const payload = request.postDataJSON() as Record<string, unknown>;
+        const saved = { ...payload, id: staffRecords[collection].length + 1, staff_principal_id: principalID, verification_status: "pending", created_at: "2026-11-21T00:00:00.000Z", updated_at: "2026-11-21T00:00:00.000Z" };
+        staffRecords[collection].push(saved);
+        const singular = collection === "qualifications" ? "qualification" : collection === "certifications" ? "certification" : "experience";
+        await route.fulfill({ status: 201, json: { [singular]: saved } });
+        return;
+      }
     }
     if (onStaffMutation && (path === "/school/staff" && method === "POST" || /^\/school\/staff\/\d+$/.test(path) && method === "PATCH")) {
       await onStaffMutation(path, route);
@@ -87,14 +105,15 @@ test("staff directory opens the eight-tab employee profile and shows saved profi
   await dialog.getByRole("button", { name: "Personal Details" }).click();
   await expect(dialog.getByText("profile.teacher@example.com")).toBeVisible();
   await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
-  await expect(dialog.getByText(/qualification, certification and experience records need their staff-specific API/)).toBeVisible();
+  await expect(dialog.getByText("No education records added yet.")).toBeVisible();
+  await expect(dialog.getByText("No certifications added yet.")).toBeVisible();
   await dialog.getByRole("button", { name: "Documents" }).click();
   await expect(dialog.getByText(/private file storage/)).toBeVisible();
 });
 
 test("add staff wizard validates each step before allowing progress", async ({ page }) => {
   await signInAndOpenStaff(page, []);
-  await page.getByRole("button", { name: "Add staff" }).click();
+  await page.getByRole("button", { name: "Add staff", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Add employee" });
   await dialog.getByRole("button", { name: "Continue" }).click();
   await expect(dialog.getByText("Enter the employee full name (up to 160 characters).")).toBeVisible();
@@ -176,6 +195,7 @@ test("staff profile edit uses the shared employment-status select and sends the 
     await route.fulfill({ json: { staff: { ...rows[0], ...(updates[0] ?? {}) }, message: "Updated" } });
   });
 
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
   await page.getByRole("button", { name: "Edit employee profile for teacher.two" }).click();
   const dialog = page.getByRole("dialog", { name: "Edit employee profile" });
   await expect(dialog.getByRole("button", { name: "Joining date" })).toContainText("01 Apr 2026");
@@ -187,4 +207,39 @@ test("staff profile edit uses the shared employment-status select and sends the 
   expect(updates[0].employment_status).toBe("inactive");
   await expect(dialog).toHaveCount(0);
   await expect(page.locator("select")).toHaveCount(0);
+});
+
+test("staff profile creates education, certification and experience records", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 611, school_id: 10, username: "teacher.records",
+    employee_code: "EMP-REC-01", full_name: "Records Teacher", designation: "Science Teacher",
+    mobile_number: "9876543213", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false, created_at: "2026-04-01T00:00:00.000Z",
+  }];
+  await signInAndOpenStaff(page, rows);
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Records Teacher" }).click();
+  const dialog = page.getByRole("dialog", { name: "Records Teacher" });
+  await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
+
+  await dialog.getByRole("button", { name: "Add qualification" }).click();
+  await dialog.locator('input[name="qualification_name"]').fill("M.Sc. Mathematics");
+  await dialog.locator('input[name="institution"]').fill("State University");
+  await dialog.locator('input[name="completion_year"]').fill("2021");
+  await dialog.getByRole("button", { name: "Save record" }).click();
+  await expect(dialog.getByText("M.Sc. Mathematics")).toBeVisible();
+
+  await dialog.getByRole("button", { name: "Add certification" }).click();
+  await dialog.locator('input[name="certificate_name"]').fill("Teacher Training");
+  await dialog.locator('input[name="issuing_organization"]').fill("State Board");
+  await dialog.getByRole("button", { name: "Save record" }).click();
+  await expect(dialog.getByText("Teacher Training")).toBeVisible();
+
+  await dialog.getByRole("button", { name: "Add experience" }).click();
+  await dialog.locator('input[name="employer_name"]').fill("Previous School");
+  await dialog.locator('input[name="record_designation"]').fill("Science Teacher");
+  await dialog.locator('input[name="start_date"]').fill("2018-04-01");
+  await dialog.locator('input[name="end_date"]').fill("2021-03-31");
+  await dialog.getByRole("button", { name: "Save record" }).click();
+  await expect(dialog.getByText("Previous School")).toBeVisible();
 });

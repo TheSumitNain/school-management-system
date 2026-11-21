@@ -91,9 +91,39 @@ export function StaffManagementPage({ permissions }: Props) {
     setFieldErrors({});
     setCreateStep(1);
   }
+  function advanceCreateStep(form: HTMLFormElement) {
+    if (action !== "create" || createStep >= 4) return;
+    const values = new FormData(form);
+    const value = (key: string) => String(values.get(key) ?? "").trim();
+    const username = value("username");
+    const password = value("password");
+    const fullName = value("full_name");
+    const employeeCode = value("employee_code");
+    const designation = value("designation");
+    const mobileNumber = value("mobile_number");
+    const email = value("email");
+    const joiningDate = value("joining_date");
+    const stepErrors: Record<string, string> = {};
+    if (createStep === 1) {
+      if (!fullName || fullName.length > 160) stepErrors.full_name = "Enter the employee full name (up to 160 characters).";
+      if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/.test(employeeCode)) stepErrors.employee_code = "Use 1–32 letters, numbers, dots, underscores or hyphens.";
+      if (!/^\+?[0-9]{10,15}$/.test(mobileNumber)) stepErrors.mobile_number = "Enter one mobile number with 10–15 digits.";
+      if (email && (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254)) stepErrors.email = "Enter a valid email address.";
+    }
+    if (createStep === 2 && (!designation || designation.length > 100)) stepErrors.designation = "Enter a designation (up to 100 characters).";
+    if (createStep === 3) {
+      if (!/^[a-z0-9._-]{3,32}$/.test(username)) stepErrors.username = "Use 3–32 lowercase letters, numbers, dots, underscores or hyphens.";
+      if (password.length < 12) stepErrors.password = "Password must contain at least 12 characters.";
+    }
+    setFieldErrors(stepErrors);
+    if (Object.keys(stepErrors).length) return;
+    if (createStep === 3) setCreateReview({fullName,employeeCode,mobileNumber,email,designation,joiningDate,username});
+    setCreateStep(createStep + 1);
+  }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    if (action === "create" && createStep < 4) { advanceCreateStep(event.currentTarget); return; }
     const nextErrors: Record<string, string> = {};
     const username = action === "edit" ? (selected?.username ?? "") : String(form.get("username") ?? "").trim();
     const password = String(form.get("password") ?? "");
@@ -104,25 +134,6 @@ export function StaffManagementPage({ permissions }: Props) {
     const email = String(form.get("email") ?? "").trim();
     const joiningDate = String(form.get("joining_date") ?? "").trim();
     const employmentStatus = String(form.get("employment_status") ?? "active");
-    if (action === "create" && createStep < 4) {
-      const stepErrors: Record<string, string> = {};
-      if (createStep === 1) {
-        if (!fullName || fullName.length > 160) stepErrors.full_name = "Enter the employee full name (up to 160 characters).";
-        if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/.test(employeeCode)) stepErrors.employee_code = "Use 1–32 letters, numbers, dots, underscores or hyphens.";
-        if (!/^\+?[0-9]{10,15}$/.test(mobileNumber)) stepErrors.mobile_number = "Enter one mobile number with 10–15 digits.";
-        if (email && (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254)) stepErrors.email = "Enter a valid email address.";
-      }
-      if (createStep === 2 && (!designation || designation.length > 100)) stepErrors.designation = "Enter a designation (up to 100 characters).";
-      if (createStep === 3) {
-        if (!/^[a-z0-9._-]{3,32}$/.test(username)) stepErrors.username = "Use 3–32 lowercase letters, numbers, dots, underscores or hyphens.";
-        if (password.length < 12) stepErrors.password = "Password must contain at least 12 characters.";
-      }
-      setFieldErrors(stepErrors);
-      if (Object.keys(stepErrors).length) return;
-      if (createStep === 3) setCreateReview({fullName,employeeCode,mobileNumber,email,designation,joiningDate,username});
-      setCreateStep(step => Math.min(4, step + 1));
-      return;
-    }
     if ((action === "create" || action === "edit") && !/^[a-z0-9._-]{3,32}$/.test(username)) nextErrors.username = "Use 3–32 lowercase letters, numbers, dots, underscores or hyphens.";
     if (action === "create" || action === "edit") {
       if (!fullName || fullName.length > 160) nextErrors.full_name = "Enter the employee's full name (up to 160 characters).";
@@ -289,7 +300,7 @@ export function StaffManagementPage({ permissions }: Props) {
           </>}
           {action !== "edit" && <label hidden={action === "create" && createStep !== 3}>{passwordLabel}<div className="staff-password-field"><input name="password" type={showPassword ? "text" : "password"} placeholder="Enter a strong password (12+ characters)" minLength={12} autoComplete="new-password" required aria-invalid={Boolean(fieldErrors.password)} aria-describedby={fieldErrors.password ? "staff-password-error" : "staff-password-help"} onChange={()=>setFieldErrors(current=>({...current,password:""}))}/><button type="button" onClick={() => setShowPassword(value => !value)} aria-label={showPassword ? "Hide password" : "Show password"}>{showPassword ? "Hide" : "Show"}</button></div><small id="staff-password-help">At least 12 characters. The server also checks password safety and compromised-password status.</small>{fieldErrors.password && <small className="app-field-error" id="staff-password-error" role="alert">{fieldErrors.password}</small>}</label>}
           <div className="app-modal-actions">
-            {action === "create" ? <><button className="app-modal-cancel" type="button" onClick={closeAction} disabled={pending}>Cancel</button>{createStep > 1 && <button className="app-modal-cancel" type="button" onClick={() => {setFieldErrors({});setCreateStep(step => Math.max(1, step - 1));}} disabled={pending}>Back</button>}<button className="primary" type="submit" disabled={pending}>{pending ? "Creating…" : createStep === 4 ? "Create employee" : "Continue"}</button></>
+            {action === "create" ? <><button className="app-modal-cancel" type="button" onClick={closeAction} disabled={pending}>Cancel</button>{createStep > 1 && <button className="app-modal-cancel" type="button" onClick={() => {setFieldErrors({});setCreateStep(step => Math.max(1, step - 1));}} disabled={pending}>Back</button>}<button className="primary" type={createStep === 4 ? "submit" : "button"} onClick={createStep < 4 ? (event) => { const form = event.currentTarget.form; if (form) advanceCreateStep(form); } : undefined} disabled={pending}>{pending ? "Creating…" : createStep === 4 ? "Create employee" : "Continue"}</button></>
               : <><button className="app-modal-cancel" type="button" onClick={closeAction} disabled={pending}>Cancel</button><button className="primary" type="submit" disabled={pending}>{pending ? "Saving…" : action === "reset" ? "Reset password" : action === "enable" ? "Enable account" : "Save changes"}</button></>}
           </div>
         </form>

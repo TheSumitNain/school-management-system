@@ -1,3 +1,12 @@
+## Staff Management — first records API CI checkpoint (2026-11-21)
+
+- Backend CI on `aa0fe50` passed: V57 applied successfully to the disposable CI PostgreSQL database, full `go test -count=1 -p 1 ./...` passed, and `go vet ./...` passed.
+- Frontend TypeScript and Vite production build on `aa0fe50` passed, including the design-token check.
+- The full browser suite on that commit had 41 passing tests and 4 failing Staff Management tests. Failures exposed stale profile-tab assertions, ambiguous Add Staff selectors, a missing directory navigation in one test, and an Add Staff wizard progression issue. These are being corrected; browser acceptance is NOT green yet.
+- Added a dedicated PostgreSQL integration test source for qualification/certification/experience create-list, transactional audit and cross-school denial. It still needs to run in CI.
+- The current implementation remains create/list only. Edit, verification, archive/delete and document storage are not complete. V57 has not been applied to the user's local or persistent databases.
+- Academic, Student Management and Settings product pages remain untouched.
+
 ## Staff Management — Add Staff wizard and employee profile shell (2026-11-21)
 
 - Replaced the single-step Add Employee modal flow with the roadmap's four steps: Staff Identity, Employment Details, Login & Access, and Review & Create. Step transitions validate the visible step; server-side validation remains mapped to the relevant fields on final submission.
