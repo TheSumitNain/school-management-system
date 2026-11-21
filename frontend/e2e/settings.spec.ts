@@ -1,6 +1,9 @@
 import { expect, test } from "@playwright/test";
 
+test.use({ timezoneId: "Asia/Kolkata" });
+
 test("appearance mode, palette and automatic schedule save safely on this device", async ({ page }) => {
+  await page.clock.install({ time: new Date("2026-11-21T01:00:00.000Z") });
   await page.route("**/api/**", async route => {
     const request = route.request();
     const url = new URL(request.url());
@@ -26,6 +29,7 @@ test("appearance mode, palette and automatic schedule save safely on this device
   await darkMode.click();
   await expect(darkMode).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByRole("status").filter({ hasText: "Appearance mode updated." })).toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 
   const evergreen = page.getByRole("button", { name: "Evergreen" });
   await evergreen.click();
@@ -47,6 +51,20 @@ test("appearance mode, palette and automatic schedule save safely on this device
   await expect(lightStart).toHaveAttribute("aria-invalid", "false");
   await expect(page.getByRole("status").filter({ hasText: "Theme schedule updated." })).toBeVisible();
 
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem("schooldesk.theme") ?? "{}"));
   expect(persisted.state).toMatchObject({ preference: "schedule", palette: "evergreen", darkStart: "06:00", lightStart: "07:00" });
+
+  // The schedule must continue updating after leaving Settings.
+  await page.getByRole("button", { name: "Dashboard" }).click();
+  await page.clock.fastForward("31 minutes");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+
+  // System mode follows device appearance changes without reloading the app.
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("button", { name: /^System\\b/ }).click();
+  await page.emulateMedia({ colorScheme: "dark" });
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.emulateMedia({ colorScheme: "light" });
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
 });
