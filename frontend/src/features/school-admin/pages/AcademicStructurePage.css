@@ -148,3 +148,6 @@
 .academic-impact-review th{position:sticky;top:0;background:var(--color-surface-muted);font-weight:700}
 
 .curriculum-subject-inactive-note{display:block;margin-top:3px;color:var(--color-text-muted);font-size:10px;line-height:1.4}
+
+.curriculum-removal-students{display:grid;gap:5px;margin:6px 0 0;padding-left:22px;color:var(--color-text-secondary);font-size:.92em}
+.curriculum-removal-students li{padding-left:2px}
