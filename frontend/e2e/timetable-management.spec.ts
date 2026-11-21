@@ -66,7 +66,7 @@ test("timetable period form validates every required field inline without browse
   ];
 
   for (const field of fields) {
-    const input = page.getByLabel(field.label, { exact: true });
+    const input = page.getByLabel(new RegExp(field.label));
     await expect(input).toHaveAttribute("aria-invalid", "true");
     await expect(input).toHaveAttribute("aria-describedby", field.describedBy);
     await expect(page.locator(`#${field.describedBy}[role="alert"]`)).toHaveText(field.error);
