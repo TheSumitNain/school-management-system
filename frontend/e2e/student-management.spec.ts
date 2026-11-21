@@ -1337,9 +1337,14 @@ test("student admission, profile navigation and parent details render without br
     form.requestSubmit(button as HTMLButtonElement);
   });
   await expect(page.getByText("Complete State → District → Sub-District / Tehsil → Village / City, or clear the location selection.")).toBeVisible();
+  const incompleteDistrictSelect = page.getByRole("button", { name: "District", exact: true });
+  await expect(incompleteDistrictSelect).toHaveAttribute("aria-invalid", "true");
+  await expect(incompleteDistrictSelect).toHaveAttribute("aria-describedby", "student-location-path-error");
+  await expect(page.locator('#student-location-path-error[role="alert"]')).toBeVisible();
   await page.getByLabel("Search districts").fill("Ambala");
   await page.getByRole("button", { name: "District", exact: true }).click();
   await page.getByRole("option", { name: "Ambala" }).click();
+  await expect(incompleteDistrictSelect).not.toHaveAttribute("aria-invalid", "true");
   await page.getByLabel("Search sub-districts / tehsils").fill("Ambala");
   await page.getByRole("button", { name: "Sub-District or Tehsil", exact: true }).click();
   await page.getByRole("option", { name: "Ambala" }).click();
