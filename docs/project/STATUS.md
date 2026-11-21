@@ -1,3 +1,11 @@
+## Staff Management — shared control consistency and browser regression coverage (2026-11-21)
+
+- Replaced the Staff Management joining-date native browser control with the shared IST-aware DatePicker, preserving the optional date-only API value.
+- Replaced the employment-status native select with the shared accessible Select and retained its value in the existing form submission contract; field-level server validation remains attached to the control.
+- Clarified the create action label, edit action accessible name, and staff search description so they match the actual operations and searchable fields.
+- Added Playwright coverage for creating an employee with the shared date picker and editing employment status through the shared Select. This test coverage is committed but has not yet been executed in the user's local browser.
+- Frontend typecheck, production build and Playwright execution are pending verification on the updated branch. No backend code, database migration or local school data was changed.
+
 ## Local database migration checkpoint — V56 applied (2026-11-21)
 
 - Applied V56 successfully to the local test database `school_management_test` and application database `school_management`; both were independently checked at schema version `56`, `dirty=false`.
