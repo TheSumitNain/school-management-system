@@ -1,5 +1,20 @@
 -- Restore V55 current-state-only curriculum and student selection behavior.
 
+DO $v56_down_preflight$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM student_enrollment_subject_selections WHERE revoked_at IS NOT NULL
+    ) THEN
+        RAISE EXCEPTION 'cannot downgrade V56 while revoked student subject-selection history exists; preserve it by staying on V56';
+    END IF;
+    IF EXISTS (
+        SELECT 1 FROM class_curriculum_subjects WHERE is_active=FALSE
+    ) THEN
+        RAISE EXCEPTION 'cannot downgrade V56 while soft-deactivated curriculum subject history exists; preserve it by staying on V56';
+    END IF;
+END;
+$v56_down_preflight$;
+
 CREATE OR REPLACE FUNCTION guard_v44_class_curriculum_child()
 RETURNS trigger
 LANGUAGE plpgsql AS $v55$
