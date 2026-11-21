@@ -259,6 +259,33 @@ func TestStudentCurriculumV44PostgresIntegration(t *testing.T) {
 		return err
 	})
 
+	// An already-selected optional subject remains preservable after its master
+	// subject is deactivated. The student may also remove that choice, but may
+	// not select it again after removal.
+	if _, err := tx.Exec(ctx, `UPDATE subjects SET is_active=FALSE WHERE id=$1`, standaloneSubjectID); err != nil {
+		t.Fatalf("deactivate selected optional master subject: %v", err)
+	}
+	preserved, err := academicRepo.SaveStudentEnrollmentSubjects(ctx, actorPrincipalID, schoolID,
+		enrollmentID, curriculumID, []int64{optionalCurriculumSubjectID, standaloneCurriculumSubjectID})
+	if err != nil {
+		t.Fatalf("preserve already-selected inactive optional subject: %v", err)
+	}
+	if len(preserved.SelectedOptionalSubjectIDs) != 2 {
+		t.Fatalf("selected subjects after preserving inactive choice = %v, want both existing choices", preserved.SelectedOptionalSubjectIDs)
+	}
+	removed, err := academicRepo.SaveStudentEnrollmentSubjects(ctx, actorPrincipalID, schoolID,
+		enrollmentID, curriculumID, []int64{optionalCurriculumSubjectID})
+	if err != nil {
+		t.Fatalf("remove previously selected inactive optional subject: %v", err)
+	}
+	if len(removed.SelectedOptionalSubjectIDs) != 1 || removed.SelectedOptionalSubjectIDs[0] != optionalCurriculumSubjectID {
+		t.Fatalf("selected subjects after removing inactive choice = %v, want only %d", removed.SelectedOptionalSubjectIDs, optionalCurriculumSubjectID)
+	}
+	if _, err := academicRepo.SaveStudentEnrollmentSubjects(ctx, actorPrincipalID, schoolID,
+		enrollmentID, curriculumID, []int64{optionalCurriculumSubjectID, standaloneCurriculumSubjectID}); !errors.Is(err, ErrInactiveSubjectSelection) {
+		t.Fatalf("reselecting removed inactive optional subject error = %v, want ErrInactiveSubjectSelection", err)
+	}
+
 	// Subject choices are current state, not history. Remove both rows before
 	// replacing the enrollment's curriculum assignment.
 	if _, err := tx.Exec(ctx, `DELETE FROM student_enrollment_subject_selections WHERE id = ANY($1)`, []int64{selectionID, standaloneSelectionID}); err != nil {
