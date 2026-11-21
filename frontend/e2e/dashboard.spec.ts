@@ -194,3 +194,43 @@ test("dashboard metrics and feedback remain readable without viewport overflow",
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await expect(page.locator(".dashboard-page > .heading p")).toBeVisible();
 });
+
+
+test("dashboard shows a helpful empty state when the account has no overview permissions", async ({ page }) => {
+  const unexpectedRequests: string[] = [];
+  await page.route("**/api/**", async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname.replace(/^\/api/, "");
+    if (path === "/auth/refresh") {
+      await route.fulfill({ status: 401, json: { message: "No active session" } });
+      return;
+    }
+    if (path === "/auth/login" && request.method() === "POST") {
+      await route.fulfill({ json: {
+        access_token: "e2e-dashboard-empty-token",
+        token_type: "Bearer",
+        principal: { principal_id: 154, principal_type: "staff", status: "active", school_id: 10 },
+      } });
+      return;
+    }
+    if (path === "/auth/me") {
+      await route.fulfill({ json: {
+        principal_id: 154, principal_type: "staff", school_id: 10,
+        username: "limited-dashboard-user", permissions: [],
+      } });
+      return;
+    }
+    unexpectedRequests.push(path);
+    await route.fulfill({ status: 404, json: { message: "No dashboard data should be requested." } });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Username").fill("limited-dashboard-user");
+  await page.getByLabel("Password").fill("E2E-only-password");
+  await page.getByRole("button", { name: /Continue/ }).click();
+
+  await expect(page.getByRole("status")).toContainText("No overview metrics available");
+  await expect(page.locator(".stat")).toHaveCount(0);
+  expect(unexpectedRequests).toEqual([]);
+});
