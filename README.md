@@ -31,6 +31,7 @@ The backend is **not yet the complete school product and is not production-ready
 - [Project status](docs/project/STATUS.md) — authoritative implementation status, verification evidence and next work.
 - [Product requirements](docs/product/REQUIREMENTS.md) — approved scope and delivery boundaries.
 - [Phase 1 roles and permissions](docs/product/PHASE1-RBAC.md) — role, account and authorization requirements.
+- [Staff Management roadmap](docs/product/STAFF-MANAGEMENT-ROADMAP.md) — phased staff/teacher scope, tabs, forms, required/optional fields, lifecycle and acceptance gates.
 - [Architecture](docs/architecture/ARCHITECTURE.md) — system structure and tenant boundaries.
 - [Backend documentation](docs/backend/README.md) — API, database, security and testing references.
 - [Frontend documentation](docs/frontend/README.md) — frontend status and planned integration contract.
