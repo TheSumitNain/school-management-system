@@ -389,13 +389,25 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
         closeDisabled={busy}
       >
         {pendingRemovalImpacts && pendingSave && <>
-          {pendingRemovalImpacts.length === 0 ? <p>No currently assigned students were found for the removed subjects.</p> : (
-            <ul className="curriculum-version-list">
-              {pendingRemovalImpacts.map(item => <li key={item.subject_id}>
-                <strong>{item.subject_name}</strong>
-                <p><strong>{item.affected_students}</strong> affected students</p>
-              </li>)}
-            </ul>
+          {pendingRemovalImpacts.length === 0 ? <p>No current curriculum subject rows were found for the requested removals.</p> : (
+            <div className="curriculum-removal-impact-list">
+              {pendingRemovalImpacts.map(item => <section key={item.subject_id} className="curriculum-removal-impact-item">
+                <h3>{item.subject_name}</h3>
+                <p><strong>{item.affected_students}</strong> affected student{item.affected_students === 1 ? "" : "s"}</p>
+                {item.students.length > 0 && <div className="table-scroll">
+                  <table>
+                    <thead><tr><th>Student</th><th>Admission number</th><th>Class / section</th><th>Academic year</th></tr></thead>
+                    <tbody>{item.students.map(student => <tr key={student.student_id}>
+                      <td>{student.full_name}</td>
+                      <td>{student.admission_number || "—"}</td>
+                      <td>{student.class_name} · {student.section_name}</td>
+                      <td>{student.academic_year_name}</td>
+                    </tr>)}</tbody>
+                  </table>
+                </div>}
+                {item.students.length === 0 && <p>No currently assigned students are affected by this subject.</p>}
+              </section>)}
+            </div>
           )}
           <p>Confirming permanently removes these subjects and the affected students’ current choices. No curriculum or subject-selection history will be kept.</p>
           <div className="app-modal-actions">
