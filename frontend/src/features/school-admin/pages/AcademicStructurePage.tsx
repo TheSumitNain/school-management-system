@@ -13,6 +13,12 @@ type Year = { id:number; name:string; starts_on:string; ends_on:string; status:"
 type SchoolClass = { id:number; name:string; display_order:number; is_active:boolean };
 type Section = { id:number; academic_year_id:number; class_id:number; name:string; medium?:"hindi"|"english"|null; display_order:number; is_active:boolean };
 type Subject = { id:number; name:string; subject_code?:string; is_active:boolean };
+type SectionDeactivationImpact = {
+  section_id:number; section_name:string; class_name:string; academic_year_name:string;
+  active_enrollment_count:number; historical_enrollment_count:number; active_curriculum_count:number;
+  active_teacher_assignment_count:number; active_class_incharge_count:number;
+  affected_students:Array<{student_id:number;full_name:string;admission_number:string;enrollment_status:string}>;
+};
 type Kind = "year"|"class"|"section"|"subject"|"curriculum"|"assignments";
 type EditableKind = Exclude<Kind, "assignments"|"curriculum">;
 type Action = { kind:EditableKind; record?: Year|SchoolClass|Section|Subject } | null;
@@ -51,6 +57,9 @@ export function AcademicStructurePage({permissions}:Props) {
   const [sectionMedium,setSectionMedium]=useState("");
   const [sectionStatus,setSectionStatus]=useState<"active"|"inactive">("active");
   const [recordStatus,setRecordStatus]=useState<"active"|"inactive">("active");
+  const [sectionDeactivationImpact,setSectionDeactivationImpact]=useState<SectionDeactivationImpact|null>(null);
+  const [loadingSectionImpact,setLoadingSectionImpact]=useState(false);
+  const deactivationConfirmedRef=useRef(false);
 
   async function load() {
     setLoading(true); setError("");
@@ -105,11 +114,23 @@ export function AcademicStructurePage({permissions}:Props) {
   },[]);
 
   function begin(kind:EditableKind,record?:Year|SchoolClass|Section|Subject){setAction({kind,record});setFormDirty(false);setFieldErrors({});setFeedback(null);setStartsOn(kind==="year"&&record?(record as Year).starts_on.slice(0,10):"");setEndsOn(kind==="year"&&record?(record as Year).ends_on.slice(0,10):"");setYearStatus(kind==="year"&&record?(record as Year).status:"planned");setIsCurrentYear(kind==="year"&&record?(record as Year).is_current:false);setSectionYearID(kind==="section"&&record?String((record as Section).academic_year_id):kind==="section"?(filterYear||String(years.find(item=>item.is_current&&item.status==="active")?.id??"")):"");setSectionClassID(kind==="section"&&record?String((record as Section).class_id):"");setSectionMedium(kind==="section"&&record?((record as Section).medium??""):"");setSectionStatus(kind==="section"&&record?((record as Section).is_active?"active":"inactive"):"active");setRecordStatus((kind==="class"||kind==="subject")&&record?((record as SchoolClass|Subject).is_active?"active":"inactive"):"active");}
-  function close(){setAction(null);setFormDirty(false);setFieldErrors({});}
+  function close(){setAction(null);setFormDirty(false);setFieldErrors({});setSectionDeactivationImpact(null);deactivationConfirmedRef.current=false;}
   async function submit(event:FormEvent<HTMLFormElement>){
     event.preventDefault();if(!action)return;
     const form=new FormData(event.currentTarget);
     const id=action.record?.id;
+    const isSectionDeactivation=action.kind==="section"&&Boolean(id)&&(action.record as Section).is_active&&form.get("is_active")==="false";
+    if(isSectionDeactivation&&!deactivationConfirmedRef.current){
+      setLoadingSectionImpact(true);
+      try{
+        const result=await api<{impact:SectionDeactivationImpact}>(`/school/sections/${id}/deactivation-impact`);
+        setSectionDeactivationImpact(result.impact);
+      }catch(e){
+        const message=e instanceof Error?e.message:"Unable to check section dependencies.";
+        notifyToast("error",message);setFeedback({kind:"error",message});
+      }finally{setLoadingSectionImpact(false);}
+      return;
+    }
     const method=id?"PATCH":"POST";
     const path=action.kind==="year"?"/school/academic-years"+(id?"/"+id:"")
       :action.kind==="class"?"/school/classes"+(id?"/"+id:"")
@@ -198,6 +219,22 @@ export function AcademicStructurePage({permissions}:Props) {
         <div className="app-modal-actions"><button type="button" className="app-modal-cancel" onClick={close} disabled={saving}>Cancel</button><button className="primary" type="submit" disabled={saving||(Boolean(currentRecord)&&!formDirty)}>{saving?"Saving…":"Save changes"}</button></div>
       </form>
       </>}
+    </Modal>
+    <Modal open={Boolean(sectionDeactivationImpact)} title="Review section deactivation" description="Check the exact school records linked to this section before confirming. No student, curriculum or assignment history will be deleted." onClose={()=>{setSectionDeactivationImpact(null);deactivationConfirmedRef.current=false;}} closeDisabled={saving}>
+      {sectionDeactivationImpact&&<div className="academic-impact-review">
+        <p><b>{sectionDeactivationImpact.class_name} · Section {sectionDeactivationImpact.section_name}</b> — {sectionDeactivationImpact.academic_year_name}</p>
+        <p>This section currently has:</p>
+        <ul>
+          <li><b>{sectionDeactivationImpact.active_enrollment_count}</b> active student enrollments</li>
+          <li><b>{sectionDeactivationImpact.historical_enrollment_count}</b> historical enrollments retained</li>
+          <li><b>{sectionDeactivationImpact.active_curriculum_count}</b> active section curricula</li>
+          <li><b>{sectionDeactivationImpact.active_teacher_assignment_count}</b> active teacher-subject assignments</li>
+          <li><b>{sectionDeactivationImpact.active_class_incharge_count}</b> active class-in-charge assignments</li>
+        </ul>
+        {sectionDeactivationImpact.affected_students.length>0&&<div><h3>Affected active students ({sectionDeactivationImpact.affected_students.length})</h3><div className="table-scroll"><table><thead><tr><th>Student</th><th>Admission number</th></tr></thead><tbody>{sectionDeactivationImpact.affected_students.map(student=><tr key={student.student_id}><td>{student.full_name}</td><td>{student.admission_number||"—"}</td></tr>)}</tbody></table></div></div>}
+        <p><b>Deactivation does not transfer students or revoke assignments automatically.</b> Existing records remain linked for history. Review and plan those follow-up changes separately.</p>
+        <div className="app-modal-actions"><button type="button" className="app-modal-cancel" onClick={()=>{setSectionDeactivationImpact(null);deactivationConfirmedRef.current=false;}}>Go back</button><button type="button" className="primary" onClick={()=>{deactivationConfirmedRef.current=true;setSectionDeactivationImpact(null);editFormRef.current?.requestSubmit();}}>Confirm deactivation</button></div>
+      </div>}
     </Modal>
     {loading?<div className="table-message">Loading academic structure…</div>:tab==="year"?<section className="table-panel"><div className="toolbar"><div><h2>Academic years</h2><small>{years.length} records</small></div>{canManageYears&&<button className="primary academic-add" type="button" onClick={()=>begin("year")}><Plus size={15}/> Add academic year</button>}</div>{years.length===0?<div className="table-message">No academic years configured yet.</div>:<div className="table-scroll"><table><thead><tr><th>Name</th><th>Period</th><th>Status</th><th>Current</th>{canManageYears&&<th>Action</th>}</tr></thead><tbody>{years.map(item=><tr key={item.id}><td><b>{item.name}</b></td><td>{item.starts_on.slice(0,10)} – {item.ends_on.slice(0,10)}</td><td><span className={`academic-status-badge status-${item.status}`}>{item.status==="planned"?"Planned":item.status==="active"?"Active":"Closed"}</span></td><td>{item.is_current?"Yes":"—"}</td>{canManageYears&&<td><button type="button" className="academic-edit" disabled={item.status==="closed"} onClick={()=>begin("year",item)} aria-label={"Edit "+item.name}><Pencil size={15}/></button></td>}</tr>)}</tbody></table></div>}</section>
     :tab==="class"?<section className="table-panel"><div className="toolbar"><div><h2>Classes</h2><small>{classes.length} records</small></div>{canManageClasses&&<button className="primary academic-add" type="button" onClick={()=>begin("class")}><Plus size={15}/> Add class</button>}</div>{classes.length===0?<div className="table-message">No classes configured yet.</div>:<div className="table-scroll"><table><thead><tr><th>Class</th><th>Order</th><th>Status</th>{canManageClasses&&<th>Action</th>}</tr></thead><tbody>{classes.map(item=><tr key={item.id}><td><b>{item.name}</b></td><td>{item.display_order}</td><td><span className={`academic-status-badge status-${item.is_active?"active":"inactive"}`}>{item.is_active?"Active":"Inactive"}</span></td>{canManageClasses&&<td><button type="button" className="academic-edit" onClick={()=>begin("class",item)} aria-label={"Edit "+item.name}><Pencil size={15}/></button></td>}</tr>)}</tbody></table></div>}</section>
