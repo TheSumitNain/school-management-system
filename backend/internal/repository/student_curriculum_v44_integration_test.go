@@ -326,11 +326,11 @@ func TestStudentCurriculumV44PostgresIntegration(t *testing.T) {
 	_, err = academicRepo.SaveSectionClassCurriculumWithConfirmations(
 		ctx, actorPrincipalID, schoolID, yearID, classID, sectionID,
 		[]CurriculumOptionalGroupInput{{Name: "Language", MinSelections: 1, MaxSelections: 1}},
-		[]CurriculumSubjectInput{
-			{SubjectID: subjectID, IsOptional: true, OptionalGroup: "Language"},
-			{SubjectID: standaloneSubjectID, IsOptional: true},
+		[]CurriculumSubjectInput{{SubjectID: subjectID, IsOptional: true, OptionalGroup: "Language"}},
+		[]CurriculumRemovalConfirmation{
+			{SubjectID: standaloneSubjectID, AffectedStudents: 0, StudentIDs: []int64{}},
+			{SubjectID: compulsorySubjectID, AffectedStudents: 1, StudentIDs: []int64{secondStudentID}},
 		},
-		[]CurriculumRemovalConfirmation{{SubjectID: compulsorySubjectID, AffectedStudents: 1, StudentIDs: []int64{secondStudentID}}},
 	)
 	if !errors.Is(err, ErrCurriculumRemovalImpactChanged) {
 		t.Fatalf("same-count confirmation with a different student ID returned %v, want stale impact", err)
