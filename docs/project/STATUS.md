@@ -1,3 +1,16 @@
+## Academic Structure lifecycle safety — verified checkpoint (2026-11-21)
+
+- Academic years close/archive; they are not hard-deleted. Closed years remain readable for historical records, and the current-year flag is cleared when a year is closed.
+- Class, section and subject deactivation now each has a school-scoped dependency-impact preview, explicit confirmation UI, a fingerprinted confirmation request, and a transactional backend write that locks the relevant parent/dependent records, rechecks the fingerprint, rejects stale confirmations, changes only the master record's active state, and writes the audit event in the same transaction.
+- Section preview includes active/historical enrollments, active section curricula, active teacher-subject and class-in-charge assignments, and affected students. Class preview includes active/inactive sections, active/historical enrollments, active curricula, active assignments and affected students with section/year context. Subject preview includes curriculum references, active teacher assignments, active/historical student selections and affected students with class/section/year context.
+- Direct API attempts to deactivate active classes/sections/subjects without a reviewed fingerprint are rejected. Confirmed deactivation does not silently delete or cascade student enrollments, curriculum references, subject choices, sections or assignments.
+- Subject deactivation is coordinated with curriculum and student-selection writes: inactive catalogue subjects are not offered for new curriculum/teacher-assignment use, while already assigned inactive subject choices remain visible and are preserved rather than silently cleared. The Student Profile shows the inactive-catalogue status without mobile-width overflow.
+- Added PostgreSQL integration coverage for section/class/subject stale-fingerprint rejection and refreshed confirmation, retention of linked records, and transactional audit events. Added browser acceptance coverage for all three deactivation previews, cancellation without writes, explicit confirmation and the academic-year archive flow.
+- Frontend CI **PASS** — [run 44863350595](https://github.com/TheSumitNain/school-management-system/actions/runs/44863350595), checkpoint `f42afc2ddbcd51aae7595c03b0f54efbc99dd1d7`: TypeScript/Vite build and all 26 Playwright browser acceptance tests passed.
+- Backend CI **PASS** — [run 44863685108](https://github.com/TheSumitNain/school-management-system/actions/runs/44863685108), checkpoint `8543983c132b78818531537471bec6bea06c507e`: full Go tests including PostgreSQL integration and `go vet` passed.
+- No migration or live/local database data change was made for these UI flows. The requested Class 4 A/B-only configuration has not been applied to a live school database; any existing extra section must be reviewed and deactivated through this preview/confirmation flow, not removed by an unreviewed data change.
+- Timetable, Staff and Attendance pages were not modified as part of this work.
+
 ## Subject deactivation dependency preview checkpoint (2026-11-21)
 
 - Added a school-scoped `GET /school/subjects/:subjectID/deactivation-impact` endpoint protected by the live `subjects.manage` permission.
