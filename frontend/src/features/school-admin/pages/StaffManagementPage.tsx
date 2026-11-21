@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useRef, useState, type FormEvent } from "react";
+import { Fragment, useMemo, useState, type FormEvent } from "react";
 import { notifyToast } from "../../../shared/notifications";
 import { BookOpen, CalendarDays, Clock3, FileText, KeyRound, LayoutDashboard, LockKeyhole, Pencil, Plus, Search, Shield, ShieldCheck, UserCheck, UserMinus } from "lucide-react";
 import { StaffRoleAssignments } from "../components/StaffRoleAssignments";
@@ -51,7 +51,6 @@ export function StaffManagementPage({ permissions }: Props) {
   const createExperience = useCreateStaffExperienceMutation(staffRecordID);
   const [recordFormKind, setRecordFormKind] = useState<"qualification" | "certification" | "experience" | null>(null);
   const [recordError, setRecordError] = useState("");
-  const createFormRef = useRef<HTMLFormElement | null>(null);
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [createStep, setCreateStep] = useState(1);
@@ -287,7 +286,7 @@ export function StaffManagementPage({ permissions }: Props) {
         {action === "create" && createStep === 4 && <section className="staff-wizard-review"><h3>Review & create</h3><p>Check the details before creating this employee and login account.</p>
           <dl>{createReview && <><div><dt>Full name</dt><dd>{createReview.fullName}</dd></div><div><dt>Employee code</dt><dd>{createReview.employeeCode}</dd></div><div><dt>Mobile</dt><dd>{createReview.mobileNumber}</dd></div><div><dt>Email</dt><dd>{createReview.email || "Not provided"}</dd></div><div><dt>Designation</dt><dd>{createReview.designation}</dd></div><div><dt>Joining date</dt><dd>{createReview.joiningDate || "Not set"}</dd></div><div><dt>Login username</dt><dd>{createReview.username}</dd></div></>}</dl>
           <p>Temporary password change is required at first sign-in. After creation, you can explicitly copy credentials for a trusted handoff. Nothing is sent automatically.</p></section>}
-        <form ref={createFormRef} onSubmit={submit} noValidate>
+        <form onSubmit={submit} noValidate>
           {action === "create" && <label hidden={createStep !== 3}>Login username<input name="username" placeholder="e.g. rahul.sharma" minLength={3} maxLength={32} pattern="[a-z0-9._-]{3,32}" autoComplete="off" required aria-invalid={Boolean(fieldErrors.username)} aria-describedby={fieldErrors.username ? "staff-username-error" : "staff-username-help"} onChange={()=>setFieldErrors(current=>({...current,username:""}))}/><small id="staff-username-help">3–32 lowercase letters, numbers, dots, underscores or hyphens. Unique across the platform.</small>{fieldErrors.username && <small className="app-field-error" id="staff-username-error" role="alert">{fieldErrors.username}</small>}</label>}
           {action === "edit" && <label>Login username<input value={selected?.username ?? ""} disabled/><small>Login identity is managed separately from employee details.</small></label>}
           {(action === "create" || action === "edit") && <>
@@ -301,7 +300,7 @@ export function StaffManagementPage({ permissions }: Props) {
           </>}
           {action !== "edit" && <label hidden={action === "create" && createStep !== 3}>{passwordLabel}<div className="staff-password-field"><input name="password" type={showPassword ? "text" : "password"} placeholder="Enter a strong password (12+ characters)" minLength={12} autoComplete="new-password" required aria-invalid={Boolean(fieldErrors.password)} aria-describedby={fieldErrors.password ? "staff-password-error" : "staff-password-help"} onChange={()=>setFieldErrors(current=>({...current,password:""}))}/><button type="button" onClick={() => setShowPassword(value => !value)} aria-label={showPassword ? "Hide password" : "Show password"}>{showPassword ? "Hide" : "Show"}</button></div><small id="staff-password-help">At least 12 characters. The server also checks password safety and compromised-password status.</small>{fieldErrors.password && <small className="app-field-error" id="staff-password-error" role="alert">{fieldErrors.password}</small>}</label>}
           <div className="app-modal-actions">
-            {action === "create" ? <><button className="app-modal-cancel" type="button" onClick={closeAction} disabled={pending}>Cancel</button>{createStep > 1 && <button className="app-modal-cancel" type="button" onClick={() => {setFieldErrors({});setCreateStep(step => Math.max(1, step - 1));}} disabled={pending}>Back</button>}<button className="primary" type={createStep === 4 ? "submit" : "button"} onClick={createStep < 4 ? (event) => { const form = createFormRef.current ?? (event.currentTarget.closest("form") as HTMLFormElement | null) ?? document.querySelector<HTMLFormElement>(".app-modal form"); if (form) advanceCreateStep(form); } : undefined} disabled={pending}>{pending ? "Creating…" : createStep === 4 ? "Create employee" : "Continue"}</button></>
+            {action === "create" ? <><button className="app-modal-cancel" type="button" onClick={closeAction} disabled={pending}>Cancel</button>{createStep > 1 && <button className="app-modal-cancel" type="button" onClick={() => {setFieldErrors({});setCreateStep(step => Math.max(1, step - 1));}} disabled={pending}>Back</button>}<button className="primary" type="submit" disabled={pending}>{pending ? "Creating…" : createStep === 4 ? "Create employee" : "Continue"}</button></>
               : <><button className="app-modal-cancel" type="button" onClick={closeAction} disabled={pending}>Cancel</button><button className="primary" type="submit" disabled={pending}>{pending ? "Saving…" : action === "reset" ? "Reset password" : action === "enable" ? "Enable account" : "Save changes"}</button></>}
           </div>
         </form>

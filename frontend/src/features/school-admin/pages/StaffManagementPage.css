@@ -151,4 +151,4 @@
 .staff-record-form-actions{display:flex;justify-content:flex-end;gap:8px;padding-top:4px}
 @media(max-width:640px){.staff-record-form{grid-template-columns:minmax(0,1fr)}.staff-record-card{padding:10px}.staff-record-form-actions{flex-wrap:wrap}.staff-record-form-actions button{flex:1}}
 
-.staff-management-page label[hidden]{display:none!important}
+.app-modal label[hidden]{display:none!important}
