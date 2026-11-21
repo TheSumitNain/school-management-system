@@ -148,3 +148,11 @@
 .academic-impact-review th{position:sticky;top:0;background:var(--color-surface-muted);font-weight:700}
 
 .curriculum-subject-inactive-note{display:block;margin-top:3px;color:var(--color-text-muted);font-size:10px;line-height:1.4}
+
+.curriculum-removal-impact-list{display:grid;gap:14px;max-height:min(55vh,560px);overflow:auto;padding-right:4px}
+.curriculum-removal-impact-item{display:grid;gap:8px;padding:12px;border:1px solid var(--color-border);border-radius:10px;background:var(--color-surface)}
+.curriculum-removal-impact-item h3,.curriculum-removal-impact-item p{margin:0}
+.curriculum-removal-impact-item h3{font:700 14px var(--font-heading);color:var(--color-text)}
+.curriculum-removal-impact-item>p{font-size:12px;color:var(--color-text-muted)}
+.curriculum-removal-impact-item .table-scroll{max-width:100%;overflow-x:auto}
+.curriculum-removal-impact-item table{min-width:620px}
