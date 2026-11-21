@@ -92,7 +92,7 @@ test("academic structure create feedback is contextual and failed writes remain 
   await subjectDialog.getByRole("button", { name: "Save changes" }).click();
   await expect(subjectDialog.getByText("This subject already exists in your school.")).toBeVisible();
   await expect(subjectDialog.getByLabel("Name")).toHaveAttribute("aria-invalid", "true");
-  await expect(page.getByRole("alert").filter({ hasText: "A subject with this name already exists." })).toBeVisible();
+  await expect(page.locator(".app-toast-error").filter({ hasText: "A subject with this name already exists." })).toBeVisible();
   expect(writes).toHaveLength(2);
   await expect(subjectDialog.getByLabel("Name")).toHaveValue("Mathematics");
 });
