@@ -845,3 +845,9 @@
 .student-subject-row>span:first-child,
 .student-subject-option>span{min-width:0;max-width:100%;overflow-wrap:anywhere}
 .student-subject-type-badge{margin-left:0;max-width:100%;white-space:normal;overflow-wrap:anywhere;text-align:center;flex:0 1 auto}
+
+/* The curriculum header has three independent items; let Refresh wrap instead of widening the subject panel on phones. */
+@media(max-width:560px){
+  .student-enrollment-subjects>.student-profile-enrollment-heading{flex-wrap:wrap;min-width:0}
+  .student-enrollment-subjects>.student-profile-enrollment-heading .student-link-button{margin-left:auto}
+}
