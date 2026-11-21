@@ -9,6 +9,7 @@ import {
   useResetSchoolStaffPasswordMutation, useSchoolStaffQuery, useUpdateSchoolStaffMutation,
   useStaffQualificationsQuery, useStaffCertificationsQuery, useStaffExperienceQuery,
   useCreateStaffQualificationMutation, useCreateStaffCertificationMutation, useCreateStaffExperienceMutation,
+  useUpdateStaffQualificationMutation, useUpdateStaffCertificationMutation, useUpdateStaffExperienceMutation,
 } from "../queries";
 import type { StaffRecord } from "../api";
 import { ApiError } from "../../../lib/api";
@@ -49,6 +50,13 @@ export function StaffManagementPage({ permissions }: Props) {
   const createQualification = useCreateStaffQualificationMutation(staffRecordID);
   const createCertification = useCreateStaffCertificationMutation(staffRecordID);
   const createExperience = useCreateStaffExperienceMutation(staffRecordID);
+  const updateQualification = useUpdateStaffQualificationMutation(staffRecordID);
+  const updateCertification = useUpdateStaffCertificationMutation(staffRecordID);
+  const updateExperience = useUpdateStaffExperienceMutation(staffRecordID);
+  const [editingRecordID, setEditingRecordID] = useState<number | null>(null);
+  const editingQualification = qualificationsQuery.data?.qualifications.find(item => item.id === editingRecordID);
+  const editingCertification = certificationsQuery.data?.certifications.find(item => item.id === editingRecordID);
+  const editingExperience = experienceQuery.data?.experience.find(item => item.id === editingRecordID);
   const [recordFormKind, setRecordFormKind] = useState<"qualification" | "certification" | "experience" | null>(null);
   const [recordError, setRecordError] = useState("");
   const [recordFieldErrors, setRecordFieldErrors] = useState<Record<string, string>>({});
@@ -72,7 +80,7 @@ export function StaffManagementPage({ permissions }: Props) {
     return staff.filter(item => !term || [item.username, item.full_name, item.employee_code, item.designation, item.mobile_number, item.status, item.employment_status].some(value => value?.toLowerCase().includes(term)));
   }, [staff, search]);
 
-  function openProfile(item: StaffRecord) { setProfileFor(item); setProfileTab("Overview"); setRecordFormKind(null); setRecordError(""); }
+  function openProfile(item: StaffRecord) { setProfileFor(item); setProfileTab("Overview"); setRecordFormKind(null); setEditingRecordID(null); setRecordError(""); }
   function openAction(next: Action, item: StaffRecord | null = null) {
     setSelected(item);
     setAction(next);
@@ -248,29 +256,36 @@ export function StaffManagementPage({ permissions }: Props) {
       if (recordFormKind === "qualification") {
         const year = value("completion_year");
         const score = value("score");
-        await createQualification.mutateAsync({
+        const data = {
           qualification_type: value("qualification_type") as "school" | "diploma" | "undergraduate" | "postgraduate" | "doctorate" | "other",
           qualification_name: value("qualification_name"), specialization: value("specialization"),
           institution: value("institution"), board_university: value("board_university"),
           completion_year: year ? Number(year) : null, score: score ? Number(score) : null,
           score_scale: score ? value("score_scale") as "percentage" | "cgpa" | "gpa" | "marks" | "grade" : undefined,
           credential_reference: value("credential_reference"),
-        });
+        };
+        if (editingRecordID !== null) await updateQualification.mutateAsync({ recordID: editingRecordID, data });
+        else await createQualification.mutateAsync(data);
       } else if (recordFormKind === "certification") {
-        await createCertification.mutateAsync({
+        const data = {
           certificate_name: value("certificate_name"), issuing_organization: value("issuing_organization"),
           issue_date: value("issue_date"), expiry_date: value("expiry_date"), credential_id: value("credential_id"),
-        });
+        };
+        if (editingRecordID !== null) await updateCertification.mutateAsync({ recordID: editingRecordID, data });
+        else await createCertification.mutateAsync(data);
       } else {
-        await createExperience.mutateAsync({
+        const data = {
           employer_name: value("employer_name"), designation: value("record_designation"),
           employment_type: value("employment_type") as "permanent" | "contract" | "part_time" | "temporary" | "internship" | "other",
           start_date: value("start_date"), end_date: form.get("is_current") ? "" : value("end_date"),
           is_current: Boolean(form.get("is_current")), description: value("description"),
-        });
+        };
+        if (editingRecordID !== null) await updateExperience.mutateAsync({ recordID: editingRecordID, data });
+        else await createExperience.mutateAsync(data);
       }
       setRecordFormKind(null);
-      notifyToast("success", "Staff record saved.");
+      setEditingRecordID(null);
+      notifyToast("success", editingRecordID !== null ? "Staff record updated." : "Staff record saved.");
     } catch (error) {
       setRecordError(error instanceof Error ? error.message : "Unable to save this record. Your entered details are still available.");
     }
@@ -427,7 +442,7 @@ export function StaffManagementPage({ permissions }: Props) {
           {!canUpdate && <p className="staff-wizard-note">You have read-only access to these records.</p>}
           <p className="staff-wizard-note">New records are saved with Pending verification. Existing records are not silently overwritten or deleted.</p>
           {recordFormKind && <form className="staff-record-form" noValidate onSubmit={submitStaffRecord}>
-            <div className="staff-record-form-heading"><h4>{recordFormKind === "qualification" ? "Add education" : recordFormKind === "certification" ? "Add certification" : "Add employment history"}</h4><button type="button" className="staff-text-button" onClick={() => {setRecordFormKind(null);setRecordError("");setRecordFieldErrors({});}}>Cancel</button></div>
+            <div className="staff-record-form-heading"><h4>{recordFormKind === "qualification" ? "Add education" : recordFormKind === "certification" ? "Add certification" : "Add employment history"}</h4><button type="button" className="staff-text-button" onClick={() => {setRecordFormKind(null);setEditingRecordID(null);setRecordError("");setRecordFieldErrors({});}}>Cancel</button></div>
             {recordFormKind === "qualification" && <>
               <label>Qualification type <select name="qualification_type" required defaultValue="undergraduate"><option value="school">School</option><option value="diploma">Diploma</option><option value="undergraduate">Undergraduate</option><option value="postgraduate">Postgraduate</option><option value="doctorate">Doctorate</option><option value="other">Other</option></select></label>
               <label>Qualification name <input name="qualification_name" required maxLength={160} aria-invalid={Boolean(recordFieldErrors.qualification_name)} aria-describedby={recordFieldErrors.qualification_name ? "staff-record-qualification-name-error" : undefined}/>{recordFieldErrors.qualification_name && <small id="staff-record-qualification-name-error" className="app-field-error" role="alert">{recordFieldErrors.qualification_name}</small>}</label>
