@@ -142,6 +142,7 @@ export function PlatformAdminPage({ permissions }: Props) {
       setFeedback({ kind: "error", message: "Review the delegation details that need attention." });
       return;
     }
+    if (selectedSchoolID === null) return;
     setFeedback(null);
     try {
       await grantDelegation.mutateAsync({
