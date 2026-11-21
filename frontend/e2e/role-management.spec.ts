@@ -71,6 +71,13 @@ test("custom roles can be created, granted delegated permissions and safely revo
 
   await page.getByRole("button", { name: "Create role" }).click();
   const createDialog = page.getByRole("dialog", { name: "Create a custom role" });
+  await page.setViewportSize({ width: 320, height: 720 });
+  const createDialogFits = await createDialog.evaluate(element => {
+    const rect = element.getBoundingClientRect();
+    return rect.left >= 0 && rect.right <= window.innerWidth + 1 && rect.width > 0;
+  });
+  expect(createDialogFits, "create role dialog should fit a 320px viewport").toBe(true);
+  await expect(createDialog.getByText("Required")).toBeVisible();
   await createDialog.getByRole("button", { name: "Create role" }).click();
   await expect(createDialog.getByText("Enter a role name with at least 2 characters.")).toBeVisible();
   expect(createCalls).toBe(0);
@@ -85,9 +92,16 @@ test("custom roles can be created, granted delegated permissions and safely revo
   expect(createCalls).toBe(2);
   const permissionDialog = page.getByRole("dialog", { name: "Manage permissions · Assessment Coordinator" });
   await expect(permissionDialog.getByText("No permissions have been granted to this role yet.")).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
 
   await permissionDialog.getByRole("button", { name: "Add delegated permission" }).click();
   const grantDialog = page.getByRole("dialog", { name: "Grant a delegated permission" });
+  await expect(grantDialog.getByText("Required")).toBeVisible();
+  const grantDialogFits = await grantDialog.evaluate(element => {
+    const rect = element.getBoundingClientRect();
+    return rect.left >= 0 && rect.right <= window.innerWidth + 1 && rect.width > 0;
+  });
+  expect(grantDialogFits, "permission grant dialog should fit a mobile viewport").toBe(true);
   const permissionSelect = grantDialog.locator('button[aria-label="Permission to grant"]');
   await permissionSelect.click();
   await grantDialog.getByRole("option", { name: /students.read_basic/ }).click();
