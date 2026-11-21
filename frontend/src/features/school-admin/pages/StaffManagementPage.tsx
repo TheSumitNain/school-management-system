@@ -51,6 +51,7 @@ export function StaffManagementPage({ permissions }: Props) {
   const createExperience = useCreateStaffExperienceMutation(staffRecordID);
   const [recordFormKind, setRecordFormKind] = useState<"qualification" | "certification" | "experience" | null>(null);
   const [recordError, setRecordError] = useState("");
+  const [recordFieldErrors, setRecordFieldErrors] = useState<Record<string, string>>({});
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [createStep, setCreateStep] = useState(1);
@@ -204,6 +205,45 @@ export function StaffManagementPage({ permissions }: Props) {
     const form = new FormData(event.currentTarget);
     const value = (key: string) => String(form.get(key) ?? "").trim();
     setRecordError("");
+    const errors: Record<string, string> = {};
+    const yearValue = value("completion_year");
+    const scoreValue = value("score");
+    const issueDate = value("issue_date");
+    const expiryDate = value("expiry_date");
+    const startDate = value("start_date");
+    const endDate = value("end_date");
+    const isCurrent = Boolean(form.get("is_current"));
+    const requiredText = (key: string, label: string, max: number) => {
+      const textValue = value(key);
+      if (!textValue) errors[key] = `Enter ${label.toLowerCase()}.`;
+      else if (textValue.length > max) errors[key] = `${label} must be ${max} characters or fewer.`;
+    };
+    if (recordFormKind === "qualification") {
+      requiredText("qualification_name", "Qualification name", 160);
+      requiredText("institution", "Institution", 200);
+      if (yearValue && (!/^\\d{4}$/.test(yearValue) || Number(yearValue) < 1900 || Number(yearValue) > 2200)) errors.completion_year = "Enter a year between 1900 and 2200.";
+      if (scoreValue && (!Number.isFinite(Number(scoreValue)) || Number(scoreValue) < 0)) errors.score = "Enter a valid non-negative score.";
+      if (Boolean(scoreValue) !== Boolean(value("score_scale"))) errors.score_scale = "Choose a score scale when a score is entered.";
+      if (value("specialization").length > 160) errors.specialization = "Specialization must be 160 characters or fewer.";
+      if (value("board_university").length > 200) errors.board_university = "Board / University must be 200 characters or fewer.";
+      if (value("credential_reference").length > 120) errors.credential_reference = "Credential reference must be 120 characters or fewer.";
+    } else if (recordFormKind === "certification") {
+      requiredText("certificate_name", "Certificate name", 180);
+      requiredText("issuing_organization", "Issuing organization", 200);
+      if (value("credential_id").length > 120) errors.credential_id = "Credential ID must be 120 characters or fewer.";
+      if (issueDate && !/^\\d{4}-\\d{2}-\\d{2}$/.test(issueDate)) errors.issue_date = "Enter a valid issue date.";
+      if (expiryDate && !/^\\d{4}-\\d{2}-\\d{2}$/.test(expiryDate)) errors.expiry_date = "Enter a valid expiry date.";
+      if (issueDate && expiryDate && expiryDate < issueDate) errors.expiry_date = "Expiry date cannot be before the issue date.";
+    } else {
+      requiredText("employer_name", "Employer name", 200);
+      requiredText("record_designation", "Designation", 120);
+      if (!startDate || !/^\\d{4}-\\d{2}-\\d{2}$/.test(startDate)) errors.start_date = "Enter a valid start date.";
+      if (isCurrent && endDate) errors.end_date = "A current role cannot have an end date.";
+      else if (endDate && (!/^\\d{4}-\\d{2}-\\d{2}$/.test(endDate) || endDate < startDate)) errors.end_date = "End date must be on or after the start date.";
+      if (value("description").length > 2000) errors.description = "Description must be 2,000 characters or fewer.";
+    }
+    setRecordFieldErrors(errors);
+    if (Object.keys(errors).length) return;
     try {
       if (recordFormKind === "qualification") {
         const year = value("completion_year");
@@ -364,21 +404,21 @@ export function StaffManagementPage({ permissions }: Props) {
         {profileTab === "Qualifications & Experience" && <section className="staff-records-panel">
           <div className="staff-records-heading"><div><h3>Qualifications & experience</h3><p>Education, professional certificates and previous employment records for this employee.</p></div></div>
           <div className="staff-record-group">
-            <div className="staff-record-group-heading"><h4>Education</h4>{canUpdate && <button className="staff-secondary-button" type="button" onClick={() => {setRecordError("");setRecordFormKind("qualification");}}>Add qualification</button>}</div>
+            <div className="staff-record-group-heading"><h4>Education</h4>{canUpdate && <button className="staff-secondary-button" type="button" onClick={() => {setRecordError("");setRecordFieldErrors({});setRecordFormKind("qualification");}}>Add qualification</button>}</div>
             {qualificationsQuery.isLoading && <p role="status">Loading qualifications…</p>}
             {qualificationsQuery.isError && <div className="staff-record-error" role="alert"><span>Unable to load qualifications.</span><button type="button" onClick={() => void qualificationsQuery.refetch()}>Retry</button></div>}
             {!qualificationsQuery.isLoading && !qualificationsQuery.isError && (qualificationsQuery.data?.qualifications.length ?? 0) === 0 && <p className="staff-record-empty">No education records added yet.</p>}
             {qualificationsQuery.data?.qualifications.map(item => <article className="staff-record-card" key={item.id}><div><strong>{item.qualification_name}</strong><span>{item.institution}{item.completion_year ? ` · ${item.completion_year}` : ""}</span>{item.specialization && <small>{item.specialization}</small>}</div><span className="staff-record-status">{item.verification_status}</span></article>)}
           </div>
           <div className="staff-record-group">
-            <div className="staff-record-group-heading"><h4>Certifications</h4>{canUpdate && <button className="staff-secondary-button" type="button" onClick={() => {setRecordError("");setRecordFormKind("certification");}}>Add certification</button>}</div>
+            <div className="staff-record-group-heading"><h4>Certifications</h4>{canUpdate && <button className="staff-secondary-button" type="button" onClick={() => {setRecordError("");setRecordFieldErrors({});setRecordFormKind("certification");}}>Add certification</button>}</div>
             {certificationsQuery.isLoading && <p role="status">Loading certifications…</p>}
             {certificationsQuery.isError && <div className="staff-record-error" role="alert"><span>Unable to load certifications.</span><button type="button" onClick={() => void certificationsQuery.refetch()}>Retry</button></div>}
             {!certificationsQuery.isLoading && !certificationsQuery.isError && (certificationsQuery.data?.certifications.length ?? 0) === 0 && <p className="staff-record-empty">No certifications added yet.</p>}
             {certificationsQuery.data?.certifications.map(item => <article className="staff-record-card" key={item.id}><div><strong>{item.certificate_name}</strong><span>{item.issuing_organization}</span><small>{item.issue_date || "Issue date not provided"}{item.expiry_date ? ` · Expires ${item.expiry_date}` : ""}</small></div><span className="staff-record-status">{item.verification_status}</span></article>)}
           </div>
           <div className="staff-record-group">
-            <div className="staff-record-group-heading"><h4>Employment history</h4>{canUpdate && <button className="staff-secondary-button" type="button" onClick={() => {setRecordError("");setRecordFormKind("experience");}}>Add experience</button>}</div>
+            <div className="staff-record-group-heading"><h4>Employment history</h4>{canUpdate && <button className="staff-secondary-button" type="button" onClick={() => {setRecordError("");setRecordFieldErrors({});setRecordFormKind("experience");}}>Add experience</button>}</div>
             {experienceQuery.isLoading && <p role="status">Loading experience…</p>}
             {experienceQuery.isError && <div className="staff-record-error" role="alert"><span>Unable to load experience.</span><button type="button" onClick={() => void experienceQuery.refetch()}>Retry</button></div>}
             {!experienceQuery.isLoading && !experienceQuery.isError && (experienceQuery.data?.experience.length ?? 0) === 0 && <p className="staff-record-empty">No previous employment records added yet.</p>}
@@ -387,36 +427,36 @@ export function StaffManagementPage({ permissions }: Props) {
           {!canUpdate && <p className="staff-wizard-note">You have read-only access to these records.</p>}
           <p className="staff-wizard-note">New records are saved with Pending verification. Existing records are not silently overwritten or deleted.</p>
           {recordFormKind && <form className="staff-record-form" onSubmit={submitStaffRecord}>
-            <div className="staff-record-form-heading"><h4>{recordFormKind === "qualification" ? "Add education" : recordFormKind === "certification" ? "Add certification" : "Add employment history"}</h4><button type="button" className="staff-text-button" onClick={() => {setRecordFormKind(null);setRecordError("");}}>Cancel</button></div>
+            <div className="staff-record-form-heading"><h4>{recordFormKind === "qualification" ? "Add education" : recordFormKind === "certification" ? "Add certification" : "Add employment history"}</h4><button type="button" className="staff-text-button" onClick={() => {setRecordFormKind(null);setRecordError("");setRecordFieldErrors({});}}>Cancel</button></div>
             {recordFormKind === "qualification" && <>
               <label>Qualification type <select name="qualification_type" required defaultValue="undergraduate"><option value="school">School</option><option value="diploma">Diploma</option><option value="undergraduate">Undergraduate</option><option value="postgraduate">Postgraduate</option><option value="doctorate">Doctorate</option><option value="other">Other</option></select></label>
-              <label>Qualification name <input name="qualification_name" required maxLength={160}/></label>
+              <label>Qualification name <input name="qualification_name" required maxLength={160} aria-invalid={Boolean(recordFieldErrors.qualification_name)} aria-describedby={recordFieldErrors.qualification_name ? "staff-record-qualification-name-error" : undefined}/>{recordFieldErrors.qualification_name && <small id="staff-record-qualification-name-error" className="app-field-error" role="alert">{recordFieldErrors.qualification_name}</small>}</label>
               <label>Specialization (optional) <input name="specialization" maxLength={160}/></label>
-              <label>Institution <input name="institution" required maxLength={200}/></label>
+              <label>Institution <input name="institution" required maxLength={200} aria-invalid={Boolean(recordFieldErrors.institution)} aria-describedby={recordFieldErrors.institution ? "staff-record-institution-error" : undefined}/>{recordFieldErrors.institution && <small id="staff-record-institution-error" className="app-field-error" role="alert">{recordFieldErrors.institution}</small>}</label>
               <label>Board / University (optional) <input name="board_university" maxLength={200}/></label>
-              <label>Completion year (optional) <input name="completion_year" type="number" min="1900" max="2200"/></label>
-              <label>Score (optional) <input name="score" type="number" min="0" step="0.001"/></label>
-              <label>Score scale (required with score) <select name="score_scale" defaultValue=""><option value="">Select scale</option><option value="percentage">Percentage</option><option value="cgpa">CGPA</option><option value="gpa">GPA</option><option value="marks">Marks</option><option value="grade">Grade</option></select></label>
+              <label>Completion year (optional) <input name="completion_year" type="number" min="1900" max="2200" aria-invalid={Boolean(recordFieldErrors.completion_year)} aria-describedby={recordFieldErrors.completion_year ? "staff-record-year-error" : undefined}/>{recordFieldErrors.completion_year && <small id="staff-record-year-error" className="app-field-error" role="alert">{recordFieldErrors.completion_year}</small>}</label>
+              <label>Score (optional) <input name="score" type="number" min="0" step="0.001" aria-invalid={Boolean(recordFieldErrors.score)} aria-describedby={recordFieldErrors.score ? "staff-record-score-error" : undefined}/>{recordFieldErrors.score && <small id="staff-record-score-error" className="app-field-error" role="alert">{recordFieldErrors.score}</small>}</label>
+              <label>Score scale (required with score) <select name="score_scale" defaultValue="" aria-invalid={Boolean(recordFieldErrors.score_scale)} aria-describedby={recordFieldErrors.score_scale ? "staff-record-score-scale-error" : undefined}><option value="">Select scale</option><option value="percentage">Percentage</option><option value="cgpa">CGPA</option><option value="gpa">GPA</option><option value="marks">Marks</option><option value="grade">Grade</option></select>{recordFieldErrors.score_scale && <small id="staff-record-score-scale-error" className="app-field-error" role="alert">{recordFieldErrors.score_scale}</small>}</label>
               <label>Credential reference (optional) <input name="credential_reference" maxLength={120}/></label>
             </>}
             {recordFormKind === "certification" && <>
-              <label>Certificate name <input name="certificate_name" required maxLength={180}/></label>
-              <label>Issuing organization <input name="issuing_organization" required maxLength={200}/></label>
+              <label>Certificate name <input name="certificate_name" required maxLength={180} aria-invalid={Boolean(recordFieldErrors.certificate_name)} aria-describedby={recordFieldErrors.certificate_name ? "staff-record-certificate-error" : undefined}/>{recordFieldErrors.certificate_name && <small id="staff-record-certificate-error" className="app-field-error" role="alert">{recordFieldErrors.certificate_name}</small>}</label>
+              <label>Issuing organization <input name="issuing_organization" required maxLength={200} aria-invalid={Boolean(recordFieldErrors.issuing_organization)} aria-describedby={recordFieldErrors.issuing_organization ? "staff-record-issuer-error" : undefined}/>{recordFieldErrors.issuing_organization && <small id="staff-record-issuer-error" className="app-field-error" role="alert">{recordFieldErrors.issuing_organization}</small>}</label>
               <label>Issue date (optional) <input name="issue_date" type="date"/></label>
-              <label>Expiry date (optional) <input name="expiry_date" type="date"/></label>
+              <label>Expiry date (optional) <input name="expiry_date" type="date" aria-invalid={Boolean(recordFieldErrors.expiry_date)} aria-describedby={recordFieldErrors.expiry_date ? "staff-record-expiry-error" : undefined}/>{recordFieldErrors.expiry_date && <small id="staff-record-expiry-error" className="app-field-error" role="alert">{recordFieldErrors.expiry_date}</small>}</label>
               <label>Credential ID (optional) <input name="credential_id" maxLength={120}/></label>
             </>}
             {recordFormKind === "experience" && <>
-              <label>Employer name <input name="employer_name" required maxLength={200}/></label>
-              <label>Designation <input name="record_designation" required maxLength={120}/></label>
+              <label>Employer name <input name="employer_name" required maxLength={200} aria-invalid={Boolean(recordFieldErrors.employer_name)} aria-describedby={recordFieldErrors.employer_name ? "staff-record-employer-error" : undefined}/>{recordFieldErrors.employer_name && <small id="staff-record-employer-error" className="app-field-error" role="alert">{recordFieldErrors.employer_name}</small>}</label>
+              <label>Designation <input name="record_designation" required maxLength={120} aria-invalid={Boolean(recordFieldErrors.record_designation)} aria-describedby={recordFieldErrors.record_designation ? "staff-record-designation-error" : undefined}/>{recordFieldErrors.record_designation && <small id="staff-record-designation-error" className="app-field-error" role="alert">{recordFieldErrors.record_designation}</small>}</label>
               <label>Employment type <select name="employment_type" required defaultValue="permanent"><option value="permanent">Permanent</option><option value="contract">Contract</option><option value="part_time">Part time</option><option value="temporary">Temporary</option><option value="internship">Internship</option><option value="other">Other</option></select></label>
-              <label>Start date <input name="start_date" type="date" required/></label>
-              <label>End date (optional) <input name="end_date" type="date"/></label>
+              <label>Start date <input name="start_date" type="date" required aria-invalid={Boolean(recordFieldErrors.start_date)} aria-describedby={recordFieldErrors.start_date ? "staff-record-start-error" : undefined}/>{recordFieldErrors.start_date && <small id="staff-record-start-error" className="app-field-error" role="alert">{recordFieldErrors.start_date}</small>}</label>
+              <label>End date (optional) <input name="end_date" type="date" aria-invalid={Boolean(recordFieldErrors.end_date)} aria-describedby={recordFieldErrors.end_date ? "staff-record-end-error" : undefined}/>{recordFieldErrors.end_date && <small id="staff-record-end-error" className="app-field-error" role="alert">{recordFieldErrors.end_date}</small>}</label>
               <label className="staff-record-checkbox"><input name="is_current" type="checkbox"/> This is my current employment</label>
               <label>Description (optional) <textarea name="description" maxLength={2000} rows={3}/></label>
             </>}
             {recordError && <p className="staff-feedback error" role="alert">{recordError}</p>}
-            <div className="staff-record-form-actions"><button type="button" className="staff-secondary-button" onClick={() => {setRecordFormKind(null);setRecordError("");}}>Cancel</button><button className="primary" type="submit" disabled={createQualification.isPending || createCertification.isPending || createExperience.isPending}>{createQualification.isPending || createCertification.isPending || createExperience.isPending ? "Saving…" : "Save record"}</button></div>
+            <div className="staff-record-form-actions"><button type="button" className="staff-secondary-button" onClick={() => {setRecordFormKind(null);setRecordError("");setRecordFieldErrors({});}}>Cancel</button><button className="primary" type="submit" disabled={createQualification.isPending || createCertification.isPending || createExperience.isPending}>{createQualification.isPending || createCertification.isPending || createExperience.isPending ? "Saving…" : "Save record"}</button></div>
           </form>}
         </section>}
         {profileTab === "Documents" && <section className="staff-profile-placeholder"><h3>Staff documents</h3><p>Document upload is not enabled yet. It will be added only with private file storage, staff-scoped access checks and secure download authorization.</p></section>}
