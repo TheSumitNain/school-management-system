@@ -78,7 +78,7 @@ test("academic structure create feedback is contextual and failed writes remain 
   const classDialog = page.getByRole("dialog", { name: "Add class" });
   await classDialog.getByLabel("Name").fill("Class 1");
   await classDialog.getByRole("button", { name: "Save changes" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Class "Class 1" created successfully." })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: 'Class "Class 1" created successfully.' })).toBeVisible();
   await expect(page.getByRole("cell", { name: "Class 1", exact: true })).toBeVisible();
   expect(writes[0]).toMatchObject({
     path: "/school/classes", method: "POST",
@@ -155,7 +155,7 @@ test("closing an academic year archives it without exposing a delete action", as
   await status.click();
   await page.getByRole("option", { name: "Closed" }).click();
   await dialog.getByRole("button", { name: "Save changes" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Academic year "2026–2027" closed and archived successfully." })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: 'Academic year "2026–2027" closed and archived successfully.' })).toBeVisible();
   await expect(page.getByRole("button", { name: "Edit 2026–2027" })).toBeDisabled();
   expect(updatePayload).toMatchObject({
     name: "2026–2027", starts_on: "2026-04-01", ends_on: "2027-03-31",
