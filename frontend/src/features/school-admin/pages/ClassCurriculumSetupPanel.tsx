@@ -115,6 +115,7 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
     setGroups([]);
     setPendingSave(null);
     setPendingRemovalImpacts(null);
+    setNewGroupIndex(null);
     setError("");
     setFieldErrors({ groups: {} });
   }
@@ -134,6 +135,7 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
       const card = groupEditorRefs.current[newGroupIndex];
       card?.scrollIntoView({ behavior: "smooth", block: "center" });
       card?.querySelector<HTMLInputElement>('input:not([type="hidden"])')?.focus({ preventScroll: true });
+      setNewGroupIndex(null);
     });
     return () => window.cancelAnimationFrame(frame);
   }, [newGroupIndex, groups.length]);
@@ -332,6 +334,7 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
                 {fieldErrors.groups[index]?.subjects && <small id={`curriculum-group-${index}-subjects-error`} className="app-field-error" role="alert">{fieldErrors.groups[index].subjects}</small>}
               </div>
               <button type="button" className="academic-edit" disabled={busy} onClick={() => {
+                setNewGroupIndex(null);
                 const removedName = group.name.trim().toLowerCase();
                 setGroups(current => current.filter((_, i) => i !== index));
                 setGroupBySubject(current => {
