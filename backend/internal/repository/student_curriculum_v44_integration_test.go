@@ -326,6 +326,13 @@ func TestStudentCurriculumV44PostgresIntegration(t *testing.T) {
 	if _, err := tx.Exec(ctx, `
 		UPDATE student_enrollment_curricula SET status='replaced',revoked_at=NOW() WHERE id=$1
 	`, assignmentID); err != nil { t.Fatalf("replace curriculum after revoking choices: %v", err) }
+	// Model a previously grouped subject that is later removed. Its inactive
+	// curriculum row must not prevent the group name from being reused.
+	if _, err := tx.Exec(ctx, `
+		UPDATE class_curriculum_subjects SET optional_group_id=$1 WHERE id=$2
+	`, groupID, standaloneCurriculumSubjectID); err != nil {
+		t.Fatalf("attach historical standalone subject to optional group: %v", err)
+	}
 	expectRejected("deleting curriculum assignment history", func() error {
 		_, err := tx.Exec(ctx, `DELETE FROM student_enrollment_curricula WHERE id=$1`, assignmentID)
 		return err
@@ -400,6 +407,36 @@ func TestStudentCurriculumV44PostgresIntegration(t *testing.T) {
 	if retainedSelectionHistory != 2 || activeRemovedSelections != 0 {
 		t.Fatalf("removed subject selection rows retained=%d active=%d; want 2 retained and 0 active",
 			retainedSelectionHistory, activeRemovedSelections)
+	}
+
+	// Once the remaining active subject is made standalone, the empty group
+	// can be removed even though a soft-deactivated subject used to reference it.
+	ungroupedCurriculum, err := academicRepo.SaveSectionClassCurriculumWithConfirmations(
+		ctx, actorPrincipalID, schoolID, yearID, classID, sectionID,
+		nil,
+		[]CurriculumSubjectInput{{SubjectID: subjectID, IsOptional: true}},
+		nil,
+	)
+	if err != nil || ungroupedCurriculum == nil || len(ungroupedCurriculum.OptionalGroups) != 0 ||
+		len(ungroupedCurriculum.Subjects) != 1 || ungroupedCurriculum.Subjects[0].OptionalGroupID != nil {
+		t.Fatalf("remove empty optional group and retain standalone subject: curriculum=%+v err=%v",
+			ungroupedCurriculum, err)
+	}
+	var remainingGroupRows, retainedInactiveGroupSubjects int
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*)::integer FROM class_curriculum_optional_groups WHERE id=$1
+	`, groupID).Scan(&remainingGroupRows); err != nil {
+		t.Fatalf("verify removed optional group: %v", err)
+	}
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*)::integer FROM class_curriculum_subjects
+		 WHERE id=$1 AND is_active=FALSE AND optional_group_id IS NULL
+	`, standaloneCurriculumSubjectID).Scan(&retainedInactiveGroupSubjects); err != nil {
+		t.Fatalf("verify detached historical subject: %v", err)
+	}
+	if remainingGroupRows != 0 || retainedInactiveGroupSubjects != 1 {
+		t.Fatalf("optional group rows remaining=%d detached inactive subjects=%d; want 0 and 1",
+			remainingGroupRows, retainedInactiveGroupSubjects)
 	}
 
 	if _, err := tx.Exec(ctx, `UPDATE students SET status='inactive' WHERE id=$1`, studentID); err != nil { t.Fatalf("make student inactive: %v", err) }
