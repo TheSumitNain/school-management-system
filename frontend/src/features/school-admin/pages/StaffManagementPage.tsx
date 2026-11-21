@@ -164,7 +164,7 @@ export function StaffManagementPage({ permissions }: Props) {
       <nav className="staff-workspace-tabs" aria-label="Staff management sections">
         <button type="button" className={activeTab === "overview" ? "active" : ""} aria-current={activeTab === "overview" ? "page" : undefined} onClick={() => setActiveTab("overview")}><LayoutDashboard size={16}/> Overview</button>
         <button type="button" className={activeTab === "directory" ? "active" : ""} aria-current={activeTab === "directory" ? "page" : undefined} onClick={() => setActiveTab("directory")}><Search size={16}/> Staff Directory</button>
-        <button type="button" className={activeTab === "assignments" ? "active" : ""} aria-current={activeTab === "assignments" ? "page" : undefined} onClick={() => setActiveTab("assignments")}><BookOpen size={16}/> Academic Assignments</button>
+        {(permissions.includes("teacher_assignments.read") || permissions.includes("class_incharge_assignments.read")) && <button type="button" className={activeTab === "assignments" ? "active" : ""} aria-current={activeTab === "assignments" ? "page" : undefined} onClick={() => setActiveTab("assignments")}><BookOpen size={16}/> Academic Assignments</button>}
         <button type="button" className="upcoming" disabled title="Planned for the next phase"><CalendarDays size={16}/> Attendance <span>Phase 1</span></button>
         <button type="button" className="upcoming" disabled title="Planned for the next phase"><Clock3 size={16}/> Leave <span>Phase 1</span></button>
         <button type="button" className="upcoming" disabled title="Planned for the next phase"><BookOpen size={16}/> Workload & Timetable <span>Phase 1</span></button>
