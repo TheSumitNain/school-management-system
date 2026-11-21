@@ -8,9 +8,34 @@ test("school workspace pages stay within narrow, tablet, and desktop viewports",
     "platform.school_admins.create", "platform.permissions.delegate", "platform.schools.read",
   ];
 
+  let delegationWriteCount = 0;
   await page.route("**/api/**", async route => {
     const url = new URL(route.request().url());
     const path = url.pathname.replace(/^\/api/, "");
+    if (path === "/platform/schools" && route.request().method() === "GET") {
+      await route.fulfill({ json: { schools: [{ id: 10, name: "Sunrise Public School", code: "SUNRISE", status: "active", created_at: "2026-01-01T00:00:00Z" }] } });
+      return;
+    }
+    if (path === "/platform/permissions/delegable") {
+      await route.fulfill({ json: { permissions: [
+        { permission_key: "students.read_basic", description: "View basic student details", is_delegable: true },
+        { permission_key: "students.update", description: "Update student records", is_delegable: true },
+      ] } });
+      return;
+    }
+    if (path === "/platform/schools/10/permission-delegations" && route.request().method() === "GET") {
+      await route.fulfill({ json: { delegations: [] } });
+      return;
+    }
+    if (path === "/platform/schools/10/permission-delegations" && route.request().method() === "POST") {
+      delegationWriteCount += 1;
+      await route.fulfill({ status: 409, json: {
+        status: "error",
+        message: "An active delegation already exists for this school permission",
+        field_errors: { permission_key: "This permission is already actively delegated to the school." },
+      } });
+      return;
+    }
     if (path === "/auth/refresh") {
       await route.fulfill({ status: 401, json: { message: "No active session" } });
       return;
@@ -169,4 +194,20 @@ test("school workspace pages stay within narrow, tablet, and desktop viewports",
       expect(controlsFit).toBe(true);
     }
   }
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.evaluate(() => { window.history.pushState({}, "", "/platform-admin"); window.dispatchEvent(new PopStateEvent("popstate")); });
+  await page.getByRole("tab", { name: /School permissions/ }).click();
+  await expect(page.getByRole("heading", { name: "Delegate school permissions" })).toBeVisible();
+  await page.getByLabel("Permission", { exact: true }).selectOption("students.read_basic");
+  await page.getByRole("button", { name: "Grant permission to school" }).click();
+  const permissionSelect = page.getByLabel("Permission", { exact: true });
+  await expect(permissionSelect).toHaveAttribute("aria-invalid", "true");
+  await expect(permissionSelect).toHaveAttribute("aria-describedby", "delegation-permission-error");
+  await expect(page.locator("#delegation-permission-error[role=\\"alert\\"]")).toHaveText(
+    "This permission is already actively delegated to the school.",
+  );
+  expect(delegationWriteCount).toBe(1);
+  await permissionSelect.selectOption("students.update");
+  await expect(permissionSelect).not.toHaveAttribute("aria-invalid", "true");
 });
