@@ -4,7 +4,7 @@ import {
   saveSchoolStudentEnrollmentSubjects,
   createSchoolStaff, disableSchoolStaff, enableSchoolStaff, getSchoolStaff,
   resetSchoolStaffPassword, updateSchoolStaff,
-  getStaffQualifications, createStaffQualification, getStaffCertifications, createStaffCertification, getStaffExperience, createStaffExperience,
+  getStaffQualifications, createStaffQualification, updateStaffQualification, getStaffCertifications, createStaffCertification, updateStaffCertification, getStaffExperience, createStaffExperience, updateStaffExperience,
 } from "./api";
 
 export const schoolAdminQueryKeys = {
@@ -400,4 +400,14 @@ export function useCreateStaffCertificationMutation(principalID:number) {
 }
 export function useCreateStaffExperienceMutation(principalID:number) {
   return useStaffRecordMutation(principalID,(input:Parameters<typeof createStaffExperience>[1])=>createStaffExperience(principalID,input),"experience");
+}
+
+export function useUpdateStaffQualificationMutation(principalID:number) {
+  return useStaffRecordMutation(principalID,(input:{recordID:number;data:Parameters<typeof updateStaffQualification>[2]})=>updateStaffQualification(principalID,input.recordID,input.data),"qualifications");
+}
+export function useUpdateStaffCertificationMutation(principalID:number) {
+  return useStaffRecordMutation(principalID,(input:{recordID:number;data:Parameters<typeof updateStaffCertification>[2]})=>updateStaffCertification(principalID,input.recordID,input.data),"certifications");
+}
+export function useUpdateStaffExperienceMutation(principalID:number) {
+  return useStaffRecordMutation(principalID,(input:{recordID:number;data:Parameters<typeof updateStaffExperience>[2]})=>updateStaffExperience(principalID,input.recordID,input.data),"experience");
 }
