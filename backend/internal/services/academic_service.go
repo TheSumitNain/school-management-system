@@ -144,6 +144,19 @@ func (s *AcademicService) SaveSubjectWithDeactivationConfirmation(ctx context.Co
 	return repo.SaveSubjectWithDeactivationConfirmation(ctx,actorID,schoolID,subjectID,name,code,fingerprint)
 }
 
+func (s *AcademicService) PreviewSubjectDeactivation(ctx context.Context, actorID, schoolID, subjectID int64) (*repository.SubjectDeactivationImpact,error) {
+	if s==nil||s.repository==nil{return nil,repository.ErrAcademicAccessDenied}
+	type previewRepository interface{PreviewSubjectDeactivation(context.Context,int64,int64,int64)(*repository.SubjectDeactivationImpact,error)}
+	repo,ok:=s.repository.(previewRepository);if !ok{return nil,repository.ErrAcademicAccessDenied}
+	return repo.PreviewSubjectDeactivation(ctx,actorID,schoolID,subjectID)
+}
+func (s *AcademicService) SaveSubjectWithDeactivationConfirmation(ctx context.Context, actorID, schoolID, subjectID int64, name string, code *string, fingerprint string) (*repository.AcademicSubject,error) {
+	if s==nil||s.repository==nil{return nil,repository.ErrAcademicAccessDenied}
+	type confirmedRepository interface{SaveSubjectWithDeactivationConfirmation(context.Context,int64,int64,int64,string,*string,string)(*repository.AcademicSubject,error)}
+	repo,ok:=s.repository.(confirmedRepository);if !ok{return nil,repository.ErrAcademicAccessDenied}
+	return repo.SaveSubjectWithDeactivationConfirmation(ctx,actorID,schoolID,subjectID,name,code,fingerprint)
+}
+
 func (s *AcademicService) SaveSubject(ctx context.Context,actorID,schoolID,id int64,name string,code *string,active bool)(*repository.AcademicSubject,error){
 	if s==nil||s.repository==nil{return nil,repository.ErrAcademicAccessDenied}
 	return s.repository.SaveSubject(ctx,actorID,schoolID,id,name,code,active)
