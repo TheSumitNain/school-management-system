@@ -394,6 +394,12 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
               {pendingRemovalImpacts.map(item => <li key={item.subject_id}>
                 <strong>{item.subject_name}</strong>
                 <p><strong>{item.affected_students}</strong> affected students</p>
+                {item.students.length > 0 && <ul className="curriculum-removal-students">
+                  {item.students.map(student => <li key={student.student_id}>
+                    <strong>{student.full_name}</strong>
+                    {student.admission_number && <span> · Admission no. {student.admission_number}</span>}
+                  </li>)}
+                </ul>}
               </li>)}
             </ul>
           )}
