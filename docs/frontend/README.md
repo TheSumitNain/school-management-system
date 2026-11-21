@@ -269,7 +269,7 @@ In Student Management → Parents & Siblings, guardian full names may repeat, bu
 
 ## Staff Management roadmap
 
-The approved product and implementation specification is [Staff Management — Product and Implementation Roadmap](../product/STAFF-MANAGEMENT-ROADMAP.md). It is the source of truth for the phase order, seven School Admin workspace tabs, eight staff-profile tabs, all planned forms and required/optional fields, account/access behavior, assignment rules, validation and acceptance gates.
+The approved product and implementation specification is [Staff Management — Product and Implementation Roadmap](../product/STAFF-MANAGEMENT-ROADMAP.md). The source-level Phase 0 baseline is recorded in [Staff Management — Existing Implementation Audit](../product/STAFF-MANAGEMENT-IMPLEMENTATION-AUDIT.md). The current page rebuild has begun; do not mark the roadmap complete from the new navigation shell alone. It is the source of truth for the phase order, seven School Admin workspace tabs, eight staff-profile tabs, all planned forms and required/optional fields, account/access behavior, assignment rules, validation and acceptance gates.
 
 Before modifying Staff Management:
 1. Audit and preserve the current employee CRUD, login provisioning, password reset, role assignment and permission-override behavior.
