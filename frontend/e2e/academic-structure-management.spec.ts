@@ -79,7 +79,7 @@ test("academic structure create feedback is contextual and failed writes remain 
   await classDialog.getByLabel("Name").fill("Class 1");
   await classDialog.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Class created successfully." })).toBeVisible();
-  await expect(page.getByRole("cell", { name: "Class 1" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Class 1", exact: true })).toBeVisible();
   expect(writes[0]).toMatchObject({
     path: "/school/classes", method: "POST",
     body: { name: "Class 1", display_order: 0, is_active: true },
