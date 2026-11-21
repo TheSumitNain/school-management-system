@@ -1070,15 +1070,17 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	if err != nil || cleanedLegacyCurriculum == nil || len(cleanedLegacyCurriculum.Subjects) != 1 {
 		t.Fatalf("edit curriculum with legacy inactive subject: curriculum=%+v err=%v", cleanedLegacyCurriculum, err)
 	}
-	var legacyInactiveCount int
+	var legacyInactiveCount, legacyActiveCount int
 	if err := tx.QueryRow(ctx, `
-		SELECT COUNT(*)::integer FROM class_curriculum_subjects
+		SELECT COUNT(*)::integer, COUNT(*) FILTER (WHERE is_active)::integer
+		  FROM class_curriculum_subjects
 		 WHERE id=$1 AND curriculum_id=$2
-	`, legacyInactiveSubjectID, isolatedCurriculum.ID).Scan(&legacyInactiveCount); err != nil {
-		t.Fatalf("verify legacy inactive subject cleanup: %v", err)
+	`, legacyInactiveSubjectID, isolatedCurriculum.ID).Scan(&legacyInactiveCount, &legacyActiveCount); err != nil {
+		t.Fatalf("verify legacy inactive subject history: %v", err)
 	}
-	if legacyInactiveCount != 0 {
-		t.Fatalf("legacy inactive curriculum subject rows remaining = %d, want 0", legacyInactiveCount)
+	if legacyInactiveCount != 1 || legacyActiveCount != 0 {
+		t.Fatalf("legacy curriculum subject history retained=%d active=%d; want 1 retained and 0 active",
+			legacyInactiveCount, legacyActiveCount)
 	}
 	firstSectionCurricula, err := academicRepo.ListSectionClassCurricula(ctx, actorPrincipalID, schoolID,
 		enrollmentYearID, sourceClassID, sourceSectionID)
