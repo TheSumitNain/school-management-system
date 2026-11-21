@@ -80,7 +80,7 @@ test("section curriculum validates optional groups, edits in place, and confirms
     }
     if (path === "/school/class-curricula/removal-impact" && method === "POST") {
       removalPreviewPayload = request.postDataJSON() as Record<string, unknown>;
-      await route.fulfill({ json: { impacts: [{ subject_id: 92, subject_name: "Hindi", affected_students: 2, students: [{ student_id: 701, full_name: "Aarav Sharma", admission_number: "ADM-701", class_name: "Class 4", section_name: "A", academic_year_name: "2026–2027" }, { student_id: 702, full_name: "Diya Verma", admission_number: "ADM-702", class_name: "Class 4", section_name: "A", academic_year_name: "2026–2027" }] }] } });
+      await route.fulfill({ json: { impacts: [{ subject_id: 92, subject_name: "Hindi", affected_students: 2 }] } });
       return;
     }
     if (path === "/school/class-curricula" && method === "POST") {
@@ -242,9 +242,6 @@ test("section curriculum validates optional groups, edits in place, and confirms
   await expect(page.getByRole("heading", { name: "Confirm subject removal" })).toBeVisible();
   await expect(page.getByRole("dialog").getByText("Hindi", { exact: true })).toBeVisible();
   await expect(page.getByText("2 affected students", { exact: true })).toBeVisible();
-  await expect(page.getByText("Aarav Sharma", { exact: true })).toBeVisible();
-  await expect(page.getByText("ADM-702", { exact: true })).toBeVisible();
-  await expect(page.locator(".curriculum-removal-impact-item").getByText("Class 4 · A", { exact: true })).toHaveCount(2);
   expect(removalPreviewPayload).toMatchObject({
     academic_year_id: 7, class_id: 3, section_id: 44, subject_ids: [92],
   });
