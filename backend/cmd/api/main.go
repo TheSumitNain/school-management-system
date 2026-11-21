@@ -236,6 +236,7 @@ func setupRouterWithHandlers(
 		router.GET("/school/sections", academicAuth, middleware.RequirePermission("classes.read"), academic.ListSections)
 		router.POST("/school/sections", academicAuth, middleware.RequirePermission("classes.manage"), academic.SaveSection)
 		router.PATCH("/school/sections/:sectionID", academicAuth, middleware.RequirePermission("classes.manage"), academic.SaveSection)
+		router.GET("/school/sections/:sectionID/deactivation-impact", academicAuth, middleware.RequirePermission("classes.manage"), academic.PreviewSectionDeactivation)
 		router.GET("/school/subjects", academicAuth, middleware.RequirePermission("subjects.read"), academic.ListSubjects)
 		router.POST("/school/subjects", academicAuth, middleware.RequirePermission("subjects.manage"), academic.SaveSubject)
 		router.PATCH("/school/subjects/:subjectID", academicAuth, middleware.RequirePermission("subjects.manage"), academic.SaveSubject)
