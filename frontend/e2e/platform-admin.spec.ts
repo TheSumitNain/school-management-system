@@ -170,7 +170,7 @@ test("school onboarding refreshes the school list and delegated permissions can 
   await schoolDialog.getByLabel("School name").fill("Sunrise Academy");
   await schoolDialog.getByLabel("School code").fill("SUNRISE02");
   await schoolDialog.getByLabel("School Admin username").fill("sunriseadmin");
-  await schoolDialog.getByLabel("Initial password").fill("Secure-School-Admin-2026");
+  await schoolDialog.locator('input[name="school_admin_initial_password"]').fill("Secure-School-Admin-2026");
   await schoolDialog.getByRole("button", { name: "Create school and School Admin" }).click();
   await expect(schoolDialog.getByText("Choose a unique school code.")).toBeVisible();
   await expect(schoolDialog.getByLabel("School name")).toHaveValue("Sunrise Academy");
