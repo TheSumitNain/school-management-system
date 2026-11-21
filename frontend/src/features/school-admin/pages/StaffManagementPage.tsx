@@ -201,10 +201,10 @@ export function StaffManagementPage({ permissions }: Props) {
       {activeTab === "overview" && <section className="staff-overview">
         <div className="staff-overview-intro"><div><h2>People at a glance</h2><p>A quick view of employee records and account readiness.</p></div><button type="button" className="staff-overview-link" onClick={() => setActiveTab("directory")}>Open staff directory <span aria-hidden="true">→</span></button></div>
         <div className="staff-overview-cards">
-          <article><span>Total staff</span><strong>{staff.length}</strong><small>Employee records in this school</small></article>
-          <article><span>Active employment</span><strong>{staff.filter(item => item.employment_status === "active").length}</strong><small>Currently marked as active</small></article>
-          <article><span>Login enabled</span><strong>{staff.filter(item => item.status === "active").length}</strong><small>Accounts currently able to sign in</small></article>
-          <article><span>Profile completion needed</span><strong>{staff.filter(item => !item.profile_complete).length}</strong><small>Existing records needing attention</small></article>
+          <article><span>Total staff</span><strong>{query.isPending ? "—" : staff.length}</strong><small>Employee records in this school</small></article>
+          <article><span>Active employment</span><strong>{query.isPending ? "—" : staff.filter(item => item.employment_status === "active").length}</strong><small>Currently marked as active</small></article>
+          <article><span>Login enabled</span><strong>{query.isPending ? "—" : staff.filter(item => item.status === "active").length}</strong><small>Accounts currently able to sign in</small></article>
+          <article><span>Profile completion needed</span><strong>{query.isPending ? "—" : staff.filter(item => !item.profile_complete).length}</strong><small>Existing records needing attention</small></article>
         </div>
         <div className="staff-overview-lower">
           <section className="staff-overview-panel"><h3>Quick actions</h3><p>Start with the most common staff administration tasks.</p><div className="staff-quick-actions">
