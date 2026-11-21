@@ -5,7 +5,8 @@
 - The Academic Structure UI now fetches this preview before deactivation, shows the counts and student list in a confirmation dialog, and offers a safe return-to-edit path. It does not transfer students or revoke assignments automatically.
 - Added Playwright coverage for preview-before-write, visible impact details, cancel-without-write, and explicit confirmation.
 - Added focused styling for the impact review and documented the preview requirements.
-- **Still required before this lifecycle change is production-complete:** make the final deactivation write re-check the preview snapshot under a transaction/row lock and reject stale impact; add backend repository integration tests for school isolation, exact counts, concurrent enrollment/assignment changes, and audit atomicity. The current preview and confirmation UI must not be treated as a substitute for that transactional write guard.
+- The final deactivation write now locks the section and all dependent enrollment, curriculum, teacher-assignment and class-in-charge rows, recomputes a dependency fingerprint, rejects stale confirmations, and writes the section state change plus audit event in one transaction. Direct attempts to deactivate an active section without a confirmed preview are rejected.
+- PostgreSQL integration coverage verifies that a dependency added after preview invalidates the old confirmation, a refreshed preview succeeds, the enrollment is retained, and the audit event is recorded. Backend CI passed on checkpoint `71f78e0fdb3efcd215dc7185f33784b2d4e36502`; frontend build and all browser acceptance tests passed on checkpoint `58a8df4637960379d89fe2e61260ea9bf92eca64`.
 - Do not apply this UI flow to class/subject deactivation until equivalent dependency previews and transactional guards are implemented.
 
 ## Academic Structure management UX checkpoint (2026-11-21)
