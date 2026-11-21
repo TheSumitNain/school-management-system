@@ -1,8 +1,9 @@
 import { Fragment, useMemo, useState, type FormEvent } from "react";
 import { notifyToast } from "../../../shared/notifications";
-import { KeyRound, LockKeyhole, Pencil, Plus, Search, Shield, ShieldCheck, UserCheck, UserMinus } from "lucide-react";
+import { BookOpen, CalendarDays, Clock3, FileText, KeyRound, LayoutDashboard, LockKeyhole, Pencil, Plus, Search, Shield, ShieldCheck, UserCheck, UserMinus } from "lucide-react";
 import { StaffRoleAssignments } from "../components/StaffRoleAssignments";
 import { StaffPermissionOverrides } from "../components/StaffPermissionOverrides";
+import { TeacherAssignmentsPage } from "./TeacherAssignmentsPage";
 import {
   useCreateSchoolStaffMutation, useDisableSchoolStaffMutation, useEnableSchoolStaffMutation,
   useResetSchoolStaffPasswordMutation, useSchoolStaffQuery, useUpdateSchoolStaffMutation,
@@ -32,6 +33,7 @@ export function StaffManagementPage({ permissions }: Props) {
   const disable = useDisableSchoolStaffMutation();
   const enable = useEnableSchoolStaffMutation();
   const reset = useResetSchoolStaffPasswordMutation();
+  const [activeTab, setActiveTab] = useState<"overview" | "directory" | "assignments">("overview");
   const [search, setSearch] = useState("");
   const [action, setAction] = useState<Action>(null);
   const [selected, setSelected] = useState<StaffRecord | null>(null);
@@ -155,10 +157,19 @@ export function StaffManagementPage({ permissions }: Props) {
 
   return (
     <div className="content staff-management-page">
-      <div className="heading">
-        <div><span className="eyebrow">PEOPLE</span><h1>Staff management</h1><p>Manage employee profiles and login access for this school.</p></div>
+      <div className="staff-workspace-heading">
+        <div><h1>Staff Management</h1><p>Manage your school's employees, access and academic responsibilities.</p></div>
         {canCreate && <button className="primary staff-create-button" type="button" onClick={() => openAction("create")}><Plus size={16}/> Add staff</button>}
       </div>
+      <nav className="staff-workspace-tabs" aria-label="Staff management sections">
+        <button type="button" className={activeTab === "overview" ? "active" : ""} aria-current={activeTab === "overview" ? "page" : undefined} onClick={() => setActiveTab("overview")}><LayoutDashboard size={16}/> Overview</button>
+        <button type="button" className={activeTab === "directory" ? "active" : ""} aria-current={activeTab === "directory" ? "page" : undefined} onClick={() => setActiveTab("directory")}><Search size={16}/> Staff Directory</button>
+        <button type="button" className={activeTab === "assignments" ? "active" : ""} aria-current={activeTab === "assignments" ? "page" : undefined} onClick={() => setActiveTab("assignments")}><BookOpen size={16}/> Academic Assignments</button>
+        <button type="button" className="upcoming" disabled title="Planned for the next phase"><CalendarDays size={16}/> Attendance <span>Phase 1</span></button>
+        <button type="button" className="upcoming" disabled title="Planned for the next phase"><Clock3 size={16}/> Leave <span>Phase 1</span></button>
+        <button type="button" className="upcoming" disabled title="Planned for the next phase"><BookOpen size={16}/> Workload & Timetable <span>Phase 1</span></button>
+        <button type="button" className="upcoming" disabled title="Planned for the next phase"><FileText size={16}/> Reports <span>Phase 1</span></button>
+      </nav>
 
       {feedback && (action === null || feedback.kind === "success") && <div className={`staff-feedback ${feedback.kind}`} role="status">{feedback.message}</div>}
 
@@ -187,7 +198,30 @@ export function StaffManagementPage({ permissions }: Props) {
         </form>
       </Modal>
 
-      <section className="table-panel">
+      {activeTab === "overview" && <section className="staff-overview">
+        <div className="staff-overview-intro"><div><h2>People at a glance</h2><p>A quick view of employee records and account readiness.</p></div><button type="button" className="staff-overview-link" onClick={() => setActiveTab("directory")}>Open staff directory <span aria-hidden="true">→</span></button></div>
+        <div className="staff-overview-cards">
+          <article><span>Total staff</span><strong>{staff.length}</strong><small>Employee records in this school</small></article>
+          <article><span>Active employment</span><strong>{staff.filter(item => item.employment_status === "active").length}</strong><small>Currently marked as active</small></article>
+          <article><span>Login enabled</span><strong>{staff.filter(item => item.status === "active").length}</strong><small>Accounts currently able to sign in</small></article>
+          <article><span>Profile completion needed</span><strong>{staff.filter(item => !item.profile_complete).length}</strong><small>Existing records needing attention</small></article>
+        </div>
+        <div className="staff-overview-lower">
+          <section className="staff-overview-panel"><h3>Quick actions</h3><p>Start with the most common staff administration tasks.</p><div className="staff-quick-actions">
+            {canCreate && <button type="button" onClick={() => openAction("create")}><Plus size={16}/> Add staff member</button>}
+            <button type="button" onClick={() => setActiveTab("directory")}><Search size={16}/> Find an employee</button>
+            {(permissions.includes("teacher_assignments.read") || permissions.includes("class_incharge_assignments.read")) && <button type="button" onClick={() => setActiveTab("assignments")}><BookOpen size={16}/> Manage academic assignments</button>}
+          </div></section>
+          <section className="staff-overview-panel"><h3>Account readiness</h3><p>Keep employment and login status aligned without mixing the two.</p><ul className="staff-readiness-list">
+            <li><span>Active employees with disabled login</span><strong>{staff.filter(item => item.employment_status === "active" && item.status !== "active").length}</strong></li>
+            <li><span>Temporary password change pending</span><strong>{staff.filter(item => item.must_change_password).length}</strong></li>
+            <li><span>Inactive employees</span><strong>{staff.filter(item => item.employment_status === "inactive").length}</strong></li>
+          </ul></section>
+        </div>
+        {query.isError && <p className="staff-overview-error" role="alert">Staff summary could not be loaded. Open Staff Directory and retry the request.</p>}
+      </section>}
+      {activeTab === "assignments" && <TeacherAssignmentsPage permissions={permissions}/>}
+      {activeTab === "directory" && <section className="table-panel">
         <div className="toolbar"><div><h2>All staff</h2><small>{staff.length} accounts</small></div><div className="search"><Search size={16}/><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search by name, code, designation or username" aria-label="Search staff by name, code, designation or username"/></div></div>
         {query.isPending ? <div className="table-message" aria-live="polite">Loading staff accounts…</div>
           : query.isError ? <div className="table-message error-text">{query.error instanceof Error ? query.error.message : "Unable to load staff accounts."}<button className="staff-retry-button" type="button" onClick={() => void query.refetch()}>Try again</button></div>
@@ -203,7 +237,7 @@ export function StaffManagementPage({ permissions }: Props) {
             </div></td></tr>
             </Fragment>)}
           </tbody></table></div>}
-      </section>
+      </section>}
       {rolesForPrincipal !== null && canReadRoles && (() => { const target=staff.find(item=>item.principal_id===rolesForPrincipal); return target ? <Modal open title={`Access roles · ${target.username}`} description="Review the roles assigned to this staff account. Add or remove roles here; changes take effect on the next protected request." onClose={()=>setRolesForPrincipal(null)}><StaffRoleAssignments staff={target} canAssign={canAssignRoles}/></Modal> : null; })()}
       {overridesForPrincipal !== null && canManageOverrides && (() => { const target=staff.find(item=>item.principal_id===overridesForPrincipal); return target ? <Modal open title={`Permission overrides · ${target.username}`} description="Review individual access exceptions. Use an override only when the staff member's role permissions need a documented exception." onClose={()=>setOverridesForPrincipal(null)}><StaffPermissionOverrides staff={target}/></Modal> : null; })()}
       <p className="staff-security-note"><ShieldCheck size={15}/> Every action is checked again by the server using your current school permissions.</p>
