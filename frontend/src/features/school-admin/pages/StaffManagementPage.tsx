@@ -35,6 +35,12 @@ export function StaffManagementPage({ permissions }: Props) {
   const disable = useDisableSchoolStaffMutation();
   const enable = useEnableSchoolStaffMutation();
   const reset = useResetSchoolStaffPasswordMutation();
+  const [activeTab, setActiveTab] = useState<"overview" | "directory" | "assignments">("overview");
+  const [search, setSearch] = useState("");
+  const [action, setAction] = useState<Action>(null);
+  const [selected, setSelected] = useState<StaffRecord | null>(null);
+  const [profileFor, setProfileFor] = useState<StaffRecord | null>(null);
+  const [profileTab, setProfileTab] = useState<"Overview" | "Personal Details" | "Employment" | "Qualifications & Experience" | "Documents" | "Academic Assignments" | "Account & Access" | "History & Activity">("Overview");
   const staffRecordID = profileFor?.principal_id ?? 0;
   const staffRecordsEnabled = Boolean(profileFor) && profileTab === "Qualifications & Experience";
   const qualificationsQuery = useStaffQualificationsQuery(staffRecordID, staffRecordsEnabled);
@@ -45,12 +51,6 @@ export function StaffManagementPage({ permissions }: Props) {
   const createExperience = useCreateStaffExperienceMutation(staffRecordID);
   const [recordFormKind, setRecordFormKind] = useState<"qualification" | "certification" | "experience" | null>(null);
   const [recordError, setRecordError] = useState("");
-  const [activeTab, setActiveTab] = useState<"overview" | "directory" | "assignments">("overview");
-  const [search, setSearch] = useState("");
-  const [action, setAction] = useState<Action>(null);
-  const [selected, setSelected] = useState<StaffRecord | null>(null);
-  const [profileFor, setProfileFor] = useState<StaffRecord | null>(null);
-  const [profileTab, setProfileTab] = useState<"Overview" | "Personal Details" | "Employment" | "Qualifications & Experience" | "Documents" | "Academic Assignments" | "Account & Access" | "History & Activity">("Overview");
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [createStep, setCreateStep] = useState(1);
@@ -201,7 +201,7 @@ export function StaffManagementPage({ permissions }: Props) {
           qualification_name: value("qualification_name"), specialization: value("specialization"),
           institution: value("institution"), board_university: value("board_university"),
           completion_year: year ? Number(year) : null, score: score ? Number(score) : null,
-          score_scale: score ? value("score_scale") as "percentage" | "cgpa" | "gpa" | "marks" | "grade" : "",
+          score_scale: score ? value("score_scale") as "percentage" | "cgpa" | "gpa" | "marks" | "grade" : undefined,
           credential_reference: value("credential_reference"),
         });
       } else if (recordFormKind === "certification") {
