@@ -44,7 +44,7 @@ Parent and Driver mobile/web experiences are deferred until the Phase 1 web appl
 - Teacher-subject and class-in-charge assignments.
 - Student admission, profiles, enrollment and promotion/history. A permanent school-scoped student identity is separate from academic-year enrollment; each academic year receives a new enrollment-specific admission number. Initial admission creates the student and first enrollment transactionally; returning students receive a new yearly enrollment without duplicate student identities. Student profile fields are organized into independently editable sections and may be completed incrementally.
 - Student addresses use reusable hierarchical locations with separate current/permanent address support. Guardian relationships reuse the existing school-scoped foundation; medical, physical and document sections require dedicated data handling and field-level authorization.
-- Class/year curriculum defines applicable compulsory and optional subjects; student subject choices are stored against the specific academic-year enrollment so historical selections remain stable.
+- Each academic-year/class/section has one editable current curriculum; curriculum version numbers remain hidden compatibility data and do not create user-facing curriculum history. Student optional-subject choices are current-state rows tied to the academic-year enrollment; saving replaces the current choices rather than retaining a revoked-choice timeline.
 - Attendance.
 - Planned next: timetable, examinations, results and remaining school workflows.
 - Guardian/parent relationship foundations are retained for Phase 2; parent OTP authentication and delivery are deferred.
@@ -62,6 +62,8 @@ Parent and Driver mobile/web experiences are deferred until the Phase 1 web appl
 - An inactive master subject cannot be newly added to a curriculum, newly selected by a student, or receive a new teacher-subject assignment. A new enrollment cannot be assigned a curriculum while that curriculum still references an inactive master subject; the School Admin must remove the subject through the separate curriculum impact-preview and confirmation flow first. Existing assigned enrollments and their snapshots remain intact, and an already-selected inactive optional subject can be retained or removed but cannot be newly selected.
 - Never infer a successful deletion from an inactive status. UI wording and notifications must say “deactivated” or “archived” accurately and explain that historical records are retained.
 - Class/section/subject changes must preserve enrollment-time snapshots and existing student curriculum choices. Curriculum subject removal follows its separately specified exact affected-student preview and explicit confirmation flow.
+- Removing a subject from a section curriculum is distinct from deactivating the master subject catalogue entry. The curriculum editor must preview the exact affected-student count and list (student name, admission number, class, section and academic year) for every removed subject; confirmation permanently removes the curriculum row and linked current student choices in one transaction and writes an audit event. A stale count must abort the entire save. Cancellation changes nothing.
+- Removing an optional group converts its retained subjects to standalone optional subjects, preserves current student choices and deletes the now-empty group. A saved optional group must contain at least one optional subject; compulsory subjects cannot belong to a group.
 
 ## Non-functional requirements
 
