@@ -79,3 +79,8 @@ Use [Phase 1 School Operations — Task-by-Task Build Order](PHASE1-WORKFLOW-ORD
 ## Source of truth
 
 Use [Project Status](../project/STATUS.md) for what is actually implemented. Use [Phase 1 RBAC](PHASE1-RBAC.md) for account and authorization rules. Product requirements must not be represented as completed code.
+
+
+## Staff Management detailed specification
+
+The detailed phase-wise Staff Management scope, workspace/profile tabs, form steps, required/optional fields, teacher assignments, account/access behavior, HR workflows and acceptance gates are maintained in [Staff Management — Product and Implementation Roadmap](STAFF-MANAGEMENT-ROADMAP.md). That roadmap is the implementation planning reference; it does not change the distinction between planned requirements and verified implementation in [Project Status](../project/STATUS.md).
