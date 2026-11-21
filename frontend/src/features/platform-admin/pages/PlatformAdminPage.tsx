@@ -261,8 +261,8 @@ export function PlatformAdminPage({ permissions }: Props) {
                 {permissionQuery.isPending ? <div className="table-message">Loading delegable permissions…</div>
                   : permissionQuery.error ? <div className="table-message error-text">{permissionQuery.error instanceof Error ? permissionQuery.error.message : "Unable to load permission catalogue."}<button className="platform-inline-button" onClick={() => void permissionQuery.refetch()}>Retry</button></div>
                   : delegablePermissions.length === 0 ? <div className="table-message">No active school permissions are currently marked as delegable.</div> : <form onSubmit={grantPermission} noValidate>
-                  <label>Permission
-                    <select value={selectedPermission} aria-invalid={Boolean(fieldErrors.permission_key)} aria-describedby={fieldErrors.permission_key?"delegation-permission-error":undefined} onChange={event => {setSelectedPermission(event.target.value);setFieldErrors(current=>({...current,permission_key:""}));setFeedback(null);}} required>
+                  <label htmlFor="delegation-permission-select">Permission
+                    <select id="delegation-permission-select" value={selectedPermission} aria-invalid={Boolean(fieldErrors.permission_key)} aria-describedby={fieldErrors.permission_key?"delegation-permission-error":undefined} onChange={event => {setSelectedPermission(event.target.value);setFieldErrors(current=>({...current,permission_key:""}));setFeedback(null);}} required>
                       <option value="">Select a delegable permission</option>
                       {delegablePermissions.map(permission => <option key={permission.permission_key} value={permission.permission_key}>{permission.permission_key}</option>)}
                     </select>
