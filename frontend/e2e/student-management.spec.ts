@@ -2008,6 +2008,39 @@ test("student promotion validates required fields and preserves prior enrollment
   await page.getByRole("button", { name: "Promote" }).click();
   const dialog = page.getByRole("dialog", { name: "Promote student" });
   await expect(dialog).toBeVisible();
+  // Promotion is a separate modal flow; verify its form and actions at phone,
+  // tablet and desktop widths instead of relying on profile-dialog coverage.
+  for (const width of [320, 360, 390, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    const layout = await dialog.evaluate(element => {
+      const rect = element.getBoundingClientRect();
+      const content = element.querySelector<HTMLElement>(".app-modal-content");
+      const controls = Array.from(element.querySelectorAll<HTMLElement>("input, button"));
+      const controlsFit = controls.every(control => {
+        const bounds = control.getBoundingClientRect();
+        return bounds.left >= rect.left - 1 && bounds.right <= rect.right + 1 &&
+          control.scrollWidth <= control.clientWidth + 1;
+      });
+      const overflowing = content ? Array.from(content.querySelectorAll<HTMLElement>("*"))
+        .filter(child => child.scrollWidth > child.clientWidth + 1)
+        .map(child => ({
+          tag: child.tagName.toLowerCase(),
+          className: typeof child.className === "string" ? child.className : "",
+          text: (child.textContent ?? "").trim().slice(0, 60),
+          clientWidth: child.clientWidth,
+          scrollWidth: child.scrollWidth,
+        })).slice(0, 8) : [];
+      return {
+        dialogFits: rect.left >= 0 && rect.right <= window.innerWidth + 1,
+        contentFits: Boolean(content && content.scrollWidth <= content.clientWidth + 1),
+        controlsFit,
+        overflowing,
+      };
+    });
+    expect(layout.dialogFits && layout.contentFits && layout.controlsFit,
+      `promotion dialog should fit at ${width}px: ${JSON.stringify(layout)}`).toBe(true);
+  }
+  await page.setViewportSize({ width: 1440, height: 900 });
   await expect(dialog.getByRole("button", { name: "Destination academic year", exact: true })).toBeVisible();
   const promoteButton = dialog.getByRole("button", { name: "Promote student" });
   const destinationSection = dialog.getByRole("button", { name: "Destination class and section", exact: true });
