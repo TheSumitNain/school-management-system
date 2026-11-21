@@ -723,6 +723,7 @@ func (r *AcademicRepository) SaveStudentEnrollmentSubjects(
 	}
 	type option struct {
 		isOptional bool
+		masterActive bool
 		groupID int64
 		name string
 		code *string
@@ -732,10 +733,28 @@ func (r *AcademicRepository) SaveStudentEnrollmentSubjects(
 	options := make(map[int64]option)
 	groupCounts := make(map[int64]int)
 	groupBounds := make(map[int64]struct{ min, max int })
+	currentSelected := make(map[int64]struct{})
+	if hasActiveAssignment && activeCurriculumID == curriculumID {
+		currentRows, currentErr := tx.Query(ctx, `SELECT curriculum_subject_id FROM student_enrollment_subject_selections WHERE enrollment_curriculum_id=$1 AND school_id=$2`, activeAssignmentID, schoolID)
+		if currentErr != nil { return nil, fmt.Errorf("load current subject choices before validation: %w", currentErr) }
+		for currentRows.Next() { var currentID int64; if scanErr := currentRows.Scan(&currentID); scanErr != nil { currentRows.Close(); return nil, fmt.Errorf("scan current subject choice: %w", scanErr) }; currentSelected[currentID] = struct{}{} }
+		if rowsErr := currentRows.Err(); rowsErr != nil { currentRows.Close(); return nil, fmt.Errorf("iterate current subject choices: %w", rowsErr) }
+		currentRows.Close()
+	}
+	if !hasActiveAssignment || activeCurriculumID != curriculumID {
+		var inactiveSubjectCount int
+		if err := tx.QueryRow(ctx, `
+			SELECT COUNT(*)::integer FROM class_curriculum_subjects cs
+			JOIN subjects s ON s.id=cs.subject_id AND s.school_id=cs.school_id
+			WHERE cs.curriculum_id=$1 AND cs.school_id=$2 AND cs.is_active=TRUE AND s.is_active=FALSE
+		`, curriculumID, schoolID).Scan(&inactiveSubjectCount); err != nil { return nil, fmt.Errorf("check inactive master subjects in curriculum: %w", err) }
+		if inactiveSubjectCount > 0 { return nil, ErrInactiveSubjectInCurriculum }
+	}
 	rows, err := tx.Query(ctx, `
 		SELECT cs.id,cs.optional_group_id,cs.is_optional,cs.subject_name_snapshot,cs.subject_code_snapshot,
-		       COALESCE(g.min_selections,0),COALESCE(g.max_selections,0)
+		       COALESCE(g.min_selections,0),COALESCE(g.max_selections,0),s.is_active
 		  FROM class_curriculum_subjects cs
+		  JOIN subjects s ON s.id=cs.subject_id AND s.school_id=cs.school_id
 		  LEFT JOIN class_curriculum_optional_groups g
 		    ON g.id=cs.optional_group_id AND g.curriculum_id=cs.curriculum_id AND g.school_id=cs.school_id
 		 WHERE cs.curriculum_id=$1 AND cs.school_id=$2 AND cs.is_active=TRUE
@@ -750,12 +769,13 @@ func (r *AcademicRepository) SaveStudentEnrollmentSubjects(
 		var subjectName string
 		var subjectCode *string
 		var min, max int
-		if err := rows.Scan(&id, &groupID, &isOptional, &subjectName, &subjectCode, &min, &max); err != nil {
+		var masterActive bool
+		if err := rows.Scan(&id, &groupID, &isOptional, &subjectName, &subjectCode, &min, &max, &masterActive); err != nil {
 			rows.Close()
 			return nil, fmt.Errorf("scan curriculum subject selection rule: %w", err)
 		}
 		if isOptional {
-			item := option{isOptional: true, name: subjectName, code: subjectCode}
+			item := option{isOptional: true, masterActive: masterActive, name: subjectName, code: subjectCode}
 			if groupID != nil {
 				item.groupID, item.min, item.max = *groupID, min, max
 				groupBounds[*groupID] = struct{ min, max int }{min: min, max: max}
@@ -772,6 +792,9 @@ func (r *AcademicRepository) SaveStudentEnrollmentSubjects(
 		option, exists := options[id]
 		if !exists || !option.isOptional {
 			return nil, ErrInvalidAcademicInput
+		}
+		if !option.masterActive {
+			if _, wasAlreadySelected := currentSelected[id]; !wasAlreadySelected { return nil, ErrInactiveSubjectSelection }
 		}
 		if option.groupID != 0 { groupCounts[option.groupID]++ }
 	}
