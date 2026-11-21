@@ -1395,9 +1395,8 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	if err!=nil||subjectImpact==nil||subjectImpact.ImpactFingerprint==""||subjectImpact.CurriculumSubjectCount==0 {
 		t.Fatalf("preview subject deactivation: impact=%+v err=%v",subjectImpact,err)
 	}
-	if _,err:=tx.Exec(ctx,`UPDATE teacher_subject_assignments SET revoked_at=NOW()
-		WHERE school_id=$1 AND subject_id=$2 AND revoked_at IS NULL`,schoolID,subjectID);err!=nil {
-		t.Fatalf("change teacher assignment after subject preview: %v",err)
+	if _,err:=tx.Exec(ctx,`UPDATE subjects SET name=$3 WHERE school_id=$1 AND id=$2`,schoolID,subjectID,"Mathematics Changed "+suffix);err!=nil {
+		t.Fatalf("change subject identity after dependency preview: %v",err)
 	}
 	staleSubjectSave,err:=academicRepo.SaveSubjectWithDeactivationConfirmation(ctx,actorPrincipalID,schoolID,
 		subjectID,"Mathematics",&preservedSubjectCode,subjectImpact.ImpactFingerprint)
