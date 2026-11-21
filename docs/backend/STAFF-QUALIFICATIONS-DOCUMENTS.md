@@ -1,6 +1,6 @@
 # Staff Qualifications & Documents — Backend Contract
 
-**Status:** Design checkpoint; implementation and migration are not yet present.
+**Status:** Design checkpoint; implementation and migration are not yet present. The next migration slot must be V57 or later, after confirming the exact latest migration in the `work` branch.
 **Reviewed branch:** `work`
 **Review date:** 2026-11-21
 
