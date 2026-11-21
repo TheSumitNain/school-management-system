@@ -1,3 +1,13 @@
+## Section deactivation dependency preview checkpoint (2026-11-21)
+
+- Added a school-scoped, permission-checked API endpoint `GET /school/sections/:sectionID/deactivation-impact`.
+- The preview reports active and historical enrollment totals, active section curricula, active teacher-subject assignments, active class-in-charge assignments, and the list of active students with admission numbers.
+- The Academic Structure UI now fetches this preview before deactivation, shows the counts and student list in a confirmation dialog, and offers a safe return-to-edit path. It does not transfer students or revoke assignments automatically.
+- Added Playwright coverage for preview-before-write, visible impact details, cancel-without-write, and explicit confirmation.
+- Added focused styling for the impact review and documented the preview requirements.
+- **Still required before this lifecycle change is production-complete:** make the final deactivation write re-check the preview snapshot under a transaction/row lock and reject stale impact; add backend repository integration tests for school isolation, exact counts, concurrent enrollment/assignment changes, and audit atomicity. The current preview and confirmation UI must not be treated as a substitute for that transactional write guard.
+- Do not apply this UI flow to class/subject deactivation until equivalent dependency previews and transactional guards are implemented.
+
 ## Academic Structure management UX checkpoint (2026-11-21)
 
 - Updated `AcademicStructurePage` so backend `field_errors` are mapped to the matching inline form fields while preserving entered values; the form-level server message and error toast remain available for recovery.
