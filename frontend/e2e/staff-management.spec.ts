@@ -223,6 +223,9 @@ test("staff profile creates education, certification and experience records", as
   await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
 
   await dialog.getByRole("button", { name: "Add qualification" }).click();
+  await dialog.getByRole("button", { name: "Save record" }).click();
+  await expect(dialog.getByText("Enter qualification name.")).toBeVisible();
+  await expect(dialog.getByText("Enter institution.")).toBeVisible();
   await dialog.locator('input[name="qualification_name"]').fill("M.Sc. Mathematics");
   await dialog.locator('input[name="institution"]').fill("State University");
   await dialog.locator('input[name="completion_year"]').fill("2021");
@@ -232,6 +235,11 @@ test("staff profile creates education, certification and experience records", as
   await dialog.getByRole("button", { name: "Add certification" }).click();
   await dialog.locator('input[name="certificate_name"]').fill("Teacher Training");
   await dialog.locator('input[name="issuing_organization"]').fill("State Board");
+  await dialog.locator('input[name="issue_date"]').fill("2022-05-01");
+  await dialog.locator('input[name="expiry_date"]').fill("2021-05-01");
+  await dialog.getByRole("button", { name: "Save record" }).click();
+  await expect(dialog.getByText("Expiry date cannot be before the issue date.")).toBeVisible();
+  await dialog.locator('input[name="expiry_date"]').fill("2027-05-01");
   await dialog.getByRole("button", { name: "Save record" }).click();
   await expect(dialog.getByText("Teacher Training")).toBeVisible();
 
