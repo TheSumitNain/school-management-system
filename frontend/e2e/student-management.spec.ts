@@ -546,6 +546,25 @@ test("student admission, profile navigation and parent details render without br
     expect(layout.dialogFits && layout.contentFits && layout.controlsFit,
       `new admission dialog should fit at ${width}px: ${JSON.stringify(layout)}`).toBe(true);
   }
+  await page.setViewportSize({ width: 844, height: 390 });
+  const admissionLandscape = await admissionDialog.evaluate(dialog => {
+    const rect = dialog.getBoundingClientRect();
+    const content = dialog.querySelector<HTMLElement>(".app-modal-content");
+    const controls = Array.from(dialog.querySelectorAll<HTMLElement>("input, button"));
+    return {
+      dialogFits: rect.left >= 0 && rect.right <= window.innerWidth + 1 &&
+        rect.top >= 0 && rect.bottom <= window.innerHeight + 1,
+      contentFits: Boolean(content && content.scrollWidth <= content.clientWidth + 1),
+      controlsFit: controls.every(control => {
+        const bounds = control.getBoundingClientRect();
+        return bounds.left >= rect.left - 1 && bounds.right <= rect.right + 1 &&
+          control.scrollWidth <= control.clientWidth + 1;
+      }),
+      scrollable: Boolean(content && content.scrollHeight >= content.clientHeight),
+    };
+  });
+  expect(admissionLandscape.dialogFits && admissionLandscape.contentFits && admissionLandscape.controlsFit,
+    `new admission dialog should fit in landscape: ${JSON.stringify(admissionLandscape)}`).toBe(true);
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.getByPlaceholder("e.g. Aarav Sharma").fill("Aarav Sharma");
   await page.getByPlaceholder("e.g. ADM-2026-001").fill("ADM-E2E-001");
@@ -676,6 +695,22 @@ test("student admission, profile navigation and parent details render without br
       expect(layout.actionColumns, "profile actions should use one column on phone widths").toBe(1);
     }
   }
+  await page.setViewportSize({ width: 844, height: 390 });
+  const profileLandscape = await profileDialog.evaluate(dialog => {
+    const rect = dialog.getBoundingClientRect();
+    const content = dialog.querySelector<HTMLElement>(".app-modal-content");
+    const actions = dialog.querySelector<HTMLElement>(".student-profile-actions");
+    return {
+      dialogFits: rect.left >= 0 && rect.right <= window.innerWidth + 1 &&
+        rect.top >= 0 && rect.bottom <= window.innerHeight + 1,
+      contentFits: Boolean(content && content.scrollWidth <= content.clientWidth + 1),
+      actionsFit: Boolean(actions && actions.getBoundingClientRect().right <= rect.right + 1),
+    };
+  });
+  expect(profileLandscape.dialogFits && profileLandscape.contentFits && profileLandscape.actionsFit,
+    `student profile dialog should fit in landscape: ${JSON.stringify(profileLandscape)}`).toBe(true);
+  await page.setViewportSize({ width: 1440, height: 900 });
+
   // Exercise the nested student edit dialogs too: their forms are substantially
   // wider than the profile summary and must remain usable on narrow screens.
   for (const [trigger, title] of [
@@ -708,6 +743,19 @@ test("student admission, profile navigation and parent details render without br
       expect(layout.dialogFits, `${title} dialog should fit at ${width}px`).toBe(true);
       expect(layout.contentFits, `${title} content should not overflow at ${width}px: ${JSON.stringify(layout.overflowing)}`).toBe(true);
     }
+    await page.setViewportSize({ width: 844, height: 390 });
+    const landscape = await nestedDialog.evaluate(dialog => {
+      const rect = dialog.getBoundingClientRect();
+      const content = dialog.querySelector<HTMLElement>(".app-modal-content");
+      return {
+        dialogFits: rect.left >= 0 && rect.right <= window.innerWidth + 1 &&
+          rect.top >= 0 && rect.bottom <= window.innerHeight + 1,
+        contentFits: Boolean(content && content.scrollWidth <= content.clientWidth + 1),
+        contentScrollable: Boolean(content && content.scrollHeight >= content.clientHeight),
+      };
+    });
+    expect(landscape.dialogFits && landscape.contentFits,
+      `${title} dialog should fit in landscape: ${JSON.stringify(landscape)}`).toBe(true);
     await nestedDialog.getByRole("button", { name: "Close dialog" }).click();
     await expect(profileDialog).toBeVisible();
   }
