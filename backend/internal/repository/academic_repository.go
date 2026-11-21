@@ -23,6 +23,8 @@ var (
 	ErrSectionDeactivationConfirmationRequired = errors.New("section deactivation requires dependency preview and confirmation")
 	ErrClassDeactivationConfirmationRequired = errors.New("class deactivation requires dependency preview and confirmation")
 	ErrSubjectDeactivationConfirmationRequired = errors.New("subject deactivation requires dependency preview and confirmation")
+	ErrInactiveSubjectInCurriculum = errors.New("new enrollment cannot use a curriculum containing an inactive subject")
+	ErrInactiveSubjectSelection = errors.New("inactive subjects cannot be newly selected by a student")
 	ErrAcademicImpactChanged = errors.New("academic dependency impact changed; review the impact again")
 	ErrAcademicAdmissionNumberConflict = errors.New("academic admission number already exists in this school year")
 	ErrAcademicRollNumberConflict = errors.New("academic roll number already exists in this active section")
