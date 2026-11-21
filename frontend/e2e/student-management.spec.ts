@@ -682,6 +682,31 @@ test("student admission, profile navigation and parent details render without br
   await page.setViewportSize({ width: 1440, height: 900 });
   await expect(profileDialog.getByText("14 Nov 2026", { exact: true })).toHaveCount(2);
   const curriculumPanel = page.getByRole("region", { name: "Curriculum and subject choices" });
+  // Subject-choice labels, badges, grouped controls and save actions must fit
+  // the profile dialog on narrow phones as well as tablet/desktop widths.
+  for (const width of [320, 360, 390, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    const layout = await curriculumPanel.evaluate(panel => {
+      const rect = panel.getBoundingClientRect();
+      const controls = Array.from(panel.querySelectorAll<HTMLElement>("input, button"));
+      const rows = Array.from(panel.querySelectorAll<HTMLElement>(".student-subject-option, .student-subject-row"));
+      const fits = (element: HTMLElement) => {
+        const bounds = element.getBoundingClientRect();
+        return bounds.left >= rect.left - 1 && bounds.right <= rect.right + 1 &&
+          element.scrollWidth <= element.clientWidth + 1;
+      };
+      return {
+        panelFits: rect.left >= 0 && rect.right <= window.innerWidth + 1 &&
+          panel.scrollWidth <= panel.clientWidth + 1,
+        controlsFit: controls.every(fits),
+        rowsFit: rows.every(fits),
+        pageFits: document.documentElement.scrollWidth <= window.innerWidth + 1,
+      };
+    });
+    expect(layout.panelFits && layout.controlsFit && layout.rowsFit && layout.pageFits,
+      `curriculum subject choices should fit at ${width}px: ${JSON.stringify(layout)}`).toBe(true);
+  }
+  await page.setViewportSize({ width: 1440, height: 900 });
   await expect(curriculumPanel.getByText("Curriculum", { exact: true })).toBeVisible();
   await expect(curriculumPanel.getByText(/Version \d+/)).toHaveCount(0);
   await expect(curriculumPanel.getByText("Curriculum version", { exact: true })).toHaveCount(0);
