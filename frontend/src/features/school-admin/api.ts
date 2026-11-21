@@ -554,3 +554,38 @@ export function deleteTimetableEntry(entryID: number, academicYearID: number) {
 export function getCurrentTimetableYear(signal?: AbortSignal) {
   return api<{ academic_year: StudentAcademicYear }>("/school/timetable/current-year", { signal });
 }
+
+export type StaffQualification = {
+  id: number; staff_principal_id: number; qualification_type: "school" | "diploma" | "undergraduate" | "postgraduate" | "doctorate" | "other";
+  qualification_name: string; specialization?: string; institution: string; board_university?: string;
+  completion_year?: number | null; score?: number | null; score_scale?: "percentage" | "cgpa" | "gpa" | "marks" | "grade";
+  credential_reference?: string; verification_status: "pending" | "verified" | "rejected"; created_at: string; updated_at: string;
+};
+export type StaffCertification = {
+  id: number; staff_principal_id: number; certificate_name: string; issuing_organization: string;
+  issue_date?: string; expiry_date?: string; credential_id?: string; verification_status: "pending" | "verified" | "rejected";
+  created_at: string; updated_at: string;
+};
+export type StaffExperience = {
+  id: number; staff_principal_id: number; employer_name: string; designation: string;
+  employment_type: "permanent" | "contract" | "part_time" | "temporary" | "internship" | "other";
+  start_date: string; end_date?: string; is_current: boolean; description?: string; created_at: string; updated_at: string;
+};
+export function getStaffQualifications(principalID: number, signal?: AbortSignal) {
+  return api<{ qualifications: StaffQualification[] }>(`/school/staff/${principalID}/qualifications`, { signal });
+}
+export function createStaffQualification(principalID: number, input: Omit<StaffQualification,"id"|"staff_principal_id"|"verification_status"|"created_at"|"updated_at">) {
+  return api<{ qualification: StaffQualification }>(`/school/staff/${principalID}/qualifications`, { method:"POST", body:JSON.stringify(input) });
+}
+export function getStaffCertifications(principalID: number, signal?: AbortSignal) {
+  return api<{ certifications: StaffCertification[] }>(`/school/staff/${principalID}/certifications`, { signal });
+}
+export function createStaffCertification(principalID: number, input: Omit<StaffCertification,"id"|"staff_principal_id"|"verification_status"|"created_at"|"updated_at">) {
+  return api<{ certification: StaffCertification }>(`/school/staff/${principalID}/certifications`, { method:"POST", body:JSON.stringify(input) });
+}
+export function getStaffExperience(principalID: number, signal?: AbortSignal) {
+  return api<{ experience: StaffExperience[] }>(`/school/staff/${principalID}/experience`, { signal });
+}
+export function createStaffExperience(principalID: number, input: Omit<StaffExperience,"id"|"staff_principal_id"|"created_at"|"updated_at">) {
+  return api<{ experience: StaffExperience }>(`/school/staff/${principalID}/experience`, { method:"POST", body:JSON.stringify(input) });
+}
