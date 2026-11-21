@@ -8,6 +8,7 @@ import {
   useResetSchoolStaffPasswordMutation, useSchoolStaffQuery, useUpdateSchoolStaffMutation,
 } from "../queries";
 import type { StaffRecord } from "../api";
+import { ApiError } from "../../../lib/api";
 import { Modal } from "../../../shared/components/Modal";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import "./StaffManagementPage.css";
@@ -106,12 +107,22 @@ export function StaffManagementPage({ permissions }: Props) {
       closeAction();
     } catch (error) {
       const message = error instanceof Error ? error.message : "The request could not be completed.";
+      const mapped: Record<string, string> = {};
+      if (error instanceof ApiError) {
+        for (const key of ["username", "initial_password", "full_name", "employee_code", "designation", "mobile_number", "email", "joining_date", "employment_status"]) {
+          if (error.fieldErrors[key]) mapped[key === "initial_password" ? "password" : key] = error.fieldErrors[key];
+        }
+      }
       if (message.toLowerCase().includes("employee code")) {
-        setFieldErrors(current => ({ ...current, employee_code: "This employee code is already used in this school." }));
+        mapped.employee_code = "This employee code is already used in this school.";
+      }
+      if (Object.keys(mapped).length) {
+        setFieldErrors(current => ({ ...current, ...mapped }));
         setFeedback(null);
       } else {
         setFeedback({ kind: "error", message });
       }
+      notifyToast("error", message);
     }
   }
   function deactivate(item: StaffRecord) { setDisableError(""); setStaffToDisable(item); }
