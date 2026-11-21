@@ -25,6 +25,33 @@ test("appearance mode, palette and automatic schedule save safely on this device
   await page.getByRole("button", { name: /Continue/ }).click();
   await page.getByRole("button", { name: "Settings" }).click();
 
+  // Verify the complete Settings surface at compact phone and landscape sizes,
+  // not only the page shell's horizontal-overflow smoke test.
+  for (const viewport of [{ width: 320, height: 568 }, { width: 844, height: 390 }]) {
+    await page.setViewportSize(viewport);
+    const layout = await page.evaluate(() => {
+      const controls = Array.from(document.querySelectorAll<HTMLElement>(
+        ".appearance-option, .palette-option, .theme-schedule-field input",
+      ));
+      return {
+        pageFits: document.documentElement.scrollWidth <= window.innerWidth,
+        controlsFit: controls.every(control => {
+          const rect = control.getBoundingClientRect();
+          return rect.left >= 0 && rect.right <= window.innerWidth + 1 &&
+            control.scrollWidth <= control.clientWidth + 1;
+        }),
+        optionCounts: {
+          modes: document.querySelectorAll(".appearance-option").length,
+          palettes: document.querySelectorAll(".palette-option").length,
+        },
+      };
+    });
+    expect(layout.pageFits, `Settings should not overflow at ${viewport.width}×${viewport.height}`).toBe(true);
+    expect(layout.controlsFit, `Settings controls should fit at ${viewport.width}×${viewport.height}`).toBe(true);
+    expect(layout.optionCounts).toEqual({ modes: 4, palettes: 15 });
+  }
+  await page.setViewportSize({ width: 1440, height: 900 });
+
   const darkMode = page.getByRole("button", { name: /^Dark\b/ });
   await darkMode.click();
   await expect(darkMode).toHaveAttribute("aria-pressed", "true");
@@ -35,6 +62,19 @@ test("appearance mode, palette and automatic schedule save safely on this device
   await evergreen.click();
   await expect(evergreen).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByRole("status").filter({ hasText: "Brand palette updated." })).toBeVisible();
+
+  // Every documented palette must be selectable, with exactly one active
+  // selection; restore Evergreen for the persistence assertion below.
+  const paletteNames = ["Cobalt", "Alpine", "Evergreen", "Lagoon", "Iris", "Amethyst", "Blush", "Terracotta", "Saffron", "Dune", "Glacier", "Obsidian", "Graphite", "Ruby", "Copper"];
+  await expect(page.locator(".palette-option")).toHaveCount(paletteNames.length);
+  for (const name of paletteNames) {
+    const option = page.getByRole("button", { name, exact: true });
+    await option.click();
+    await expect(option).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator(".palette-option[aria-pressed='true']")).toHaveCount(1);
+  }
+  await evergreen.click();
+  await expect(evergreen).toHaveAttribute("aria-pressed", "true");
 
   await page.getByRole("button", { name: /Automatic schedule/ }).click();
   const darkStart = page.getByLabel("Turn Dark Mode on");
