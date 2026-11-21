@@ -516,6 +516,37 @@ test("student admission, profile navigation and parent details render without br
   await page.getByRole("button", { name: /New admission/ }).click();
   const admissionDialog = page.getByRole("dialog", { name: "New student admission" });
   await expect(admissionDialog.locator(".student-field-hint__tooltip")).toHaveCount(0);
+  for (const width of [320, 360, 390, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    const layout = await admissionDialog.evaluate(dialog => {
+      const rect = dialog.getBoundingClientRect();
+      const content = dialog.querySelector<HTMLElement>(".app-modal-content");
+      const controls = Array.from(dialog.querySelectorAll<HTMLElement>("input, button"));
+      const controlsFit = controls.every(control => {
+        const bounds = control.getBoundingClientRect();
+        return bounds.left >= rect.left - 1 && bounds.right <= rect.right + 1 &&
+          control.scrollWidth <= control.clientWidth + 1;
+      });
+      const overflowing = content ? Array.from(content.querySelectorAll<HTMLElement>("*"))
+        .filter(child => child.scrollWidth > child.clientWidth + 1)
+        .map(child => ({
+          tag: child.tagName.toLowerCase(),
+          className: typeof child.className === "string" ? child.className : "",
+          text: (child.textContent ?? "").trim().slice(0, 60),
+          clientWidth: child.clientWidth,
+          scrollWidth: child.scrollWidth,
+        })).slice(0, 8) : [];
+      return {
+        dialogFits: rect.left >= 0 && rect.right <= window.innerWidth + 1,
+        contentFits: Boolean(content && content.scrollWidth <= content.clientWidth + 1),
+        controlsFit,
+        overflowing,
+      };
+    });
+    expect(layout.dialogFits && layout.contentFits && layout.controlsFit,
+      `new admission dialog should fit at ${width}px: ${JSON.stringify(layout)}`).toBe(true);
+  }
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.getByPlaceholder("e.g. Aarav Sharma").fill("Aarav Sharma");
   await page.getByPlaceholder("e.g. ADM-2026-001").fill("ADM-E2E-001");
   await page.getByRole("button", { name: "Admission academic year" }).click();
