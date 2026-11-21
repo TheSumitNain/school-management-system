@@ -60,6 +60,7 @@ func setupRouterWithHandlers(
 	var timetableHandler *handlers.TimetableHandler
 	var parentAuthHandler *handlers.ParentAuthHandler
 	var platformAdminLifecycleHandler *handlers.PlatformAdminLifecycleHandler
+	var platformAuditHandler *handlers.PlatformAuditHandler
 	var sessionActivityTracker middleware.AdminSessionActivityTracker
 	for _, optional := range optionalHandlers {
 		switch handler := optional.(type) {
@@ -77,6 +78,8 @@ func setupRouterWithHandlers(
 			parentAuthHandler = handler
 		case *handlers.PlatformAdminLifecycleHandler:
 			platformAdminLifecycleHandler = handler
+		case *handlers.PlatformAuditHandler:
+			platformAuditHandler = handler
 		case middleware.AdminSessionActivityTracker:
 			sessionActivityTracker = handler
 		}
@@ -95,6 +98,10 @@ func setupRouterWithHandlers(
 		router.GET("/platform/admins", platformAdminAuth, middleware.RequirePermission("platform.admins.manage"), platformAdminLifecycleHandler.List)
 		router.POST("/platform/admins", platformAdminAuth, middleware.RequirePermission("platform.admins.manage"), platformAdminLifecycleHandler.Create)
 		router.POST("/platform/admins/:principalID/deactivate", platformAdminAuth, middleware.RequirePermission("platform.admins.manage"), platformAdminLifecycleHandler.Deactivate)
+	}
+
+	if platformAuditHandler != nil {
+		router.GET("/platform/audit-events", authMiddleware(), middleware.RequirePermission("platform.audit.read"), platformAuditHandler.List)
 	}
 
 	if schoolOnboardingHandler != nil {
@@ -516,6 +523,9 @@ func run() error {
 	platformAdminLifecycleRepo := repository.NewPlatformAdminLifecycleRepository(db)
 	platformAdminLifecycleService := services.NewPlatformAdminLifecycleService(platformAdminLifecycleRepo)
 	platformAdminLifecycleHandler := handlers.NewPlatformAdminLifecycleHandler(platformAdminLifecycleService)
+	platformAuditRepo := repository.NewPlatformAuditRepository(db)
+	platformAuditService := services.NewPlatformAuditService(platformAuditRepo)
+	platformAuditHandler := handlers.NewPlatformAuditHandler(platformAuditService)
 
 	roleRepo := repository.NewRoleRepository(db)
 	roleService := services.NewRoleService(roleRepo)
@@ -534,7 +544,7 @@ func run() error {
 	staffAccountService := services.NewStaffAccountService(staffAccountRepo)
 	staffHandler := handlers.NewStaffHandler(staffAccountService)
 
-	router, err := setupRouterWithHandlers(db, authHandler, tokenService, principalAuthorizationRepo, principalAuthorizationRepo, schoolOnboardingHandler, roleHandler, staffHandler, academicHandler, guardianHandler, attendanceHandler, timetableHandler, platformAdminLifecycleHandler, principalAuthorizationRepo)
+	router, err := setupRouterWithHandlers(db, authHandler, tokenService, principalAuthorizationRepo, principalAuthorizationRepo, schoolOnboardingHandler, roleHandler, staffHandler, academicHandler, guardianHandler, attendanceHandler, timetableHandler, platformAdminLifecycleHandler, platformAuditHandler, principalAuthorizationRepo)
 
 	if err != nil {
 		return fmt.Errorf("setup router: %w", err)
