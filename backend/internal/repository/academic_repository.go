@@ -294,6 +294,7 @@ func classDeactivationFingerprint(ctx context.Context, tx pgx.Tx, schoolID, clas
 	var fingerprint string
 	err:=tx.QueryRow(ctx,`
 		SELECT md5(concat_ws('|',
+			COALESCE((SELECT c.name || ':' || c.display_order::text || ':' || c.is_active::text FROM classes c WHERE c.school_id=$1 AND c.id=$2),''),
 			COALESCE((SELECT string_agg(s.id::text || ':' || s.is_active::text, ',' ORDER BY s.id) FROM sections s WHERE s.school_id=$1 AND s.class_id=$2),''),
 			COALESCE((SELECT string_agg(e.id::text || ':' || e.status, ',' ORDER BY e.id) FROM student_enrollments e WHERE e.school_id=$1 AND e.class_id=$2),''),
 			COALESCE((SELECT string_agg(cc.id::text || ':' || cc.status, ',' ORDER BY cc.id) FROM class_curricula cc WHERE cc.school_id=$1 AND cc.class_id=$2),''),
@@ -335,6 +336,7 @@ func (r *AcademicRepository) PreviewClassDeactivation(ctx context.Context, actor
 			(SELECT COUNT(*) FROM teacher_subject_assignments a JOIN sections s ON s.id=a.section_id AND s.school_id=a.school_id WHERE a.school_id=c.school_id AND s.class_id=c.id AND a.revoked_at IS NULL),
 			(SELECT COUNT(*) FROM class_incharge_assignments a JOIN sections s ON s.id=a.section_id AND s.school_id=a.school_id WHERE a.school_id=c.school_id AND s.class_id=c.id AND a.revoked_at IS NULL),
 			md5(concat_ws('|',
+				COALESCE((SELECT c.name || ':' || c.display_order::text || ':' || c.is_active::text FROM classes c WHERE c.school_id=c.school_id AND c.id=c.id),''),
 				COALESCE((SELECT string_agg(s.id::text || ':' || s.is_active::text, ',' ORDER BY s.id) FROM sections s WHERE s.school_id=c.school_id AND s.class_id=c.id),''),
 				COALESCE((SELECT string_agg(e.id::text || ':' || e.status, ',' ORDER BY e.id) FROM student_enrollments e WHERE e.school_id=c.school_id AND e.class_id=c.id),''),
 				COALESCE((SELECT string_agg(cc.id::text || ':' || cc.status, ',' ORDER BY cc.id) FROM class_curricula cc WHERE cc.school_id=c.school_id AND cc.class_id=c.id),''),
@@ -445,6 +447,7 @@ func sectionDeactivationFingerprint(ctx context.Context, tx pgx.Tx, schoolID, se
 	var fingerprint string
 	err := tx.QueryRow(ctx, `
 		SELECT md5(concat_ws('|',
+			COALESCE((SELECT s.name || ':' || COALESCE(s.medium,'') || ':' || s.display_order::text || ':' || s.is_active::text FROM sections s WHERE s.school_id=$1 AND s.id=$2),''),
 			COALESCE((SELECT string_agg(e.id::text || ':' || e.status, ',' ORDER BY e.id) FROM student_enrollments e WHERE e.school_id=$1 AND e.section_id=$2), ''),
 			COALESCE((SELECT string_agg(cc.id::text || ':' || cc.status, ',' ORDER BY cc.id) FROM class_curricula cc WHERE cc.school_id=$1 AND cc.section_id=$2), ''),
 			COALESCE((SELECT string_agg(a.id::text || ':' || COALESCE(a.revoked_at::text,'active'), ',' ORDER BY a.id) FROM teacher_subject_assignments a WHERE a.school_id=$1 AND a.section_id=$2), ''),
@@ -471,6 +474,7 @@ func (r *AcademicRepository) PreviewSectionDeactivation(ctx context.Context, act
 			(SELECT COUNT(*) FROM teacher_subject_assignments a WHERE a.school_id=s.school_id AND a.section_id=s.id AND a.revoked_at IS NULL),
 			(SELECT COUNT(*) FROM class_incharge_assignments a WHERE a.school_id=s.school_id AND a.section_id=s.id AND a.revoked_at IS NULL),
 			md5(concat_ws('|',
+				COALESCE((SELECT s.name || ':' || COALESCE(s.medium,'') || ':' || s.display_order::text || ':' || s.is_active::text FROM sections s WHERE s.school_id=s.school_id AND s.id=s.id),''),
 				COALESCE((SELECT string_agg(e.id::text || ':' || e.status, ',' ORDER BY e.id) FROM student_enrollments e WHERE e.school_id=s.school_id AND e.section_id=s.id), ''),
 				COALESCE((SELECT string_agg(cc.id::text || ':' || cc.status, ',' ORDER BY cc.id) FROM class_curricula cc WHERE cc.school_id=s.school_id AND cc.section_id=s.id), ''),
 				COALESCE((SELECT string_agg(a.id::text || ':' || COALESCE(a.revoked_at::text,'active'), ',' ORDER BY a.id) FROM teacher_subject_assignments a WHERE a.school_id=s.school_id AND a.section_id=s.id), ''),
