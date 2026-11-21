@@ -98,7 +98,7 @@ test("dashboard explains partial loading failures and lets the user retry", asyn
     }
     if (path === "/school/staff") {
       staffRequests += 1;
-      if (staffRequests === 1) {
+      if (staffRequests <= 2) {
         await route.fulfill({ status: 503, json: { message: "Staff service is temporarily unavailable while the school workspace is loading. Please retry in a moment or contact your administrator if the problem continues." } });
       } else {
         await route.fulfill({ json: { staff: [{ id: 1 }, { id: 2 }] } });
@@ -130,7 +130,7 @@ test("dashboard explains partial loading failures and lets the user retry", asyn
   await expect(page.locator(".stat").filter({ hasText: "Staff accounts" }).locator("strong")).toHaveText("2");
   await expect(page.locator(".stat").filter({ hasText: "Classes" }).locator("strong")).toHaveText("3");
   await expect(page.getByRole("alert")).toHaveCount(0);
-  expect(staffRequests).toBe(2);
+  expect(staffRequests).toBe(3);
 });
 
 test("dashboard metrics and feedback remain readable without viewport overflow", async ({ page }) => {
