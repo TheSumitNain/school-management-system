@@ -57,6 +57,7 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
   const curriculaQuery = useSchoolClassCurriculaQuery(yearNumber, classNumber, sectionNumber);
   const currentCurriculum = (curriculaQuery.data?.curricula ?? []).find(item => item.status === "active") ?? null;
   const activeSubjects = subjects.filter(subject => subject.is_active);
+  const selectableSubjects = subjects.filter(subject => subject.is_active || included.includes(subject.id));
   const busy = save.isPending || preview.isPending;
   const compulsoryCount = included.filter(id => !(groupBySubject[id] ?? "").trim()).length;
   const individualOptionalCount = included.filter(id => groupBySubject[id] === "__standalone_optional__").length;
@@ -345,26 +346,26 @@ export function ClassCurriculumSetupPanel({ years, classes, sections, subjects, 
           <div className="curriculum-subject-picker">
             <div className="curriculum-subject-picker-heading">
               <div><h3>Subjects</h3><p>Select the subjects for this class, then choose how each one is assigned.</p></div>
-              <span>{included.length} of {activeSubjects.length} selected</span>
+              <span>{included.length} of {selectableSubjects.length} selected</span>
             </div>
             <div className="curriculum-subject-summary" aria-live="polite">
               <span className="compulsory"><strong>{compulsoryCount}</strong> Compulsory</span>
               <span className="individual"><strong>{individualOptionalCount}</strong> Optional</span>
               <span className="grouped"><strong>{groupedOptionalCount}</strong> In groups</span>
             </div>
-            {activeSubjects.length === 0 ? <p>Add active subjects in Academic Structure first.</p> : activeSubjects.map(subject => {
+            {selectableSubjects.length === 0 ? <p>Add active subjects in Academic Structure first.</p> : selectableSubjects.map(subject => {
               const checked = included.includes(subject.id);
               const groupValue = groupBySubject[subject.id] ?? "";
               return (
                 <div className="curriculum-subject-row" key={subject.id}>
-                  <label><input type="checkbox" disabled={busy} checked={checked} onChange={event => {
+                  <label><input type="checkbox" disabled={busy || (!subject.is_active && !checked)} checked={checked} onChange={event => {
                     setIncluded(current => event.target.checked ? [...current, subject.id] : current.filter(id => id !== subject.id));
                     setFieldErrors(current => ({ ...current, subjects: undefined, groups: Object.fromEntries(Object.entries(current.groups).map(([key, errors]) => [key, { ...errors, min: undefined, max: undefined, subjects: undefined }])) }));
                   }} />
-                    <span>{subject.name}{subject.subject_code ? " (" + subject.subject_code + ")" : ""}</span>
+                    <span>{subject.name}{subject.subject_code ? " (" + subject.subject_code + ")" : ""}{!subject.is_active && <small className="curriculum-subject-inactive-note">Inactive in subject catalogue — remove this subject from the curriculum</small>}</span>
                   </label>
                   {checked && <label className="curriculum-subject-group-select">Type
-                    <select disabled={busy} value={groupValue} onChange={event => { setGroupBySubject(current => ({ ...current, [subject.id]: event.target.value })); setFieldErrors(current => ({ ...current, subjects: undefined })); }}>
+                    <select disabled={busy || !subject.is_active} value={groupValue} onChange={event => { setGroupBySubject(current => ({ ...current, [subject.id]: event.target.value })); setFieldErrors(current => ({ ...current, subjects: undefined })); }}>
                       <option value="">Compulsory</option>
                       <option value="__standalone_optional__">Optional (individual choice)</option>
                       {groups.filter(group => group.name.trim()).map((group, index) => <option key={index} value={group.name}>Optional group: {group.name}</option>)}
