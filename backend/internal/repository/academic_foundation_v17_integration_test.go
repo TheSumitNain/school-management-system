@@ -1384,4 +1384,41 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 		t.Fatalf("class deactivation retention/audit: active sections=%d audit events=%d; want 1 and 1",retainedSectionCount,classAuditCount)
 	}
 
+	// Subject deactivation must review curriculum references and active student
+	// choices, reject a stale assignment snapshot, and retain curriculum rows.
+	subjectImpact,err:=academicRepo.PreviewSubjectDeactivation(ctx,actorPrincipalID,schoolID,subjectID)
+	if err!=nil||subjectImpact==nil||subjectImpact.ImpactFingerprint==""||subjectImpact.CurriculumSubjectCount==0 {
+		t.Fatalf("preview subject deactivation: impact=%+v err=%v",subjectImpact,err)
+	}
+	if _,err:=tx.Exec(ctx,`UPDATE teacher_subject_assignments SET revoked_at=NOW()
+		WHERE school_id=$1 AND subject_id=$2 AND revoked_at IS NULL`,schoolID,subjectID);err!=nil {
+		t.Fatalf("change teacher assignment after subject preview: %v",err)
+	}
+	staleSubjectSave,err:=academicRepo.SaveSubjectWithDeactivationConfirmation(ctx,actorPrincipalID,schoolID,
+		subjectID,"Mathematics",nil,subjectImpact.ImpactFingerprint)
+	if staleSubjectSave!=nil||!errors.Is(err,ErrAcademicImpactChanged) {
+		t.Fatalf("save subject with stale dependency preview: subject=%+v err=%v",staleSubjectSave,err)
+	}
+	refreshedSubjectImpact,err:=academicRepo.PreviewSubjectDeactivation(ctx,actorPrincipalID,schoolID,subjectID)
+	if err!=nil||refreshedSubjectImpact==nil||refreshedSubjectImpact.CurriculumSubjectCount==0 {
+		t.Fatalf("refresh subject dependency preview: impact=%+v err=%v",refreshedSubjectImpact,err)
+	}
+	deactivatedSubject,err:=academicRepo.SaveSubjectWithDeactivationConfirmation(ctx,actorPrincipalID,schoolID,
+		subjectID,"Mathematics",nil,refreshedSubjectImpact.ImpactFingerprint)
+	if err!=nil||deactivatedSubject==nil||deactivatedSubject.IsActive {
+		t.Fatalf("confirm subject deactivation with current impact: subject=%+v err=%v",deactivatedSubject,err)
+	}
+	var retainedCurriculumSubjectCount,subjectAuditCount int
+	if err:=tx.QueryRow(ctx,`SELECT COUNT(*)::integer FROM class_curriculum_subjects WHERE school_id=$1 AND subject_id=$2`,schoolID,subjectID).Scan(&retainedCurriculumSubjectCount);err!=nil {
+		t.Fatalf("verify curriculum subject retained after deactivation: %v",err)
+	}
+	if err:=tx.QueryRow(ctx,`SELECT COUNT(*)::integer FROM audit_events
+		WHERE school_id=$1 AND actor_principal_id=$2 AND action='school.subject.deactivated'
+		AND resource_type='subject' AND resource_id=$3`,schoolID,actorPrincipalID,fmt.Sprint(subjectID)).Scan(&subjectAuditCount);err!=nil {
+		t.Fatalf("verify subject deactivation audit event: %v",err)
+	}
+	if retainedCurriculumSubjectCount==0||subjectAuditCount!=1 {
+		t.Fatalf("subject deactivation retention/audit: curriculum references=%d audit events=%d; want retained references and one audit",retainedCurriculumSubjectCount,subjectAuditCount)
+	}
+
 }
