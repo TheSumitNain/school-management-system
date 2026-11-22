@@ -29,6 +29,11 @@ func (f *fakeStaffAttendanceRepository) Mark(_ context.Context, _, _, _ int64, _
     f.lastStatus = status
     return &repository.StaffAttendanceRecord{Status: &status}, nil
 }
+func (f *fakeStaffAttendanceRepository) MarkBulk(_ context.Context, _, _ int64, staffIDs []int64, _ time.Time, status string, _ *string) (int, error) {
+    f.markCalls++
+    f.lastStatus = status
+    return len(staffIDs), nil
+}
 func (f *fakeStaffAttendanceRepository) Update(_ context.Context, _, _, _ int64, status string, _ *string) (*repository.StaffAttendanceRecord, error) {
     f.updateCalls++
     f.lastStatus = status
@@ -60,5 +65,28 @@ func TestStaffAttendanceServiceDelegatesValidOperations(t *testing.T) {
     if _, err := service.Update(context.Background(), 1, 2, 4, "half_day", nil); err != nil { t.Fatalf("Update: %v", err) }
     if fake.listDailyCalls != 1 || fake.markCalls != 1 || fake.updateCalls != 1 {
         t.Fatalf("repository calls list=%d mark=%d update=%d", fake.listDailyCalls, fake.markCalls, fake.updateCalls)
+    }
+}
+
+func TestStaffAttendanceServiceRejectsInvalidBulkTargets(t *testing.T) {
+    fake := &fakeStaffAttendanceRepository{}
+    service := NewStaffAttendanceService(fake)
+    day := time.Date(2026, 11, 22, 0, 0, 0, 0, time.UTC)
+    cases := [][]int64{nil, {}, {1, 1}, {1, 0}}
+    for _, ids := range cases {
+        if _, err := service.MarkBulk(context.Background(), 1, 2, ids, day, "present", nil); !errors.Is(err, ErrInvalidStaffAttendance) {
+            t.Fatalf("invalid bulk target list %v error=%v want ErrInvalidStaffAttendance", ids, err)
+        }
+    }
+    if fake.markCalls != 0 { t.Fatalf("repository bulk calls=%d want=0", fake.markCalls) }
+}
+
+func TestStaffAttendanceServiceDelegatesValidBulkMark(t *testing.T) {
+    fake := &fakeStaffAttendanceRepository{}
+    service := NewStaffAttendanceService(fake)
+    day := time.Date(2026, 11, 22, 0, 0, 0, 0, time.UTC)
+    count, err := service.MarkBulk(context.Background(), 1, 2, []int64{3, 4}, day, "present", nil)
+    if err != nil || count != 2 || fake.markCalls != 1 || fake.lastStatus != "present" {
+        t.Fatalf("bulk result count=%d calls=%d status=%q err=%v", count, fake.markCalls, fake.lastStatus, err)
     }
 }
