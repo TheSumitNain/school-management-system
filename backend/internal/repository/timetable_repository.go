@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
@@ -196,6 +197,56 @@ func (r *AcademicRepository) ListTimetableEntries(ctx context.Context, actorID, 
 		items=append(items,v)
 	}
 	if err:=rows.Err();err!=nil{return nil,fmt.Errorf("iterate timetable entries: %w",err)}
+	return items,nil
+}
+
+type TeacherWorkloadReportRow struct {
+	TeacherPrincipalID int64 `json:"teacher_principal_id"`
+	TeacherName string `json:"teacher_name"`
+	EmployeeCode string `json:"employee_code"`
+	Designation string `json:"designation"`
+	EmploymentStatus string `json:"employment_status"`
+	LoginStatus string `json:"login_status"`
+	DayOfWeek int `json:"day_of_week"`
+	ScheduledPeriods int `json:"scheduled_periods"`
+	DistinctSections int `json:"distinct_sections"`
+	DistinctSubjects int `json:"distinct_subjects"`
+	FirstPeriod *int `json:"first_period,omitempty"`
+	LastPeriod *int `json:"last_period,omitempty"`
+}
+
+func (r *AcademicRepository) ListTeacherWorkloadReport(ctx context.Context,actorID,schoolID,yearID int64)([]TeacherWorkloadReportRow,error){
+	if r==nil||r.db==nil||yearID<=0{return nil,ErrInvalidTimetableInput}
+	if err:=timetableAuthorize(ctx,r.db,actorID,schoolID,"timetable.read");err!=nil{return nil,err}
+	var yearExists bool
+	if err:=r.db.QueryRow(ctx,`SELECT EXISTS(SELECT 1 FROM academic_years WHERE id=$1 AND school_id=$2)`,yearID,schoolID).Scan(&yearExists);err!=nil{return nil,fmt.Errorf("validate workload academic year: %w",err)}
+	if !yearExists{return nil,ErrTimetableNotFound}
+	teacherOnly,err:=isTeacherWithoutSchoolAdmin(ctx,r.db,actorID,schoolID)
+	if err!=nil{return nil,fmt.Errorf("check workload teacher boundary: %w",err)}
+	rows,err:=r.db.Query(ctx,`SELECT sp.principal_id,sp.full_name,sp.employee_code,sp.designation,sp.employment_status,ap.status,
+		COALESCE(te.day_of_week,0)::integer,COUNT(te.id)::integer,
+		COUNT(DISTINCT te.section_id)::integer,COUNT(DISTINCT te.subject_id)::integer,
+		MIN(p.period_number),MAX(p.period_number)
+		FROM staff_profiles sp
+		JOIN users u ON u.principal_id=sp.principal_id AND u.school_id=sp.school_id
+		JOIN auth_principals ap ON ap.id=sp.principal_id AND ap.principal_type='staff'
+		LEFT JOIN timetable_entries te ON te.school_id=sp.school_id AND te.teacher_principal_id=sp.principal_id AND te.academic_year_id=$2
+		LEFT JOIN timetable_periods p ON p.id=te.period_id AND p.school_id=te.school_id AND p.academic_year_id=te.academic_year_id
+		WHERE sp.school_id=$1 AND (NOT $3 OR sp.principal_id=$4)
+		GROUP BY sp.principal_id,sp.full_name,sp.employee_code,sp.designation,sp.employment_status,ap.status,COALESCE(te.day_of_week,0)
+		ORDER BY lower(sp.full_name),COALESCE(te.day_of_week,0)`,schoolID,yearID,teacherOnly,actorID)
+	if err!=nil{return nil,fmt.Errorf("list teacher workload report: %w",err)}
+	defer rows.Close()
+	items:=make([]TeacherWorkloadReportRow,0)
+	for rows.Next(){
+		var v TeacherWorkloadReportRow
+		var first,last sql.NullInt64
+		if err:=rows.Scan(&v.TeacherPrincipalID,&v.TeacherName,&v.EmployeeCode,&v.Designation,&v.EmploymentStatus,&v.LoginStatus,
+			&v.DayOfWeek,&v.ScheduledPeriods,&v.DistinctSections,&v.DistinctSubjects,&first,&last);err!=nil{return nil,fmt.Errorf("scan teacher workload row: %w",err)}
+		if first.Valid{n:=int(first.Int64);v.FirstPeriod=&n};if last.Valid{n:=int(last.Int64);v.LastPeriod=&n}
+		items=append(items,v)
+	}
+	if err:=rows.Err();err!=nil{return nil,fmt.Errorf("iterate teacher workload report: %w",err)}
 	return items,nil
 }
 
