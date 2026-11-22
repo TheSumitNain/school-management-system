@@ -332,7 +332,9 @@ The initial staff workload view is now implemented without a database migration:
 
 Verification on branch `work`, commit `30270fe0927a6eb3f284d462ddd6dc2b4ca2959e`:
 - Backend CI run `45009158991`: PASS — all migrations on the ephemeral PostgreSQL database, full Go test suite including PostgreSQL integration, and `go vet`.
-- Frontend CI run `45009158987`: PASS — TypeScript/Vite production build and complete Playwright browser acceptance suite.
+- Frontend CI run `45009158987`: PASS — TypeScript/Vite production build and complete Playwright browser acceptance suite (71 tests).
+- A dedicated PostgreSQL integration assertion was added to `TestAcademicFoundationAndStudentLifecyclePostgresIntegration`: School Admin can read one selected same-school teacher's schedule; selecting a second same-school teacher returns only that teacher's schedule; a Teacher cannot read a peer's schedule even when supplying the peer principal ID; a foreign-school principal ID returns no entries.
+- Backend CI run `45009905703` on commit `1a40546d25a66ab8714789b5835be1afb0661b34`: PASS — migration application, full Go/PostgreSQL integration suite including the new tenant/actor-scope assertions, and `go vet`.
 - No persistent database was changed and no migration was added.
 
-**Remaining Phase 5 work:** add a dedicated repository-level PostgreSQL test proving same-school target filtering and cross-school isolation for the new optional filter; then implement server-authoritative workload/conflict reporting and the separately authorized, audited substitute workflow. This checkpoint does not mark all of Phase 5 complete.
+**Remaining Phase 5 work:** server-authoritative workload/conflict reporting and the separately authorized, audited substitute workflow. The initial teacher-specific profile workload view, its browser acceptance, and its PostgreSQL tenant/actor-scope checks are verified; this does not mark all of Phase 5 complete.
