@@ -1811,3 +1811,12 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Split request, leave-type and holiday server-error state so failures remain attached to their own form across pane navigation. Added an E2E regression test for leave-type conflict errors persisting only in the leave-type pane.
 - Code checkpoint `2e6c73678798189a689d8b3223cb797872e6de22`: Frontend CI [44991137384](https://github.com/TheSumitNain/school-management-system/actions/runs/44991137384) **PASS** (TypeScript/design-token checks, Vite build, full Playwright suite: **57 passed**); Backend CI [44991137364](https://github.com/TheSumitNain/school-management-system/actions/runs/44991137364) **PASS** (complete disposable-PostgreSQL migration chain, Go/PostgreSQL integration suite and `go vet`).
 - No persistent/local DB migration. Staff Leave & Holiday Phase 4 remains partially implemented pending remaining workflow acceptance and approved school leave-policy decisions. Academic, Student Management and Settings were not changed by this follow-up.
+
+
+## Staff Leave & Holiday — read-permission navigation acceptance (2026-11-22)
+
+- Added a Playwright regression test for a School Admin with leave write/decision permissions but without `staff.leave.read`. The Leave & Holidays workspace remains unavailable and the restricted navigation item explains that read permission is required; write permissions alone do not expose list views.
+- Latest verified code checkpoint: `5b1162b4a53207f73f5f422a12f5cb84ddc244b6`.
+- Backend CI [44991408484](https://github.com/TheSumitNain/school-management-system/actions/runs/44991408484) **PASS**: complete migration chain on ephemeral PostgreSQL, Go tests including PostgreSQL integration, and `go vet`.
+- Frontend CI [44991408480](https://github.com/TheSumitNain/school-management-system/actions/runs/44991408480) **PASS**: TypeScript/Vite production build and the complete Playwright browser acceptance suite.
+- No persistent/local database migration was applied. Leave balances/accrual remain undefined pending explicit school policy approval; Staff Leave & Holiday Phase 4 remains open for remaining workflow review.
