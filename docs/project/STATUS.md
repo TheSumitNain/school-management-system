@@ -1820,3 +1820,14 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Backend CI [44991408484](https://github.com/TheSumitNain/school-management-system/actions/runs/44991408484) **PASS**: complete migration chain on ephemeral PostgreSQL, Go tests including PostgreSQL integration, and `go vet`.
 - Frontend CI [44991408480](https://github.com/TheSumitNain/school-management-system/actions/runs/44991408480) **PASS**: TypeScript/Vite production build and the complete Playwright browser acceptance suite.
 - No persistent/local database migration was applied. Leave balances/accrual remain undefined pending explicit school policy approval; Staff Leave & Holiday Phase 4 remains open for remaining workflow review.
+
+ 
+## Staff Leave & Holiday — accessible field validation acceptance (2026-11-22)
+
+- Fixed the shared date picker label-activation regression: selecting a calendar day no longer bubbles into the surrounding form label and reopens the calendar. The browser test explicitly verifies the dialog closes after selection.
+- Leave request fields (staff member, leave type, start/end dates, duration and reason), leave-type name, and holiday name/date now expose field-level validation through aria-invalid and associated aria-describedby messages; errors are announced with alert semantics where applicable.
+- Added browser acceptance checks for accessible leave request validation and holiday date/name validation, including immediate error clearing after valid corrections.
+- Exact code checkpoint: f631fd21e5f0b6bb11c5ded315f47d58108d068c.
+- Frontend CI [44993812197](https://github.com/TheSumitNain/school-management-system/actions/runs/44993812197) **PASS**: TypeScript/Vite production build and complete Playwright browser acceptance suite.
+- Backend CI [44993812207](https://github.com/TheSumitNain/school-management-system/actions/runs/44993812207) **PASS**: full migration chain on disposable PostgreSQL, Go tests including PostgreSQL integration, and go vet.
+- No persistent/local database migration was applied. Leave & Holidays Phase 4 remains open; balances/accrual/carry-forward remain undefined pending explicit school policy approval. Academic, Student Management and Settings remain out of scope.
