@@ -673,6 +673,9 @@ test("staff leave request submits a valid half-day application with its selected
   await page.getByRole("dialog", { name: "Choose leave end date" }).getByRole("button", { name: "Tuesday, November 24, 2026" }).click();
   await page.getByLabel("Leave duration").click();
   await page.getByRole("option", { name: "Half day" }).click();
+  const leaveDuration = page.getByRole("button", { name: "Leave duration" });
+  await leaveDuration.press("Escape");
+  await expect(leaveDuration).toHaveAttribute("aria-expanded", "false");
   const halfDaySession = page.getByRole("button", { name: "Half-day session" });
   await halfDaySession.click();
   await page.getByRole("listbox", { name: "Half-day session" }).getByRole("option", { name: "Second half" }).click();
