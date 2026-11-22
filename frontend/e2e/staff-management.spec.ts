@@ -561,3 +561,49 @@ test("staff attendance supports search, individual and atomic bulk marking, and 
   await expect(page.getByText("School holidays", { exact: true })).toBeVisible();
   await expect(page.getByText(/School Foundation Day/)).toBeVisible();
 });
+
+test("staff leave rejection requires a comment before the pending request can be rejected", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 501, school_id: 10, username: "leave.teacher",
+    employee_code: "EMP-LEAVE-01", full_name: "Leave Teacher", designation: "Science Teacher",
+    mobile_number: "9876543215", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false,
+  }];
+  const permissions = ["users.read", "staff.leave.read", "staff.leave.decide"];
+  await signInAndOpenStaff(page, rows, undefined, permissions);
+  await page.getByRole("button", { name: "Leave & Holidays" }).click();
+  await expect(page.getByText("Family commitment")).toBeVisible();
+
+  await page.getByRole("button", { name: "Reject" }).click();
+  const decision = page.getByRole("dialog", { name: "Reject leave request" });
+  await decision.getByRole("button", { name: "Confirm rejection" }).click();
+  await expect(decision.getByRole("alert")).toHaveText("A comment is required when rejecting a request.");
+
+  await decision.getByLabel(/Decision comment/).fill("Insufficient leave information.");
+  await decision.getByRole("button", { name: "Confirm rejection" }).click();
+  await expect(page.getByText("No leave requests match these filters.")).toBeVisible();
+});
+
+test("staff leave cancellation requires explicit confirmation", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 501, school_id: 10, username: "leave.teacher",
+    employee_code: "EMP-LEAVE-01", full_name: "Leave Teacher", designation: "Science Teacher",
+    mobile_number: "9876543215", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false,
+  }];
+  const permissions = ["users.read", "staff.leave.read", "staff.leave.manage_requests"];
+  await signInAndOpenStaff(page, rows, undefined, permissions);
+  await page.getByRole("button", { name: "Leave & Holidays" }).click();
+  await expect(page.getByText("Family commitment")).toBeVisible();
+
+  await page.getByRole("button", { name: "Cancel request" }).click();
+  const confirmation = page.getByRole("dialog", { name: "Cancel leave request?" });
+  await expect(confirmation).toBeVisible();
+  await confirmation.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(page.getByText("Family commitment")).toBeVisible();
+
+  await page.getByRole("button", { name: "Cancel request" }).click();
+  const secondConfirmation = page.getByRole("dialog", { name: "Cancel leave request?" });
+  await secondConfirmation.getByRole("button", { name: "Cancel request", exact: true }).click();
+  await expect(page.getByText("No leave requests match these filters.")).toBeVisible();
+});
