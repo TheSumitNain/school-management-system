@@ -224,3 +224,15 @@ This section supersedes the earlier Phase 4 notes where they differ.
 - Backend CI [44986574096](https://github.com/TheSumitNain/school-management-system/actions/runs/44986574096) **PASS** at `a01514119b0d395b106accd990f59b2f7a5e992f`; frontend production build passes. Playwright is pending after correcting an E2E route mock that initially intercepted the daily context request instead of falling back to the existing mock.
 - No persistent/local database migration. Leave balance policy and payroll effects remain unconfigured.
 
+
+## 18. Staff Management permission and workflow acceptance update (2026-11-22)
+
+This section supersedes earlier Phase 4 remaining-work notes where later implementation checkpoints have completed the item.
+
+- Leave type edit/deactivation and reactivation, leave request filters, valid half-day application, rejection-comment validation, cancellation confirmation, holiday deactivation/reactivation confirmation, holiday form error recovery and pane-specific error isolation now have browser acceptance coverage.
+- Attendance daily/monthly context keeps approved leave and active holidays informational and separate from manual attendance; monthly CSV reporting keeps the categories separate and protects spreadsheet formula injection.
+- Staff Management page heading and section tabs now follow the shared Student Management dashboard visual language, including underline active tabs, visible keyboard focus and horizontal mobile scrolling.
+- Added a read-only holiday calendar acceptance case for staff.holidays.read without staff.holidays.manage: active calendar remains visible, inactive entries are not requested, and mutation controls are absent.
+- Exact checkpoint eaaea2f2f0f4a3665221a3fe0d1807f404eac6a7: Frontend CI [45001889888](https://github.com/TheSumitNain/school-management-system/actions/runs/45001889888) **PASS** with the full Playwright browser suite; Backend CI [45001889885](https://github.com/TheSumitNain/school-management-system/actions/runs/45001889885) **PASS** with PostgreSQL integration tests and go vet.
+- Leave balances, quotas, accrual, carry-forward, statutory entitlement and payroll remain out of scope until the school approves policy. No new persistent/local database change was made by these acceptance and styling updates.
+- A further Staff Account & Access test now checks that a user with roles.read but without roles.assign can inspect assigned roles but receives no assign/remove controls, and does not trigger permission-override data requests. Its CI verification is pending at code checkpoint 15d74d324de85425a94039c45c715478d153cae9; do not treat that test as verified until both workflows finish.
