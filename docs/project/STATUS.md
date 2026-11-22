@@ -1889,3 +1889,9 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 
 - Verified that disabling a staff account requires explicit confirmation: cancellation sends no DELETE, confirmation sends exactly one request, and the directory refreshes to disabled status with the disable action removed.
 - Checkpoint `7c77bef8f752557a049fd4a05471b2881a2f2b79`: Frontend CI [45004040475](https://github.com/TheSumitNain/school-management-system/actions/runs/45004040475) **PASS** (67 Playwright tests); Backend CI [45004040409](https://github.com/TheSumitNain/school-management-system/actions/runs/45004040409) **PASS** (PostgreSQL integration and `go vet`).
+
+
+## Staff Management — password reset acceptance (2026-11-22)
+
+- Verified password reset rejects a temporary password shorter than 12 characters without sending a request, then submits a valid password once and clearly requires a change at next sign-in.
+- Checkpoint `90d7969babd87e60db19cebb57f702ef93f75ed0`: Frontend CI [45004357985](https://github.com/TheSumitNain/school-management-system/actions/runs/45004357985) **PASS** (68 Playwright tests); Backend CI [45004358053](https://github.com/TheSumitNain/school-management-system/actions/runs/45004358053) **PASS** (PostgreSQL integration and `go vet`).
