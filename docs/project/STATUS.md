@@ -1925,3 +1925,10 @@ This update supersedes older status bullets that listed the following database-b
 - Expanded browser acceptance to distinguish total staff, active employment, enabled logins, incomplete profiles and account-readiness counts using mixed active/inactive and profile/account states.
 - Checkpoint `176ce3e85fa8cb4d621066e88207c63b35c9c740`: Frontend CI [45005957248](https://github.com/TheSumitNain/school-management-system/actions/runs/45005957248) **PASS** (TypeScript, production build and complete Playwright suite); Backend CI [45005957357](https://github.com/TheSumitNain/school-management-system/actions/runs/45005957357) **PASS** (Go tests, ephemeral PostgreSQL integration/migrations and `go vet`).
 - No runtime feature or persistent database migration was introduced.
+
+
+## Staff Management — independent directory filters (2026-11-22)
+
+- Staff Directory now combines search with independent employment, login-account and profile-completeness filters; the browser fixture verifies an active employee can still have an incomplete profile.
+- Checkpoint `674133cf169619a236bf88184bb971b53471f86d`: Frontend CI [45007749959](https://github.com/TheSumitNain/school-management-system/actions/runs/45007749959) **PASS** (TypeScript, production build, complete Playwright suite); Backend CI [45007750034](https://github.com/TheSumitNain/school-management-system/actions/runs/45007750034) **PASS** (Go tests, ephemeral PostgreSQL integration/migrations, `go vet`).
+- No persistent database migration or backend runtime change.
