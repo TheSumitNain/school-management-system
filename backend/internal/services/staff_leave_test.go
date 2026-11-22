@@ -35,7 +35,7 @@ func (s *staffLeaveRepositoryStub) Decide(context.Context, int64, int64, int64, 
 func (s *staffLeaveRepositoryStub) Cancel(context.Context, int64, int64, int64) error {
 	return nil
 }
-func (s *staffLeaveRepositoryStub) ListHolidays(context.Context, int64, int64, string, string) ([]repository.SchoolHoliday, error) {
+func (s *staffLeaveRepositoryStub) ListHolidays(context.Context, int64, int64, string, string, bool) ([]repository.SchoolHoliday, error) {
 	return nil, nil
 }
 func (s *staffLeaveRepositoryStub) SaveHoliday(_ context.Context, _, _ , _ int64, item repository.SchoolHoliday) (*repository.SchoolHoliday, error) {
