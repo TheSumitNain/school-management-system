@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { notifyToast } from "../../../shared/notifications";
 import { DatePicker } from "../../../shared/components/DatePicker";
 import { schoolDateValue } from "../../../shared/date/schoolDate";
