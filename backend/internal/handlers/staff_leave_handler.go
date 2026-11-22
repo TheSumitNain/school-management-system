@@ -18,7 +18,7 @@ type StaffLeaveManagementService interface {
  CreateRequest(context.Context,int64,int64,repository.StaffLeaveRequest)(*repository.StaffLeaveRequest,error)
  Decide(context.Context,int64,int64,int64,bool,*string)error
  Cancel(context.Context,int64,int64,int64)error
- ListHolidays(context.Context,int64,int64,string,string)([]repository.SchoolHoliday,error)
+ ListHolidays(context.Context,int64,int64,string,string,bool)([]repository.SchoolHoliday,error)
  SaveHoliday(context.Context,int64,int64,int64,repository.SchoolHoliday)(*repository.SchoolHoliday,error)
 }
 type StaffLeaveHandler struct{ service StaffLeaveManagementService }
@@ -45,5 +45,5 @@ func(h *StaffLeaveHandler) decision(c *gin.Context,approve bool){a,s,ok:=h.actor
 func(h *StaffLeaveHandler) Approve(c *gin.Context){h.decision(c,true)}
 func(h *StaffLeaveHandler) Reject(c *gin.Context){h.decision(c,false)}
 func(h *StaffLeaveHandler) Cancel(c *gin.Context){a,s,ok:=h.actor(c);if !ok{c.JSON(401,gin.H{"status":"error","message":"School staff authentication required"});return};id,e:=strconv.ParseInt(c.Param("requestID"),10,64);if e!=nil||id<=0{c.JSON(400,gin.H{"status":"error","message":"Invalid leave request ID"});return};if e=h.service.Cancel(c,a,s,id);e!=nil{h.fail(c,e);return};c.JSON(200,gin.H{"status":"success","message":"Leave request cancelled"})}
-func(h *StaffLeaveHandler) ListHolidays(c *gin.Context){a,s,ok:=h.actor(c);if !ok{c.JSON(401,gin.H{"status":"error","message":"School staff authentication required"});return};from,to:=strings.TrimSpace(c.Query("from")),strings.TrimSpace(c.Query("to"));v,e:=h.service.ListHolidays(c,a,s,from,to);if e!=nil{h.fail(c,e);return};c.JSON(200,gin.H{"status":"success","data":v})}
+func(h *StaffLeaveHandler) ListHolidays(c *gin.Context){a,s,ok:=h.actor(c);if !ok{c.JSON(401,gin.H{"status":"error","message":"School staff authentication required"});return};from,to:=strings.TrimSpace(c.Query("from")),strings.TrimSpace(c.Query("to"));includeInactive:=strings.EqualFold(strings.TrimSpace(c.Query("include_inactive")),"true");v,e:=h.service.ListHolidays(c,a,s,from,to,includeInactive);if e!=nil{h.fail(c,e);return};c.JSON(200,gin.H{"status":"success","data":v})}
 func(h *StaffLeaveHandler) SaveHoliday(c *gin.Context){a,s,ok:=h.actor(c);if !ok{c.JSON(401,gin.H{"status":"error","message":"School staff authentication required"});return};id:=int64(0);if c.Param("holidayID")!=""{v,e:=strconv.ParseInt(c.Param("holidayID"),10,64);if e!=nil||v<=0{c.JSON(400,gin.H{"status":"error","message":"Invalid holiday ID"});return};id=v};var x repository.SchoolHoliday;if c.ShouldBindJSON(&x)!=nil{c.JSON(400,gin.H{"status":"error","message":"Invalid holiday payload"});return};v,e:=h.service.SaveHoliday(c,a,s,id,x);if e!=nil{h.fail(c,e);return};c.JSON(200,gin.H{"status":"success","data":v})}
