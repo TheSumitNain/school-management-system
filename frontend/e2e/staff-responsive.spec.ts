@@ -85,8 +85,8 @@ test("Staff Management tabs remain usable without page overflow on mobile, table
   }
 
   await page.getByRole("button", { name: "Staff Directory" }).click();
-  await expect(page.getByRole("heading", { name: "Staff directory" })).toBeVisible();
-  await expect(page.getByRole("textbox", { name: "Search staff" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "All staff" })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Search staff by name, code, designation or username" })).toBeVisible();
 
   await page.getByRole("button", { name: "Attendance", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Staff attendance" })).toBeVisible();
@@ -97,7 +97,7 @@ test("Staff Management tabs remain usable without page overflow on mobile, table
   await page.setViewportSize({ width: 844, height: 390 });
   for (const section of [
     { button: "Overview", heading: "People at a glance" },
-    { button: "Staff Directory", heading: "Staff directory" },
+    { button: "Staff Directory", heading: "All staff" },
     { button: "Attendance", heading: "Staff attendance" },
     { button: "Leave & Holidays", heading: "Leave & Holidays" },
   ]) {
