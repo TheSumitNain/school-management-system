@@ -173,3 +173,55 @@ func TestStaffLeaveReportDateRangePostgresIntegration(t *testing.T) {
  if err!=nil{t.Fatalf("list approved leave overlapping March range: %v",err)}
  if len(got)!=1||got[0].ID!=inside.ID{t.Fatalf("range returned %+v; want only request %d",got,inside.ID)}
 }
+
+func TestSchoolHolidayInactiveListingRequiresManagePermissionPostgresIntegration(t *testing.T) {
+	f := newStaffLeaveIntegrationFixture(t)
+	if _, err := f.repo.SaveHoliday(f.ctx, f.adminPrincipalID, f.schoolID, 0, SchoolHoliday{
+		HolidayDate: "2027-01-10", Name: "Active integration holiday", IsActive: true,
+	}); err != nil {
+		t.Fatalf("create active holiday: %v", err)
+	}
+	if _, err := f.repo.SaveHoliday(f.ctx, f.adminPrincipalID, f.schoolID, 0, SchoolHoliday{
+		HolidayDate: "2027-01-11", Name: "Inactive integration holiday", IsActive: true,
+	}); err != nil {
+		t.Fatalf("create holiday to deactivate: %v", err)
+	}
+	var inactiveID int64
+	if err := f.pool.QueryRow(f.ctx, `SELECT id FROM school_holidays WHERE school_id=$1 AND name='Inactive integration holiday'`, f.schoolID).Scan(&inactiveID); err != nil {
+		t.Fatalf("load holiday to deactivate: %v", err)
+	}
+	if _, err := f.repo.SaveHoliday(f.ctx, f.adminPrincipalID, f.schoolID, inactiveID, SchoolHoliday{
+		HolidayDate: "2027-01-11", Name: "Inactive integration holiday", IsActive: false,
+	}); err != nil {
+		t.Fatalf("deactivate holiday: %v", err)
+	}
+
+	activeOnly, err := f.repo.ListHolidays(f.ctx, f.adminPrincipalID, f.schoolID, "2027-01-01", "2027-01-31", false)
+	if err != nil {
+		t.Fatalf("list active holidays: %v", err)
+	}
+	if len(activeOnly) != 1 || !activeOnly[0].IsActive {
+		t.Fatalf("active-only list = %+v; want only the active holiday", activeOnly)
+	}
+
+	all, err := f.repo.ListHolidays(f.ctx, f.adminPrincipalID, f.schoolID, "2027-01-01", "2027-01-31", true)
+	if err != nil {
+		t.Fatalf("list all holidays as manager: %v", err)
+	}
+	if len(all) != 2 {
+		t.Fatalf("manager holiday list count=%d; want active and inactive entries", len(all))
+	}
+	var foundInactive bool
+	for _, item := range all {
+		if item.Name == "Inactive integration holiday" && !item.IsActive {
+			foundInactive = true
+		}
+	}
+	if !foundInactive {
+		t.Fatalf("manager holiday list did not include inactive entry: %+v", all)
+	}
+
+	if _, err := f.repo.ListHolidays(f.ctx, f.staffPrincipalID, f.schoolID, "2027-01-01", "2027-01-31", true); !errors.Is(err, ErrStaffLeaveAccessDenied) {
+		t.Fatalf("non-manager inactive holiday listing error=%v; want access denied", err)
+	}
+}
