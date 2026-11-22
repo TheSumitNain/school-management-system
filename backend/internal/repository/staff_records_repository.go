@@ -357,6 +357,8 @@ func (r *UserRepository) ListStaffAuditEvents(ctx context.Context, actorID, scho
 		        OR EXISTS (SELECT 1 FROM staff_certifications sc
 		                   WHERE sc.id::text = ae.resource_id AND sc.school_id = ae.school_id AND sc.staff_principal_id = $2)
 		    ))
+		    OR (ae.resource_type = 'staff_attendance_record'
+		        AND ae.metadata->>'staff_principal_id' = $2::text)
 		    OR (ae.resource_type = 'staff_experience' AND (
 		           ae.metadata->>'staff_principal_id' = $2::text
 		        OR EXISTS (SELECT 1 FROM staff_experience se
