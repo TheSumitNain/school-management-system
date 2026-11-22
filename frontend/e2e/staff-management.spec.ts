@@ -646,6 +646,51 @@ test("staff leave request field errors clear as each required field is corrected
   await expect(page.getByText("Enter the reason for leave.")).toHaveCount(0);
 });
 
+test("staff leave request submits a valid half-day application with its selected session", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 501, school_id: 10, username: "leave.submit",
+    employee_code: "EMP-SUBMIT-01", full_name: "Submission Teacher", designation: "Teacher",
+    mobile_number: "9876543215", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false,
+  }];
+  const permissions = ["users.read", "staff.leave.read", "staff.leave.manage_requests"];
+  let submitted: Record<string, unknown> | undefined;
+  page.on("request", request => {
+    if (request.method() === "POST" && new URL(request.url()).pathname === "/api/school/staff-leave/requests") {
+      submitted = request.postDataJSON() as Record<string, unknown>;
+    }
+  });
+  await signInAndOpenStaff(page, rows, undefined, permissions);
+  await page.getByRole("button", { name: "Leave & Holidays" }).click();
+
+  await page.getByRole("button", { name: "Staff member", exact: true }).click();
+  await page.getByRole("option", { name: /Submission Teacher/ }).click();
+  await page.getByLabel("Leave type").click();
+  await page.getByRole("option", { name: /Casual Leave/ }).click();
+  await page.getByLabel("Leave start date").click();
+  await page.getByRole("dialog", { name: "Choose leave start date" }).getByRole("button", { name: "Tuesday, November 24, 2026" }).click();
+  await page.getByLabel("Leave end date").click();
+  await page.getByRole("dialog", { name: "Choose leave end date" }).getByRole("button", { name: "Tuesday, November 24, 2026" }).click();
+  await page.getByLabel("Leave duration").click();
+  await page.getByRole("option", { name: "Half day" }).click();
+  await page.getByLabel("Half-day session").click();
+  await page.getByRole("option", { name: "Second half" }).click();
+  await page.getByLabel("Reason").fill("Medical appointment");
+
+  await page.getByRole("button", { name: "Submit leave request" }).click();
+  await expect(page.getByText("Medical appointment")).toBeVisible();
+  await expect(page.getByText("pending", { exact: true })).toBeVisible();
+  expect(submitted).toMatchObject({
+    staff_principal_id: 501,
+    leave_type_id: 1,
+    start_date: "2026-11-24",
+    end_date: "2026-11-24",
+    duration_type: "half_day",
+    half_day_session: "second_half",
+    reason: "Medical appointment",
+  });
+});
+
 test("staff leave rejection requires a comment before the pending request can be rejected", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 501, school_id: 10, username: "leave.teacher",
