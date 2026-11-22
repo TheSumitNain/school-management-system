@@ -233,10 +233,11 @@ func (r *StaffAttendanceRepository) Update(ctx context.Context, actorID, schoolI
     defer func() { _ = tx.Rollback(ctx) }()
 
     var day time.Time
+    var staffID int64
     err = tx.QueryRow(ctx, `
-        SELECT attendance_date FROM staff_attendance_records
+        SELECT staff_principal_id, attendance_date FROM staff_attendance_records
         WHERE id = $1 AND school_id = $2 FOR UPDATE
-    `, recordID, schoolID).Scan(&day)
+    `, recordID, schoolID).Scan(&staffID, &day)
     if errors.Is(err, pgx.ErrNoRows) { return nil, ErrStaffAttendanceNotFound }
     if err != nil { return nil, fmt.Errorf("load staff attendance record: %w", err) }
 
@@ -254,8 +255,8 @@ func (r *StaffAttendanceRepository) Update(ctx context.Context, actorID, schoolI
     if _, err := tx.Exec(ctx, `
         INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
         VALUES($1,$2,'school.staff_attendance.updated','staff_attendance_record',$3,'success',
-               jsonb_build_object('attendance_date',$4::date,'status',$5::text))
-    `, actorID, schoolID, fmt.Sprint(recordID), day.Format("2006-01-02"), status); err != nil {
+               jsonb_build_object('staff_principal_id',$4::bigint,'attendance_date',$5::date,'status',$6::text))
+    `, actorID, schoolID, fmt.Sprint(recordID), staffID, day.Format("2006-01-02"), status); err != nil {
         return nil, fmt.Errorf("audit staff attendance update: %w", err)
     }
     if err := tx.Commit(ctx); err != nil { return nil, fmt.Errorf("commit staff attendance update: %w", err) }
