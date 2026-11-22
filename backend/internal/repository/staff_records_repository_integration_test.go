@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"school-management-system/internal/models"
+	"school-management-system/internal/schooltime"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -95,6 +96,39 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
 		EmployerName:"Previous School",Designation:"Senior Mathematics Teacher",EmploymentType:"permanent",StartDate:"2018-04-01",EndDate:"2021-03-31",
 	})
 	if err!=nil||updatedExperience.Designation!="Senior Mathematics Teacher"{t.Fatalf("update experience: item=%+v err=%v",updatedExperience,err)}
+    attendanceRepo := NewStaffAttendanceRepository(tx)
+    today := schooltime.Today()
+    marked, err := attendanceRepo.Mark(ctx, actorID, schoolID, staff.PrincipalID, today, "present", nil)
+    if err != nil { t.Fatalf("mark staff attendance: %v", err) }
+    if marked.ID == nil || marked.Status == nil || *marked.Status != "present" { t.Fatalf("unexpected staff attendance result: %+v", marked) }
+    if _, err := attendanceRepo.Mark(ctx, actorID, schoolID, staff.PrincipalID, today, "absent", nil); !errors.Is(err, ErrStaffAttendanceConflict) {
+        t.Fatalf("duplicate same-day staff attendance error=%v want conflict", err)
+    }
+    daily, err := attendanceRepo.ListDaily(ctx, actorID, schoolID, today)
+    if err != nil || len(daily) != 1 || daily[0].Status == nil || *daily[0].Status != "present" {
+        t.Fatalf("daily staff attendance: records=%+v err=%v", daily, err)
+    }
+    updatedAttendance, err := attendanceRepo.Update(ctx, actorID, schoolID, *marked.ID, "late", nil)
+    if err != nil || updatedAttendance.Status == nil || *updatedAttendance.Status != "late" {
+        t.Fatalf("update same-day staff attendance: record=%+v err=%v", updatedAttendance, err)
+    }
+    yesterday := today.AddDate(0, 0, -1)
+    past, err := attendanceRepo.Mark(ctx, actorID, schoolID, staff.PrincipalID, yesterday, "absent", nil)
+    if err != nil { t.Fatalf("mark historical staff attendance with correction permission: %v", err) }
+    if _, err := attendanceRepo.Mark(ctx, actorID, schoolID, staff.PrincipalID, today.AddDate(0, 0, 1), "present", nil); !errors.Is(err, ErrInvalidStaffAttendance) {
+        t.Fatalf("future staff attendance error=%v want invalid input", err)
+    }
+    monthRows, err := attendanceRepo.ListMonthly(ctx, actorID, schoolID, today)
+    if err != nil || len(monthRows) != 1 || monthRows[0].LateDays != 1 || monthRows[0].AbsentDays != 1 || len(monthRows[0].Records) == 0 {
+        t.Fatalf("monthly staff attendance: records=%+v err=%v", monthRows, err)
+    }
+    if _, err := attendanceRepo.ListDaily(ctx, actorID, schoolID+1, today); !errors.Is(err, ErrStaffAttendanceAccessDenied) {
+        t.Fatalf("cross-school daily attendance error=%v want access denied", err)
+    }
+    if _, err := attendanceRepo.Update(ctx, actorID, schoolID, *past.ID, "present", nil); err != nil {
+        t.Fatalf("correct historical staff attendance: %v", err)
+    }
+
 	if _,err:=repo.UpdateStaffQualification(ctx,actorID,schoolID+1,staff.PrincipalID,qualification.ID,StaffQualification{
 		QualificationType:"postgraduate",QualificationName:"Cross tenant",Institution:"Denied",
 	});!errors.Is(err,ErrStaffRecordAccessDenied){t.Fatalf("cross-school qualification update error=%v",err)}
@@ -116,9 +150,12 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
 	if auditCount!=6{t.Fatalf("audit count=%d want=6 (three creates and three updates)",auditCount)}
 	events,err:=repo.ListStaffAuditEvents(ctx,actorID,schoolID,staff.PrincipalID)
 	if err!=nil{t.Fatalf("list staff audit history: %v",err)}
-	if len(events)<7{t.Fatalf("staff audit history events=%d want at least 7 including account creation and six record mutations",len(events))}
+	if len(events)<9{t.Fatalf("staff audit history events=%d want at least 9 including account creation, six record mutations and two attendance actions",len(events))}
 	foundQualificationUpdate:=false
 	for _,event:=range events{if event.Action=="staff.qualification.updated"{foundQualificationUpdate=true}}
 	if !foundQualificationUpdate{t.Fatal("staff audit history omitted qualification update")}
+    foundAttendanceUpdate := false
+    for _, event := range events { if event.Action == "school.staff_attendance.updated" { foundAttendanceUpdate = true } }
+    if !foundAttendanceUpdate { t.Fatal("staff audit history omitted staff attendance update") }
 	if _,err:=repo.ListStaffAuditEvents(ctx,actorID,schoolID+1,staff.PrincipalID);!errors.Is(err,ErrStaffRecordAccessDenied){t.Fatalf("cross-school staff audit history error=%v",err)}
 }
