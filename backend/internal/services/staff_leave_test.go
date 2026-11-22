@@ -21,7 +21,7 @@ func (s *staffLeaveRepositoryStub) ListTypes(context.Context, int64, int64) ([]r
 func (s *staffLeaveRepositoryStub) SaveType(context.Context, int64, int64, int64, repository.StaffLeaveType) (*repository.StaffLeaveType, error) {
 	return nil, nil
 }
-func (s *staffLeaveRepositoryStub) ListRequests(context.Context, int64, int64, string, int64, string) ([]repository.StaffLeaveRequest, error) {
+func (s *staffLeaveRepositoryStub) ListRequests(context.Context, int64, int64, string, int64, string, string, string) ([]repository.StaffLeaveRequest, error) {
 	return nil, nil
 }
 func (s *staffLeaveRepositoryStub) CreateRequest(_ context.Context, _, _ int64, item repository.StaffLeaveRequest) (*repository.StaffLeaveRequest, error) {
@@ -124,4 +124,22 @@ func TestStaffLeaveServiceRequiresCommentForRejection(t *testing.T) {
 	if err := service.Decide(context.Background(), 1, 1, 4, false, new(string)); !errors.Is(err, ErrInvalidStaffLeave) {
 		t.Fatalf("expected blank rejection comment to fail, got %v", err)
 	}
+}
+
+func TestStaffLeaveServiceValidatesReportDateRange(t *testing.T) {
+ repo := &staffLeaveRepositoryStub{}
+ service := NewStaffLeaveService(repo)
+ tests := []struct{name string; onDate,fromDate,toDate string; wantErr bool}{
+  {"valid range","", "2026-11-01","2026-11-30",false},
+  {"reversed range","", "2026-11-30","2026-11-01",true},
+  {"missing range end","", "2026-11-01","",true},
+  {"invalid date","", "2026-11-01","2026-11-31",true},
+  {"range mixed with single date","2026-11-15","2026-11-01","2026-11-30",true},
+  {"valid single date","2026-11-15","","",false},
+ }
+ for _,tt:=range tests { t.Run(tt.name,func(t *testing.T){
+  _,err:=service.ListRequests(context.Background(),1,1,"approved",0,tt.onDate,tt.fromDate,tt.toDate)
+  if tt.wantErr&&!errors.Is(err,ErrInvalidStaffLeave){t.Fatalf("error=%v want invalid leave",err)}
+  if !tt.wantErr&&err!=nil{t.Fatalf("unexpected error: %v",err)}
+ })}
 }
