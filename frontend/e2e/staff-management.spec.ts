@@ -1343,7 +1343,7 @@ test("staff workload requests only the selected teacher timetable and explains u
   const dialog = page.getByRole("dialog", { name: "Workload Teacher" });
   await dialog.getByRole("button", { name: "Workload & Timetable" }).click();
   await expect(dialog.getByRole("heading", { name: "Teaching workload" })).toBeVisible();
-  await expect(dialog.getByText("Scheduled periods")).toBeVisible();
+  await expect(dialog.getByText("Scheduled periods", { exact: true })).toBeVisible();
   await expect(dialog.locator(".staff-workload-summary article").first().locator("strong")).toHaveText("1");
   await expect(dialog.getByText("Busiest day")).toBeVisible();
   await expect(dialog.getByText("Weekly workload report")).toBeVisible();
