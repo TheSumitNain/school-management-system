@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"school-management-system/internal/middleware"
@@ -73,5 +74,40 @@ func TestTimetableListEntriesRejectsInvalidTeacherScope(t *testing.T) {
 	}
 	if service.gotYear != 0 || service.gotTeacher != 0 {
 		t.Fatalf("service must not be called for invalid teacher filter: %+v", service)
+	}
+}
+
+func TestTimetableErrorExplainsSpecificSlotConflict(t *testing.T) {
+	tests := []struct {
+		name string
+		err error
+		code string
+		message string
+	}{
+		{
+			name: "teacher conflict",
+			err: repository.ErrTimetableTeacherConflict,
+			code: "timetable_teacher_conflict",
+			message: "This teacher is already scheduled in another class during the selected period. Choose another teacher or period.",
+		},
+		{
+			name: "section conflict",
+			err: repository.ErrTimetableSectionConflict,
+			code: "timetable_section_conflict",
+			message: "This section already has a class during the selected period. Choose another period.",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, recorder := newTimetableListEntriesTestContext("")
+			timetableError(ctx, tt.err, "Timetable entry")
+			if recorder.Code != 409 {
+				t.Fatalf("expected status 409, got %d: %s", recorder.Code, recorder.Body.String())
+			}
+			body := recorder.Body.String()
+			if !strings.Contains(body, tt.code) || !strings.Contains(body, tt.message) {
+				t.Fatalf("response does not explain the conflict: %s", body)
+			}
+		})
 	}
 }
