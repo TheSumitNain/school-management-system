@@ -19,6 +19,8 @@ const labels: Record<string, string> = {
   "staff.certification.updated": "Certification updated",
   "staff.experience.created": "Previous experience added",
   "staff.experience.updated": "Previous experience updated",
+  "school.staff_attendance.marked": "Staff attendance marked",
+  "school.staff_attendance.updated": "Staff attendance updated",
   "school.teacher_subject_assignment.created": "Subject teaching assigned",
   "school.teacher_subject_assignment.revoked": "Subject teaching removed",
   "school.class_incharge_assignment.created": "Class in-charge assigned",
