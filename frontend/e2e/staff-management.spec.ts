@@ -160,19 +160,33 @@ async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, un
 }
 
 test("staff workspace opens on a real-data overview and hides permission-gated or later-phase tabs", async ({ page }) => {
-  const rows: Array<Record<string, unknown>> = [{
-    id: 1, principal_id: 111, school_id: 10, username: "teacher.overview",
-    employee_code: "EMP-OV-01", full_name: "Overview Teacher", designation: "Teacher",
-    mobile_number: "9876543210", employment_status: "active", profile_complete: true,
-    status: "disabled", must_change_password: true, created_at: "2026-04-01T00:00:00.000Z",
-  }];
+  const rows: Array<Record<string, unknown>> = [
+    {
+      id: 1, principal_id: 111, school_id: 10, username: "teacher.overview",
+      employee_code: "EMP-OV-01", full_name: "Overview Teacher", designation: "Teacher",
+      mobile_number: "9876543210", employment_status: "active", profile_complete: true,
+      status: "disabled", must_change_password: true, created_at: "2026-04-01T00:00:00.000Z",
+    },
+    {
+      id: 2, principal_id: 112, school_id: 10, username: "staff.incomplete",
+      employee_code: "EMP-OV-02", full_name: "Incomplete Profile", designation: "Office Assistant",
+      mobile_number: "9876543211", employment_status: "inactive", profile_complete: false,
+      status: "disabled", must_change_password: false, created_at: "2026-04-02T00:00:00.000Z",
+    },
+  ];
   await signInAndOpenStaff(page, rows);
   await expect(page.getByRole("heading", { name: "Staff Management" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "People at a glance" })).toBeVisible();
   await expect(page.getByText("Total staff")).toBeVisible();
-  await expect(page.locator(".staff-overview-cards article").nth(0).locator("strong")).toHaveText("1");
+  await expect(page.locator(".staff-overview-cards article").nth(0).locator("strong")).toHaveText("2");
   await expect(page.locator(".staff-overview-cards article").nth(1).locator("strong")).toHaveText("1");
   await expect(page.locator(".staff-overview-cards article").nth(2).locator("strong")).toHaveText("0");
+  await expect(page.locator(".staff-overview-cards article").nth(3).locator("strong")).toHaveText("1");
+  const readiness = page.locator(".staff-readiness-list");
+  await expect(readiness).toContainText("Active employees with disabled login");
+  await expect(readiness.locator("li").nth(0).locator("strong")).toHaveText("1");
+  await expect(readiness.locator("li").nth(1).locator("strong")).toHaveText("1");
+  await expect(readiness.locator("li").nth(2).locator("strong")).toHaveText("1");
   await expect(page.getByRole("button", { name: /Attendance/ })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /Leave/ })).toBeDisabled();
   await expect(page.getByRole("button", { name: /Reports/ })).toBeDisabled();
