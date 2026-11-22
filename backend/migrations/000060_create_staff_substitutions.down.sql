@@ -16,6 +16,10 @@ DELETE FROM public.role_permissions rp
    AND r.principal_type='staff' AND r.is_system=TRUE
    AND p.permission_key IN ('staff.substitutions.read','staff.substitutions.manage');
 ALTER TABLE public.role_permissions ENABLE TRIGGER trg_protect_system_role_permissions;
+DROP TRIGGER trg_guard_v60_substitution_staff_lifecycle ON public.staff_profiles;
+DROP FUNCTION public.guard_v60_substitution_staff_lifecycle();
+DROP TRIGGER trg_guard_v60_substitution_login_lifecycle ON public.users;
+DROP FUNCTION public.guard_v60_substitution_login_lifecycle();
 DROP TRIGGER trg_guard_v60_timetable_substitution_update ON public.timetable_entries;
 DROP FUNCTION public.guard_v60_timetable_substitution_history();
 DROP TRIGGER trg_validate_v60_staff_substitution ON public.staff_substitutions;
