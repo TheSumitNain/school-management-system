@@ -72,19 +72,19 @@ Routes are authenticated School Admin endpoints. School ownership comes only fro
 
 | Method | Route | Permission | Purpose |
 |---|---|---|---|
-| GET | `/school/staff/:principalID/qualifications` | `staff.qualifications.read` | List education records |
-| POST | `/school/staff/:principalID/qualifications` | `staff.qualifications.manage` | Create education record |
-| PATCH | `/school/staff/:principalID/qualifications/:recordID` | `staff.qualifications.manage` | Update an unverified record |
-| POST | `/school/staff/:principalID/qualifications/:recordID/verify` | `staff.qualifications.verify` | Verify/reject with reason |
-| GET | `/school/staff/:principalID/certifications` | `staff.qualifications.read` | List certifications |
-| POST | `/school/staff/:principalID/certifications` | `staff.qualifications.manage` | Create certification |
-| PATCH | `/school/staff/:principalID/certifications/:recordID` | `staff.qualifications.manage` | Update an unverified certification |
-| GET | `/school/staff/:principalID/experience` | `staff.qualifications.read` | List previous experience |
-| POST | `/school/staff/:principalID/experience` | `staff.qualifications.manage` | Create experience |
+| GET | `/school/staff/:principalID/qualifications` | `users.read` | List education records |
+| POST | `/school/staff/:principalID/qualifications` | `users.update` | Create education record |
+| PATCH | `/school/staff/:principalID/qualifications/:recordID` | `users.update` | Update an education record |
+| POST | `/school/staff/:principalID/qualifications/:recordID/verify` | Not implemented | Future verification route; requires a separate permission decision |
+| GET | `/school/staff/:principalID/certifications` | `users.read` | List certifications |
+| POST | `/school/staff/:principalID/certifications` | `users.update` | Create certification |
+| PATCH | `/school/staff/:principalID/certifications/:recordID` | `users.update` | Update a certification |
+| GET | `/school/staff/:principalID/experience` | `users.read` | List previous experience |
+| POST | `/school/staff/:principalID/experience` | `users.update` | Create experience |
 | PATCH | `/school/staff/:principalID/experience/:recordID` | `users.update` | Update experience |
 | GET | `/school/staff/:principalID/audit-events` | `school.audit.read` | Read up to 100 staff-scoped audit events |
 
-Create/update requests must reject unknown enum values, malformed dates, overlong strings, invalid score/scale combinations, and cross-school target IDs. Return stable field-level validation errors. Use 404 for a target outside the caller's school to avoid confirming its existence.
+Create/update requests must reject unknown enum values, malformed dates, overlong strings, invalid score/scale combinations, and cross-school target IDs. Return stable field-level validation errors. Return a generic 403 response for unauthorized or cross-school targets without disclosing target details.
 
 The existing School Admin system-role permission bundle is immutable. Qualification, certification and experience read/create/update operations use the existing `users.read` and `users.update` permissions, enforced by route middleware and repository-level School Admin checks. Verification remains intentionally unavailable: do not reuse `users.update` as verification authority or silently expand the School Admin permission bundle.
 
