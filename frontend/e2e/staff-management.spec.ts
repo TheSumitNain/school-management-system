@@ -715,12 +715,11 @@ test("school holiday deactivation and reactivation require explicit confirmation
   await deactivate.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(page.getByText("School Foundation Day")).toBeVisible();
 
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
   await page.getByRole("button", { name: "Deactivate" }).click();
   const confirmDeactivate = page.getByRole("dialog", { name: "Deactivate school holiday?" });
   await confirmDeactivate.getByRole("button", { name: "Deactivate holiday" }).click();
   await expect(page.getByText("Inactive", { exact: true })).toBeVisible();
-
-  await page.getByRole("button", { name: "Edit", exact: true }).click();
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByText("Inactive", { exact: true })).toBeVisible();
 
@@ -728,6 +727,7 @@ test("school holiday deactivation and reactivation require explicit confirmation
   const reactivate = page.getByRole("dialog", { name: "Reactivate school holiday?" });
   await reactivate.getByRole("button", { name: "Reactivate holiday" }).click();
   await expect(page.getByText("Holiday reactivated.")).toBeVisible();
+  await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByText("Inactive", { exact: true })).toHaveCount(0);
 });
 
