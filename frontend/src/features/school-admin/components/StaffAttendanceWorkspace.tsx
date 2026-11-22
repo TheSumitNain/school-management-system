@@ -136,11 +136,11 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
         <span>Present <strong>{totals.present}</strong></span><span>Absent <strong>{totals.absent}</strong></span><span>Late <strong>{totals.late}</strong></span><span>Half day <strong>{totals.half_day}</strong></span><span>Not marked <strong>{totals.unmarked}</strong></span>
       </div>
       <div className="staff-attendance-bulk">
-        <label><span>Bulk status for unmarked visible staff</span><select aria-label="Bulk attendance status" value={bulkStatus} disabled={!canMark || bulkMutation.isPending} aria-invalid={bulkAttempted && !bulkStatus} aria-describedby={bulkAttempted && !bulkStatus ? "staff-attendance-bulk-status-error" : undefined} onChange={event => setBulkStatus(event.target.value as Status | "")}>
+        <label><span>Bulk status for unmarked visible staff</span><select aria-label="Bulk attendance status" value={bulkStatus} disabled={!canMark || bulkMark.isPending} aria-invalid={bulkAttempted && !bulkStatus} aria-describedby={bulkAttempted && !bulkStatus ? "staff-attendance-bulk-status-error" : undefined} onChange={event => setBulkStatus(event.target.value as Status | "")}>
           <option value="">Select status</option>{statuses.map(status => <option key={status.value} value={status.value}>{status.label}</option>)}
         </select>{bulkAttempted && !bulkStatus && <small id="staff-attendance-bulk-status-error" className="staff-attendance-field-error">Select a bulk attendance status.</small>}</label>
-        <label><span>Bulk remarks (optional)</span><input aria-label="Bulk attendance remarks" maxLength={500} value={bulkRemarks} disabled={!canMark || bulkMutation.isPending} onChange={event => setBulkRemarks(event.target.value)} placeholder="Optional remarks for selected staff"/></label>
-        <div><button type="button" className="staff-attendance-save" disabled={!canMark || bulkMutation.isPending || bulkTargets.length === 0} onClick={() => { if (!bulkStatus) { setBulkAttempted(true); return; } setBulkConfirmOpen(true); }}>Mark {bulkTargets.length} unmarked staff</button><small>Only visible, unmarked employees are included. All records save together or none do.</small></div>
+        <label><span>Bulk remarks (optional)</span><input aria-label="Bulk attendance remarks" maxLength={500} value={bulkRemarks} disabled={!canMark || bulkMark.isPending} onChange={event => setBulkRemarks(event.target.value)} placeholder="Optional remarks for selected staff"/></label>
+        <div><button type="button" className="staff-attendance-save" disabled={!canMark || bulkMark.isPending || bulkTargets.length === 0} onClick={() => { if (!bulkStatus) { setBulkAttempted(true); return; } setBulkConfirmOpen(true); }}>Mark {bulkTargets.length} unmarked staff</button><small>Only visible, unmarked employees are included. All records save together or none do.</small></div>
       </div>
       {past && !permissions.includes("staff.attendance.correct_past") && <p className="staff-attendance-note">Historical attendance is read-only. Past corrections require separate permission.</p>}
       {daily.isPending && <p role="status" className="staff-attendance-message">Loading staff register…</p>}
@@ -181,8 +181,8 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
       title="Confirm bulk staff attendance"
       description={`This will mark ${bulkTargets.length} unmarked employees on ${date} as ${statuses.find(status => status.value === bulkStatus)?.label ?? "the selected status"}. The batch is atomic: if any employee already has a mark or fails validation, no records will be saved.`}
       confirmLabel={`Mark ${bulkTargets.length} staff`}
-      pending={bulkMutation.isPending}
-      onConfirm={() => { if (bulkStatus && bulkTargets.length > 0) bulkMutation.mutate({ staff_principal_ids: bulkTargets.map(item => item.staff_principal_id), attendance_date: date, status: bulkStatus, remarks: bulkRemarks.trim() || undefined }); }}
+      pending={bulkMark.isPending}
+      onConfirm={() => { if (bulkStatus && bulkTargets.length > 0) bulkMark.mutate({ staff_principal_ids: bulkTargets.map(item => item.staff_principal_id), attendance_date: date, status: bulkStatus, remarks: bulkRemarks.trim() || undefined }); }}
       onCancel={() => setBulkConfirmOpen(false)}
     />
     <ConfirmDialog
