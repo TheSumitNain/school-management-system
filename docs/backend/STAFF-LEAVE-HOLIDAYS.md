@@ -192,3 +192,12 @@ Migration V59 and the first end-to-end Leave & Holiday workflow are implemented 
 - Added browser acceptance for a write-only/decision-capable leave permission set without `staff.leave.read`. The Leave & Holidays workspace is not exposed, and the disabled restricted navigation item communicates the missing read permission.
 - Exact code checkpoint `5b1162b4a53207f73f5f422a12f5cb84ddc244b6` passed both workflows: Backend CI [44991408484](https://github.com/TheSumitNain/school-management-system/actions/runs/44991408484) (ephemeral PostgreSQL migration chain, Go/PostgreSQL tests and `go vet`) and Frontend CI [44991408480](https://github.com/TheSumitNain/school-management-system/actions/runs/44991408480) (TypeScript/Vite build and full Playwright browser acceptance suite).
 - This verifies the navigation boundary; server-side route/repository authorization remains authoritative. No persistent/local DB migration was applied. Leave entitlement/balance rules remain intentionally undefined pending school approval.
+
+ 
+## 15. Accessible field validation and browser acceptance (2026-11-22)
+
+- The shared date picker popover prevents the surrounding label's default activation after calendar interaction, so selecting a day closes the picker instead of reopening it. Playwright verifies the calendar closes after selection.
+- Leave request field errors are associated with their controls using aria-describedby and aria-invalid; the staff selector is tested through its actual button trigger. Leave-type name, holiday name and holiday date errors also have control associations and alert semantics.
+- Browser acceptance covers invalid leave request fields, accessible reason validation, holiday date/name errors, and immediate error clearing after correcting the date and name.
+- Exact checkpoint f631fd21e5f0b6bb11c5ded315f47d58108d068c: Frontend CI [44993812197](https://github.com/TheSumitNain/school-management-system/actions/runs/44993812197) **PASS** (TypeScript/Vite build and full Playwright suite); Backend CI [44993812207](https://github.com/TheSumitNain/school-management-system/actions/runs/44993812207) **PASS** (ephemeral PostgreSQL migration chain, Go/PostgreSQL tests and go vet).
+- No persistent/local database migration was applied. Phase 4 remains open pending the remaining end-to-end workflow review and school-approved leave policy decisions. No automatic attendance mutation or leave-balance policy is introduced.
