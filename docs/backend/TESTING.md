@@ -27,7 +27,8 @@ Never point integration tests at production or a persistent user database withou
 - MFA enrollment, TOTP/recovery flows, lockout/auditing and encryption-key rotation.
 - Live permission resolution, role/delegation/override workflows and route permission gates.
 - School onboarding and platform/staff account lifecycle.
-- Selected student, enrollment, attendance and guardian repository/API boundaries.
+- Selected student, enrollment, student attendance and guardian repository/API boundaries.
+- Staff attendance V58: migration schema/permissions/date trigger, daily/monthly repository behavior, mark/update audit atomicity, duplicate conflict, historical correction permission, future-date rejection, and cross-school isolation.
 - PostgreSQL migration and integration behavior.
 
 ## Known test gaps
