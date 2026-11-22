@@ -55,6 +55,7 @@ func setupRouterWithHandlers(
 ) (*gin.Engine, error) {
 	var staffHandler *handlers.StaffHandler
 	var staffRecordsHandler *handlers.StaffRecordsHandler
+	var staffAttendanceHandler *handlers.StaffAttendanceHandler
 	var academicHandler *handlers.AcademicHandler
 	var guardianHandler *handlers.GuardianHandler
 	var attendanceHandler *handlers.AttendanceHandler
@@ -69,6 +70,8 @@ func setupRouterWithHandlers(
 			staffHandler = handler
 		case *handlers.StaffRecordsHandler:
 			staffRecordsHandler = handler
+		case *handlers.StaffAttendanceHandler:
+			staffAttendanceHandler = handler
 		case *handlers.AcademicHandler:
 			academicHandler = handler
 		case *handlers.GuardianHandler:
@@ -308,6 +311,13 @@ func setupRouterWithHandlers(
 		router.POST("/school/enrollments/:enrollmentID/promote", academicAuth, middleware.RequirePermission("students.update"), academic.PromoteStudentEnrollment)
 	}
 
+	if staffAttendanceHandler != nil {
+		staffAttendanceAuth := authMiddleware()
+		router.GET("/school/staff-attendance", staffAttendanceAuth, middleware.RequirePermission("staff.attendance.read"), staffAttendanceHandler.ListDaily)
+		router.GET("/school/staff-attendance/month", staffAttendanceAuth, middleware.RequirePermission("staff.attendance.read"), staffAttendanceHandler.ListMonthly)
+		router.POST("/school/staff-attendance", staffAttendanceAuth, middleware.RequireAnyPermission("staff.attendance.mark", "staff.attendance.correct_past"), staffAttendanceHandler.Mark)
+		router.PATCH("/school/staff-attendance/:recordID", staffAttendanceAuth, middleware.RequireAnyPermission("staff.attendance.update_same_day", "staff.attendance.correct_past"), staffAttendanceHandler.Update)
+	}
 	if attendanceHandler != nil {
 		attendanceAuth := authMiddleware()
 		router.GET("/school/attendance", attendanceAuth, middleware.RequirePermission("attendance.read"), attendanceHandler.List)
@@ -555,6 +565,9 @@ func run() error {
 	guardianHandler := handlers.NewGuardianHandler(guardianService)
 	attendanceService := services.NewAttendanceService(academicRepo)
 	attendanceHandler := handlers.NewAttendanceHandler(attendanceService)
+	staffAttendanceRepo := repository.NewStaffAttendanceRepository(db)
+	staffAttendanceService := services.NewStaffAttendanceService(staffAttendanceRepo)
+	staffAttendanceHandler := handlers.NewStaffAttendanceHandler(staffAttendanceService)
 	timetableService := services.NewTimetableService(academicRepo)
 	timetableHandler := handlers.NewTimetableHandler(timetableService)
 
@@ -564,7 +577,7 @@ func run() error {
 	staffRecordsService := services.NewStaffRecordsService(staffAccountRepo)
 	staffRecordsHandler := handlers.NewStaffRecordsHandler(staffRecordsService)
 
-	router, err := setupRouterWithHandlers(db, authHandler, tokenService, principalAuthorizationRepo, principalAuthorizationRepo, schoolOnboardingHandler, roleHandler, staffHandler, academicHandler, guardianHandler, attendanceHandler, timetableHandler, platformAdminLifecycleHandler, platformAuditHandler, principalAuthorizationRepo, staffRecordsHandler)
+	router, err := setupRouterWithHandlers(db, authHandler, tokenService, principalAuthorizationRepo, principalAuthorizationRepo, schoolOnboardingHandler, roleHandler, staffHandler, academicHandler, guardianHandler, attendanceHandler, timetableHandler, platformAdminLifecycleHandler, platformAuditHandler, principalAuthorizationRepo, staffRecordsHandler, staffAttendanceHandler)
 
 	if err != nil {
 		return fmt.Errorf("setup router: %w", err)
