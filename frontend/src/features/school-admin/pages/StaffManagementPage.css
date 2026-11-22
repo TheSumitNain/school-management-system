@@ -230,3 +230,6 @@
 .staff-workload-report h4{margin:0;color:var(--color-text);font-size:12px;font-weight:700}
 .staff-workload-report>div:first-child p{margin:3px 0 0;color:var(--color-text-muted);font-size:10px}
 .staff-workload-table tfoot th,.staff-workload-table tfoot td{background:var(--color-background);font-weight:700}
+
+.staff-directory-export{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:6px 10px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-surface);color:var(--color-text);font-size:10px;font-weight:600;white-space:nowrap}
+.staff-directory-export:disabled{opacity:.5;cursor:not-allowed}
