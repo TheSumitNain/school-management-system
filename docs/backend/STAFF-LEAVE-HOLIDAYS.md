@@ -177,3 +177,11 @@ Migration V59 and the first end-to-end Leave & Holiday workflow are implemented 
 - Added cross-school holiday write denial coverage and a forced audit-insert failure test proving holiday creation and its audit event roll back together.
 - Backend CI [44990622671](https://github.com/TheSumitNain/school-management-system/actions/runs/44990622671) **PASS** at code checkpoint 92a307cb62abbab902d8f5441deb55219e4ea374: full migration chain on disposable PostgreSQL, Go tests including PostgreSQL integration tests, and go vet.
 - V59 remains limited to disposable CI PostgreSQL. No persistent/local database was migrated. School leave entitlement and balance policy remains intentionally undefined pending approval.
+
+## 13. Leave workspace form-error isolation (2026-11-22)
+
+- Separated request, leave-type and holiday form-level server errors into independent state. A failed save in one pane no longer leaks its error into another pane when switching between Leave & Holidays views; each form retains its own error while its values remain available for correction.
+- Added Playwright acceptance coverage that forces a leave-type conflict, switches to the holiday calendar and back, and verifies the error remains confined to the leave-type form.
+- Frontend CI [44991137384](https://github.com/TheSumitNain/school-management-system/actions/runs/44991137384) **PASS** at code checkpoint `2e6c73678798189a689d8b3223cb797872e6de22`: TypeScript/design-token checks, Vite production build and full Playwright browser acceptance suite (**57 passed**).
+- Backend CI [44991137364](https://github.com/TheSumitNain/school-management-system/actions/runs/44991137364) **PASS** at the same checkpoint: full migration chain on disposable PostgreSQL, Go tests including PostgreSQL integration and `go vet ./...`.
+- No persistent/local database was migrated. Leave quota, accrual, carry-forward and balance rules remain unconfigured pending explicit school policy approval.
