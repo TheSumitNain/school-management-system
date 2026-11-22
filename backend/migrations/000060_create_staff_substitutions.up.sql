@@ -382,9 +382,10 @@ AS $v60$
 BEGIN
   IF NEW.principal_type='staff' AND NEW.status='disabled' AND OLD.status IS DISTINCT FROM NEW.status
      AND EXISTS (
-       SELECT 1 FROM public.staff_substitutions ss
-        WHERE ss.school_id=NEW.school_id
-          AND ss.substitute_teacher_principal_id=NEW.id
+       SELECT 1
+         FROM public.staff_substitutions ss
+         JOIN public.users u ON u.principal_id=NEW.id AND u.school_id=ss.school_id
+        WHERE ss.substitute_teacher_principal_id=NEW.id
           AND ss.status='active'
           AND ss.cover_date>=(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date
      ) THEN
