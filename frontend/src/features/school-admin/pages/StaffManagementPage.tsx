@@ -1,6 +1,6 @@
 import { Fragment, useMemo, useRef, useState, type FormEvent } from "react";
 import { notifyToast } from "../../../shared/notifications";
-import { BookOpen, CalendarDays, FileText, KeyRound, LayoutDashboard, LockKeyhole, Pencil, Plus, Search, Shield, ShieldCheck, UserCheck, UserMinus } from "lucide-react";
+import { BarChart3, BookOpen, CalendarDays, FileText, KeyRound, LayoutDashboard, LockKeyhole, Pencil, Plus, Search, Shield, ShieldCheck, UserCheck, UserMinus } from "lucide-react";
 import { StaffRoleAssignments } from "../components/StaffRoleAssignments";
 import { StaffPermissionOverrides } from "../components/StaffPermissionOverrides";
 import { TeacherAssignmentsPage } from "./TeacherAssignmentsPage";
@@ -10,6 +10,7 @@ import { StaffWorkloadPanel } from "../components/StaffWorkloadPanel";
 import { StaffAttendanceWorkspace } from "../components/StaffAttendanceWorkspace";
 import { StaffLeaveWorkspace } from "../components/StaffLeaveWorkspace";
 import { StaffSubstitutionWorkspace } from "../components/StaffSubstitutionWorkspace";
+import { StaffWorkloadReportWorkspace } from "../components/StaffWorkloadReportWorkspace";
 import {
   useCreateSchoolStaffMutation, useDisableSchoolStaffMutation, useEnableSchoolStaffMutation,
   useResetSchoolStaffPasswordMutation, useSchoolStaffQuery, useUpdateSchoolStaffMutation,
@@ -42,7 +43,7 @@ export function StaffManagementPage({ permissions }: Props) {
   const disable = useDisableSchoolStaffMutation();
   const enable = useEnableSchoolStaffMutation();
   const reset = useResetSchoolStaffPasswordMutation();
-  const [activeTab, setActiveTab] = useState<"overview" | "directory" | "assignments" | "attendance" | "leave" | "substitutions">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "directory" | "assignments" | "attendance" | "leave" | "substitutions" | "workloadReport">("overview");
   const [search, setSearch] = useState("");
   const [employmentFilter, setEmploymentFilter] = useState("all");
   const [accountFilter, setAccountFilter] = useState("all");
@@ -340,6 +341,7 @@ export function StaffManagementPage({ permissions }: Props) {
         {permissions.includes("staff.attendance.read") && <button type="button" className={activeTab === "attendance" ? "active" : ""} aria-current={activeTab === "attendance" ? "page" : undefined} onClick={() => setActiveTab("attendance")}><CalendarDays size={16}/> Attendance</button>}
         {(permissions.includes("staff.leave.read") || permissions.includes("staff.holidays.read") || permissions.includes("staff.holidays.manage")) && <button type="button" className={activeTab === "leave" ? "active" : ""} aria-current={activeTab === "leave" ? "page" : undefined} onClick={() => setActiveTab("leave")}><CalendarDays size={16}/> Leave & Holidays</button>}
         {(permissions.includes("staff.substitutions.read") || permissions.includes("staff.substitutions.manage")) && <button type="button" className={activeTab === "substitutions" ? "active" : ""} aria-current={activeTab === "substitutions" ? "page" : undefined} onClick={() => setActiveTab("substitutions")}><CalendarDays size={16}/> Substitutions</button>}
+        {permissions.includes("timetable.read") && <button type="button" className={activeTab === "workloadReport" ? "active" : ""} aria-current={activeTab === "workloadReport" ? "page" : undefined} onClick={() => setActiveTab("workloadReport")}><BarChart3 size={16}/> Workload Report</button>}
         {!(permissions.includes("staff.leave.read") || permissions.includes("staff.holidays.read") || permissions.includes("staff.holidays.manage")) && <button type="button" className="upcoming" disabled title="Leave read permission required to open this workspace"><CalendarDays size={16}/> Leave <span>Restricted</span></button>}
         <button type="button" className="upcoming" disabled title="Planned for the next phase"><FileText size={16}/> Reports <span>Phase 1</span></button>
       </nav>
@@ -413,6 +415,7 @@ export function StaffManagementPage({ permissions }: Props) {
       {activeTab === "attendance" && <StaffAttendanceWorkspace permissions={permissions}/>}
       {activeTab === "leave" && <StaffLeaveWorkspace permissions={permissions} staff={staff}/>}
       {activeTab === "substitutions" && <StaffSubstitutionWorkspace permissions={permissions} staff={staff}/>}
+      {activeTab === "workloadReport" && <StaffWorkloadReportWorkspace permissions={permissions}/>}
       {activeTab === "directory" && <section className="table-panel">
         <div className="toolbar staff-directory-toolbar"><div><h2>All staff</h2><small>{filtered.length} of {staff.length} staff members</small></div><div className="staff-directory-controls"><div className="search"><Search size={16}/><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search by name, code, designation or username" aria-label="Search staff by name, code, designation or username"/></div><div className="staff-directory-filters"><label>Employment<Select value={employmentFilter} onChange={setEmploymentFilter} ariaLabel="Filter by employment status" options={[{value:"all",label:"All employment"},{value:"active",label:"Active"},{value:"inactive",label:"Inactive"}]}/></label><label>Login account<Select value={accountFilter} onChange={setAccountFilter} ariaLabel="Filter by login account status" options={[{value:"all",label:"All accounts"},{value:"enabled",label:"Enabled"},{value:"disabled",label:"Disabled"}]}/></label><label>Profile<Select value={profileFilter} onChange={setProfileFilter} ariaLabel="Filter by profile completeness" options={[{value:"all",label:"All profiles"},{value:"complete",label:"Complete"},{value:"incomplete",label:"Incomplete"}]}/></label></div></div></div>
         {query.isPending ? <div className="table-message" aria-live="polite">Loading staff accounts…</div>
