@@ -22,7 +22,7 @@ func TestStaffSubstitutionV60SchemaPostgresIntegration(t *testing.T) {
 		  AND EXISTS(SELECT 1 FROM pg_trigger WHERE tgname='trg_guard_v60_substitution_principal_lifecycle' AND NOT tgisinternal)
 		  AND EXISTS(SELECT 1 FROM pg_trigger WHERE tgname='trg_guard_v60_substitution_assignment_lifecycle' AND NOT tgisinternal)
 		  AND EXISTS(SELECT 1 FROM pg_trigger WHERE tgname='trg_guard_v60_staff_substitution_history' AND NOT tgisinternal)
-		  AND EXISTS(SELECT 1 FROM pg_constraint WHERE conname='timetable_entries_id_school_period_unique')
+		  AND EXISTS(SELECT 1 FROM pg_constraint WHERE conname='staff_substitutions_period_scope_fkey')
 		  AND (SELECT count(*)=2 FROM public.permissions WHERE permission_key IN ('staff.substitutions.read','staff.substitutions.manage'))
 	`).Scan(&ready)
 	if err!=nil{t.Fatalf("inspect V60 staff substitution schema: %v",err)}
