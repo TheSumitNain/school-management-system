@@ -37,6 +37,26 @@ CREATE TABLE public.staff_attendance_records (
         UNIQUE (school_id, staff_principal_id, attendance_date)
 );
 
+CREATE OR REPLACE FUNCTION public.validate_staff_attendance_date()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $
+DECLARE
+    v_school_today DATE := (NOW() AT TIME ZONE 'Asia/Kolkata')::date;
+BEGIN
+    IF NEW.attendance_date > v_school_today THEN
+        RAISE EXCEPTION 'staff attendance cannot be recorded for a future school date'
+            USING ERRCODE = '23514';
+    END IF;
+    RETURN NEW;
+END;
+$;
+
+CREATE TRIGGER trg_validate_staff_attendance_date
+BEFORE INSERT OR UPDATE OF attendance_date ON public.staff_attendance_records
+FOR EACH ROW
+EXECUTE FUNCTION public.validate_staff_attendance_date();
+
 CREATE INDEX ix_staff_attendance_school_date
     ON public.staff_attendance_records (school_id, attendance_date DESC, staff_principal_id);
 CREATE INDEX ix_staff_attendance_school_staff_date
