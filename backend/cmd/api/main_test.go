@@ -1106,3 +1106,44 @@ func TestEligibleTeacherRouteAcceptsEitherAssignmentReadPermission(t *testing.T)
 		})
 	}
 }
+
+func TestStaffAttendanceRoutesEnforceDedicatedPermissions(t *testing.T) {
+    gin.SetMode(gin.TestMode)
+    validator := fakeTokenValidator{claims: &services.TokenClaims{
+        RegisteredClaims: jwt.RegisteredClaims{Subject: "31"},
+        PrincipalType: "staff",
+        TokenVersion: 1,
+    }}
+    principal := &models.AuthPrincipal{ID:31, Type:"staff", Status:"active", TokenVersion:1, SchoolID:8, Username:"school.admin"}
+    handler := handlers.NewStaffAttendanceHandler(nil)
+
+    cases := []struct {
+        name string
+        method string
+        path string
+        body string
+        permissions []string
+        want int
+    }{
+        {name:"daily read",method:http.MethodGet,path:"/school/staff-attendance",permissions:[]string{"staff.attendance.read"},want:http.StatusServiceUnavailable},
+        {name:"monthly read",method:http.MethodGet,path:"/school/staff-attendance/month",permissions:[]string{"staff.attendance.read"},want:http.StatusServiceUnavailable},
+        {name:"mark",method:http.MethodPost,path:"/school/staff-attendance",body:`{"staff_principal_id":52,"attendance_date":"2026-11-22","status":"present"}`,permissions:[]string{"staff.attendance.mark"},want:http.StatusServiceUnavailable},
+        {name:"same-day update",method:http.MethodPatch,path:"/school/staff-attendance/7",body:`{"status":"late"}`,permissions:[]string{"staff.attendance.update_same_day"},want:http.StatusServiceUnavailable},
+    }
+    for _, tc := range cases {
+        t.Run(tc.name,func(t *testing.T){
+            request:=func(permissions []string)*httptest.ResponseRecorder{
+                router,err:=setupTestRouterWithHandlers(fakeDatabase{},nil,validator,
+                    fakePrincipalLoader{principal:principal},fakePermissionLoader{permissions:permissions},
+                    nil,nil,nil,handler)
+                if err!=nil{t.Fatalf("setup router: %v",err)}
+                req:=httptest.NewRequest(tc.method,tc.path,strings.NewReader(tc.body))
+                req.Header.Set("Authorization","Bearer valid-test-token")
+                req.Header.Set("Content-Type","application/json")
+                rec:=httptest.NewRecorder();router.ServeHTTP(rec,req);return rec
+            }
+            if denied:=request(nil);denied.Code!=http.StatusForbidden{t.Fatalf("without permission status=%d body=%s want=403",denied.Code,denied.Body.String())}
+            if allowed:=request(tc.permissions);allowed.Code!=tc.want{t.Fatalf("with permission status=%d body=%s want=%d",allowed.Code,allowed.Body.String(),tc.want)}
+        })
+    }
+}
