@@ -464,12 +464,12 @@ Phases are dependency ordered, not a claim that every listed item is absent. Ins
 ### Phase 5 — Workload, Timetable & Substitution (P1)
 
 1. **Initial workload summary implemented (2026-11-22):** the existing timetable read API accepts an optional `teacher_principal_id` filter applied in PostgreSQL. It retains live `timetable.read` authorization, requires a matching `staff_profiles` row in the authenticated school, and preserves the teacher self-only boundary. The Staff profile's permission-gated Workload & Timetable tab shows current-year scheduled counts and actual timetable rows. It never treats an unscheduled slot as confirmed availability. Backend CI (Go tests, PostgreSQL integration suite, `go vet`) and frontend CI (TypeScript, production build, Playwright) passed on `30270fe0927a6eb3f284d462ddd6dc2b4ca2959e`.
-2. Add a dedicated repository-level PostgreSQL test proving same-school target filtering and cross-school isolation for the optional teacher filter.
+2. **PostgreSQL tenant/actor scope verified:** `TestAcademicFoundationAndStudentLifecyclePostgresIntegration` proves School Admin target filtering for two same-school teachers, Teacher self-only enforcement when requesting a peer, and no results for a foreign-school teacher principal ID. Backend CI run `45009905703` passed the full PostgreSQL integration suite and `go vet`.
 3. Implement teacher availability/free-period view only when timetable and period data support a meaningful availability definition; clearly distinguish an unscheduled slot from confirmed availability.
 4. Add conflict warnings and workload reports using server-authoritative timetable conflicts and real assignment data.
 5. Implement the substitute assignment workflow with explicit authorization, overlap/availability checks and append-only history.
 
-**Exit gate:** no double-booking, timetable history preserved, substitutions audited and assignment limits enforced. The initial profile workload view is implemented and browser-tested, but the dedicated PostgreSQL target-scope test, conflict/reporting work and substitution workflow remain open.
+**Exit gate:** no double-booking, timetable history preserved, substitutions audited and assignment limits enforced. The initial profile workload view and its tenant/actor-scope tests are verified; availability semantics, conflict/reporting work and the substitution workflow remain open.
 
 ### Phase 6 — Reports, Import/Export & ID Cards (P1/P2)
 
