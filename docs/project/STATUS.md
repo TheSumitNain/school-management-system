@@ -1864,3 +1864,9 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Verified the assigned role is visible, role assignment/removal controls are not rendered, and the page does not fetch permission catalogue, delegation or individual override data without the corresponding permissions.
 - Code checkpoint 15d74d324de85425a94039c45c715478d153cae9: Frontend CI [45002264200](https://github.com/TheSumitNain/school-management-system/actions/runs/45002264200) and Backend CI [45002264188](https://github.com/TheSumitNain/school-management-system/actions/runs/45002264188) both **PASS**. The frontend run includes the full Playwright suite; backend includes PostgreSQL integration tests and go vet.
 - No runtime feature or database migration was added by this acceptance test.
+
+## Staff Management — role assignment/removal confirmation acceptance (2026-11-22)
+
+- Added a positive-permission staff Account & Access browser workflow: assign a custom role, cancel a removal confirmation and prove no DELETE occurs, then explicitly confirm removal and verify the updated UI.
+- Exact checkpoint `6ca0fb6e8ffe3b80c86446d2dfc9d8cc6521bd7d`: Frontend CI [45002546475](https://github.com/TheSumitNain/school-management-system/actions/runs/45002546475) and Backend CI [45002546411](https://github.com/TheSumitNain/school-management-system/actions/runs/45002546411) both **PASS**. Frontend includes the complete Playwright browser suite; backend includes PostgreSQL integration tests and `go vet`.
+- Acceptance-test-only change; no database migration or runtime feature change.
