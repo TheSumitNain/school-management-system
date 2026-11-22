@@ -652,8 +652,12 @@ test("staff leave rejection requires a comment before the pending request can be
   const decision = page.getByRole("dialog", { name: "Reject leave request" });
   await decision.getByRole("button", { name: "Confirm rejection" }).click();
   await expect(decision.getByRole("alert")).toHaveText("A comment is required when rejecting a request.");
+  await expect(decision.getByLabel(/Decision comment/)).toHaveAttribute("aria-invalid", "true");
+  await expect(decision.getByLabel(/Decision comment/)).toHaveAttribute("aria-describedby", "leave-decision-comment-error");
 
   await decision.getByLabel(/Decision comment/).fill("Insufficient leave information.");
+  await expect(decision.getByRole("alert")).toHaveCount(0);
+  await expect(decision.getByLabel(/Decision comment/)).not.toHaveAttribute("aria-invalid", "true");
   await decision.getByRole("button", { name: "Confirm rejection" }).click();
   await expect(page.getByText("No leave requests match these filters.")).toBeVisible();
 });
