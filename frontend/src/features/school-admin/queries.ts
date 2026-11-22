@@ -6,6 +6,7 @@ import {
   resetSchoolStaffPassword, updateSchoolStaff,
   getStaffQualifications, createStaffQualification, updateStaffQualification, getStaffCertifications, createStaffCertification, updateStaffCertification, getStaffExperience, createStaffExperience, updateStaffExperience,
   getStaffLeaveTypes, saveStaffLeaveType, getStaffLeaveRequests, createStaffLeaveRequest, decideStaffLeaveRequest, cancelStaffLeaveRequest, getSchoolHolidays, saveSchoolHoliday,
+  getStaffSubstitutions, createStaffSubstitution, cancelStaffSubstitution, getCurrentTimetableYear, getTimetableEntries,
 } from "./api";
 
 export const schoolAdminQueryKeys = {
