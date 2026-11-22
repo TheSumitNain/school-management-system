@@ -1738,3 +1738,13 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - The address form now associates an incomplete State → District → Sub-District / Tehsil → Village / City path error with the first missing location selector, marks that selector invalid, and renders the error directly below it. Choosing the missing level clears the error and invalid state.
 - Added browser acceptance assertions for `aria-invalid`, `aria-describedby`, the inline alert, and clearing the error after the missing district is selected.
 - Frontend CI **PASS** — [run 44865807238](https://github.com/TheSumitNain/school-management-system/actions/runs/44865807238): TypeScript/Vite production build and all **31 Student Management browser acceptance tests** passed. No backend or database changes were made.
+
+## Staff Leave & Holiday Management — source audit and backend contract (2026-11-22)
+
+- Audited the latest `work` source checkpoint. No leave/holiday schema, API, permissions, frontend workspace or reusable school holiday calendar exists yet.
+- Confirmed current staff attendance stores only present/absent/late/half-day. Approved leave and holidays must remain separate calendar context; they must not silently create, overwrite or delete attendance rows.
+- Added [Staff Leave & Holiday Backend Contract](../backend/STAFF-LEAVE-HOLIDAYS.md) covering school-scoped data model, leave request lifecycle, overlap/concurrency safeguards, holiday calendar, dedicated non-delegable permissions, API routes, audit requirements and verification gates.
+- No leave quotas, accrual, carry-forward, encashment, payroll deductions or statutory entitlements are assumed. Balances remain unavailable until a school policy is explicitly configured and separately implemented.
+- This is a design/audit checkpoint only. No migration or application code has been added for leave/holidays, and no persistent database was changed. Next implementation work is the additive backend migration, permission provisioning, repository/service/handler/routes and PostgreSQL integration tests, followed by the frontend workspace.
+- Attendance Phase 3 remains open for downloadable/report views and leave/calendar integration. Academic, Student Management and Settings pages remain untouched.
+
