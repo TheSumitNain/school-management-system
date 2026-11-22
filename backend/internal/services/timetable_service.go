@@ -11,6 +11,7 @@ type timetableRepository interface {
 	ListTimetablePeriods(context.Context,int64,int64,int64)([]repository.TimetablePeriod,error)
 	SaveTimetablePeriod(context.Context,int64,int64,int64,int64,int,string,string,string,bool)(*repository.TimetablePeriod,error)
 	ListTimetableEntries(context.Context,int64,int64,int64,int64,int64)([]repository.TimetableEntry,error)
+	ListTeacherWorkloadReport(context.Context,int64,int64,int64)([]repository.TeacherWorkloadReportRow,error)
 	SaveTimetableEntry(context.Context,int64,int64,int64,int64,int64,int64,int64,int64,int64,int,*string)(*repository.TimetableEntry,error)
 	DeleteTimetableEntry(context.Context,int64,int64,int64,int64)error
 }
@@ -34,6 +35,10 @@ func(s *TimetableService) SavePeriod(ctx context.Context,actorID,schoolID,id,yea
 func(s *TimetableService) ListEntries(ctx context.Context,actorID,schoolID,yearID,sectionID,teacherID int64)([]repository.TimetableEntry,error){
 	if s==nil||s.repository==nil{return nil,repository.ErrTimetableAccessDenied}
 	return s.repository.ListTimetableEntries(ctx,actorID,schoolID,yearID,sectionID,teacherID)
+}
+func(s *TimetableService) WorkloadReport(ctx context.Context,actorID,schoolID,yearID int64)([]repository.TeacherWorkloadReportRow,error){
+	if s==nil||s.repository==nil{return nil,repository.ErrTimetableAccessDenied}
+	return s.repository.ListTeacherWorkloadReport(ctx,actorID,schoolID,yearID)
 }
 func(s *TimetableService) SaveEntry(ctx context.Context,actorID,schoolID,id,yearID,sectionID,subjectID,teacherID,assignmentID,periodID int64,day int,room *string)(*repository.TimetableEntry,error){
 	if s==nil||s.repository==nil{return nil,repository.ErrTimetableAccessDenied}
