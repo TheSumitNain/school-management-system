@@ -92,7 +92,7 @@ func(r *StaffLeaveRepository) CreateRequest(ctx context.Context,actor,school int
  tx,e:=r.db.Begin(ctx);if e!=nil{return nil,e};defer func(){_=tx.Rollback(ctx)}()
  if authorizeGuardian(ctx,tx,actor,school,"staff.leave.manage_requests")!=nil{return nil,ErrStaffLeaveAccessDenied}
  // Serialize overlap checks per school/staff so simultaneous submissions cannot both pass.
- if _,e=tx.Exec(ctx,`SELECT pg_advisory_xact_lock(hashtextextended($1::text || ':' || $2::text,0))`,school,x.StaffPrincipalID);e!=nil{return nil,e}
+ if _,e=tx.Exec(ctx,`SELECT pg_advisory_xact_lock(hashtextextended($1::bigint::text || ':' || $2::bigint::text,0))`,school,x.StaffPrincipalID);e!=nil{return nil,e}
  var active bool
  e=tx.QueryRow(ctx,`SELECT EXISTS(SELECT 1 FROM staff_profiles WHERE principal_id=$1 AND school_id=$2 AND employment_status='active') AND EXISTS(SELECT 1 FROM staff_leave_types WHERE id=$3 AND school_id=$2 AND is_active=TRUE)`,x.StaffPrincipalID,school,x.LeaveTypeID).Scan(&active)
  if e!=nil{return nil,e};if !active{return nil,ErrStaffLeaveNotFound}
