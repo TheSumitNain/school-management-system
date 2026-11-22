@@ -622,7 +622,8 @@ test("staff leave request field errors clear as each required field is corrected
   await page.getByRole("dialog", { name: "Choose leave start date" }).getByRole("button", { name: "Tuesday, November 24, 2026" }).click();
   await expect(page.getByText("End date must be on or after the start date.")).toHaveCount(0);
 
-  await page.getByLabel("Leave duration").selectOption("half_day");
+  await page.getByLabel("Leave duration").click();
+  await page.getByRole("option", { name: "Half day" }).click();
   await page.getByRole("button", { name: "Submit leave request" }).click();
   await expect(page.getByText("Half-day leave must cover one date only.")).toBeVisible();
   await expect(page.getByLabel("Leave duration")).toHaveAttribute("aria-describedby", "leave-duration-error");
