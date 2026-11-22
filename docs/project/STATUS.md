@@ -7,7 +7,7 @@
 - Added migration/permission/date-trigger integration coverage, route permission tests, service validation tests, daily/monthly/audit/cross-school repository integration coverage and Playwright daily-mark/month-summary coverage.
 - Frontend CI **PASS** — [run 44978879123](https://github.com/TheSumitNain/school-management-system/actions/runs/44978879123): TypeScript/Vite production build, centralized design-token check and all **49 Playwright browser tests** passed, including staff daily marking, inline status validation and monthly summary.
 - Backend CI **PASS** — [run 44979343008](https://github.com/TheSumitNain/school-management-system/actions/runs/44979343008), checkpoint `99d581c1`: complete migration chain including V58 applied to ephemeral PostgreSQL, full Go test suite with PostgreSQL integration tests, and `go vet ./...` passed.
-- Phase 3 is not fully closed yet: staff search/filtering, bulk status entry and leave/calendar integration remain. The verified scope is the daily register, individual marking/correction, monthly derived summary and audit trail.
+- Phase 3 remains open only for downloadable/report views and approved leave/school-calendar integration. The verified scope includes employee search/status filtering, atomic bulk marking, individual marking/correction, monthly derived summary and audit trail.
 - V58 has **not** been applied to any local or persistent database. No local migration was run. Academic, Student Management and Settings pages remain untouched.
 
 ---
