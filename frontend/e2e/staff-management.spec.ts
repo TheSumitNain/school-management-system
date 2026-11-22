@@ -547,6 +547,76 @@ test("staff account access keeps role assignments read-only without delegation p
   expect(requests.some(item => (item.method === "POST" || item.method === "DELETE") && item.path.includes("/roles"))).toBe(false);
 });
 
+test("staff role assignment and removal require the delegated permission and explicit confirmation", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 514, school_id: 10, username: "teacher.role-admin",
+    employee_code: "EMP-ROLE-ADMIN", full_name: "Role Admin", designation: "School Admin",
+    mobile_number: "9876543212", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false,
+  }];
+  const assignedRoles: Array<Record<string, unknown>> = [{
+    role_id: 4, role_key: "teacher", name: "Teacher", is_system: true, assigned_at: "2026-01-01T00:00:00Z",
+  }];
+  let assignCalls = 0;
+  let revokeCalls = 0;
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "roles.read", "roles.assign"]);
+  await page.route("**/api/school/roles", async route => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({ json: { roles: [
+        { id: 4, role_key: "teacher", name: "Teacher", is_system: true, created_at: "2026-01-01T00:00:00Z" },
+        { id: 5, role_key: "librarian", name: "Librarian", is_system: false, created_at: "2026-01-01T00:00:00Z" },
+      ] } });
+      return;
+    }
+    await route.fulfill({ status: 403, json: { message: "Unexpected role collection mutation." } });
+  });
+  await page.route("**/api/school/staff/514/roles**", async route => {
+    const url = new URL(route.request().url());
+    const path = url.pathname.replace(/^\/api/, "");
+    if (path === "/school/staff/514/roles" && route.request().method() === "GET") {
+      await route.fulfill({ json: { roles: assignedRoles } });
+      return;
+    }
+    if (path === "/school/staff/514/roles/5" && route.request().method() === "POST") {
+      assignCalls += 1;
+      assignedRoles.push({ role_id: 5, role_key: "librarian", name: "Librarian", is_system: false, assigned_at: "2026-11-22T00:00:00Z" });
+      await route.fulfill({ json: { message: "Role assigned." } });
+      return;
+    }
+    if (path === "/school/staff/514/roles/5" && route.request().method() === "DELETE") {
+      revokeCalls += 1;
+      const index = assignedRoles.findIndex(item => item.role_id === 5);
+      if (index >= 0) assignedRoles.splice(index, 1);
+      await route.fulfill({ json: { message: "Role removed." } });
+      return;
+    }
+    await route.fulfill({ status: 404, json: { message: "Unexpected staff role request." } });
+  });
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Role Admin" }).click();
+  const profile = page.getByRole("dialog", { name: "Role Admin" });
+  await profile.getByRole("button", { name: "Account & Access" }).click();
+  const roleSelect = profile.locator('button[aria-label="Role to assign to teacher.role-admin"]');
+  await roleSelect.click();
+  await profile.getByRole("option", { name: "Librarian (custom)" }).click();
+  await profile.getByRole("button", { name: "Assign", exact: true }).click();
+  await expect(profile.getByText("Role assigned. New permissions apply on the next protected request.")).toBeVisible();
+  await expect(profile.getByText("Librarian", { exact: true })).toBeVisible();
+  expect(assignCalls).toBe(1);
+
+  await profile.getByRole("button", { name: "Remove Librarian role" }).click();
+  const cancelRemoval = page.getByRole("dialog", { name: "Remove staff role?" });
+  await cancelRemoval.getByRole("button", { name: "Cancel" }).click();
+  expect(revokeCalls).toBe(0);
+  await profile.getByRole("button", { name: "Remove Librarian role" }).click();
+  const confirmRemoval = page.getByRole("dialog", { name: "Remove staff role?" });
+  await confirmRemoval.getByRole("button", { name: "Remove role" }).click();
+  await expect(profile.getByText("Role removed. Updated permissions apply on the next protected request.")).toBeVisible();
+  await expect(profile.getByText("Librarian", { exact: true })).toHaveCount(0);
+  expect(revokeCalls).toBe(1);
+});
+
 test("staff profile history is permission-gated and renders staff audit events", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 512, school_id: 10, username: "teacher.history",
