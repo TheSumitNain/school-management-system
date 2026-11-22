@@ -1,6 +1,6 @@
 # Staff Leave & Holiday Management — Backend Contract
 
-**Status:** Design baseline; implementation and migration are pending.  
+**Status:** Initial backend and frontend workflows implemented; phase exit gate remains open.  
 **Reviewed source checkpoint:** `ddc99f0dd764b8ef9823b9c56866d74eaf968982` on `work`.  
 **Product source:** [Staff Management Roadmap](../product/STAFF-MANAGEMENT-ROADMAP.md).
 
@@ -105,3 +105,36 @@ Current staff attendance statuses are `present`, `absent`, `late` and `half_day`
 - CI must pass at the exact code checkpoint before updating Project Status to verified.
 
 **Database safety:** No migration is included or applied by this design document. Persistent local databases remain untouched.
+
+## 8. Implementation checkpoint (2026-11-22)
+
+Migration V59 and the first end-to-end Leave & Holiday workflow are implemented on branch `work`.
+
+### Backend
+
+- V59 creates `staff_leave_types`, `staff_leave_requests` and `school_holidays`, with school-scoped foreign keys, date/duration/status checks and indexes.
+- Six dedicated non-delegable permissions are added and provisioned to existing and future School Admin system roles. The runtime School Admin permission allowlist is updated.
+- Leave type create/list/update; request create/list/approve/reject/cancel; holiday create/list/update APIs are wired.
+- Request creation validates active same-school staff and leave type, date range, duration and reason. An advisory transaction lock serializes overlap checks per school/staff; pending or approved overlapping requests conflict.
+- Decisions require a pending request, use the authenticated actor and server timestamp, require a comment on rejection, and prevent the applicant from approving their own request.
+- Leave and holiday writes record audit events in the same transaction.
+- Requests with `requires_approval=false` still remain pending in this initial workflow; the flag does not bypass review. This avoids silently inventing an auto-approval policy.
+- Holiday updates can deactivate an entry. Active holiday listing is date-range bounded by the service.
+
+### Frontend
+
+- Staff Management shows Leave & Holidays only when the current user has an appropriate leave/holiday permission. Users without those permissions retain a disabled restricted navigation item.
+- Workspace includes request listing/filtering, leave type creation, holiday listing and create/edit/deactivate controls, approval/rejection with a required rejection comment, and cancellation confirmation.
+- Request form includes staff, leave type, inclusive dates, full/half-day selection and reason. No leave balance is displayed.
+- Browser acceptance covers loading the leave application, approving it through the confirmation modal, and reading configured leave types and the holiday calendar.
+
+### Verification and remaining work
+
+- Backend CI [44982323577](https://github.com/TheSumitNain/school-management-system/actions/runs/44982323577) passed the complete migration chain on disposable PostgreSQL, full Go tests including PostgreSQL integration, and `go vet`.
+- Frontend CI [44982323582](https://github.com/TheSumitNain/school-management-system/actions/runs/44982323582) passed the TypeScript/Vite production build and all 50 Playwright browser acceptance tests.
+- The CI-tested implementation checkpoint is `816ee99511d4a7ed0e393dda9a04dc758f954202`. A subsequent repository update did not change the tested file content.
+- The current integration test verifies V59 schema, non-delegable permission catalogue and School Admin grants. Dedicated automated PostgreSQL behavior tests for overlapping/concurrent submissions, decision authorization, transaction rollback and audit events remain to be added.
+- Approved leave and holidays are not yet shown as contextual overlays in the staff attendance register. They do not create, modify or delete attendance records.
+- Leave balances, accrual, carry-forward, statutory entitlements, payroll effects, supporting-document uploads and automated holiday feeds remain out of scope.
+- V59 has only been applied in disposable CI PostgreSQL. No migration was applied to a persistent local database.
+
