@@ -109,9 +109,9 @@ func(r *StaffLeaveRepository) Decide(ctx context.Context,actor,school,id int64,a
  var e error;comment,e=cleanOptional(comment,1000);if e!=nil{return e};if !approve&&comment==nil{return ErrInvalidStaffLeave}
  tx,e:=r.db.Begin(ctx);if e!=nil{return e};defer func(){_=tx.Rollback(ctx)}()
  if authorizeGuardian(ctx,tx,actor,school,"staff.leave.decide")!=nil{return ErrStaffLeaveAccessDenied}
- var creator int64
- e=tx.QueryRow(ctx,`SELECT created_by_principal_id FROM staff_leave_requests WHERE id=$1 AND school_id=$2 AND status='pending' FOR UPDATE`,id,school).Scan(&creator)
- if errors.Is(e,pgx.ErrNoRows){return ErrStaffLeaveNotFound};if e!=nil{return e};if creator==actor{return ErrStaffLeaveAccessDenied}
+ var applicant int64
+ e=tx.QueryRow(ctx,`SELECT staff_principal_id FROM staff_leave_requests WHERE id=$1 AND school_id=$2 AND status='pending' FOR UPDATE`,id,school).Scan(&applicant)
+ if errors.Is(e,pgx.ErrNoRows){return ErrStaffLeaveNotFound};if e!=nil{return e};if applicant==actor{return ErrStaffLeaveAccessDenied}
  status:="approved";action:="staff.leave.approved";if !approve{status="rejected";action="staff.leave.rejected"}
  _,e=tx.Exec(ctx,`UPDATE staff_leave_requests SET status=$3,decision_comment=$4,decided_by_principal_id=$5,decided_at=NOW(),updated_at=NOW() WHERE id=$1 AND school_id=$2`,id,school,status,comment,actor);if e!=nil{return leaveWriteError(e)}
  if _,e=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata) VALUES($1,$2,$3,'staff_leave_request',$4,'success',jsonb_build_object('status',$5::text))`,actor,school,action,fmt.Sprint(id),status);e!=nil{return e}
