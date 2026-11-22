@@ -7,6 +7,7 @@ import {
   getStaffQualifications, createStaffQualification, updateStaffQualification, getStaffCertifications, createStaffCertification, updateStaffCertification, getStaffExperience, createStaffExperience, updateStaffExperience,
   getStaffLeaveTypes, saveStaffLeaveType, getStaffLeaveRequests, createStaffLeaveRequest, decideStaffLeaveRequest, cancelStaffLeaveRequest, getSchoolHolidays, saveSchoolHoliday,
   getStaffSubstitutions, createStaffSubstitution, cancelStaffSubstitution, getCurrentTimetableYear, getTimetableEntries,
+  getTeacherWorkloadReport,
 } from "./api";
 
 export const schoolAdminQueryKeys = {
@@ -454,4 +455,12 @@ export function useCreateStaffSubstitutionMutation(){
 }
 export function useCancelStaffSubstitutionMutation(){
   return useStaffSubstitutionMutation(cancelStaffSubstitution);
+}
+
+export const teacherWorkloadReportQueryKeys = {
+  all: [...schoolAdminQueryKeys.staff(), "teacher-workload-report"] as const,
+  report: (academicYearID:number) => [...teacherWorkloadReportQueryKeys.all,academicYearID] as const,
+};
+export function useTeacherWorkloadReportQuery(academicYearID:number,enabled=true){
+  return useQuery({queryKey:teacherWorkloadReportQueryKeys.report(academicYearID),queryFn:({signal})=>getTeacherWorkloadReport(academicYearID,signal),enabled:enabled&&academicYearID>0,staleTime:15000});
 }
