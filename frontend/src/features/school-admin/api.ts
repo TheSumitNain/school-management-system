@@ -674,3 +674,27 @@ export function getSchoolHolidays(from:string,to:string,signal?:AbortSignal,incl
 export function saveSchoolHoliday(input:Omit<SchoolHoliday,"id"> & {id?:number}){
  const {id,...body}=input;return api<{data:SchoolHoliday}>(id?("/school/holidays/"+id):"/school/holidays",{method:id?"PATCH":"POST",body:JSON.stringify(body)});
 }
+
+export type StaffSubstitution = {
+  id:number; timetable_entry_id:number; cover_date:string;
+  original_teacher_principal_id:number; original_teacher_name:string;
+  substitute_teacher_principal_id:number; substitute_teacher_name:string;
+  approved_leave_request_id?:number|null; reason:string; status:"active"|"cancelled";
+  section_name:string; class_name:string; subject_name:string; period_number:number; period_name:string;
+  starts_at:string; ends_at:string; room?:string|null; created_by_principal_id:number; created_at:string;
+  cancelled_by_principal_id?:number|null; cancelled_at?:string|null;
+};
+export function getStaffSubstitutions(filters:{fromDate:string;toDate:string;staffPrincipalID?:number},signal?:AbortSignal){
+  const params=new URLSearchParams({from_date:filters.fromDate,to_date:filters.toDate});
+  if(filters.staffPrincipalID)params.set("staff_principal_id",String(filters.staffPrincipalID));
+  return api<{substitutions:StaffSubstitution[]}>(`/school/staff-substitutions?${params.toString()}`,{signal});
+}
+export function createStaffSubstitution(input:{
+  timetable_entry_id:number; original_teacher_principal_id:number; substitute_teacher_principal_id:number;
+  cover_date:string; approved_leave_request_id?:number|null; reason:string;
+}){
+  return api<{substitution:StaffSubstitution}>("/school/staff-substitutions",{method:"POST",body:JSON.stringify(input)});
+}
+export function cancelStaffSubstitution(substitutionID:number){
+  return api<{message:string}>(`/school/staff-substitutions/${substitutionID}/cancel`,{method:"POST"});
+}
