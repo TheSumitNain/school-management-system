@@ -140,7 +140,13 @@ func (r *StaffAttendanceRepository) ListMonthly(ctx context.Context, actorID, sc
          AND a.attendance_date >= $2::date
          AND a.attendance_date < $3::date
         WHERE sp.school_id = $1
-          AND sp.employment_status = 'active'
+          AND (sp.employment_status = 'active' OR EXISTS (
+              SELECT 1 FROM staff_attendance_records historic
+              WHERE historic.school_id = sp.school_id
+                AND historic.staff_principal_id = sp.principal_id
+                AND historic.attendance_date >= $2::date
+                AND historic.attendance_date < $3::date
+          ))
         GROUP BY sp.principal_id, sp.employee_code, sp.full_name, sp.designation
         ORDER BY LOWER(sp.full_name), sp.employee_code, sp.principal_id
         LIMIT 1000
