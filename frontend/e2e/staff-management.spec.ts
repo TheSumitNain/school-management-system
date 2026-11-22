@@ -297,6 +297,16 @@ test("staff creation uses the shared IST date picker and submits its selected da
 
   await dialog.getByLabel("Designation").fill("Class Teacher");
   await dialog.getByRole("button", { name: "Joining date" }).click();
+  const calendar = dialog.getByRole("dialog", { name: "Choose joining date" });
+  await expect(calendar.locator(".app-date-day[tabindex='0']")).toBeFocused();
+  await calendar.locator(".app-date-day[tabindex='0']").press("ArrowRight");
+  await expect(calendar.locator(".app-date-day[tabindex='0']")).toBeFocused();
+  await calendar.getByRole("button", { name: "Choose month" }).click();
+  await calendar.locator(".app-date-month-grid button[aria-pressed='true']").click();
+  await expect(calendar.locator(".app-date-day[tabindex='0']")).toBeFocused();
+  await calendar.getByRole("button", { name: "Choose year" }).click();
+  await calendar.locator(".app-date-year-grid button[aria-pressed='true']").click();
+  await expect(calendar.locator(".app-date-day[tabindex='0']")).toBeFocused();
   await dialog.getByRole("button", { name: "Today", exact: true }).click();
   await dialog.getByRole("button", { name: "Continue" }).click();
 
