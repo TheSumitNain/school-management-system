@@ -98,7 +98,8 @@ async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, un
       return;
     }
     if (path === "/school/holidays" && method === "GET") {
-      await route.fulfill({ json: { data: schoolHolidays } });
+      const includeInactive = url.searchParams.get("include_inactive") === "true";
+      await route.fulfill({ json: { data: includeInactive ? schoolHolidays : schoolHolidays.filter(item => item.is_active === true) } });
       return;
     }
     const holidayUpdate = path.match(/^\/school\/holidays\/(\d+)$/);
