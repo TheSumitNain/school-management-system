@@ -138,14 +138,15 @@ The initial workspace shell has since been extended on branch `work`:
 
 ## 11. Staff Attendance implementation checkpoint (2026-11-22)
 
-Staff Attendance has moved from planned-only to an implementation checkpoint; it is not yet marked complete.
+Staff Attendance core register is implemented and CI-verified. Phase 3 remains open for search/filtering, bulk status entry and leave/calendar integration.
 
 - Dedicated backend data model and permissions are in V58. Student attendance remains a separate module and data table.
 - Daily roster and monthly derived register APIs are implemented with school scope and live effective-permission checks.
 - Mark/update writes include append-only audit events in the same transaction. Past dates require the dedicated correction permission; future dates are blocked in both service and database trigger; duplicates return conflict.
 - Staff profile History & Activity now recognizes staff attendance mark/update events without exposing raw audit metadata.
 - Staff Management has Daily Register and Monthly Summary views, a school-local date picker, permission-aware marking/correction, and a confirmation step for historical corrections.
-- Added PostgreSQL integration and Playwright coverage. CI is still being verified; consult the latest GitHub Actions results before treating the feature as ready.
+- Added PostgreSQL integration and Playwright coverage. Frontend CI [44978879123](https://github.com/TheSumitNain/school-management-system/actions/runs/44978879123) passed all 49 browser tests; Backend CI [44979343008](https://github.com/TheSumitNain/school-management-system/actions/runs/44979343008) passed the full migration chain, Go/PostgreSQL integration suite and `go vet`.
+- Remaining Phase 3 work: employee search/filtering, transactional bulk status entry and leave/calendar integration. Do not call the full Staff Attendance phase complete until its roadmap exit gate is met.
 - V58 remains unapplied to persistent/local databases. No changes were made to Academic, Student Management or Settings pages.
 
 The detailed schema, permission, API, UI and verification contract is in [STAFF-ATTENDANCE.md](../backend/STAFF-ATTENDANCE.md).
