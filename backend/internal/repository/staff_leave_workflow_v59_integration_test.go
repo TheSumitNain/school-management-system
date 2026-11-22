@@ -277,3 +277,43 @@ func TestSchoolHolidayDuplicateAndConflictingUpdatePostgresIntegration(t *testin
 		t.Fatalf("holiday audit counts first=%d second=%d; want exactly one successful create audit per row", firstAuditCount, secondAuditCount)
 	}
 }
+
+func TestSchoolHolidayCrossSchoolWriteAndAuditRollbackPostgresIntegration(t *testing.T) {
+	f := newStaffLeaveIntegrationFixture(t)
+
+	if _, err := f.repo.SaveHoliday(f.ctx, f.adminPrincipalID, f.schoolID+999999, 0, SchoolHoliday{
+		HolidayDate: "2027-08-15", Name: "Cross-school holiday", IsActive: true,
+	}); !errors.Is(err, ErrStaffLeaveAccessDenied) {
+		t.Fatalf("cross-school holiday create error=%v; want access denied", err)
+	}
+
+	const functionName = "test_school_holiday_audit_failure"
+	const triggerName = "trg_test_school_holiday_audit_failure"
+	if _, err := f.pool.Exec(f.ctx, `CREATE OR REPLACE FUNCTION public.test_school_holiday_audit_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action='school.holiday.created' THEN RAISE EXCEPTION 'forced holiday audit failure'; END IF; RETURN NEW; END $$`); err != nil {
+		t.Fatalf("create holiday audit failure function: %v", err)
+	}
+	if _, err := f.pool.Exec(f.ctx, `CREATE TRIGGER trg_test_school_holiday_audit_failure BEFORE INSERT ON public.audit_events FOR EACH ROW EXECUTE FUNCTION public.test_school_holiday_audit_failure()`); err != nil {
+		t.Fatalf("create holiday audit failure trigger: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = f.pool.Exec(context.Background(), `DROP TRIGGER IF EXISTS trg_test_school_holiday_audit_failure ON public.audit_events`)
+		_, _ = f.pool.Exec(context.Background(), `DROP FUNCTION IF EXISTS public.test_school_holiday_audit_failure()`)
+	})
+
+	if _, err := f.repo.SaveHoliday(f.ctx, f.adminPrincipalID, f.schoolID, 0, SchoolHoliday{
+		HolidayDate: "2027-08-15", Name: "Audit rollback holiday", IsActive: true,
+	}); err == nil {
+		t.Fatal("holiday create unexpectedly succeeded when audit insert failed")
+	}
+
+	var holidayCount, auditCount int
+	if err := f.pool.QueryRow(f.ctx, `SELECT COUNT(*) FROM school_holidays WHERE school_id=$1 AND name='Audit rollback holiday'`, f.schoolID).Scan(&holidayCount); err != nil {
+		t.Fatalf("count holiday rows after audit failure: %v", err)
+	}
+	if err := f.pool.QueryRow(f.ctx, `SELECT COUNT(*) FROM audit_events WHERE school_id=$1 AND actor_principal_id=$2 AND action='school.holiday.created' AND metadata->>'holiday_date'='2027-08-15'`, f.schoolID, f.adminPrincipalID).Scan(&auditCount); err != nil {
+		t.Fatalf("count holiday audit rows after audit failure: %v", err)
+	}
+	if holidayCount != 0 || auditCount != 0 {
+		t.Fatalf("audit failure left partial state: holiday rows=%d audit rows=%d; want both zero", holidayCount, auditCount)
+	}
+}
