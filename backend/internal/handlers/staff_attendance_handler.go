@@ -19,6 +19,7 @@ type StaffAttendanceManagementService interface {
     ListDaily(context.Context, int64, int64, time.Time) ([]repository.StaffAttendanceRecord, error)
     ListMonthly(context.Context, int64, int64, time.Time) ([]repository.StaffAttendanceMonthlySummary, error)
     Mark(context.Context, int64, int64, int64, time.Time, string, *string) (*repository.StaffAttendanceRecord, error)
+    MarkBulk(context.Context, int64, int64, []int64, time.Time, string, *string) (int, error)
     Update(context.Context, int64, int64, int64, string, *string) (*repository.StaffAttendanceRecord, error)
 }
 
@@ -80,6 +81,32 @@ func (h *StaffAttendanceHandler) Mark(c *gin.Context) {
     item, err := h.service.Mark(c.Request.Context(), actor, school, req.StaffPrincipalID, day, req.Status, req.Remarks)
     if err != nil { writeStaffAttendanceError(c, err); return }
     c.JSON(http.StatusCreated, gin.H{"status":"success","data":item})
+}
+
+type staffAttendanceBulkMarkRequest struct {
+    StaffPrincipalIDs []int64 `json:"staff_principal_ids"`
+    AttendanceDate string `json:"attendance_date"`
+    Status string `json:"status"`
+    Remarks *string `json:"remarks"`
+}
+
+func (h *StaffAttendanceHandler) MarkBulk(c *gin.Context) {
+    if h.unavailable(c) { return }
+    actor, school, ok := staffRecordActor(c)
+    if !ok { c.JSON(http.StatusUnauthorized, gin.H{"status":"error","message":"School staff authentication required"}); return }
+    var req staffAttendanceBulkMarkRequest
+    if err := c.ShouldBindJSON(&req); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid bulk staff attendance payload"})
+        return
+    }
+    day, err := time.Parse("2006-01-02", req.AttendanceDate)
+    if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"attendance_date must use YYYY-MM-DD"})
+        return
+    }
+    created, err := h.service.MarkBulk(c.Request.Context(), actor, school, req.StaffPrincipalIDs, day, req.Status, req.Remarks)
+    if err != nil { writeStaffAttendanceError(c, err); return }
+    c.JSON(http.StatusCreated, gin.H{"status":"success","created":created})
 }
 
 type staffAttendanceUpdateRequest struct {
