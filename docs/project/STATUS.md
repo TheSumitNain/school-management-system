@@ -1768,3 +1768,11 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Phase 4 remains partially implemented. Dedicated PostgreSQL behavior tests for concurrency/overlap, decision authorization, rollback and audit are still required; leave-type edit/deactivation UI and approved school policy are pending.
 - V59 has only run in disposable CI PostgreSQL. No persistent/local database migration was applied. Academic, Student Management and Settings remain untouched.
 
+## Staff Leave & Holiday — leave type controls and browser acceptance (2026-11-22)
+
+- Staff Management leave type configuration now supports editing, reactivation and confirmed deactivation. Existing requests/history remain intact; inactive leave types cannot be selected for new requests.
+- Added Playwright coverage for leave type edit/deactivation.
+- Frontend CI [44984794710](https://github.com/TheSumitNain/school-management-system/actions/runs/44984794710) **PASS** at checkpoint `f1b71d4e2999f868f62910ee878f78eee1460a8b`: production build and all 51 browser tests.
+- Backend CI [44984794698](https://github.com/TheSumitNain/school-management-system/actions/runs/44984794698) **PASS** at the same checkpoint: full migration chain on disposable PostgreSQL, Go tests and `go vet`.
+- Phase 4 is still partially implemented pending dedicated PostgreSQL behavior tests for concurrency/overlap, authorization, rollback and audit, plus school policy decisions for balances. V59 has only been applied in disposable CI PostgreSQL. Persistent/local DBs remain untouched.
+
