@@ -6,6 +6,7 @@ import { StaffPermissionOverrides } from "../components/StaffPermissionOverrides
 import { TeacherAssignmentsPage } from "./TeacherAssignmentsPage";
 import { StaffAcademicAssignmentsPanel } from "../components/StaffAcademicAssignmentsPanel";
 import { StaffHistoryActivityPanel } from "../components/StaffHistoryActivityPanel";
+import { StaffAttendanceWorkspace } from "../components/StaffAttendanceWorkspace";
 import {
   useCreateSchoolStaffMutation, useDisableSchoolStaffMutation, useEnableSchoolStaffMutation,
   useResetSchoolStaffPasswordMutation, useSchoolStaffQuery, useUpdateSchoolStaffMutation,
@@ -38,7 +39,7 @@ export function StaffManagementPage({ permissions }: Props) {
   const disable = useDisableSchoolStaffMutation();
   const enable = useEnableSchoolStaffMutation();
   const reset = useResetSchoolStaffPasswordMutation();
-  const [activeTab, setActiveTab] = useState<"overview" | "directory" | "assignments">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "directory" | "assignments" | "attendance">("overview");
   const [search, setSearch] = useState("");
   const [action, setAction] = useState<Action>(null);
   const [selected, setSelected] = useState<StaffRecord | null>(null);
@@ -322,7 +323,7 @@ export function StaffManagementPage({ permissions }: Props) {
         <button type="button" className={activeTab === "overview" ? "active" : ""} aria-current={activeTab === "overview" ? "page" : undefined} onClick={() => setActiveTab("overview")}><LayoutDashboard size={16}/> Overview</button>
         <button type="button" className={activeTab === "directory" ? "active" : ""} aria-current={activeTab === "directory" ? "page" : undefined} onClick={() => setActiveTab("directory")}><Search size={16}/> Staff Directory</button>
         {(permissions.includes("teacher_assignments.read") || permissions.includes("class_incharge_assignments.read")) && <button type="button" className={activeTab === "assignments" ? "active" : ""} aria-current={activeTab === "assignments" ? "page" : undefined} onClick={() => setActiveTab("assignments")}><BookOpen size={16}/> Academic Assignments</button>}
-        <button type="button" className="upcoming" disabled title="Planned for the next phase"><CalendarDays size={16}/> Attendance <span>Phase 1</span></button>
+        {permissions.includes("staff.attendance.read") && <button type="button" className={activeTab === "attendance" ? "active" : ""} aria-current={activeTab === "attendance" ? "page" : undefined} onClick={() => setActiveTab("attendance")}><CalendarDays size={16}/> Attendance</button>}
         <button type="button" className="upcoming" disabled title="Planned for the next phase"><Clock3 size={16}/> Leave <span>Phase 1</span></button>
         <button type="button" className="upcoming" disabled title="Planned for the next phase"><BookOpen size={16}/> Workload & Timetable <span>Phase 1</span></button>
         <button type="button" className="upcoming" disabled title="Planned for the next phase"><FileText size={16}/> Reports <span>Phase 1</span></button>
@@ -394,6 +395,7 @@ export function StaffManagementPage({ permissions }: Props) {
         {query.isError && <p className="staff-overview-error" role="alert">Staff summary could not be loaded. Open Staff Directory and retry the request.</p>}
       </section>}
       {activeTab === "assignments" && <TeacherAssignmentsPage permissions={permissions}/>}
+      {activeTab === "attendance" && <StaffAttendanceWorkspace permissions={permissions}/>}
       {activeTab === "directory" && <section className="table-panel">
         <div className="toolbar"><div><h2>All staff</h2><small>{staff.length} accounts</small></div><div className="search"><Search size={16}/><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search by name, code, designation or username" aria-label="Search staff by name, code, designation or username"/></div></div>
         {query.isPending ? <div className="table-message" aria-live="polite">Loading staff accounts…</div>
