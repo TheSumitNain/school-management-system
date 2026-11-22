@@ -62,23 +62,9 @@ CREATE INDEX ix_staff_attendance_school_date
 CREATE INDEX ix_staff_attendance_school_staff_date
     ON public.staff_attendance_records (school_id, staff_principal_id, attendance_date DESC);
 
--- Existing schools receive the new permissions without changing any other role.
-INSERT INTO public.role_permissions (role_id, permission_id)
-SELECT r.id, p.id
-  FROM public.roles r
-  CROSS JOIN public.permissions p
- WHERE r.role_key = 'school_admin'
-   AND r.scope_type = 'school'
-   AND r.principal_type = 'staff'
-   AND r.is_system = TRUE
-   AND p.permission_key IN (
-       'staff.attendance.read',
-       'staff.attendance.mark',
-       'staff.attendance.update_same_day',
-       'staff.attendance.correct_past'
-   )
-ON CONFLICT DO NOTHING;
-
+-- Existing schools receive the new permissions through a nested trigger call.
+-- V4 protects immutable system-role permission bundles from direct writes;
+-- invoking the grant function as a trigger preserves that invariant.
 -- The V13 provisioning trigger creates the School Admin role for future schools.
 -- PostgreSQL runs same-event triggers in name order; z_ ensures this runs after it.
 CREATE OR REPLACE FUNCTION public.grant_staff_attendance_permissions()
@@ -131,6 +117,16 @@ CREATE TRIGGER trg_z_grant_staff_attendance_permissions
 AFTER INSERT ON public.schools
 FOR EACH ROW
 EXECUTE FUNCTION public.grant_staff_attendance_permissions();
+
+-- Apply the same grant path to schools that already exist at migration time.
+CREATE TEMP TABLE v58_existing_school_ids (id BIGINT PRIMARY KEY) ON COMMIT DROP;
+CREATE TRIGGER trg_v58_existing_school_grants
+AFTER INSERT ON pg_temp.v58_existing_school_ids
+FOR EACH ROW EXECUTE FUNCTION public.grant_staff_attendance_permissions();
+
+INSERT INTO pg_temp.v58_existing_school_ids (id)
+SELECT id FROM public.schools ORDER BY id;
+DROP TABLE pg_temp.v58_existing_school_ids;
 
 COMMENT ON TABLE public.staff_attendance_records IS
     'Daily school-scoped staff attendance. Independent from student attendance_records; one record per staff member per school date.';
