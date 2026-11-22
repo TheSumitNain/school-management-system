@@ -97,6 +97,19 @@ async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, un
       await route.fulfill({ json: { message: "Request cancelled" } });
       return;
     }
+    if (path === "/school/timetable/current-year" && method === "GET") {
+      await route.fulfill({ json: { academic_year: { id: 2026, name: "2026–27", starts_on: "2026-04-01", ends_on: "2027-03-31", status: "active", is_current: true } } });
+      return;
+    }
+    if (path === "/school/timetable/entries" && method === "GET") {
+      await route.fulfill({ json: { entries: [{
+        id: 81, school_id: 10, academic_year_id: 2026, section_id: 301, section_name: "A", class_name: "Class 6",
+        subject_id: 9, subject_name: "Mathematics", teacher_principal_id: 501, teacher_username: "teacher.workload",
+        teacher_subject_assignment_id: 12, period_id: 4, period_number: 2, period_name: "Period 2",
+        starts_at: "09:40", ends_at: "10:20", day_of_week: 1, room: "Room 12",
+      }] } });
+      return;
+    }
     if (path === "/school/holidays" && method === "GET") {
       const includeInactive = url.searchParams.get("include_inactive") === "true";
       await route.fulfill({ json: { data: includeInactive ? schoolHolidays : schoolHolidays.filter(item => item.is_active === true) } });
@@ -1306,4 +1319,36 @@ test("write-only leave permissions do not expose list views without leave-read a
   await expect(restricted).toBeDisabled();
   await expect(restricted).toHaveAttribute("title", "Leave read permission required to open this workspace");
   await expect(page.getByRole("button", { name: "Leave & Holidays" })).toHaveCount(0);
+});
+
+
+test("staff workload requests only the selected teacher timetable and explains unscheduled availability", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 501, school_id: 10, username: "teacher.workload",
+    employee_code: "EMP-WORK-01", full_name: "Workload Teacher", designation: "Mathematics Teacher",
+    mobile_number: "9876543215", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false,
+  }];
+  const requestedURLs: string[] = [];
+  await page.route("**/api/school/timetable/entries?**", async route => {
+    requestedURLs.push(route.request().url());
+    await route.fulfill({ json: { entries: [{
+      id: 81, school_id: 10, academic_year_id: 2026, section_id: 301, section_name: "A", class_name: "Class 6",
+      subject_id: 9, subject_name: "Mathematics", teacher_principal_id: 501, teacher_username: "teacher.workload",
+      teacher_subject_assignment_id: 12, period_id: 4, period_number: 2, period_name: "Period 2",
+      starts_at: "09:40", ends_at: "10:20", day_of_week: 1, room: "Room 12",
+    }] } });
+  });
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "timetable.read"]);
+  await page.getByRole("button", { name: "Staff Directory" }).click();
+  await page.getByRole("button", { name: "Workload Teacher" }).click();
+  const dialog = page.getByRole("dialog", { name: "Workload Teacher" });
+  await dialog.getByRole("button", { name: "Workload & Timetable" }).click();
+  await expect(dialog.getByRole("heading", { name: "Teaching workload" })).toBeVisible();
+  await expect(dialog.getByText("Scheduled periods")).toBeVisible();
+  await expect(dialog.locator(".staff-workload-summary article").first().locator("strong")).toHaveText("1");
+  await expect(dialog.getByText("Mathematics")).toBeVisible();
+  await expect(dialog.getByText(/unscheduled period is not treated as confirmed availability/)).toBeVisible();
+  expect(requestedURLs).toHaveLength(1);
+  expect(new URL(requestedURLs[0]).searchParams.get("teacher_principal_id")).toBe("501");
 });
