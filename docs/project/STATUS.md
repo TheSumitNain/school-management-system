@@ -1,11 +1,13 @@
-## Staff Attendance — implementation checkpoint (2026-11-22, verification pending)
+## Staff Attendance — core register verified (2026-11-22)
 
 - Audited the existing student attendance module and kept it separate; staff attendance uses its own table, routes, API client and Staff Management workspace tab.
 - Added V58 migration files for `staff_attendance_records`, same-school composite foreign keys, one-record-per-staff/date uniqueness, Asia/Kolkata future-date trigger, and four dedicated non-delegable `staff.attendance.*` permissions. School Admin grants are applied to existing schools through the protected nested-trigger path and to future schools after V13 role provisioning. Teacher/student attendance grants are unchanged.
 - Added daily roster, monthly derived summary, mark and update repository/service/handler APIs. Writes and audit events are transactional; past dates require the dedicated correction permission; duplicate marks conflict rather than overwrite; disabled login does not erase active employment attendance eligibility.
 - Added Staff Management daily/monthly UI with shared date picker, permission-aware actions, field-level status requirement, no-op update prevention, correction confirmation, loading/error/empty states and responsive table layout.
 - Added migration/permission/date-trigger integration coverage, route permission tests, service validation tests, daily/monthly/audit/cross-school repository integration coverage and Playwright daily-mark/month-summary coverage.
-- Verification remains pending. Latest Frontend CI run is checking the corrected permission-hidden tab test and attendance E2E; latest Backend CI run is checking the full migration chain and PostgreSQL tests. Do not mark Staff Attendance complete until both pass.
+- Frontend CI **PASS** — [run 44978879123](https://github.com/TheSumitNain/school-management-system/actions/runs/44978879123): TypeScript/Vite production build, centralized design-token check and all **49 Playwright browser tests** passed, including staff daily marking, inline status validation and monthly summary.
+- Backend CI **PASS** — [run 44979343008](https://github.com/TheSumitNain/school-management-system/actions/runs/44979343008), checkpoint `99d581c1`: complete migration chain including V58 applied to ephemeral PostgreSQL, full Go test suite with PostgreSQL integration tests, and `go vet ./...` passed.
+- Phase 3 is not fully closed yet: staff search/filtering, bulk status entry and leave/calendar integration remain. The verified scope is the daily register, individual marking/correction, monthly derived summary and audit trail.
 - V58 has **not** been applied to any local or persistent database. No local migration was run. Academic, Student Management and Settings pages remain untouched.
 
 ---
