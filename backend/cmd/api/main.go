@@ -56,6 +56,7 @@ func setupRouterWithHandlers(
 	var staffHandler *handlers.StaffHandler
 	var staffRecordsHandler *handlers.StaffRecordsHandler
 	var staffAttendanceHandler *handlers.StaffAttendanceHandler
+	var staffLeaveHandler *handlers.StaffLeaveHandler
 	var academicHandler *handlers.AcademicHandler
 	var guardianHandler *handlers.GuardianHandler
 	var attendanceHandler *handlers.AttendanceHandler
@@ -72,6 +73,8 @@ func setupRouterWithHandlers(
 			staffRecordsHandler = handler
 		case *handlers.StaffAttendanceHandler:
 			staffAttendanceHandler = handler
+		case *handlers.StaffLeaveHandler:
+			staffLeaveHandler = handler
 		case *handlers.AcademicHandler:
 			academicHandler = handler
 		case *handlers.GuardianHandler:
@@ -309,6 +312,21 @@ func setupRouterWithHandlers(
 		router.POST("/school/enrollments", academicAuth, middleware.RequirePermission("students.create"), academic.CreateStudentEnrollment)
 		router.GET("/school/students/:studentID/enrollments", academicAuth, middleware.RequirePermission("students.read_basic"), academic.ListStudentEnrollmentHistory)
 		router.POST("/school/enrollments/:enrollmentID/promote", academicAuth, middleware.RequirePermission("students.update"), academic.PromoteStudentEnrollment)
+	}
+
+	if staffLeaveHandler != nil {
+		leaveAuth := authMiddleware()
+		router.GET("/school/staff-leave/types", leaveAuth, middleware.RequirePermission("staff.leave.read"), staffLeaveHandler.ListTypes)
+		router.POST("/school/staff-leave/types", leaveAuth, middleware.RequirePermission("staff.leave.manage_types"), staffLeaveHandler.SaveType)
+		router.PATCH("/school/staff-leave/types/:typeID", leaveAuth, middleware.RequirePermission("staff.leave.manage_types"), staffLeaveHandler.SaveType)
+		router.GET("/school/staff-leave/requests", leaveAuth, middleware.RequirePermission("staff.leave.read"), staffLeaveHandler.ListRequests)
+		router.POST("/school/staff-leave/requests", leaveAuth, middleware.RequirePermission("staff.leave.manage_requests"), staffLeaveHandler.CreateRequest)
+		router.POST("/school/staff-leave/requests/:requestID/approve", leaveAuth, middleware.RequirePermission("staff.leave.decide"), staffLeaveHandler.Approve)
+		router.POST("/school/staff-leave/requests/:requestID/reject", leaveAuth, middleware.RequirePermission("staff.leave.decide"), staffLeaveHandler.Reject)
+		router.POST("/school/staff-leave/requests/:requestID/cancel", leaveAuth, middleware.RequirePermission("staff.leave.manage_requests"), staffLeaveHandler.Cancel)
+		router.GET("/school/holidays", leaveAuth, middleware.RequirePermission("staff.holidays.read"), staffLeaveHandler.ListHolidays)
+		router.POST("/school/holidays", leaveAuth, middleware.RequirePermission("staff.holidays.manage"), staffLeaveHandler.SaveHoliday)
+		router.PATCH("/school/holidays/:holidayID", leaveAuth, middleware.RequirePermission("staff.holidays.manage"), staffLeaveHandler.SaveHoliday)
 	}
 
 	if staffAttendanceHandler != nil {
@@ -569,6 +587,9 @@ func run() error {
 	staffAttendanceRepo := repository.NewStaffAttendanceRepository(db)
 	staffAttendanceService := services.NewStaffAttendanceService(staffAttendanceRepo)
 	staffAttendanceHandler := handlers.NewStaffAttendanceHandler(staffAttendanceService)
+	staffLeaveRepo := repository.NewStaffLeaveRepository(db)
+	staffLeaveService := services.NewStaffLeaveService(staffLeaveRepo)
+	staffLeaveHandler := handlers.NewStaffLeaveHandler(staffLeaveService)
 	timetableService := services.NewTimetableService(academicRepo)
 	timetableHandler := handlers.NewTimetableHandler(timetableService)
 
@@ -578,7 +599,7 @@ func run() error {
 	staffRecordsService := services.NewStaffRecordsService(staffAccountRepo)
 	staffRecordsHandler := handlers.NewStaffRecordsHandler(staffRecordsService)
 
-	router, err := setupRouterWithHandlers(db, authHandler, tokenService, principalAuthorizationRepo, principalAuthorizationRepo, schoolOnboardingHandler, roleHandler, staffHandler, academicHandler, guardianHandler, attendanceHandler, timetableHandler, platformAdminLifecycleHandler, platformAuditHandler, principalAuthorizationRepo, staffRecordsHandler, staffAttendanceHandler)
+	router, err := setupRouterWithHandlers(db, authHandler, tokenService, principalAuthorizationRepo, principalAuthorizationRepo, schoolOnboardingHandler, roleHandler, staffHandler, academicHandler, guardianHandler, attendanceHandler, timetableHandler, platformAdminLifecycleHandler, platformAuditHandler, principalAuthorizationRepo, staffRecordsHandler, staffAttendanceHandler, staffLeaveHandler)
 
 	if err != nil {
 		return fmt.Errorf("setup router: %w", err)
