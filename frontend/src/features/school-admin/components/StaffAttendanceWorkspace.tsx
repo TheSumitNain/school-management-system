@@ -24,13 +24,13 @@ const statuses: Array<{ value: Status; label: string }> = [
 
 function csvCell(value: string | number | null | undefined) {
   let text = String(value ?? "");
-  if (/^[\\t\\r ]*[=+\\-@]/.test(text)) text = "'" + text;
+  if (/^[\t\r ]*[=+\-@]/.test(text)) text = "'" + text;
   return '"' + text.replace(/"/g, '""') + '"';
 }
 
 function downloadCSV(filename: string, rows: Array<Array<string | number | null | undefined>>) {
-  const csv = rows.map(row => row.map(csvCell).join(",")).join("\\r\\n");
-  const blob = new Blob(["\\uFEFF", csv], { type: "text/csv;charset=utf-8" });
+  const csv = rows.map(row => row.map(csvCell).join(",")).join("\r\n");
+  const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
@@ -38,7 +38,7 @@ function downloadCSV(filename: string, rows: Array<Array<string | number | null 
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
-  URL.revokeObjectURL(url);
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 export function StaffAttendanceWorkspace({ permissions }: Props) {
