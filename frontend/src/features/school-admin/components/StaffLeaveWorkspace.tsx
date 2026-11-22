@@ -110,8 +110,8 @@ export function StaffLeaveWorkspace({permissions,staff}:Props){
   catch(e){setDecisionError(errorText(e,"Unable to save the leave decision."));}
  }
  async function confirmCancel(){if(cancelTarget===null)return;try{await cancel.mutateAsync(cancelTarget);notifyToast("success","Leave request cancelled.");setCancelTarget(null);}catch(e){notifyToast("error",errorText(e,"Unable to cancel the leave request."));}}
- const canShowRequests=canRead||canManageRequests||canDecide;
- const panes=[...(canShowRequests?[{id:"requests" as const,label:"Leave requests",icon:ClipboardList}]:[]),...(canManageTypes?[{id:"types" as const,label:"Leave types",icon:Settings2}]:[]),...(canReadHolidays||canManageHolidays?[{id:"holidays" as const,label:"Holiday calendar",icon:CalendarDays}]:[])];
+ const canShowRequests=canRead;
+ const panes=[...(canShowRequests?[{id:"requests" as const,label:"Leave requests",icon:ClipboardList}]:[]),...(canRead&&canManageTypes?[{id:"types" as const,label:"Leave types",icon:Settings2}]:[]),...(canReadHolidays||canManageHolidays?[{id:"holidays" as const,label:"Holiday calendar",icon:CalendarDays}]:[])];
  const activePane=panes.some(item=>item.id===pane)?pane:(panes[0]?.id??"requests");
 
  return <section className="staff-leave-workspace">
