@@ -277,3 +277,66 @@ func (r *StaffAttendanceRepository) get(ctx context.Context, schoolID, recordID 
     if err != nil { return nil, staffAttendanceWriteError(err) }
     return &item, nil
 }
+
+func (r *StaffAttendanceRepository) MarkBulk(ctx context.Context, actorID, schoolID int64, staffIDs []int64, day time.Time, status string, remarks *string) (int, error) {
+    if r == nil || r.db == nil || actorID <= 0 || schoolID <= 0 || len(staffIDs) == 0 || len(staffIDs) > 1000 || day.IsZero() || !validStaffAttendanceStatus(status) {
+        return 0, ErrInvalidStaffAttendance
+    }
+    seen := make(map[int64]struct{}, len(staffIDs))
+    for _, staffID := range staffIDs {
+        if staffID <= 0 { return 0, ErrInvalidStaffAttendance }
+        if _, exists := seen[staffID]; exists { return 0, ErrInvalidStaffAttendance }
+        seen[staffID] = struct{}{}
+    }
+    status = strings.TrimSpace(status)
+    if remarks != nil {
+        value := strings.TrimSpace(*remarks)
+        if len([]rune(value)) > 500 { return 0, ErrInvalidStaffAttendance }
+        if value == "" { remarks = nil } else { remarks = &value }
+    }
+    date := day.Format("2006-01-02")
+    today := schooltime.TodayDate()
+    if date > today { return 0, ErrInvalidStaffAttendance }
+
+    tx, err := r.db.Begin(ctx)
+    if err != nil { return 0, fmt.Errorf("begin bulk staff attendance mark: %w", err) }
+    defer func() { _ = tx.Rollback(ctx) }()
+
+    permission := "staff.attendance.mark"
+    if date < today { permission = "staff.attendance.correct_past" }
+    if err := authorizeGuardian(ctx, tx, actorID, schoolID, permission); err != nil {
+        return 0, ErrStaffAttendanceAccessDenied
+    }
+
+    for _, staffID := range staffIDs {
+        var active bool
+        if err := tx.QueryRow(ctx, `
+            SELECT EXISTS (
+                SELECT 1 FROM staff_profiles
+                WHERE principal_id = $1 AND school_id = $2 AND employment_status = 'active'
+            )
+        `, staffID, schoolID).Scan(&active); err != nil {
+            return 0, fmt.Errorf("check bulk staff attendance target: %w", err)
+        }
+        if !active { return 0, ErrStaffAttendanceNotFound }
+
+        var id int64
+        if err := tx.QueryRow(ctx, `
+            INSERT INTO staff_attendance_records
+                (school_id, staff_principal_id, attendance_date, status, remarks, marked_by_principal_id, updated_by_principal_id)
+            VALUES ($1,$2,$3,$4,$5,$6,$6)
+            RETURNING id
+        `, schoolID, staffID, date, status, remarks, actorID).Scan(&id); err != nil {
+            return 0, staffAttendanceWriteError(err)
+        }
+        if _, err := tx.Exec(ctx, `
+            INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
+            VALUES($1,$2,'school.staff_attendance.marked','staff_attendance_record',$3,'success',
+                   jsonb_build_object('staff_principal_id',$4::bigint,'attendance_date',$5::date,'status',$6::text,'bulk',TRUE))
+        `, actorID, schoolID, fmt.Sprint(id), staffID, date, status); err != nil {
+            return 0, fmt.Errorf("audit bulk staff attendance mark: %w", err)
+        }
+    }
+    if err := tx.Commit(ctx); err != nil { return 0, fmt.Errorf("commit bulk staff attendance mark: %w", err) }
+    return len(staffIDs), nil
+}
