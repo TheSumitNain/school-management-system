@@ -1,6 +1,6 @@
 # Staff Attendance — implementation contract
 
-Status: V58 schema and permission catalogue added; API and UI implementation in progress. Do not treat the feature as available until backend integration tests, browser acceptance tests and CI all pass.
+Status: Core daily/monthly register is implemented and CI-verified. Phase 3 remains open for search/filtering, bulk status entry and leave/calendar integration.
 
 ## Scope
 
