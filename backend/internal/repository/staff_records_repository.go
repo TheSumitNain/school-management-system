@@ -347,8 +347,21 @@ func (r *UserRepository) ListStaffAuditEvents(ctx context.Context, actorID, scho
 		    ))
 		    OR (ae.resource_type IN ('teacher_subject_assignment','class_incharge_assignment')
 		        AND ae.metadata->>'teacher_principal_id' = $2::text)
-		    OR (ae.resource_type IN ('staff_qualification','staff_certification','staff_experience')
-		        AND ae.metadata->>'staff_principal_id' = $2::text)
+		    OR (ae.resource_type = 'staff_qualification' AND (
+		           ae.metadata->>'staff_principal_id' = $2::text
+		        OR EXISTS (SELECT 1 FROM staff_qualifications sq
+		                   WHERE sq.id::text = ae.resource_id AND sq.school_id = ae.school_id AND sq.staff_principal_id = $2)
+		    ))
+		    OR (ae.resource_type = 'staff_certification' AND (
+		           ae.metadata->>'staff_principal_id' = $2::text
+		        OR EXISTS (SELECT 1 FROM staff_certifications sc
+		                   WHERE sc.id::text = ae.resource_id AND sc.school_id = ae.school_id AND sc.staff_principal_id = $2)
+		    ))
+		    OR (ae.resource_type = 'staff_experience' AND (
+		           ae.metadata->>'staff_principal_id' = $2::text
+		        OR EXISTS (SELECT 1 FROM staff_experience se
+		                   WHERE se.id::text = ae.resource_id AND se.school_id = ae.school_id AND se.staff_principal_id = $2)
+		    ))
 		  )
 		ORDER BY ae.created_at DESC, ae.id DESC
 		LIMIT 100
