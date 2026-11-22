@@ -478,6 +478,7 @@ test("staff attendance supports search, individual and atomic bulk marking, and 
   ]);
   await page.route("**/api/school/staff-leave/requests?*", async route => {
     const url = new URL(route.request().url());
+    if (!url.searchParams.has("from_date")) { await route.fallback(); return; }
     expect(url.searchParams.get("status")).toBe("approved");
     expect(url.searchParams.get("from_date")).toMatch(/^\\d{4}-\\d{2}-01$/);
     expect(url.searchParams.get("to_date")).toMatch(/^\\d{4}-\\d{2}-\\d{2}$/);
