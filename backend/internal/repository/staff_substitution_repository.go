@@ -36,6 +36,7 @@ type StaffSubstitution struct {
 	PeriodName string `json:"period_name"`
 	StartsAt string `json:"starts_at"`
 	EndsAt string `json:"ends_at"`
+	Room *string `json:"room,omitempty"`
 	CreatedByPrincipalID int64 `json:"created_by_principal_id"`
 	CreatedAt time.Time `json:"created_at"`
 	CancelledByPrincipalID *int64 `json:"cancelled_by_principal_id,omitempty"`
@@ -57,12 +58,13 @@ func substitutionWriteError(err error) error {
 }
 
 const staffSubstitutionSelect = `ss.id,ss.timetable_entry_id,ss.cover_date::text,
-	ss.original_teacher_principal_id,orig.full_name,
-	ss.substitute_teacher_principal_id,subsp.full_name,
+	ss.original_teacher_principal_id,ss.original_teacher_name_snapshot,
+	ss.substitute_teacher_principal_id,ss.substitute_teacher_name_snapshot,
 	ss.approved_leave_request_id,ss.reason,ss.status,
-	sec.name,cl.name,subj.name,p.period_number,p.name,
-	to_char(p.starts_at,'HH24:MI'),to_char(p.ends_at,'HH24:MI'),
-	ss.created_by_principal_id,ss.created_at,ss.cancelled_by_principal_id,ss.cancelled_at`
+	ss.section_name_snapshot,ss.class_name_snapshot,ss.subject_name_snapshot,
+	ss.period_number_snapshot,ss.period_name_snapshot,
+	to_char(ss.period_starts_at_snapshot,'HH24:MI'),to_char(ss.period_ends_at_snapshot,'HH24:MI'),
+	ss.room_snapshot,ss.created_by_principal_id,ss.created_at,ss.cancelled_by_principal_id,ss.cancelled_at`
 
 func staffSubstitutionAuthorize(ctx context.Context,db repositoryDB,actorID,schoolID int64,permission string)error {
 	err:=timetableAuthorize(ctx,db,actorID,schoolID,permission)
@@ -75,16 +77,9 @@ func (r *AcademicRepository) ListStaffSubstitutions(ctx context.Context,actorID,
 	if err:=staffSubstitutionAuthorize(ctx,r.db,actorID,schoolID,"staff.substitutions.read");err!=nil { return nil,err }
 	rows,err:=r.db.Query(ctx,`SELECT `+staffSubstitutionSelect+`
 		FROM staff_substitutions ss
-		JOIN staff_profiles orig ON orig.principal_id=ss.original_teacher_principal_id AND orig.school_id=ss.school_id
-		JOIN staff_profiles subsp ON subsp.principal_id=ss.substitute_teacher_principal_id AND subsp.school_id=ss.school_id
-		JOIN timetable_entries te ON te.id=ss.timetable_entry_id AND te.school_id=ss.school_id
-		JOIN sections sec ON sec.id=te.section_id AND sec.school_id=te.school_id
-		JOIN classes cl ON cl.id=sec.class_id AND cl.school_id=sec.school_id
-		JOIN subjects subj ON subj.id=te.subject_id AND subj.school_id=te.school_id
-		JOIN timetable_periods p ON p.id=ss.period_id AND p.school_id=ss.school_id
 		WHERE ss.school_id=$1 AND ss.cover_date BETWEEN $2::date AND $3::date
 		  AND ($4=0 OR ss.original_teacher_principal_id=$4 OR ss.substitute_teacher_principal_id=$4)
-		ORDER BY ss.cover_date,p.period_number,ss.id LIMIT 1000`,schoolID,fromDate,toDate,staffID)
+		ORDER BY ss.cover_date,ss.period_number_snapshot,ss.id LIMIT 1000`,schoolID,fromDate,toDate,staffID)
 	if err!=nil{return nil,fmt.Errorf("list staff substitutions: %w",err)}
 	defer rows.Close()
 	items:=make([]StaffSubstitution,0)
@@ -93,7 +88,7 @@ func (r *AcademicRepository) ListStaffSubstitutions(ctx context.Context,actorID,
 		if err:=rows.Scan(&v.ID,&v.TimetableEntryID,&v.CoverDate,&v.OriginalTeacherPrincipalID,&v.OriginalTeacherName,
 			&v.SubstituteTeacherPrincipalID,&v.SubstituteTeacherName,&v.ApprovedLeaveRequestID,&v.Reason,&v.Status,
 			&v.SectionName,&v.ClassName,&v.SubjectName,&v.PeriodNumber,&v.PeriodName,&v.StartsAt,&v.EndsAt,
-			&v.CreatedByPrincipalID,&v.CreatedAt,&v.CancelledByPrincipalID,&v.CancelledAt);err!=nil{return nil,fmt.Errorf("scan staff substitution: %w",err)}
+			&v.Room,&v.CreatedByPrincipalID,&v.CreatedAt,&v.CancelledByPrincipalID,&v.CancelledAt);err!=nil{return nil,fmt.Errorf("scan staff substitution: %w",err)}
 		items=append(items,v)
 	}
 	if err:=rows.Err();err!=nil{return nil,fmt.Errorf("iterate staff substitutions: %w",err)}
@@ -126,11 +121,15 @@ func (r *AcademicRepository) CreateStaffSubstitution(ctx context.Context,actorID
 		jsonb_build_object('timetable_entry_id',$4::bigint,'cover_date',$5::date,
 		'original_teacher_principal_id',$6::bigint,'substitute_teacher_principal_id',$7::bigint,
 		'approved_leave_request_id',$8::bigint))`,actorID,schoolID,fmt.Sprint(id),timetableEntryID,coverDate,originalTeacherID,substituteTeacherID,leave);err!=nil{return nil,fmt.Errorf("audit staff substitution: %w",err)}
+	var v StaffSubstitution
+	err=tx.QueryRow(ctx,`SELECT `+staffSubstitutionSelect+` FROM staff_substitutions ss WHERE ss.school_id=$1 AND ss.id=$2`,schoolID,id).Scan(
+		&v.ID,&v.TimetableEntryID,&v.CoverDate,&v.OriginalTeacherPrincipalID,&v.OriginalTeacherName,
+		&v.SubstituteTeacherPrincipalID,&v.SubstituteTeacherName,&v.ApprovedLeaveRequestID,&v.Reason,&v.Status,
+		&v.SectionName,&v.ClassName,&v.SubjectName,&v.PeriodNumber,&v.PeriodName,&v.StartsAt,&v.EndsAt,
+		&v.Room,&v.CreatedByPrincipalID,&v.CreatedAt,&v.CancelledByPrincipalID,&v.CancelledAt)
+	if err!=nil{return nil,fmt.Errorf("read created substitution: %w",err)}
 	if err=tx.Commit(ctx);err!=nil{return nil,fmt.Errorf("commit staff substitution: %w",err)}
-	items,err:=r.ListStaffSubstitutions(ctx,actorID,schoolID,coverDate,coverDate,0)
-	if err!=nil{return nil,err}
-	for i:=range items { if items[i].ID==id{return &items[i],nil} }
-	return nil,ErrStaffSubstitutionNotFound
+	return &v,nil
 }
 
 func (r *AcademicRepository) CancelStaffSubstitution(ctx context.Context,actorID,schoolID,id int64)error {
