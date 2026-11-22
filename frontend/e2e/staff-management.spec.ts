@@ -1500,7 +1500,7 @@ test("staff directory CSV export downloads the currently filtered directory", as
     },
   ];
   await signInAndOpenStaff(page, rows, undefined, ["users.read", "staff.read"]);
-  await page.getByRole("button", { name: "Directory" }).click();
+  await page.getByRole("button", { name: "Staff Directory" }).click();
   const exportButton = page.getByRole("button", { name: /Export CSV/ });
   await expect(exportButton).toBeEnabled();
   const downloadPromise = page.waitForEvent("download");
