@@ -189,3 +189,15 @@ The existing staff attendance implementation is a separate foundation:
 - Remaining Phase 4 work: dedicated PostgreSQL behavior tests for overlap/concurrency, authorization, rollback and audit; leave-type edit/deactivation UI and approved school policy; approved leave/holiday context in staff attendance. No leave balance, accrual, carry-forward, payroll deduction, statutory entitlement or supporting-document upload is implemented.
 - Academic, Student Management and Settings pages were not modified.
 
+## 14. Leave & Holiday verification update (2026-11-22)
+
+This section supersedes the earlier Phase 4 notes where they differ.
+
+- The latest `work` code checkpoint is `8c163b5b35a644cf08a13e280c0c44f238a80037`.
+- Backend CI [44984389499](https://github.com/TheSumitNain/school-management-system/actions/runs/44984389499) **PASS** at that exact checkpoint: V59 and the complete migration chain applied to disposable PostgreSQL, Go tests including the new leave/holiday service validation tests, and `go vet`.
+- Frontend code remains at the previously verified UI checkpoint `36ab57484de809c30849c030187f0190dab43a60`; Frontend CI [44982936799](https://github.com/TheSumitNain/school-management-system/actions/runs/44982936799) **PASS**, including the leave workspace browser acceptance.
+- Approved leave and active holiday context is now displayed alongside the staff daily attendance roster when the viewer has the corresponding read permissions. These are informational overlays only; attendance rows/statuses are not created or changed.
+- Service validation now rejects reversed leave dates, invalid duration/half-day combinations and invalid holiday date/name/description before repository writes. Repository overlap locking uses a hashed school/staff advisory key; cancellation and holiday range reads validate nil/invalid inputs.
+- Remaining Phase 4 work: deeper PostgreSQL behavior coverage for concurrent overlap, decision authorization, rollback and audit; leave-type edit/deactivation controls; policy approval and any future balance rules. Current V59 integration coverage verifies schema and permission provisioning; do not overstate it as full workflow integration coverage.
+- V59 remains unapplied to persistent/local databases. No Academic, Student Management or Settings pages were modified.
+
