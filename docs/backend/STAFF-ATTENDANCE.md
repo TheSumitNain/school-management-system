@@ -1,6 +1,6 @@
 # Staff Attendance — implementation contract
 
-Status: Core daily/monthly register is implemented and CI-verified. Phase 3 remains open for search/filtering, bulk status entry and leave/calendar integration.
+Status: Daily/monthly register, employee search/status filtering and atomic bulk marking are implemented and CI-verified. Phase 3 remains open for downloadable/report views and leave/calendar integration.
 
 ## Scope
 
