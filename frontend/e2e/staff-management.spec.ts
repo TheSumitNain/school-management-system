@@ -1488,3 +1488,23 @@ test("school-wide workload report shows scheduled periods without inferring avai
   await expect(page.getByText(/does not infer working days, free-period availability or workload limits/)).toBeVisible();
   await expect(page.getByText("Inactive Teacher")).toBeVisible();
 });
+
+
+test("staff directory CSV export downloads the currently filtered directory", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [
+    {
+      id: 1, principal_id: 501, school_id: 10, username: "teacher.original",
+      employee_code: "EMP-ORIGINAL", full_name: "Original Teacher", designation: "Mathematics Teacher",
+      mobile_number: "9876543215", employment_status: "active", profile_complete: true,
+      status: "active", must_change_password: false,
+    },
+  ];
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "staff.read"]);
+  await page.getByRole("button", { name: "Directory" }).click();
+  const exportButton = page.getByRole("button", { name: /Export CSV/ });
+  await expect(exportButton).toBeEnabled();
+  const downloadPromise = page.waitForEvent("download");
+  await exportButton.click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/^staff-directory-\d{4}-\d{2}-\d{2}\.csv$/);
+});
