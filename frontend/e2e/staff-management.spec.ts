@@ -10,6 +10,13 @@ const staffUser = {
 
 async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, unknown>>, onStaffMutation?: (path: string, route: Route) => Promise<void>, permissions = ["users.read", "users.create", "users.update"]) {
   const staffRecords: Record<string, Array<Record<string, unknown>>> = { qualifications: [], certifications: [], experience: [] };
+  const leaveTypes: Array<Record<string, unknown>> = [{ id: 1, name: "Casual Leave", is_paid: true, requires_approval: true, is_active: true }];
+  const leaveRequests: Array<Record<string, unknown>> = [{
+    id: 21, staff_principal_id: 501, employee_code: "EMP-LEAVE-01", staff_name: "Leave Teacher",
+    leave_type_id: 1, leave_type_name: "Casual Leave", start_date: "2026-11-24", end_date: "2026-11-24",
+    duration_type: "full_day", reason: "Family commitment", status: "pending", created_at: "2026-11-21T00:00:00.000Z",
+  }];
+  const schoolHolidays: Array<Record<string, unknown>> = [{ id: 31, holiday_date: "2026-11-26", name: "School Foundation Day", description: "Annual school holiday", is_active: true }];
   await page.route("**/api/**", async route => {
     const request = route.request();
     const url = new URL(request.url());
@@ -36,6 +43,61 @@ async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, un
     }
     if (path === "/school/staff" && method === "GET") {
       await route.fulfill({ json: { staff: staffRows } });
+      return;
+    }
+    if (path === "/school/staff-leave/types" && method === "GET") {
+      await route.fulfill({ json: { data: leaveTypes } });
+      return;
+    }
+    if (path === "/school/staff-leave/types" && method === "POST") {
+      const payload = request.postDataJSON() as Record<string, unknown>;
+      const saved = { ...payload, id: leaveTypes.length + 1 };
+      leaveTypes.push(saved);
+      await route.fulfill({ json: { data: saved } });
+      return;
+    }
+    if (path === "/school/staff-leave/requests" && method === "GET") {
+      const status = url.searchParams.get("status") ?? "";
+      const staffID = Number(url.searchParams.get("staff_principal_id") ?? 0);
+      const data = leaveRequests.filter(item => (!status || item.status === status) && (!staffID || item.staff_principal_id === staffID));
+      await route.fulfill({ json: { data } });
+      return;
+    }
+    if (path === "/school/staff-leave/requests" && method === "POST") {
+      const payload = request.postDataJSON() as Record<string, unknown>;
+      const staff = staffRows.find(item => item.principal_id === payload.staff_principal_id) ?? {};
+      const type = leaveTypes.find(item => item.id === payload.leave_type_id) ?? {};
+      const saved = { ...payload, id: leaveRequests.length + 22, staff_name: staff.full_name, employee_code: staff.employee_code, leave_type_name: type.name, status: "pending", created_at: "2026-11-22T00:00:00.000Z" };
+      leaveRequests.push(saved);
+      await route.fulfill({ status: 201, json: { data: saved } });
+      return;
+    }
+    const leaveDecision = path.match(/^\/school\/staff-leave\/requests\/(\d+)\/(approve|reject)$/);
+    if (leaveDecision && method === "POST") {
+      const target = leaveRequests.find(item => item.id === Number(leaveDecision[1]));
+      if (!target) { await route.fulfill({ status: 404, json: { message: "Request not found" } }); return; }
+      const payload = request.postDataJSON() as Record<string, unknown>;
+      target.status = leaveDecision[2] === "approve" ? "approved" : "rejected";
+      target.decision_comment = payload.comment ?? null;
+      await route.fulfill({ json: { message: "Decision saved" } });
+      return;
+    }
+    const leaveCancel = path.match(/^\/school\/staff-leave\/requests\/(\d+)\/cancel$/);
+    if (leaveCancel && method === "POST") {
+      const target = leaveRequests.find(item => item.id === Number(leaveCancel[1]));
+      if (target) target.status = "cancelled";
+      await route.fulfill({ json: { message: "Request cancelled" } });
+      return;
+    }
+    if (path === "/school/holidays" && method === "GET") {
+      await route.fulfill({ json: { data: schoolHolidays } });
+      return;
+    }
+    if (path === "/school/holidays" && method === "POST") {
+      const payload = request.postDataJSON() as Record<string, unknown>;
+      const saved = { ...payload, id: schoolHolidays.length + 32 };
+      schoolHolidays.push(saved);
+      await route.fulfill({ json: { data: saved } });
       return;
     }
     const staffRecordMatch = path.match(/^\/school\/staff\/(\d+)\/(qualifications|certifications|experience)(?:\/(\d+))?$/);
@@ -97,6 +159,30 @@ test("staff workspace opens on a real-data overview and hides permission-gated o
   await expect(page.getByRole("button", { name: /Attendance/ })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /Leave/ })).toBeDisabled();
   await expect(page.getByRole("button", { name: /Reports/ })).toBeDisabled();
+});
+
+test("staff leave workspace reviews applications and displays configured leave types and school holidays", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 501, school_id: 10, username: "leave.teacher",
+    employee_code: "EMP-LEAVE-01", full_name: "Leave Teacher", designation: "Science Teacher",
+    mobile_number: "9876543215", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false,
+  }];
+  const permissions = ["users.read", "users.create", "users.update", "staff.leave.read", "staff.leave.manage_types", "staff.leave.manage_requests", "staff.leave.decide", "staff.holidays.read", "staff.holidays.manage"];
+  await signInAndOpenStaff(page, rows, undefined, permissions);
+  await page.getByRole("button", { name: "Leave & Holidays" }).click();
+  await expect(page.getByRole("heading", { name: "Leave & Holidays" })).toBeVisible();
+  await expect(page.getByText("Leave Teacher")).toBeVisible();
+  await expect(page.getByText("Family commitment")).toBeVisible();
+  await page.getByRole("button", { name: "Approve" }).click();
+  const decision = page.getByRole("dialog", { name: "Approve leave request" });
+  await expect(decision).toBeVisible();
+  await decision.getByRole("button", { name: "Confirm approval" }).click();
+  await expect(page.getByText("No leave requests match these filters.")).toBeVisible();
+  await page.getByRole("button", { name: "Holiday calendar" }).click();
+  await expect(page.getByText("School Foundation Day")).toBeVisible();
+  await page.getByRole("button", { name: "Leave types" }).click();
+  await expect(page.getByText("Casual Leave")).toBeVisible();
 });
 
 test("staff directory opens the eight-tab employee profile and shows saved profile details", async ({ page }) => {
