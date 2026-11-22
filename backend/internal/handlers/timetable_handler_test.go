@@ -29,6 +29,10 @@ func (s *timetableListEntriesTestService) ListEntries(_ context.Context, actor, 
 	s.gotActor, s.gotSchool, s.gotYear, s.gotSection, s.gotTeacher = actor, school, year, section, teacher
 	return []repository.TimetableEntry{}, nil
 }
+func (s *timetableListEntriesTestService) WorkloadReport(_ context.Context, actor, school, year int64) ([]repository.TeacherWorkloadReportRow, error) {
+	s.gotActor, s.gotSchool, s.gotYear = actor, school, year
+	return []repository.TeacherWorkloadReportRow{}, nil
+}
 func (s *timetableListEntriesTestService) SaveEntry(context.Context, int64, int64, int64, int64, int64, int64, int64, int64, int64, int, *string) (*repository.TimetableEntry, error) {
 	return nil, nil
 }
@@ -44,6 +48,21 @@ func newTimetableListEntriesTestContext(query string) (*gin.Context, *httptest.R
 	ctx.Set(middleware.ContextPrincipalIDKey, int64(41))
 	ctx.Set(middleware.ContextSchoolIDKey, int64(7))
 	return ctx, recorder
+}
+
+func TestTimetableWorkloadReportPassesAcademicYearScope(t *testing.T) {
+	service := &timetableListEntriesTestService{}
+	handler := NewTimetableHandler(service)
+	ctx, recorder := newTimetableListEntriesTestContext("academic_year_id=12")
+
+	handler.WorkloadReport(ctx)
+
+	if recorder.Code != 200 {
+		t.Fatalf("expected status 200, got %d: %s", recorder.Code, recorder.Body.String())
+	}
+	if service.gotActor != 41 || service.gotSchool != 7 || service.gotYear != 12 {
+		t.Fatalf("unexpected workload scope: actor=%d school=%d year=%d", service.gotActor, service.gotSchool, service.gotYear)
+	}
 }
 
 func TestTimetableListEntriesPassesTeacherScope(t *testing.T) {
