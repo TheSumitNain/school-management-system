@@ -205,3 +205,11 @@ Migration V59 and the first end-to-end Leave & Holiday workflow are implemented 
 - Holiday rows wrap long names and action buttons on narrow screens; responsive acceptance covers 320–1440px viewports. Holiday edit state stays synchronized when a currently edited holiday is deactivated/reactivated from the calendar row, with save-after-transition coverage.
 - Exact verified checkpoint `b956238d0315d1fe53eaa5e5efcd47e5fc57a86d`: Frontend CI [44997624558](https://github.com/TheSumitNain/school-management-system/actions/runs/44997624558) **PASS** (design-token checks, TypeScript/Vite build and full Playwright suite); Backend CI [44997624631](https://github.com/TheSumitNain/school-management-system/actions/runs/44997624631) **PASS** (ephemeral PostgreSQL migration chain, Go/PostgreSQL tests and go vet).
 - No persistent/local database migration was applied. Phase 4 remains open pending the remaining end-to-end workflow review and school-approved leave policy decisions. No automatic attendance mutation or leave-balance policy is introduced.
+
+
+## 16. Cancellation audit atomicity (2026-11-22)
+
+- Added PostgreSQL integration coverage that forces the `staff.leave.cancelled` audit insert to fail and verifies the leave request remains `pending`, proving the cancellation update and audit event roll back together.
+- The same test then removes the forced failure, verifies a successful cancellation changes status to `cancelled` and writes exactly one audit event, and confirms a repeated cancellation is rejected without duplicate audit.
+- Backend CI [44998042760](https://github.com/TheSumitNain/school-management-system/actions/runs/44998042760) **PASS** at code checkpoint `cb1b1b66aee568ea97928984f33cad21b6fb1e6a`: complete ephemeral-PostgreSQL migration chain, Go/PostgreSQL integration tests and `go vet ./...`.
+- No persistent/local database migration was applied. This is test coverage only; the existing transactional implementation and Phase 4 scope are unchanged.
