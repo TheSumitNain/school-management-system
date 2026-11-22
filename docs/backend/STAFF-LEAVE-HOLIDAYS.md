@@ -162,3 +162,11 @@ Migration V59 and the first end-to-end Leave & Holiday workflow are implemented 
 - The forced audit insert exception in the rollback test is intentional and confirms the decision remains pending when its audit write fails.
 - Persistent/local DBs remain untouched; V59 has only been applied to disposable CI PostgreSQL. Leave balances, accrual, carry-forward, encashment and attendance/payroll effects remain unconfigured until school policy is approved.
 
+## 11. Leave reporting date-range filter (2026-11-22)
+
+- Leave request listing supports an inclusive `from_date` / `to_date` range and returns requests whose date ranges overlap the selected period.
+- A single `on_date` filter cannot be combined with a date range. Service validation rejects partial, reversed, malformed or over-366-day ranges before repository access.
+- The monthly Staff Attendance report uses this bounded filter to show approved leave context separately from attendance totals. Active school holidays are shown separately as well.
+- PostgreSQL integration verifies a request spanning dates inside the selected month is included and a request outside the month is excluded.
+- Backend CI [44986574096](https://github.com/TheSumitNain/school-management-system/actions/runs/44986574096) **PASS** at code checkpoint `a01514119b0d395b106accd990f59b2f7a5e992f`. Frontend production build passed; final Playwright browser run is pending.
+
