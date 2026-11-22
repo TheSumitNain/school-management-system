@@ -91,7 +91,7 @@ test("Staff Management tabs remain usable without page overflow on mobile, table
   await page.getByRole("button", { name: "Attendance", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Staff attendance" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Leave & Holidays" }).click();
+  await page.getByRole("button", { name: "Leave & Holidays", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Leave & Holidays" })).toBeVisible();
 
   await page.setViewportSize({ width: 844, height: 390 });
