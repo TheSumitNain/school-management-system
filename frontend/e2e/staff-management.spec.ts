@@ -504,7 +504,50 @@ test("staff profile shows only the selected employee's academic assignments and 
   await expect(dialog.getByText("2 active")).toBeVisible();
 });
 
-test("staff account access keeps role assignments read-only without delegation permissions", async ({ page }) => {\n  const rows: Array<Record<string, unknown>> = [{\n    id: 1, principal_id: 513, school_id: 10, username: "teacher.role-reader",\n    employee_code: "EMP-ROLE-READ", full_name: "Role Reader", designation: "Teacher",\n    mobile_number: "9876543213", employment_status: "active", profile_complete: true,\n    status: "active", must_change_password: false,\n  }];\n  const permissions = ["users.read", "roles.read"];\n  const requests: Array<{ method: string; path: string }> = [];\n  page.on("request", request => {\n    const url = new URL(request.url());\n    requests.push({ method: request.method(), path: url.pathname.replace(/^\\/api/, "") });\n  });\n  await signInAndOpenStaff(page, rows, undefined, permissions);\n  await page.route("**/api/school/roles", async route => {\n    if (route.request().method() === "GET") {\n      await route.fulfill({ json: { roles: [{ id: 4, role_key: "teacher", name: "Teacher", is_system: true, created_at: "2026-01-01T00:00:00Z" }] } });\n      return;\n    }\n    await route.fulfill({ status: 403, json: { message: "Role changes are not permitted." } });\n  });\n  await page.route("**/api/school/staff/513/roles", async route => {\n    if (route.request().method() === "GET") {\n      await route.fulfill({ json: { roles: [{ role_id: 4, role_key: "teacher", name: "Teacher", is_system: true, assigned_at: "2026-01-01T00:00:00Z" }] } });\n      return;\n    }\n    await route.fulfill({ status: 403, json: { message: "Role changes are not permitted." } });\n  });\n\n  await page.getByRole("button", { name: /Staff Directory/ }).click();\n  await page.getByRole("button", { name: "Role Reader" }).click();\n  const profile = page.getByRole("dialog", { name: "Role Reader" });\n  await profile.getByRole("button", { name: "Account & Access" }).click();\n  await expect(profile.getByText("Access roles")).toBeVisible();\n  await expect(profile.getByText("Teacher", { exact: true })).toBeVisible();\n  await expect(profile.getByText("You can view assigned roles but cannot change them.")).toBeVisible();\n  await expect(profile.getByRole("button", { name: "Assign", exact: true })).toHaveCount(0);\n  await expect(profile.getByRole("button", { name: "Remove Teacher role" })).toHaveCount(0);\n  await expect(profile.getByText("You do not have permission to manage individual permission overrides.")).toBeVisible();\n  expect(requests.some(item => item.path.includes("permission-delegations") || item.path.includes("permission-overrides") || item.path.endsWith("/school/permissions"))).toBe(false);\n  expect(requests.some(item => (item.method === "POST" || item.method === "DELETE") && item.path.includes("/roles"))).toBe(false);\n});\n\ntest("staff profile history is permission-gated and renders staff audit events", async ({ page }) => {
+test("staff account access keeps role assignments read-only without delegation permissions", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 513, school_id: 10, username: "teacher.role-reader",
+    employee_code: "EMP-ROLE-READ", full_name: "Role Reader", designation: "Teacher",
+    mobile_number: "9876543213", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false,
+  }];
+  const permissions = ["users.read", "roles.read"];
+  const requests: Array<{ method: string; path: string }> = [];
+  page.on("request", request => {
+    const url = new URL(request.url());
+    requests.push({ method: request.method(), path: url.pathname.replace(/^\/api/, "") });
+  });
+  await signInAndOpenStaff(page, rows, undefined, permissions);
+  await page.route("**/api/school/roles", async route => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({ json: { roles: [{ id: 4, role_key: "teacher", name: "Teacher", is_system: true, created_at: "2026-01-01T00:00:00Z" }] } });
+      return;
+    }
+    await route.fulfill({ status: 403, json: { message: "Role changes are not permitted." } });
+  });
+  await page.route("**/api/school/staff/513/roles", async route => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({ json: { roles: [{ role_id: 4, role_key: "teacher", name: "Teacher", is_system: true, assigned_at: "2026-01-01T00:00:00Z" }] } });
+      return;
+    }
+    await route.fulfill({ status: 403, json: { message: "Role changes are not permitted." } });
+  });
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Role Reader" }).click();
+  const profile = page.getByRole("dialog", { name: "Role Reader" });
+  await profile.getByRole("button", { name: "Account & Access" }).click();
+  await expect(profile.getByText("Access roles")).toBeVisible();
+  await expect(profile.getByText("Teacher", { exact: true })).toBeVisible();
+  await expect(profile.getByText("You can view assigned roles but cannot change them.")).toBeVisible();
+  await expect(profile.getByRole("button", { name: "Assign", exact: true })).toHaveCount(0);
+  await expect(profile.getByRole("button", { name: "Remove Teacher role" })).toHaveCount(0);
+  await expect(profile.getByText("You do not have permission to manage individual permission overrides.")).toBeVisible();
+  expect(requests.some(item => item.path.includes("permission-delegations") || item.path.includes("permission-overrides") || item.path.endsWith("/school/permissions"))).toBe(false);
+  expect(requests.some(item => (item.method === "POST" || item.method === "DELETE") && item.path.includes("/roles"))).toBe(false);
+});
+
+test("staff profile history is permission-gated and renders staff audit events", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 512, school_id: 10, username: "teacher.history",
     employee_code: "EMP-HIS-01", full_name: "History Teacher", designation: "Maths Teacher",
