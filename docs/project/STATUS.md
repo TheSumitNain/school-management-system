@@ -1759,3 +1759,12 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Phase 4 remains **partially implemented**, not complete. Remaining: dedicated PostgreSQL behavior tests for overlap/concurrent submissions, authorization, transaction rollback and audit; leave-type edit/deactivation UI and approved school policy; approved leave/holiday contextual integration in staff attendance. No leave balances, accrual, carry-forward, statutory entitlement, payroll effects, document upload or automatic attendance mutation.
 - Attendance records remain separate and are not silently created/overwritten/deleted by leave or holiday operations. Academic, Student Management and Settings pages remain untouched.
 
+## Staff Leave & Holiday — backend validation hardening verified (2026-11-22)
+
+- Backend code checkpoint: `8c163b5b35a644cf08a13e280c0c44f238a80037`.
+- Backend CI [44984389499](https://github.com/TheSumitNain/school-management-system/actions/runs/44984389499) **PASS** at this exact SHA: full migration chain on disposable PostgreSQL, Go tests (including new service validation tests) and `go vet`.
+- Added service validation for ordered leave dates, full/half-day shape, required reason, and holiday date/name/description. Added repository-level input guards for cancellation and holiday date-range reads; strengthened the per-school/staff overlap advisory lock.
+- Frontend UI checkpoint `36ab57484de809c30849c030187f0190dab43a60`; Frontend CI [44982936799](https://github.com/TheSumitNain/school-management-system/actions/runs/44982936799) **PASS**. Staff Attendance now shows approved leave and active holiday as informational context only; attendance records are never silently changed.
+- Phase 4 remains partially implemented. Dedicated PostgreSQL behavior tests for concurrency/overlap, decision authorization, rollback and audit are still required; leave-type edit/deactivation UI and approved school policy are pending.
+- V59 has only run in disposable CI PostgreSQL. No persistent/local database migration was applied. Academic, Student Management and Settings remain untouched.
+
