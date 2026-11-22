@@ -15,6 +15,21 @@ Migration V54 introduced in-place editing and soft deactivation of removed curri
 
 The current product-wide school calendar timezone is `Asia/Kolkata` (IST). Date-only application rules must derive the calendar day from the shared backend `internal/schooltime` package; database constraints for date of birth, physical measurements, student attendance and staff attendance use the explicit `Asia/Kolkata` calendar date rather than the PostgreSQL session timezone or database-server `CURRENT_DATE`. Do not rely on the Go host's local timezone. Both attendance modules classify past-date permissions using the same application-derived IST date. This is a deliberate current-release default, not yet a per-school configuration. Add persisted per-school IANA timezone configuration before onboarding schools outside India.
 
+## Dated staff substitutions (V60)
+
+Migration V60 adds `staff_substitutions` as a dated cover record linked to an existing recurring timetable entry. It does not rewrite the recurring teacher. The database stores immutable snapshots of teacher names, class, section, subject, period and room so historical records do not depend on mutable profile or timetable display fields.
+
+Database invariants include:
+- The cover date is inside the entry's non-closed academic year and its ISO weekday matches the recurring timetable entry.
+- The original teacher remains an active employee; the substitute is same-school active staff with an enabled login and an active assignment to the same section/subject/year.
+- A substitute cannot have a recurring timetable class or another active substitution in the same period/date; duplicate coverage for the same class entry/date is rejected.
+- Transaction-scoped advisory locks serialize substitution writes with recurring timetable writes. The timetable entry and relevant staff/assignment rows are locked during validation to close concurrent-update races.
+- Active future covers prevent substitute employment inactivation, canonical principal login disable and revocation of the matching substitute assignment. They must be cancelled before changing the recurring timetable entry.
+- Substitution records are append-only: only active-to-cancelled is allowed, with actor/time audit in the same transaction. Timetable entries with substitution history cannot be hard-deleted.
+- An optional leave reference must be an approved full-day request for the original teacher covering the date. Substitution never approves leave or changes attendance.
+
+V60 is applied by CI only to ephemeral PostgreSQL. It has not been applied to the user's persistent local databases; explicit approval and the verified backup/restore process remain mandatory.
+
 ## Migration safety rules
 
 1. Inspect the current migration files and their ordering before changing schema.
