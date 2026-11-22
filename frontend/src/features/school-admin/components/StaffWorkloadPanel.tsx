@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { getCurrentTimetableYear, getTimetableEntries, type TimetableEntry } from "../api";
+import { getCurrentTimetableYear, getTimetableEntries, getTimetablePeriods, type TimetableEntry, type TimetablePeriod } from "../api";
 import type { StaffRecord } from "../api";
 
 type Props = { staff: StaffRecord };
@@ -8,6 +8,7 @@ const weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Satur
 
 export function StaffWorkloadPanel({ staff }: Props) {
   const [entries, setEntries] = useState<TimetableEntry[]>([]);
+  const [periods, setPeriods] = useState<TimetablePeriod[]>([]);
   const [yearName, setYearName] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -17,13 +18,18 @@ export function StaffWorkloadPanel({ staff }: Props) {
     setError("");
     try {
       const current = await getCurrentTimetableYear(signal);
-      const result = await getTimetableEntries(current.academic_year.id, 0, signal, staff.principal_id);
+      const [result, periodResult] = await Promise.all([
+        getTimetableEntries(current.academic_year.id, 0, signal, staff.principal_id),
+        getTimetablePeriods(current.academic_year.id, signal),
+      ]);
       setYearName(current.academic_year.name);
       setEntries(result.entries);
+      setPeriods(periodResult.periods);
     } catch (cause) {
       if (signal?.aborted) return;
       setError(cause instanceof Error ? cause.message : "Unable to load this staff member's timetable.");
       setEntries([]);
+      setPeriods([]);
     } finally {
       if (!signal?.aborted) setLoading(false);
     }
@@ -38,6 +44,8 @@ export function StaffWorkloadPanel({ staff }: Props) {
   const teachingDays = new Set(entries.map(entry => entry.day_of_week)).size;
   const sections = new Set(entries.map(entry => entry.section_id)).size;
   const subjects = new Set(entries.map(entry => entry.subject_id)).size;
+  const teachingPeriods = periods.filter(period => !period.is_break);
+  const unscheduledSlots = Math.max(0, teachingPeriods.length * weekdays.length - entries.length);
 
   return (
     <section className="staff-workload-panel">
@@ -53,20 +61,23 @@ export function StaffWorkloadPanel({ staff }: Props) {
             <article><span>Teaching days</span><strong>{teachingDays}</strong></article>
             <article><span>Sections</span><strong>{sections}</strong></article>
             <article><span>Subjects</span><strong>{subjects}</strong></article>
+            <article><span>Unscheduled slots</span><strong>{unscheduledSlots}</strong></article>
           </div>
-          {entries.length === 0 ? <p className="staff-record-empty">No timetable entries are scheduled for this staff member in the current academic year.</p>
-            : <div className="staff-workload-table-wrap"><table className="staff-workload-table">
-              <thead><tr><th>Day</th><th>Time</th><th>Class & section</th><th>Subject</th><th>Period</th><th>Room</th></tr></thead>
-              <tbody>{entries.map(entry => <tr key={entry.id}>
-                <td>{weekdays[entry.day_of_week - 1] ?? "—"}</td>
-                <td>{entry.starts_at}–{entry.ends_at}</td>
-                <td>{entry.class_name} · {entry.section_name}</td>
-                <td>{entry.subject_name}</td>
-                <td>{entry.period_name}</td>
-                <td>{entry.room || "Not assigned"}</td>
+          {periods.length === 0 ? <p className="staff-record-empty">No timetable periods are configured for this academic year.</p>
+            : <div className="staff-workload-grid-wrap"><table className="staff-workload-grid">
+              <thead><tr><th>Period</th>{weekdays.map(day => <th key={day}>{day}</th>)}</tr></thead>
+              <tbody>{periods.map(period => <tr key={period.id} className={period.is_break ? "break" : ""}>
+                <th scope="row"><strong>{period.period_number}. {period.name}</strong><small>{period.starts_at}–{period.ends_at}</small></th>
+                {weekdays.map((day, index) => {
+                  const entry = entries.find(item => item.period_id === period.id && item.day_of_week === index + 1);
+                  return <td key={day} className={period.is_break ? "break" : entry ? "scheduled" : "unscheduled"}>
+                    {period.is_break ? <span>Break</span> : entry ? <span><strong>{entry.subject_name}</strong><small>{entry.class_name} · {entry.section_name}</small></span> : <span>Unscheduled</span>}
+                  </td>;
+                })}
               </tr>)}</tbody>
             </table></div>}
-          <p className="staff-workload-note">This view shows only scheduled timetable entries returned for this staff member. An unscheduled period is not treated as confirmed availability.</p>
+          {entries.length === 0 && periods.length > 0 && <p className="staff-record-empty">No timetable entries are scheduled for this staff member in the current academic year.</p>}
+          <p className="staff-workload-note">Unscheduled timetable slots are shown for planning context only. They do not confirm teacher availability, working days, or permission to assign another class.</p>
         </>}
     </section>
   );
