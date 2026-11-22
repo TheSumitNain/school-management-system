@@ -175,3 +175,15 @@
 .staff-attendance-calendar-note strong{color:var(--color-text)}
 .staff-attendance-leave-context{display:block;margin-top:4px;color:var(--color-success);font-size:10px;font-weight:600}
 .staff-attendance-context-warning{color:var(--color-warning)}
+
+
+/* Keep Staff Management page navigation and heading aligned with the other school-admin pages. */
+.staff-workspace-heading{margin-bottom:27px}
+.staff-workspace-heading h1{font:800 27px var(--font-heading);letter-spacing:-1px;margin:8px 0 5px}
+.staff-workspace-heading p{font-size:12px;line-height:1.5}
+.staff-workspace-tabs{display:flex;gap:6px;overflow-x:auto;border-bottom:1px solid var(--line);margin:20px 0 18px;padding:0;scrollbar-width:thin}
+.staff-workspace-tabs button{display:inline-flex;align-items:center;gap:7px;flex:0 0 auto;min-height:40px;padding:11px 14px;border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;color:var(--muted);font-size:12px;font-weight:700;white-space:nowrap;box-shadow:none}
+.staff-workspace-tabs button.active{border-color:var(--color-brand);background:transparent;color:var(--color-text);box-shadow:none}
+.staff-workspace-tabs button.upcoming{color:var(--muted);opacity:.62}
+.staff-workspace-tabs button:focus-visible{outline:2px solid var(--color-focus);outline-offset:2px}
+@media(max-width:650px){.staff-workspace-heading{align-items:flex-start;flex-direction:row}.staff-workspace-heading h1{font-size:23px}.staff-workspace-tabs{margin-top:16px}.staff-workspace-tabs button{padding:10px 11px;font-size:11px}}
