@@ -792,6 +792,31 @@ test("staff leave cancellation requires explicit confirmation", async ({ page })
 });
 
 
+test("read-only holiday permission shows the calendar without edit or inactive controls", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 501, school_id: 10, username: "holiday.reader",
+    employee_code: "EMP-HOL-READ", full_name: "Holiday Reader", designation: "Teacher",
+    mobile_number: "9876543215", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false,
+  }];
+  const permissions = ["users.read", "staff.holidays.read"];
+  let holidayListURL: URL | undefined;
+  page.on("request", request => {
+    const url = new URL(request.url());
+    if (request.method() === "GET" && url.pathname.endsWith("/school/holidays")) holidayListURL = url;
+  });
+  await signInAndOpenStaff(page, rows, undefined, permissions);
+  await page.getByRole("button", { name: "Leave & Holidays" }).click();
+  await page.getByRole("button", { name: "Holiday calendar" }).click();
+  await expect(page.getByText("School Foundation Day")).toBeVisible();
+  expect(holidayListURL).toBeDefined();
+  expect(holidayListURL?.searchParams.get("include_inactive")).toBeNull();
+  await expect(page.getByRole("button", { name: "Edit", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Deactivate", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Reactivate", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Save holiday" })).toHaveCount(0);
+});
+
 test("school holiday deactivation and reactivation require explicit confirmation", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 501, school_id: 10, username: "holiday.admin",
