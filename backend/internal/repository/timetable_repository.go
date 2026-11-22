@@ -153,8 +153,8 @@ const timetableEntryColumns = `te.id,te.school_id,te.academic_year_id,te.section
 	te.period_id,p.period_number,p.name,to_char(p.starts_at,'HH24:MI'),to_char(p.ends_at,'HH24:MI'),
 	te.day_of_week,te.room,te.created_by_principal_id,te.updated_by_principal_id,te.created_at,te.updated_at`
 
-func (r *AcademicRepository) ListTimetableEntries(ctx context.Context, actorID, schoolID, yearID, sectionID int64) ([]TimetableEntry, error) {
-	if r == nil || r.db == nil || yearID <= 0 || sectionID < 0 { return nil, ErrInvalidTimetableInput }
+func (r *AcademicRepository) ListTimetableEntries(ctx context.Context, actorID, schoolID, yearID, sectionID, teacherID int64) ([]TimetableEntry, error) {
+	if r == nil || r.db == nil || yearID <= 0 || sectionID < 0 || teacherID < 0 { return nil, ErrInvalidTimetableInput }
 	if err := timetableAuthorize(ctx, r.db, actorID, schoolID, "timetable.read"); err != nil { return nil, err }
 	teacherOnly, err := isTeacherWithoutSchoolAdmin(ctx, r.db, actorID, schoolID)
 	if err != nil { return nil, fmt.Errorf("check timetable teacher boundary: %w", err) }
@@ -166,8 +166,11 @@ func (r *AcademicRepository) ListTimetableEntries(ctx context.Context, actorID, 
 		JOIN users u ON u.principal_id=te.teacher_principal_id AND u.school_id=te.school_id
 		JOIN timetable_periods p ON p.id=te.period_id AND p.school_id=te.school_id AND p.academic_year_id=te.academic_year_id
 		WHERE te.school_id=$1 AND te.academic_year_id=$2 AND ($3=0 OR te.section_id=$3)
-		  AND (NOT $4 OR te.teacher_principal_id=$5)
-		ORDER BY te.day_of_week,p.period_number,s.display_order,s.name`,schoolID,yearID,sectionID,teacherOnly,actorID)
+		  AND ($4=0 OR (te.teacher_principal_id=$4 AND EXISTS (
+			SELECT 1 FROM staff_profiles sp WHERE sp.principal_id=te.teacher_principal_id AND sp.school_id=te.school_id
+		  )))
+		  AND (NOT $5 OR te.teacher_principal_id=$6)
+		ORDER BY te.day_of_week,p.period_number,s.display_order,s.name`,schoolID,yearID,sectionID,teacherID,teacherOnly,actorID)
 	if err != nil { return nil, fmt.Errorf("list timetable entries: %w", err) }
 	defer rows.Close()
 	items := make([]TimetableEntry,0)
