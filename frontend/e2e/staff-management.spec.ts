@@ -617,6 +617,100 @@ test("staff role assignment and removal require the delegated permission and exp
   expect(revokeCalls).toBe(1);
 });
 
+test("staff permission overrides require a delegated permission, reason and removal confirmation", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 515, school_id: 10, username: "teacher.override-admin",
+    employee_code: "EMP-OVERRIDE-ADMIN", full_name: "Override Admin", designation: "School Admin",
+    mobile_number: "9876543213", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false,
+  }];
+  const overrides: Array<Record<string, unknown>> = [];
+  let saveCalls = 0;
+  let deleteCalls = 0;
+  let submittedPayload: Record<string, unknown> | null = null;
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "roles.read", "permissions.override"]);
+  await page.route("**/api/school/roles", async route => {
+    await route.fulfill({ json: { roles: [
+      { id: 4, role_key: "teacher", name: "Teacher", is_system: true, created_at: "2026-01-01T00:00:00Z" },
+    ] } });
+  });
+  await page.route("**/api/school/staff/515/roles", async route => {
+    await route.fulfill({ json: { roles: [
+      { role_id: 4, role_key: "teacher", name: "Teacher", is_system: true, assigned_at: "2026-01-01T00:00:00Z" },
+    ] } });
+  });
+  await page.route("**/api/school/permissions", async route => {
+    await route.fulfill({ json: { permissions: [
+      { permission_key: "staff.attendance.read", description: "View staff attendance", is_delegable: true },
+    ] } });
+  });
+  await page.route("**/api/school/permission-delegations", async route => {
+    await route.fulfill({ json: { delegations: [
+      { id: 31, school_id: 10, permission_key: "staff.attendance.read", can_assign_to_roles: false, can_override_users: true, granted_by: 2, created_at: "2026-01-01T00:00:00Z" },
+    ] } });
+  });
+  await page.route("**/api/school/staff/515/permission-overrides**", async route => {
+    const method = route.request().method();
+    if (method === "GET") {
+      await route.fulfill({ json: { overrides } });
+      return;
+    }
+    if (method === "POST") {
+      saveCalls += 1;
+      submittedPayload = route.request().postDataJSON() as Record<string, unknown>;
+      overrides.push({
+        id: 71, principal_id: 515, permission_key: "staff.attendance.read",
+        effect: "deny", reason: "Temporary attendance access restriction",
+        granted_by: 2, delegation_id: 31, created_at: "2026-11-22T00:00:00Z",
+      });
+      await route.fulfill({ json: { message: "Permission override saved." } });
+      return;
+    }
+    if (method === "DELETE") {
+      deleteCalls += 1;
+      overrides.splice(0, overrides.length);
+      await route.fulfill({ json: { message: "Permission override removed." } });
+      return;
+    }
+    await route.fulfill({ status: 405, json: { message: "Unexpected override method." } });
+  });
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Override Admin" }).click();
+  const profile = page.getByRole("dialog", { name: "Override Admin" });
+  await profile.getByRole("button", { name: "Account & Access" }).click();
+  await expect(profile.getByText("Individual permission overrides")).toBeVisible();
+
+  const permissionSelect = profile.locator('button[aria-label="Delegated permission override for teacher.override-admin"]');
+  await permissionSelect.click();
+  await profile.getByRole("option", { name: /staff.attendance.read/ }).click();
+  await profile.getByRole("button", { name: "Save override" }).click();
+  await expect(profile.getByText("Choose a permission delegated for individual overrides.")).toHaveCount(0);
+  await expect(profile.getByText("Explain why this permission exception is needed.")).toBeVisible();
+  await profile.getByLabel("Reason (required)").fill("Temporary attendance access restriction");
+  await profile.getByRole("button", { name: "Save override" }).click();
+  await expect(profile.getByText("Permission override saved. It takes effect on the next protected request.")).toBeVisible();
+  await expect(profile.getByText("staff.attendance.read", { exact: true })).toBeVisible();
+  expect(saveCalls).toBe(1);
+  expect(submittedPayload).toMatchObject({
+    permission_key: "staff.attendance.read",
+    effect: "deny",
+    reason: "Temporary attendance access restriction",
+    delegation_id: 31,
+  });
+
+  await profile.getByRole("button", { name: "Remove staff.attendance.read override" }).click();
+  const cancelRemoval = page.getByRole("dialog", { name: "Remove permission override?" });
+  await cancelRemoval.getByRole("button", { name: "Cancel" }).click();
+  expect(deleteCalls).toBe(0);
+  await profile.getByRole("button", { name: "Remove staff.attendance.read override" }).click();
+  const confirmRemoval = page.getByRole("dialog", { name: "Remove permission override?" });
+  await confirmRemoval.getByRole("button", { name: "Remove override" }).click();
+  await expect(profile.getByText("Permission override removed. Effective permissions update on the next protected request.")).toBeVisible();
+  await expect(profile.getByText("staff.attendance.read", { exact: true })).toHaveCount(0);
+  expect(deleteCalls).toBe(1);
+});
+
 test("staff profile history is permission-gated and renders staff audit events", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 512, school_id: 10, username: "teacher.history",
