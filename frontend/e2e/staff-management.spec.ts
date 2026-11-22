@@ -628,7 +628,7 @@ test("staff permission overrides require a delegated permission, reason and remo
   let saveCalls = 0;
   let deleteCalls = 0;
   let submittedPayload: Record<string, unknown> | null = null;
-  await signInAndOpenStaff(page, rows, undefined, ["users.read", "roles.read", "permissions.override"]);
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "permissions.override"]);
   await page.route("**/api/school/roles", async route => {
     await route.fulfill({ json: { roles: [
       { id: 4, role_key: "teacher", name: "Teacher", is_system: true, created_at: "2026-01-01T00:00:00Z" },
