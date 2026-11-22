@@ -1,6 +1,6 @@
 import { Fragment, useMemo, useRef, useState, type FormEvent } from "react";
 import { notifyToast } from "../../../shared/notifications";
-import { BookOpen, CalendarDays, Clock3, FileText, KeyRound, LayoutDashboard, LockKeyhole, Pencil, Plus, Search, Shield, ShieldCheck, UserCheck, UserMinus } from "lucide-react";
+import { BookOpen, CalendarDays, FileText, KeyRound, LayoutDashboard, LockKeyhole, Pencil, Plus, Search, Shield, ShieldCheck, UserCheck, UserMinus } from "lucide-react";
 import { StaffRoleAssignments } from "../components/StaffRoleAssignments";
 import { StaffPermissionOverrides } from "../components/StaffPermissionOverrides";
 import { TeacherAssignmentsPage } from "./TeacherAssignmentsPage";
