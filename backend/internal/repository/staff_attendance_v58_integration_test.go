@@ -17,6 +17,8 @@ func TestStaffAttendanceV58SchemaAndPermissionsPostgresIntegration(t *testing.T)
             to_regclass('public.staff_attendance_records') IS NOT NULL
             AND to_regclass('public.uq_staff_attendance_school_staff_date') IS NOT NULL
             AND to_regclass('public.ix_staff_attendance_school_date') IS NOT NULL
+            AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='trg_validate_staff_attendance_date' AND NOT tgisinternal)
+            AND EXISTS (SELECT 1 FROM pg_proc WHERE proname='validate_staff_attendance_date')
             AND (
                 SELECT COUNT(*) = 4
                 FROM public.permissions
@@ -49,7 +51,7 @@ func TestStaffAttendanceV58SchemaAndPermissionsPostgresIntegration(t *testing.T)
             )
     `).Scan(&ready)
     if err != nil { t.Fatalf("inspect V58 staff attendance schema and permissions: %v", err) }
-    if !ready { t.Fatal("V58 staff attendance table, unique index, permission catalogue, School Admin grant, or future-school trigger is missing") }
+    if !ready { t.Fatal("V58 staff attendance table, unique index, date trigger, permission catalogue, School Admin grant, or future-school trigger is missing") }
 }
 
 func TestStaffAttendanceRejectsDuplicatePerSchoolDatePostgresIntegration(t *testing.T) {
