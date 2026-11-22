@@ -645,3 +645,31 @@ export function updateStaffAttendance(recordID: number, input: { status: "presen
 export function markStaffAttendanceBulk(input: { staff_principal_ids: number[]; attendance_date: string; status: "present" | "absent" | "late" | "half_day"; remarks?: string }) {
   return api<{ created: number }>("/school/staff-attendance/bulk", { method: "POST", body: JSON.stringify(input) });
 }
+
+export type StaffLeaveType = { id:number; name:string; is_paid:boolean; requires_approval:boolean; is_active:boolean };
+export type StaffLeaveRequest = {
+  id:number; staff_principal_id:number; employee_code?:string; staff_name?:string; leave_type_id:number; leave_type_name?:string;
+  start_date:string; end_date:string; duration_type:"full_day"|"half_day"; half_day_session?:"first_half"|"second_half";
+  reason:string; status:"pending"|"approved"|"rejected"|"cancelled"; decision_comment?:string|null;
+  decided_by_username?:string|null; decided_at?:string|null; created_at:string;
+};
+export type SchoolHoliday = { id:number; holiday_date:string; name:string; description?:string|null; is_active:boolean };
+export function getStaffLeaveTypes(signal?:AbortSignal){return api<{data:StaffLeaveType[]}>("/school/staff-leave/types",{signal});}
+export function saveStaffLeaveType(input:Omit<StaffLeaveType,"id"> & {id?:number}) {
+ const {id,...body}=input;return api<{data:StaffLeaveType}>(id?("/school/staff-leave/types/"+id):"/school/staff-leave/types",{method:id?"PATCH":"POST",body:JSON.stringify(body)});
+}
+export function getStaffLeaveRequests(filters:{status?:string;staffPrincipalID?:number},signal?:AbortSignal){
+ const params=new URLSearchParams();if(filters.status)params.set("status",filters.status);if(filters.staffPrincipalID)params.set("staff_principal_id",String(filters.staffPrincipalID));
+ return api<{data:StaffLeaveRequest[]}>("/school/staff-leave/requests"+(params.size?"?"+params.toString():""),{signal});
+}
+export function createStaffLeaveRequest(input:{staff_principal_id:number;leave_type_id:number;start_date:string;end_date:string;duration_type:"full_day"|"half_day";half_day_session?:"first_half"|"second_half";reason:string}){
+ return api<{data:StaffLeaveRequest}>("/school/staff-leave/requests",{method:"POST",body:JSON.stringify(input)});
+}
+export function decideStaffLeaveRequest(requestID:number,decision:"approve"|"reject",comment?:string){
+ return api<{message:string}>("/school/staff-leave/requests/"+requestID+"/"+decision,{method:"POST",body:JSON.stringify(comment?{comment}:{})});
+}
+export function cancelStaffLeaveRequest(requestID:number){return api<{message:string}>("/school/staff-leave/requests/"+requestID+"/cancel",{method:"POST"});}
+export function getSchoolHolidays(from:string,to:string,signal?:AbortSignal){return api<{data:SchoolHoliday[]}>("/school/holidays?from="+encodeURIComponent(from)+"&to="+encodeURIComponent(to),{signal});}
+export function saveSchoolHoliday(input:Omit<SchoolHoliday,"id"> & {id?:number}){
+ const {id,...body}=input;return api<{data:SchoolHoliday}>(id?("/school/holidays/"+id):"/school/holidays",{method:id?"PATCH":"POST",body:JSON.stringify(body)});
+}
