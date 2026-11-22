@@ -103,7 +103,9 @@ The initial workspace shell has since been extended on branch `work`:
 - The final review displays the values entered in the previous steps.
 - Successful creation opens a one-time optional credential handoff with Copy credentials / Do this later. No automatic message provider is assumed; clipboard copy is the only currently implemented handoff.
 - The staff profile now exposes all eight roadmap tabs. Overview, Personal Details and Employment read current API-backed profile values; Account & Access reuses the existing role/override components.
-- Qualifications & Experience, Documents, staff-scoped Academic Assignments and History & Activity remain explicit pending sections because their required backend contracts are not yet available. The UI does not pretend those workflows are implemented.
+- Qualifications & Experience now supports API-backed create/list/edit for education, certifications and previous experience. Documents remain blocked until private storage and authenticated download authorization are available.
+- Academic Assignments now shows the selected staff member's subject-teaching and class-in-charge assignments, including revoked history, using existing school-scoped assignment APIs and exact read permissions.
+- History & Activity now reads the latest 100 staff-related audit events through a staff-scoped API protected by `school.audit.read`. It includes account/profile, role, academic assignment and qualification/certification/experience events; it does not display secrets or raw audit metadata.
 - New Playwright tests cover the wizard, credential handoff and profile tab shell. Execution is still pending.
 
 
@@ -124,3 +126,12 @@ The initial workspace shell has since been extended on branch `work`:
 - Backend PostgreSQL integration coverage verifies updates, audit events and cross-school update denial. Backend CI **PASS** — [run 44918463838](https://github.com/TheSumitNain/school-management-system/actions/runs/44918463838), checkpoint `66339b2b`: full migration chain on disposable PostgreSQL, full Go tests and `go vet` passed.
 - Verification is intentionally not exposed yet: the current permission catalogue does not include the proposed dedicated `staff.qualifications.verify` key. General `users.update` is not treated as verification authority. Document upload remains blocked pending private storage and authenticated download authorization.
 - No migration was applied to the user's persistent database. Academic, Student Management and Settings pages remain untouched.
+
+
+## 10. Staff academic assignments and audit history (2026-11-22)
+
+- Staff profile → Academic Assignments now loads only the selected employee's subject-teaching and class-in-charge records. The existing school-wide assignment endpoints accept an optional `teacher_principal_id` filter; existing callers retain their previous list behavior. Active and revoked assignments are shown separately, and management remains in the existing Academic Assignments workspace.
+- Staff profile → History & Activity now calls `GET /school/staff/:principalID/audit-events`. Route middleware and repository authorization both require `school.audit.read`, recheck the authenticated School Admin, active school, target staff membership and DENY override, and return at most the newest 100 relevant events.
+- The timeline maps staff account/profile lifecycle, role assignment, subject/class-in-charge assignment and qualification/certification/experience create/update audit events. Existing staff-record audit events are associated through their same-school record IDs; new record audit events also persist the target staff principal ID in metadata. The UI displays only event labels, actor username, outcome and timestamp, not raw metadata.
+- Added PostgreSQL integration assertions for history retrieval and cross-school denial, plus Playwright coverage for the staff-specific academic assignment and history panels. CI verification is in progress; do not mark this checkpoint complete until both workflows pass.
+- No database migration or persistent database change was made. Academic, Student Management and Settings pages remain untouched.
