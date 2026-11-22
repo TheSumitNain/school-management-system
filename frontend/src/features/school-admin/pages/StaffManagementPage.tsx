@@ -4,6 +4,7 @@ import { BookOpen, CalendarDays, Clock3, FileText, KeyRound, LayoutDashboard, Lo
 import { StaffRoleAssignments } from "../components/StaffRoleAssignments";
 import { StaffPermissionOverrides } from "../components/StaffPermissionOverrides";
 import { TeacherAssignmentsPage } from "./TeacherAssignmentsPage";
+import { StaffAcademicAssignmentsPanel } from "../components/StaffAcademicAssignmentsPanel";
 import {
   useCreateSchoolStaffMutation, useDisableSchoolStaffMutation, useEnableSchoolStaffMutation,
   useResetSchoolStaffPasswordMutation, useSchoolStaffQuery, useUpdateSchoolStaffMutation,
@@ -475,7 +476,7 @@ export function StaffManagementPage({ permissions }: Props) {
           </form>}
         </section>}
         {profileTab === "Documents" && <section className="staff-profile-placeholder"><h3>Staff documents</h3><p>Document upload is not enabled yet. It will be added only with private file storage, staff-scoped access checks and secure download authorization.</p></section>}
-        {profileTab === "Academic Assignments" && <section className="staff-profile-placeholder"><h3>Academic assignments</h3><p>School-wide teacher and class-in-charge assignment management is available in the workspace tab. A staff-specific assignment view is pending an exact scoped API contract.</p><button type="button" className="staff-secondary-button" onClick={() => {setProfileFor(null);setActiveTab("assignments");}}>Open Academic Assignments workspace</button></section>}
+        {profileTab === "Academic Assignments" && <StaffAcademicAssignmentsPanel staff={profileFor} permissions={permissions} onOpenWorkspace={() => {setProfileFor(null);setActiveTab("assignments");}}/>}
         {profileTab === "Account & Access" && <section className="staff-profile-access">{canReadRoles ? <StaffRoleAssignments staff={profileFor} canAssign={canAssignRoles}/> : <p>You do not have permission to view role assignments.</p>}{canManageOverrides ? <StaffPermissionOverrides staff={profileFor}/> : <p>You do not have permission to manage individual permission overrides.</p>}<p className="staff-wizard-note">Login identity, role grants and individual overrides remain separate from employee profile details.</p></section>}
         {profileTab === "History & Activity" && <section className="staff-profile-placeholder"><h3>Employment history & activity</h3><p>A staff-specific history endpoint is not available yet. This tab will show audited lifecycle and profile events once the read API and permission contract are implemented.</p></section>}
       </Modal>}
