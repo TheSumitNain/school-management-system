@@ -118,6 +118,15 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
     if _, err := attendanceRepo.Mark(ctx, actorID, schoolID, staff.PrincipalID, today.AddDate(0, 0, 1), "present", nil); !errors.Is(err, ErrInvalidStaffAttendance) {
         t.Fatalf("future staff attendance error=%v want invalid input", err)
     }
+    if _, err := tx.Exec(ctx, "SAVEPOINT staff_attendance_future_date"); err != nil { t.Fatalf("create future-date savepoint: %v", err) }
+    _, databaseFutureErr := tx.Exec(ctx, `
+        INSERT INTO staff_attendance_records
+            (school_id, staff_principal_id, attendance_date, status, marked_by_principal_id, updated_by_principal_id)
+        VALUES ($1,$2,$3,'present',$4,$4)
+    `, schoolID, staff.PrincipalID, today.AddDate(0, 0, 1).Format("2006-01-02"), actorID)
+    if databaseFutureErr == nil { t.Fatal("database accepted a future staff attendance date") }
+    if _, err := tx.Exec(ctx, "ROLLBACK TO SAVEPOINT staff_attendance_future_date"); err != nil { t.Fatalf("rollback future-date savepoint: %v", err) }
+    if _, err := tx.Exec(ctx, "RELEASE SAVEPOINT staff_attendance_future_date"); err != nil { t.Fatalf("release future-date savepoint: %v", err) }
     monthRows, err := attendanceRepo.ListMonthly(ctx, actorID, schoolID, today)
     if err != nil || len(monthRows) != 1 || monthRows[0].LateDays != 1 || monthRows[0].AbsentDays != 1 || len(monthRows[0].Records) == 0 {
         t.Fatalf("monthly staff attendance: records=%+v err=%v", monthRows, err)
