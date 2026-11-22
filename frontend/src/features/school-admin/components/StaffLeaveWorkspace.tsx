@@ -29,7 +29,8 @@ export function StaffLeaveWorkspace({permissions,staff}:Props){
  const canManageHolidays=permissions.includes("staff.holidays.manage");
  const [pane,setPane]=useState<"requests"|"types"|"holidays">("requests");
  const [status,setStatus]=useState("pending");
- const [staffID,setStaffID]=useState("0");
+ const [requestStaffID,setRequestStaffID]=useState("");
+ const [filterStaffID,setFilterStaffID]=useState("0");
  const [leaveTypeID,setLeaveTypeID]=useState("");
  const [startDate,setStartDate]=useState("");
  const [endDate,setEndDate]=useState("");
@@ -49,7 +50,7 @@ export function StaffLeaveWorkspace({permissions,staff}:Props){
  const [decisionError,setDecisionError]=useState("");
  const [cancelTarget,setCancelTarget]=useState<number|null>(null);
  const types=useStaffLeaveTypesQuery(canRead);
- const requests=useStaffLeaveRequestsQuery({status,staffPrincipalID:Number(staffID)||undefined},canRead);
+ const requests=useStaffLeaveRequestsQuery({status,staffPrincipalID:Number(filterStaffID)||undefined},canRead);
  const range=useMemo(yearRange,[]);
  const holidays=useSchoolHolidaysQuery(range.from,range.to,canReadHolidays);
  const createRequest=useCreateStaffLeaveRequestMutation();
@@ -66,7 +67,7 @@ export function StaffLeaveWorkspace({permissions,staff}:Props){
 
  async function submitRequest(event:FormEvent<HTMLFormElement>){
   event.preventDefault();const next:Record<string,string>={};
-  if(!staffID||staffID==="0")next.staff="Select one employee.";
+  if(!requestStaffID)next.staff="Select one employee.";
   if(!leaveTypeID)next.leave_type="Select a leave type.";
   if(!startDate)next.start_date="Select a start date.";
   if(!endDate)next.end_date="Select an end date.";
@@ -76,39 +77,39 @@ export function StaffLeaveWorkspace({permissions,staff}:Props){
   if(reason.trim().length>1000)next.reason="Reason must be 1,000 characters or fewer.";
   setErrors(next);setFormError("");if(Object.keys(next).length)return;
   try{
-   await createRequest.mutateAsync({staff_principal_id:Number(staffID),leave_type_id:Number(leaveTypeID),start_date:startDate,end_date:endDate,duration_type:duration,...(duration==="half_day"?{half_day_session:halfDaySession as "first_half"|"second_half"}:{}),reason:reason.trim()});
-   notifyToast("Leave request created and sent for approval.","success");setStartDate("");setEndDate("");setReason("");setLeaveTypeID("");setStaffID("0");setDuration("full_day");
+   await createRequest.mutateAsync({staff_principal_id:Number(requestStaffID),leave_type_id:Number(leaveTypeID),start_date:startDate,end_date:endDate,duration_type:duration,...(duration==="half_day"?{half_day_session:halfDaySession as "first_half"|"second_half"}:{}),reason:reason.trim()});
+   notifyToast("success","Leave request created and sent for approval.");setStartDate("");setEndDate("");setReason("");setLeaveTypeID("");setRequestStaffID("");setDuration("full_day");
   }catch(e){setFormError(errorText(e,"Unable to create leave request. Check the dates and try again."));}
  }
  async function submitType(event:FormEvent<HTMLFormElement>){
   event.preventDefault();const name=typeName.trim();if(name.length<2||name.length>100){setFormError("Leave type name must be 2–100 characters.");return;}
-  try{await saveType.mutateAsync({name,is_paid:isPaid,requires_approval:requiresApproval,is_active:true});notifyToast("Leave type created.","success");setTypeName("");setFormError("");}
+  try{await saveType.mutateAsync({name,is_paid:isPaid,requires_approval:requiresApproval,is_active:true});notifyToast("success","Leave type created.");setTypeName("");setFormError("");}
   catch(e){setFormError(errorText(e,"Unable to save leave type."));}
  }
  async function submitHoliday(event:FormEvent<HTMLFormElement>){
   event.preventDefault();if(!holidayDate||holidayName.trim().length<2){setFormError("Enter a holiday date and a name of at least 2 characters.");return;}
-  try{await saveHoliday.mutateAsync({holiday_date:holidayDate,name:holidayName.trim(),description:holidayDescription.trim()||null,is_active:true});notifyToast("School holiday saved.","success");setHolidayDate("");setHolidayName("");setHolidayDescription("");setFormError("");}
+  try{await saveHoliday.mutateAsync({holiday_date:holidayDate,name:holidayName.trim(),description:holidayDescription.trim()||null,is_active:true});notifyToast("success","School holiday saved.");setHolidayDate("");setHolidayName("");setHolidayDescription("");setFormError("");}
   catch(e){setFormError(errorText(e,"Unable to save holiday. Check for a duplicate entry."));}
  }
  async function confirmDecision(){
   if(!decisionTarget)return;
   if(decisionTarget.decision==="reject"&&!decisionComment.trim()){setDecisionError("A comment is required when rejecting a request.");return;}
-  try{await decide.mutateAsync({requestID:decisionTarget.id,decision:decisionTarget.decision,...(decisionComment.trim()?{comment:decisionComment.trim()}:{})});notifyToast(decisionTarget.decision==="approve"?"Leave request approved.":"Leave request rejected.","success");setDecisionTarget(null);setDecisionComment("");setDecisionError("");}
+  try{await decide.mutateAsync({requestID:decisionTarget.id,decision:decisionTarget.decision,...(decisionComment.trim()?{comment:decisionComment.trim()}:{})});notifyToast("success",decisionTarget.decision==="approve"?"Leave request approved.":"Leave request rejected.");setDecisionTarget(null);setDecisionComment("");setDecisionError("");}
   catch(e){setDecisionError(errorText(e,"Unable to save the leave decision."));}
  }
- async function confirmCancel(){if(cancelTarget===null)return;try{await cancel.mutateAsync(cancelTarget);notifyToast("Leave request cancelled.","success");setCancelTarget(null);}catch(e){notifyToast(errorText(e,"Unable to cancel the leave request."),"error");}}
+ async function confirmCancel(){if(cancelTarget===null)return;try{await cancel.mutateAsync(cancelTarget);notifyToast("Leave request cancelled.","success");setCancelTarget(null);}catch(e){notifyToast("error",errorText(e,"Unable to cancel the leave request."));}}
  const canShowRequests=canRead||canManageRequests||canDecide;
  const panes=[...(canShowRequests?[{id:"requests" as const,label:"Leave requests",icon:ClipboardList}]:[]),...(canManageTypes?[{id:"types" as const,label:"Leave types",icon:Settings2}]:[]),...(canReadHolidays||canManageHolidays?[{id:"holidays" as const,label:"Holiday calendar",icon:CalendarDays}]:[])];
- if(!panes.some(item=>item.id===pane))setPane(panes[0]?.id??"requests");
+ const activePane=panes.some(item=>item.id===pane)?pane:(panes[0]?.id??"requests");
 
  return <section className="staff-leave-workspace">
   <div className="staff-leave-heading"><div><h2>Leave & Holidays</h2><p>Manage staff leave applications, approval decisions and the school holiday calendar.</p></div></div>
-  <nav className="staff-leave-subtabs" aria-label="Leave and holiday views">{panes.map(item=><button type="button" key={item.id} className={pane===item.id?"active":""} onClick={()=>setPane(item.id)}><item.icon size={15}/>{item.label}</button>)}</nav>
+  <nav className="staff-leave-subtabs" aria-label="Leave and holiday views">{panes.map(item=><button type="button" key={item.id} className={activePane===item.id?"active":""} onClick={()=>setPane(item.id)}><item.icon size={15}/>{item.label}</button>)}</nav>
 
-  {pane==="requests"&&<div className="staff-leave-grid">
+  {activePane==="requests"&&<div className="staff-leave-grid">
    {canManageRequests&&<form className="staff-leave-panel staff-leave-form" onSubmit={submitRequest} noValidate>
     <h3><Plus size={16}/> New leave request</h3>
-    <label>Staff member <span className="required">*</span><Select value={staffID} onChange={setStaffID} ariaLabel="Staff member" options={staffOptions} invalid={Boolean(errors.staff)}/>{errors.staff&&<small className="app-field-error">{errors.staff}</small>}</label>
+    <label>Staff member <span className="required">*</span><Select value={requestStaffID} onChange={setRequestStaffID} ariaLabel="Staff member" options={staffOptions} invalid={Boolean(errors.staff)}/>{errors.staff&&<small className="app-field-error">{errors.staff}</small>}</label>
     <label>Leave type <span className="required">*</span><Select value={leaveTypeID} onChange={setLeaveTypeID} ariaLabel="Leave type" placeholder="Select leave type" options={typeOptions} invalid={Boolean(errors.leave_type)}/>{errors.leave_type&&<small className="app-field-error">{errors.leave_type}</small>}{activeTypes.length===0&&<small>Create an active leave type before submitting requests.</small>}</label>
     <div className="staff-leave-date-grid"><label>Start date <span className="required">*</span><DatePicker value={startDate} onChange={setStartDate} ariaLabel="Leave start date" placeholder="Start date"/>{errors.start_date&&<small className="app-field-error">{errors.start_date}</small>}</label><label>End date <span className="required">*</span><DatePicker value={endDate} onChange={setEndDate} ariaLabel="Leave end date" placeholder="End date"/>{errors.end_date&&<small className="app-field-error">{errors.end_date}</small>}</label></div>
     <label>Duration <Select value={duration} onChange={v=>setDuration(v as Duration)} ariaLabel="Leave duration" options={[{value:"full_day",label:"Full day"},{value:"half_day",label:"Half day"}]}/></label>
@@ -119,7 +120,7 @@ export function StaffLeaveWorkspace({permissions,staff}:Props){
    </form>}
    <div className="staff-leave-panel staff-leave-list-panel">
     <div className="staff-leave-list-heading"><h3>Applications</h3><button type="button" className="staff-secondary-button" onClick={()=>void requests.refetch()} disabled={requests.isFetching}><RefreshCw size={14}/> Refresh</button></div>
-    <div className="staff-leave-filters"><label>Status <Select value={status} onChange={setStatus} ariaLabel="Leave request status" options={statusOptions}/></label><label>Staff <Select value={staffID} onChange={setStaffID} ariaLabel="Filter by staff" options={staffOptions}/></label></div>
+    <div className="staff-leave-filters"><label>Status <Select value={status} onChange={setStatus} ariaLabel="Leave request status" options={statusOptions}/></label><label>Staff <Select value={filterStaffID} onChange={setFilterStaffID} ariaLabel="Filter by staff" options={staffOptions}/></label></div>
     {requests.isPending&&<p role="status">Loading leave requests…</p>}
     {requests.isError&&<p className="staff-leave-error" role="alert">Unable to load leave requests. <button type="button" onClick={()=>void requests.refetch()}>Try again</button></p>}
     {requests.isSuccess&&requests.data.data.length===0&&<p className="staff-leave-empty">No leave requests match these filters.</p>}
@@ -135,12 +136,12 @@ export function StaffLeaveWorkspace({permissions,staff}:Props){
    </div>
   </div>}
 
-  {pane==="types"&&<div className="staff-leave-grid">
+  {activePane==="types"&&<div className="staff-leave-grid">
    <form className="staff-leave-panel staff-leave-form" onSubmit={submitType} noValidate><h3>Configure leave type</h3><label>Leave type name <span className="required">*</span><input value={typeName} onChange={e=>setTypeName(e.target.value)} maxLength={100} placeholder="e.g. Casual Leave" required/></label><label className="staff-leave-check"><input type="checkbox" checked={isPaid} onChange={e=>setIsPaid(e.target.checked)}/> Paid leave</label><label className="staff-leave-check"><input type="checkbox" checked={requiresApproval} onChange={e=>setRequiresApproval(e.target.checked)}/> Requires approval</label><p className="staff-leave-note">Quota, accrual, carry-forward and balances are not configured in this phase. New requests remain pending for an authorized decision.</p>{formError&&<p className="staff-leave-error" role="alert">{formError}</p>}<button className="primary" type="submit" disabled={saveType.isPending}>{saveType.isPending?"Saving…":"Add leave type"}</button></form>
    <div className="staff-leave-panel"><h3>Configured leave types</h3>{types.isPending&&<p role="status">Loading leave types…</p>}{types.isError&&<p className="staff-leave-error" role="alert">Unable to load leave types. <button type="button" onClick={()=>void types.refetch()}>Try again</button></p>}{types.data?.data.length===0&&<p className="staff-leave-empty">No leave types configured.</p>}{types.data?.data.map(item=><div className="staff-leave-type-row" key={item.id}><strong>{item.name}</strong><span>{item.is_paid?"Paid":"Unpaid"} · {item.requires_approval?"Approval required":"Approval flag off"}</span><small>{item.is_active?"Active":"Inactive"}</small></div>)}</div>
   </div>}
 
-  {pane==="holidays"&&<div className="staff-leave-grid">
+  {activePane==="holidays"&&<div className="staff-leave-grid">
    {canManageHolidays&&<form className="staff-leave-panel staff-leave-form" onSubmit={submitHoliday} noValidate><h3><Plus size={16}/> Add school holiday</h3><label>Date <span className="required">*</span><DatePicker value={holidayDate} onChange={setHolidayDate} ariaLabel="Holiday date" placeholder="Select holiday date"/></label><label>Holiday name <span className="required">*</span><input value={holidayName} onChange={e=>setHolidayName(e.target.value)} maxLength={160} placeholder="e.g. Annual Day holiday"/></label><label>Description <small>(optional)</small><textarea value={holidayDescription} onChange={e=>setHolidayDescription(e.target.value)} maxLength={1000} rows={3}/></label>{formError&&<p className="staff-leave-error" role="alert">{formError}</p>}<button className="primary" type="submit" disabled={saveHoliday.isPending}>{saveHoliday.isPending?"Saving…":"Save holiday"}</button></form>}
    <div className="staff-leave-panel"><div className="staff-leave-list-heading"><h3>School holiday calendar · {range.from.slice(0,4)}</h3><button type="button" className="staff-secondary-button" onClick={()=>void holidays.refetch()} disabled={holidays.isFetching}><RefreshCw size={14}/> Refresh</button></div>{holidays.isPending&&<p role="status">Loading holidays…</p>}{holidays.isError&&<p className="staff-leave-error" role="alert">Unable to load holidays. <button type="button" onClick={()=>void holidays.refetch()}>Try again</button></p>}{holidays.data?.data.length===0&&<p className="staff-leave-empty">No holidays have been added for this calendar year.</p>}{holidays.data?.data.map(item=><div className="staff-leave-holiday-row" key={item.id}><time>{item.holiday_date}</time><div><strong>{item.name}</strong>{item.description&&<small>{item.description}</small>}</div></div>)}</div>
   </div>}
