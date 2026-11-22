@@ -249,3 +249,11 @@ This section supersedes earlier Phase 4 remaining-work notes where later impleme
 - The test asserts exactly one assignment request and exactly one confirmed removal request; cancellation leaves the assignment unchanged.
 - Exact code checkpoint `6ca0fb6e8ffe3b80c86446d2dfc9d8cc6521bd7d`: Frontend CI [45002546475](https://github.com/TheSumitNain/school-management-system/actions/runs/45002546475) **PASS**, including TypeScript/design-token checks, Vite production build and the complete Playwright browser suite. Backend CI [45002546411](https://github.com/TheSumitNain/school-management-system/actions/runs/45002546411) **PASS**, including disposable PostgreSQL integration tests and `go vet`.
 - This closes the reviewed positive role-assignment/removal confirmation acceptance gap. No backend runtime change or database migration was introduced by this test.
+
+
+## 21. Staff individual permission override acceptance (2026-11-22)
+
+- Added a positive-permission Playwright workflow for `permissions.override`: the staff administrator loads only permissions delegated for individual overrides, selects a permission, is blocked from saving without a reason, then saves a documented DENY override and verifies the submitted permission, effect, reason and delegation ID.
+- The test verifies removal is confirmation-gated: cancelling produces no DELETE request; explicit confirmation removes the override and updates the visible list. This complements the role assignment/removal workflow and read-only access coverage.
+- Exact checkpoint `d3d00fdd578e42dd9bcc89d0826afb9b9a471368`: Frontend CI [45003372900](https://github.com/TheSumitNain/school-management-system/actions/runs/45003372900) **PASS** — TypeScript/design-token checks, Vite production build and all 66 Playwright tests. Backend CI [45003372918](https://github.com/TheSumitNain/school-management-system/actions/runs/45003372918) **PASS** — Go tests, PostgreSQL integration and `go vet`.
+- No database migration or backend runtime change was introduced by this acceptance-test update.
