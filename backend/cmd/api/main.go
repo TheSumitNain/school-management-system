@@ -198,12 +198,12 @@ func setupRouterWithHandlers(
 		)
 		router.GET("/school/permissions",
 			roleAuth,
-			middleware.RequirePermission("permissions.read"),
+			middleware.RequireAnyPermission("permissions.read", "permissions.override"),
 			roleHandler.ListPermissions,
 		)
 		router.GET("/school/permission-delegations",
 			roleAuth,
-			middleware.RequirePermission("permissions.assign"),
+			middleware.RequireAnyPermission("permissions.assign", "permissions.override"),
 			roleHandler.ListSchoolPermissionDelegations,
 		)
 		router.GET("/school/roles/:roleID/permissions",
