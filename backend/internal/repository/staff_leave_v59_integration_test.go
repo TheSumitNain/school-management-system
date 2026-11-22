@@ -29,6 +29,6 @@ func TestStaffLeaveHolidayV59SchemaAndPermissionsPostgresIntegration(t *testing.
  if err!=nil{t.Fatalf("inspect V59 staff leave/holiday schema: %v",err)}
  if !ready{t.Fatal("V59 leave/holiday tables, constraints, six non-delegable permissions, or School Admin grants are missing")}
  var granted int
- if err:=pool.QueryRow(ctx,`SELECT COUNT(*)::integer FROM public.users u JOIN public.roles r ON r.school_id=u.school_id AND r.role_key='school_admin' AND r.is_system=TRUE JOIN public.role_permissions rp ON rp.role_id=r.id JOIN public.permissions p ON p.id=rp.permission_id WHERE u.id=$1 AND p.permission_key LIKE 'staff.leave.%' OR u.id=$1 AND p.permission_key LIKE 'staff.holidays.%'`,userID).Scan(&granted);err!=nil{t.Fatalf("count V59 permission grants: %v",err)}
- if granted<4{t.Fatalf("V59 grants=%d want at least four leave/holiday grants",granted)}
+ if err:=pool.QueryRow(ctx,`SELECT COUNT(*)::integer FROM public.users u JOIN public.roles r ON r.school_id=u.school_id AND r.role_key='school_admin' AND r.is_system=TRUE JOIN public.role_permissions rp ON rp.role_id=r.id JOIN public.permissions p ON p.id=rp.permission_id WHERE u.id=$1 AND p.permission_key IN ('staff.leave.read','staff.leave.manage_types','staff.leave.manage_requests','staff.leave.decide','staff.holidays.read','staff.holidays.manage')`,userID).Scan(&granted);err!=nil{t.Fatalf("count V59 permission grants: %v",err)}
+ if granted!=6{t.Fatalf("V59 grants=%d want=6 leave/holiday grants",granted)}
 }
