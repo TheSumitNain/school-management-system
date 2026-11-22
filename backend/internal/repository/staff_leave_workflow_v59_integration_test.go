@@ -225,3 +225,55 @@ func TestSchoolHolidayInactiveListingRequiresManagePermissionPostgresIntegration
 		t.Fatalf("non-manager inactive holiday listing error=%v; want access denied", err)
 	}
 }
+
+func TestSchoolHolidayDuplicateAndConflictingUpdatePostgresIntegration(t *testing.T) {
+	f := newStaffLeaveIntegrationFixture(t)
+	first, err := f.repo.SaveHoliday(f.ctx, f.adminPrincipalID, f.schoolID, 0, SchoolHoliday{
+		HolidayDate: "2027-01-26", Name: "Republic Day", IsActive: true,
+	})
+	if err != nil {
+		t.Fatalf("create first holiday: %v", err)
+	}
+
+	// The same school/date/name is a duplicate even when the name casing or
+	// surrounding whitespace differs.
+	if _, err := f.repo.SaveHoliday(f.ctx, f.adminPrincipalID, f.schoolID, 0, SchoolHoliday{
+		HolidayDate: "2027-01-26", Name: "  republic day  ", IsActive: true,
+	}); !errors.Is(err, ErrStaffLeaveConflict) {
+		t.Fatalf("case-insensitive duplicate holiday error=%v; want conflict", err)
+	}
+
+	second, err := f.repo.SaveHoliday(f.ctx, f.adminPrincipalID, f.schoolID, 0, SchoolHoliday{
+		HolidayDate: "2027-01-27", Name: "School Foundation Day", IsActive: true,
+	})
+	if err != nil {
+		t.Fatalf("create second holiday: %v", err)
+	}
+
+	// Updating another row into the first row's unique key must fail without
+	// changing the existing row or writing a success audit event.
+	if _, err := f.repo.SaveHoliday(f.ctx, f.adminPrincipalID, f.schoolID, second.ID, SchoolHoliday{
+		HolidayDate: "2027-01-26", Name: "REPUBLIC DAY", IsActive: true,
+	}); !errors.Is(err, ErrStaffLeaveConflict) {
+		t.Fatalf("conflicting holiday update error=%v; want conflict", err)
+	}
+
+	var date, name string
+	if err := f.pool.QueryRow(f.ctx, `SELECT holiday_date::text,name FROM school_holidays WHERE id=$1 AND school_id=$2`, second.ID, f.schoolID).Scan(&date, &name); err != nil {
+		t.Fatalf("read second holiday after conflicting update: %v", err)
+	}
+	if date != "2027-01-27" || name != "School Foundation Day" {
+		t.Fatalf("conflicting update changed second holiday to %s %q", date, name)
+	}
+
+	var firstAuditCount, secondAuditCount int
+	if err := f.pool.QueryRow(f.ctx, `SELECT COUNT(*) FROM audit_events WHERE school_id=$1 AND actor_principal_id=$2 AND action='school.holiday.created' AND resource_id=$3`, f.schoolID, f.adminPrincipalID, fmt.Sprint(first.ID)).Scan(&firstAuditCount); err != nil {
+		t.Fatalf("count first holiday audit: %v", err)
+	}
+	if err := f.pool.QueryRow(f.ctx, `SELECT COUNT(*) FROM audit_events WHERE school_id=$1 AND actor_principal_id=$2 AND resource_type='school_holiday' AND resource_id=$3`, f.schoolID, f.adminPrincipalID, fmt.Sprint(second.ID)).Scan(&secondAuditCount); err != nil {
+		t.Fatalf("count second holiday audit: %v", err)
+	}
+	if firstAuditCount != 1 || secondAuditCount != 1 {
+		t.Fatalf("holiday audit counts first=%d second=%d; want exactly one successful create audit per row", firstAuditCount, secondAuditCount)
+	}
+}
