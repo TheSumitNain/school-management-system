@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -149,8 +150,8 @@ func (r *UserRepository) CreateStaffQualification(ctx context.Context, actorID, 
 		&saved.VerificationStatus,&saved.CreatedAt,&saved.UpdatedAt)
 	if err != nil { return nil, fmt.Errorf("insert staff qualification: %w", err) }
 	if _,err=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
-		VALUES($1,$2,'staff.qualification.created','staff_qualification',$3,'success',jsonb_build_object('record_type','qualification'))`,
-		actorID,schoolID,fmt.Sprint(saved.ID)); err != nil { return nil,fmt.Errorf("audit staff qualification creation: %w",err) }
+		VALUES($1,$2,'staff.qualification.created','staff_qualification',$3,'success',jsonb_build_object('record_type','qualification','staff_principal_id',$4::bigint))`,
+		actorID,schoolID,fmt.Sprint(saved.ID),staffID); err != nil { return nil,fmt.Errorf("audit staff qualification creation: %w",err) }
 	if err=tx.Commit(ctx);err!=nil{return nil,fmt.Errorf("commit staff qualification creation: %w",err)}
 	return &saved,nil
 }
@@ -190,7 +191,7 @@ func (r *UserRepository) CreateStaffCertification(ctx context.Context, actorID, 
 		&saved.ID,&saved.StaffPrincipalID,&saved.CertificateName,&saved.IssuingOrganization,&saved.IssueDate,&saved.ExpiryDate,&saved.CredentialID,&saved.VerificationStatus,&saved.CreatedAt,&saved.UpdatedAt)
 	if err!=nil{return nil,fmt.Errorf("insert staff certification: %w",err)}
 	if _,err=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
-		VALUES($1,$2,'staff.certification.created','staff_certification',$3,'success',jsonb_build_object('record_type','certification'))`,actorID,schoolID,fmt.Sprint(saved.ID));err!=nil{return nil,fmt.Errorf("audit staff certification creation: %w",err)}
+		VALUES($1,$2,'staff.certification.created','staff_certification',$3,'success',jsonb_build_object('record_type','certification','staff_principal_id',$4::bigint))`,actorID,schoolID,fmt.Sprint(saved.ID),staffID);err!=nil{return nil,fmt.Errorf("audit staff certification creation: %w",err)}
 	if err=tx.Commit(ctx);err!=nil{return nil,fmt.Errorf("commit staff certification creation: %w",err)}
 	return &saved,nil
 }
@@ -229,7 +230,7 @@ func (r *UserRepository) CreateStaffExperience(ctx context.Context, actorID, sch
 		&saved.ID,&saved.StaffPrincipalID,&saved.EmployerName,&saved.Designation,&saved.EmploymentType,&saved.StartDate,&saved.EndDate,&saved.IsCurrent,&saved.Description,&saved.CreatedAt,&saved.UpdatedAt)
 	if err!=nil{return nil,fmt.Errorf("insert staff experience: %w",err)}
 	if _,err=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
-		VALUES($1,$2,'staff.experience.created','staff_experience',$3,'success',jsonb_build_object('record_type','experience'))`,actorID,schoolID,fmt.Sprint(saved.ID));err!=nil{return nil,fmt.Errorf("audit staff experience creation: %w",err)}
+		VALUES($1,$2,'staff.experience.created','staff_experience',$3,'success',jsonb_build_object('record_type','experience','staff_principal_id',$4::bigint))`,actorID,schoolID,fmt.Sprint(saved.ID),staffID);err!=nil{return nil,fmt.Errorf("audit staff experience creation: %w",err)}
 	if err=tx.Commit(ctx);err!=nil{return nil,fmt.Errorf("commit staff experience creation: %w",err)}
 	return &saved,nil
 }
@@ -259,7 +260,7 @@ func (r *UserRepository) UpdateStaffQualification(ctx context.Context, actorID, 
 	if errors.Is(err, pgx.ErrNoRows) { return nil, ErrInvalidStaffRecord }
 	if err != nil { return nil, fmt.Errorf("update staff qualification: %w", err) }
 	if _,err=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
-		VALUES($1,$2,'staff.qualification.updated','staff_qualification',$3,'success',jsonb_build_object('record_type','qualification'))`,actorID,schoolID,fmt.Sprint(recordID));err!=nil{return nil,fmt.Errorf("audit staff qualification update: %w",err)}
+		VALUES($1,$2,'staff.qualification.updated','staff_qualification',$3,'success',jsonb_build_object('record_type','qualification','staff_principal_id',$4::bigint))`,actorID,schoolID,fmt.Sprint(recordID),staffID);err!=nil{return nil,fmt.Errorf("audit staff qualification update: %w",err)}
 	if err=tx.Commit(ctx);err!=nil{return nil,fmt.Errorf("commit staff qualification update: %w",err)}
 	return &saved,nil
 }
@@ -281,7 +282,7 @@ func (r *UserRepository) UpdateStaffCertification(ctx context.Context, actorID, 
 	if errors.Is(err,pgx.ErrNoRows){return nil,ErrInvalidStaffRecord}
 	if err!=nil{return nil,fmt.Errorf("update staff certification: %w",err)}
 	if _,err=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
-		VALUES($1,$2,'staff.certification.updated','staff_certification',$3,'success',jsonb_build_object('record_type','certification'))`,actorID,schoolID,fmt.Sprint(recordID));err!=nil{return nil,fmt.Errorf("audit staff certification update: %w",err)}
+		VALUES($1,$2,'staff.certification.updated','staff_certification',$3,'success',jsonb_build_object('record_type','certification','staff_principal_id',$4::bigint))`,actorID,schoolID,fmt.Sprint(recordID),staffID);err!=nil{return nil,fmt.Errorf("audit staff certification update: %w",err)}
 	if err=tx.Commit(ctx);err!=nil{return nil,fmt.Errorf("commit staff certification update: %w",err)}
 	return &saved,nil
 }
@@ -303,7 +304,69 @@ func (r *UserRepository) UpdateStaffExperience(ctx context.Context, actorID, sch
 	if errors.Is(err,pgx.ErrNoRows){return nil,ErrInvalidStaffRecord}
 	if err!=nil{return nil,fmt.Errorf("update staff experience: %w",err)}
 	if _,err=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
-		VALUES($1,$2,'staff.experience.updated','staff_experience',$3,'success',jsonb_build_object('record_type','experience'))`,actorID,schoolID,fmt.Sprint(recordID));err!=nil{return nil,fmt.Errorf("audit staff experience update: %w",err)}
+		VALUES($1,$2,'staff.experience.updated','staff_experience',$3,'success',jsonb_build_object('record_type','experience','staff_principal_id',$4::bigint))`,actorID,schoolID,fmt.Sprint(recordID),staffID);err!=nil{return nil,fmt.Errorf("audit staff experience update: %w",err)}
 	if err=tx.Commit(ctx);err!=nil{return nil,fmt.Errorf("commit staff experience update: %w",err)}
 	return &saved,nil
+}
+
+type StaffAuditEvent struct {
+	ID int64 `json:"id"`
+	Action string `json:"action"`
+	ResourceType string `json:"resource_type"`
+	Outcome string `json:"outcome"`
+	ActorUsername string `json:"actor_username"`
+	Metadata json.RawMessage `json:"metadata"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+func (r *UserRepository) ListStaffAuditEvents(ctx context.Context, actorID, schoolID, staffID int64) ([]StaffAuditEvent, error) {
+	if r == nil || r.db == nil {
+		return nil, ErrStaffRecordAccessDenied
+	}
+	if err := authorizeStaffRecord(ctx, r.db, actorID, schoolID, staffID, "school.audit.read"); err != nil {
+		return nil, err
+	}
+	rows, err := r.db.Query(ctx, `
+		SELECT ae.id, ae.action, ae.resource_type, ae.outcome,
+		       COALESCE(actor.username, 'System'), ae.metadata, ae.created_at
+		FROM audit_events ae
+		LEFT JOIN users actor
+		  ON actor.principal_id = ae.actor_principal_id
+		 AND actor.school_id = ae.school_id
+		LEFT JOIN users target_user
+		  ON target_user.school_id = ae.school_id
+		 AND target_user.id::text = ae.resource_id
+		 AND target_user.principal_id = $2
+		WHERE ae.school_id = $1
+		  AND (
+		       (ae.resource_type = 'staff_principal' AND ae.resource_id = $2::text)
+		    OR (ae.resource_type = 'staff_user' AND (
+		           ae.metadata->>'principal_id' = $2::text
+		        OR ae.metadata->>'target_principal_id' = $2::text
+		        OR target_user.principal_id = $2
+		    ))
+		    OR (ae.resource_type IN ('teacher_subject_assignment','class_incharge_assignment')
+		        AND ae.metadata->>'teacher_principal_id' = $2::text)
+		    OR (ae.resource_type IN ('staff_qualification','staff_certification','staff_experience')
+		        AND ae.metadata->>'staff_principal_id' = $2::text)
+		  )
+		ORDER BY ae.created_at DESC, ae.id DESC
+		LIMIT 100
+	`, schoolID, staffID)
+	if err != nil {
+		return nil, fmt.Errorf("list staff audit events: %w", err)
+	}
+	defer rows.Close()
+	items := make([]StaffAuditEvent, 0)
+	for rows.Next() {
+		var item StaffAuditEvent
+		if err := rows.Scan(&item.ID, &item.Action, &item.ResourceType, &item.Outcome, &item.ActorUsername, &item.Metadata, &item.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scan staff audit event: %w", err)
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate staff audit events: %w", err)
+	}
+	return items, nil
 }
