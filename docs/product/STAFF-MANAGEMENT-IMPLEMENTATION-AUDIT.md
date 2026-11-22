@@ -266,3 +266,10 @@ This section supersedes earlier Phase 4 remaining-work notes where later impleme
 - Added/adjusted the browser acceptance fixture to grant `users.read` and `permissions.override` only (no `roles.read`, `permissions.read` or `permissions.assign`), then load the delegated permission, require a reason, save the override and confirm removal.
 - Frontend acceptance commit `4599533c0d59bf9e3a5f7da6a0ce22a14fea64a4`: Frontend CI [45003723942](https://github.com/TheSumitNain/school-management-system/actions/runs/45003723942) **PASS**, including production build and complete Playwright suite. Backend code checkpoint `f8f1b8764635762089414334028855f92f510403`: Backend CI [45003754631](https://github.com/TheSumitNain/school-management-system/actions/runs/45003754631) **PASS**, including Go tests, PostgreSQL integration and `go vet`.
 - No schema or migration change was required.
+
+
+## 23. Staff account disable confirmation acceptance (2026-11-22)
+
+- Added a Staff Directory browser workflow for an account with `users.read` and `users.disable`: the test opens the disable dialog, verifies the session-revocation warning, cancels and asserts no DELETE request, then confirms disable and verifies exactly one request, the success notification, refreshed disabled status and removal of the disable action.
+- Exact code checkpoint `7c77bef8f752557a049fd4a05471b2881a2f2b79`: Frontend CI [45004040475](https://github.com/TheSumitNain/school-management-system/actions/runs/45004040475) **PASS** with all 67 Playwright tests; Backend CI [45004040409](https://github.com/TheSumitNain/school-management-system/actions/runs/45004040409) **PASS** with PostgreSQL integration and `go vet`.
+- This is acceptance-test coverage only; no runtime behavior or database schema changed.
