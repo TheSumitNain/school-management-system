@@ -13,7 +13,7 @@ Migration V54 introduced in-place editing and soft deactivation of removed curri
 
 ## Calendar date policy
 
-The current product-wide school calendar timezone is `Asia/Kolkata` (IST). Date-only application rules must derive the calendar day from the shared backend `internal/schooltime` package; database constraints for date of birth, physical measurements and attendance use the explicit `Asia/Kolkata` calendar date rather than the PostgreSQL session timezone or database-server `CURRENT_DATE`. Do not rely on the Go host's local timezone. Attendance past-date permission classification uses the same application-derived IST date. This is a deliberate current-release default, not yet a per-school configuration. Add persisted per-school IANA timezone configuration before onboarding schools outside India.
+The current product-wide school calendar timezone is `Asia/Kolkata` (IST). Date-only application rules must derive the calendar day from the shared backend `internal/schooltime` package; database constraints for date of birth, physical measurements, student attendance and staff attendance use the explicit `Asia/Kolkata` calendar date rather than the PostgreSQL session timezone or database-server `CURRENT_DATE`. Do not rely on the Go host's local timezone. Both attendance modules classify past-date permissions using the same application-derived IST date. This is a deliberate current-release default, not yet a per-school configuration. Add persisted per-school IANA timezone configuration before onboarding schools outside India.
 
 ## Migration safety rules
 
@@ -112,7 +112,7 @@ Do not resolve these results by deleting or merging contacts automatically. Conf
 
 ## Domain areas represented in the schema
 
-The migration history includes schools and identity/principal foundations, refresh sessions, RBAC/delegation/overrides, MFA and audit records, staff lifecycle, academic structure (including optional Hindi/English medium metadata on sections in V27), student/enrollment history, attendance, timetable periods and weekly schedules, and guardian relationships.
+The migration history includes schools and identity/principal foundations, refresh sessions, RBAC/delegation/overrides, MFA and audit records, staff lifecycle, academic structure (including optional Hindi/English medium metadata on sections in V27), student/enrollment history, student attendance, timetable periods and weekly schedules, guardian relationships, staff qualifications/certifications/experience (V57), and the separate school-scoped staff attendance register (V58).
 
 ### Staff employee profiles (V28)
 
