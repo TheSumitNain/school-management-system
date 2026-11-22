@@ -185,3 +185,10 @@ Migration V59 and the first end-to-end Leave & Holiday workflow are implemented 
 - Frontend CI [44991137384](https://github.com/TheSumitNain/school-management-system/actions/runs/44991137384) **PASS** at code checkpoint `2e6c73678798189a689d8b3223cb797872e6de22`: TypeScript/design-token checks, Vite production build and full Playwright browser acceptance suite (**57 passed**).
 - Backend CI [44991137364](https://github.com/TheSumitNain/school-management-system/actions/runs/44991137364) **PASS** at the same checkpoint: full migration chain on disposable PostgreSQL, Go tests including PostgreSQL integration and `go vet ./...`.
 - No persistent/local database was migrated. Leave quota, accrual, carry-forward and balance rules remain unconfigured pending explicit school policy approval.
+
+
+## 14. Read-permission UI boundary verification (2026-11-22)
+
+- Added browser acceptance for a write-only/decision-capable leave permission set without `staff.leave.read`. The Leave & Holidays workspace is not exposed, and the disabled restricted navigation item communicates the missing read permission.
+- Exact code checkpoint `5b1162b4a53207f73f5f422a12f5cb84ddc244b6` passed both workflows: Backend CI [44991408484](https://github.com/TheSumitNain/school-management-system/actions/runs/44991408484) (ephemeral PostgreSQL migration chain, Go/PostgreSQL tests and `go vet`) and Frontend CI [44991408480](https://github.com/TheSumitNain/school-management-system/actions/runs/44991408480) (TypeScript/Vite build and full Playwright browser acceptance suite).
+- This verifies the navigation boundary; server-side route/repository authorization remains authoritative. No persistent/local DB migration was applied. Leave entitlement/balance rules remain intentionally undefined pending school approval.
