@@ -25,7 +25,7 @@ func TestStaffLeaveHolidayV59SchemaAndPermissionsPostgresIntegration(t *testing.
  )
  AND EXISTS(SELECT 1 FROM pg_constraint WHERE conname='fk_staff_leave_request_staff_school')
  AND EXISTS(SELECT 1 FROM pg_constraint WHERE conname='fk_staff_leave_request_type_school')
- `).Scan(&ready)
+ `,userID).Scan(&ready)
  if err!=nil{t.Fatalf("inspect V59 staff leave/holiday schema: %v",err)}
  if !ready{t.Fatal("V59 leave/holiday tables, constraints, six non-delegable permissions, or School Admin grants are missing")}
  var granted int
