@@ -133,6 +133,24 @@ async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, un
       await route.fulfill({ json: { message: "Substitution cancelled" } });
       return;
     }
+    if (path === "/school/timetable/workload-report" && method === "GET") {
+      const workloads = staffRows.map((item) => ({
+        teacher_principal_id: item.principal_id,
+        teacher_name: item.full_name ?? item.username,
+        employee_code: item.employee_code ?? "EMP",
+        designation: item.designation ?? "Teacher",
+        employment_status: item.employment_status ?? "active",
+        login_status: item.status ?? "active",
+        day_of_week: item.principal_id === 501 ? 1 : 0,
+        scheduled_periods: item.principal_id === 501 ? 4 : 0,
+        distinct_sections: item.principal_id === 501 ? 2 : 0,
+        distinct_subjects: item.principal_id === 501 ? 2 : 0,
+        first_period: item.principal_id === 501 ? 1 : null,
+        last_period: item.principal_id === 501 ? 4 : null,
+      }));
+      await route.fulfill({ json: { workloads } });
+      return;
+    }
     if (path === "/school/timetable/current-year" && method === "GET") {
       await route.fulfill({ json: { academic_year: { id: 2026, name: "2026–27", starts_on: "2026-04-01", ends_on: "2027-03-31", status: "active", is_current: true } } });
       return;
@@ -1440,4 +1458,33 @@ test("staff substitution assigns a dated cover, validates the timetable weekday 
   await page.getByRole("button", { name: "Cancel cover" }).last().click();
   await expect(record).toContainText("Cancelled");
   await expect(record.getByRole("button", { name: "Cancel cover" })).toHaveCount(0);
+});
+
+
+test("school-wide workload report shows scheduled periods without inferring availability", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [
+    {
+      id: 1, principal_id: 501, school_id: 10, username: "teacher.original",
+      employee_code: "EMP-ORIGINAL", full_name: "Original Teacher", designation: "Mathematics Teacher",
+      mobile_number: "9876543215", employment_status: "active", profile_complete: true,
+      status: "active", must_change_password: false,
+    },
+    {
+      id: 2, principal_id: 502, school_id: 10, username: "teacher.inactive",
+      employee_code: "EMP-INACTIVE", full_name: "Inactive Teacher", designation: "Science Teacher",
+      mobile_number: "9876543217", employment_status: "inactive", profile_complete: true,
+      status: "disabled", must_change_password: false,
+    },
+  ];
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "timetable.read"]);
+  await page.getByRole("button", { name: "Workload Report" }).click();
+  await expect(page.getByRole("heading", { name: "School-wide Workload Report" })).toBeVisible();
+  const row = page.locator(".staff-workload-report-row").filter({ hasText: "Original Teacher" });
+  await expect(row).toContainText("4");
+  await expect(row).toContainText("Monday (4)");
+  await row.locator("summary").click();
+  await expect(row).toContainText("Sections");
+  await expect(row).toContainText("Subjects");
+  await expect(page.getByText(/does not infer working days, free-period availability or workload limits/)).toBeVisible();
+  await expect(page.getByText("Inactive Teacher")).toBeVisible();
 });
