@@ -130,8 +130,6 @@ func (r *StaffAttendanceRepository) ListMonthly(ctx context.Context, actorID, sc
                    'id', a.id, 'date', a.attendance_date, 'status', a.status, 'remarks', a.remarks
                ) ORDER BY a.attendance_date) FILTER (WHERE a.id IS NOT NULL), '[]'::jsonb)
         FROM staff_profiles sp
-        JOIN auth_principals ap ON ap.id = sp.principal_id AND ap.status = 'active'
-        JOIN users u ON u.principal_id = sp.principal_id AND u.school_id = sp.school_id AND u.status = 'active'
         LEFT JOIN staff_attendance_records a
           ON a.school_id = sp.school_id
          AND a.staff_principal_id = sp.principal_id
