@@ -22,6 +22,7 @@ type staffRecordsRepository interface {
 	UpdateStaffQualification(context.Context,int64,int64,int64,int64,repository.StaffQualification)(*repository.StaffQualification,error)
 	UpdateStaffCertification(context.Context,int64,int64,int64,int64,repository.StaffCertification)(*repository.StaffCertification,error)
 	UpdateStaffExperience(context.Context,int64,int64,int64,int64,repository.StaffExperience)(*repository.StaffExperience,error)
+	ListStaffAuditEvents(context.Context,int64,int64,int64)([]repository.StaffAuditEvent,error)
 }
 
 type StaffRecordsService struct { repository staffRecordsRepository }
@@ -105,4 +106,9 @@ func (s *StaffRecordsService) UpdateExperience(ctx context.Context, actor, schoo
 	types:=map[string]bool{"permanent":true,"contract":true,"part_time":true,"temporary":true,"internship":true,"other":true}
 	if !types[item.EmploymentType]{return nil,ErrInvalidStaffRecord}
 	return s.repository.UpdateStaffExperience(ctx,actor,school,staff,record,item)
+}
+
+func(s *StaffRecordsService) ListAuditEvents(ctx context.Context,actor,school,staff int64)([]repository.StaffAuditEvent,error){
+	if s==nil||s.repository==nil||actor<=0||school<=0||staff<=0{return nil,ErrInvalidStaffRecord}
+	return s.repository.ListStaffAuditEvents(ctx,actor,school,staff)
 }
