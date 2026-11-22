@@ -673,8 +673,12 @@ test("staff leave request submits a valid half-day application with its selected
   await page.getByRole("dialog", { name: "Choose leave end date" }).getByRole("button", { name: "Tuesday, November 24, 2026" }).click();
   await page.getByLabel("Leave duration").click();
   await page.getByRole("option", { name: "Half day" }).click();
-  await page.getByLabel("Half-day session").click();
-  await page.getByRole("option", { name: "Second half" }).click();
+  const halfDaySession = page.getByLabel("Half-day session");
+  await halfDaySession.focus();
+  await halfDaySession.press("Enter");
+  await halfDaySession.press("ArrowDown");
+  await halfDaySession.press("Enter");
+  await expect(halfDaySession).toContainText("Second half");
   await page.getByLabel("Reason").fill("Medical appointment");
 
   await page.getByRole("button", { name: "Submit leave request" }).click();
