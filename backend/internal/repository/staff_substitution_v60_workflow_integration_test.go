@@ -2,9 +2,12 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 )
 
 func TestStaffSubstitutionV60DatabaseGuardsPostgresIntegration(t *testing.T) {
@@ -15,12 +18,48 @@ func TestStaffSubstitutionV60DatabaseGuardsPostgresIntegration(t *testing.T) {
 	if err!=nil{t.Fatalf("begin rollback-scoped substitution test: %v",err)}
 	defer func(){_=tx.Rollback(ctx)}()
 
-	var schoolID,originalID int64
-	if err=tx.QueryRow(ctx,`SELECT school_id,principal_id FROM users WHERE id=$1`,userID).Scan(&schoolID,&originalID);err!=nil{t.Fatalf("load actor fixture: %v",err)}
+	var schoolID,actorPrincipalID int64
+	if err=tx.QueryRow(ctx,`SELECT school_id,principal_id FROM users WHERE id=$1`,userID).Scan(&schoolID,&actorPrincipalID);err!=nil{t.Fatalf("load actor fixture: %v",err)}
+
+	// Teacher assignments require an active School Admin actor. Resolve or
+	// create a rollback-scoped Platform Admin exactly as the academic V17 tests do.
+	var schoolAdminRoleID int64
+	if err=tx.QueryRow(ctx,`SELECT id FROM roles WHERE school_id=$1 AND principal_type='staff'
+		AND scope_type='school' AND role_key='school_admin' AND is_system=TRUE`,schoolID).Scan(&schoolAdminRoleID);err!=nil{t.Fatalf("load School Admin role: %v",err)}
+	var platformAdminPrincipalID int64
+	err=tx.QueryRow(ctx,`SELECT ap.id FROM platform_admin_accounts pa
+		JOIN auth_principals ap ON ap.id=pa.principal_id
+		JOIN principal_roles pr ON pr.principal_id=ap.id AND pr.revoked_at IS NULL
+		JOIN roles r ON r.id=pr.role_id
+		JOIN role_permissions rp ON rp.role_id=r.id
+		JOIN permissions p ON p.id=rp.permission_id
+		WHERE ap.principal_type='platform_admin' AND ap.status='active'
+		  AND r.role_key='platform_admin' AND r.scope_type='platform' AND r.is_system=TRUE
+		  AND p.permission_key='platform.permissions.delegate' AND p.scope_type='platform' AND p.is_active=TRUE
+		LIMIT 1`).Scan(&platformAdminPrincipalID)
+	if errors.Is(err,pgx.ErrNoRows){
+		var bootstrapExists bool
+		if checkErr:=tx.QueryRow(ctx,`SELECT EXISTS(SELECT 1 FROM platform_admin_accounts)
+			OR EXISTS(SELECT 1 FROM principal_roles pr JOIN roles r ON r.id=pr.role_id
+				WHERE r.principal_type='platform_admin' AND r.scope_type='platform' AND r.role_key='platform_admin')`).Scan(&bootstrapExists);checkErr!=nil{t.Fatalf("check Platform Admin bootstrap state: %v",checkErr)}
+		if bootstrapExists{t.Skip("Platform Admin bootstrap exists but no active administrator has platform.permissions.delegate")}
+		platformAdminPrincipalID,err=NewPlatformAdminRepository(pool).bootstrapFirstInTx(ctx,tx,fmt.Sprintf("substitution-test-%d@example.invalid",time.Now().UnixNano()),"integration-test-password-hash")
+	}
+	if err!=nil{t.Fatalf("resolve rollback-scoped Platform Admin actor: %v",err)}
+	if _,err=tx.Exec(ctx,`INSERT INTO principal_roles(principal_id,role_id,assigned_by) VALUES($1,$2,$3)`,actorPrincipalID,schoolAdminRoleID,platformAdminPrincipalID);err!=nil{t.Fatalf("grant School Admin role to test actor: %v",err)}
+
 	suffix:=time.Now().UnixNano()
-	var substituteUserID,substituteID int64
+	var originalUserID,originalID,substituteUserID,substituteID int64
+	if err=tx.QueryRow(ctx,`INSERT INTO users(school_id,username,password_hash,status)
+		VALUES($1,$2,$3,'active') RETURNING id,principal_id`,schoolID,fmt.Sprintf("original-%d",suffix),"integration-test-password-hash").Scan(&originalUserID,&originalID);err!=nil{t.Fatalf("create original teacher user: %v",err)}
 	if err=tx.QueryRow(ctx,`INSERT INTO users(school_id,username,password_hash,status)
 		VALUES($1,$2,$3,'active') RETURNING id,principal_id`,schoolID,fmt.Sprintf("substitute-%d",suffix),"integration-test-password-hash").Scan(&substituteUserID,&substituteID);err!=nil{t.Fatalf("create substitute user: %v",err)}
+	var teacherRoleID int64
+	if err=tx.QueryRow(ctx,`SELECT id FROM roles WHERE school_id=$1 AND principal_type='staff'
+		AND scope_type='school' AND role_key='teacher' AND is_system=TRUE`,schoolID).Scan(&teacherRoleID);err!=nil{t.Fatalf("load Teacher role: %v",err)}
+	for _,teacherID:=range []int64{originalID,substituteID}{
+		if _,err=tx.Exec(ctx,`INSERT INTO principal_roles(principal_id,role_id,assigned_by) VALUES($1,$2,$3)`,teacherID,teacherRoleID,actorPrincipalID);err!=nil{t.Fatalf("assign Teacher role to %d: %v",teacherID,err)}
+	}
 
 	for _,staff:=range []struct{id int64;code,name string}{{originalID,fmt.Sprintf("OR-%d",suffix),"Original Teacher"},{substituteID,fmt.Sprintf("SU-%d",suffix),"Substitute Teacher"}} {
 		if _,err=tx.Exec(ctx,`INSERT INTO staff_profiles(principal_id,school_id,employee_code,full_name,designation,mobile_number)
