@@ -257,3 +257,12 @@ This section supersedes earlier Phase 4 remaining-work notes where later impleme
 - The test verifies removal is confirmation-gated: cancelling produces no DELETE request; explicit confirmation removes the override and updates the visible list. This complements the role assignment/removal workflow and read-only access coverage.
 - Exact checkpoint `d3d00fdd578e42dd9bcc89d0826afb9b9a471368`: Frontend CI [45003372900](https://github.com/TheSumitNain/school-management-system/actions/runs/45003372900) **PASS** — TypeScript/design-token checks, Vite production build and all 66 Playwright tests. Backend CI [45003372918](https://github.com/TheSumitNain/school-management-system/actions/runs/45003372918) **PASS** — Go tests, PostgreSQL integration and `go vet`.
 - No database migration or backend runtime change was introduced by this acceptance-test update.
+
+
+## 22. Permission-override-only delegation metadata access (2026-11-22)
+
+- Review found that the Staff Permission Overrides panel is authorized by `permissions.override`, but its supporting permission catalogue and active-delegation reads previously required the separate `permissions.read` and `permissions.assign` grants. That made the UI fail for a School Admin whose access was intentionally narrowed to `permissions.override`.
+- Updated the two metadata GET routes to accept either the existing read/assignment permission or `permissions.override`. Updated the repository's delegation-list authorization to accept either `permissions.assign` or `permissions.override`; the query still enforces an active same-school School Admin and honors explicit DENY overrides. Mutation routes and delegation ceilings are unchanged.
+- Added/adjusted the browser acceptance fixture to grant `users.read` and `permissions.override` only (no `roles.read`, `permissions.read` or `permissions.assign`), then load the delegated permission, require a reason, save the override and confirm removal.
+- Frontend acceptance commit `4599533c0d59bf9e3a5f7da6a0ce22a14fea64a4`: Frontend CI [45003723942](https://github.com/TheSumitNain/school-management-system/actions/runs/45003723942) **PASS**, including production build and complete Playwright suite. Backend code checkpoint `f8f1b8764635762089414334028855f92f510403`: Backend CI [45003754631](https://github.com/TheSumitNain/school-management-system/actions/runs/45003754631) **PASS**, including Go tests, PostgreSQL integration and `go vet`.
+- No schema or migration change was required.
