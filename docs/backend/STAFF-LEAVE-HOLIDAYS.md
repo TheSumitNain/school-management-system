@@ -138,3 +138,12 @@ Migration V59 and the first end-to-end Leave & Holiday workflow are implemented 
 - Leave balances, accrual, carry-forward, statutory entitlements, payroll effects, supporting-document uploads and automated holiday feeds remain out of scope.
 - V59 has only been applied in disposable CI PostgreSQL. No migration was applied to a persistent local database.
 
+## 8. Verified implementation update (2026-11-22)
+
+- Latest backend checkpoint: `8c163b5b35a644cf08a13e280c0c44f238a80037`.
+- Backend CI [44984389499](https://github.com/TheSumitNain/school-management-system/actions/runs/44984389499) **PASS** at this exact SHA. The complete migration chain including V59 ran only on disposable PostgreSQL; Go tests (including new service-level validation tests) and `go vet` passed.
+- Service validation rejects invalid/reversed leave dates, invalid full/half-day combinations, missing/oversized reasons, invalid holiday dates/names/descriptions and invalid date ranges before repository operations.
+- Repository overlap serialization uses a hash-derived transaction advisory lock from the complete school/staff identifiers. Repository cancellation and holiday-range reads also reject invalid repository inputs.
+- Frontend CI [44982936799](https://github.com/TheSumitNain/school-management-system/actions/runs/44982936799) **PASS** on UI checkpoint `36ab57484de809c30849c030187f0190dab43a60`. The daily staff attendance register displays approved leave and active holiday context when the viewer has the respective read permissions; this is informational only and does not mutate attendance rows.
+- Remaining verification: dedicated PostgreSQL behavior tests for concurrent overlap, decision authorization, transaction rollback and audit events. V59 remains unapplied to persistent/local databases.
+
