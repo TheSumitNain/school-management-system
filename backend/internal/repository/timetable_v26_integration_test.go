@@ -119,6 +119,12 @@ func TestTeacherWorkloadReportPostgresIntegration(t *testing.T) {
 	if _,err=tx.Exec(ctx,`INSERT INTO principal_roles(principal_id,role_id,assigned_by) VALUES($1,$2,$3)`,teacherID,teacherRoleID,actorID);err!=nil{t.Fatalf("assign Teacher role: %v",err)}
 	if _,err=tx.Exec(ctx,`INSERT INTO staff_profiles(principal_id,school_id,employee_code,full_name,designation,mobile_number)
 		VALUES($1,$2,$3,'Workload Teacher','Teacher','9876543218')`,teacherID,schoolID,fmt.Sprintf("WL-%d",suffix));err!=nil{t.Fatalf("create workload teacher profile: %v",err)}
+	var peerID int64
+	if err=tx.QueryRow(ctx,`INSERT INTO users(school_id,username,password_hash,status)
+		VALUES($1,$2,'integration-test-password-hash','active') RETURNING principal_id`,schoolID,fmt.Sprintf("wlp-%d",suffix)).Scan(&peerID);err!=nil{t.Fatalf("create peer workload teacher: %v",err)}
+	if _,err=tx.Exec(ctx,`INSERT INTO principal_roles(principal_id,role_id,assigned_by) VALUES($1,$2,$3)`,peerID,teacherRoleID,actorID);err!=nil{t.Fatalf("assign Teacher role to peer: %v",err)}
+	if _,err=tx.Exec(ctx,`INSERT INTO staff_profiles(principal_id,school_id,employee_code,full_name,designation,mobile_number)
+		VALUES($1,$2,$3,'Peer Workload Teacher','Teacher','9876543219')`,peerID,schoolID,fmt.Sprintf("WP-%d",suffix));err!=nil{t.Fatalf("create peer workload teacher profile: %v",err)}
 
 	var yearID,classID,sectionID,subjectID,periodID,assignmentID int64
 	if err=tx.QueryRow(ctx,`INSERT INTO academic_years(school_id,name,starts_on,ends_on,status)
@@ -134,11 +140,17 @@ func TestTeacherWorkloadReportPostgresIntegration(t *testing.T) {
 		VALUES($1,$2,$3,$4,$5,$6,$7,1,$8,$8)`,schoolID,yearID,sectionID,subjectID,teacherID,assignmentID,periodID,actorID);err!=nil{t.Fatalf("create workload timetable entry: %v",err)}
 
 	report,err:=NewAcademicRepository(tx).ListTeacherWorkloadReport(ctx,actorID,schoolID,yearID)
-	if err!=nil{t.Fatalf("list teacher workload report: %v",err)}
-	if len(report)!=1{t.Fatalf("expected one workload row, got %d: %+v",len(report),report)}
-	row:=report[0]
-	if row.TeacherPrincipalID!=teacherID||row.TeacherName!="Workload Teacher"||row.DayOfWeek!=1||row.ScheduledPeriods!=1||row.DistinctSections!=1||row.DistinctSubjects!=1||row.FirstPeriod==nil||*row.FirstPeriod!=1||row.LastPeriod==nil||*row.LastPeriod!=1{
-		t.Fatalf("unexpected workload report row: %+v",row)
+	if err!=nil{t.Fatalf("list School Admin workload report: %v",err)}
+	if len(report)!=2{t.Fatalf("School Admin should see both same-school staff profiles, got %d: %+v",len(report),report)}
+	var teacherRow *TeacherWorkloadReportRow
+	for i:=range report{if report[i].TeacherPrincipalID==teacherID{teacherRow=&report[i]}}
+	if teacherRow==nil||teacherRow.TeacherName!="Workload Teacher"||teacherRow.DayOfWeek!=1||teacherRow.ScheduledPeriods!=1||teacherRow.DistinctSections!=1||teacherRow.DistinctSubjects!=1||teacherRow.FirstPeriod==nil||*teacherRow.FirstPeriod!=1||teacherRow.LastPeriod==nil||*teacherRow.LastPeriod!=1{
+		t.Fatalf("unexpected workload report row: %+v",teacherRow)
+	}
+	teacherReport,err:=NewAcademicRepository(tx).ListTeacherWorkloadReport(ctx,teacherID,schoolID,yearID)
+	if err!=nil{t.Fatalf("list Teacher self-only workload report: %v",err)}
+	if len(teacherReport)!=1||teacherReport[0].TeacherPrincipalID!=teacherID{
+		t.Fatalf("Teacher workload report exposed peer profiles: %+v",teacherReport)
 	}
 }
 
