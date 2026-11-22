@@ -590,7 +590,7 @@ test("staff leave request field errors clear as each required field is corrected
   await expect(page.getByText("Enter the reason for leave.")).toBeVisible();
 
   await page.getByLabel("Staff member").click();
-  await page.getByRole("option", { name: /Leave Teacher/ }).click();
+  await page.getByRole("option", { name: /Validation Teacher/ }).click();
   await expect(page.getByText("Select one employee.")).toHaveCount(0);
 
   await page.getByLabel("Leave type").click();
