@@ -150,3 +150,31 @@ Staff Attendance core register is implemented and CI-verified. Phase 3 remains o
 - V58 remains unapplied to persistent/local databases. No changes were made to Academic, Student Management or Settings pages.
 
 The detailed schema, permission, API, UI and verification contract is in [STAFF-ATTENDANCE.md](../backend/STAFF-ATTENDANCE.md).
+
+## 12. Leave & Holiday Phase 4 source audit (2026-11-22)
+
+**Reviewed branch:** `work`  
+**Reviewed checkpoint:** `ddc99f0dd764b8ef9823b9c56866d74eaf968982`
+
+The current source tree contains no staff leave or holiday implementation: no leave/holiday migration, repository, service, handler, route, frontend workspace, API client or leave/holiday permission keys were found. The school calendar is not currently a reusable holiday-management domain.
+
+The existing staff attendance implementation is a separate foundation:
+
+- `staff_attendance_records` stores one daily record per staff member and supports only `present`, `absent`, `late` and `half_day`.
+- Daily and monthly APIs are school-scoped and protected by dedicated live attendance permissions.
+- Attendance writes and audit events are transactional; duplicate marks conflict, future dates are rejected, and historical corrections require the dedicated permission.
+- There is currently no `on_leave` attendance status, holiday calendar lookup, leave overlap check or leave-to-attendance integration. Do not infer leave from an absent/unmarked attendance row or mutate attendance merely because a leave request is approved.
+
+### Phase 4 implementation boundary
+
+1. Build school-scoped leave-type configuration with explicit paid/unpaid and approval-required attributes. Quota/accrual and carry-forward remain unset/disabled until the school has explicitly configured policy; do not show invented balances.
+2. Build staff applications with leave type, inclusive start/end dates, full/half-day selection, conditional half-day session and required reason. Supporting documents remain unavailable until the private document-storage contract is implemented.
+3. Build approve/reject decisions with authenticated actor and server timestamp. Rejection requires a comment. Only authorized School Admin actors may decide; applicants cannot approve their own requests unless a later explicit policy says otherwise.
+4. Reject overlapping pending or approved applications for the same staff member. Reject invalid ranges, inactive staff, invalid half-day spans and requests against inactive leave types. Recheck all constraints inside the write transaction.
+5. Keep approved leave as its own authoritative record. Attendance must expose approved leave as a derived calendar context; it must not silently create, overwrite or delete manual attendance rows. A future explicit attendance override/derivation workflow needs its own audited contract.
+6. Build school holiday calendar entries with date, name, optional description and active status. No national/state holiday feed or automatic holiday import is assumed. Holiday/Off is calendar-derived and must not be written as a staff attendance mark.
+7. Do not implement statutory entitlement, accrual, carry-forward, encashment, payroll deduction or automatic attendance deduction in this phase. These require separately approved school policy.
+8. Add dedicated non-delegable leave/holiday permissions, tenant-isolation tests, transaction/audit tests, overlap and date-boundary tests, and browser acceptance for validation, approval, filters and responsive states before calling the phase verified.
+
+**No persistent database was changed.** No migration has been created or applied at this audit checkpoint. Academic, Student Management and Settings pages were not touched.
+
