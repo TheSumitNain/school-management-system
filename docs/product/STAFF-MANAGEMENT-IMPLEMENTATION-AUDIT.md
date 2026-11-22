@@ -348,4 +348,4 @@ Verification on branch `work`, commit `30270fe0927a6eb3f284d462ddd6dc2b4ca2959e`
 - Added repository unit coverage for PostgreSQL constraint-to-domain-error mapping and handler coverage for the HTTP 409 code/message contract. Existing database uniqueness remains authoritative; no migration or persistent database change was made.
 - API contract documentation updated in `docs/backend/API.md`.
 
-**Verification pending:** backend CI for the conflict-specific error mapping and tests.
+**Verification:** Backend CI run `45010784607` passed — ephemeral PostgreSQL migration application, full Go/PostgreSQL integration suite, and `go vet`.
