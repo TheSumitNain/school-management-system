@@ -141,11 +141,9 @@ func TestStaffLeaveWorkflowPostgresIntegration(t *testing.T) {
 		if err:=f.pool.QueryRow(f.ctx,`SELECT status FROM staff_leave_requests WHERE id=$1 AND school_id=$2`,request.ID,f.schoolID).Scan(&status);err!=nil{t.Fatalf("read cross-school request: %v",err)}
 		if status!="pending"{t.Fatalf("cross-school operation changed request status to %q",status)}
 	})
-	 t.Run("cancellation audit failure rolls back and successful cancellation is audited once",func(t *testing.T){
+	t.Run("cancellation audit failure rolls back and successful cancellation is audited once",func(t *testing.T){
 		request:=f.request(t,f.staffPrincipalID,time.Now().AddDate(0,0,56).Format("2006-01-02"),time.Now().AddDate(0,0,56).Format("2006-01-02"))
-		const triggerName="trg_test_staff_leave_cancel_audit_failure"
-		const functionName="test_staff_leave_cancel_audit_failure"
-		if _,err:=f.pool.Exec(f.ctx,`CREATE OR REPLACE FUNCTION public.test_staff_leave_cancel_audit_failure() RETURNS trigger LANGUAGE plpgsql AS $ BEGIN IF NEW.action='staff.leave.cancelled' THEN RAISE EXCEPTION 'forced cancellation audit failure'; END IF; RETURN NEW; END $`);err!=nil{t.Fatalf("create cancellation audit failure function: %v",err)}
+		if _,err:=f.pool.Exec(f.ctx,`CREATE OR REPLACE FUNCTION public.test_staff_leave_cancel_audit_failure() RETURNS trigger LANGUAGE plpgsql AS $body$ BEGIN IF NEW.action='staff.leave.cancelled' THEN RAISE EXCEPTION 'forced cancellation audit failure'; END IF; RETURN NEW; END $body$`);err!=nil{t.Fatalf("create cancellation audit failure function: %v",err)}
 		if _,err:=f.pool.Exec(f.ctx,`CREATE TRIGGER trg_test_staff_leave_cancel_audit_failure BEFORE INSERT ON public.audit_events FOR EACH ROW EXECUTE FUNCTION public.test_staff_leave_cancel_audit_failure()`);err!=nil{t.Fatalf("create cancellation audit failure trigger: %v",err)}
 		t.Cleanup(func(){_,_=f.pool.Exec(context.Background(),`DROP TRIGGER IF EXISTS trg_test_staff_leave_cancel_audit_failure ON public.audit_events`);_,_=f.pool.Exec(context.Background(),`DROP FUNCTION IF EXISTS public.test_staff_leave_cancel_audit_failure()`)})
 		if err:=f.repo.Cancel(f.ctx,f.adminPrincipalID,f.schoolID,request.ID);err==nil{t.Fatal("cancellation unexpectedly succeeded when audit insert failed")}
