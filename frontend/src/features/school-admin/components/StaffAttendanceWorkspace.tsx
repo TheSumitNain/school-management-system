@@ -22,6 +22,25 @@ const statuses: Array<{ value: Status; label: string }> = [
   { value: "half_day", label: "Half day" },
 ];
 
+function csvCell(value: string | number | null | undefined) {
+  let text = String(value ?? "");
+  if (/^[\\t\\r ]*[=+\\-@]/.test(text)) text = "'" + text;
+  return '"' + text.replace(/"/g, '""') + '"';
+}
+
+function downloadCSV(filename: string, rows: Array<Array<string | number | null | undefined>>) {
+  const csv = rows.map(row => row.map(csvCell).join(",")).join("\\r\\n");
+  const blob = new Blob(["\\uFEFF", csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
 export function StaffAttendanceWorkspace({ permissions }: Props) {
   const queryClient = useQueryClient();
   const today = schoolDateValue();
@@ -116,6 +135,53 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
     return grouped;
   }, [approvedLeaveContext.data]);
   const schoolHolidayNames = (holidayContext.data?.data ?? []).map(item => item.name);
+
+  const monthlyReportReady = monthly.isSuccess &&
+    (!canReadLeaveContext || approvedMonthLeave.isSuccess) &&
+    (!canReadHolidayContext || monthHolidays.isSuccess);
+
+  const exportMonthlyReport = () => {
+    if (!monthlyReportReady || !monthly.data) return;
+    const rows: Array<Array<string | number | null | undefined>> = [[
+      "Record type", "Staff name", "Employee code", "Designation",
+      "Present days", "Absent days", "Late days", "Half days", "Recorded days",
+      "Date", "Attendance status", "Remarks", "Leave type", "Leave start date",
+      "Leave end date", "Holiday date", "Holiday name",
+    ]];
+
+    for (const item of monthly.data.data) {
+      rows.push([
+        "Attendance summary", item.full_name, item.employee_code, item.designation,
+        item.present_days, item.absent_days, item.late_days, item.half_days,
+        item.present_days + item.absent_days + item.late_days + item.half_days,
+        "", "", "", "", "", "", "", "",
+      ]);
+      for (const record of item.records) {
+        rows.push([
+          "Attendance entry", item.full_name, item.employee_code, item.designation,
+          "", "", "", "", "", record.date,
+          statuses.find(status => status.value === record.status)?.label ?? record.status,
+          record.remarks ?? "", "", "", "", "", "",
+        ]);
+      }
+    }
+
+    for (const leave of approvedMonthLeave.data?.data ?? []) {
+      rows.push([
+        "Approved leave", leave.staff_name ?? "Staff", leave.employee_code, "",
+        "", "", "", "", "", "", "", "", leave.leave_type_name ?? "Leave",
+        leave.start_date, leave.end_date, "", "",
+      ]);
+    }
+    for (const holiday of monthHolidays.data?.data ?? []) {
+      rows.push([
+        "School holiday", "", "", "", "", "", "", "", "", "", "", "", "",
+        "", "", holiday.holiday_date, holiday.name,
+      ]);
+    }
+
+    downloadCSV("staff-attendance-" + month + ".csv", rows);
+  };
   const records = daily.data?.data ?? [];
   const visibleRecords = useMemo(() => {
     const term = search.trim().toLocaleLowerCase();
@@ -220,7 +286,7 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
       </table></div>}
     </>}
     {view === "monthly" && <>
-      <div className="staff-attendance-toolbar"><label><span>Month</span><input aria-label="Attendance month" type="month" value={month} max={today.slice(0, 7)} onChange={event => setMonth(event.target.value)}/></label><button type="button" className="staff-secondary-button" onClick={() => void monthly.refetch()} disabled={monthly.isFetching}><RefreshCw size={15}/> Refresh</button></div>
+      <div className="staff-attendance-toolbar"><label><span>Month</span><input aria-label="Attendance month" type="month" value={month} max={today.slice(0, 7)} onChange={event => setMonth(event.target.value)}/></label><button type="button" className="staff-secondary-button" onClick={() => void Promise.all([monthly.refetch(), ...(canReadLeaveContext ? [approvedMonthLeave.refetch()] : []), ...(canReadHolidayContext ? [monthHolidays.refetch()] : [])])} disabled={monthly.isFetching || approvedMonthLeave.isFetching || monthHolidays.isFetching}><RefreshCw size={15}/> Refresh</button><button type="button" className="staff-attendance-save" onClick={exportMonthlyReport} disabled={!monthlyReportReady || monthly.data.data.length === 0}>Download monthly report</button></div>
       {monthly.isPending && <p role="status" className="staff-attendance-message">Loading monthly register…</p>}
       {monthly.isError && <div className="staff-attendance-message error" role="alert">Unable to load monthly register. <button type="button" onClick={() => void monthly.refetch()}>Try again</button></div>}
       {monthly.isSuccess && monthly.data.data.length === 0 && <p className="staff-attendance-message">No active staff profiles are available for this school.</p>}
