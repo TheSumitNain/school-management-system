@@ -375,6 +375,44 @@ test("staff creation uses the shared IST date picker and submits its selected da
   await expect(page.locator('input[type="date"]')).toHaveCount(0);
 });
 
+test("disabling a staff account requires explicit confirmation and refreshes its status", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 516, school_id: 10, username: "disable.teacher",
+    employee_code: "EMP-DISABLE-01", full_name: "Disable Teacher", designation: "Teacher",
+    mobile_number: "9876543214", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false,
+  }];
+  let disableCalls = 0;
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "users.disable"]);
+  await page.route("**/api/school/staff/516", async route => {
+    if (route.request().method() === "DELETE") {
+      disableCalls += 1;
+      rows[0].status = "disabled";
+      await route.fulfill({ json: { message: "Staff account disabled." } });
+      return;
+    }
+    await route.fallback();
+  });
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  const staffRow = page.locator("tr").filter({ hasText: "disable.teacher" });
+  await expect(staffRow).toBeVisible();
+  await staffRow.getByRole("button", { name: "Disable disable.teacher" }).click();
+  const cancelled = page.getByRole("dialog", { name: "Disable staff account?" });
+  await expect(cancelled).toContainText("active sessions will be revoked");
+  await cancelled.getByRole("button", { name: "Cancel", exact: true }).click();
+  expect(disableCalls).toBe(0);
+  await expect(staffRow).toContainText("active");
+
+  await staffRow.getByRole("button", { name: "Disable disable.teacher" }).click();
+  const confirmation = page.getByRole("dialog", { name: "Disable staff account?" });
+  await confirmation.getByRole("button", { name: "Disable account" }).click();
+  await expect(page.getByText("disable.teacher has been disabled and active sessions revoked.")).toBeVisible();
+  expect(disableCalls).toBe(1);
+  await expect(page.locator("tr").filter({ hasText: "disable.teacher" })).toContainText("disabled");
+  await expect(page.getByRole("button", { name: "Disable disable.teacher" })).toHaveCount(0);
+});
+
 test("staff profile edit uses the shared employment-status select and sends the selected value", async ({ page }) => {
   const updates: Array<Record<string, unknown>> = [];
   const rows: Array<Record<string, unknown>> = [{
