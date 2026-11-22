@@ -339,3 +339,13 @@ Verification on branch `work`, commit `30270fe0927a6eb3f284d462ddd6dc2b4ca2959e`
 - No persistent database was changed and no migration was added.
 
 **Remaining Phase 5 work:** server-authoritative workload/conflict reporting and the separately authorized, audited substitute workflow. The initial teacher-specific profile workload view, its browser acceptance, and its PostgreSQL tenant/actor-scope checks are verified; this does not mark all of Phase 5 complete.
+
+
+## 31. Timetable conflict feedback hardening (2026-11-22)
+
+- The V26 database already prevents double-booking with unique weekly-slot indexes for teacher and section. The write path previously collapsed both constraint violations into one generic HTTP 409 message, which made concurrent edits and stale browser data difficult to resolve.
+- Repository error mapping now distinguishes `ux_timetable_entries_teacher_slot` from `ux_timetable_entries_section_slot`. The timetable handler returns stable conflict codes and actionable messages: `timetable_teacher_conflict` (choose another teacher or period), `timetable_section_conflict` (choose another period), and a safe generic `timetable_slot_conflict` fallback for unknown uniqueness/exclusion conflicts.
+- Added repository unit coverage for PostgreSQL constraint-to-domain-error mapping and handler coverage for the HTTP 409 code/message contract. Existing database uniqueness remains authoritative; no migration or persistent database change was made.
+- API contract documentation updated in `docs/backend/API.md`.
+
+**Verification pending:** backend CI for the conflict-specific error mapping and tests.
