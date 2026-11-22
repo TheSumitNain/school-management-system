@@ -1783,3 +1783,11 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Backend CI [44985769667](https://github.com/TheSumitNain/school-management-system/actions/runs/44985769667) **PASS** at code checkpoint `e028baffd2485afeee792f98b068f89e2ce1ae07`: full migration chain on disposable PostgreSQL, Go test suite and `go vet ./...`.
 - No persistent/local database migration applied. Phase 4 still needs further frontend workflow acceptance, attendance reporting integration and school-approved leave policy/balance decisions.
 
+## Staff Attendance / Leave reporting follow-up (2026-11-22)
+
+- Daily attendance status filter now applies even without a search term.
+- Monthly attendance report shows approved leave and active holidays in a distinct, permission-gated calendar context; neither is counted as attendance.
+- Leave list API supports validated inclusive month-overlap date ranges. Added PostgreSQL integration coverage for in-range vs out-of-range requests.
+- Backend CI [44986574096](https://github.com/TheSumitNain/school-management-system/actions/runs/44986574096) **PASS** at `a01514119b0d395b106accd990f59b2f7a5e992f` including migrations, Go tests and vet. Frontend build passes; Playwright run is pending after an E2E mock routing correction.
+- No persistent/local DB migrations. No changes to Academic, Student Management or Settings pages.
+
