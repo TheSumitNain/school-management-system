@@ -52,3 +52,5 @@
 .staff-leave-modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
 @media(max-width:850px){.staff-leave-grid{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:520px){.staff-leave-panel{padding:13px}.staff-leave-date-grid,.staff-leave-filters{grid-template-columns:minmax(0,1fr)}.staff-leave-subtabs button{flex:1 1 auto;justify-content:center}.staff-leave-type-row{align-items:flex-start;flex-direction:column;gap:4px}.staff-leave-actions button{flex:1 1 auto}}
+
+.staff-leave-inactive-label{color:var(--color-text-muted);font-size:10px;font-weight:600}
