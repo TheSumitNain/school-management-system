@@ -187,3 +187,12 @@
 .staff-workspace-tabs button.upcoming{color:var(--muted);opacity:.62}
 .staff-workspace-tabs button:focus-visible{outline:2px solid var(--color-focus);outline-offset:2px}
 @media(max-width:650px){.staff-workspace-heading{align-items:flex-start;flex-direction:row}.staff-workspace-heading h1{font-size:23px}.staff-workspace-tabs{margin-top:16px}.staff-workspace-tabs button{padding:10px 11px;font-size:11px}}
+
+
+/* Staff directory filters stay grouped with search and wrap cleanly on narrow screens. */
+.staff-management-page .staff-directory-toolbar{align-items:flex-start;flex-wrap:wrap}
+.staff-management-page .staff-directory-controls{display:flex;flex:1 1 520px;justify-content:flex-end;gap:10px;flex-wrap:wrap;min-width:0}
+.staff-management-page .staff-directory-filters{display:flex;gap:10px;flex-wrap:wrap}
+.staff-management-page .staff-directory-filters label{display:grid;gap:4px;min-width:150px;color:var(--color-text-secondary);font-size:11px;font-weight:600}
+.staff-management-page .staff-directory-filters .app-select{width:100%}
+@media(max-width:700px){.staff-management-page .staff-directory-controls{flex-basis:100%;justify-content:stretch}.staff-management-page .staff-directory-controls>.search{width:100%;min-width:0}.staff-management-page .staff-directory-filters{width:100%}.staff-management-page .staff-directory-filters label{flex:1 1 145px}}
