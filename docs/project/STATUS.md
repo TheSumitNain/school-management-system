@@ -1948,3 +1948,11 @@ This update supersedes older status bullets that listed the following database-b
 - Added Staff Management Substitutions workspace with inline validation, date/weekday check, optional approved full-day leave reference, coverage listing and explicit cancellation confirmation. Parent OTP remains out of scope.
 - Backend checkpoint 8c68684ef2566bc8b5285eed1cbe2ac0352b6d20: Backend CI [45016169600](https://github.com/TheSumitNain/school-management-system/actions/runs/45016169600) **PASS** (Go tests, ephemeral PostgreSQL integration and go vet). Frontend checkpoint 1cdbc59dfef59f8d4a8e98d114bc4b3f80de2da0: Frontend CI [45015865422](https://github.com/TheSumitNain/school-management-system/actions/runs/45015865422) **PASS** (TypeScript, production build and full Playwright suite including substitution assignment, weekday validation and cancellation).
 - Migration V60 was applied only to ephemeral CI PostgreSQL. No persistent local/user database migration was applied or approved.
+
+
+## Staff Management — school-wide workload report (2026-11-22)
+
+- Added GET /school/timetable/workload-report?academic_year_id=... with live timetable permission checks, authenticated-school filtering and Teacher self-only scope. The PostgreSQL query returns daily scheduled-period counts, distinct sections/subjects and first/last period; teachers without lessons receive a zero-count row.
+- Added Staff Management Workload Report tab with school-wide weekly totals, busiest day, staff employment/login status, search and employment filtering, plus expandable daily breakdowns. It does not infer working days, availability, free periods or workload limits.
+- Backend checkpoint b858f1ad782ea254b8589fb5b474bdec9d90fd1: Backend CI [45017634124](https://github.com/TheSumitNain/school-management-system/actions/runs/45017634124) **PASS** (Go tests, PostgreSQL integration including Teacher self-only scope, and go vet). Frontend checkpoint a022ceb5be1e8c1f41bb2c70d84a35195b477d12: Frontend CI [45017345426](https://github.com/TheSumitNain/school-management-system/actions/runs/45017345426) **PASS** (TypeScript, production build and Playwright workload report acceptance).
+- No database migration or persistent database change was introduced.
