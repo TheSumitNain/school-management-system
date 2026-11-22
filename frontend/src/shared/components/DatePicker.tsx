@@ -135,6 +135,7 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
     setVisibleMonth(startOfMonth(nextDate));
     setActiveDate(toISO(nextDate));
     setView("days");
+    shouldFocusActiveDate.current = true;
   }
 
   function changeDecade(offset: number) {
@@ -268,6 +269,7 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
                   setVisibleMonth(startOfMonth(nextDate));
                   setActiveDate(toISO(nextDate));
                   setView("days");
+                  shouldFocusActiveDate.current = true;
                 }}>{monthDate.toLocaleDateString(undefined, { month: "short" })}</button>;
               })}
             </div>
