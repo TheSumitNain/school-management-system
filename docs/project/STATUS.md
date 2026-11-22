@@ -1858,3 +1858,9 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Added browser coverage for a user with `staff.holidays.read` but without `staff.holidays.manage`: the calendar remains viewable, inactive holidays are not requested, and all holiday mutation controls remain hidden.
 - Exact checkpoint `eaaea2f2f0f4a3665221a3fe0d1807f404eac6a7`: Frontend CI [45001889888](https://github.com/TheSumitNain/school-management-system/actions/runs/45001889888) and Backend CI [45001889885](https://github.com/TheSumitNain/school-management-system/actions/runs/45001889885) both **PASS**. Frontend run includes the full Playwright suite; backend run includes PostgreSQL integration tests and `go vet`.
 - No runtime feature, API contract or database change; acceptance-test-only update.
+## Staff Management — Account & Access permission acceptance (2026-11-22)
+
+- Added Playwright coverage for a staff profile viewer with roles.read but without roles.assign or permissions.override.
+- Verified the assigned role is visible, role assignment/removal controls are not rendered, and the page does not fetch permission catalogue, delegation or individual override data without the corresponding permissions.
+- Code checkpoint 15d74d324de85425a94039c45c715478d153cae9: Frontend CI [45002264200](https://github.com/TheSumitNain/school-management-system/actions/runs/45002264200) and Backend CI [45002264188](https://github.com/TheSumitNain/school-management-system/actions/runs/45002264188) both **PASS**. The frontend run includes the full Playwright suite; backend includes PostgreSQL integration tests and go vet.
+- No runtime feature or database migration was added by this acceptance test.
