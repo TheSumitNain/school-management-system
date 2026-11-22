@@ -1791,3 +1791,11 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Backend CI [44986574096](https://github.com/TheSumitNain/school-management-system/actions/runs/44986574096) **PASS** at `a01514119b0d395b106accd990f59b2f7a5e992f` including migrations, Go tests and vet. Frontend build passes; Playwright run is pending after an E2E mock routing correction.
 - No persistent/local DB migrations. No changes to Academic, Student Management or Settings pages.
 
+## Staff Leave & Holiday — holiday reactivation and local acceptance (2026-11-22)
+
+- School holiday listing defaults to active entries. Users with `staff.holidays.manage` can request inactive entries; that expanded listing requires the manage permission, including for manager-only accounts without a separate holiday-read grant.
+- Inactive holidays have an explicit Reactivate action and confirmation. Editing an inactive holiday preserves its inactive state; only the separate reactivation action activates it. Deactivation also remains explicitly confirmed.
+- Added PostgreSQL integration coverage for active-only default listing, manager-only inactive listing and denial when a non-manager requests inactive entries.
+- Local verification at `48c4aef32ff2e92d2cd4dde8b8a0e7bf5645ee63`: `npm run typecheck` **PASS**; `npm run test:e2e -- staff-management.spec.ts` **PASS (14/14)**; `npm run build` **PASS**.
+- Backend CI [44990112117](https://github.com/TheSumitNain/school-management-system/actions/runs/44990112117) **PASS** at the same commit: full migration chain on disposable PostgreSQL, backend tests including PostgreSQL integration, and `go vet`. Frontend CI [44990112138](https://github.com/TheSumitNain/school-management-system/actions/runs/44990112138) **PASS**: TypeScript/Vite production build and Student Management browser acceptance. Staff-specific 14-test browser acceptance was separately verified locally.
+- No persistent/local database migration was applied. Phase 4 remains partially implemented; approved school leave policy/balance rules and remaining end-to-end workflow review are still outstanding. Academic, Student Management and Settings implementation was not changed by this Staff follow-up.
