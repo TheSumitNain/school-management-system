@@ -303,3 +303,11 @@ This section supersedes earlier Phase 4 remaining-work notes where later impleme
 - Expanded the Staff Overview browser fixture to include two deliberately different staff states: an active employee with an incomplete login-readiness state, and an inactive employee with an incomplete profile. The acceptance assertions independently verify total staff, active employment, enabled logins, incomplete profiles, and readiness counts rather than conflating employment, profile and account status.
 - Exact checkpoint `176ce3e85fa8cb4d621066e88207c63b35c9c740`: Frontend CI [45005957248](https://github.com/TheSumitNain/school-management-system/actions/runs/45005957248) **PASS**, including TypeScript, production build and the complete Playwright browser acceptance suite. Backend CI [45005957357](https://github.com/TheSumitNain/school-management-system/actions/runs/45005957357) **PASS**, including Go tests, ephemeral PostgreSQL migrations/integration and `go vet`.
 - Acceptance-test-only change; no backend runtime change or persistent database migration.
+
+
+## 28. Staff directory independent filtering (2026-11-22)
+
+- Added combined text search and independent filters for employment status (active/inactive), login-account status (enabled/disabled) and profile completeness (complete/incomplete). Result counts update with the combined filters; shared accessible Select controls are responsive on narrow screens.
+- Corrected an important semantic distinction during review: profile completeness is derived only from the profile-completeness field, never inferred from employment status. Browser coverage deliberately includes an active employee with an incomplete profile to prove these filters remain independent.
+- Exact checkpoint `674133cf169619a236bf88184bb971b53471f86d`: Frontend CI [45007749959](https://github.com/TheSumitNain/school-management-system/actions/runs/45007749959) **PASS**, including TypeScript, production build and complete Playwright suite. Backend CI [45007750034](https://github.com/TheSumitNain/school-management-system/actions/runs/45007750034) **PASS**, including Go tests, ephemeral PostgreSQL migrations/integration and `go vet`.
+- Frontend-only behavior; no backend runtime change or persistent database migration.
