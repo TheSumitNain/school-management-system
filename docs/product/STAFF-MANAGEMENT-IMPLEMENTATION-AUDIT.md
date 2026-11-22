@@ -208,3 +208,11 @@ This section supersedes the earlier Phase 4 notes where they differ.
 - Backend CI [44984794698](https://github.com/TheSumitNain/school-management-system/actions/runs/44984794698) **PASS** at the same checkpoint: full migration chain on disposable PostgreSQL, Go tests including new leave/holiday service validation tests, and `go vet`.
 - Phase 4 remains partially implemented pending dedicated PostgreSQL behavior tests for overlap/concurrency, decision authorization, rollback and audit. School-specific policy and balance rules remain unconfigured. V59 remains unapplied to persistent/local databases.
 
+## 16. Leave workflow PostgreSQL behavior tests (2026-11-22)
+
+- Added real PostgreSQL integration coverage for concurrent overlapping submissions (exactly one succeeds), unauthorized decisions, applicant self-approval prevention, approval/rejection audit persistence, rollback when the audit insert fails, rejection-comment requirement and cross-school cancellation denial.
+- The new concurrency test exposed a pgx parameter-type issue in the overlap advisory-lock query. Fixed the query to type both identifiers as BIGINT before text conversion.
+- Backend CI [44985769667](https://github.com/TheSumitNain/school-management-system/actions/runs/44985769667) **PASS** at exact code checkpoint `e028baffd2485afeee792f98b068f89e2ce1ae07`: full migration chain on disposable PostgreSQL, all Go tests including the new V59 workflow tests, and `go vet ./...`.
+- The audit-failure test intentionally raises a database exception to prove the leave decision transaction rolls back; the resulting PostgreSQL error in CI logs is expected by the test.
+- V59 remains unapplied to persistent/local databases. Remaining Phase 4 work includes further negative school-isolation/authorization cases, frontend review of full leave workflows, attendance reporting integration, and school-approved leave policy/balance rules.
+
