@@ -30,6 +30,7 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
   const [drafts, setDrafts] = useState<Record<number, Draft>>({});
   const [pendingCorrection, setPendingCorrection] = useState<PendingCorrection | null>(null);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "unmarked" | Status>("all");
   const [bulkStatus, setBulkStatus] = useState<Status | "">("");
   const [bulkRemarks, setBulkRemarks] = useState("");
   const [bulkAttempted, setBulkAttempted] = useState(false);
@@ -80,8 +81,12 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
   const visibleRecords = useMemo(() => {
     const term = search.trim().toLocaleLowerCase();
     if (!term) return records;
-    return records.filter(item => [item.full_name, item.employee_code, item.designation].some(value => value.toLocaleLowerCase().includes(term)));
-  }, [records, search]);
+    return records.filter(item => {
+      const matchesSearch = !term || [item.full_name, item.employee_code, item.designation].some(value => value.toLocaleLowerCase().includes(term));
+      const matchesStatus = statusFilter === "all" || (statusFilter === "unmarked" ? !item.status : item.status === statusFilter);
+      return matchesSearch && matchesStatus;
+    });
+  }, [records, search, statusFilter]);
   const bulkTargets = visibleRecords.filter(item => !item.id);
   const totals = useMemo(() => records.reduce((acc, item) => {
     if (item.status) acc[item.status] += 1;
@@ -130,6 +135,9 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
       <div className="staff-attendance-toolbar">
         <label><span>Attendance date</span><DatePicker value={date} onChange={setDate} ariaLabel="Staff attendance date" max={today}/></label>
         <label><span>Search employees</span><input aria-label="Search staff attendance" value={search} onChange={event => setSearch(event.target.value)} placeholder="Name, employee code or designation"/></label>
+        <label><span>Filter by status</span><select aria-label="Filter staff attendance status" value={statusFilter} onChange={event => setStatusFilter(event.target.value as "all" | "unmarked" | Status)}>
+          <option value="all">All statuses</option><option value="unmarked">Not marked</option>{statuses.map(status => <option key={status.value} value={status.value}>{status.label}</option>)}
+        </select></label>
         <button type="button" className="staff-secondary-button" onClick={() => void daily.refetch()} disabled={daily.isFetching}><RefreshCw size={15}/> Refresh</button>
       </div>
       <div className="staff-attendance-totals" aria-live="polite">
