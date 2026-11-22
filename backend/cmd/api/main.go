@@ -315,6 +315,7 @@ func setupRouterWithHandlers(
 		staffAttendanceAuth := authMiddleware()
 		router.GET("/school/staff-attendance", staffAttendanceAuth, middleware.RequirePermission("staff.attendance.read"), staffAttendanceHandler.ListDaily)
 		router.GET("/school/staff-attendance/month", staffAttendanceAuth, middleware.RequirePermission("staff.attendance.read"), staffAttendanceHandler.ListMonthly)
+		router.POST("/school/staff-attendance/bulk", staffAttendanceAuth, middleware.RequireAnyPermission("staff.attendance.mark", "staff.attendance.correct_past"), staffAttendanceHandler.MarkBulk)
 		router.POST("/school/staff-attendance", staffAttendanceAuth, middleware.RequireAnyPermission("staff.attendance.mark", "staff.attendance.correct_past"), staffAttendanceHandler.Mark)
 		router.PATCH("/school/staff-attendance/:recordID", staffAttendanceAuth, middleware.RequireAnyPermission("staff.attendance.update_same_day", "staff.attendance.correct_past"), staffAttendanceHandler.Update)
 	}
