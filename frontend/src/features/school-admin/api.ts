@@ -698,3 +698,13 @@ export function createStaffSubstitution(input:{
 export function cancelStaffSubstitution(substitutionID:number){
   return api<{message:string}>(`/school/staff-substitutions/${substitutionID}/cancel`,{method:"POST"});
 }
+
+export type TeacherWorkloadReportRow = {
+  teacher_principal_id:number; teacher_name:string; employee_code:string; designation:string;
+  employment_status:"active"|"inactive"; login_status:"active"|"disabled"; day_of_week:number;
+  scheduled_periods:number; distinct_sections:number; distinct_subjects:number;
+  first_period?:number|null; last_period?:number|null;
+};
+export function getTeacherWorkloadReport(academicYearID:number,signal?:AbortSignal){
+  return api<{workloads:TeacherWorkloadReportRow[]}>(`/school/timetable/workload-report?academic_year_id=${academicYearID}`,{signal});
+}
