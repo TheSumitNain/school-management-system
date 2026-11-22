@@ -318,3 +318,21 @@ This section supersedes earlier Phase 4 remaining-work notes where later impleme
 - The existing timetable entries read endpoint is protected by `timetable.read` and accepts academic-year and optional section filters only. It does not expose a server-side teacher-principal filter. Fetching the entire school timetable into a staff profile and filtering in the browser would unnecessarily disclose unrelated staff schedules to that client and is not an acceptable implementation shortcut.
 - Before adding the Phase 5 workload summary, extend the existing read contract with a server-side teacher filter (or a dedicated staff-scoped read route), validate target staff membership in the authenticated school, enforce the live timetable read permission, and add PostgreSQL tests for cross-school denial and target scoping. The profile should show period counts and weekly schedule derived from real timetable entries only; no guessed workload quota or synthetic availability.
 - The next implementation checkpoint is therefore a narrow, additive API/query-contract change plus integration and browser acceptance tests. No migration is currently justified by this review; do not apply any migration to a persistent database.
+
+
+## 30. Teacher-scoped workload view implementation checkpoint (2026-11-22)
+
+The initial staff workload view is now implemented without a database migration:
+
+- The existing `GET /school/timetable/entries` read API accepts an optional positive `teacher_principal_id` filter. The filter is applied in the PostgreSQL query, not in the browser.
+- A requested teacher must have a `staff_profiles` row in the authenticated school. The existing teacher-only actor boundary remains in force, so a teacher cannot use the filter to read another teacher's schedule. The route and repository continue to enforce live `timetable.read` authorization.
+- The frontend API helper exposes the optional filter. A selected employee's profile now includes a permission-gated **Workload & Timetable** tab that loads the current academic year and that employee's scheduled entries only.
+- The panel shows scheduled-period, teaching-day, section and subject counts plus the actual timetable rows. It explicitly states that an unscheduled period is not confirmed availability.
+- Handler tests cover forwarding a valid teacher scope and rejecting a non-positive filter. A Playwright test verifies that the profile requests a teacher-specific timetable and renders the schedule and availability caveat.
+
+Verification on branch `work`, commit `30270fe0927a6eb3f284d462ddd6dc2b4ca2959e`:
+- Backend CI run `45009158991`: PASS — all migrations on the ephemeral PostgreSQL database, full Go test suite including PostgreSQL integration, and `go vet`.
+- Frontend CI run `45009158987`: PASS — TypeScript/Vite production build and complete Playwright browser acceptance suite.
+- No persistent database was changed and no migration was added.
+
+**Remaining Phase 5 work:** add a dedicated repository-level PostgreSQL test proving same-school target filtering and cross-school isolation for the new optional filter; then implement server-authoritative workload/conflict reporting and the separately authorized, audited substitute workflow. This checkpoint does not mark all of Phase 5 complete.
