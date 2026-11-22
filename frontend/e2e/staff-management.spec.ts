@@ -447,6 +447,46 @@ test("staff password reset validates a strong temporary password and requires ne
   expect(submittedPayload).toEqual({ new_password: "StrongTempPass!2026" });
 });
 
+test("enabling a disabled staff account validates a temporary password and enforces next sign-in change", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 518, school_id: 10, username: "enable.teacher",
+    employee_code: "EMP-ENABLE-01", full_name: "Enable Teacher", designation: "Teacher",
+    mobile_number: "9876543217", employment_status: "active", profile_complete: true,
+    status: "disabled", must_change_password: false,
+  }];
+  let enableCalls = 0;
+  let submittedPayload: Record<string, unknown> | null = null;
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "users.update"]);
+  await page.route("**/api/school/staff/518/enable", async route => {
+    if (route.request().method() !== "POST") { await route.fallback(); return; }
+    enableCalls += 1;
+    submittedPayload = route.request().postDataJSON() as Record<string, unknown>;
+    rows[0].status = "active";
+    rows[0].must_change_password = true;
+    await route.fulfill({ json: { message: "Staff account enabled." } });
+  });
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  const staffRow = page.locator("tr").filter({ hasText: "enable.teacher" });
+  await expect(staffRow).toBeVisible();
+  await staffRow.getByRole("button", { name: "Enable enable.teacher" }).click();
+  const enableDialog = page.getByRole("dialog", { name: "Enable staff account" });
+  const password = enableDialog.getByLabel("Temporary password");
+  await password.fill("short");
+  await enableDialog.getByRole("button", { name: "Enable account", exact: true }).click();
+  await expect(enableDialog.getByText("Password must contain at least 12 characters.")).toBeVisible();
+  expect(enableCalls).toBe(0);
+
+  await password.fill("EnableTempPass!2026");
+  await enableDialog.getByRole("button", { name: "Enable account", exact: true }).click();
+  await expect(page.getByText("Staff account enabled. A password change is required at next sign-in.")).toBeVisible();
+  expect(enableCalls).toBe(1);
+  expect(submittedPayload).toEqual({ temporary_password: "EnableTempPass!2026" });
+  await expect(page.locator("tr").filter({ hasText: "enable.teacher" })).toContainText("active");
+  await expect(page.getByText("Change required")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Enable enable.teacher" })).toHaveCount(0);
+});
+
 test("staff profile edit uses the shared employment-status select and sends the selected value", async ({ page }) => {
   const updates: Array<Record<string, unknown>> = [];
   const rows: Array<Record<string, unknown>> = [{
