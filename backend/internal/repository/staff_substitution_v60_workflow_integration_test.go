@@ -75,9 +75,9 @@ func TestStaffSubstitutionV60DatabaseGuardsPostgresIntegration(t *testing.T) {
 	if err=tx.QueryRow(ctx,`INSERT INTO timetable_periods(school_id,academic_year_id,period_number,name,starts_at,ends_at)
 		VALUES($1,$2,1,'Period 1',TIME '09:00',TIME '09:40') RETURNING id`,schoolID,yearID).Scan(&periodID);err!=nil{t.Fatalf("create period: %v",err)}
 	if err=tx.QueryRow(ctx,`INSERT INTO teacher_subject_assignments(school_id,academic_year_id,section_id,subject_id,teacher_principal_id,assigned_by_principal_id)
-		VALUES($1,$2,$3,$4,$5,$5) RETURNING id`,schoolID,yearID,sectionID,subjectID,originalID).Scan(&originalAssignmentID);err!=nil{t.Fatalf("assign original teacher: %v",err)}
+		VALUES($1,$2,$3,$4,$5,$6) RETURNING id`,schoolID,yearID,sectionID,subjectID,originalID,actorPrincipalID).Scan(&originalAssignmentID);err!=nil{t.Fatalf("assign original teacher: %v",err)}
 	if err=tx.QueryRow(ctx,`INSERT INTO teacher_subject_assignments(school_id,academic_year_id,section_id,subject_id,teacher_principal_id,assigned_by_principal_id)
-		VALUES($1,$2,$3,$4,$5,$6) RETURNING id`,schoolID,yearID,sectionID,subjectID,substituteID,originalID).Scan(&substituteAssignmentID);err!=nil{t.Fatalf("assign substitute teacher: %v",err)}
+		VALUES($1,$2,$3,$4,$5,$6) RETURNING id`,schoolID,yearID,sectionID,subjectID,substituteID,actorPrincipalID).Scan(&substituteAssignmentID);err!=nil{t.Fatalf("assign substitute teacher: %v",err)}
 	if err=tx.QueryRow(ctx,`INSERT INTO timetable_entries(school_id,academic_year_id,section_id,subject_id,teacher_principal_id,teacher_subject_assignment_id,period_id,day_of_week,created_by_principal_id,updated_by_principal_id)
 		VALUES($1,$2,$3,$4,$5,$6,$7,1,$8,$8) RETURNING id`,schoolID,yearID,sectionID,subjectID,originalID,originalAssignmentID,periodID,originalID).Scan(&timetableEntryID);err!=nil{t.Fatalf("create recurring timetable entry: %v",err)}
 
@@ -114,7 +114,7 @@ func TestStaffSubstitutionV60DatabaseGuardsPostgresIntegration(t *testing.T) {
 	if err=tx.QueryRow(ctx,`INSERT INTO sections(school_id,academic_year_id,class_id,name) VALUES($1,$2,$3,'B') RETURNING id`,schoolID,yearID,classID).Scan(&secondSectionID);err!=nil{t.Fatalf("create second section: %v",err)}
 	var secondAssignmentID int64
 	if err=tx.QueryRow(ctx,`INSERT INTO teacher_subject_assignments(school_id,academic_year_id,section_id,subject_id,teacher_principal_id,assigned_by_principal_id)
-		VALUES($1,$2,$3,$4,$5,$6) RETURNING id`,schoolID,yearID,secondSectionID,subjectID,substituteID,originalID).Scan(&secondAssignmentID);err!=nil{t.Fatalf("assign substitute to second section: %v",err)}
+		VALUES($1,$2,$3,$4,$5,$6) RETURNING id`,schoolID,yearID,secondSectionID,subjectID,substituteID,actorPrincipalID).Scan(&secondAssignmentID);err!=nil{t.Fatalf("assign substitute to second section: %v",err)}
 	if _,err=tx.Exec(ctx,`INSERT INTO timetable_entries(school_id,academic_year_id,section_id,subject_id,teacher_principal_id,teacher_subject_assignment_id,period_id,day_of_week,created_by_principal_id,updated_by_principal_id)
 		VALUES($1,$2,$3,$4,$5,$6,$7,1,$8,$8)`,schoolID,yearID,secondSectionID,subjectID,substituteID,secondAssignmentID,periodID,originalID);err!=nil{t.Fatalf("teacher schedule should be allowed after substitution cancellation: %v",err)}
 }
