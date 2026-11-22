@@ -8,6 +8,8 @@ BEGIN
 END;
 $v58_down$;
 
+DROP TRIGGER trg_validate_staff_attendance_date ON public.staff_attendance_records;
+DROP FUNCTION public.validate_staff_attendance_date();
 DROP TRIGGER trg_z_grant_staff_attendance_permissions ON public.schools;
 DROP FUNCTION public.grant_staff_attendance_permissions();
 
