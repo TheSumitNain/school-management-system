@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
 import { notifyToast } from "../../../shared/notifications";
 import { DatePicker } from "../../../shared/components/DatePicker";
+import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { schoolDateValue } from "../../../shared/date/schoolDate";
 import {
   getDailyStaffAttendance, getMonthlyStaffAttendance, markStaffAttendance, updateStaffAttendance,
@@ -12,6 +13,7 @@ import {
 type Props = { permissions: string[] };
 type Status = "present" | "absent" | "late" | "half_day";
 type Draft = { status: Status | ""; remarks: string; attempted: boolean };
+type PendingCorrection = { item: StaffAttendanceRecord; draft: Draft };
 const statuses: Array<{ value: Status; label: string }> = [
   { value: "present", label: "Present" },
   { value: "absent", label: "Absent" },
@@ -26,6 +28,7 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
   const [date, setDate] = useState(today);
   const [month, setMonth] = useState(today.slice(0, 7));
   const [drafts, setDrafts] = useState<Record<number, Draft>>({});
+  const [pendingCorrection, setPendingCorrection] = useState<PendingCorrection | null>(null);
   const canRead = permissions.includes("staff.attendance.read");
   const daily = useQuery({
     queryKey: ["staff-attendance", "daily", date],
@@ -45,12 +48,12 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
   };
   const mark = useMutation({
     mutationFn: markStaffAttendance,
-    onSuccess: async () => { notifyToast("success", "Staff attendance marked."); await invalidate(); },
+    onSuccess: async () => { setPendingCorrection(null); notifyToast("success", "Staff attendance marked."); await invalidate(); },
     onError: () => notifyToast("error", "Attendance could not be marked. Check permissions or whether it was already recorded."),
   });
   const update = useMutation({
     mutationFn: (input: { id: number; status: Status; remarks?: string }) => updateStaffAttendance(input.id, { status: input.status, remarks: input.remarks }),
-    onSuccess: async () => { notifyToast("success", "Staff attendance updated."); await invalidate(); },
+    onSuccess: async () => { setPendingCorrection(null); notifyToast("success", "Staff attendance updated."); await invalidate(); },
     onError: () => notifyToast("error", "Attendance could not be updated. Check the correction permission."),
   });
   const past = date < today;
@@ -77,6 +80,14 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
       changeDraft(item.staff_principal_id, { attempted: true }, item);
       return;
     }
+    if (past) {
+      setPendingCorrection({ item, draft });
+      return;
+    }
+    submit(item, draft);
+  };
+  const submit = (item: StaffAttendanceRecord, draft: Draft) => {
+    if (!draft.status) return;
     const remarks = draft.remarks.trim() || undefined;
     if (item.id) update.mutate({ id: item.id, status: draft.status, remarks });
     else mark.mutate({ staff_principal_id: item.staff_principal_id, attendance_date: date, status: draft.status, remarks });
@@ -110,6 +121,7 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
           const draft = draftFor(item);
           const busy = mark.isPending || update.isPending;
           const allowed = item.id ? canUpdate : canMark;
+          const unchanged = Boolean(item.id && draft.status === item.status && draft.remarks.trim() === (item.remarks ?? ""));
           return <tr key={item.staff_principal_id}>
             <td><strong>{item.full_name}</strong><small>{item.employee_code} · {item.designation}</small></td>
             <td><select aria-label={`Attendance status for ${item.full_name}`} value={draft.status} disabled={!allowed || busy} onChange={event => changeDraft(item.staff_principal_id, { status: event.target.value as Status | "" }, item)}>
@@ -118,7 +130,7 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
               {item.status && <small className="staff-attendance-current">Currently: {statuses.find(status => status.value === item.status)?.label}</small>}
             </td>
             <td><input aria-label={`Remarks for ${item.full_name}`} maxLength={500} value={draft.remarks} disabled={!allowed || busy} onChange={event => changeDraft(item.staff_principal_id, { remarks: event.target.value }, item)} placeholder="Optional remarks"/></td>
-            <td><button type="button" className="staff-attendance-save" disabled={!allowed || busy || !draft.status} onClick={() => save(item)}>{item.id ? "Update" : "Mark"}</button>{!allowed && <small className="staff-attendance-field-error">No permission</small>}</td>
+            <td><button type="button" className="staff-attendance-save" disabled={!allowed || busy || !draft.status || unchanged} onClick={() => save(item)}>{item.id ? "Update" : "Mark"}</button>{!allowed && <small className="staff-attendance-field-error">No permission</small>}</td>
           </tr>;
         })}</tbody>
       </table></div>}
@@ -132,5 +144,14 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
         {monthly.data.data.map(item => <tr key={item.staff_principal_id}><td><strong>{item.full_name}</strong><small>{item.employee_code} · {item.designation}</small><details><summary>View daily entries ({item.records.length})</summary><ul>{item.records.map(record => <li key={record.id}>{record.date}: {statuses.find(status => status.value === record.status)?.label ?? record.status}{record.remarks ? ` — ${record.remarks}` : ""}</li>)}</ul></details></td><td>{item.present_days}</td><td>{item.absent_days}</td><td>{item.late_days}</td><td>{item.half_days}</td><td>{item.present_days + item.absent_days + item.late_days + item.half_days}</td></tr>)}
       </tbody></table></div>}
     </>}
+    <ConfirmDialog
+      open={pendingCorrection !== null}
+      title="Confirm historical attendance correction"
+      description={pendingCorrection ? `This changes attendance for ${pendingCorrection.item.full_name} on ${date} to ${statuses.find(status => status.value === pendingCorrection.draft.status)?.label ?? "the selected status"}. This action will be recorded in the audit history.` : ""}
+      confirmLabel="Confirm correction"
+      pending={mark.isPending || update.isPending}
+      onConfirm={() => { if (pendingCorrection) submit(pendingCorrection.item, pendingCorrection.draft); }}
+      onCancel={() => setPendingCorrection(null)}
+    />
   </section>;
 }
