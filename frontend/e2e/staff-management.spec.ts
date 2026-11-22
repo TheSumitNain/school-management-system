@@ -716,6 +716,37 @@ test("leave type save errors stay inside their own form when switching workspace
   await expect(page.getByRole("alert")).toHaveCount(0);
   await page.getByRole("button", { name: "Leave types" }).click();
   await expect(page.getByRole("alert")).toHaveText("A leave type with this name already exists.");
+  await page.getByLabel(/Leave type name/).fill("Updated Casual Leave");
+  await expect(page.getByRole("alert")).toHaveCount(0);
+});
+
+test("holiday save errors clear when the holiday details are corrected", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 501, school_id: 10, username: "holiday.validation",
+    employee_code: "EMP-HOL-VALID", full_name: "Holiday Validation Admin", designation: "School Admin",
+    mobile_number: "9876543215", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false,
+  }];
+  const permissions = ["users.read", "staff.holidays.read", "staff.holidays.manage"];
+  await signInAndOpenStaff(page, rows, undefined, permissions);
+  await page.route("**/api/school/holidays", async route => {
+    if (route.request().method() === "POST") {
+      await route.fulfill({ status: 409, json: { message: "A holiday already exists on this date." } });
+      return;
+    }
+    await route.fallback();
+  });
+
+  await page.getByRole("button", { name: "Leave & Holidays" }).click();
+  await page.getByRole("button", { name: "Holiday calendar" }).click();
+  await page.getByLabel("Holiday date").click();
+  await page.getByRole("dialog", { name: "Choose holiday date" }).getByRole("button", { name: /25/ }).click();
+  await page.getByLabel(/Holiday name/).fill("School Event");
+  await page.getByRole("button", { name: "Save holiday" }).click();
+  await expect(page.getByRole("alert")).toHaveText("A holiday already exists on this date.");
+
+  await page.getByLabel(/Holiday name/).fill("Updated School Event");
+  await expect(page.getByRole("alert")).toHaveCount(0);
 });
 
 test("write-only leave permissions do not expose list views without leave-read access", async ({ page }) => {
