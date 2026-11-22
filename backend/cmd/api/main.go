@@ -61,6 +61,7 @@ func setupRouterWithHandlers(
 	var guardianHandler *handlers.GuardianHandler
 	var attendanceHandler *handlers.AttendanceHandler
 	var timetableHandler *handlers.TimetableHandler
+	var staffSubstitutionHandler *handlers.StaffSubstitutionHandler
 	var parentAuthHandler *handlers.ParentAuthHandler
 	var platformAdminLifecycleHandler *handlers.PlatformAdminLifecycleHandler
 	var platformAuditHandler *handlers.PlatformAuditHandler
@@ -83,6 +84,8 @@ func setupRouterWithHandlers(
 			attendanceHandler = handler
 		case *handlers.TimetableHandler:
 			timetableHandler = handler
+		case *handlers.StaffSubstitutionHandler:
+			staffSubstitutionHandler = handler
 		case *handlers.ParentAuthHandler:
 			parentAuthHandler = handler
 		case *handlers.PlatformAdminLifecycleHandler:
@@ -357,6 +360,13 @@ func setupRouterWithHandlers(
 		router.DELETE("/school/timetable/entries/:entryID", timetableAuth, middleware.RequirePermission("timetable.manage"), timetableHandler.DeleteEntry)
 	}
 
+	if staffSubstitutionHandler != nil {
+		substitutionAuth := authMiddleware()
+		router.GET("/school/staff-substitutions", substitutionAuth, middleware.RequirePermission("staff.substitutions.read"), staffSubstitutionHandler.List)
+		router.POST("/school/staff-substitutions", substitutionAuth, middleware.RequirePermission("staff.substitutions.manage"), staffSubstitutionHandler.Create)
+		router.POST("/school/staff-substitutions/:substitutionID/cancel", substitutionAuth, middleware.RequirePermission("staff.substitutions.manage"), staffSubstitutionHandler.Cancel)
+	}
+
 	if guardianHandler != nil {
 		guardianAuth := authMiddleware()
 		router.GET("/school/guardians", guardianAuth, middleware.RequirePermission("guardians.read"), guardianHandler.ListGuardians)
@@ -592,6 +602,8 @@ func run() error {
 	staffLeaveHandler := handlers.NewStaffLeaveHandler(staffLeaveService)
 	timetableService := services.NewTimetableService(academicRepo)
 	timetableHandler := handlers.NewTimetableHandler(timetableService)
+	staffSubstitutionService := services.NewStaffSubstitutionService(academicRepo)
+	staffSubstitutionHandler := handlers.NewStaffSubstitutionHandler(staffSubstitutionService)
 
 	staffAccountRepo := repository.NewUserRepository(db)
 	staffAccountService := services.NewStaffAccountService(staffAccountRepo)
@@ -599,7 +611,7 @@ func run() error {
 	staffRecordsService := services.NewStaffRecordsService(staffAccountRepo)
 	staffRecordsHandler := handlers.NewStaffRecordsHandler(staffRecordsService)
 
-	router, err := setupRouterWithHandlers(db, authHandler, tokenService, principalAuthorizationRepo, principalAuthorizationRepo, schoolOnboardingHandler, roleHandler, staffHandler, academicHandler, guardianHandler, attendanceHandler, timetableHandler, platformAdminLifecycleHandler, platformAuditHandler, principalAuthorizationRepo, staffRecordsHandler, staffAttendanceHandler, staffLeaveHandler)
+	router, err := setupRouterWithHandlers(db, authHandler, tokenService, principalAuthorizationRepo, principalAuthorizationRepo, schoolOnboardingHandler, roleHandler, staffHandler, academicHandler, guardianHandler, attendanceHandler, timetableHandler, platformAdminLifecycleHandler, platformAuditHandler, principalAuthorizationRepo, staffRecordsHandler, staffAttendanceHandler, staffLeaveHandler, staffSubstitutionHandler)
 
 	if err != nil {
 		return fmt.Errorf("setup router: %w", err)
