@@ -222,3 +222,12 @@ Migration V59 and the first end-to-end Leave & Holiday workflow are implemented 
 - Frontend CI [45000676706](https://github.com/TheSumitNain/school-management-system/actions/runs/45000676706) **PASS** at exact checkpoint `9aeba0546f2497be09f1284320662ad4b59fd35e`: TypeScript/design-token checks, Vite production build and complete Playwright browser acceptance suite.
 - Backend CI [45000676702](https://github.com/TheSumitNain/school-management-system/actions/runs/45000676702) **PASS** at the same checkpoint: complete migration chain on disposable PostgreSQL, Go/PostgreSQL integration tests and `go vet ./...`.
 - This is browser acceptance/test coverage only. No persistent/local database migration was applied; no leave-balance or attendance side effects were introduced.
+
+## 18. Leave filters and staff workspace visual consistency (2026-11-22)
+
+- Added browser acceptance coverage proving the Leave & Holidays status filter sends the selected status and the staff filter sends the selected staff principal scope.
+- Aligned the Staff Management page heading and section navigation with the existing Student Management dashboard pattern: shared heading hierarchy, compact underline tabs, active-state treatment, keyboard-visible focus and horizontally scrollable mobile navigation. Existing Staff-specific forms, tables and workflows were left intact.
+- Frontend CI [45001034865](https://github.com/TheSumitNain/school-management-system/actions/runs/45001034865) **PASS** for the filter test checkpoint `71d08ce57241710cae1fb22bd5bb868e048bf973`.
+- Backend CI [45001034866](https://github.com/TheSumitNain/school-management-system/actions/runs/45001034866) **PASS** at the same checkpoint.
+- Final visual-alignment checkpoint `7643906373fded3a3fe3d7e6f09465a1c9cead24`: Frontend CI [45001556205](https://github.com/TheSumitNain/school-management-system/actions/runs/45001556205) **PASS**, including TypeScript/design-token checks, Vite production build and complete Playwright browser acceptance suite; Backend CI [45001556190](https://github.com/TheSumitNain/school-management-system/actions/runs/45001556190) **PASS**.
+- No schema or persistent database changes were made. Leave-balance/accrual/carry-forward policy remains out of scope pending explicit school approval.
