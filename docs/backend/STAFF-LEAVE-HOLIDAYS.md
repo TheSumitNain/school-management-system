@@ -211,5 +211,6 @@ Migration V59 and the first end-to-end Leave & Holiday workflow are implemented 
 
 - Added PostgreSQL integration coverage that forces the `staff.leave.cancelled` audit insert to fail and verifies the leave request remains `pending`, proving the cancellation update and audit event roll back together.
 - The same test then removes the forced failure, verifies a successful cancellation changes status to `cancelled` and writes exactly one audit event, and confirms a repeated cancellation is rejected without duplicate audit.
-- Backend CI [44998042760](https://github.com/TheSumitNain/school-management-system/actions/runs/44998042760) **PASS** at code checkpoint `cb1b1b66aee568ea97928984f33cad21b6fb1e6a`: complete ephemeral-PostgreSQL migration chain, Go/PostgreSQL integration tests and `go vet ./...`.
+- Added service-level regression assertions that invalid report date ranges and unsupported status filters are rejected before any repository/database call.
+- Backend CI [44998516116](https://github.com/TheSumitNain/school-management-system/actions/runs/44998516116) **PASS** at code checkpoint `23aadac0bacd148954e32cc8c3592afc47b764a7`: complete ephemeral-PostgreSQL migration chain, Go/PostgreSQL integration tests and `go vet ./...`.
 - No persistent/local database migration was applied. This is test coverage only; the existing transactional implementation and Phase 4 scope are unchanged.
