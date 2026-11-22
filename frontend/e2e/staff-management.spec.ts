@@ -320,3 +320,26 @@ test("staff profile shows only the selected employee's academic assignments and 
   await expect(dialog.getByText(/Revoked ·/)).toBeVisible();
   await expect(dialog.getByText("2 active")).toBeVisible();
 });
+
+test("staff profile history is permission-gated and renders staff audit events", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 512, school_id: 10, username: "teacher.history",
+    employee_code: "EMP-HIS-01", full_name: "History Teacher", designation: "Maths Teacher",
+    mobile_number: "9876543214", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false, created_at: "2026-04-01T00:00:00.000Z",
+  }];
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "users.create", "users.update", "school.audit.read"]);
+  await page.route("**/api/school/staff/512/audit-events", async route => {
+    await route.fulfill({ json: { events: [
+      { id: 9, action: "staff.profile.updated", resource_type: "staff_user", outcome: "success", actor_username: "school.admin", metadata: { employment_status: "active" }, created_at: "2026-11-20T10:00:00.000Z" },
+      { id: 8, action: "staff.account.created", resource_type: "staff_user", outcome: "success", actor_username: "school.admin", metadata: { employee_code: "EMP-HIS-01" }, created_at: "2026-04-01T09:00:00.000Z" },
+    ] } });
+  });
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "History Teacher" }).click();
+  const dialog = page.getByRole("dialog", { name: "History Teacher" });
+  await dialog.getByRole("button", { name: "History & Activity" }).click();
+  await expect(dialog.getByText("Profile updated")).toBeVisible();
+  await expect(dialog.getByText("Account created")).toBeVisible();
+  await expect(dialog.getByText("school.admin").first()).toBeVisible();
+});
