@@ -64,9 +64,15 @@ const staffSubstitutionSelect = `ss.id,ss.timetable_entry_id,ss.cover_date::text
 	to_char(p.starts_at,'HH24:MI'),to_char(p.ends_at,'HH24:MI'),
 	ss.created_by_principal_id,ss.created_at,ss.cancelled_by_principal_id,ss.cancelled_at`
 
+func staffSubstitutionAuthorize(ctx context.Context,db repositoryDB,actorID,schoolID int64,permission string)error {
+	err:=timetableAuthorize(ctx,db,actorID,schoolID,permission)
+	if errors.Is(err,ErrTimetableAccessDenied){return ErrStaffSubstitutionAccessDenied}
+	return err
+}
+
 func (r *AcademicRepository) ListStaffSubstitutions(ctx context.Context,actorID,schoolID int64,fromDate,toDate string,staffID int64)([]StaffSubstitution,error) {
 	if r==nil||r.db==nil||actorID<=0||schoolID<=0||staffID<0 { return nil,ErrInvalidStaffSubstitution }
-	if err:=timetableAuthorize(ctx,r.db,actorID,schoolID,"staff.substitutions.read");err!=nil { return nil,ErrStaffSubstitutionAccessDenied }
+	if err:=staffSubstitutionAuthorize(ctx,r.db,actorID,schoolID,"staff.substitutions.read");err!=nil { return nil,err }
 	rows,err:=r.db.Query(ctx,`SELECT `+staffSubstitutionSelect+`
 		FROM staff_substitutions ss
 		JOIN staff_profiles orig ON orig.principal_id=ss.original_teacher_principal_id AND orig.school_id=ss.school_id
@@ -99,7 +105,7 @@ func (r *AcademicRepository) CreateStaffSubstitution(ctx context.Context,actorID
 	reason=strings.TrimSpace(reason)
 	if len([]rune(reason))==0||len([]rune(reason))>1000{return nil,ErrInvalidStaffSubstitution}
 	if _,err:=time.Parse("2006-01-02",coverDate);err!=nil{return nil,ErrInvalidStaffSubstitution}
-	if err:=timetableAuthorize(ctx,r.db,actorID,schoolID,"staff.substitutions.manage");err!=nil{return nil,ErrStaffSubstitutionAccessDenied}
+	if err:=staffSubstitutionAuthorize(ctx,r.db,actorID,schoolID,"staff.substitutions.manage");err!=nil{return nil,err}
 	tx,err:=r.db.Begin(ctx);if err!=nil{return nil,fmt.Errorf("begin staff substitution: %w",err)}
 	defer func(){_=tx.Rollback(ctx)}()
 	var periodID int64
@@ -129,7 +135,7 @@ func (r *AcademicRepository) CreateStaffSubstitution(ctx context.Context,actorID
 
 func (r *AcademicRepository) CancelStaffSubstitution(ctx context.Context,actorID,schoolID,id int64)error {
 	if r==nil||r.db==nil||actorID<=0||schoolID<=0||id<=0{return ErrInvalidStaffSubstitution}
-	if err:=timetableAuthorize(ctx,r.db,actorID,schoolID,"staff.substitutions.manage");err!=nil{return ErrStaffSubstitutionAccessDenied}
+	if err:=staffSubstitutionAuthorize(ctx,r.db,actorID,schoolID,"staff.substitutions.manage");err!=nil{return err}
 	tx,err:=r.db.Begin(ctx);if err!=nil{return fmt.Errorf("begin substitution cancellation: %w",err)}
 	defer func(){_=tx.Rollback(ctx)}()
 	tag,err:=tx.Exec(ctx,`UPDATE staff_substitutions SET status='cancelled',cancelled_by_principal_id=$3,cancelled_at=NOW(),updated_at=NOW()
