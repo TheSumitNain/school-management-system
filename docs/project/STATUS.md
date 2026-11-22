@@ -1907,3 +1907,14 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 
 - Added database-backed tests for invalid date/duration/reason/half-day shapes, approved-overlap protection, reapplication after cancellation, inactive leave types/staff, and cross-school target rejection.
 - Backend checkpoint `062d9a2d9acba4d939985c1d6a0cdb2907cd247b`: CI [45005336749](https://github.com/TheSumitNain/school-management-system/actions/runs/45005336749) **PASS** with Go tests, PostgreSQL integration and `go vet`. No schema migration.
+
+
+## Staff Leave & Holidays — PostgreSQL behavior coverage reconciliation (2026-11-22)
+
+This update supersedes older status bullets that listed the following database-backed behavior tests as outstanding:
+
+- PostgreSQL integration now covers concurrent overlapping submissions (only one succeeds), invalid/reversed dates, invalid half-day shapes, blank reasons, inactive leave types/staff, cross-school targets, approved-leave overlap protection, and reapplication after cancellation.
+- Existing integration coverage also verifies decision authorization, self-approval denial, rejection comments, audit persistence, audit-failure rollback, cancellation rollback/audit, cross-school cancellation and holiday duplicate/inactive-list behavior.
+- Frontend acceptance already covers request filters, full/half-day submission, rejection comment, cancellation confirmation, leave-type edit/deactivation/reactivation, holiday lifecycle confirmations, error recovery, approved-leave/holiday attendance context and CSV reporting.
+- Phase 4 remains partially implemented only where explicit school policy and end-to-end operational acceptance are still required. Do not add balances, quotas, accrual, carry-forward, statutory entitlement, payroll effects, automatic approval or automatic attendance mutation without approved school policy. No migration was applied to the user's persistent database.
+- Backend CI checkpoint `062d9a2d9acba4d939985c1d6a0cdb2907cd247b`: [45005336749](https://github.com/TheSumitNain/school-management-system/actions/runs/45005336749) **PASS** (Go tests, PostgreSQL integration and `go vet`).
