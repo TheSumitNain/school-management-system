@@ -85,6 +85,9 @@ BEGIN
 
   v_period_id:=v_entry.period_id;
   v_academic_year_id:=v_entry.academic_year_id;
+  IF NOT EXISTS (SELECT 1 FROM public.academic_years ay WHERE ay.id=v_academic_year_id AND ay.school_id=NEW.school_id AND ay.status<>'closed' AND NEW.cover_date BETWEEN ay.starts_on AND ay.ends_on) THEN
+    RAISE EXCEPTION 'cover date must fall inside the timetable academic year' USING ERRCODE='23514';
+  END IF;
   IF NEW.period_id<>v_period_id THEN
     RAISE EXCEPTION 'substitution period must match the recurring timetable entry' USING ERRCODE='23514';
   END IF;
