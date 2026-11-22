@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -158,7 +157,7 @@ func TestStaffLeaveDecisionRejectRequiresReasonAndPersistsAuditPostgresIntegrati
 	var auditCount int
 	if err:=f.pool.QueryRow(f.ctx,`SELECT COUNT(*) FROM audit_events WHERE school_id=$1 AND actor_principal_id=$2 AND action='staff.leave.rejected' AND resource_id=$3`,f.schoolID,f.adminPrincipalID,fmt.Sprint(request.ID)).Scan(&auditCount);err!=nil{t.Fatalf("count rejection audit: %v",err)}
 	if auditCount!=1{t.Fatalf("rejection audit count=%d want=1",auditCount)}
-	if _,err:=f.repo.Decide(f.ctx,f.adminPrincipalID,f.schoolID,request.ID,true,nil);!errors.Is(err,ErrStaffLeaveNotFound){
-		if !errors.Is(err,pgx.ErrNoRows){t.Fatalf("second decision error=%v, want request not found",err)}
+	if err:=f.repo.Decide(f.ctx,f.adminPrincipalID,f.schoolID,request.ID,true,nil);!errors.Is(err,ErrStaffLeaveNotFound){
+		t.Fatalf("second decision error=%v, want request not found",err)
 	}
 }
