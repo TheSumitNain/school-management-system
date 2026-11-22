@@ -597,9 +597,11 @@ test("staff leave request field errors clear as each required field is corrected
   await page.getByRole("option", { name: /Casual Leave/ }).click();
   await expect(page.getByText("Select a leave type.")).toHaveCount(0);
 
-  await page.getByLabel("Leave start date").fill("2026-11-25");
+  await page.getByLabel("Leave start date").click();
+  await page.getByRole("dialog", { name: "Choose leave start date" }).getByRole("button", { name: /25/ }).click();
   await expect(page.getByText("Select a start date.")).toHaveCount(0);
-  await page.getByLabel("Leave end date").fill("2026-11-25");
+  await page.getByLabel("Leave end date").click();
+  await page.getByRole("dialog", { name: "Choose leave end date" }).getByRole("button", { name: /25/ }).click();
   await expect(page.getByText("Select an end date.")).toHaveCount(0);
 
   await page.getByLabel("Reason").fill("Personal appointment");
