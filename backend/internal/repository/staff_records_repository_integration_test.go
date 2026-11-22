@@ -114,4 +114,11 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("count staff record audit events: %v",err)
 	}
 	if auditCount!=6{t.Fatalf("audit count=%d want=6 (three creates and three updates)",auditCount)}
+	events,err:=repo.ListStaffAuditEvents(ctx,actorID,schoolID,staff.PrincipalID)
+	if err!=nil{t.Fatalf("list staff audit history: %v",err)}
+	if len(events)<7{t.Fatalf("staff audit history events=%d want at least 7 including account creation and six record mutations",len(events))}
+	foundQualificationUpdate:=false
+	for _,event:=range events{if event.Action=="staff.qualification.updated"{foundQualificationUpdate=true}}
+	if !foundQualificationUpdate{t.Fatal("staff audit history omitted qualification update")}
+	if _,err:=repo.ListStaffAuditEvents(ctx,actorID,schoolID+1,staff.PrincipalID);!errors.Is(err,ErrStaffRecordAccessDenied){t.Fatalf("cross-school staff audit history error=%v",err)}
 }
