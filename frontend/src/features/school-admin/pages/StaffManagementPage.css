@@ -152,3 +152,5 @@
 @media(max-width:640px){.staff-record-form{grid-template-columns:minmax(0,1fr)}.staff-record-card{padding:10px}.staff-record-form-actions{flex-wrap:wrap}.staff-record-form-actions button{flex:1}}
 
 .app-modal label[hidden]{display:none!important}
+
+.staff-academic-profile .staff-records-heading{align-items:flex-start;gap:12px;flex-wrap:wrap}.staff-assignment-summary{display:flex;gap:18px;flex-wrap:wrap;padding:10px 0;color:var(--muted,#64748b);font-size:13px}.staff-assignment-summary strong{color:var(--text,#172033);font-size:16px}.staff-academic-profile .staff-record-status.inactive{white-space:normal;max-width:180px;text-align:right}
