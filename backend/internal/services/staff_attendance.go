@@ -15,6 +15,7 @@ type staffAttendanceRepository interface {
     ListDaily(context.Context, int64, int64, time.Time) ([]repository.StaffAttendanceRecord, error)
     ListMonthly(context.Context, int64, int64, time.Time) ([]repository.StaffAttendanceMonthlySummary, error)
     Mark(context.Context, int64, int64, int64, time.Time, string, *string) (*repository.StaffAttendanceRecord, error)
+    MarkBulk(context.Context, int64, int64, []int64, time.Time, string, *string) (int, error)
     Update(context.Context, int64, int64, int64, string, *string) (*repository.StaffAttendanceRecord, error)
 }
 
@@ -48,4 +49,24 @@ func (s *StaffAttendanceService) Update(ctx context.Context, actor, school, reco
     if status != "present" && status != "absent" && status != "late" && status != "half_day" { return nil, ErrInvalidStaffAttendance }
     if remarks != nil && len([]rune(strings.TrimSpace(*remarks))) > 500 { return nil, ErrInvalidStaffAttendance }
     return s.repository.Update(ctx, actor, school, record, status, remarks)
+}
+
+func (s *StaffAttendanceService) MarkBulk(ctx context.Context, actor, school int64, staffIDs []int64, day time.Time, status string, remarks *string) (int, error) {
+    if s == nil || s.repository == nil || actor <= 0 || school <= 0 || len(staffIDs) == 0 || len(staffIDs) > 1000 || day.IsZero() {
+        return 0, ErrInvalidStaffAttendance
+    }
+    status = strings.TrimSpace(status)
+    if status != "present" && status != "absent" && status != "late" && status != "half_day" {
+        return 0, ErrInvalidStaffAttendance
+    }
+    if remarks != nil && len([]rune(strings.TrimSpace(*remarks))) > 500 {
+        return 0, ErrInvalidStaffAttendance
+    }
+    seen := make(map[int64]struct{}, len(staffIDs))
+    for _, staffID := range staffIDs {
+        if staffID <= 0 { return 0, ErrInvalidStaffAttendance }
+        if _, exists := seen[staffID]; exists { return 0, ErrInvalidStaffAttendance }
+        seen[staffID] = struct{}{}
+    }
+    return s.repository.MarkBulk(ctx, actor, school, staffIDs, day, status, remarks)
 }
