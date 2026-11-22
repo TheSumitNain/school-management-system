@@ -31,7 +31,7 @@ type Props = { permissions: string[] };
 
 function staffCSVCell(value:unknown){
   const text=String(value??"");
-  const safe=/^[=+\\-@]/.test(text)?"'"+text:text;
+  const safe=/^\\s*[=+\\-@]/.test(text)?"'"+text:text;
   return '"'+safe.replace(/"/g,'""')+'"';
 }
 function exportStaffDirectoryCSV(rows:StaffRecord[]){
@@ -48,7 +48,7 @@ function exportStaffDirectoryCSV(rows:StaffRecord[]){
   document.body.appendChild(link);
   link.click();
   link.remove();
-  URL.revokeObjectURL(url);
+  window.setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 
 export function StaffManagementPage({ permissions }: Props) {
