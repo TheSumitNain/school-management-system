@@ -451,12 +451,12 @@ Phases are dependency ordered, not a claim that every listed item is absent. Ins
 
 ### Phase 4 — Leave & Holiday Management (P1)
 
-1. Configure leave types and school policy.
-2. Staff leave application.
-3. Approval/rejection and balance view.
-4. Holiday calendar and attendance integration.
+1. Leave type foundation. **Implemented:** school-scoped leave type schema, permissions and create/list/update API; frontend create/list is available. Leave type edit/deactivate UI and explicit school policy configuration remain pending.
+2. Staff leave application. **Implemented:** staff/leave-type selection, inclusive dates, full/half-day request, reason, request listing and filters. Backend rejects invalid/inactive targets and overlapping pending/approved requests; per-staff transaction advisory locking serializes overlap checks.
+3. Approval/rejection. **Implemented:** pending-only decisions, authenticated decision actor/time, required rejection comment, applicant self-approval denial, cancellation and transactional audit. **Balance view pending:** quotas/accrual/carry-forward remain undefined until a school policy is approved; no balance is fabricated.
+4. Holiday calendar. **Implemented:** school-scoped create/list/update/deactivate APIs and frontend calendar list with add/edit/deactivate actions. **Attendance integration pending:** approved leave and holidays are not yet displayed as attendance context and never auto-write attendance records.
 
-**Exit gate:** overlap detection, approval authorization, policy-driven balances and correct attendance interaction.
+**Exit gate remains open:** add dedicated PostgreSQL behavior tests for overlap/concurrent submissions, decision authorization, rollback and audit; finish leave-type policy/edit lifecycle; integrate approved leave/holiday context into attendance without silently changing manual marks; implement balances only after explicit policy approval.
 
 ### Phase 5 — Workload, Timetable & Substitution (P1)
 
