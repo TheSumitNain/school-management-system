@@ -534,8 +534,10 @@ test("staff attendance supports search, individual and atomic bulk marking, and 
   await page.getByRole("button", { name: "Mark 1 staff", exact: true }).click();
   await expect.poll(() => bulkCreated).toBe(1);
   await expect(page.getByText("Attendance marked for 1 staff members.")).toBeVisible();
+  await page.getByLabel("Search staff attendance").fill("");
   await page.getByLabel("Filter staff attendance status").selectOption("absent");
   await expect(page.getByText("Bulk Attendance Teacher")).toBeVisible();
+  await expect(page.getByText("Attendance Teacher", { exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Monthly summary" }).click();
   await expect(page.getByText("Attendance Teacher").first()).toBeVisible();
   await expect(page.getByText("View daily entries (3)")).toBeVisible();
