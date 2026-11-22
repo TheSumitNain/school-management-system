@@ -74,6 +74,9 @@ func TestStaffSubstitutionV60DatabaseGuardsPostgresIntegration(t *testing.T) {
 	if err=tx.QueryRow(ctx,`INSERT INTO subjects(school_id,name) VALUES($1,$2) RETURNING id`,schoolID,fmt.Sprintf("Substitution Subject %d",suffix)).Scan(&subjectID);err!=nil{t.Fatalf("create subject: %v",err)}
 	if err=tx.QueryRow(ctx,`INSERT INTO timetable_periods(school_id,academic_year_id,period_number,name,starts_at,ends_at)
 		VALUES($1,$2,1,'Period 1',TIME '09:00',TIME '09:40') RETURNING id`,schoolID,yearID).Scan(&periodID);err!=nil{t.Fatalf("create period: %v",err)}
+	var secondPeriodID int64
+	if err=tx.QueryRow(ctx,`INSERT INTO timetable_periods(school_id,academic_year_id,period_number,name,starts_at,ends_at)
+		VALUES($1,$2,2,'Period 2',TIME '10:00',TIME '10:40') RETURNING id`,schoolID,yearID).Scan(&secondPeriodID);err!=nil{t.Fatalf("create second period: %v",err)}
 	if err=tx.QueryRow(ctx,`INSERT INTO teacher_subject_assignments(school_id,academic_year_id,section_id,subject_id,teacher_principal_id,assigned_by_principal_id)
 		VALUES($1,$2,$3,$4,$5,$6) RETURNING id`,schoolID,yearID,sectionID,subjectID,originalID,actorPrincipalID).Scan(&originalAssignmentID);err!=nil{t.Fatalf("assign original teacher: %v",err)}
 	if err=tx.QueryRow(ctx,`INSERT INTO teacher_subject_assignments(school_id,academic_year_id,section_id,subject_id,teacher_principal_id,assigned_by_principal_id)
@@ -138,7 +141,7 @@ func TestStaffSubstitutionV60DatabaseGuardsPostgresIntegration(t *testing.T) {
 	_,cancelledReasonErr:=cancelledReason.Exec(ctx,`UPDATE staff_substitutions SET reason='Changed after cancellation' WHERE id=$1`,substitutionID)
 	if rollbackErr:=cancelledReason.Rollback(ctx);rollbackErr!=nil{t.Fatalf("rollback cancelled history guard savepoint: %v",rollbackErr)}
 	if cancelledReasonErr==nil{t.Fatal("cancelled substitution history was mutable")}
-	if _,err=tx.Exec(ctx,`UPDATE timetable_entries SET room='Changed room' WHERE id=$1`,timetableEntryID);err!=nil{t.Fatalf("recurring timetable entry remained locked after cancellation: %v",err)}
+	if _,err=tx.Exec(ctx,`UPDATE timetable_entries SET room='Changed room',period_id=$2 WHERE id=$1`,timetableEntryID,secondPeriodID);err!=nil{t.Fatalf("recurring timetable entry remained locked after cancellation: %v",err)}
 	var snapshotRoom,snapshotClass,snapshotSection,snapshotSubject,snapshotPeriod,snapshotOriginal,snapshotSubstitute string
 	if err=tx.QueryRow(ctx,`SELECT room_snapshot,class_name_snapshot,section_name_snapshot,subject_name_snapshot,period_name_snapshot,original_teacher_name_snapshot,substitute_teacher_name_snapshot
 		FROM staff_substitutions WHERE id=$1`,substitutionID).Scan(&snapshotRoom,&snapshotClass,&snapshotSection,&snapshotSubject,&snapshotPeriod,&snapshotOriginal,&snapshotSubstitute);err!=nil{t.Fatalf("read immutable substitution snapshots: %v",err)}
