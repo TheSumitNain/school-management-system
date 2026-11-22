@@ -273,3 +273,11 @@ This section supersedes earlier Phase 4 remaining-work notes where later impleme
 - Added a Staff Directory browser workflow for an account with `users.read` and `users.disable`: the test opens the disable dialog, verifies the session-revocation warning, cancels and asserts no DELETE request, then confirms disable and verifies exactly one request, the success notification, refreshed disabled status and removal of the disable action.
 - Exact code checkpoint `7c77bef8f752557a049fd4a05471b2881a2f2b79`: Frontend CI [45004040475](https://github.com/TheSumitNain/school-management-system/actions/runs/45004040475) **PASS** with all 67 Playwright tests; Backend CI [45004040409](https://github.com/TheSumitNain/school-management-system/actions/runs/45004040409) **PASS** with PostgreSQL integration and `go vet`.
 - This is acceptance-test coverage only; no runtime behavior or database schema changed.
+
+
+## 24. Staff password reset acceptance (2026-11-22)
+
+- Added a Staff Directory browser workflow for `users.password_reset`: a short temporary password is rejected inline with no network mutation; a valid 12+ character temporary password is submitted once, and the success message explicitly tells the staff member to change it at next sign-in.
+- The test asserts the exact request payload (`new_password`) and that the validation error clears when the password is corrected.
+- Exact checkpoint `90d7969babd87e60db19cebb57f702ef93f75ed0`: Frontend CI [45004357985](https://github.com/TheSumitNain/school-management-system/actions/runs/45004357985) **PASS** with all 68 Playwright tests; Backend CI [45004358053](https://github.com/TheSumitNain/school-management-system/actions/runs/45004358053) **PASS** with PostgreSQL integration and `go vet`.
+- Acceptance-test-only change; no backend runtime behavior or database schema changed.
