@@ -40,7 +40,7 @@ CREATE TABLE public.staff_attendance_records (
 CREATE OR REPLACE FUNCTION public.validate_staff_attendance_date()
 RETURNS TRIGGER
 LANGUAGE plpgsql
-AS $
+AS $v58_staff_attendance_date$
 DECLARE
     v_school_today DATE := (NOW() AT TIME ZONE 'Asia/Kolkata')::date;
 BEGIN
@@ -50,7 +50,7 @@ BEGIN
     END IF;
     RETURN NEW;
 END;
-$;
+$v58_staff_attendance_date$;
 
 CREATE TRIGGER trg_validate_staff_attendance_date
 BEFORE INSERT OR UPDATE OF attendance_date ON public.staff_attendance_records
@@ -72,7 +72,7 @@ RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = pg_catalog, public
-AS $$
+AS $v58_grant_staff_attendance_permissions$
 DECLARE
     v_school_admin_role_id BIGINT;
     v_granted_count BIGINT;
@@ -109,7 +109,7 @@ BEGIN
 
     RETURN NEW;
 END;
-$$;
+$v58_grant_staff_attendance_permissions$;
 
 REVOKE ALL ON FUNCTION public.grant_staff_attendance_permissions() FROM PUBLIC;
 
