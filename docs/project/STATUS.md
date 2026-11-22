@@ -1805,3 +1805,9 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Added PostgreSQL integration tests for normalized duplicate holiday creation, conflicting holiday updates, unchanged state/audit on conflict, cross-school holiday write denial, and transactional rollback when the holiday audit insert fails.
 - Backend CI [44990622671](https://github.com/TheSumitNain/school-management-system/actions/runs/44990622671) **PASS** at exact checkpoint 92a307cb62abbab902d8f5441deb55219e4ea374: complete migration chain on disposable PostgreSQL, full Go/PostgreSQL integration suite and go vet.
 - No persistent/local DB migration was applied. Staff Leave & Holiday Phase 4 remains partially implemented pending remaining browser workflow review and explicit school leave-policy decisions. Academic, Student Management and Settings remain out of scope for this work.
+
+## Staff Leave & Holiday — form error isolation (2026-11-22)
+
+- Split request, leave-type and holiday server-error state so failures remain attached to their own form across pane navigation. Added an E2E regression test for leave-type conflict errors persisting only in the leave-type pane.
+- Code checkpoint `2e6c73678798189a689d8b3223cb797872e6de22`: Frontend CI [44991137384](https://github.com/TheSumitNain/school-management-system/actions/runs/44991137384) **PASS** (TypeScript/design-token checks, Vite build, full Playwright suite: **57 passed**); Backend CI [44991137364](https://github.com/TheSumitNain/school-management-system/actions/runs/44991137364) **PASS** (complete disposable-PostgreSQL migration chain, Go/PostgreSQL integration suite and `go vet`).
+- No persistent/local DB migration. Staff Leave & Holiday Phase 4 remains partially implemented pending remaining workflow acceptance and approved school leave-policy decisions. Academic, Student Management and Settings were not changed by this follow-up.
