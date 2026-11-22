@@ -740,7 +740,8 @@ test("holiday save errors clear when the holiday details are corrected", async (
   await page.getByRole("button", { name: "Leave & Holidays" }).click();
   await page.getByRole("button", { name: "Holiday calendar" }).click();
   await page.getByLabel("Holiday date").click();
-  await page.getByRole("dialog", { name: "Choose holiday date" }).getByRole("button", { name: /25/ }).click();
+  await page.getByRole("dialog", { name: "Choose holiday date" }).getByRole("button", { name: "Wednesday, November 25, 2026" }).click();
+  await expect(page.getByRole("dialog", { name: "Choose holiday date" })).toHaveCount(0);
   await page.getByLabel(/Holiday name/).fill("School Event");
   await page.getByRole("button", { name: "Save holiday" }).click();
   await expect(page.getByRole("alert")).toHaveText("A holiday already exists on this date.");
