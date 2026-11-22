@@ -101,6 +101,14 @@ async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, un
       await route.fulfill({ json: { data: schoolHolidays } });
       return;
     }
+    const holidayUpdate = path.match(/^\/school\/holidays\/(\d+)$/);
+    if (holidayUpdate && method === "PATCH") {
+      const target = schoolHolidays.find(item => item.id === Number(holidayUpdate[1]));
+      if (!target) { await route.fulfill({ status: 404, json: { message: "Holiday not found" } }); return; }
+      Object.assign(target, request.postDataJSON() as Record<string, unknown>);
+      await route.fulfill({ json: { data: target } });
+      return;
+    }
     if (path === "/school/holidays" && method === "POST") {
       const payload = request.postDataJSON() as Record<string, unknown>;
       const saved = { ...payload, id: schoolHolidays.length + 32 };
@@ -606,4 +614,35 @@ test("staff leave cancellation requires explicit confirmation", async ({ page })
   const secondConfirmation = page.getByRole("dialog", { name: "Cancel leave request?" });
   await secondConfirmation.getByRole("button", { name: "Cancel request", exact: true }).click();
   await expect(page.getByText("No leave requests match these filters.")).toBeVisible();
+});
+
+
+test("school holiday deactivation and reactivation require explicit confirmation", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 501, school_id: 10, username: "holiday.admin",
+    employee_code: "EMP-HOL-01", full_name: "Holiday Admin", designation: "School Admin",
+    mobile_number: "9876543215", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false,
+  }];
+  const permissions = ["users.read", "staff.holidays.read", "staff.holidays.manage"];
+  await signInAndOpenStaff(page, rows, undefined, permissions);
+  await page.getByRole("button", { name: "Leave & Holidays" }).click();
+  await page.getByRole("button", { name: "Holiday calendar" }).click();
+  await expect(page.getByText("School Foundation Day")).toBeVisible();
+
+  await page.getByRole("button", { name: "Deactivate" }).click();
+  const deactivate = page.getByRole("dialog", { name: "Deactivate school holiday?" });
+  await deactivate.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(page.getByText("School Foundation Day")).toBeVisible();
+
+  await page.getByRole("button", { name: "Deactivate" }).click();
+  const confirmDeactivate = page.getByRole("dialog", { name: "Deactivate school holiday?" });
+  await confirmDeactivate.getByRole("button", { name: "Deactivate holiday" }).click();
+  await expect(page.getByText("Inactive", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Reactivate" }).click();
+  const reactivate = page.getByRole("dialog", { name: "Reactivate school holiday?" });
+  await reactivate.getByRole("button", { name: "Reactivate holiday" }).click();
+  await expect(page.getByText("Holiday reactivated.")).toBeVisible();
+  await expect(page.getByText("Inactive", { exact: true })).toHaveCount(0);
 });
