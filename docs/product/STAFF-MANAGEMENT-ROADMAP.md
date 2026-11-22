@@ -444,19 +444,21 @@ Phases are dependency ordered, not a claim that every listed item is absent. Ins
 
 1. Daily staff register with filters and bulk status entry. **Implemented: employee search, status filters and atomic bulk marking of visible unmarked staff.**
 2. Attendance correction/reason workflow. **Implemented: individual same-day/historical correction, remarks, explicit historical confirmation and transactional audit.**
-3. Monthly register and reports. **Derived monthly register implemented; downloadable/report views pending.**
-4. Connect approved leave and school calendar rules. **Pending Phase 4 leave/holiday contract.**
+3. Monthly register and reports. **Implemented: monthly report, separate attendance/approved-leave/active-holiday context, and permission-aware CSV export with formula-injection protection.**
+4. Connect approved leave and school calendar rules. **Implemented as informational context only; approved leave and holidays never create or overwrite attendance marks.**
 
 **Exit gate:** duplicate/date/permission safeguards, audited corrections, accurate reports and responsive browser coverage.
 
 ### Phase 4 — Leave & Holiday Management (P1)
 
-1. Leave type foundation. **Implemented:** school-scoped leave type schema, permissions and create/list/update API; frontend create/list is available. Leave type edit/deactivate UI and explicit school policy configuration remain pending.
-2. Staff leave application. **Implemented:** staff/leave-type selection, inclusive dates, full/half-day request, reason, request listing and filters. Backend rejects invalid/inactive targets and overlapping pending/approved requests; per-staff transaction advisory locking serializes overlap checks.
-3. Approval/rejection. **Implemented:** pending-only decisions, authenticated decision actor/time, required rejection comment, applicant self-approval denial, cancellation and transactional audit. **Balance view pending:** quotas/accrual/carry-forward remain undefined until a school policy is approved; no balance is fabricated.
-4. Holiday calendar. **Implemented:** school-scoped create/list/update/deactivate APIs and frontend calendar list with add/edit/deactivate actions. **Attendance integration pending:** approved leave and holidays are not yet displayed as attendance context and never auto-write attendance records.
+1. Leave type foundation. **Implemented:** school-scoped leave type schema, non-delegable permissions, create/list/update APIs, and frontend create/edit/deactivate/reactivate lifecycle with confirmation and history preservation.
+2. Staff leave application. **Implemented:** staff/leave-type selection, inclusive dates, full/half-day request, reason, request listing and filters. Backend rejects invalid/inactive targets and overlapping pending/approved requests; per-staff transaction advisory locking serializes overlap checks. Form errors are isolated by workflow pane and recoverable values remain available.
+3. Approval/rejection. **Implemented:** pending-only decisions, authenticated decision actor/time, required rejection comment, applicant self-approval denial, cancellation and transactional audit. PostgreSQL integration covers concurrency, authorization, rollback, rejection reason, audit persistence and cross-school denial. **Balance view pending:** quotas/accrual/carry-forward remain undefined until a school policy is approved; no balance is fabricated.
+4. Holiday calendar. **Implemented:** school-scoped create/list/update/deactivate APIs; active-only default listing; manager-only inactive listing; explicit deactivate/reactivate confirmations; edit preserves inactive state. PostgreSQL integration covers normalized duplicates, conflicting updates, cross-school denial and audit rollback.
+5. Attendance context and reporting. **Implemented:** approved leave and active holidays appear separately in daily/monthly attendance context when the viewer has the relevant read permissions. Monthly CSV export separates attendance, approved leave and holidays and protects against spreadsheet formula injection. No attendance rows are automatically created or overwritten.
+6. Permission boundaries and browser acceptance. **Implemented:** the workspace requires a read permission; write/decision-only grants cannot expose leave list views. Browser coverage includes the leave workflows, holiday reactivation, form-error isolation, monthly CSV export and responsive layouts.
 
-**Exit gate remains open:** add dedicated PostgreSQL behavior tests for overlap/concurrent submissions, decision authorization, rollback and audit; finish leave-type policy/edit lifecycle; integrate approved leave/holiday context into attendance without silently changing manual marks; implement balances only after explicit policy approval.
+**Exit gate remains open:** complete any remaining end-to-end workflow review and school-specific policy approval. Leave balances, quotas, accrual and carry-forward must not be implemented until the school explicitly approves the policy. Keep attendance context informational; manual attendance conflicts require explicit human resolution.
 
 ### Phase 5 — Workload, Timetable & Substitution (P1)
 
