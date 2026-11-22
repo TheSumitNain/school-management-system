@@ -84,7 +84,7 @@ test("Staff Management tabs remain usable without page overflow on mobile, table
     expect(tabsFit, `Staff Management tabs should fit or scroll within ${width}px`).toBe(true);
   }
 
-  await page.getByRole("button", { name: "Staff Directory" }).click();
+  await page.getByRole("button", { name: "Staff Directory", exact: true }).click();
   await expect(page.getByRole("heading", { name: "All staff" })).toBeVisible();
   await expect(page.getByRole("textbox", { name: "Search staff by name, code, designation or username" })).toBeVisible();
 
