@@ -23,6 +23,7 @@ type StaffRecordsManagementService interface {
 	UpdateQualification(context.Context,int64,int64,int64,int64,repository.StaffQualification)(*repository.StaffQualification,error)
 	UpdateCertification(context.Context,int64,int64,int64,int64,repository.StaffCertification)(*repository.StaffCertification,error)
 	UpdateExperience(context.Context,int64,int64,int64,int64,repository.StaffExperience)(*repository.StaffExperience,error)
+	ListAuditEvents(context.Context,int64,int64,int64)([]repository.StaffAuditEvent,error)
 }
 
 type StaffRecordsHandler struct { service StaffRecordsManagementService }
@@ -109,4 +110,11 @@ func(h *StaffRecordsHandler) UpdateExperience(c *gin.Context){
 	var item repository.StaffExperience;if err:=c.ShouldBindJSON(&item);err!=nil{c.JSON(400,gin.H{"status":"error","message":"Invalid experience request"});return}
 	saved,err:=h.service.UpdateExperience(c.Request.Context(),actor,school,staff,record,item);if err!=nil{h.fail(c,err);return}
 	c.JSON(200,gin.H{"status":"success","experience":saved})
+}
+
+func(h *StaffRecordsHandler) ListAuditEvents(c *gin.Context){
+	actor,school,ok:=staffRecordActor(c);if !ok{c.JSON(401,gin.H{"status":"error","message":"School staff authentication required"});return}
+	staff,ok:=staffRecordTarget(c);if !ok{c.JSON(400,gin.H{"status":"error","message":"Invalid staff principal ID"});return}
+	items,err:=h.service.ListAuditEvents(c.Request.Context(),actor,school,staff);if err!=nil{h.fail(c,err);return}
+	c.JSON(200,gin.H{"status":"success","events":items})
 }
