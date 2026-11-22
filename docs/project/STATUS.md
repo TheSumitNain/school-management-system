@@ -1833,7 +1833,8 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Holiday calendar rows wrap long names and row actions at narrow widths; responsive acceptance covers 320, 360, 390, 768, 1024 and 1440px.
 - Holiday edit state remains synchronized when an edited holiday is deactivated or reactivated from its calendar row; browser acceptance saves after both transitions.
 - Added PostgreSQL integration coverage proving a cancellation audit-insert failure rolls the leave request back to `pending`; the success path records exactly one cancellation event, and a second cancellation is rejected without duplicate audit.
-- Exact verified code checkpoint: `cb1b1b66aee568ea97928984f33cad21b6fb1e6a`.
-- Frontend CI [44997624558](https://github.com/TheSumitNain/school-management-system/actions/runs/44997624558) **PASS** at frontend checkpoint `b956238d0315d1fe53eaa5e5efcd47e5fc57a86d`: TypeScript/design-token checks, Vite production build and complete Playwright browser acceptance suite.
-- Backend CI [44998042760](https://github.com/TheSumitNain/school-management-system/actions/runs/44998042760) **PASS** at the full code checkpoint: complete migration chain on disposable PostgreSQL, Go tests including PostgreSQL integration, and go vet.
+- Added service-level regression checks proving malformed/reversed/incomplete leave report date filters and unknown status values are rejected before reaching the repository/database.
+- Exact verified code checkpoint: `23aadac0bacd148954e32cc8c3592afc47b764a7`.
+- Frontend CI [44997624558](https://github.com/TheSumitNain/school-management-system/actions/runs/44997624558) **PASS** at frontend checkpoint `b956238d0315d1fe53eaa5e5efcd47e5fc57a86d`: TypeScript/design-token checks, Vite production build and complete Playwright browser acceptance suite; no frontend code changed after that checkpoint.
+- Backend CI [44998516116](https://github.com/TheSumitNain/school-management-system/actions/runs/44998516116) **PASS** at the latest code checkpoint: complete migration chain on disposable PostgreSQL, Go tests including PostgreSQL integration, and go vet.
 - No persistent/local database migration was applied. Leave & Holidays Phase 4 remains open; balances/accrual/carry-forward remain undefined pending explicit school policy approval. Academic, Student Management and Settings remain out of scope.
