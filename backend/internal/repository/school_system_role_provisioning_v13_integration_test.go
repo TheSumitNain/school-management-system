@@ -101,6 +101,10 @@ func TestSchoolSystemRoleProvisioningV13PostgresIntegration(t *testing.T) {
 			"permissions.read": true,
 			"permissions.assign": true,
 			"permissions.override": true,
+            "staff.attendance.read": true,
+            "staff.attendance.mark": true,
+            "staff.attendance.update_same_day": true,
+            "staff.attendance.correct_past": true,
 		},
 		"teacher": {
 			"students.read_basic": true,
