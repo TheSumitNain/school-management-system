@@ -1918,3 +1918,10 @@ This update supersedes older status bullets that listed the following database-b
 - Frontend acceptance already covers request filters, full/half-day submission, rejection comment, cancellation confirmation, leave-type edit/deactivation/reactivation, holiday lifecycle confirmations, error recovery, approved-leave/holiday attendance context and CSV reporting.
 - Phase 4 remains partially implemented only where explicit school policy and end-to-end operational acceptance are still required. Do not add balances, quotas, accrual, carry-forward, statutory entitlement, payroll effects, automatic approval or automatic attendance mutation without approved school policy. No migration was applied to the user's persistent database.
 - Backend CI checkpoint `062d9a2d9acba4d939985c1d6a0cdb2907cd247b`: [45005336749](https://github.com/TheSumitNain/school-management-system/actions/runs/45005336749) **PASS** (Go tests, PostgreSQL integration and `go vet`).
+
+
+## Staff Management — overview and readiness metric acceptance (2026-11-22)
+
+- Expanded browser acceptance to distinguish total staff, active employment, enabled logins, incomplete profiles and account-readiness counts using mixed active/inactive and profile/account states.
+- Checkpoint `176ce3e85fa8cb4d621066e88207c63b35c9c740`: Frontend CI [45005957248](https://github.com/TheSumitNain/school-management-system/actions/runs/45005957248) **PASS** (TypeScript, production build and complete Playwright suite); Backend CI [45005957357](https://github.com/TheSumitNain/school-management-system/actions/runs/45005957357) **PASS** (Go tests, ephemeral PostgreSQL integration/migrations and `go vet`).
+- No runtime feature or persistent database migration was introduced.
