@@ -78,7 +78,8 @@ DECLARE
 BEGIN
   SELECT te.* INTO v_entry
     FROM public.timetable_entries te
-   WHERE te.id=NEW.timetable_entry_id AND te.school_id=NEW.school_id;
+   WHERE te.id=NEW.timetable_entry_id AND te.school_id=NEW.school_id
+   FOR UPDATE;
   IF NOT FOUND THEN
     RAISE EXCEPTION 'substitution timetable entry not found' USING ERRCODE='23503';
   END IF;
@@ -97,36 +98,36 @@ BEGIN
     RAISE EXCEPTION 'substitution must match the original teacher and timetable weekday' USING ERRCODE='23514';
   END IF;
 
-  IF NOT EXISTS (
-    SELECT 1 FROM public.staff_profiles original_sp
-     WHERE original_sp.principal_id=NEW.original_teacher_principal_id
-       AND original_sp.school_id=NEW.school_id
-       AND original_sp.employment_status='active'
-  ) THEN
+  PERFORM 1 FROM public.staff_profiles original_sp
+   WHERE original_sp.principal_id=NEW.original_teacher_principal_id
+     AND original_sp.school_id=NEW.school_id
+     AND original_sp.employment_status='active'
+   FOR UPDATE;
+  IF NOT FOUND THEN
     RAISE EXCEPTION 'original teacher must have active employment' USING ERRCODE='23514';
   END IF;
 
-  IF NOT EXISTS (
-    SELECT 1
-      FROM public.staff_profiles sp
-      JOIN public.users u ON u.principal_id=sp.principal_id AND u.school_id=sp.school_id
-     WHERE sp.principal_id=NEW.substitute_teacher_principal_id
-       AND sp.school_id=NEW.school_id
-       AND sp.employment_status='active'
-       AND u.status='active'
-  ) THEN
+  PERFORM 1
+    FROM public.staff_profiles sp
+    JOIN public.users u ON u.principal_id=sp.principal_id AND u.school_id=sp.school_id
+   WHERE sp.principal_id=NEW.substitute_teacher_principal_id
+     AND sp.school_id=NEW.school_id
+     AND sp.employment_status='active'
+     AND u.status='active'
+   FOR UPDATE OF sp,u;
+  IF NOT FOUND THEN
     RAISE EXCEPTION 'substitute must be active staff with an enabled login' USING ERRCODE='23514';
   END IF;
 
-  IF NOT EXISTS (
-    SELECT 1 FROM public.teacher_subject_assignments a
-     WHERE a.school_id=NEW.school_id
-       AND a.academic_year_id=v_academic_year_id
-       AND a.section_id=v_entry.section_id
-       AND a.subject_id=v_entry.subject_id
-       AND a.teacher_principal_id=NEW.substitute_teacher_principal_id
-       AND a.revoked_at IS NULL
-  ) THEN
+  PERFORM 1 FROM public.teacher_subject_assignments a
+   WHERE a.school_id=NEW.school_id
+     AND a.academic_year_id=v_academic_year_id
+     AND a.section_id=v_entry.section_id
+     AND a.subject_id=v_entry.subject_id
+     AND a.teacher_principal_id=NEW.substitute_teacher_principal_id
+     AND a.revoked_at IS NULL
+   FOR UPDATE;
+  IF NOT FOUND THEN
     RAISE EXCEPTION 'substitute requires an active matching class and subject assignment' USING ERRCODE='23514';
   END IF;
 
@@ -211,6 +212,68 @@ CREATE TRIGGER trg_guard_v60_timetable_substitution_update
 BEFORE INSERT OR UPDATE OR DELETE ON public.timetable_entries
 FOR EACH ROW EXECUTE FUNCTION public.guard_v60_timetable_substitution_history();
 
+-- Substitution records are append-only: only active -> cancelled is allowed.
+CREATE OR REPLACE FUNCTION public.guard_v60_staff_substitution_history()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path=pg_catalog,public
+AS $v60$
+BEGIN
+  IF TG_OP='DELETE' THEN
+    RAISE EXCEPTION 'substitution history cannot be deleted; cancel the record instead' USING ERRCODE='23514';
+  END IF;
+  IF OLD.status<>'active'
+     OR NEW.school_id IS DISTINCT FROM OLD.school_id
+     OR NEW.timetable_entry_id IS DISTINCT FROM OLD.timetable_entry_id
+     OR NEW.period_id IS DISTINCT FROM OLD.period_id
+     OR NEW.cover_date IS DISTINCT FROM OLD.cover_date
+     OR NEW.original_teacher_principal_id IS DISTINCT FROM OLD.original_teacher_principal_id
+     OR NEW.substitute_teacher_principal_id IS DISTINCT FROM OLD.substitute_teacher_principal_id
+     OR NEW.approved_leave_request_id IS DISTINCT FROM OLD.approved_leave_request_id
+     OR NEW.reason IS DISTINCT FROM OLD.reason
+     OR NEW.created_by_principal_id IS DISTINCT FROM OLD.created_by_principal_id
+     OR NEW.created_at IS DISTINCT FROM OLD.created_at
+     OR NEW.status<>'cancelled' THEN
+    RAISE EXCEPTION 'substitution identity and reason are immutable; only cancellation is allowed' USING ERRCODE='23514';
+  END IF;
+  RETURN NEW;
+END;
+$v60$;
+
+CREATE TRIGGER trg_guard_v60_staff_substitution_history
+BEFORE UPDATE OR DELETE ON public.staff_substitutions
+FOR EACH ROW EXECUTE FUNCTION public.guard_v60_staff_substitution_history();
+
+-- A substitute's matching assignment cannot be revoked while future cover is active.
+CREATE OR REPLACE FUNCTION public.guard_v60_substitution_assignment_lifecycle()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path=pg_catalog,public
+AS $v60$
+BEGIN
+  IF OLD.revoked_at IS NULL AND NEW.revoked_at IS NOT NULL
+     AND EXISTS (
+       SELECT 1
+         FROM public.staff_substitutions ss
+         JOIN public.timetable_entries te ON te.id=ss.timetable_entry_id AND te.school_id=ss.school_id
+        WHERE ss.school_id=OLD.school_id
+          AND ss.substitute_teacher_principal_id=OLD.teacher_principal_id
+          AND ss.status='active'
+          AND ss.cover_date>=(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date
+          AND te.academic_year_id=OLD.academic_year_id
+          AND te.section_id=OLD.section_id
+          AND te.subject_id=OLD.subject_id
+     ) THEN
+    RAISE EXCEPTION 'cancel future substitutions before revoking the substitute class/subject assignment' USING ERRCODE='23514';
+  END IF;
+  RETURN NEW;
+END;
+$v60$;
+
+CREATE TRIGGER trg_guard_v60_substitution_assignment_lifecycle
+BEFORE UPDATE OF revoked_at ON public.teacher_subject_assignments
+FOR EACH ROW EXECUTE FUNCTION public.guard_v60_substitution_assignment_lifecycle();
+
 -- A future cover cannot silently outlive the substitute's employment or login.
 CREATE OR REPLACE FUNCTION public.guard_v60_substitution_staff_lifecycle()
 RETURNS trigger
@@ -259,6 +322,31 @@ $v60$;
 CREATE TRIGGER trg_guard_v60_substitution_login_lifecycle
 BEFORE UPDATE OF status ON public.users
 FOR EACH ROW EXECUTE FUNCTION public.guard_v60_substitution_login_lifecycle();
+
+-- V4 auth_principals is canonical; protect the actual login-disable path.
+CREATE OR REPLACE FUNCTION public.guard_v60_substitution_principal_lifecycle()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path=pg_catalog,public
+AS $v60$
+BEGIN
+  IF NEW.principal_type='staff' AND NEW.status='disabled' AND OLD.status IS DISTINCT FROM NEW.status
+     AND EXISTS (
+       SELECT 1 FROM public.staff_substitutions ss
+        WHERE ss.school_id=NEW.school_id
+          AND ss.substitute_teacher_principal_id=NEW.id
+          AND ss.status='active'
+          AND ss.cover_date>=(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date
+     ) THEN
+    RAISE EXCEPTION 'cancel future substitutions before disabling this substitute principal' USING ERRCODE='23514';
+  END IF;
+  RETURN NEW;
+END;
+$v60$;
+
+CREATE TRIGGER trg_guard_v60_substitution_principal_lifecycle
+BEFORE UPDATE OF status ON public.auth_principals
+FOR EACH ROW EXECUTE FUNCTION public.guard_v60_substitution_principal_lifecycle();
 
 CREATE OR REPLACE FUNCTION public.grant_staff_substitution_permissions()
 RETURNS trigger
