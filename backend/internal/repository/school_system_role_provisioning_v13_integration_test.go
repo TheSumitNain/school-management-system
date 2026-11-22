@@ -105,6 +105,12 @@ func TestSchoolSystemRoleProvisioningV13PostgresIntegration(t *testing.T) {
             "staff.attendance.mark": true,
             "staff.attendance.update_same_day": true,
             "staff.attendance.correct_past": true,
+            "staff.leave.read": true,
+            "staff.leave.manage_types": true,
+            "staff.leave.manage_requests": true,
+            "staff.leave.decide": true,
+            "staff.holidays.read": true,
+            "staff.holidays.manage": true,
 		},
 		"teacher": {
 			"students.read_basic": true,
