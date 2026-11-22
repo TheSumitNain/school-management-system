@@ -42,7 +42,8 @@ Every API operation must re-evaluate effective permissions on the server, includ
 
 - `GET /school/staff-attendance?date=YYYY-MM-DD`: active staff roster and that day's attendance state.
 - `GET /school/staff-attendance/month?month=YYYY-MM`: month register with derived per-staff totals and daily entries.
-- `POST /school/staff-attendance`: create a daily record; duplicate staff/date returns conflict, never silently overwrites.
+- `POST /school/staff-attendance`: create one daily record; duplicate staff/date returns conflict, never silently overwrites.
+- `POST /school/staff-attendance/bulk`: atomically create records for 1–1000 unique staff principals; if any target is invalid or any duplicate exists, the entire batch rolls back.
 - `PATCH /school/staff-attendance/:recordID`: update status/remarks under same-day or historical permission.
 
 Every list is school-scoped and bounded to one date or one calendar month. Mutations and their audit events are one transaction. Do not return records for another school or disclose whether a cross-school staff principal exists.
@@ -51,7 +52,8 @@ Every list is school-scoped and bounded to one date or one calendar month. Mutat
 
 Staff Management → Attendance:
 - Date picker defaults to the school-local current date.
-- Roster shows employee name/code/designation and clear Present/Absent/Late/Half-day/Not marked state.
+- Roster supports employee name/code/designation search and status filtering; shows clear Present/Absent/Late/Half-day/Not marked state.
+- Bulk status entry applies only to visible, unmarked staff and requires explicit count confirmation; all-or-nothing transaction semantics prevent partial batches.
 - Marking and edits have field-level validation, pending/disabled states, success/error toasts and explicit correction confirmation.
 - Month view shows derived counts and per-day status without mixing leave or holidays into attendance totals.
 - Responsive desktop/tablet/mobile layouts; loading, empty, error/retry and no-permission states.
@@ -61,7 +63,7 @@ Staff Management → Attendance:
 
 Required before declaring complete:
 - Full migration chain on disposable PostgreSQL, including V58.
-- PostgreSQL integration tests for same-school FK, uniqueness, permission grants, audit atomicity, date rules, DENY override and cross-school isolation.
+- PostgreSQL integration tests for same-school FK, uniqueness, permission grants, single and bulk audit atomicity, bulk all-or-nothing rollback, date rules, DENY override and cross-school isolation.
 - Backend `go test -count=1 -p 1 ./...` and `go vet ./...`.
 - Frontend typecheck/build and Playwright coverage for daily marking, duplicate conflict, same-day update, historical permission gate, month summary, field validation and responsive behavior.
 - Never apply V58 to a user database without explicit approval.
