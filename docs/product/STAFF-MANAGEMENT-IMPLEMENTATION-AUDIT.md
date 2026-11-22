@@ -216,3 +216,11 @@ This section supersedes the earlier Phase 4 notes where they differ.
 - The audit-failure test intentionally raises a database exception to prove the leave decision transaction rolls back; the resulting PostgreSQL error in CI logs is expected by the test.
 - V59 remains unapplied to persistent/local databases. Remaining Phase 4 work includes further negative school-isolation/authorization cases, frontend review of full leave workflows, attendance reporting integration, and school-approved leave policy/balance rules.
 
+## 17. Attendance monthly calendar context (2026-11-22)
+
+- Fixed daily attendance status filtering so it works even when the employee search field is empty; E2E coverage now clears search before asserting status-only filtering.
+- Monthly attendance view adds a separate approved-leave and active-holiday context section. This context is permission-gated and never included in present/absent/late/half-day attendance totals.
+- Added bounded month-overlap filtering to the leave request list API, service validation and PostgreSQL integration coverage.
+- Backend CI [44986574096](https://github.com/TheSumitNain/school-management-system/actions/runs/44986574096) **PASS** at `a01514119b0d395b106accd990f59b2f7a5e992f`; frontend production build passes. Playwright is pending after correcting an E2E route mock that initially intercepted the daily context request instead of falling back to the existing mock.
+- No persistent/local database migration. Leave balance policy and payroll effects remain unconfigured.
+
