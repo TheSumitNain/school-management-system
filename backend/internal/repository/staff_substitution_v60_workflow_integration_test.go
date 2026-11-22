@@ -53,6 +53,16 @@ func TestStaffSubstitutionV60DatabaseGuardsPostgresIntegration(t *testing.T) {
 	if rollbackErr:=duplicate.Rollback(ctx);rollbackErr!=nil{t.Fatalf("rollback duplicate savepoint: %v",rollbackErr)}
 	if duplicateErr==nil{t.Fatal("duplicate active cover for one timetable entry/date was accepted")}
 
+	inactive,err:=tx.Begin(ctx);if err!=nil{t.Fatalf("begin substitute employment guard savepoint: %v",err)}
+	_,inactiveErr:=inactive.Exec(ctx,`UPDATE staff_profiles SET employment_status='inactive' WHERE principal_id=$1`,substituteID)
+	if rollbackErr:=inactive.Rollback(ctx);rollbackErr!=nil{t.Fatalf("rollback substitute employment savepoint: %v",rollbackErr)}
+	if inactiveErr==nil{t.Fatal("substitute employment was deactivated while future coverage remained active")}
+
+	disabled,err:=tx.Begin(ctx);if err!=nil{t.Fatalf("begin substitute login guard savepoint: %v",err)}
+	_,disabledErr:=disabled.Exec(ctx,`UPDATE users SET status='disabled' WHERE principal_id=$1`,substituteID)
+	if rollbackErr:=disabled.Rollback(ctx);rollbackErr!=nil{t.Fatalf("rollback substitute login savepoint: %v",rollbackErr)}
+	if disabledErr==nil{t.Fatal("substitute login was disabled while future coverage remained active")}
+
 	update,err:=tx.Begin(ctx);if err!=nil{t.Fatalf("begin recurring schedule guard savepoint: %v",err)}
 	_,updateErr:=update.Exec(ctx,`UPDATE timetable_entries SET room='Changed room' WHERE id=$1`,timetableEntryID)
 	if rollbackErr:=update.Rollback(ctx);rollbackErr!=nil{t.Fatalf("rollback schedule guard savepoint: %v",rollbackErr)}
