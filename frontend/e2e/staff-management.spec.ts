@@ -389,6 +389,8 @@ test("staff attendance supports daily marking and monthly summaries", async ({ p
   });
   await page.getByRole("button", { name: "Attendance", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Staff attendance" })).toBeVisible();
+  await page.getByRole("button", { name: "Mark", exact: true }).click();
+  await expect(page.getByText("Select an attendance status.")).toBeVisible();
   await page.getByLabel("Attendance status for Attendance Teacher").selectOption("present");
   await page.getByRole("button", { name: "Mark", exact: true }).click();
   await expect.poll(() => savedStatus).toBe("present");
