@@ -316,8 +316,8 @@ export function StaffManagementPage({ permissions }: Props) {
 
   return (
     <div className="content staff-management-page">
-      <div className="staff-workspace-heading">
-        <div><h1>Staff Management</h1><p>Manage your school's employees, access and academic responsibilities.</p></div>
+      <div className="heading staff-workspace-heading">
+        <div><span className="eyebrow">PEOPLE & LEARNING</span><h1>Staff Management</h1><p>Manage your school's employees, access and academic responsibilities.</p></div>
         {canCreate && <button className="primary staff-create-button" type="button" onClick={() => openAction("create")}><Plus size={16}/> Add staff</button>}
       </div>
       <nav className="staff-workspace-tabs" aria-label="Staff management sections">
