@@ -723,6 +723,7 @@ test("school holiday deactivation and reactivation require explicit confirmation
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByText("Inactive", { exact: true })).toBeVisible();
 
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
   await page.getByRole("button", { name: "Reactivate" }).click();
   const reactivate = page.getByRole("dialog", { name: "Reactivate school holiday?" });
   await reactivate.getByRole("button", { name: "Reactivate holiday" }).click();
