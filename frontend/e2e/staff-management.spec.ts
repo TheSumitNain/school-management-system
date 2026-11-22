@@ -1391,3 +1391,53 @@ test("staff workload requests only the selected teacher timetable and explains u
   await expect(dialog.getByText("Unscheduled", { exact: true }).first()).toBeVisible();
   await expect(dialog.getByText(/do not confirm teacher availability/)).toBeVisible();
 });
+
+
+test("staff substitution assigns a dated cover, validates the timetable weekday and retains cancellation history", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [
+    {
+      id: 1, principal_id: 501, school_id: 10, username: "teacher.original",
+      employee_code: "EMP-ORIGINAL", full_name: "Original Teacher", designation: "Mathematics Teacher",
+      mobile_number: "9876543215", employment_status: "active", profile_complete: true,
+      status: "active", must_change_password: false,
+    },
+    {
+      id: 2, principal_id: 502, school_id: 10, username: "teacher.substitute",
+      employee_code: "EMP-SUBSTITUTE", full_name: "Substitute Teacher", designation: "Mathematics Teacher",
+      mobile_number: "9876543216", employment_status: "active", profile_complete: true,
+      status: "active", must_change_password: false,
+    },
+  ];
+  const permissions = ["users.read", "staff.substitutions.read", "staff.substitutions.manage", "timetable.read", "staff.leave.read"];
+  await signInAndOpenStaff(page, rows, undefined, permissions);
+  await page.getByRole("button", { name: "Substitutions" }).click();
+  await expect(page.getByRole("heading", { name: "Substitute Teacher Coverage" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Recurring timetable lesson" }).click();
+  await page.getByRole("option", { name: /Monday · Class 6 A · Mathematics/ }).click();
+  await expect(page.getByText("Original teacher: Original Teacher")).toBeVisible();
+
+  await page.getByLabel("Substitution cover date").click();
+  const dateDialog = page.getByRole("dialog", { name: "Choose substitution cover date" });
+  await dateDialog.getByRole("button", { name: "Tuesday, November 24, 2026" }).click();
+  await page.getByRole("button", { name: "Substitute staff member" }).click();
+  await page.getByRole("option", { name: /Substitute Teacher/ }).click();
+  await page.getByLabel("Reason").fill("Original teacher unavailable");
+  await page.getByRole("button", { name: "Assign substitute" }).click();
+  await expect(page.getByText("This date is not a Monday; choose a matching date.")).toBeVisible();
+
+  await page.getByLabel("Substitution cover date").click();
+  await page.getByRole("dialog", { name: "Choose substitution cover date" }).getByRole("button", { name: "Monday, November 23, 2026" }).click();
+  await expect(page.getByText("This date is not a Monday; choose a matching date.")).toHaveCount(0);
+  await page.getByRole("button", { name: "Assign substitute" }).click();
+
+  const record = page.locator(".staff-substitution-record");
+  await expect(record).toContainText("Class 6");
+  await expect(record).toContainText("Original Teacher");
+  await expect(record).toContainText("Substitute Teacher");
+  await expect(record).toContainText("Scheduled");
+  await record.getByRole("button", { name: "Cancel cover" }).click();
+  await page.getByRole("button", { name: "Cancel cover" }).last().click();
+  await expect(record).toContainText("Cancelled");
+  await expect(record.getByRole("button", { name: "Cancel cover" })).toHaveCount(0);
+});
