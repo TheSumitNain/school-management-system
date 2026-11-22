@@ -45,7 +45,7 @@ Tab visibility and actions are permission-aware. A hidden tab is not authorizati
 
 ### 2.2 Staff profile — 8 tabs
 
-Selecting a staff row opens a full profile page (preferred for deep profiles and direct links; a responsive drawer may be used for a compact quick view). The profile has **8 tabs**:
+Selecting a staff row opens a full profile page (preferred for deep profiles and direct links; a responsive drawer may be used for a compact quick view). The profile has **9 tabs**:
 
 | # | Profile tab | Phase | Contents |
 |---:|---|---|---|
@@ -55,8 +55,9 @@ Selecting a staff row opens a full profile page (preferred for deep profiles and
 | 4 | Qualifications & Experience | P0 | Education, specialization, certifications, experience and previous employment |
 | 5 | Documents | P0 | Staff documents, category, issue/expiry dates and verification status |
 | 6 | Academic Assignments | P0 | Class-in-charge and subject teaching assignments with history |
-| 7 | Account & Access | P0 | Login lifecycle, roles, delegated permissions and password reset |
-| 8 | History & Activity | P0 | Employment, assignment and relevant audit/activity events |
+| 7 | Workload & Timetable | P1 | Current-year teacher-specific scheduled periods and timetable rows; unscheduled slots are not confirmed availability |
+| 8 | Account & Access | P0 | Login lifecycle, roles, delegated permissions and password reset |
+| 9 | History & Activity | P0 | Employment, assignment and relevant audit/activity events |
 
 Tabs with no records must show an explanatory empty state and an action when the viewer has permission. Sensitive fields/documents must be field-authorized; directory access does not imply access to every profile field.
 
@@ -462,12 +463,13 @@ Phases are dependency ordered, not a claim that every listed item is absent. Ins
 
 ### Phase 5 — Workload, Timetable & Substitution (P1)
 
-1. Workload summary derived from existing timetable. **Prerequisite:** provide a server-side teacher-scoped timetable read (teacher principal ID filter or dedicated staff-scoped route), protected by live `timetable.read` authorization and authenticated-school membership checks. Do not fetch the full school timetable into a staff profile and filter it only in the browser. Show only derived schedule/period counts; do not invent workload quotas.
-2. Teacher availability/free-period view, derived from the approved timetable and period catalogue; clearly distinguish an unscheduled slot from confirmed availability.
-3. Conflict warnings and workload reports, using server-authoritative timetable conflicts and real assignment data.
-4. Substitute assignment workflow, with explicit authorization, overlap/availability checks and append-only history.
+1. **Initial workload summary implemented (2026-11-22):** the existing timetable read API accepts an optional `teacher_principal_id` filter applied in PostgreSQL. It retains live `timetable.read` authorization, requires a matching `staff_profiles` row in the authenticated school, and preserves the teacher self-only boundary. The Staff profile's permission-gated Workload & Timetable tab shows current-year scheduled counts and actual timetable rows. It never treats an unscheduled slot as confirmed availability. Backend CI (Go tests, PostgreSQL integration suite, `go vet`) and frontend CI (TypeScript, production build, Playwright) passed on `30270fe0927a6eb3f284d462ddd6dc2b4ca2959e`.
+2. Add a dedicated repository-level PostgreSQL test proving same-school target filtering and cross-school isolation for the optional teacher filter.
+3. Implement teacher availability/free-period view only when timetable and period data support a meaningful availability definition; clearly distinguish an unscheduled slot from confirmed availability.
+4. Add conflict warnings and workload reports using server-authoritative timetable conflicts and real assignment data.
+5. Implement the substitute assignment workflow with explicit authorization, overlap/availability checks and append-only history.
 
-**Exit gate:** no double-booking, timetable history preserved, substitutions audited and assignment limits enforced. Add PostgreSQL tenant/scope tests and browser coverage for the teacher-specific view before marking the workload summary complete.
+**Exit gate:** no double-booking, timetable history preserved, substitutions audited and assignment limits enforced. The initial profile workload view is implemented and browser-tested, but the dedicated PostgreSQL target-scope test, conflict/reporting work and substitution workflow remain open.
 
 ### Phase 6 — Reports, Import/Export & ID Cards (P1/P2)
 
