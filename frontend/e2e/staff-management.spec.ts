@@ -101,6 +101,10 @@ async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, un
       await route.fulfill({ json: { academic_year: { id: 2026, name: "2026–27", starts_on: "2026-04-01", ends_on: "2027-03-31", status: "active", is_current: true } } });
       return;
     }
+    if (path === "/school/timetable/periods" && method === "GET") {
+      await route.fulfill({ json: { periods: [{ id: 4, school_id: 10, academic_year_id: 2026, period_number: 2, name: "Period 2", starts_at: "09:40", ends_at: "10:20", is_break: false }] } });
+      return;
+    }
     if (path === "/school/timetable/entries" && method === "GET") {
       if (url.searchParams.get("teacher_principal_id") !== "501") {
         await route.fulfill({ status: 400, json: { message: "A teacher-specific filter is required." } });
@@ -1342,5 +1346,7 @@ test("staff workload requests only the selected teacher timetable and explains u
   await expect(dialog.getByText("Scheduled periods")).toBeVisible();
   await expect(dialog.locator(".staff-workload-summary article").first().locator("strong")).toHaveText("1");
   await expect(dialog.getByText("Mathematics")).toBeVisible();
-  await expect(dialog.getByText(/unscheduled period is not treated as confirmed availability/)).toBeVisible();
+  await expect(dialog.getByRole("table")).toBeVisible();
+  await expect(dialog.getByText("Unscheduled", { exact: true }).first()).toBeVisible();
+  await expect(dialog.getByText(/do not confirm teacher availability/)).toBeVisible();
 });
