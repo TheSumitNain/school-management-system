@@ -202,6 +202,50 @@ test("staff leave workspace reviews applications and displays configured leave t
   await expect(page.getByText("Casual Leave")).toBeVisible();
 });
 
+test("staff leave request filters send the selected status and staff scope", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [
+    {
+      id: 1, principal_id: 501, school_id: 10, username: "leave.teacher",
+      employee_code: "EMP-LEAVE-01", full_name: "Leave Teacher", designation: "Science Teacher",
+      mobile_number: "9876543215", employment_status: "active", profile_complete: true,
+      status: "active", must_change_password: false,
+    },
+    {
+      id: 2, principal_id: 502, school_id: 10, username: "second.teacher",
+      employee_code: "EMP-LEAVE-02", full_name: "Second Teacher", designation: "Math Teacher",
+      mobile_number: "9876543216", employment_status: "active", profile_complete: true,
+      status: "active", must_change_password: false,
+    },
+  ];
+  const permissions = ["users.read", "staff.leave.read"];
+  await signInAndOpenStaff(page, rows, undefined, permissions);
+  await page.getByRole("button", { name: "Leave & Holidays" }).click();
+
+  const approvedRequest = page.waitForRequest(request => {
+    const url = new URL(request.url());
+    return request.method() === "GET" && url.pathname.endsWith("/school/staff-leave/requests") &&
+      url.searchParams.get("status") === "approved";
+  });
+  await page.getByRole("button", { name: "Leave request status" }).click();
+  await page.getByRole("option", { name: "Approved" }).click();
+  const approvedURL = new URL((await approvedRequest).url());
+  expect(approvedURL.searchParams.get("status")).toBe("approved");
+  await expect(page.getByText("No leave requests match these filters.")).toBeVisible();
+
+  const staffScopedRequest = page.waitForRequest(request => {
+    const url = new URL(request.url());
+    return request.method() === "GET" && url.pathname.endsWith("/school/staff-leave/requests") &&
+      url.searchParams.get("status") === "approved" &&
+      url.searchParams.get("staff_principal_id") === "502";
+  });
+  await page.getByRole("button", { name: "Filter by staff" }).click();
+  await page.getByRole("option", { name: "Second Teacher · EMP-LEAVE-02" }).click();
+  const scopedURL = new URL((await staffScopedRequest).url());
+  expect(scopedURL.searchParams.get("status")).toBe("approved");
+  expect(scopedURL.searchParams.get("staff_principal_id")).toBe("502");
+  await expect(page.getByText("No leave requests match these filters.")).toBeVisible();
+});
+
 test("staff leave types can be edited and safely deactivated", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 501, school_id: 10, username: "leave.teacher",
