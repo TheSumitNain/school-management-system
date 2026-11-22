@@ -231,3 +231,9 @@ Migration V59 and the first end-to-end Leave & Holiday workflow are implemented 
 - Backend CI [45001034866](https://github.com/TheSumitNain/school-management-system/actions/runs/45001034866) **PASS** at the same checkpoint.
 - Final visual-alignment checkpoint `7643906373fded3a3fe3d7e6f09465a1c9cead24`: Frontend CI [45001556205](https://github.com/TheSumitNain/school-management-system/actions/runs/45001556205) **PASS**, including TypeScript/design-token checks, Vite production build and complete Playwright browser acceptance suite; Backend CI [45001556190](https://github.com/TheSumitNain/school-management-system/actions/runs/45001556190) **PASS**.
 - No schema or persistent database changes were made. Leave-balance/accrual/carry-forward policy remains out of scope pending explicit school approval.
+## 19. Read-only holiday calendar permission acceptance (2026-11-22)
+
+- Added a Playwright acceptance test for a staff account granted `staff.holidays.read` without `staff.holidays.manage`.
+- Verified the holiday calendar remains visible, the request does not ask for inactive records, and Edit, Deactivate, Reactivate and Save controls are absent.
+- Exact checkpoint `eaaea2f2f0f4a3665221a3fe0d1807f404eac6a7`: Frontend CI [45001889888](https://github.com/TheSumitNain/school-management-system/actions/runs/45001889888) **PASS**, including the complete Playwright browser suite; Backend CI [45001889885](https://github.com/TheSumitNain/school-management-system/actions/runs/45001889885) **PASS**, including PostgreSQL integration and `go vet`.
+- This is permission-focused browser coverage only; no application behavior, API schema, database migration or persistent data was changed.
