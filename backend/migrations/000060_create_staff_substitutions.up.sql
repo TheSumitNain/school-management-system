@@ -4,10 +4,14 @@ VALUES
  ('staff.substitutions.read','Read dated substitute-teacher coverage', 'school', FALSE),
  ('staff.substitutions.manage','Assign and cancel dated substitute-teacher coverage', 'school', FALSE);
 
+ALTER TABLE public.timetable_entries
+  ADD CONSTRAINT timetable_entries_id_school_period_unique UNIQUE(id,school_id,period_id);
+
 CREATE TABLE public.staff_substitutions (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     school_id BIGINT NOT NULL,
     timetable_entry_id BIGINT NOT NULL,
+    period_id BIGINT NOT NULL,
     cover_date DATE NOT NULL,
     original_teacher_principal_id BIGINT NOT NULL,
     substitute_teacher_principal_id BIGINT NOT NULL,
@@ -21,9 +25,9 @@ CREATE TABLE public.staff_substitutions (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
-    CONSTRAINT staff_substitutions_entry_school_fkey
-      FOREIGN KEY(timetable_entry_id,school_id)
-      REFERENCES public.timetable_entries(id,school_id) ON DELETE RESTRICT,
+    CONSTRAINT staff_substitutions_entry_school_period_fkey
+      FOREIGN KEY(timetable_entry_id,school_id,period_id)
+      REFERENCES public.timetable_entries(id,school_id,period_id) ON DELETE RESTRICT,
     CONSTRAINT staff_substitutions_original_staff_fkey
       FOREIGN KEY(original_teacher_principal_id,school_id)
       REFERENCES public.staff_profiles(principal_id,school_id) ON DELETE RESTRICT,
@@ -52,7 +56,7 @@ CREATE UNIQUE INDEX ux_staff_substitutions_entry_date_active
   ON public.staff_substitutions(school_id,timetable_entry_id,cover_date)
   WHERE status='active';
 CREATE UNIQUE INDEX ux_staff_substitutions_substitute_period_active
-  ON public.staff_substitutions(school_id,substitute_teacher_principal_id,cover_date,timetable_entry_id)
+  ON public.staff_substitutions(school_id,substitute_teacher_principal_id,cover_date,period_id)
   WHERE status='active';
 CREATE INDEX ix_staff_substitutions_school_date
   ON public.staff_substitutions(school_id,cover_date,status,id);
@@ -81,6 +85,9 @@ BEGIN
 
   v_period_id:=v_entry.period_id;
   v_academic_year_id:=v_entry.academic_year_id;
+  IF NEW.period_id<>v_period_id THEN
+    RAISE EXCEPTION 'substitution period must match the recurring timetable entry' USING ERRCODE='23514';
+  END IF;
 
   IF NEW.original_teacher_principal_id<>v_entry.teacher_principal_id
      OR EXTRACT(ISODOW FROM NEW.cover_date)::integer<>v_entry.day_of_week THEN
