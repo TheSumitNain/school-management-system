@@ -78,8 +78,8 @@ func TestStaffSubstitutionV60DatabaseGuardsPostgresIntegration(t *testing.T) {
 		VALUES($1,$2,$3,$4,$5,$6) RETURNING id`,schoolID,yearID,sectionID,subjectID,originalID,actorPrincipalID).Scan(&originalAssignmentID);err!=nil{t.Fatalf("assign original teacher: %v",err)}
 	if err=tx.QueryRow(ctx,`INSERT INTO teacher_subject_assignments(school_id,academic_year_id,section_id,subject_id,teacher_principal_id,assigned_by_principal_id)
 		VALUES($1,$2,$3,$4,$5,$6) RETURNING id`,schoolID,yearID,sectionID,subjectID,substituteID,actorPrincipalID).Scan(&substituteAssignmentID);err!=nil{t.Fatalf("assign substitute teacher: %v",err)}
-	if err=tx.QueryRow(ctx,`INSERT INTO timetable_entries(school_id,academic_year_id,section_id,subject_id,teacher_principal_id,teacher_subject_assignment_id,period_id,day_of_week,created_by_principal_id,updated_by_principal_id)
-		VALUES($1,$2,$3,$4,$5,$6,$7,1,$8,$8) RETURNING id`,schoolID,yearID,sectionID,subjectID,originalID,originalAssignmentID,periodID,originalID).Scan(&timetableEntryID);err!=nil{t.Fatalf("create recurring timetable entry: %v",err)}
+	if err=tx.QueryRow(ctx,`INSERT INTO timetable_entries(school_id,academic_year_id,section_id,subject_id,teacher_principal_id,teacher_subject_assignment_id,period_id,day_of_week,room,created_by_principal_id,updated_by_principal_id)
+		VALUES($1,$2,$3,$4,$5,$6,$7,1,'Original room',$8,$8) RETURNING id`,schoolID,yearID,sectionID,subjectID,originalID,originalAssignmentID,periodID,originalID).Scan(&timetableEntryID);err!=nil{t.Fatalf("create recurring timetable entry: %v",err)}
 
 	const coverDate="2026-11-23" // Monday; same weekday as the recurring entry.
 	var substitutionID int64
@@ -139,6 +139,12 @@ func TestStaffSubstitutionV60DatabaseGuardsPostgresIntegration(t *testing.T) {
 	if rollbackErr:=cancelledReason.Rollback(ctx);rollbackErr!=nil{t.Fatalf("rollback cancelled history guard savepoint: %v",rollbackErr)}
 	if cancelledReasonErr==nil{t.Fatal("cancelled substitution history was mutable")}
 	if _,err=tx.Exec(ctx,`UPDATE timetable_entries SET room='Changed room' WHERE id=$1`,timetableEntryID);err!=nil{t.Fatalf("recurring timetable entry remained locked after cancellation: %v",err)}
+	var snapshotRoom,snapshotClass,snapshotSection,snapshotSubject,snapshotPeriod,snapshotOriginal,snapshotSubstitute string
+	if err=tx.QueryRow(ctx,`SELECT room_snapshot,class_name_snapshot,section_name_snapshot,subject_name_snapshot,period_name_snapshot,original_teacher_name_snapshot,substitute_teacher_name_snapshot
+		FROM staff_substitutions WHERE id=$1`,substitutionID).Scan(&snapshotRoom,&snapshotClass,&snapshotSection,&snapshotSubject,&snapshotPeriod,&snapshotOriginal,&snapshotSubstitute);err!=nil{t.Fatalf("read immutable substitution snapshots: %v",err)}
+	if snapshotRoom!="Original room"||snapshotClass==""||snapshotSection!="A"||snapshotSubject==""||snapshotPeriod!="Period 1"||snapshotOriginal!="Original Teacher"||snapshotSubstitute!="Substitute Teacher"{
+		t.Fatalf("substitution snapshots did not preserve the original timetable context: room=%q class=%q section=%q subject=%q period=%q original=%q substitute=%q",snapshotRoom,snapshotClass,snapshotSection,snapshotSubject,snapshotPeriod,snapshotOriginal,snapshotSubstitute)
+	}
 	var retained int
 	if err=tx.QueryRow(ctx,`SELECT count(*) FROM staff_substitutions WHERE id=$1 AND status='cancelled'`,substitutionID).Scan(&retained);err!=nil||retained!=1{t.Fatalf("cancelled substitution history was not retained: count=%d err=%v",retained,err)}
 	if _,err=tx.Exec(ctx,`INSERT INTO timetable_entries(school_id,academic_year_id,section_id,subject_id,teacher_principal_id,teacher_subject_assignment_id,period_id,day_of_week,created_by_principal_id,updated_by_principal_id)
