@@ -147,3 +147,10 @@ Migration V59 and the first end-to-end Leave & Holiday workflow are implemented 
 - Frontend CI [44982936799](https://github.com/TheSumitNain/school-management-system/actions/runs/44982936799) **PASS** on UI checkpoint `36ab57484de809c30849c030187f0190dab43a60`. The daily staff attendance register displays approved leave and active holiday context when the viewer has the respective read permissions; this is informational only and does not mutate attendance rows.
 - Remaining verification: dedicated PostgreSQL behavior tests for concurrent overlap, decision authorization, transaction rollback and audit events. V59 remains unapplied to persistent/local databases.
 
+## 9. Leave type management and final verification (2026-11-22)
+
+- Leave type UI supports edit and active/inactive status. Deactivation requires confirmation; existing requests/history are preserved; inactive types are not offered for new requests and can be reactivated through the edit form.
+- Added Playwright coverage for leave type edit/deactivation. Frontend CI [44984794710](https://github.com/TheSumitNain/school-management-system/actions/runs/44984794710) **PASS** at `f1b71d4e2999f868f62910ee878f78eee1460a8b`, with TypeScript/Vite build and all 51 browser tests.
+- Backend CI [44984794698](https://github.com/TheSumitNain/school-management-system/actions/runs/44984794698) **PASS** at the same checkpoint, including complete migration chain on disposable PostgreSQL, Go tests and `go vet`.
+- Remaining: dedicated PostgreSQL behavior tests for concurrent overlap, decision authorization, transaction rollback and audit events. School policy/balance calculations remain unconfigured and out of scope until approved. V59 remains unapplied to persistent/local databases.
+
