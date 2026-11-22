@@ -31,6 +31,5 @@ DROP FUNCTION public.guard_v60_timetable_substitution_history();
 DROP TRIGGER trg_validate_v60_staff_substitution ON public.staff_substitutions;
 DROP FUNCTION public.validate_v60_staff_substitution();
 DROP TABLE public.staff_substitutions;
-ALTER TABLE public.timetable_entries DROP CONSTRAINT timetable_entries_id_school_period_unique;
 DELETE FROM public.permissions
  WHERE permission_key IN ('staff.substitutions.read','staff.substitutions.manage');
