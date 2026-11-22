@@ -144,13 +144,15 @@ BEGIN
 
   PERFORM pg_advisory_xact_lock(hashtextextended(
     NEW.school_id::text||':'||NEW.substitute_teacher_principal_id::text||':'||
-    NEW.cover_date::text||':'||v_period_id::text,0));
+    EXTRACT(ISODOW FROM NEW.cover_date)::integer::text||':'||v_period_id::text,0));
   RETURN NEW;
 END;
 $v60$;
 
 CREATE TRIGGER trg_validate_v60_staff_substitution
-BEFORE INSERT OR UPDATE ON public.staff_substitutions
+BEFORE INSERT OR UPDATE OF school_id,timetable_entry_id,period_id,cover_date,original_teacher_principal_id,
+  substitute_teacher_principal_id,approved_leave_request_id
+ON public.staff_substitutions
 FOR EACH ROW EXECUTE FUNCTION public.validate_v60_staff_substitution();
 
 -- A recurring slot cannot be rewritten or removed while dated cover records
@@ -161,7 +163,7 @@ LANGUAGE plpgsql
 SET search_path=pg_catalog,public
 AS $v60$
 BEGIN
-  IF EXISTS (
+  IF TG_OP IN ('UPDATE','DELETE') AND EXISTS (
     SELECT 1 FROM public.staff_substitutions ss
      WHERE ss.school_id=OLD.school_id
        AND ss.timetable_entry_id=OLD.id
@@ -170,12 +172,29 @@ BEGIN
     RAISE EXCEPTION 'timetable entry has active dated substitutions; cancel them before changing the recurring schedule'
       USING ERRCODE='23514';
   END IF;
+
+  IF TG_OP IN ('INSERT','UPDATE') THEN
+    PERFORM pg_advisory_xact_lock(hashtextextended(
+      NEW.school_id::text||':'||NEW.teacher_principal_id::text||':'||
+      NEW.day_of_week::text||':'||NEW.period_id::text,0));
+    IF EXISTS (
+      SELECT 1 FROM public.staff_substitutions ss
+       WHERE ss.school_id=NEW.school_id
+         AND ss.substitute_teacher_principal_id=NEW.teacher_principal_id
+         AND ss.period_id=NEW.period_id
+         AND ss.status='active'
+         AND EXTRACT(ISODOW FROM ss.cover_date)::integer=NEW.day_of_week
+    ) THEN
+      RAISE EXCEPTION 'teacher has an active dated substitute assignment in this weekly slot'
+        USING ERRCODE='23505', CONSTRAINT='ux_staff_substitutions_substitute_period_active';
+    END IF;
+  END IF;
   RETURN CASE WHEN TG_OP='DELETE' THEN OLD ELSE NEW END;
 END;
 $v60$;
 
 CREATE TRIGGER trg_guard_v60_timetable_substitution_update
-BEFORE UPDATE OR DELETE ON public.timetable_entries
+BEFORE INSERT OR UPDATE OR DELETE ON public.timetable_entries
 FOR EACH ROW EXECUTE FUNCTION public.guard_v60_timetable_substitution_history();
 
 CREATE OR REPLACE FUNCTION public.grant_staff_substitution_permissions()
