@@ -83,7 +83,7 @@ All endpoints are under the authenticated School Admin API:
 | POST | `/school/staff-leave/requests/:requestID/approve` | `staff.leave.decide` | Approve pending request |
 | POST | `/school/staff-leave/requests/:requestID/reject` | `staff.leave.decide` | Reject pending request with comment |
 | POST | `/school/staff-leave/requests/:requestID/cancel` | `staff.leave.manage_requests` | Cancel a pending request |
-| GET | `/school/holidays?from=YYYY-MM-DD&to=YYYY-MM-DD` | `staff.holidays.read` | List calendar range |
+| GET | `/school/holidays?from=YYYY-MM-DD&to=YYYY-MM-DD` | `staff.holidays.read` | List active calendar entries; `include_inactive=true` additionally requires `staff.holidays.manage` and returns inactive entries for management/reactivation |
 | POST | `/school/holidays` | `staff.holidays.manage` | Create holiday |
 | PATCH | `/school/holidays/:holidayID` | `staff.holidays.manage` | Update/deactivate holiday |
 
@@ -124,7 +124,7 @@ Migration V59 and the first end-to-end Leave & Holiday workflow are implemented 
 ### Frontend
 
 - Staff Management shows Leave & Holidays only when the current user has an appropriate leave/holiday permission. Users without those permissions retain a disabled restricted navigation item.
-- Workspace includes request listing/filtering, leave type creation, holiday listing and create/edit/deactivate controls, approval/rejection with a required rejection comment, and cancellation confirmation.
+- Workspace includes request listing/filtering, leave type creation, holiday listing and create/edit/deactivate/reactivate controls, approval/rejection with a required rejection comment, and cancellation confirmation. Holiday managers can view inactive entries through the manager-only `include_inactive=true` filter; editing an inactive entry preserves its inactive state until explicit reactivation confirmation.
 - Request form includes staff, leave type, inclusive dates, full/half-day selection and reason. No leave balance is displayed.
 - Browser acceptance covers loading the leave application, approving it through the confirmation modal, and reading configured leave types and the holiday calendar.
 
