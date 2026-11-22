@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { BarChart3, RefreshCw, Search } from "lucide-react";
+import { RefreshCw, Search } from "lucide-react";
 import { useStaffSubstitutionTimetableYearQuery, useTeacherWorkloadReportQuery } from "../queries";
 import "./StaffWorkloadReportWorkspace.css";
 
