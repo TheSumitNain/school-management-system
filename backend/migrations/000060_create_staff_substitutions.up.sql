@@ -98,6 +98,15 @@ BEGIN
   END IF;
 
   IF NOT EXISTS (
+    SELECT 1 FROM public.staff_profiles original_sp
+     WHERE original_sp.principal_id=NEW.original_teacher_principal_id
+       AND original_sp.school_id=NEW.school_id
+       AND original_sp.employment_status='active'
+  ) THEN
+    RAISE EXCEPTION 'original teacher must have active employment' USING ERRCODE='23514';
+  END IF;
+
+  IF NOT EXISTS (
     SELECT 1
       FROM public.staff_profiles sp
       JOIN public.users u ON u.principal_id=sp.principal_id AND u.school_id=sp.school_id
@@ -139,6 +148,7 @@ BEGIN
        AND lr.school_id=NEW.school_id
        AND lr.staff_principal_id=NEW.original_teacher_principal_id
        AND lr.status='approved'
+       AND lr.duration_type='full_day'
        AND lr.start_date<=NEW.cover_date
        AND lr.end_date>=NEW.cover_date
   ) THEN
@@ -199,6 +209,55 @@ $v60$;
 CREATE TRIGGER trg_guard_v60_timetable_substitution_update
 BEFORE INSERT OR UPDATE OR DELETE ON public.timetable_entries
 FOR EACH ROW EXECUTE FUNCTION public.guard_v60_timetable_substitution_history();
+
+-- A future cover cannot silently outlive the substitute's employment or login.
+CREATE OR REPLACE FUNCTION public.guard_v60_substitution_staff_lifecycle()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path=pg_catalog,public
+AS $v60$
+BEGIN
+  IF NEW.employment_status='inactive' AND OLD.employment_status IS DISTINCT FROM NEW.employment_status
+     AND EXISTS (
+       SELECT 1 FROM public.staff_substitutions ss
+        WHERE ss.school_id=NEW.school_id
+          AND ss.status='active'
+          AND ss.cover_date>=CURRENT_DATE
+          AND (ss.original_teacher_principal_id=NEW.principal_id OR ss.substitute_teacher_principal_id=NEW.principal_id)
+     ) THEN
+    RAISE EXCEPTION 'cancel future substitutions before making this staff member inactive' USING ERRCODE='23514';
+  END IF;
+  RETURN NEW;
+END;
+$v60$;
+
+CREATE TRIGGER trg_guard_v60_substitution_staff_lifecycle
+BEFORE UPDATE OF employment_status ON public.staff_profiles
+FOR EACH ROW EXECUTE FUNCTION public.guard_v60_substitution_staff_lifecycle();
+
+CREATE OR REPLACE FUNCTION public.guard_v60_substitution_login_lifecycle()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path=pg_catalog,public
+AS $v60$
+BEGIN
+  IF NEW.status='disabled' AND OLD.status IS DISTINCT FROM NEW.status
+     AND EXISTS (
+       SELECT 1 FROM public.staff_substitutions ss
+        WHERE ss.school_id=NEW.school_id
+          AND ss.substitute_teacher_principal_id=NEW.principal_id
+          AND ss.status='active'
+          AND ss.cover_date>=CURRENT_DATE
+     ) THEN
+    RAISE EXCEPTION 'cancel future substitutions before disabling this substitute login' USING ERRCODE='23514';
+  END IF;
+  RETURN NEW;
+END;
+$v60$;
+
+CREATE TRIGGER trg_guard_v60_substitution_login_lifecycle
+BEFORE UPDATE OF status ON public.users
+FOR EACH ROW EXECUTE FUNCTION public.guard_v60_substitution_login_lifecycle();
 
 CREATE OR REPLACE FUNCTION public.grant_staff_substitution_permissions()
 RETURNS trigger
