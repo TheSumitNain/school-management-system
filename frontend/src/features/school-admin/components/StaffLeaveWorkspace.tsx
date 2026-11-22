@@ -6,7 +6,7 @@ import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { DatePicker } from "../../../shared/components/DatePicker";
 import { Modal } from "../../../shared/components/Modal";
 import { Select } from "../../../shared/components/Select";
-import type { SchoolHoliday, StaffRecord } from "../api";
+import type { SchoolHoliday, StaffLeaveType, StaffRecord } from "../api";
 import {
  useCancelStaffLeaveRequestMutation, useCreateStaffLeaveRequestMutation, useDecideStaffLeaveRequestMutation,
  useSaveSchoolHolidayMutation, useSaveStaffLeaveTypeMutation, useSchoolHolidaysQuery,
