@@ -658,8 +658,8 @@ export function getStaffLeaveTypes(signal?:AbortSignal){return api<{data:StaffLe
 export function saveStaffLeaveType(input:Omit<StaffLeaveType,"id"> & {id?:number}) {
  const {id,...body}=input;return api<{data:StaffLeaveType}>(id?("/school/staff-leave/types/"+id):"/school/staff-leave/types",{method:id?"PATCH":"POST",body:JSON.stringify(body)});
 }
-export function getStaffLeaveRequests(filters:{status?:string;staffPrincipalID?:number},signal?:AbortSignal){
- const params=new URLSearchParams();if(filters.status)params.set("status",filters.status);if(filters.staffPrincipalID)params.set("staff_principal_id",String(filters.staffPrincipalID));
+export function getStaffLeaveRequests(filters:{status?:string;staffPrincipalID?:number;onDate?:string},signal?:AbortSignal){
+ const params=new URLSearchParams();if(filters.status)params.set("status",filters.status);if(filters.staffPrincipalID)params.set("staff_principal_id",String(filters.staffPrincipalID));if(filters.onDate)params.set("on_date",filters.onDate);
  return api<{data:StaffLeaveRequest[]}>("/school/staff-leave/requests"+(params.size?"?"+params.toString():""),{signal});
 }
 export function createStaffLeaveRequest(input:{staff_principal_id:number;leave_type_id:number;start_date:string;end_date:string;duration_type:"full_day"|"half_day";half_day_session?:"first_half"|"second_half";reason:string}){
