@@ -669,7 +669,7 @@ export function decideStaffLeaveRequest(requestID:number,decision:"approve"|"rej
  return api<{message:string}>("/school/staff-leave/requests/"+requestID+"/"+decision,{method:"POST",body:JSON.stringify(comment?{comment}:{})});
 }
 export function cancelStaffLeaveRequest(requestID:number){return api<{message:string}>("/school/staff-leave/requests/"+requestID+"/cancel",{method:"POST"});}
-export function getSchoolHolidays(from:string,to:string,signal?:AbortSignal){return api<{data:SchoolHoliday[]}>("/school/holidays?from="+encodeURIComponent(from)+"&to="+encodeURIComponent(to),{signal});}
+export function getSchoolHolidays(from:string,to:string,signal?:AbortSignal,includeInactive=false){const params=new URLSearchParams({from,to});if(includeInactive)params.set("include_inactive","true");return api<{data:SchoolHoliday[]}>("/school/holidays?"+params.toString(),{signal});}
 export function saveSchoolHoliday(input:Omit<SchoolHoliday,"id"> & {id?:number}){
  const {id,...body}=input;return api<{data:SchoolHoliday}>(id?("/school/holidays/"+id):"/school/holidays",{method:id?"PATCH":"POST",body:JSON.stringify(body)});
 }
