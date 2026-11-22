@@ -683,8 +683,9 @@ test("staff leave request submits a valid half-day application with its selected
   await page.getByLabel("Reason").fill("Medical appointment");
 
   await page.getByRole("button", { name: "Submit leave request" }).click();
-  await expect(page.getByText("Medical appointment")).toBeVisible();
-  await expect(page.getByText("pending", { exact: true })).toBeVisible();
+  const submittedApplication = page.locator("article").filter({ hasText: "Medical appointment" });
+  await expect(submittedApplication).toBeVisible();
+  await expect(submittedApplication).toContainText("pending");
   expect(submitted).toMatchObject({
     staff_principal_id: 501,
     leave_type_id: 1,
