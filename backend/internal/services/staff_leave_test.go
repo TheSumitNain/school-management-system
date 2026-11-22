@@ -138,8 +138,23 @@ func TestStaffLeaveServiceValidatesReportDateRange(t *testing.T) {
   {"valid single date","2026-11-15","","",false},
  }
  for _,tt:=range tests { t.Run(tt.name,func(t *testing.T){
+  callsBefore:=repo.listRequestsCalls
   _,err:=service.ListRequests(context.Background(),1,1,"approved",0,tt.onDate,tt.fromDate,tt.toDate)
   if tt.wantErr&&!errors.Is(err,ErrInvalidStaffLeave){t.Fatalf("error=%v want invalid leave",err)}
   if !tt.wantErr&&err!=nil{t.Fatalf("unexpected error: %v",err)}
+  wantCalls:=callsBefore
+  if !tt.wantErr { wantCalls++ }
+  if repo.listRequestsCalls!=wantCalls { t.Fatalf("repository calls=%d want=%d (invalid filters must be rejected before database access)",repo.listRequestsCalls,wantCalls) }
  })}
+}
+
+func TestStaffLeaveServiceRejectsUnknownRequestStatusBeforeRepository(t *testing.T) {
+ repo:=&staffLeaveRepositoryStub{}
+ service:=NewStaffLeaveService(repo)
+ for _,status:=range []string{"PENDING","unknown","pending unexpected"} {
+  if _,err:=service.ListRequests(context.Background(),1,1,status,0,"","","");!errors.Is(err,ErrInvalidStaffLeave) {
+   t.Errorf("status %q: error=%v want ErrInvalidStaffLeave",status,err)
+  }
+ }
+ if repo.listRequestsCalls!=0 { t.Fatalf("invalid statuses reached repository %d times",repo.listRequestsCalls) }
 }
