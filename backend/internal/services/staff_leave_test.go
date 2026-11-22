@@ -13,6 +13,7 @@ type staffLeaveRepositoryStub struct {
 	created     repository.StaffLeaveRequest
 	saveHolidayCalls int
 	savedHoliday repository.SchoolHoliday
+	listRequestsCalls int
 }
 
 func (s *staffLeaveRepositoryStub) ListTypes(context.Context, int64, int64) ([]repository.StaffLeaveType, error) {
@@ -22,6 +23,7 @@ func (s *staffLeaveRepositoryStub) SaveType(context.Context, int64, int64, int64
 	return nil, nil
 }
 func (s *staffLeaveRepositoryStub) ListRequests(context.Context, int64, int64, string, int64, string, string, string) ([]repository.StaffLeaveRequest, error) {
+	s.listRequestsCalls++
 	return nil, nil
 }
 func (s *staffLeaveRepositoryStub) CreateRequest(_ context.Context, _, _ int64, item repository.StaffLeaveRequest) (*repository.StaffLeaveRequest, error) {
