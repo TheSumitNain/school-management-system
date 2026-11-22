@@ -29,7 +29,16 @@ func NewStaffAttendanceHandler(service StaffAttendanceManagementService) *StaffA
     return &StaffAttendanceHandler{service: service}
 }
 
+func (h *StaffAttendanceHandler) unavailable(c *gin.Context) bool {
+    if h == nil || h.service == nil {
+        c.JSON(http.StatusServiceUnavailable, gin.H{"status":"error","message":"Staff attendance service is unavailable"})
+        return true
+    }
+    return false
+}
+
 func (h *StaffAttendanceHandler) ListDaily(c *gin.Context) {
+    if h.unavailable(c) { return }
     actor, school, ok := staffRecordActor(c)
     if !ok { c.JSON(http.StatusUnauthorized, gin.H{"status":"error","message":"School staff authentication required"}); return }
     raw := strings.TrimSpace(c.Query("date"))
@@ -42,6 +51,7 @@ func (h *StaffAttendanceHandler) ListDaily(c *gin.Context) {
 }
 
 func (h *StaffAttendanceHandler) ListMonthly(c *gin.Context) {
+    if h.unavailable(c) { return }
     actor, school, ok := staffRecordActor(c)
     if !ok { c.JSON(http.StatusUnauthorized, gin.H{"status":"error","message":"School staff authentication required"}); return }
     raw := strings.TrimSpace(c.Query("month"))
@@ -61,6 +71,7 @@ type staffAttendanceMarkRequest struct {
 }
 
 func (h *StaffAttendanceHandler) Mark(c *gin.Context) {
+    if h.unavailable(c) { return }
     actor, school, ok := staffRecordActor(c)
     if !ok { c.JSON(http.StatusUnauthorized, gin.H{"status":"error","message":"School staff authentication required"}); return }
     var req staffAttendanceMarkRequest
@@ -78,6 +89,7 @@ type staffAttendanceUpdateRequest struct {
 }
 
 func (h *StaffAttendanceHandler) Update(c *gin.Context) {
+    if h.unavailable(c) { return }
     actor, school, ok := staffRecordActor(c)
     if !ok { c.JSON(http.StatusUnauthorized, gin.H{"status":"error","message":"School staff authentication required"}); return }
     recordID, err := strconv.ParseInt(c.Param("recordID"), 10, 64)
