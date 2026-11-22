@@ -428,3 +428,29 @@ export function useCreateStaffLeaveRequestMutation(){return useStaffLeaveMutatio
 export function useDecideStaffLeaveRequestMutation(){return useStaffLeaveMutation((input:{requestID:number;decision:"approve"|"reject";comment?:string})=>decideStaffLeaveRequest(input.requestID,input.decision,input.comment));}
 export function useCancelStaffLeaveRequestMutation(){return useStaffLeaveMutation(cancelStaffLeaveRequest);}
 export function useSaveSchoolHolidayMutation(){return useStaffLeaveMutation(saveSchoolHoliday);}
+
+export const staffSubstitutionQueryKeys = {
+  all: [...schoolAdminQueryKeys.staff(), "substitutions"] as const,
+  list: (filters:{fromDate:string;toDate:string;staffPrincipalID?:number}) => [...staffSubstitutionQueryKeys.all,filters] as const,
+  timetableYear: () => [...staffSubstitutionQueryKeys.all,"timetable-year"] as const,
+  timetableEntries: (academicYearID:number) => [...staffSubstitutionQueryKeys.all,"timetable-entries",academicYearID] as const,
+};
+export function useStaffSubstitutionsQuery(filters:{fromDate:string;toDate:string;staffPrincipalID?:number},enabled=true){
+  return useQuery({queryKey:staffSubstitutionQueryKeys.list(filters),queryFn:({signal})=>getStaffSubstitutions(filters,signal),enabled:enabled&&Boolean(filters.fromDate)&&Boolean(filters.toDate),staleTime:10000});
+}
+export function useStaffSubstitutionTimetableYearQuery(enabled=true){
+  return useQuery({queryKey:staffSubstitutionQueryKeys.timetableYear(),queryFn:({signal})=>getCurrentTimetableYear(signal),enabled,staleTime:60000});
+}
+export function useStaffSubstitutionTimetableEntriesQuery(academicYearID:number,enabled=true){
+  return useQuery({queryKey:staffSubstitutionQueryKeys.timetableEntries(academicYearID),queryFn:({signal})=>getTimetableEntries(academicYearID,0,signal),enabled:enabled&&academicYearID>0,staleTime:15000});
+}
+function useStaffSubstitutionMutation<T>(fn:(input:T)=>Promise<unknown>){
+  const client=useQueryClient();
+  return useMutation({mutationFn:fn,onSuccess:()=>client.invalidateQueries({queryKey:staffSubstitutionQueryKeys.all})});
+}
+export function useCreateStaffSubstitutionMutation(){
+  return useStaffSubstitutionMutation(createStaffSubstitution);
+}
+export function useCancelStaffSubstitutionMutation(){
+  return useStaffSubstitutionMutation(cancelStaffSubstitution);
+}
