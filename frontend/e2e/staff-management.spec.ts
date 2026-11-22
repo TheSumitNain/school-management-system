@@ -344,7 +344,7 @@ test("staff profile history is permission-gated and renders staff audit events",
   await expect(dialog.getByText("school.admin").first()).toBeVisible();
 });
 
-test("staff attendance supports daily marking and monthly summaries", async ({ page }) => {
+test("staff attendance supports search, individual and atomic bulk marking, and monthly summaries", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 512, school_id: 10, username: "teacher.attendance",
     employee_code: "EMP-ATT-01", full_name: "Attendance Teacher", designation: "Science Teacher",
@@ -356,46 +356,65 @@ test("staff attendance supports daily marking and monthly summaries", async ({ p
     "staff.attendance.update_same_day", "staff.attendance.correct_past",
   ]);
   let savedStatus = "";
+  let bulkCreated = 0;
+  const dailyRecords = [
+    { id: null as number | null, school_id: 10, staff_principal_id: 512, employee_code: "EMP-ATT-01", full_name: "Attendance Teacher", designation: "Science Teacher", attendance_date: "", status: null as string | null },
+    { id: null as number | null, school_id: 10, staff_principal_id: 513, employee_code: "EMP-ATT-02", full_name: "Bulk Attendance Teacher", designation: "English Teacher", attendance_date: "", status: null as string | null },
+  ];
   await page.route("**/api/school/staff-attendance**", async route => {
     const request = route.request();
     const url = new URL(request.url());
     if (request.method() === "GET" && url.pathname.endsWith("/month")) {
       await route.fulfill({ json: { month: url.searchParams.get("month"), data: [{
         staff_principal_id: 512, employee_code: "EMP-ATT-01", full_name: "Attendance Teacher",
-        designation: "Science Teacher", present_days: 1, absent_days: 0, late_days: 1, half_days: 0,
-        records: [{ id: 7, date: "2026-11-03", status: "present" }, { id: 8, date: "2026-11-04", status: "late" }],
+        designation: "Science Teacher", present_days: 1, absent_days: 1, late_days: 1, half_days: 0,
+        records: [{ id: 7, date: "2026-11-03", status: "present" }, { id: 8, date: "2026-11-04", status: "late" }, { id: 9, date: "2026-11-05", status: "absent" }],
       }] } });
       return;
     }
     if (request.method() === "GET") {
-      await route.fulfill({ json: { date: url.searchParams.get("date"), data: [{
-        id: null, school_id: 10, staff_principal_id: 512, employee_code: "EMP-ATT-01",
-        full_name: "Attendance Teacher", designation: "Science Teacher",
-        attendance_date: url.searchParams.get("date"), status: null,
-      }] } });
+      for (const item of dailyRecords) item.attendance_date = url.searchParams.get("date") ?? "";
+      await route.fulfill({ json: { date: url.searchParams.get("date"), data: dailyRecords } });
+      return;
+    }
+    if (request.method() === "POST" && url.pathname.endsWith("/bulk")) {
+      const input = request.postDataJSON() as { staff_principal_ids: number[]; status: string };
+      bulkCreated = input.staff_principal_ids.length;
+      for (const item of dailyRecords) if (input.staff_principal_ids.includes(item.staff_principal_id)) {
+        item.id = 23;
+        item.status = input.status;
+      }
+      await route.fulfill({ status: 201, json: { created: bulkCreated } });
       return;
     }
     if (request.method() === "POST") {
-      savedStatus = (request.postDataJSON() as { status: string }).status;
-      await route.fulfill({ status: 201, json: { data: {
-        id: 22, school_id: 10, staff_principal_id: 512, employee_code: "EMP-ATT-01",
-        full_name: "Attendance Teacher", designation: "Science Teacher",
-        attendance_date: (request.postDataJSON() as { attendance_date: string }).attendance_date,
-        status: savedStatus,
-      } } });
+      const input = request.postDataJSON() as { staff_principal_id: number; status: string; attendance_date: string };
+      savedStatus = input.status;
+      const item = dailyRecords.find(record => record.staff_principal_id === input.staff_principal_id);
+      if (item) { item.id = 22; item.status = input.status; item.attendance_date = input.attendance_date; }
+      await route.fulfill({ status: 201, json: { data: { ...item, id: 22 } } });
       return;
     }
     await route.fulfill({ status: 404, json: { message: "Unmocked staff attendance request" } });
   });
   await page.getByRole("button", { name: "Attendance", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Staff attendance" })).toBeVisible();
-  await page.getByRole("button", { name: "Mark", exact: true }).click();
+  await page.getByRole("button", { name: "Mark", exact: true }).first().click();
   await expect(page.getByText("Select an attendance status.")).toBeVisible();
-  await page.getByLabel("Attendance status for Attendance Teacher").selectOption("present");
-  await page.getByRole("button", { name: "Mark", exact: true }).click();
+  const firstRow = page.getByRole("row").filter({ hasText: "Attendance Teacher" }).first();
+  await firstRow.getByLabel("Attendance status for Attendance Teacher").selectOption("present");
+  await firstRow.getByRole("button", { name: "Mark", exact: true }).click();
   await expect.poll(() => savedStatus).toBe("present");
   await expect(page.getByText("Staff attendance marked.")).toBeVisible();
+  await page.getByLabel("Search staff attendance").fill("Bulk Attendance");
+  await expect(page.getByText("Attendance Teacher", { exact: true })).toHaveCount(0);
+  await page.getByLabel("Bulk attendance status").selectOption("absent");
+  await page.getByRole("button", { name: "Mark 1 unmarked staff", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Confirm bulk staff attendance" })).toBeVisible();
+  await page.getByRole("button", { name: "Mark 1 staff", exact: true }).click();
+  await expect.poll(() => bulkCreated).toBe(1);
+  await expect(page.getByText("Attendance marked for 1 staff members.")).toBeVisible();
   await page.getByRole("button", { name: "Monthly summary" }).click();
   await expect(page.getByText("Attendance Teacher").first()).toBeVisible();
-  await expect(page.getByText("View daily entries (2)")).toBeVisible();
+  await expect(page.getByText("View daily entries (3)")).toBeVisible();
 });
