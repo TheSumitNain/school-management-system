@@ -289,3 +289,10 @@ This section supersedes earlier Phase 4 remaining-work notes where later impleme
 - The test verifies exactly one enable request with the `temporary_password` payload and confirms the Enable action is no longer shown after refresh.
 - Exact checkpoint `247686b29c6e30d0b6de2b542b74be9faa42fc7d`: Frontend CI [45004695381](https://github.com/TheSumitNain/school-management-system/actions/runs/45004695381) **PASS** with all 69 Playwright tests; Backend CI [45004695364](https://github.com/TheSumitNain/school-management-system/actions/runs/45004695364) **PASS** with PostgreSQL integration and `go vet`.
 - Acceptance-test-only change; no runtime or database schema change.
+
+
+## 26. Staff leave request PostgreSQL validation and eligibility coverage (2026-11-22)
+
+- Expanded real-PostgreSQL integration coverage for malformed/reversed dates, invalid calendar dates, blank reasons, unsupported durations, missing/invalid half-day sessions and multi-date half-day requests.
+- Added eligibility and lifecycle assertions: approved leave blocks overlapping requests; cancellation releases the date for a new request; inactive leave types, inactive staff profiles and cross-school staff targets are rejected.
+- Exact checkpoint `062d9a2d9acba4d939985c1d6a0cdb2907cd247b`: Backend CI [45005336749](https://github.com/TheSumitNain/school-management-system/actions/runs/45005336749) **PASS**, including all Go tests, PostgreSQL integration and `go vet`. No migration or runtime change was needed.
