@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 	"testing"
 	"time"
 
@@ -72,26 +71,16 @@ func TestStaffLeaveWorkflowPostgresIntegration(t *testing.T) {
 		end:=time.Now().AddDate(0,0,31).Format("2006-01-02")
 		type result struct{err error}
 		results:=make(chan result,2)
-		var ready sync.WaitGroup
-		ready.Add(2)
-		var startGate sync.WaitGroup
-		startGate.Add(1)
-		for i:=0;i<2;i++{
-			go func(){
-				defer ready.Done()
-				<-make(chan struct{})
-			}()
-		}
+		startGate:=make(chan struct{})
 		// Run two independent pool transactions at the same instant.
 		for i:=0;i<2;i++{
 			go func(){
-				ready.Done()
-				startGate.Wait()
+				<-startGate
 				_,err:=f.repo.CreateRequest(f.ctx,f.adminPrincipalID,f.schoolID,StaffLeaveRequest{StaffPrincipalID:f.staffPrincipalID,LeaveTypeID:f.leaveTypeID,StartDate:start,EndDate:end,DurationType:"full_day",Reason:"Concurrent overlap"})
 				results<-result{err:err}
 			}()
 		}
-		startGate.Done()
+		close(startGate)
 		var succeeded,conflicted int
 		for i:=0;i<2;i++{
 			got:=<-results
