@@ -747,8 +747,21 @@ test("holiday save errors clear when the holiday details are corrected", async (
 
   await page.getByRole("button", { name: "Leave & Holidays" }).click();
   await page.getByRole("button", { name: "Holiday calendar" }).click();
+  await page.getByRole("button", { name: "Save holiday" }).click();
+  await expect(page.getByText("Select the holiday date.")).toBeVisible();
+  await expect(page.getByText("Enter a holiday name (at least 2 characters).")).toBeVisible();
+  await expect(page.getByLabel("Holiday date")).toHaveAttribute("aria-invalid", "true");
+  await expect(page.getByLabel("Holiday date")).toHaveAttribute("aria-describedby", "holiday-date-error");
+  await expect(page.getByLabel(/Holiday name/)).toHaveAttribute("aria-invalid", "true");
+  await expect(page.getByLabel(/Holiday name/)).toHaveAttribute("aria-describedby", "holiday-name-error");
+
   await page.getByLabel("Holiday date").click();
   await page.getByRole("dialog", { name: "Choose holiday date" }).getByRole("button", { name: "Wednesday, November 25, 2026" }).click();
+  await expect(page.getByText("Select the holiday date.")).toHaveCount(0);
+  await expect(page.getByLabel("Holiday date")).not.toHaveAttribute("aria-invalid", "true");
+  await page.getByLabel(/Holiday name/).fill("School Event");
+  await expect(page.getByText("Enter a holiday name (at least 2 characters).")).toHaveCount(0);
+  await expect(page.getByLabel(/Holiday name/)).not.toHaveAttribute("aria-invalid", "true");
   await expect(page.getByRole("dialog", { name: "Choose holiday date" })).toHaveCount(0);
   await page.getByLabel(/Holiday name/).fill("School Event");
   await page.getByRole("button", { name: "Save holiday" }).click();
