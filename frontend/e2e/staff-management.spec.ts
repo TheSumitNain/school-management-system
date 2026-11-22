@@ -413,6 +413,40 @@ test("disabling a staff account requires explicit confirmation and refreshes its
   await expect(page.getByRole("button", { name: "Disable disable.teacher" })).toHaveCount(0);
 });
 
+test("staff password reset validates a strong temporary password and requires next sign-in change", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 517, school_id: 10, username: "reset.teacher",
+    employee_code: "EMP-RESET-01", full_name: "Reset Teacher", designation: "Teacher",
+    mobile_number: "9876543216", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false,
+  }];
+  let resetCalls = 0;
+  let submittedPayload: Record<string, unknown> | null = null;
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "users.password_reset"]);
+  await page.route("**/api/school/staff/517/password/reset", async route => {
+    if (route.request().method() !== "POST") { await route.fallback(); return; }
+    resetCalls += 1;
+    submittedPayload = route.request().postDataJSON() as Record<string, unknown>;
+    await route.fulfill({ json: { message: "Password reset." } });
+  });
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Reset password for reset.teacher" }).click();
+  const resetDialog = page.getByRole("dialog", { name: "Reset staff password" });
+  const password = resetDialog.getByLabel("New temporary password");
+  await password.fill("short");
+  await resetDialog.getByRole("button", { name: "Reset password", exact: true }).click();
+  await expect(resetDialog.getByText("Password must contain at least 12 characters.")).toBeVisible();
+  expect(resetCalls).toBe(0);
+
+  await password.fill("StrongTempPass!2026");
+  await expect(resetDialog.getByText("Password must contain at least 12 characters.")).toHaveCount(0);
+  await resetDialog.getByRole("button", { name: "Reset password", exact: true }).click();
+  await expect(page.getByText("Password reset. The staff member must change it at next sign-in.")).toBeVisible();
+  expect(resetCalls).toBe(1);
+  expect(submittedPayload).toEqual({ new_password: "StrongTempPass!2026" });
+});
+
 test("staff profile edit uses the shared employment-status select and sends the selected value", async ({ page }) => {
   const updates: Array<Record<string, unknown>> = [];
   const rows: Array<Record<string, unknown>> = [{
