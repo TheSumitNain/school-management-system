@@ -227,7 +227,10 @@ func(h *AcademicHandler) ListTeacherSubjectAssignments(c *gin.Context){
 	a,s,ok:=h.ready(c);if !ok{return}
 	yearID,valid:=queryPositiveID(c,"academic_year_id");if !valid{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid academic_year_id"});return}
 	sectionID,valid:=queryPositiveID(c,"section_id");if !valid{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid section_id"});return}
+	teacherID,valid:=queryPositiveID(c,"teacher_principal_id");if !valid{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid teacher_principal_id"});return}
 	items,err:=h.service.ListTeacherSubjectAssignments(c.Request.Context(),a,s,yearID,sectionID);if err!=nil{academicError(c,err,"Teacher assignment");return}
+	// Keep staff-profile reads scoped to one teacher while preserving the existing school-wide list contract.
+	if teacherID>0{filtered:=make([]repository.TeacherSubjectAssignment,0);for _,item:=range items{if item.TeacherPrincipalID==teacherID{filtered=append(filtered,item)}};items=filtered}
 	c.JSON(http.StatusOK,gin.H{"status":"success","assignments":items})
 }
 func(h *AcademicHandler) CreateTeacherSubjectAssignment(c *gin.Context){
@@ -245,7 +248,9 @@ func(h *AcademicHandler) RevokeTeacherSubjectAssignment(c *gin.Context){
 }
 func(h *AcademicHandler) ListClassInchargeAssignments(c *gin.Context){
 	a,s,ok:=h.ready(c);if !ok{return};yearID,valid:=queryPositiveID(c,"academic_year_id");if !valid{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid academic_year_id"});return}
+	teacherID,valid:=queryPositiveID(c,"teacher_principal_id");if !valid{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid teacher_principal_id"});return}
 	items,err:=h.service.ListClassInchargeAssignments(c.Request.Context(),a,s,yearID);if err!=nil{academicError(c,err,"Class in-charge assignment");return}
+	if teacherID>0{filtered:=make([]repository.ClassInchargeAssignment,0);for _,item:=range items{if item.TeacherPrincipalID==teacherID{filtered=append(filtered,item)}};items=filtered}
 	c.JSON(http.StatusOK,gin.H{"status":"success","assignments":items})
 }
 func(h *AcademicHandler) CreateClassInchargeAssignment(c *gin.Context){
