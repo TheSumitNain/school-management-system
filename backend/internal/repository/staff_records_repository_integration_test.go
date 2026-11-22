@@ -137,6 +137,22 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
     if _, err := attendanceRepo.Update(ctx, actorID, schoolID, *past.ID, "present", nil); err != nil {
         t.Fatalf("correct historical staff attendance: %v", err)
     }
+    secondStaff, err := repo.CreateStaffAccountWithProfile(ctx, actorID, schoolID, "staffbulk-"+suffix, "integration-test-password-hash", models.StaffProfile{
+        EmployeeCode:"SB-"+suffix, FullName:"Bulk Staff Integration", Designation:"Teacher", MobileNumber:"9876543211", EmploymentStatus:"active",
+    })
+    if err != nil { t.Fatalf("create second staff for bulk attendance: %v", err) }
+    if _, err := attendanceRepo.MarkBulk(ctx, actorID, schoolID, []int64{secondStaff.PrincipalID, staff.PrincipalID}, today, "absent", nil); !errors.Is(err, ErrStaffAttendanceConflict) {
+        t.Fatalf("bulk attendance with an existing daily mark error=%v want conflict", err)
+    }
+    var partialBulkCreated bool
+    if err := tx.QueryRow(ctx, `
+        SELECT EXISTS(SELECT 1 FROM staff_attendance_records WHERE school_id=$1 AND staff_principal_id=$2 AND attendance_date=$3::date)
+    `, schoolID, secondStaff.PrincipalID, today.Format("2006-01-02")).Scan(&partialBulkCreated); err != nil {
+        t.Fatalf("check atomic bulk rollback: %v", err)
+    }
+    if partialBulkCreated { t.Fatal("bulk attendance left a partial record after duplicate conflict") }
+    bulkCount, err := attendanceRepo.MarkBulk(ctx, actorID, schoolID, []int64{secondStaff.PrincipalID}, today, "present", nil)
+    if err != nil || bulkCount != 1 { t.Fatalf("bulk attendance success count=%d err=%v", bulkCount, err) }
 
 	if _,err:=repo.UpdateStaffQualification(ctx,actorID,schoolID+1,staff.PrincipalID,qualification.ID,StaffQualification{
 		QualificationType:"postgraduate",QualificationName:"Cross tenant",Institution:"Denied",
