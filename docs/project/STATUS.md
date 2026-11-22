@@ -1932,3 +1932,10 @@ This update supersedes older status bullets that listed the following database-b
 - Staff Directory now combines search with independent employment, login-account and profile-completeness filters; the browser fixture verifies an active employee can still have an incomplete profile.
 - Checkpoint `674133cf169619a236bf88184bb971b53471f86d`: Frontend CI [45007749959](https://github.com/TheSumitNain/school-management-system/actions/runs/45007749959) **PASS** (TypeScript, production build, complete Playwright suite); Backend CI [45007750034](https://github.com/TheSumitNain/school-management-system/actions/runs/45007750034) **PASS** (Go tests, ephemeral PostgreSQL integration/migrations, `go vet`).
 - No persistent database migration or backend runtime change.
+
+
+## Staff Management — weekly workload report acceptance (2026-11-22)
+
+- Verified the teacher profile workload report: weekday scheduled periods, distinct sections and subjects, first/last scheduled period, busiest day, and weekly totals are derived only from actual timetable entries. The UI clearly states that unscheduled slots do not establish availability and that approved leave/substitute coverage are not included.
+- Checkpoint `dd126cd939e1bdad8e817a9ccaf458db4b632b38`: Frontend CI [45012140676](https://github.com/TheSumitNain/school-management-system/actions/runs/45012140676) **PASS** (TypeScript, production build and full Playwright browser suite); Backend CI [45012140670](https://github.com/TheSumitNain/school-management-system/actions/runs/45012140670) **PASS** (Go tests, ephemeral PostgreSQL integration and `go vet`).
+- No persistent database migration or schema change was applied. Substitute-teacher workflow remains planned; its additive migration will be exercised only on ephemeral CI databases until explicit approval is given for any persistent local database migration.
