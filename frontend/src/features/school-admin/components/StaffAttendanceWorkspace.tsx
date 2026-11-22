@@ -24,7 +24,7 @@ const statuses: Array<{ value: Status; label: string }> = [
 
 function csvCell(value: string | number | null | undefined) {
   let text = String(value ?? "");
-  if (/^[\t\r ]*[=+\-@]/.test(text)) text = "'" + text;
+  if (/^\s*[=+\-@]/.test(text)) text = "'" + text;
   return '"' + text.replace(/"/g, '""') + '"';
 }
 
