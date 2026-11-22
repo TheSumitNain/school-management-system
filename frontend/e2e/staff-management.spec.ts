@@ -56,6 +56,14 @@ async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, un
       await route.fulfill({ json: { data: saved } });
       return;
     }
+    const leaveTypeUpdate = path.match(/^\/school\/staff-leave\/types\/(\d+)$/);
+    if (leaveTypeUpdate && method === "PATCH") {
+      const target = leaveTypes.find(item => item.id === Number(leaveTypeUpdate[1]));
+      if (!target) { await route.fulfill({ status: 404, json: { message: "Leave type not found" } }); return; }
+      Object.assign(target, request.postDataJSON() as Record<string, unknown>);
+      await route.fulfill({ json: { data: target } });
+      return;
+    }
     if (path === "/school/staff-leave/requests" && method === "GET") {
       const status = url.searchParams.get("status") ?? "";
       const staffID = Number(url.searchParams.get("staff_principal_id") ?? 0);
@@ -183,6 +191,32 @@ test("staff leave workspace reviews applications and displays configured leave t
   await expect(page.getByText("School Foundation Day")).toBeVisible();
   await page.getByRole("button", { name: "Leave types" }).click();
   await expect(page.getByText("Casual Leave")).toBeVisible();
+});
+
+test("staff leave types can be edited and safely deactivated", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 501, school_id: 10, username: "leave.teacher",
+    employee_code: "EMP-LEAVE-01", full_name: "Leave Teacher", designation: "Science Teacher",
+    mobile_number: "9876543215", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false,
+  }];
+  const permissions = ["users.read", "staff.leave.read", "staff.leave.manage_types"];
+  await signInAndOpenStaff(page, rows, undefined, permissions);
+  await page.getByRole("button", { name: "Leave & Holidays" }).click();
+  await page.getByRole("button", { name: "Leave types" }).click();
+
+  const typeRow = page.locator(".staff-leave-type-row").filter({ hasText: "Casual Leave" });
+  await typeRow.getByRole("button", { name: "Edit" }).click();
+  await page.getByPlaceholder("e.g. Casual Leave").fill("Annual Leave");
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByText("Annual Leave")).toBeVisible();
+
+  const updatedRow = page.locator(".staff-leave-type-row").filter({ hasText: "Annual Leave" });
+  await updatedRow.getByRole("button", { name: "Deactivate" }).click();
+  const confirmation = page.getByRole("dialog", { name: "Deactivate leave type?" });
+  await expect(confirmation).toBeVisible();
+  await confirmation.getByRole("button", { name: "Deactivate leave type" }).click();
+  await expect(updatedRow.getByText("Inactive")).toBeVisible();
 });
 
 test("staff directory opens the eight-tab employee profile and shows saved profile details", async ({ page }) => {
