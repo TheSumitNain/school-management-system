@@ -1895,3 +1895,9 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 
 - Verified password reset rejects a temporary password shorter than 12 characters without sending a request, then submits a valid password once and clearly requires a change at next sign-in.
 - Checkpoint `90d7969babd87e60db19cebb57f702ef93f75ed0`: Frontend CI [45004357985](https://github.com/TheSumitNain/school-management-system/actions/runs/45004357985) **PASS** (68 Playwright tests); Backend CI [45004358053](https://github.com/TheSumitNain/school-management-system/actions/runs/45004358053) **PASS** (PostgreSQL integration and `go vet`).
+
+
+## Staff Management — account enable acceptance (2026-11-22)
+
+- Verified re-enabling a disabled staff login requires a valid 12+ character temporary password, updates the directory status, and enforces a password change at next sign-in.
+- Checkpoint `247686b29c6e30d0b6de2b542b74be9faa42fc7d`: Frontend CI [45004695381](https://github.com/TheSumitNain/school-management-system/actions/runs/45004695381) **PASS** (69 Playwright tests); Backend CI [45004695364](https://github.com/TheSumitNain/school-management-system/actions/runs/45004695364) **PASS** (PostgreSQL integration and `go vet`).
