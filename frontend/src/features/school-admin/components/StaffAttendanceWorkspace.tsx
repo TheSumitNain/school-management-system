@@ -105,9 +105,8 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
   const records = daily.data?.data ?? [];
   const visibleRecords = useMemo(() => {
     const term = search.trim().toLocaleLowerCase();
-    if (!term) return records;
     return records.filter(item => {
-      const matchesSearch = !term || [item.full_name, item.employee_code, item.designation].some(value => value.toLocaleLowerCase().includes(term));
+      const matchesSearch = !term || [item.full_name, item.employee_code, item.designation].some(value => (value ?? "").toLocaleLowerCase().includes(term));
       const matchesStatus = statusFilter === "all" || (statusFilter === "unmarked" ? !item.status : item.status === statusFilter);
       return matchesSearch && matchesStatus;
     });
