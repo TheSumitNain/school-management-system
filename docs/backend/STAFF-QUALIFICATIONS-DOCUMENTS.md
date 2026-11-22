@@ -1,6 +1,6 @@
 # Staff Qualifications & Documents — Backend Contract
 
-**Status:** V57 schema and initial GET/POST API plus frontend read/create integration are committed on `work`. Migration has NOT been applied to the user's local or persistent databases. CI verification is in progress; update/edit, verification workflow and complete acceptance coverage remain pending.
+**Status:** V57 schema and school-scoped GET/POST/PATCH APIs for qualifications, certifications and experience, with frontend create/edit integration, are committed on `work`. Browser acceptance covers create, validation and edit flows for all three record types. The dedicated verification workflow remains intentionally unavailable pending a separate permission decision; private document upload/download remains gated on a private storage adapter. CI verification for the latest Staff Management checkpoint is recorded in `docs/project/STATUS.md`; do not infer local or persistent database migration state from CI.
 **Reviewed branch:** `work`
 **Review date:** 2026-11-21
 
@@ -12,7 +12,7 @@ This contract extends the existing school-scoped `staff_profiles` foundation. It
 - Existing profile fields are employee code, full name, designation, mobile, optional email/joining date, and employment status.
 - Employee codes are unique case-insensitively within a school.
 - Existing account and profile mutations use transactions and append audit events.
-- V57 adds school-scoped education, certification and experience tables. Initial GET/POST APIs and the Staff Management profile tab now use these records; this is a partial milestone, not full CRUD completion.
+- V57 adds school-scoped education, certification and experience tables. GET/POST/PATCH APIs and the Staff Management profile tab support listing, creating and editing these records; verification is a separate deferred workflow.
 - No private staff-document storage/upload/download implementation was found during this source review. Do not implement a public URL, web-root upload, or unauthenticated download.
 
 ## 2. Qualifications & Experience data model
