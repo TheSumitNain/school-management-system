@@ -8,7 +8,7 @@ const staffUser = {
   school_id: 10,
 };
 
-async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, unknown>>, onStaffMutation?: (path: string, route: Route) => Promise<void>) {
+async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, unknown>>, onStaffMutation?: (path: string, route: Route) => Promise<void>, permissions = ["users.read", "users.create", "users.update"]) {
   const staffRecords: Record<string, Array<Record<string, unknown>>> = { qualifications: [], certifications: [], experience: [] };
   await page.route("**/api/**", async route => {
     const request = route.request();
@@ -29,7 +29,7 @@ async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, un
         json: {
           ...staffUser,
           username: "staff-e2e-admin",
-          permissions: ["users.read", "users.create", "users.update"],
+          permissions,
         },
       });
       return;
@@ -286,4 +286,37 @@ test("staff profile creates education, certification and experience records", as
   await dialog.locator('input[name="record_designation"]').fill("Senior Science Teacher");
   await dialog.getByRole("button", { name: "Save changes" }).click();
   await expect(dialog.getByText("Senior Science Teacher")).toBeVisible();
+});
+
+test("staff profile shows only the selected employee's academic assignments and retained history", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 411, school_id: 10, username: "teacher.profile",
+    employee_code: "EMP-PRO-01", full_name: "Profile Teacher", designation: "English Teacher",
+    mobile_number: "9876543212", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false, created_at: "2026-04-01T00:00:00.000Z",
+  }];
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "users.create", "users.update", "teacher_assignments.read", "class_incharge_assignments.read"]);
+  await page.route("**/api/school/teacher-assignments?*", async route => {
+    const url = new URL(route.request().url());
+    expect(url.searchParams.get("teacher_principal_id")).toBe("411");
+    await route.fulfill({ json: { assignments: [
+      { id: 1, academic_year_id: 3, class_name: "Class 8", section_name: "A", subject_name: "English", assigned_at: "2026-04-01T00:00:00.000Z", teacher_principal_id: 411, revoked_at: null },
+      { id: 2, academic_year_id: 2, class_name: "Class 7", section_name: "B", subject_name: "English", assigned_at: "2025-04-01T00:00:00.000Z", teacher_principal_id: 411, revoked_at: "2026-03-31T00:00:00.000Z" },
+    ] } });
+  });
+  await page.route("**/api/school/class-incharge-assignments?*", async route => {
+    const url = new URL(route.request().url());
+    expect(url.searchParams.get("teacher_principal_id")).toBe("411");
+    await route.fulfill({ json: { assignments: [
+      { id: 3, academic_year_id: 3, class_name: "Class 8", section_name: "A", assigned_at: "2026-04-01T00:00:00.000Z", teacher_principal_id: 411, revoked_at: null },
+    ] } });
+  });
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Profile Teacher" }).click();
+  const dialog = page.getByRole("dialog", { name: "Profile Teacher" });
+  await dialog.getByRole("button", { name: "Academic Assignments" }).click();
+  await expect(dialog.getByRole("heading", { name: "Subject teaching" })).toBeVisible();
+  await expect(dialog.getByText("Class 8 · A", { exact: true }).first()).toBeVisible();
+  await expect(dialog.getByText(/Revoked ·/)).toBeVisible();
+  await expect(dialog.getByText("2 active")).toBeVisible();
 });
