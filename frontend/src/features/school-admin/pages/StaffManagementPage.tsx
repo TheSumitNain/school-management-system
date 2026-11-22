@@ -44,6 +44,7 @@ export function StaffManagementPage({ permissions }: Props) {
   const [search, setSearch] = useState("");
   const [employmentFilter, setEmploymentFilter] = useState("all");
   const [accountFilter, setAccountFilter] = useState("all");
+  const [profileFilter, setProfileFilter] = useState("all");
   const [action, setAction] = useState<Action>(null);
   const [selected, setSelected] = useState<StaffRecord | null>(null);
   const [profileFor, setProfileFor] = useState<StaffRecord | null>(null);
@@ -85,13 +86,14 @@ export function StaffManagementPage({ permissions }: Props) {
     const term = search.trim().toLowerCase();
     return staff.filter(item => {
       const matchesSearch = !term || [item.username, item.full_name, item.employee_code, item.designation, item.mobile_number, item.status, item.employment_status].some(value => value?.toLowerCase().includes(term));
-      const matchesEmployment = employmentFilter === "all" ||
-        (employmentFilter === "incomplete" ? !item.employment_status : item.employment_status === employmentFilter);
+      const matchesEmployment = employmentFilter === "all" || item.employment_status === employmentFilter;
       const matchesAccount = accountFilter === "all" ||
         (accountFilter === "enabled" ? item.status === "active" : item.status !== "active");
-      return matchesSearch && matchesEmployment && matchesAccount;
+      const matchesProfile = profileFilter === "all" ||
+        (profileFilter === "complete" ? item.profile_complete !== false : item.profile_complete === false);
+      return matchesSearch && matchesEmployment && matchesAccount && matchesProfile;
     });
-  }, [staff, search, employmentFilter, accountFilter]);
+  }, [staff, search, employmentFilter, accountFilter, profileFilter]);
 
   function openProfile(item: StaffRecord) { setProfileFor(item); setProfileTab("Overview"); setRecordFormKind(null); setEditingRecordID(null); setRecordError(""); }
   function openAction(next: Action, item: StaffRecord | null = null) {
@@ -409,7 +411,7 @@ export function StaffManagementPage({ permissions }: Props) {
       {activeTab === "attendance" && <StaffAttendanceWorkspace permissions={permissions}/>}
       {activeTab === "leave" && <StaffLeaveWorkspace permissions={permissions} staff={staff}/>}
       {activeTab === "directory" && <section className="table-panel">
-        <div className="toolbar staff-directory-toolbar"><div><h2>All staff</h2><small>{filtered.length} of {staff.length} staff members</small></div><div className="staff-directory-controls"><div className="search"><Search size={16}/><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search by name, code, designation or username" aria-label="Search staff by name, code, designation or username"/></div><div className="staff-directory-filters"><label>Employment<Select value={employmentFilter} onChange={setEmploymentFilter} ariaLabel="Filter by employment status" options={[{value:"all",label:"All employment"},{value:"active",label:"Active"},{value:"inactive",label:"Inactive"},{value:"incomplete",label:"Profile incomplete"}]}/></label><label>Login account<Select value={accountFilter} onChange={setAccountFilter} ariaLabel="Filter by login account status" options={[{value:"all",label:"All accounts"},{value:"enabled",label:"Enabled"},{value:"disabled",label:"Disabled"}]}/></label></div></div></div>
+        <div className="toolbar staff-directory-toolbar"><div><h2>All staff</h2><small>{filtered.length} of {staff.length} staff members</small></div><div className="staff-directory-controls"><div className="search"><Search size={16}/><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search by name, code, designation or username" aria-label="Search staff by name, code, designation or username"/></div><div className="staff-directory-filters"><label>Employment<Select value={employmentFilter} onChange={setEmploymentFilter} ariaLabel="Filter by employment status" options={[{value:"all",label:"All employment"},{value:"active",label:"Active"},{value:"inactive",label:"Inactive"}]}/></label><label>Login account<Select value={accountFilter} onChange={setAccountFilter} ariaLabel="Filter by login account status" options={[{value:"all",label:"All accounts"},{value:"enabled",label:"Enabled"},{value:"disabled",label:"Disabled"}]}/></label><label>Profile<Select value={profileFilter} onChange={setProfileFilter} ariaLabel="Filter by profile completeness" options={[{value:"all",label:"All profiles"},{value:"complete",label:"Complete"},{value:"incomplete",label:"Incomplete"}]}/></label></div></div></div>
         {query.isPending ? <div className="table-message" aria-live="polite">Loading staff accounts…</div>
           : query.isError ? <div className="table-message error-text">{query.error instanceof Error ? query.error.message : "Unable to load staff accounts."}<button className="staff-retry-button" type="button" onClick={() => void query.refetch()}>Try again</button></div>
           : filtered.length === 0 ? <div className="table-message">{staff.length === 0 ? "No staff accounts yet. Add the first staff account to get started." : "No staff match the current search and filters."}</div>
