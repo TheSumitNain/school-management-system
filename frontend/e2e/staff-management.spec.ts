@@ -680,3 +680,18 @@ test("leave type save errors stay inside their own form when switching workspace
   await page.getByRole("button", { name: "Leave types" }).click();
   await expect(page.getByRole("alert")).toHaveText("A leave type with this name already exists.");
 });
+
+test("write-only leave permissions do not expose list views without leave-read access", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 501, school_id: 10, username: "leave.writeonly",
+    employee_code: "EMP-WRITE-01", full_name: "Leave Write Only", designation: "Staff Manager",
+    mobile_number: "9876543215", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false,
+  }];
+  const permissions = ["users.read", "staff.leave.manage_types", "staff.leave.manage_requests", "staff.leave.decide"];
+  await signInAndOpenStaff(page, rows, undefined, permissions);
+  const restricted = page.getByRole("button", { name: /Leave Restricted/ });
+  await expect(restricted).toBeDisabled();
+  await expect(restricted).toHaveAttribute("title", "Leave read permission required to open this workspace");
+  await expect(page.getByRole("button", { name: "Leave & Holidays" })).toHaveCount(0);
+});
