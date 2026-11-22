@@ -178,3 +178,14 @@ The existing staff attendance implementation is a separate foundation:
 
 **No persistent database was changed.** No migration has been created or applied at this audit checkpoint. Academic, Student Management and Settings pages were not touched.
 
+## 13. Leave & Holiday implementation checkpoint (2026-11-22)
+
+- Implemented V59 school-scoped leave types, leave requests and holiday calendar, with six dedicated non-delegable permissions granted to School Admin system roles for existing and future schools.
+- Backend APIs now support leave type create/list/update, request create/list/approve/reject/cancel and holiday create/list/update. Repository operations enforce same-school membership, active staff/type checks, inclusive date validation, half-day shape, overlap detection under a per-school/staff transaction advisory lock, pending-only decisions, required rejection comment, applicant self-approval denial and transactional audit events.
+- Staff Management now has a permission-gated Leave & Holidays workspace with request listing/filtering, leave type creation, holiday calendar create/edit/deactivate, approve/reject modal and cancellation confirmation. Rejection requires a comment; no balances are shown.
+- The request UI always sends new requests to Pending, even when a leave type's `requires_approval` flag is false. Auto-approval is not enabled until its policy is explicitly designed.
+- Frontend browser acceptance now covers the staff leave workspace, approval confirmation, configured leave types and holiday calendar. Frontend CI [44982323582](https://github.com/TheSumitNain/school-management-system/actions/runs/44982323582) passed production build and all 50 Playwright tests. Backend CI [44982323577](https://github.com/TheSumitNain/school-management-system/actions/runs/44982323577) passed the full migration chain on disposable PostgreSQL, Go/PostgreSQL tests and `go vet`.
+- CI-tested code checkpoint: `816ee99511d4a7ed0e393dda9a04dc758f954202`. V59 remains unapplied to persistent/local databases.
+- Remaining Phase 4 work: dedicated PostgreSQL behavior tests for overlap/concurrency, authorization, rollback and audit; leave-type edit/deactivation UI and approved school policy; approved leave/holiday context in staff attendance. No leave balance, accrual, carry-forward, payroll deduction, statutory entitlement or supporting-document upload is implemented.
+- Academic, Student Management and Settings pages were not modified.
+
