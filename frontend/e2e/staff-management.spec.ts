@@ -193,12 +193,12 @@ test("staff workspace opens on a real-data overview and hides permission-gated o
 });
 
 
-test("staff directory filters independently narrow employment and login-account status", async ({ page }) => {
+test("staff directory filters independently narrow employment, login account and profile completeness", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [
     { id: 1, principal_id: 611, school_id: 10, username: "active.enabled", employee_code: "EMP-F-01", full_name: "Active Enabled", designation: "Teacher", mobile_number: "9876543210", employment_status: "active", profile_complete: true, status: "active", must_change_password: false },
     { id: 2, principal_id: 612, school_id: 10, username: "active.disabled", employee_code: "EMP-F-02", full_name: "Active Disabled", designation: "Teacher", mobile_number: "9876543211", employment_status: "active", profile_complete: true, status: "disabled", must_change_password: true },
     { id: 3, principal_id: 613, school_id: 10, username: "inactive.disabled", employee_code: "EMP-F-03", full_name: "Inactive Disabled", designation: "Office Assistant", mobile_number: "9876543212", employment_status: "inactive", profile_complete: true, status: "disabled", must_change_password: false },
-    { id: 4, principal_id: 614, school_id: 10, username: "profile.pending", employee_code: "EMP-F-04", full_name: "Profile Pending", designation: "Staff", mobile_number: "9876543213", profile_complete: false, status: "disabled", must_change_password: false },
+    { id: 4, principal_id: 614, school_id: 10, username: "profile.pending", employee_code: "EMP-F-04", full_name: "Profile Pending", designation: "Staff", mobile_number: "9876543213", employment_status: "active", profile_complete: false, status: "disabled", must_change_password: false },
   ];
   await signInAndOpenStaff(page, rows);
   await page.getByRole("button", { name: /Staff Directory/ }).click();
@@ -206,15 +206,17 @@ test("staff directory filters independently narrow employment and login-account 
 
   await page.getByRole("button", { name: "Filter by employment status" }).click();
   await page.getByRole("option", { name: "Active", exact: true }).click();
-  await expect(page.getByText("2 of 4 staff members")).toBeVisible();
+  await expect(page.getByText("3 of 4 staff members")).toBeVisible();
   await expect(page.getByRole("button", { name: "Active Enabled" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Active Disabled" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Profile Pending" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Inactive Disabled" })).toHaveCount(0);
 
   await page.getByRole("button", { name: "Filter by login account status" }).click();
   await page.getByRole("option", { name: "Disabled", exact: true }).click();
-  await expect(page.getByText("1 of 4 staff members")).toBeVisible();
+  await expect(page.getByText("2 of 4 staff members")).toBeVisible();
   await expect(page.getByRole("button", { name: "Active Disabled" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Profile Pending" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Active Enabled" })).toHaveCount(0);
 
   await page.getByRole("button", { name: "Filter by profile completeness" }).click();
