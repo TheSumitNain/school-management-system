@@ -1,6 +1,6 @@
 import { Fragment, useMemo, useRef, useState, type FormEvent } from "react";
 import { notifyToast } from "../../../shared/notifications";
-import { BarChart3, BookOpen, CalendarDays, FileText, KeyRound, LayoutDashboard, LockKeyhole, Pencil, Plus, Search, Shield, ShieldCheck, UserCheck, UserMinus } from "lucide-react";
+import { BarChart3, BookOpen, CalendarDays, Download, FileText, KeyRound, LayoutDashboard, LockKeyhole, Pencil, Plus, Search, Shield, ShieldCheck, UserCheck, UserMinus } from "lucide-react";
 import { StaffRoleAssignments } from "../components/StaffRoleAssignments";
 import { StaffPermissionOverrides } from "../components/StaffPermissionOverrides";
 import { TeacherAssignmentsPage } from "./TeacherAssignmentsPage";
@@ -28,6 +28,28 @@ import "./StaffManagementPage.css";
 
 type Action = "create" | "edit" | "reset" | "enable" | null;
 type Props = { permissions: string[] };
+
+function staffCSVCell(value:unknown){
+  const text=String(value??"");
+  const safe=/^[=+\\-@]/.test(text)?"'"+text:text;
+  return '"'+safe.replace(/"/g,'""')+'"';
+}
+function exportStaffDirectoryCSV(rows:StaffRecord[]){
+  const headers=["Employee Code","Name","Designation","Employment Status","Login Account","Profile Status"];
+  const lines=[headers,...rows.map(item=>[
+    item.employee_code,item.full_name||item.username,item.designation,item.employment_status,
+    item.status==="active"?"Enabled":"Disabled",item.profile_complete===false?"Incomplete":"Complete",
+  ])].map(row=>row.map(staffCSVCell).join(",")).join("\r\n");
+  const blob=new Blob(["\\uFEFF",lines],{type:"text/csv;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const link=document.createElement("a");
+  link.href=url;
+  link.download="staff-directory-"+new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Kolkata",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date())+".csv";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
 
 export function StaffManagementPage({ permissions }: Props) {
   const canCreate = permissions.includes("users.create");
@@ -417,7 +439,7 @@ export function StaffManagementPage({ permissions }: Props) {
       {activeTab === "substitutions" && <StaffSubstitutionWorkspace permissions={permissions} staff={staff}/>}
       {activeTab === "workloadReport" && <StaffWorkloadReportWorkspace permissions={permissions}/>}
       {activeTab === "directory" && <section className="table-panel">
-        <div className="toolbar staff-directory-toolbar"><div><h2>All staff</h2><small>{filtered.length} of {staff.length} staff members</small></div><div className="staff-directory-controls"><div className="search"><Search size={16}/><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search by name, code, designation or username" aria-label="Search staff by name, code, designation or username"/></div><div className="staff-directory-filters"><label>Employment<Select value={employmentFilter} onChange={setEmploymentFilter} ariaLabel="Filter by employment status" options={[{value:"all",label:"All employment"},{value:"active",label:"Active"},{value:"inactive",label:"Inactive"}]}/></label><label>Login account<Select value={accountFilter} onChange={setAccountFilter} ariaLabel="Filter by login account status" options={[{value:"all",label:"All accounts"},{value:"enabled",label:"Enabled"},{value:"disabled",label:"Disabled"}]}/></label><label>Profile<Select value={profileFilter} onChange={setProfileFilter} ariaLabel="Filter by profile completeness" options={[{value:"all",label:"All profiles"},{value:"complete",label:"Complete"},{value:"incomplete",label:"Incomplete"}]}/></label></div></div></div>
+        <div className="toolbar staff-directory-toolbar"><div><h2>All staff</h2><small>{filtered.length} of {staff.length} staff members</small></div><div className="staff-directory-controls"><button type="button" className="staff-directory-export" onClick={() => exportStaffDirectoryCSV(filtered)} disabled={filtered.length===0 || !permissions.includes("staff.read")}><Download size={14}/> Export CSV</button><div className="search"><Search size={16}/><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search by name, code, designation or username" aria-label="Search staff by name, code, designation or username"/></div><div className="staff-directory-filters"><label>Employment<Select value={employmentFilter} onChange={setEmploymentFilter} ariaLabel="Filter by employment status" options={[{value:"all",label:"All employment"},{value:"active",label:"Active"},{value:"inactive",label:"Inactive"}]}/></label><label>Login account<Select value={accountFilter} onChange={setAccountFilter} ariaLabel="Filter by login account status" options={[{value:"all",label:"All accounts"},{value:"enabled",label:"Enabled"},{value:"disabled",label:"Disabled"}]}/></label><label>Profile<Select value={profileFilter} onChange={setProfileFilter} ariaLabel="Filter by profile completeness" options={[{value:"all",label:"All profiles"},{value:"complete",label:"Complete"},{value:"incomplete",label:"Incomplete"}]}/></label></div></div></div>
         {query.isPending ? <div className="table-message" aria-live="polite">Loading staff accounts…</div>
           : query.isError ? <div className="table-message error-text">{query.error instanceof Error ? query.error.message : "Unable to load staff accounts."}<button className="staff-retry-button" type="button" onClick={() => void query.refetch()}>Try again</button></div>
           : filtered.length === 0 ? <div className="table-message">{staff.length === 0 ? "No staff accounts yet. Add the first staff account to get started." : "No staff match the current search and filters."}</div>
