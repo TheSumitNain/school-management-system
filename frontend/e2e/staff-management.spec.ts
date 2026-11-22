@@ -571,6 +571,41 @@ test("staff attendance supports search, individual and atomic bulk marking, and 
   await expect(page.getByText(/School Foundation Day/)).toBeVisible();
 });
 
+test("staff leave request field errors clear as each required field is corrected", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 501, school_id: 10, username: "leave.validation",
+    employee_code: "EMP-VALID-01", full_name: "Validation Teacher", designation: "Teacher",
+    mobile_number: "9876543215", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false,
+  }];
+  const permissions = ["users.read", "staff.leave.read", "staff.leave.manage_requests"];
+  await signInAndOpenStaff(page, rows, undefined, permissions);
+  await page.getByRole("button", { name: "Leave & Holidays" }).click();
+
+  await page.getByRole("button", { name: "Submit leave request" }).click();
+  await expect(page.getByText("Select one employee.")).toBeVisible();
+  await expect(page.getByText("Select a leave type.")).toBeVisible();
+  await expect(page.getByText("Select a start date.")).toBeVisible();
+  await expect(page.getByText("Select an end date.")).toBeVisible();
+  await expect(page.getByText("Enter the reason for leave.")).toBeVisible();
+
+  await page.getByLabel("Staff member").click();
+  await page.getByRole("option", { name: /Leave Teacher/ }).click();
+  await expect(page.getByText("Select one employee.")).toHaveCount(0);
+
+  await page.getByLabel("Leave type").click();
+  await page.getByRole("option", { name: /Casual Leave/ }).click();
+  await expect(page.getByText("Select a leave type.")).toHaveCount(0);
+
+  await page.getByLabel("Leave start date").fill("2026-11-25");
+  await expect(page.getByText("Select a start date.")).toHaveCount(0);
+  await page.getByLabel("Leave end date").fill("2026-11-25");
+  await expect(page.getByText("Select an end date.")).toHaveCount(0);
+
+  await page.getByLabel("Reason").fill("Personal appointment");
+  await expect(page.getByText("Enter the reason for leave.")).toHaveCount(0);
+});
+
 test("staff leave rejection requires a comment before the pending request can be rejected", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 501, school_id: 10, username: "leave.teacher",
