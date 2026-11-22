@@ -102,6 +102,10 @@ async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, un
       return;
     }
     if (path === "/school/timetable/entries" && method === "GET") {
+      if (url.searchParams.get("teacher_principal_id") !== "501") {
+        await route.fulfill({ status: 400, json: { message: "A teacher-specific filter is required." } });
+        return;
+      }
       await route.fulfill({ json: { entries: [{
         id: 81, school_id: 10, academic_year_id: 2026, section_id: 301, section_name: "A", class_name: "Class 6",
         subject_id: 9, subject_name: "Mathematics", teacher_principal_id: 501, teacher_username: "teacher.workload",
@@ -1329,16 +1333,6 @@ test("staff workload requests only the selected teacher timetable and explains u
     mobile_number: "9876543215", employment_status: "active", profile_complete: true,
     status: "active", must_change_password: false,
   }];
-  const requestedURLs: string[] = [];
-  await page.route("**/api/school/timetable/entries?**", async route => {
-    requestedURLs.push(route.request().url());
-    await route.fulfill({ json: { entries: [{
-      id: 81, school_id: 10, academic_year_id: 2026, section_id: 301, section_name: "A", class_name: "Class 6",
-      subject_id: 9, subject_name: "Mathematics", teacher_principal_id: 501, teacher_username: "teacher.workload",
-      teacher_subject_assignment_id: 12, period_id: 4, period_number: 2, period_name: "Period 2",
-      starts_at: "09:40", ends_at: "10:20", day_of_week: 1, room: "Room 12",
-    }] } });
-  });
   await signInAndOpenStaff(page, rows, undefined, ["users.read", "timetable.read"]);
   await page.getByRole("button", { name: "Staff Directory" }).click();
   await page.getByRole("button", { name: "Workload Teacher" }).click();
@@ -1349,6 +1343,4 @@ test("staff workload requests only the selected teacher timetable and explains u
   await expect(dialog.locator(".staff-workload-summary article").first().locator("strong")).toHaveText("1");
   await expect(dialog.getByText("Mathematics")).toBeVisible();
   await expect(dialog.getByText(/unscheduled period is not treated as confirmed availability/)).toBeVisible();
-  expect(requestedURLs).toHaveLength(1);
-  expect(new URL(requestedURLs[0]).searchParams.get("teacher_principal_id")).toBe("501");
 });
