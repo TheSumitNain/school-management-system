@@ -160,3 +160,41 @@ func TestStaffLeaveServiceRejectsUnknownRequestStatusBeforeRepository(t *testing
  }
  if repo.listRequestsCalls!=0 { t.Fatalf("invalid statuses reached repository %d times",repo.listRequestsCalls) }
 }
+
+func TestStaffLeaveServiceEnforcesFilterRangeLimitAndStaffID(t *testing.T) {
+	repo := &staffLeaveRepositoryStub{}
+	service := NewStaffLeaveService(repo)
+
+	tests := []struct {
+		name    string
+		staffID int64
+		from    string
+		to      string
+		wantErr bool
+	}{
+		{"maximum supported 366-day range", 0, "2026-01-01", "2027-01-02", false},
+		{"range exceeds 366 days", 0, "2026-01-01", "2027-01-03", true},
+		{"negative staff principal ID", -1, "", "", true},
+		{"zero staff principal ID means all staff", 0, "", "", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			before := repo.listRequestsCalls
+			_, err := service.ListRequests(context.Background(), 1, 1, "", tt.staffID, "", tt.from, tt.to)
+			if tt.wantErr && !errors.Is(err, ErrInvalidStaffLeave) {
+				t.Fatalf("error=%v want ErrInvalidStaffLeave", err)
+			}
+			if !tt.wantErr && err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			wantCalls := before
+			if !tt.wantErr {
+				wantCalls++
+			}
+			if repo.listRequestsCalls != wantCalls {
+				t.Fatalf("repository calls=%d want=%d", repo.listRequestsCalls, wantCalls)
+			}
+		})
+	}
+}
