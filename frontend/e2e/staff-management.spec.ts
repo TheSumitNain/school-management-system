@@ -343,3 +343,57 @@ test("staff profile history is permission-gated and renders staff audit events",
   await expect(dialog.getByText("Account created")).toBeVisible();
   await expect(dialog.getByText("school.admin").first()).toBeVisible();
 });
+
+test("staff attendance supports daily marking and monthly summaries", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 512, school_id: 10, username: "teacher.attendance",
+    employee_code: "EMP-ATT-01", full_name: "Attendance Teacher", designation: "Science Teacher",
+    mobile_number: "9876543214", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false, created_at: "2026-04-01T00:00:00.000Z",
+  }];
+  await signInAndOpenStaff(page, rows, undefined, [
+    "users.read", "staff.attendance.read", "staff.attendance.mark",
+    "staff.attendance.update_same_day", "staff.attendance.correct_past",
+  ]);
+  let savedStatus = "";
+  await page.route("**/api/school/staff-attendance**", async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (request.method() === "GET" && url.pathname.endsWith("/month")) {
+      await route.fulfill({ json: { month: url.searchParams.get("month"), data: [{
+        staff_principal_id: 512, employee_code: "EMP-ATT-01", full_name: "Attendance Teacher",
+        designation: "Science Teacher", present_days: 1, absent_days: 0, late_days: 1, half_days: 0,
+        records: [{ id: 7, date: "2026-11-03", status: "present" }, { id: 8, date: "2026-11-04", status: "late" }],
+      }] } });
+      return;
+    }
+    if (request.method() === "GET") {
+      await route.fulfill({ json: { date: url.searchParams.get("date"), data: [{
+        id: null, school_id: 10, staff_principal_id: 512, employee_code: "EMP-ATT-01",
+        full_name: "Attendance Teacher", designation: "Science Teacher",
+        attendance_date: url.searchParams.get("date"), status: null,
+      }] } });
+      return;
+    }
+    if (request.method() === "POST") {
+      savedStatus = (request.postDataJSON() as { status: string }).status;
+      await route.fulfill({ status: 201, json: { data: {
+        id: 22, school_id: 10, staff_principal_id: 512, employee_code: "EMP-ATT-01",
+        full_name: "Attendance Teacher", designation: "Science Teacher",
+        attendance_date: (request.postDataJSON() as { attendance_date: string }).attendance_date,
+        status: savedStatus,
+      } } });
+      return;
+    }
+    await route.fulfill({ status: 404, json: { message: "Unmocked staff attendance request" } });
+  });
+  await page.getByRole("button", { name: "Attendance", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Staff attendance" })).toBeVisible();
+  await page.getByLabel("Attendance status for Attendance Teacher").selectOption("present");
+  await page.getByRole("button", { name: "Mark", exact: true }).click();
+  await expect.poll(() => savedStatus).toBe("present");
+  await expect(page.getByText("Staff attendance marked.")).toBeVisible();
+  await page.getByRole("button", { name: "Monthly summary" }).click();
+  await expect(page.getByText("Attendance Teacher").first()).toBeVisible();
+  await expect(page.getByText("View daily entries (2)")).toBeVisible();
+});
