@@ -1838,3 +1838,10 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Frontend CI [44997624558](https://github.com/TheSumitNain/school-management-system/actions/runs/44997624558) **PASS** at frontend checkpoint `b956238d0315d1fe53eaa5e5efcd47e5fc57a86d`: TypeScript/design-token checks, Vite production build and complete Playwright browser acceptance suite; no frontend code changed after that checkpoint.
 - Backend CI [44998516116](https://github.com/TheSumitNain/school-management-system/actions/runs/44998516116) **PASS** at the latest code checkpoint: complete migration chain on disposable PostgreSQL, Go tests including PostgreSQL integration, and go vet.
 - No persistent/local database migration was applied. Leave & Holidays Phase 4 remains open; balances/accrual/carry-forward remain undefined pending explicit school policy approval. Academic, Student Management and Settings remain out of scope.
+
+## Staff Leave & Holiday — successful half-day request submission (2026-11-22)
+
+- Added Playwright coverage for the successful staff leave-request path: a valid half-day Casual Leave request with the second-half session is submitted, its API payload is checked, and its pending application card is verified.
+- The test interacts with the custom half-day session listbox and scopes the pending assertion to the submitted card, so pre-existing pending requests do not make the test ambiguous.
+- Exact code checkpoint `9aeba0546f2497be09f1284320662ad4b59fd35e` passed Frontend CI [45000676706](https://github.com/TheSumitNain/school-management-system/actions/runs/45000676706) (TypeScript/design-token checks, Vite build and complete Playwright suite) and Backend CI [45000676702](https://github.com/TheSumitNain/school-management-system/actions/runs/45000676702) (disposable PostgreSQL migration chain, Go/PostgreSQL tests and `go vet`).
+- Test-only change: no persistent/local DB migration, leave-balance policy, or attendance mutation. Phase 4 remains open for the remaining workflow review and explicit school-approved leave policy decisions.
