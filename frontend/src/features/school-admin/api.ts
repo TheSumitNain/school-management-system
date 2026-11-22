@@ -536,9 +536,10 @@ export function saveTimetablePeriod(input: {
 }) {
   return api<{ period: TimetablePeriod }>("/school/timetable/periods", { method: "POST", body: JSON.stringify(input) });
 }
-export function getTimetableEntries(academicYearID: number, sectionID = 0, signal?: AbortSignal) {
+export function getTimetableEntries(academicYearID: number, sectionID = 0, signal?: AbortSignal, teacherPrincipalID?: number) {
   const params = new URLSearchParams({ academic_year_id: String(academicYearID) });
   if (sectionID > 0) params.set("section_id", String(sectionID));
+  if (teacherPrincipalID && teacherPrincipalID > 0) params.set("teacher_principal_id", String(teacherPrincipalID));
   return api<{ entries: TimetableEntry[] }>(`/school/timetable/entries?${params.toString()}`, { signal });
 }
 export function createTimetableEntry(input: {
