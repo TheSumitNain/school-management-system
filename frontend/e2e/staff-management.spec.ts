@@ -80,7 +80,7 @@ async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, un
   await page.getByRole("button", { name: "Staff", exact: true }).click();
 }
 
-test("staff workspace opens on a real-data overview and keeps later-phase tabs unavailable", async ({ page }) => {
+test("staff workspace opens on a real-data overview and hides permission-gated or later-phase tabs", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 111, school_id: 10, username: "teacher.overview",
     employee_code: "EMP-OV-01", full_name: "Overview Teacher", designation: "Teacher",
@@ -94,7 +94,7 @@ test("staff workspace opens on a real-data overview and keeps later-phase tabs u
   await expect(page.locator(".staff-overview-cards article").nth(0).locator("strong")).toHaveText("1");
   await expect(page.locator(".staff-overview-cards article").nth(1).locator("strong")).toHaveText("1");
   await expect(page.locator(".staff-overview-cards article").nth(2).locator("strong")).toHaveText("0");
-  await expect(page.getByRole("button", { name: /Attendance/ })).toBeDisabled();
+  await expect(page.getByRole("button", { name: /Attendance/ })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /Leave/ })).toBeDisabled();
   await expect(page.getByRole("button", { name: /Reports/ })).toBeDisabled();
 });
