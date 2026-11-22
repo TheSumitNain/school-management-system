@@ -41,11 +41,23 @@ export function StaffWorkloadPanel({ staff }: Props) {
     return () => controller.abort();
   }, [load]);
 
-  const teachingDays = new Set(entries.map(entry => entry.day_of_week)).size;
+  const dailyWorkload = weekdays.map((day, index) => {
+    const dayEntries = entries
+      .filter(entry => entry.day_of_week === index + 1)
+      .sort((a, b) => a.period_number - b.period_number);
+    return {
+      day,
+      periods: dayEntries.length,
+      sections: new Set(dayEntries.map(entry => entry.section_id)).size,
+      subjects: new Set(dayEntries.map(entry => entry.subject_id)).size,
+      first: dayEntries[0]?.period_name ?? "—",
+      last: dayEntries[dayEntries.length - 1]?.period_name ?? "—",
+    };
+  });
+  const busiestDay = dailyWorkload.reduce((best, day) => day.periods > best.periods ? day : best, dailyWorkload[0]);
+  const teachingDays = dailyWorkload.filter(day => day.periods > 0).length;
   const sections = new Set(entries.map(entry => entry.section_id)).size;
   const subjects = new Set(entries.map(entry => entry.subject_id)).size;
-  const teachingPeriods = periods.filter(period => !period.is_break);
-  const unscheduledSlots = Math.max(0, teachingPeriods.length * weekdays.length - entries.length);
 
   return (
     <section className="staff-workload-panel">
@@ -61,7 +73,15 @@ export function StaffWorkloadPanel({ staff }: Props) {
             <article><span>Teaching days</span><strong>{teachingDays}</strong></article>
             <article><span>Sections</span><strong>{sections}</strong></article>
             <article><span>Subjects</span><strong>{subjects}</strong></article>
-            <article><span>Unscheduled slots</span><strong>{unscheduledSlots}</strong></article>
+            <article><span>Busiest day</span><strong className="staff-workload-summary-text">{busiestDay.periods ? busiestDay.day : "—"}</strong><small>{busiestDay.periods ? `${busiestDay.periods} scheduled periods` : "No scheduled classes"}</small></article>
+          </div>
+          <div className="staff-workload-report">
+            <div><h4>Weekly workload report</h4><p>Scheduled teaching periods grouped by weekday. Counts use timetable entries only.</p></div>
+            <div className="staff-workload-table-wrap"><table className="staff-workload-table">
+              <thead><tr><th>Day</th><th>Periods</th><th>Sections</th><th>Subjects</th><th>First period</th><th>Last period</th></tr></thead>
+              <tbody>{dailyWorkload.map(day => <tr key={day.day}><th scope="row">{day.day}</th><td>{day.periods}</td><td>{day.sections}</td><td>{day.subjects}</td><td>{day.first}</td><td>{day.last}</td></tr>)}</tbody>
+              <tfoot><tr><th scope="row">Weekly total</th><td>{entries.length}</td><td>{sections}</td><td>{subjects}</td><td colSpan={2}>Current academic year</td></tr></tfoot>
+            </table></div>
           </div>
           {periods.length === 0 ? <p className="staff-record-empty">No timetable periods are configured for this academic year.</p>
             : <div className="staff-workload-grid-wrap"><table className="staff-workload-grid">
@@ -77,7 +97,7 @@ export function StaffWorkloadPanel({ staff }: Props) {
               </tr>)}</tbody>
             </table></div>}
           {entries.length === 0 && periods.length > 0 && <p className="staff-record-empty">No timetable entries are scheduled for this staff member in the current academic year.</p>}
-          <p className="staff-workload-note">Unscheduled timetable slots are shown for planning context only. They do not confirm teacher availability, working days, or permission to assign another class.</p>
+          <p className="staff-workload-note">The report describes scheduled teaching load only. Unscheduled timetable slots are planning context; they do not confirm teacher availability, working days, or permission to assign another class. Approved leave and substitute coverage are not included in this timetable-only report.</p>
         </>}
     </section>
   );
