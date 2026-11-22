@@ -1345,6 +1345,10 @@ test("staff workload requests only the selected teacher timetable and explains u
   await expect(dialog.getByRole("heading", { name: "Teaching workload" })).toBeVisible();
   await expect(dialog.getByText("Scheduled periods")).toBeVisible();
   await expect(dialog.locator(".staff-workload-summary article").first().locator("strong")).toHaveText("1");
+  await expect(dialog.getByText("Busiest day")).toBeVisible();
+  await expect(dialog.getByText("Weekly workload report")).toBeVisible();
+  await expect(dialog.locator(".staff-workload-table tbody tr").first()).toContainText("Monday");
+  await expect(dialog.locator(".staff-workload-table tfoot")).toContainText("Weekly total");
   await expect(dialog.getByText("Mathematics")).toBeVisible();
   await expect(dialog.getByRole("table")).toBeVisible();
   await expect(dialog.getByText("Unscheduled", { exact: true }).first()).toBeVisible();
