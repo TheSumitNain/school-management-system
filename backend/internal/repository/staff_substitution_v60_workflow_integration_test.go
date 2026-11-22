@@ -134,7 +134,10 @@ func TestStaffSubstitutionV60DatabaseGuardsPostgresIntegration(t *testing.T) {
 	if slotErr==nil{t.Fatal("new recurring timetable slot conflicted with active dated substitution but was accepted")}
 
 	if _,err=tx.Exec(ctx,`UPDATE staff_substitutions SET status='cancelled',cancelled_by_principal_id=$2,cancelled_at=NOW(),updated_at=NOW() WHERE id=$1`,substitutionID,actorPrincipalID);err!=nil{t.Fatalf("cancel dated substitution: %v",err)}
-	if _,err=tx.Exec(ctx,`UPDATE staff_substitutions SET reason='Changed after cancellation' WHERE id=$1`,substitutionID);err==nil{t.Fatal("cancelled substitution history was mutable")}
+	cancelledReason,err:=tx.Begin(ctx);if err!=nil{t.Fatalf("begin cancelled history guard savepoint: %v",err)}
+	_,cancelledReasonErr:=cancelledReason.Exec(ctx,`UPDATE staff_substitutions SET reason='Changed after cancellation' WHERE id=$1`,substitutionID)
+	if rollbackErr:=cancelledReason.Rollback(ctx);rollbackErr!=nil{t.Fatalf("rollback cancelled history guard savepoint: %v",rollbackErr)}
+	if cancelledReasonErr==nil{t.Fatal("cancelled substitution history was mutable")}
 	if _,err=tx.Exec(ctx,`UPDATE timetable_entries SET room='Changed room' WHERE id=$1`,timetableEntryID);err!=nil{t.Fatalf("recurring timetable entry remained locked after cancellation: %v",err)}
 	var retained int
 	if err=tx.QueryRow(ctx,`SELECT count(*) FROM staff_substitutions WHERE id=$1 AND status='cancelled'`,substitutionID).Scan(&retained);err!=nil||retained!=1{t.Fatalf("cancelled substitution history was not retained: count=%d err=%v",retained,err)}
