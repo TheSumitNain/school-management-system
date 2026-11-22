@@ -1901,3 +1901,9 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 
 - Verified re-enabling a disabled staff login requires a valid 12+ character temporary password, updates the directory status, and enforces a password change at next sign-in.
 - Checkpoint `247686b29c6e30d0b6de2b542b74be9faa42fc7d`: Frontend CI [45004695381](https://github.com/TheSumitNain/school-management-system/actions/runs/45004695381) **PASS** (69 Playwright tests); Backend CI [45004695364](https://github.com/TheSumitNain/school-management-system/actions/runs/45004695364) **PASS** (PostgreSQL integration and `go vet`).
+
+
+## Staff Management — leave request PostgreSQL validation coverage (2026-11-22)
+
+- Added database-backed tests for invalid date/duration/reason/half-day shapes, approved-overlap protection, reapplication after cancellation, inactive leave types/staff, and cross-school target rejection.
+- Backend checkpoint `062d9a2d9acba4d939985c1d6a0cdb2907cd247b`: CI [45005336749](https://github.com/TheSumitNain/school-management-system/actions/runs/45005336749) **PASS** with Go tests, PostgreSQL integration and `go vet`. No schema migration.
