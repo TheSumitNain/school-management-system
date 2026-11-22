@@ -462,12 +462,12 @@ Phases are dependency ordered, not a claim that every listed item is absent. Ins
 
 ### Phase 5 — Workload, Timetable & Substitution (P1)
 
-1. Workload summary derived from existing timetable.
-2. Teacher availability/free-period view.
-3. Conflict warnings and workload reports.
-4. Substitute assignment workflow.
+1. Workload summary derived from existing timetable. **Prerequisite:** provide a server-side teacher-scoped timetable read (teacher principal ID filter or dedicated staff-scoped route), protected by live `timetable.read` authorization and authenticated-school membership checks. Do not fetch the full school timetable into a staff profile and filter it only in the browser. Show only derived schedule/period counts; do not invent workload quotas.
+2. Teacher availability/free-period view, derived from the approved timetable and period catalogue; clearly distinguish an unscheduled slot from confirmed availability.
+3. Conflict warnings and workload reports, using server-authoritative timetable conflicts and real assignment data.
+4. Substitute assignment workflow, with explicit authorization, overlap/availability checks and append-only history.
 
-**Exit gate:** no double-booking, timetable history preserved, substitutions audited and assignment limits enforced.
+**Exit gate:** no double-booking, timetable history preserved, substitutions audited and assignment limits enforced. Add PostgreSQL tenant/scope tests and browser coverage for the teacher-specific view before marking the workload summary complete.
 
 ### Phase 6 — Reports, Import/Export & ID Cards (P1/P2)
 
