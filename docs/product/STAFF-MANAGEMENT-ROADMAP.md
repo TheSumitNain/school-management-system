@@ -442,8 +442,8 @@ Phases are dependency ordered, not a claim that every listed item is absent. Ins
 
 ### Phase 3 — Staff Attendance (P1)
 
-1. Daily staff register with filters and bulk status entry. **Core daily register implemented; filtering and bulk entry pending.**
-2. Attendance correction/reason workflow. **Individual same-day/historical correction, remarks and audit implemented.**
+1. Daily staff register with filters and bulk status entry. **Implemented: employee search, status filters and atomic bulk marking of visible unmarked staff.**
+2. Attendance correction/reason workflow. **Implemented: individual same-day/historical correction, remarks, explicit historical confirmation and transactional audit.**
 3. Monthly register and reports. **Derived monthly register implemented; downloadable/report views pending.**
 4. Connect approved leave and school calendar rules. **Pending Phase 4 leave/holiday contract.**
 
