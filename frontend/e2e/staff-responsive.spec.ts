@@ -6,6 +6,7 @@ test("Staff Management tabs remain usable without page overflow on mobile, table
     "staff.attendance.read",
     "staff.leave.read",
     "staff.holidays.read",
+    "staff.holidays.manage",
   ];
 
   await page.route("**/api/**", async route => {
@@ -52,7 +53,13 @@ test("Staff Management tabs remain usable without page overflow on mobile, table
       return;
     }
     if (path === "/school/holidays" && request.method() === "GET") {
-      await route.fulfill({ json: { data: [] } });
+      await route.fulfill({ json: { data: [{
+        id: 901,
+        holiday_date: "2026-12-25",
+        name: "Annual School Foundation and Community Celebration Day",
+        description: "A school-wide celebration with families and community partners.",
+        is_active: true,
+      }] } });
       return;
     }
 
@@ -93,6 +100,18 @@ test("Staff Management tabs remain usable without page overflow on mobile, table
 
   await page.getByRole("button", { name: "Leave & Holidays", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Leave & Holidays" })).toBeVisible();
+  await page.getByRole("button", { name: "Holiday calendar", exact: true }).click();
+  const holidayRow = page.locator(".staff-leave-holiday-row");
+  await expect(holidayRow).toContainText("Annual School Foundation and Community Celebration Day");
+  for (const width of [320, 360, 390, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect.poll(
+      () => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+      { message: `Holiday calendar should not cause page-level horizontal overflow at ${width}px` },
+    ).toBe(true);
+    const rowFits = await holidayRow.evaluate(element => element.scrollWidth <= element.clientWidth + 1);
+    expect(rowFits, `Holiday row actions and long text should wrap within ${width}px`).toBe(true);
+  }
 
   await page.setViewportSize({ width: 844, height: 390 });
   for (const section of [
