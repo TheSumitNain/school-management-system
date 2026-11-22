@@ -154,3 +154,11 @@ Migration V59 and the first end-to-end Leave & Holiday workflow are implemented 
 - Backend CI [44984794698](https://github.com/TheSumitNain/school-management-system/actions/runs/44984794698) **PASS** at the same checkpoint, including complete migration chain on disposable PostgreSQL, Go tests and `go vet`.
 - Remaining: dedicated PostgreSQL behavior tests for concurrent overlap, decision authorization, transaction rollback and audit events. School policy/balance calculations remain unconfigured and out of scope until approved. V59 remains unapplied to persistent/local databases.
 
+## 10. PostgreSQL workflow verification (2026-11-22)
+
+- Added integration tests for concurrent overlapping leave requests, unauthorized decisions, self-approval prevention, transactional approval/rejection audit, rollback on audit failure, required rejection comments and cross-school cancellation denial.
+- The overlap test exposed a pgx/PostgreSQL parameter typing issue in the advisory lock. Fixed by explicitly casting both lock identifiers to BIGINT before converting them to text for `hashtextextended`.
+- Backend CI [44985769667](https://github.com/TheSumitNain/school-management-system/actions/runs/44985769667) **PASS** at code checkpoint `e028baffd2485afeee792f98b068f89e2ce1ae07`: complete migration chain on disposable PostgreSQL, full Go test suite including the new V59 workflow integration tests, and `go vet ./...`.
+- The forced audit insert exception in the rollback test is intentional and confirms the decision remains pending when its audit write fails.
+- Persistent/local DBs remain untouched; V59 has only been applied to disposable CI PostgreSQL. Leave balances, accrual, carry-forward, encashment and attendance/payroll effects remain unconfigured until school policy is approved.
+
