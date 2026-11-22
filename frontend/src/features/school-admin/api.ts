@@ -641,3 +641,7 @@ export function markStaffAttendance(input: { staff_principal_id: number; attenda
 export function updateStaffAttendance(recordID: number, input: { status: "present" | "absent" | "late" | "half_day"; remarks?: string }) {
   return api<{ data: StaffAttendanceRecord }>(`/school/staff-attendance/${recordID}`, { method: "PATCH", body: JSON.stringify(input) });
 }
+
+export function markStaffAttendanceBulk(input: { staff_principal_ids: number[]; attendance_date: string; status: "present" | "absent" | "late" | "half_day"; remarks?: string }) {
+  return api<{ created: number }>("/school/staff-attendance/bulk", { method: "POST", body: JSON.stringify(input) });
+}
