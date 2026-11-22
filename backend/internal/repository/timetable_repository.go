@@ -15,6 +15,8 @@ var (
 	ErrTimetableAccessDenied = errors.New("timetable operation is not authorized")
 	ErrTimetableNotFound = errors.New("timetable record not found")
 	ErrTimetableConflict = errors.New("timetable slot conflicts with an existing entry")
+	ErrTimetableTeacherConflict = errors.New("teacher is already scheduled in this period")
+	ErrTimetableSectionConflict = errors.New("section already has a class in this period")
 	ErrInvalidTimetableInput = errors.New("invalid timetable input")
 )
 
@@ -60,7 +62,16 @@ func timetableWriteError(err error) error {
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {
 		switch pgErr.Code {
-		case "23505", "23P01":
+		case "23505":
+			switch pgErr.ConstraintName {
+			case "ux_timetable_entries_teacher_slot":
+				return ErrTimetableTeacherConflict
+			case "ux_timetable_entries_section_slot":
+				return ErrTimetableSectionConflict
+			default:
+				return ErrTimetableConflict
+			}
+		case "23P01":
 			return ErrTimetableConflict
 		case "23503", "23514", "22001", "22007", "P0001":
 			return ErrInvalidTimetableInput
