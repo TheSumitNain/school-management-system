@@ -17,6 +17,8 @@ func TestStaffSubstitutionV60SchemaPostgresIntegration(t *testing.T) {
 		  AND to_regclass('public.ux_staff_substitutions_substitute_period_active') IS NOT NULL
 		  AND EXISTS(SELECT 1 FROM pg_trigger WHERE tgname='trg_validate_v60_staff_substitution' AND NOT tgisinternal)
 		  AND EXISTS(SELECT 1 FROM pg_trigger WHERE tgname='trg_guard_v60_timetable_substitution_update' AND NOT tgisinternal)
+		  AND EXISTS(SELECT 1 FROM pg_trigger WHERE tgname='trg_guard_v60_substitution_staff_lifecycle' AND NOT tgisinternal)
+		  AND EXISTS(SELECT 1 FROM pg_trigger WHERE tgname='trg_guard_v60_substitution_login_lifecycle' AND NOT tgisinternal)
 		  AND EXISTS(SELECT 1 FROM pg_constraint WHERE conname='timetable_entries_id_school_period_unique')
 		  AND (SELECT count(*)=2 FROM public.permissions WHERE permission_key IN ('staff.substitutions.read','staff.substitutions.manage'))
 	`).Scan(&ready)
