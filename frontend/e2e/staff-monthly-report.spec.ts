@@ -7,7 +7,7 @@ test("monthly staff report downloads attendance, approved leave and holidays as 
   await page.route("**/api/**", async route => {
     const request = route.request();
     const url = new URL(request.url());
-    const path = url.pathname.replace(/^\\/api/, "");
+    const path = url.pathname.replace(/^\/api/, "");
 
     if (path === "/auth/refresh") {
       await route.fulfill({ status: 401, json: { message: "No active session" } });
