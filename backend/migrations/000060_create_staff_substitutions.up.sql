@@ -202,7 +202,8 @@ BEGIN
         USING ERRCODE='23505', CONSTRAINT='ux_staff_substitutions_substitute_period_active';
     END IF;
   END IF;
-  RETURN CASE WHEN TG_OP='DELETE' THEN OLD ELSE NEW END;
+  IF TG_OP='DELETE' THEN RETURN OLD; END IF;
+  RETURN NEW;
 END;
 $v60$;
 
@@ -222,7 +223,7 @@ BEGIN
        SELECT 1 FROM public.staff_substitutions ss
         WHERE ss.school_id=NEW.school_id
           AND ss.status='active'
-          AND ss.cover_date>=CURRENT_DATE
+          AND ss.cover_date>=(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date
           AND (ss.original_teacher_principal_id=NEW.principal_id OR ss.substitute_teacher_principal_id=NEW.principal_id)
      ) THEN
     RAISE EXCEPTION 'cancel future substitutions before making this staff member inactive' USING ERRCODE='23514';
