@@ -6,7 +6,7 @@ import { DatePicker } from "../../../shared/components/DatePicker";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { schoolDateValue } from "../../../shared/date/schoolDate";
 import {
-  getDailyStaffAttendance, getMonthlyStaffAttendance, markStaffAttendance, updateStaffAttendance,
+  getDailyStaffAttendance, getMonthlyStaffAttendance, markStaffAttendance, markStaffAttendanceBulk, updateStaffAttendance,
   type StaffAttendanceRecord,
 } from "../api";
 
@@ -29,6 +29,11 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
   const [month, setMonth] = useState(today.slice(0, 7));
   const [drafts, setDrafts] = useState<Record<number, Draft>>({});
   const [pendingCorrection, setPendingCorrection] = useState<PendingCorrection | null>(null);
+  const [search, setSearch] = useState("");
+  const [bulkStatus, setBulkStatus] = useState<Status | "">("");
+  const [bulkRemarks, setBulkRemarks] = useState("");
+  const [bulkAttempted, setBulkAttempted] = useState(false);
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
   const canRead = permissions.includes("staff.attendance.read");
   const daily = useQuery({
     queryKey: ["staff-attendance", "daily", date],
@@ -56,10 +61,28 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
     onSuccess: async () => { setPendingCorrection(null); notifyToast("success", "Staff attendance updated."); await invalidate(); },
     onError: () => notifyToast("error", "Attendance could not be updated. Check the correction permission."),
   });
+  const bulkMark = useMutation({
+    mutationFn: markStaffAttendanceBulk,
+    onSuccess: async result => {
+      setBulkConfirmOpen(false);
+      setBulkStatus("");
+      setBulkRemarks("");
+      setBulkAttempted(false);
+      notifyToast("success", `Attendance marked for ${result.created} staff members.`);
+      await invalidate();
+    },
+    onError: () => notifyToast("error", "Bulk attendance was not saved. No partial records were committed; check for duplicate marks or permission changes."),
+  });
   const past = date < today;
   const canMark = past ? permissions.includes("staff.attendance.correct_past") : permissions.includes("staff.attendance.mark");
   const canUpdate = past ? permissions.includes("staff.attendance.correct_past") : permissions.includes("staff.attendance.update_same_day");
   const records = daily.data?.data ?? [];
+  const visibleRecords = useMemo(() => {
+    const term = search.trim().toLocaleLowerCase();
+    if (!term) return records;
+    return records.filter(item => [item.full_name, item.employee_code, item.designation].some(value => value.toLocaleLowerCase().includes(term)));
+  }, [records, search]);
+  const bulkTargets = visibleRecords.filter(item => !item.id);
   const totals = useMemo(() => records.reduce((acc, item) => {
     if (item.status) acc[item.status] += 1;
     else acc.unmarked += 1;
@@ -106,18 +129,27 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
     {view === "daily" && <>
       <div className="staff-attendance-toolbar">
         <label><span>Attendance date</span><DatePicker value={date} onChange={setDate} ariaLabel="Staff attendance date" max={today}/></label>
+        <label><span>Search employees</span><input aria-label="Search staff attendance" value={search} onChange={event => setSearch(event.target.value)} placeholder="Name, employee code or designation"/></label>
         <button type="button" className="staff-secondary-button" onClick={() => void daily.refetch()} disabled={daily.isFetching}><RefreshCw size={15}/> Refresh</button>
       </div>
       <div className="staff-attendance-totals" aria-live="polite">
         <span>Present <strong>{totals.present}</strong></span><span>Absent <strong>{totals.absent}</strong></span><span>Late <strong>{totals.late}</strong></span><span>Half day <strong>{totals.half_day}</strong></span><span>Not marked <strong>{totals.unmarked}</strong></span>
       </div>
+      <div className="staff-attendance-bulk">
+        <label><span>Bulk status for unmarked visible staff</span><select aria-label="Bulk attendance status" value={bulkStatus} disabled={!canMark || bulkMutation.isPending} aria-invalid={bulkAttempted && !bulkStatus} aria-describedby={bulkAttempted && !bulkStatus ? "staff-attendance-bulk-status-error" : undefined} onChange={event => setBulkStatus(event.target.value as Status | "")}>
+          <option value="">Select status</option>{statuses.map(status => <option key={status.value} value={status.value}>{status.label}</option>)}
+        </select>{bulkAttempted && !bulkStatus && <small id="staff-attendance-bulk-status-error" className="staff-attendance-field-error">Select a bulk attendance status.</small>}</label>
+        <label><span>Bulk remarks (optional)</span><input aria-label="Bulk attendance remarks" maxLength={500} value={bulkRemarks} disabled={!canMark || bulkMutation.isPending} onChange={event => setBulkRemarks(event.target.value)} placeholder="Optional remarks for selected staff"/></label>
+        <div><button type="button" className="staff-attendance-save" disabled={!canMark || bulkMutation.isPending || bulkTargets.length === 0} onClick={() => { if (!bulkStatus) { setBulkAttempted(true); return; } setBulkConfirmOpen(true); }}>Mark {bulkTargets.length} unmarked staff</button><small>Only visible, unmarked employees are included. All records save together or none do.</small></div>
+      </div>
       {past && !permissions.includes("staff.attendance.correct_past") && <p className="staff-attendance-note">Historical attendance is read-only. Past corrections require separate permission.</p>}
       {daily.isPending && <p role="status" className="staff-attendance-message">Loading staff register…</p>}
       {daily.isError && <div className="staff-attendance-message error" role="alert">Unable to load staff attendance. <button type="button" onClick={() => void daily.refetch()}>Try again</button></div>}
       {daily.isSuccess && records.length === 0 && <p className="staff-attendance-message">No active staff profiles are available for this school.</p>}
-      {daily.isSuccess && records.length > 0 && <div className="staff-attendance-table-wrap"><table className="staff-attendance-table">
+      {daily.isSuccess && records.length > 0 && visibleRecords.length === 0 && <p className="staff-attendance-message">No staff match this search.</p>}
+      {daily.isSuccess && visibleRecords.length > 0 && <div className="staff-attendance-table-wrap"><table className="staff-attendance-table">
         <thead><tr><th>Employee</th><th>Attendance</th><th>Remarks</th><th>Action</th></tr></thead>
-        <tbody>{records.map(item => {
+        <tbody>{visibleRecords.map(item => {
           const draft = draftFor(item);
           const busy = mark.isPending || update.isPending;
           const allowed = item.id ? canUpdate : canMark;
@@ -144,6 +176,15 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
         {monthly.data.data.map(item => <tr key={item.staff_principal_id}><td><strong>{item.full_name}</strong><small>{item.employee_code} · {item.designation}</small><details><summary>View daily entries ({item.records.length})</summary><ul>{item.records.map(record => <li key={record.id}>{record.date}: {statuses.find(status => status.value === record.status)?.label ?? record.status}{record.remarks ? ` — ${record.remarks}` : ""}</li>)}</ul></details></td><td>{item.present_days}</td><td>{item.absent_days}</td><td>{item.late_days}</td><td>{item.half_days}</td><td>{item.present_days + item.absent_days + item.late_days + item.half_days}</td></tr>)}
       </tbody></table></div>}
     </>}
+    <ConfirmDialog
+      open={bulkConfirmOpen}
+      title="Confirm bulk staff attendance"
+      description={`This will mark ${bulkTargets.length} unmarked employees on ${date} as ${statuses.find(status => status.value === bulkStatus)?.label ?? "the selected status"}. The batch is atomic: if any employee already has a mark or fails validation, no records will be saved.`}
+      confirmLabel={`Mark ${bulkTargets.length} staff`}
+      pending={bulkMutation.isPending}
+      onConfirm={() => { if (bulkStatus && bulkTargets.length > 0) bulkMutation.mutate({ staff_principal_ids: bulkTargets.map(item => item.staff_principal_id), attendance_date: date, status: bulkStatus, remarks: bulkRemarks.trim() || undefined }); }}
+      onCancel={() => setBulkConfirmOpen(false)}
+    />
     <ConfirmDialog
       open={pendingCorrection !== null}
       title="Confirm historical attendance correction"
