@@ -214,3 +214,11 @@ Migration V59 and the first end-to-end Leave & Holiday workflow are implemented 
 - Added service-level regression assertions that invalid report date ranges and unsupported status filters are rejected before any repository/database call.
 - Backend CI [44998516116](https://github.com/TheSumitNain/school-management-system/actions/runs/44998516116) **PASS** at code checkpoint `23aadac0bacd148954e32cc8c3592afc47b764a7`: complete ephemeral-PostgreSQL migration chain, Go/PostgreSQL integration tests and `go vet ./...`.
 - No persistent/local database migration was applied. This is test coverage only; the existing transactional implementation and Phase 4 scope are unchanged.
+
+## 17. Successful half-day leave submission acceptance (2026-11-22)
+
+- Added a browser acceptance test that submits a valid half-day Casual Leave request for a staff member, selects the second-half session, and verifies the POST payload and resulting pending application card.
+- The test uses the actual custom listbox interaction for selecting the half-day session and scopes the pending-status assertion to the newly submitted application, avoiding ambiguity when multiple pending requests are displayed.
+- Frontend CI [45000676706](https://github.com/TheSumitNain/school-management-system/actions/runs/45000676706) **PASS** at exact checkpoint `9aeba0546f2497be09f1284320662ad4b59fd35e`: TypeScript/design-token checks, Vite production build and complete Playwright browser acceptance suite.
+- Backend CI [45000676702](https://github.com/TheSumitNain/school-management-system/actions/runs/45000676702) **PASS** at the same checkpoint: complete migration chain on disposable PostgreSQL, Go/PostgreSQL integration tests and `go vet ./...`.
+- This is browser acceptance/test coverage only. No persistent/local database migration was applied; no leave-balance or attendance side effects were introduced.
