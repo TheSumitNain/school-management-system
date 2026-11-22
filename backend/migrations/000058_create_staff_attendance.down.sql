@@ -13,6 +13,9 @@ DROP FUNCTION public.validate_staff_attendance_date();
 DROP TRIGGER trg_z_grant_staff_attendance_permissions ON public.schools;
 DROP FUNCTION public.grant_staff_attendance_permissions();
 
+-- V4 protects system-role bundles; disable only that guard within this
+-- transactional rollback while removing precisely the V58 permission grants.
+ALTER TABLE public.role_permissions DISABLE TRIGGER trg_protect_system_role_permissions;
 DELETE FROM public.role_permissions rp
  USING public.roles r, public.permissions p
  WHERE rp.role_id = r.id
@@ -27,6 +30,8 @@ DELETE FROM public.role_permissions rp
        'staff.attendance.update_same_day',
        'staff.attendance.correct_past'
    );
+
+ALTER TABLE public.role_permissions ENABLE TRIGGER trg_protect_system_role_permissions;
 
 DROP TABLE public.staff_attendance_records;
 
