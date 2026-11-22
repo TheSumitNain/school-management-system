@@ -135,3 +135,17 @@ The initial workspace shell has since been extended on branch `work`:
 - The timeline maps staff account/profile lifecycle, role assignment, subject/class-in-charge assignment and qualification/certification/experience create/update audit events. Existing staff-record audit events are associated through their same-school record IDs; new record audit events also persist the target staff principal ID in metadata. The UI displays only event labels, actor username, outcome and timestamp, not raw metadata.
 - Added PostgreSQL integration assertions for history retrieval and cross-school denial, plus Playwright coverage for the staff-specific academic assignment and history panels. CI verification is in progress; do not mark this checkpoint complete until both workflows pass.
 - No database migration or persistent database change was made. Academic, Student Management and Settings pages remain untouched.
+
+## 11. Staff Attendance implementation checkpoint (2026-11-22)
+
+Staff Attendance has moved from planned-only to an implementation checkpoint; it is not yet marked complete.
+
+- Dedicated backend data model and permissions are in V58. Student attendance remains a separate module and data table.
+- Daily roster and monthly derived register APIs are implemented with school scope and live effective-permission checks.
+- Mark/update writes include append-only audit events in the same transaction. Past dates require the dedicated correction permission; future dates are blocked in both service and database trigger; duplicates return conflict.
+- Staff profile History & Activity now recognizes staff attendance mark/update events without exposing raw audit metadata.
+- Staff Management has Daily Register and Monthly Summary views, a school-local date picker, permission-aware marking/correction, and a confirmation step for historical corrections.
+- Added PostgreSQL integration and Playwright coverage. CI is still being verified; consult the latest GitHub Actions results before treating the feature as ready.
+- V58 remains unapplied to persistent/local databases. No changes were made to Academic, Student Management or Settings pages.
+
+The detailed schema, permission, API, UI and verification contract is in [STAFF-ATTENDANCE.md](../backend/STAFF-ATTENDANCE.md).
