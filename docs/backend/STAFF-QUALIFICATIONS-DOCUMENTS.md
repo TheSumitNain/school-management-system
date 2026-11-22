@@ -81,11 +81,12 @@ Routes are authenticated School Admin endpoints. School ownership comes only fro
 | PATCH | `/school/staff/:principalID/certifications/:recordID` | `staff.qualifications.manage` | Update an unverified certification |
 | GET | `/school/staff/:principalID/experience` | `staff.qualifications.read` | List previous experience |
 | POST | `/school/staff/:principalID/experience` | `staff.qualifications.manage` | Create experience |
-| PATCH | `/school/staff/:principalID/experience/:recordID` | `staff.qualifications.manage` | Update experience |
+| PATCH | `/school/staff/:principalID/experience/:recordID` | `users.update` | Update experience |
+| GET | `/school/staff/:principalID/audit-events` | `school.audit.read` | Read up to 100 staff-scoped audit events |
 
 Create/update requests must reject unknown enum values, malformed dates, overlong strings, invalid score/scale combinations, and cross-school target IDs. Return stable field-level validation errors. Use 404 for a target outside the caller's school to avoid confirming its existence.
 
-The existing School Admin system-role permission bundle is immutable. Initial record read/create uses the already-authorized `users.read` and `users.update` permissions, enforced both by route middleware and repository-level school-admin checks. This does not add any verification privilege. Before implementing edit or verification, define an additive permission/delegation design and obtain explicit approval; do not silently expand School Admin permissions.
+The existing School Admin system-role permission bundle is immutable. Qualification, certification and experience read/create/update operations use the existing `users.read` and `users.update` permissions, enforced by route middleware and repository-level School Admin checks. Verification remains intentionally unavailable: do not reuse `users.update` as verification authority or silently expand the School Admin permission bundle.
 
 ## 4. Documents — storage gate before implementation
 
@@ -119,7 +120,7 @@ No route may return a public storage URL. The download endpoint must stream the 
 Backend:
 - V57 migration up/down must be tested on a disposable PostgreSQL database only; the source commit alone is not proof of runtime migration success.
 - Unit tests for validation, enum/date/score combinations and service errors.
-- PostgreSQL integration tests for create/list, transactional audit, invalid data, inactive staff, and strict tenant isolation. Update/verify tests are pending because those endpoints are not implemented.
+- PostgreSQL integration tests cover create/list/update, transactional audit, staff-scoped audit history and cross-school denial. Dedicated verification remains pending behind a separate permission decision.
 - Authorization tests for missing permission, DENY override, School Admin delegation and out-of-school target.
 - Document tests for MIME spoofing, size limit, path traversal, unauthorized download, cross-school access, failed upload cleanup and archive audit.
 
