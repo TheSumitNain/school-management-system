@@ -4,10 +4,11 @@ import (
     "context"
     "testing"
     "time"
+    "strings"
 )
 
 func TestStaffAttendanceV58SchemaAndPermissionsPostgresIntegration(t *testing.T) {
-    _, pool, _ := newPostgresIntegrationRepository(t)
+    _, pool, userID := newPostgresIntegrationRepository(t)
     ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
     defer cancel()
 
@@ -52,6 +53,38 @@ func TestStaffAttendanceV58SchemaAndPermissionsPostgresIntegration(t *testing.T)
     `).Scan(&ready)
     if err != nil { t.Fatalf("inspect V58 staff attendance schema and permissions: %v", err) }
     if !ready { t.Fatal("V58 staff attendance table, unique index, date trigger, permission catalogue, School Admin grant, or future-school trigger is missing") }
+
+    var granted int
+    if err := pool.QueryRow(ctx, `
+        SELECT COUNT(*)::integer
+        FROM public.roles r
+        JOIN public.role_permissions rp ON rp.role_id = r.id
+        JOIN public.permissions p ON p.id = rp.permission_id
+        WHERE r.school_id = (SELECT school_id FROM public.users WHERE id = $1)
+          AND r.role_key = 'school_admin'
+          AND r.scope_type = 'school'
+          AND r.principal_type = 'staff'
+          AND r.is_system = TRUE
+          AND p.permission_key = ANY(ARRAY[
+              'staff.attendance.read',
+              'staff.attendance.mark',
+              'staff.attendance.update_same_day',
+              'staff.attendance.correct_past'
+          ]::text[])
+    `, userID).Scan(&granted); err != nil {
+        t.Fatalf("count new-school staff attendance grants: %v", err)
+    }
+    if granted != 4 { t.Fatalf("new-school staff attendance grants=%d want=4", granted) }
+
+    var definition string
+    if err := pool.QueryRow(ctx, `
+        SELECT pg_get_functiondef('public.validate_staff_attendance_date()'::regprocedure)
+    `).Scan(&definition); err != nil {
+        t.Fatalf("inspect staff attendance date guard: %v", err)
+    }
+    if !strings.Contains(definition, "Asia/Kolkata") {
+        t.Fatal("staff attendance date trigger must use the Asia/Kolkata school calendar")
+    }
 }
 
 func TestStaffAttendanceRejectsDuplicatePerSchoolDatePostgresIntegration(t *testing.T) {
