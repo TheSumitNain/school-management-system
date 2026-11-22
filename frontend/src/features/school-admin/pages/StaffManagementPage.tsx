@@ -31,7 +31,7 @@ type Props = { permissions: string[] };
 
 function staffCSVCell(value:unknown){
   const text=String(value??"");
-  const safe=/^\\s*[=+\\-@]/.test(text)?"'"+text:text;
+  const safe=/^\s*[=+\-@]/.test(text)?"'"+text:text;
   return '"'+safe.replace(/"/g,'""')+'"';
 }
 function exportStaffDirectoryCSV(rows:StaffRecord[]){
