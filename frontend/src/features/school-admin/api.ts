@@ -604,3 +604,40 @@ export type StaffAuditEvent = { id: number; action: string; resource_type: strin
 export function getStaffAuditEvents(principalID: number, signal?: AbortSignal) {
   return api<{ events: StaffAuditEvent[] }>(`/school/staff/${principalID}/audit-events`, { signal });
 }
+
+export type StaffAttendanceRecord = {
+  id: number | null;
+  school_id: number;
+  staff_principal_id: number;
+  employee_code: string;
+  full_name: string;
+  designation: string;
+  attendance_date: string;
+  status: "present" | "absent" | "late" | "half_day" | null;
+  remarks?: string | null;
+  marked_by_username?: string | null;
+  updated_at?: string | null;
+};
+export type StaffAttendanceMonthlySummary = {
+  staff_principal_id: number;
+  employee_code: string;
+  full_name: string;
+  designation: string;
+  present_days: number;
+  absent_days: number;
+  late_days: number;
+  half_days: number;
+  records: Array<{ id: number; date: string; status: "present" | "absent" | "late" | "half_day"; remarks?: string | null }>;
+};
+export function getDailyStaffAttendance(date: string, signal?: AbortSignal) {
+  return api<{ date: string; data: StaffAttendanceRecord[] }>(`/school/staff-attendance?date=${encodeURIComponent(date)}`, { signal });
+}
+export function getMonthlyStaffAttendance(month: string, signal?: AbortSignal) {
+  return api<{ month: string; data: StaffAttendanceMonthlySummary[] }>(`/school/staff-attendance/month?month=${encodeURIComponent(month)}`, { signal });
+}
+export function markStaffAttendance(input: { staff_principal_id: number; attendance_date: string; status: "present" | "absent" | "late" | "half_day"; remarks?: string }) {
+  return api<{ data: StaffAttendanceRecord }>("/school/staff-attendance", { method: "POST", body: JSON.stringify(input) });
+}
+export function updateStaffAttendance(recordID: number, input: { status: "present" | "absent" | "late" | "half_day"; remarks?: string }) {
+  return api<{ data: StaffAttendanceRecord }>(`/school/staff-attendance/${recordID}`, { method: "PATCH", body: JSON.stringify(input) });
+}
