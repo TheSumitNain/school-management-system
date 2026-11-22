@@ -327,14 +327,15 @@ The initial staff workload view is now implemented without a database migration:
 - The existing `GET /school/timetable/entries` read API accepts an optional positive `teacher_principal_id` filter. The filter is applied in the PostgreSQL query, not in the browser.
 - A requested teacher must have a `staff_profiles` row in the authenticated school. The existing teacher-only actor boundary remains in force, so a teacher cannot use the filter to read another teacher's schedule. The route and repository continue to enforce live `timetable.read` authorization.
 - The frontend API helper exposes the optional filter. A selected employee's profile now includes a permission-gated **Workload & Timetable** tab that loads the current academic year and that employee's scheduled entries only.
-- The panel shows scheduled-period, teaching-day, section and subject counts plus the actual timetable rows. It explicitly states that an unscheduled period is not confirmed availability.
-- Handler tests cover forwarding a valid teacher scope and rejecting a non-positive filter. A Playwright test verifies that the profile requests a teacher-specific timetable and renders the schedule and availability caveat.
+- The panel shows scheduled-period, teaching-day, section and subject counts, actual timetable rows in a weekly grid, and unscheduled timetable slots derived from the real period catalogue. It explicitly states that unscheduled slots do not confirm teacher availability, working days or permission to assign another class.
+- Handler tests cover forwarding a valid teacher scope and rejecting a non-positive filter. A Playwright test verifies that the profile requests a teacher-specific timetable and renders the schedule, unscheduled slots and availability caveat.
 
 Verification on branch `work`, commit `30270fe0927a6eb3f284d462ddd6dc2b4ca2959e`:
 - Backend CI run `45009158991`: PASS — all migrations on the ephemeral PostgreSQL database, full Go test suite including PostgreSQL integration, and `go vet`.
 - Frontend CI run `45009158987`: PASS — TypeScript/Vite production build and complete Playwright browser acceptance suite (71 tests).
 - A dedicated PostgreSQL integration assertion was added to `TestAcademicFoundationAndStudentLifecyclePostgresIntegration`: School Admin can read one selected same-school teacher's schedule; selecting a second same-school teacher returns only that teacher's schedule; a Teacher cannot read a peer's schedule even when supplying the peer principal ID; a foreign-school principal ID returns no entries.
 - Backend CI run `45009905703` on commit `1a40546d25a66ab8714789b5835be1afb0661b34`: PASS — migration application, full Go/PostgreSQL integration suite including the new tenant/actor-scope assertions, and `go vet`.
+- The weekly grid and unscheduled-slot display passed frontend CI run `45010205988` (TypeScript/Vite production build and all 71 Playwright tests); backend CI run `45010206045` also passed on the same source checkpoint.
 - No persistent database was changed and no migration was added.
 
 **Remaining Phase 5 work:** server-authoritative workload/conflict reporting and the separately authorized, audited substitute workflow. The initial teacher-specific profile workload view, its browser acceptance, and its PostgreSQL tenant/actor-scope checks are verified; this does not mark all of Phase 5 complete.
