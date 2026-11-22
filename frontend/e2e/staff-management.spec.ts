@@ -593,6 +593,8 @@ test("staff leave request field errors clear as each required field is corrected
   await expect(page.getByLabel("Leave type")).toHaveAttribute("aria-invalid", "true");
   await expect(page.getByLabel("Leave start date")).toHaveAttribute("aria-invalid", "true");
   await expect(page.getByLabel("Leave end date")).toHaveAttribute("aria-invalid", "true");
+  await expect(page.getByLabel("Reason")).toHaveAttribute("aria-invalid", "true");
+  await expect(page.getByLabel("Reason")).toHaveAttribute("aria-describedby", "leave-reason-error");
 
   await page.getByLabel("Staff member").click();
   await page.getByRole("option", { name: /Validation Teacher/ }).click();
