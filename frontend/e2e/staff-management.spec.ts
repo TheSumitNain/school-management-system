@@ -480,8 +480,8 @@ test("staff attendance supports search, individual and atomic bulk marking, and 
     const url = new URL(route.request().url());
     if (!url.searchParams.has("from_date")) { await route.fallback(); return; }
     expect(url.searchParams.get("status")).toBe("approved");
-    expect(url.searchParams.get("from_date")).toMatch(/^\\d{4}-\\d{2}-01$/);
-    expect(url.searchParams.get("to_date")).toMatch(/^\\d{4}-\\d{2}-\\d{2}$/);
+    expect(url.searchParams.get("from_date")).toMatch(/^\d{4}-\d{2}-01$/);
+    expect(url.searchParams.get("to_date")).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     await route.fulfill({ json: { data: [{
       id: 71, staff_principal_id: 512, staff_name: "Attendance Teacher", employee_code: "EMP-ATT-01",
       leave_type_id: 1, leave_type_name: "Casual Leave", start_date: url.searchParams.get("from_date"),
