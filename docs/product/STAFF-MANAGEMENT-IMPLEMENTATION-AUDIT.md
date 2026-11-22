@@ -296,3 +296,10 @@ This section supersedes earlier Phase 4 remaining-work notes where later impleme
 - Expanded real-PostgreSQL integration coverage for malformed/reversed dates, invalid calendar dates, blank reasons, unsupported durations, missing/invalid half-day sessions and multi-date half-day requests.
 - Added eligibility and lifecycle assertions: approved leave blocks overlapping requests; cancellation releases the date for a new request; inactive leave types, inactive staff profiles and cross-school staff targets are rejected.
 - Exact checkpoint `062d9a2d9acba4d939985c1d6a0cdb2907cd247b`: Backend CI [45005336749](https://github.com/TheSumitNain/school-management-system/actions/runs/45005336749) **PASS**, including all Go tests, PostgreSQL integration and `go vet`. No migration or runtime change was needed.
+
+
+## 27. Staff overview metrics and account-readiness acceptance (2026-11-22)
+
+- Expanded the Staff Overview browser fixture to include two deliberately different staff states: an active employee with an incomplete login-readiness state, and an inactive employee with an incomplete profile. The acceptance assertions independently verify total staff, active employment, enabled logins, incomplete profiles, and readiness counts rather than conflating employment, profile and account status.
+- Exact checkpoint `176ce3e85fa8cb4d621066e88207c63b35c9c740`: Frontend CI [45005957248](https://github.com/TheSumitNain/school-management-system/actions/runs/45005957248) **PASS**, including TypeScript, production build and the complete Playwright browser acceptance suite. Backend CI [45005957357](https://github.com/TheSumitNain/school-management-system/actions/runs/45005957357) **PASS**, including Go tests, ephemeral PostgreSQL migrations/integration and `go vet`.
+- Acceptance-test-only change; no backend runtime change or persistent database migration.
