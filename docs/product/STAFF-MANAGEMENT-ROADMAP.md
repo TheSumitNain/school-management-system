@@ -2,7 +2,7 @@
 
 **Status:** Approved planning baseline; Phase 0 audit is complete and the P0 Staff Management workspace rebuild is in progress.  
 **Scope:** Phase 1 School Admin web workspace, with Teacher self-service as a separate future experience.  
-**Last updated:** 2026-11-21
+**Last updated:** 2026-11-22
 
 This document defines what Staff Management will build, in what order, the screens/tabs and forms users will see, each field's required/optional status, the key workflows, security boundaries and acceptance criteria. It is a roadmap, not evidence that a feature is implemented. Check [Project Status](../project/STATUS.md) before each phase and verify existing code before changing it.
 
@@ -456,7 +456,7 @@ Phases are dependency ordered, not a claim that every listed item is absent. Ins
 3. Approval/rejection. **Implemented:** pending-only decisions, authenticated decision actor/time, required rejection comment, applicant self-approval denial, cancellation and transactional audit. PostgreSQL integration covers concurrency, authorization, rollback, rejection reason, audit persistence and cross-school denial. **Balance view pending:** quotas/accrual/carry-forward remain undefined until a school policy is approved; no balance is fabricated.
 4. Holiday calendar. **Implemented:** school-scoped create/list/update/deactivate APIs; active-only default listing; manager-only inactive listing; explicit deactivate/reactivate confirmations; edit preserves inactive state. PostgreSQL integration covers normalized duplicates, conflicting updates, cross-school denial and audit rollback.
 5. Attendance context and reporting. **Implemented:** approved leave and active holidays appear separately in daily/monthly attendance context when the viewer has the relevant read permissions. Monthly CSV export separates attendance, approved leave and holidays and protects against spreadsheet formula injection. No attendance rows are automatically created or overwritten.
-6. Permission boundaries and browser acceptance. **Implemented:** the workspace requires a read permission; write/decision-only grants cannot expose leave list views. Browser coverage includes the leave workflows, holiday reactivation, form-error isolation, monthly CSV export and responsive layouts.
+6. Permission boundaries and browser acceptance. **Implemented:** the workspace requires a read permission; write/decision-only grants cannot expose leave list views. Browser coverage includes the leave workflows, holiday reactivation, form-error isolation, monthly CSV export and responsive layouts. A read-only holiday-calendar acceptance test verifies that `staff.holidays.read` without `staff.holidays.manage` exposes the active calendar but no mutation controls or inactive records (frontend and backend CI pass at `eaaea2f2f0f4a3665221a3fe0d1807f404eac6a7`).
 
 **Exit gate remains open:** complete any remaining end-to-end workflow review and school-specific policy approval. Leave balances, quotas, accrual and carry-forward must not be implemented until the school explicitly approves the policy. Keep attendance context informational; manual attendance conflicts require explicit human resolution.
 
