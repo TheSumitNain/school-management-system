@@ -242,3 +242,10 @@ This section supersedes earlier Phase 4 remaining-work notes where later impleme
 - The test verifies the assigned role remains visible, role assignment/removal controls are absent, and the profile does not request permission catalogues, delegation data or individual override data when the viewer lacks the required permission.
 - Exact code checkpoint 15d74d324de85425a94039c45c715478d153cae9: Frontend CI [45002264200](https://github.com/TheSumitNain/school-management-system/actions/runs/45002264200) **PASS**, including TypeScript/design-token checks, Vite build and complete Playwright browser suite; Backend CI [45002264188](https://github.com/TheSumitNain/school-management-system/actions/runs/45002264188) **PASS**, including PostgreSQL integration tests and go vet.
 - This closes the reviewed read-only Staff Account & Access acceptance gap; no backend behavior or database schema changed.
+
+## 20. Staff Account & Access role assignment/removal confirmation (2026-11-22)
+
+- Added a positive-permission Playwright workflow for a staff profile viewer with `users.read`, `roles.read` and `roles.assign`: the user assigns a custom role, verifies the success state, opens role removal and cancels to prove no DELETE request occurs, then explicitly confirms removal and verifies the updated role list.
+- The test asserts exactly one assignment request and exactly one confirmed removal request; cancellation leaves the assignment unchanged.
+- Exact code checkpoint `6ca0fb6e8ffe3b80c86446d2dfc9d8cc6521bd7d`: Frontend CI [45002546475](https://github.com/TheSumitNain/school-management-system/actions/runs/45002546475) **PASS**, including TypeScript/design-token checks, Vite production build and the complete Playwright browser suite. Backend CI [45002546411](https://github.com/TheSumitNain/school-management-system/actions/runs/45002546411) **PASS**, including disposable PostgreSQL integration tests and `go vet`.
+- This closes the reviewed positive role-assignment/removal confirmation acceptance gap. No backend runtime change or database migration was introduced by this test.
