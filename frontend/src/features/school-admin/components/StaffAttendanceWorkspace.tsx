@@ -61,6 +61,20 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
     queryFn: ({ signal }) => getMonthlyStaffAttendance(month, signal),
     enabled: canRead && view === "monthly",
   });
+  const monthStart = month ? `${month}-01` : "";
+  const monthEnd = month ? new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)).toISOString().slice(0, 10) : "";
+  const approvedMonthLeave = useQuery({
+    queryKey: ["staff-leave-report", "approved", month],
+    queryFn: ({ signal }) => getStaffLeaveRequests({ status: "approved", fromDate: monthStart, toDate: monthEnd }, signal),
+    enabled: canReadLeaveContext && view === "monthly" && Boolean(monthStart && monthEnd),
+    staleTime: 10_000,
+  });
+  const monthHolidays = useQuery({
+    queryKey: ["school-holiday-report", month],
+    queryFn: ({ signal }) => getSchoolHolidays(monthStart, monthEnd, signal),
+    enabled: canReadHolidayContext && view === "monthly" && Boolean(monthStart && monthEnd),
+    staleTime: 30_000,
+  });
   const invalidate = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["staff-attendance", "daily"] }),
@@ -213,6 +227,23 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
       {monthly.isSuccess && monthly.data.data.length > 0 && <div className="staff-attendance-table-wrap"><table className="staff-attendance-table"><thead><tr><th>Employee</th><th>Present</th><th>Absent</th><th>Late</th><th>Half day</th><th>Recorded days</th></tr></thead><tbody>
         {monthly.data.data.map(item => <tr key={item.staff_principal_id}><td><strong>{item.full_name}</strong><small>{item.employee_code} · {item.designation}</small><details><summary>View daily entries ({item.records.length})</summary><ul>{item.records.map(record => <li key={record.id}>{record.date}: {statuses.find(status => status.value === record.status)?.label ?? record.status}{record.remarks ? ` — ${record.remarks}` : ""}</li>)}</ul></details></td><td>{item.present_days}</td><td>{item.absent_days}</td><td>{item.late_days}</td><td>{item.half_days}</td><td>{item.present_days + item.absent_days + item.late_days + item.half_days}</td></tr>)}
       </tbody></table></div>}
+      {(canReadLeaveContext || canReadHolidayContext) && <section className="staff-attendance-calendar-note" aria-label="Monthly leave and holiday context">
+        <strong>Calendar context · not included in attendance totals</strong>
+        {canReadLeaveContext && <div>
+          <h3>Approved leave</h3>
+          {approvedMonthLeave.isPending && <p role="status">Loading approved leave…</p>}
+          {approvedMonthLeave.isError && <p role="status">Approved leave context could not be loaded. Attendance totals remain unchanged.</p>}
+          {approvedMonthLeave.isSuccess && approvedMonthLeave.data.data.length === 0 && <p>No approved leave overlaps this month.</p>}
+          {approvedMonthLeave.data?.data.map(item => <p key={item.id}>{item.staff_name || "Staff"} · {item.leave_type_name || "Leave"} · {item.start_date}{item.end_date !== item.start_date ? ` → ${item.end_date}` : ""}</p>)}
+        </div>}
+        {canReadHolidayContext && <div>
+          <h3>School holidays</h3>
+          {monthHolidays.isPending && <p role="status">Loading school holidays…</p>}
+          {monthHolidays.isError && <p role="status">School holiday context could not be loaded.</p>}
+          {monthHolidays.isSuccess && monthHolidays.data.data.length === 0 && <p>No active school holidays in this month.</p>}
+          {monthHolidays.data?.data.map(item => <p key={item.id}>{item.holiday_date} · {item.name}</p>)}
+        </div>}
+      </section>}
     </>}
     <ConfirmDialog
       open={bulkConfirmOpen}
