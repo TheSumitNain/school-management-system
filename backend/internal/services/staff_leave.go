@@ -14,7 +14,7 @@ var ErrInvalidStaffLeave = errors.New("invalid staff leave input")
 type staffLeaveRepository interface {
 	ListTypes(context.Context, int64, int64) ([]repository.StaffLeaveType, error)
 	SaveType(context.Context, int64, int64, int64, repository.StaffLeaveType) (*repository.StaffLeaveType, error)
-	ListRequests(context.Context, int64, int64, string, int64, string) ([]repository.StaffLeaveRequest, error)
+	ListRequests(context.Context, int64, int64, string, int64, string, string, string) ([]repository.StaffLeaveRequest, error)
 	CreateRequest(context.Context, int64, int64, repository.StaffLeaveRequest) (*repository.StaffLeaveRequest, error)
 	Decide(context.Context, int64, int64, int64, bool, *string) error
 	Cancel(context.Context, int64, int64, int64) error
@@ -46,7 +46,7 @@ func (s *StaffLeaveService) SaveType(ctx context.Context, actor, school, id int6
 	return s.repo.SaveType(ctx, actor, school, id, item)
 }
 
-func (s *StaffLeaveService) ListRequests(ctx context.Context, actor, school int64, status string, staffID int64, onDate string) ([]repository.StaffLeaveRequest, error) {
+func (s *StaffLeaveService) ListRequests(ctx context.Context, actor, school int64, status string, staffID int64, onDate, fromDate, toDate string) ([]repository.StaffLeaveRequest, error) {
 	if s == nil || s.repo == nil || actor <= 0 || school <= 0 || staffID < 0 {
 		return nil, ErrInvalidStaffLeave
 	}
@@ -56,12 +56,25 @@ func (s *StaffLeaveService) ListRequests(ctx context.Context, actor, school int6
 	default:
 		return nil, ErrInvalidStaffLeave
 	}
+	if onDate != "" && (fromDate != "" || toDate != "") {
+		return nil, ErrInvalidStaffLeave
+	}
 	if onDate != "" {
 		if _, err := time.Parse("2006-01-02", onDate); err != nil {
 			return nil, ErrInvalidStaffLeave
 		}
 	}
-	return s.repo.ListRequests(ctx, actor, school, status, staffID, onDate)
+	if (fromDate == "") != (toDate == "") {
+		return nil, ErrInvalidStaffLeave
+	}
+	if fromDate != "" {
+		start, startErr := time.Parse("2006-01-02", fromDate)
+		end, endErr := time.Parse("2006-01-02", toDate)
+		if startErr != nil || endErr != nil || end.Before(start) || end.Sub(start) > 366*24*time.Hour {
+			return nil, ErrInvalidStaffLeave
+		}
+	}
+	return s.repo.ListRequests(ctx, actor, school, status, staffID, onDate, fromDate, toDate)
 }
 
 func (s *StaffLeaveService) CreateRequest(ctx context.Context, actor, school int64, item repository.StaffLeaveRequest) (*repository.StaffLeaveRequest, error) {
