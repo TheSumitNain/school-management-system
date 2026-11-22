@@ -38,7 +38,9 @@ func timetableError(c *gin.Context,err error,resource string){
 	switch{
 	case errors.Is(err,repository.ErrTimetableAccessDenied):c.JSON(http.StatusForbidden,gin.H{"status":"error","message":"You are not authorized to manage this timetable"})
 	case errors.Is(err,repository.ErrTimetableNotFound):c.JSON(http.StatusNotFound,gin.H{"status":"error","message":resource+" not found"})
-	case errors.Is(err,repository.ErrTimetableConflict):c.JSON(http.StatusConflict,gin.H{"status":"error","message":"This class or teacher already has a timetable entry in that period"})
+	case errors.Is(err,repository.ErrTimetableTeacherConflict):c.JSON(http.StatusConflict,gin.H{"status":"error","code":"timetable_teacher_conflict","message":"This teacher is already scheduled in another class during the selected period. Choose another teacher or period."})
+	case errors.Is(err,repository.ErrTimetableSectionConflict):c.JSON(http.StatusConflict,gin.H{"status":"error","code":"timetable_section_conflict","message":"This section already has a class during the selected period. Choose another period."})
+	case errors.Is(err,repository.ErrTimetableConflict):c.JSON(http.StatusConflict,gin.H{"status":"error","code":"timetable_slot_conflict","message":"This timetable slot conflicts with an existing entry. Refresh the timetable and choose another slot."})
 	case errors.Is(err,repository.ErrInvalidTimetableInput):c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid timetable data; check the academic year, active assignment, period and time values"})
 	default:c.JSON(http.StatusInternalServerError,gin.H{"status":"error","message":"Unable to process timetable request"})
 	}
