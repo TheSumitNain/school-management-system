@@ -11,6 +11,7 @@ import (
     "school-management-system/internal/middleware"
     "school-management-system/internal/repository"
     "school-management-system/internal/services"
+	"school-management-system/internal/schooltime"
 
     "github.com/gin-gonic/gin"
 )
@@ -32,7 +33,7 @@ func (h *StaffAttendanceHandler) ListDaily(c *gin.Context) {
     actor, school, ok := staffRecordActor(c)
     if !ok { c.JSON(http.StatusUnauthorized, gin.H{"status":"error","message":"School staff authentication required"}); return }
     raw := strings.TrimSpace(c.Query("date"))
-    if raw == "" { raw = time.Now().In(time.FixedZone("Asia/Kolkata", 19800)).Format("2006-01-02") }
+    if raw == "" { raw = schooltime.TodayDate() }
     day, err := time.Parse("2006-01-02", raw)
     if err != nil { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"date must use YYYY-MM-DD"}); return }
     items, err := h.service.ListDaily(c.Request.Context(), actor, school, day)
@@ -44,7 +45,7 @@ func (h *StaffAttendanceHandler) ListMonthly(c *gin.Context) {
     actor, school, ok := staffRecordActor(c)
     if !ok { c.JSON(http.StatusUnauthorized, gin.H{"status":"error","message":"School staff authentication required"}); return }
     raw := strings.TrimSpace(c.Query("month"))
-    if raw == "" { raw = time.Now().In(time.FixedZone("Asia/Kolkata", 19800)).Format("2006-01") }
+    if raw == "" { raw = schooltime.Today().Format("2006-01") }
     month, err := time.Parse("2006-01", raw)
     if err != nil { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"month must use YYYY-MM"}); return }
     items, err := h.service.ListMonthly(c.Request.Context(), actor, school, month)
