@@ -7,7 +7,8 @@ import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { schoolDateValue } from "../../../shared/date/schoolDate";
 import {
   getDailyStaffAttendance, getMonthlyStaffAttendance, markStaffAttendance, markStaffAttendanceBulk, updateStaffAttendance,
-  type StaffAttendanceRecord,
+  getStaffLeaveRequests, getSchoolHolidays,
+  type StaffAttendanceRecord, type StaffLeaveRequest,
 } from "../api";
 
 type Props = { permissions: string[] };
@@ -40,6 +41,20 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
     queryKey: ["staff-attendance", "daily", date],
     queryFn: ({ signal }) => getDailyStaffAttendance(date, signal),
     enabled: canRead && view === "daily",
+  });
+  const canReadLeaveContext = permissions.includes("staff.leave.read");
+  const canReadHolidayContext = permissions.includes("staff.holidays.read");
+  const approvedLeaveContext = useQuery({
+    queryKey: ["staff-leave-context", date],
+    queryFn: ({ signal }) => getStaffLeaveRequests({ status: "approved", onDate: date }, signal),
+    enabled: canReadLeaveContext && view === "daily",
+    staleTime: 10_000,
+  });
+  const holidayContext = useQuery({
+    queryKey: ["school-holiday-context", date],
+    queryFn: ({ signal }) => getSchoolHolidays(date, date, signal),
+    enabled: canReadHolidayContext && view === "daily",
+    staleTime: 30_000,
   });
   const monthly = useQuery({
     queryKey: ["staff-attendance", "monthly", month],
@@ -77,6 +92,16 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
   const past = date < today;
   const canMark = past ? permissions.includes("staff.attendance.correct_past") : permissions.includes("staff.attendance.mark");
   const canUpdate = past ? permissions.includes("staff.attendance.correct_past") : permissions.includes("staff.attendance.update_same_day");
+  const approvedLeaveByStaff = useMemo(() => {
+    const grouped = new Map<number, StaffLeaveRequest[]>();
+    for (const item of approvedLeaveContext.data?.data ?? []) {
+      const current = grouped.get(item.staff_principal_id) ?? [];
+      current.push(item);
+      grouped.set(item.staff_principal_id, current);
+    }
+    return grouped;
+  }, [approvedLeaveContext.data]);
+  const schoolHolidayNames = (holidayContext.data?.data ?? []).map(item => item.name);
   const records = daily.data?.data ?? [];
   const visibleRecords = useMemo(() => {
     const term = search.trim().toLocaleLowerCase();
@@ -151,6 +176,9 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
         <div><button type="button" className="staff-attendance-save" disabled={!canMark || bulkMark.isPending || bulkTargets.length === 0} onClick={() => { if (!bulkStatus) { setBulkAttempted(true); return; } setBulkConfirmOpen(true); }}>Mark {bulkTargets.length} unmarked staff</button><small>Only visible, unmarked employees are included. All records save together or none do.</small></div>
       </div>
       {past && !permissions.includes("staff.attendance.correct_past") && <p className="staff-attendance-note">Historical attendance is read-only. Past corrections require separate permission.</p>}
+      {holidayContext.data?.data.length ? <div className="staff-attendance-calendar-note"><strong>School holiday:</strong> {schoolHolidayNames.join(", ")}. Attendance records are not changed automatically.</div> : null}
+      {holidayContext.isError && <p className="staff-attendance-context-warning" role="status">School holiday context could not be loaded. Attendance marking remains available according to your permissions.</p>}
+      {approvedLeaveContext.isError && <p className="staff-attendance-context-warning" role="status">Approved leave context could not be loaded. Check the leave read permission or retry the register.</p>}
       {daily.isPending && <p role="status" className="staff-attendance-message">Loading staff register…</p>}
       {daily.isError && <div className="staff-attendance-message error" role="alert">Unable to load staff attendance. <button type="button" onClick={() => void daily.refetch()}>Try again</button></div>}
       {daily.isSuccess && records.length === 0 && <p className="staff-attendance-message">No active staff profiles are available for this school.</p>}
@@ -163,7 +191,10 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
           const allowed = item.id ? canUpdate : canMark;
           const unchanged = Boolean(item.id && draft.status === item.status && draft.remarks.trim() === (item.remarks ?? ""));
           return <tr key={item.staff_principal_id}>
-            <td><strong>{item.full_name}</strong><small>{item.employee_code} · {item.designation}</small></td>
+            <td><strong>{item.full_name}</strong><small>{item.employee_code} · {item.designation}</small>
+              {(approvedLeaveByStaff.get(item.staff_principal_id) ?? []).map(leave => <small className="staff-attendance-leave-context" key={leave.id}>Approved leave: {leave.leave_type_name ?? "Leave"}</small>)}
+              {item.id && (approvedLeaveByStaff.has(item.staff_principal_id) || schoolHolidayNames.length > 0) && <small className="staff-attendance-context-warning">Existing attendance mark conflicts with calendar context — review manually.</small>}
+            </td>
             <td><select aria-label={`Attendance status for ${item.full_name}`} value={draft.status} disabled={!allowed || busy} aria-invalid={draft.attempted && !draft.status} aria-describedby={draft.attempted && !draft.status ? `staff-attendance-status-error-${item.staff_principal_id}` : undefined} onChange={event => changeDraft(item.staff_principal_id, { status: event.target.value as Status | "" }, item)}>
               <option value="">Select status</option>{statuses.map(status => <option key={status.value} value={status.value}>{status.label}</option>)}
             </select>{draft.attempted && !draft.status && <small id={`staff-attendance-status-error-${item.staff_principal_id}`} className="staff-attendance-field-error">Select an attendance status.</small>}
