@@ -18,6 +18,7 @@ type TimetableManagementService interface {
 	ListPeriods(context.Context,int64,int64,int64)([]repository.TimetablePeriod,error)
 	SavePeriod(context.Context,int64,int64,int64,int64,int,string,string,string,bool)(*repository.TimetablePeriod,error)
 	ListEntries(context.Context,int64,int64,int64,int64,int64)([]repository.TimetableEntry,error)
+	WorkloadReport(context.Context,int64,int64,int64)([]repository.TeacherWorkloadReportRow,error)
 	SaveEntry(context.Context,int64,int64,int64,int64,int64,int64,int64,int64,int64,int,*string)(*repository.TimetableEntry,error)
 	DeleteEntry(context.Context,int64,int64,int64,int64)error
 }
@@ -57,6 +58,15 @@ func(h *TimetableHandler) ListPeriods(c *gin.Context){
 	items,err:=h.service.ListPeriods(c.Request.Context(),a,s,year);if err!=nil{timetableError(c,err,"Timetable period");return}
 	c.JSON(http.StatusOK,gin.H{"status":"success","periods":items})
 }
+func(h *TimetableHandler) WorkloadReport(c *gin.Context){
+	a,s,ok:=h.ready(c);if !ok{return}
+	year,valid:=timetableQueryID(c,"academic_year_id")
+	if !valid{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"academic_year_id is required"});return}
+	items,err:=h.service.WorkloadReport(c.Request.Context(),a,s,year)
+	if err!=nil{timetableError(c,err,"Workload report");return}
+	c.JSON(http.StatusOK,gin.H{"status":"success","workloads":items})
+}
+
 func(h *TimetableHandler) SavePeriod(c *gin.Context){
 	a,s,ok:=h.ready(c);if !ok{return};var id int64
 	if c.Param("periodID")!=""{var valid bool;id,valid=timetablePathID(c,"periodID");if !valid{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid period ID"});return}}
