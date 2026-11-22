@@ -67,3 +67,12 @@ Required before declaring complete:
 - Backend `go test -count=1 -p 1 ./...` and `go vet ./...`.
 - Frontend typecheck/build and Playwright coverage for daily marking, duplicate conflict, same-day update, historical permission gate, month summary, field validation and responsive behavior.
 - Never apply V58 to a user database without explicit approval.
+
+## 7. Monthly calendar context (2026-11-22)
+
+- Monthly attendance view now has a separate calendar-context section for approved leave requests and active school holidays.
+- Context is loaded only when the signed-in principal has the corresponding `staff.leave.read` / `staff.holidays.read` permission.
+- Calendar context is explicitly excluded from attendance totals. No leave request or holiday creates, removes or changes an attendance record.
+- Leave requests are filtered by date-range overlap with the selected month; holiday rows are bounded to the same month.
+- Backend PostgreSQL CI [44986574096](https://github.com/TheSumitNain/school-management-system/actions/runs/44986574096) **PASS** at code checkpoint `a01514119b0d395b106accd990f59b2f7a5e992f`, including the new date-range repository integration test and `go vet`. Frontend production build passed; final Playwright run is pending.
+
