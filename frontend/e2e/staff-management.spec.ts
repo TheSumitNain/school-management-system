@@ -474,7 +474,20 @@ test("staff attendance supports search, individual and atomic bulk marking, and 
   await signInAndOpenStaff(page, rows, undefined, [
     "users.read", "staff.attendance.read", "staff.attendance.mark",
     "staff.attendance.update_same_day", "staff.attendance.correct_past",
+    "staff.leave.read", "staff.holidays.read",
   ]);
+  await page.route("**/api/school/staff-leave/requests?*", async route => {
+    const url = new URL(route.request().url());
+    expect(url.searchParams.get("status")).toBe("approved");
+    expect(url.searchParams.get("from_date")).toMatch(/^\\d{4}-\\d{2}-01$/);
+    expect(url.searchParams.get("to_date")).toMatch(/^\\d{4}-\\d{2}-\\d{2}$/);
+    await route.fulfill({ json: { data: [{
+      id: 71, staff_principal_id: 512, staff_name: "Attendance Teacher", employee_code: "EMP-ATT-01",
+      leave_type_id: 1, leave_type_name: "Casual Leave", start_date: url.searchParams.get("from_date"),
+      end_date: url.searchParams.get("from_date"), duration_type: "full_day", reason: "Approved leave",
+      status: "approved", created_at: "2026-11-01T00:00:00.000Z",
+    }] } });
+  });
   let savedStatus = "";
   let bulkCreated = 0;
   const dailyRecords = [
@@ -541,4 +554,9 @@ test("staff attendance supports search, individual and atomic bulk marking, and 
   await page.getByRole("button", { name: "Monthly summary" }).click();
   await expect(page.getByText("Attendance Teacher").first()).toBeVisible();
   await expect(page.getByText("View daily entries (3)")).toBeVisible();
+  await expect(page.getByText("Calendar context · not included in attendance totals")).toBeVisible();
+  await expect(page.getByText("Approved leave", { exact: true })).toBeVisible();
+  await expect(page.getByText(/Attendance Teacher · Casual Leave/)).toBeVisible();
+  await expect(page.getByText("School holidays", { exact: true })).toBeVisible();
+  await expect(page.getByText(/School Foundation Day/)).toBeVisible();
 });
