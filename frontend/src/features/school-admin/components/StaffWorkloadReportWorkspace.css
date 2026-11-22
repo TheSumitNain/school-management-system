@@ -1,0 +1,41 @@
+.staff-workload-report{display:grid;gap:14px;min-width:0}
+.staff-workload-report-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.staff-workload-report-heading h2{margin:0 0 5px;color:var(--color-text);font:700 16px var(--font-heading)}
+.staff-workload-report-heading p{margin:0;color:var(--color-text-muted);font-size:11px}
+.staff-workload-report-refresh{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:6px 10px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-surface);color:var(--color-text-muted);font-size:10px}
+.staff-workload-report-refresh:disabled{opacity:.55}
+.staff-workload-report-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.staff-workload-report-summary article{display:grid;gap:5px;padding:13px;border:1px solid var(--color-border);border-radius:10px;background:var(--color-surface)}
+.staff-workload-report-summary span{color:var(--color-text-muted);font-size:10px}
+.staff-workload-report-summary strong{color:var(--color-text);font:700 21px var(--font-heading);font-variant-numeric:tabular-nums}
+.staff-workload-report-filters{display:grid;grid-template-columns:minmax(200px,1fr) minmax(180px,240px);gap:12px}
+.staff-workload-report-filters label{display:grid;gap:6px;color:var(--color-text);font-size:10px;font-weight:600}
+.staff-workload-report-search{display:flex;align-items:center;gap:8px;min-height:36px;padding:0 10px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-surface);color:var(--color-text-muted)}
+.staff-workload-report-search input{width:100%;min-width:0;border:0;outline:0;background:transparent;color:var(--color-text);font:inherit}
+.staff-workload-report-filters select{min-height:36px;padding:7px 10px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-surface);color:var(--color-text);font:inherit}
+.staff-workload-report-list{display:grid;gap:8px}
+.staff-workload-report-row{overflow:hidden;border:1px solid var(--color-border);border-radius:10px;background:var(--color-surface)}
+.staff-workload-report-row summary{display:grid;grid-template-columns:minmax(180px,1.5fr) auto auto minmax(90px,.5fr) minmax(110px,.7fr);align-items:center;gap:12px;padding:12px;cursor:pointer;list-style:none}
+.staff-workload-report-row summary::-webkit-details-marker{display:none}
+.staff-workload-report-row summary:focus-visible{outline:3px solid color-mix(in srgb,var(--color-focus) 24%,transparent);outline-offset:-3px}
+.staff-workload-report-person{display:grid;gap:4px;min-width:0}
+.staff-workload-report-person strong{overflow:hidden;color:var(--color-text);font-size:11px;text-overflow:ellipsis;white-space:nowrap}
+.staff-workload-report-person span{color:var(--color-text-muted);font-size:9px}
+.staff-workload-report-state{padding:4px 7px;border:1px solid var(--color-border);border-radius:16px;color:var(--color-text-muted);font-size:9px;text-transform:capitalize;white-space:nowrap}
+.staff-workload-report-state.active,.staff-workload-report-state.enabled{color:var(--color-success)}
+.staff-workload-report-state.inactive,.staff-workload-report-state.disabled{color:var(--color-text-muted)}
+.staff-workload-report-total,.staff-workload-report-busiest{display:grid;gap:3px}
+.staff-workload-report-total strong{color:var(--color-text);font:700 17px var(--font-heading);font-variant-numeric:tabular-nums}
+.staff-workload-report-total small,.staff-workload-report-busiest small{color:var(--color-text-muted);font-size:9px}
+.staff-workload-report-busiest strong{color:var(--color-text);font-size:10px}
+.staff-workload-report-daily{padding:0 12px 12px;border-top:1px solid var(--color-border)}
+.staff-workload-report-daily p{margin:10px 0 0;color:var(--color-text-muted);font-size:10px}
+.staff-workload-report-daily table{width:100%;margin-top:8px;border-collapse:collapse;font-size:10px}
+.staff-workload-report-daily th,.staff-workload-report-daily td{padding:7px 8px;border-bottom:1px solid var(--color-border);text-align:left}
+.staff-workload-report-daily th{color:var(--color-text-muted);font-weight:600}
+.staff-workload-report-daily td{color:var(--color-text)}
+.staff-workload-report-note,.staff-workload-report-muted,.staff-workload-report-empty{margin:0;color:var(--color-text-muted);font-size:10px;line-height:1.5}
+.staff-workload-report-error{margin:0;color:var(--color-danger);font-size:11px}
+.staff-workload-report-error button{border:0;background:transparent;color:var(--color-primary);text-decoration:underline}
+@media(max-width:900px){.staff-workload-report-row summary{grid-template-columns:minmax(150px,1fr) auto auto minmax(80px,.5fr)}.staff-workload-report-busiest{grid-column:1/-1}}
+@media(max-width:620px){.staff-workload-report-summary{grid-template-columns:1fr}.staff-workload-report-filters{grid-template-columns:1fr}.staff-workload-report-row summary{grid-template-columns:1fr 1fr}.staff-workload-report-person{grid-column:1/-1}.staff-workload-report-busiest{grid-column:auto}.staff-workload-report-daily{overflow-x:auto}.staff-workload-report-daily table{min-width:560px}}
