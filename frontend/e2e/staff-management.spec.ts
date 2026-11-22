@@ -1334,7 +1334,7 @@ test("staff workload requests only the selected teacher timetable and explains u
     status: "active", must_change_password: false,
   }];
   await signInAndOpenStaff(page, rows, undefined, ["users.read", "timetable.read"]);
-  await page.getByRole("button", { name: "Staff Directory" }).click();
+  await page.locator(".staff-workspace-tabs").getByRole("button", { name: "Staff Directory" }).click();
   await page.getByRole("button", { name: "Workload Teacher" }).click();
   const dialog = page.getByRole("dialog", { name: "Workload Teacher" });
   await dialog.getByRole("button", { name: "Workload & Timetable" }).click();
