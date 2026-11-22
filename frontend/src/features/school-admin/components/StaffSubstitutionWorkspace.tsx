@@ -51,7 +51,7 @@ export function StaffSubstitutionWorkspace({permissions,staff}:Props){
   const create=useCreateStaffSubstitutionMutation();
   const cancel=useCancelStaffSubstitutionMutation();
 
-  const activeStaff=useMemo(()=>staff.filter(item=>item.employment_status==="active"&&item.status==="active"&&item.profile_complete!==false),[staff]);
+  const activeStaff=useMemo(()=>staff.filter(item=>item.employment_status==="active"&&item.status==="active"),[staff]);
   const staffOptions=[{value:"0",label:"All staff"},...staff.map(item=>({value:String(item.principal_id),label:(item.full_name||item.username)+" · "+(item.employee_code||"No employee code")}))];
   const entryOptions=useMemo(()=>entries.slice().sort((a,b)=>a.day_of_week-b.day_of_week||a.period_number-b.period_number||a.class_name.localeCompare(b.class_name)).map(item=>({
     value:String(item.id),label:weekdays[item.day_of_week-1]+" · "+item.class_name+" "+item.section_name+" · "+item.subject_name+" · P"+item.period_number+" ("+item.starts_at+"–"+item.ends_at+")"
@@ -120,7 +120,7 @@ export function StaffSubstitutionWorkspace({permissions,staff}:Props){
           <span>Original teacher: {staff.find(item=>item.principal_id===originalTeacherID)?.full_name||selectedEntry.teacher_username}</span>
         </div>}
         <label>Cover date <span className="required">*</span>
-          <DatePicker value={coverDate} onChange={value=>{setCoverDate(value);setFieldErrors(current=>({...current,date:"",leave:""}));setLeaveRequestID("");setFormError("");}} ariaLabel="Substitution cover date" placeholder="Select cover date" invalid={Boolean(fieldErrors.date)} describedBy={fieldErrors.date?"substitution-date-error":undefined}/>
+          <DatePicker value={coverDate} min={yearQuery.data?.academic_year?.starts_on} max={yearQuery.data?.academic_year?.ends_on} onChange={value=>{setCoverDate(value);setFieldErrors(current=>({...current,date:"",leave:""}));setLeaveRequestID("");setFormError("");}} ariaLabel="Substitution cover date" placeholder="Select cover date" invalid={Boolean(fieldErrors.date)} describedBy={fieldErrors.date?"substitution-date-error":undefined}/>
           {fieldErrors.date&&<small id="substitution-date-error" className="app-field-error" role="alert">{fieldErrors.date}</small>}
           {selectedEntry&&<small>Choose a {weekdays[selectedEntry.day_of_week-1]} within the timetable academic year.</small>}
         </label>
