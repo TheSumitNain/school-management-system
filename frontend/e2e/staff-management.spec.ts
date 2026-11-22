@@ -651,3 +651,32 @@ test("school holiday deactivation and reactivation require explicit confirmation
   await expect(page.getByText("Holiday reactivated.")).toBeVisible();
   await expect(page.getByText("Inactive", { exact: true })).toHaveCount(0);
 });
+
+test("leave type save errors stay inside their own form when switching workspace panes", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 501, school_id: 10, username: "leave.types.admin",
+    employee_code: "EMP-TYPE-01", full_name: "Leave Types Admin", designation: "School Admin",
+    mobile_number: "9876543215", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false,
+  }];
+  const permissions = ["users.read", "staff.leave.read", "staff.leave.manage_types", "staff.holidays.read", "staff.holidays.manage"];
+  await signInAndOpenStaff(page, rows, undefined, permissions);
+  await page.route("**/api/school/staff-leave/types", async route => {
+    if (route.request().method() === "POST") {
+      await route.fulfill({ status: 409, json: { message: "A leave type with this name already exists." } });
+      return;
+    }
+    await route.fallback();
+  });
+
+  await page.getByRole("button", { name: "Leave & Holidays" }).click();
+  await page.getByRole("button", { name: "Leave types" }).click();
+  await page.getByLabel(/Leave type name/).fill("Casual Leave");
+  await page.getByRole("button", { name: "Add leave type" }).click();
+  await expect(page.getByRole("alert")).toHaveText("A leave type with this name already exists.");
+
+  await page.getByRole("button", { name: "Holiday calendar" }).click();
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await page.getByRole("button", { name: "Leave types" }).click();
+  await expect(page.getByRole("alert")).toHaveText("A leave type with this name already exists.");
+});
