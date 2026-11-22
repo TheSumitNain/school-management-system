@@ -1,0 +1,53 @@
+.staff-leave-workspace{display:grid;gap:16px;min-width:0}
+.staff-leave-heading h2{margin:0 0 5px;color:var(--color-text);font:700 16px var(--font-heading)}
+.staff-leave-heading p{margin:0;color:var(--color-text-muted);font-size:11px;line-height:1.5}
+.staff-leave-subtabs{display:flex;gap:7px;flex-wrap:wrap;border-bottom:1px solid var(--color-border);padding-bottom:9px}
+.staff-leave-subtabs button{display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:8px 12px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-surface);color:var(--color-text-muted);font-size:11px}
+.staff-leave-subtabs button.active{border-color:var(--color-focus);background:var(--color-accent);color:var(--color-text);font-weight:700}
+.staff-leave-grid{display:grid;grid-template-columns:minmax(260px,340px) minmax(0,1fr);gap:14px;align-items:start}
+.staff-leave-panel{min-width:0;padding:17px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:12px}
+.staff-leave-panel h3{display:flex;align-items:center;gap:7px;margin:0 0 14px;color:var(--color-text);font:700 13px var(--font-heading)}
+.staff-leave-form{display:grid;gap:12px}
+.staff-leave-panel label{display:grid;gap:6px;color:var(--color-text);font-size:11px;font-weight:600}
+.staff-leave-panel label small{color:var(--color-text-muted);font-size:10px;font-weight:400}
+.staff-leave-panel input:not([type=checkbox]),.staff-leave-panel textarea{width:100%;min-width:0;min-height:var(--control-height);padding:9px 11px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-background);color:var(--color-text);font:inherit}
+.staff-leave-panel textarea{resize:vertical}
+.staff-leave-panel input:focus-visible,.staff-leave-panel textarea:focus-visible{outline:3px solid color-mix(in srgb,var(--color-focus) 22%,transparent);border-color:var(--color-focus)}
+.staff-leave-panel .required{color:var(--color-danger)}
+.staff-leave-date-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.staff-leave-panel .primary{justify-self:start;min-height:36px;padding:8px 13px;border-radius:8px}
+.staff-leave-panel .primary:disabled{opacity:.55;cursor:not-allowed}
+.staff-leave-check{display:flex!important;align-items:center;gap:9px!important;font-weight:500!important}
+.staff-leave-check input{accent-color:var(--color-primary)}
+.staff-leave-note{margin:0;padding:10px;border:1px solid var(--color-border);border-radius:8px;color:var(--color-text-muted);font-size:10px;line-height:1.5}
+.staff-leave-error{margin:0;color:var(--color-danger);font-size:11px;line-height:1.5}
+.staff-leave-error button{border:0;background:transparent;color:var(--color-primary);text-decoration:underline}
+.staff-leave-empty{padding:14px 0;color:var(--color-text-muted);font-size:11px}
+.staff-leave-list-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.staff-leave-list-heading h3{margin:0}
+.staff-leave-filters{display:grid;grid-template-columns:minmax(120px,180px) minmax(140px,1fr);gap:10px;margin-bottom:12px}
+.staff-leave-filters label{gap:5px}
+.staff-leave-request{padding:13px 0;border-top:1px solid var(--color-border);font-size:11px;color:var(--color-text)}
+.staff-leave-request-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.staff-leave-request-top>div{display:grid;gap:4px;min-width:0}
+.staff-leave-request-top strong{display:flex;gap:7px;flex-wrap:wrap}
+.staff-leave-request-top strong small,.staff-leave-request-top span:not(.staff-leave-status){color:var(--color-text-muted);font-weight:400}
+.staff-leave-status{flex-shrink:0;padding:4px 8px;border:1px solid var(--color-border);border-radius:20px;color:var(--color-text-muted);font-size:9px;text-transform:capitalize}
+.staff-leave-status.approved{color:var(--color-success)}
+.staff-leave-status.rejected{color:var(--color-danger)}
+.staff-leave-status.pending{color:var(--color-warning)}
+.staff-leave-dates{margin:9px 0 4px;color:var(--color-text-muted);font-weight:600}
+.staff-leave-request p:not(.staff-leave-dates){margin:4px 0;line-height:1.5;overflow-wrap:anywhere}
+.staff-leave-request>small{color:var(--color-text-muted)}
+.staff-leave-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:10px}
+.staff-leave-actions button,.staff-leave-modal-actions button{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:32px;padding:6px 10px;border:1px solid var(--color-border);border-radius:7px;background:var(--color-surface);color:var(--color-text);font-size:10px}
+.staff-leave-actions .staff-leave-approve{color:var(--color-success)}
+.staff-leave-actions .staff-leave-reject{color:var(--color-danger)}
+.staff-leave-type-row,.staff-leave-holiday-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--color-border);font-size:11px}
+.staff-leave-type-row span,.staff-leave-type-row small,.staff-leave-holiday-row small{color:var(--color-text-muted)}
+.staff-leave-holiday-row{justify-content:flex-start}
+.staff-leave-holiday-row time{flex:0 0 92px;color:var(--color-text-muted);font-variant-numeric:tabular-nums}
+.staff-leave-holiday-row>div{display:grid;gap:4px}
+.staff-leave-modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+@media(max-width:850px){.staff-leave-grid{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:520px){.staff-leave-panel{padding:13px}.staff-leave-date-grid,.staff-leave-filters{grid-template-columns:minmax(0,1fr)}.staff-leave-subtabs button{flex:1 1 auto;justify-content:center}.staff-leave-type-row{align-items:flex-start;flex-direction:column;gap:4px}.staff-leave-actions button{flex:1 1 auto}}
