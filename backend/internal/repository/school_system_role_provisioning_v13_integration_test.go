@@ -111,6 +111,8 @@ func TestSchoolSystemRoleProvisioningV13PostgresIntegration(t *testing.T) {
             "staff.leave.decide": true,
             "staff.holidays.read": true,
             "staff.holidays.manage": true,
+            "staff.substitutions.read": true,
+            "staff.substitutions.manage": true,
 		},
 		"teacher": {
 			"students.read_basic": true,
