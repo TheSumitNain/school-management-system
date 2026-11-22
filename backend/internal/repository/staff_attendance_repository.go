@@ -85,8 +85,6 @@ func (r *StaffAttendanceRepository) ListDaily(ctx context.Context, actorID, scho
         SELECT a.id, sp.principal_id, sp.employee_code, sp.full_name, sp.designation,
                $2::date::text, a.status, a.remarks, marker.username, a.updated_at
         FROM staff_profiles sp
-        JOIN auth_principals ap ON ap.id = sp.principal_id AND ap.status = 'active'
-        JOIN users u ON u.principal_id = sp.principal_id AND u.school_id = sp.school_id AND u.status = 'active'
         LEFT JOIN staff_attendance_records a
           ON a.school_id = sp.school_id
          AND a.staff_principal_id = sp.principal_id
@@ -188,11 +186,8 @@ func (r *StaffAttendanceRepository) Mark(ctx context.Context, actorID, schoolID,
     if err := tx.QueryRow(ctx, `
         SELECT EXISTS (
             SELECT 1 FROM staff_profiles sp
-            JOIN auth_principals ap ON ap.id = sp.principal_id
-            JOIN users u ON u.principal_id = sp.principal_id AND u.school_id = sp.school_id
             WHERE sp.principal_id = $1 AND sp.school_id = $2
               AND sp.employment_status = 'active'
-              AND ap.status = 'active' AND u.status = 'active'
         )
     `, staffID, schoolID).Scan(&active); err != nil {
         return nil, fmt.Errorf("check staff attendance target: %w", err)
