@@ -17,6 +17,7 @@ async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, un
     duration_type: "full_day", reason: "Family commitment", status: "pending", created_at: "2026-11-21T00:00:00.000Z",
   }];
   const schoolHolidays: Array<Record<string, unknown>> = [{ id: 31, holiday_date: "2026-11-26", name: "School Foundation Day", description: "Annual school holiday", is_active: true }];
+  const substitutions: Array<Record<string, unknown>> = [];
   await page.route("**/api/**", async route => {
     const request = route.request();
     const url = new URL(request.url());
@@ -97,6 +98,41 @@ async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, un
       await route.fulfill({ json: { message: "Request cancelled" } });
       return;
     }
+    if (path === "/school/staff-substitutions" && method === "GET") {
+      const from = url.searchParams.get("from_date") ?? "";
+      const to = url.searchParams.get("to_date") ?? "";
+      const staffID = Number(url.searchParams.get("staff_principal_id") ?? 0);
+      const data = substitutions.filter(item => String(item.cover_date) >= from && String(item.cover_date) <= to &&
+        (!staffID || item.original_teacher_principal_id === staffID || item.substitute_teacher_principal_id === staffID));
+      await route.fulfill({ json: { substitutions: data } });
+      return;
+    }
+    if (path === "/school/staff-substitutions" && method === "POST") {
+      const payload = request.postDataJSON() as Record<string, unknown>;
+      const original = staffRows.find(item => item.principal_id === payload.original_teacher_principal_id) ?? {};
+      const substitute = staffRows.find(item => item.principal_id === payload.substitute_teacher_principal_id) ?? {};
+      const saved = {
+        ...payload, id: substitutions.length + 91, status: "active",
+        original_teacher_name: original.full_name ?? "Original Teacher",
+        substitute_teacher_name: substitute.full_name ?? "Substitute Teacher",
+        section_name: "A", class_name: "Class 6", subject_name: "Mathematics",
+        period_number: 2, period_name: "Period 2", starts_at: "09:40", ends_at: "10:20", room: "Room 12",
+        created_by_principal_id: staffUser.principal_id, created_at: "2026-11-22T00:00:00.000Z",
+      };
+      substitutions.push(saved);
+      await route.fulfill({ status: 201, json: { substitution: saved } });
+      return;
+    }
+    const substitutionCancel = path.match(/^\/school\/staff-substitutions\/(\d+)\/cancel$/);
+    if (substitutionCancel && method === "POST") {
+      const target = substitutions.find(item => item.id === Number(substitutionCancel[1]));
+      if (!target) { await route.fulfill({ status: 404, json: { message: "Substitution not found" } }); return; }
+      target.status = "cancelled";
+      target.cancelled_by_principal_id = staffUser.principal_id;
+      target.cancelled_at = "2026-11-22T00:05:00.000Z";
+      await route.fulfill({ json: { message: "Substitution cancelled" } });
+      return;
+    }
     if (path === "/school/timetable/current-year" && method === "GET") {
       await route.fulfill({ json: { academic_year: { id: 2026, name: "2026–27", starts_on: "2026-04-01", ends_on: "2027-03-31", status: "active", is_current: true } } });
       return;
@@ -106,7 +142,8 @@ async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, un
       return;
     }
     if (path === "/school/timetable/entries" && method === "GET") {
-      if (url.searchParams.get("teacher_principal_id") !== "501") {
+      const teacherFilter = url.searchParams.get("teacher_principal_id");
+      if (teacherFilter && teacherFilter !== "501") {
         await route.fulfill({ status: 400, json: { message: "A teacher-specific filter is required." } });
         return;
       }
