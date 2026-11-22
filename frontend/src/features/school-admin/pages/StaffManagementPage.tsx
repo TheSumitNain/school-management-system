@@ -6,6 +6,7 @@ import { StaffPermissionOverrides } from "../components/StaffPermissionOverrides
 import { TeacherAssignmentsPage } from "./TeacherAssignmentsPage";
 import { StaffAcademicAssignmentsPanel } from "../components/StaffAcademicAssignmentsPanel";
 import { StaffHistoryActivityPanel } from "../components/StaffHistoryActivityPanel";
+import { StaffWorkloadPanel } from "../components/StaffWorkloadPanel";
 import { StaffAttendanceWorkspace } from "../components/StaffAttendanceWorkspace";
 import { StaffLeaveWorkspace } from "../components/StaffLeaveWorkspace";
 import {
@@ -48,7 +49,7 @@ export function StaffManagementPage({ permissions }: Props) {
   const [action, setAction] = useState<Action>(null);
   const [selected, setSelected] = useState<StaffRecord | null>(null);
   const [profileFor, setProfileFor] = useState<StaffRecord | null>(null);
-  const [profileTab, setProfileTab] = useState<"Overview" | "Personal Details" | "Employment" | "Qualifications & Experience" | "Documents" | "Academic Assignments" | "Account & Access" | "History & Activity">("Overview");
+  const [profileTab, setProfileTab] = useState<"Overview" | "Personal Details" | "Employment" | "Qualifications & Experience" | "Documents" | "Academic Assignments" | "Account & Access" | "History & Activity" | "Workload & Timetable">("Overview");
   const staffRecordID = profileFor?.principal_id ?? 0;
   const staffRecordsEnabled = Boolean(profileFor) && profileTab === "Qualifications & Experience";
   const qualificationsQuery = useStaffQualificationsQuery(staffRecordID, staffRecordsEnabled);
@@ -338,7 +339,6 @@ export function StaffManagementPage({ permissions }: Props) {
         {permissions.includes("staff.attendance.read") && <button type="button" className={activeTab === "attendance" ? "active" : ""} aria-current={activeTab === "attendance" ? "page" : undefined} onClick={() => setActiveTab("attendance")}><CalendarDays size={16}/> Attendance</button>}
         {(permissions.includes("staff.leave.read") || permissions.includes("staff.holidays.read") || permissions.includes("staff.holidays.manage")) && <button type="button" className={activeTab === "leave" ? "active" : ""} aria-current={activeTab === "leave" ? "page" : undefined} onClick={() => setActiveTab("leave")}><CalendarDays size={16}/> Leave & Holidays</button>}
         {!(permissions.includes("staff.leave.read") || permissions.includes("staff.holidays.read") || permissions.includes("staff.holidays.manage")) && <button type="button" className="upcoming" disabled title="Leave read permission required to open this workspace"><CalendarDays size={16}/> Leave <span>Restricted</span></button>}
-        <button type="button" className="upcoming" disabled title="Planned for the next phase"><BookOpen size={16}/> Workload & Timetable <span>Phase 1</span></button>
         <button type="button" className="upcoming" disabled title="Planned for the next phase"><FileText size={16}/> Reports <span>Phase 1</span></button>
       </nav>
 
@@ -429,7 +429,7 @@ export function StaffManagementPage({ permissions }: Props) {
       </section>}
       {profileFor && <Modal open title={profileFor.full_name || profileFor.username} description={`Staff profile · ${profileFor.employee_code || "Employee code not set"} · ${profileFor.username}`} onClose={() => setProfileFor(null)}>
         <nav className="staff-profile-tabs" aria-label="Staff profile sections">
-          {(["Overview","Personal Details","Employment","Qualifications & Experience","Documents","Academic Assignments","Account & Access","History & Activity"] as const).map(tab => <button type="button" key={tab} className={profileTab === tab ? "active" : ""} aria-current={profileTab === tab ? "page" : undefined} onClick={() => setProfileTab(tab)}>{tab}</button>)}
+          {(["Overview","Personal Details","Employment","Qualifications & Experience","Documents","Academic Assignments",...(permissions.includes("timetable.read") ? ["Workload & Timetable" as const] : []),"Account & Access","History & Activity"] as const).map(tab => <button type="button" key={tab} className={profileTab === tab ? "active" : ""} aria-current={profileTab === tab ? "page" : undefined} onClick={() => setProfileTab(tab)}>{tab}</button>)}
         </nav>
         {profileTab === "Overview" && <section className="staff-profile-overview"><div><span>Employee code</span><strong>{profileFor.employee_code || "Not set"}</strong></div><div><span>Designation</span><strong>{profileFor.designation || "Not set"}</strong></div><div><span>Employment</span><strong>{profileFor.employment_status || "Profile incomplete"}</strong></div><div><span>Login</span><strong>{profileFor.status === "active" ? "Enabled" : "Disabled"}</strong></div><button className="primary" type="button" onClick={() => {const item=profileFor;setProfileFor(null);openAction("edit",item);}}>Edit employee details</button></section>}
         {profileTab === "Personal Details" && <section className="staff-profile-section"><h3>Personal details</h3><dl><div><dt>Full name</dt><dd>{profileFor.full_name || "Not set"}</dd></div><div><dt>Employee code</dt><dd>{profileFor.employee_code || "Not set"}</dd></div><div><dt>Mobile number</dt><dd>{profileFor.mobile_number || "Not set"}</dd></div><div><dt>Email address</dt><dd>{profileFor.email || "Not provided"}</dd></div></dl><button className="primary" type="button" onClick={() => {const item=profileFor;setProfileFor(null);openAction("edit",item);}}>Edit personal details</button></section>}
@@ -493,6 +493,7 @@ export function StaffManagementPage({ permissions }: Props) {
           </form>}
         </section>}
         {profileTab === "Documents" && <section className="staff-profile-placeholder"><h3>Staff documents</h3><p>Document upload is not enabled yet. It will be added only with private file storage, staff-scoped access checks and secure download authorization.</p></section>}
+        {profileTab === "Workload & Timetable" && permissions.includes("timetable.read") && <StaffWorkloadPanel staff={profileFor}/>} 
         {profileTab === "Academic Assignments" && <StaffAcademicAssignmentsPanel staff={profileFor} permissions={permissions} onOpenWorkspace={() => {setProfileFor(null);setActiveTab("assignments");}}/>}
         {profileTab === "Account & Access" && <section className="staff-profile-access">{canReadRoles ? <StaffRoleAssignments staff={profileFor} canAssign={canAssignRoles}/> : <p>You do not have permission to view role assignments.</p>}{canManageOverrides ? <StaffPermissionOverrides staff={profileFor}/> : <p>You do not have permission to manage individual permission overrides.</p>}<p className="staff-wizard-note">Login identity, role grants and individual overrides remain separate from employee profile details.</p></section>}
         {profileTab === "History & Activity" && <StaffHistoryActivityPanel staff={profileFor} permissions={permissions}/>}
