@@ -201,3 +201,10 @@ This section supersedes the earlier Phase 4 notes where they differ.
 - Remaining Phase 4 work: deeper PostgreSQL behavior coverage for concurrent overlap, decision authorization, rollback and audit; leave-type edit/deactivation controls; policy approval and any future balance rules. Current V59 integration coverage verifies schema and permission provisioning; do not overstate it as full workflow integration coverage.
 - V59 remains unapplied to persistent/local databases. No Academic, Student Management or Settings pages were modified.
 
+## 15. Leave type management and final CI checkpoint (2026-11-22)
+
+- Added Staff Management UI to edit leave type name, paid/unpaid, approval flag and active status. Deactivation requires explicit confirmation and preserves all existing leave requests/history. Inactive types are excluded from new request options; they can be reactivated through Edit.
+- Added Playwright coverage for editing and deactivating a leave type. Frontend CI [44984794710](https://github.com/TheSumitNain/school-management-system/actions/runs/44984794710) **PASS** at code checkpoint `f1b71d4e2999f868f62910ee878f78eee1460a8b`: TypeScript/Vite production build and all 51 browser tests passed.
+- Backend CI [44984794698](https://github.com/TheSumitNain/school-management-system/actions/runs/44984794698) **PASS** at the same checkpoint: full migration chain on disposable PostgreSQL, Go tests including new leave/holiday service validation tests, and `go vet`.
+- Phase 4 remains partially implemented pending dedicated PostgreSQL behavior tests for overlap/concurrency, decision authorization, rollback and audit. School-specific policy and balance rules remain unconfigured. V59 remains unapplied to persistent/local databases.
+
