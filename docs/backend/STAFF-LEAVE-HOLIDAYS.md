@@ -170,3 +170,10 @@ Migration V59 and the first end-to-end Leave & Holiday workflow are implemented 
 - PostgreSQL integration verifies a request spanning dates inside the selected month is included and a request outside the month is excluded.
 - Backend CI [44986574096](https://github.com/TheSumitNain/school-management-system/actions/runs/44986574096) **PASS** at code checkpoint `a01514119b0d395b106accd990f59b2f7a5e992f`. Frontend production build passed; final Playwright browser run is pending.
 
+
+## 12. Holiday write-path PostgreSQL verification (2026-11-22)
+
+- Added PostgreSQL integration coverage for case/whitespace-normalized duplicate holiday names on the same school/date and conflicting updates. Failed writes are verified not to alter the existing holiday or emit extra audit events.
+- Added cross-school holiday write denial coverage and a forced audit-insert failure test proving holiday creation and its audit event roll back together.
+- Backend CI [44990622671](https://github.com/TheSumitNain/school-management-system/actions/runs/44990622671) **PASS** at code checkpoint 92a307cb62abbab902d8f5441deb55219e4ea374: full migration chain on disposable PostgreSQL, Go tests including PostgreSQL integration tests, and go vet.
+- V59 remains limited to disposable CI PostgreSQL. No persistent/local database was migrated. School leave entitlement and balance policy remains intentionally undefined pending approval.
