@@ -624,7 +624,7 @@ test("school holiday deactivation and reactivation require explicit confirmation
     mobile_number: "9876543215", employment_status: "active", profile_complete: true,
     status: "active", must_change_password: false,
   }];
-  const permissions = ["users.read", "staff.holidays.read", "staff.holidays.manage"];
+  const permissions = ["users.read", "staff.holidays.manage"];
   await signInAndOpenStaff(page, rows, undefined, permissions);
   await page.getByRole("button", { name: "Leave & Holidays" }).click();
   await page.getByRole("button", { name: "Holiday calendar" }).click();
