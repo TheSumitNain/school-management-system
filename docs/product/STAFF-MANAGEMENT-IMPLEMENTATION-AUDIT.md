@@ -281,3 +281,11 @@ This section supersedes earlier Phase 4 remaining-work notes where later impleme
 - The test asserts the exact request payload (`new_password`) and that the validation error clears when the password is corrected.
 - Exact checkpoint `90d7969babd87e60db19cebb57f702ef93f75ed0`: Frontend CI [45004357985](https://github.com/TheSumitNain/school-management-system/actions/runs/45004357985) **PASS** with all 68 Playwright tests; Backend CI [45004358053](https://github.com/TheSumitNain/school-management-system/actions/runs/45004358053) **PASS** with PostgreSQL integration and `go vet`.
 - Acceptance-test-only change; no backend runtime behavior or database schema changed.
+
+
+## 25. Staff account enable acceptance (2026-11-22)
+
+- Added a browser workflow for re-enabling a disabled but employed staff account with `users.update`: a temporary password shorter than 12 characters is rejected inline without a request; a valid password enables the account, refreshes the directory status, and displays the required next-sign-in password-change state.
+- The test verifies exactly one enable request with the `temporary_password` payload and confirms the Enable action is no longer shown after refresh.
+- Exact checkpoint `247686b29c6e30d0b6de2b542b74be9faa42fc7d`: Frontend CI [45004695381](https://github.com/TheSumitNain/school-management-system/actions/runs/45004695381) **PASS** with all 69 Playwright tests; Backend CI [45004695364](https://github.com/TheSumitNain/school-management-system/actions/runs/45004695364) **PASS** with PostgreSQL integration and `go vet`.
+- Acceptance-test-only change; no runtime or database schema change.
