@@ -195,7 +195,7 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
         <CalendarDays size={16} aria-hidden="true" />
       </button>
       {open && (
-        <div className="app-date-popover" role="dialog" aria-label={`Choose ${ariaLabel.toLowerCase()}`}>
+        <div className="app-date-popover" role="dialog" aria-label={`Choose ${ariaLabel.toLowerCase()}`} onClick={event => event.preventDefault()}>
           <div className="app-date-header">
             {view === "days" && (
               <>
