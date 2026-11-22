@@ -37,14 +37,14 @@ jobs:
       - name: Install Chromium for browser acceptance tests
         run: npx playwright install chromium
         working-directory: frontend
-      - name: Run Student Management browser acceptance tests
+      - name: Run Playwright browser acceptance suite
         run: npm run test:e2e
         working-directory: frontend
       - name: Upload browser failure diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: student-management-playwright-results
+          name: playwright-browser-acceptance-results
           path: frontend/test-results/
           if-no-files-found: ignore
           retention-days: 7
