@@ -18,7 +18,7 @@ type staffLeaveRepository interface {
 	CreateRequest(context.Context, int64, int64, repository.StaffLeaveRequest) (*repository.StaffLeaveRequest, error)
 	Decide(context.Context, int64, int64, int64, bool, *string) error
 	Cancel(context.Context, int64, int64, int64) error
-	ListHolidays(context.Context, int64, int64, string, string) ([]repository.SchoolHoliday, error)
+	ListHolidays(context.Context, int64, int64, string, string, bool) ([]repository.SchoolHoliday, error)
 	SaveHoliday(context.Context, int64, int64, int64, repository.SchoolHoliday) (*repository.SchoolHoliday, error)
 }
 
@@ -136,7 +136,7 @@ func (s *StaffLeaveService) Cancel(ctx context.Context, actor, school, requestID
 	return s.repo.Cancel(ctx, actor, school, requestID)
 }
 
-func (s *StaffLeaveService) ListHolidays(ctx context.Context, actor, school int64, from, to string) ([]repository.SchoolHoliday, error) {
+func (s *StaffLeaveService) ListHolidays(ctx context.Context, actor, school int64, from, to string, includeInactive bool) ([]repository.SchoolHoliday, error) {
 	if s == nil || s.repo == nil || actor <= 0 || school <= 0 {
 		return nil, ErrInvalidStaffLeave
 	}
@@ -148,7 +148,7 @@ func (s *StaffLeaveService) ListHolidays(ctx context.Context, actor, school int6
 	if err != nil || end.Before(start) || end.Sub(start) > 366*24*time.Hour {
 		return nil, ErrInvalidStaffLeave
 	}
-	return s.repo.ListHolidays(ctx, actor, school, from, to)
+	return s.repo.ListHolidays(ctx, actor, school, from, to, includeInactive)
 }
 
 func (s *StaffLeaveService) SaveHoliday(ctx context.Context, actor, school, id int64, item repository.SchoolHoliday) (*repository.SchoolHoliday, error) {
