@@ -157,6 +157,7 @@ func setupRouterWithHandlers(
 		router.GET("/school/staff/:principalID/experience", staffRead, middleware.RequirePermission("users.read"), staffRecordsHandler.ListExperience)
 		router.POST("/school/staff/:principalID/experience", staffWrite, middleware.RequirePermission("users.update"), staffRecordsHandler.CreateExperience)
 		router.PATCH("/school/staff/:principalID/experience/:recordID", staffWrite, middleware.RequirePermission("users.update"), staffRecordsHandler.UpdateExperience)
+		router.GET("/school/staff/:principalID/audit-events", authMiddleware(), middleware.RequirePermission("school.audit.read"), staffRecordsHandler.ListAuditEvents)
 	}
 
 	if roleHandler != nil {
