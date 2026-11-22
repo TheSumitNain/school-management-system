@@ -146,7 +146,7 @@ Staff Attendance core register is implemented and CI-verified. Phase 3 remains o
 - Staff profile History & Activity now recognizes staff attendance mark/update events without exposing raw audit metadata.
 - Staff Management has Daily Register and Monthly Summary views, a school-local date picker, permission-aware marking/correction, and a confirmation step for historical corrections.
 - Added PostgreSQL integration and Playwright coverage. Frontend CI [44978879123](https://github.com/TheSumitNain/school-management-system/actions/runs/44978879123) passed all 49 browser tests; Backend CI [44979343008](https://github.com/TheSumitNain/school-management-system/actions/runs/44979343008) passed the full migration chain, Go/PostgreSQL integration suite and `go vet`.
-- Remaining Phase 3 work: employee search/filtering, transactional bulk status entry and leave/calendar integration. Do not call the full Staff Attendance phase complete until its roadmap exit gate is met.
+- Remaining Phase 3 work: downloadable/report views and approved leave/school-calendar integration. Do not call the full Staff Attendance phase complete until its roadmap exit gate is met.
 - V58 remains unapplied to persistent/local databases. No changes were made to Academic, Student Management or Settings pages.
 
 The detailed schema, permission, API, UI and verification contract is in [STAFF-ATTENDANCE.md](../backend/STAFF-ATTENDANCE.md).
