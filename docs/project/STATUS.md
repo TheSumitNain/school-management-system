@@ -1776,3 +1776,10 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 - Backend CI [44984794698](https://github.com/TheSumitNain/school-management-system/actions/runs/44984794698) **PASS** at the same checkpoint: full migration chain on disposable PostgreSQL, Go tests and `go vet`.
 - Phase 4 is still partially implemented pending dedicated PostgreSQL behavior tests for concurrency/overlap, authorization, rollback and audit, plus school policy decisions for balances. V59 has only been applied in disposable CI PostgreSQL. Persistent/local DBs remain untouched.
 
+## Staff Leave & Holiday — PostgreSQL workflow verification (2026-11-22)
+
+- Added real PostgreSQL tests for concurrent overlap serialization, unauthorized decision denial, self-approval prevention, approval/rejection audit persistence, audit-failure transaction rollback, rejection reason validation and cross-school cancellation denial.
+- Fixed advisory lock parameter typing after the new concurrency test caught an integer-to-text pgx encoding issue.
+- Backend CI [44985769667](https://github.com/TheSumitNain/school-management-system/actions/runs/44985769667) **PASS** at code checkpoint `e028baffd2485afeee792f98b068f89e2ce1ae07`: full migration chain on disposable PostgreSQL, Go test suite and `go vet ./...`.
+- No persistent/local database migration applied. Phase 4 still needs further frontend workflow acceptance, attendance reporting integration and school-approved leave policy/balance decisions.
+
