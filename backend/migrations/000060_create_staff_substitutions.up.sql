@@ -75,6 +75,16 @@ DECLARE
   v_entry public.timetable_entries%ROWTYPE;
   v_period_id BIGINT;
   v_academic_year_id BIGINT;
+  v_class_name VARCHAR(100);
+  v_section_name VARCHAR(40);
+  v_subject_name VARCHAR(120);
+  v_original_teacher_name VARCHAR(160);
+  v_substitute_teacher_name VARCHAR(160);
+  v_period_number INTEGER;
+  v_period_name VARCHAR(80);
+  v_period_starts_at TIME;
+  v_period_ends_at TIME;
+  v_room VARCHAR(80);
 BEGIN
   SELECT te.* INTO v_entry
     FROM public.timetable_entries te
@@ -156,6 +166,29 @@ BEGIN
     RAISE EXCEPTION 'leave reference must be approved for the original teacher and cover date' USING ERRCODE='23514';
   END IF;
 
+  SELECT cl.name,sec.name,subj.name,orig.full_name,subsp.full_name,
+         p.period_number,p.name,p.starts_at,p.ends_at,te.room
+    INTO v_class_name,v_section_name,v_subject_name,v_original_teacher_name,v_substitute_teacher_name,
+         v_period_number,v_period_name,v_period_starts_at,v_period_ends_at,v_room
+    FROM public.timetable_entries te
+    JOIN public.sections sec ON sec.id=te.section_id AND sec.school_id=te.school_id
+    JOIN public.classes cl ON cl.id=sec.class_id AND cl.school_id=sec.school_id
+    JOIN public.subjects subj ON subj.id=te.subject_id AND subj.school_id=te.school_id
+    JOIN public.staff_profiles orig ON orig.principal_id=NEW.original_teacher_principal_id AND orig.school_id=NEW.school_id
+    JOIN public.staff_profiles subsp ON subsp.principal_id=NEW.substitute_teacher_principal_id AND subsp.school_id=NEW.school_id
+    JOIN public.timetable_periods p ON p.id=te.period_id AND p.school_id=te.school_id
+   WHERE te.id=NEW.timetable_entry_id AND te.school_id=NEW.school_id;
+  NEW.class_name_snapshot:=v_class_name;
+  NEW.section_name_snapshot:=v_section_name;
+  NEW.subject_name_snapshot:=v_subject_name;
+  NEW.original_teacher_name_snapshot:=v_original_teacher_name;
+  NEW.substitute_teacher_name_snapshot:=v_substitute_teacher_name;
+  NEW.period_number_snapshot:=v_period_number;
+  NEW.period_name_snapshot:=v_period_name;
+  NEW.period_starts_at_snapshot:=v_period_starts_at;
+  NEW.period_ends_at_snapshot:=v_period_ends_at;
+  NEW.room_snapshot:=v_room;
+
   PERFORM pg_advisory_xact_lock(hashtextextended(
     NEW.school_id::text||':'||NEW.substitute_teacher_principal_id::text||':'||
     EXTRACT(ISODOW FROM NEW.cover_date)::integer::text||':'||v_period_id::text,0));
@@ -177,13 +210,20 @@ LANGUAGE plpgsql
 SET search_path=pg_catalog,public
 AS $v60$
 BEGIN
-  IF TG_OP IN ('UPDATE','DELETE') AND EXISTS (
+  IF TG_OP='DELETE' AND EXISTS (
+    SELECT 1 FROM public.staff_substitutions ss
+     WHERE ss.school_id=OLD.school_id AND ss.timetable_entry_id=OLD.id
+  ) THEN
+    RAISE EXCEPTION 'timetable entry has substitution history and cannot be deleted'
+      USING ERRCODE='23514';
+  END IF;
+  IF TG_OP='UPDATE' AND EXISTS (
     SELECT 1 FROM public.staff_substitutions ss
      WHERE ss.school_id=OLD.school_id
        AND ss.timetable_entry_id=OLD.id
        AND ss.status='active'
   ) THEN
-    RAISE EXCEPTION 'timetable entry has active dated substitutions; cancel them before changing the recurring schedule'
+    RAISE EXCEPTION 'cancel active dated substitutions before changing the recurring schedule'
       USING ERRCODE='23514';
   END IF;
 
@@ -231,6 +271,16 @@ BEGIN
      OR NEW.substitute_teacher_principal_id IS DISTINCT FROM OLD.substitute_teacher_principal_id
      OR NEW.approved_leave_request_id IS DISTINCT FROM OLD.approved_leave_request_id
      OR NEW.reason IS DISTINCT FROM OLD.reason
+     OR NEW.class_name_snapshot IS DISTINCT FROM OLD.class_name_snapshot
+     OR NEW.section_name_snapshot IS DISTINCT FROM OLD.section_name_snapshot
+     OR NEW.subject_name_snapshot IS DISTINCT FROM OLD.subject_name_snapshot
+     OR NEW.original_teacher_name_snapshot IS DISTINCT FROM OLD.original_teacher_name_snapshot
+     OR NEW.substitute_teacher_name_snapshot IS DISTINCT FROM OLD.substitute_teacher_name_snapshot
+     OR NEW.period_number_snapshot IS DISTINCT FROM OLD.period_number_snapshot
+     OR NEW.period_name_snapshot IS DISTINCT FROM OLD.period_name_snapshot
+     OR NEW.period_starts_at_snapshot IS DISTINCT FROM OLD.period_starts_at_snapshot
+     OR NEW.period_ends_at_snapshot IS DISTINCT FROM OLD.period_ends_at_snapshot
+     OR NEW.room_snapshot IS DISTINCT FROM OLD.room_snapshot
      OR NEW.created_by_principal_id IS DISTINCT FROM OLD.created_by_principal_id
      OR NEW.created_at IS DISTINCT FROM OLD.created_at
      OR NEW.status<>'cancelled' THEN
