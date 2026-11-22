@@ -17,7 +17,7 @@ type TimetableManagementService interface {
 	CurrentYear(context.Context,int64,int64)(*repository.AcademicYear,error)
 	ListPeriods(context.Context,int64,int64,int64)([]repository.TimetablePeriod,error)
 	SavePeriod(context.Context,int64,int64,int64,int64,int,string,string,string,bool)(*repository.TimetablePeriod,error)
-	ListEntries(context.Context,int64,int64,int64,int64)([]repository.TimetableEntry,error)
+	ListEntries(context.Context,int64,int64,int64,int64,int64)([]repository.TimetableEntry,error)
 	SaveEntry(context.Context,int64,int64,int64,int64,int64,int64,int64,int64,int64,int,*string)(*repository.TimetableEntry,error)
 	DeleteEntry(context.Context,int64,int64,int64,int64)error
 }
@@ -66,7 +66,8 @@ func(h *TimetableHandler) SavePeriod(c *gin.Context){
 func(h *TimetableHandler) ListEntries(c *gin.Context){
 	a,s,ok:=h.ready(c);if !ok{return};year,valid:=timetableQueryID(c,"academic_year_id");if !valid{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"academic_year_id is required"});return}
 	section:=int64(0);if raw:=strings.TrimSpace(c.Query("section_id"));raw!=""{v,e:=strconv.ParseInt(raw,10,64);if e!=nil||v<=0{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid section_id"});return};section=v}
-	items,err:=h.service.ListEntries(c.Request.Context(),a,s,year,section);if err!=nil{timetableError(c,err,"Timetable entry");return}
+	teacher:=int64(0);if raw:=strings.TrimSpace(c.Query("teacher_principal_id"));raw!=""{v,e:=strconv.ParseInt(raw,10,64);if e!=nil||v<=0{c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid teacher_principal_id"});return};teacher=v}
+	items,err:=h.service.ListEntries(c.Request.Context(),a,s,year,section,teacher);if err!=nil{timetableError(c,err,"Timetable entry");return}
 	c.JSON(http.StatusOK,gin.H{"status":"success","entries":items})
 }
 func(h *TimetableHandler) SaveEntry(c *gin.Context){
