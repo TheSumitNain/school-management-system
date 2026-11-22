@@ -237,13 +237,14 @@ func TestStaffLeaveRequestValidationAndTargetEligibilityPostgresIntegration(t *t
 	}
 
 	var foreignSchoolID, foreignStaffID int64
-	if err := f.pool.QueryRow(f.ctx, "INSERT INTO schools (name,code,status) VALUES ('Leave Foreign School','LEAVE-FOR-' || substr(md5(random()::text),1,8),'active') RETURNING id").Scan(&foreignSchoolID); err != nil {
+	suffix := fmt.Sprint(time.Now().UnixNano())
+	if err := f.pool.QueryRow(f.ctx, "INSERT INTO schools (name,code,status) VALUES ($1,$2,'active') RETURNING id", "Leave Foreign School "+suffix, "LEAVE-FOR-"+suffix).Scan(&foreignSchoolID); err != nil {
 		t.Fatalf("create foreign school fixture: %v", err)
 	}
-	if err := f.pool.QueryRow(f.ctx, "INSERT INTO users (school_id,username,password_hash,status) VALUES ($1,'leave-foreign-' || substr(md5(random()::text),1,8),'integration-password-hash','active') RETURNING principal_id", foreignSchoolID).Scan(&foreignStaffID); err != nil {
+	if err := f.pool.QueryRow(f.ctx, "INSERT INTO users (school_id,username,password_hash,status) VALUES ($1,$2,'integration-password-hash','active') RETURNING principal_id", foreignSchoolID, "leave-foreign-"+suffix).Scan(&foreignStaffID); err != nil {
 		t.Fatalf("create foreign staff account: %v", err)
 	}
-	if _, err := f.pool.Exec(f.ctx, "INSERT INTO staff_profiles (principal_id,school_id,employee_code,full_name,designation,mobile_number,employment_status) VALUES ($1,$2,'LEAVE-FOREIGN','Foreign Staff','Teacher','9876543212','active')", foreignStaffID, foreignSchoolID); err != nil {
+	if _, err := f.pool.Exec(f.ctx, "INSERT INTO staff_profiles (principal_id,school_id,employee_code,full_name,designation,mobile_number,employment_status) VALUES ($1,$2,$3,'Foreign Staff','Teacher','9876543212','active')", foreignStaffID, foreignSchoolID, "LEAVE-FOREIGN-"+suffix); err != nil {
 		t.Fatalf("create foreign staff profile: %v", err)
 	}
 	if _, err := f.repo.CreateRequest(f.ctx, f.adminPrincipalID, f.schoolID, StaffLeaveRequest{
