@@ -679,7 +679,7 @@ test("staff permission overrides require a delegated permission, reason and remo
   await page.getByRole("button", { name: "Override Admin" }).click();
   const profile = page.getByRole("dialog", { name: "Override Admin" });
   await profile.getByRole("button", { name: "Account & Access" }).click();
-  await expect(profile.getByText("Individual permission overrides")).toBeVisible();
+  await expect(profile.getByText("Individual permission overrides", { exact: true })).toBeVisible();
 
   const permissionSelect = profile.locator('button[aria-label="Delegated permission override for teacher.override-admin"]');
   await permissionSelect.click();
