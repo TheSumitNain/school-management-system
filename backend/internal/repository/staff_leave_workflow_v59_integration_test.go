@@ -161,3 +161,15 @@ func TestStaffLeaveDecisionRejectRequiresReasonAndPersistsAuditPostgresIntegrati
 		t.Fatalf("second decision error=%v, want request not found",err)
 	}
 }
+
+
+func TestStaffLeaveReportDateRangePostgresIntegration(t *testing.T) {
+ f:=newStaffLeaveIntegrationFixture(t)
+ inside:=f.request(t,f.staffPrincipalID,"2027-03-10","2027-03-11")
+ outside:=f.request(t,f.staffPrincipalID,"2027-04-10","2027-04-10")
+ if err:=f.repo.Decide(f.ctx,f.adminPrincipalID,f.schoolID,inside.ID,true,nil);err!=nil{t.Fatalf("approve in-range leave: %v",err)}
+ if err:=f.repo.Decide(f.ctx,f.adminPrincipalID,f.schoolID,outside.ID,true,nil);err!=nil{t.Fatalf("approve out-of-range leave: %v",err)}
+ got,err:=f.repo.ListRequests(f.ctx,f.adminPrincipalID,f.schoolID,"approved",0,"","2027-03-01","2027-03-31")
+ if err!=nil{t.Fatalf("list approved leave overlapping March range: %v",err)}
+ if len(got)!=1||got[0].ID!=inside.ID{t.Fatalf("range returned %+v; want only request %d",got,inside.ID)}
+}
