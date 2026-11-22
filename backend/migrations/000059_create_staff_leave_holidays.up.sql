@@ -28,6 +28,7 @@ CREATE TABLE public.staff_leave_types (
       FOREIGN KEY (updated_by_principal_id, school_id) REFERENCES public.users(principal_id, school_id),
     CONSTRAINT ck_staff_leave_type_name CHECK (length(btrim(name)) BETWEEN 2 AND 100)
 );
+CREATE UNIQUE INDEX uq_staff_leave_type_school_name_ci ON public.staff_leave_types(school_id,lower(btrim(name)));
 
 CREATE TABLE public.staff_leave_requests (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -90,6 +91,7 @@ CREATE TABLE public.school_holidays (
     CONSTRAINT ck_school_holiday_name CHECK (length(btrim(name)) BETWEEN 2 AND 160),
     CONSTRAINT uq_school_holiday_date_name UNIQUE (school_id,holiday_date,name)
 );
+CREATE UNIQUE INDEX uq_school_holiday_date_name_ci ON public.school_holidays(school_id,holiday_date,lower(btrim(name)));
 CREATE INDEX ix_school_holidays_school_date ON public.school_holidays(school_id,holiday_date) WHERE is_active=TRUE;
 
 CREATE OR REPLACE FUNCTION public.grant_staff_leave_holiday_permissions()
