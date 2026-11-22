@@ -345,7 +345,7 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO users (school_id, username, password_hash, status)
 		VALUES ($1, $2, $3, 'active') RETURNING principal_id
-	`, schoolID, "v17-timetable-teacher-"+suffix, "integration-test-password-hash").Scan(&secondTeacherPrincipalID); err != nil {
+	`, schoolID, "tt2-"+suffix, "integration-test-password-hash").Scan(&secondTeacherPrincipalID); err != nil {
 		t.Fatalf("create second timetable Teacher account: %v", err)
 	}
 	if _, err := tx.Exec(ctx, `
@@ -434,7 +434,7 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO users (school_id, username, password_hash, status)
 		VALUES ($1, $2, $3, 'active') RETURNING principal_id
-	`, foreignSchoolID, "foreign-timetable-teacher-"+suffix, "integration-test-password-hash").Scan(&foreignTeacherPrincipalID); err != nil {
+	`, foreignSchoolID, "foreign-tt-"+suffix, "integration-test-password-hash").Scan(&foreignTeacherPrincipalID); err != nil {
 		t.Fatalf("create foreign-school Teacher principal: %v", err)
 	}
 	foreignSchoolEntries, err := timetableRepo.ListTimetableEntries(ctx, actorPrincipalID, schoolID, year1, 0, foreignTeacherPrincipalID)
