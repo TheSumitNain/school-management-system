@@ -5,6 +5,7 @@ import {
   createSchoolStaff, disableSchoolStaff, enableSchoolStaff, getSchoolStaff,
   resetSchoolStaffPassword, updateSchoolStaff,
   getStaffQualifications, createStaffQualification, updateStaffQualification, getStaffCertifications, createStaffCertification, updateStaffCertification, getStaffExperience, createStaffExperience, updateStaffExperience,
+  getStaffLeaveTypes, saveStaffLeaveType, getStaffLeaveRequests, createStaffLeaveRequest, decideStaffLeaveRequest, cancelStaffLeaveRequest, getSchoolHolidays, saveSchoolHoliday,
 } from "./api";
 
 export const schoolAdminQueryKeys = {
@@ -411,3 +412,19 @@ export function useUpdateStaffCertificationMutation(principalID:number) {
 export function useUpdateStaffExperienceMutation(principalID:number) {
   return useStaffRecordMutation(principalID,(input:{recordID:number;data:Parameters<typeof updateStaffExperience>[2]})=>updateStaffExperience(principalID,input.recordID,input.data),"experience");
 }
+
+export const staffLeaveQueryKeys = {
+  all: [...schoolAdminQueryKeys.staff(), "leave"] as const,
+  types: () => [...staffLeaveQueryKeys.all, "types"] as const,
+  requests: (filters:{status?:string;staffPrincipalID?:number}) => [...staffLeaveQueryKeys.all,"requests",filters] as const,
+  holidays: (from:string,to:string) => [...staffLeaveQueryKeys.all,"holidays",from,to] as const,
+};
+export function useStaffLeaveTypesQuery(enabled=true){return useQuery({queryKey:staffLeaveQueryKeys.types(),queryFn:({signal})=>getStaffLeaveTypes(signal),enabled,staleTime:15000});}
+export function useStaffLeaveRequestsQuery(filters:{status?:string;staffPrincipalID?:number},enabled=true){return useQuery({queryKey:staffLeaveQueryKeys.requests(filters),queryFn:({signal})=>getStaffLeaveRequests(filters,signal),enabled,staleTime:10000});}
+export function useSchoolHolidaysQuery(from:string,to:string,enabled=true){return useQuery({queryKey:staffLeaveQueryKeys.holidays(from,to),queryFn:({signal})=>getSchoolHolidays(from,to,signal),enabled:enabled&&Boolean(from)&&Boolean(to),staleTime:30000});}
+function useStaffLeaveMutation<T>(fn:(input:T)=>Promise<unknown>){const client=useQueryClient();return useMutation({mutationFn:fn,onSuccess:()=>client.invalidateQueries({queryKey:staffLeaveQueryKeys.all})});}
+export function useSaveStaffLeaveTypeMutation(){return useStaffLeaveMutation(saveStaffLeaveType);}
+export function useCreateStaffLeaveRequestMutation(){return useStaffLeaveMutation(createStaffLeaveRequest);}
+export function useDecideStaffLeaveRequestMutation(){return useStaffLeaveMutation((input:{requestID:number;decision:"approve"|"reject";comment?:string})=>decideStaffLeaveRequest(input.requestID,input.decision,input.comment));}
+export function useCancelStaffLeaveRequestMutation(){return useStaffLeaveMutation(cancelStaffLeaveRequest);}
+export function useSaveSchoolHolidayMutation(){return useStaffLeaveMutation(saveSchoolHoliday);}
