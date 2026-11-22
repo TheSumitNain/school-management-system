@@ -98,23 +98,46 @@ func TestStaffSubstitutionV60DatabaseGuardsPostgresIntegration(t *testing.T) {
 	if inactiveErr==nil{t.Fatal("substitute employment was deactivated while future coverage remained active")}
 
 	disabled,err:=tx.Begin(ctx);if err!=nil{t.Fatalf("begin substitute login guard savepoint: %v",err)}
-	_,disabledErr:=disabled.Exec(ctx,`UPDATE users SET status='disabled' WHERE principal_id=$1`,substituteID)
+	_,disabledErr:=disabled.Exec(ctx,`UPDATE auth_principals SET status='disabled' WHERE id=$1`,substituteID)
 	if rollbackErr:=disabled.Rollback(ctx);rollbackErr!=nil{t.Fatalf("rollback substitute login savepoint: %v",rollbackErr)}
 	if disabledErr==nil{t.Fatal("substitute login was disabled while future coverage remained active")}
+
+	reasonEdit,err:=tx.Begin(ctx);if err!=nil{t.Fatalf("begin immutable reason savepoint: %v",err)}
+	_,reasonErr:=reasonEdit.Exec(ctx,`UPDATE staff_substitutions SET reason='Changed reason' WHERE id=$1`,substitutionID)
+	if rollbackErr:=reasonEdit.Rollback(ctx);rollbackErr!=nil{t.Fatalf("rollback immutable reason savepoint: %v",rollbackErr)}
+	if reasonErr==nil{t.Fatal("substitution reason was mutable after creation")}
+
+	deleteHistory,err:=tx.Begin(ctx);if err!=nil{t.Fatalf("begin immutable delete savepoint: %v",err)}
+	_,deleteErr:=deleteHistory.Exec(ctx,`DELETE FROM staff_substitutions WHERE id=$1`,substitutionID)
+	if rollbackErr:=deleteHistory.Rollback(ctx);rollbackErr!=nil{t.Fatalf("rollback immutable delete savepoint: %v",rollbackErr)}
+	if deleteErr==nil{t.Fatal("substitution history was deleted instead of cancelled")}
+
+	revokeAssignment,err:=tx.Begin(ctx);if err!=nil{t.Fatalf("begin assignment revocation guard savepoint: %v",err)}
+	_,revokeErr:=revokeAssignment.Exec(ctx,`UPDATE teacher_subject_assignments SET revoked_at=NOW() WHERE id=$1`,substituteAssignmentID)
+	if rollbackErr:=revokeAssignment.Rollback(ctx);rollbackErr!=nil{t.Fatalf("rollback assignment revocation savepoint: %v",rollbackErr)}
+	if revokeErr==nil{t.Fatal("substitute's matching assignment was revoked while future cover remained active")}
 
 	update,err:=tx.Begin(ctx);if err!=nil{t.Fatalf("begin recurring schedule guard savepoint: %v",err)}
 	_,updateErr:=update.Exec(ctx,`UPDATE timetable_entries SET room='Changed room' WHERE id=$1`,timetableEntryID)
 	if rollbackErr:=update.Rollback(ctx);rollbackErr!=nil{t.Fatalf("rollback schedule guard savepoint: %v",rollbackErr)}
 	if updateErr==nil{t.Fatal("recurring timetable entry changed while an active dated substitution referenced it")}
 
-	if _,err=tx.Exec(ctx,`UPDATE staff_substitutions SET status='cancelled',cancelled_by_principal_id=$2,cancelled_at=NOW(),updated_at=NOW() WHERE id=$1`,substitutionID,originalID);err!=nil{t.Fatalf("cancel dated substitution: %v",err)}
-	if _,err=tx.Exec(ctx,`UPDATE timetable_entries SET room='Changed room' WHERE id=$1`,timetableEntryID);err!=nil{t.Fatalf("recurring timetable entry remained locked after cancellation: %v",err)}
-
 	var secondSectionID int64
 	if err=tx.QueryRow(ctx,`INSERT INTO sections(school_id,academic_year_id,class_id,name) VALUES($1,$2,$3,'B') RETURNING id`,schoolID,yearID,classID).Scan(&secondSectionID);err!=nil{t.Fatalf("create second section: %v",err)}
 	var secondAssignmentID int64
 	if err=tx.QueryRow(ctx,`INSERT INTO teacher_subject_assignments(school_id,academic_year_id,section_id,subject_id,teacher_principal_id,assigned_by_principal_id)
 		VALUES($1,$2,$3,$4,$5,$6) RETURNING id`,schoolID,yearID,secondSectionID,subjectID,substituteID,actorPrincipalID).Scan(&secondAssignmentID);err!=nil{t.Fatalf("assign substitute to second section: %v",err)}
+	conflictSlot,err:=tx.Begin(ctx);if err!=nil{t.Fatalf("begin conflicting recurring slot savepoint: %v",err)}
+	_,slotErr:=conflictSlot.Exec(ctx,`INSERT INTO timetable_entries(school_id,academic_year_id,section_id,subject_id,teacher_principal_id,teacher_subject_assignment_id,period_id,day_of_week,created_by_principal_id,updated_by_principal_id)
+		VALUES($1,$2,$3,$4,$5,$6,$7,1,$8,$8)`,schoolID,yearID,secondSectionID,subjectID,substituteID,secondAssignmentID,periodID,actorPrincipalID)
+	if rollbackErr:=conflictSlot.Rollback(ctx);rollbackErr!=nil{t.Fatalf("rollback conflicting timetable slot savepoint: %v",rollbackErr)}
+	if slotErr==nil{t.Fatal("new recurring timetable slot conflicted with active dated substitution but was accepted")}
+
+	if _,err=tx.Exec(ctx,`UPDATE staff_substitutions SET status='cancelled',cancelled_by_principal_id=$2,cancelled_at=NOW(),updated_at=NOW() WHERE id=$1`,substitutionID,actorPrincipalID);err!=nil{t.Fatalf("cancel dated substitution: %v",err)}
+	if _,err=tx.Exec(ctx,`UPDATE staff_substitutions SET reason='Changed after cancellation' WHERE id=$1`,substitutionID);err==nil{t.Fatal("cancelled substitution history was mutable")}
+	if _,err=tx.Exec(ctx,`UPDATE timetable_entries SET room='Changed room' WHERE id=$1`,timetableEntryID);err!=nil{t.Fatalf("recurring timetable entry remained locked after cancellation: %v",err)}
+	var retained int
+	if err=tx.QueryRow(ctx,`SELECT count(*) FROM staff_substitutions WHERE id=$1 AND status='cancelled'`,substitutionID).Scan(&retained);err!=nil||retained!=1{t.Fatalf("cancelled substitution history was not retained: count=%d err=%v",retained,err)}
 	if _,err=tx.Exec(ctx,`INSERT INTO timetable_entries(school_id,academic_year_id,section_id,subject_id,teacher_principal_id,teacher_subject_assignment_id,period_id,day_of_week,created_by_principal_id,updated_by_principal_id)
-		VALUES($1,$2,$3,$4,$5,$6,$7,1,$8,$8)`,schoolID,yearID,secondSectionID,subjectID,substituteID,secondAssignmentID,periodID,originalID);err!=nil{t.Fatalf("teacher schedule should be allowed after substitution cancellation: %v",err)}
+		VALUES($1,$2,$3,$4,$5,$6,$7,1,$8,$8)`,schoolID,yearID,secondSectionID,subjectID,substituteID,secondAssignmentID,periodID,actorPrincipalID);err!=nil{t.Fatalf("teacher schedule should be allowed after substitution cancellation: %v",err)}
 }
