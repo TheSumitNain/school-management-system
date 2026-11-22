@@ -330,6 +330,117 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	`, schoolID, year2, section2, subjectID, teacherPrincipalID, actorPrincipalID); err != nil {
 		t.Fatalf("assign active same-school teacher to subject/section: %v", err)
 	}
+
+	// Exercise the teacher-filtered timetable read against real PostgreSQL rows.
+	// The School Admin may select either same-school teacher, while a Teacher
+	// requesting another teacher's principal ID must still see only their own.
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO staff_profiles
+			(principal_id, school_id, employee_code, full_name, designation, mobile_number)
+		VALUES ($1, $2, $3, 'Scoped Teacher One', 'Teacher', '9876543210')
+	`, teacherPrincipalID, schoolID, "T1-"+suffix); err != nil {
+		t.Fatalf("create first teacher profile for timetable scope: %v", err)
+	}
+	var secondTeacherPrincipalID int64
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO users (school_id, username, password_hash, status)
+		VALUES ($1, $2, $3, 'active') RETURNING principal_id
+	`, schoolID, "v17-timetable-teacher-"+suffix, "integration-test-password-hash").Scan(&secondTeacherPrincipalID); err != nil {
+		t.Fatalf("create second timetable Teacher account: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO principal_roles (principal_id, role_id, assigned_by)
+		VALUES ($1, $2, $3)
+	`, secondTeacherPrincipalID, teacherRoleID, actorPrincipalID); err != nil {
+		t.Fatalf("assign Teacher role to second timetable teacher: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO staff_profiles
+			(principal_id, school_id, employee_code, full_name, designation, mobile_number)
+		VALUES ($1, $2, $3, 'Scoped Teacher Two', 'Teacher', '9876543211')
+	`, secondTeacherPrincipalID, schoolID, "T2-"+suffix); err != nil {
+		t.Fatalf("create second teacher profile for timetable scope: %v", err)
+	}
+	var secondSectionID int64
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO sections (school_id, academic_year_id, class_id, name)
+		VALUES ($1, $2, $3, 'B') RETURNING id
+	`, schoolID, year1, classUKG).Scan(&secondSectionID); err != nil {
+		t.Fatalf("create second current-year section for timetable scope: %v", err)
+	}
+	var firstAssignmentID, secondAssignmentID int64
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO teacher_subject_assignments
+			(school_id, academic_year_id, section_id, subject_id, teacher_principal_id, assigned_by_principal_id)
+		VALUES ($1, $2, $3, $4, $5, $6) RETURNING id
+	`, schoolID, year1, section1, subjectID, teacherPrincipalID, actorPrincipalID).Scan(&firstAssignmentID); err != nil {
+		t.Fatalf("create first current-year timetable assignment: %v", err)
+	}
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO teacher_subject_assignments
+			(school_id, academic_year_id, section_id, subject_id, teacher_principal_id, assigned_by_principal_id)
+		VALUES ($1, $2, $3, $4, $5, $6) RETURNING id
+	`, schoolID, year1, secondSectionID, subjectAltID, secondTeacherPrincipalID, actorPrincipalID).Scan(&secondAssignmentID); err != nil {
+		t.Fatalf("create second current-year timetable assignment: %v", err)
+	}
+	var workloadPeriodID int64
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO timetable_periods
+			(school_id, academic_year_id, period_number, name, starts_at, ends_at)
+		VALUES ($1, $2, 1, 'Workload Period 1', TIME '09:00', TIME '09:40') RETURNING id
+	`, schoolID, year1).Scan(&workloadPeriodID); err != nil {
+		t.Fatalf("create current-year workload period: %v", err)
+	}
+	for _, entry := range []struct {
+		sectionID, subjectID, teacherID, assignmentID int64
+	}{
+		{section1, subjectID, teacherPrincipalID, firstAssignmentID},
+		{secondSectionID, subjectAltID, secondTeacherPrincipalID, secondAssignmentID},
+	} {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO timetable_entries
+				(school_id, academic_year_id, section_id, subject_id, teacher_principal_id,
+				 teacher_subject_assignment_id, period_id, day_of_week, created_by_principal_id, updated_by_principal_id)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, 1, $8, $8)
+		`, schoolID, year1, entry.sectionID, entry.subjectID, entry.teacherID,
+			entry.assignmentID, workloadPeriodID, actorPrincipalID); err != nil {
+			t.Fatalf("create timetable entry for teacher %d: %v", entry.teacherID, err)
+		}
+	}
+	timetableRepo := NewAcademicRepository(tx)
+	adminScopedEntries, err := timetableRepo.ListTimetableEntries(ctx, actorPrincipalID, schoolID, year1, 0, teacherPrincipalID)
+	if err != nil || len(adminScopedEntries) != 1 || adminScopedEntries[0].TeacherPrincipalID != teacherPrincipalID {
+		t.Fatalf("School Admin teacher-scoped timetable = %+v, err=%v; want only teacher %d", adminScopedEntries, err, teacherPrincipalID)
+	}
+	secondTeacherEntries, err := timetableRepo.ListTimetableEntries(ctx, actorPrincipalID, schoolID, year1, 0, secondTeacherPrincipalID)
+	if err != nil || len(secondTeacherEntries) != 1 || secondTeacherEntries[0].TeacherPrincipalID != secondTeacherPrincipalID {
+		t.Fatalf("School Admin second teacher-scoped timetable = %+v, err=%v; want only teacher %d", secondTeacherEntries, err, secondTeacherPrincipalID)
+	}
+	teacherAttemptToReadPeer, err := timetableRepo.ListTimetableEntries(ctx, teacherPrincipalID, schoolID, year1, 0, secondTeacherPrincipalID)
+	if err != nil || len(teacherAttemptToReadPeer) != 0 {
+		t.Fatalf("Teacher peer timetable scope = %+v, err=%v; want no entries", teacherAttemptToReadPeer, err)
+	}
+	teacherSelfEntries, err := timetableRepo.ListTimetableEntries(ctx, teacherPrincipalID, schoolID, year1, 0, teacherPrincipalID)
+	if err != nil || len(teacherSelfEntries) != 1 || teacherSelfEntries[0].TeacherPrincipalID != teacherPrincipalID {
+		t.Fatalf("Teacher self timetable scope = %+v, err=%v; want only own entry", teacherSelfEntries, err)
+	}
+	var foreignSchoolID, foreignTeacherPrincipalID int64
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO schools (name, code, status)
+		VALUES ($1, $2, 'active') RETURNING id
+	`, "Timetable Scope School "+suffix, "TS-"+suffix).Scan(&foreignSchoolID); err != nil {
+		t.Fatalf("create foreign school for timetable scope: %v", err)
+	}
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO users (school_id, username, password_hash, status)
+		VALUES ($1, $2, $3, 'active') RETURNING principal_id
+	`, foreignSchoolID, "foreign-timetable-teacher-"+suffix, "integration-test-password-hash").Scan(&foreignTeacherPrincipalID); err != nil {
+		t.Fatalf("create foreign-school Teacher principal: %v", err)
+	}
+	foreignSchoolEntries, err := timetableRepo.ListTimetableEntries(ctx, actorPrincipalID, schoolID, year1, 0, foreignTeacherPrincipalID)
+	if err != nil || len(foreignSchoolEntries) != 0 {
+		t.Fatalf("foreign-school teacher timetable scope = %+v, err=%v; want no entries", foreignSchoolEntries, err)
+	}
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO class_incharge_assignments
 			(school_id, academic_year_id, section_id,
