@@ -4,12 +4,10 @@ VALUES
  ('staff.substitutions.read','Read dated substitute-teacher coverage', 'school', FALSE),
  ('staff.substitutions.manage','Assign and cancel dated substitute-teacher coverage', 'school', FALSE);
 
-ALTER TABLE public.timetable_entries
-  ADD CONSTRAINT timetable_entries_id_school_period_unique UNIQUE(id,school_id,period_id);
-
 CREATE TABLE public.staff_substitutions (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     school_id BIGINT NOT NULL,
+    academic_year_id BIGINT NOT NULL,
     timetable_entry_id BIGINT NOT NULL,
     period_id BIGINT NOT NULL,
     cover_date DATE NOT NULL,
@@ -35,9 +33,15 @@ CREATE TABLE public.staff_substitutions (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
-    CONSTRAINT staff_substitutions_entry_school_period_fkey
-      FOREIGN KEY(timetable_entry_id,school_id,period_id)
-      REFERENCES public.timetable_entries(id,school_id,period_id) ON DELETE RESTRICT,
+    CONSTRAINT staff_substitutions_entry_school_fkey
+      FOREIGN KEY(timetable_entry_id,school_id)
+      REFERENCES public.timetable_entries(id,school_id) ON DELETE RESTRICT,
+    CONSTRAINT staff_substitutions_year_school_fkey
+      FOREIGN KEY(academic_year_id,school_id)
+      REFERENCES public.academic_years(id,school_id) ON DELETE RESTRICT,
+    CONSTRAINT staff_substitutions_period_scope_fkey
+      FOREIGN KEY(period_id,school_id,academic_year_id)
+      REFERENCES public.timetable_periods(id,school_id,academic_year_id) ON DELETE RESTRICT,
     CONSTRAINT staff_substitutions_original_staff_fkey
       FOREIGN KEY(original_teacher_principal_id,school_id)
       REFERENCES public.staff_profiles(principal_id,school_id) ON DELETE RESTRICT,
@@ -106,6 +110,7 @@ BEGIN
 
   v_period_id:=v_entry.period_id;
   v_academic_year_id:=v_entry.academic_year_id;
+  NEW.academic_year_id:=v_academic_year_id;
   IF NOT EXISTS (SELECT 1 FROM public.academic_years ay WHERE ay.id=v_academic_year_id AND ay.school_id=NEW.school_id AND ay.status<>'closed' AND NEW.cover_date BETWEEN ay.starts_on AND ay.ends_on) THEN
     RAISE EXCEPTION 'cover date must fall inside the timetable academic year' USING ERRCODE='23514';
   END IF;
