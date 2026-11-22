@@ -162,6 +162,98 @@ func TestStaffLeaveWorkflowPostgresIntegration(t *testing.T) {
 	})
 }
 
+func TestStaffLeaveRequestValidationAndTargetEligibilityPostgresIntegration(t *testing.T) {
+	f := newStaffLeaveIntegrationFixture(t)
+
+	firstHalf := "first_half"
+	invalidRequests := []struct {
+		name string
+		item StaffLeaveRequest
+	}{
+		{name: "end date before start date", item: StaffLeaveRequest{StaffPrincipalID: f.staffPrincipalID, LeaveTypeID: f.leaveTypeID, StartDate: "2028-03-12", EndDate: "2028-03-11", DurationType: "full_day", Reason: "Invalid date range"}},
+		{name: "invalid calendar date", item: StaffLeaveRequest{StaffPrincipalID: f.staffPrincipalID, LeaveTypeID: f.leaveTypeID, StartDate: "2028-02-30", EndDate: "2028-03-01", DurationType: "full_day", Reason: "Invalid calendar date"}},
+		{name: "blank reason", item: StaffLeaveRequest{StaffPrincipalID: f.staffPrincipalID, LeaveTypeID: f.leaveTypeID, StartDate: "2028-03-13", EndDate: "2028-03-13", DurationType: "full_day", Reason: "   "}},
+		{name: "unsupported duration", item: StaffLeaveRequest{StaffPrincipalID: f.staffPrincipalID, LeaveTypeID: f.leaveTypeID, StartDate: "2028-03-14", EndDate: "2028-03-14", DurationType: "three_quarters", Reason: "Unsupported duration"}},
+		{name: "half day without session", item: StaffLeaveRequest{StaffPrincipalID: f.staffPrincipalID, LeaveTypeID: f.leaveTypeID, StartDate: "2028-03-15", EndDate: "2028-03-15", DurationType: "half_day", Reason: "Missing session"}},
+		{name: "half day with invalid session", item: StaffLeaveRequest{StaffPrincipalID: f.staffPrincipalID, LeaveTypeID: f.leaveTypeID, StartDate: "2028-03-16", EndDate: "2028-03-16", DurationType: "half_day", HalfDaySession: func() *string { value := "evening"; return &value }(), Reason: "Invalid session"}},
+		{name: "half day spanning multiple dates", item: StaffLeaveRequest{StaffPrincipalID: f.staffPrincipalID, LeaveTypeID: f.leaveTypeID, StartDate: "2028-03-17", EndDate: "2028-03-18", DurationType: "half_day", HalfDaySession: &firstHalf, Reason: "Invalid half-day span"}},
+	}
+	for _, testCase := range invalidRequests {
+		t.Run(testCase.name, func(t *testing.T) {
+			if _, err := f.repo.CreateRequest(f.ctx, f.adminPrincipalID, f.schoolID, testCase.item); !errors.Is(err, ErrInvalidStaffLeave) {
+				t.Fatalf("CreateRequest error = %v, want ErrInvalidStaffLeave", err)
+			}
+		})
+	}
+
+	approved := f.request(t, f.staffPrincipalID, "2028-04-10", "2028-04-10")
+	if err := f.repo.Decide(f.ctx, f.adminPrincipalID, f.schoolID, approved.ID, true, nil); err != nil {
+		t.Fatalf("approve leave request for overlap check: %v", err)
+	}
+	if _, err := f.repo.CreateRequest(f.ctx, f.adminPrincipalID, f.schoolID, StaffLeaveRequest{
+		StaffPrincipalID: f.staffPrincipalID, LeaveTypeID: f.leaveTypeID,
+		StartDate: "2028-04-10", EndDate: "2028-04-11", DurationType: "full_day", Reason: "Overlaps approved leave",
+	}); !errors.Is(err, ErrStaffLeaveConflict) {
+		t.Fatalf("overlap with approved leave error = %v, want ErrStaffLeaveConflict", err)
+	}
+
+	cancelled := f.request(t, f.staffPrincipalID, "2028-04-20", "2028-04-20")
+	if err := f.repo.Cancel(f.ctx, f.adminPrincipalID, f.schoolID, cancelled.ID); err != nil {
+		t.Fatalf("cancel pending leave before reapplication: %v", err)
+	}
+	if _, err := f.repo.CreateRequest(f.ctx, f.adminPrincipalID, f.schoolID, StaffLeaveRequest{
+		StaffPrincipalID: f.staffPrincipalID, LeaveTypeID: f.leaveTypeID,
+		StartDate: "2028-04-20", EndDate: "2028-04-20", DurationType: "full_day", Reason: "Reapply after cancellation",
+	}); err != nil {
+		t.Fatalf("cancelled request should not block a new application: %v", err)
+	}
+
+	if _, err := f.repo.SaveType(f.ctx, f.adminPrincipalID, f.schoolID, f.leaveTypeID, StaffLeaveType{
+		Name: "Inactive Integration Leave", IsPaid: true, RequiresApproval: true, IsActive: false,
+	}); err != nil {
+		t.Fatalf("deactivate leave type fixture: %v", err)
+	}
+	if _, err := f.repo.CreateRequest(f.ctx, f.adminPrincipalID, f.schoolID, StaffLeaveRequest{
+		StaffPrincipalID: f.staffPrincipalID, LeaveTypeID: f.leaveTypeID,
+		StartDate: "2028-05-01", EndDate: "2028-05-01", DurationType: "full_day", Reason: "Inactive leave type",
+	}); !errors.Is(err, ErrStaffLeaveNotFound) {
+		t.Fatalf("inactive leave type error = %v, want ErrStaffLeaveNotFound", err)
+	}
+
+	activeType, err := f.repo.SaveType(f.ctx, f.adminPrincipalID, f.schoolID, 0, StaffLeaveType{
+		Name: "Active Eligibility Leave", IsPaid: true, RequiresApproval: true, IsActive: true,
+	})
+	if err != nil {
+		t.Fatalf("create active leave type for staff eligibility check: %v", err)
+	}
+	if _, err := f.pool.Exec(f.ctx, "UPDATE staff_profiles SET employment_status='inactive' WHERE principal_id=$1 AND school_id=$2", f.staffPrincipalID, f.schoolID); err != nil {
+		t.Fatalf("deactivate leave applicant profile: %v", err)
+	}
+	if _, err := f.repo.CreateRequest(f.ctx, f.adminPrincipalID, f.schoolID, StaffLeaveRequest{
+		StaffPrincipalID: f.staffPrincipalID, LeaveTypeID: activeType.ID,
+		StartDate: "2028-05-02", EndDate: "2028-05-02", DurationType: "full_day", Reason: "Inactive staff member",
+	}); !errors.Is(err, ErrStaffLeaveNotFound) {
+		t.Fatalf("inactive staff request error = %v, want ErrStaffLeaveNotFound", err)
+	}
+
+	var foreignSchoolID, foreignStaffID int64
+	if err := f.pool.QueryRow(f.ctx, "INSERT INTO schools (name,code,status) VALUES ('Leave Foreign School','LEAVE-FOR-' || substr(md5(random()::text),1,8),'active') RETURNING id").Scan(&foreignSchoolID); err != nil {
+		t.Fatalf("create foreign school fixture: %v", err)
+	}
+	if err := f.pool.QueryRow(f.ctx, "INSERT INTO users (school_id,username,password_hash,status) VALUES ($1,'leave-foreign-' || substr(md5(random()::text),1,8),'integration-password-hash','active') RETURNING principal_id", foreignSchoolID).Scan(&foreignStaffID); err != nil {
+		t.Fatalf("create foreign staff account: %v", err)
+	}
+	if _, err := f.pool.Exec(f.ctx, "INSERT INTO staff_profiles (principal_id,school_id,employee_code,full_name,designation,mobile_number,employment_status) VALUES ($1,$2,'LEAVE-FOREIGN','Foreign Staff','Teacher','9876543212','active')", foreignStaffID, foreignSchoolID); err != nil {
+		t.Fatalf("create foreign staff profile: %v", err)
+	}
+	if _, err := f.repo.CreateRequest(f.ctx, f.adminPrincipalID, f.schoolID, StaffLeaveRequest{
+		StaffPrincipalID: foreignStaffID, LeaveTypeID: activeType.ID,
+		StartDate: "2028-05-03", EndDate: "2028-05-03", DurationType: "full_day", Reason: "Foreign school target",
+	}); !errors.Is(err, ErrStaffLeaveNotFound) {
+		t.Fatalf("foreign-school staff request error = %v, want ErrStaffLeaveNotFound", err)
+	}
+}
+
 func TestStaffLeaveDecisionRejectRequiresReasonAndPersistsAuditPostgresIntegration(t *testing.T) {
 	f:=newStaffLeaveIntegrationFixture(t)
 	request:=f.request(t,f.staffPrincipalID,time.Now().AddDate(0,0,60).Format("2006-01-02"),time.Now().AddDate(0,0,60).Format("2006-01-02"))
