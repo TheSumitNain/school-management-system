@@ -1876,3 +1876,10 @@ Parent OTP/SMS and Parent login remain deferred. Aadhaar and document upload rem
 
 - Added browser acceptance coverage for delegated individual permission overrides: reason is mandatory, payload carries the correct delegation, and removal requires explicit confirmation (cancel sends no DELETE).
 - Checkpoint `d3d00fdd578e42dd9bcc89d0826afb9b9a471368`: Frontend CI [45003372900](https://github.com/TheSumitNain/school-management-system/actions/runs/45003372900) **PASS** with all 66 Playwright tests; Backend CI [45003372918](https://github.com/TheSumitNain/school-management-system/actions/runs/45003372918) **PASS** with PostgreSQL integration and `go vet`.
+
+
+## Staff Management — override-only authorization compatibility (2026-11-22)
+
+- Fixed the Staff Permission Overrides read path so a School Admin with `permissions.override` can load permission catalogue and delegation metadata without also needing `permissions.read` or `permissions.assign`. Repository authorization still requires an active same-school School Admin with either `permissions.assign` or `permissions.override`, and respects DENY overrides.
+- Browser acceptance fixture now exercises `permissions.override` without role-read or permission-assignment grants. Frontend CI [45003723942](https://github.com/TheSumitNain/school-management-system/actions/runs/45003723942) **PASS**; Backend CI [45003754631](https://github.com/TheSumitNain/school-management-system/actions/runs/45003754631) **PASS**, including PostgreSQL integration and `go vet`.
+- Frontend acceptance commit `4599533c0d59bf9e3a5f7da6a0ce22a14fea64a4`; backend checkpoint `f8f1b8764635762089414334028855f92f510403`. No migration required.
