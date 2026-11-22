@@ -609,8 +609,27 @@ test("staff leave request field errors clear as each required field is corrected
   await page.getByRole("dialog", { name: "Choose leave start date" }).getByRole("button", { name: /25/ }).click();
   await expect(page.getByText("Select a start date.")).toHaveCount(0);
   await page.getByLabel("Leave end date").click();
-  await page.getByRole("dialog", { name: "Choose leave end date" }).getByRole("button", { name: /25/ }).click();
+  await page.getByRole("dialog", { name: "Choose leave end date" }).getByRole("button", { name: "Wednesday, November 25, 2026" }).click();
   await expect(page.getByText("Select an end date.")).toHaveCount(0);
+
+  await page.getByLabel("Leave start date").click();
+  await page.getByRole("dialog", { name: "Choose leave start date" }).getByRole("button", { name: "Thursday, November 26, 2026" }).click();
+  await page.getByRole("button", { name: "Submit leave request" }).click();
+  await expect(page.getByText("End date must be on or after the start date.")).toBeVisible();
+  await expect(page.getByLabel("Leave end date")).toHaveAttribute("aria-describedby", "leave-end-date-error");
+
+  await page.getByLabel("Leave start date").click();
+  await page.getByRole("dialog", { name: "Choose leave start date" }).getByRole("button", { name: "Tuesday, November 24, 2026" }).click();
+  await expect(page.getByText("End date must be on or after the start date.")).toHaveCount(0);
+
+  await page.getByLabel("Leave duration").selectOption("half_day");
+  await page.getByRole("button", { name: "Submit leave request" }).click();
+  await expect(page.getByText("Half-day leave must cover one date only.")).toBeVisible();
+  await expect(page.getByLabel("Leave duration")).toHaveAttribute("aria-describedby", "leave-duration-error");
+
+  await page.getByLabel("Leave end date").click();
+  await page.getByRole("dialog", { name: "Choose leave end date" }).getByRole("button", { name: "Tuesday, November 24, 2026" }).click();
+  await expect(page.getByText("Half-day leave must cover one date only.")).toHaveCount(0);
 
   await page.getByLabel("Reason").fill("Personal appointment");
   await expect(page.getByText("Enter the reason for leave.")).toHaveCount(0);
