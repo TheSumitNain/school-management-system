@@ -467,7 +467,7 @@ func (r *RoleRepository) ListSchoolPermissionDelegations(
 			  AND r.school_id = $2 AND r.scope_type = 'school'
 			  AND r.principal_type = 'staff' AND r.role_key = 'school_admin'
 			  AND r.is_system = TRUE
-			  AND p.permission_key = 'permissions.assign'
+			  AND p.permission_key IN ('permissions.assign', 'permissions.override')
 			  AND p.scope_type = 'school' AND p.is_active = TRUE
 			  AND NOT EXISTS (
 			      SELECT 1 FROM user_permission_overrides denied
