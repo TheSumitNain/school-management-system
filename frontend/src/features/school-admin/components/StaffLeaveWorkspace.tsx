@@ -60,7 +60,7 @@ export function StaffLeaveWorkspace({permissions,staff}:Props){
  const types=useStaffLeaveTypesQuery(canRead);
  const requests=useStaffLeaveRequestsQuery({status,staffPrincipalID:Number(filterStaffID)||undefined},canRead);
  const range=useMemo(yearRange,[]);
- const holidays=useSchoolHolidaysQuery(range.from,range.to,canReadHolidays,canManageHolidays);
+ const holidays=useSchoolHolidaysQuery(range.from,range.to,canReadHolidays||canManageHolidays,canManageHolidays);
  const createRequest=useCreateStaffLeaveRequestMutation();
  const saveType=useSaveStaffLeaveTypeMutation();
  const decide=useDecideStaffLeaveRequestMutation();
