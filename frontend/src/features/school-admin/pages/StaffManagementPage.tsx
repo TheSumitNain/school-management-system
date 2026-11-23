@@ -244,6 +244,7 @@ export function StaffManagementPage({ permissions }: Props) {
     try {
       if (!navigator.clipboard?.writeText) throw new Error("Clipboard access is unavailable.");
       await navigator.clipboard.writeText("School staff login\nName: " + credentialHandoff.fullName + "\nUsername: " + credentialHandoff.username + "\nTemporary password: " + credentialHandoff.password + "\nChange this password after your first sign-in.");
+      setCredentialHandoff(null);
       notifyToast("success", "Credentials copied. Share them only through a verified channel.");
     } catch {
       notifyToast("error", "Clipboard access is unavailable. Use the password-reset flow if needed.");
