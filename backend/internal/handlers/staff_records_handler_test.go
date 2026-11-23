@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"school-management-system/internal/middleware"
 )
 
 func TestStaffRecordsHandlersReturnUnavailableWithoutService(t *testing.T) {
@@ -31,6 +32,8 @@ func TestStaffRecordsHandlersReturnUnavailableWithoutService(t *testing.T) {
 		t.Run(method.name+" nil receiver", func(t *testing.T) {
 			router := gin.New()
 			router.Any("/staff/:principalID/records/:recordID", func(c *gin.Context) {
+                c.Set(middleware.ContextPrincipalIDKey, int64(100))
+                c.Set(middleware.ContextSchoolIDKey, int64(10))
 				method.handler(nil, c)
 			})
 			recorder := httptest.NewRecorder()
@@ -43,6 +46,8 @@ func TestStaffRecordsHandlersReturnUnavailableWithoutService(t *testing.T) {
 			handler := NewStaffRecordsHandler(nil)
 			router := gin.New()
 			router.Any("/staff/:principalID/records/:recordID", func(c *gin.Context) {
+                c.Set(middleware.ContextPrincipalIDKey, int64(100))
+                c.Set(middleware.ContextSchoolIDKey, int64(10))
 				method.handler(handler, c)
 			})
 			recorder := httptest.NewRecorder()
@@ -52,4 +57,16 @@ func TestStaffRecordsHandlersReturnUnavailableWithoutService(t *testing.T) {
 			}
 		})
 	}
+}
+
+
+func TestStaffRecordsUnauthenticatedRequestDoesNotExposeServiceAvailability(t *testing.T) {
+    gin.SetMode(gin.TestMode)
+    router := gin.New()
+    router.GET("/staff/:principalID/records", NewStaffRecordsHandler(nil).ListQualifications)
+    recorder := httptest.NewRecorder()
+    router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/staff/42/records", nil))
+    if recorder.Code != http.StatusUnauthorized {
+        t.Fatalf("status=%d want=%d body=%s", recorder.Code, http.StatusUnauthorized, recorder.Body.String())
+    }
 }
