@@ -137,7 +137,7 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 	for _, permission := range effectivePermissions {
 		permissionSet[permission] = true
 	}
-	for _, permission := range []string{"staff.substitutions.read", "staff.substitutions.manage"} {
+	for _, permission := range []string{"staff.substitutions.read", "staff.substitutions.manage", "timetable.read", "timetable.manage"} {
 		if !permissionSet[permission] {
 			t.Errorf("School Admin effective permissions are missing %q", permission)
 		}
