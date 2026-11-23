@@ -12,7 +12,7 @@ func TestStaffRecordsHandlersReturnUnavailableWithoutService(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	methods := []struct {
 		name string
-		handler gin.HandlerFunc
+		handler func(*StaffRecordsHandler, *gin.Context)
 	}{
 		{"list qualifications", (*StaffRecordsHandler).ListQualifications},
 		{"create qualification", (*StaffRecordsHandler).CreateQualification},
