@@ -1265,3 +1265,67 @@ func TestStaffLeaveAndSubstitutionRoutesEnforceDedicatedLivePermissions(t *testi
 		})
 	}
 }
+
+
+func TestStaffRecordsRoutesEnforceDedicatedLivePermissions(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	validator := fakeTokenValidator{claims: &services.TokenClaims{
+		RegisteredClaims: jwt.RegisteredClaims{Subject: "31"},
+		PrincipalType: "staff",
+		TokenVersion: 1,
+	}}
+	principal := &models.AuthPrincipal{
+		ID: 31, Type: "staff", Status: "active", TokenVersion: 1,
+		SchoolID: 8, Username: "school.admin",
+	}
+	recordsHandler := handlers.NewStaffRecordsHandler(nil)
+	cases := []struct {
+		name       string
+		method     string
+		path       string
+		body       string
+		permission string
+	}{
+		{"qualifications read", http.MethodGet, "/school/staff/101/qualifications", "", "users.read"},
+		{"qualification create", http.MethodPost, "/school/staff/101/qualifications", `{"qualification":"B.Ed"}`, "users.update"},
+		{"qualification update", http.MethodPatch, "/school/staff/101/qualifications/1", `{"qualification":"M.Ed"}`, "users.update"},
+		{"certifications read", http.MethodGet, "/school/staff/101/certifications", "", "users.read"},
+		{"certification create", http.MethodPost, "/school/staff/101/certifications", `{"name":"First Aid"}`, "users.update"},
+		{"certification update", http.MethodPatch, "/school/staff/101/certifications/1", `{"name":"Advanced First Aid"}`, "users.update"},
+		{"experience read", http.MethodGet, "/school/staff/101/experience", "", "users.read"},
+		{"experience create", http.MethodPost, "/school/staff/101/experience", `{"organization":"Previous School"}`, "users.update"},
+		{"experience update", http.MethodPatch, "/school/staff/101/experience/1", `{"organization":"Earlier School"}`, "users.update"},
+		{"qualifications report", http.MethodGet, "/school/staff/qualifications-report", "", "users.read"},
+		{"experience report", http.MethodGet, "/school/staff/experience-report", "", "users.read"},
+		{"audit history", http.MethodGet, "/school/staff/101/audit-events", "", "school.audit.read"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			request := func(permissions []string) *httptest.ResponseRecorder {
+				router, err := setupTestRouterWithHandlers(
+					fakeDatabase{}, nil, validator,
+					fakePrincipalLoader{principal: principal},
+					fakePermissionLoader{permissions: permissions},
+					nil, nil, recordsHandler,
+				)
+				if err != nil {
+					t.Fatalf("setup router: %v", err)
+				}
+				req := httptest.NewRequest(tc.method, tc.path, strings.NewReader(tc.body))
+				req.Header.Set("Authorization", "Bearer valid-test-token")
+				req.Header.Set("Content-Type", "application/json")
+				rec := httptest.NewRecorder()
+				router.ServeHTTP(rec, req)
+				return rec
+			}
+
+			if denied := request(nil); denied.Code != http.StatusForbidden {
+				t.Fatalf("without %s status=%d body=%s want=403", tc.permission, denied.Code, denied.Body.String())
+			}
+			if allowed := request([]string{tc.permission}); allowed.Code != http.StatusServiceUnavailable {
+				t.Fatalf("with %s route should reach unavailable handler, status=%d body=%s want=503", tc.permission, allowed.Code, allowed.Body.String())
+			}
+		})
+	}
+}
