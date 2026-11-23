@@ -56,6 +56,7 @@ func TestStaffLeaveServiceRejectsInvalidRequestBeforeRepository(t *testing.T) {
 		item repository.StaffLeaveRequest
 	}{
 		{"invalid start date", repository.StaffLeaveRequest{StaffPrincipalID: 2, LeaveTypeID: 3, StartDate: "22-11-2026", EndDate: "2026-11-22", DurationType: "full_day", Reason: "Personal"}},
+	\t{"year zero start date", repository.StaffLeaveRequest{StaffPrincipalID: 2, LeaveTypeID: 3, StartDate: "0000-01-01", EndDate: "0000-01-01", DurationType: "full_day", Reason: "Personal"}},
 		{"end before start", repository.StaffLeaveRequest{StaffPrincipalID: 2, LeaveTypeID: 3, StartDate: "2026-11-23", EndDate: "2026-11-22", DurationType: "full_day", Reason: "Personal"}},
 		{"missing reason", repository.StaffLeaveRequest{StaffPrincipalID: 2, LeaveTypeID: 3, StartDate: "2026-11-22", EndDate: "2026-11-22", DurationType: "full_day"}},
 		{"unknown duration", repository.StaffLeaveRequest{StaffPrincipalID: 2, LeaveTypeID: 3, StartDate: "2026-11-22", EndDate: "2026-11-22", DurationType: "hourly", Reason: "Personal"}},
@@ -108,7 +109,7 @@ func TestStaffLeaveServiceValidatesHolidayInput(t *testing.T) {
 		t.Fatalf("holiday was not normalized before repository call: %+v", repo.savedHoliday)
 	}
 
-	item.HolidayDate = "not-a-date"
+	item.HolidayDate = "0000-01-01"
 	if _, err := service.SaveHoliday(context.Background(), 1, 1, 0, item); !errors.Is(err, ErrInvalidStaffLeave) {
 		t.Fatalf("expected invalid date error, got %v", err)
 	}
@@ -136,6 +137,7 @@ func TestStaffLeaveServiceValidatesReportDateRange(t *testing.T) {
   {"reversed range","", "2026-11-30","2026-11-01",true},
   {"missing range end","", "2026-11-01","",true},
   {"invalid date","", "2026-11-01","2026-11-31",true},
+  {"year zero date","0000-01-01","","",true},
   {"range mixed with single date","2026-11-15","2026-11-01","2026-11-30",true},
   {"valid single date","2026-11-15","","",false},
  }
