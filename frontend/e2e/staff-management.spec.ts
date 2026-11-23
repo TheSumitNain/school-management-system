@@ -1554,7 +1554,7 @@ test("staff directory CSV export is filtered, UTF-8 compatible and safe from spr
   const rows: Array<Record<string, unknown>> = [
     {
       id: 1, principal_id: 501, school_id: 10, username: "teacher.original",
-      employee_code: "EMP-ORIGINAL", full_name: '=HYPERLINK("https://example.invalid","Click")', designation: "Mathematics Teacher",
+      employee_code: "EMP-ORIGINAL", full_name: '\t=HYPERLINK("https://example.invalid","Click")', designation: "Mathematics Teacher",
       mobile_number: "9876543215", employment_status: "active", profile_complete: true,
       status: "active", must_change_password: false,
     },
@@ -1580,7 +1580,7 @@ test("staff directory CSV export is filtered, UTF-8 compatible and safe from spr
   expect(path).toBeTruthy();
   const csv = await readFile(path!, "utf8");
   expect(csv.charCodeAt(0)).toBe(0xfeff);
-  expect(csv).toContain("'=HYPERLINK");
+  expect(csv).toContain("'\t=HYPERLINK");
   expect(csv).toContain("EMP-ORIGINAL");
   expect(csv).not.toContain("EMP-FILTERED");
   expect(csv).not.toContain("Filtered Out Teacher");
