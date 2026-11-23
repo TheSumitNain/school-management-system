@@ -45,3 +45,15 @@ func TestStaffAttendanceHandlersReturnUnavailableWithoutService(t *testing.T) {
 		}
 	}
 }
+
+
+func TestStaffAttendanceUnauthenticatedRequestDoesNotExposeServiceAvailability(t *testing.T) {
+    gin.SetMode(gin.TestMode)
+    router := gin.New()
+    router.GET("/staff/attendance", NewStaffAttendanceHandler(nil).ListDaily)
+    recorder := httptest.NewRecorder()
+    router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/staff/attendance", nil))
+    if recorder.Code != http.StatusUnauthorized {
+        t.Fatalf("status=%d want=%d body=%s", recorder.Code, http.StatusUnauthorized, recorder.Body.String())
+    }
+}
