@@ -15,6 +15,7 @@ type fakeStaffRecordsRepository struct {
 }
 func(f *fakeStaffRecordsRepository) ListStaffQualifications(context.Context,int64,int64,int64)([]repository.StaffQualification,error){return nil,nil}
 func(f *fakeStaffRecordsRepository) ListStaffQualificationReport(_ context.Context,_,_ int64,filter repository.StaffQualificationReportFilter)(*repository.StaffQualificationReportPage,error){return &repository.StaffQualificationReportPage{Rows:[]repository.StaffQualificationReportRow{},Counts:[]repository.StaffQualificationReportCount{},Limit:filter.Limit,Offset:filter.Offset},nil}
+func(f *fakeStaffRecordsRepository) ListStaffExperienceReport(_ context.Context,_,_ int64,filter repository.StaffExperienceReportFilter)(*repository.StaffExperienceReportPage,error){return &repository.StaffExperienceReportPage{Rows:[]repository.StaffExperienceReportRow{},Counts:[]repository.StaffExperienceReportCount{},Limit:filter.Limit,Offset:filter.Offset},nil}
 func(f *fakeStaffRecordsRepository) CreateStaffQualification(_ context.Context,_,_,_ int64,item repository.StaffQualification)(*repository.StaffQualification,error){f.calls++;f.qualification=&item;return &item,nil}
 func(f *fakeStaffRecordsRepository) ListStaffCertifications(context.Context,int64,int64,int64)([]repository.StaffCertification,error){return nil,nil}
 func(f *fakeStaffRecordsRepository) CreateStaffCertification(_ context.Context,_,_,_ int64,item repository.StaffCertification)(*repository.StaffCertification,error){f.calls++;f.certification=&item;return &item,nil}
@@ -82,4 +83,14 @@ func TestStaffRecordsServiceValidatesQualificationReportFilters(t *testing.T) {
 			t.Fatalf("filter %+v error=%v want=%v",filter,err,ErrInvalidStaffRecord)
 		}
 	}
+}
+
+func TestStaffRecordsServiceValidatesExperienceReportFilters(t *testing.T) {
+    repo:=&fakeStaffRecordsRepository{};svc:=NewStaffRecordsService(repo)
+    page,err:=svc.ListExperienceReport(context.Background(),1,2,repository.StaffExperienceReportFilter{})
+    if err!=nil {t.Fatalf("default experience report filter: %v",err)}
+    if page.Limit!=50 || page.Offset!=0 {t.Fatalf("unexpected defaults: %+v",page)}
+    for _,filter:=range []repository.StaffExperienceReportFilter{{EmploymentType:"unknown"},{Limit:201},{Offset:-1},{Offset:1000001}} {
+        if _,err:=svc.ListExperienceReport(context.Background(),1,2,filter);err!=ErrInvalidStaffRecord {t.Fatalf("filter %+v error=%v want=%v",filter,err,ErrInvalidStaffRecord)}
+    }
 }
