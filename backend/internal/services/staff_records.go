@@ -14,6 +14,7 @@ var ErrInvalidStaffRecord = errors.New("invalid staff record")
 
 type staffRecordsRepository interface {
 	ListStaffQualificationReport(context.Context,int64,int64,repository.StaffQualificationReportFilter)(*repository.StaffQualificationReportPage,error)
+	ListStaffExperienceReport(context.Context,int64,int64,repository.StaffExperienceReportFilter)(*repository.StaffExperienceReportPage,error)
 	ListStaffQualifications(context.Context,int64,int64,int64)([]repository.StaffQualification,error)
 	CreateStaffQualification(context.Context,int64,int64,int64,repository.StaffQualification)(*repository.StaffQualification,error)
 	ListStaffCertifications(context.Context,int64,int64,int64)([]repository.StaffCertification,error)
@@ -130,4 +131,13 @@ func (s *StaffRecordsService) ListQualificationsReport(ctx context.Context, acto
 		return nil, ErrInvalidStaffRecord
 	}
 	return s.repository.ListStaffQualificationReport(ctx, actor, school, filter)
+}
+
+func (s *StaffRecordsService) ListExperienceReport(ctx context.Context, actor, school int64, filter repository.StaffExperienceReportFilter) (*repository.StaffExperienceReportPage,error) {
+    if s==nil || s.repository==nil || actor<=0 || school<=0 { return nil,ErrInvalidStaffRecord }
+    allowed:=map[string]bool{"":true,"permanent":true,"contract":true,"part_time":true,"temporary":true,"internship":true,"other":true}
+    if !allowed[filter.EmploymentType] { return nil,ErrInvalidStaffRecord }
+    if filter.Limit==0 { filter.Limit=50 }
+    if filter.Limit<1 || filter.Limit>200 || filter.Offset<0 || filter.Offset>1000000 { return nil,ErrInvalidStaffRecord }
+    return s.repository.ListStaffExperienceReport(ctx,actor,school,filter)
 }
