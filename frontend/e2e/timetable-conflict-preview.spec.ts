@@ -117,7 +117,7 @@ test("timetable conflict preview checks the teacher across all sections despite 
 
   await form.getByRole("button", { name: "Teacher and subject assignment" }).click();
   await page.getByRole("option", { name: "English · teacher.two" }).click();
-  await form.getByRole("button", { name: "Teaching period" }).click();
+  await form.locator(".app-select-trigger").nth(2).click();
   await page.getByRole("option", { name: /2\. Period 2/ }).click();
   await expect(review).toContainText("No existing recurring class for this teacher in the selected slot.");
   await expect(review).toContainText("Already scheduled: History");
