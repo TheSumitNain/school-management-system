@@ -1329,3 +1329,63 @@ func TestStaffRecordsRoutesEnforceDedicatedLivePermissions(t *testing.T) {
 		})
 	}
 }
+
+
+func TestStaffTimetableAndWorkloadRoutesEnforceLivePermissions(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	validator := fakeTokenValidator{claims: &services.TokenClaims{
+		RegisteredClaims: jwt.RegisteredClaims{Subject: "31"},
+		PrincipalType: "staff",
+		TokenVersion: 1,
+	}}
+	principal := &models.AuthPrincipal{
+		ID: 31, Type: "staff", Status: "active", TokenVersion: 1,
+		SchoolID: 8, Username: "school.admin",
+	}
+	timetableHandler := handlers.NewTimetableHandler(nil)
+	cases := []struct {
+		name       string
+		method     string
+		path       string
+		body       string
+		permission string
+	}{
+		{"current academic year", http.MethodGet, "/school/timetable/current-year", "", "timetable.read"},
+		{"workload report", http.MethodGet, "/school/timetable/workload-report?academic_year_id=1", "", "timetable.read"},
+		{"periods read", http.MethodGet, "/school/timetable/periods?academic_year_id=1", "", "timetable.read"},
+		{"period create", http.MethodPost, "/school/timetable/periods", `{"academic_year_id":1,"period_number":1,"name":"Period 1","starts_at":"09:00","ends_at":"09:40"}`, "timetable.manage"},
+		{"period update", http.MethodPatch, "/school/timetable/periods/1", `{"academic_year_id":1,"period_number":1,"name":"Period 1","starts_at":"09:00","ends_at":"09:40"}`, "timetable.manage"},
+		{"entries read", http.MethodGet, "/school/timetable/entries?academic_year_id=1", "", "timetable.read"},
+		{"entry create", http.MethodPost, "/school/timetable/entries", `{"academic_year_id":1,"section_id":1,"subject_id":1,"teacher_principal_id":41,"period_id":1,"weekday":1}`, "timetable.manage"},
+		{"entry delete", http.MethodDelete, "/school/timetable/entries/1", "", "timetable.manage"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			request := func(permissions []string) *httptest.ResponseRecorder {
+				router, err := setupTestRouterWithHandlers(
+					fakeDatabase{}, nil, validator,
+					fakePrincipalLoader{principal: principal},
+					fakePermissionLoader{permissions: permissions},
+					nil, nil, timetableHandler,
+				)
+				if err != nil {
+					t.Fatalf("setup router: %v", err)
+				}
+				req := httptest.NewRequest(tc.method, tc.path, strings.NewReader(tc.body))
+				req.Header.Set("Authorization", "Bearer valid-test-token")
+				req.Header.Set("Content-Type", "application/json")
+				rec := httptest.NewRecorder()
+				router.ServeHTTP(rec, req)
+				return rec
+			}
+
+			if denied := request(nil); denied.Code != http.StatusForbidden {
+				t.Fatalf("without %s status=%d body=%s want=403", tc.permission, denied.Code, denied.Body.String())
+			}
+			if allowed := request([]string{tc.permission}); allowed.Code != http.StatusServiceUnavailable {
+				t.Fatalf("with %s route should reach unavailable handler, status=%d body=%s want=503", tc.permission, allowed.Code, allowed.Body.String())
+			}
+		})
+	}
+}
