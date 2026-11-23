@@ -2043,7 +2043,7 @@ test("staff leave and holiday workspace remains usable without horizontal overfl
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await expect.poll(async () => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await expect.poll(async () => grid.evaluate(element =>
-      getComputedStyle(element).gridTemplateColumns.trim().split(/\\s+/).length,
+      getComputedStyle(element).gridTemplateColumns.trim().split(/\s+/).length,
     )).toBe(viewport.columns);
     await expect(workspace.getByRole("button", { name: "Leave requests" })).toBeVisible();
     await expect(workspace.getByRole("button", { name: "Holiday calendar" })).toBeVisible();
