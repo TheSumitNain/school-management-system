@@ -1,3 +1,12 @@
+## Staff Management — Substitution authorization-order hardening (2026-11-23)
+
+- Staff substitution list and cancellation now authorize live `staff.substitutions.read/manage` permission before validating user-supplied staff/record IDs, matching the existing authorization-first date-filter and create behavior.
+- Added PostgreSQL integration regression coverage proving unauthorized callers receive access denied for invalid list staff IDs and cancellation IDs.
+- Backend CI [45188074769](https://github.com/TheSumitNain/school-management-system/actions/runs/45188074769) **PASS** on `9cb73a7203149fae2904dda07e684b74c8e51c7b`: full ephemeral PostgreSQL migrations, Go/PostgreSQL integration tests and `go vet`.
+- No migration was added or applied and no persistent database/data changed. Staff Management remains in progress pending approved identity/profile schema decisions and consolidated final acceptance.
+
+---
+
 ## Staff Management — Leave authorization-first regression hardening (2026-11-23)
 
 - Extended authorization-first behavior across Leave Type create/update, leave approve/reject and leave cancellation. Actor permission is checked before validating user-controlled names, request IDs or rejection comments; invalid actor/school context still fails closed.
