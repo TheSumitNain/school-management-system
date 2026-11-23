@@ -385,3 +385,124 @@ func (r *UserRepository) ListStaffAuditEvents(ctx context.Context, actorID, scho
 	}
 	return items, nil
 }
+
+
+// StaffQualificationReportFilter bounds a school-wide read; all tenant scope
+// is supplied by the authenticated request context, never by query parameters.
+type StaffQualificationReportFilter struct {
+	RecordType string
+	VerificationStatus string
+	Limit int
+	Offset int
+}
+type StaffQualificationReportRow struct {
+	RecordType string `json:"record_type"`
+	RecordID int64 `json:"record_id"`
+	StaffPrincipalID int64 `json:"staff_principal_id"`
+	EmployeeCode string `json:"employee_code"`
+	StaffName string `json:"staff_name"`
+	RecordName string `json:"record_name"`
+	Organization string `json:"organization"`
+	RecordDate string `json:"record_date,omitempty"`
+	ExpiryDate string `json:"expiry_date,omitempty"`
+	VerificationStatus string `json:"verification_status"`
+}
+type StaffQualificationReportCount struct {
+	RecordType string `json:"record_type"`
+	VerificationStatus string `json:"verification_status"`
+	Count int64 `json:"count"`
+}
+type StaffQualificationReportPage struct {
+	Rows []StaffQualificationReportRow `json:"rows"`
+	Counts []StaffQualificationReportCount `json:"counts"`
+	Limit int `json:"limit"`
+	Offset int `json:"offset"`
+	Total int64 `json:"total"`
+}
+
+// ListStaffQualificationReport authorizes the viewer and reads both record
+// types using two bounded SQL queries. It intentionally excludes inactive
+// employment records and never returns credential references or verifier notes.
+func (r *UserRepository) ListStaffQualificationReport(ctx context.Context, actorID, schoolID int64, filter StaffQualificationReportFilter) (*StaffQualificationReportPage, error) {
+	if r == nil || r.db == nil || actorID <= 0 || schoolID <= 0 || filter.Limit < 1 || filter.Limit > 200 || filter.Offset < 0 {
+		return nil, ErrInvalidStaffRecord
+	}
+	var allowed bool
+	err := r.db.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM auth_principals ap
+			JOIN users actor ON actor.principal_id=ap.id
+			JOIN schools s ON s.id=actor.school_id
+			JOIN principal_roles pr ON pr.principal_id=ap.id AND pr.revoked_at IS NULL
+			JOIN roles role ON role.id=pr.role_id
+			JOIN role_permissions rp ON rp.role_id=role.id
+			JOIN permissions p ON p.id=rp.permission_id
+			WHERE ap.id=$1 AND ap.principal_type='staff' AND ap.status='active'
+			  AND actor.status='active' AND actor.school_id=$2 AND s.status='active'
+			  AND role.school_id=$2 AND role.scope_type='school' AND role.principal_type='staff'
+			  AND role.role_key='school_admin' AND role.is_system=TRUE
+			  AND p.permission_key='users.read' AND p.scope_type='school' AND p.is_active=TRUE
+			  AND NOT EXISTS (
+			    SELECT 1 FROM user_permission_overrides denied
+			    WHERE denied.principal_id=ap.id AND denied.school_id=$2
+			      AND denied.permission_id=p.id AND denied.effect='deny'
+			  )
+		)
+	`, actorID, schoolID).Scan(&allowed)
+	if err != nil { return nil, fmt.Errorf("authorize staff qualifications report: %w", err) }
+	if !allowed { return nil, ErrStaffRecordAccessDenied }
+
+	base := `
+		SELECT 'qualification'::text AS record_type, q.id AS record_id, q.staff_principal_id,
+		       sp.employee_code, sp.full_name AS staff_name, q.qualification_name AS record_name,
+		       q.institution AS organization, COALESCE(q.completion_year::text,'') AS record_date,
+		       ''::text AS expiry_date, q.verification_status
+		FROM staff_qualifications q
+		JOIN staff_profiles sp ON sp.principal_id=q.staff_principal_id AND sp.school_id=q.school_id
+		WHERE q.school_id=$1 AND sp.employment_status='active'
+		UNION ALL
+		SELECT 'certification'::text, c.id, c.staff_principal_id,
+		       sp.employee_code, sp.full_name, c.certificate_name, c.issuing_organization,
+		       COALESCE(c.issue_date::text,''), COALESCE(c.expiry_date::text,''), c.verification_status
+		FROM staff_certifications c
+		JOIN staff_profiles sp ON sp.principal_id=c.staff_principal_id AND sp.school_id=c.school_id
+		WHERE c.school_id=$1 AND sp.employment_status='active'
+	`
+	countRows, err := r.db.Query(ctx, `
+		SELECT record_type, verification_status, COUNT(*)::bigint
+		FROM (`+base+`) report_rows
+		WHERE ($2='all' OR record_type=$2) AND ($3='' OR verification_status=$3)
+		GROUP BY record_type, verification_status
+		ORDER BY record_type, verification_status
+	`, schoolID, filter.RecordType, filter.VerificationStatus)
+	if err != nil { return nil, fmt.Errorf("count staff qualifications report: %w", err) }
+	page := &StaffQualificationReportPage{Rows: make([]StaffQualificationReportRow,0), Counts: make([]StaffQualificationReportCount,0), Limit:filter.Limit, Offset:filter.Offset}
+	for countRows.Next() {
+		var item StaffQualificationReportCount
+		if err := countRows.Scan(&item.RecordType,&item.VerificationStatus,&item.Count); err != nil { countRows.Close(); return nil, fmt.Errorf("scan staff qualifications report counts: %w",err) }
+		page.Counts=append(page.Counts,item); page.Total+=item.Count
+	}
+	if err := countRows.Err(); err != nil { countRows.Close(); return nil, fmt.Errorf("iterate staff qualifications report counts: %w",err) }
+	countRows.Close()
+
+	rows, err := r.db.Query(ctx, `
+		SELECT record_type, record_id, staff_principal_id, employee_code, staff_name,
+		       record_name, organization, record_date, expiry_date, verification_status
+		FROM (`+base+`) report_rows
+		WHERE ($2='all' OR record_type=$2) AND ($3='' OR verification_status=$3)
+		ORDER BY record_type, staff_name, record_id
+		LIMIT $4 OFFSET $5
+	`, schoolID, filter.RecordType, filter.VerificationStatus, filter.Limit, filter.Offset)
+	if err != nil { return nil, fmt.Errorf("list staff qualifications report: %w",err) }
+	defer rows.Close()
+	for rows.Next() {
+		var item StaffQualificationReportRow
+		if err := rows.Scan(&item.RecordType,&item.RecordID,&item.StaffPrincipalID,&item.EmployeeCode,&item.StaffName,&item.RecordName,&item.Organization,&item.RecordDate,&item.ExpiryDate,&item.VerificationStatus); err != nil {
+			return nil, fmt.Errorf("scan staff qualifications report row: %w",err)
+		}
+		page.Rows=append(page.Rows,item)
+	}
+	if err := rows.Err(); err != nil { return nil, fmt.Errorf("iterate staff qualifications report: %w",err) }
+	return page,nil
+}
