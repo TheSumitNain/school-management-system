@@ -1546,7 +1546,7 @@ test("school-wide workload report shows scheduled periods without inferring avai
   expect(csv.startsWith("\uFEFF")).toBe(true);
   expect(csv).toContain("Original Teacher");
   expect(csv).not.toContain("Inactive Teacher");
-  expect(csv).toContain("'=HYPERLINK(""x"")");
+  expect(csv).toContain(`'=HYPERLINK(\"\"x\"\")`);
 });
 
 
