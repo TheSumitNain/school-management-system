@@ -24,6 +24,8 @@ Do not implement an import endpoint by looping over the existing create endpoint
 Do not add a database migration or alter existing profile/account relationships without explicit review and approval. No persistent database has been changed for this design.
 
 ## 3. Required schema/API design before full import
+The full identity transition, dependent-table compatibility map, sensitive personal-details boundary, expand/contract rollout and approval gates are documented in [Staff Identity and Profile Schema Design](./STAFF-IDENTITY-SCHEMA-DESIGN.md). That design remains proposal-only and does not authorize database changes.
+
 
 The target design must support an employee profile with its own stable staff identifier and school ownership, independent of an optional auth principal. Login association should be optional and separately managed. Existing staff profiles and their principal/account relationships must be preserved through a reviewed backfill/compatibility migration.
 
