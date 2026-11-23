@@ -601,7 +601,7 @@ export function updateStaffExperience(principalID: number, recordID: number, inp
   return api<{ experience: StaffExperience }>(`/school/staff/${principalID}/experience/${recordID}`, { method:"PATCH", body:JSON.stringify(input) });
 }
 
-export type StaffAuditEvent = { id: number; action: string; resource_type: string; outcome: "success" | "failure"; actor_username: string; metadata: Record<string, unknown>; created_at: string };
+export type StaffAuditEvent = { id: number; action: string; resource_type: string; outcome: "success" | "failure"; actor_username: string; created_at: string };
 export function getStaffAuditEvents(principalID: number, signal?: AbortSignal) {
   return api<{ events: StaffAuditEvent[] }>(`/school/staff/${principalID}/audit-events`, { signal });
 }
