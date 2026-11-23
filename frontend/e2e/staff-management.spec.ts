@@ -2169,8 +2169,14 @@ test("read-only substitution access lists coverage without exposing management a
     employment_status: "active", profile_complete: true, status: "active", must_change_password: false,
   }];
   const requests: string[] = [];
+  page.on("request", request => {
+    const url = new URL(request.url());
+    if (url.pathname.includes("/staff-substitutions") || url.pathname.includes("/timetable/")) {
+      requests.push(request.method() + " " + url.pathname);
+    }
+  });
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "staff.substitutions.read"]);
   await page.route("**/api/school/staff-substitutions*", async route => {
-    requests.push(route.request().method() + " " + new URL(route.request().url()).pathname);
     if (route.request().method() === "GET") {
       await route.fulfill({ json: { substitutions: [{
         id: 91, timetable_entry_id: 701, cover_date: "2026-11-23",
@@ -2185,7 +2191,6 @@ test("read-only substitution access lists coverage without exposing management a
     }
     await route.fulfill({ status: 403, json: { message: "Forbidden" } });
   });
-  await signInAndOpenStaff(page, rows, undefined, ["users.read", "staff.substitutions.read"]);
   await page.getByRole("button", { name: "Substitutions" }).click();
 
   const workspace = page.locator(".staff-substitution-workspace");
@@ -2195,5 +2200,5 @@ test("read-only substitution access lists coverage without exposing management a
   await expect(workspace.getByRole("button", { name: "Cancel cover" })).toHaveCount(0);
   await expect(workspace.getByRole("button", { name: "Assign substitute" })).toHaveCount(0);
   expect(requests.some(item => item.startsWith("POST "))).toBe(false);
-  expect(requests.some(item => item.includes("/timetable"))).toBe(false);
+  expect(requests.some(item => item.includes("/timetable/"))).toBe(false);
 });
