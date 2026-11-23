@@ -1743,7 +1743,8 @@ test("staff qualifications report uses one paginated aggregate endpoint and expo
   await expect(page.getByRole("heading", { name: "Qualifications & certifications" })).toBeVisible();
   await expect(page.getByText("B.Ed.")).toBeVisible();
   await expect(page.getByText("Child Safety Training")).toBeVisible();
-  await expect(page.getByText("Matching records").locator("..")).toContainText("2");
+  const qualificationSection=page.locator(".staff-operational-report-section").filter({has:page.getByRole("heading",{name:"Qualifications & certifications"})});
+  await expect(qualificationSection.getByText("Matching records").locator("..")).toContainText("2");
   expect(requests.length).toBeGreaterThanOrEqual(1);
   expect(requests.every(request => request.includes("record_type=all"))).toBe(true);
 
@@ -1791,13 +1792,14 @@ test("staff experience report uses one paginated school aggregate endpoint and e
   });
   await page.getByRole("button",{name:"Reports",exact:true}).click();
   await expect(page.getByRole("heading",{name:"Staff experience history"})).toBeVisible();
-  await expect(page.getByText("Previous School")).toBeVisible();
-  await expect(page.getByText("Current School")).toBeVisible();
+  const experienceSection=page.locator(".staff-operational-report-section").filter({has:page.getByRole("heading",{name:"Staff experience history"})});
+  await expect(experienceSection.getByRole("cell",{name:"Previous School"})).toBeVisible();
+  await expect(experienceSection.getByRole("cell",{name:"Current School"})).toBeVisible();
   expect(requests.length).toBeGreaterThanOrEqual(1);
   expect(requests.every(request=>request.startsWith("/api/school/staff/experience-report?"))).toBe(true);
   await page.getByLabel("Experience status").selectOption("current");
-  await expect(page.getByText("Previous School")).toHaveCount(0);
-  await expect(page.getByText("Current School")).toBeVisible();
+  await expect(experienceSection.getByRole("cell",{name:"Previous School"})).toHaveCount(0);
+  await expect(experienceSection.getByRole("cell",{name:"Current School"})).toBeVisible();
   expect(requests.some(request=>request.includes("current_only=true"))).toBe(true);
   const downloadPromise=page.waitForEvent("download");
   await page.getByRole("button",{name:"Export current page CSV"}).last().click();
