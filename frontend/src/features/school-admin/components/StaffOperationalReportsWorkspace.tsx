@@ -204,12 +204,12 @@ export function StaffOperationalReportsWorkspace({ permissions }: Props) {
   });
 
   return <section className="staff-operational-reports">
-    <div className="staff-operational-reports-toolbar">
+    {(canReadAttendance || canReadLeave) && <div className="staff-operational-reports-toolbar">
       <div><h2>Attendance & leave reports</h2><p>Monthly operational records, loaded only when the viewer has the matching read permission.</p></div>
       <label>Report month<input type="month" value={month} onChange={event => setMonth(event.target.value)} aria-label="Select attendance and leave report month"/></label>
-    </div>
+    </div>}
     {!canReadAttendance && !canReadLeave && <p className="staff-operational-report-denied" role="status">Attendance and leave reports are hidden because you do not have their read permissions.</p>}
-    <div className="staff-operational-report-panel"><AssignmentReport permissions={permissions}/></div>
+    {(permissions.includes("teacher_assignments.read") || permissions.includes("class_incharge_assignments.read")) && <div className="staff-operational-report-panel"><AssignmentReport permissions={permissions}/></div>}
     {canReadAttendance && <div className="staff-operational-report-panel">
       <div className="staff-operational-report-panel-heading"><strong>Attendance</strong><button type="button" onClick={() => void attendance.refetch()} disabled={attendance.isFetching}><RefreshCw size={14}/> Refresh</button></div>
       {attendance.isLoading && <p role="status">Loading attendance report…</p>}
