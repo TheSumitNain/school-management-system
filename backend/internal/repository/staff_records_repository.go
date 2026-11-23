@@ -436,7 +436,7 @@ func (r *UserRepository) ListStaffQualificationReport(ctx context.Context, actor
 			JOIN schools s ON s.id=actor.school_id
 			JOIN principal_roles pr ON pr.principal_id=ap.id AND pr.revoked_at IS NULL
 			JOIN roles r ON r.id=pr.role_id
-			JOIN role_permissions rp ON rp.role_id=role.id
+			JOIN role_permissions rp ON rp.role_id=r.id
 			JOIN permissions p ON p.id=rp.permission_id
 			WHERE ap.id=$1 AND ap.principal_type='staff' AND ap.status='active'
 			  AND actor.status='active' AND actor.school_id=$2 AND s.status='active'
