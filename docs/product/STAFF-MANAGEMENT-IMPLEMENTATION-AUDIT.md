@@ -367,3 +367,12 @@ Verification on branch `work`, commit `30270fe0927a6eb3f284d462ddd6dc2b4ca2959e`
 - Code: `c0d5301acb474d16aad3cda9ca1659681f55738b`; CSS: `b7caf141000cef1af3cedc6bd7613980f778c622`; test: `f07589d40f867ceaffbabb5df73e82c1e6b5a87e`.
 - Verification remains pending CI; do not mark the browser test as passed yet. Qualifications, assignments, attendance and leave reporting remain separate Phase 6 work.
 
+
+
+## 34. Monthly attendance and leave reporting (2026-11-23)
+
+- Expanded the permission-gated Reports tab with monthly attendance summaries and date-overlap leave request summaries. Attendance is fetched only with `staff.attendance.read`; leave requests are fetched only with `staff.leave.read`. The frontend does not issue either query without its matching permission.
+- Reused existing school-scoped APIs: `GET /school/staff-attendance/month` and `GET /school/staff-leave/requests?from_date=...&to_date=...`. No backend route, migration, database or student/academic module was changed.
+- Added separate CSV exports for attendance and leave. Exported fields omit attendance remarks and leave reasons; cells are quoted and formula-leading values are neutralized. Leave balances and entitlement calculations remain out of scope.
+- Added Playwright acceptance coverage for both report panels, exports, and absence of attendance/leave API requests when their read permissions are missing.
+- Checkpoints: workspace `443735c`; styles `bde8a11`; integration `0a420ad`; E2E `5320ed6`. CI verification is pending; this is implemented but not yet browser-verified.
