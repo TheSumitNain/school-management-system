@@ -77,7 +77,7 @@ func staffAttendanceWriteError(err error) error {
 }
 
 func (r *StaffAttendanceRepository) ListDaily(ctx context.Context, actorID, schoolID int64, day time.Time) ([]StaffAttendanceRecord, error) {
-    if r == nil || r.db == nil || day.IsZero() { return nil, ErrInvalidStaffAttendance }
+    if r == nil || r.db == nil || day.Year() < 1 { return nil, ErrInvalidStaffAttendance }
     if err := authorizeGuardian(ctx, r.db, actorID, schoolID, "staff.attendance.read"); err != nil {
         return nil, ErrStaffAttendanceAccessDenied
     }
@@ -114,7 +114,7 @@ func (r *StaffAttendanceRepository) ListDaily(ctx context.Context, actorID, scho
 }
 
 func (r *StaffAttendanceRepository) ListMonthly(ctx context.Context, actorID, schoolID int64, month time.Time) ([]StaffAttendanceMonthlySummary, error) {
-    if r == nil || r.db == nil || month.IsZero() { return nil, ErrInvalidStaffAttendance }
+    if r == nil || r.db == nil || month.Year() < 1 { return nil, ErrInvalidStaffAttendance }
     if err := authorizeGuardian(ctx, r.db, actorID, schoolID, "staff.attendance.read"); err != nil {
         return nil, ErrStaffAttendanceAccessDenied
     }
