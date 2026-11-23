@@ -16,6 +16,7 @@ func TestValidateStaffSubstitutionDateRange(t *testing.T) {
 		{name: "both missing", wantErr: true},
 		{name: "invalid start format", from: "2026-1-01", to: "2026-11-30", wantErr: true},
 		{name: "invalid calendar date", from: "2026-02-30", to: "2026-03-01", wantErr: true},
+		{name: "year zero", from: "0000-01-01", to: "0000-01-02", wantErr: true},
 		{name: "invalid end date", from: "2026-11-01", to: "not-a-date", wantErr: true},
 		{name: "reversed range", from: "2026-11-30", to: "2026-11-01", wantErr: true},
 		{name: "whitespace is not canonical", from: " 2026-11-01", to: "2026-11-30", wantErr: true},
