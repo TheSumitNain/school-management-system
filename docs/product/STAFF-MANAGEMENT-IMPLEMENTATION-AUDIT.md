@@ -456,3 +456,10 @@ Verification on branch `work`, commit `30270fe0927a6eb3f284d462ddd6dc2b4ca2959e`
 - Staff qualifications, certifications, experience and Staff History & Activity reads require the active same-school system School Admin role with `users.read`. This is intentional: migration `000004_add_principal_rbac_foundation.up.sql` marks `users.read` as non-delegable, so custom roles and user ALLOW overrides cannot validly grant this sensitive staff-wide read capability.
 - Preserve the backend School Admin role check and DENY override precedence. Do not broaden these endpoints to arbitrary custom roles or treat a UI permission label as authority; the backend remains the final enforcement point.
 - The initial custom-role integration-test experiment was invalid because it attempted to delegate a permission explicitly marked non-delegable. That test was removed; no product permission policy or persistent database schema was changed.
+
+## 45. Staff records handler availability guards (2026-11-23)
+
+- Qualifications, certifications, experience, staff audit history and both aggregate report handlers now fail closed with a consistent HTTP 503 response when the handler receiver or service dependency is unavailable. This avoids nil-pointer panics and does not expose partial or fabricated records.
+- Added table-driven regression coverage for nil receivers and nil service dependencies across all 12 handler methods.
+- Backend CI [45133291269](https://github.com/TheSumitNain/school-management-system/actions/runs/45133291269) **PASS** on checkpoint `b2fa865e`: ephemeral PostgreSQL initialization and migrations, Go tests including PostgreSQL integration, and `go vet`.
+- No migration, persistent data change, or document/bulk-import implementation was introduced. Browser acceptance still needs final full-suite confirmation on the current combined branch head.
