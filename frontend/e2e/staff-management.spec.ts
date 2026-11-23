@@ -1185,7 +1185,7 @@ test("staff attendance supports search, individual and atomic bulk marking, and 
   const monthlyPath = await monthlyDownload.path();
   expect(monthlyPath).toBeTruthy();
   const monthlyCSV = await readFile(monthlyPath!, "utf8");
-  expect(monthlyCSV.startsWith("\\uFEFF")).toBe(true);
+  expect(monthlyCSV.startsWith("\uFEFF")).toBe(true);
   expect(monthlyCSV).toContain("EMP-ATT-01");
   expect(monthlyCSV).not.toContain("PRIVATE_ATTENDANCE_REMARK");
   expect(monthlyCSV).not.toContain("PRIVATE_LEAVE_REASON");
