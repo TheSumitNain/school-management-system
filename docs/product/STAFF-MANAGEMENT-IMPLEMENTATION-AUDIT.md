@@ -425,3 +425,11 @@ Verification on branch `work`, commit `30270fe0927a6eb3f284d462ddd6dc2b4ca2959e`
 - The navigation action is now rendered only when at least one corresponding read permission exists. Its label is “Open assignments workspace” to describe the read/navigation action without implying write access.
 - Extended the read-only profile Playwright test to open Academic Assignments, assert the denied explanation, and assert the workspace navigation action is absent.
 - Commits: `b2c4655` (permission-gated navigation), `76b9880` (regression coverage). Do not mark CI verified until fresh frontend and backend checks for the latest branch head complete.
+
+
+## 41. Attendance monthly CSV privacy (2026-11-23)
+
+- A secondary export path in the Attendance workspace (`Download monthly report`) was found to include free-text attendance remarks, even though the operational attendance/leave report export already excludes remarks and leave reasons.
+- Removed the Remarks column and its source values from the monthly export. The export remains a bounded monthly view of attendance summaries/entries plus approved leave and holiday context; leave reasons are not exported.
+- Extended the existing attendance Playwright scenario with unique sentinel values for a private attendance remark and a private leave reason. It downloads the CSV and asserts neither sentinel is present while the employee code remains present.
+- Commits: `9800956` (privacy removal), `bfc813e` and `41e92b7` (CSV row alignment), `a6e9684` (regression test). Fresh CI for the latest combined branch head is still required.
