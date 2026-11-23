@@ -317,12 +317,15 @@ test("staff directory filters independently narrow employment, login account and
   await page.getByRole("button", { name: "Filter by login account status" }).click();
   await page.getByRole("option", { name: "All accounts", exact: true }).click();
 
-  await page.getByRole("button", { name: "Filter by profile completeness" }).click();
+  const profileCompletenessFilter = page.locator(".staff-directory-filters .app-select").nth(2).locator("button.app-select-trigger");
+  await expect(profileCompletenessFilter).toBeVisible();
+  await profileCompletenessFilter.click();
   await page.getByRole("option", { name: "Incomplete", exact: true }).click();
   await expect(page.getByText("2 of 5 staff members")).toBeVisible();
   await expect(page.getByRole("button", { name: "Profile Pending" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Profile Unknown" })).toBeVisible();
-  await page.getByRole("button", { name: "Filter by profile completeness" }).click();
+  await expect(profileCompletenessFilter).toBeVisible();
+  await profileCompletenessFilter.click();
   await page.getByRole("option", { name: "Complete", exact: true }).click();
   await expect(page.getByText("3 of 5 staff members")).toBeVisible();
   await expect(page.getByRole("button", { name: "Active Enabled" })).toBeVisible();
