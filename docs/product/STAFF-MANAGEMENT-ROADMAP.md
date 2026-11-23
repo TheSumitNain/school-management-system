@@ -593,3 +593,12 @@ Update [Project Status](../project/STATUS.md) after each verified milestone with
 ## 11. Research basis
 
 The roadmap was informed by public product pages, manuals and walkthroughs for multiple school ERP/HRMS products, including CoreAxis, School Orbit, MyClassCampus, OpenEduCat, Fedena, Teachmint, Nipun Schools and MyClassboard. Common patterns included employee directories/profiles, qualifications/documents, login/role management, teacher assignments, attendance, leave, workload/timetable, reports, ID cards and payroll. Public materials vary in age and completeness; this roadmap selects features according to this project's Phase 1 priorities, existing architecture and budget constraints rather than copying any one vendor.
+
+
+## 2026-11-23 implementation checkpoint — directory safety and permissions
+
+- Directory completeness uses a conservative rule: only explicit complete=true qualifies as complete; missing/unknown profile state is incomplete and cannot be re-enabled. Employment must also be active before account re-enable is offered.
+- Staff profile edit controls are permission-gated by live `users.update` across directory rows and Overview, Personal Details and Employment. Qualification/certification/experience mutations are also hidden for read-only users. Automated regression coverage is present.
+- Directory filter layout coverage now checks mobile (390px), tablet (768px) and desktop (1280px), including overflow and a mobile filter interaction.
+- Verification is pending on the exact combined checkpoint: earlier frontend CI `7fa70e1` failed because a test reload discarded its mocked session; corrected same-page filter reset is committed. Keep frontend acceptance open until the corrected Playwright suite passes. Backend CI passed on the preceding checkpoint; rerun on the combined checkpoint is still required.
+- Documents remain explicitly deferred pending storage-service purchase and approval. Bulk import/profile-only onboarding remain blocked pending identity-schema design approval; no migration is authorized by this checkpoint.
