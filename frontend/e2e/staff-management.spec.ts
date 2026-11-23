@@ -332,7 +332,8 @@ test("staff directory filters independently narrow employment, login account and
   await page.reload();
   await page.getByRole("button", { name: /Staff Directory/ }).click();
   await expect(page.getByText("5 of 5 staff members")).toBeVisible();
-  const completeProfileFilter = page.getByRole("button", { name: "Filter by profile completeness" });
+  const completeProfileFilter = page.locator(".staff-directory-filters .app-select").nth(2).locator("button.app-select-trigger");
+  await expect(completeProfileFilter).toBeVisible();
   await completeProfileFilter.click();
   await page.getByRole("option", { name: "Complete", exact: true }).click();
   await expect(page.getByText("3 of 5 staff members")).toBeVisible();
