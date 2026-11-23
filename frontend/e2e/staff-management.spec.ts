@@ -1609,7 +1609,7 @@ test("staff reports show monthly attendance and leave summaries only with matchi
   const attendancePath = await attendanceDownload.path();
   expect(attendancePath).toBeTruthy();
   const attendanceCSV = await readFile(attendancePath!, "utf8");
-  expect(attendanceCSV.startsWith("\\uFEFF")).toBe(true);
+  expect(attendanceCSV.startsWith("\uFEFF")).toBe(true);
   expect(attendanceCSV).toContain("EMP-ACTIVE");
   expect(attendanceCSV).toContain("18");
 
@@ -1619,7 +1619,7 @@ test("staff reports show monthly attendance and leave summaries only with matchi
   const leavePath = await leaveDownload.path();
   expect(leavePath).toBeTruthy();
   const leaveCSV = await readFile(leavePath!, "utf8");
-  expect(leaveCSV.startsWith("\\uFEFF")).toBe(true);
+  expect(leaveCSV.startsWith("\uFEFF")).toBe(true);
   expect(leaveCSV).toContain("EMP-LEAVE-01");
   expect(leaveCSV).toContain("Casual Leave");
 });
