@@ -777,6 +777,11 @@ test("staff profile creates education, certification and experience records", as
   await expect(dialog.getByText("Enter a year between 1900 and 2200.")).toBeVisible();
   await expect(dialog.getByText("Choose a score scale when a score is entered.")).toBeVisible();
   await dialog.locator('input[name="completion_year"]').fill("2021");
+  await dialog.locator('select[name="score_scale"]').selectOption("percentage");
+  await dialog.locator('input[name="score"]').fill("100.001");
+  await dialog.getByRole("button", { name: "Save record" }).click();
+  await expect(dialog.getByText("Percentage cannot exceed 100.")).toBeVisible();
+  await dialog.locator('input[name="score"]').fill("8.5");
   await dialog.locator('select[name="score_scale"]').selectOption("cgpa");
   await dialog.getByRole("button", { name: "Save record" }).click();
   await expect(dialog.getByText("M.Sc. Mathematics")).toBeVisible();
