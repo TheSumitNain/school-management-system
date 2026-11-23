@@ -131,7 +131,7 @@ func(r *StaffLeaveRepository) Decide(ctx context.Context,actor,school,id int64,a
  tx,e:=r.db.Begin(ctx);if e!=nil{return e};defer func(){_=tx.Rollback(ctx)}()
  if authorizeGuardian(ctx,tx,actor,school,"staff.leave.decide")!=nil{return ErrStaffLeaveAccessDenied}
  if id<=0{return ErrInvalidStaffLeave}
- comment,e:=cleanOptional(comment,1000);if e!=nil{return e};if !approve&&comment==nil{return ErrInvalidStaffLeave}
+ comment,e=cleanOptional(comment,1000);if e!=nil{return e};if !approve&&comment==nil{return ErrInvalidStaffLeave}
  var applicant int64
  e=tx.QueryRow(ctx,`SELECT staff_principal_id FROM staff_leave_requests WHERE id=$1 AND school_id=$2 AND status='pending' FOR UPDATE`,id,school).Scan(&applicant)
  if errors.Is(e,pgx.ErrNoRows){return ErrStaffLeaveNotFound};if e!=nil{return e};if applicant==actor{return ErrStaffLeaveAccessDenied}
