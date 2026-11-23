@@ -990,12 +990,12 @@ test("staff permission overrides require a delegated permission, reason and remo
   });
   await page.route("**/api/school/permissions", async route => {
     await route.fulfill({ json: { permissions: [
-      { permission_key: "staff.attendance.read", description: "View staff attendance", is_delegable: true },
+      { permission_key: "students.read_basic", description: "Read basic student information", is_delegable: true },
     ] } });
   });
   await page.route("**/api/school/permission-delegations", async route => {
     await route.fulfill({ json: { delegations: [
-      { id: 31, school_id: 10, permission_key: "staff.attendance.read", can_assign_to_roles: false, can_override_users: true, granted_by: 2, created_at: "2026-01-01T00:00:00Z" },
+      { id: 31, school_id: 10, permission_key: "students.read_basic", can_assign_to_roles: false, can_override_users: true, granted_by: 2, created_at: "2026-01-01T00:00:00Z" },
     ] } });
   });
   await page.route("**/api/school/staff/515/permission-overrides**", async route => {
@@ -1008,8 +1008,8 @@ test("staff permission overrides require a delegated permission, reason and remo
       saveCalls += 1;
       submittedPayload = route.request().postDataJSON() as Record<string, unknown>;
       overrides.push({
-        id: 71, principal_id: 515, permission_key: "staff.attendance.read",
-        effect: "deny", reason: "Temporary attendance access restriction",
+        id: 71, principal_id: 515, permission_key: "students.read_basic",
+        effect: "deny", reason: "Temporary roster access restriction",
         granted_by: 2, delegation_id: 31, created_at: "2026-11-22T00:00:00Z",
       });
       await route.fulfill({ json: { message: "Permission override saved." } });
@@ -1032,31 +1032,31 @@ test("staff permission overrides require a delegated permission, reason and remo
 
   const permissionSelect = profile.locator('button[aria-label="Delegated permission override for teacher.override-admin"]');
   await permissionSelect.click();
-  await profile.getByRole("option", { name: /staff.attendance.read/ }).click();
+  await profile.getByRole("option", { name: /students.read_basic/ }).click();
   await profile.getByRole("button", { name: "Save override" }).click();
   await expect(profile.getByText("Choose a permission delegated for individual overrides.")).toHaveCount(0);
   await expect(profile.getByText("Explain why this permission exception is needed.")).toBeVisible();
-  await profile.getByLabel("Reason (required)").fill("Temporary attendance access restriction");
+  await profile.getByLabel("Reason (required)").fill("Temporary roster access restriction");
   await profile.getByRole("button", { name: "Save override" }).click();
   await expect(profile.getByText("Permission override saved. It takes effect on the next protected request.")).toBeVisible();
-  await expect(profile.getByText("staff.attendance.read", { exact: true })).toBeVisible();
+  await expect(profile.getByText("students.read_basic", { exact: true })).toBeVisible();
   expect(saveCalls).toBe(1);
   expect(submittedPayload).toMatchObject({
-    permission_key: "staff.attendance.read",
+    permission_key: "students.read_basic",
     effect: "deny",
-    reason: "Temporary attendance access restriction",
+    reason: "Temporary roster access restriction",
     delegation_id: 31,
   });
 
-  await profile.getByRole("button", { name: "Remove staff.attendance.read override" }).click();
+  await profile.getByRole("button", { name: "Remove students.read_basic override" }).click();
   const cancelRemoval = page.getByRole("dialog", { name: "Remove permission override?" });
   await cancelRemoval.getByRole("button", { name: "Cancel" }).click();
   expect(deleteCalls).toBe(0);
-  await profile.getByRole("button", { name: "Remove staff.attendance.read override" }).click();
+  await profile.getByRole("button", { name: "Remove students.read_basic override" }).click();
   const confirmRemoval = page.getByRole("dialog", { name: "Remove permission override?" });
   await confirmRemoval.getByRole("button", { name: "Remove override" }).click();
   await expect(profile.getByText("Permission override removed. Effective permissions update on the next protected request.")).toBeVisible();
-  await expect(profile.getByText("staff.attendance.read", { exact: true })).toHaveCount(0);
+  await expect(profile.getByText("students.read_basic", { exact: true })).toHaveCount(0);
   expect(deleteCalls).toBe(1);
 });
 
