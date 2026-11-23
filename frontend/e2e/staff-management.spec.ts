@@ -505,6 +505,28 @@ test("staff directory opens the eight-tab employee profile and shows saved profi
   await expect(dialog.getByText(/private file storage/)).toBeVisible();
 });
 
+test("read-only staff profile hides every employee edit action", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 431, school_id: 10, username: "teacher.readonly",
+    employee_code: "EMP-RO-01", full_name: "Read Only Teacher", designation: "Science Teacher",
+    mobile_number: "9876543218", email: "readonly.teacher@example.com",
+    joining_date: "2025-04-01", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false,
+  }];
+  await signInAndOpenStaff(page, rows, undefined, ["users.read"]);
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await expect(page.getByRole("button", { name: /Edit employee profile for teacher.readonly/ })).toHaveCount(0);
+  await page.getByRole("button", { name: "Read Only Teacher" }).click();
+
+  const dialog = page.getByRole("dialog", { name: "Read Only Teacher" });
+  await expect(dialog.getByRole("button", { name: "Edit employee details" })).toHaveCount(0);
+  await dialog.getByRole("button", { name: "Personal Details" }).click();
+  await expect(dialog.getByRole("button", { name: "Edit personal details" })).toHaveCount(0);
+  await dialog.getByRole("button", { name: "Employment" }).click();
+  await expect(dialog.getByRole("button", { name: "Edit employment details" })).toHaveCount(0);
+});
+
+
 test("add staff wizard validates each step before allowing progress", async ({ page }) => {
   await signInAndOpenStaff(page, []);
   await page.getByRole("button", { name: "Add staff", exact: true }).click();
