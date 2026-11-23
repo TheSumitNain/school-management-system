@@ -13,7 +13,7 @@ The current database does not support that distinction:
 - `staff_profiles.principal_id` is the primary key and a foreign key to `users(principal_id, school_id)`.
 - The existing create-with-profile workflow creates a login account and profile together in one transaction.
 - The staff directory is currently sourced from `users` with a left join to `staff_profiles`.
-- The current profile model has no Staff Type or Department fields.
+- The current profile model is limited to employee code, full name, designation, mobile, email, joining date and employment status. It does not currently represent Staff Type, Department, Employment Type, date of birth, gender, photograph, current/permanent address, emergency contact, reporting manager or branch/work location.
 
 Consequently, a bulk import that uses the current create endpoint would force every imported employee to have a login username and password. Generating temporary passwords, inventing usernames, or silently provisioning login identities would violate the approved separation of employment and access.
 
@@ -31,10 +31,11 @@ Before implementation, design and review:
 
 1. A school-scoped staff identity/profile key independent of `users`, with school-scoped employee-code uniqueness.
 2. Optional, unique login-principal association with same-school enforcement.
-3. Staff Type and Department only after their controlled values/master-data contract is defined.
-4. Compatibility for existing attendance, leave, qualifications, certifications, experience, timetable and assignment foreign keys that currently refer to principals.
-5. Audit and lifecycle behavior for employees without login accounts and for later account linking/unlinking.
-6. A migration/backfill and rollback/restore plan. Apply it to persistent databases only after explicit approval and verified backup/restore.
+3. Staff Type, Department, Employment Type and Branch/Work Location only after their controlled values/master-data contracts are defined; do not create duplicate free-text master data.
+4. Define approved personal/emergency-contact fields (DOB, gender, addresses, emergency contact and photograph) with explicit field-level access, retention and audit requirements before storing them.
+5. Compatibility for existing attendance, leave, qualifications, certifications, experience, timetable and assignment foreign keys that currently refer to principals.
+6. Audit and lifecycle behavior for employees without login accounts and for later account linking/unlinking.
+7. A migration/backfill and rollback/restore plan. Apply it to persistent databases only after explicit approval and verified backup/restore.
 
 ## 4. Bulk import acceptance contract
 
