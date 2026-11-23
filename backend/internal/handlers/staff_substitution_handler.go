@@ -62,6 +62,7 @@ func(h *StaffSubstitutionHandler) List(c *gin.Context) {
 	}
 	items,err:=h.service.List(c.Request.Context(),actor,school,from,to,staffID)
 	if err!=nil{staffSubstitutionError(c,err);return}
+	if items==nil{items=[]repository.StaffSubstitution{}}
 	c.JSON(http.StatusOK,gin.H{"status":"success","substitutions":items})
 }
 
