@@ -318,6 +318,8 @@ test("staff directory filters independently narrow employment, login account and
   await expect(page.getByRole("button", { name: "Active Enabled" })).toHaveCount(0);
   await page.getByRole("button", { name: "Filter by login account status" }).click();
   await page.getByRole("option", { name: "All accounts", exact: true }).click();
+  await page.getByRole("button", { name: "Filter by employment status" }).click();
+  await page.getByRole("option", { name: "All employment", exact: true }).click();
 
   const profileCompletenessFilter = page.locator(".staff-directory-filters .app-select").nth(2).locator("button.app-select-trigger");
   await expect(profileCompletenessFilter).toBeVisible();
