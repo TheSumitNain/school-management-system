@@ -63,6 +63,7 @@ func (h *StaffAttendanceHandler) ListDaily(c *gin.Context) {
     if !valid { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"date must use YYYY-MM-DD"}); return }
     items, err := h.service.ListDaily(c.Request.Context(), actor, school, day)
     if err != nil { writeStaffAttendanceError(c, err); return }
+    if items == nil { items = []repository.StaffAttendanceRecord{} }
     c.JSON(http.StatusOK, gin.H{"status":"success","date":raw,"data":items})
 }
 
@@ -76,6 +77,7 @@ func (h *StaffAttendanceHandler) ListMonthly(c *gin.Context) {
     if !valid { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"month must use YYYY-MM"}); return }
     items, err := h.service.ListMonthly(c.Request.Context(), actor, school, month)
     if err != nil { writeStaffAttendanceError(c, err); return }
+    if items == nil { items = []repository.StaffAttendanceMonthlySummary{} }
     c.JSON(http.StatusOK, gin.H{"status":"success","month":raw,"data":items})
 }
 
