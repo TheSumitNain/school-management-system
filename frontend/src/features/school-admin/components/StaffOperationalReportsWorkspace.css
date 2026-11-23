@@ -1,0 +1,28 @@
+.staff-operational-reports{display:grid;gap:18px;min-width:0}
+.staff-operational-reports-toolbar,.staff-operational-report-title,.staff-operational-report-panel-heading{display:flex;align-items:center;justify-content:space-between;gap:14px}
+.staff-operational-reports-toolbar h2,.staff-operational-report-title h3{margin:0;color:var(--text-primary)}
+.staff-operational-reports-toolbar p,.staff-operational-report-title p{margin:5px 0 0;color:var(--text-secondary);font-size:13px}
+.staff-operational-reports-toolbar>label{display:grid;gap:5px;color:var(--text-secondary);font-size:12px;font-weight:600}
+.staff-operational-reports-toolbar input{min-height:38px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text-primary);font:inherit}
+.staff-operational-report-panel{display:grid;gap:12px;padding:16px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
+.staff-operational-report-panel-heading{padding-bottom:10px;border-bottom:1px solid var(--border);color:var(--text-primary)}
+.staff-operational-report-panel-heading button,.staff-operational-report-export{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:34px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text-primary);font:inherit;font-size:12px;font-weight:600;cursor:pointer}
+.staff-operational-report-panel-heading button:disabled,.staff-operational-report-export:disabled{opacity:.5;cursor:not-allowed}
+.staff-operational-report-section{display:grid;gap:12px;min-width:0}
+.staff-operational-report-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.staff-operational-report-metrics article{display:grid;gap:4px;padding:12px;border:1px solid var(--border);border-radius:9px;background:var(--surface-secondary,var(--surface))}
+.staff-operational-report-metrics span{color:var(--text-secondary);font-size:12px}
+.staff-operational-report-metrics strong{color:var(--text-primary);font-size:21px;font-variant-numeric:tabular-nums}
+.staff-operational-report-table-wrap{overflow-x:auto}
+.staff-operational-report-table-wrap table{width:100%;border-collapse:collapse;font-size:13px}
+.staff-operational-report-table-wrap th,.staff-operational-report-table-wrap td{padding:10px 9px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
+.staff-operational-report-table-wrap th{color:var(--text-secondary);font-size:11px;font-weight:700}
+.staff-operational-report-table-wrap td{color:var(--text-primary)}
+.staff-operational-report-status{display:inline-block;padding:3px 7px;border-radius:999px;background:var(--surface-secondary,var(--surface));font-size:11px;text-transform:capitalize}
+.staff-operational-report-status.approved{color:var(--success)}
+.staff-operational-report-status.rejected{color:var(--danger)}
+.staff-operational-report-status.pending{color:var(--warning)}
+.staff-operational-report-empty,.staff-operational-report-denied{margin:0;padding:12px;border:1px dashed var(--border);border-radius:8px;color:var(--text-secondary);font-size:13px}
+.staff-operational-report-error{color:var(--danger);font-size:13px}
+.staff-operational-report-error button{margin-left:6px;color:inherit;text-decoration:underline}
+@media(max-width:760px){.staff-operational-reports-toolbar,.staff-operational-report-title{align-items:stretch;flex-direction:column}.staff-operational-reports-toolbar>label{width:100%}.staff-operational-reports-toolbar input{width:100%}.staff-operational-report-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.staff-operational-report-panel{padding:12px}}
