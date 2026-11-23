@@ -2125,3 +2125,38 @@ test("staff monthly attendance summary remains contained and readable across vie
     }
   }
 });
+
+test("staff profile dialog and section navigation remain responsive on mobile, tablet and desktop", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 541, school_id: 10, username: "profile.responsive",
+    employee_code: "EMP-PRO-RESP-01", full_name: "Responsive Profile Teacher", designation: "Teacher",
+    mobile_number: "9876543210", email: "responsive.profile@example.test", joining_date: "2025-04-01",
+    employment_status: "active", profile_complete: true, status: "active", must_change_password: false,
+  }];
+  await signInAndOpenStaff(page, rows, undefined, ["users.read"]);
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Responsive Profile Teacher" }).click();
+  const dialog = page.getByRole("dialog", { name: "Responsive Profile Teacher" });
+  const navigation = dialog.getByRole("navigation", { name: "Staff profile sections" });
+  await expect(navigation.getByRole("button")).toHaveCount(8);
+
+  for (const viewport of [
+    { width: 390, height: 844 },
+    { width: 768, height: 900 },
+    { width: 1280, height: 900 },
+  ]) {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await expect.poll(() => dialog.evaluate(element => {
+      const rect = element.getBoundingClientRect();
+      return rect.left >= 0 && rect.right <= window.innerWidth;
+    })).toBe(true);
+    await expect(navigation).toBeVisible();
+    await expect(dialog.getByText("EMP-PRO-RESP-01").first()).toBeVisible();
+    if (viewport.width <= 768) {
+      await expect.poll(() => navigation.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(true);
+    }
+  }
+  await navigation.getByRole("button", { name: "Personal Details" }).click();
+  await expect(dialog.getByText("responsive.profile@example.test")).toBeVisible();
+});
