@@ -69,9 +69,10 @@ func(r *StaffLeaveRepository) ListTypes(ctx context.Context,actor,school int64)(
  out:=[]StaffLeaveType{};for rows.Next(){var x StaffLeaveType;if e=rows.Scan(&x.ID,&x.Name,&x.IsPaid,&x.RequiresApproval,&x.IsActive);e!=nil{return nil,e};out=append(out,x)};return out,rows.Err()
 }
 func(r *StaffLeaveRepository) SaveType(ctx context.Context,actor,school,id int64,x StaffLeaveType)(*StaffLeaveType,error){
- x.Name=strings.TrimSpace(x.Name);if r==nil||r.db==nil||actor<=0||school<=0||len([]rune(x.Name))<2||len([]rune(x.Name))>100{return nil,ErrInvalidStaffLeave}
+ x.Name=strings.TrimSpace(x.Name);if r==nil||r.db==nil||actor<=0||school<=0{return nil,ErrInvalidStaffLeave}
  tx,e:=r.db.Begin(ctx);if e!=nil{return nil,e};defer func(){_=tx.Rollback(ctx)}()
  if authorizeGuardian(ctx,tx,actor,school,"staff.leave.manage_types")!=nil{return nil,ErrStaffLeaveAccessDenied}
+ if len([]rune(x.Name))<2||len([]rune(x.Name))>100{return nil,ErrInvalidStaffLeave}
  if id==0{e=tx.QueryRow(ctx,`INSERT INTO staff_leave_types(school_id,name,is_paid,requires_approval,is_active,created_by_principal_id,updated_by_principal_id) VALUES($1,$2,$3,$4,$5,$6,$6) RETURNING id`,school,x.Name,x.IsPaid,x.RequiresApproval,x.IsActive,actor).Scan(&x.ID)}else{e=tx.QueryRow(ctx,`UPDATE staff_leave_types SET name=$3,is_paid=$4,requires_approval=$5,is_active=$6,updated_by_principal_id=$7,updated_at=NOW() WHERE id=$1 AND school_id=$2 RETURNING id`,id,school,x.Name,x.IsPaid,x.RequiresApproval,x.IsActive,actor).Scan(&x.ID)}
  if e!=nil{return nil,leaveWriteError(e)}
  action:="staff.leave_type.created";if id!=0{action="staff.leave_type.updated"}
@@ -126,10 +127,11 @@ func(r *StaffLeaveRepository) CreateRequest(ctx context.Context,actor,school int
  if e=tx.Commit(ctx);e!=nil{return nil,e};return &x,nil
 }
 func(r *StaffLeaveRepository) Decide(ctx context.Context,actor,school,id int64,approve bool,comment *string)(error){
- if r==nil||r.db==nil||actor<=0||school<=0||id<=0{return ErrInvalidStaffLeave}
- var e error;comment,e=cleanOptional(comment,1000);if e!=nil{return e};if !approve&&comment==nil{return ErrInvalidStaffLeave}
+ if r==nil||r.db==nil||actor<=0||school<=0{return ErrInvalidStaffLeave}
  tx,e:=r.db.Begin(ctx);if e!=nil{return e};defer func(){_=tx.Rollback(ctx)}()
  if authorizeGuardian(ctx,tx,actor,school,"staff.leave.decide")!=nil{return ErrStaffLeaveAccessDenied}
+ if id<=0{return ErrInvalidStaffLeave}
+ comment,e:=cleanOptional(comment,1000);if e!=nil{return e};if !approve&&comment==nil{return ErrInvalidStaffLeave}
  var applicant int64
  e=tx.QueryRow(ctx,`SELECT staff_principal_id FROM staff_leave_requests WHERE id=$1 AND school_id=$2 AND status='pending' FOR UPDATE`,id,school).Scan(&applicant)
  if errors.Is(e,pgx.ErrNoRows){return ErrStaffLeaveNotFound};if e!=nil{return e};if applicant==actor{return ErrStaffLeaveAccessDenied}
