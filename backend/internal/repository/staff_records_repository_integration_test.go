@@ -162,6 +162,27 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
 	if err!=nil||len(qualifications)!=1||qualifications[0].ID!=qualification.ID{t.Fatalf("list qualifications: items=%+v err=%v",qualifications,err)}
 	certifications,err:=repo.ListStaffCertifications(ctx,actorID,schoolID,staff.PrincipalID)
 	if err!=nil||len(certifications)!=1||certifications[0].ID!=certification.ID{t.Fatalf("list certifications: items=%+v err=%v",certifications,err)}
+
+	report, err := repo.ListStaffQualificationReport(ctx, actorID, schoolID, StaffQualificationReportFilter{RecordType:"all",Limit:50})
+	if err != nil { t.Fatalf("list school-wide qualifications report: %v",err) }
+	if report.Total != 2 || len(report.Rows) != 2 { t.Fatalf("report total=%d rows=%+v want both qualification and certification",report.Total,report.Rows) }
+	if report.Rows[0].RecordType != "certification" && report.Rows[0].RecordType != "qualification" { t.Fatalf("unexpected report row ordering: %+v",report.Rows) }
+	for _, row := range report.Rows {
+		if row.StaffPrincipalID != staff.PrincipalID || row.EmployeeCode != staff.EmployeeCode || row.StaffName != staff.FullName {
+			t.Fatalf("report row omitted same-school staff identity: %+v",row)
+		}
+	}
+	filtered, err := repo.ListStaffQualificationReport(ctx, actorID, schoolID, StaffQualificationReportFilter{RecordType:"certification",VerificationStatus:"pending",Limit:1})
+	if err != nil || filtered.Total != 1 || len(filtered.Rows) != 1 || filtered.Rows[0].RecordType != "certification" {
+		t.Fatalf("filtered report: page=%+v err=%v",filtered,err)
+	}
+	paged, err := repo.ListStaffQualificationReport(ctx, actorID, schoolID, StaffQualificationReportFilter{RecordType:"all",Limit:1,Offset:1})
+	if err != nil || paged.Total != 2 || len(paged.Rows) != 1 {
+		t.Fatalf("paginated report: page=%+v err=%v",paged,err)
+	}
+	if _, err := repo.ListStaffQualificationReport(ctx, actorID, schoolID+1, StaffQualificationReportFilter{RecordType:"all",Limit:50}); !errors.Is(err,ErrStaffRecordAccessDenied) {
+		t.Fatalf("cross-school report access error=%v want access denied",err)
+	}
 	experiences,err:=repo.ListStaffExperience(ctx,actorID,schoolID,staff.PrincipalID)
 	if err!=nil||len(experiences)!=1||experiences[0].ID!=experience.ID{t.Fatalf("list experience: items=%+v err=%v",experiences,err)}
 
