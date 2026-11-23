@@ -442,3 +442,11 @@ Verification on branch `work`, commit `30270fe0927a6eb3f284d462ddd6dc2b4ca2959e`
 - Corrected the BOM assertion to use the U+FEFF character and moved the formula-injection fixture to an exported staff-name value. Private attendance remarks and leave reasons remain excluded from the monthly CSV.
 - Commits: `b06ce37` (transaction-context authorization), `f64296f` (BOM assertion), `78eac8f` (formula-injection test fixture). Latest CI for `78eac8f` must complete successfully before acceptance is marked green.
 - No persistent database changes or migrations were made. Documents and Bulk Import remain subject to their existing approval gates.
+
+
+## 43. Staff audit metadata response minimization (2026-11-23)
+
+- Staff History & Activity needs only event action, resource type, outcome, actor username and timestamp. The repository still scans raw metadata internally, but the `metadata` field is now excluded from JSON serialization so arbitrary audit payloads are not sent to the browser.
+- Added a regression test proving sensitive/raw metadata values are absent from serialized StaffAuditEvent JSON while safe activity fields remain present.
+- Commits: `59430b1` (exclude metadata from API JSON), `0b967c5` (serialization regression test). Fresh backend/frontend CI is required before marking this follow-up verified.
+- No database migration or persistent data change was made. Documents and Bulk Import approval gates remain unchanged.
