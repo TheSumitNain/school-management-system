@@ -130,13 +130,13 @@ func (r *AcademicRepository) ListTimetablePeriods(ctx context.Context, actorID, 
 
 func (r *AcademicRepository) SaveTimetablePeriod(ctx context.Context, actorID, schoolID, id, yearID int64, number int, name, startsAt, endsAt string, isBreak bool) (*TimetablePeriod, error) {
 	if r == nil || r.db == nil { return nil, ErrTimetableAccessDenied }
-	name = strings.TrimSpace(name)
-	if yearID <= 0 || number <= 0 || name == "" || len([]rune(name)) > 80 { return nil, ErrInvalidTimetableInput }
 
 	tx, err := r.db.Begin(ctx)
 	if err != nil { return nil, fmt.Errorf("begin timetable period save: %w", err) }
 	defer func() { _ = tx.Rollback(ctx) }()
 	if err := timetableAuthorize(ctx, tx, actorID, schoolID, "timetable.manage"); err != nil { return nil, err }
+	name = strings.TrimSpace(name)
+	if yearID <= 0 || number <= 0 || name == "" || len([]rune(name)) > 80 { return nil, ErrInvalidTimetableInput }
 	var v TimetablePeriod
 	if id == 0 {
 		err = tx.QueryRow(ctx, `INSERT INTO timetable_periods
@@ -252,12 +252,12 @@ func (r *AcademicRepository) ListTeacherWorkloadReport(ctx context.Context,actor
 
 func (r *AcademicRepository) SaveTimetableEntry(ctx context.Context, actorID, schoolID, id, yearID, sectionID, subjectID, teacherID, assignmentID, periodID int64, day int, room *string) (*TimetableEntry,error) {
 	if r==nil||r.db==nil{return nil,ErrTimetableAccessDenied}
-	if yearID<=0||sectionID<=0||subjectID<=0||teacherID<=0||assignmentID<=0||periodID<=0||day<1||day>7{return nil,ErrInvalidTimetableInput}
-	if room!=nil { v:=strings.TrimSpace(*room);if len([]rune(v))>80{return nil,ErrInvalidTimetableInput};if v==""{room=nil}else{room=&v} }
 
 	tx,err:=r.db.Begin(ctx);if err!=nil{return nil,fmt.Errorf("begin timetable entry save: %w",err)}
 	defer func(){_=tx.Rollback(ctx)}()
 	if err:=timetableAuthorize(ctx,tx,actorID,schoolID,"timetable.manage");err!=nil{return nil,err}
+	if yearID<=0||sectionID<=0||subjectID<=0||teacherID<=0||assignmentID<=0||periodID<=0||day<1||day>7{return nil,ErrInvalidTimetableInput}
+	if room!=nil { v:=strings.TrimSpace(*room);if len([]rune(v))>80{return nil,ErrInvalidTimetableInput};if v==""{room=nil}else{room=&v} }
 	var v TimetableEntry
 	if id==0 {
 		err=tx.QueryRow(ctx,`INSERT INTO timetable_entries
