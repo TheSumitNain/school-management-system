@@ -163,7 +163,7 @@ func (r *StaffAttendanceRepository) ListMonthly(ctx context.Context, actorID, sc
 }
 
 func (r *StaffAttendanceRepository) Mark(ctx context.Context, actorID, schoolID, staffID int64, day time.Time, status string, remarks *string) (*StaffAttendanceRecord, error) {
-    if r == nil || r.db == nil || actorID <= 0 || schoolID <= 0 || staffID <= 0 || day.IsZero() || !validStaffAttendanceStatus(status) {
+    if r == nil || r.db == nil || actorID <= 0 || schoolID <= 0 || staffID <= 0 || day.Year() < 1 || !validStaffAttendanceStatus(status) {
         return nil, ErrInvalidStaffAttendance
     }
     status = strings.TrimSpace(status)
@@ -302,7 +302,7 @@ func (r *StaffAttendanceRepository) get(ctx context.Context, schoolID, recordID 
 }
 
 func (r *StaffAttendanceRepository) MarkBulk(ctx context.Context, actorID, schoolID int64, staffIDs []int64, day time.Time, status string, remarks *string) (int, error) {
-    if r == nil || r.db == nil || actorID <= 0 || schoolID <= 0 || len(staffIDs) == 0 || len(staffIDs) > 1000 || day.IsZero() || !validStaffAttendanceStatus(status) {
+    if r == nil || r.db == nil || actorID <= 0 || schoolID <= 0 || len(staffIDs) == 0 || len(staffIDs) > 1000 || day.Year() < 1 || !validStaffAttendanceStatus(status) {
         return 0, ErrInvalidStaffAttendance
     }
     seen := make(map[int64]struct{}, len(staffIDs))
