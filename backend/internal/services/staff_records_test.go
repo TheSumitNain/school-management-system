@@ -228,4 +228,19 @@ func TestStaffRecordsRejectsNonFiniteAndOutOfRangeQualificationScores(t *testing
 	if repo.calls != 1 {
 		t.Fatalf("valid qualification repository calls=%d want=1", repo.calls)
 	}
+
+	maxPrecision := 99999.999
+	maxItem := repository.StaffQualification{
+		QualificationType: "undergraduate",
+		QualificationName: "B.Sc.",
+		Institution: "University",
+		Score: &maxPrecision,
+		ScoreScale: "marks",
+	}
+	if _, err := svc.CreateQualification(context.Background(), 1, 2, 3, maxItem); err != nil {
+		t.Fatalf("maximum NUMERIC(8,3) qualification score rejected: %v", err)
+	}
+	if repo.calls != 2 {
+		t.Fatalf("valid qualification repository calls=%d want=2", repo.calls)
+	}
 }
