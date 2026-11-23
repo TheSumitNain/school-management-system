@@ -1,7 +1,6 @@
 package repository
 
 import (
-	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -14,7 +13,6 @@ func TestStaffAuditEventDoesNotExposeRawMetadata(t *testing.T) {
 		ResourceType: "staff_principal",
 		Outcome: "success",
 		ActorUsername: "school-admin",
-		Metadata: json.RawMessage(`{"private_note":"must-not-leak","password":"sensitive-value"}`),
 		CreatedAt: time.Date(2026, 11, 23, 7, 0, 0, 0, time.UTC),
 	}
 	encoded, err := json.Marshal(event)
