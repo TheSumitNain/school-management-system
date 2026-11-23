@@ -1,3 +1,12 @@
+## Staff attendance and leave reporting expansion (2026-11-23)
+
+- Expanded the Reports workspace with month-filtered staff attendance and leave-request summaries, reusing the existing school-scoped APIs. Attendance totals distinguish present, absent, late and half days; leave totals distinguish approved, pending and rejected requests.
+- Each report loads only when the viewer has its matching `staff.attendance.read` or `staff.leave.read` permission. No read permission means no request is made for that dataset. CSV exports omit attendance remarks and leave reasons, and neutralize spreadsheet formulas.
+- Added Playwright coverage for report rendering, both CSV exports and permission-gated request suppression. CI/browser verification is pending; do not mark this checkpoint passed until the workflow succeeds.
+- No API, backend, schema migration or persistent database changes. The reports use existing monthly attendance and date-range leave endpoints.
+- Code checkpoints: workspace `443735c`; responsive styles `bde8a11`; Reports integration `0a420ad`; E2E `5320ed6`; report-scope clarification `f62b9de`.
+---
+
 ## Staff summary reports workspace (2026-11-23)
 
 - Enabled the Staff Management Reports tab for viewers with live `users.read` permission. It reuses the existing school-scoped staff directory query and shows total staff, active/inactive employment, incomplete profiles and disabled login counts.
