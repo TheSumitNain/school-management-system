@@ -2088,3 +2088,40 @@ test("staff attendance workspace remains usable on mobile, tablet and desktop", 
   await expect(workspace.getByRole("row").filter({ hasText: "Second Attendance Teacher" })).toBeVisible();
   await expect(workspace.getByRole("row").filter({ hasText: "Responsive Attendance Teacher" })).toHaveCount(0);
 });
+
+test("staff monthly attendance summary remains contained and readable across viewports", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 531, school_id: 10, username: "attendance.monthlyresponsive",
+    employee_code: "EMP-MONTH-RESP-01", full_name: "Monthly Responsive Teacher", designation: "Teacher",
+    employment_status: "active", profile_complete: true, status: "active", must_change_password: false,
+  }];
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "staff.attendance.read"]);
+  await page.route("**/api/school/staff-attendance/month?*", async route => {
+    const url = new URL(route.request().url());
+    await route.fulfill({ json: { month: url.searchParams.get("month"), data: [{
+      staff_principal_id: 531, employee_code: "EMP-MONTH-RESP-01", full_name: "Monthly Responsive Teacher",
+      designation: "Teacher", present_days: 18, absent_days: 1, late_days: 2, half_days: 0, records: [],
+    }] } });
+  });
+  await page.getByRole("button", { name: "Attendance", exact: true }).click();
+  const workspace = page.locator(".staff-attendance-panel");
+  await page.getByRole("button", { name: "Monthly summary" }).click();
+  await expect(workspace.getByRole("cell", { name: "Monthly Responsive Teacher" })).toBeVisible();
+  const tableWrap = workspace.locator(".staff-attendance-table-wrap");
+  for (const viewport of [
+    { width: 390, height: 844 },
+    { width: 768, height: 900 },
+    { width: 1280, height: 900 },
+  ]) {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await expect(workspace.getByLabel("Attendance month")).toBeVisible();
+    await expect(workspace.getByRole("button", { name: "Download monthly report" })).toBeVisible();
+    await expect(tableWrap).toBeVisible();
+    if (viewport.width <= 768) {
+      await expect.poll(() => tableWrap.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(true);
+    } else {
+      await expect.poll(() => tableWrap.evaluate(element => element.scrollWidth === element.clientWidth)).toBe(true);
+    }
+  }
+});
