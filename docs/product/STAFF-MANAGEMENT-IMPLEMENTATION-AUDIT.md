@@ -393,6 +393,13 @@ Verification on branch `work`, commit `30270fe0927a6eb3f284d462ddd6dc2b4ca2959e`
 - The Documents tab remains disabled until the user purchases/selects an external storage service and explicitly approves integration. No local-disk storage, upload UI, file APIs or document migration may be introduced before that approval.
 - No persistent database migration or data change was made in these report implementations.
 
+## 38. Directory profile-completeness semantics and onboarding schema gap (2026-11-23)
+
+- Corrected Staff Directory profile-completeness behavior: only an explicit `profile_complete === true` is classified as Complete. Explicit false and missing/unknown values are both surfaced as Incomplete / needing attention, and the Complete filter no longer treats unknown values as complete.
+- Updated the directory export, overview metric, report summary and directory status label to use the same conservative rule. Added Playwright fixture coverage for a legacy/unknown profile-completeness value and assertions for both Complete and Incomplete filters.
+- Frontend build passed on checkpoint `f9b6024`; expanded Playwright and backend CI are pending at the time of this update. Do not mark the new filter assertions verified until CI completes.
+- Confirmed the Add Staff wizard currently requires username and initial password for every employee. The roadmap's optional login Yes/No and profile-only onboarding are target behavior, not currently implemented. Updated the bulk-import architecture gate and roadmap to state that profile-only single-create and bulk import are both blocked by the current `staff_profiles.principal_id -> users` coupling. No credentials, placeholder accounts or migration were introduced.
+
 ## 37. Staff ID cards and bulk import architecture gate (2026-11-23)
 
 - Added a permission-gated ID Cards workspace with multi-select, Classic/Compact/Modern layouts, responsive preview, optional validity date and print-only output. Eligibility requires `employment_status === "active"`, `profile_complete === true`, employee code, full name and designation. Cards include only employee name, designation, employee code, joining date, employment status and optional validity; no phone/email, login details, permissions or QR code are included.
