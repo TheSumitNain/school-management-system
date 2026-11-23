@@ -228,6 +228,21 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
 	})
 	if err!=nil{t.Fatalf("create leave request for history fallback: %v",err)}
 	if err:=leaveRepo.Decide(ctx,actorID,schoolID,leaveRequest.ID,true,nil);err!=nil{t.Fatalf("approve leave request for history fallback: %v",err)}
+	cancelDate:=today.AddDate(0,0,11).Format("2006-01-02")
+	cancelRequest,err:=leaveRepo.CreateRequest(ctx,actorID,schoolID,StaffLeaveRequest{
+		StaffPrincipalID:staff.PrincipalID,LeaveTypeID:leaveType.ID,StartDate:cancelDate,EndDate:cancelDate,
+		DurationType:"full_day",Reason:"Cancellation history integration fixture",
+	})
+	if err!=nil{t.Fatalf("create leave request for cancellation history: %v",err)}
+	if err:=leaveRepo.Cancel(ctx,actorID,schoolID,cancelRequest.ID);err!=nil{t.Fatalf("cancel leave request for history fallback: %v",err)}
+	rejectDate:=today.AddDate(0,0,12).Format("2006-01-02")
+	rejectRequest,err:=leaveRepo.CreateRequest(ctx,actorID,schoolID,StaffLeaveRequest{
+		StaffPrincipalID:staff.PrincipalID,LeaveTypeID:leaveType.ID,StartDate:rejectDate,EndDate:rejectDate,
+		DurationType:"full_day",Reason:"Rejection history integration fixture",
+	})
+	if err!=nil{t.Fatalf("create leave request for rejection history: %v",err)}
+	rejectionComment:="Not approved in integration fixture"
+	if err:=leaveRepo.Decide(ctx,actorID,schoolID,rejectRequest.ID,false,&rejectionComment);err!=nil{t.Fatalf("reject leave request for history fallback: %v",err)}
 	events,err:=repo.ListStaffAuditEvents(ctx,actorID,schoolID,staff.PrincipalID)
 	if err!=nil{t.Fatalf("list staff audit history: %v",err)}
 	if len(events)<9{t.Fatalf("staff audit history events=%d want at least 9 including account creation, six record mutations and two attendance actions",len(events))}
@@ -237,14 +252,19 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
     foundAttendanceUpdate := false
     for _, event := range events { if event.Action == "school.staff_attendance.updated" { foundAttendanceUpdate = true } }
     if !foundAttendanceUpdate { t.Fatal("staff audit history omitted staff attendance update") }
-	foundLeaveActivity,foundSubstitutionActivity,foundApprovedLeaveActivity:=false,false,false
+	foundLeaveActivity,foundSubstitutionActivity:=false,false
+	foundApprovedLeaveActivity,foundRejectedLeaveActivity,foundCancelledLeaveActivity:=false,false,false
 	for _,event:=range events{
 		if event.Action=="staff.leave.requested"{foundLeaveActivity=true}
 		if event.Action=="staff.substitution.assigned"{foundSubstitutionActivity=true}
 		if event.Action=="staff.leave.approved"{foundApprovedLeaveActivity=true}
+		if event.Action=="staff.leave.rejected"{foundRejectedLeaveActivity=true}
+		if event.Action=="staff.leave.cancelled"{foundCancelledLeaveActivity=true}
 	}
 	if !foundLeaveActivity{t.Fatal("staff audit history omitted leave activity")}
-	if !foundApprovedLeaveActivity{t.Fatal("staff audit history omitted leave decision resolved through resource ID")}
+	if !foundApprovedLeaveActivity{t.Fatal("staff audit history omitted leave approval resolved through resource ID")}
+	if !foundRejectedLeaveActivity{t.Fatal("staff audit history omitted leave rejection resolved through resource ID")}
+	if !foundCancelledLeaveActivity{t.Fatal("staff audit history omitted leave cancellation resolved through resource ID")}
 	if !foundSubstitutionActivity{t.Fatal("staff audit history omitted substitution activity")}
 	if _,err:=repo.ListStaffAuditEvents(ctx,actorID,schoolID+1,staff.PrincipalID);!errors.Is(err,ErrStaffRecordAccessDenied){t.Fatalf("cross-school staff audit history error=%v",err)}
 }
