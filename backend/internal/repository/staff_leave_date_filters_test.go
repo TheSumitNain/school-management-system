@@ -27,3 +27,18 @@ func TestValidateStaffLeaveRequestDateFilters(t *testing.T) {
   if !tt.wantErr && err!=nil { t.Fatalf("unexpected error: %v",err) }
  }) }
 }
+
+func TestParseStaffLeaveDate(t *testing.T) {
+ tests:=[]struct{name,value string;wantErr bool}{
+  {name:"valid date",value:"2026-11-23"},
+  {name:"year one",value:"0001-01-01"},
+  {name:"year zero",value:"0000-01-01",wantErr:true},
+  {name:"invalid calendar date",value:"2026-02-30",wantErr:true},
+  {name:"non canonical date",value:"2026-1-01",wantErr:true},
+ }
+ for _,tt:=range tests { t.Run(tt.name,func(t *testing.T){
+  _,err:=parseStaffLeaveDate(tt.value)
+  if tt.wantErr && !errors.Is(err,ErrInvalidStaffLeave) { t.Fatalf("expected ErrInvalidStaffLeave, got %v",err) }
+  if !tt.wantErr && err!=nil { t.Fatalf("unexpected error: %v",err) }
+ }) }
+}
