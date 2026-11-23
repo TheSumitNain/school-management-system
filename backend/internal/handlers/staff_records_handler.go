@@ -68,6 +68,7 @@ func(h *StaffRecordsHandler) CreateQualification(c *gin.Context){
 	staff,ok:=staffRecordTarget(c);if !ok{c.JSON(400,gin.H{"status":"error","message":"Invalid staff principal ID"});return}
 	var item repository.StaffQualification;if err:=c.ShouldBindJSON(&item);err!=nil{c.JSON(400,gin.H{"status":"error","message":"Invalid qualification request"});return}
 	saved,err:=h.service.CreateQualification(c.Request.Context(),actor,school,staff,item);if err!=nil{h.fail(c,err);return}
+	if saved == nil { c.JSON(http.StatusInternalServerError,gin.H{"status":"error","message":"Unable to save staff qualification"}); return }
 	c.JSON(201,gin.H{"status":"success","qualification":saved})
 }
 func(h *StaffRecordsHandler) ListCertifications(c *gin.Context){
@@ -83,6 +84,7 @@ func(h *StaffRecordsHandler) CreateCertification(c *gin.Context){
 	staff,ok:=staffRecordTarget(c);if !ok{c.JSON(400,gin.H{"status":"error","message":"Invalid staff principal ID"});return}
 	var item repository.StaffCertification;if err:=c.ShouldBindJSON(&item);err!=nil{c.JSON(400,gin.H{"status":"error","message":"Invalid certification request"});return}
 	saved,err:=h.service.CreateCertification(c.Request.Context(),actor,school,staff,item);if err!=nil{h.fail(c,err);return}
+	if saved == nil { c.JSON(http.StatusInternalServerError,gin.H{"status":"error","message":"Unable to save staff certification"}); return }
 	c.JSON(201,gin.H{"status":"success","certification":saved})
 }
 func(h *StaffRecordsHandler) ListExperience(c *gin.Context){
@@ -98,6 +100,7 @@ func(h *StaffRecordsHandler) CreateExperience(c *gin.Context){
 	staff,ok:=staffRecordTarget(c);if !ok{c.JSON(400,gin.H{"status":"error","message":"Invalid staff principal ID"});return}
 	var item repository.StaffExperience;if err:=c.ShouldBindJSON(&item);err!=nil{c.JSON(400,gin.H{"status":"error","message":"Invalid experience request"});return}
 	saved,err:=h.service.CreateExperience(c.Request.Context(),actor,school,staff,item);if err!=nil{h.fail(c,err);return}
+	if saved == nil { c.JSON(http.StatusInternalServerError,gin.H{"status":"error","message":"Unable to save staff experience"}); return }
 	c.JSON(201,gin.H{"status":"success","experience":saved})
 }
 
@@ -111,6 +114,7 @@ func(h *StaffRecordsHandler) UpdateQualification(c *gin.Context){
 	record,ok:=staffRecordID(c);if !ok{c.JSON(400,gin.H{"status":"error","message":"Invalid qualification record ID"});return}
 	var item repository.StaffQualification;if err:=c.ShouldBindJSON(&item);err!=nil{c.JSON(400,gin.H{"status":"error","message":"Invalid qualification request"});return}
 	saved,err:=h.service.UpdateQualification(c.Request.Context(),actor,school,staff,record,item);if err!=nil{h.fail(c,err);return}
+	if saved == nil { c.JSON(http.StatusInternalServerError,gin.H{"status":"error","message":"Unable to update staff qualification"}); return }
 	c.JSON(200,gin.H{"status":"success","qualification":saved})
 }
 func(h *StaffRecordsHandler) UpdateCertification(c *gin.Context){
@@ -120,6 +124,7 @@ func(h *StaffRecordsHandler) UpdateCertification(c *gin.Context){
 	record,ok:=staffRecordID(c);if !ok{c.JSON(400,gin.H{"status":"error","message":"Invalid certification record ID"});return}
 	var item repository.StaffCertification;if err:=c.ShouldBindJSON(&item);err!=nil{c.JSON(400,gin.H{"status":"error","message":"Invalid certification request"});return}
 	saved,err:=h.service.UpdateCertification(c.Request.Context(),actor,school,staff,record,item);if err!=nil{h.fail(c,err);return}
+	if saved == nil { c.JSON(http.StatusInternalServerError,gin.H{"status":"error","message":"Unable to update staff certification"}); return }
 	c.JSON(200,gin.H{"status":"success","certification":saved})
 }
 func(h *StaffRecordsHandler) UpdateExperience(c *gin.Context){
@@ -129,6 +134,7 @@ func(h *StaffRecordsHandler) UpdateExperience(c *gin.Context){
 	record,ok:=staffRecordID(c);if !ok{c.JSON(400,gin.H{"status":"error","message":"Invalid experience record ID"});return}
 	var item repository.StaffExperience;if err:=c.ShouldBindJSON(&item);err!=nil{c.JSON(400,gin.H{"status":"error","message":"Invalid experience request"});return}
 	saved,err:=h.service.UpdateExperience(c.Request.Context(),actor,school,staff,record,item);if err!=nil{h.fail(c,err);return}
+	if saved == nil { c.JSON(http.StatusInternalServerError,gin.H{"status":"error","message":"Unable to update staff experience"}); return }
 	c.JSON(200,gin.H{"status":"success","experience":saved})
 }
 
