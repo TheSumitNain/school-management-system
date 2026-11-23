@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"school-management-system/internal/models"
 )
 
 var (
@@ -58,45 +59,75 @@ type StaffExperience struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-func authorizeStaffRecord(ctx context.Context, db repositoryDB, actorID, schoolID, staffID int64, permission string) error {
+type staffRecordAuthorizationDB interface {
+	authorizationQueryer
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+}
+
+// authorizeStaffRecordsPermission uses the canonical live-permission resolver
+// so exact delegation linkage and ALLOW/DENY override precedence stay aligned
+// with the rest of the RBAC system.
+func authorizeStaffRecordsPermission(ctx context.Context, db staffRecordAuthorizationDB, actorID, schoolID int64, permission string) error {
+	if db == nil || actorID <= 0 || schoolID <= 0 || permission == "" {
+		return ErrStaffRecordAccessDenied
+	}
+	var principal models.AuthPrincipal
+	err := db.QueryRow(ctx, `
+		SELECT ap.id, ap.principal_type, ap.status, ap.token_version, actor.school_id
+		FROM auth_principals ap
+		JOIN users actor ON actor.principal_id = ap.id
+		JOIN schools s ON s.id = actor.school_id
+		WHERE ap.id = $1 AND ap.principal_type = 'staff' AND ap.status = 'active'
+		  AND actor.status = 'active' AND actor.school_id = $2 AND s.status = 'active'
+		  AND EXISTS (
+		    SELECT 1 FROM principal_roles pr
+		    JOIN roles role ON role.id = pr.role_id
+		    WHERE pr.principal_id = ap.id AND pr.revoked_at IS NULL
+		      AND role.school_id = $2 AND role.scope_type = 'school'
+		      AND role.principal_type = 'staff' AND role.role_key = 'school_admin'
+		      AND role.is_system = TRUE
+		  )
+	`, actorID, schoolID).Scan(&principal.ID, &principal.Type, &principal.Status, &principal.TokenVersion, &principal.SchoolID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrStaffRecordAccessDenied
+	}
+	if err != nil {
+		return fmt.Errorf("load staff-record authorization principal: %w", err)
+	}
+	permissions, err := loadEffectivePermissions(ctx, db, &principal)
+	if err != nil {
+		return fmt.Errorf("resolve staff-record permission: %w", err)
+	}
+	for _, key := range permissions {
+		if key == permission {
+			return nil
+		}
+	}
+	return ErrStaffRecordAccessDenied
+}
+
+func authorizeStaffRecord(ctx context.Context, db staffRecordAuthorizationDB, actorID, schoolID, staffID int64, permission string) error {
 	if actorID <= 0 || schoolID <= 0 || staffID <= 0 {
 		return ErrStaffRecordAccessDenied
 	}
-	var allowed bool
+	if err := authorizeStaffRecordsPermission(ctx, db, actorID, schoolID, permission); err != nil {
+		return err
+	}
+	var targetExists bool
 	err := db.QueryRow(ctx, `
 		SELECT EXISTS (
-			SELECT 1
-			FROM auth_principals ap
-			JOIN users actor ON actor.principal_id = ap.id
-			JOIN schools s ON s.id = actor.school_id
-			JOIN principal_roles pr ON pr.principal_id = ap.id AND pr.revoked_at IS NULL
-			JOIN roles r ON r.id = pr.role_id
-			JOIN role_permissions rp ON rp.role_id = r.id
-			JOIN permissions p ON p.id = rp.permission_id
-			WHERE ap.id = $1 AND ap.principal_type = 'staff' AND ap.status = 'active'
-			  AND actor.status = 'active' AND actor.school_id = $2 AND s.status = 'active'
-			  AND r.school_id = $2 AND r.scope_type = 'school' AND r.principal_type = 'staff'
-			  AND r.role_key = 'school_admin' AND r.is_system = TRUE
-			  AND p.permission_key = $4 AND p.scope_type = 'school' AND p.is_active = TRUE
-			  AND NOT EXISTS (
-			      SELECT 1 FROM user_permission_overrides denied
-			      WHERE denied.principal_id = ap.id AND denied.school_id = $2
-			        AND denied.permission_id = p.id AND denied.effect = 'deny'
-			  )
-			  AND EXISTS (
-			      SELECT 1 FROM staff_profiles target
-			      JOIN users target_user ON target_user.principal_id = target.principal_id
-			                                AND target_user.school_id = target.school_id
-			      JOIN auth_principals target_principal ON target_principal.id = target.principal_id
-			      WHERE target.principal_id = $3 AND target.school_id = $2
-			        AND target_principal.principal_type = 'staff'
-			  )
+			SELECT 1 FROM staff_profiles target
+			JOIN auth_principals target_principal ON target_principal.id = target.principal_id
+			JOIN users target_user ON target_user.principal_id = target.principal_id
+			                     AND target_user.school_id = target.school_id
+			WHERE target.principal_id = $1 AND target.school_id = $2
+			  AND target_principal.principal_type = 'staff'
 		)
-	`, actorID, schoolID, staffID, permission).Scan(&allowed)
+	`, staffID, schoolID).Scan(&targetExists)
 	if err != nil {
-		return fmt.Errorf("authorize staff profile records: %w", err)
+		return fmt.Errorf("verify staff-record target: %w", err)
 	}
-	if !allowed {
+	if !targetExists {
 		return ErrStaffRecordAccessDenied
 	}
 	return nil
