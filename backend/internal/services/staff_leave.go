@@ -11,6 +11,14 @@ import (
 
 var ErrInvalidStaffLeave = errors.New("invalid staff leave input")
 
+func parseStaffManagementDate(value string) (time.Time, error) {
+	parsed, err := time.Parse("2006-01-02", value)
+	if err != nil || parsed.Year() < 1 || parsed.Format("2006-01-02") != value {
+		return time.Time{}, ErrInvalidStaffLeave
+	}
+	return parsed, nil
+}
+
 type staffLeaveRepository interface {
 	ListTypes(context.Context, int64, int64) ([]repository.StaffLeaveType, error)
 	SaveType(context.Context, int64, int64, int64, repository.StaffLeaveType) (*repository.StaffLeaveType, error)
@@ -60,7 +68,7 @@ func (s *StaffLeaveService) ListRequests(ctx context.Context, actor, school int6
 		return nil, ErrInvalidStaffLeave
 	}
 	if onDate != "" {
-		if _, err := time.Parse("2006-01-02", onDate); err != nil {
+		if _, err := parseStaffManagementDate(onDate); err != nil {
 			return nil, ErrInvalidStaffLeave
 		}
 	}
@@ -68,8 +76,8 @@ func (s *StaffLeaveService) ListRequests(ctx context.Context, actor, school int6
 		return nil, ErrInvalidStaffLeave
 	}
 	if fromDate != "" {
-		start, startErr := time.Parse("2006-01-02", fromDate)
-		end, endErr := time.Parse("2006-01-02", toDate)
+		start, startErr := parseStaffManagementDate(fromDate)
+		end, endErr := parseStaffManagementDate(toDate)
 		if startErr != nil || endErr != nil || end.Before(start) || end.Sub(start) > 366*24*time.Hour {
 			return nil, ErrInvalidStaffLeave
 		}
@@ -81,11 +89,11 @@ func (s *StaffLeaveService) CreateRequest(ctx context.Context, actor, school int
 	if s == nil || s.repo == nil || actor <= 0 || school <= 0 || item.StaffPrincipalID <= 0 || item.LeaveTypeID <= 0 {
 		return nil, ErrInvalidStaffLeave
 	}
-	start, err := time.Parse("2006-01-02", item.StartDate)
+	start, err := parseStaffManagementDate(item.StartDate)
 	if err != nil {
 		return nil, ErrInvalidStaffLeave
 	}
-	end, err := time.Parse("2006-01-02", item.EndDate)
+	end, err := parseStaffManagementDate(item.EndDate)
 	if err != nil || end.Before(start) {
 		return nil, ErrInvalidStaffLeave
 	}
@@ -140,11 +148,11 @@ func (s *StaffLeaveService) ListHolidays(ctx context.Context, actor, school int6
 	if s == nil || s.repo == nil || actor <= 0 || school <= 0 {
 		return nil, ErrInvalidStaffLeave
 	}
-	start, err := time.Parse("2006-01-02", from)
+	start, err := parseStaffManagementDate(from)
 	if err != nil {
 		return nil, ErrInvalidStaffLeave
 	}
-	end, err := time.Parse("2006-01-02", to)
+	end, err := parseStaffManagementDate(to)
 	if err != nil || end.Before(start) || end.Sub(start) > 366*24*time.Hour {
 		return nil, ErrInvalidStaffLeave
 	}
@@ -155,7 +163,7 @@ func (s *StaffLeaveService) SaveHoliday(ctx context.Context, actor, school, id i
 	if s == nil || s.repo == nil || actor <= 0 || school <= 0 || id < 0 {
 		return nil, ErrInvalidStaffLeave
 	}
-	if _, err := time.Parse("2006-01-02", item.HolidayDate); err != nil {
+	if _, err := parseStaffManagementDate(item.HolidayDate); err != nil {
 		return nil, ErrInvalidStaffLeave
 	}
 	item.Name = strings.TrimSpace(item.Name)
