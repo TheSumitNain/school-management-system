@@ -541,7 +541,7 @@ Verification on branch `work`, commit `30270fe0927a6eb3f284d462ddd6dc2b4ca2959e`
 - No migration or persistent database change.
 
 
-## 54. Staff attendance target authorization order (2026-11-23)
+## 55. Staff attendance target authorization order (2026-11-23)
 
 - `StaffAttendanceRepository.Mark` now evaluates the applicable live attendance permission inside the write transaction before checking whether the requested staff profile exists and is active.
 - This prevents an actor without `staff.attendance.mark` / `staff.attendance.correct_past` from distinguishing an unknown or inactive staff principal from an existing active target through the attendance-mark result.
