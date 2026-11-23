@@ -327,14 +327,9 @@ test("staff directory filters independently narrow employment, login account and
   await expect(page.getByRole("button", { name: "Profile Pending" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Profile Unknown" })).toBeVisible();
 
-  // Start a fresh directory view before checking the complementary filter
-  // value; this avoids coupling the assertion to a popup's post-selection focus.
-  await page.reload();
-  await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await expect(page.getByText("5 of 5 staff members")).toBeVisible();
-  const completeProfileFilter = page.locator(".staff-directory-filters .app-select").nth(2).locator("button.app-select-trigger");
-  await expect(completeProfileFilter).toBeVisible();
-  await completeProfileFilter.click();
+  // Reuse the same trigger after the custom Select closes and restores focus.
+  await expect(profileCompletenessFilter).toHaveAttribute("aria-expanded", "false");
+  await profileCompletenessFilter.click();
   await page.getByRole("option", { name: "Complete", exact: true }).click();
   await expect(page.getByText("3 of 5 staff members")).toBeVisible();
   await expect(page.getByRole("button", { name: "Active Enabled" })).toBeVisible();
