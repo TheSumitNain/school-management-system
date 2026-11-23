@@ -112,14 +112,15 @@ func (r *AcademicRepository) ListStaffSubstitutions(ctx context.Context,actorID,
 }
 
 func (r *AcademicRepository) CreateStaffSubstitution(ctx context.Context,actorID,schoolID,timetableEntryID,originalTeacherID,substituteTeacherID int64,coverDate string,leaveRequestID *int64,reason string)(*StaffSubstitution,error) {
-	if r==nil||r.db==nil||actorID<=0||schoolID<=0||timetableEntryID<=0||originalTeacherID<=0||substituteTeacherID<=0||originalTeacherID==substituteTeacherID{return nil,ErrInvalidStaffSubstitution}
+	if r==nil||r.db==nil||actorID<=0||schoolID<=0{return nil,ErrInvalidStaffSubstitution}
+	tx,err:=r.db.Begin(ctx);if err!=nil{return nil,fmt.Errorf("begin staff substitution: %w",err)}
+	defer func(){_=tx.Rollback(ctx)}()
+	if err:=staffSubstitutionAuthorize(ctx,tx,actorID,schoolID,"staff.substitutions.manage");err!=nil{return nil,err}
+	if timetableEntryID<=0||originalTeacherID<=0||substituteTeacherID<=0||originalTeacherID==substituteTeacherID{return nil,ErrInvalidStaffSubstitution}
 	reason=strings.TrimSpace(reason)
 	if len([]rune(reason))==0||len([]rune(reason))>1000{return nil,ErrInvalidStaffSubstitution}
 	parsedCoverDate,err:=time.Parse("2006-01-02",coverDate)
 	if err!=nil||parsedCoverDate.Year()<1||parsedCoverDate.Format("2006-01-02")!=coverDate{return nil,ErrInvalidStaffSubstitution}
-	tx,err:=r.db.Begin(ctx);if err!=nil{return nil,fmt.Errorf("begin staff substitution: %w",err)}
-	defer func(){_=tx.Rollback(ctx)}()
-	if err:=staffSubstitutionAuthorize(ctx,tx,actorID,schoolID,"staff.substitutions.manage");err!=nil{return nil,err}
 	var periodID int64
 	err=tx.QueryRow(ctx,`SELECT period_id FROM timetable_entries
 		WHERE id=$1 AND school_id=$2 AND teacher_principal_id=$3`,timetableEntryID,schoolID,originalTeacherID).Scan(&periodID)
