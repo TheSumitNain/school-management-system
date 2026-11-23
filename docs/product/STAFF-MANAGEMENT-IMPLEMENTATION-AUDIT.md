@@ -487,3 +487,13 @@ Verification on branch `work`, commit `30270fe0927a6eb3f284d462ddd6dc2b4ca2959e`
 - Strengthened nil-receiver and nil-service regression tests to parse the response as JSON and verify the expected unavailable message for all nine leave/holiday actions.
 - Backend CI [45135360996](https://github.com/TheSumitNain/school-management-system/actions/runs/45135360996) **PASS** on `5f3935bb`: ephemeral PostgreSQL initialization and all migrations, Go tests including PostgreSQL integration, and `go vet`.
 - No schema migration or persistent database change.
+
+
+## 49. Staff route permissions and School Admin substitution access (2026-11-23)
+
+- Extended the live School Admin permission allowlist to include the two dedicated staff substitution permissions already provisioned by the substitution migration. Without this runtime allowlist entry, database grants were filtered out and a School Admin could be incorrectly denied substitution access.
+- Added a PostgreSQL integration assertion that a School Admin's effective permission set includes `staff.substitutions.read` and `staff.substitutions.manage`.
+- Added route-level negative/positive permission tests for leave types and requests, holiday calendar, substitution list/create/cancel, staff qualifications, certifications, experience records, reports and staff audit history. Denied requests must stop at HTTP 403; requests with the dedicated permission reach the handler.
+- Backend CI [45137329371](https://github.com/TheSumitNain/school-management-system/actions/runs/45137329371) **PASS** on `20814d1f`: ephemeral PostgreSQL migrations, all Go tests including PostgreSQL integration, and `go vet`.
+- Hardened the RBAC HTTP integration test's generated fixture suffix to remain collision-resistant while keeping every generated username within the database's 32-character limit.
+- No persistent database change or migration was made.
