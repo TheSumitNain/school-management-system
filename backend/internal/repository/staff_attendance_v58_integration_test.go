@@ -2,9 +2,12 @@ package repository
 
 import (
     "context"
+    "errors"
     "testing"
     "time"
     "strings"
+
+    schooltime "school-management-system/internal/schooltime"
 )
 
 func TestStaffAttendanceV58SchemaAndPermissionsPostgresIntegration(t *testing.T) {
@@ -103,4 +106,32 @@ func TestStaffAttendanceRejectsDuplicatePerSchoolDatePostgresIntegration(t *test
         t.Fatalf("inspect staff attendance uniqueness: %v", err)
     }
     if constraints != 1 { t.Fatalf("staff attendance uniqueness constraints=%d want=1", constraints) }
+}
+
+
+// An actor without attendance permissions must not learn whether a staff
+// principal exists or is active through the attendance-marking result.
+func TestStaffAttendanceMarkAuthorizesBeforeResolvingTargetPostgresIntegration(t *testing.T) {
+    _, pool, actorUserID := newPostgresIntegrationRepository(t)
+    ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+    defer cancel()
+
+    var actorPrincipalID, schoolID int64
+    if err := pool.QueryRow(ctx, `
+        SELECT principal_id, school_id FROM users WHERE id = $1
+    `, actorUserID).Scan(&actorPrincipalID, &schoolID); err != nil {
+        t.Fatalf("load unprivileged attendance actor: %v", err)
+    }
+
+    date, err := time.Parse("2006-01-02", schooltime.TodayDate())
+    if err != nil {
+        t.Fatalf("parse school-local attendance date: %v", err)
+    }
+
+    _, err = NewStaffAttendanceRepository(pool).Mark(
+        ctx, actorPrincipalID, schoolID, 9_999_999_999, date, "present", nil,
+    )
+    if !errors.Is(err, ErrStaffAttendanceAccessDenied) {
+        t.Fatalf("unauthorized attendance mark error = %v, want ErrStaffAttendanceAccessDenied (target existence must not be disclosed)", err)
+    }
 }
