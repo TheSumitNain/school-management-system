@@ -574,3 +574,9 @@ Verification on branch `work`, commit `30270fe0927a6eb3f284d462ddd6dc2b4ca2959e`
 - The test fixture was aligned with the actual `/api/school/staff-leave/requests` route in commit `965e5d2`.
 - Frontend CI [45143798048](https://github.com/TheSumitNain/school-management-system/actions/runs/45143798048) **PASS** (production build and Playwright suite); Backend CI [45143798043](https://github.com/TheSumitNain/school-management-system/actions/runs/45143798043) **PASS** (ephemeral PostgreSQL migrations, Go/PostgreSQL integration suite and `go vet`).
 - No persistent database migration or data change. Staff Management remains subject to the consolidated final browser acceptance and remaining security review. Bulk Import and document upload remain deferred under their existing approval constraints.
+
+## 2026-11-23 implementation checkpoint — staff attendance responsive acceptance
+
+- Added a Playwright browser acceptance test for the Staff Attendance workspace at 390px mobile, 768px tablet and 1280px desktop. It verifies no page-level horizontal overflow, that search/status controls and attendance actions remain available, that the data table stays within its own horizontal-scroll container, and that employee search continues to work.
+- Frontend CI [45145808505](https://github.com/TheSumitNain/school-management-system/actions/runs/45145808505) **PASS** (TypeScript, production build and full Playwright browser suite) and Backend CI [45145808565](https://github.com/TheSumitNain/school-management-system/actions/runs/45145808565) **PASS** (ephemeral PostgreSQL migrations, Go/PostgreSQL integration suite and go vet) on commit `e7ce7a33`.
+- No persistent database migration or data change. Staff Management remains subject to the consolidated final browser acceptance and remaining security review. Bulk Import and staff document storage remain deferred under their existing approval constraints.
