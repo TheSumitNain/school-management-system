@@ -505,3 +505,12 @@ Verification on branch `work`, commit `30270fe0927a6eb3f284d462ddd6dc2b4ca2959e`
 - Tests verify missing permission returns HTTP 403 before the handler, while the exact permission reaches the handler.
 - Backend CI [45137945323](https://github.com/TheSumitNain/school-management-system/actions/runs/45137945323) **PASS** on `cc94c773`: ephemeral PostgreSQL migrations, full Go test suite including PostgreSQL integration, and `go vet`.
 - No migration or persistent database change.
+
+
+## 51. Timetable write authorization transaction boundary (2026-11-23)
+
+- Moved live `timetable.manage` authorization for period create/update, timetable-entry create/update and timetable-entry delete into the same PostgreSQL transaction context as the corresponding write and audit event.
+- Preserved authorization-first behavior: the permission check runs before field validation and before any write, so callers without permission do not receive validation-specific responses from the repository.
+- This keeps the authorization evaluation and write in one transaction context; it does not claim serializable isolation or a lock against every concurrent permission-revocation race.
+- Backend CI [45138373886](https://github.com/TheSumitNain/school-management-system/actions/runs/45138373886) **PASS** on `04590b9d`: ephemeral PostgreSQL migrations, full Go suite including PostgreSQL integration, and `go vet`.
+- No migration or persistent database change.
