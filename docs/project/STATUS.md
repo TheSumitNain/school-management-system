@@ -1,3 +1,12 @@
+## Staff directory CSV export — formula-injection regression hardening (2026-11-23)
+
+- Extended the existing Staff Directory CSV browser acceptance fixture to use a staff name beginning with a tab followed by a spreadsheet formula. The assertion verifies that the exported cell is prefixed with a protective apostrophe while filtered rows remain excluded and the UTF-8 BOM is preserved.
+- The existing export sanitizer already protects formula-leading values after leading whitespace; this checkpoint adds explicit regression coverage for the tab-prefixed case. No runtime code, API, database schema or persistent database changed.
+- Commit: [774a74c](https://github.com/TheSumitNain/school-management-system/commit/774a74c12805a71134ae9827b80f78c9ff37ef7f).
+- Frontend CI for this test-only checkpoint is not yet confirmed. Do not mark this new assertion verified until the browser suite passes.
+
+---
+
 ## Staff Attendance — core register verified (2026-11-22)
 
 - Audited the existing student attendance module and kept it separate; staff attendance uses its own table, routes, API client and Staff Management workspace tab.
