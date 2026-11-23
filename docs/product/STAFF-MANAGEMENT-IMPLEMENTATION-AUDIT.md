@@ -446,7 +446,7 @@ Verification on branch `work`, commit `30270fe0927a6eb3f284d462ddd6dc2b4ca2959e`
 
 ## 43. Staff audit metadata response minimization (2026-11-23)
 
-- Staff History & Activity needs only event action, resource type, outcome, actor username and timestamp. The repository still scans raw metadata internally, but the `metadata` field is now excluded from JSON serialization so arbitrary audit payloads are not sent to the browser.
+- Staff History & Activity needs only event action, resource type, outcome, actor username and timestamp. Raw audit metadata is no longer selected or scanned as result data; it may still be referenced in SQL predicates to identify relevant events. Arbitrary audit payloads are not sent to the browser.
 - Added a regression test proving sensitive/raw metadata values are absent from serialized StaffAuditEvent JSON while safe activity fields remain present.
-- Commits: `59430b1` and `80847f6` (exclude raw metadata; latest change also removes it from the SELECT projection and scan), `0b967c5`, `70ff326` and `6f5cc96` (serialization regression test). Fresh backend CI is required before marking this follow-up verified.
+- Commits: `59430b1` and `80847f6` (remove metadata from response/result projection), `0b967c5`, `70ff326` and `6f5cc96` (serialization regression test), and `f1be661` (remove unused import). Backend CI [45131300374](https://github.com/TheSumitNain/school-management-system/actions/runs/45131300374) **PASS**: all migrations on ephemeral PostgreSQL, Go tests including PostgreSQL integration, and `go vet`.
 - No database migration or persistent data change was made. Documents and Bulk Import approval gates remain unchanged.
