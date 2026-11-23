@@ -12,6 +12,7 @@ import { StaffLeaveWorkspace } from "../components/StaffLeaveWorkspace";
 import { StaffSubstitutionWorkspace } from "../components/StaffSubstitutionWorkspace";
 import { StaffWorkloadReportWorkspace } from "../components/StaffWorkloadReportWorkspace";
 import { StaffOperationalReportsWorkspace } from "../components/StaffOperationalReportsWorkspace";
+import { StaffIDCardsWorkspace } from "../components/StaffIDCardsWorkspace";
 import {
   useCreateSchoolStaffMutation, useDisableSchoolStaffMutation, useEnableSchoolStaffMutation,
   useResetSchoolStaffPasswordMutation, useSchoolStaffQuery, useUpdateSchoolStaffMutation,
@@ -66,7 +67,7 @@ export function StaffManagementPage({ permissions }: Props) {
   const disable = useDisableSchoolStaffMutation();
   const enable = useEnableSchoolStaffMutation();
   const reset = useResetSchoolStaffPasswordMutation();
-  const [activeTab, setActiveTab] = useState<"overview" | "directory" | "reports" | "assignments" | "attendance" | "leave" | "substitutions" | "workloadReport">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "directory" | "reports" | "assignments" | "attendance" | "leave" | "substitutions" | "workloadReport" | "idCards">("overview");
   const [search, setSearch] = useState("");
   const [employmentFilter, setEmploymentFilter] = useState("all");
   const [accountFilter, setAccountFilter] = useState("all");
@@ -367,6 +368,7 @@ export function StaffManagementPage({ permissions }: Props) {
         {permissions.includes("timetable.read") && <button type="button" className={activeTab === "workloadReport" ? "active" : ""} aria-current={activeTab === "workloadReport" ? "page" : undefined} onClick={() => setActiveTab("workloadReport")}><BarChart3 size={16}/> Workload Report</button>}
         {!(permissions.includes("staff.leave.read") || permissions.includes("staff.holidays.read") || permissions.includes("staff.holidays.manage")) && <button type="button" className="upcoming" disabled title="Leave read permission required to open this workspace"><CalendarDays size={16}/> Leave <span>Restricted</span></button>}
         {permissions.includes("users.read") && <button type="button" className={activeTab === "reports" ? "active" : ""} aria-current={activeTab === "reports" ? "page" : undefined} onClick={() => setActiveTab("reports")}><FileText size={16}/> Reports</button>}
+        {permissions.includes("users.read") && <button type="button" className={activeTab === "idCards" ? "active" : ""} aria-current={activeTab === "idCards" ? "page" : undefined} onClick={() => setActiveTab("idCards")}><FileText size={16}/> ID Cards</button>}
       </nav>
 
       {feedback && (action === null || feedback.kind === "success") && <div className={`staff-feedback ${feedback.kind}`} role="status">{feedback.message}</div>}
@@ -456,6 +458,7 @@ export function StaffManagementPage({ permissions }: Props) {
         </>}
       </section>}
       {activeTab === "reports" && permissions.includes("users.read") && <StaffOperationalReportsWorkspace permissions={permissions}/>}
+      {activeTab === "idCards" && permissions.includes("users.read") && <StaffIDCardsWorkspace staff={staff}/>}
       {activeTab === "directory" && <section className="table-panel">
         <div className="toolbar staff-directory-toolbar"><div><h2>All staff</h2><small>{filtered.length} of {staff.length} staff members</small></div><div className="staff-directory-controls"><button type="button" className="staff-directory-export" onClick={() => exportStaffDirectoryCSV(filtered)} disabled={filtered.length===0 || !permissions.includes("users.read")}><Download size={14}/> Export CSV</button><div className="search"><Search size={16}/><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search by name, code, designation or username" aria-label="Search staff by name, code, designation or username"/></div><div className="staff-directory-filters"><label>Employment<Select value={employmentFilter} onChange={setEmploymentFilter} ariaLabel="Filter by employment status" options={[{value:"all",label:"All employment"},{value:"active",label:"Active"},{value:"inactive",label:"Inactive"}]}/></label><label>Login account<Select value={accountFilter} onChange={setAccountFilter} ariaLabel="Filter by login account status" options={[{value:"all",label:"All accounts"},{value:"enabled",label:"Enabled"},{value:"disabled",label:"Disabled"}]}/></label><label>Profile<Select value={profileFilter} onChange={setProfileFilter} ariaLabel="Filter by profile completeness" options={[{value:"all",label:"All profiles"},{value:"complete",label:"Complete"},{value:"incomplete",label:"Incomplete"}]}/></label></div></div></div>
         {query.isPending ? <div className="table-message" aria-live="polite">Loading staff accounts…</div>
