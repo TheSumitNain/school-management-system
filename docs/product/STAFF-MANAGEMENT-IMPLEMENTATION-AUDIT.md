@@ -433,3 +433,12 @@ Verification on branch `work`, commit `30270fe0927a6eb3f284d462ddd6dc2b4ca2959e`
 - Removed the Remarks column and its source values from the monthly export. The export remains a bounded monthly view of attendance summaries/entries plus approved leave and holiday context; leave reasons are not exported.
 - Extended the existing attendance Playwright scenario with unique sentinel values for a private attendance remark and a private leave reason. It downloads the CSV and asserts neither sentinel is present while the employee code remains present.
 - Commits: `9800956` (privacy removal), `bfc813e` and `41e92b7` (CSV row alignment), `a6e9684` (regression test). Fresh CI for the latest combined branch head is still required.
+
+
+## 42. Staff substitution authorization and attendance CSV test corrections (2026-11-23)
+
+- Staff substitution create and cancel operations now pass the transaction handle to the live RBAC evaluator before performing the mutation. This places authorization evaluation in the same transaction context as the write. The change does not claim serializable isolation or eliminate every possible concurrent permission-revocation race.
+- The first fresh Frontend CI after the monthly attendance CSV privacy change built successfully; 83 Playwright tests passed and two test assertions failed. The product export remained correct: the BOM test was checking a literal escaped sequence rather than the BOM character, and formula-injection coverage was still attached to the removed remarks field.
+- Corrected the BOM assertion to use the U+FEFF character and moved the formula-injection fixture to an exported staff-name value. Private attendance remarks and leave reasons remain excluded from the monthly CSV.
+- Commits: `b06ce37` (transaction-context authorization), `f64296f` (BOM assertion), `78eac8f` (formula-injection test fixture). Latest CI for `78eac8f` must complete successfully before acceptance is marked green.
+- No persistent database changes or migrations were made. Documents and Bulk Import remain subject to their existing approval gates.
