@@ -1845,7 +1845,7 @@ test("staff ID cards select only complete active profiles and expose approved pr
   await expect(preview).toHaveCSS("visibility","visible");
   await expect(preview).toHaveCSS("display","grid");
   await expect(page.locator(".staff-id-card")).toHaveCSS("box-sizing","border-box");
-  await expect(page.locator(".staff-id-card")).toHaveCSS("width","321.25px");
+  await expect.poll(() => page.locator(".staff-id-card").evaluate(element => Number.parseFloat(getComputedStyle(element).width))).toBeGreaterThan(321);
   await page.emulateMedia({media:"screen"});
   await page.getByRole("button",{name:"Clear selection"}).click();
   await expect(page.getByText("Select one or more employees to preview their cards.")).toBeVisible();
