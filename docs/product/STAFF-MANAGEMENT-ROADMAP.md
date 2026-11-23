@@ -8,6 +8,9 @@ This document defines what Staff Management will build, in what order, the scree
 
 ## 1. Product decisions and goals
 
+**Schema implementation gate:** The current principal-keyed staff profile cannot support the approved profile-without-login workflow. The architecture proposal and dependent-table migration sequence are documented in [Staff Identity and Profile Schema Design](../backend/STAFF-IDENTITY-SCHEMA-DESIGN.md). This is not an approved migration: profile-only onboarding and Bulk Import remain blocked until the explicit decisions in that design are reviewed and approved. No database has been changed.
+
+
 Build one school-scoped **Staff Management** module for both teaching and non-teaching employees. The first implementation and acceptance focus on teacher workflows, while the underlying profile model must support non-teaching employees without a redesign.
 
 The module must let a School Admin maintain employee records; manage personal, employment, qualification and document information; assign teachers to academic years, classes, sections and subjects; manage login accounts and access separately from employment; preserve lifecycle history; and progressively manage attendance, leave, workload, reports, ID cards and payroll.
