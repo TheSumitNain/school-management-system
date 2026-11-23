@@ -52,3 +52,18 @@
 .timetable-form-actions{display:flex;justify-content:flex-end;gap:9px;padding-top:8px;border-top:1px solid var(--color-border)}
 .timetable-form .app-select{width:100%}
 @media(max-width:760px){.timetable-page .heading{flex-direction:column;align-items:stretch}.timetable-actions{width:100%}.timetable-actions button{flex:1}.timetable-filters{align-items:stretch}.timetable-filters label{min-width:100%;}.timetable-refresh{margin-left:0;width:100%}.timetable-time-fields{grid-template-columns:1fr}}
+
+.timetable-slot-review{display:grid;gap:10px;padding:12px;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface-muted)}
+.timetable-slot-review-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.timetable-slot-review-heading b{color:var(--color-text);font-size:12px}
+.timetable-slot-review-heading span,.timetable-slot-review small{color:var(--color-text-muted);font-size:10px;line-height:1.45}
+.timetable-slot-review-result{display:grid;gap:3px;padding:8px 10px;border-left:3px solid var(--color-border);border-radius:5px;background:var(--color-surface)}
+.timetable-slot-review-result strong{color:var(--color-text);font-size:11px}
+.timetable-slot-review-result span{color:var(--color-text-muted);font-size:11px;line-height:1.45}
+.timetable-slot-review-result.conflict{border-left-color:var(--color-danger)}
+.timetable-slot-review-result.conflict span{color:var(--color-danger)}
+.timetable-slot-review-lists{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.timetable-slot-review-lists>div{min-width:0}
+.timetable-slot-review-lists b{color:var(--color-text);font-size:10px}
+.timetable-slot-review-lists ul{margin:6px 0 0;padding-left:17px;color:var(--color-text-muted);font-size:10px;line-height:1.6}
+@media(max-width:520px){.timetable-slot-review-lists{grid-template-columns:1fr}}
