@@ -31,6 +31,14 @@ type StaffRecordsService struct { repository staffRecordsRepository }
 func NewStaffRecordsService(repo staffRecordsRepository)*StaffRecordsService{return &StaffRecordsService{repository:repo}}
 
 var staffRecordTextPattern = regexp.MustCompile(`\S`)
+func parseStaffRecordDate(value string) (time.Time, bool) {
+	parsed, err := time.Parse("2006-01-02", value)
+	if err != nil || parsed.Year() < 1 || parsed.Format("2006-01-02") != value {
+		return time.Time{}, false
+	}
+	return parsed, true
+}
+
 func validRecordText(value string,max int)bool{return len([]rune(strings.TrimSpace(value)))>0&&len([]rune(strings.TrimSpace(value)))<=max&&staffRecordTextPattern.MatchString(value)}
 
 func(s *StaffRecordsService) ListQualifications(ctx context.Context,actor,school,staff int64)([]repository.StaffQualification,error){
@@ -55,10 +63,19 @@ func(s *StaffRecordsService) CreateCertification(ctx context.Context,actor,schoo
 	if s==nil||s.repository==nil||actor<=0||school<=0||staff<=0{return nil,ErrInvalidStaffRecord}
 	item.CertificateName=strings.TrimSpace(item.CertificateName);item.IssuingOrganization=strings.TrimSpace(item.IssuingOrganization);item.CredentialID=strings.TrimSpace(item.CredentialID)
 	if !validRecordText(item.CertificateName,180)||!validRecordText(item.IssuingOrganization,200)||len(item.CredentialID)>120{return nil,ErrInvalidStaffRecord}
-	var issue,expiry time.Time;var err error
-	if item.IssueDate!=""{issue,err=time.Parse("2006-01-02",item.IssueDate);if err!=nil{return nil,ErrInvalidStaffRecord}}
-	if item.ExpiryDate!=""{expiry,err=time.Parse("2006-01-02",item.ExpiryDate);if err!=nil{return nil,ErrInvalidStaffRecord}}
-	if !issue.IsZero()&&!expiry.IsZero()&&expiry.Before(issue){return nil,ErrInvalidStaffRecord}
+	var issue, expiry time.Time
+	hasIssue, hasExpiry := item.IssueDate != "", item.ExpiryDate != ""
+	if hasIssue {
+		var ok bool
+		issue, ok = parseStaffRecordDate(item.IssueDate)
+		if !ok { return nil, ErrInvalidStaffRecord }
+	}
+	if hasExpiry {
+		var ok bool
+		expiry, ok = parseStaffRecordDate(item.ExpiryDate)
+		if !ok { return nil, ErrInvalidStaffRecord }
+	}
+	if hasIssue && hasExpiry && expiry.Before(issue) { return nil, ErrInvalidStaffRecord }
 	return s.repository.CreateStaffCertification(ctx,actor,school,staff,item)
 }
 func(s *StaffRecordsService) ListExperience(ctx context.Context,actor,school,staff int64)([]repository.StaffExperience,error){
@@ -69,8 +86,14 @@ func(s *StaffRecordsService) CreateExperience(ctx context.Context,actor,school,s
 	if s==nil||s.repository==nil||actor<=0||school<=0||staff<=0{return nil,ErrInvalidStaffRecord}
 	item.EmployerName=strings.TrimSpace(item.EmployerName);item.Designation=strings.TrimSpace(item.Designation);item.Description=strings.TrimSpace(item.Description)
 	if !validRecordText(item.EmployerName,200)||!validRecordText(item.Designation,120)||len([]rune(item.Description))>2000{return nil,ErrInvalidStaffRecord}
-	start,err:=time.Parse("2006-01-02",item.StartDate);if err!=nil{return nil,ErrInvalidStaffRecord}
-	if item.IsCurrent {if item.EndDate!=""{return nil,ErrInvalidStaffRecord}} else if item.EndDate!="" {end,e:=time.Parse("2006-01-02",item.EndDate);if e!=nil||end.Before(start){return nil,ErrInvalidStaffRecord}}
+	start, validStart := parseStaffRecordDate(item.StartDate)
+	if !validStart { return nil, ErrInvalidStaffRecord }
+	if item.IsCurrent {
+		if item.EndDate != "" { return nil, ErrInvalidStaffRecord }
+	} else if item.EndDate != "" {
+		end, validEnd := parseStaffRecordDate(item.EndDate)
+		if !validEnd || end.Before(start) { return nil, ErrInvalidStaffRecord }
+	}
 	types:=map[string]bool{"permanent":true,"contract":true,"part_time":true,"temporary":true,"internship":true,"other":true}
 	if !types[item.EmploymentType]{return nil,ErrInvalidStaffRecord}
 	return s.repository.CreateStaffExperience(ctx,actor,school,staff,item)
@@ -92,10 +115,19 @@ func (s *StaffRecordsService) UpdateCertification(ctx context.Context, actor, sc
 	if s==nil||s.repository==nil||actor<=0||school<=0||staff<=0||record<=0{return nil,ErrInvalidStaffRecord}
 	item.CertificateName=strings.TrimSpace(item.CertificateName);item.IssuingOrganization=strings.TrimSpace(item.IssuingOrganization);item.CredentialID=strings.TrimSpace(item.CredentialID)
 	if !validRecordText(item.CertificateName,180)||!validRecordText(item.IssuingOrganization,200)||len(item.CredentialID)>120{return nil,ErrInvalidStaffRecord}
-	var issue,expiry time.Time;var err error
-	if item.IssueDate!=""{issue,err=time.Parse("2006-01-02",item.IssueDate);if err!=nil{return nil,ErrInvalidStaffRecord}}
-	if item.ExpiryDate!=""{expiry,err=time.Parse("2006-01-02",item.ExpiryDate);if err!=nil{return nil,ErrInvalidStaffRecord}}
-	if !issue.IsZero()&&!expiry.IsZero()&&expiry.Before(issue){return nil,ErrInvalidStaffRecord}
+	var issue, expiry time.Time
+	hasIssue, hasExpiry := item.IssueDate != "", item.ExpiryDate != ""
+	if hasIssue {
+		var ok bool
+		issue, ok = parseStaffRecordDate(item.IssueDate)
+		if !ok { return nil, ErrInvalidStaffRecord }
+	}
+	if hasExpiry {
+		var ok bool
+		expiry, ok = parseStaffRecordDate(item.ExpiryDate)
+		if !ok { return nil, ErrInvalidStaffRecord }
+	}
+	if hasIssue && hasExpiry && expiry.Before(issue) { return nil, ErrInvalidStaffRecord }
 	return s.repository.UpdateStaffCertification(ctx,actor,school,staff,record,item)
 }
 
@@ -103,8 +135,14 @@ func (s *StaffRecordsService) UpdateExperience(ctx context.Context, actor, schoo
 	if s==nil||s.repository==nil||actor<=0||school<=0||staff<=0||record<=0{return nil,ErrInvalidStaffRecord}
 	item.EmployerName=strings.TrimSpace(item.EmployerName);item.Designation=strings.TrimSpace(item.Designation);item.Description=strings.TrimSpace(item.Description)
 	if !validRecordText(item.EmployerName,200)||!validRecordText(item.Designation,120)||len([]rune(item.Description))>2000{return nil,ErrInvalidStaffRecord}
-	start,err:=time.Parse("2006-01-02",item.StartDate);if err!=nil{return nil,ErrInvalidStaffRecord}
-	if item.IsCurrent {if item.EndDate!=""{return nil,ErrInvalidStaffRecord}} else if item.EndDate!="" {end,e:=time.Parse("2006-01-02",item.EndDate);if e!=nil||end.Before(start){return nil,ErrInvalidStaffRecord}}
+	start, validStart := parseStaffRecordDate(item.StartDate)
+	if !validStart { return nil, ErrInvalidStaffRecord }
+	if item.IsCurrent {
+		if item.EndDate != "" { return nil, ErrInvalidStaffRecord }
+	} else if item.EndDate != "" {
+		end, validEnd := parseStaffRecordDate(item.EndDate)
+		if !validEnd || end.Before(start) { return nil, ErrInvalidStaffRecord }
+	}
 	types:=map[string]bool{"permanent":true,"contract":true,"part_time":true,"temporary":true,"internship":true,"other":true}
 	if !types[item.EmploymentType]{return nil,ErrInvalidStaffRecord}
 	return s.repository.UpdateStaffExperience(ctx,actor,school,staff,record,item)
