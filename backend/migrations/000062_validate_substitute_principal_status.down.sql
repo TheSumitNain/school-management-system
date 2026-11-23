@@ -1,0 +1,2 @@
+DROP TRIGGER trg_validate_v62_substitute_principal ON public.staff_substitutions;
+DROP FUNCTION public.validate_v62_substitute_principal();
