@@ -100,9 +100,9 @@ func (r *AcademicRepository) CreateStaffSubstitution(ctx context.Context,actorID
 	reason=strings.TrimSpace(reason)
 	if len([]rune(reason))==0||len([]rune(reason))>1000{return nil,ErrInvalidStaffSubstitution}
 	if _,err:=time.Parse("2006-01-02",coverDate);err!=nil{return nil,ErrInvalidStaffSubstitution}
-	if err:=staffSubstitutionAuthorize(ctx,r.db,actorID,schoolID,"staff.substitutions.manage");err!=nil{return nil,err}
 	tx,err:=r.db.Begin(ctx);if err!=nil{return nil,fmt.Errorf("begin staff substitution: %w",err)}
 	defer func(){_=tx.Rollback(ctx)}()
+	if err:=staffSubstitutionAuthorize(ctx,tx,actorID,schoolID,"staff.substitutions.manage");err!=nil{return nil,err}
 	var periodID int64
 	err=tx.QueryRow(ctx,`SELECT period_id FROM timetable_entries
 		WHERE id=$1 AND school_id=$2 AND teacher_principal_id=$3`,timetableEntryID,schoolID,originalTeacherID).Scan(&periodID)
@@ -134,9 +134,9 @@ func (r *AcademicRepository) CreateStaffSubstitution(ctx context.Context,actorID
 
 func (r *AcademicRepository) CancelStaffSubstitution(ctx context.Context,actorID,schoolID,id int64)error {
 	if r==nil||r.db==nil||actorID<=0||schoolID<=0||id<=0{return ErrInvalidStaffSubstitution}
-	if err:=staffSubstitutionAuthorize(ctx,r.db,actorID,schoolID,"staff.substitutions.manage");err!=nil{return err}
 	tx,err:=r.db.Begin(ctx);if err!=nil{return fmt.Errorf("begin substitution cancellation: %w",err)}
 	defer func(){_=tx.Rollback(ctx)}()
+	if err:=staffSubstitutionAuthorize(ctx,tx,actorID,schoolID,"staff.substitutions.manage");err!=nil{return err}
 	tag,err:=tx.Exec(ctx,`UPDATE staff_substitutions SET status='cancelled',cancelled_by_principal_id=$3,cancelled_at=NOW(),updated_at=NOW()
 		WHERE id=$1 AND school_id=$2 AND status='active'`,id,schoolID,actorID)
 	if err!=nil{return substitutionWriteError(err)}
