@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -36,6 +37,13 @@ func TestStaffLeaveHandlersReturnUnavailableWithoutService(t *testing.T) {
 			if recorder.Code != http.StatusServiceUnavailable {
 				t.Fatalf("status=%d want=%d body=%s", recorder.Code, http.StatusServiceUnavailable, recorder.Body.String())
 			}
+			var body map[string]string
+			if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
+				t.Fatalf("unavailable response must contain exactly one valid JSON object: %v; body=%s", err, recorder.Body.String())
+			}
+			if body["message"] != "Staff leave and holiday service is unavailable" {
+				t.Fatalf("unexpected unavailable response body: %#v", body)
+			}
 		})
 
 		t.Run(method.name+" nil service", func(t *testing.T) {
@@ -48,6 +56,13 @@ func TestStaffLeaveHandlersReturnUnavailableWithoutService(t *testing.T) {
 			router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/staff/42/1/2", nil))
 			if recorder.Code != http.StatusServiceUnavailable {
 				t.Fatalf("status=%d want=%d body=%s", recorder.Code, http.StatusServiceUnavailable, recorder.Body.String())
+			}
+			var body map[string]string
+			if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
+				t.Fatalf("unavailable response must contain exactly one valid JSON object: %v; body=%s", err, recorder.Body.String())
+			}
+			if body["message"] != "Staff leave and holiday service is unavailable" {
+				t.Fatalf("unexpected unavailable response body: %#v", body)
 			}
 		})
 	}
