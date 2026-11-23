@@ -705,3 +705,8 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Browser acceptance now covers substitution read-only access (view-only, no assign/cancel controls or timetable fetch) and Leave & Holidays responsive layouts at mobile, tablet and desktop widths.
 - Frontend CI [45168421521](https://github.com/TheSumitNain/school-management-system/actions/runs/45168421521) **PASS** with 92 Playwright tests; Backend CI [45169195285](https://github.com/TheSumitNain/school-management-system/actions/runs/45169195285) **PASS** including PostgreSQL integration and `go vet`.
 - No persistent database changes. Final Staff Management acceptance is still in progress; Bulk Import and staff document storage remain deferred pending the previously stated design/approval requirements.
+
+## 2026-11-23 implementation checkpoint — attendance read-only browser acceptance
+
+- Added browser regression coverage proving attendance-read-only users cannot mark new records, update existing records, or submit bulk attendance; the UI disables write controls and sends no write requests.
+- Frontend CI [45169926822](https://github.com/TheSumitNain/school-management-system/actions/runs/45169926822) **PASS** with the production build and full Playwright suite. Backend validation work remains under separate CI verification.
