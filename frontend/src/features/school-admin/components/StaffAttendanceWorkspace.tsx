@@ -154,14 +154,14 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
         "Attendance summary", item.full_name, item.employee_code, item.designation,
         item.present_days, item.absent_days, item.late_days, item.half_days,
         item.present_days + item.absent_days + item.late_days + item.half_days,
-        "", "", "", "", "", "", "", "",
+        "", "", "", "", "", "", "",
       ]);
       for (const record of item.records) {
         rows.push([
           "Attendance entry", item.full_name, item.employee_code, item.designation,
           "", "", "", "", "", record.date,
           statuses.find(status => status.value === record.status)?.label ?? record.status,
-          "", "", "", "", "", "";
+          "", "", "", "", "",
         ]);
       }
     }
