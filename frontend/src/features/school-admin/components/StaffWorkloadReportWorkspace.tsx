@@ -9,7 +9,7 @@ type Group={id:number;name:string;employeeCode:string;designation:string;employm
 
 function csvCell(value: string | number | null | undefined): string {
   const raw = String(value ?? "");
-  const safe = /^[=+@\\-\\t\\r]/.test(raw) ? "'" + raw : raw;
+  const safe = /^[=+@\-\t\r]/.test(raw) ? "'" + raw : raw;
   return '"' + safe.replace(/"/g, '""') + '"';
 }
 
@@ -20,8 +20,8 @@ function exportWorkloadCSV(groups: Group[], academicYearID: number) {
     group.totalPeriods,group.busiestDay,day.day ? days[day.day-1] : "—",day.periods,day.sections,day.subjects,
     day.first ?? "—",day.last ?? "—",
   ]));
-  const csv = [header,...rows].map(row => row.map(csvCell).join(",")).join("\\r\\n");
-  const blob = new Blob(["\\uFEFF",csv],{type:"text/csv;charset=utf-8"});
+  const csv = [header,...rows].map(row => row.map(csvCell).join(",")).join("\r\n");
+  const blob = new Blob(["\uFEFF",csv],{type:"text/csv;charset=utf-8"});
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
