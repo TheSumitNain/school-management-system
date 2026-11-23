@@ -153,10 +153,20 @@ func TestStaffSubstitutionV60DatabaseGuardsPostgresIntegration(t *testing.T) {
 	var secondEntryID int64
 	if err=tx.QueryRow(ctx,`INSERT INTO timetable_entries(school_id,academic_year_id,section_id,subject_id,teacher_principal_id,teacher_subject_assignment_id,period_id,day_of_week,created_by_principal_id,updated_by_principal_id)
 		VALUES($1,$2,$3,$4,$5,$6,$7,1,$8,$8) RETURNING id`,schoolID,yearID,secondSectionID,subjectID,substituteID,secondAssignmentID,periodID,actorPrincipalID).Scan(&secondEntryID);err!=nil{t.Fatalf("teacher schedule should be allowed after substitution cancellation: %v",err)}
-	if _,err=tx.Exec(ctx,`UPDATE auth_principals SET status='disabled' WHERE id=$1`,substituteID);err!=nil{t.Fatalf("disable canonical substitute principal after cancelling prior cover: %v",err)}
+	var pastSubstitutionID int64
+	err=tx.QueryRow(ctx,`INSERT INTO staff_substitutions(school_id,timetable_entry_id,period_id,cover_date,original_teacher_principal_id,substitute_teacher_principal_id,reason,created_by_principal_id)
+		VALUES($1,$2,$3,(date_trunc('week',CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date-7),$4,$5,'Completed cover history',$4) RETURNING id`,
+		schoolID,secondEntryID,periodID,originalID,substituteID).Scan(&pastSubstitutionID)
+	if err!=nil{t.Fatalf("create past dated substitution history: %v",err)}
+	if _,err=tx.Exec(ctx,`UPDATE timetable_entries SET room='Updated after completed cover' WHERE id=$1`,secondEntryID);err!=nil{t.Fatalf("completed cover history should not block future recurring timetable edits: %v",err)}
+	pastDelete,err:=tx.Begin(ctx);if err!=nil{t.Fatalf("begin past timetable history delete savepoint: %v",err)}
+	_,pastDeleteErr:=pastDelete.Exec(ctx,`DELETE FROM timetable_entries WHERE id=$1`,secondEntryID)
+	if rollbackErr:=pastDelete.Rollback(ctx);rollbackErr!=nil{t.Fatalf("rollback past timetable history delete savepoint: %v",rollbackErr)}
+	if pastDeleteErr==nil{t.Fatal("completed substitution history must still prevent hard deletion of its timetable entry")}
+	if _,err=tx.Exec(ctx,`UPDATE auth_principals SET status='disabled' WHERE id=$1`,substituteID);err!=nil{t.Fatalf("disable canonical substitute principal after completed cover: %v",err)}
 	canonicalStatus,err:=tx.Begin(ctx);if err!=nil{t.Fatalf("begin canonical principal validation savepoint: %v",err)}
 	_,canonicalStatusErr:=canonicalStatus.Exec(ctx,`INSERT INTO staff_substitutions(school_id,timetable_entry_id,period_id,cover_date,original_teacher_principal_id,substitute_teacher_principal_id,reason,created_by_principal_id)
-		VALUES($1,$2,$3,DATE '2026-11-30',$4,$5,'Disabled principal must not be assignable',$4)`,schoolID,secondEntryID,periodID,originalID,substituteID)
+		VALUES($1,$2,$3,(date_trunc('week',CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date+7),$4,$5,'Disabled principal must not be assignable',$4)`,schoolID,secondEntryID,periodID,originalID,substituteID)
 	if rollbackErr:=canonicalStatus.Rollback(ctx);rollbackErr!=nil{t.Fatalf("rollback canonical principal validation savepoint: %v",rollbackErr)}
 	if canonicalStatusErr==nil{t.Fatal("disabled canonical auth principal was accepted as a substitute while legacy users.status remained active")}
 }
