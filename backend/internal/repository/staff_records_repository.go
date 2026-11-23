@@ -58,16 +58,9 @@ type StaffExperience struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-// authorizeStaffSchoolPermission mirrors the live effective-permission rules:
-// active system/custom role grants, exact active delegation for custom grants,
-// delegated ALLOW overrides, and DENY precedence. It never trusts JWT role claims.
-func authorizeStaffSchoolPermission(ctx context.Context, db repositoryDB, actorID, schoolID int64, permission string) error {
-	if actorID <= 0 || schoolID <= 0 || permission == "" {
+func authorizeStaffRecord(ctx context.Context, db repositoryDB, actorID, schoolID, staffID int64, permission string) error {
+	if actorID <= 0 || schoolID <= 0 || staffID <= 0 {
 		return ErrStaffRecordAccessDenied
-	}
-	schoolAdminPermissions := make([]string, 0, len(approvedSchoolAdminPermissions))
-	for key := range approvedSchoolAdminPermissions {
-		schoolAdminPermissions = append(schoolAdminPermissions, key)
 	}
 	var allowed bool
 	err := db.QueryRow(ctx, `
@@ -76,85 +69,34 @@ func authorizeStaffSchoolPermission(ctx context.Context, db repositoryDB, actorI
 			FROM auth_principals ap
 			JOIN users actor ON actor.principal_id = ap.id
 			JOIN schools s ON s.id = actor.school_id
+			JOIN principal_roles pr ON pr.principal_id = ap.id AND pr.revoked_at IS NULL
+			JOIN roles r ON r.id = pr.role_id
+			JOIN role_permissions rp ON rp.role_id = r.id
+			JOIN permissions p ON p.id = rp.permission_id
 			WHERE ap.id = $1 AND ap.principal_type = 'staff' AND ap.status = 'active'
 			  AND actor.status = 'active' AND actor.school_id = $2 AND s.status = 'active'
-			  AND (
-			    EXISTS (
-			      SELECT 1
-			      FROM principal_roles pr
-			      JOIN roles r ON r.id = pr.role_id
-			      JOIN role_permissions rp ON rp.role_id = r.id
-			      JOIN permissions p ON p.id = rp.permission_id
-			      LEFT JOIN role_permission_delegations d
-			        ON d.id = rp.delegation_id
-			       AND d.school_id = r.school_id
-			       AND d.permission_id = rp.permission_id
-			       AND d.can_assign_to_roles = TRUE
-			       AND d.revoked_at IS NULL
-			      WHERE pr.principal_id = ap.id AND pr.revoked_at IS NULL
-			        AND r.principal_type = 'staff' AND r.scope_type = 'school' AND r.school_id = $2
-			        AND p.permission_key = $3 AND p.scope_type = 'school' AND p.is_active = TRUE
-			        AND (
-			          (r.is_system = TRUE AND rp.delegation_id IS NULL)
-			          OR (r.is_system = FALSE AND d.id IS NOT NULL)
-			        )
-			        AND (NOT (r.is_system = TRUE AND r.role_key = 'school_admin') OR $3 = ANY($4::text[]))
-			    )
-			    OR EXISTS (
-			      SELECT 1
-			      FROM user_permission_overrides o
-			      JOIN permissions p ON p.id = o.permission_id
-			      JOIN role_permission_delegations d
-			        ON d.id = o.delegation_id
-			       AND d.school_id = o.school_id
-			       AND d.permission_id = o.permission_id
-			       AND d.can_override_users = TRUE
-			       AND d.revoked_at IS NULL
-			      WHERE o.principal_id = ap.id AND o.school_id = $2
-			        AND o.effect = 'allow' AND p.permission_key = $3
-			        AND p.scope_type = 'school' AND p.is_active = TRUE
-			    )
-			  )
+			  AND r.school_id = $2 AND r.scope_type = 'school' AND r.principal_type = 'staff'
+			  AND r.role_key = 'school_admin' AND r.is_system = TRUE
+			  AND p.permission_key = $4 AND p.scope_type = 'school' AND p.is_active = TRUE
 			  AND NOT EXISTS (
-			    SELECT 1 FROM user_permission_overrides denied
-			    JOIN permissions p ON p.id = denied.permission_id
-			    WHERE denied.principal_id = ap.id AND denied.school_id = $2
-			      AND denied.effect = 'deny' AND p.permission_key = $3 AND p.is_active = TRUE
+			      SELECT 1 FROM user_permission_overrides denied
+			      WHERE denied.principal_id = ap.id AND denied.school_id = $2
+			        AND denied.permission_id = p.id AND denied.effect = 'deny'
+			  )
+			  AND EXISTS (
+			      SELECT 1 FROM staff_profiles target
+			      JOIN users target_user ON target_user.principal_id = target.principal_id
+			                                AND target_user.school_id = target.school_id
+			      JOIN auth_principals target_principal ON target_principal.id = target.principal_id
+			      WHERE target.principal_id = $3 AND target.school_id = $2
+			        AND target_principal.principal_type = 'staff'
 			  )
 		)
-	`, actorID, schoolID, permission, schoolAdminPermissions).Scan(&allowed)
+	`, actorID, schoolID, staffID, permission).Scan(&allowed)
 	if err != nil {
-		return fmt.Errorf("authorize staff school permission: %w", err)
+		return fmt.Errorf("authorize staff profile records: %w", err)
 	}
 	if !allowed {
-		return ErrStaffRecordAccessDenied
-	}
-	return nil
-}
-
-func authorizeStaffRecord(ctx context.Context, db repositoryDB, actorID, schoolID, staffID int64, permission string) error {
-	if staffID <= 0 {
-		return ErrStaffRecordAccessDenied
-	}
-	if err := authorizeStaffSchoolPermission(ctx, db, actorID, schoolID, permission); err != nil {
-		return err
-	}
-	var targetExists bool
-	err := db.QueryRow(ctx, `
-		SELECT EXISTS (
-			SELECT 1
-			FROM staff_profiles target
-			JOIN users target_user ON target_user.principal_id = target.principal_id
-			                      AND target_user.school_id = target.school_id
-			JOIN auth_principals target_principal ON target_principal.id = target.principal_id
-			WHERE target.principal_id = $1 AND target.school_id = $2
-			  AND target_principal.principal_type = 'staff'
-		)
-	`, staffID, schoolID).Scan(&targetExists)
-	if err != nil {
-		return fmt.Errorf("verify same-school staff profile: %w", err)
-	}
-	if !targetExists {
 		return ErrStaffRecordAccessDenied
 	}
 	return nil
@@ -483,9 +425,31 @@ func (r *UserRepository) ListStaffQualificationReport(ctx context.Context, actor
 	if r == nil || r.db == nil || actorID <= 0 || schoolID <= 0 || filter.Limit < 1 || filter.Limit > 200 || filter.Offset < 0 {
 		return nil, ErrInvalidStaffRecord
 	}
-	if err := authorizeStaffSchoolPermission(ctx, r.db, actorID, schoolID, "users.read"); err != nil {
-		return nil, err
-	}
+	var allowed bool
+	err := r.db.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM auth_principals ap
+			JOIN users actor ON actor.principal_id=ap.id
+			JOIN schools s ON s.id=actor.school_id
+			JOIN principal_roles pr ON pr.principal_id=ap.id AND pr.revoked_at IS NULL
+			JOIN roles r ON r.id=pr.role_id
+			JOIN role_permissions rp ON rp.role_id=r.id
+			JOIN permissions p ON p.id=rp.permission_id
+			WHERE ap.id=$1 AND ap.principal_type='staff' AND ap.status='active'
+			  AND actor.status='active' AND actor.school_id=$2 AND s.status='active'
+			  AND r.school_id=$2 AND r.scope_type='school' AND r.principal_type='staff'
+			  AND r.role_key='school_admin' AND r.is_system=TRUE
+			  AND p.permission_key='users.read' AND p.scope_type='school' AND p.is_active=TRUE
+			  AND NOT EXISTS (
+			    SELECT 1 FROM user_permission_overrides denied
+			    WHERE denied.principal_id=ap.id AND denied.school_id=$2
+			      AND denied.permission_id=p.id AND denied.effect='deny'
+			  )
+		)
+	`, actorID, schoolID).Scan(&allowed)
+	if err != nil { return nil, fmt.Errorf("authorize staff qualifications report: %w", err) }
+	if !allowed { return nil, ErrStaffRecordAccessDenied }
 
 	base := `
 		SELECT 'qualification'::text AS record_type, q.id AS record_id, q.staff_principal_id,
@@ -581,9 +545,30 @@ type StaffExperienceReportPage struct {
 // school, including inactive employees. Free-text descriptions are excluded.
 func (r *UserRepository) ListStaffExperienceReport(ctx context.Context, actorID, schoolID int64, filter StaffExperienceReportFilter) (*StaffExperienceReportPage,error) {
     if r==nil || r.db==nil || actorID<=0 || schoolID<=0 || filter.Limit<1 || filter.Limit>200 || filter.Offset<0 { return nil,ErrInvalidStaffRecord }
-    if err := authorizeStaffSchoolPermission(ctx, r.db, actorID, schoolID, "users.read"); err != nil {
-        return nil, err
-    }
+    var allowed bool
+    err:=r.db.QueryRow(ctx,`
+        SELECT EXISTS (
+            SELECT 1 FROM auth_principals ap
+            JOIN users actor ON actor.principal_id=ap.id
+            JOIN schools s ON s.id=actor.school_id
+            JOIN principal_roles pr ON pr.principal_id=ap.id AND pr.revoked_at IS NULL
+            JOIN roles r ON r.id=pr.role_id
+            JOIN role_permissions rp ON rp.role_id=r.id
+            JOIN permissions p ON p.id=rp.permission_id
+            WHERE ap.id=$1 AND ap.principal_type='staff' AND ap.status='active'
+              AND actor.status='active' AND actor.school_id=$2 AND s.status='active'
+              AND r.school_id=$2 AND r.scope_type='school' AND r.principal_type='staff'
+              AND r.role_key='school_admin' AND r.is_system=TRUE
+              AND p.permission_key='users.read' AND p.scope_type='school' AND p.is_active=TRUE
+              AND NOT EXISTS (
+                SELECT 1 FROM user_permission_overrides denied
+                WHERE denied.principal_id=ap.id AND denied.school_id=$2
+                  AND denied.permission_id=p.id AND denied.effect='deny'
+              )
+        )
+    `,actorID,schoolID).Scan(&allowed)
+    if err!=nil{return nil,fmt.Errorf("authorize staff experience report: %w",err)}
+    if !allowed{return nil,ErrStaffRecordAccessDenied}
     base:=`
         SELECT e.id,e.staff_principal_id,sp.employee_code,sp.full_name,sp.designation,
                sp.employment_status,e.employer_name,e.designation AS previous_designation,e.employment_type,
