@@ -3,7 +3,7 @@ package handlers
 import (
 	"context"\n\t"encoding/json"
 	"net/http"
-	"net/http/httptest"
+	"net/http/httptest"\n\t"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
