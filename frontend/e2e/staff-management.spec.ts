@@ -342,6 +342,57 @@ test("staff directory filters independently narrow employment, login account and
 });
 
 
+test("staff directory filters stay within mobile, tablet and desktop layouts", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [
+    { id: 1, principal_id: 621, school_id: 10, username: "responsive.active", employee_code: "EMP-R-01", full_name: "Responsive Active", designation: "Teacher", employment_status: "active", profile_complete: true, status: "active", must_change_password: false },
+    { id: 2, principal_id: 622, school_id: 10, username: "responsive.inactive", employee_code: "EMP-R-02", full_name: "Responsive Inactive", designation: "Staff", employment_status: "inactive", profile_complete: false, status: "disabled", must_change_password: false },
+  ];
+  await signInAndOpenStaff(page, rows);
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+
+  const controls = page.locator(".staff-directory-controls");
+  const filters = controls.locator(".staff-directory-filters");
+  const labels = filters.locator("label");
+  await expect(labels).toHaveCount(3);
+
+  for (const viewport of [
+    { width: 390, height: 844 },
+    { width: 768, height: 900 },
+    { width: 1280, height: 900 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await expect(controls).toBeVisible();
+    for (let index = 0; index < 3; index += 1) {
+      await expect(labels.nth(index)).toBeVisible();
+      await expect(labels.nth(index).locator("button.app-select-trigger")).toBeVisible();
+    }
+    const geometry = await filters.evaluate((element) => {
+      const bounds = element.getBoundingClientRect();
+      const labelBounds = Array.from(element.querySelectorAll("label")).map((label) => {
+        const rect = label.getBoundingClientRect();
+        return { left: rect.left, right: rect.right };
+      });
+      return {
+        left: bounds.left,
+        right: bounds.right,
+        clientWidth: element.clientWidth,
+        scrollWidth: element.scrollWidth,
+        labelsInside: labelBounds.every((rect) => rect.left >= bounds.left - 1 && rect.right <= bounds.right + 1),
+      };
+    });
+    expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.clientWidth + 1);
+    expect(geometry.labelsInside).toBe(true);
+    expect(geometry.left).toBeGreaterThanOrEqual(0);
+    expect(geometry.right).toBeLessThanOrEqual(viewport.width + 1);
+  }
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await filters.locator("button.app-select-trigger").first().click();
+  await page.getByRole("option", { name: "Active", exact: true }).click();
+  await expect(page.getByText("1 of 2 staff members")).toBeVisible();
+});
+
+
 test("staff leave workspace reviews applications and displays configured leave types and school holidays", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 501, school_id: 10, username: "leave.teacher",
