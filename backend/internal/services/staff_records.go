@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"math"
 	"regexp"
 	"strings"
 	"time"
@@ -39,6 +40,20 @@ func parseStaffRecordDate(value string) (time.Time, bool) {
 	return parsed, true
 }
 
+func validQualificationScore(score *float64, scale string) bool {
+	scales := map[string]bool{"percentage": true, "cgpa": true, "gpa": true, "marks": true, "grade": true}
+	if score == nil {
+		return scale == ""
+	}
+	if math.IsNaN(*score) || math.IsInf(*score, 0) || *score < 0 || !scales[scale] {
+		return false
+	}
+	if scale == "percentage" && *score > 100 {
+		return false
+	}
+	return true
+}
+
 func validRecordText(value string,max int)bool{return len([]rune(strings.TrimSpace(value)))>0&&len([]rune(strings.TrimSpace(value)))<=max&&staffRecordTextPattern.MatchString(value)}
 
 func(s *StaffRecordsService) ListQualifications(ctx context.Context,actor,school,staff int64)([]repository.StaffQualification,error){
@@ -49,10 +64,9 @@ func(s *StaffRecordsService) CreateQualification(ctx context.Context,actor,schoo
 	if s==nil||s.repository==nil||actor<=0||school<=0||staff<=0{return nil,ErrInvalidStaffRecord}
 	item.QualificationName=strings.TrimSpace(item.QualificationName);item.Specialization=strings.TrimSpace(item.Specialization);item.Institution=strings.TrimSpace(item.Institution);item.BoardUniversity=strings.TrimSpace(item.BoardUniversity);item.CredentialReference=strings.TrimSpace(item.CredentialReference)
 	types:=map[string]bool{"school":true,"diploma":true,"undergraduate":true,"postgraduate":true,"doctorate":true,"other":true}
-	scales:=map[string]bool{"percentage":true,"cgpa":true,"gpa":true,"marks":true,"grade":true}
 	if !types[item.QualificationType]||!validRecordText(item.QualificationName,160)||!validRecordText(item.Institution,200)||len([]rune(item.Specialization))>160||len([]rune(item.BoardUniversity))>200||len(item.CredentialReference)>120{return nil,ErrInvalidStaffRecord}
 	if item.CompletionYear!=nil&&(*item.CompletionYear<1900||*item.CompletionYear>2200){return nil,ErrInvalidStaffRecord}
-	if (item.Score==nil)!=(item.ScoreScale=="") || (item.Score!=nil&&(*item.Score<0||!scales[item.ScoreScale])){return nil,ErrInvalidStaffRecord}
+	if !validQualificationScore(item.Score,item.ScoreScale){return nil,ErrInvalidStaffRecord}
 	return s.repository.CreateStaffQualification(ctx,actor,school,staff,item)
 }
 func(s *StaffRecordsService) ListCertifications(ctx context.Context,actor,school,staff int64)([]repository.StaffCertification,error){
@@ -104,10 +118,9 @@ func (s *StaffRecordsService) UpdateQualification(ctx context.Context, actor, sc
 	if s==nil||s.repository==nil||actor<=0||school<=0||staff<=0||record<=0{return nil,ErrInvalidStaffRecord}
 	item.QualificationName=strings.TrimSpace(item.QualificationName);item.Specialization=strings.TrimSpace(item.Specialization);item.Institution=strings.TrimSpace(item.Institution);item.BoardUniversity=strings.TrimSpace(item.BoardUniversity);item.CredentialReference=strings.TrimSpace(item.CredentialReference)
 	types:=map[string]bool{"school":true,"diploma":true,"undergraduate":true,"postgraduate":true,"doctorate":true,"other":true}
-	scales:=map[string]bool{"percentage":true,"cgpa":true,"gpa":true,"marks":true,"grade":true}
 	if !types[item.QualificationType]||!validRecordText(item.QualificationName,160)||!validRecordText(item.Institution,200)||len([]rune(item.Specialization))>160||len([]rune(item.BoardUniversity))>200||len(item.CredentialReference)>120{return nil,ErrInvalidStaffRecord}
 	if item.CompletionYear!=nil&&(*item.CompletionYear<1900||*item.CompletionYear>2200){return nil,ErrInvalidStaffRecord}
-	if (item.Score==nil)!=(item.ScoreScale=="")||(item.Score!=nil&&(*item.Score<0||!scales[item.ScoreScale])){return nil,ErrInvalidStaffRecord}
+	if !validQualificationScore(item.Score,item.ScoreScale){return nil,ErrInvalidStaffRecord}
 	return s.repository.UpdateStaffQualification(ctx,actor,school,staff,record,item)
 }
 
