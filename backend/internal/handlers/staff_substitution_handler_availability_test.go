@@ -1,11 +1,14 @@
 package handlers
 
 import (
-	"context"\n\t"net/http"
-	"net/http/httptest"\n\t"strings"
+	"context"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 
-	"school-management-system/internal/middleware"\n\t"school-management-system/internal/repository"
+	"school-management-system/internal/middleware"
+	"school-management-system/internal/repository"
 	"github.com/gin-gonic/gin"
 )
 
