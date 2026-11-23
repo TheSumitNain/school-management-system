@@ -77,11 +77,11 @@ func validateStaffSubstitutionDateRange(fromDate, toDate string) error {
 		return ErrInvalidStaffSubstitution
 	}
 	from, err := time.Parse("2006-01-02", fromDate)
-	if err != nil || from.Format("2006-01-02") != fromDate {
+	if err != nil || from.Year() < 1 || from.Format("2006-01-02") != fromDate {
 		return ErrInvalidStaffSubstitution
 	}
 	to, err := time.Parse("2006-01-02", toDate)
-	if err != nil || to.Format("2006-01-02") != toDate || to.Before(from) {
+	if err != nil || to.Year() < 1 || to.Format("2006-01-02") != toDate || to.Before(from) {
 		return ErrInvalidStaffSubstitution
 	}
 	return nil
@@ -116,7 +116,7 @@ func (r *AcademicRepository) CreateStaffSubstitution(ctx context.Context,actorID
 	reason=strings.TrimSpace(reason)
 	if len([]rune(reason))==0||len([]rune(reason))>1000{return nil,ErrInvalidStaffSubstitution}
 	parsedCoverDate,err:=time.Parse("2006-01-02",coverDate)
-	if err!=nil||parsedCoverDate.Format("2006-01-02")!=coverDate{return nil,ErrInvalidStaffSubstitution}
+	if err!=nil||parsedCoverDate.Year()<1||parsedCoverDate.Format("2006-01-02")!=coverDate{return nil,ErrInvalidStaffSubstitution}
 	tx,err:=r.db.Begin(ctx);if err!=nil{return nil,fmt.Errorf("begin staff substitution: %w",err)}
 	defer func(){_=tx.Rollback(ctx)}()
 	if err:=staffSubstitutionAuthorize(ctx,tx,actorID,schoolID,"staff.substitutions.manage");err!=nil{return nil,err}
