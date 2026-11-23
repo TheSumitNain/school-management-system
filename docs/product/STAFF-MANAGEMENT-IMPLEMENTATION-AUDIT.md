@@ -497,3 +497,11 @@ Verification on branch `work`, commit `30270fe0927a6eb3f284d462ddd6dc2b4ca2959e`
 - Backend CI [45137329371](https://github.com/TheSumitNain/school-management-system/actions/runs/45137329371) **PASS** on `20814d1f`: ephemeral PostgreSQL migrations, all Go tests including PostgreSQL integration, and `go vet`.
 - Hardened the RBAC HTTP integration test's generated fixture suffix to remain collision-resistant while keeping every generated username within the database's 32-character limit.
 - No persistent database change or migration was made.
+
+
+## 50. Staff timetable and workload route permission regression coverage (2026-11-23)
+
+- Added route-level default-deny tests for current academic year, workload report, timetable periods and entries. Read endpoints require `timetable.read`; period/entry create, update and delete require `timetable.manage`.
+- Tests verify missing permission returns HTTP 403 before the handler, while the exact permission reaches the handler.
+- Backend CI [45137945323](https://github.com/TheSumitNain/school-management-system/actions/runs/45137945323) **PASS** on `cc94c773`: ephemeral PostgreSQL migrations, full Go test suite including PostgreSQL integration, and `go vet`.
+- No migration or persistent database change.
