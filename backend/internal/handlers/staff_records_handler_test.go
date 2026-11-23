@@ -101,7 +101,7 @@ func TestStaffRecordsHandlersRejectNilSuccessfulResults(t *testing.T) {
 		{"experience report",http.MethodGet,"/staff/experience/report","",(*StaffRecordsHandler).ListExperienceReport},
 	}
 	for _,test:=range tests{t.Run(test.name,func(t *testing.T){
-		router:=gin.New();router.Handle(test.method,test.path,auth,func(c *gin.Context){test.handler(handler,c)})
+		router:=gin.New();routePath:=strings.Replace(test.path,"/42","/:principalID",1);router.Handle(test.method,routePath,auth,func(c *gin.Context){test.handler(handler,c)})
 		req:=httptest.NewRequest(test.method,test.path,strings.NewReader(test.body));if test.body!=""{req.Header.Set("Content-Type","application/json")}
 		recorder:=httptest.NewRecorder();router.ServeHTTP(recorder,req)
 		if recorder.Code!=http.StatusInternalServerError{t.Fatalf("nil successful service result must return 500: status=%d body=%s",recorder.Code,recorder.Body.String())}
