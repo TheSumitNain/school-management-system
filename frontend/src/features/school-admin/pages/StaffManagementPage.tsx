@@ -40,7 +40,7 @@ function exportStaffDirectoryCSV(rows:StaffRecord[]){
   const headers=["Employee Code","Name","Designation","Employment Status","Login Account","Profile Status"];
   const lines=[headers,...rows.map(item=>[
     item.employee_code,item.full_name||item.username,item.designation,item.employment_status,
-    item.status==="active"?"Enabled":"Disabled",item.profile_complete===false?"Incomplete":"Complete",
+    item.status==="active"?"Enabled":"Disabled",item.profile_complete===true?"Complete":"Incomplete",
   ])].map(row=>row.map(staffCSVCell).join(",")).join("\r\n");
   const blob=new Blob(["\uFEFF",lines],{type:"text/csv;charset=utf-8"});
   const url=URL.createObjectURL(blob);
@@ -117,7 +117,7 @@ export function StaffManagementPage({ permissions }: Props) {
       const matchesAccount = accountFilter === "all" ||
         (accountFilter === "enabled" ? item.status === "active" : item.status !== "active");
       const matchesProfile = profileFilter === "all" ||
-        (profileFilter === "complete" ? item.profile_complete !== false : item.profile_complete === false);
+        (profileFilter === "complete" ? item.profile_complete === true : item.profile_complete !== true);
       return matchesSearch && matchesEmployment && matchesAccount && matchesProfile;
     });
   }, [staff, search, employmentFilter, accountFilter, profileFilter]);
@@ -420,7 +420,7 @@ export function StaffManagementPage({ permissions }: Props) {
           <article><span>Total staff</span><strong>{query.isPending ? "—" : staff.length}</strong><small>Employee records in this school</small></article>
           <article><span>Active employment</span><strong>{query.isPending ? "—" : staff.filter(item => item.employment_status === "active").length}</strong><small>Currently marked as active</small></article>
           <article><span>Login enabled</span><strong>{query.isPending ? "—" : staff.filter(item => item.status === "active").length}</strong><small>Accounts currently able to sign in</small></article>
-          <article><span>Profile completion needed</span><strong>{query.isPending ? "—" : staff.filter(item => !item.profile_complete).length}</strong><small>Existing records needing attention</small></article>
+          <article><span>Profile completion needed</span><strong>{query.isPending ? "—" : staff.filter(item => item.profile_complete !== true).length}</strong><small>Existing records needing attention</small></article>
         </div>
         <div className="staff-overview-lower">
           <section className="staff-overview-panel"><h3>Quick actions</h3><p>Start with the most common staff administration tasks.</p><div className="staff-quick-actions">
@@ -450,10 +450,10 @@ export function StaffManagementPage({ permissions }: Props) {
             <article><span>Total staff</span><strong>{staff.length}</strong></article>
             <article><span>Active employment</span><strong>{staff.filter(item => item.employment_status === "active").length}</strong></article>
             <article><span>Inactive employment</span><strong>{staff.filter(item => item.employment_status === "inactive").length}</strong></article>
-            <article><span>Profile incomplete</span><strong>{staff.filter(item => item.profile_complete === false).length}</strong></article>
+            <article><span>Profile incomplete</span><strong>{staff.filter(item => item.profile_complete !== true).length}</strong></article>
             <article><span>Login disabled</span><strong>{staff.filter(item => item.status !== "active").length}</strong></article>
           </div>
-          {staff.length === 0 ? <p className="table-message">No staff records are available for this school.</p> : <div className="table-scroll"><table><thead><tr><th>Employee</th><th>Employee code</th><th>Designation</th><th>Employment</th><th>Login account</th><th>Profile</th></tr></thead><tbody>{staff.map(item => <tr key={item.principal_id}><td>{item.full_name || "Profile incomplete"}</td><td>{item.employee_code || "—"}</td><td>{item.designation || "—"}</td><td>{item.employment_status || "Not set"}</td><td>{item.status === "active" ? "Enabled" : "Disabled"}</td><td>{item.profile_complete === false ? "Incomplete" : "Complete"}</td></tr>)}</tbody></table></div>}
+          {staff.length === 0 ? <p className="table-message">No staff records are available for this school.</p> : <div className="table-scroll"><table><thead><tr><th>Employee</th><th>Employee code</th><th>Designation</th><th>Employment</th><th>Login account</th><th>Profile</th></tr></thead><tbody>{staff.map(item => <tr key={item.principal_id}><td>{item.full_name || "Profile incomplete"}</td><td>{item.employee_code || "—"}</td><td>{item.designation || "—"}</td><td>{item.employment_status || "Not set"}</td><td>{item.status === "active" ? "Enabled" : "Disabled"}</td><td>{item.profile_complete === true ? "Complete" : "Incomplete"}</td></tr>)}</tbody></table></div>}
           <p className="staff-reports-note">This summary covers current staff records only. Attendance and leave reports appear below when their separate read permissions are available. Qualifications, leave balances and payroll calculations are not included.</p>
         </>}
       </section>}
