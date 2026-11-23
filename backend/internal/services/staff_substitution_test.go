@@ -17,8 +17,10 @@ func TestStaffSubstitutionServiceRejectsInvalidDatesAndScopeBeforeRepository(t *
 	svc:=NewStaffSubstitutionService(repo)
 	if _,err:=svc.List(context.Background(),1,1,"2026-11-23","2026-11-22",0);err==nil{t.Fatal("expected reversed date range rejection")}
 	if _,err:=svc.List(context.Background(),1,1,"2026-01-01","2028-01-01",0);err==nil{t.Fatal("expected oversized date range rejection")}
+	if _,err:=svc.List(context.Background(),1,1,"0000-01-01","0000-01-02",0);err==nil{t.Fatal("expected year-zero date rejection")}
 	if _,err:=svc.Create(context.Background(),1,1,3,4,4,"2026-11-23",nil,"cover");err==nil{t.Fatal("expected original and substitute teacher to differ")}
 	if _,err:=svc.Create(context.Background(),1,1,3,4,5,"2026-11-23",nil,"  ");err==nil{t.Fatal("expected non-empty reason")}
+	if _,err:=svc.Create(context.Background(),1,1,3,4,5,"0000-01-01",nil,"cover");err==nil{t.Fatal("expected year-zero cover date rejection")}
 	if repo.listCalls!=0||repo.createCalls!=0{t.Fatalf("invalid input reached repository: list=%d create=%d",repo.listCalls,repo.createCalls)}
 }
 
