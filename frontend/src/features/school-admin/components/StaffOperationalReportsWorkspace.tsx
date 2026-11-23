@@ -16,7 +16,7 @@ function currentMonthIST() {
 
 function csvCell(value: string | number | null | undefined) {
   const raw = String(value ?? "");
-  const safe = /^\s*[=+\-@]/.test(raw) ? "'" + raw : raw;
+  const safe = /^\s*(?:=|\+|-|@)/.test(raw) ? "'" + raw : raw;
   return '"' + safe.replace(/"/g, '""') + '"';
 }
 
