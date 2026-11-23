@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Download, RefreshCw } from "lucide-react";
-import { getClassInchargeAssignments, getMonthlyStaffAttendance, getStaffLeaveRequests, getStaffQualificationsReport, getTeacherSubjectAssignments } from "../api";
+import { getClassInchargeAssignments, getMonthlyStaffAttendance, getStaffLeaveRequests, getStaffQualificationsReport, getStaffExperienceReport, getTeacherSubjectAssignments } from "../api";
 import type { ClassInchargeAssignment, TeacherSubjectAssignment } from "../api";
 import { useStaffSubstitutionTimetableYearQuery } from "../queries";
-import type { StaffAttendanceMonthlySummary, StaffLeaveRequest, StaffQualificationReportRow } from "../api";
+import type { StaffAttendanceMonthlySummary, StaffLeaveRequest, StaffQualificationReportRow, StaffExperienceReportRow } from "../api";
 import "./StaffOperationalReportsWorkspace.css";
 
 type Props = { permissions: string[] };
@@ -232,6 +232,53 @@ function QualificationsReport({ permissions }: Props) {
   </section>;
 }
 
+
+function ExperienceReport({ permissions }: Props) {
+  const canRead=permissions.includes("users.read");
+  const [employmentType,setEmploymentType]=useState<""|StaffExperienceReportRow["employment_type"]>("");
+  const [currentOnly,setCurrentOnly]=useState(false);
+  const [offset,setOffset]=useState(0);
+  const limit=50;
+  const report=useQuery({
+    queryKey:["staff-operational-report","experience",employmentType,currentOnly,offset],
+    queryFn:({signal})=>getStaffExperienceReport({employmentType:employmentType||undefined,currentOnly,limit,offset},signal),
+    enabled:canRead,
+  });
+  if(!canRead)return null;
+  const page=report.data?.report;
+  const current=(page?.counts??[]).filter(item=>item.is_current).reduce((sum,item)=>sum+item.count,0);
+  const previous=(page?.counts??[]).filter(item=>!item.is_current).reduce((sum,item)=>sum+item.count,0);
+  const exportRows=(rows:StaffExperienceReportRow[])=>exportCSV("staff-experience-report.csv",[
+    ["Employee code","Staff name","Current designation","Employment status","Employer","Previous designation","Employment type","Start date","End date","Current role"],
+    ...rows.map(row=>[row.employee_code,row.staff_name,row.designation,row.employment_status,row.employer_name,row.previous_designation,row.employment_type,row.start_date,row.end_date,row.is_current?"Yes":"No"]),
+  ]);
+  return <section className="staff-operational-report-section">
+    <div className="staff-operational-report-title">
+      <div><h3>Staff experience history</h3><p>School-wide employment history, including inactive employees. Free-text descriptions are excluded.</p></div>
+      <button type="button" className="staff-operational-report-export" onClick={()=>page&&exportRows(page.rows)} disabled={!page||page.rows.length===0||report.isError}><Download size={14}/> Export current page CSV</button>
+    </div>
+    <div className="staff-operational-report-filters">
+      <label>Employment type<select value={employmentType} onChange={event=>{setEmploymentType(event.target.value as typeof employmentType);setOffset(0);}}>
+        <option value="">All employment types</option><option value="permanent">Permanent</option><option value="contract">Contract</option><option value="part_time">Part time</option><option value="temporary">Temporary</option><option value="internship">Internship</option><option value="other">Other</option>
+      </select></label>
+      <label>Experience status<select value={currentOnly?"current":"all"} onChange={event=>{setCurrentOnly(event.target.value==="current");setOffset(0);}}><option value="all">All history</option><option value="current">Current roles only</option></select></label>
+    </div>
+    <div className="staff-operational-report-metrics">
+      <article><span>Matching records</span><strong>{page?.total??"—"}</strong></article>
+      <article><span>Current roles</span><strong>{page?current:"—"}</strong></article>
+      <article><span>Previous roles</span><strong>{page?previous:"—"}</strong></article>
+      <article><span>Employees represented</span><strong>{page?new Set(page.rows.map(row=>row.staff_principal_id)).size:"—"}</strong></article>
+    </div>
+    {report.isLoading&&<p role="status">Loading staff experience report…</p>}
+    {report.isError&&<p className="staff-operational-report-error" role="alert">Staff experience report could not be loaded. <button type="button" onClick={()=>void report.refetch()}>Retry</button></p>}
+    {report.isSuccess&&page?.rows.length===0&&<p className="staff-operational-report-empty">{page.total===0?"No experience records match these filters.":"No records on this page."}</p>}
+    {report.isSuccess&&!!page?.rows.length&&<div className="staff-operational-report-table-wrap"><table><thead><tr><th>Employee</th><th>Current designation</th><th>Employer</th><th>Previous designation</th><th>Employment type</th><th>From</th><th>To</th><th>Record status</th></tr></thead><tbody>
+      {page.rows.map(row=><tr key={row.record_id}><td>{row.staff_name}<small>{row.employee_code}</small></td><td>{row.designation}</td><td>{row.employer_name}</td><td>{row.previous_designation}</td><td>{row.employment_type.replace("_"," ")}</td><td>{row.start_date}</td><td>{row.is_current?"Present":row.end_date||"—"}</td><td>{row.employment_status}</td></tr>)}
+    </tbody></table></div>}
+    {page&&page.total>limit&&<div className="staff-operational-report-pagination"><span>Showing {offset+1}–{Math.min(offset+limit,page.total)} of {page.total}</span><button type="button" onClick={()=>setOffset(Math.max(0,offset-limit))} disabled={offset===0||report.isFetching}>Previous</button><button type="button" onClick={()=>setOffset(offset+limit)} disabled={offset+limit>=page.total||report.isFetching}>Next</button></div>}
+  </section>;
+}
+
 export function StaffOperationalReportsWorkspace({ permissions }: Props) {
   const canReadAttendance = permissions.includes("staff.attendance.read");
   const canReadLeave = permissions.includes("staff.leave.read");
@@ -256,6 +303,7 @@ export function StaffOperationalReportsWorkspace({ permissions }: Props) {
     {!canReadAttendance && !canReadLeave && <p className="staff-operational-report-denied" role="status">Attendance and leave reports are hidden because you do not have their read permissions.</p>}
     {(permissions.includes("teacher_assignments.read") || permissions.includes("class_incharge_assignments.read")) && <div className="staff-operational-report-panel"><AssignmentReport permissions={permissions}/></div>}
     {permissions.includes("users.read") && <div className="staff-operational-report-panel"><QualificationsReport permissions={permissions}/></div>}
+    {permissions.includes("users.read") && <div className="staff-operational-report-panel"><ExperienceReport permissions={permissions}/></div>}
     {canReadAttendance && <div className="staff-operational-report-panel">
       <div className="staff-operational-report-panel-heading"><strong>Attendance</strong><button type="button" onClick={() => void attendance.refetch()} disabled={attendance.isFetching}><RefreshCw size={14}/> Refresh</button></div>
       {attendance.isLoading && <p role="status">Loading attendance report…</p>}
