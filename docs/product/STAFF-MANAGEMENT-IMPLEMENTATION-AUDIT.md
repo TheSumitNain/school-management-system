@@ -514,3 +514,12 @@ Verification on branch `work`, commit `30270fe0927a6eb3f284d462ddd6dc2b4ca2959e`
 - This keeps the authorization evaluation and write in one transaction context; it does not claim serializable isolation or a lock against every concurrent permission-revocation race.
 - Backend CI [45138373886](https://github.com/TheSumitNain/school-management-system/actions/runs/45138373886) **PASS** on `04590b9d`: ephemeral PostgreSQL migrations, full Go suite including PostgreSQL integration, and `go vet`.
 - No migration or persistent database change.
+
+
+## 52. Permission override acceptance fixture alignment (2026-11-23)
+
+- Corrected the Staff Management permission-override Playwright fixture to use `students.read_basic`, a genuinely delegable permission, instead of `staff.attendance.read`, which is non-delegable in the real permission catalogue.
+- This keeps the UI test aligned with production permission/delegation rules without changing application behavior.
+- Frontend CI [45138964793](https://github.com/TheSumitNain/school-management-system/actions/runs/45138964793) **PASS** on `4ddcf02c`: TypeScript, production build, design-token check and **86 Playwright tests**.
+- Backend CI [45138964862](https://github.com/TheSumitNain/school-management-system/actions/runs/45138964862) **PASS** on the same checkpoint: ephemeral PostgreSQL migrations, Go tests including PostgreSQL integration and `go vet`.
+- No migration or persistent database change.
