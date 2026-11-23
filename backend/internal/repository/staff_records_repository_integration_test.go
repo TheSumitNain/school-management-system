@@ -208,6 +208,13 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("count staff record audit events: %v",err)
 	}
 	if auditCount!=6{t.Fatalf("audit count=%d want=6 (three creates and three updates)",auditCount)}
+	// Leave and substitution activity is part of a staff member's relevant history.
+	if _,err:=tx.Exec(ctx,`
+		INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
+		VALUES
+		($1,$2,'staff.leave.requested','staff_leave_request','history-leave-fixture','success',jsonb_build_object('staff_principal_id',$3::bigint)),
+		($1,$2,'staff.substitution.assigned','staff_substitution','history-substitution-fixture','success',jsonb_build_object('original_teacher_principal_id',$3::bigint,'substitute_teacher_principal_id',$4::bigint))
+	`,actorID,schoolID,staff.PrincipalID,secondStaff.PrincipalID);err!=nil{t.Fatalf("insert leave/substitution history fixtures: %v",err)}
 	events,err:=repo.ListStaffAuditEvents(ctx,actorID,schoolID,staff.PrincipalID)
 	if err!=nil{t.Fatalf("list staff audit history: %v",err)}
 	if len(events)<9{t.Fatalf("staff audit history events=%d want at least 9 including account creation, six record mutations and two attendance actions",len(events))}
@@ -217,5 +224,12 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
     foundAttendanceUpdate := false
     for _, event := range events { if event.Action == "school.staff_attendance.updated" { foundAttendanceUpdate = true } }
     if !foundAttendanceUpdate { t.Fatal("staff audit history omitted staff attendance update") }
+	foundLeaveActivity,foundSubstitutionActivity:=false,false
+	for _,event:=range events{
+		if event.Action=="staff.leave.requested"{foundLeaveActivity=true}
+		if event.Action=="staff.substitution.assigned"{foundSubstitutionActivity=true}
+	}
+	if !foundLeaveActivity{t.Fatal("staff audit history omitted leave activity")}
+	if !foundSubstitutionActivity{t.Fatal("staff audit history omitted substitution activity")}
 	if _,err:=repo.ListStaffAuditEvents(ctx,actorID,schoolID+1,staff.PrincipalID);!errors.Is(err,ErrStaffRecordAccessDenied){t.Fatalf("cross-school staff audit history error=%v",err)}
 }
