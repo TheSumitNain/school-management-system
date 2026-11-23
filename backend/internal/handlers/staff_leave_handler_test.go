@@ -89,6 +89,25 @@ func TestStaffLeaveUnauthenticatedRequestDoesNotExposeServiceAvailability(t *tes
 }
 
 
+type nilStaffLeaveListService struct { StaffLeaveManagementService }
+func (nilStaffLeaveListService) ListTypes(context.Context,int64,int64)([]repository.StaffLeaveType,error){return nil,nil}
+func (nilStaffLeaveListService) ListRequests(context.Context,int64,int64,string,int64,string,string,string)([]repository.StaffLeaveRequest,error){return nil,nil}
+func (nilStaffLeaveListService) ListHolidays(context.Context,int64,int64,string,string,bool)([]repository.SchoolHoliday,error){return nil,nil}
+
+func TestStaffLeaveListHandlersReturnEmptyArrays(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	h:=NewStaffLeaveHandler(nilStaffLeaveListService{})
+	r:=gin.New()
+	auth:=func(c *gin.Context){c.Set(middleware.ContextPrincipalIDKey,int64(100));c.Set(middleware.ContextSchoolIDKey,int64(10));c.Next()}
+	r.GET("/types",auth,h.ListTypes)
+	r.GET("/requests",auth,h.ListRequests)
+	r.GET("/holidays",auth,h.ListHolidays)
+	for _,path:=range []string{"/types","/requests","/holidays"} {
+		rec:=httptest.NewRecorder();r.ServeHTTP(rec,httptest.NewRequest(http.MethodGet,path,nil))
+		if rec.Code!=http.StatusOK || !strings.Contains(rec.Body.String(),`"data":[]`) {t.Fatalf("%s: status=%d body=%s",path,rec.Code,rec.Body.String())}
+	}
+}
+
 type nilStaffLeaveWriteResultService struct { StaffLeaveManagementService }
 func (nilStaffLeaveWriteResultService) SaveType(context.Context,int64,int64,int64,repository.StaffLeaveType)(*repository.StaffLeaveType,error){return nil,nil}
 func (nilStaffLeaveWriteResultService) CreateRequest(context.Context,int64,int64,repository.StaffLeaveRequest)(*repository.StaffLeaveRequest,error){return nil,nil}
