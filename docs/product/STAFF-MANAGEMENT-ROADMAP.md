@@ -477,7 +477,7 @@ Phases are dependency ordered, not a claim that every listed item is absent. Ins
 
 ### Phase 6 — Reports, Import/Export & ID Cards (P1/P2)
 
-1. Staff, employment, qualification, assignment, attendance and leave reports.
+1. Staff directory/employment readiness summary report is implemented using existing school-scoped data and permission-gated CSV export (browser CI pending). Qualification, assignment, attendance and leave report consolidation remains outstanding.
 2. Validated bulk import with preview and row-level error report.
 3. Permission-controlled exports.
 4. ID card templates and bulk generation.
