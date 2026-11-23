@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"testing"
+	"math"
 
 	"school-management-system/internal/repository"
 )
@@ -182,5 +183,49 @@ func TestStaffRecordsServiceRejectsInvalidExperienceCalendarDates(t *testing.T) 
 	}
 	if repo.calls != 0 {
 		t.Fatalf("invalid experience dates reached repository %d times", repo.calls)
+	}
+}
+
+
+func TestStaffRecordsRejectsNonFiniteAndOutOfRangeQualificationScores(t *testing.T) {
+	repo := &fakeStaffRecordsRepository{}
+	svc := NewStaffRecordsService(repo)
+	for _, score := range []float64{math.NaN(), math.Inf(1), math.Inf(-1), 100.01} {
+		for _, update := range []bool{false, true} {
+			value := score
+			item := repository.StaffQualification{
+				QualificationType: "undergraduate",
+				QualificationName: "B.Sc.",
+				Institution: "University",
+				Score: &value,
+				ScoreScale: "percentage",
+			}
+			var err error
+			if update {
+				_, err = svc.UpdateQualification(context.Background(), 1, 2, 3, 4, item)
+			} else {
+				_, err = svc.CreateQualification(context.Background(), 1, 2, 3, item)
+			}
+			if err != ErrInvalidStaffRecord {
+				t.Fatalf("score=%v update=%v error=%v want ErrInvalidStaffRecord", score, update, err)
+			}
+		}
+	}
+	if repo.calls != 0 {
+		t.Fatalf("invalid qualification scores reached repository %d times", repo.calls)
+	}
+	valid := 100.0
+	item := repository.StaffQualification{
+		QualificationType: "undergraduate",
+		QualificationName: "B.Sc.",
+		Institution: "University",
+		Score: &valid,
+		ScoreScale: "percentage",
+	}
+	if _, err := svc.CreateQualification(context.Background(), 1, 2, 3, item); err != nil {
+		t.Fatalf("valid 100%% qualification score rejected: %v", err)
+	}
+	if repo.calls != 1 {
+		t.Fatalf("valid qualification repository calls=%d want=1", repo.calls)
 	}
 }
