@@ -450,3 +450,9 @@ Verification on branch `work`, commit `30270fe0927a6eb3f284d462ddd6dc2b4ca2959e`
 - Added a regression test proving sensitive/raw metadata values are absent from serialized StaffAuditEvent JSON while safe activity fields remain present.
 - Commits: `59430b1` and `80847f6` (remove metadata from response/result projection), `0b967c5`, `70ff326` and `6f5cc96` (serialization regression test), and `f1be661` (remove unused import). Backend CI [45131300374](https://github.com/TheSumitNain/school-management-system/actions/runs/45131300374) **PASS**: all migrations on ephemeral PostgreSQL, Go tests including PostgreSQL integration, and `go vet`.
 - No database migration or persistent data change was made. Documents and Bulk Import approval gates remain unchanged.
+
+## 44. Staff record read authorization boundary (2026-11-23)
+
+- Staff qualifications, certifications, experience and Staff History & Activity reads require the active same-school system School Admin role with `users.read`. This is intentional: migration `000004_add_principal_rbac_foundation.up.sql` marks `users.read` as non-delegable, so custom roles and user ALLOW overrides cannot validly grant this sensitive staff-wide read capability.
+- Preserve the backend School Admin role check and DENY override precedence. Do not broaden these endpoints to arbitrary custom roles or treat a UI permission label as authority; the backend remains the final enforcement point.
+- The initial custom-role integration-test experiment was invalid because it attempted to delegate a permission explicitly marked non-delegable. That test was removed; no product permission policy or persistent database schema was changed.
