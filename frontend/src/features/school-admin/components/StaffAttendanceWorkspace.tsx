@@ -169,14 +169,13 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
     for (const leave of approvedMonthLeave.data?.data ?? []) {
       rows.push([
         "Approved leave", leave.staff_name ?? "Staff", leave.employee_code, "",
-        "", "", "", "", "", "", "", "", leave.leave_type_name ?? "Leave",
+        "", "", "", "", "", "", "", leave.leave_type_name ?? "Leave",
         leave.start_date, leave.end_date, "", "",
       ]);
     }
     for (const holiday of monthHolidays.data?.data ?? []) {
       rows.push([
-        "School holiday", "", "", "", "", "", "", "", "", "", "", "", "",
-        "", "", holiday.holiday_date, holiday.name,
+        "School holiday", ...Array(13).fill(""), holiday.holiday_date, holiday.name,
       ]);
     }
 
