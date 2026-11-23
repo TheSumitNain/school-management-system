@@ -649,3 +649,11 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Added a PostgreSQL integration regression test for an unprivileged actor attempting to mark a non-existent staff principal.
 - Backend CI [45140616380](https://github.com/TheSumitNain/school-management-system/actions/runs/45140616380) **PASS** on `cbb64f3f`: ephemeral migrations, Go/PostgreSQL integration suite and `go vet`.
 - No persistent schema or data changes.
+
+
+## 2026-11-23 implementation checkpoint — attendance update authorization
+
+- Attendance update now evaluates both same-day-update and past-correction permissions before resolving the record. Unprivileged and partial-scope callers cannot distinguish missing record IDs from records they cannot update.
+- Added PostgreSQL integration regression coverage for unauthorized attendance mark and update target enumeration.
+- Backend CI [45141655488](https://github.com/TheSumitNain/school-management-system/actions/runs/45141655488) **PASS** on `f340fbe0` (migrations, Go/PostgreSQL integration and `go vet`).
+- No persistent database change.
