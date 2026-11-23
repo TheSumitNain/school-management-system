@@ -270,3 +270,40 @@ func TestParseStaffJoiningDate(t *testing.T) {
 		})
 	}
 }
+
+
+func TestStaffHandlerCreateRejectsNilUserWithoutError(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	service := &fakeStaffAccountService{}
+	router := gin.New()
+	router.POST("/school/staff", func(c *gin.Context) {
+		c.Set("auth_principal_id", int64(31))
+		c.Set("auth_school_id", int64(8))
+		c.Next()
+	}, NewStaffHandler(service).Create)
+	req := httptest.NewRequest(http.MethodPost, "/school/staff", strings.NewReader(`{"username":"teacher.one","initial_password":"A-Strong-Initial-Pass-123","full_name":"Rahul Sharma","employee_code":"EMP-001","designation":"Teacher","mobile_number":"9876543210"}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusInternalServerError || !strings.Contains(rec.Body.String(), "Unable to create staff account") {
+		t.Fatalf("nil successful create result must return a controlled 500: status=%d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestStaffHandlerUpdateRejectsNilUserWithoutError(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	service := &fakeStaffAccountService{}
+	router := gin.New()
+	router.PUT("/school/staff/:principalID", func(c *gin.Context) {
+		c.Set("auth_principal_id", int64(31))
+		c.Set("auth_school_id", int64(8))
+		c.Next()
+	}, NewStaffHandler(service).Update)
+	req := httptest.NewRequest(http.MethodPut, "/school/staff/27", strings.NewReader(`{"username":"teacher.updated"}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusInternalServerError || !strings.Contains(rec.Body.String(), "Unable to update staff account") {
+		t.Fatalf("nil successful update result must return a controlled 500: status=%d body=%s", rec.Code, rec.Body.String())
+	}
+}
