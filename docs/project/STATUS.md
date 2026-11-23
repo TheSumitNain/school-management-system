@@ -2251,3 +2251,11 @@ This update supersedes older status bullets that listed the following database-b
 - Added 390px, 768px and 1280px browser acceptance for the teacher-specific Workload & Timetable profile tab, including no page-level horizontal overflow and contained scrolling for both timetable tables.
 - Frontend CI [45172972979](https://github.com/TheSumitNain/school-management-system/actions/runs/45172972979) **PASS**; Backend CI [45172973009](https://github.com/TheSumitNain/school-management-system/actions/runs/45172973009) **PASS** (ephemeral PostgreSQL migrations, Go/PostgreSQL integration and `go vet`) on `93da54e6`.
 - No persistent DB changes. Final Staff Management scope review remains open for schema-bound profile fields and approved deferrals.
+
+
+
+## 2026-11-23 — Independent Staff Identity schema design gate
+
+- Added [Staff Identity and Profile Schema Design](../backend/STAFF-IDENTITY-SCHEMA-DESIGN.md), grounded in the current V28, V17, V26, V57–V63 schema. It maps employee-subject references separately from actor principal IDs and defines the proposed stable `staff_id`, optional same-school login association, department master, personal-details privacy boundary, and expand/contract migration sequence.
+- Documents the migration dependencies for qualifications, certifications, experience, attendance, leave, academic assignments, timetable and substitutions. Historical rows and actor identities are explicitly preserved.
+- This is a design-only checkpoint. No migration file, application write path, local database or persistent database was changed. Profile-only onboarding/Bulk Import remain blocked pending explicit product/schema approval; staff documents and photographs remain deferred pending external storage selection/purchase and separate approval.
