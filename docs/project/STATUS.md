@@ -4,6 +4,7 @@
 - The existing export sanitizer already protects formula-leading values after leading whitespace; this checkpoint adds explicit regression coverage for the tab-prefixed case. No runtime code, API, database schema or persistent database changed.
 - Commit: [774a74c](https://github.com/TheSumitNain/school-management-system/commit/774a74c12805a71134ae9827b80f78c9ff37ef7f).
 - Frontend CI for this test-only checkpoint is not yet confirmed. Do not mark this new assertion verified until the browser suite passes.
+- Follow-up workload-report CSV fixture now also covers a formula preceded by ordinary spaces (in addition to the directory tab-prefix case); commit `d165907d30941bf14171b8696aca4d7baa837c4d`. CI remains pending.
 
 ---
 
