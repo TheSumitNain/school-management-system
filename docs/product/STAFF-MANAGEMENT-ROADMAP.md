@@ -481,7 +481,7 @@ Phases are dependency ordered, not a claim that every listed item is absent. Ins
 2. Validated bulk import with preview and row-level error report.
 3. Permission-controlled exports.
 4. ID card templates and bulk generation.
-5. Document expiry reminders and verification workflow, only after the private-storage/security gate in [Staff Qualifications & Documents](../backend/STAFF-QUALIFICATIONS-DOCUMENTS.md) is implemented and tested. No public/web-root uploads or unprotected downloads.
+5. Document upload/download, expiry reminders and verification workflow are deferred until the user purchases/selects an external storage service and approves its integration. Until then, do not implement upload UI, local-disk storage or file APIs; continue unrelated Staff Management work.
 
 **Exit gate:** import preview has no writes; explicit confirmation; accurate row counts; sensitive exports restricted; ID cards use approved fields.
 
