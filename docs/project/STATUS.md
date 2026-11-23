@@ -1,3 +1,11 @@
+## Staff academic assignment reporting (2026-11-23)
+
+- Added a current-academic-year assignment report to the Reports workspace. It consolidates active teacher-subject and class-in-charge assignments from existing school-scoped APIs; revoked assignments are excluded.
+- Each dataset is fetched only with its own permission (`teacher_assignments.read` or `class_incharge_assignments.read`). The CSV includes only aggregate assignment counts and staff usernames, and only includes columns for permissions held by the viewer. No student data, staff contact details, or new API/schema changes.
+- Added Playwright coverage for current-year filtering, revoked-assignment exclusion and CSV export. UTF-8 BOM assertion was corrected. The latest browser CI result is pending; implementation is not yet browser-verified.
+- Code checkpoints: report `53ae4e4`; CSV encoding/sanitizer correction `7e5b704`; active/permission-limited export correction `0ff6cb3`; E2E coverage `7b2cfe8`; BOM assertion correction `8de8bb7`.
+---
+
 ## Staff attendance and leave reporting expansion (2026-11-23)
 
 - Expanded the Reports workspace with month-filtered staff attendance and leave-request summaries, reusing the existing school-scoped APIs. Attendance totals distinguish present, absent, late and half days; leave totals distinguish approved, pending and rejected requests.
