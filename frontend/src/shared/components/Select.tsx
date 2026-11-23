@@ -144,7 +144,7 @@ export function Select({
                 disabled={option.disabled}
                 className="app-select-option"
                 tabIndex={activeIndex === index ? 0 : -1}
-                onClick={() => { setOpen(false); onChange(option.value); rootRef.current?.querySelector<HTMLButtonElement>(".app-select-trigger")?.focus(); }}
+                onClick={event => { event.preventDefault(); event.stopPropagation(); setOpen(false); onChange(option.value); rootRef.current?.querySelector<HTMLButtonElement>(".app-select-trigger")?.focus(); }}
                 onKeyDown={event => handleOptionKeyDown(event, index)}
                 onMouseEnter={() => !option.disabled && setActiveIndex(index)}
               >
