@@ -1,3 +1,14 @@
+## Staff Management — school-wide experience history report implementation (2026-11-23)
+
+- Qualifications & Certifications report CI verified: Frontend CI [45116869749](https://github.com/TheSumitNain/school-management-system/actions/runs/45116869749) **PASS** (TypeScript, Vite production build and 81 Playwright tests); Backend CI [45116863949](https://github.com/TheSumitNain/school-management-system/actions/runs/45116863949) **PASS** (all migrations on ephemeral PostgreSQL, Go/PostgreSQL integration tests and `go vet`).
+- Added `GET /school/staff/experience-report`, a single school-scoped aggregate endpoint with employment-type/current-role filters, bounded pagination (default 50, maximum 200) and count metadata. It includes historical records for active and inactive employees; school identity comes only from authenticated context.
+- Repository authorization independently checks active same-school School Admin role, live `users.read` permission and explicit DENY overrides. Staff profile joins include both principal and school IDs. API and CSV omit free-text experience descriptions.
+- Added Reports UI with employment type and current-role filters, current-page CSV export, loading/error/empty states and pagination. Added service validation, PostgreSQL tenant/filter assertions, route permission tests and Playwright acceptance for aggregate requests and safe export.
+- Experience report CI verification is pending. No migration or persistent database change was added or run. Document upload/download remains deferred until an external storage service is purchased and approved.
+- Implementation checkpoints: repository `0ea9b93` / SQL correction `0507e00`; service `5bde241`; handler `44177ee` / filter validation `495f645`; route `3305e16`; service tests `d8cae5b`; PostgreSQL integration `b1fd9b4`; route permission tests `e22bc9d`; frontend API `c60b387`; Reports UI `2559abe`; Playwright `6c71237`.
+
+---
+
 ## Staff Management — qualifications & certifications report implementation (2026-11-23)
 
 - Added `GET /school/staff/qualifications-report`, a single school-scoped aggregate endpoint with record-type and verification-status filters, bounded pagination (default 50, maximum 200), counts by type/status, stable ordering and active-employment scope. School ID is derived from authenticated context.
