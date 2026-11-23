@@ -355,4 +355,4 @@ Verification on branch `work`, commit `30270fe0927a6eb3f284d462ddd6dc2b4ca2959e`
 
 - The directory export already neutralizes formula-leading values after leading whitespace and writes UTF-8 BOM/CRLF CSV. The browser acceptance fixture previously covered a value beginning directly with `=`; it now begins with a tab followed by `=HYPERLINK(...)` and asserts the exported cell receives a protective apostrophe before the tab.
 - This is a test-only change; no runtime code, API contract, migration or persistent database change.
-- Exact checkpoint: `774a74c12805a71134ae9827b80f78c9ff37ef7f` ([commit](https://github.com/TheSumitNain/school-management-system/commit/774a74c12805a71134ae9827b80f78c9ff37ef7f)). Frontend CI is pending; the new assertion is not yet marked verified.
+- Exact checkpoint: `774a74c12805a71134ae9827b80f78c9ff37ef7f` ([commit](https://github.com/TheSumitNain/school-management-system/commit/774a74c12805a71134ae9827b80f78c9ff37ef7f)). Frontend CI is pending; the new assertion is not yet marked verified. A follow-up workload-report fixture also covers a formula preceded by ordinary spaces (commit `d165907d30941bf14171b8696aca4d7baa837c4d`).
