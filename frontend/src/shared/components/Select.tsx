@@ -25,11 +25,19 @@ export function Select({
   const [activeIndex, setActiveIndex] = useState(0);
   const rootRef = useRef<HTMLDivElement>(null);
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const previousValue = useRef(value);
   const selected = options.find(option => option.value === value);
   const enabledOptions = useMemo(
     () => options.map((option, index) => ({ option, index })).filter(item => !item.option.disabled),
     [options],
   );
+
+  useEffect(() => {
+    if (previousValue.current !== value) {
+      previousValue.current = value;
+      setOpen(false);
+    }
+  }, [value]);
 
   useEffect(() => {
     if (!open) return;
@@ -136,7 +144,7 @@ export function Select({
                 disabled={option.disabled}
                 className="app-select-option"
                 tabIndex={activeIndex === index ? 0 : -1}
-                onClick={() => { onChange(option.value); setOpen(false); rootRef.current?.querySelector<HTMLButtonElement>(".app-select-trigger")?.focus(); }}
+                onClick={() => { setOpen(false); onChange(option.value); rootRef.current?.querySelector<HTMLButtonElement>(".app-select-trigger")?.focus(); }}
                 onKeyDown={event => handleOptionKeyDown(event, index)}
                 onMouseEnter={() => !option.disabled && setActiveIndex(index)}
               >
