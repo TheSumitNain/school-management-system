@@ -2237,3 +2237,11 @@ This update supersedes older status bullets that listed the following database-b
 
 - Added a negative-permission Playwright test for attendance readers without mark/update permissions. Individual status/remarks controls and bulk save controls remain disabled, and no attendance write request is sent.
 - Frontend CI [45169926822](https://github.com/TheSumitNain/school-management-system/actions/runs/45169926822) **PASS** (production build and full Playwright suite). Backend joining-date validation changes are being verified separately.
+
+## 2026-11-23 — Staff record and attendance date validation; responsive report acceptance
+
+- Certification and previous-employment create/update services now validate canonical calendar dates, reject year zero and invalid dates before SQL date casts, and compare optional/required date ranges correctly. Valid year-one dates are supported without treating `0001-01-01` as an omitted value.
+- Attendance handlers reject year-zero/non-canonical dates and months; attendance service/repository validation now consistently supports valid year-one calendar values. Staff profile create/update use matching joining-date bounds (year 1 or later, at most one year ahead).
+- Added mobile/tablet/desktop browser acceptance for Substitutions and the school-wide Workload Report; retained read-only attendance and substitution permission regression coverage.
+- Frontend CI [45171132153](https://github.com/TheSumitNain/school-management-system/actions/runs/45171132153) **PASS**; Backend CI [45172378554](https://github.com/TheSumitNain/school-management-system/actions/runs/45172378554) **PASS** (ephemeral PostgreSQL migrations, Go/PostgreSQL integration and `go vet`) on `617c235e`.
+- No persistent schema or data changes. Profile-only onboarding/Bulk Import remain blocked pending identity-schema approval; staff document upload remains deferred until external storage is selected/purchased and explicitly approved. Final Staff Management acceptance is still in progress.
