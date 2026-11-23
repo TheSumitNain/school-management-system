@@ -45,7 +45,7 @@ func validQualificationScore(score *float64, scale string) bool {
 	if score == nil {
 		return scale == ""
 	}
-	if math.IsNaN(*score) || math.IsInf(*score, 0) || *score < 0 || !scales[scale] {
+	if math.IsNaN(*score) || math.IsInf(*score, 0) || *score < 0 || *score > 99999.999 || !scales[scale] {
 		return false
 	}
 	if scale == "percentage" && *score > 100 {
