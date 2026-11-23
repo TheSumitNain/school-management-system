@@ -2123,3 +2123,11 @@ This update supersedes older status bullets that listed the following database-b
 - Fixed the shared leave-handler actor path to avoid writing duplicate HTTP error responses when staff authentication context is unavailable. Strengthened nil-receiver/service tests to validate the actual JSON error response across all leave and holiday actions.
 - Backend CI [45135360996](https://github.com/TheSumitNain/school-management-system/actions/runs/45135360996) **PASS** on `5f3935bb`: migrations, Go tests including PostgreSQL integration, and `go vet`.
 - No persistent schema or data change.
+
+
+## 2026-11-23 — Staff permission allowlist and route regression coverage
+
+- Fixed the runtime School Admin permission allowlist so the existing database-provisioned `staff.substitutions.read` and `staff.substitutions.manage` grants are not filtered out. Added a PostgreSQL effective-permissions assertion for both keys.
+- Added route-level denial/grant coverage across staff leave, holidays, substitutions, qualifications, certifications, experience, reports and audit history. Unauthorized requests are asserted to stop with 403 before handler execution.
+- Backend CI [45137329371](https://github.com/TheSumitNain/school-management-system/actions/runs/45137329371) **PASS** on `20814d1f`: ephemeral PostgreSQL migration application, full Go test suite including PostgreSQL integration, and `go vet`.
+- Integration fixture usernames now use collision-resistant random suffixes that respect the database's maximum username length. No persistent DB migration or data change.
