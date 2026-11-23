@@ -354,7 +354,7 @@ Show row number, field, error and correction guidance for every invalid row. Det
 
 ### 3.12 Form L — Staff ID Card (P2)
 
-Fields: Template (Required), Staff Selection (Required; one or many), Card Validity/Expiry (Optional), Show QR (Optional; only after secure verification endpoint design), Print Layout (Required). Include only approved public-facing identity fields. Never encode sensitive personal, login or permission data in a QR code.
+Fields: Template (Required), Staff Selection (Required; one or many), Card Validity/Expiry (Optional), Print Layout (Required). The current print workspace supports Classic/Compact/Modern templates and only active, complete profiles. It prints employee name, designation, employee code, joining date, employment status and optional validity. QR is intentionally omitted until a secure verification endpoint is designed. Never print contact details, login data or permission information.
 
 ### 3.13 Form M — Payroll Setup & Processing (P2)
 
