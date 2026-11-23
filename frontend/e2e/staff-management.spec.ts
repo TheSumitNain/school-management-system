@@ -1755,7 +1755,7 @@ test("staff qualifications report uses one paginated aggregate endpoint and expo
   expect(requests.every(request => request.startsWith("/api/school/staff/qualifications-report?"))).toBe(true);
 
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Export current page CSV" }).click();
+  await qualificationSection.getByRole("button", { name: "Export current page CSV" }).click();
   const download = await downloadPromise;
   const path = await download.path();
   expect(path).toBeTruthy();
