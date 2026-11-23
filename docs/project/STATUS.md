@@ -2154,3 +2154,10 @@ This update supersedes older status bullets that listed the following database-b
 - Frontend CI [45138964793](https://github.com/TheSumitNain/school-management-system/actions/runs/45138964793) **PASS**: production build and 86 Playwright tests.
 - Backend CI [45138964862](https://github.com/TheSumitNain/school-management-system/actions/runs/45138964862) **PASS**: migrations, Go/PostgreSQL integration and `go vet`.
 - Both workflows passed on code checkpoint `4ddcf02c`; no persistent database change.
+
+
+## 2026-11-23 — School Admin timetable effective-permission verification
+
+- The PostgreSQL role integration test now asserts that School Admin effective permissions include `timetable.read` and `timetable.manage`, alongside `staff.substitutions.read/manage`. This verifies actual provisioned role grants and the live runtime allowlist.
+- Backend CI [45139554701](https://github.com/TheSumitNain/school-management-system/actions/runs/45139554701) **PASS** on `2ad43a9c`: ephemeral migrations, full Go/PostgreSQL integration suite and `go vet`.
+- No persistent DB change.
