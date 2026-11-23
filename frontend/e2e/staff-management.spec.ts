@@ -283,7 +283,7 @@ test("staff workspace opens on a real-data overview and hides permission-gated o
   await expect(readiness.locator("li").nth(2).locator("strong")).toHaveText("1");
   await expect(page.getByRole("button", { name: /Attendance/ })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /Leave/ })).toBeDisabled();
-  await expect(page.getByRole("button", { name: /Reports/ })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Reports", exact: true })).toBeEnabled();
 });
 
 
@@ -1587,10 +1587,10 @@ test("staff reports show school-scoped employment readiness and export approved 
   await page.getByRole("button", { name: "Reports", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Staff Reports" })).toBeVisible();
   await expect(page.getByText("Total staff").locator("..")).toContainText("2");
-  await expect(page.getByText("Active employment").locator("..")).toContainText("1");
-  await expect(page.getByText("Inactive employment").locator("..")).toContainText("1");
-  await expect(page.getByText("Profile incomplete").locator("..")).toContainText("1");
-  await expect(page.getByText("Login disabled").locator("..")).toContainText("1");
+  await expect(page.locator(".staff-report-summary article").filter({ hasText: "Active employment" }).locator("strong")).toHaveText("1");
+  await expect(page.locator(".staff-report-summary article").filter({ hasText: "Inactive employment" }).locator("strong")).toHaveText("1");
+  await expect(page.locator(".staff-report-summary article").filter({ hasText: "Profile incomplete" }).locator("strong")).toHaveText("1");
+  await expect(page.locator(".staff-report-summary article").filter({ hasText: "Login disabled" }).locator("strong")).toHaveText("1");
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export staff report" }).click();
   const download = await downloadPromise;
@@ -1613,7 +1613,7 @@ test("staff reports show monthly attendance and leave summaries only with matchi
   await expect(page.getByRole("heading", { name: "Attendance & leave reports" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Monthly staff attendance" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Leave requests" })).toBeVisible();
-  await expect(page.getByText("Active Teacher")).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Active Teacher" }).first()).toBeVisible();
   await expect(page.getByText("EMP-LEAVE-01")).toBeVisible();
 
   const attendanceDownloadPromise = page.waitForEvent("download");
