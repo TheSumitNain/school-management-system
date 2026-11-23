@@ -574,7 +574,7 @@ func (r *UserRepository) ListStaffExperienceReport(ctx context.Context, actorID,
     base:=`
         SELECT e.id,e.staff_principal_id,sp.employee_code,sp.full_name,sp.designation,
                sp.employment_status,e.employer_name,e.designation AS previous_designation,e.employment_type,
-               e.start_date::text,COALESCE(e.end_date::text,''),e.is_current
+               e.start_date::text,COALESCE(e.end_date::text,'') AS end_date,e.is_current
         FROM staff_experience e
         JOIN staff_profiles sp ON sp.principal_id=e.staff_principal_id AND sp.school_id=e.school_id
         WHERE e.school_id=$1
