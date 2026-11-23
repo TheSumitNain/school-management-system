@@ -1,3 +1,11 @@
+## 2026-11-23 — Staff attendance write-result and permission-query hardening
+
+- Attendance mark and update handlers now reject a successful service response with a nil record instead of returning an empty success payload. Added handler regression coverage for both write paths.
+- Attendance-related approved-leave and holiday context queries now require the staff attendance read permission in addition to their respective leave/holiday read permissions.
+- Backend CI [45191624401](https://github.com/TheSumitNain/school-management-system/actions/runs/45191624401) **PASS**: all migrations applied to ephemeral PostgreSQL, full Go/PostgreSQL integration suite and `go vet`.
+- Frontend CI [45191624510](https://github.com/TheSumitNain/school-management-system/actions/runs/45191624510) is still running the full Playwright browser acceptance suite; production build has passed.
+- No persistent database migration or data changes. Staff Management final acceptance and existing profile identity/Bulk Import/document-storage approval blockers remain open.
+
 ## Staff Management — complete leave-history lifecycle coverage (2026-11-23)
 
 - Expanded the real PostgreSQL Staff History & Activity integration test to create and approve, reject, and cancel actual leave requests. It verifies that approval, rejection and cancellation audit rows—which intentionally omit staff IDs from metadata—are resolved through the leave request resource ID with school scoping.
