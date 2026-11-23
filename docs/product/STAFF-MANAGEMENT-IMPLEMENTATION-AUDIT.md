@@ -557,3 +557,12 @@ Verification on branch `work`, commit `30270fe0927a6eb3f284d462ddd6dc2b4ca2959e`
 - Added PostgreSQL integration coverage proving an unprivileged actor cannot enumerate attendance record IDs through the update endpoint.
 - Backend CI [45141655488](https://github.com/TheSumitNain/school-management-system/actions/runs/45141655488) **PASS** on `f340fbe0`: ephemeral PostgreSQL migrations, full Go/PostgreSQL integration suite and `go vet`.
 - No schema migration or persistent database change.
+
+
+## 57. Staff handler authentication before availability checks (2026-11-23)
+
+- Attendance, staff records and leave/holiday handlers now validate authenticated staff principal and school context before checking whether the service dependency is available.
+- Unauthenticated callers receive HTTP 401 consistently, rather than learning whether an internal service dependency is configured through HTTP 503. Authenticated callers with unavailable dependencies still receive the existing single JSON 503 response.
+- Updated regression coverage for all affected attendance, records, leave and holiday actions, plus explicit unauthenticated availability-disclosure checks.
+- Backend CI [45142232011](https://github.com/TheSumitNain/school-management-system/actions/runs/45142232011) **PASS** on `36f278e5`: ephemeral PostgreSQL migrations, full Go/PostgreSQL integration suite and `go vet`.
+- No schema migration or persistent database change.
