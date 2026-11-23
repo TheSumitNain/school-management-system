@@ -1,3 +1,12 @@
+## Staff Management — Leave authorization-order hardening (2026-11-23)
+
+- Staff Leave Type create/update and approve/reject repository operations now authorize the actor before validating user-controlled names, decision IDs or rejection comments. This preserves authorization-first behavior and avoids exposing validation differences to callers without the relevant live permission.
+- Added PostgreSQL integration regression coverage proving an unauthorized staff actor receives access denied for malformed leave-type and decision inputs.
+- Backend CI [45187091815](https://github.com/TheSumitNain/school-management-system/actions/runs/45187091815) **PASS** on `176fdbb168f014d6f79eceacced48d2144170818`: full migration chain on ephemeral PostgreSQL, Go tests including PostgreSQL integration and `go vet`.
+- No migration was added or applied; no persistent database/data changed. Staff Management remains in progress pending schema/product approvals and consolidated final acceptance.
+
+---
+
 ## Staff Management — History & Activity final verification checkpoint (2026-11-23)
 
 - Extended Staff History & Activity to include leave request/decision/cancellation and class-substitution assignment/cancellation audit events. The API resolves the relevant staff principal from privacy-safe audit metadata or school-scoped resource relationships; raw audit metadata is not returned to clients.
