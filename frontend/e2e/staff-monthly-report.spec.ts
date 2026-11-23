@@ -34,7 +34,7 @@ test("monthly staff report downloads attendance, approved leave and holidays as 
     if (path === "/school/staff" && request.method() === "GET") {
       await route.fulfill({ json: { staff: [{
         id: 702, principal_id: 702, school_id: 10, username: "teacher.report",
-        employee_code: "T-702", full_name: "Report Teacher", designation: "Teacher",
+        employee_code: "T-702", full_name: "=1+1 Report Teacher", designation: "Teacher",
         employment_status: "active", profile_complete: true, status: "active",
         must_change_password: false,
       }] } });
@@ -93,7 +93,7 @@ test("monthly staff report downloads attendance, approved leave and holidays as 
   expect(csv).toContain("Attendance summary");
   expect(csv).toContain("Report Teacher");
   expect(csv).toContain("Attendance entry");
-  expect(csv).toContain("'=1+1");
+  expect(csv).toContain("'=1+1 Report Teacher");
   expect(csv).toContain("Approved leave");
   expect(csv).toContain("Medical Leave");
   expect(csv).toContain("School holiday");
