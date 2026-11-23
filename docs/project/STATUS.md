@@ -1,3 +1,12 @@
+## Staff Management — Attendance authorization-first hardening (2026-11-23)
+
+- Staff attendance mark, bulk mark and update operations now authorize live attendance-write permissions before validating staff/record IDs, status values, remarks or bulk input shape. Existing authorization-before-target lookup and transactional/audit behavior are preserved.
+- Added PostgreSQL integration regression assertions that unauthorized callers receive access denied for malformed individual mark, update and bulk-mark inputs.
+- Backend CI [45188644143](https://github.com/TheSumitNain/school-management-system/actions/runs/45188644143) **PASS** on `8ee7d74d6b4e5508eac0e483ccff983558627a67`: ephemeral PostgreSQL migrations, full Go/PostgreSQL integration tests and `go vet`.
+- No migration was added or applied; no persistent database/data changed. Staff Management remains in progress pending the documented identity/profile schema approvals and consolidated final acceptance.
+
+---
+
 ## Staff Management — Substitution authorization-order hardening (2026-11-23)
 
 - Staff substitution list and cancellation now authorize live `staff.substitutions.read/manage` permission before validating user-supplied staff/record IDs, matching the existing authorization-first date-filter and create behavior.
