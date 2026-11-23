@@ -1,0 +1,57 @@
+.staff-id-workspace{display:grid;gap:16px;min-width:0}
+.staff-id-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.staff-id-heading h2{margin:0;color:var(--color-text);font-size:17px}
+.staff-id-heading p{max-width:720px;margin:5px 0 0;color:var(--color-text-muted);font-size:12px;line-height:1.55}
+.staff-id-heading>button{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.staff-id-controls{display:flex;align-items:end;flex-wrap:wrap;gap:12px;padding:14px;border:1px solid var(--color-border);border-radius:10px;background:var(--color-surface)}
+.staff-id-controls label{display:grid;gap:5px;color:var(--color-text);font-size:11px;font-weight:600}
+.staff-id-controls label span{color:var(--color-text-muted);font-weight:400}
+.staff-id-controls select,.staff-id-controls input{min-height:36px;min-width:170px;padding:7px 9px;border:1px solid var(--color-border);border-radius:7px;background:var(--color-background);color:var(--color-text);font:inherit}
+.staff-id-selection-actions{display:flex;gap:8px;margin-left:auto}
+.staff-id-selection-actions button{min-height:34px;padding:6px 10px;border:1px solid var(--color-border);border-radius:7px;background:var(--color-surface);color:var(--color-text);font-size:11px;font-weight:600}
+.staff-id-selection-actions button:disabled{opacity:.5;cursor:not-allowed}
+.staff-id-selection{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.staff-id-selection>label{display:flex;align-items:flex-start;gap:9px;min-width:0;padding:11px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-surface);cursor:pointer}
+.staff-id-selection input{margin:2px 0 0;accent-color:var(--color-primary)}
+.staff-id-selection span{display:grid;gap:3px;min-width:0}
+.staff-id-selection strong{overflow-wrap:anywhere;color:var(--color-text);font-size:12px}
+.staff-id-selection small{color:var(--color-text-muted);font-size:10px;line-height:1.4}
+.staff-id-preview-heading{display:flex;align-items:center;justify-content:space-between}
+.staff-id-preview-heading h3{margin:0;color:var(--color-text);font-size:14px}
+.staff-id-preview-heading span{color:var(--color-text-muted);font-size:11px}
+.staff-id-empty{margin:0;padding:18px;border:1px dashed var(--color-border);border-radius:9px;color:var(--color-text-muted);font-size:12px;text-align:center}
+.staff-id-print-area{display:flex;flex-wrap:wrap;align-items:flex-start;gap:14px;padding:16px;border:1px solid var(--color-border);border-radius:10px;background:var(--color-surface-muted)}
+.staff-id-card{display:flex;flex-direction:column;width:340px;min-height:214px;overflow:hidden;border:1px solid var(--color-border);border-radius:12px;background:var(--color-surface);color:var(--color-text);box-shadow:0 2px 8px #00000012;break-inside:avoid}
+.staff-id-card-band{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 13px;background:var(--color-primary);color:white;font-size:10px;font-weight:800;letter-spacing:.08em}
+.staff-id-card-band span:last-child{padding:4px 7px;border:1px solid #ffffff88;border-radius:5px;font-size:8px}
+.staff-id-card-body{display:flex;align-items:center;gap:12px;padding:13px 14px 8px}
+.staff-id-avatar{display:grid;flex:0 0 46px;width:46px;height:46px;place-items:center;border-radius:50%;background:var(--color-surface-muted);color:var(--color-primary);font-size:15px;font-weight:800}
+.staff-id-person{min-width:0}
+.staff-id-person h4{margin:0;overflow-wrap:anywhere;font-size:15px}
+.staff-id-person p{margin:3px 0 0;color:var(--color-text-muted);font-size:10px}
+.staff-id-card dl{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:0;padding:8px 14px 11px}
+.staff-id-card dl div{min-width:0}
+.staff-id-card dt{color:var(--color-text-muted);font-size:8px;text-transform:uppercase;letter-spacing:.05em}
+.staff-id-card dd{margin:3px 0 0;overflow-wrap:anywhere;font-size:9px;font-weight:700}
+.staff-id-card footer{display:flex;justify-content:space-between;gap:8px;margin-top:auto;padding:8px 14px;border-top:1px solid var(--color-border);color:var(--color-text-muted);font-size:8px}
+.staff-id-card--compact{width:310px;min-height:185px;border-radius:5px}
+.staff-id-card--compact .staff-id-card-band{padding:8px 11px}
+.staff-id-card--compact .staff-id-card-body{padding:9px 11px 5px}
+.staff-id-card--compact .staff-id-avatar{width:38px;height:38px;flex-basis:38px}
+.staff-id-card--modern{border-radius:18px}
+.staff-id-card--modern .staff-id-card-band{padding:13px 15px}
+.staff-id-card--modern .staff-id-card-body{padding-top:17px}
+@media(max-width:850px){.staff-id-selection{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.staff-id-heading{flex-direction:column}.staff-id-controls{align-items:stretch;flex-direction:column}.staff-id-controls label,.staff-id-controls select,.staff-id-controls input{width:100%;min-width:0}.staff-id-selection-actions{margin-left:0}.staff-id-selection{grid-template-columns:1fr}.staff-id-print-area{justify-content:center;padding:10px}.staff-id-card{width:min(340px,100%)}}
+@media print{
+  @page{size:A4;margin:12mm}
+  body *{visibility:hidden!important}
+  .staff-id-print-area,.staff-id-print-area *{visibility:visible!important}
+  .staff-id-print-area{position:absolute!important;left:0!important;top:0!important;display:grid!important;grid-template-columns:repeat(2,85mm)!important;gap:8mm!important;width:auto!important;padding:0!important;border:0!important;background:transparent!important}
+  .staff-id-card,.staff-id-card--compact{width:85mm!important;min-height:54mm!important;height:54mm!important;border:1px solid #333!important;border-radius:3mm!important;box-shadow:none!important;background:white!important;color:#111!important}
+  .staff-id-card-band{background:#243b63!important;color:white!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .staff-id-avatar{background:#e8edf5!important;color:#243b63!important}
+  .staff-id-person p,.staff-id-card dt,.staff-id-card footer{color:#444!important}
+  .staff-id-card dl{padding-top:5mm!important}
+  .staff-id-card footer{padding-top:2mm!important}
+}
