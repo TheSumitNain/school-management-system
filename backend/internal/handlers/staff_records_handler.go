@@ -173,6 +173,8 @@ func (h *StaffRecordsHandler) ListQualificationsReport(c *gin.Context) {
 	page, err := h.service.ListQualificationsReport(c.Request.Context(),actor,school,filter)
 	if err != nil { h.fail(c,err); return }
 	if page == nil { c.JSON(http.StatusInternalServerError,gin.H{"status":"error","message":"Unable to load staff qualifications report"}); return }
+	if page.Rows == nil { page.Rows = []repository.StaffQualificationReportRow{} }
+	if page.Counts == nil { page.Counts = []repository.StaffQualificationReportCount{} }
 	c.JSON(http.StatusOK,gin.H{"status":"success","report":page})
 }
 
@@ -188,5 +190,7 @@ func (h *StaffRecordsHandler) ListExperienceReport(c *gin.Context) {
     page,err:=h.service.ListExperienceReport(c.Request.Context(),actor,school,filter)
     if err!=nil {h.fail(c,err);return}
     if page == nil { c.JSON(http.StatusInternalServerError,gin.H{"status":"error","message":"Unable to load staff experience report"}); return }
+    if page.Rows == nil { page.Rows = []repository.StaffExperienceReportRow{} }
+    if page.Counts == nil { page.Counts = []repository.StaffExperienceReportCount{} }
     c.JSON(http.StatusOK,gin.H{"status":"success","report":page})
 }
