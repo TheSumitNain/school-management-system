@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Download, RefreshCw } from "lucide-react";
-import { getClassInchargeAssignments, getMonthlyStaffAttendance, getStaffLeaveRequests, getTeacherSubjectAssignments } from "../api";
+import { getClassInchargeAssignments, getMonthlyStaffAttendance, getStaffLeaveRequests, getStaffQualificationsReport, getTeacherSubjectAssignments } from "../api";
 import type { ClassInchargeAssignment, TeacherSubjectAssignment } from "../api";
 import { useStaffSubstitutionTimetableYearQuery } from "../queries";
-import type { StaffAttendanceMonthlySummary, StaffLeaveRequest } from "../api";
+import type { StaffAttendanceMonthlySummary, StaffLeaveRequest, StaffQualificationReportRow } from "../api";
 import "./StaffOperationalReportsWorkspace.css";
 
 type Props = { permissions: string[] };
@@ -187,6 +187,51 @@ function AssignmentReport({ permissions }: Props) {
   </section>;
 }
 
+function QualificationsReport({ permissions }: Props) {
+  const canRead = permissions.includes("users.read");
+  const [recordType, setRecordType] = useState<"all" | "qualification" | "certification">("all");
+  const [verificationStatus, setVerificationStatus] = useState<"" | "pending" | "verified" | "rejected">("");
+  const [offset, setOffset] = useState(0);
+  const limit = 50;
+  const report = useQuery({
+    queryKey: ["staff-operational-report", "qualifications", recordType, verificationStatus, offset],
+    queryFn: ({ signal }) => getStaffQualificationsReport({ recordType, verificationStatus: verificationStatus || undefined, limit, offset }, signal),
+    enabled: canRead,
+  });
+  if (!canRead) return null;
+  const page = report.data?.report;
+  const exportRows = (rows: StaffQualificationReportRow[]) => exportCSV("staff-qualifications-certifications.csv", [
+    ["Record type", "Employee code", "Staff name", "Record", "Institution / issuing organization", "Completion / issue date", "Expiry date", "Verification status"],
+    ...rows.map(row => [row.record_type, row.employee_code, row.staff_name, row.record_name, row.organization, row.record_date, row.expiry_date, row.verification_status]),
+  ]);
+  const pending = (page?.counts ?? []).filter(item => item.verification_status === "pending").reduce((sum,item) => sum + item.count,0);
+  const verified = (page?.counts ?? []).filter(item => item.verification_status === "verified").reduce((sum,item) => sum + item.count,0);
+  const rejected = (page?.counts ?? []).filter(item => item.verification_status === "rejected").reduce((sum,item) => sum + item.count,0);
+  return <section className="staff-operational-report-section">
+    <div className="staff-operational-report-title">
+      <div><h3>Qualifications & certifications</h3><p>Active employees only · Verification notes and credential references are not included.</p></div>
+      <button type="button" className="staff-operational-report-export" onClick={() => page && exportRows(page.rows)} disabled={!page || page.rows.length === 0 || report.isError}><Download size={14}/> Export current page CSV</button>
+    </div>
+    <div className="staff-operational-report-filters">
+      <label>Record type<select value={recordType} onChange={event => { setRecordType(event.target.value as typeof recordType); setOffset(0); }}><option value="all">All records</option><option value="qualification">Qualifications</option><option value="certification">Certifications</option></select></label>
+      <label>Verification status<select value={verificationStatus} onChange={event => { setVerificationStatus(event.target.value as typeof verificationStatus); setOffset(0); }}><option value="">All statuses</option><option value="pending">Pending</option><option value="verified">Verified</option><option value="rejected">Rejected</option></select></label>
+    </div>
+    <div className="staff-operational-report-metrics">
+      <article><span>Matching records</span><strong>{page?.total ?? "—"}</strong></article>
+      <article><span>Pending</span><strong>{page ? pending : "—"}</strong></article>
+      <article><span>Verified</span><strong>{page ? verified : "—"}</strong></article>
+      <article><span>Rejected</span><strong>{page ? rejected : "—"}</strong></article>
+    </div>
+    {report.isLoading && <p role="status">Loading qualifications and certifications…</p>}
+    {report.isError && <p className="staff-operational-report-error" role="alert">Qualifications report could not be loaded. <button type="button" onClick={() => void report.refetch()}>Retry</button></p>}
+    {report.isSuccess && page?.rows.length === 0 && <p className="staff-operational-report-empty">{page.total === 0 ? "No qualification or certification records match these filters." : "No records on this page."}</p>}
+    {report.isSuccess && !!page?.rows.length && <div className="staff-operational-report-table-wrap"><table><thead><tr><th>Employee</th><th>Record type</th><th>Record</th><th>Institution / organization</th><th>Completion / issue</th><th>Expiry</th><th>Status</th></tr></thead><tbody>
+      {page.rows.map(row => <tr key={row.record_type + "-" + row.record_id}><td>{row.staff_name}<small>{row.employee_code}</small></td><td>{row.record_type === "qualification" ? "Qualification" : "Certification"}</td><td>{row.record_name}</td><td>{row.organization}</td><td>{row.record_date || "—"}</td><td>{row.expiry_date || "—"}</td><td><span className={"staff-operational-report-status " + row.verification_status}>{row.verification_status}</span></td></tr>)}
+    </tbody></table></div>}
+    {page && page.total > limit && <div className="staff-operational-report-pagination"><span>Showing {offset + 1}–{Math.min(offset + limit,page.total)} of {page.total}</span><button type="button" onClick={() => setOffset(Math.max(0,offset-limit))} disabled={offset===0 || report.isFetching}>Previous</button><button type="button" onClick={() => setOffset(offset+limit)} disabled={offset+limit>=page.total || report.isFetching}>Next</button></div>}
+  </section>;
+}
+
 export function StaffOperationalReportsWorkspace({ permissions }: Props) {
   const canReadAttendance = permissions.includes("staff.attendance.read");
   const canReadLeave = permissions.includes("staff.leave.read");
@@ -210,6 +255,7 @@ export function StaffOperationalReportsWorkspace({ permissions }: Props) {
     </div>}
     {!canReadAttendance && !canReadLeave && <p className="staff-operational-report-denied" role="status">Attendance and leave reports are hidden because you do not have their read permissions.</p>}
     {(permissions.includes("teacher_assignments.read") || permissions.includes("class_incharge_assignments.read")) && <div className="staff-operational-report-panel"><AssignmentReport permissions={permissions}/></div>}
+    {permissions.includes("users.read") && <div className="staff-operational-report-panel"><QualificationsReport permissions={permissions}/></div>}
     {canReadAttendance && <div className="staff-operational-report-panel">
       <div className="staff-operational-report-panel-heading"><strong>Attendance</strong><button type="button" onClick={() => void attendance.refetch()} disabled={attendance.isFetching}><RefreshCw size={14}/> Refresh</button></div>
       {attendance.isLoading && <p role="status">Loading attendance report…</p>}
