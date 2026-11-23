@@ -22,7 +22,7 @@
 .staff-id-empty{margin:0;padding:18px;border:1px dashed var(--color-border);border-radius:9px;color:var(--color-text-muted);font-size:12px;text-align:center}
 .staff-id-print-area{display:flex;flex-wrap:wrap;align-items:flex-start;gap:14px;padding:16px;border:1px solid var(--color-border);border-radius:10px;background:var(--color-surface-muted)}
 .staff-id-card{display:flex;flex-direction:column;width:340px;min-height:214px;overflow:hidden;border:1px solid var(--color-border);border-radius:12px;background:var(--color-surface);color:var(--color-text);box-shadow:0 2px 8px var(--color-border);break-inside:avoid}
-.staff-id-card-band{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 13px;background:var(--color-primary);color:white;font-size:10px;font-weight:800;letter-spacing:.08em}
+.staff-id-card-band{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 13px;background:var(--color-primary);color:var(--color-surface);font-size:10px;font-weight:800;letter-spacing:.08em}
 .staff-id-card-band span:last-child{padding:4px 7px;border:1px solid var(--color-surface);border-radius:5px;font-size:8px}
 .staff-id-card-body{display:flex;align-items:center;gap:12px;padding:13px 14px 8px}
 .staff-id-avatar{display:grid;flex:0 0 46px;width:46px;height:46px;place-items:center;border-radius:50%;background:var(--color-surface-muted);color:var(--color-primary);font-size:15px;font-weight:800}
