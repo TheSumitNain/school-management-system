@@ -463,3 +463,11 @@ Verification on branch `work`, commit `30270fe0927a6eb3f284d462ddd6dc2b4ca2959e`
 - Added table-driven regression coverage for nil receivers and nil service dependencies across all 12 handler methods.
 - Backend CI [45133291269](https://github.com/TheSumitNain/school-management-system/actions/runs/45133291269) **PASS** on checkpoint `b2fa865e`: ephemeral PostgreSQL initialization and migrations, Go tests including PostgreSQL integration, and `go vet`.
 - No migration, persistent data change, or document/bulk-import implementation was introduced. Browser acceptance still needs final full-suite confirmation on the current combined branch head.
+
+
+## 46. Staff account and leave handler availability guards (2026-11-23)
+
+- Staff account create/list/disable/update/re-enable handlers now have regression coverage for nil handler receivers and unavailable services. Staff leave and holiday endpoints share a guarded actor/dependency check; tests cover all leave-type, request, decision, cancellation and holiday handler actions for nil receivers and nil service dependencies.
+- This is a fail-closed reliability safeguard: unavailable dependencies return HTTP 503 rather than panic. It does not bypass authentication, authorization, or service validation when dependencies are available.
+- Commits: `b124c23` (leave service guard and tests), `566ce3d` (staff account handler tests). Backend CI [45134091085](https://github.com/TheSumitNain/school-management-system/actions/runs/45134091085) **PASS** on `566ce3df`: ephemeral PostgreSQL migrations, Go tests including PostgreSQL integration, and `go vet`. Frontend CI [45133733286](https://github.com/TheSumitNain/school-management-system/actions/runs/45133733286) **PASS** on `bb659f1c`: Vite production build and Playwright browser acceptance suite.
+- No migration or persistent database change was made. Staff document upload remains deferred until external storage is selected/purchased and explicitly approved. Bulk Import remains blocked on identity-schema review and approval.
