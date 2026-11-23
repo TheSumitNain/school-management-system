@@ -523,3 +523,11 @@ Verification on branch `work`, commit `30270fe0927a6eb3f284d462ddd6dc2b4ca2959e`
 - Frontend CI [45138964793](https://github.com/TheSumitNain/school-management-system/actions/runs/45138964793) **PASS** on `4ddcf02c`: TypeScript, production build, design-token check and **86 Playwright tests**.
 - Backend CI [45138964862](https://github.com/TheSumitNain/school-management-system/actions/runs/45138964862) **PASS** on the same checkpoint: ephemeral PostgreSQL migrations, Go tests including PostgreSQL integration and `go vet`.
 - No migration or persistent database change.
+
+
+## 53. School Admin timetable permission integration assertion (2026-11-23)
+
+- Extended the PostgreSQL role integration test to verify that the School Admin's live effective-permission set contains both `timetable.read` and `timetable.manage`, in addition to the dedicated staff substitution permissions.
+- This verifies the real role grants plus the runtime approved-permission allowlist used by timetable and workload operations; it is not just a mocked route test.
+- Backend CI [45139554701](https://github.com/TheSumitNain/school-management-system/actions/runs/45139554701) **PASS** on `2ad43a9c`: ephemeral PostgreSQL migrations, full Go suite including PostgreSQL integration, and `go vet`.
+- No migration or persistent database change.
