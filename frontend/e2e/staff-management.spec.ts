@@ -1706,3 +1706,60 @@ test("staff directory CSV export is filtered, UTF-8 compatible and safe from spr
   expect(csv).not.toContain("EMP-FILTERED");
   expect(csv).not.toContain("Filtered Out Teacher");
 });
+
+
+test("staff qualifications report uses one paginated aggregate endpoint and exports approved fields only", async ({ page }) => {
+  const staffRows: Array<Record<string, unknown>> = [
+    { id: 1, principal_id: 501, school_id: 10, username: "teacher.active", employee_code: "EMP-ACTIVE", full_name: "Active Teacher", designation: "Mathematics Teacher", employment_status: "active", profile_complete: true, status: "active", must_change_password: false },
+  ];
+  await signInAndOpenStaff(page, staffRows, undefined, ["users.read"]);
+  const requests: string[] = [];
+  await page.route("**/api/school/staff/qualifications-report**", async route => {
+    const url = new URL(route.request().url());
+    requests.push(url.pathname + url.search);
+    const certificationOnly = url.searchParams.get("record_type") === "certification";
+    const rows = certificationOnly ? [{
+      record_type: "certification", record_id: 22, staff_principal_id: 501, employee_code: "EMP-ACTIVE",
+      staff_name: "Active Teacher", record_name: "Child Safety Training", organization: "State Board",
+      record_date: "2025-04-01", expiry_date: "2027-04-01", verification_status: "pending",
+    }] : [{
+      record_type: "qualification", record_id: 11, staff_principal_id: 501, employee_code: "EMP-ACTIVE",
+      staff_name: "Active Teacher", record_name: "B.Ed.", organization: "State University",
+      record_date: "2022", expiry_date: "", verification_status: "verified",
+    }, {
+      record_type: "certification", record_id: 22, staff_principal_id: 501, employee_code: "EMP-ACTIVE",
+      staff_name: "Active Teacher", record_name: "Child Safety Training", organization: "State Board",
+      record_date: "2025-04-01", expiry_date: "2027-04-01", verification_status: "pending",
+    }];
+    await route.fulfill({ json: { report: {
+      rows, limit: 50, offset: Number(url.searchParams.get("offset") ?? 0), total: certificationOnly ? 1 : 2,
+      counts: certificationOnly ? [{ record_type: "certification", verification_status: "pending", count: 1 }] : [
+        { record_type: "qualification", verification_status: "verified", count: 1 },
+        { record_type: "certification", verification_status: "pending", count: 1 },
+      ],
+    } } });
+  });
+  await page.getByRole("button", { name: "Reports", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Qualifications & certifications" })).toBeVisible();
+  await expect(page.getByText("B.Ed.")).toBeVisible();
+  await expect(page.getByText("Child Safety Training")).toBeVisible();
+  await expect(page.getByText("Matching records").locator("..")).toContainText("2");
+  expect(requests).toHaveLength(1);
+
+  await page.getByLabel("Record type").selectOption("certification");
+  await expect(page.getByText("B.Ed.")).toHaveCount(0);
+  await expect(page.getByText("Child Safety Training")).toBeVisible();
+  expect(requests).toHaveLength(2);
+  expect(requests[1]).toContain("record_type=certification");
+
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export current page CSV" }).click();
+  const download = await downloadPromise;
+  const path = await download.path();
+  expect(path).toBeTruthy();
+  const csv = await readFile(path!, "utf8");
+  expect(csv.startsWith("\\uFEFF")).toBe(true);
+  expect(csv).toContain("Child Safety Training");
+  expect(csv).not.toContain("credential");
+  expect(csv).not.toContain("verification_notes");
+});
