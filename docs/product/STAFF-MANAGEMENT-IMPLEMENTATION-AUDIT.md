@@ -356,3 +356,14 @@ Verification on branch `work`, commit `30270fe0927a6eb3f284d462ddd6dc2b4ca2959e`
 - The directory export already neutralizes formula-leading values after leading whitespace and writes UTF-8 BOM/CRLF CSV. The browser acceptance fixture previously covered a value beginning directly with `=`; it now begins with a tab followed by `=HYPERLINK(...)` and asserts the exported cell receives a protective apostrophe before the tab.
 - This is a test-only change; no runtime code, API contract, migration or persistent database change.
 - Exact checkpoint: `774a74c12805a71134ae9827b80f78c9ff37ef7f` ([commit](https://github.com/TheSumitNain/school-management-system/commit/774a74c12805a71134ae9827b80f78c9ff37ef7f)). Frontend CI is pending; the new assertion is not yet marked verified. A follow-up workload-report fixture also covers a formula preceded by ordinary spaces (commit `d165907d30941bf14171b8696aca4d7baa837c4d`).
+
+
+## 33. Staff summary reports workspace (2026-11-23)
+
+- Replaced the disabled Reports navigation item with a permission-gated Staff Reports workspace (`users.read`). It uses the existing school-scoped staff query; no new endpoint or duplicate reporting table was introduced.
+- Summary metrics: total staff, active/inactive employment, incomplete profiles and disabled login accounts.
+- Export is limited to approved operational fields (employee code, name, designation, employment status, login status, profile completeness); contact details and secrets are intentionally omitted. CSV retains BOM, quoting and formula neutralization through the existing shared directory export helper.
+- Added responsive summary layout and a Playwright acceptance test for counts and sensitive-field exclusion.
+- Code: `c0d5301acb474d16aad3cda9ca1659681f55738b`; CSS: `b7caf141000cef1af3cedc6bd7613980f778c622`; test: `f07589d40f867ceaffbabb5df73e82c1e6b5a87e`.
+- Verification remains pending CI; do not mark the browser test as passed yet. Qualifications, assignments, attendance and leave reporting remain separate Phase 6 work.
+
