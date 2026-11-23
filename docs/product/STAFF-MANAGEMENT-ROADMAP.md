@@ -27,25 +27,27 @@ The Teacher's daily-work experience (own timetable, assigned classes, attendance
 
 ## 2. Navigation and tab plan
 
-### 2.1 School Admin Staff Management — 7 top-level tabs
+### 2.1 School Admin Staff Management — 9 permission-gated workspaces
 
-| # | Tab | Phase | Purpose |
+| # | Workspace | Phase | Purpose |
 |---:|---|---|---|
 | 1 | Overview | P0 | Staff summary, setup gaps and quick actions |
 | 2 | Staff Directory | P0 | Search, filter, create and manage employee profiles |
 | 3 | Academic Assignments | P0 | Class-in-charge and subject/class/section assignments |
 | 4 | Attendance | P1 | Daily staff attendance and monthly register |
-| 5 | Leave | P1 | Leave requests, balances, approvals and holiday calendar |
-| 6 | Workload & Timetable | P1 | Teacher periods, conflicts and substitute coverage |
-| 7 | Reports | P1, expanded P2 | Staff, assignment, attendance, leave and later payroll reports |
+| 5 | Leave & Holidays | P1 | Leave requests, approvals and school holiday calendar; balances remain deferred |
+| 6 | Substitutions | P1 | Dated teacher cover, timetable validation and cancellation history |
+| 7 | Workload Report | P1 | School-wide scheduled teacher periods and workload summary |
+| 8 | Reports | P1, expanded P2 | Employment, attendance, leave, assignments, qualifications, certifications and experience |
+| 9 | ID Cards | P2 | Permission-gated selection, preview and print of approved staff identity fields |
 
 **Account & Access is not a separate top-level tab.** It belongs to the selected employee's profile because it is specific to that employee. This avoids splitting one employee workflow across distant pages.
 
 Tab visibility and actions are permission-aware. A hidden tab is not authorization: every API operation must enforce live permissions and school/resource scope on the server.
 
-### 2.2 Staff profile — 8 tabs
+### 2.2 Staff profile — 9 tabs
 
-Selecting a staff row opens a full profile page (preferred for deep profiles and direct links; a responsive drawer may be used for a compact quick view). The profile has **9 tabs**:
+Selecting a staff row opens a full profile page (preferred for deep profiles and direct links; a responsive drawer may be used for a compact quick view). The profile has **9 tabs**; Workload & Timetable is shown only when the viewer has `timetable.read`:
 
 | # | Profile tab | Phase | Contents |
 |---:|---|---|---|
