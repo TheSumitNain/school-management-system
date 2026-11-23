@@ -1184,4 +1184,16 @@ func TestStaffQualificationsReportRouteEnforcesLiveUsersReadPermission(t *testin
 	if allowed.Code != http.StatusServiceUnavailable {
 		t.Fatalf("report with users.read should reach unavailable handler, status=%d body=%s",allowed.Code,allowed.Body.String())
 	}
+    experienceReq:=httptest.NewRequest(http.MethodGet,"/school/staff/experience-report",nil)
+    experienceReq.Header.Set("Authorization","Bearer valid-test-token")
+    experienceRec:=httptest.NewRecorder()
+    router,err:=setupTestRouterWithHandlers(fakeDatabase{},nil,validator,fakePrincipalLoader{principal:principal},fakePermissionLoader{permissions:[]string{"users.read"}},nil,nil,reportHandler)
+    if err!=nil {t.Fatalf("setup experience report router: %v",err)}
+    router.ServeHTTP(experienceRec,experienceReq)
+    if experienceRec.Code!=http.StatusServiceUnavailable {t.Fatalf("experience report with users.read should reach unavailable handler, status=%d body=%s",experienceRec.Code,experienceRec.Body.String())}
+    deniedRouter,err:=setupTestRouterWithHandlers(fakeDatabase{},nil,validator,fakePrincipalLoader{principal:principal},fakePermissionLoader{permissions:[]string{}},nil,nil,reportHandler)
+    if err!=nil {t.Fatalf("setup denied experience report router: %v",err)}
+    deniedRec:=httptest.NewRecorder();deniedRouter.ServeHTTP(deniedRec,experienceReq)
+    if deniedRec.Code!=http.StatusForbidden {t.Fatalf("experience report without users.read status=%d body=%s want=403",deniedRec.Code,deniedRec.Body.String())}
+
 }
