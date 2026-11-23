@@ -78,17 +78,21 @@ func(r *StaffLeaveRepository) SaveType(ctx context.Context,actor,school,id int64
  if _,e=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata) VALUES($1,$2,$3,'staff_leave_type',$4,'success',jsonb_build_object('is_active',$5::boolean))`,actor,school,action,fmt.Sprint(x.ID),x.IsActive);e!=nil{return nil,e}
  if e=tx.Commit(ctx);e!=nil{return nil,e};return &x,nil
 }
+func parseStaffLeaveDate(value string) (time.Time,error) {
+ parsed,err:=time.Parse("2006-01-02",value)
+ if err!=nil || parsed.Year()<1 || parsed.Format("2006-01-02")!=value { return time.Time{},ErrInvalidStaffLeave }
+ return parsed,nil
+}
+
 func validateStaffLeaveRequestDateFilters(onDate,fromDate,toDate string) error {
- parse := func(value string) (time.Time,error) {
+ parseOptional:=func(value string)(time.Time,error){
   if value=="" { return time.Time{},nil }
-  parsed,err:=time.Parse("2006-01-02",value)
-  if err!=nil || parsed.Year() < 1 || parsed.Format("2006-01-02")!=value { return time.Time{},ErrInvalidStaffLeave }
-  return parsed,nil
+  return parseStaffLeaveDate(value)
  }
  if (fromDate=="") != (toDate=="") { return ErrInvalidStaffLeave }
- if _,err:=parse(onDate);err!=nil{return err}
- from,err:=parse(fromDate);if err!=nil{return err}
- to,err:=parse(toDate);if err!=nil{return err}
+ if _,err:=parseOptional(onDate);err!=nil{return err}
+ from,err:=parseOptional(fromDate);if err!=nil{return err}
+ to,err:=parseOptional(toDate);if err!=nil{return err}
  if fromDate!="" && to.Before(from) { return ErrInvalidStaffLeave }
  return nil
 }
@@ -100,13 +104,14 @@ func(r *StaffLeaveRepository) ListRequests(ctx context.Context,actor,school int6
  out:=[]StaffLeaveRequest{};for rows.Next(){var x StaffLeaveRequest;if e=rows.Scan(&x.ID,&x.StaffPrincipalID,&x.EmployeeCode,&x.StaffName,&x.LeaveTypeID,&x.LeaveTypeName,&x.StartDate,&x.EndDate,&x.DurationType,&x.HalfDaySession,&x.Reason,&x.Status,&x.DecisionComment,&x.DecidedByUsername,&x.DecidedAt,&x.CreatedAt);e!=nil{return nil,e};out=append(out,x)};return out,rows.Err()
 }
 func(r *StaffLeaveRepository) CreateRequest(ctx context.Context,actor,school int64,x StaffLeaveRequest)(*StaffLeaveRequest,error){
- if r==nil||r.db==nil||actor<=0||school<=0||x.StaffPrincipalID<=0||x.LeaveTypeID<=0{return nil,ErrInvalidStaffLeave}
- start,e:=time.Parse("2006-01-02",x.StartDate);if e!=nil{return nil,ErrInvalidStaffLeave};end,e:=time.Parse("2006-01-02",x.EndDate);if e!=nil||end.Before(start){return nil,ErrInvalidStaffLeave}
+ if r==nil||r.db==nil||actor<=0||school<=0{return nil,ErrInvalidStaffLeave}
+ tx,e:=r.db.Begin(ctx);if e!=nil{return nil,e};defer func(){_=tx.Rollback(ctx)}()
+ if authorizeGuardian(ctx,tx,actor,school,"staff.leave.manage_requests")!=nil{return nil,ErrStaffLeaveAccessDenied}
+ if x.StaffPrincipalID<=0||x.LeaveTypeID<=0{return nil,ErrInvalidStaffLeave}
+ start,e:=parseStaffLeaveDate(x.StartDate);if e!=nil{return nil,ErrInvalidStaffLeave};end,e:=parseStaffLeaveDate(x.EndDate);if e!=nil||end.Before(start){return nil,ErrInvalidStaffLeave}
  x.DurationType=strings.TrimSpace(x.DurationType);x.Reason=strings.TrimSpace(x.Reason)
  if len([]rune(x.Reason))==0||len([]rune(x.Reason))>1000{return nil,ErrInvalidStaffLeave}
  if x.DurationType=="half_day"{if !start.Equal(end)||x.HalfDaySession==nil||(*x.HalfDaySession!="first_half"&&*x.HalfDaySession!="second_half"){return nil,ErrInvalidStaffLeave}}else if x.DurationType=="full_day"{x.HalfDaySession=nil}else{return nil,ErrInvalidStaffLeave}
- tx,e:=r.db.Begin(ctx);if e!=nil{return nil,e};defer func(){_=tx.Rollback(ctx)}()
- if authorizeGuardian(ctx,tx,actor,school,"staff.leave.manage_requests")!=nil{return nil,ErrStaffLeaveAccessDenied}
  // Serialize overlap checks per school/staff so simultaneous submissions cannot both pass.
  if _,e=tx.Exec(ctx,`SELECT pg_advisory_xact_lock(hashtextextended($1::bigint::text || ':' || $2::bigint::text,0))`,school,x.StaffPrincipalID);e!=nil{return nil,e}
  var active bool
@@ -141,15 +146,18 @@ func(r *StaffLeaveRepository) Cancel(ctx context.Context,actor,school,id int64)e
  if _,e=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome) VALUES($1,$2,'staff.leave.cancelled','staff_leave_request',$3,'success')`,actor,school,fmt.Sprint(id));e!=nil{return e};return tx.Commit(ctx)
 }
 func(r *StaffLeaveRepository) ListHolidays(ctx context.Context,actor,school int64,from,to string,includeInactive bool)([]SchoolHoliday,error){
- if r==nil||r.db==nil||actor<=0||school<=0{return nil,ErrInvalidStaffLeave};start,e:=time.Parse("2006-01-02",from);if e!=nil{return nil,ErrInvalidStaffLeave};end,e:=time.Parse("2006-01-02",to);if e!=nil||end.Before(start)||end.Sub(start)>366*24*time.Hour{return nil,ErrInvalidStaffLeave}
+ if r==nil||r.db==nil||actor<=0||school<=0{return nil,ErrInvalidStaffLeave}
  permission:="staff.holidays.read";if includeInactive{permission="staff.holidays.manage"};if authorizeGuardian(ctx,r.db,actor,school,permission)!=nil{return nil,ErrStaffLeaveAccessDenied}
+ start,e:=parseStaffLeaveDate(from);if e!=nil{return nil,ErrInvalidStaffLeave};end,e:=parseStaffLeaveDate(to);if e!=nil||end.Before(start)||end.Sub(start)>366*24*time.Hour{return nil,ErrInvalidStaffLeave}
  rows,e:=r.db.Query(ctx,`SELECT id,holiday_date::text,name,description,is_active FROM school_holidays WHERE school_id=$1 AND holiday_date BETWEEN $2::date AND $3::date AND ($4::boolean=TRUE OR is_active=TRUE) ORDER BY holiday_date,name LIMIT 1000`,school,from,to,includeInactive);if e!=nil{return nil,e};defer rows.Close();out:=[]SchoolHoliday{}
  for rows.Next(){var x SchoolHoliday;if e=rows.Scan(&x.ID,&x.HolidayDate,&x.Name,&x.Description,&x.IsActive);e!=nil{return nil,e};out=append(out,x)};return out,rows.Err()
 }
 func(r *StaffLeaveRepository) SaveHoliday(ctx context.Context,actor,school,id int64,x SchoolHoliday)(*SchoolHoliday,error){
- if r==nil||r.db==nil||actor<=0||school<=0{return nil,ErrInvalidStaffLeave};if _,e:=time.Parse("2006-01-02",x.HolidayDate);e!=nil{return nil,ErrInvalidStaffLeave}
+ if r==nil||r.db==nil||actor<=0||school<=0{return nil,ErrInvalidStaffLeave}
+ tx,e:=r.db.Begin(ctx);if e!=nil{return nil,e};defer func(){_=tx.Rollback(ctx)}()
+ if authorizeGuardian(ctx,tx,actor,school,"staff.holidays.manage")!=nil{return nil,ErrStaffLeaveAccessDenied}
+ if _,e=parseStaffLeaveDate(x.HolidayDate);e!=nil{return nil,ErrInvalidStaffLeave}
  x.Name=strings.TrimSpace(x.Name);if len([]rune(x.Name))<2||len([]rune(x.Name))>160{return nil,ErrInvalidStaffLeave};desc,e:=cleanOptional(x.Description,1000);if e!=nil{return nil,e};x.Description=desc
- tx,e:=r.db.Begin(ctx);if e!=nil{return nil,e};defer func(){_=tx.Rollback(ctx)}();if authorizeGuardian(ctx,tx,actor,school,"staff.holidays.manage")!=nil{return nil,ErrStaffLeaveAccessDenied}
  if id==0{e=tx.QueryRow(ctx,`INSERT INTO school_holidays(school_id,holiday_date,name,description,is_active,created_by_principal_id,updated_by_principal_id) VALUES($1,$2,$3,$4,$5,$6,$6) RETURNING id`,school,x.HolidayDate,x.Name,x.Description,x.IsActive,actor).Scan(&x.ID)}else{e=tx.QueryRow(ctx,`UPDATE school_holidays SET holiday_date=$3,name=$4,description=$5,is_active=$6,updated_by_principal_id=$7,updated_at=NOW() WHERE id=$1 AND school_id=$2 RETURNING id`,id,school,x.HolidayDate,x.Name,x.Description,x.IsActive,actor).Scan(&x.ID)}
  if e!=nil{return nil,leaveWriteError(e)};action:="school.holiday.created";if id!=0{action="school.holiday.updated"}
  if _,e=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata) VALUES($1,$2,$3,'school_holiday',$4,'success',jsonb_build_object('holiday_date',$5::date,'is_active',$6::boolean))`,actor,school,action,fmt.Sprint(x.ID),x.HolidayDate,x.IsActive);e!=nil{return nil,e}
