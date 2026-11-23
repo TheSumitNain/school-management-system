@@ -607,3 +607,9 @@ Verification on branch `work`, commit `30270fe0927a6eb3f284d462ddd6dc2b4ca2959e`
 - Added Playwright acceptance for the substitution read-only role: it can view coverage but cannot see assign/cancel controls and does not request timetable data. Leave & Holidays responsive coverage verifies mobile, tablet and desktop layouts without page-level horizontal overflow.
 - Frontend CI [45168421521](https://github.com/TheSumitNain/school-management-system/actions/runs/45168421521) **PASS** (TypeScript, production build and Playwright suite, including 92 browser tests). Backend CI [45169195285](https://github.com/TheSumitNain/school-management-system/actions/runs/45169195285) **PASS** (ephemeral PostgreSQL migrations, full Go/PostgreSQL integration suite and `go vet`) on the subsequent `work` branch head `1f6027ff`.
 - No persistent database migration or data change. Staff Management remains subject to consolidated final browser acceptance and remaining security review. Bulk Import and staff document storage remain deferred under existing approval constraints.
+
+## 2026-11-23 implementation checkpoint — attendance read-only browser acceptance
+
+- Added a negative-permission Playwright scenario for a user with `staff.attendance.read` but without marking or correction permissions. It verifies unmarked and existing attendance rows are read-only, bulk controls are disabled, and no attendance write request is sent.
+- Frontend CI [45169926822](https://github.com/TheSumitNain/school-management-system/actions/runs/45169926822) **PASS** (TypeScript, Vite production build and full Playwright browser acceptance suite).
+- Backend date/profile validation checks are being verified separately; this checkpoint makes no claim about their pending CI. No persistent database changes.
