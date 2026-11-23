@@ -1655,7 +1655,7 @@ test("staff reports include active academic assignments and export only permitte
   const path = await download.path();
   expect(path).toBeTruthy();
   const csv = await readFile(path!, "utf8");
-  expect(csv.startsWith("\\uFEFF")).toBe(true);
+  expect(csv.startsWith("\uFEFF")).toBe(true);
   expect(csv).toContain("teacher.active");
   expect(csv).toContain("2026–27");
   expect(csv).not.toContain("Science");
