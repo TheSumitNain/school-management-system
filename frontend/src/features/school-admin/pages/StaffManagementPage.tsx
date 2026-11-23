@@ -65,7 +65,7 @@ export function StaffManagementPage({ permissions }: Props) {
   const disable = useDisableSchoolStaffMutation();
   const enable = useEnableSchoolStaffMutation();
   const reset = useResetSchoolStaffPasswordMutation();
-  const [activeTab, setActiveTab] = useState<"overview" | "directory" | "assignments" | "attendance" | "leave" | "substitutions" | "workloadReport">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "directory" | "reports" | "assignments" | "attendance" | "leave" | "substitutions" | "workloadReport">("overview");
   const [search, setSearch] = useState("");
   const [employmentFilter, setEmploymentFilter] = useState("all");
   const [accountFilter, setAccountFilter] = useState("all");
@@ -365,7 +365,7 @@ export function StaffManagementPage({ permissions }: Props) {
         {(permissions.includes("staff.substitutions.read") || permissions.includes("staff.substitutions.manage")) && <button type="button" className={activeTab === "substitutions" ? "active" : ""} aria-current={activeTab === "substitutions" ? "page" : undefined} onClick={() => setActiveTab("substitutions")}><CalendarDays size={16}/> Substitutions</button>}
         {permissions.includes("timetable.read") && <button type="button" className={activeTab === "workloadReport" ? "active" : ""} aria-current={activeTab === "workloadReport" ? "page" : undefined} onClick={() => setActiveTab("workloadReport")}><BarChart3 size={16}/> Workload Report</button>}
         {!(permissions.includes("staff.leave.read") || permissions.includes("staff.holidays.read") || permissions.includes("staff.holidays.manage")) && <button type="button" className="upcoming" disabled title="Leave read permission required to open this workspace"><CalendarDays size={16}/> Leave <span>Restricted</span></button>}
-        <button type="button" className="upcoming" disabled title="Planned for the next phase"><FileText size={16}/> Reports <span>Phase 1</span></button>
+        {permissions.includes("users.read") && <button type="button" className={activeTab === "reports" ? "active" : ""} aria-current={activeTab === "reports" ? "page" : undefined} onClick={() => setActiveTab("reports")}><FileText size={16}/> Reports</button>}
       </nav>
 
       {feedback && (action === null || feedback.kind === "success") && <div className={`staff-feedback ${feedback.kind}`} role="status">{feedback.message}</div>}
@@ -438,6 +438,22 @@ export function StaffManagementPage({ permissions }: Props) {
       {activeTab === "leave" && <StaffLeaveWorkspace permissions={permissions} staff={staff}/>}
       {activeTab === "substitutions" && <StaffSubstitutionWorkspace permissions={permissions} staff={staff}/>}
       {activeTab === "workloadReport" && <StaffWorkloadReportWorkspace permissions={permissions}/>}
+      {activeTab === "reports" && permissions.includes("users.read") && <section className="staff-reports-workspace">
+        <div className="staff-reports-heading"><div><h2>Staff Reports</h2><p>School-scoped employment, account and profile readiness summary. Sensitive contact and login details are excluded.</p></div><button type="button" className="staff-directory-export" onClick={() => exportStaffDirectoryCSV(staff)} disabled={query.isPending || query.isError || staff.length === 0}><Download size={14}/> Export staff report</button></div>
+        {query.isPending && <p role="status">Loading staff report…</p>}
+        {query.isError && <div className="staff-overview-error" role="alert">Unable to load staff report. <button type="button" onClick={() => void query.refetch()}>Retry</button></div>}
+        {query.isSuccess && <>
+          <div className="staff-reports-summary">
+            <article><span>Total staff</span><strong>{staff.length}</strong></article>
+            <article><span>Active employment</span><strong>{staff.filter(item => item.employment_status === "active").length}</strong></article>
+            <article><span>Inactive employment</span><strong>{staff.filter(item => item.employment_status === "inactive").length}</strong></article>
+            <article><span>Profile incomplete</span><strong>{staff.filter(item => item.profile_complete === false).length}</strong></article>
+            <article><span>Login disabled</span><strong>{staff.filter(item => item.status !== "active").length}</strong></article>
+          </div>
+          {staff.length === 0 ? <p className="table-message">No staff records are available for this school.</p> : <div className="table-scroll"><table><thead><tr><th>Employee</th><th>Employee code</th><th>Designation</th><th>Employment</th><th>Login account</th><th>Profile</th></tr></thead><tbody>{staff.map(item => <tr key={item.principal_id}><td>{item.full_name || "Profile incomplete"}</td><td>{item.employee_code || "—"}</td><td>{item.designation || "—"}</td><td>{item.employment_status || "Not set"}</td><td>{item.status === "active" ? "Enabled" : "Disabled"}</td><td>{item.profile_complete === false ? "Incomplete" : "Complete"}</td></tr>)}</tbody></table></div>}
+          <p className="staff-reports-note">This report reflects current staff records only. It does not include qualifications, attendance, leave balances or payroll calculations. Use their dedicated workspaces for separately permission-controlled reports.</p>
+        </>}
+      </section>}
       {activeTab === "directory" && <section className="table-panel">
         <div className="toolbar staff-directory-toolbar"><div><h2>All staff</h2><small>{filtered.length} of {staff.length} staff members</small></div><div className="staff-directory-controls"><button type="button" className="staff-directory-export" onClick={() => exportStaffDirectoryCSV(filtered)} disabled={filtered.length===0 || !permissions.includes("users.read")}><Download size={14}/> Export CSV</button><div className="search"><Search size={16}/><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search by name, code, designation or username" aria-label="Search staff by name, code, designation or username"/></div><div className="staff-directory-filters"><label>Employment<Select value={employmentFilter} onChange={setEmploymentFilter} ariaLabel="Filter by employment status" options={[{value:"all",label:"All employment"},{value:"active",label:"Active"},{value:"inactive",label:"Inactive"}]}/></label><label>Login account<Select value={accountFilter} onChange={setAccountFilter} ariaLabel="Filter by login account status" options={[{value:"all",label:"All accounts"},{value:"enabled",label:"Enabled"},{value:"disabled",label:"Disabled"}]}/></label><label>Profile<Select value={profileFilter} onChange={setProfileFilter} ariaLabel="Filter by profile completeness" options={[{value:"all",label:"All profiles"},{value:"complete",label:"Complete"},{value:"incomplete",label:"Incomplete"}]}/></label></div></div></div>
         {query.isPending ? <div className="table-message" aria-live="polite">Loading staff accounts…</div>
