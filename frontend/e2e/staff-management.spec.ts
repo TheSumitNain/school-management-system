@@ -2202,3 +2202,42 @@ test("read-only substitution access lists coverage without exposing management a
   expect(requests.some(item => item.startsWith("POST "))).toBe(false);
   expect(requests.some(item => item.includes("/timetable/"))).toBe(false);
 });
+
+
+test("attendance read-only permission cannot mark, update or bulk-save records", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 514, school_id: 10, username: "attendance.reader",
+    employee_code: "EMP-ATT-READ-01", full_name: "Read Only Teacher", designation: "Teacher",
+    employment_status: "active", profile_complete: true, status: "active", must_change_password: false,
+  }];
+  const writes: string[] = [];
+  page.on("request", request => {
+    if (request.url().includes("/api/school/staff-attendance") && request.method() !== "GET") {
+      writes.push(request.method() + " " + new URL(request.url()).pathname);
+    }
+  });
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "staff.attendance.read"]);
+  await page.route("**/api/school/staff-attendance**", async route => {
+    if (route.request().method() !== "GET") {
+      await route.fulfill({ status: 403, json: { message: "Forbidden" } });
+      return;
+    }
+    const date = new URL(route.request().url()).searchParams.get("date") ?? "2026-11-23";
+    await route.fulfill({ json: { date, data: [
+      { id: null, school_id: 10, staff_principal_id: 514, employee_code: "EMP-ATT-READ-01", full_name: "Read Only Teacher", designation: "Teacher", attendance_date: date, status: null },
+      { id: 52, school_id: 10, staff_principal_id: 515, employee_code: "EMP-ATT-READ-02", full_name: "Already Marked Teacher", designation: "Teacher", attendance_date: date, status: "present" },
+    ] } });
+  });
+  await page.getByRole("button", { name: "Attendance", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Staff attendance" })).toBeVisible();
+  await expect(page.getByLabel("Attendance status for Read Only Teacher")).toBeDisabled();
+  await expect(page.getByLabel("Remarks for Read Only Teacher")).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Mark", exact: true }).last()).toBeDisabled();
+  await expect(page.getByLabel("Attendance status for Already Marked Teacher")).toBeDisabled();
+  await expect(page.getByLabel("Remarks for Already Marked Teacher")).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Update", exact: true })).toBeDisabled();
+  await expect(page.getByLabel("Bulk attendance status")).toBeDisabled();
+  await expect(page.getByLabel("Bulk attendance remarks")).toBeDisabled();
+  await expect(page.getByRole("button", { name: /Mark .* unmarked staff/ })).toBeDisabled();
+  expect(writes).toEqual([]);
+});
