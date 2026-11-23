@@ -14,6 +14,7 @@ import (
 )
 
 type StaffRecordsManagementService interface {
+	ListQualificationsReport(context.Context,int64,int64,repository.StaffQualificationReportFilter)(*repository.StaffQualificationReportPage,error)
 	ListQualifications(context.Context,int64,int64,int64)([]repository.StaffQualification,error)
 	CreateQualification(context.Context,int64,int64,int64,repository.StaffQualification)(*repository.StaffQualification,error)
 	ListCertifications(context.Context,int64,int64,int64)([]repository.StaffCertification,error)
@@ -117,4 +118,28 @@ func(h *StaffRecordsHandler) ListAuditEvents(c *gin.Context){
 	staff,ok:=staffRecordTarget(c);if !ok{c.JSON(400,gin.H{"status":"error","message":"Invalid staff principal ID"});return}
 	items,err:=h.service.ListAuditEvents(c.Request.Context(),actor,school,staff);if err!=nil{h.fail(c,err);return}
 	c.JSON(200,gin.H{"status":"success","events":items})
+}
+
+func (h *StaffRecordsHandler) ListQualificationsReport(c *gin.Context) {
+	actor, school, ok := staffRecordActor(c)
+	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"status":"error","message":"School staff authentication required"}); return }
+	filter := repository.StaffQualificationReportFilter{
+		RecordType: c.DefaultQuery("record_type","all"),
+		VerificationStatus: c.Query("verification_status"),
+		Limit: 50,
+		Offset: 0,
+	}
+	if raw := c.Query("limit"); raw != "" {
+		value, err := strconv.Atoi(raw)
+		if err != nil { c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid report limit"}); return }
+		filter.Limit = value
+	}
+	if raw := c.Query("offset"); raw != "" {
+		value, err := strconv.Atoi(raw)
+		if err != nil { c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid report offset"}); return }
+		filter.Offset = value
+	}
+	page, err := h.service.ListQualificationsReport(c.Request.Context(),actor,school,filter)
+	if err != nil { h.fail(c,err); return }
+	c.JSON(http.StatusOK,gin.H{"status":"success","report":page})
 }
