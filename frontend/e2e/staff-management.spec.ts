@@ -2049,3 +2049,42 @@ test("staff leave and holiday workspace remains usable without horizontal overfl
     await expect(workspace.getByRole("button", { name: "Holiday calendar" })).toBeVisible();
   }
 });
+
+test("staff attendance workspace remains usable on mobile, tablet and desktop", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [
+    { id: 1, principal_id: 521, school_id: 10, username: "attendance.responsive", employee_code: "EMP-RESP-ATT-01", full_name: "Responsive Attendance Teacher", designation: "Science Teacher", employment_status: "active", profile_complete: true, status: "active", must_change_password: false },
+    { id: 2, principal_id: 522, school_id: 10, username: "attendance.responsive2", employee_code: "EMP-RESP-ATT-02", full_name: "Second Attendance Teacher", designation: "English Teacher", employment_status: "active", profile_complete: true, status: "active", must_change_password: false },
+  ];
+  await signInAndOpenStaff(page, rows, undefined, [
+    "users.read", "staff.attendance.read", "staff.attendance.mark",
+  ]);
+  await page.route("**/api/school/staff-attendance?*", async route => {
+    const url = new URL(route.request().url());
+    await route.fulfill({ json: { date: url.searchParams.get("date"), data: rows.map(row => ({
+      id: null, school_id: 10, staff_principal_id: row.principal_id,
+      employee_code: row.employee_code, full_name: row.full_name, designation: row.designation,
+      attendance_date: url.searchParams.get("date"), status: null,
+    })) } });
+  });
+  await page.getByRole("button", { name: "Attendance", exact: true }).click();
+  const workspace = page.locator(".staff-attendance-panel");
+  await expect(workspace.getByRole("heading", { name: "Staff attendance" })).toBeVisible();
+  const tableWrap = workspace.locator(".staff-attendance-table-wrap");
+  await expect(tableWrap).toBeVisible();
+
+  for (const viewport of [
+    { width: 390, height: 844 },
+    { width: 768, height: 900 },
+    { width: 1280, height: 900 },
+  ]) {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await expect(workspace.getByLabel("Search staff attendance")).toBeVisible();
+    await expect(workspace.getByLabel("Filter staff attendance status")).toBeVisible();
+    await expect(workspace.getByLabel("Attendance status for Responsive Attendance Teacher")).toBeVisible();
+    await expect.poll(() => tableWrap.evaluate(element => element.scrollWidth >= element.clientWidth)).toBe(true);
+  }
+  await workspace.getByLabel("Search staff attendance").fill("Second Attendance");
+  await expect(workspace.getByRole("row").filter({ hasText: "Second Attendance Teacher" })).toBeVisible();
+  await expect(workspace.getByRole("row").filter({ hasText: "Responsive Attendance Teacher" })).toHaveCount(0);
+});
