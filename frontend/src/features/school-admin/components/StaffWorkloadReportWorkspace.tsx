@@ -9,7 +9,7 @@ type Group={id:number;name:string;employeeCode:string;designation:string;employm
 
 function csvCell(value: string | number | null | undefined): string {
   const raw = String(value ?? "");
-  const safe = /^[=+@\-\t\r]/.test(raw) ? "'" + raw : raw;
+  const safe = /^\s*[=+\-@]/.test(raw) ? "'" + raw : raw;
   return '"' + safe.replace(/"/g, '""') + '"';
 }
 
