@@ -310,6 +310,8 @@ var approvedSchoolAdminPermissions = map[string]bool{
 	"staff.leave.decide":                 true,
 	"staff.holidays.read":                true,
 	"staff.holidays.manage":              true,
+	"staff.substitutions.read":            true,
+	"staff.substitutions.manage":          true,
 	"timetable.read":                    true,
 	"timetable.manage":                  true,
 	"homework.read":                     true,
