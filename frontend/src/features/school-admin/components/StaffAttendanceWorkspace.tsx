@@ -66,13 +66,13 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
   const approvedLeaveContext = useQuery({
     queryKey: ["staff-leave-context", date],
     queryFn: ({ signal }) => getStaffLeaveRequests({ status: "approved", onDate: date }, signal),
-    enabled: canReadLeaveContext && view === "daily",
+    enabled: canRead && canReadLeaveContext && view === "daily",
     staleTime: 10_000,
   });
   const holidayContext = useQuery({
     queryKey: ["school-holiday-context", date],
     queryFn: ({ signal }) => getSchoolHolidays(date, date, signal),
-    enabled: canReadHolidayContext && view === "daily",
+    enabled: canRead && canReadHolidayContext && view === "daily",
     staleTime: 30_000,
   });
   const monthly = useQuery({
@@ -85,13 +85,13 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
   const approvedMonthLeave = useQuery({
     queryKey: ["staff-leave-report", "approved", month],
     queryFn: ({ signal }) => getStaffLeaveRequests({ status: "approved", fromDate: monthStart, toDate: monthEnd }, signal),
-    enabled: canReadLeaveContext && view === "monthly" && Boolean(monthStart && monthEnd),
+    enabled: canRead && canReadLeaveContext && view === "monthly" && Boolean(monthStart && monthEnd),
     staleTime: 10_000,
   });
   const monthHolidays = useQuery({
     queryKey: ["school-holiday-report", month],
     queryFn: ({ signal }) => getSchoolHolidays(monthStart, monthEnd, signal),
-    enabled: canReadHolidayContext && view === "monthly" && Boolean(monthStart && monthEnd),
+    enabled: canRead && canReadHolidayContext && view === "monthly" && Boolean(monthStart && monthEnd),
     staleTime: 30_000,
   });
   const invalidate = async () => {
