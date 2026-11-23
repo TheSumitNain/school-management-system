@@ -180,6 +180,12 @@ func (r *StaffAttendanceRepository) Mark(ctx context.Context, actorID, schoolID,
     if err != nil { return nil, fmt.Errorf("begin staff attendance mark: %w", err) }
     defer func() { _ = tx.Rollback(ctx) }()
 
+    permission := "staff.attendance.mark"
+    if date < today { permission = "staff.attendance.correct_past" }
+    if err := authorizeGuardian(ctx, tx, actorID, schoolID, permission); err != nil {
+        return nil, ErrStaffAttendanceAccessDenied
+    }
+
     var active bool
     if err := tx.QueryRow(ctx, `
         SELECT EXISTS (
@@ -191,12 +197,6 @@ func (r *StaffAttendanceRepository) Mark(ctx context.Context, actorID, schoolID,
         return nil, fmt.Errorf("check staff attendance target: %w", err)
     }
     if !active { return nil, ErrStaffAttendanceNotFound }
-
-    permission := "staff.attendance.mark"
-    if date < today { permission = "staff.attendance.correct_past" }
-    if err := authorizeGuardian(ctx, tx, actorID, schoolID, permission); err != nil {
-        return nil, ErrStaffAttendanceAccessDenied
-    }
 
     var id int64
     err = tx.QueryRow(ctx, `
