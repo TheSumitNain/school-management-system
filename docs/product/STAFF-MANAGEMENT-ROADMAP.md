@@ -719,3 +719,9 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Added mobile/tablet/desktop browser checks for Substitutions and the school-wide Workload Report, plus read-only attendance and substitution permission acceptance.
 - Frontend CI [45171132153](https://github.com/TheSumitNain/school-management-system/actions/runs/45171132153) **PASS**; Backend CI [45172378554](https://github.com/TheSumitNain/school-management-system/actions/runs/45172378554) **PASS** (PostgreSQL migrations/integration and `go vet`) on `617c235e`.
 - No persistent DB changes. Profile-only onboarding/Bulk Import remain gated on the identity-schema design and approval; document storage remains deferred pending an external storage selection/purchase and explicit approval.
+
+## 2026-11-23 implementation checkpoint — teacher profile timetable responsive acceptance
+
+- Added mobile/tablet/desktop browser coverage for the teacher-specific Workload & Timetable tab inside the employee profile. It verifies the profile stays within the viewport and timetable/report tables scroll within their own containers.
+- Frontend CI [45172972979](https://github.com/TheSumitNain/school-management-system/actions/runs/45172972979) **PASS**; Backend CI [45172973009](https://github.com/TheSumitNain/school-management-system/actions/runs/45172973009) **PASS** on `93da54e6` (PostgreSQL integration and `go vet` included).
+- No persistent DB changes. Schema-bound profile fields and the previously deferred identity/document-storage capabilities remain subject to their approval gates.
