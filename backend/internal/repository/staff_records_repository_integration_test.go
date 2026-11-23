@@ -188,7 +188,7 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
     experienceReport,err:=repo.ListStaffExperienceReport(ctx,actorID,schoolID,StaffExperienceReportFilter{Limit:50})
     if err!=nil || experienceReport.Total!=1 || len(experienceReport.Rows)!=1 {t.Fatalf("experience report page=%+v err=%v",experienceReport,err)}
     experienceRow:=experienceReport.Rows[0]
-    if experienceRow.RecordID!=experience.ID || experienceRow.StaffPrincipalID!=staff.PrincipalID || experienceRow.EmployeeCode!=staff.EmployeeCode || experienceRow.StaffName!=staff.FullName || experienceRow.EmployerName!=experience.EmployerName || experienceRow.PreviousDesignation!=experience.Designation {
+    if experienceRow.RecordID!=experience.ID || experienceRow.StaffPrincipalID!=staff.PrincipalID || experienceRow.EmployeeCode!=staff.EmployeeCode || experienceRow.StaffName!=staff.FullName || experienceRow.EmployerName!=experience.EmployerName || experienceRow.PreviousDesignation!=updatedExperience.Designation {
         t.Fatalf("experience report row missing same-school identity/history: %+v",experienceRow)
     }
     currentOnly,err:=repo.ListStaffExperienceReport(ctx,actorID,schoolID,StaffExperienceReportFilter{CurrentOnly:true,Limit:50})
