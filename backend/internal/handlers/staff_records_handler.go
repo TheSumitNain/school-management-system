@@ -46,13 +46,24 @@ func(h *StaffRecordsHandler) fail(c *gin.Context,err error){
 	default:c.JSON(http.StatusInternalServerError,gin.H{"status":"error","message":"Unable to process staff record"})
 	}
 }
+func staffRecordsServiceUnavailable(c *gin.Context) bool {
+	c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Staff records service is unavailable"})
+	return true
+}
+func (h *StaffRecordsHandler) unavailable(c *gin.Context) bool {
+	if h == nil || h.service == nil { return staffRecordsServiceUnavailable(c) }
+	return false
+}
+
 func(h *StaffRecordsHandler) ListQualifications(c *gin.Context){
+	if h.unavailable(c) { return }
 	actor,school,ok:=staffRecordActor(c);if !ok{c.JSON(401,gin.H{"status":"error","message":"School staff authentication required"});return}
 	staff,ok:=staffRecordTarget(c);if !ok{c.JSON(400,gin.H{"status":"error","message":"Invalid staff principal ID"});return}
 	items,err:=h.service.ListQualifications(c.Request.Context(),actor,school,staff);if err!=nil{h.fail(c,err);return}
 	c.JSON(200,gin.H{"status":"success","qualifications":items})
 }
 func(h *StaffRecordsHandler) CreateQualification(c *gin.Context){
+	if h.unavailable(c) { return }
 	actor,school,ok:=staffRecordActor(c);if !ok{c.JSON(401,gin.H{"status":"error","message":"School staff authentication required"});return}
 	staff,ok:=staffRecordTarget(c);if !ok{c.JSON(400,gin.H{"status":"error","message":"Invalid staff principal ID"});return}
 	var item repository.StaffQualification;if err:=c.ShouldBindJSON(&item);err!=nil{c.JSON(400,gin.H{"status":"error","message":"Invalid qualification request"});return}
@@ -60,12 +71,14 @@ func(h *StaffRecordsHandler) CreateQualification(c *gin.Context){
 	c.JSON(201,gin.H{"status":"success","qualification":saved})
 }
 func(h *StaffRecordsHandler) ListCertifications(c *gin.Context){
+	if h.unavailable(c) { return }
 	actor,school,ok:=staffRecordActor(c);if !ok{c.JSON(401,gin.H{"status":"error","message":"School staff authentication required"});return}
 	staff,ok:=staffRecordTarget(c);if !ok{c.JSON(400,gin.H{"status":"error","message":"Invalid staff principal ID"});return}
 	items,err:=h.service.ListCertifications(c.Request.Context(),actor,school,staff);if err!=nil{h.fail(c,err);return}
 	c.JSON(200,gin.H{"status":"success","certifications":items})
 }
 func(h *StaffRecordsHandler) CreateCertification(c *gin.Context){
+	if h.unavailable(c) { return }
 	actor,school,ok:=staffRecordActor(c);if !ok{c.JSON(401,gin.H{"status":"error","message":"School staff authentication required"});return}
 	staff,ok:=staffRecordTarget(c);if !ok{c.JSON(400,gin.H{"status":"error","message":"Invalid staff principal ID"});return}
 	var item repository.StaffCertification;if err:=c.ShouldBindJSON(&item);err!=nil{c.JSON(400,gin.H{"status":"error","message":"Invalid certification request"});return}
@@ -73,12 +86,14 @@ func(h *StaffRecordsHandler) CreateCertification(c *gin.Context){
 	c.JSON(201,gin.H{"status":"success","certification":saved})
 }
 func(h *StaffRecordsHandler) ListExperience(c *gin.Context){
+	if h.unavailable(c) { return }
 	actor,school,ok:=staffRecordActor(c);if !ok{c.JSON(401,gin.H{"status":"error","message":"School staff authentication required"});return}
 	staff,ok:=staffRecordTarget(c);if !ok{c.JSON(400,gin.H{"status":"error","message":"Invalid staff principal ID"});return}
 	items,err:=h.service.ListExperience(c.Request.Context(),actor,school,staff);if err!=nil{h.fail(c,err);return}
 	c.JSON(200,gin.H{"status":"success","experience":items})
 }
 func(h *StaffRecordsHandler) CreateExperience(c *gin.Context){
+	if h.unavailable(c) { return }
 	actor,school,ok:=staffRecordActor(c);if !ok{c.JSON(401,gin.H{"status":"error","message":"School staff authentication required"});return}
 	staff,ok:=staffRecordTarget(c);if !ok{c.JSON(400,gin.H{"status":"error","message":"Invalid staff principal ID"});return}
 	var item repository.StaffExperience;if err:=c.ShouldBindJSON(&item);err!=nil{c.JSON(400,gin.H{"status":"error","message":"Invalid experience request"});return}
@@ -90,6 +105,7 @@ func(h *StaffRecordsHandler) CreateExperience(c *gin.Context){
 func staffRecordID(c *gin.Context)(int64,bool){v,e:=strconv.ParseInt(c.Param("recordID"),10,64);return v,e==nil&&v>0}
 
 func(h *StaffRecordsHandler) UpdateQualification(c *gin.Context){
+	if h.unavailable(c) { return }
 	actor,school,ok:=staffRecordActor(c);if !ok{c.JSON(401,gin.H{"status":"error","message":"School staff authentication required"});return}
 	staff,ok:=staffRecordTarget(c);if !ok{c.JSON(400,gin.H{"status":"error","message":"Invalid staff principal ID"});return}
 	record,ok:=staffRecordID(c);if !ok{c.JSON(400,gin.H{"status":"error","message":"Invalid qualification record ID"});return}
@@ -98,6 +114,7 @@ func(h *StaffRecordsHandler) UpdateQualification(c *gin.Context){
 	c.JSON(200,gin.H{"status":"success","qualification":saved})
 }
 func(h *StaffRecordsHandler) UpdateCertification(c *gin.Context){
+	if h.unavailable(c) { return }
 	actor,school,ok:=staffRecordActor(c);if !ok{c.JSON(401,gin.H{"status":"error","message":"School staff authentication required"});return}
 	staff,ok:=staffRecordTarget(c);if !ok{c.JSON(400,gin.H{"status":"error","message":"Invalid staff principal ID"});return}
 	record,ok:=staffRecordID(c);if !ok{c.JSON(400,gin.H{"status":"error","message":"Invalid certification record ID"});return}
@@ -106,6 +123,7 @@ func(h *StaffRecordsHandler) UpdateCertification(c *gin.Context){
 	c.JSON(200,gin.H{"status":"success","certification":saved})
 }
 func(h *StaffRecordsHandler) UpdateExperience(c *gin.Context){
+	if h.unavailable(c) { return }
 	actor,school,ok:=staffRecordActor(c);if !ok{c.JSON(401,gin.H{"status":"error","message":"School staff authentication required"});return}
 	staff,ok:=staffRecordTarget(c);if !ok{c.JSON(400,gin.H{"status":"error","message":"Invalid staff principal ID"});return}
 	record,ok:=staffRecordID(c);if !ok{c.JSON(400,gin.H{"status":"error","message":"Invalid experience record ID"});return}
@@ -115,6 +133,7 @@ func(h *StaffRecordsHandler) UpdateExperience(c *gin.Context){
 }
 
 func(h *StaffRecordsHandler) ListAuditEvents(c *gin.Context){
+	if h.unavailable(c) { return }
 	actor,school,ok:=staffRecordActor(c);if !ok{c.JSON(401,gin.H{"status":"error","message":"School staff authentication required"});return}
 	staff,ok:=staffRecordTarget(c);if !ok{c.JSON(400,gin.H{"status":"error","message":"Invalid staff principal ID"});return}
 	items,err:=h.service.ListAuditEvents(c.Request.Context(),actor,school,staff);if err!=nil{h.fail(c,err);return}
@@ -122,7 +141,7 @@ func(h *StaffRecordsHandler) ListAuditEvents(c *gin.Context){
 }
 
 func (h *StaffRecordsHandler) ListQualificationsReport(c *gin.Context) {
-	if h == nil || h.service == nil { c.JSON(http.StatusServiceUnavailable, gin.H{"status":"error","message":"Staff qualifications report is unavailable"}); return }
+	if h.unavailable(c) { return }
 	actor, school, ok := staffRecordActor(c)
 	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"status":"error","message":"School staff authentication required"}); return }
 	filter := repository.StaffQualificationReportFilter{
@@ -147,7 +166,7 @@ func (h *StaffRecordsHandler) ListQualificationsReport(c *gin.Context) {
 }
 
 func (h *StaffRecordsHandler) ListExperienceReport(c *gin.Context) {
-    if h==nil || h.service==nil { c.JSON(http.StatusServiceUnavailable,gin.H{"status":"error","message":"Staff experience report is unavailable"});return }
+	if h.unavailable(c) { return }
     actor,school,ok:=staffRecordActor(c)
     if !ok { c.JSON(http.StatusUnauthorized,gin.H{"status":"error","message":"School staff authentication required"});return }
     currentOnly:=c.Query("current_only")
