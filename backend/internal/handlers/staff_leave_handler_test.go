@@ -1,13 +1,13 @@
 package handlers
 
 import (
-	"encoding/json"
+	"context"\n\t"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"school-management-system/internal/middleware"
+	"school-management-system/internal/middleware"\n\t"school-management-system/internal/repository"
 )
 
 func TestStaffLeaveHandlersReturnUnavailableWithoutService(t *testing.T) {
@@ -83,4 +83,27 @@ func TestStaffLeaveUnauthenticatedRequestDoesNotExposeServiceAvailability(t *tes
     if recorder.Code != http.StatusUnauthorized {
         t.Fatalf("status=%d want=%d body=%s", recorder.Code, http.StatusUnauthorized, recorder.Body.String())
     }
+}
+
+
+type nilStaffLeaveWriteResultService struct { StaffLeaveManagementService }
+func (nilStaffLeaveWriteResultService) SaveType(context.Context,int64,int64,int64,repository.StaffLeaveType)(*repository.StaffLeaveType,error){return nil,nil}
+func (nilStaffLeaveWriteResultService) CreateRequest(context.Context,int64,int64,repository.StaffLeaveRequest)(*repository.StaffLeaveRequest,error){return nil,nil}
+func (nilStaffLeaveWriteResultService) SaveHoliday(context.Context,int64,int64,int64,repository.SchoolHoliday)(*repository.SchoolHoliday,error){return nil,nil}
+
+func TestStaffLeaveHandlersRejectNilSuccessfulWriteResults(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	h:=NewStaffLeaveHandler(nilStaffLeaveWriteResultService{})
+	auth:=func(c *gin.Context){c.Set(middleware.ContextPrincipalIDKey,int64(100));c.Set(middleware.ContextSchoolIDKey,int64(10));c.Next()}
+	tests:=[]struct{name,method,path,body string; handler func(*StaffLeaveHandler,*gin.Context)}{
+		{"save leave type",http.MethodPost,"/staff/types",`{}`,(*StaffLeaveHandler).SaveType},
+		{"create leave request",http.MethodPost,"/staff/requests",`{}`,(*StaffLeaveHandler).CreateRequest},
+		{"save holiday",http.MethodPost,"/staff/holidays",`{}`,(*StaffLeaveHandler).SaveHoliday},
+	}
+	for _,tt:=range tests{t.Run(tt.name,func(t *testing.T){
+		r:=gin.New();r.Handle(tt.method,tt.path,auth,func(c *gin.Context){tt.handler(h,c)})
+		req:=httptest.NewRequest(tt.method,tt.path,strings.NewReader(tt.body));req.Header.Set("Content-Type","application/json")
+		rec:=httptest.NewRecorder();r.ServeHTTP(rec,req)
+		if rec.Code!=http.StatusInternalServerError{t.Fatalf("nil successful service result must return 500: status=%d body=%s",rec.Code,rec.Body.String())}
+	})}
 }
