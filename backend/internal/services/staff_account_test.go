@@ -129,6 +129,15 @@ func TestStaffAccountServiceRejectsJoiningDateBeyondOneYearOnProfileUpdate(t *te
 		EmployeeCode: "EMP-27", FullName: "Teacher One", Designation: "Teacher",
 		MobileNumber: "9876543210", EmploymentStatus: "active",
 	}
+	yearZero := time.Date(0, time.January, 1, 0, 0, 0, 0, time.UTC)
+	base.JoiningDate = &yearZero
+	if _, err := service.UpdateProfile(context.Background(), 31, 8, 27, base); err != ErrInvalidStaffAccount {
+		t.Fatalf("year-zero joining date update error = %v, want ErrInvalidStaffAccount", err)
+	}
+	if repo.profileCalls != 0 {
+		t.Fatalf("year-zero joining date reached repository %d times", repo.profileCalls)
+	}
+
 	future := time.Now().AddDate(1, 0, 1)
 	base.JoiningDate = &future
 	if _, err := service.UpdateProfile(context.Background(), 31, 8, 27, base); err != ErrInvalidStaffAccount {
