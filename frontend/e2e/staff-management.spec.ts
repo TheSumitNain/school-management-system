@@ -1764,3 +1764,46 @@ test("staff qualifications report uses one paginated aggregate endpoint and expo
   expect(csv).not.toContain("credential");
   expect(csv).not.toContain("verification_notes");
 });
+
+
+test("staff experience report uses one paginated school aggregate endpoint and exports safe history fields", async ({ page }) => {
+  const staffRows:Array<Record<string,unknown>>=[
+    {id:1,principal_id:501,school_id:10,username:"teacher.active",employee_code:"EMP-ACTIVE",full_name:"Active Teacher",designation:"Mathematics Teacher",employment_status:"active",profile_complete:true,status:"active",must_change_password:false},
+  ];
+  await signInAndOpenStaff(page,staffRows,undefined,["users.read"]);
+  const requests:string[]=[];
+  await page.route("**/api/school/staff/experience-report**",async route=>{
+    const url=new URL(route.request().url());requests.push(url.pathname+url.search);
+    const current=url.searchParams.get("current_only")==="true";
+    const rows=current?[{
+      record_id:33,staff_principal_id:501,employee_code:"EMP-ACTIVE",staff_name:"Active Teacher",designation:"Mathematics Teacher",employment_status:"active",
+      employer_name:"Current School",previous_designation:"Senior Teacher",employment_type:"permanent",start_date:"2024-04-01",end_date:"",is_current:true,
+    }]:[{
+      record_id:32,staff_principal_id:501,employee_code:"EMP-ACTIVE",staff_name:"Active Teacher",designation:"Mathematics Teacher",employment_status:"active",
+      employer_name:"Previous School",previous_designation:"Teacher",employment_type:"contract",start_date:"2020-04-01",end_date:"2023-03-31",is_current:false,
+    },{
+      record_id:33,staff_principal_id:501,employee_code:"EMP-ACTIVE",staff_name:"Active Teacher",designation:"Mathematics Teacher",employment_status:"active",
+      employer_name:"Current School",previous_designation:"Senior Teacher",employment_type:"permanent",start_date:"2024-04-01",end_date:"",is_current:true,
+    }];
+    await route.fulfill({json:{report:{rows,limit:50,offset:Number(url.searchParams.get("offset")??0),total:current?1:2,counts:current?[{employment_type:"permanent",is_current:true,count:1}]:[
+      {employment_type:"contract",is_current:false,count:1},{employment_type:"permanent",is_current:true,count:1},
+    ]}}});
+  });
+  await page.getByRole("button",{name:"Reports",exact:true}).click();
+  await expect(page.getByRole("heading",{name:"Staff experience history"})).toBeVisible();
+  await expect(page.getByText("Previous School")).toBeVisible();
+  await expect(page.getByText("Current School")).toBeVisible();
+  expect(requests.length).toBeGreaterThanOrEqual(1);
+  expect(requests.every(request=>request.startsWith("/api/school/staff/experience-report?"))).toBe(true);
+  await page.getByLabel("Experience status").selectOption("current");
+  await expect(page.getByText("Previous School")).toHaveCount(0);
+  await expect(page.getByText("Current School")).toBeVisible();
+  expect(requests.some(request=>request.includes("current_only=true"))).toBe(true);
+  const downloadPromise=page.waitForEvent("download");
+  await page.getByRole("button",{name:"Export current page CSV"}).last().click();
+  const download=await downloadPromise;const path=await download.path();expect(path).toBeTruthy();
+  const csv=await readFile(path!,"utf8");
+  expect(csv.startsWith("\uFEFF")).toBe(true);
+  expect(csv).toContain("Current School");
+  expect(csv).not.toContain("description");
+});
