@@ -96,6 +96,8 @@ func (h *StaffHandler) Create(c *gin.Context) {
 	user, err := profileService.CreateWithProfile(c.Request.Context(), actorID, schoolID,
 		request.Username, request.InitialPassword, profile)
 	switch {
+	case err == nil && user == nil:
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unable to create staff account"})
 	case err == nil:
 		c.JSON(http.StatusCreated, gin.H{
 			"status": "success",
@@ -265,6 +267,8 @@ func (h *StaffHandler) Update(c *gin.Context) {
         user, err = h.service.Update(c.Request.Context(), actorID, schoolID, targetID, request.Username)
     }
 	switch {
+	case err == nil && user == nil:
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unable to update staff account"})
 	case err == nil:
         message := "Employee profile updated. Login access follows the employment status."
         if !hasProfile { message = "Staff username updated; active sessions revoked" }
