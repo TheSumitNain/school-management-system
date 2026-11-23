@@ -6,7 +6,7 @@ import "./StaffIDCardsWorkspace.css";
 type Props = { staff: StaffRecord[] };
 
 export function StaffIDCardsWorkspace({ staff }: Props) {
-  const eligible = useMemo(() => staff.filter(item => item.employment_status !== "inactive" && item.profile_complete !== false && item.employee_code && item.full_name && item.designation), [staff]);
+  const eligible = useMemo(() => staff.filter(item => item.employment_status === "active" && item.profile_complete === true && item.employee_code && item.full_name && item.designation), [staff]);
   const [selectedIDs, setSelectedIDs] = useState<number[]>([]);
   const [template, setTemplate] = useState<"classic" | "compact" | "modern">("classic");
   const [validUntil, setValidUntil] = useState("");
