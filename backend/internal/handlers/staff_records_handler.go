@@ -121,6 +121,7 @@ func(h *StaffRecordsHandler) ListAuditEvents(c *gin.Context){
 }
 
 func (h *StaffRecordsHandler) ListQualificationsReport(c *gin.Context) {
+	if h == nil || h.service == nil { c.JSON(http.StatusServiceUnavailable, gin.H{"status":"error","message":"Staff qualifications report is unavailable"}); return }
 	actor, school, ok := staffRecordActor(c)
 	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"status":"error","message":"School staff authentication required"}); return }
 	filter := repository.StaffQualificationReportFilter{
