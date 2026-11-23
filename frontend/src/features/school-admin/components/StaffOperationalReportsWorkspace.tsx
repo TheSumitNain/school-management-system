@@ -16,13 +16,13 @@ function currentMonthIST() {
 
 function csvCell(value: string | number | null | undefined) {
   const raw = String(value ?? "");
-  const safe = /^\\s*[=+\\-@]/.test(raw) ? "'" + raw : raw;
+  const safe = /^\s*[=+\-@]/.test(raw) ? "'" + raw : raw;
   return '"' + safe.replace(/"/g, '""') + '"';
 }
 
 function exportCSV(filename: string, rows: Array<Array<string | number | null | undefined>>) {
-  const content = rows.map(row => row.map(csvCell).join(",")).join("\\r\\n");
-  const blob = new Blob(["\\uFEFF", content], { type: "text/csv;charset=utf-8" });
+  const content = rows.map(row => row.map(csvCell).join(",")).join("\r\n");
+  const blob = new Blob(["\uFEFF", content], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
