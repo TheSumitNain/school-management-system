@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -132,7 +134,11 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	suffix := strconv.FormatInt(time.Now().UnixNano(), 10)
+	suffixBytes := make([]byte, 16)
+	if _, err := rand.Read(suffixBytes); err != nil {
+		t.Fatalf("generate unique integration fixture suffix: %v", err)
+	}
+	suffix := hex.EncodeToString(suffixBytes)
 	var schoolID int64
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO schools (name, code, status)
