@@ -2131,3 +2131,10 @@ This update supersedes older status bullets that listed the following database-b
 - Added route-level denial/grant coverage across staff leave, holidays, substitutions, qualifications, certifications, experience, reports and audit history. Unauthorized requests are asserted to stop with 403 before handler execution.
 - Backend CI [45137329371](https://github.com/TheSumitNain/school-management-system/actions/runs/45137329371) **PASS** on `20814d1f`: ephemeral PostgreSQL migration application, full Go test suite including PostgreSQL integration, and `go vet`.
 - Integration fixture usernames now use collision-resistant random suffixes that respect the database's maximum username length. No persistent DB migration or data change.
+
+
+## 2026-11-23 — Staff timetable/workload permission coverage
+
+- Added positive/negative route tests for timetable current-year, workload report, periods and entries. Read operations require `timetable.read`; timetable mutations require `timetable.manage`; missing permissions are denied before handler execution.
+- Backend CI [45137945323](https://github.com/TheSumitNain/school-management-system/actions/runs/45137945323) **PASS** on `cc94c773`: migrations on ephemeral PostgreSQL, full Go/PostgreSQL integration suite and `go vet`.
+- No persistent database change.
