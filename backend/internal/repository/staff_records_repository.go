@@ -506,3 +506,106 @@ func (r *UserRepository) ListStaffQualificationReport(ctx context.Context, actor
 	if err := rows.Err(); err != nil { return nil, fmt.Errorf("iterate staff qualifications report: %w",err) }
 	return page,nil
 }
+
+
+// StaffExperienceReportFilter provides bounded filters for the school-wide
+// employment-history report. Tenant identity is always taken from auth context.
+type StaffExperienceReportFilter struct {
+    EmploymentType string
+    CurrentOnly bool
+    Limit int
+    Offset int
+}
+type StaffExperienceReportRow struct {
+    RecordID int64 `json:"record_id"`
+    StaffPrincipalID int64 `json:"staff_principal_id"`
+    EmployeeCode string `json:"employee_code"`
+    StaffName string `json:"staff_name"`
+    Designation string `json:"designation"`
+    EmploymentStatus string `json:"employment_status"`
+    EmployerName string `json:"employer_name"`
+    PreviousDesignation string `json:"previous_designation"`
+    EmploymentType string `json:"employment_type"`
+    StartDate string `json:"start_date"`
+    EndDate string `json:"end_date,omitempty"`
+    IsCurrent bool `json:"is_current"`
+}
+type StaffExperienceReportCount struct {
+    EmploymentType string `json:"employment_type"`
+    IsCurrent bool `json:"is_current"`
+    Count int64 `json:"count"`
+}
+type StaffExperienceReportPage struct {
+    Rows []StaffExperienceReportRow `json:"rows"`
+    Counts []StaffExperienceReportCount `json:"counts"`
+    Limit int `json:"limit"`
+    Offset int `json:"offset"`
+    Total int64 `json:"total"`
+}
+
+// ListStaffExperienceReport reads all retained experience history for this
+// school, including inactive employees. Free-text descriptions are excluded.
+func (r *UserRepository) ListStaffExperienceReport(ctx context.Context, actorID, schoolID int64, filter StaffExperienceReportFilter) (*StaffExperienceReportPage,error) {
+    if r==nil || r.db==nil || actorID<=0 || schoolID<=0 || filter.Limit<1 || filter.Limit>200 || filter.Offset<0 { return nil,ErrInvalidStaffRecord }
+    var allowed bool
+    err:=r.db.QueryRow(ctx,`
+        SELECT EXISTS (
+            SELECT 1 FROM auth_principals ap
+            JOIN users actor ON actor.principal_id=ap.id
+            JOIN schools s ON s.id=actor.school_id
+            JOIN principal_roles pr ON pr.principal_id=ap.id AND pr.revoked_at IS NULL
+            JOIN roles r ON r.id=pr.role_id
+            JOIN role_permissions rp ON rp.role_id=r.id
+            JOIN permissions p ON p.id=rp.permission_id
+            WHERE ap.id=$1 AND ap.principal_type='staff' AND ap.status='active'
+              AND actor.status='active' AND actor.school_id=$2 AND s.status='active'
+              AND r.school_id=$2 AND r.scope_type='school' AND r.principal_type='staff'
+              AND r.role_key='school_admin' AND r.is_system=TRUE
+              AND p.permission_key='users.read' AND p.scope_type='school' AND p.is_active=TRUE
+              AND NOT EXISTS (
+                SELECT 1 FROM user_permission_overrides denied
+                WHERE denied.principal_id=ap.id AND denied.school_id=$2
+                  AND denied.permission_id=p.id AND denied.effect='deny'
+              )
+        )
+    `,actorID,schoolID).Scan(&allowed)
+    if err!=nil{return nil,fmt.Errorf("authorize staff experience report: %w",err)}
+    if !allowed{return nil,ErrStaffRecordAccessDenied}
+    base:=`
+        SELECT e.id,e.staff_principal_id,sp.employee_code,sp.full_name,sp.designation,
+               sp.employment_status,e.employer_name,e.designation,e.employment_type,
+               e.start_date::text,COALESCE(e.end_date::text,''),e.is_current
+        FROM staff_experience e
+        JOIN staff_profiles sp ON sp.principal_id=e.staff_principal_id AND sp.school_id=e.school_id
+        WHERE e.school_id=$1
+          AND ($2='' OR e.employment_type=$2)
+          AND (NOT $3::boolean OR e.is_current=TRUE)
+    `
+    page:=&StaffExperienceReportPage{Rows:make([]StaffExperienceReportRow,0),Counts:make([]StaffExperienceReportCount,0),Limit:filter.Limit,Offset:filter.Offset}
+    countRows,err:=r.db.Query(ctx,`
+        SELECT employment_type,is_current,COUNT(*)::bigint
+        FROM (`+base+`) report_rows GROUP BY employment_type,is_current
+        ORDER BY employment_type,is_current
+    `,schoolID,filter.EmploymentType,filter.CurrentOnly)
+    if err!=nil{return nil,fmt.Errorf("count staff experience report: %w",err)}
+    for countRows.Next(){var item StaffExperienceReportCount
+        if err:=countRows.Scan(&item.EmploymentType,&item.IsCurrent,&item.Count);err!=nil{countRows.Close();return nil,fmt.Errorf("scan staff experience report counts: %w",err)}
+        page.Counts=append(page.Counts,item);page.Total+=item.Count
+    }
+    if err:=countRows.Err();err!=nil{countRows.Close();return nil,fmt.Errorf("iterate staff experience report counts: %w",err)}
+    countRows.Close()
+    rows,err:=r.db.Query(ctx,`
+        SELECT id,staff_principal_id,employee_code,full_name,designation,employment_status,
+               employer_name,previous_designation,employment_type,start_date,end_date,is_current
+        FROM (`+base+`) report_rows
+        ORDER BY full_name,start_date DESC,id DESC LIMIT $4 OFFSET $5
+    `,schoolID,filter.EmploymentType,filter.CurrentOnly,filter.Limit,filter.Offset)
+    if err!=nil{return nil,fmt.Errorf("list staff experience report: %w",err)}
+    defer rows.Close()
+    for rows.Next(){var item StaffExperienceReportRow
+        if err:=rows.Scan(&item.RecordID,&item.StaffPrincipalID,&item.EmployeeCode,&item.StaffName,&item.Designation,&item.EmploymentStatus,&item.EmployerName,&item.PreviousDesignation,&item.EmploymentType,&item.StartDate,&item.EndDate,&item.IsCurrent);err!=nil{return nil,fmt.Errorf("scan staff experience report row: %w",err)}
+        page.Rows=append(page.Rows,item)
+    }
+    if err:=rows.Err();err!=nil{return nil,fmt.Errorf("iterate staff experience report: %w",err)}
+    return page,nil
+}
