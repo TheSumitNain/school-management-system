@@ -1552,6 +1552,21 @@ test("staff workload requests only the selected teacher timetable and explains u
   await expect(dialog.locator(".staff-workload-table")).toBeVisible();
   await expect(dialog.getByText("Unscheduled", { exact: true }).first()).toBeVisible();
   await expect(dialog.getByText(/do not confirm teacher availability/)).toBeVisible();
+  for (const viewport of [{ width: 390, height: 844 }, { width: 768, height: 900 }, { width: 1280, height: 900 }]) {
+    await page.setViewportSize(viewport);
+    await expect(dialog.getByRole("heading", { name: "Teaching workload" })).toBeVisible();
+    const dimensions = await page.evaluate(() => ({
+      viewport: window.innerWidth,
+      document: document.documentElement.scrollWidth,
+    }));
+    expect(dimensions.document).toBeLessThanOrEqual(dimensions.viewport);
+    for (const selector of [".staff-workload-table-wrap", ".staff-workload-grid-wrap"]) {
+      const wrapper = dialog.locator(selector);
+      await expect(wrapper).toBeVisible();
+      const overflowX = await wrapper.evaluate(element => getComputedStyle(element).overflowX);
+      expect(["auto", "scroll"]).toContain(overflowX);
+    }
+  }
 });
 
 
