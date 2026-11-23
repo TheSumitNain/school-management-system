@@ -2160,3 +2160,40 @@ test("staff profile dialog and section navigation remain responsive on mobile, t
   await navigation.getByRole("button", { name: "Personal Details" }).click();
   await expect(dialog.getByText("responsive.profile@example.test")).toBeVisible();
 });
+
+
+test("read-only substitution access lists coverage without exposing management actions or timetable data", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 551, school_id: 10, username: "substitution.reader",
+    employee_code: "EMP-SUB-READ-01", full_name: "Substitution Reader", designation: "School Admin",
+    employment_status: "active", profile_complete: true, status: "active", must_change_password: false,
+  }];
+  const requests: string[] = [];
+  await page.route("**/api/school/staff-substitutions*", async route => {
+    requests.push(route.request().method() + " " + new URL(route.request().url()).pathname);
+    if (route.request().method() === "GET") {
+      await route.fulfill({ json: { substitutions: [{
+        id: 91, timetable_entry_id: 701, cover_date: "2026-11-23",
+        original_teacher_principal_id: 501, original_teacher_name: "Original Teacher",
+        substitute_teacher_principal_id: 502, substitute_teacher_name: "Cover Teacher",
+        reason: "Approved cover", status: "active", section_name: "A", class_name: "Class 6",
+        subject_name: "Mathematics", period_number: 2, period_name: "Period 2",
+        starts_at: "09:40", ends_at: "10:20", room: "Room 12",
+        created_by_principal_id: 101, created_at: "2026-11-22T10:00:00.000Z",
+      }] } });
+      return;
+    }
+    await route.fulfill({ status: 403, json: { message: "Forbidden" } });
+  });
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "staff.substitutions.read"]);
+  await page.getByRole("button", { name: "Substitutions" }).click();
+
+  const workspace = page.locator(".staff-substitution-workspace");
+  await expect(workspace.getByRole("heading", { name: "Substitute Teacher Coverage" })).toBeVisible();
+  await expect(workspace.getByText("Original Teacher")).toBeVisible();
+  await expect(workspace.getByText("Cover Teacher")).toBeVisible();
+  await expect(workspace.getByRole("button", { name: "Cancel cover" })).toHaveCount(0);
+  await expect(workspace.getByRole("button", { name: "Assign substitute" })).toHaveCount(0);
+  expect(requests.some(item => item.startsWith("POST "))).toBe(false);
+  expect(requests.some(item => item.includes("/timetable"))).toBe(false);
+});
