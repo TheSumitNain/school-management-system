@@ -1,3 +1,13 @@
+## Staff Management — Reports CI and qualification-report contract (2026-11-23)
+
+- Frontend CI **PASS** — [run 45111164968](https://github.com/TheSumitNain/school-management-system/actions/runs/45111164968): TypeScript/Vite production build and the complete Playwright browser acceptance suite passed on checkpoint `ee1744df0f1ebe41ed1c987fceb866118cc9b9ff`.
+- Backend CI **PASS** — [run 45111165045](https://github.com/TheSumitNain/school-management-system/actions/runs/45111165045): the full migration chain applied to disposable PostgreSQL, Go tests including PostgreSQL integration and `go vet` passed on the same checkpoint.
+- Extended the backend contract and roadmap with the prerequisite for a school-wide qualifications/certifications report: one paginated, school-scoped aggregate endpoint; bounded SQL queries; safe report fields; filters/count metadata; live read permission; and cross-school/pagination integration tests. This endpoint is **specified only, not implemented**. Do not add N+1 frontend calls or report fake totals.
+- Staff document upload/download remains disabled pending private storage and per-request school/staff authorization. No migration was run against a local or persistent database; Academic, Student Management and Settings remain untouched.
+- Documentation commits: `077365a` (aggregate report contract), `1921078` (roadmap prerequisite).
+
+---
+
 ## Staff academic assignment reporting (2026-11-23)
 
 - Added a current-academic-year assignment report to the Reports workspace. It consolidates active teacher-subject and class-in-charge assignments from existing school-scoped APIs; revoked assignments are excluded.
