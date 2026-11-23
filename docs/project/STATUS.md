@@ -4,7 +4,7 @@
 - Each report loads only when the viewer has its matching `staff.attendance.read` or `staff.leave.read` permission. No read permission means no request is made for that dataset. CSV exports omit attendance remarks and leave reasons, and neutralize spreadsheet formulas.
 - Added Playwright coverage for report rendering, both CSV exports and permission-gated request suppression. CI/browser verification is pending; do not mark this checkpoint passed until the workflow succeeds.
 - No API, backend, schema migration or persistent database changes. The reports use existing monthly attendance and date-range leave endpoints.
-- Code checkpoints: workspace `443735c`; responsive styles `bde8a11`; Reports integration `0a420ad`; E2E `5320ed6`; report-scope clarification `f62b9de`.
+- Code checkpoints: workspace `443735c`; responsive styles `bde8a11`; Reports integration `0a420ad`; E2E `5320ed6`; BOM assertion correction `62e6687`; CSV sanitizer correction `a282d12`. The first integration CI attempt exposed a TypeScript regex parse error; the sanitizer was corrected and CI for `a282d12` is running.
 ---
 
 ## Staff summary reports workspace (2026-11-23)
