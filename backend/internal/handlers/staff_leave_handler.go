@@ -23,7 +23,13 @@ type StaffLeaveManagementService interface {
 }
 type StaffLeaveHandler struct{ service StaffLeaveManagementService }
 func NewStaffLeaveHandler(s StaffLeaveManagementService)*StaffLeaveHandler{return &StaffLeaveHandler{service:s}}
-func(h *StaffLeaveHandler) actor(c *gin.Context)(int64,int64,bool){return staffRecordActor(c)}
+func(h *StaffLeaveHandler) actor(c *gin.Context)(int64,int64,bool){
+ if h==nil||h.service==nil{
+  c.JSON(http.StatusServiceUnavailable,gin.H{"status":"error","message":"Staff leave and holiday service is unavailable"})
+  return 0,0,false
+ }
+ return staffRecordActor(c)
+}
 func(h *StaffLeaveHandler) fail(c *gin.Context,e error){
  switch{
  case errors.Is(e,repository.ErrStaffLeaveAccessDenied),errors.Is(e,repository.ErrRolePermissionDenied):
