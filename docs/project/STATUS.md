@@ -1,3 +1,12 @@
+## Staff Management — Leave authorization-first regression hardening (2026-11-23)
+
+- Extended authorization-first behavior across Leave Type create/update, leave approve/reject and leave cancellation. Actor permission is checked before validating user-controlled names, request IDs or rejection comments; invalid actor/school context still fails closed.
+- Added PostgreSQL integration assertions that unauthorized staff actors receive access denied for malformed leave-type, decision and cancellation inputs.
+- Backend CI [45187627049](https://github.com/TheSumitNain/school-management-system/actions/runs/45187627049) **PASS** on `4f797795176ea37107187d7ccf2fd4ec1a4ff2a5`: full ephemeral PostgreSQL migration chain, Go tests including PostgreSQL integration and `go vet`.
+- No migration was added or applied and no persistent database/data changed. Staff Management remains in progress pending the documented schema/product approvals and consolidated final acceptance.
+
+---
+
 ## Staff Management — Leave authorization-order hardening (2026-11-23)
 
 - Staff Leave Type create/update and approve/reject repository operations now authorize the actor before validating user-controlled names, decision IDs or rejection comments. This preserves authorization-first behavior and avoids exposing validation differences to callers without the relevant live permission.
