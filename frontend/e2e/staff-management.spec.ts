@@ -1104,7 +1104,7 @@ test("staff attendance supports search, individual and atomic bulk marking, and 
     await route.fulfill({ json: { data: [{
       id: 71, staff_principal_id: 512, staff_name: "Attendance Teacher", employee_code: "EMP-ATT-01",
       leave_type_id: 1, leave_type_name: "Casual Leave", start_date: url.searchParams.get("from_date"),
-      end_date: url.searchParams.get("from_date"), duration_type: "full_day", reason: "Approved leave",
+      end_date: url.searchParams.get("from_date"), duration_type: "full_day", reason: "PRIVATE_LEAVE_REASON",
       status: "approved", created_at: "2026-11-01T00:00:00.000Z",
     }] } });
   });
@@ -1121,7 +1121,7 @@ test("staff attendance supports search, individual and atomic bulk marking, and 
       await route.fulfill({ json: { month: url.searchParams.get("month"), data: [{
         staff_principal_id: 512, employee_code: "EMP-ATT-01", full_name: "Attendance Teacher",
         designation: "Science Teacher", present_days: 1, absent_days: 1, late_days: 1, half_days: 0,
-        records: [{ id: 7, date: "2026-11-03", status: "present" }, { id: 8, date: "2026-11-04", status: "late" }, { id: 9, date: "2026-11-05", status: "absent" }],
+        records: [{ id: 7, date: "2026-11-03", status: "present", remarks: "PRIVATE_ATTENDANCE_REMARK" }, { id: 8, date: "2026-11-04", status: "late" }, { id: 9, date: "2026-11-05", status: "absent" }],
       }] } });
       return;
     }
@@ -1179,6 +1179,16 @@ test("staff attendance supports search, individual and atomic bulk marking, and 
   await expect(page.getByText(/Attendance Teacher · Casual Leave/)).toBeVisible();
   await expect(page.getByText("School holidays", { exact: true })).toBeVisible();
   await expect(page.getByText(/School Foundation Day/)).toBeVisible();
+  const monthlyDownloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download monthly report" }).click();
+  const monthlyDownload = await monthlyDownloadPromise;
+  const monthlyPath = await monthlyDownload.path();
+  expect(monthlyPath).toBeTruthy();
+  const monthlyCSV = await readFile(monthlyPath!, "utf8");
+  expect(monthlyCSV.startsWith("\\uFEFF")).toBe(true);
+  expect(monthlyCSV).toContain("EMP-ATT-01");
+  expect(monthlyCSV).not.toContain("PRIVATE_ATTENDANCE_REMARK");
+  expect(monthlyCSV).not.toContain("PRIVATE_LEAVE_REASON");
 });
 
 test("staff leave request field errors clear as each required field is corrected", async ({ page }) => {
