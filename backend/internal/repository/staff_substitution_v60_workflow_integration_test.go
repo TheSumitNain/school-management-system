@@ -136,11 +136,9 @@ func TestStaffSubstitutionV60DatabaseGuardsPostgresIntegration(t *testing.T) {
 	if rollbackErr:=conflictSlot.Rollback(ctx);rollbackErr!=nil{t.Fatalf("rollback conflicting timetable slot savepoint: %v",rollbackErr)}
 	if slotErr==nil{t.Fatal("new recurring timetable slot conflicted with active dated substitution but was accepted")}
 
-	if _,err=tx.Exec(ctx,`UPDATE staff_substitutions SET status='cancelled',cancelled_by_principal_id=$2,cancelled_at=NOW(),updated_at=NOW() WHERE id=$1`,substitutionID,actorPrincipalID);err!=nil{t.Fatalf("cancel dated substitution: %v",err)}
+	// Exercise the production cancellation workflow, including its atomic audit write.
 	// Cancellation audit rows intentionally omit teacher IDs from metadata.
-	// Both affected teachers must still see the event through the scoped row lookup.
-	if _,err=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome)
-		VALUES($1,$2,'staff.substitution.cancelled','staff_substitution',$3,'success')`,actorPrincipalID,schoolID,fmt.Sprint(substitutionID));err!=nil{t.Fatalf("insert substitution cancellation audit event: %v",err)}
+	if err=(&AcademicRepository{db:tx}).CancelStaffSubstitution(ctx,actorPrincipalID,schoolID,substitutionID);err!=nil{t.Fatalf("cancel dated substitution through repository workflow: %v",err)}
 	historyRepo:=NewUserRepository(tx)
 	for _,teacherID:=range []int64{originalID,substituteID}{
 		history,historyErr:=historyRepo.ListStaffAuditEvents(ctx,actorPrincipalID,schoolID,teacherID)
