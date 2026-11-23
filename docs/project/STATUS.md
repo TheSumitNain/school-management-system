@@ -2191,3 +2191,11 @@ This update supersedes older status bullets that listed the following database-b
 - Attendance, staff-record and leave/holiday handlers now authenticate the staff principal/school context before returning service-unavailable responses. Unauthenticated callers consistently receive 401 without learning internal dependency availability; authenticated nil-service cases retain 503.
 - Added regression tests across affected handlers. Backend CI [45142232011](https://github.com/TheSumitNain/school-management-system/actions/runs/45142232011) **PASS** on `36f278e5`: migrations, Go/PostgreSQL integration and `go vet`.
 - No persistent schema or data changes.
+
+
+## 58. Staff leave and holiday read-permission browser acceptance (2026-11-23)
+
+- Added a negative-permission Playwright scenario for a staff account with `staff.leave.manage_requests` and `staff.holidays.read`, but without `staff.leave.read`. It verifies that the holiday calendar remains available while Leave Requests, Applications and New Leave Request UI are absent, and that the browser makes no leave-request API calls.
+- The test fixture was aligned with the actual `/api/school/staff-leave/requests` route in commit `965e5d2`.
+- Frontend CI [45143798048](https://github.com/TheSumitNain/school-management-system/actions/runs/45143798048) **PASS** (production build and Playwright suite); Backend CI [45143798043](https://github.com/TheSumitNain/school-management-system/actions/runs/45143798043) **PASS** (ephemeral PostgreSQL migrations, Go/PostgreSQL integration suite and `go vet`).
+- No persistent database migration or data change. Staff Management remains subject to the consolidated final browser acceptance and remaining security review. Bulk Import and document upload remain deferred under their existing approval constraints.
