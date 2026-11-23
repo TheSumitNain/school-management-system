@@ -471,3 +471,11 @@ Verification on branch `work`, commit `30270fe0927a6eb3f284d462ddd6dc2b4ca2959e`
 - This is a fail-closed reliability safeguard: unavailable dependencies return HTTP 503 rather than panic. It does not bypass authentication, authorization, or service validation when dependencies are available.
 - Commits: `b124c23` (leave service guard and tests), `566ce3d` (staff account handler tests). Backend CI [45134091085](https://github.com/TheSumitNain/school-management-system/actions/runs/45134091085) **PASS** on `566ce3df`: ephemeral PostgreSQL migrations, Go tests including PostgreSQL integration, and `go vet`. Frontend CI [45133733286](https://github.com/TheSumitNain/school-management-system/actions/runs/45133733286) **PASS** on `bb659f1c`: Vite production build and Playwright browser acceptance suite.
 - No migration or persistent database change was made. Staff document upload remains deferred until external storage is selected/purchased and explicitly approved. Bulk Import remains blocked on identity-schema review and approval.
+
+
+## 47. Attendance and substitution handler availability regression coverage (2026-11-23)
+
+- Added table-driven tests for staff attendance daily/monthly reads, single/bulk marking and updates, plus substitution list/create/cancel handlers. Each action is exercised with both a nil handler receiver and an unavailable service dependency.
+- The handlers fail closed with HTTP 503 rather than panicking when their service is unavailable; normal authentication, live authorization and business validation remain in force when dependencies are present.
+- Backend CI [45134503749](https://github.com/TheSumitNain/school-management-system/actions/runs/45134503749) **PASS** on `afcd762e`: ephemeral PostgreSQL initialization and all migrations, Go tests including PostgreSQL integration, and `go vet`.
+- No migration or persistent database change was made. Staff document upload remains deferred pending external storage selection/purchase and explicit approval. Bulk Import remains blocked on identity-schema review and approval.
