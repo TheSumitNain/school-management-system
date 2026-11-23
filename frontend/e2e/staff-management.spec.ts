@@ -1560,7 +1560,7 @@ test("staff directory CSV export is filtered, UTF-8 compatible and safe from spr
   const downloadPromise = page.waitForEvent("download");
   await exportButton.click();
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toMatch(/^staff-directory-\\d{4}-\\d{2}-\\d{2}\\.csv$/);
+  expect(download.suggestedFilename()).toMatch(/^staff-directory-\d{4}-\d{2}-\d{2}\.csv$/);
   const path = await download.path();
   expect(path).toBeTruthy();
   const csv = await readFile(path!, "utf8");
