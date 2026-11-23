@@ -549,7 +549,8 @@ test("add staff wizard validates each step before allowing progress", async ({ p
   await expect(dialog.getByText("Enter a designation (up to 100 characters).")).toBeVisible();
 });
 
-test("staff creation uses the shared IST date picker and submits its selected date", async ({ page }) => {
+test("staff creation uses the shared IST date picker and clears the credential handoff after copying", async ({ page }) => {
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
   const created: Array<Record<string, unknown>> = [];
   const rows: Array<Record<string, unknown>> = [];
   await signInAndOpenStaff(page, rows, async (_path, route) => {
@@ -606,8 +607,9 @@ test("staff creation uses the shared IST date picker and submits its selected da
   const handoff = page.getByRole("dialog", { name: "Share staff login credentials" });
   await expect(handoff).toBeVisible();
   await expect(handoff.getByText("teacher.one")).toBeVisible();
-  await expect(handoff.getByRole("button", { name: "Do this later" })).toBeVisible();
-  await handoff.getByRole("button", { name: "Do this later" }).click();
+  await expect(handoff.getByRole("button", { name: "Copy credentials" })).toBeVisible();
+  await handoff.getByRole("button", { name: "Copy credentials" }).click();
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain("Temporary password: E2E-Strong-Password-2026");
   await expect(handoff).toHaveCount(0);
   await expect(page.locator('input[type="date"]')).toHaveCount(0);
 });
