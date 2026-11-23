@@ -315,7 +315,6 @@ type StaffAuditEvent struct {
 	ResourceType string `json:"resource_type"`
 	Outcome string `json:"outcome"`
 	ActorUsername string `json:"actor_username"`
-	Metadata json.RawMessage `json:"-"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -328,7 +327,7 @@ func (r *UserRepository) ListStaffAuditEvents(ctx context.Context, actorID, scho
 	}
 	rows, err := r.db.Query(ctx, `
 		SELECT ae.id, ae.action, ae.resource_type, ae.outcome,
-		       COALESCE(actor.username, 'System'), ae.metadata, ae.created_at
+		       COALESCE(actor.username, 'System'), ae.created_at
 		FROM audit_events ae
 		LEFT JOIN users actor
 		  ON actor.principal_id = ae.actor_principal_id
@@ -375,7 +374,7 @@ func (r *UserRepository) ListStaffAuditEvents(ctx context.Context, actorID, scho
 	items := make([]StaffAuditEvent, 0)
 	for rows.Next() {
 		var item StaffAuditEvent
-		if err := rows.Scan(&item.ID, &item.Action, &item.ResourceType, &item.Outcome, &item.ActorUsername, &item.Metadata, &item.CreatedAt); err != nil {
+		if err := rows.Scan(&item.ID, &item.Action, &item.ResourceType, &item.Outcome, &item.ActorUsername, &item.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scan staff audit event: %w", err)
 		}
 		items = append(items, item)
