@@ -40,7 +40,7 @@ function exportStaffDirectoryCSV(rows:StaffRecord[]){
     item.employee_code,item.full_name||item.username,item.designation,item.employment_status,
     item.status==="active"?"Enabled":"Disabled",item.profile_complete===false?"Incomplete":"Complete",
   ])].map(row=>row.map(staffCSVCell).join(",")).join("\r\n");
-  const blob=new Blob(["\\uFEFF",lines],{type:"text/csv;charset=utf-8"});
+  const blob=new Blob(["\uFEFF",lines],{type:"text/csv;charset=utf-8"});
   const url=URL.createObjectURL(blob);
   const link=document.createElement("a");
   link.href=url;
