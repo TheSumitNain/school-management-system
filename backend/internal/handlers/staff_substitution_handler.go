@@ -79,6 +79,7 @@ func(h *StaffSubstitutionHandler) Create(c *gin.Context) {
 	item,err:=h.service.Create(c.Request.Context(),actor,school,req.TimetableEntryID,req.OriginalTeacherPrincipalID,
 		req.SubstituteTeacherPrincipalID,req.CoverDate,req.ApprovedLeaveRequestID,req.Reason)
 	if err!=nil{staffSubstitutionError(c,err);return}
+	if item==nil{c.JSON(http.StatusInternalServerError,gin.H{"status":"error","message":"Unable to create staff substitution"});return}
 	c.JSON(http.StatusCreated,gin.H{"status":"success","substitution":item})
 }
 
