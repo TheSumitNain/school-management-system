@@ -1690,6 +1690,16 @@ test("school-wide workload report shows scheduled periods without inferring avai
   expect(csv).toContain("Original Teacher");
   expect(csv).not.toContain("Inactive Teacher");
   expect(csv).toContain(`'   =HYPERLINK(""x"")`);
+  for (const viewport of [{ width: 390, height: 844 }, { width: 768, height: 900 }, { width: 1280, height: 900 }]) {
+    await page.setViewportSize(viewport);
+    await expect(page.getByLabel("Search workload report staff")).toBeVisible();
+    await expect(page.getByLabel("Filter workload report by employment status")).toBeVisible();
+    const dimensions = await page.evaluate(() => ({
+      viewport: window.innerWidth,
+      document: document.documentElement.scrollWidth,
+    }));
+    expect(dimensions.document).toBeLessThanOrEqual(dimensions.viewport);
+  }
 });
 
 
