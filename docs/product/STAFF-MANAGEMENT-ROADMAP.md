@@ -477,11 +477,11 @@ Phases are dependency ordered, not a claim that every listed item is absent. Ins
 
 ### Phase 6 — Reports, Import/Export & ID Cards (P1/P2)
 
-1. Staff directory/employment readiness summary, monthly attendance and leave-request summaries, and current-academic-year assignment summary are implemented. Each report uses existing school-scoped APIs and its own read permission. Exports omit remarks/reasons, exclude revoked assignments, omit unauthorized assignment columns, and sanitize spreadsheet formulas. Latest browser acceptance is pending CI. Qualification/certification report consolidation remains outstanding.
+1. Staff directory/employment readiness summary, monthly attendance and leave-request summaries, and current-academic-year assignment summary are implemented. Each report uses existing school-scoped APIs and its own read permission. Exports omit remarks/reasons, exclude revoked assignments, omit unauthorized assignment columns, and sanitize spreadsheet formulas. Latest browser acceptance is verified: Frontend CI [45111164968](https://github.com/TheSumitNain/school-management-system/actions/runs/45111164968) passed the complete Playwright suite and Backend CI [45111165045](https://github.com/TheSumitNain/school-management-system/actions/runs/45111165045) passed Go/PostgreSQL integration and go vet on checkpoint `ee1744df0f1ebe41ed1c987fceb866118cc9b9ff`. Qualification/certification/experience report consolidation remains outstanding; current APIs are per-staff, so a school-scoped aggregate endpoint is required rather than N+1 frontend requests.
 2. Validated bulk import with preview and row-level error report.
 3. Permission-controlled exports.
 4. ID card templates and bulk generation.
-5. Document expiry reminders and verification workflow.
+5. Document expiry reminders and verification workflow, only after the private-storage/security gate in [Staff Qualifications & Documents](../backend/STAFF-QUALIFICATIONS-DOCUMENTS.md) is implemented and tested. No public/web-root uploads or unprotected downloads.
 
 **Exit gate:** import preview has no writes; explicit confirmation; accurate row counts; sensitive exports restricted; ID cards use approved fields.
 
