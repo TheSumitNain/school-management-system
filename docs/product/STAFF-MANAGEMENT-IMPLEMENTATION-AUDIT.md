@@ -593,3 +593,9 @@ Verification on branch `work`, commit `30270fe0927a6eb3f284d462ddd6dc2b4ca2959e`
 - Moved live permission checks ahead of user-supplied date/field validation for leave request creation and holiday reads/writes, preserving school-scoped transaction behavior for mutations. Added regression coverage for year-zero and non-canonical dates.
 - Backend CI [45147539725](https://github.com/TheSumitNain/school-management-system/actions/runs/45147539725) **PASS** (ephemeral PostgreSQL migrations, full Go/PostgreSQL integration suite and go vet) on commit `b8da3ede`.
 - No persistent database migration or data change. Staff Management remains subject to the consolidated final browser acceptance and remaining security review. Bulk Import and staff document storage remain deferred under their existing approval constraints.
+
+## 2026-11-23 implementation checkpoint — responsive staff profile navigation
+
+- Added browser acceptance for the employee profile dialog and its eight permission-visible sections at 390px mobile, 768px tablet and 1280px desktop. It verifies the dialog remains inside the viewport, the page has no horizontal overflow, narrow layouts contain section navigation in its own horizontal scroller, and Personal Details remains reachable.
+- Frontend CI [45148105892](https://github.com/TheSumitNain/school-management-system/actions/runs/45148105892) **PASS** (TypeScript, production build and full Playwright browser suite) and Backend CI [45148105810](https://github.com/TheSumitNain/school-management-system/actions/runs/45148105810) **PASS** (ephemeral PostgreSQL migrations, full Go/PostgreSQL integration suite and go vet) on commit `d3d613be`.
+- No persistent database migration or data change. Staff Management remains subject to the consolidated final browser acceptance and remaining security review. Bulk Import and staff document storage remain deferred under their existing approval constraints.
