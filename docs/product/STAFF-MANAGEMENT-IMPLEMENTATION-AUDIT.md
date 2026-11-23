@@ -376,3 +376,11 @@ Verification on branch `work`, commit `30270fe0927a6eb3f284d462ddd6dc2b4ca2959e`
 - Added separate CSV exports for attendance and leave. Exported fields omit attendance remarks and leave reasons; cells are quoted and formula-leading values are neutralized. Leave balances and entitlement calculations remain out of scope.
 - Added Playwright acceptance coverage for both report panels, exports, and absence of attendance/leave API requests when their read permissions are missing.
 - Checkpoints: workspace `443735c`; styles `bde8a11`; integration `0a420ad`; E2E `5320ed6`; BOM assertion correction `62e6687`; CSV sanitizer correction `a282d12`. The first frontend CI attempt exposed a TypeScript regex parse error, which was corrected in `a282d12`; CI for the corrected checkpoint is running, so browser verification remains pending.
+
+
+## 35. Academic assignment reporting (2026-11-23)
+
+- Added a current-academic-year report aggregating active teacher-subject and class-in-charge assignments using existing APIs. Revoked assignments are excluded. Data requests are independently permission-gated by `teacher_assignments.read` and `class_incharge_assignments.read`.
+- CSV exports contain usernames and aggregate counts only, and omit columns for assignment types the viewer cannot read. No new backend route, migration, schema or database change was introduced.
+- Playwright covers the assignment summary and export, including revoked assignment exclusion. Latest browser CI is pending; do not treat it as browser-verified until CI completes successfully.
+- Checkpoints: report `53ae4e4`; encoding fix `7e5b704`; active/permission export fix `0ff6cb3`; E2E `7b2cfe8`; BOM test fix `8de8bb7`.
