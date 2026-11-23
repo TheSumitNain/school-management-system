@@ -139,7 +139,7 @@ async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, un
         teacher_principal_id: item.principal_id,
         teacher_name: item.full_name ?? item.username,
         employee_code: item.employee_code ?? "EMP",
-        designation: item.designation ?? "Teacher",
+        designation: item.principal_id === 501 ? '=HYPERLINK("x")' : item.designation ?? "Teacher",
         employment_status: item.employment_status ?? "active",
         login_status: item.status ?? "active",
         day_of_week: item.principal_id === 501 ? 1 : 0,
@@ -1532,6 +1532,21 @@ test("school-wide workload report shows scheduled periods without inferring avai
   await expect(row).toContainText("Subjects");
   await expect(page.getByText(/does not infer working days, free-period availability or workload limits/)).toBeVisible();
   await expect(page.getByText("Inactive Teacher")).toBeVisible();
+
+  await page.getByLabel("Filter workload report by employment status").selectOption("active");
+  const exportButton = page.getByRole("button", { name: "Export filtered CSV" });
+  await expect(exportButton).toBeEnabled();
+  const downloadPromise = page.waitForEvent("download");
+  await exportButton.click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe("staff-workload-report-2026.csv");
+  const downloadPath = await download.path();
+  expect(downloadPath).not.toBeNull();
+  const csv = await readFile(downloadPath!, "utf8");
+  expect(csv.startsWith("\uFEFF")).toBe(true);
+  expect(csv).toContain("Original Teacher");
+  expect(csv).not.toContain("Inactive Teacher");
+  expect(csv).toContain("'=HYPERLINK(""x"")");
 });
 
 
