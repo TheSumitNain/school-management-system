@@ -2138,3 +2138,11 @@ This update supersedes older status bullets that listed the following database-b
 - Added positive/negative route tests for timetable current-year, workload report, periods and entries. Read operations require `timetable.read`; timetable mutations require `timetable.manage`; missing permissions are denied before handler execution.
 - Backend CI [45137945323](https://github.com/TheSumitNain/school-management-system/actions/runs/45137945323) **PASS** on `cc94c773`: migrations on ephemeral PostgreSQL, full Go/PostgreSQL integration suite and `go vet`.
 - No persistent database change.
+
+
+## 2026-11-23 — Timetable write authorization boundary
+
+- Moved timetable period and entry mutation authorization into the same transaction context as each write and its audit event. The permission check remains first, before request validation or mutation.
+- This is transaction-context consistency, not a claim of serializable isolation or complete serialization against every concurrent permission revocation.
+- Backend CI [45138373886](https://github.com/TheSumitNain/school-management-system/actions/runs/45138373886) **PASS** on `04590b9d`: migrations on ephemeral PostgreSQL, full Go/PostgreSQL integration tests and `go vet`.
+- No persistent DB migration or data change.
