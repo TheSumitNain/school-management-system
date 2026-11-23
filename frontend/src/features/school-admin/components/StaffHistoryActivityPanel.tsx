@@ -21,6 +21,12 @@ const labels: Record<string, string> = {
   "staff.experience.updated": "Previous experience updated",
   "school.staff_attendance.marked": "Staff attendance marked",
   "school.staff_attendance.updated": "Staff attendance updated",
+  "staff.leave.requested": "Leave requested",
+  "staff.leave.approved": "Leave approved",
+  "staff.leave.rejected": "Leave rejected",
+  "staff.leave.cancelled": "Leave request cancelled",
+  "staff.substitution.assigned": "Class substitution assigned",
+  "staff.substitution.cancelled": "Class substitution cancelled",
   "school.teacher_subject_assignment.created": "Subject teaching assigned",
   "school.teacher_subject_assignment.revoked": "Subject teaching removed",
   "school.class_incharge_assignment.created": "Class in-charge assigned",
@@ -44,7 +50,7 @@ export function StaffHistoryActivityPanel({ staff, permissions }: Props) {
 
   return <section className="staff-records-panel">
     <div className="staff-records-heading">
-      <div><h3>History & activity</h3><p>Audited account, profile, role and academic assignment events for {staff.full_name || staff.username}. Latest 100 events.</p></div>
+      <div><h3>History & activity</h3><p>Audited account, profile, role, academic assignment, attendance, leave and substitution events for {staff.full_name || staff.username}. Latest 100 events.</p></div>
       <button type="button" className="staff-secondary-button" onClick={() => void query.refetch()} disabled={query.isFetching}>Refresh</button>
     </div>
     {query.isLoading && <p role="status">Loading staff activity…</p>}
