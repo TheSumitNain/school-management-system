@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 	"strings"
+	"time"
 
 	"school-management-system/internal/models"
 )
@@ -18,6 +19,8 @@ type fakeStaffAccountRepository struct {
 	updateCalls int
 	enableCalls int
 	enablePasswordHash string
+	profileCalls int
+	profile models.StaffProfile
 }
 
 func (f *fakeStaffAccountRepository) CreateStaffAccount(_ context.Context, actorID, schoolID int64, username, passwordHash string) (*models.User, error) {
@@ -36,6 +39,12 @@ func (f *fakeStaffAccountRepository) DisableStaffAccount(context.Context, int64,
 
 func (f *fakeStaffAccountRepository) UpdateStaffAccount(context.Context, int64, int64, int64, string) (*models.User, error) {
 	f.updateCalls++
+	return f.user, nil
+}
+
+func (f *fakeStaffAccountRepository) UpdateStaffProfile(_ context.Context, _, _, _ int64, profile models.StaffProfile) (*models.User, error) {
+	f.profileCalls++
+	f.profile = profile
 	return f.user, nil
 }
 
@@ -110,5 +119,31 @@ func TestStaffAccountServiceHashesTemporaryPasswordBeforeReEnable(t *testing.T) 
 	}
 	if err := service.Enable(context.Background(), 31, 8, 27, "short"); err != ErrInvalidPassword {
 		t.Fatalf("invalid temporary password error = %v, want ErrInvalidPassword", err)
+	}
+}
+
+func TestStaffAccountServiceRejectsJoiningDateBeyondOneYearOnProfileUpdate(t *testing.T) {
+	repo := &fakeStaffAccountRepository{user: &models.User{ID: 15, PrincipalID: 27, SchoolID: 8}}
+	service := NewStaffAccountService(repo, alwaysClearPasswordChecker{})
+	base := models.StaffProfile{
+		EmployeeCode: "EMP-27", FullName: "Teacher One", Designation: "Teacher",
+		MobileNumber: "9876543210", EmploymentStatus: "active",
+	}
+	future := time.Now().AddDate(1, 0, 1)
+	base.JoiningDate = &future
+	if _, err := service.UpdateProfile(context.Background(), 31, 8, 27, base); err != ErrInvalidStaffAccount {
+		t.Fatalf("future joining date update error = %v, want ErrInvalidStaffAccount", err)
+	}
+	if repo.profileCalls != 0 {
+		t.Fatalf("invalid future joining date reached repository %d times", repo.profileCalls)
+	}
+
+	valid := time.Now().AddDate(0, 6, 0)
+	base.JoiningDate = &valid
+	if _, err := service.UpdateProfile(context.Background(), 31, 8, 27, base); err != nil {
+		t.Fatalf("valid upcoming joining date update returned error: %v", err)
+	}
+	if repo.profileCalls != 1 {
+		t.Fatalf("valid profile update calls=%d want=1", repo.profileCalls)
 	}
 }
