@@ -101,13 +101,13 @@ type AssignmentRow = {
   classInchargeAssignments: ClassInchargeAssignment[];
 };
 
-function assignmentCSV(rows: AssignmentRow[], yearName: string) {
+function assignmentCSV(rows: AssignmentRow[], yearName: string, canReadSubjects: boolean, canReadIncharges: boolean) {
   const values = [
-    ["Staff username", "Subject assignments", "Class-in-charge assignments", "Distinct classes/sections", "Distinct subjects", "Academic year"],
+    ["Staff username", ...(canReadSubjects ? ["Subject assignments"] : []), ...(canReadIncharges ? ["Class-in-charge assignments"] : []), "Distinct classes/sections", ...(canReadSubjects ? ["Distinct subjects"] : []), "Academic year"],
     ...rows.map(row => {
       const sections = new Set([...row.subjectAssignments.map(item => item.section_id), ...row.classInchargeAssignments.map(item => item.section_id)]);
       const subjects = new Set(row.subjectAssignments.map(item => item.subject_id));
-      return [row.username, row.subjectAssignments.length, row.classInchargeAssignments.length, sections.size, subjects.size, yearName];
+      return [row.username, ...(canReadSubjects ? [row.subjectAssignments.length] : []), ...(canReadIncharges ? [row.classInchargeAssignments.length] : []), sections.size, ...(canReadSubjects ? [subjects.size] : []), yearName];
     }),
   ];
   const cell = (value: string | number) => {
@@ -152,8 +152,8 @@ function AssignmentReport({ permissions }: Props) {
       }
       return row;
     };
-    for (const item of subjects.data?.assignments ?? []) get(item.teacher_principal_id, item.teacher_username).subjectAssignments.push(item);
-    for (const item of incharges.data?.assignments ?? []) get(item.teacher_principal_id, item.teacher_username).classInchargeAssignments.push(item);
+    for (const item of subjects.data?.assignments ?? []) if (!item.revoked_at) get(item.teacher_principal_id, item.teacher_username).subjectAssignments.push(item);
+    for (const item of incharges.data?.assignments ?? []) if (!item.revoked_at) get(item.teacher_principal_id, item.teacher_username).classInchargeAssignments.push(item);
     return Array.from(grouped.values()).sort((a, b) => a.username.localeCompare(b.username));
   }, [subjects.data, incharges.data]);
   const isLoading = (canReadSubjects && (yearQuery.isLoading || (yearID > 0 && subjects.isLoading))) ||
@@ -170,7 +170,7 @@ function AssignmentReport({ permissions }: Props) {
   return <section className="staff-operational-report-section">
     <div className="staff-operational-report-title">
       <div><h3>Academic assignments</h3><p>{yearQuery.data?.academic_year.name ?? "Current academic year"} · Active assignments only</p></div>
-      <button type="button" className="staff-operational-report-export" onClick={() => assignmentCSV(rows, yearQuery.data?.academic_year.name ?? "Current academic year")} disabled={isLoading || isError || rows.length === 0}><Download size={14}/> Export assignments CSV</button>
+      <button type="button" className="staff-operational-report-export" onClick={() => assignmentCSV(rows, yearQuery.data?.academic_year.name ?? "Current academic year", canReadSubjects, canReadIncharges)} disabled={isLoading || isError || rows.length === 0}><Download size={14}/> Export assignments CSV</button>
     </div>
     <div className="staff-operational-report-metrics">
       <article><span>Assigned teachers</span><strong>{rows.length}</strong></article>
