@@ -539,3 +539,12 @@ Verification on branch `work`, commit `30270fe0927a6eb3f284d462ddd6dc2b4ca2959e`
 - This verifies that the actual School Admin role grants survive the live approved-permission allowlist, rather than relying only on mocked route permissions.
 - Backend CI [45139881590](https://github.com/TheSumitNain/school-management-system/actions/runs/45139881590) **PASS** on `ecefdaf4`: ephemeral PostgreSQL migrations, full Go suite including PostgreSQL integration, and `go vet`.
 - No migration or persistent database change.
+
+
+## 54. Staff attendance target authorization order (2026-11-23)
+
+- `StaffAttendanceRepository.Mark` now evaluates the applicable live attendance permission inside the write transaction before checking whether the requested staff profile exists and is active.
+- This prevents an actor without `staff.attendance.mark` / `staff.attendance.correct_past` from distinguishing an unknown or inactive staff principal from an existing active target through the attendance-mark result.
+- Added PostgreSQL integration regression coverage using an unprivileged same-school actor and a non-existent target; the expected result is `ErrStaffAttendanceAccessDenied`.
+- Backend CI [45140616380](https://github.com/TheSumitNain/school-management-system/actions/runs/45140616380) **PASS** on `cbb64f3f`: ephemeral PostgreSQL migrations, full Go suite including PostgreSQL integration, and `go vet`.
+- No schema migration or persistent database change.
