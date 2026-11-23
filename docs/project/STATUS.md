@@ -2146,3 +2146,11 @@ This update supersedes older status bullets that listed the following database-b
 - This is transaction-context consistency, not a claim of serializable isolation or complete serialization against every concurrent permission revocation.
 - Backend CI [45138373886](https://github.com/TheSumitNain/school-management-system/actions/runs/45138373886) **PASS** on `04590b9d`: migrations on ephemeral PostgreSQL, full Go/PostgreSQL integration tests and `go vet`.
 - No persistent DB migration or data change.
+
+
+## 2026-11-23 — Permission override browser fixture alignment
+
+- The permission-override Playwright test now uses `students.read_basic`, which is actually delegable in the permission catalogue, rather than the non-delegable `staff.attendance.read`. Application behavior is unchanged.
+- Frontend CI [45138964793](https://github.com/TheSumitNain/school-management-system/actions/runs/45138964793) **PASS**: production build and 86 Playwright tests.
+- Backend CI [45138964862](https://github.com/TheSumitNain/school-management-system/actions/runs/45138964862) **PASS**: migrations, Go/PostgreSQL integration and `go vet`.
+- Both workflows passed on code checkpoint `4ddcf02c`; no persistent database change.
