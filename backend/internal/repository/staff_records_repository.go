@@ -435,13 +435,13 @@ func (r *UserRepository) ListStaffQualificationReport(ctx context.Context, actor
 			JOIN users actor ON actor.principal_id=ap.id
 			JOIN schools s ON s.id=actor.school_id
 			JOIN principal_roles pr ON pr.principal_id=ap.id AND pr.revoked_at IS NULL
-			JOIN roles role ON role.id=pr.role_id
+			JOIN roles r ON r.id=pr.role_id
 			JOIN role_permissions rp ON rp.role_id=role.id
 			JOIN permissions p ON p.id=rp.permission_id
 			WHERE ap.id=$1 AND ap.principal_type='staff' AND ap.status='active'
 			  AND actor.status='active' AND actor.school_id=$2 AND s.status='active'
-			  AND role.school_id=$2 AND role.scope_type='school' AND role.principal_type='staff'
-			  AND role.role_key='school_admin' AND role.is_system=TRUE
+			  AND r.school_id=$2 AND r.scope_type='school' AND r.principal_type='staff'
+			  AND r.role_key='school_admin' AND r.is_system=TRUE
 			  AND p.permission_key='users.read' AND p.scope_type='school' AND p.is_active=TRUE
 			  AND NOT EXISTS (
 			    SELECT 1 FROM user_permission_overrides denied
