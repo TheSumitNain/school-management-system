@@ -1461,6 +1461,50 @@ test("staff substitution assigns a dated cover, validates the timetable weekday 
 });
 
 
+test("completed substitute coverage remains visible without a cancellation action", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [
+    {
+      id: 1, principal_id: 501, school_id: 10, username: "teacher.original",
+      employee_code: "EMP-ORIGINAL", full_name: "Original Teacher", designation: "Mathematics Teacher",
+      mobile_number: "9876543215", employment_status: "active", profile_complete: true,
+      status: "active", must_change_password: false,
+    },
+    {
+      id: 2, principal_id: 502, school_id: 10, username: "teacher.substitute",
+      employee_code: "EMP-SUBSTITUTE", full_name: "Substitute Teacher", designation: "Mathematics Teacher",
+      mobile_number: "9876543216", employment_status: "active", profile_complete: true,
+      status: "active", must_change_password: false,
+    },
+  ];
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "staff.substitutions.read", "staff.substitutions.manage"]);
+  await page.route("**/api/school/staff-substitutions*", async route => {
+    if (route.request().method() !== "GET") {
+      await route.fallback();
+      return;
+    }
+    await route.fulfill({
+      json: {
+        substitutions: [{
+          id: 77, timetable_entry_id: 700, cover_date: "2026-11-16",
+          original_teacher_principal_id: 501, original_teacher_name: "Original Teacher",
+          substitute_teacher_principal_id: 502, substitute_teacher_name: "Substitute Teacher",
+          reason: "Completed cover", status: "active", section_name: "A", class_name: "Class 6",
+          subject_name: "Mathematics", period_number: 2, period_name: "Period 2",
+          starts_at: "09:40", ends_at: "10:20", room: "Room 12",
+          created_by_principal_id: 101, created_at: "2026-11-15T10:00:00.000Z",
+        }],
+      },
+    });
+  });
+  await page.getByRole("button", { name: "Substitutions" }).click();
+  const record = page.locator(".staff-substitution-record");
+  await expect(record).toContainText("Completed");
+  await expect(record).toContainText("Original Teacher");
+  await expect(record).toContainText("Substitute Teacher");
+  await expect(record.getByRole("button", { name: "Cancel cover" })).toHaveCount(0);
+});
+
+
 test("school-wide workload report shows scheduled periods without inferring availability", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [
     {
