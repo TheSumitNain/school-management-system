@@ -56,7 +56,7 @@ func TestStaffLeaveServiceRejectsInvalidRequestBeforeRepository(t *testing.T) {
 		item repository.StaffLeaveRequest
 	}{
 		{"invalid start date", repository.StaffLeaveRequest{StaffPrincipalID: 2, LeaveTypeID: 3, StartDate: "22-11-2026", EndDate: "2026-11-22", DurationType: "full_day", Reason: "Personal"}},
-	\t{"year zero start date", repository.StaffLeaveRequest{StaffPrincipalID: 2, LeaveTypeID: 3, StartDate: "0000-01-01", EndDate: "0000-01-01", DurationType: "full_day", Reason: "Personal"}},
+		{"year zero start date", repository.StaffLeaveRequest{StaffPrincipalID: 2, LeaveTypeID: 3, StartDate: "0000-01-01", EndDate: "0000-01-01", DurationType: "full_day", Reason: "Personal"}},
 		{"end before start", repository.StaffLeaveRequest{StaffPrincipalID: 2, LeaveTypeID: 3, StartDate: "2026-11-23", EndDate: "2026-11-22", DurationType: "full_day", Reason: "Personal"}},
 		{"missing reason", repository.StaffLeaveRequest{StaffPrincipalID: 2, LeaveTypeID: 3, StartDate: "2026-11-22", EndDate: "2026-11-22", DurationType: "full_day"}},
 		{"unknown duration", repository.StaffLeaveRequest{StaffPrincipalID: 2, LeaveTypeID: 3, StartDate: "2026-11-22", EndDate: "2026-11-22", DurationType: "hourly", Reason: "Personal"}},
