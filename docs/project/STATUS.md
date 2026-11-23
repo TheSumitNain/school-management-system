@@ -2224,3 +2224,11 @@ This update supersedes older status bullets that listed the following database-b
 - Added browser acceptance for the employee profile dialog and its eight permission-visible sections at 390px mobile, 768px tablet and 1280px desktop. It verifies the dialog remains inside the viewport, the page has no horizontal overflow, narrow layouts contain section navigation in its own horizontal scroller, and Personal Details remains reachable.
 - Frontend CI [45148105892](https://github.com/TheSumitNain/school-management-system/actions/runs/45148105892) **PASS** (TypeScript, production build and full Playwright browser suite) and Backend CI [45148105810](https://github.com/TheSumitNain/school-management-system/actions/runs/45148105810) **PASS** (ephemeral PostgreSQL migrations, full Go/PostgreSQL integration suite and go vet) on commit `d3d613be`.
 - No persistent database migration or data change. Staff Management remains subject to the consolidated final browser acceptance and remaining security review. Bulk Import and staff document storage remain deferred under their existing approval constraints.
+
+## 2026-11-23 — Staff leave and substitution validation and permission acceptance
+
+- Added strict date-filter validation for leave requests and substitution coverage, including invalid calendar dates, missing range endpoints, reversed ranges and year-zero rejection. Substitution creation validates canonical dates.
+- Preserved authorization-first behavior and added PostgreSQL integration tests proving unauthorized substitution list/create callers are denied before input validation.
+- Added substitution read-only browser acceptance and Leave & Holidays responsive acceptance at mobile, tablet and desktop sizes.
+- Frontend CI [45168421521](https://github.com/TheSumitNain/school-management-system/actions/runs/45168421521) **PASS** (92 Playwright tests); Backend CI [45169195285](https://github.com/TheSumitNain/school-management-system/actions/runs/45169195285) **PASS** (PostgreSQL migrations/integration and `go vet`).
+- No persistent database migration/data changes. Staff Management final acceptance remains in progress; Bulk Import and staff document storage remain deferred.
