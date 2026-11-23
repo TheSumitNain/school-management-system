@@ -710,3 +710,12 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 
 - Added browser regression coverage proving attendance-read-only users cannot mark new records, update existing records, or submit bulk attendance; the UI disables write controls and sends no write requests.
 - Frontend CI [45169926822](https://github.com/TheSumitNain/school-management-system/actions/runs/45169926822) **PASS** with the production build and full Playwright suite. Backend validation work remains under separate CI verification.
+
+## 2026-11-23 implementation checkpoint — strict staff record dates and responsive report acceptance
+
+- Certifications and previous-employment date fields now use strict canonical calendar-date validation for both create and update. Year zero, malformed/nonexistent dates and reversed ranges are rejected before PostgreSQL casts; year-one dates are handled correctly, including optional certification issue/expiry comparisons.
+- Attendance date and month inputs reject year zero and non-canonical formats. Handler, service and repository layers now agree that year-one calendar values are valid.
+- Staff profile joining-date bounds are consistent across create and edit: year 1 or later, no more than one year ahead.
+- Added mobile/tablet/desktop browser checks for Substitutions and the school-wide Workload Report, plus read-only attendance and substitution permission acceptance.
+- Frontend CI [45171132153](https://github.com/TheSumitNain/school-management-system/actions/runs/45171132153) **PASS**; Backend CI [45172378554](https://github.com/TheSumitNain/school-management-system/actions/runs/45172378554) **PASS** (PostgreSQL migrations/integration and `go vet`) on `617c235e`.
+- No persistent DB changes. Profile-only onboarding/Bulk Import remain gated on the identity-schema design and approval; document storage remains deferred pending an external storage selection/purchase and explicit approval.
