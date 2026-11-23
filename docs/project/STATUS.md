@@ -1,3 +1,13 @@
+## Staff Management — Leave, substitution and activity-history verification (2026-11-23)
+
+- Extended the school-scoped Staff History & Activity feed to include leave-request and class-substitution audit events. The UI now renders readable labels for leave requested/approved/rejected/cancelled and substitution assigned/cancelled events.
+- Added PostgreSQL integration fixtures for leave and substitution history, plus Playwright regression coverage for the new event labels and panel description.
+- Kept raw audit metadata excluded from the API response for privacy and aligned the frontend `StaffAuditEvent` TypeScript contract with that response.
+- Backend CI [45185769374](https://github.com/TheSumitNain/school-management-system/actions/runs/45185769374) **PASS** and Frontend CI [45185769313](https://github.com/TheSumitNain/school-management-system/actions/runs/45185769313) **PASS** on commit [9b9b86d](https://github.com/TheSumitNain/school-management-system/commit/9b9b86d12220d5499b991e0365db126d7b86865b). Backend migration checks, PostgreSQL integration tests and `go vet` passed; frontend production build and the full Playwright suite passed.
+- No migration was added or applied and no persistent database was changed. Staff Management remains in progress: profile-only staff creation/Bulk Import and Staff Type, Department, Employment Type and expanded personal details still require explicit schema/product approval. Document upload/download remains deferred pending an approved external storage provider.
+
+---
+
 ## Staff Management — printable ID cards and bulk-import architecture gate (2026-11-23)
 
 - Added a permission-gated **ID Cards** workspace to Staff Management. It selects only active employees with complete profiles, supports Classic/Compact/Modern print layouts, optional validity date, multi-select, responsive preview and print-only A4 layout.
