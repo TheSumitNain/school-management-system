@@ -526,6 +526,9 @@ test("read-only staff profile hides every employee edit action", async ({ page }
   await expect(dialog.getByRole("button", { name: "Edit personal details" })).toHaveCount(0);
   await dialog.getByRole("button", { name: "Employment" }).click();
   await expect(dialog.getByRole("button", { name: "Edit employment details" })).toHaveCount(0);
+  await dialog.getByRole("button", { name: "Academic Assignments" }).click();
+  await expect(dialog.getByRole("button", { name: "Open assignments workspace" })).toHaveCount(0);
+  await expect(dialog.getByText("You do not have permission to view academic assignments.")).toBeVisible();
 });
 
 
