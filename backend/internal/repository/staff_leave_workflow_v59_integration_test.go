@@ -92,6 +92,16 @@ func TestStaffLeaveWorkflowPostgresIntegration(t *testing.T) {
 		if succeeded!=1||conflicted!=1{t.Fatalf("concurrent outcomes success=%d conflict=%d; want 1 each",succeeded,conflicted)}
 	})
 
+	t.Run("authorization precedes leave decision and leave-type validation",func(t *testing.T){
+		invalidComment:="   "
+		if err:=f.repo.Decide(f.ctx,f.staffPrincipalID,f.schoolID,0,true,&invalidComment);!errors.Is(err,ErrStaffLeaveAccessDenied){
+			t.Fatalf("unauthorized decision with invalid ID/comment error=%v, want access denied",err)
+		}
+		if _,err:=f.repo.SaveType(f.ctx,f.staffPrincipalID,f.schoolID,0,StaffLeaveType{Name:"x",IsActive:true});!errors.Is(err,ErrStaffLeaveAccessDenied){
+			t.Fatalf("unauthorized leave-type create with invalid name error=%v, want access denied",err)
+		}
+	})
+
 	t.Run("decision permission self approval and audit",func(t *testing.T){
 		request:=f.request(t,f.staffPrincipalID,time.Now().AddDate(0,0,40).Format("2006-01-02"),time.Now().AddDate(0,0,40).Format("2006-01-02"))
 		if err:=f.repo.Decide(f.ctx,f.staffPrincipalID,f.schoolID,request.ID,true,nil);!errors.Is(err,ErrStaffLeaveAccessDenied){
