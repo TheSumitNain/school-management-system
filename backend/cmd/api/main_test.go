@@ -1197,3 +1197,71 @@ func TestStaffQualificationsReportRouteEnforcesLiveUsersReadPermission(t *testin
     if deniedRec.Code!=http.StatusForbidden {t.Fatalf("experience report without users.read status=%d body=%s want=403",deniedRec.Code,deniedRec.Body.String())}
 
 }
+
+
+func TestStaffLeaveAndSubstitutionRoutesEnforceDedicatedLivePermissions(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	validator := fakeTokenValidator{claims: &services.TokenClaims{
+		RegisteredClaims: jwt.RegisteredClaims{Subject: "31"},
+		PrincipalType: "staff",
+		TokenVersion: 1,
+	}}
+	principal := &models.AuthPrincipal{
+		ID: 31, Type: "staff", Status: "active", TokenVersion: 1,
+		SchoolID: 8, Username: "school.admin",
+	}
+	leaveHandler := handlers.NewStaffLeaveHandler(nil)
+	substitutionHandler := handlers.NewStaffSubstitutionHandler(nil)
+
+	cases := []struct {
+		name        string
+		method      string
+		path        string
+		body        string
+		permission  string
+	}{
+		{"leave types read", http.MethodGet, "/school/staff-leave/types", "", "staff.leave.read"},
+		{"leave type create", http.MethodPost, "/school/staff-leave/types", `{"name":"Annual"}`, "staff.leave.manage_types"},
+		{"leave type update", http.MethodPatch, "/school/staff-leave/types/1", `{"name":"Annual"}`, "staff.leave.manage_types"},
+		{"leave requests read", http.MethodGet, "/school/staff-leave/requests", "", "staff.leave.read"},
+		{"leave request create", http.MethodPost, "/school/staff-leave/requests", `{"leave_type_id":1}`, "staff.leave.manage_requests"},
+		{"leave approve", http.MethodPost, "/school/staff-leave/requests/1/approve", `{}`, "staff.leave.decide"},
+		{"leave reject", http.MethodPost, "/school/staff-leave/requests/1/reject", `{"comment":"Not approved"}`, "staff.leave.decide"},
+		{"leave cancel", http.MethodPost, "/school/staff-leave/requests/1/cancel", "", "staff.leave.manage_requests"},
+		{"holidays read", http.MethodGet, "/school/holidays", "", "staff.holidays.read"},
+		{"holiday create", http.MethodPost, "/school/holidays", `{"name":"Holiday"}`, "staff.holidays.manage"},
+		{"holiday update", http.MethodPatch, "/school/holidays/1", `{"name":"Holiday"}`, "staff.holidays.manage"},
+		{"substitutions read", http.MethodGet, "/school/staff-substitutions", "", "staff.substitutions.read"},
+		{"substitution create", http.MethodPost, "/school/staff-substitutions", `{"original_teacher_id":41}`, "staff.substitutions.manage"},
+		{"substitution cancel", http.MethodPost, "/school/staff-substitutions/1/cancel", "", "staff.substitutions.manage"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			request := func(permissions []string) *httptest.ResponseRecorder {
+				router, err := setupTestRouterWithHandlers(
+					fakeDatabase{}, nil, validator,
+					fakePrincipalLoader{principal: principal},
+					fakePermissionLoader{permissions: permissions},
+					nil, nil, leaveHandler, substitutionHandler,
+				)
+				if err != nil {
+					t.Fatalf("setup router: %v", err)
+				}
+				req := httptest.NewRequest(tc.method, tc.path, strings.NewReader(tc.body))
+				req.Header.Set("Authorization", "Bearer valid-test-token")
+				req.Header.Set("Content-Type", "application/json")
+				rec := httptest.NewRecorder()
+				router.ServeHTTP(rec, req)
+				return rec
+			}
+
+			if denied := request(nil); denied.Code != http.StatusForbidden {
+				t.Fatalf("without %s status=%d body=%s want=403", tc.permission, denied.Code, denied.Body.String())
+			}
+			if allowed := request([]string{tc.permission}); allowed.Code != http.StatusServiceUnavailable {
+				t.Fatalf("with %s route should reach unavailable handler, status=%d body=%s want=503", tc.permission, allowed.Code, allowed.Body.String())
+			}
+		})
+	}
+}
