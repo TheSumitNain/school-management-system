@@ -86,9 +86,9 @@ Routes are authenticated School Admin endpoints. School ownership comes only fro
 
 Create/update requests must reject unknown enum values, malformed dates, overlong strings, invalid score/scale combinations, and cross-school target IDs. Return stable field-level validation errors. Return a generic 403 response for unauthorized or cross-school targets without disclosing target details.
 
-### 3.1 School-wide qualification and certification report (planned; not implemented)
+### 3.1 School-wide qualification and certification report (implemented; CI verification pending)
 
-The profile APIs above are intentionally staff-scoped. The Reports workspace must **not** call either profile endpoint once per employee. Before adding the school-wide Qualifications & Certifications report, implement one aggregate read endpoint:
+The profile APIs above remain intentionally staff-scoped. The Reports workspace must **not** call either profile endpoint once per employee. A single aggregate read endpoint has now been added; verify it through the pending backend/frontend CI before treating it as complete:
 
 | Method | Route | Permission | Purpose |
 |---|---|---|---|
@@ -98,11 +98,11 @@ Contract:
 - Derive `school_id` exclusively from authenticated context; never accept a school identifier from query parameters.
 - Support optional `record_type=qualification|certification|all`, `verification_status=pending|verified|rejected`, and bounded `limit` / `offset` (default 50, maximum 200).
 - Return a single normalized row shape with record type, record ID, staff principal ID, employee code, staff display name, record display name, institution/issuing organization, completion/issue/expiry dates where applicable, and verification status. Do not return credential references, verification notes, contact details, or document/storage metadata in this report.
-- Return total counts by record type and verification status for the same filter scope, plus pagination metadata. Counts and rows must be computed in a bounded number of SQL statements, not per-staff queries.
+- Return total counts by record type and verification status for the same filter scope, plus pagination metadata. The implementation uses a fixed authorization query and two bounded aggregate/page SQL queries, never per-staff requests.
 - Implement school scoping in every repository query. Join each record to `staff_profiles` on both principal and school IDs. Do not include archived/inactive staff unless an explicit filter is later approved.
 - Use stable ordering (record type, staff name, record ID); validate filters and pagination strictly.
 - Enforce live `users.read` permission at the route and repository/service boundary. A report permission must not imply verification or mutation authority.
-- Add handler, repository and PostgreSQL integration tests for empty results, mixed record types, filters, pagination, count consistency, same-school staff joins, cross-school isolation and missing permission.
+- Added service filter validation and PostgreSQL integration coverage for mixed record types, pending filters, pagination, count consistency, same-school staff joins and cross-school denial. Missing-permission route coverage and final CI verification remain to be confirmed.
 - CSV export must use only returned authorized report fields and the existing formula-injection-safe CSV helper.
 
 This endpoint is a prerequisite for the frontend report. Do not substitute client-side N+1 requests or fabricate totals. No schema migration is expected for this read-only report.
