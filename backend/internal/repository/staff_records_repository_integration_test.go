@@ -147,7 +147,7 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
     // access that the frontend exposes. This guards against hard-coded
     // School Admin-only repository checks.
     roleRepo := NewRoleRepository(tx)
-    readDelegation, err := roleRepo.GrantSchoolPermissionDelegation(ctx, platformAdminID, schoolID, "users.read", true, false)
+    readDelegation, err := roleRepo.GrantSchoolPermissionDelegation(ctx, platformAdminID, schoolID, "users.read", true, true)
     if err != nil { t.Fatalf("delegate users.read to custom roles: %v", err) }
     readerRole, err := roleRepo.CreateCustomRole(ctx, actorID, schoolID, "staff_record_reader_"+suffix, "Staff Record Reader "+suffix)
     if err != nil { t.Fatalf("create custom staff reader role: %v", err) }
@@ -164,6 +164,15 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
     delegatedReport, err := repo.ListStaffQualificationReport(ctx, secondStaff.PrincipalID, schoolID, StaffQualificationReportFilter{RecordType:"all", Limit:50})
     if err != nil || delegatedReport.Total != 2 {
         t.Fatalf("custom-role staff member could not read school-scoped qualifications report: report=%+v err=%v", delegatedReport, err)
+    }
+    if err := roleRepo.SetStaffPermissionOverride(ctx, actorID, schoolID, secondStaff.PrincipalID, readDelegation.ID, "users.read", "deny", "Integration test: deny staff record read"); err != nil {
+        t.Fatalf("set explicit DENY override for delegated staff reader: %v", err)
+    }
+    if _, err := repo.ListStaffQualifications(ctx, secondStaff.PrincipalID, schoolID, staff.PrincipalID); !errors.Is(err, ErrStaffRecordAccessDenied) {
+        t.Fatalf("explicit DENY override was not enforced for staff record read: %v", err)
+    }
+    if _, err := repo.ListStaffQualificationReport(ctx, secondStaff.PrincipalID, schoolID, StaffQualificationReportFilter{RecordType:"all", Limit:50}); !errors.Is(err, ErrStaffRecordAccessDenied) {
+        t.Fatalf("explicit DENY override was not enforced for aggregate report read: %v", err)
     }
 
     if _, err := attendanceRepo.MarkBulk(ctx, actorID, schoolID, []int64{secondStaff.PrincipalID, staff.PrincipalID}, today, "absent", nil); !errors.Is(err, ErrStaffAttendanceConflict) {
