@@ -60,6 +60,7 @@ func(h *StaffRecordsHandler) ListQualifications(c *gin.Context){
 	if h.unavailable(c) { return }
 	staff,ok:=staffRecordTarget(c);if !ok{c.JSON(400,gin.H{"status":"error","message":"Invalid staff principal ID"});return}
 	items,err:=h.service.ListQualifications(c.Request.Context(),actor,school,staff);if err!=nil{h.fail(c,err);return}
+	if items == nil { items = []repository.StaffQualification{} }
 	c.JSON(200,gin.H{"status":"success","qualifications":items})
 }
 func(h *StaffRecordsHandler) CreateQualification(c *gin.Context){
@@ -76,6 +77,7 @@ func(h *StaffRecordsHandler) ListCertifications(c *gin.Context){
 	if h.unavailable(c) { return }
 	staff,ok:=staffRecordTarget(c);if !ok{c.JSON(400,gin.H{"status":"error","message":"Invalid staff principal ID"});return}
 	items,err:=h.service.ListCertifications(c.Request.Context(),actor,school,staff);if err!=nil{h.fail(c,err);return}
+	if items == nil { items = []repository.StaffCertification{} }
 	c.JSON(200,gin.H{"status":"success","certifications":items})
 }
 func(h *StaffRecordsHandler) CreateCertification(c *gin.Context){
@@ -92,6 +94,7 @@ func(h *StaffRecordsHandler) ListExperience(c *gin.Context){
 	if h.unavailable(c) { return }
 	staff,ok:=staffRecordTarget(c);if !ok{c.JSON(400,gin.H{"status":"error","message":"Invalid staff principal ID"});return}
 	items,err:=h.service.ListExperience(c.Request.Context(),actor,school,staff);if err!=nil{h.fail(c,err);return}
+	if items == nil { items = []repository.StaffExperience{} }
 	c.JSON(200,gin.H{"status":"success","experience":items})
 }
 func(h *StaffRecordsHandler) CreateExperience(c *gin.Context){
@@ -143,6 +146,7 @@ func(h *StaffRecordsHandler) ListAuditEvents(c *gin.Context){
 	if h.unavailable(c) { return }
 	staff,ok:=staffRecordTarget(c);if !ok{c.JSON(400,gin.H{"status":"error","message":"Invalid staff principal ID"});return}
 	items,err:=h.service.ListAuditEvents(c.Request.Context(),actor,school,staff);if err!=nil{h.fail(c,err);return}
+	if items == nil { items = []repository.StaffAuditEvent{} }
 	c.JSON(200,gin.H{"status":"success","events":items})
 }
 
