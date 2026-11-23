@@ -1587,10 +1587,10 @@ test("staff reports show school-scoped employment readiness and export approved 
   await page.getByRole("button", { name: "Reports", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Staff Reports" })).toBeVisible();
   await expect(page.getByText("Total staff").locator("..")).toContainText("2");
-  await expect(page.locator(".staff-report-summary article").filter({ hasText: "Active employment" }).locator("strong")).toHaveText("1");
-  await expect(page.locator(".staff-report-summary article").filter({ hasText: "Inactive employment" }).locator("strong")).toHaveText("1");
-  await expect(page.locator(".staff-report-summary article").filter({ hasText: "Profile incomplete" }).locator("strong")).toHaveText("1");
-  await expect(page.locator(".staff-report-summary article").filter({ hasText: "Login disabled" }).locator("strong")).toHaveText("1");
+  await expect(page.locator(".staff-reports-summary article").filter({ hasText: "Active employment" }).locator("strong")).toHaveText("1");
+  await expect(page.locator(".staff-reports-summary article").filter({ hasText: "Inactive employment" }).locator("strong")).toHaveText("1");
+  await expect(page.locator(".staff-reports-summary article").filter({ hasText: "Profile incomplete" }).locator("strong")).toHaveText("1");
+  await expect(page.locator(".staff-reports-summary article").filter({ hasText: "Login disabled" }).locator("strong")).toHaveText("1");
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export staff report" }).click();
   const download = await downloadPromise;
