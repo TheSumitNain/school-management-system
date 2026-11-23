@@ -267,7 +267,7 @@ function ExperienceReport({ permissions }: Props) {
       <article><span>Matching records</span><strong>{page?.total??"—"}</strong></article>
       <article><span>Current roles</span><strong>{page?current:"—"}</strong></article>
       <article><span>Previous roles</span><strong>{page?previous:"—"}</strong></article>
-      <article><span>Employees represented</span><strong>{page?new Set(page.rows.map(row=>row.staff_principal_id)).size:"—"}</strong></article>
+      <article><span>Employees on page</span><strong>{page?new Set(page.rows.map(row=>row.staff_principal_id)).size:"—"}</strong></article>
     </div>
     {report.isLoading&&<p role="status">Loading staff experience report…</p>}
     {report.isError&&<p className="staff-operational-report-error" role="alert">Staff experience report could not be loaded. <button type="button" onClick={()=>void report.refetch()}>Retry</button></p>}
