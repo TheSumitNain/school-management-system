@@ -314,6 +314,8 @@ test("staff directory filters independently narrow employment, login account and
   await expect(page.getByRole("button", { name: "Active Disabled" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Profile Pending" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Active Enabled" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Filter by login account status" }).click();
+  await page.getByRole("option", { name: "All accounts", exact: true }).click();
 
   await page.getByRole("button", { name: "Filter by profile completeness" }).click();
   await page.getByRole("option", { name: "Incomplete", exact: true }).click();
