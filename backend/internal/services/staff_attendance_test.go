@@ -12,6 +12,7 @@ import (
 
 type fakeStaffAttendanceRepository struct {
     listDailyCalls int
+    listMonthlyCalls int
     markCalls int
     updateCalls int
     lastStatus string
@@ -22,6 +23,7 @@ func (f *fakeStaffAttendanceRepository) ListDaily(context.Context, int64, int64,
     return []repository.StaffAttendanceRecord{}, nil
 }
 func (f *fakeStaffAttendanceRepository) ListMonthly(context.Context, int64, int64, time.Time) ([]repository.StaffAttendanceMonthlySummary, error) {
+    f.listMonthlyCalls++
     return []repository.StaffAttendanceMonthlySummary{}, nil
 }
 func (f *fakeStaffAttendanceRepository) Mark(_ context.Context, _, _, _ int64, _ time.Time, status string, _ *string) (*repository.StaffAttendanceRecord, error) {
@@ -88,5 +90,27 @@ func TestStaffAttendanceServiceDelegatesValidBulkMark(t *testing.T) {
     count, err := service.MarkBulk(context.Background(), 1, 2, []int64{3, 4}, day, "present", nil)
     if err != nil || count != 2 || fake.markCalls != 1 || fake.lastStatus != "present" {
         t.Fatalf("bulk result count=%d calls=%d status=%q err=%v", count, fake.markCalls, fake.lastStatus, err)
+    }
+}
+
+func TestStaffAttendanceServiceAcceptsYearOneCalendarDates(t *testing.T) {
+    fake := &fakeStaffAttendanceRepository{}
+    service := NewStaffAttendanceService(fake)
+    firstDate := time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC)
+
+    if _, err := service.ListDaily(context.Background(), 1, 2, firstDate); err != nil {
+        t.Fatalf("ListDaily year-one date: %v", err)
+    }
+    if _, err := service.ListMonthly(context.Background(), 1, 2, firstDate); err != nil {
+        t.Fatalf("ListMonthly year-one month: %v", err)
+    }
+    if _, err := service.Mark(context.Background(), 1, 2, 3, firstDate, "present", nil); err != nil {
+        t.Fatalf("Mark year-one date: %v", err)
+    }
+    if _, err := service.MarkBulk(context.Background(), 1, 2, []int64{3}, firstDate, "present", nil); err != nil {
+        t.Fatalf("MarkBulk year-one date: %v", err)
+    }
+    if fake.listDailyCalls != 1 || fake.listMonthlyCalls != 1 || fake.markCalls != 2 {
+        t.Fatalf("repository calls daily=%d monthly=%d mark=%d", fake.listDailyCalls, fake.listMonthlyCalls, fake.markCalls)
     }
 }
