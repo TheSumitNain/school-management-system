@@ -48,6 +48,17 @@ func TestStaffSubstitutionHandlersReturnUnavailableWithoutService(t *testing.T) 
 }
 
 
+type nilStaffSubstitutionListService struct { StaffSubstitutionManagementService }
+func (nilStaffSubstitutionListService) List(context.Context,int64,int64,string,string,int64)([]repository.StaffSubstitution,error){return nil,nil}
+
+func TestStaffSubstitutionListReturnsEmptyArray(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r:=gin.New()
+	r.GET("/substitutions",func(c *gin.Context){c.Set(middleware.ContextPrincipalIDKey,int64(100));c.Set(middleware.ContextSchoolIDKey,int64(10));c.Next()},NewStaffSubstitutionHandler(nilStaffSubstitutionListService{}).List)
+	rec:=httptest.NewRecorder();r.ServeHTTP(rec,httptest.NewRequest(http.MethodGet,"/substitutions",nil))
+	if rec.Code!=http.StatusOK || !strings.Contains(rec.Body.String(),`"substitutions":[]`) {t.Fatalf("status=%d body=%s",rec.Code,rec.Body.String())}
+}
+
 type nilStaffSubstitutionWriteResultService struct { StaffSubstitutionManagementService }
 func (nilStaffSubstitutionWriteResultService) Create(context.Context,int64,int64,int64,int64,int64,string,*int64,string)(*repository.StaffSubstitution,error){return nil,nil}
 
