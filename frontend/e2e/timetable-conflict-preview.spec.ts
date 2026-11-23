@@ -47,13 +47,22 @@ test("timetable conflict preview checks the teacher across all sections despite 
     }
     if (path === "/school/timetable/entries" && method === "GET") {
       entryQueries.push(url.search);
-      await route.fulfill({ json: { entries: [{
-        id: 900, school_id: 10, academic_year_id: 7, section_id: 20,
-        section_name: "A", class_name: "Class 6", subject_id: 11, subject_name: "Mathematics",
-        teacher_principal_id: 501, teacher_username: "teacher.one", teacher_subject_assignment_id: 601,
-        period_id: 1, period_number: 1, period_name: "Period 1", starts_at: "09:00", ends_at: "09:40",
-        day_of_week: 1, room: "Room 1",
-      }] } });
+      await route.fulfill({ json: { entries: [
+        {
+          id: 900, school_id: 10, academic_year_id: 7, section_id: 20,
+          section_name: "A", class_name: "Class 6", subject_id: 11, subject_name: "Mathematics",
+          teacher_principal_id: 501, teacher_username: "teacher.one", teacher_subject_assignment_id: 601,
+          period_id: 1, period_number: 1, period_name: "Period 1", starts_at: "09:00", ends_at: "09:40",
+          day_of_week: 1, room: "Room 1",
+        },
+        {
+          id: 901, school_id: 10, academic_year_id: 7, section_id: 10,
+          section_name: "B", class_name: "Class 6", subject_id: 14, subject_name: "History",
+          teacher_principal_id: 503, teacher_username: "teacher.three", teacher_subject_assignment_id: 604,
+          period_id: 2, period_number: 2, period_name: "Period 2", starts_at: "09:40", ends_at: "10:20",
+          day_of_week: 1, room: "Room 2",
+        },
+      ] } });
       return;
     }
     if (path === "/school/sections" && method === "GET") {
@@ -105,5 +114,14 @@ test("timetable conflict preview checks the teacher across all sections despite 
 
   await form.getByRole("button", { name: "Add to timetable" }).click();
   await expect(page.getByText("This teacher is already scheduled in that period and day.")).toBeVisible();
+
+  await form.getByRole("button", { name: "Teacher and subject assignment" }).click();
+  await page.getByRole("option", { name: "English · teacher.two" }).click();
+  await form.getByRole("button", { name: "Teaching period" }).click();
+  await page.getByRole("option", { name: /2\. Period 2/ }).click();
+  await expect(review).toContainText("No existing recurring class for this teacher in the selected slot.");
+  await expect(review).toContainText("Already scheduled: History");
+  await form.getByRole("button", { name: "Add to timetable" }).click();
+  await expect(page.getByText("This section already has a class in that period and day.")).toBeVisible();
   expect(createRequests).toBe(0);
 });
