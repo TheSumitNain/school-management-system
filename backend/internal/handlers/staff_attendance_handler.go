@@ -23,6 +23,22 @@ type StaffAttendanceManagementService interface {
     Update(context.Context, int64, int64, int64, string, *string) (*repository.StaffAttendanceRecord, error)
 }
 
+func parseStaffAttendanceDate(value string) (time.Time, bool) {
+	parsed, err := time.Parse("2006-01-02", value)
+	if err != nil || parsed.Year() < 1 || parsed.Format("2006-01-02") != value {
+		return time.Time{}, false
+	}
+	return parsed, true
+}
+
+func parseStaffAttendanceMonth(value string) (time.Time, bool) {
+	parsed, err := time.Parse("2006-01", value)
+	if err != nil || parsed.Year() < 1 || parsed.Format("2006-01") != value {
+		return time.Time{}, false
+	}
+	return parsed, true
+}
+
 type StaffAttendanceHandler struct { service StaffAttendanceManagementService }
 
 func NewStaffAttendanceHandler(service StaffAttendanceManagementService) *StaffAttendanceHandler {
@@ -43,8 +59,8 @@ func (h *StaffAttendanceHandler) ListDaily(c *gin.Context) {
     if h.unavailable(c) { return }
     raw := strings.TrimSpace(c.Query("date"))
     if raw == "" { raw = schooltime.TodayDate() }
-    day, err := time.Parse("2006-01-02", raw)
-    if err != nil { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"date must use YYYY-MM-DD"}); return }
+    day, valid := parseStaffAttendanceDate(raw)
+    if !valid { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"date must use YYYY-MM-DD"}); return }
     items, err := h.service.ListDaily(c.Request.Context(), actor, school, day)
     if err != nil { writeStaffAttendanceError(c, err); return }
     c.JSON(http.StatusOK, gin.H{"status":"success","date":raw,"data":items})
@@ -56,8 +72,8 @@ func (h *StaffAttendanceHandler) ListMonthly(c *gin.Context) {
     if h.unavailable(c) { return }
     raw := strings.TrimSpace(c.Query("month"))
     if raw == "" { raw = schooltime.Today().Format("2006-01") }
-    month, err := time.Parse("2006-01", raw)
-    if err != nil { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"month must use YYYY-MM"}); return }
+    month, valid := parseStaffAttendanceMonth(raw)
+    if !valid { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"month must use YYYY-MM"}); return }
     items, err := h.service.ListMonthly(c.Request.Context(), actor, school, month)
     if err != nil { writeStaffAttendanceError(c, err); return }
     c.JSON(http.StatusOK, gin.H{"status":"success","month":raw,"data":items})
@@ -76,8 +92,8 @@ func (h *StaffAttendanceHandler) Mark(c *gin.Context) {
     if h.unavailable(c) { return }
     var req staffAttendanceMarkRequest
     if err := c.ShouldBindJSON(&req); err != nil { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid staff attendance payload"}); return }
-    day, err := time.Parse("2006-01-02", req.AttendanceDate)
-    if err != nil { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"attendance_date must use YYYY-MM-DD"}); return }
+    day, valid := parseStaffAttendanceDate(req.AttendanceDate)
+    if !valid { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"attendance_date must use YYYY-MM-DD"}); return }
     item, err := h.service.Mark(c.Request.Context(), actor, school, req.StaffPrincipalID, day, req.Status, req.Remarks)
     if err != nil { writeStaffAttendanceError(c, err); return }
     c.JSON(http.StatusCreated, gin.H{"status":"success","data":item})
@@ -99,8 +115,8 @@ func (h *StaffAttendanceHandler) MarkBulk(c *gin.Context) {
         c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid bulk staff attendance payload"})
         return
     }
-    day, err := time.Parse("2006-01-02", req.AttendanceDate)
-    if err != nil {
+    day, valid := parseStaffAttendanceDate(req.AttendanceDate)
+    if !valid {
         c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"attendance_date must use YYYY-MM-DD"})
         return
     }
