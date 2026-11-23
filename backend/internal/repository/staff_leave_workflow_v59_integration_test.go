@@ -100,6 +100,9 @@ func TestStaffLeaveWorkflowPostgresIntegration(t *testing.T) {
 		if _,err:=f.repo.SaveType(f.ctx,f.staffPrincipalID,f.schoolID,0,StaffLeaveType{Name:"x",IsActive:true});!errors.Is(err,ErrStaffLeaveAccessDenied){
 			t.Fatalf("unauthorized leave-type create with invalid name error=%v, want access denied",err)
 		}
+		if err:=f.repo.Cancel(f.ctx,f.staffPrincipalID,f.schoolID,0);!errors.Is(err,ErrStaffLeaveAccessDenied){
+			t.Fatalf("unauthorized cancellation with invalid ID error=%v, want access denied",err)
+		}
 	})
 
 	t.Run("decision permission self approval and audit",func(t *testing.T){
