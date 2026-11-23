@@ -573,7 +573,7 @@ func (r *UserRepository) ListStaffExperienceReport(ctx context.Context, actorID,
     if !allowed{return nil,ErrStaffRecordAccessDenied}
     base:=`
         SELECT e.id,e.staff_principal_id,sp.employee_code,sp.full_name,sp.designation,
-               sp.employment_status,e.employer_name,e.designation,e.employment_type,
+               sp.employment_status,e.employer_name,e.designation AS previous_designation,e.employment_type,
                e.start_date::text,COALESCE(e.end_date::text,''),e.is_current
         FROM staff_experience e
         JOIN staff_profiles sp ON sp.principal_id=e.staff_principal_id AND sp.school_id=e.school_id
