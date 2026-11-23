@@ -2003,7 +2003,7 @@ test("holiday-only leave access does not expose write-only leave request data or
   }];
   const leaveRequestCalls: string[] = [];
   page.on("request", request => {
-    if (request.url().includes("/api/school/staff/leave-requests")) leaveRequestCalls.push(request.url());
+    if (request.url().includes("/api/school/staff-leave/requests")) leaveRequestCalls.push(request.url());
   });
   const permissions = ["users.read", "staff.leave.manage_requests", "staff.holidays.read"];
   await signInAndOpenStaff(page, rows, undefined, permissions);
