@@ -1,3 +1,13 @@
+## 2026-11-23 — Staff list response contract hardening
+
+- Staff qualifications, certifications, experience and history list endpoints now serialize nil service collections as empty JSON arrays.
+- Staff leave type/request/holiday lists, substitution lists, and daily/monthly attendance lists now follow the same stable empty-array contract.
+- Qualification and experience report responses also normalize nil rows/counts to empty arrays when the report object itself is present; nil report objects still return HTTP 500.
+- Added handler regression tests covering nil-success list results across the staff records, leave, substitution and attendance endpoints.
+- Backend CI [45192895559](https://github.com/TheSumitNain/school-management-system/actions/runs/45192895559) **PASS**: ephemeral PostgreSQL migrations, full Go/PostgreSQL integration suite and `go vet`.
+- The previous frontend CI [45191624510](https://github.com/TheSumitNain/school-management-system/actions/runs/45191624510) **PASS**: frontend production build and full Playwright browser acceptance suite.
+- No persistent database migrations/data changes. Staff Management final acceptance and previously documented profile identity/Bulk Import/storage approval blockers remain open.
+
 ## 2026-11-23 — Staff attendance write-result and permission-query hardening
 
 - Attendance mark and update handlers now reject a successful service response with a nil record instead of returning an empty success payload. Added handler regression coverage for both write paths.
