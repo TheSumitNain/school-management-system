@@ -477,7 +477,7 @@ Phases are dependency ordered, not a claim that every listed item is absent. Ins
 
 ### Phase 6 — Reports, Import/Export & ID Cards (P1/P2)
 
-1. Staff directory/employment readiness summary is implemented. Monthly attendance and leave-request summaries now reuse existing school-scoped APIs and require their own read permissions; CSV exports omit remarks/reasons and sanitize spreadsheet formulas. Latest browser acceptance is pending CI. Qualification and assignment report consolidation remains outstanding.
+1. Staff directory/employment readiness summary, monthly attendance and leave-request summaries, and current-academic-year assignment summary are implemented. Each report uses existing school-scoped APIs and its own read permission. Exports omit remarks/reasons, exclude revoked assignments, omit unauthorized assignment columns, and sanitize spreadsheet formulas. Latest browser acceptance is pending CI. Qualification/certification report consolidation remains outstanding.
 2. Validated bulk import with preview and row-level error report.
 3. Permission-controlled exports.
 4. ID card templates and bulk generation.
