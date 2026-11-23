@@ -38,9 +38,9 @@ func (h *StaffAttendanceHandler) unavailable(c *gin.Context) bool {
 }
 
 func (h *StaffAttendanceHandler) ListDaily(c *gin.Context) {
-    if h.unavailable(c) { return }
     actor, school, ok := staffRecordActor(c)
     if !ok { c.JSON(http.StatusUnauthorized, gin.H{"status":"error","message":"School staff authentication required"}); return }
+    if h.unavailable(c) { return }
     raw := strings.TrimSpace(c.Query("date"))
     if raw == "" { raw = schooltime.TodayDate() }
     day, err := time.Parse("2006-01-02", raw)
@@ -51,9 +51,9 @@ func (h *StaffAttendanceHandler) ListDaily(c *gin.Context) {
 }
 
 func (h *StaffAttendanceHandler) ListMonthly(c *gin.Context) {
-    if h.unavailable(c) { return }
     actor, school, ok := staffRecordActor(c)
     if !ok { c.JSON(http.StatusUnauthorized, gin.H{"status":"error","message":"School staff authentication required"}); return }
+    if h.unavailable(c) { return }
     raw := strings.TrimSpace(c.Query("month"))
     if raw == "" { raw = schooltime.Today().Format("2006-01") }
     month, err := time.Parse("2006-01", raw)
@@ -71,9 +71,9 @@ type staffAttendanceMarkRequest struct {
 }
 
 func (h *StaffAttendanceHandler) Mark(c *gin.Context) {
-    if h.unavailable(c) { return }
     actor, school, ok := staffRecordActor(c)
     if !ok { c.JSON(http.StatusUnauthorized, gin.H{"status":"error","message":"School staff authentication required"}); return }
+    if h.unavailable(c) { return }
     var req staffAttendanceMarkRequest
     if err := c.ShouldBindJSON(&req); err != nil { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid staff attendance payload"}); return }
     day, err := time.Parse("2006-01-02", req.AttendanceDate)
@@ -91,9 +91,9 @@ type staffAttendanceBulkMarkRequest struct {
 }
 
 func (h *StaffAttendanceHandler) MarkBulk(c *gin.Context) {
-    if h.unavailable(c) { return }
     actor, school, ok := staffRecordActor(c)
     if !ok { c.JSON(http.StatusUnauthorized, gin.H{"status":"error","message":"School staff authentication required"}); return }
+    if h.unavailable(c) { return }
     var req staffAttendanceBulkMarkRequest
     if err := c.ShouldBindJSON(&req); err != nil {
         c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid bulk staff attendance payload"})
@@ -115,9 +115,9 @@ type staffAttendanceUpdateRequest struct {
 }
 
 func (h *StaffAttendanceHandler) Update(c *gin.Context) {
-    if h.unavailable(c) { return }
     actor, school, ok := staffRecordActor(c)
     if !ok { c.JSON(http.StatusUnauthorized, gin.H{"status":"error","message":"School staff authentication required"}); return }
+    if h.unavailable(c) { return }
     recordID, err := strconv.ParseInt(c.Param("recordID"), 10, 64)
     if err != nil || recordID <= 0 { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid staff attendance record ID"}); return }
     var req staffAttendanceUpdateRequest
