@@ -1809,3 +1809,28 @@ test("staff experience report uses one paginated school aggregate endpoint and e
   expect(csv).toContain("Current School");
   expect(csv).not.toContain("description");
 });
+
+
+test("staff ID cards select only complete active profiles and expose approved print fields", async ({ page }) => {
+  const rows:Array<Record<string,unknown>>=[
+    {id:1,principal_id:501,school_id:10,username:"active.teacher",employee_code:"EMP-501",full_name:"Active Teacher",designation:"Mathematics Teacher",mobile_number:"9876543210",email:"private@example.test",joining_date:"2024-04-01",employment_status:"active",profile_complete:true,status:"active",must_change_password:false},
+    {id:2,principal_id:502,school_id:10,username:"inactive.teacher",employee_code:"EMP-502",full_name:"Inactive Teacher",designation:"Former Teacher",employment_status:"inactive",profile_complete:true,status:"disabled",must_change_password:false},
+    {id:3,principal_id:503,school_id:10,username:"incomplete.teacher",employee_code:"",full_name:"Incomplete Teacher",designation:"",employment_status:"active",profile_complete:false,status:"active",must_change_password:false},
+  ];
+  await signInAndOpenStaff(page,rows,undefined,["users.read"]);
+  await page.getByRole("button",{name:"ID Cards",exact:true}).click();
+  await expect(page.getByRole("heading",{name:"Staff ID cards"})).toBeVisible();
+  await expect(page.getByLabel(/Inactive Teacher/)).toHaveCount(0);
+  await expect(page.getByLabel(/Incomplete Teacher/)).toHaveCount(0);
+  await page.getByRole("button",{name:"Select all eligible"}).click();
+  await expect(page.getByText("Active Teacher",{exact:true})).toBeVisible();
+  await expect(page.getByText("EMP-501",{exact:true})).toBeVisible();
+  await expect(page.getByText("Mathematics Teacher",{exact:true})).toBeVisible();
+  await expect(page.getByText("private@example.test")).toHaveCount(0);
+  await expect(page.getByText("9876543210")).toHaveCount(0);
+  await page.getByLabel("Card template").selectOption("modern");
+  await expect(page.locator(".staff-id-card--modern")).toHaveCount(1);
+  await page.getByRole("button",{name:"Clear selection"}).click();
+  await expect(page.getByText("Select one or more employees to preview their cards.")).toBeVisible();
+  await expect(page.getByRole("button",{name:/Print/})).toBeDisabled();
+});
