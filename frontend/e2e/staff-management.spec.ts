@@ -1060,6 +1060,27 @@ test("staff permission overrides require a delegated permission, reason and remo
   expect(deleteCalls).toBe(1);
 });
 
+test("staff profile history does not request audit events without school.audit.read", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 513, school_id: 10, username: "teacher.history.readonly",
+    employee_code: "EMP-HIS-02", full_name: "Read Only History Teacher", designation: "Science Teacher",
+    mobile_number: "9876543215", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false, created_at: "2026-04-01T00:00:00.000Z",
+  }];
+  await signInAndOpenStaff(page, rows, undefined, ["users.read"]);
+  let auditRequests = 0;
+  await page.route("**/api/school/staff/513/audit-events", async route => {
+    auditRequests += 1;
+    await route.fulfill({ json: { events: [] } });
+  });
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Read Only History Teacher" }).click();
+  const dialog = page.getByRole("dialog", { name: "Read Only History Teacher" });
+  await dialog.getByRole("button", { name: "History & Activity" }).click();
+  await expect(dialog.getByText("You do not have permission to view audit history.")).toBeVisible();
+  expect(auditRequests).toBe(0);
+});
+
 test("staff profile history is permission-gated and renders staff audit events", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 512, school_id: 10, username: "teacher.history",
