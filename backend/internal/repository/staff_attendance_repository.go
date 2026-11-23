@@ -232,18 +232,41 @@ func (r *StaffAttendanceRepository) Update(ctx context.Context, actorID, schoolI
     if err != nil { return nil, fmt.Errorf("begin staff attendance update: %w", err) }
     defer func() { _ = tx.Rollback(ctx) }()
 
+    // Determine the actor's attendance-write scope before looking up the
+    // record. A caller with neither permission must not be able to enumerate
+    // attendance record IDs through different not-found/forbidden responses.
+    sameDayErr := authorizeGuardian(ctx, tx, actorID, schoolID, "staff.attendance.update_same_day")
+    pastErr := authorizeGuardian(ctx, tx, actorID, schoolID, "staff.attendance.correct_past")
+    if sameDayErr != nil && !errors.Is(sameDayErr, ErrGuardianAccessDenied) {
+        return nil, fmt.Errorf("authorize same-day staff attendance update: %w", sameDayErr)
+    }
+    if pastErr != nil && !errors.Is(pastErr, ErrGuardianAccessDenied) {
+        return nil, fmt.Errorf("authorize past staff attendance correction: %w", pastErr)
+    }
+    canUpdateSameDay := sameDayErr == nil
+    canCorrectPast := pastErr == nil
+    if !canUpdateSameDay && !canCorrectPast {
+        return nil, ErrStaffAttendanceAccessDenied
+    }
+
     var day time.Time
     var staffID int64
     err = tx.QueryRow(ctx, `
         SELECT staff_principal_id, attendance_date FROM staff_attendance_records
         WHERE id = $1 AND school_id = $2 FOR UPDATE
     `, recordID, schoolID).Scan(&staffID, &day)
-    if errors.Is(err, pgx.ErrNoRows) { return nil, ErrStaffAttendanceNotFound }
+    if errors.Is(err, pgx.ErrNoRows) {
+        // Only callers with both scopes can receive a definitive not-found
+        // result; partial-scope callers get the same denial as a wrong-date
+        // record, so record existence is not disclosed.
+        if canUpdateSameDay && canCorrectPast { return nil, ErrStaffAttendanceNotFound }
+        return nil, ErrStaffAttendanceAccessDenied
+    }
     if err != nil { return nil, fmt.Errorf("load staff attendance record: %w", err) }
 
-    permission := "staff.attendance.update_same_day"
-    if day.Format("2006-01-02") < schooltime.TodayDate() { permission = "staff.attendance.correct_past" }
-    if err := authorizeGuardian(ctx, tx, actorID, schoolID, permission); err != nil {
+    if day.Format("2006-01-02") < schooltime.TodayDate() {
+        if !canCorrectPast { return nil, ErrStaffAttendanceAccessDenied }
+    } else if !canUpdateSameDay {
         return nil, ErrStaffAttendanceAccessDenied
     }
     _, err = tx.Exec(ctx, `
