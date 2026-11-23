@@ -272,7 +272,8 @@ export function StaffManagementPage({ permissions }: Props) {
       requiredText("qualification_name", "Qualification name", 160);
       requiredText("institution", "Institution", 200);
       if (yearValue && (!/^\d{4}$/.test(yearValue) || Number(yearValue) < 1900 || Number(yearValue) > 2200)) errors.completion_year = "Enter a year between 1900 and 2200.";
-      if (scoreValue && (!Number.isFinite(Number(scoreValue)) || Number(scoreValue) < 0 || Number(scoreValue) > 99999.999)) errors.score = "Enter a score from 0 to 99,999.999.";\n      if (scoreValue && value("score_scale") === "percentage" && Number(scoreValue) > 100) errors.score = "Percentage cannot exceed 100.";
+      if (scoreValue && (!Number.isFinite(Number(scoreValue)) || Number(scoreValue) < 0 || Number(scoreValue) > 99999.999)) errors.score = "Enter a score from 0 to 99,999.999.";
+      if (scoreValue && value("score_scale") === "percentage" && Number(scoreValue) > 100) errors.score = "Percentage cannot exceed 100.";
       if (Boolean(scoreValue) !== Boolean(value("score_scale"))) errors.score_scale = "Choose a score scale when a score is entered.";
       if (value("specialization").length > 160) errors.specialization = "Specialization must be 160 characters or fewer.";
       if (value("board_university").length > 200) errors.board_university = "Board / University must be 200 characters or fewer.";
