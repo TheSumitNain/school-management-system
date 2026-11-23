@@ -190,7 +190,7 @@ func TestStaffRecordsServiceRejectsInvalidExperienceCalendarDates(t *testing.T) 
 func TestStaffRecordsRejectsNonFiniteAndOutOfRangeQualificationScores(t *testing.T) {
 	repo := &fakeStaffRecordsRepository{}
 	svc := NewStaffRecordsService(repo)
-	for _, score := range []float64{math.NaN(), math.Inf(1), math.Inf(-1), 100.01} {
+	for _, score := range []float64{math.NaN(), math.Inf(1), math.Inf(-1), 100.01, 100000.0} {
 		for _, update := range []bool{false, true} {
 			value := score
 			item := repository.StaffQualification{
