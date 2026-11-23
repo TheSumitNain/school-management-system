@@ -2341,3 +2341,10 @@ This update supersedes older status bullets that listed the following database-b
 - Added [Staff Identity and Profile Schema Design](../backend/STAFF-IDENTITY-SCHEMA-DESIGN.md), grounded in the current V28, V17, V26, V57–V63 schema. It maps employee-subject references separately from actor principal IDs and defines the proposed stable `staff_id`, optional same-school login association, department master, personal-details privacy boundary, and expand/contract migration sequence.
 - Documents the migration dependencies for qualifications, certifications, experience, attendance, leave, academic assignments, timetable and substitutions. Historical rows and actor identities are explicitly preserved.
 - This is a design-only checkpoint. No migration file, application write path, local database or persistent database was changed. Profile-only onboarding/Bulk Import remain blocked pending explicit product/schema approval; staff documents and photographs remain deferred pending external storage selection/purchase and separate approval.
+
+## 2026-11-23 — Staff qualification score validation hardening
+
+- Qualification score validation now rejects non-finite values and values outside the PostgreSQL `NUMERIC(8,3)` range; percentage scores are additionally capped at 100. The staff profile form applies the same limits and displays field-level errors before submitting.
+- Added service regression coverage for NaN, positive/negative infinity, over-100 percentage values, numeric precision overflow and the valid 100% boundary.
+- Backend CI [45194637168](https://github.com/TheSumitNain/school-management-system/actions/runs/45194637168) **PASS** (ephemeral PostgreSQL migrations, full Go/PostgreSQL integration suite and `go vet`). Frontend CI [45194637188](https://github.com/TheSumitNain/school-management-system/actions/runs/45194637188) **PASS** (TypeScript, production build and full Playwright browser acceptance suite) on commit `1cc629fe`.
+- No persistent database migration or data change. `main` remains untouched; Staff Management final acceptance and the previously documented identity/storage approval gates remain open.
