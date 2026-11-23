@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { expect, test, type Page, type Route } from "@playwright/test";
 import { schoolDateValue } from "../src/shared/date/schoolDate";
 
@@ -1534,21 +1535,38 @@ test("school-wide workload report shows scheduled periods without inferring avai
 });
 
 
-test("staff directory CSV export downloads the currently filtered directory", async ({ page }) => {
+test("staff directory CSV export is filtered, UTF-8 compatible and safe from spreadsheet formulas", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [
     {
       id: 1, principal_id: 501, school_id: 10, username: "teacher.original",
-      employee_code: "EMP-ORIGINAL", full_name: "Original Teacher", designation: "Mathematics Teacher",
+      employee_code: "EMP-ORIGINAL", full_name: '=HYPERLINK("https://example.invalid","Click")', designation: "Mathematics Teacher",
       mobile_number: "9876543215", employment_status: "active", profile_complete: true,
       status: "active", must_change_password: false,
+    },
+    {
+      id: 2, principal_id: 502, school_id: 10, username: "teacher.filtered",
+      employee_code: "EMP-FILTERED", full_name: "Filtered Out Teacher", designation: "Science Teacher",
+      mobile_number: "9876543216", employment_status: "inactive", profile_complete: false,
+      status: "disabled", must_change_password: false,
     },
   ];
   await signInAndOpenStaff(page, rows, undefined, ["users.read", "staff.read"]);
   await page.getByRole("button", { name: "Staff Directory", exact: true }).click();
+  await page.getByLabel("Search staff by name, code, designation or username").fill("HYPERLINK");
+  await expect(page.getByText("Filtered Out Teacher")).toHaveCount(0);
+
   const exportButton = page.getByRole("button", { name: /Export CSV/ });
   await expect(exportButton).toBeEnabled();
   const downloadPromise = page.waitForEvent("download");
   await exportButton.click();
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toMatch(/^staff-directory-\d{4}-\d{2}-\d{2}\.csv$/);
+  expect(download.suggestedFilename()).toMatch(/^staff-directory-\\d{4}-\\d{2}-\\d{2}\\.csv$/);
+  const path = await download.path();
+  expect(path).toBeTruthy();
+  const csv = await readFile(path!, "utf8");
+  expect(csv.charCodeAt(0)).toBe(0xfeff);
+  expect(csv).toContain("'=HYPERLINK");
+  expect(csv).toContain("EMP-ORIGINAL");
+  expect(csv).not.toContain("EMP-FILTERED");
+  expect(csv).not.toContain("Filtered Out Teacher");
 });
