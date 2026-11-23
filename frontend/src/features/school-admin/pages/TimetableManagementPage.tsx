@@ -50,15 +50,41 @@ export function TimetableManagementPage({ permissions }: Props) {
     () => assignments.filter(item => !item.revoked_at && (!entryDraft.section_id || item.section_id === Number(entryDraft.section_id))),
     [assignments, entryDraft.section_id],
   );
+  const selectedEntrySection = sections.find(item => item.id === Number(entryDraft.section_id));
+  const selectedEntryAssignment = assignments.find(item => item.id === Number(entryDraft.assignment_id) && !item.revoked_at);
+  const selectedEntryPeriod = periods.find(item => item.id === Number(entryDraft.period_id));
+  const selectedEntryDay = Number(entryDraft.day_of_week);
+  const teacherDayEntries = useMemo(
+    () => selectedEntryAssignment
+      ? entries.filter(item => item.teacher_principal_id === selectedEntryAssignment.teacher_principal_id && item.day_of_week === selectedEntryDay)
+          .sort((a, b) => a.period_number - b.period_number)
+      : [],
+    [entries, selectedEntryAssignment, selectedEntryDay],
+  );
+  const sectionDayEntries = useMemo(
+    () => selectedEntrySection
+      ? entries.filter(item => item.section_id === selectedEntrySection.id && item.day_of_week === selectedEntryDay)
+          .sort((a, b) => a.period_number - b.period_number)
+      : [],
+    [entries, selectedEntrySection, selectedEntryDay],
+  );
+  const teacherSlotConflictEntry = selectedEntryPeriod
+    ? teacherDayEntries.find(item => item.period_id === selectedEntryPeriod.id)
+    : undefined;
+  const sectionSlotConflictEntry = selectedEntryPeriod
+    ? sectionDayEntries.find(item => item.period_id === selectedEntryPeriod.id)
+    : undefined;
+  const teacherSlotConflict = Boolean(teacherSlotConflictEntry);
+  const sectionSlotConflict = Boolean(sectionSlotConflictEntry);
 
-  async function loadSchedule(nextYearID: number, nextSectionID = sectionID) {
+  async function loadSchedule(nextYearID: number) {
     if (!nextYearID) return;
     setLoading(true);
     setError("");
     try {
       const [periodResult, entryResult] = await Promise.all([
         getTimetablePeriods(nextYearID),
-        getTimetableEntries(nextYearID, nextSectionID),
+        getTimetableEntries(nextYearID),
       ]);
       setPeriods(periodResult.periods ?? []);
       setEntries(entryResult.entries ?? []);
@@ -96,7 +122,7 @@ export function TimetableManagementPage({ permissions }: Props) {
       setLoading(true);
       setError("");
       try {
-        const jobs: Promise<unknown>[] = [getTimetablePeriods(yearID), getTimetableEntries(yearID, sectionID)];
+        const jobs: Promise<unknown>[] = [getTimetablePeriods(yearID), getTimetableEntries(yearID)];
         if (canReadSections && canManage) jobs.push(getSchoolSections(yearID));
         if (canReadAssignments && canManage) jobs.push(getTeacherSubjectAssignments({ academicYearID: yearID }));
         const results = await Promise.all(jobs);
@@ -121,7 +147,7 @@ export function TimetableManagementPage({ permissions }: Props) {
     }
     void loadReferenceData();
     return () => { alive = false; };
-  }, [yearID, sectionID, canReadSections, canReadAssignments, canManage]);
+  }, [yearID, canReadSections, canReadAssignments, canManage]);
 
   function closeDialog() {
     if (saving) return;
@@ -191,7 +217,7 @@ export function TimetableManagementPage({ permissions }: Props) {
       setDialog(null);
       notifyToast("success", "Class added to the weekly timetable.");
       setFeedback(null);
-      await loadSchedule(yearID, sectionID);
+      await loadSchedule(yearID);
     } catch (reason) {
       const message = errorText(reason);
       notifyToast("error", message);
@@ -206,7 +232,7 @@ export function TimetableManagementPage({ permissions }: Props) {
       await deleteTimetableEntry(entry.id, yearID);
       notifyToast("success", "Timetable entry removed.");
       setFeedback(null);
-      await loadSchedule(yearID, sectionID);
+      await loadSchedule(yearID);
     } catch (reason) {
       const message = errorText(reason);
       notifyToast("error", message);
@@ -275,6 +301,26 @@ export function TimetableManagementPage({ permissions }: Props) {
           <label>Period<Select ariaLabel="Teaching period" value={entryDraft.period_id} onChange={value => { setEntryDraft(current => ({ ...current, period_id: value })); setFieldErrors(current => ({ ...current, period_id: "" })); }} options={periods.filter(period => !period.is_break).map(period => ({ value: String(period.id), label: `${period.period_number}. ${period.name} · ${period.starts_at}–${period.ends_at}` }))} placeholder="Select period" invalid={Boolean(fieldErrors.period_id)} describedBy={fieldErrors.period_id ? "timetable-entry-period-error" : undefined}/>{fieldErrors.period_id && <small className="app-field-error" id="timetable-entry-period-error" role="alert">{fieldErrors.period_id}</small>}</label>
           <label>Day of week<Select ariaLabel="Day of week" value={entryDraft.day_of_week} onChange={value => setEntryDraft(current => ({ ...current, day_of_week: value }))} options={weekdays.map((day,index) => ({ value: String(index+1), label: day }))} invalid={Boolean(fieldErrors.day_of_week)} describedBy={fieldErrors.day_of_week ? "timetable-day-error" : undefined}/>{fieldErrors.day_of_week && <small className="app-field-error" id="timetable-day-error" role="alert">{fieldErrors.day_of_week}</small>}</label>
           <label>Room (optional)<input value={entryDraft.room} maxLength={80} onChange={event => setEntryDraft(current => ({ ...current, room: event.target.value }))} placeholder="e.g. Room 12"/></label>
+          {selectedEntrySection && selectedEntryAssignment && selectedEntryPeriod && selectedEntryDay > 0 && <section className="timetable-slot-review" aria-live="polite">
+            <div className="timetable-slot-review-heading"><b>Slot review · {weekdays[selectedEntryDay - 1]} · Period {selectedEntryPeriod.period_number}</b><span>School-wide schedule check</span></div>
+            <div className={"timetable-slot-review-result " + (teacherSlotConflict ? "conflict" : "clear")}>
+              <strong>Teacher schedule</strong>
+              <span>{teacherSlotConflict
+                ? "Already scheduled: " + teacherSlotConflictEntry?.subject_name + " · " + teacherSlotConflictEntry?.class_name + " " + teacherSlotConflictEntry?.section_name
+                : "No existing recurring class for this teacher in the selected slot."}</span>
+            </div>
+            <div className={"timetable-slot-review-result " + (sectionSlotConflict ? "conflict" : "clear")}>
+              <strong>Section schedule</strong>
+              <span>{sectionSlotConflict
+                ? "Already scheduled: " + sectionSlotConflictEntry?.subject_name
+                : "No existing class for this section in the selected slot."}</span>
+            </div>
+            {(teacherDayEntries.length > 0 || sectionDayEntries.length > 0) && <div className="timetable-slot-review-lists">
+              {teacherDayEntries.length > 0 && <div><b>Teacher's other classes on {weekdays[selectedEntryDay - 1]}</b><ul>{teacherDayEntries.map(item => <li key={"teacher-" + item.id}>P{item.period_number} · {item.subject_name} · {item.class_name} {item.section_name}</li>)}</ul></div>}
+              {sectionDayEntries.length > 0 && <div><b>Other classes in {selectedEntrySection.class_name} · {selectedEntrySection.name}</b><ul>{sectionDayEntries.map(item => <li key={"section-" + item.id}>P{item.period_number} · {item.subject_name} · {item.teacher_username}</li>)}</ul></div>}
+            </div>}
+            <small>Only saved recurring timetable entries are shown. An empty slot does not establish staff availability. The database rechecks conflicts when you save.</small>
+          </section>}
           <div className="timetable-form-actions"><button type="button" className="timetable-secondary" onClick={closeDialog} disabled={saving}>Cancel</button><button type="submit" className="timetable-primary" disabled={saving}>{saving ? "Saving…" : "Add to timetable"}</button></div>
         </form>
       </Modal>
