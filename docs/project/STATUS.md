@@ -2348,3 +2348,11 @@ This update supersedes older status bullets that listed the following database-b
 - Added service regression coverage for NaN, positive/negative infinity, over-100 percentage values, numeric precision overflow and the valid 100% boundary.
 - Backend CI [45194637168](https://github.com/TheSumitNain/school-management-system/actions/runs/45194637168) **PASS** (ephemeral PostgreSQL migrations, full Go/PostgreSQL integration suite and `go vet`). Frontend CI [45194637188](https://github.com/TheSumitNain/school-management-system/actions/runs/45194637188) **PASS** (TypeScript, production build and full Playwright browser acceptance suite) on commit `1cc629fe`.
 - No persistent database migration or data change. `main` remains untouched; Staff Management final acceptance and the previously documented identity/storage approval gates remain open.
+
+
+## 2026-11-23 — Staff qualification score boundary acceptance
+
+- Qualification scores now enforce finite numeric values within PostgreSQL `NUMERIC(8,3)` storage bounds, with the additional percentage ceiling of 100 in both service and staff profile form validation.
+- Added backend coverage for the maximum representable stored score and a Playwright regression proving a percentage above 100 is rejected inline before a valid qualification can be saved.
+- Backend CI [45195475990](https://github.com/TheSumitNain/school-management-system/actions/runs/45195475990) **PASS** (ephemeral PostgreSQL migrations, full Go/PostgreSQL integration suite and `go vet`). Frontend CI [45195476061](https://github.com/TheSumitNain/school-management-system/actions/runs/45195476061) **PASS** (TypeScript, production build and full Playwright browser acceptance suite) on commit `d10b360c`.
+- Staff document upload/download and profile photographs are explicitly deferred until the project is live and the external storage approach is selected and approved. No document storage implementation or database migration was introduced. Profile-only onboarding/Bulk Import remain blocked pending identity-schema approval; final Staff Management acceptance remains in progress.
