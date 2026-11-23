@@ -34,7 +34,7 @@ export function StaffIDCardsWorkspace({ staff }: Props) {
       {selected.map(item => <article className={`staff-id-card staff-id-card--${template}`} key={item.principal_id}>
         <div className="staff-id-card-band"><span>STAFF IDENTITY CARD</span><span>STAFF</span></div>
         <div className="staff-id-card-body">
-          <div className="staff-id-avatar" aria-hidden="true">{item.full_name!.trim().split(/\\s+/).slice(0,2).map(part=>part[0]?.toUpperCase()).join("")}</div>
+          <div className="staff-id-avatar" aria-hidden="true">{item.full_name!.trim().split(/\s+/).slice(0,2).map(part=>part[0]?.toUpperCase()).join("")}</div>
           <div className="staff-id-person"><h4>{item.full_name}</h4><p>{item.designation}</p></div>
         </div>
         <dl><div><dt>Employee ID</dt><dd>{item.employee_code}</dd></div><div><dt>Joining date</dt><dd>{item.joining_date || "—"}</dd></div><div><dt>Employment</dt><dd>{item.employment_status || "Active"}</dd></div></dl>
