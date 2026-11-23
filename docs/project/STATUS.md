@@ -2161,3 +2161,10 @@ This update supersedes older status bullets that listed the following database-b
 - The PostgreSQL role integration test now asserts that School Admin effective permissions include `timetable.read` and `timetable.manage`, alongside `staff.substitutions.read/manage`. This verifies actual provisioned role grants and the live runtime allowlist.
 - Backend CI [45139554701](https://github.com/TheSumitNain/school-management-system/actions/runs/45139554701) **PASS** on `2ad43a9c`: ephemeral migrations, full Go/PostgreSQL integration suite and `go vet`.
 - No persistent DB change.
+
+
+## 2026-11-23 — Full School Admin staff permission bundle verified
+
+- PostgreSQL integration now asserts all School Admin staff/timetable permissions: attendance read/mark/update/correction, leave read/type/request/decision, holiday read/manage, substitution read/manage and timetable read/manage.
+- Backend CI [45139881590](https://github.com/TheSumitNain/school-management-system/actions/runs/45139881590) **PASS** on `ecefdaf4`: ephemeral migrations, full Go/PostgreSQL integration suite and `go vet`.
+- No persistent DB change.
