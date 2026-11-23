@@ -14,6 +14,7 @@ type fakeStaffRecordsRepository struct {
 	calls int
 }
 func(f *fakeStaffRecordsRepository) ListStaffQualifications(context.Context,int64,int64,int64)([]repository.StaffQualification,error){return nil,nil}
+func(f *fakeStaffRecordsRepository) ListStaffQualificationReport(_ context.Context,_,_ int64,filter repository.StaffQualificationReportFilter)(*repository.StaffQualificationReportPage,error){return &repository.StaffQualificationReportPage{Rows:[]repository.StaffQualificationReportRow{},Counts:[]repository.StaffQualificationReportCount{},Limit:filter.Limit,Offset:filter.Offset},nil}
 func(f *fakeStaffRecordsRepository) CreateStaffQualification(_ context.Context,_,_,_ int64,item repository.StaffQualification)(*repository.StaffQualification,error){f.calls++;f.qualification=&item;return &item,nil}
 func(f *fakeStaffRecordsRepository) ListStaffCertifications(context.Context,int64,int64,int64)([]repository.StaffCertification,error){return nil,nil}
 func(f *fakeStaffRecordsRepository) CreateStaffCertification(_ context.Context,_,_,_ int64,item repository.StaffCertification)(*repository.StaffCertification,error){f.calls++;f.certification=&item;return &item,nil}
@@ -62,4 +63,23 @@ func TestStaffRecordsServiceRejectsInvalidUpdatesBeforeRepository(t *testing.T) 
 	_,err=svc.UpdateExperience(context.Background(),1,2,3,6,repository.StaffExperience{EmployerName:"School",Designation:"Teacher",EmploymentType:"permanent",StartDate:"2020-01-01",EndDate:"2019-01-01"})
 	if err!=ErrInvalidStaffRecord{t.Fatalf("experience update error=%v want=%v",err,ErrInvalidStaffRecord)}
 	if repo.calls!=0{t.Fatalf("invalid updates reached repository %d times",repo.calls)}
+}
+
+func TestStaffRecordsServiceValidatesQualificationReportFilters(t *testing.T) {
+	repo := &fakeStaffRecordsRepository{}
+	svc := NewStaffRecordsService(repo)
+	page, err := svc.ListQualificationsReport(context.Background(),1,2,repository.StaffQualificationReportFilter{})
+	if err != nil { t.Fatalf("default report filter: %v",err) }
+	if page.Limit != 50 || page.Offset != 0 { t.Fatalf("unexpected defaults: %+v",page) }
+	for _, filter := range []repository.StaffQualificationReportFilter{
+		{RecordType:"documents"},
+		{VerificationStatus:"unknown"},
+		{Limit:201},
+		{Offset:-1},
+		{Offset:1000001},
+	} {
+		if _, err := svc.ListQualificationsReport(context.Background(),1,2,filter); err != ErrInvalidStaffRecord {
+			t.Fatalf("filter %+v error=%v want=%v",filter,err,ErrInvalidStaffRecord)
+		}
+	}
 }
