@@ -2232,3 +2232,8 @@ This update supersedes older status bullets that listed the following database-b
 - Added substitution read-only browser acceptance and Leave & Holidays responsive acceptance at mobile, tablet and desktop sizes.
 - Frontend CI [45168421521](https://github.com/TheSumitNain/school-management-system/actions/runs/45168421521) **PASS** (92 Playwright tests); Backend CI [45169195285](https://github.com/TheSumitNain/school-management-system/actions/runs/45169195285) **PASS** (PostgreSQL migrations/integration and `go vet`).
 - No persistent database migration/data changes. Staff Management final acceptance remains in progress; Bulk Import and staff document storage remain deferred.
+
+## 2026-11-23 — Staff attendance read-only browser acceptance
+
+- Added a negative-permission Playwright test for attendance readers without mark/update permissions. Individual status/remarks controls and bulk save controls remain disabled, and no attendance write request is sent.
+- Frontend CI [45169926822](https://github.com/TheSumitNain/school-management-system/actions/runs/45169926822) **PASS** (production build and full Playwright suite). Backend joining-date validation changes are being verified separately.
