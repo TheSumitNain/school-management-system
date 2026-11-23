@@ -150,6 +150,13 @@ func TestStaffSubstitutionV60DatabaseGuardsPostgresIntegration(t *testing.T) {
 	}
 	var retained int
 	if err=tx.QueryRow(ctx,`SELECT count(*) FROM staff_substitutions WHERE id=$1 AND status='cancelled'`,substitutionID).Scan(&retained);err!=nil||retained!=1{t.Fatalf("cancelled substitution history was not retained: count=%d err=%v",retained,err)}
-	if _,err=tx.Exec(ctx,`INSERT INTO timetable_entries(school_id,academic_year_id,section_id,subject_id,teacher_principal_id,teacher_subject_assignment_id,period_id,day_of_week,created_by_principal_id,updated_by_principal_id)
-		VALUES($1,$2,$3,$4,$5,$6,$7,1,$8,$8)`,schoolID,yearID,secondSectionID,subjectID,substituteID,secondAssignmentID,periodID,actorPrincipalID);err!=nil{t.Fatalf("teacher schedule should be allowed after substitution cancellation: %v",err)}
+	var secondEntryID int64
+	if err=tx.QueryRow(ctx,`INSERT INTO timetable_entries(school_id,academic_year_id,section_id,subject_id,teacher_principal_id,teacher_subject_assignment_id,period_id,day_of_week,created_by_principal_id,updated_by_principal_id)
+		VALUES($1,$2,$3,$4,$5,$6,$7,1,$8,$8) RETURNING id`,schoolID,yearID,secondSectionID,subjectID,substituteID,secondAssignmentID,periodID,actorPrincipalID).Scan(&secondEntryID);err!=nil{t.Fatalf("teacher schedule should be allowed after substitution cancellation: %v",err)}
+	if _,err=tx.Exec(ctx,`UPDATE auth_principals SET status='disabled' WHERE id=$1`,substituteID);err!=nil{t.Fatalf("disable canonical substitute principal after cancelling prior cover: %v",err)}
+	canonicalStatus,err:=tx.Begin(ctx);if err!=nil{t.Fatalf("begin canonical principal validation savepoint: %v",err)}
+	_,canonicalStatusErr:=canonicalStatus.Exec(ctx,`INSERT INTO staff_substitutions(school_id,timetable_entry_id,period_id,cover_date,original_teacher_principal_id,substitute_teacher_principal_id,reason,created_by_principal_id)
+		VALUES($1,$2,$3,DATE '2026-11-30',$4,$5,'Disabled principal must not be assignable',$4)`,schoolID,secondEntryID,periodID,originalID,substituteID)
+	if rollbackErr:=canonicalStatus.Rollback(ctx);rollbackErr!=nil{t.Fatalf("rollback canonical principal validation savepoint: %v",rollbackErr)}
+	if canonicalStatusErr==nil{t.Fatal("disabled canonical auth principal was accepted as a substitute while legacy users.status remained active")}
 }
