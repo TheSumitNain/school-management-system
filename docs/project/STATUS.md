@@ -1,3 +1,13 @@
+## Staff Management — History & Activity final verification checkpoint (2026-11-23)
+
+- Extended Staff History & Activity to include leave request/decision/cancellation and class-substitution assignment/cancellation audit events. The API resolves the relevant staff principal from privacy-safe audit metadata or school-scoped resource relationships; raw audit metadata is not returned to clients.
+- Added readable frontend labels and Playwright regression fixtures/assertions for leave and substitution events. Aligned the frontend `StaffAuditEvent` type with the privacy-safe API contract by removing the undeclared `metadata` field.
+- Backend CI [45185769374](https://github.com/TheSumitNain/school-management-system/actions/runs/45185769374) **PASS** on `9b9b86d12220d5499b991e0365db126d7b86865b`: migration checks, PostgreSQL integration tests and `go vet`. Frontend CI [45185769313](https://github.com/TheSumitNain/school-management-system/actions/runs/45185769313) **PASS** on the same commit: TypeScript, Vite production build and full Playwright browser acceptance suite.
+- No migration was added or applied and no persistent database/data was changed. Staff Documents remain deferred until an external storage provider is selected/purchased and explicitly approved.
+- Staff Management is **not yet complete**. Profile-only employee creation and Bulk Import remain blocked pending approval of the decoupled staff identity schema; Staff Type, Department, Employment Type and expanded personal details also require schema/product approval.
+
+---
+
 ## Staff Management — Leave, substitution and activity-history verification (2026-11-23)
 
 - Extended the school-scoped Staff History & Activity feed to include leave-request and class-substitution audit events. The UI now renders readable labels for leave requested/approved/rejected/cancelled and substitution assigned/cancelled events.
