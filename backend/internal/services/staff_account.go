@@ -123,6 +123,7 @@ func (s *StaffAccountService) UpdateProfile(ctx context.Context, actorPrincipalI
        !staffEmployeeCodePattern.MatchString(profile.EmployeeCode) || profile.FullName == "" || len(profile.FullName) > 160 ||
        profile.Designation == "" || len(profile.Designation) > 100 || !staffMobilePattern.MatchString(profile.MobileNumber) ||
        (profile.Email != "" && (!strings.Contains(profile.Email, "@") || len(profile.Email) > 254)) ||
+       (profile.JoiningDate != nil && profile.JoiningDate.After(time.Now().AddDate(1, 0, 0))) ||
        (profile.EmploymentStatus != "active" && profile.EmploymentStatus != "inactive") {
         return nil, ErrInvalidStaffAccount
     }
