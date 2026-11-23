@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"school-management-system/internal/middleware"
+	"school-management-system/internal/repository"
 )
 
 func TestStaffRecordsHandlersReturnUnavailableWithoutService(t *testing.T) {
