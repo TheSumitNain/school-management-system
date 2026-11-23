@@ -708,3 +708,33 @@ export type TeacherWorkloadReportRow = {
 export function getTeacherWorkloadReport(academicYearID:number,signal?:AbortSignal){
   return api<{workloads:TeacherWorkloadReportRow[]}>(`/school/timetable/workload-report?academic_year_id=${academicYearID}`,{signal});
 }
+
+
+export type StaffQualificationReportRow = {
+  record_type: "qualification" | "certification";
+  record_id: number;
+  staff_principal_id: number;
+  employee_code: string;
+  staff_name: string;
+  record_name: string;
+  organization: string;
+  record_date?: string;
+  expiry_date?: string;
+  verification_status: "pending" | "verified" | "rejected";
+};
+export type StaffQualificationReportPage = {
+  rows: StaffQualificationReportRow[];
+  counts: Array<{ record_type: "qualification" | "certification"; verification_status: "pending" | "verified" | "rejected"; count: number }>;
+  limit: number;
+  offset: number;
+  total: number;
+};
+export function getStaffQualificationsReport(params: { recordType?: "all" | "qualification" | "certification"; verificationStatus?: "pending" | "verified" | "rejected"; limit?: number; offset?: number } = {}, signal?: AbortSignal) {
+  const query = new URLSearchParams();
+  if (params.recordType) query.set("record_type", params.recordType);
+  if (params.verificationStatus) query.set("verification_status", params.verificationStatus);
+  if (params.limit !== undefined) query.set("limit", String(params.limit));
+  if (params.offset !== undefined) query.set("offset", String(params.offset));
+  const suffix = query.toString();
+  return api<{ report: StaffQualificationReportPage }>(`/school/staff/qualifications-report${suffix ? `?${suffix}` : ""}`, { signal });
+}
