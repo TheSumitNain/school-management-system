@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Download, RefreshCw } from "lucide-react";
-import { getMonthlyStaffAttendance, getStaffLeaveRequests } from "../api";
+import { getClassInchargeAssignments, getMonthlyStaffAttendance, getStaffLeaveRequests, getTeacherSubjectAssignments } from "../api";
+import type { ClassInchargeAssignment, TeacherSubjectAssignment } from "../api";
+import { useStaffSubstitutionTimetableYearQuery } from "../queries";
 import type { StaffAttendanceMonthlySummary, StaffLeaveRequest } from "../api";
 import "./StaffOperationalReportsWorkspace.css";
 
@@ -91,6 +93,100 @@ function LeaveReport({ rows, month }: { rows: StaffLeaveRequest[]; month: string
   </section>;
 }
 
+
+type AssignmentRow = {
+  principalID: number;
+  username: string;
+  subjectAssignments: TeacherSubjectAssignment[];
+  classInchargeAssignments: ClassInchargeAssignment[];
+};
+
+function assignmentCSV(rows: AssignmentRow[], yearName: string) {
+  const values = [
+    ["Staff username", "Subject assignments", "Class-in-charge assignments", "Distinct classes/sections", "Distinct subjects", "Academic year"],
+    ...rows.map(row => {
+      const sections = new Set([...row.subjectAssignments.map(item => item.section_id), ...row.classInchargeAssignments.map(item => item.section_id)]);
+      const subjects = new Set(row.subjectAssignments.map(item => item.subject_id));
+      return [row.username, row.subjectAssignments.length, row.classInchargeAssignments.length, sections.size, subjects.size, yearName];
+    }),
+  ];
+  const cell = (value: string | number) => {
+    const raw = String(value);
+    const safe = /^\\s*(?:=|\\+|-|@)/.test(raw) ? "'" + raw : raw;
+    return '"' + safe.replace(/"/g, '""') + '"';
+  };
+  const csv = values.map(row => row.map(cell).join(",")).join("\\r\\n");
+  const blob = new Blob(["\\uFEFF", csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "staff-academic-assignments.csv";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function AssignmentReport({ permissions }: Props) {
+  const canReadSubjects = permissions.includes("teacher_assignments.read");
+  const canReadIncharges = permissions.includes("class_incharge_assignments.read");
+  const yearQuery = useStaffSubstitutionTimetableYearQuery(canReadSubjects || canReadIncharges);
+  const yearID = yearQuery.data?.academic_year.id ?? 0;
+  const subjects = useQuery({
+    queryKey: ["staff-operational-report", "subject-assignments", yearID],
+    queryFn: ({ signal }) => getTeacherSubjectAssignments({ academicYearID: yearID }, signal),
+    enabled: canReadSubjects && yearID > 0,
+  });
+  const incharges = useQuery({
+    queryKey: ["staff-operational-report", "class-incharge-assignments", yearID],
+    queryFn: ({ signal }) => getClassInchargeAssignments(yearID, signal),
+    enabled: canReadIncharges && yearID > 0,
+  });
+  const rows = useMemo(() => {
+    const grouped = new Map<number, AssignmentRow>();
+    const get = (id: number, username: string) => {
+      let row = grouped.get(id);
+      if (!row) {
+        row = { principalID: id, username, subjectAssignments: [], classInchargeAssignments: [] };
+        grouped.set(id, row);
+      }
+      return row;
+    };
+    for (const item of subjects.data?.assignments ?? []) get(item.teacher_principal_id, item.teacher_username).subjectAssignments.push(item);
+    for (const item of incharges.data?.assignments ?? []) get(item.teacher_principal_id, item.teacher_username).classInchargeAssignments.push(item);
+    return Array.from(grouped.values()).sort((a, b) => a.username.localeCompare(b.username));
+  }, [subjects.data, incharges.data]);
+  const isLoading = (canReadSubjects && (yearQuery.isLoading || (yearID > 0 && subjects.isLoading))) ||
+    (canReadIncharges && (yearQuery.isLoading || (yearID > 0 && incharges.isLoading)));
+  const isError = yearQuery.isError || (canReadSubjects && subjects.isError) || (canReadIncharges && incharges.isError);
+  const retry = () => {
+    if (yearQuery.isError) void yearQuery.refetch();
+    if (subjects.isError) void subjects.refetch();
+    if (incharges.isError) void incharges.refetch();
+  };
+  if (!canReadSubjects && !canReadIncharges) return null;
+  const totalSubjects = rows.reduce((sum, row) => sum + row.subjectAssignments.length, 0);
+  const totalIncharges = rows.reduce((sum, row) => sum + row.classInchargeAssignments.length, 0);
+  return <section className="staff-operational-report-section">
+    <div className="staff-operational-report-title">
+      <div><h3>Academic assignments</h3><p>{yearQuery.data?.academic_year.name ?? "Current academic year"} · Active assignments only</p></div>
+      <button type="button" className="staff-operational-report-export" onClick={() => assignmentCSV(rows, yearQuery.data?.academic_year.name ?? "Current academic year")} disabled={isLoading || isError || rows.length === 0}><Download size={14}/> Export assignments CSV</button>
+    </div>
+    <div className="staff-operational-report-metrics">
+      <article><span>Assigned teachers</span><strong>{rows.length}</strong></article>
+      {canReadSubjects && <article><span>Subject assignments</span><strong>{totalSubjects}</strong></article>}
+      {canReadIncharges && <article><span>Class-in-charge assignments</span><strong>{totalIncharges}</strong></article>}
+      <article><span>Academic year</span><strong className="staff-operational-report-year">{yearQuery.data?.academic_year.name ?? "—"}</strong></article>
+    </div>
+    {isLoading && <p role="status">Loading academic assignment report…</p>}
+    {isError && <p className="staff-operational-report-error" role="alert">Academic assignments could not be loaded. <button type="button" onClick={retry}>Retry</button></p>}
+    {!isLoading && !isError && rows.length === 0 && <p className="staff-operational-report-empty">No active academic assignments were found for this academic year.</p>}
+    {!isLoading && !isError && rows.length > 0 && <div className="staff-operational-report-table-wrap"><table><thead><tr><th>Staff username</th>{canReadSubjects && <th>Subject assignments</th>}{canReadIncharges && <th>Class-in-charge</th>}<th>Classes / sections</th>{canReadSubjects && <th>Distinct subjects</th>}</tr></thead><tbody>
+      {rows.map(row => <tr key={row.principalID}><td>{row.username}</td>{canReadSubjects && <td>{row.subjectAssignments.length}</td>}{canReadIncharges && <td>{row.classInchargeAssignments.length}</td>}<td>{new Set([...row.subjectAssignments.map(item => item.section_id), ...row.classInchargeAssignments.map(item => item.section_id)]).size}</td>{canReadSubjects && <td>{new Set(row.subjectAssignments.map(item => item.subject_id)).size}</td>}</tr>)}
+    </tbody></table></div>}
+  </section>;
+}
+
 export function StaffOperationalReportsWorkspace({ permissions }: Props) {
   const canReadAttendance = permissions.includes("staff.attendance.read");
   const canReadLeave = permissions.includes("staff.leave.read");
@@ -113,6 +209,7 @@ export function StaffOperationalReportsWorkspace({ permissions }: Props) {
       <label>Report month<input type="month" value={month} onChange={event => setMonth(event.target.value)} aria-label="Select attendance and leave report month"/></label>
     </div>
     {!canReadAttendance && !canReadLeave && <p className="staff-operational-report-denied" role="status">Attendance and leave reports are hidden because you do not have their read permissions.</p>}
+    <div className="staff-operational-report-panel"><AssignmentReport permissions={permissions}/></div>
     {canReadAttendance && <div className="staff-operational-report-panel">
       <div className="staff-operational-report-panel-heading"><strong>Attendance</strong><button type="button" onClick={() => void attendance.refetch()} disabled={attendance.isFetching}><RefreshCw size={14}/> Refresh</button></div>
       {attendance.isLoading && <p role="status">Loading attendance report…</p>}
