@@ -2116,3 +2116,10 @@ This update supersedes older status bullets that listed the following database-b
 - Added regression coverage for all attendance and substitution handler actions with nil receivers and unavailable services. The handlers return HTTP 503 instead of risking nil-pointer panics; authorization and domain checks remain unchanged for available services.
 - Backend CI [45134503749](https://github.com/TheSumitNain/school-management-system/actions/runs/45134503749) **PASS** on `afcd762e`: all migrations applied to ephemeral PostgreSQL, Go tests including PostgreSQL integration, and `go vet`.
 - No persistent database migration or data change. Staff document upload remains deferred pending external storage selection/purchase and explicit approval; Bulk Import remains blocked on identity-schema review and approval. Staff Management is not yet declared complete; full end-to-end acceptance and remaining permission/security review are still required.
+
+
+## 2026-11-23 — Staff leave handler response reliability
+
+- Fixed the shared leave-handler actor path to avoid writing duplicate HTTP error responses when staff authentication context is unavailable. Strengthened nil-receiver/service tests to validate the actual JSON error response across all leave and holiday actions.
+- Backend CI [45135360996](https://github.com/TheSumitNain/school-management-system/actions/runs/45135360996) **PASS** on `5f3935bb`: migrations, Go tests including PostgreSQL integration, and `go vet`.
+- No persistent schema or data change.
