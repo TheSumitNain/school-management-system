@@ -1,7 +1,6 @@
 [object Object]
 
-## 2026-11-23 implementation checkpoint — timetable write authorization
+## 2026-11-23 implementation checkpoint — permission override test data
 
-- Timetable period and entry mutations now evaluate live `timetable.manage` authorization using the same transaction context as the write and audit event. Authorization still precedes input validation. This does not claim serializable isolation or eliminate every concurrent permission-revocation race.
-- Backend CI [45138373886](https://github.com/TheSumitNain/school-management-system/actions/runs/45138373886) **PASS** on `04590b9d` (Go tests, PostgreSQL integration and `go vet`).
-- No persistent migration was applied.
+- Aligned the permission-override browser fixture with the actual permission catalogue by using delegable `students.read_basic` rather than non-delegable `staff.attendance.read`. No application behavior changed.
+- Frontend CI [45138964793](https://github.com/TheSumitNain/school-management-system/actions/runs/45138964793) **PASS** (production build and 86 Playwright tests); Backend CI [45138964862](https://github.com/TheSumitNain/school-management-system/actions/runs/45138964862) **PASS** (full Go/PostgreSQL integration and `go vet`), both on `4ddcf02c`.
