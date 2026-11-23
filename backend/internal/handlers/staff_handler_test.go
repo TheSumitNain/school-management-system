@@ -238,3 +238,35 @@ func TestStaffHandlerEnableMapsPasswordAndNotFoundErrors(t *testing.T) {
 		}
 	}
 }
+
+func TestParseStaffJoiningDate(t *testing.T) {
+	tests := []struct {
+		name      string
+		value     string
+		wantValid bool
+	}{
+		{name: "empty optional date", value: "", wantValid: true},
+		{name: "valid date", value: "2026-11-23", wantValid: true},
+		{name: "year one", value: "0001-01-01", wantValid: true},
+		{name: "year zero", value: "0000-01-01"},
+		{name: "invalid calendar date", value: "2026-02-30"},
+		{name: "non canonical date", value: "2026-1-01"},
+		{name: "whitespace around date", value: " 2026-11-23 "},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, valid := parseStaffJoiningDate(tt.value)
+			if valid != tt.wantValid {
+				t.Fatalf("valid=%v want=%v", valid, tt.wantValid)
+			}
+			if valid && strings.TrimSpace(tt.value) != "" {
+				if got == nil || got.Format("2006-01-02") != tt.value {
+					t.Fatalf("unexpected parsed joining date: %#v", got)
+				}
+			}
+			if valid && strings.TrimSpace(tt.value) == "" && got != nil {
+				t.Fatalf("empty optional date should remain nil: %#v", got)
+			}
+		})
+	}
+}
