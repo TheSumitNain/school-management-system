@@ -1150,3 +1150,38 @@ func TestStaffAttendanceRoutesEnforceDedicatedPermissions(t *testing.T) {
         })
     }
 }
+
+
+func TestStaffQualificationsReportRouteEnforcesLiveUsersReadPermission(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	validator := fakeTokenValidator{claims: &services.TokenClaims{
+		RegisteredClaims: jwt.RegisteredClaims{Subject:"31"},
+		PrincipalType:"staff",
+		TokenVersion:1,
+	}}
+	principal := &models.AuthPrincipal{ID:31,Type:"staff",Status:"active",TokenVersion:1,SchoolID:8,Username:"school.admin"}
+	reportHandler := handlers.NewStaffRecordsHandler(nil)
+
+	request := func(permissions []string) *httptest.ResponseRecorder {
+		router, err := setupTestRouterWithHandlers(
+			fakeDatabase{}, nil, validator,
+			fakePrincipalLoader{principal:principal},
+			fakePermissionLoader{permissions:permissions},
+			nil, nil, reportHandler,
+		)
+		if err != nil { t.Fatalf("setup qualifications report router: %v",err) }
+		req := httptest.NewRequest(http.MethodGet,"/school/staff/qualifications-report",nil)
+		req.Header.Set("Authorization","Bearer valid-test-token")
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec,req)
+		return rec
+	}
+	denied := request([]string{})
+	if denied.Code != http.StatusForbidden {
+		t.Fatalf("report without users.read: status=%d body=%s",denied.Code,denied.Body.String())
+	}
+	allowed := request([]string{"users.read"})
+	if allowed.Code != http.StatusServiceUnavailable {
+		t.Fatalf("report with users.read should reach unavailable handler, status=%d body=%s",allowed.Code,allowed.Body.String())
+	}
+}
