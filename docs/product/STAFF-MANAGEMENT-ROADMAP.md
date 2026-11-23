@@ -2,7 +2,7 @@
 
 **Status:** Approved planning baseline; Phase 0 audit is complete and the P0 Staff Management workspace rebuild is in progress.  
 **Scope:** Phase 1 School Admin web workspace, with Teacher self-service as a separate future experience.  
-**Last updated:** 2026-11-22
+**Last updated:** 2026-11-23
 
 This document defines what Staff Management will build, in what order, the screens/tabs and forms users will see, each field's required/optional status, the key workflows, security boundaries and acceptance criteria. It is a roadmap, not evidence that a feature is implemented. Check [Project Status](../project/STATUS.md) before each phase and verify existing code before changing it.
 
@@ -477,7 +477,7 @@ Phases are dependency ordered, not a claim that every listed item is absent. Ins
 
 ### Phase 6 — Reports, Import/Export & ID Cards (P1/P2)
 
-1. Staff directory/employment readiness summary report is implemented using existing school-scoped data and permission-gated CSV export (browser CI pending). Qualification, assignment, attendance and leave report consolidation remains outstanding.
+1. Staff directory/employment readiness summary is implemented. Monthly attendance and leave-request summaries now reuse existing school-scoped APIs and require their own read permissions; CSV exports omit remarks/reasons and sanitize spreadsheet formulas. Latest browser acceptance is pending CI. Qualification and assignment report consolidation remains outstanding.
 2. Validated bulk import with preview and row-level error report.
 3. Permission-controlled exports.
 4. ID card templates and bulk generation.
