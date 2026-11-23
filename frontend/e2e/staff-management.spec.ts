@@ -1758,7 +1758,7 @@ test("staff qualifications report uses one paginated aggregate endpoint and expo
   const path = await download.path();
   expect(path).toBeTruthy();
   const csv = await readFile(path!, "utf8");
-  expect(csv.startsWith("\\uFEFF")).toBe(true);
+  expect(csv.startsWith("\uFEFF")).toBe(true);
   expect(csv).toContain("Child Safety Training");
   expect(csv).not.toContain("credential");
   expect(csv).not.toContain("verification_notes");
