@@ -1,3 +1,11 @@
+## Staff Management — complete leave-history lifecycle coverage (2026-11-23)
+
+- Expanded the real PostgreSQL Staff History & Activity integration test to create and approve, reject, and cancel actual leave requests. It verifies that approval, rejection and cancellation audit rows—which intentionally omit staff IDs from metadata—are resolved through the leave request resource ID with school scoping.
+- Backend CI [45189417822](https://github.com/TheSumitNain/school-management-system/actions/runs/45189417822) **PASS** on [1fbf642](https://github.com/TheSumitNain/school-management-system/commit/1fbf6429132fe52c1c0a7026a24150ed9ad085a2): all migrations on ephemeral PostgreSQL, full Go/PostgreSQL integration suite and `go vet`.
+- No migration was added or applied and no persistent database/data changed. Staff Management remains in progress pending approved staff identity/profile schema decisions and consolidated final acceptance.
+
+---
+
 ## Staff Management — Attendance authorization-first hardening (2026-11-23)
 
 - Staff attendance mark, bulk mark and update operations now authorize live attendance-write permissions before validating staff/record IDs, status values, remarks or bulk input shape. Existing authorization-before-target lookup and transactional/audit behavior are preserved.
