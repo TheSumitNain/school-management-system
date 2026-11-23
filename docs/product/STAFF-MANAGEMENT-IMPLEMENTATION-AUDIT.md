@@ -548,3 +548,12 @@ Verification on branch `work`, commit `30270fe0927a6eb3f284d462ddd6dc2b4ca2959e`
 - Added PostgreSQL integration regression coverage using an unprivileged same-school actor and a non-existent target; the expected result is `ErrStaffAttendanceAccessDenied`.
 - Backend CI [45140616380](https://github.com/TheSumitNain/school-management-system/actions/runs/45140616380) **PASS** on `cbb64f3f`: ephemeral PostgreSQL migrations, full Go suite including PostgreSQL integration, and `go vet`.
 - No schema migration or persistent database change.
+
+
+## 56. Staff attendance update record authorization (2026-11-23)
+
+- `StaffAttendanceRepository.Update` now evaluates both live same-day-update and past-correction permissions inside the write transaction before loading an attendance record.
+- A caller with neither permission receives the same access-denied result regardless of whether a supplied record ID exists. A caller with only one scope receives access denied for missing records or records outside that scope; only callers with both scopes receive a definitive not-found result for an absent record.
+- Added PostgreSQL integration coverage proving an unprivileged actor cannot enumerate attendance record IDs through the update endpoint.
+- Backend CI [45141655488](https://github.com/TheSumitNain/school-management-system/actions/runs/45141655488) **PASS** on `f340fbe0`: ephemeral PostgreSQL migrations, full Go/PostgreSQL integration suite and `go vet`.
+- No schema migration or persistent database change.
