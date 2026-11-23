@@ -1992,3 +1992,28 @@ test("staff ID cards select only complete active profiles and expose approved pr
   await expect(page.getByText("Select one or more employees to preview their cards.")).toBeVisible();
   await expect(page.getByRole("button",{name:/Print/})).toBeDisabled();
 });
+
+
+test("holiday-only leave access does not expose write-only leave request data or actions", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 501, school_id: 10, username: "leave.holidayonly",
+    employee_code: "EMP-HOLIDAY-01", full_name: "Holiday Only", designation: "Staff Manager",
+    mobile_number: "9876543215", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false,
+  }];
+  const leaveRequestCalls: string[] = [];
+  page.on("request", request => {
+    if (request.url().includes("/api/school/staff/leave-requests")) leaveRequestCalls.push(request.url());
+  });
+  const permissions = ["users.read", "staff.leave.manage_requests", "staff.holidays.read"];
+  await signInAndOpenStaff(page, rows, undefined, permissions);
+  await page.getByRole("button", { name: "Leave & Holidays" }).click();
+
+  const leaveWorkspace = page.locator(".staff-leave-workspace");
+  await expect(leaveWorkspace.getByRole("button", { name: "Holiday calendar" })).toBeVisible();
+  await expect(leaveWorkspace.getByRole("button", { name: "Leave requests" })).toHaveCount(0);
+  await expect(leaveWorkspace.getByRole("heading", { name: /School holiday calendar/ })).toBeVisible();
+  await expect(leaveWorkspace.getByRole("heading", { name: "Applications" })).toHaveCount(0);
+  await expect(leaveWorkspace.getByRole("heading", { name: "New leave request" })).toHaveCount(0);
+  expect(leaveRequestCalls).toHaveLength(0);
+});
