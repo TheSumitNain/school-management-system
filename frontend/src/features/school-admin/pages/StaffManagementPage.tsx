@@ -11,6 +11,7 @@ import { StaffAttendanceWorkspace } from "../components/StaffAttendanceWorkspace
 import { StaffLeaveWorkspace } from "../components/StaffLeaveWorkspace";
 import { StaffSubstitutionWorkspace } from "../components/StaffSubstitutionWorkspace";
 import { StaffWorkloadReportWorkspace } from "../components/StaffWorkloadReportWorkspace";
+import { StaffOperationalReportsWorkspace } from "../components/StaffOperationalReportsWorkspace";
 import {
   useCreateSchoolStaffMutation, useDisableSchoolStaffMutation, useEnableSchoolStaffMutation,
   useResetSchoolStaffPasswordMutation, useSchoolStaffQuery, useUpdateSchoolStaffMutation,
@@ -454,6 +455,7 @@ export function StaffManagementPage({ permissions }: Props) {
           <p className="staff-reports-note">This report reflects current staff records only. It does not include qualifications, attendance, leave balances or payroll calculations. Use their dedicated workspaces for separately permission-controlled reports.</p>
         </>}
       </section>}
+      {activeTab === "reports" && permissions.includes("users.read") && <StaffOperationalReportsWorkspace permissions={permissions}/>}
       {activeTab === "directory" && <section className="table-panel">
         <div className="toolbar staff-directory-toolbar"><div><h2>All staff</h2><small>{filtered.length} of {staff.length} staff members</small></div><div className="staff-directory-controls"><button type="button" className="staff-directory-export" onClick={() => exportStaffDirectoryCSV(filtered)} disabled={filtered.length===0 || !permissions.includes("users.read")}><Download size={14}/> Export CSV</button><div className="search"><Search size={16}/><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search by name, code, designation or username" aria-label="Search staff by name, code, designation or username"/></div><div className="staff-directory-filters"><label>Employment<Select value={employmentFilter} onChange={setEmploymentFilter} ariaLabel="Filter by employment status" options={[{value:"all",label:"All employment"},{value:"active",label:"Active"},{value:"inactive",label:"Inactive"}]}/></label><label>Login account<Select value={accountFilter} onChange={setAccountFilter} ariaLabel="Filter by login account status" options={[{value:"all",label:"All accounts"},{value:"enabled",label:"Enabled"},{value:"disabled",label:"Disabled"}]}/></label><label>Profile<Select value={profileFilter} onChange={setProfileFilter} ariaLabel="Filter by profile completeness" options={[{value:"all",label:"All profiles"},{value:"complete",label:"Complete"},{value:"incomplete",label:"Incomplete"}]}/></label></div></div></div>
         {query.isPending ? <div className="table-message" aria-live="polite">Loading staff accounts…</div>
