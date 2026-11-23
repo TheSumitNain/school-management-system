@@ -31,6 +31,17 @@ type staffProfileUpdateService interface {
     UpdateProfile(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64, profile models.StaffProfile) (*models.User, error)
 }
 
+func parseStaffJoiningDate(value string) (*time.Time, bool) {
+	if strings.TrimSpace(value) == "" {
+		return nil, true
+	}
+	parsed, err := time.Parse("2006-01-02", value)
+	if err != nil || parsed.Year() < 1 || parsed.Format("2006-01-02") != value {
+		return nil, false
+	}
+	return &parsed, true
+}
+
 type StaffHandler struct {
 	service StaffAccountManagementService
 }
@@ -69,14 +80,10 @@ func (h *StaffHandler) Create(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "username, initial_password, full_name, employee_code, designation and mobile_number are required"})
 		return
 	}
-	var joiningDate *time.Time
-	if strings.TrimSpace(request.JoiningDate) != "" {
-		parsed, parseErr := time.Parse("2006-01-02", request.JoiningDate)
-		if parseErr != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "joining_date must use YYYY-MM-DD"})
-			return
-		}
-		joiningDate = &parsed
+	joiningDate, validJoiningDate := parseStaffJoiningDate(request.JoiningDate)
+	if !validJoiningDate {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "joining_date must use YYYY-MM-DD"})
+		return
 	}
 	profileService, ok := h.service.(staffProfileCreateService)
 	if !ok {
@@ -242,14 +249,10 @@ func (h *StaffHandler) Update(c *gin.Context) {
             c.JSON(http.StatusServiceUnavailable, gin.H{"status":"error","message":"Employee profile update is unavailable"})
             return
         }
-        var joiningDate *time.Time
-        if strings.TrimSpace(request.JoiningDate) != "" {
-            parsed, parseErr := time.Parse("2006-01-02", request.JoiningDate)
-            if parseErr != nil {
-                c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"joining_date must use YYYY-MM-DD"})
-                return
-            }
-            joiningDate = &parsed
+        joiningDate, validJoiningDate := parseStaffJoiningDate(request.JoiningDate)
+        if !validJoiningDate {
+            c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"joining_date must use YYYY-MM-DD"})
+            return
         }
         profile := models.StaffProfile{EmployeeCode:request.EmployeeCode, FullName:request.FullName, Designation:request.Designation,
             MobileNumber:request.MobileNumber, Email:request.Email, JoiningDate:joiningDate, EmploymentStatus:request.EmploymentStatus}
