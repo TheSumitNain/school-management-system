@@ -111,7 +111,7 @@ The existing School Admin system-role permission bundle is immutable. Qualificat
 
 ## 4. Documents — storage gate before implementation
 
-The document metadata API and file transport must not be shipped until a private storage adapter is selected and tested. ₹0 budget means do not assume a paid cloud bucket or scanning service.
+Staff document upload, download, metadata APIs and file transport are explicitly deferred until the user purchases/selects an external storage service and approves implementing its integration. Do not build a local-disk substitute, temporary upload flow, public URL, or placeholder upload UI in the meantime. After the service is purchased, document its security, access controls, retention, backup and cost limits before implementation. Until then, keep the Documents tab as an explanatory disabled state and continue all unrelated Staff Management work.
 
 Minimum acceptable storage decision:
 - Private storage outside the public web root; no guessable/public object URLs.
