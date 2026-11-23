@@ -63,6 +63,23 @@ func TestStaffAttendanceUnauthenticatedRequestDoesNotExposeServiceAvailability(t
     }
 }
 
+type nilStaffAttendanceListService struct { StaffAttendanceManagementService }
+func (nilStaffAttendanceListService) ListDaily(context.Context,int64,int64,time.Time)([]repository.StaffAttendanceRecord,error){return nil,nil}
+func (nilStaffAttendanceListService) ListMonthly(context.Context,int64,int64,time.Time)([]repository.StaffAttendanceMonthlySummary,error){return nil,nil}
+
+func TestStaffAttendanceListHandlersReturnEmptyArrays(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r:=gin.New()
+	h:=NewStaffAttendanceHandler(nilStaffAttendanceListService{})
+	auth:=func(c *gin.Context){c.Set(middleware.ContextPrincipalIDKey,int64(100));c.Set(middleware.ContextSchoolIDKey,int64(10));c.Next()}
+	r.GET("/daily",auth,h.ListDaily)
+	r.GET("/monthly",auth,h.ListMonthly)
+	for _,path:=range []string{"/daily","/monthly"} {
+		rec:=httptest.NewRecorder();r.ServeHTTP(rec,httptest.NewRequest(http.MethodGet,path,nil))
+		if rec.Code!=http.StatusOK || !strings.Contains(rec.Body.String(),`"data":[]`) {t.Fatalf("%s: status=%d body=%s",path,rec.Code,rec.Body.String())}
+	}
+}
+
 type nilStaffAttendanceWriteResultService struct {
 	StaffAttendanceManagementService
 }
