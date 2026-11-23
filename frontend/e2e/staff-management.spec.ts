@@ -2199,6 +2199,17 @@ test("read-only substitution access lists coverage without exposing management a
   await expect(workspace.getByText("Cover Teacher")).toBeVisible();
   await expect(workspace.getByRole("button", { name: "Cancel cover" })).toHaveCount(0);
   await expect(workspace.getByRole("button", { name: "Assign substitute" })).toHaveCount(0);
+  for (const viewport of [{ width: 390, height: 844 }, { width: 768, height: 900 }, { width: 1280, height: 900 }]) {
+    await page.setViewportSize(viewport);
+    await expect(workspace.getByLabel("Substitution list from date")).toBeVisible();
+    await expect(workspace.getByLabel("Substitution list to date")).toBeVisible();
+    await expect(workspace.getByLabel("Filter substitutions by staff")).toBeVisible();
+    const dimensions = await page.evaluate(() => ({
+      viewport: window.innerWidth,
+      document: document.documentElement.scrollWidth,
+    }));
+    expect(dimensions.document).toBeLessThanOrEqual(dimensions.viewport);
+  }
   expect(requests.some(item => item.startsWith("POST "))).toBe(false);
   expect(requests.some(item => item.includes("/timetable/"))).toBe(false);
 });
