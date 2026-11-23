@@ -163,18 +163,11 @@ func (r *StaffAttendanceRepository) ListMonthly(ctx context.Context, actorID, sc
 }
 
 func (r *StaffAttendanceRepository) Mark(ctx context.Context, actorID, schoolID, staffID int64, day time.Time, status string, remarks *string) (*StaffAttendanceRecord, error) {
-    if r == nil || r.db == nil || actorID <= 0 || schoolID <= 0 || staffID <= 0 || day.Year() < 1 || !validStaffAttendanceStatus(status) {
+    if r == nil || r.db == nil || actorID <= 0 || schoolID <= 0 {
         return nil, ErrInvalidStaffAttendance
-    }
-    status = strings.TrimSpace(status)
-    if remarks != nil {
-        value := strings.TrimSpace(*remarks)
-        if len([]rune(value)) > 500 { return nil, ErrInvalidStaffAttendance }
-        if value == "" { remarks = nil } else { remarks = &value }
     }
     date := day.Format("2006-01-02")
     today := schooltime.TodayDate()
-    if date > today { return nil, ErrInvalidStaffAttendance }
 
     tx, err := r.db.Begin(ctx)
     if err != nil { return nil, fmt.Errorf("begin staff attendance mark: %w", err) }
@@ -184,6 +177,15 @@ func (r *StaffAttendanceRepository) Mark(ctx context.Context, actorID, schoolID,
     if date < today { permission = "staff.attendance.correct_past" }
     if err := authorizeGuardian(ctx, tx, actorID, schoolID, permission); err != nil {
         return nil, ErrStaffAttendanceAccessDenied
+    }
+    if staffID <= 0 || day.Year() < 1 || !validStaffAttendanceStatus(status) || date > today {
+        return nil, ErrInvalidStaffAttendance
+    }
+    status = strings.TrimSpace(status)
+    if remarks != nil {
+        value := strings.TrimSpace(*remarks)
+        if len([]rune(value)) > 500 { return nil, ErrInvalidStaffAttendance }
+        if value == "" { remarks = nil } else { remarks = &value }
     }
 
     var active bool
@@ -219,14 +221,8 @@ func (r *StaffAttendanceRepository) Mark(ctx context.Context, actorID, schoolID,
 }
 
 func (r *StaffAttendanceRepository) Update(ctx context.Context, actorID, schoolID, recordID int64, status string, remarks *string) (*StaffAttendanceRecord, error) {
-    if r == nil || r.db == nil || actorID <= 0 || schoolID <= 0 || recordID <= 0 || !validStaffAttendanceStatus(strings.TrimSpace(status)) {
+    if r == nil || r.db == nil || actorID <= 0 || schoolID <= 0 {
         return nil, ErrInvalidStaffAttendance
-    }
-    status = strings.TrimSpace(status)
-    if remarks != nil {
-        value := strings.TrimSpace(*remarks)
-        if len([]rune(value)) > 500 { return nil, ErrInvalidStaffAttendance }
-        if value == "" { remarks = nil } else { remarks = &value }
     }
     tx, err := r.db.Begin(ctx)
     if err != nil { return nil, fmt.Errorf("begin staff attendance update: %w", err) }
@@ -247,6 +243,15 @@ func (r *StaffAttendanceRepository) Update(ctx context.Context, actorID, schoolI
     canCorrectPast := pastErr == nil
     if !canUpdateSameDay && !canCorrectPast {
         return nil, ErrStaffAttendanceAccessDenied
+    }
+    if recordID <= 0 || !validStaffAttendanceStatus(strings.TrimSpace(status)) {
+        return nil, ErrInvalidStaffAttendance
+    }
+    status = strings.TrimSpace(status)
+    if remarks != nil {
+        value := strings.TrimSpace(*remarks)
+        if len([]rune(value)) > 500 { return nil, ErrInvalidStaffAttendance }
+        if value == "" { remarks = nil } else { remarks = &value }
     }
 
     var day time.Time
@@ -302,7 +307,22 @@ func (r *StaffAttendanceRepository) get(ctx context.Context, schoolID, recordID 
 }
 
 func (r *StaffAttendanceRepository) MarkBulk(ctx context.Context, actorID, schoolID int64, staffIDs []int64, day time.Time, status string, remarks *string) (int, error) {
-    if r == nil || r.db == nil || actorID <= 0 || schoolID <= 0 || len(staffIDs) == 0 || len(staffIDs) > 1000 || day.Year() < 1 || !validStaffAttendanceStatus(status) {
+    if r == nil || r.db == nil || actorID <= 0 || schoolID <= 0 {
+        return 0, ErrInvalidStaffAttendance
+    }
+    date := day.Format("2006-01-02")
+    today := schooltime.TodayDate()
+
+    tx, err := r.db.Begin(ctx)
+    if err != nil { return 0, fmt.Errorf("begin bulk staff attendance mark: %w", err) }
+    defer func() { _ = tx.Rollback(ctx) }()
+
+    permission := "staff.attendance.mark"
+    if date < today { permission = "staff.attendance.correct_past" }
+    if err := authorizeGuardian(ctx, tx, actorID, schoolID, permission); err != nil {
+        return 0, ErrStaffAttendanceAccessDenied
+    }
+    if len(staffIDs) == 0 || len(staffIDs) > 1000 || day.Year() < 1 || !validStaffAttendanceStatus(status) || date > today {
         return 0, ErrInvalidStaffAttendance
     }
     seen := make(map[int64]struct{}, len(staffIDs))
@@ -316,19 +336,6 @@ func (r *StaffAttendanceRepository) MarkBulk(ctx context.Context, actorID, schoo
         value := strings.TrimSpace(*remarks)
         if len([]rune(value)) > 500 { return 0, ErrInvalidStaffAttendance }
         if value == "" { remarks = nil } else { remarks = &value }
-    }
-    date := day.Format("2006-01-02")
-    today := schooltime.TodayDate()
-    if date > today { return 0, ErrInvalidStaffAttendance }
-
-    tx, err := r.db.Begin(ctx)
-    if err != nil { return 0, fmt.Errorf("begin bulk staff attendance mark: %w", err) }
-    defer func() { _ = tx.Rollback(ctx) }()
-
-    permission := "staff.attendance.mark"
-    if date < today { permission = "staff.attendance.correct_past" }
-    if err := authorizeGuardian(ctx, tx, actorID, schoolID, permission); err != nil {
-        return 0, ErrStaffAttendanceAccessDenied
     }
 
     for _, staffID := range staffIDs {
