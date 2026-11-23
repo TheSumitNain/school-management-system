@@ -137,6 +137,18 @@ func TestStaffSubstitutionV60DatabaseGuardsPostgresIntegration(t *testing.T) {
 	if slotErr==nil{t.Fatal("new recurring timetable slot conflicted with active dated substitution but was accepted")}
 
 	if _,err=tx.Exec(ctx,`UPDATE staff_substitutions SET status='cancelled',cancelled_by_principal_id=$2,cancelled_at=NOW(),updated_at=NOW() WHERE id=$1`,substitutionID,actorPrincipalID);err!=nil{t.Fatalf("cancel dated substitution: %v",err)}
+	// Cancellation audit rows intentionally omit teacher IDs from metadata.
+	// Both affected teachers must still see the event through the scoped row lookup.
+	if _,err=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome)
+		VALUES($1,$2,'staff.substitution.cancelled','staff_substitution',$3,'success')`,actorPrincipalID,schoolID,fmt.Sprint(substitutionID));err!=nil{t.Fatalf("insert substitution cancellation audit event: %v",err)}
+	historyRepo:=NewUserRepository(tx)
+	for _,teacherID:=range []int64{originalID,substituteID}{
+		history,historyErr:=historyRepo.ListStaffAuditEvents(ctx,actorPrincipalID,schoolID,teacherID)
+		if historyErr!=nil{t.Fatalf("list substitution history for teacher %d: %v",teacherID,historyErr)}
+		foundCancellation:=false
+		for _,event:=range history{if event.Action=="staff.substitution.cancelled"{foundCancellation=true;break}}
+		if !foundCancellation{t.Fatalf("staff history for teacher %d omitted cancellation resolved through substitution resource ID",teacherID)}
+	}
 	cancelledReason,err:=tx.Begin(ctx);if err!=nil{t.Fatalf("begin cancelled history guard savepoint: %v",err)}
 	_,cancelledReasonErr:=cancelledReason.Exec(ctx,`UPDATE staff_substitutions SET reason='Changed after cancellation' WHERE id=$1`,substitutionID)
 	if rollbackErr:=cancelledReason.Rollback(ctx);rollbackErr!=nil{t.Fatalf("rollback cancelled history guard savepoint: %v",rollbackErr)}
