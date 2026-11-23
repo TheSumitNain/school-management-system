@@ -531,3 +531,11 @@ Verification on branch `work`, commit `30270fe0927a6eb3f284d462ddd6dc2b4ca2959e`
 - This verifies the real role grants plus the runtime approved-permission allowlist used by timetable and workload operations; it is not just a mocked route test.
 - Backend CI [45139554701](https://github.com/TheSumitNain/school-management-system/actions/runs/45139554701) **PASS** on `2ad43a9c`: ephemeral PostgreSQL migrations, full Go suite including PostgreSQL integration, and `go vet`.
 - No migration or persistent database change.
+
+
+## 54. Full School Admin staff permission bundle integration check (2026-11-23)
+
+- Expanded the PostgreSQL role integration assertion to cover the complete staff/timetable permission bundle: attendance read/mark/same-day update/past correction; leave read/type management/request management/decision; holiday read/manage; substitutions read/manage; and timetable read/manage.
+- This verifies that the actual School Admin role grants survive the live approved-permission allowlist, rather than relying only on mocked route permissions.
+- Backend CI [45139881590](https://github.com/TheSumitNain/school-management-system/actions/runs/45139881590) **PASS** on `ecefdaf4`: ephemeral PostgreSQL migrations, full Go suite including PostgreSQL integration, and `go vet`.
+- No migration or persistent database change.
