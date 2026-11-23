@@ -2091,3 +2091,6 @@ This update supersedes older status bullets that listed the following database-b
 - Corrected the BOM assertion to check the actual U+FEFF character. Moved formula-injection coverage to an exported staff-name field, retaining the CSV formula-sanitization assertion without reintroducing remarks into the export. Test commits: `f64296f` and `78eac8f`.
 - Latest code checkpoint: `78eac8f`. Frontend and backend CI for this exact head were still running at documentation time; do not claim green until both complete successfully. No local test execution is claimed.
 - No migration or persistent database change was made. Staff document upload remains deferred pending external storage purchase and explicit approval; Bulk Import remains blocked on the identity-schema approval gate.
+
+
+- Staff History & Activity privacy follow-up: raw audit-event metadata is retained internally for database scanning but is now excluded from the JSON response. The staff activity UI only needs safe event fields (action, resource type, outcome, actor username and timestamp); generic metadata can contain unrelated/private values and is not exposed. Added a serialization regression test. Commits: `59430b1` (response field exclusion), `0b967c5` (regression test). Fresh CI is required for this latest checkpoint.
