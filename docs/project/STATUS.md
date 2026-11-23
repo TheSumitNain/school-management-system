@@ -2109,3 +2109,10 @@ This update supersedes older status bullets that listed the following database-b
 - Added fail-closed dependency guards and regression coverage for Staff Leave/Holiday handler actions, including nil receiver and nil service cases. Added the same nil receiver/service regression coverage for staff account create, list, disable, update and re-enable handlers. Unavailable dependencies return HTTP 503 instead of risking nil-pointer panics.
 - Backend CI [45134091085](https://github.com/TheSumitNain/school-management-system/actions/runs/45134091085) **PASS** on `566ce3df`: ephemeral PostgreSQL migrations, Go tests including PostgreSQL integration, and `go vet`. Frontend CI [45133733286](https://github.com/TheSumitNain/school-management-system/actions/runs/45133733286) **PASS** on `bb659f1c`: Vite production build and Playwright browser acceptance suite.
 - No persistent database migration/data change. Documents remain deferred pending external storage selection/purchase and explicit approval; Bulk Import remains blocked on identity-schema review and approval. Staff Management is not yet declared complete; final end-to-end acceptance and remaining permission/security review are still required.
+
+
+## 2026-11-23 — Staff attendance and substitution handler reliability
+
+- Added regression coverage for all attendance and substitution handler actions with nil receivers and unavailable services. The handlers return HTTP 503 instead of risking nil-pointer panics; authorization and domain checks remain unchanged for available services.
+- Backend CI [45134503749](https://github.com/TheSumitNain/school-management-system/actions/runs/45134503749) **PASS** on `afcd762e`: all migrations applied to ephemeral PostgreSQL, Go tests including PostgreSQL integration, and `go vet`.
+- No persistent database migration or data change. Staff document upload remains deferred pending external storage selection/purchase and explicit approval; Bulk Import remains blocked on identity-schema review and approval. Staff Management is not yet declared complete; full end-to-end acceptance and remaining permission/security review are still required.
