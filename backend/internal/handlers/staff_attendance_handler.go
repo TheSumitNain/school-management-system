@@ -96,6 +96,7 @@ func (h *StaffAttendanceHandler) Mark(c *gin.Context) {
     if !valid { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"attendance_date must use YYYY-MM-DD"}); return }
     item, err := h.service.Mark(c.Request.Context(), actor, school, req.StaffPrincipalID, day, req.Status, req.Remarks)
     if err != nil { writeStaffAttendanceError(c, err); return }
+    if item == nil { c.JSON(http.StatusInternalServerError, gin.H{"status":"error","message":"Unable to mark staff attendance"}); return }
     c.JSON(http.StatusCreated, gin.H{"status":"success","data":item})
 }
 
@@ -140,6 +141,7 @@ func (h *StaffAttendanceHandler) Update(c *gin.Context) {
     if err := c.ShouldBindJSON(&req); err != nil { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid staff attendance payload"}); return }
     item, err := h.service.Update(c.Request.Context(), actor, school, recordID, req.Status, req.Remarks)
     if err != nil { writeStaffAttendanceError(c, err); return }
+    if item == nil { c.JSON(http.StatusInternalServerError, gin.H{"status":"error","message":"Unable to update staff attendance"}); return }
     c.JSON(http.StatusOK, gin.H{"status":"success","data":item})
 }
 
