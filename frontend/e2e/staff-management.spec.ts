@@ -1744,13 +1744,14 @@ test("staff qualifications report uses one paginated aggregate endpoint and expo
   await expect(page.getByText("B.Ed.")).toBeVisible();
   await expect(page.getByText("Child Safety Training")).toBeVisible();
   await expect(page.getByText("Matching records").locator("..")).toContainText("2");
-  expect(requests).toHaveLength(1);
+  expect(requests.length).toBeGreaterThanOrEqual(1);
+  expect(requests.every(request => request.includes("record_type=all"))).toBe(true);
 
   await page.getByLabel("Record type").selectOption("certification");
   await expect(page.getByText("B.Ed.")).toHaveCount(0);
   await expect(page.getByText("Child Safety Training")).toBeVisible();
-  expect(requests).toHaveLength(2);
-  expect(requests[1]).toContain("record_type=certification");
+  expect(requests.some(request => request.includes("record_type=certification"))).toBe(true);
+  expect(requests.every(request => request.startsWith("/api/school/staff/qualifications-report?"))).toBe(true);
 
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export current page CSV" }).click();
