@@ -13,6 +13,8 @@ func TestValidateStaffLeaveRequestDateFilters(t *testing.T) {
   {name:"date and range",onDate:"2026-11-12",fromDate:"2026-11-01",toDate:"2026-11-30"},
   {name:"invalid on date",onDate:"23-11-2026",wantErr:true},
   {name:"nonexistent calendar date",onDate:"2026-02-30",wantErr:true},
+  {name:"year zero is not a PostgreSQL date",onDate:"0000-01-01",wantErr:true},
+  {name:"year zero in date range",fromDate:"0000-01-01",toDate:"0001-01-01",wantErr:true},
   {name:"range missing end",fromDate:"2026-11-01",wantErr:true},
   {name:"range missing start",toDate:"2026-11-30",wantErr:true},
   {name:"invalid range start",fromDate:"not-a-date",toDate:"2026-11-30",wantErr:true},
