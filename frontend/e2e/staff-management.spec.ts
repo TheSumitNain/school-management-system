@@ -1550,6 +1550,43 @@ test("school-wide workload report shows scheduled periods without inferring avai
 });
 
 
+
+test("staff reports show school-scoped employment readiness and export approved fields only", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [
+    {
+      id: 1, principal_id: 501, school_id: 10, username: "teacher.active",
+      employee_code: "EMP-ACTIVE", full_name: "Active Teacher", designation: "Mathematics Teacher",
+      mobile_number: "9876543215", employment_status: "active", profile_complete: true,
+      status: "active", must_change_password: false,
+    },
+    {
+      id: 2, principal_id: 502, school_id: 10, username: "teacher.inactive",
+      employee_code: "EMP-INACTIVE", full_name: "Inactive Teacher", designation: "Science Teacher",
+      mobile_number: "9876543216", employment_status: "inactive", profile_complete: false,
+      status: "disabled", must_change_password: false,
+    },
+  ];
+  await signInAndOpenStaff(page, rows, undefined, ["users.read"]);
+  await page.getByRole("button", { name: "Reports", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Staff Reports" })).toBeVisible();
+  await expect(page.getByText("Total staff").locator("..")).toContainText("2");
+  await expect(page.getByText("Active employment").locator("..")).toContainText("1");
+  await expect(page.getByText("Inactive employment").locator("..")).toContainText("1");
+  await expect(page.getByText("Profile incomplete").locator("..")).toContainText("1");
+  await expect(page.getByText("Login disabled").locator("..")).toContainText("1");
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export staff report" }).click();
+  const download = await downloadPromise;
+  const path = await download.path();
+  expect(path).toBeTruthy();
+  const csv = await readFile(path!, "utf8");
+  expect(csv.startsWith("\uFEFF")).toBe(true);
+  expect(csv).toContain("EMP-ACTIVE");
+  expect(csv).toContain("EMP-INACTIVE");
+  expect(csv).not.toContain("9876543215");
+  expect(csv).not.toContain("9876543216");
+});
+
 test("staff directory CSV export is filtered, UTF-8 compatible and safe from spreadsheet formulas", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [
     {
