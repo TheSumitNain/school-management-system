@@ -145,7 +145,7 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
     const rows: Array<Array<string | number | null | undefined>> = [[
       "Record type", "Staff name", "Employee code", "Designation",
       "Present days", "Absent days", "Late days", "Half days", "Recorded days",
-      "Date", "Attendance status", "Remarks", "Leave type", "Leave start date",
+      "Date", "Attendance status", "Leave type", "Leave start date",
       "Leave end date", "Holiday date", "Holiday name",
     ]];
 
@@ -161,7 +161,7 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
           "Attendance entry", item.full_name, item.employee_code, item.designation,
           "", "", "", "", "", record.date,
           statuses.find(status => status.value === record.status)?.label ?? record.status,
-          record.remarks ?? "", "", "", "", "", "",
+          "", "", "", "", "", "";
         ]);
       }
     }
