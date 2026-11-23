@@ -133,7 +133,7 @@ func TestRBACHTTPAuthorizationUsesPostgresState(t *testing.T) {
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	suffixBytes := make([]byte, 16)
+	suffixBytes := make([]byte, 10)
 	if _, err := rand.Read(suffixBytes); err != nil {
 		t.Fatalf("generate unique integration fixture suffix: %v", err)
 	}
