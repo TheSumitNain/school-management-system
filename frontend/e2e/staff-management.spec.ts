@@ -47,6 +47,10 @@ async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, un
       await route.fulfill({ json: { staff: staffRows } });
       return;
     }
+    if (path === "/school/staff-attendance/month" && method === "GET") {
+      await route.fulfill({ json: { month: url.searchParams.get("month"), data: [{ staff_principal_id: 501, employee_code: "EMP-ACTIVE", full_name: "Active Teacher", designation: "Mathematics Teacher", present_days: 18, absent_days: 1, late_days: 2, half_days: 0, records: [] }] } });
+      return;
+    }
     if (path === "/school/staff-leave/types" && method === "GET") {
       await route.fulfill({ json: { data: leaveTypes } });
       return;
@@ -1585,6 +1589,49 @@ test("staff reports show school-scoped employment readiness and export approved 
   expect(csv).toContain("EMP-INACTIVE");
   expect(csv).not.toContain("9876543215");
   expect(csv).not.toContain("9876543216");
+});
+
+test("staff reports show monthly attendance and leave summaries only with matching permissions", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [
+    { id: 1, principal_id: 501, school_id: 10, username: "teacher.active", employee_code: "EMP-ACTIVE", full_name: "Active Teacher", designation: "Mathematics Teacher", employment_status: "active", profile_complete: true, status: "active", must_change_password: false },
+  ];
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "staff.attendance.read", "staff.leave.read"]);
+  await page.getByRole("button", { name: "Reports", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Attendance & leave reports" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Monthly staff attendance" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Leave requests" })).toBeVisible();
+  await expect(page.getByText("Active Teacher")).toBeVisible();
+  await expect(page.getByText("EMP-LEAVE-01")).toBeVisible();
+
+  const attendanceDownloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export attendance CSV" }).click();
+  const attendanceDownload = await attendanceDownloadPromise;
+  const attendancePath = await attendanceDownload.path();
+  expect(attendancePath).toBeTruthy();
+  const attendanceCSV = await readFile(attendancePath!, "utf8");
+  expect(attendanceCSV.startsWith("\\uFEFF")).toBe(true);
+  expect(attendanceCSV).toContain("EMP-ACTIVE");
+  expect(attendanceCSV).toContain("18");
+
+  const leaveDownloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export leave CSV" }).click();
+  const leaveDownload = await leaveDownloadPromise;
+  const leavePath = await leaveDownload.path();
+  expect(leavePath).toBeTruthy();
+  const leaveCSV = await readFile(leavePath!, "utf8");
+  expect(leaveCSV.startsWith("\\uFEFF")).toBe(true);
+  expect(leaveCSV).toContain("EMP-LEAVE-01");
+  expect(leaveCSV).toContain("Casual Leave");
+});
+
+test("staff reports do not request attendance or leave data without their read permissions", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [];
+  await signInAndOpenStaff(page, rows, undefined, ["users.read"]);
+  await page.getByRole("button", { name: "Reports", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Staff Reports" })).toBeVisible();
+  await expect(page.getByText("Attendance and leave reports are hidden because you do not have their read permissions.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Monthly staff attendance" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Leave requests" })).toHaveCount(0);
 });
 
 test("staff directory CSV export is filtered, UTF-8 compatible and safe from spreadsheet formulas", async ({ page }) => {
