@@ -315,7 +315,7 @@ type StaffAuditEvent struct {
 	ResourceType string `json:"resource_type"`
 	Outcome string `json:"outcome"`
 	ActorUsername string `json:"actor_username"`
-	Metadata json.RawMessage `json:"metadata"`
+	Metadata json.RawMessage `json:"-"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
