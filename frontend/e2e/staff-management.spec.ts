@@ -1565,7 +1565,7 @@ test("staff directory CSV export is filtered, UTF-8 compatible and safe from spr
       status: "disabled", must_change_password: false,
     },
   ];
-  await signInAndOpenStaff(page, rows, undefined, ["users.read", "staff.read"]);
+  await signInAndOpenStaff(page, rows, undefined, ["users.read"]);
   await page.getByRole("button", { name: "Staff Directory", exact: true }).click();
   await page.getByLabel("Search staff by name, code, designation or username").fill("HYPERLINK");
   await expect(page.getByText("Filtered Out Teacher")).toHaveCount(0);
