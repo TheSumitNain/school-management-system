@@ -77,6 +77,11 @@ func TestStaffRecordsUnauthenticatedRequestDoesNotExposeServiceAvailability(t *t
 
 type nilStaffRecordsResultService struct { StaffRecordsManagementService }
 
+func (nilStaffRecordsResultService) ListQualifications(context.Context,int64,int64,int64)([]repository.StaffQualification,error){return nil,nil}
+func (nilStaffRecordsResultService) ListCertifications(context.Context,int64,int64,int64)([]repository.StaffCertification,error){return nil,nil}
+func (nilStaffRecordsResultService) ListExperience(context.Context,int64,int64,int64)([]repository.StaffExperience,error){return nil,nil}
+func (nilStaffRecordsResultService) ListAuditEvents(context.Context,int64,int64,int64)([]repository.StaffAuditEvent,error){return nil,nil}
+
 func (nilStaffRecordsResultService) CreateQualification(context.Context,int64,int64,int64,repository.StaffQualification)(*repository.StaffQualification,error){return nil,nil}
 func (nilStaffRecordsResultService) CreateCertification(context.Context,int64,int64,int64,repository.StaffCertification)(*repository.StaffCertification,error){return nil,nil}
 func (nilStaffRecordsResultService) CreateExperience(context.Context,int64,int64,int64,repository.StaffExperience)(*repository.StaffExperience,error){return nil,nil}
@@ -106,4 +111,37 @@ func TestStaffRecordsHandlersRejectNilSuccessfulResults(t *testing.T) {
 		recorder:=httptest.NewRecorder();router.ServeHTTP(recorder,req)
 		if recorder.Code!=http.StatusInternalServerError{t.Fatalf("nil successful service result must return 500: status=%d body=%s",recorder.Code,recorder.Body.String())}
 	})}
+}
+
+
+func TestStaffRecordsListHandlersReturnEmptyArraysForNilResults(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	handler := NewStaffRecordsHandler(nilStaffRecordsResultService{})
+	tests := []struct {
+		name, path, key string
+		handler func(*StaffRecordsHandler, *gin.Context)
+	}{
+		{"qualifications", "/staff/42/qualifications", "qualifications", (*StaffRecordsHandler).ListQualifications},
+		{"certifications", "/staff/42/certifications", "certifications", (*StaffRecordsHandler).ListCertifications},
+		{"experience", "/staff/42/experience", "experience", (*StaffRecordsHandler).ListExperience},
+		{"audit events", "/staff/42/history", "events", (*StaffRecordsHandler).ListAuditEvents},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			router := gin.New()
+			router.GET("/staff/:principalID/:resource", func(c *gin.Context) {
+				c.Set(middleware.ContextPrincipalIDKey, int64(100))
+				c.Set(middleware.ContextSchoolIDKey, int64(10))
+				tt.handler(handler, c)
+			})
+			recorder := httptest.NewRecorder()
+			router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, tt.path, nil))
+			if recorder.Code != http.StatusOK {
+				t.Fatalf("status=%d want=%d body=%s", recorder.Code, http.StatusOK, recorder.Body.String())
+			}
+			if !strings.Contains(recorder.Body.String(), `"`+tt.key+`":[]`) {
+				t.Fatalf("nil list must serialize as an empty JSON array for %q: %s", tt.key, recorder.Body.String())
+			}
+		})
+	}
 }
