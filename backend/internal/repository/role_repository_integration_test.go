@@ -127,14 +127,14 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 
 	// The system role's provisioned substitution permissions must survive the
 	// runtime School Admin permission allowlist as well as the database grant.
-	permissions, err := NewPrincipalAuthorizationRepository(tx).LoadEffectivePermissions(ctx, &models.AuthPrincipal{
+	effectivePermissions, err := NewPrincipalAuthorizationRepository(tx).LoadEffectivePermissions(ctx, &models.AuthPrincipal{
 		ID: actorPrincipalID, Type: "staff", SchoolID: schoolID,
 	})
 	if err != nil {
 		t.Fatalf("load effective School Admin permissions: %v", err)
 	}
-	permissionSet := make(map[string]bool, len(permissions))
-	for _, permission := range permissions {
+	permissionSet := make(map[string]bool, len(effectivePermissions))
+	for _, permission := range effectivePermissions {
 		permissionSet[permission] = true
 	}
 	for _, permission := range []string{"staff.substitutions.read", "staff.substitutions.manage"} {
