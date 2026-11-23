@@ -1,11 +1,36 @@
 import { useMemo, useState } from "react";
-import { RefreshCw, Search } from "lucide-react";
+import { Download, RefreshCw, Search } from "lucide-react";
 import { useStaffSubstitutionTimetableYearQuery, useTeacherWorkloadReportQuery } from "../queries";
 import "./StaffWorkloadReportWorkspace.css";
 
 type Props={permissions:string[]};
 const days=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
 type Group={id:number;name:string;employeeCode:string;designation:string;employmentStatus:string;loginStatus:string;daily:Array<{day:number;periods:number;sections:number;subjects:number;first?:number|null;last?:number|null}>;totalPeriods:number;busiestDay:string};
+
+function csvCell(value: string | number | null | undefined): string {
+  const raw = String(value ?? "");
+  const safe = /^[=+@\\-\\t\\r]/.test(raw) ? "'" + raw : raw;
+  return '"' + safe.replace(/"/g, '""') + '"';
+}
+
+function exportWorkloadCSV(groups: Group[], academicYearID: number) {
+  const header = ["Staff name","Employee code","Designation","Employment status","Login status","Total scheduled periods per week","Busiest day","Weekday","Scheduled periods","Distinct sections","Distinct subjects","First period","Last period"];
+  const rows = groups.flatMap(group => (group.daily.length ? group.daily : [{day:0,periods:0,sections:0,subjects:0,first:null,last:null}]).map(day => [
+    group.name,group.employeeCode,group.designation,group.employmentStatus,group.loginStatus,
+    group.totalPeriods,group.busiestDay,day.day ? days[day.day-1] : "—",day.periods,day.sections,day.subjects,
+    day.first ?? "—",day.last ?? "—",
+  ]));
+  const csv = [header,...rows].map(row => row.map(csvCell).join(",")).join("\\r\\n");
+  const blob = new Blob(["\\uFEFF",csv],{type:"text/csv;charset=utf-8"});
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "staff-workload-report-" + academicYearID + ".csv";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url),1000);
+}
 
 export function StaffWorkloadReportWorkspace({permissions}:Props){
   const canRead=permissions.includes("timetable.read");
@@ -48,7 +73,10 @@ export function StaffWorkloadReportWorkspace({permissions}:Props){
   return <section className="staff-workload-report">
     <header className="staff-workload-report-heading">
       <div><h2>School-wide Workload Report</h2><p>{year?year.name:"Current academic year"} · Actual recurring timetable entries</p></div>
-      <button type="button" className="staff-workload-report-refresh" onClick={()=>void reportQuery.refetch()} disabled={reportQuery.isFetching}><RefreshCw size={14}/> Refresh</button>
+      <div className="staff-workload-report-actions">
+        <button type="button" className="staff-workload-report-export" onClick={()=>exportWorkloadCSV(filtered,year?.id??0)} disabled={!reportQuery.isSuccess||reportQuery.isFetching||filtered.length===0}><Download size={14}/> Export filtered CSV</button>
+        <button type="button" className="staff-workload-report-refresh" onClick={()=>void reportQuery.refetch()} disabled={reportQuery.isFetching}><RefreshCw size={14}/> Refresh</button>
+      </div>
     </header>
     <div className="staff-workload-report-summary">
       <article><span>Staff profiles</span><strong>{groups.length}</strong></article>
