@@ -1834,6 +1834,19 @@ test("staff ID cards select only complete active profiles and expose approved pr
   await expect(page.getByText("9876543210")).toHaveCount(0);
   await page.getByLabel("Card template").selectOption("modern");
   await expect(page.locator(".staff-id-card--modern")).toHaveCount(1);
+  await page.evaluate(() => {
+    Object.defineProperty(window,"__staffPrintCalled",{value:false,writable:true,configurable:true});
+    window.print = () => { (window as Window & {__staffPrintCalled?:boolean}).__staffPrintCalled = true; };
+  });
+  await page.getByRole("button",{name:"Print 1 card"}).click();
+  await expect.poll(() => page.evaluate(() => Boolean((window as Window & {__staffPrintCalled?:boolean}).__staffPrintCalled))).toBe(true);
+  await page.emulateMedia({media:"print"});
+  await expect(page.locator(".staff-workspace-tabs")).toHaveCSS("visibility","hidden");
+  await expect(preview).toHaveCSS("visibility","visible");
+  await expect(preview).toHaveCSS("display","grid");
+  await expect(page.locator(".staff-id-card")).toHaveCSS("box-sizing","border-box");
+  await expect(page.locator(".staff-id-card")).toHaveCSS("width","321.25px");
+  await page.emulateMedia({media:"screen"});
   await page.getByRole("button",{name:"Clear selection"}).click();
   await expect(page.getByText("Select one or more employees to preview their cards.")).toBeVisible();
   await expect(page.getByRole("button",{name:/Print/})).toBeDisabled();
