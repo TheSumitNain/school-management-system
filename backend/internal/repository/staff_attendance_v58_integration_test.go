@@ -135,7 +135,7 @@ func TestStaffAttendanceMarkAuthorizesBeforeResolvingTargetPostgresIntegration(t
         t.Fatalf("unauthorized attendance mark error = %v, want ErrStaffAttendanceAccessDenied (target existence must not be disclosed)", err)
     }
 
-    err = NewStaffAttendanceRepository(pool).Update(
+    _, err = NewStaffAttendanceRepository(pool).Update(
         ctx, actorPrincipalID, schoolID, 9_999_999_999, "present", nil,
     )
     if !errors.Is(err, ErrStaffAttendanceAccessDenied) {
