@@ -156,6 +156,19 @@ async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, un
       await route.fulfill({ json: { workloads } });
       return;
     }
+    if (path === "/school/teacher-assignments" && method === "GET") {
+      await route.fulfill({ json: { assignments: [
+        { id: 71, academic_year_id: 2026, section_id: 301, section_name: "A", class_name: "Class 6", subject_id: 9, subject_name: "Mathematics", teacher_principal_id: 501, teacher_username: "teacher.active", assigned_at: "2026-04-01T00:00:00.000Z", revoked_at: null },
+        { id: 72, academic_year_id: 2026, section_id: 302, section_name: "B", class_name: "Class 7", subject_id: 10, subject_name: "Science", teacher_principal_id: 501, teacher_username: "teacher.active", assigned_at: "2026-04-01T00:00:00.000Z", revoked_at: "2026-06-01T00:00:00.000Z" },
+      ] } });
+      return;
+    }
+    if (path === "/school/class-incharge-assignments" && method === "GET") {
+      await route.fulfill({ json: { assignments: [
+        { id: 73, academic_year_id: 2026, section_id: 301, section_name: "A", class_name: "Class 6", teacher_principal_id: 501, teacher_username: "teacher.active", assigned_at: "2026-04-01T00:00:00.000Z", revoked_at: null },
+      ] } });
+      return;
+    }
     if (path === "/school/timetable/current-year" && method === "GET") {
       await route.fulfill({ json: { academic_year: { id: 2026, name: "2026–27", starts_on: "2026-04-01", ends_on: "2027-03-31", status: "active", is_current: true } } });
       return;
@@ -1622,6 +1635,30 @@ test("staff reports show monthly attendance and leave summaries only with matchi
   expect(leaveCSV.startsWith("\uFEFF")).toBe(true);
   expect(leaveCSV).toContain("EMP-LEAVE-01");
   expect(leaveCSV).toContain("Casual Leave");
+});
+
+test("staff reports include active academic assignments and export only permitted assignment fields", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [
+    { id: 1, principal_id: 501, school_id: 10, username: "teacher.active", employee_code: "EMP-ACTIVE", full_name: "Active Teacher", designation: "Mathematics Teacher", employment_status: "active", profile_complete: true, status: "active", must_change_password: false },
+  ];
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "teacher_assignments.read", "class_incharge_assignments.read"]);
+  await page.getByRole("button", { name: "Reports", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Academic assignments" })).toBeVisible();
+  await expect(page.getByText("2026–27 · Active assignments only")).toBeVisible();
+  await expect(page.getByText("teacher.active")).toBeVisible();
+  await expect(page.getByText("Subject assignments").last()).toBeVisible();
+  await expect(page.getByText("Class-in-charge assignments").last()).toBeVisible();
+
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export assignments CSV" }).click();
+  const download = await downloadPromise;
+  const path = await download.path();
+  expect(path).toBeTruthy();
+  const csv = await readFile(path!, "utf8");
+  expect(csv.startsWith("\\uFEFF")).toBe(true);
+  expect(csv).toContain("teacher.active");
+  expect(csv).toContain("2026–27");
+  expect(csv).not.toContain("Science");
 });
 
 test("staff reports do not request attendance or leave data without their read permissions", async ({ page }) => {
