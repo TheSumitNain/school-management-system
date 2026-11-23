@@ -54,4 +54,4 @@ Once the identity model is approved, the import workflow will:
 
 ## 5. Interim capability
 
-The current application can only create a staff profile together with a login account. The existing single-employee workflow remains available. A profile-only bulk import is intentionally blocked until the schema gate above is approved; no hidden credential workaround is permitted.
+The current application can only create a staff profile together with a login account. The existing Add Staff wizard always collects a username and initial password; it does not yet implement the roadmap's explicit Create Login Account: Yes/No decision. This is a known product/schema gap, not an approved permanent requirement. Until the identity model is reviewed and approved, do not claim that profile-only single or bulk onboarding is supported, and do not create placeholder accounts or credentials to simulate it. A profile-only bulk import and the profile-only single-create path are both blocked by the schema gate above. The existing account-plus-profile workflow remains available as an interim capability.
