@@ -98,6 +98,8 @@ Open from Overview → Add Staff or Staff Directory → Add Staff. Use the share
 
 Show this step for Teaching staff by default, and for any non-teaching employee when Create login account is selected.
 
+**Current implementation gap:** the existing Add Staff wizard still requires a username and initial password for every employee because `staff_profiles` is currently coupled to `users`. The optional profile-only path described below is a target product behavior, not yet implemented. Do not generate hidden credentials or create placeholder accounts; profile-only onboarding (single or bulk) remains blocked pending the approved identity-schema redesign in [Staff Bulk Import Architecture Gate](../backend/STAFF-BULK-IMPORT-DESIGN.md).
+
 | Field | Required? | Rules / behavior |
 |---|---|---|
 | Create Login Account | Required decision | Yes / No; No is allowed for employees who do not need access |
