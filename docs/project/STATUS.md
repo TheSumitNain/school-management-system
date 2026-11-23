@@ -1,3 +1,13 @@
+## Staff summary reports workspace (2026-11-23)
+
+- Enabled the Staff Management Reports tab for viewers with live `users.read` permission. It reuses the existing school-scoped staff directory query and shows total staff, active/inactive employment, incomplete profiles and disabled login counts.
+- Added a responsive summary and a CSV export that includes only employee code, name, designation, employment status, login status and profile completeness. Mobile numbers, email, passwords and permission data are excluded.
+- Added a Playwright acceptance test for summary counts and restricted export fields. The test and frontend CI are pending; this milestone is implemented but not yet browser-verified.
+- No API, backend, migration or persistent database changes.
+- Code checkpoint: `c0d5301`; responsive styles: `b7caf14`; E2E: `f07589d`.
+
+---
+
 ## Staff directory CSV export — formula-injection regression hardening (2026-11-23)
 
 - Extended the existing Staff Directory CSV browser acceptance fixture to use a staff name beginning with a tab followed by a spreadsheet formula. The assertion verifies that the exported cell is prefixed with a protective apostrophe while filtered rows remain excluded and the UTF-8 BOM is preserved.
