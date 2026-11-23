@@ -1,8 +1,10 @@
 package handlers
 
 import (
-	"context"\n\t"net/http"
-	"net/http/httptest"\n\t"strings"
+	"context"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
