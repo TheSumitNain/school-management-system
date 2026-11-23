@@ -417,3 +417,11 @@ Verification on branch `work`, commit `30270fe0927a6eb3f284d462ddd6dc2b4ca2959e`
 - Added responsive Staff Directory filter coverage for 390px mobile, 768px tablet and 1280px desktop, asserting all three controls remain visible, labels stay within the filter container, no horizontal overflow occurs, and mobile filter selection works.
 - Checkpoint commits: `f686857` (profile edit permission gate), `6049464` (read-only regression test). The prior Frontend CI on `7fa70e1` failed because the filter test called `page.reload()`, which discarded the in-memory mocked login and prevented navigation back to Staff Directory. The current test resets account and employment filters in-place without reloading. Fresh frontend and backend CI for the combined checkpoint remains required; do not mark this section as CI-verified yet.
 - No persistent database migration or data change was made. Documents remain deferred pending external storage-service purchase and explicit approval. Bulk import/profile-only onboarding remain blocked by the identity-schema gate and require separate approval before any migration.
+
+
+## 40. Academic assignment profile navigation permission gate (2026-11-23)
+
+- The employee Academic Assignments profile panel previously displayed a navigation button even when the viewer lacked both `teacher_assignments.read` and `class_incharge_assignments.read`. The panel correctly withheld the data, but the navigation affordance was misleading and allowed entry into an inaccessible workspace.
+- The navigation action is now rendered only when at least one corresponding read permission exists. Its label is “Open assignments workspace” to describe the read/navigation action without implying write access.
+- Extended the read-only profile Playwright test to open Academic Assignments, assert the denied explanation, and assert the workspace navigation action is absent.
+- Commits: `b2c4655` (permission-gated navigation), `76b9880` (regression coverage). Do not mark CI verified until fresh frontend and backend checks for the latest branch head complete.
