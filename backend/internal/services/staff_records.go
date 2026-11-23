@@ -13,6 +13,7 @@ import (
 var ErrInvalidStaffRecord = errors.New("invalid staff record")
 
 type staffRecordsRepository interface {
+	ListStaffQualificationReport(context.Context,int64,int64,repository.StaffQualificationReportFilter)(*repository.StaffQualificationReportPage,error)
 	ListStaffQualifications(context.Context,int64,int64,int64)([]repository.StaffQualification,error)
 	CreateStaffQualification(context.Context,int64,int64,int64,repository.StaffQualification)(*repository.StaffQualification,error)
 	ListStaffCertifications(context.Context,int64,int64,int64)([]repository.StaffCertification,error)
@@ -111,4 +112,22 @@ func (s *StaffRecordsService) UpdateExperience(ctx context.Context, actor, schoo
 func(s *StaffRecordsService) ListAuditEvents(ctx context.Context,actor,school,staff int64)([]repository.StaffAuditEvent,error){
 	if s==nil||s.repository==nil||actor<=0||school<=0||staff<=0{return nil,ErrInvalidStaffRecord}
 	return s.repository.ListStaffAuditEvents(ctx,actor,school,staff)
+}
+
+func (s *StaffRecordsService) ListQualificationsReport(ctx context.Context, actor, school int64, filter repository.StaffQualificationReportFilter) (*repository.StaffQualificationReportPage, error) {
+	if s == nil || s.repository == nil || actor <= 0 || school <= 0 {
+		return nil, ErrInvalidStaffRecord
+	}
+	if filter.RecordType == "" { filter.RecordType = "all" }
+	if filter.RecordType != "all" && filter.RecordType != "qualification" && filter.RecordType != "certification" {
+		return nil, ErrInvalidStaffRecord
+	}
+	if filter.VerificationStatus != "" && filter.VerificationStatus != "pending" && filter.VerificationStatus != "verified" && filter.VerificationStatus != "rejected" {
+		return nil, ErrInvalidStaffRecord
+	}
+	if filter.Limit == 0 { filter.Limit = 50 }
+	if filter.Limit < 1 || filter.Limit > 200 || filter.Offset < 0 || filter.Offset > 1000000 {
+		return nil, ErrInvalidStaffRecord
+	}
+	return s.repository.ListStaffQualificationReport(ctx, actor, school, filter)
 }
