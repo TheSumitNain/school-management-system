@@ -43,7 +43,7 @@ test("monthly staff report downloads attendance, approved leave and holidays as 
     if (path === "/school/staff-attendance/month" && request.method() === "GET") {
       const month = url.searchParams.get("month") ?? "2026-11";
       await route.fulfill({ json: { month, data: [{
-        staff_principal_id: 702, employee_code: "T-702", full_name: "Report Teacher",
+        staff_principal_id: 702, employee_code: "T-702", full_name: "=1+1 Report Teacher",
         designation: "Teacher", present_days: 2, absent_days: 1, late_days: 0, half_days: 1,
         records: [
           { id: 1, date: month + "-03", status: "present", remarks: "=1+1" },
