@@ -108,7 +108,16 @@ func TestStaffRecordsServiceRejectsInvalidCertificationCalendarDates(t *testing.
 				_, err = svc.CreateCertification(context.Background(), 1, 2, 3, item)
 			}
 			if err != ErrInvalidStaffRecord {
-				t.Fatalf("certification date %q update=%v error=%v want ErrInvalidStaffRecord", value, update, err)
+				t.Fatalf("certification issue date %q update=%v error=%v want ErrInvalidStaffRecord", value, update, err)
+			}
+			item = repository.StaffCertification{CertificateName: "Training", IssuingOrganization: "Board", ExpiryDate: value}
+			if update {
+				_, err = svc.UpdateCertification(context.Background(), 1, 2, 3, 4, item)
+			} else {
+				_, err = svc.CreateCertification(context.Background(), 1, 2, 3, item)
+			}
+			if err != ErrInvalidStaffRecord {
+				t.Fatalf("certification expiry date %q update=%v error=%v want ErrInvalidStaffRecord", value, update, err)
 			}
 		}
 	}
@@ -155,7 +164,19 @@ func TestStaffRecordsServiceRejectsInvalidExperienceCalendarDates(t *testing.T) 
 				_, err = svc.CreateExperience(context.Background(), 1, 2, 3, item)
 			}
 			if err != ErrInvalidStaffRecord {
-				t.Fatalf("experience date %q update=%v error=%v want ErrInvalidStaffRecord", value, update, err)
+				t.Fatalf("experience start date %q update=%v error=%v want ErrInvalidStaffRecord", value, update, err)
+			}
+			item = repository.StaffExperience{
+				EmployerName: "School", Designation: "Teacher", EmploymentType: "permanent",
+				StartDate: "2020-01-01", EndDate: value,
+			}
+			if update {
+				_, err = svc.UpdateExperience(context.Background(), 1, 2, 3, 4, item)
+			} else {
+				_, err = svc.CreateExperience(context.Background(), 1, 2, 3, item)
+			}
+			if err != ErrInvalidStaffRecord {
+				t.Fatalf("experience end date %q update=%v error=%v want ErrInvalidStaffRecord", value, update, err)
 			}
 		}
 	}
