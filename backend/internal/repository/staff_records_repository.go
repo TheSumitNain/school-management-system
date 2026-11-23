@@ -98,7 +98,7 @@ func authorizeStaffSchoolPermission(ctx context.Context, db repositoryDB, actorI
 			          (r.is_system = TRUE AND rp.delegation_id IS NULL)
 			          OR (r.is_system = FALSE AND d.id IS NOT NULL)
 			        )
-			        AND (r.role_key <> 'school_admin' OR $3 = ANY($4::text[]))
+			        AND (NOT (r.is_system = TRUE AND r.role_key = 'school_admin') OR $3 = ANY($4::text[]))
 			    )
 			    OR EXISTS (
 			      SELECT 1
