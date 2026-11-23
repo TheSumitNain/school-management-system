@@ -26,3 +26,13 @@
 .staff-operational-report-error{color:var(--danger);font-size:13px}
 .staff-operational-report-error button{margin-left:6px;color:inherit;text-decoration:underline}
 @media(max-width:760px){.staff-operational-reports-toolbar,.staff-operational-report-title{align-items:stretch;flex-direction:column}.staff-operational-reports-toolbar>label{width:100%}.staff-operational-reports-toolbar input{width:100%}.staff-operational-report-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.staff-operational-report-panel{padding:12px}}
+
+.staff-operational-report-filters{display:flex;flex-wrap:wrap;gap:12px}
+.staff-operational-report-filters label{display:grid;gap:5px;min-width:180px;color:var(--text-secondary);font-size:12px;font-weight:600}
+.staff-operational-report-filters select{min-height:36px;padding:6px 9px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text-primary);font:inherit}
+.staff-operational-report-table-wrap td small{display:block;margin-top:3px;color:var(--text-secondary);font-size:11px}
+.staff-operational-report-pagination{display:flex;align-items:center;justify-content:flex-end;gap:9px;color:var(--text-secondary);font-size:12px}
+.staff-operational-report-pagination button{min-height:32px;padding:6px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text-primary);font:inherit;cursor:pointer}
+.staff-operational-report-pagination button:disabled{opacity:.45;cursor:not-allowed}
+.staff-operational-report-status.verified{color:var(--success)}
+.staff-operational-report-status.rejected{color:var(--danger)}
