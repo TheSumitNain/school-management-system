@@ -141,6 +141,31 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
         EmployeeCode:"SB-"+suffix, FullName:"Bulk Staff Integration", Designation:"Teacher", MobileNumber:"9876543211", EmploymentStatus:"active",
     })
     if err != nil { t.Fatalf("create second staff for bulk attendance: %v", err) }
+
+    // A non-School-Admin staff member with a custom role and an active,
+    // exact permission delegation must receive the same live users.read
+    // access that the frontend exposes. This guards against hard-coded
+    // School Admin-only repository checks.
+    roleRepo := NewRoleRepository(tx)
+    readDelegation, err := roleRepo.GrantSchoolPermissionDelegation(ctx, platformAdminID, schoolID, "users.read", true, false)
+    if err != nil { t.Fatalf("delegate users.read to custom roles: %v", err) }
+    readerRole, err := roleRepo.CreateCustomRole(ctx, actorID, schoolID, "staff_record_reader_"+suffix, "Staff Record Reader "+suffix)
+    if err != nil { t.Fatalf("create custom staff reader role: %v", err) }
+    if err := roleRepo.GrantCustomRolePermission(ctx, actorID, schoolID, readerRole.ID, readDelegation.ID, "users.read"); err != nil {
+        t.Fatalf("grant delegated users.read to custom role: %v", err)
+    }
+    if err := roleRepo.AssignStaffRole(ctx, actorID, schoolID, secondStaff.PrincipalID, readerRole.ID); err != nil {
+        t.Fatalf("assign custom reader role to staff: %v", err)
+    }
+    delegatedQualifications, err := repo.ListStaffQualifications(ctx, secondStaff.PrincipalID, schoolID, staff.PrincipalID)
+    if err != nil || len(delegatedQualifications) != 1 || delegatedQualifications[0].ID != qualification.ID {
+        t.Fatalf("custom-role staff member could not read same-school qualifications: rows=%+v err=%v", delegatedQualifications, err)
+    }
+    delegatedReport, err := repo.ListStaffQualificationReport(ctx, secondStaff.PrincipalID, schoolID, StaffQualificationReportFilter{RecordType:"all", Limit:50})
+    if err != nil || delegatedReport.Total != 2 {
+        t.Fatalf("custom-role staff member could not read school-scoped qualifications report: report=%+v err=%v", delegatedReport, err)
+    }
+
     if _, err := attendanceRepo.MarkBulk(ctx, actorID, schoolID, []int64{secondStaff.PrincipalID, staff.PrincipalID}, today, "absent", nil); !errors.Is(err, ErrStaffAttendanceConflict) {
         t.Fatalf("bulk attendance with an existing daily mark error=%v want conflict", err)
     }
