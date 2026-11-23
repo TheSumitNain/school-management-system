@@ -2017,3 +2017,35 @@ test("holiday-only leave access does not expose write-only leave request data or
   await expect(leaveWorkspace.getByRole("heading", { name: "New leave request" })).toHaveCount(0);
   expect(leaveRequestCalls).toHaveLength(0);
 });
+
+
+test("staff leave and holiday workspace remains usable without horizontal overflow on mobile, tablet and desktop", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 501, school_id: 10, username: "responsive.staff",
+    employee_code: "EMP-RESP-01", full_name: "Responsive Staff", designation: "Teacher",
+    employment_status: "active", profile_complete: true, status: "active", must_change_password: false,
+  }];
+  await signInAndOpenStaff(page, rows, undefined, [
+    "users.read", "staff.leave.read", "staff.leave.manage_requests",
+    "staff.leave.decide", "staff.holidays.read",
+  ]);
+  await page.getByRole("button", { name: "Leave & Holidays" }).click();
+  const workspace = page.locator(".staff-leave-workspace");
+  await expect(workspace.getByRole("heading", { name: "Leave & Holidays" })).toBeVisible();
+  const grid = workspace.locator(".staff-leave-grid");
+  await expect(grid).toBeVisible();
+
+  for (const viewport of [
+    { width: 390, height: 844, columns: 1 },
+    { width: 768, height: 900, columns: 1 },
+    { width: 1280, height: 900, columns: 2 },
+  ]) {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await expect.poll(async () => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await expect.poll(async () => grid.evaluate(element =>
+      getComputedStyle(element).gridTemplateColumns.trim().split(/\\s+/).length,
+    )).toBe(viewport.columns);
+    await expect(workspace.getByRole("button", { name: "Leave requests" })).toBeVisible();
+    await expect(workspace.getByRole("button", { name: "Holiday calendar" })).toBeVisible();
+  }
+});
