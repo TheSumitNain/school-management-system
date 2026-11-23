@@ -15,6 +15,7 @@ import (
 
 type StaffRecordsManagementService interface {
 	ListQualificationsReport(context.Context,int64,int64,repository.StaffQualificationReportFilter)(*repository.StaffQualificationReportPage,error)
+	ListExperienceReport(context.Context,int64,int64,repository.StaffExperienceReportFilter)(*repository.StaffExperienceReportPage,error)
 	ListQualifications(context.Context,int64,int64,int64)([]repository.StaffQualification,error)
 	CreateQualification(context.Context,int64,int64,int64,repository.StaffQualification)(*repository.StaffQualification,error)
 	ListCertifications(context.Context,int64,int64,int64)([]repository.StaffCertification,error)
@@ -143,4 +144,16 @@ func (h *StaffRecordsHandler) ListQualificationsReport(c *gin.Context) {
 	page, err := h.service.ListQualificationsReport(c.Request.Context(),actor,school,filter)
 	if err != nil { h.fail(c,err); return }
 	c.JSON(http.StatusOK,gin.H{"status":"success","report":page})
+}
+
+func (h *StaffRecordsHandler) ListExperienceReport(c *gin.Context) {
+    if h==nil || h.service==nil { c.JSON(http.StatusServiceUnavailable,gin.H{"status":"error","message":"Staff experience report is unavailable"});return }
+    actor,school,ok:=staffRecordActor(c)
+    if !ok { c.JSON(http.StatusUnauthorized,gin.H{"status":"error","message":"School staff authentication required"});return }
+    filter:=repository.StaffExperienceReportFilter{EmploymentType:c.Query("employment_type"),CurrentOnly:c.Query("current_only")=="true",Limit:50}
+    if raw:=c.Query("limit");raw!="" { value,err:=strconv.Atoi(raw);if err!=nil {c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid report limit"});return};filter.Limit=value }
+    if raw:=c.Query("offset");raw!="" { value,err:=strconv.Atoi(raw);if err!=nil {c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid report offset"});return};filter.Offset=value }
+    page,err:=h.service.ListExperienceReport(c.Request.Context(),actor,school,filter)
+    if err!=nil {h.fail(c,err);return}
+    c.JSON(http.StatusOK,gin.H{"status":"success","report":page})
 }
