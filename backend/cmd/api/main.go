@@ -157,6 +157,7 @@ func setupRouterWithHandlers(
 	if staffRecordsHandler != nil {
 		staffRead := authMiddleware()
 		staffWrite := authMiddleware()
+		router.GET("/school/staff/qualifications-report", staffRead, middleware.RequirePermission("users.read"), staffRecordsHandler.ListQualificationsReport)
 		router.GET("/school/staff/:principalID/qualifications", staffRead, middleware.RequirePermission("users.read"), staffRecordsHandler.ListQualifications)
 		router.POST("/school/staff/:principalID/qualifications", staffWrite, middleware.RequirePermission("users.update"), staffRecordsHandler.CreateQualification)
 		router.PATCH("/school/staff/:principalID/qualifications/:recordID", staffWrite, middleware.RequirePermission("users.update"), staffRecordsHandler.UpdateQualification)
