@@ -1603,15 +1603,21 @@ test("staff reports show school-scoped employment readiness and export approved 
       mobile_number: "9876543216", employment_status: "inactive", profile_complete: false,
       status: "disabled", must_change_password: false,
     },
+    {
+      id: 3, principal_id: 503, school_id: 10, username: "teacher.legacy",
+      employee_code: "EMP-LEGACY", full_name: "Legacy Profile", designation: "Office Staff",
+      mobile_number: "9876543217", employment_status: "active",
+      status: "disabled", must_change_password: false,
+    },
   ];
   await signInAndOpenStaff(page, rows, undefined, ["users.read"]);
   await page.getByRole("button", { name: "Reports", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Staff Reports" })).toBeVisible();
-  await expect(page.getByText("Total staff").locator("..")).toContainText("2");
-  await expect(page.locator(".staff-reports-summary article").filter({ has: page.getByText("Active employment", { exact: true }) }).locator("strong")).toHaveText("1");
+  await expect(page.getByText("Total staff").locator("..")).toContainText("3");
+  await expect(page.locator(".staff-reports-summary article").filter({ has: page.getByText("Active employment", { exact: true }) }).locator("strong")).toHaveText("2");
   await expect(page.locator(".staff-reports-summary article").filter({ has: page.getByText("Inactive employment", { exact: true }) }).locator("strong")).toHaveText("1");
-  await expect(page.locator(".staff-reports-summary article").filter({ has: page.getByText("Profile incomplete", { exact: true }) }).locator("strong")).toHaveText("1");
-  await expect(page.locator(".staff-reports-summary article").filter({ has: page.getByText("Login disabled", { exact: true }) }).locator("strong")).toHaveText("1");
+  await expect(page.locator(".staff-reports-summary article").filter({ has: page.getByText("Profile incomplete", { exact: true }) }).locator("strong")).toHaveText("2");
+  await expect(page.locator(".staff-reports-summary article").filter({ has: page.getByText("Login disabled", { exact: true }) }).locator("strong")).toHaveText("2");
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export staff report" }).click();
   const download = await downloadPromise;
@@ -1621,8 +1627,10 @@ test("staff reports show school-scoped employment readiness and export approved 
   expect(csv.startsWith("\uFEFF")).toBe(true);
   expect(csv).toContain("EMP-ACTIVE");
   expect(csv).toContain("EMP-INACTIVE");
+  expect(csv).toContain("EMP-LEGACY");
   expect(csv).not.toContain("9876543215");
   expect(csv).not.toContain("9876543216");
+  expect(csv).not.toContain("9876543217");
 });
 
 test("staff reports show monthly attendance and leave summaries only with matching permissions", async ({ page }) => {
