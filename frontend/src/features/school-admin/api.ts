@@ -738,3 +738,35 @@ export function getStaffQualificationsReport(params: { recordType?: "all" | "qua
   const suffix = query.toString();
   return api<{ report: StaffQualificationReportPage }>(`/school/staff/qualifications-report${suffix ? `?${suffix}` : ""}`, { signal });
 }
+
+
+export type StaffExperienceReportRow = {
+  record_id:number;
+  staff_principal_id:number;
+  employee_code:string;
+  staff_name:string;
+  designation:string;
+  employment_status:"active"|"inactive"|string;
+  employer_name:string;
+  previous_designation:string;
+  employment_type:"permanent"|"contract"|"part_time"|"temporary"|"internship"|"other";
+  start_date:string;
+  end_date?:string;
+  is_current:boolean;
+};
+export type StaffExperienceReportPage = {
+  rows:StaffExperienceReportRow[];
+  counts:Array<{employment_type:string;is_current:boolean;count:number}>;
+  limit:number;
+  offset:number;
+  total:number;
+};
+export function getStaffExperienceReport(params:{employmentType?:StaffExperienceReportRow["employment_type"];currentOnly?:boolean;limit?:number;offset?:number}={},signal?:AbortSignal){
+  const query=new URLSearchParams();
+  if(params.employmentType)query.set("employment_type",params.employmentType);
+  if(params.currentOnly)query.set("current_only","true");
+  if(params.limit!==undefined)query.set("limit",String(params.limit));
+  if(params.offset!==undefined)query.set("offset",String(params.offset));
+  const suffix=query.toString();
+  return api<{report:StaffExperienceReportPage}>(`/school/staff/experience-report${suffix?"?"+suffix:""}`,{signal});
+}
