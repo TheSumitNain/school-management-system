@@ -88,8 +88,9 @@ func validateStaffSubstitutionDateRange(fromDate, toDate string) error {
 }
 
 func (r *AcademicRepository) ListStaffSubstitutions(ctx context.Context,actorID,schoolID int64,fromDate,toDate string,staffID int64)([]StaffSubstitution,error) {
-	if r==nil||r.db==nil||actorID<=0||schoolID<=0||staffID<0 { return nil,ErrInvalidStaffSubstitution }
+	if r==nil||r.db==nil||actorID<=0||schoolID<=0 { return nil,ErrInvalidStaffSubstitution }
 	if err:=staffSubstitutionAuthorize(ctx,r.db,actorID,schoolID,"staff.substitutions.read");err!=nil { return nil,err }
+	if staffID<0 { return nil,ErrInvalidStaffSubstitution }
 	if err:=validateStaffSubstitutionDateRange(fromDate,toDate);err!=nil { return nil,err }
 	rows,err:=r.db.Query(ctx,`SELECT `+staffSubstitutionSelect+`
 		FROM staff_substitutions ss
@@ -151,10 +152,11 @@ func (r *AcademicRepository) CreateStaffSubstitution(ctx context.Context,actorID
 }
 
 func (r *AcademicRepository) CancelStaffSubstitution(ctx context.Context,actorID,schoolID,id int64)error {
-	if r==nil||r.db==nil||actorID<=0||schoolID<=0||id<=0{return ErrInvalidStaffSubstitution}
+	if r==nil||r.db==nil||actorID<=0||schoolID<=0{return ErrInvalidStaffSubstitution}
 	tx,err:=r.db.Begin(ctx);if err!=nil{return fmt.Errorf("begin substitution cancellation: %w",err)}
 	defer func(){_=tx.Rollback(ctx)}()
 	if err:=staffSubstitutionAuthorize(ctx,tx,actorID,schoolID,"staff.substitutions.manage");err!=nil{return err}
+	if id<=0{return ErrInvalidStaffSubstitution}
 	tag,err:=tx.Exec(ctx,`UPDATE staff_substitutions SET status='cancelled',cancelled_by_principal_id=$3,cancelled_at=NOW(),updated_at=NOW()
 		WHERE id=$1 AND school_id=$2 AND status='active'`,id,schoolID,actorID)
 	if err!=nil{return substitutionWriteError(err)}
