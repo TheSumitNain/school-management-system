@@ -2168,3 +2168,11 @@ This update supersedes older status bullets that listed the following database-b
 - PostgreSQL integration now asserts all School Admin staff/timetable permissions: attendance read/mark/update/correction, leave read/type/request/decision, holiday read/manage, substitution read/manage and timetable read/manage.
 - Backend CI [45139881590](https://github.com/TheSumitNain/school-management-system/actions/runs/45139881590) **PASS** on `ecefdaf4`: ephemeral migrations, full Go/PostgreSQL integration suite and `go vet`.
 - No persistent DB change.
+
+
+## 2026-11-23 — Staff attendance target authorization order
+
+- Attendance marking now checks the live mark/correct-past permission inside the write transaction before resolving the target staff profile, preventing unauthorized target-existence disclosure.
+- Added a PostgreSQL integration regression test for an unprivileged actor attempting to mark a non-existent staff principal.
+- Backend CI [45140616380](https://github.com/TheSumitNain/school-management-system/actions/runs/45140616380) **PASS** on `cbb64f3f`: ephemeral migrations, Go/PostgreSQL integration suite and `go vet`.
+- No persistent schema or data changes.
