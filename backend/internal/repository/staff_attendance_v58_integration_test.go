@@ -141,4 +141,19 @@ func TestStaffAttendanceMarkAuthorizesBeforeResolvingTargetPostgresIntegration(t
     if !errors.Is(err, ErrStaffAttendanceAccessDenied) {
         t.Fatalf("unauthorized attendance update error = %v, want ErrStaffAttendanceAccessDenied (record existence must not be disclosed)", err)
     }
+
+    // Invalid user-controlled fields must not reveal validation results to an
+    // actor who has no attendance-write permission.
+    _, err = NewStaffAttendanceRepository(pool).Mark(ctx, actorPrincipalID, schoolID, 0, date, "invalid", nil)
+    if !errors.Is(err, ErrStaffAttendanceAccessDenied) {
+        t.Fatalf("unauthorized mark with invalid fields error = %v, want access denied", err)
+    }
+    _, err = NewStaffAttendanceRepository(pool).Update(ctx, actorPrincipalID, schoolID, 0, "invalid", nil)
+    if !errors.Is(err, ErrStaffAttendanceAccessDenied) {
+        t.Fatalf("unauthorized update with invalid fields error = %v, want access denied", err)
+    }
+    _, err = NewStaffAttendanceRepository(pool).MarkBulk(ctx, actorPrincipalID, schoolID, nil, date, "invalid", nil)
+    if !errors.Is(err, ErrStaffAttendanceAccessDenied) {
+        t.Fatalf("unauthorized bulk mark with invalid fields error = %v, want access denied", err)
+    }
 }
