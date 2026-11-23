@@ -1956,3 +1956,13 @@ This update supersedes older status bullets that listed the following database-b
 - Added Staff Management Workload Report tab with school-wide weekly totals, busiest day, staff employment/login status, search and employment filtering, plus expandable daily breakdowns. It does not infer working days, availability, free periods or workload limits.
 - Backend checkpoint b858f1ad782ea254b8589fb5b474bdec9d90fd1: Backend CI [45017634124](https://github.com/TheSumitNain/school-management-system/actions/runs/45017634124) **PASS** (Go tests, PostgreSQL integration including Teacher self-only scope, and go vet). Frontend checkpoint a022ceb5be1e8c1f41bb2c70d84a35195b477d12: Frontend CI [45017345426](https://github.com/TheSumitNain/school-management-system/actions/runs/45017345426) **PASS** (TypeScript, production build and Playwright workload report acceptance).
 - No database migration or persistent database change was introduced.
+
+
+## Staff Management — substitution concurrency and completed-history hardening (2026-11-23)
+
+- Added V61 row-lock-first serialization: substitute creation locks its recurring timetable entry, then acquires the shared teacher/weekday/period advisory lock before conflict validation. This closes the concurrent substitution-vs-timetable-write race while preserving a consistent lock order.
+- Added V62 validation and row locking of canonical `auth_principals`; a disabled principal cannot be selected as a substitute even if the compatibility `users.status` value is stale.
+- Added V63 lifecycle correction: current/future active covers still block recurring schedule changes and weekly-slot reuse; past completed covers remain in history, permit later timetable edits, and continue to prevent hard deletion of their referenced timetable entry.
+- Expanded PostgreSQL integration coverage for past-cover schedule edits, retained history, canonical disabled-principal rejection and the V61/V62 database guards. Expanded Playwright acceptance to verify completed cover records remain visible without a cancellation action.
+- Code checkpoint `08c136d11a641e082db1f1be8b1d8ea82782058b`: Backend CI [45104388491](https://github.com/TheSumitNain/school-management-system/actions/runs/45104388491) **PASS** (all migrations applied to ephemeral PostgreSQL, full Go/PostgreSQL integration suite and `go vet`); Frontend CI [45104388370](https://github.com/TheSumitNain/school-management-system/actions/runs/45104388370) **PASS** (TypeScript, Vite production build and full Playwright suite: 75 passed).
+- Migrations V60–V63 were exercised only on ephemeral CI PostgreSQL. No migration was applied to the persistent local/user database; explicit approval and verified backup/restore remain mandatory before any such migration.
