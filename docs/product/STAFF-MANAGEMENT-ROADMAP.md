@@ -602,3 +602,10 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Directory filter layout coverage now checks mobile (390px), tablet (768px) and desktop (1280px), including overflow and a mobile filter interaction.
 - Verification is pending on the exact combined checkpoint: earlier frontend CI `7fa70e1` failed because a test reload discarded its mocked session; corrected same-page filter reset is committed. Keep frontend acceptance open until the corrected Playwright suite passes. Backend CI passed on the preceding checkpoint; rerun on the combined checkpoint is still required.
 - Documents remain explicitly deferred pending storage-service purchase and approval. Bulk import/profile-only onboarding remain blocked pending identity-schema design approval; no migration is authorized by this checkpoint.
+
+
+## 2026-11-23 implementation checkpoint — attendance export privacy
+
+- The Attendance workspace monthly export now omits free-text attendance remarks. It continues to include aggregate attendance counts/status, employee identifiers, approved leave dates/type and school holiday context; it does not include leave reasons.
+- Playwright fixture coverage includes unique private attendance-remark and leave-reason values and checks both are absent from the downloaded monthly CSV.
+- Commits: `9800956`, `bfc813e`, `41e92b7`, `a6e9684`. Fresh frontend and backend CI is still required for the latest branch head.
