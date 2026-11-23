@@ -566,3 +566,11 @@ Verification on branch `work`, commit `30270fe0927a6eb3f284d462ddd6dc2b4ca2959e`
 - Updated regression coverage for all affected attendance, records, leave and holiday actions, plus explicit unauthenticated availability-disclosure checks.
 - Backend CI [45142232011](https://github.com/TheSumitNain/school-management-system/actions/runs/45142232011) **PASS** on `36f278e5`: ephemeral PostgreSQL migrations, full Go/PostgreSQL integration suite and `go vet`.
 - No schema migration or persistent database change.
+
+
+## 58. Staff leave and holiday read-permission browser acceptance (2026-11-23)
+
+- Added a negative-permission Playwright scenario for a staff account with `staff.leave.manage_requests` and `staff.holidays.read`, but without `staff.leave.read`. It verifies that the holiday calendar remains available while Leave Requests, Applications and New Leave Request UI are absent, and that the browser makes no leave-request API calls.
+- The test fixture was aligned with the actual `/api/school/staff-leave/requests` route in commit `965e5d2`.
+- Frontend CI [45143798048](https://github.com/TheSumitNain/school-management-system/actions/runs/45143798048) **PASS** (production build and Playwright suite); Backend CI [45143798043](https://github.com/TheSumitNain/school-management-system/actions/runs/45143798043) **PASS** (ephemeral PostgreSQL migrations, Go/PostgreSQL integration suite and `go vet`).
+- No persistent database migration or data change. Staff Management remains subject to the consolidated final browser acceptance and remaining security review. Bulk Import and document upload remain deferred under their existing approval constraints.
