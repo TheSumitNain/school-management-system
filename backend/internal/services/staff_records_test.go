@@ -94,3 +94,72 @@ func TestStaffRecordsServiceValidatesExperienceReportFilters(t *testing.T) {
         if _,err:=svc.ListExperienceReport(context.Background(),1,2,filter);err!=ErrInvalidStaffRecord {t.Fatalf("filter %+v error=%v want=%v",filter,err,ErrInvalidStaffRecord)}
     }
 }
+
+func TestStaffRecordsServiceRejectsInvalidCertificationCalendarDates(t *testing.T) {
+	repo := &fakeStaffRecordsRepository{}
+	svc := NewStaffRecordsService(repo)
+	for _, value := range []string{"0000-01-01", "2026-2-01", "2026-02-30"} {
+		for _, update := range []bool{false, true} {
+			item := repository.StaffCertification{CertificateName: "Training", IssuingOrganization: "Board", IssueDate: value}
+			var err error
+			if update {
+				_, err = svc.UpdateCertification(context.Background(), 1, 2, 3, 4, item)
+			} else {
+				_, err = svc.CreateCertification(context.Background(), 1, 2, 3, item)
+			}
+			if err != ErrInvalidStaffRecord {
+				t.Fatalf("certification date %q update=%v error=%v want ErrInvalidStaffRecord", value, update, err)
+			}
+		}
+	}
+	if repo.calls != 0 {
+		t.Fatalf("invalid certification dates reached repository %d times", repo.calls)
+	}
+}
+
+func TestStaffRecordsServiceComparesYearOneCertificationDates(t *testing.T) {
+	repo := &fakeStaffRecordsRepository{}
+	svc := NewStaffRecordsService(repo)
+	item := repository.StaffCertification{
+		CertificateName: "Training", IssuingOrganization: "Board",
+		IssueDate: "0001-01-02", ExpiryDate: "0001-01-01",
+	}
+	if _, err := svc.CreateCertification(context.Background(), 1, 2, 3, item); err != ErrInvalidStaffRecord {
+		t.Fatalf("reversed year-one certification dates error=%v want ErrInvalidStaffRecord", err)
+	}
+	if repo.calls != 0 {
+		t.Fatalf("reversed year-one certification reached repository %d times", repo.calls)
+	}
+	item.ExpiryDate = "0001-01-03"
+	if _, err := svc.CreateCertification(context.Background(), 1, 2, 3, item); err != nil {
+		t.Fatalf("valid year-one certification dates: %v", err)
+	}
+	if repo.calls != 1 {
+		t.Fatalf("valid certification repository calls=%d want=1", repo.calls)
+	}
+}
+
+func TestStaffRecordsServiceRejectsInvalidExperienceCalendarDates(t *testing.T) {
+	repo := &fakeStaffRecordsRepository{}
+	svc := NewStaffRecordsService(repo)
+	for _, value := range []string{"0000-01-01", "2026-2-01", "2026-02-30"} {
+		for _, update := range []bool{false, true} {
+			item := repository.StaffExperience{
+				EmployerName: "School", Designation: "Teacher", EmploymentType: "permanent",
+				StartDate: value,
+			}
+			var err error
+			if update {
+				_, err = svc.UpdateExperience(context.Background(), 1, 2, 3, 4, item)
+			} else {
+				_, err = svc.CreateExperience(context.Background(), 1, 2, 3, item)
+			}
+			if err != ErrInvalidStaffRecord {
+				t.Fatalf("experience date %q update=%v error=%v want ErrInvalidStaffRecord", value, update, err)
+			}
+		}
+	}
+	if repo.calls != 0 {
+		t.Fatalf("invalid experience dates reached repository %d times", repo.calls)
+	}
+}
