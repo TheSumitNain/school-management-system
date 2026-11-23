@@ -1,3 +1,14 @@
+## Staff Management — qualifications & certifications report implementation (2026-11-23)
+
+- Added `GET /school/staff/qualifications-report`, a single school-scoped aggregate endpoint with record-type and verification-status filters, bounded pagination (default 50, maximum 200), counts by type/status, stable ordering and active-employment scope. School ID is derived from authenticated context.
+- Repository authorization independently checks active School Admin role, live `users.read` role grant and explicit DENY overrides. SQL joins records to staff profiles on both principal and school IDs. The report omits credential references, verification notes, contact details and document metadata.
+- Added the Reports UI with filters, current-page CSV export, loading/error/empty states and pagination. CSV uses the shared spreadsheet-formula-safe export helper.
+- Added service validation tests and PostgreSQL integration assertions for mixed record types, same-school staff identity, status/type filters, pagination, counts and cross-school denial. Frontend Playwright acceptance covers single aggregate request, filters and safe export.
+- Latest CI is running/pending on the implementation checkpoint; do not mark complete until both frontend Playwright and backend PostgreSQL integration/go vet pass. No schema migration was added or run. Document upload/download remains deferred until a storage service is purchased and approved.
+- Code checkpoints: backend repository `4119da2`; service `052adaa`; handler `e09dc8e`; route `e25f0ba`; repository integration `b38028e`; frontend API `7ab2e37`; UI `b400f44`; Playwright `9ee57cc` / BOM correction `788fb13`.
+
+---
+
 ## Staff Management — Reports CI and qualification-report contract (2026-11-23)
 
 - Frontend CI **PASS** — [run 45111164968](https://github.com/TheSumitNain/school-management-system/actions/runs/45111164968): TypeScript/Vite production build and the complete Playwright browser acceptance suite passed on checkpoint `ee1744df0f1ebe41ed1c987fceb866118cc9b9ff`.
