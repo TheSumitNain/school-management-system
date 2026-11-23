@@ -2184,3 +2184,10 @@ This update supersedes older status bullets that listed the following database-b
 - Added PostgreSQL integration regression coverage for unauthorized attendance mark and update target enumeration.
 - Backend CI [45141655488](https://github.com/TheSumitNain/school-management-system/actions/runs/45141655488) **PASS** on code checkpoint `f340fbe0`: ephemeral migrations, Go/PostgreSQL integration and `go vet`.
 - No persistent schema or data changes.
+
+
+## 2026-11-23 — Staff handler authentication ordering
+
+- Attendance, staff-record and leave/holiday handlers now authenticate the staff principal/school context before returning service-unavailable responses. Unauthenticated callers consistently receive 401 without learning internal dependency availability; authenticated nil-service cases retain 503.
+- Added regression tests across affected handlers. Backend CI [45142232011](https://github.com/TheSumitNain/school-management-system/actions/runs/45142232011) **PASS** on `36f278e5`: migrations, Go/PostgreSQL integration and `go vet`.
+- No persistent schema or data changes.
