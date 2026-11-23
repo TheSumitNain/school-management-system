@@ -139,7 +139,7 @@ async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, un
         teacher_principal_id: item.principal_id,
         teacher_name: item.full_name ?? item.username,
         employee_code: item.employee_code ?? "EMP",
-        designation: item.principal_id === 501 ? '\t=HYPERLINK("x")' : item.designation ?? "Teacher",
+        designation: item.principal_id === 501 ? '   =HYPERLINK("x")' : item.designation ?? "Teacher",
         employment_status: item.employment_status ?? "active",
         login_status: item.status ?? "active",
         day_of_week: item.principal_id === 501 ? 1 : 0,
@@ -1546,7 +1546,7 @@ test("school-wide workload report shows scheduled periods without inferring avai
   expect(csv.startsWith("\uFEFF")).toBe(true);
   expect(csv).toContain("Original Teacher");
   expect(csv).not.toContain("Inactive Teacher");
-  expect(csv).toContain(`'\t=HYPERLINK(""x"")`);
+  expect(csv).toContain(`'   =HYPERLINK(""x"")`);
 });
 
 
