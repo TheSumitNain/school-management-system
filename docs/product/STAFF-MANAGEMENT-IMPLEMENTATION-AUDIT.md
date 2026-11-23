@@ -479,3 +479,11 @@ Verification on branch `work`, commit `30270fe0927a6eb3f284d462ddd6dc2b4ca2959e`
 - The handlers fail closed with HTTP 503 rather than panicking when their service is unavailable; normal authentication, live authorization and business validation remain in force when dependencies are present.
 - Backend CI [45134503749](https://github.com/TheSumitNain/school-management-system/actions/runs/45134503749) **PASS** on `afcd762e`: ephemeral PostgreSQL initialization and all migrations, Go tests including PostgreSQL integration, and `go vet`.
 - No migration or persistent database change was made. Staff document upload remains deferred pending external storage selection/purchase and explicit approval. Bulk Import remains blocked on identity-schema review and approval.
+
+
+## 48. Staff leave handler response reliability (2026-11-23)
+
+- Consolidated the leave/holiday handler's authentication-context failure path so it emits one HTTP 401 JSON response rather than writing a second response after the shared actor helper has already handled the failure.
+- Strengthened nil-receiver and nil-service regression tests to parse the response as JSON and verify the expected unavailable message for all nine leave/holiday actions.
+- Backend CI [45135360996](https://github.com/TheSumitNain/school-management-system/actions/runs/45135360996) **PASS** on `5f3935bb`: ephemeral PostgreSQL initialization and all migrations, Go tests including PostgreSQL integration, and `go vet`.
+- No schema migration or persistent database change.
