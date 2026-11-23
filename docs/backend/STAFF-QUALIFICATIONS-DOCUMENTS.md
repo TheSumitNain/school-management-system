@@ -159,3 +159,22 @@ Frontend:
 - No document upload/download code was added.
 - No Academic, Student Management or Settings files were changed.
 - No qualification-based assignment blocking was introduced.
+
+
+### 3.2 School-wide experience history report (implemented; CI verification pending)
+
+The Staff Reports workspace uses one aggregate read endpoint; it does not call the individual staff profile experience endpoint once per employee.
+
+| Method | Route | Permission | Purpose |
+|---|---|---|---|
+| GET | `/school/staff/experience-report` | `users.read` | Paginated school-scoped experience history |
+
+Contract:
+- School identity is derived exclusively from authenticated context. The query accepts no school identifier.
+- Optional `employment_type` filter supports the V57 controlled employment types; `current_only=true` limits rows to current roles. Pagination defaults to 50 rows and is bounded to 200.
+- The report includes active and inactive employees because historical employment records must remain visible after an employee leaves the school.
+- Rows include employee code/name, current designation and employment status, employer, previous designation, employment type, start/end dates and current-role flag. Free-text descriptions are excluded from both API and CSV.
+- Count metadata is grouped by employment type and current/previous role. The current-page CSV contains only the approved report fields and uses spreadsheet-formula protection.
+- Repository authorization independently checks the active same-school School Admin, live `users.read` role grant and explicit DENY override. Experience and staff-profile joins are tenant constrained. PostgreSQL integration covers row identity, filters, pagination contract and cross-school denial.
+- No migration or persistent database change was introduced.
+
