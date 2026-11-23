@@ -78,8 +78,24 @@ func(r *StaffLeaveRepository) SaveType(ctx context.Context,actor,school,id int64
  if _,e=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata) VALUES($1,$2,$3,'staff_leave_type',$4,'success',jsonb_build_object('is_active',$5::boolean))`,actor,school,action,fmt.Sprint(x.ID),x.IsActive);e!=nil{return nil,e}
  if e=tx.Commit(ctx);e!=nil{return nil,e};return &x,nil
 }
+func validateStaffLeaveRequestDateFilters(onDate,fromDate,toDate string) error {
+ parse := func(value string) (time.Time,error) {
+  if value=="" { return time.Time{},nil }
+  parsed,err:=time.Parse("2006-01-02",value)
+  if err!=nil || parsed.Format("2006-01-02")!=value { return time.Time{},ErrInvalidStaffLeave }
+  return parsed,nil
+ }
+ if (fromDate=="") != (toDate=="") { return ErrInvalidStaffLeave }
+ if _,err:=parse(onDate);err!=nil{return err}
+ from,err:=parse(fromDate);if err!=nil{return err}
+ to,err:=parse(toDate);if err!=nil{return err}
+ if fromDate!="" && to.Before(from) { return ErrInvalidStaffLeave }
+ return nil
+}
+
 func(r *StaffLeaveRepository) ListRequests(ctx context.Context,actor,school int64,status string,staffID int64,onDate,fromDate,toDate string)([]StaffLeaveRequest,error){
  if r==nil||r.db==nil{return nil,ErrInvalidStaffLeave};if authorizeGuardian(ctx,r.db,actor,school,"staff.leave.read")!=nil{return nil,ErrStaffLeaveAccessDenied}
+ if err:=validateStaffLeaveRequestDateFilters(onDate,fromDate,toDate);err!=nil{return nil,err}
  rows,e:=r.db.Query(ctx,`SELECT q.id,q.staff_principal_id,sp.employee_code,sp.full_name,q.leave_type_id,t.name,q.start_date::text,q.end_date::text,q.duration_type,q.half_day_session,q.reason,q.status,q.decision_comment,u.username,q.decided_at,q.created_at FROM staff_leave_requests q JOIN staff_profiles sp ON sp.principal_id=q.staff_principal_id AND sp.school_id=q.school_id JOIN staff_leave_types t ON t.id=q.leave_type_id AND t.school_id=q.school_id LEFT JOIN users u ON u.principal_id=q.decided_by_principal_id AND u.school_id=q.school_id WHERE q.school_id=$1 AND ($2='' OR q.status=$2) AND ($3=0 OR q.staff_principal_id=$3) AND (NULLIF($4,'') IS NULL OR daterange(q.start_date,q.end_date,'[]') @> NULLIF($4,'')::date) AND (NULLIF($5,'') IS NULL OR daterange(q.start_date,q.end_date,'[]') && daterange(NULLIF($5,'')::date,NULLIF($6,'')::date,'[]')) ORDER BY q.start_date DESC,q.id DESC LIMIT 1000`,school,status,staffID,onDate,fromDate,toDate);if e!=nil{return nil,e};defer rows.Close()
  out:=[]StaffLeaveRequest{};for rows.Next(){var x StaffLeaveRequest;if e=rows.Scan(&x.ID,&x.StaffPrincipalID,&x.EmployeeCode,&x.StaffName,&x.LeaveTypeID,&x.LeaveTypeName,&x.StartDate,&x.EndDate,&x.DurationType,&x.HalfDaySession,&x.Reason,&x.Status,&x.DecisionComment,&x.DecidedByUsername,&x.DecidedAt,&x.CreatedAt);e!=nil{return nil,e};out=append(out,x)};return out,rows.Err()
 }
