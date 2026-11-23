@@ -452,7 +452,7 @@ export function StaffManagementPage({ permissions }: Props) {
             <article><span>Login disabled</span><strong>{staff.filter(item => item.status !== "active").length}</strong></article>
           </div>
           {staff.length === 0 ? <p className="table-message">No staff records are available for this school.</p> : <div className="table-scroll"><table><thead><tr><th>Employee</th><th>Employee code</th><th>Designation</th><th>Employment</th><th>Login account</th><th>Profile</th></tr></thead><tbody>{staff.map(item => <tr key={item.principal_id}><td>{item.full_name || "Profile incomplete"}</td><td>{item.employee_code || "—"}</td><td>{item.designation || "—"}</td><td>{item.employment_status || "Not set"}</td><td>{item.status === "active" ? "Enabled" : "Disabled"}</td><td>{item.profile_complete === false ? "Incomplete" : "Complete"}</td></tr>)}</tbody></table></div>}
-          <p className="staff-reports-note">This report reflects current staff records only. It does not include qualifications, attendance, leave balances or payroll calculations. Use their dedicated workspaces for separately permission-controlled reports.</p>
+          <p className="staff-reports-note">This summary covers current staff records only. Attendance and leave reports appear below when their separate read permissions are available. Qualifications, leave balances and payroll calculations are not included.</p>
         </>}
       </section>}
       {activeTab === "reports" && permissions.includes("users.read") && <StaffOperationalReportsWorkspace permissions={permissions}/>}
