@@ -72,9 +72,25 @@ func staffSubstitutionAuthorize(ctx context.Context,db repositoryDB,actorID,scho
 	return err
 }
 
+func validateStaffSubstitutionDateRange(fromDate, toDate string) error {
+	if fromDate == "" || toDate == "" {
+		return ErrInvalidStaffSubstitution
+	}
+	from, err := time.Parse("2006-01-02", fromDate)
+	if err != nil || from.Format("2006-01-02") != fromDate {
+		return ErrInvalidStaffSubstitution
+	}
+	to, err := time.Parse("2006-01-02", toDate)
+	if err != nil || to.Format("2006-01-02") != toDate || to.Before(from) {
+		return ErrInvalidStaffSubstitution
+	}
+	return nil
+}
+
 func (r *AcademicRepository) ListStaffSubstitutions(ctx context.Context,actorID,schoolID int64,fromDate,toDate string,staffID int64)([]StaffSubstitution,error) {
 	if r==nil||r.db==nil||actorID<=0||schoolID<=0||staffID<0 { return nil,ErrInvalidStaffSubstitution }
 	if err:=staffSubstitutionAuthorize(ctx,r.db,actorID,schoolID,"staff.substitutions.read");err!=nil { return nil,err }
+	if err:=validateStaffSubstitutionDateRange(fromDate,toDate);err!=nil { return nil,err }
 	rows,err:=r.db.Query(ctx,`SELECT `+staffSubstitutionSelect+`
 		FROM staff_substitutions ss
 		WHERE ss.school_id=$1 AND ss.cover_date BETWEEN $2::date AND $3::date
@@ -99,7 +115,8 @@ func (r *AcademicRepository) CreateStaffSubstitution(ctx context.Context,actorID
 	if r==nil||r.db==nil||actorID<=0||schoolID<=0||timetableEntryID<=0||originalTeacherID<=0||substituteTeacherID<=0||originalTeacherID==substituteTeacherID{return nil,ErrInvalidStaffSubstitution}
 	reason=strings.TrimSpace(reason)
 	if len([]rune(reason))==0||len([]rune(reason))>1000{return nil,ErrInvalidStaffSubstitution}
-	if _,err:=time.Parse("2006-01-02",coverDate);err!=nil{return nil,ErrInvalidStaffSubstitution}
+	parsedCoverDate,err:=time.Parse("2006-01-02",coverDate)
+	if err!=nil||parsedCoverDate.Format("2006-01-02")!=coverDate{return nil,ErrInvalidStaffSubstitution}
 	tx,err:=r.db.Begin(ctx);if err!=nil{return nil,fmt.Errorf("begin staff substitution: %w",err)}
 	defer func(){_=tx.Rollback(ctx)}()
 	if err:=staffSubstitutionAuthorize(ctx,tx,actorID,schoolID,"staff.substitutions.manage");err!=nil{return nil,err}
