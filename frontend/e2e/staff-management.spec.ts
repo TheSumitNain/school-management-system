@@ -1834,6 +1834,13 @@ test("staff ID cards select only complete active profiles and expose approved pr
   await expect(page.getByText("9876543210")).toHaveCount(0);
   await page.getByLabel("Card template").selectOption("modern");
   await expect(page.locator(".staff-id-card--modern")).toHaveCount(1);
+  await page.setViewportSize({width:390,height:844});
+  await expect.poll(() => page.locator(".staff-id-selection").evaluate(element => getComputedStyle(element).gridTemplateColumns.trim().split(/\\s+/).length)).toBe(1);
+  await expect(page.locator(".staff-id-card")).toBeVisible();
+  await page.setViewportSize({width:768,height:900});
+  await expect.poll(() => page.locator(".staff-id-selection").evaluate(element => getComputedStyle(element).gridTemplateColumns.trim().split(/\\s+/).length)).toBe(2);
+  await page.setViewportSize({width:1280,height:900});
+  await expect.poll(() => page.locator(".staff-id-selection").evaluate(element => getComputedStyle(element).gridTemplateColumns.trim().split(/\\s+/).length)).toBe(3);
   await page.evaluate(() => {
     Object.defineProperty(window,"__staffPrintCalled",{value:false,writable:true,configurable:true});
     window.print = () => { (window as Window & {__staffPrintCalled?:boolean}).__staffPrintCalled = true; };
