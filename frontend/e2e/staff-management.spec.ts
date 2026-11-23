@@ -1091,6 +1091,9 @@ test("staff profile history is permission-gated and renders staff audit events",
   await signInAndOpenStaff(page, rows, undefined, ["users.read", "users.create", "users.update", "school.audit.read"]);
   await page.route("**/api/school/staff/512/audit-events", async route => {
     await route.fulfill({ json: { events: [
+      { id: 12, action: "staff.substitution.cancelled", resource_type: "staff_substitution", outcome: "success", actor_username: "school.admin", metadata: {}, created_at: "2026-11-22T11:00:00.000Z" },
+      { id: 11, action: "staff.substitution.assigned", resource_type: "staff_substitution", outcome: "success", actor_username: "school.admin", metadata: {}, created_at: "2026-11-22T10:00:00.000Z" },
+      { id: 10, action: "staff.leave.approved", resource_type: "staff_leave_request", outcome: "success", actor_username: "school.admin", metadata: {}, created_at: "2026-11-21T10:00:00.000Z" },
       { id: 9, action: "staff.profile.updated", resource_type: "staff_user", outcome: "success", actor_username: "school.admin", metadata: { employment_status: "active" }, created_at: "2026-11-20T10:00:00.000Z" },
       { id: 8, action: "staff.account.created", resource_type: "staff_user", outcome: "success", actor_username: "school.admin", metadata: { employee_code: "EMP-HIS-01" }, created_at: "2026-04-01T09:00:00.000Z" },
     ] } });
@@ -1101,6 +1104,10 @@ test("staff profile history is permission-gated and renders staff audit events",
   await dialog.getByRole("button", { name: "History & Activity" }).click();
   await expect(dialog.getByText("Profile updated")).toBeVisible();
   await expect(dialog.getByText("Account created")).toBeVisible();
+  await expect(dialog.getByText("Leave approved")).toBeVisible();
+  await expect(dialog.getByText("Class substitution assigned")).toBeVisible();
+  await expect(dialog.getByText("Class substitution cancelled")).toBeVisible();
+  await expect(dialog.getByText(/attendance, leave and substitution events/)).toBeVisible();
   await expect(dialog.getByText("school.admin").first()).toBeVisible();
 });
 
