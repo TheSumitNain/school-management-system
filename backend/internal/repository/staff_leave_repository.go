@@ -82,7 +82,7 @@ func validateStaffLeaveRequestDateFilters(onDate,fromDate,toDate string) error {
  parse := func(value string) (time.Time,error) {
   if value=="" { return time.Time{},nil }
   parsed,err:=time.Parse("2006-01-02",value)
-  if err!=nil || parsed.Format("2006-01-02")!=value { return time.Time{},ErrInvalidStaffLeave }
+  if err!=nil || parsed.Year() < 1 || parsed.Format("2006-01-02")!=value { return time.Time{},ErrInvalidStaffLeave }
   return parsed,nil
  }
  if (fromDate=="") != (toDate=="") { return ErrInvalidStaffLeave }
