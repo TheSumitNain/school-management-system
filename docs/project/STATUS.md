@@ -2245,3 +2245,9 @@ This update supersedes older status bullets that listed the following database-b
 - Added mobile/tablet/desktop browser acceptance for Substitutions and the school-wide Workload Report; retained read-only attendance and substitution permission regression coverage.
 - Frontend CI [45171132153](https://github.com/TheSumitNain/school-management-system/actions/runs/45171132153) **PASS**; Backend CI [45172378554](https://github.com/TheSumitNain/school-management-system/actions/runs/45172378554) **PASS** (ephemeral PostgreSQL migrations, Go/PostgreSQL integration and `go vet`) on `617c235e`.
 - No persistent schema or data changes. Profile-only onboarding/Bulk Import remain blocked pending identity-schema approval; staff document upload remains deferred until external storage is selected/purchased and explicitly approved. Final Staff Management acceptance is still in progress.
+
+## 2026-11-23 — Teacher profile timetable responsive acceptance
+
+- Added 390px, 768px and 1280px browser acceptance for the teacher-specific Workload & Timetable profile tab, including no page-level horizontal overflow and contained scrolling for both timetable tables.
+- Frontend CI [45172972979](https://github.com/TheSumitNain/school-management-system/actions/runs/45172972979) **PASS**; Backend CI [45172973009](https://github.com/TheSumitNain/school-management-system/actions/runs/45172973009) **PASS** (ephemeral PostgreSQL migrations, Go/PostgreSQL integration and `go vet`) on `93da54e6`.
+- No persistent DB changes. Final Staff Management scope review remains open for schema-bound profile fields and approved deferrals.
