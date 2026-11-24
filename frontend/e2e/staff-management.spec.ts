@@ -611,6 +611,27 @@ test("staff creation uses the shared IST date picker and clears the credential h
   await handoff.getByRole("button", { name: "Copy credentials" }).click();
   await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain("Temporary password: E2E-Strong-Password-2026");
   await expect(handoff).toHaveCount(0);
+
+  // A second successful creation can explicitly defer sharing; the one-time
+  // password handoff must be cleared just as it is after a successful copy.
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Add staff" }).click();
+  const secondDialog = page.getByRole("dialog", { name: "Add employee" });
+  await secondDialog.getByLabel("Full name").fill("Teacher Two");
+  await secondDialog.getByLabel("Employee code").fill("EMP-002");
+  await secondDialog.getByLabel("Mobile number").fill("9876543212");
+  await secondDialog.getByRole("button", { name: "Continue" }).click();
+  await secondDialog.getByLabel("Designation").fill("Science Teacher");
+  await secondDialog.getByRole("button", { name: "Continue" }).click();
+  await secondDialog.getByLabel("Login username").fill("teacher.two");
+  await secondDialog.getByLabel("Initial password").fill("E2E-Strong-Password-2027");
+  await secondDialog.getByRole("button", { name: "Continue" }).click();
+  await secondDialog.getByRole("button", { name: "Create employee" }).click();
+  await expect.poll(() => created.length).toBe(2);
+  const deferredHandoff = page.getByRole("dialog", { name: "Share staff login credentials" });
+  await expect(deferredHandoff).toBeVisible();
+  await deferredHandoff.getByRole("button", { name: "Do this later" }).click();
+  await expect(deferredHandoff).toHaveCount(0);
   await expect(page.locator('input[type="date"]')).toHaveCount(0);
 });
 
