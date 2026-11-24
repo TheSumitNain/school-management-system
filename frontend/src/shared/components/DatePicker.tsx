@@ -54,8 +54,10 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dayRefs = useRef(new Map<string, HTMLButtonElement>());
   const yearRefs = useRef(new Map<number, HTMLButtonElement>());
+  const monthRefs = useRef(new Map<number, HTMLButtonElement>());
   const shouldFocusActiveDate = useRef(false);
   const shouldFocusActiveYear = useRef(false);
+  const shouldFocusActiveMonth = useRef(false);
   const shouldRestoreTriggerFocus = useRef(false);
   const gridId = useId();
   const [open, setOpen] = useState(false);
@@ -83,6 +85,10 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
     if (shouldFocusActiveYear.current) {
       yearRefs.current.get(year)?.focus();
       shouldFocusActiveYear.current = false;
+    }
+    if (shouldFocusActiveMonth.current) {
+      monthRefs.current.get(visibleMonth.getMonth())?.focus();
+      shouldFocusActiveMonth.current = false;
     }
     if (shouldFocusActiveDate.current) {
       dayRefs.current.get(activeDate)?.focus();
@@ -212,8 +218,8 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
               <>
                 <button type="button" onClick={() => changeMonth(-1)} aria-label="Previous month" disabled={!monthHasAvailableDate(addMonths(visibleMonth, -1), min, max)}><ChevronLeft size={17}/></button>
                 <div className="app-date-heading" id={gridId}>
-                  <button type="button" className="app-date-view-button" onClick={() => setView("months")} aria-label="Choose month">{monthLabel}</button>
-                  <button type="button" className="app-date-view-button" onClick={() => setView("years")} aria-label="Choose year">{year}</button>
+                  <button type="button" className="app-date-view-button" onClick={() => { setView("months"); shouldFocusActiveMonth.current = true; }} aria-label="Choose month">{monthLabel}</button>
+                  <button type="button" className="app-date-view-button" onClick={() => { setView("years"); shouldFocusActiveYear.current = true; }} aria-label="Choose year">{year}</button>
                 </div>
                 <button type="button" onClick={() => changeMonth(1)} aria-label="Next month" disabled={!monthHasAvailableDate(addMonths(visibleMonth, 1), min, max)}><ChevronRight size={17}/></button>
               </>
@@ -221,7 +227,7 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
             {view === "months" && (
               <>
                 <button type="button" onClick={() => changeYear(year - 1)} aria-label="Previous year" disabled={!yearHasAvailableDate(year - 1, min, max)}><ChevronLeft size={17}/></button>
-                <button type="button" className="app-date-view-button" onClick={() => setView("years")} aria-label="Choose year">{year}</button>
+                <button type="button" className="app-date-view-button" onClick={() => { setView("years"); shouldFocusActiveYear.current = true; }} aria-label="Choose year">{year}</button>
                 <button type="button" onClick={() => changeYear(year + 1)} aria-label="Next year" disabled={!yearHasAvailableDate(year + 1, min, max)}><ChevronRight size={17}/></button>
               </>
             )}
@@ -273,7 +279,7 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
               {Array.from({ length: 12 }, (_, monthIndex) => {
                 const monthDate = new Date(year, monthIndex, 1);
                 const unavailable = !monthHasAvailableDate(monthDate, min, max);
-                return <button key={monthIndex} type="button" className="app-date-choice" disabled={unavailable} aria-pressed={monthIndex === visibleMonth.getMonth()} onClick={() => {
+                return <button key={monthIndex} ref={element => { if (element) monthRefs.current.set(monthIndex, element); else monthRefs.current.delete(monthIndex); }} type="button" className="app-date-choice" disabled={unavailable} aria-pressed={monthIndex === visibleMonth.getMonth()} onClick={() => {
                   const nextMonth = new Date(year, monthIndex, 1);
                   const nextDate = clampToBounds(withDayInMonth(nextMonth, fromISO(activeDate)?.getDate() ?? 1), min, max);
                   setVisibleMonth(startOfMonth(nextDate));

@@ -820,11 +820,13 @@ test("staff creation uses the shared IST date picker and clears the credential h
   const calendar = dialog.getByRole("dialog", { name: "Choose joining date" });
   await expect(calendar.locator(".app-date-day[tabindex='0']")).toBeFocused();
   await calendar.getByRole("button", { name: "Choose year" }).click();
+  await expect(calendar.locator(".app-date-year-grid button[aria-pressed='true']")).toBeFocused();
   await expect(calendar.locator(".app-date-year-grid button", { hasText: "2028" })).toBeDisabled();
   await calendar.locator(".app-date-year-grid button[aria-pressed='true']").click();
   await calendar.locator(".app-date-day[tabindex='0']").press("ArrowRight");
   await expect(calendar.locator(".app-date-day[tabindex='0']")).toBeFocused();
   await calendar.getByRole("button", { name: "Choose month" }).click();
+  await expect(calendar.locator(".app-date-month-grid button[aria-pressed='true']")).toBeFocused();
   await calendar.locator(".app-date-month-grid button[aria-pressed='true']").click();
   await expect(calendar.locator(".app-date-day[tabindex='0']")).toBeFocused();
   await calendar.getByRole("button", { name: "Choose year" }).click();
