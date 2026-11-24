@@ -2102,6 +2102,8 @@ test("staff academic assignment report explains missing current academic year", 
   await expect(page.getByText("Subject assignments")).toHaveCount(0);
   await expect(page.getByText("Class-in-charge assignments")).toHaveCount(0);
   await expect(page.getByText("No active academic assignments were found for this academic year.")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Export assignments CSV" })).toBeDisabled();
+  await expect(page.locator(".staff-operational-report-table-wrap")).toHaveCount(0);
 });
 
 test("staff reports do not request attendance or leave data without their read permissions", async ({ page }) => {
