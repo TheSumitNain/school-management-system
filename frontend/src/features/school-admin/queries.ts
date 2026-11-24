@@ -15,11 +15,12 @@ export const schoolAdminQueryKeys = {
   staff: () => [...schoolAdminQueryKeys.all, "staff"] as const,
 };
 
-export function useSchoolStaffQuery() {
+export function useSchoolStaffQuery(enabled = true) {
   return useQuery({
     queryKey: schoolAdminQueryKeys.staff(),
     queryFn: ({ signal }) => getSchoolStaff(signal),
     staleTime: 30_000,
+    enabled,
   });
 }
 
