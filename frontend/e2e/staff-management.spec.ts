@@ -2480,7 +2480,9 @@ test("staff ID cards select complete active employees regardless of login status
   await expect(page.locator(".staff-workspace-tabs")).toHaveCSS("visibility","hidden");
   await expect(preview).toHaveCSS("visibility","visible");
   await expect(preview).toHaveCSS("display","grid");
-  await expect(page.locator(".staff-id-card")).toHaveCSS("box-sizing","border-box");
+  await expect(page.locator(".staff-id-card")).toHaveCount(2);
+  await expect(page.locator(".staff-id-card").nth(0)).toHaveCSS("box-sizing","border-box");
+  await expect(page.locator(".staff-id-card").nth(1)).toHaveCSS("box-sizing","border-box");
   await expect.poll(() => page.locator(".staff-id-card").evaluate(element => Number.parseFloat(getComputedStyle(element).width))).toBeGreaterThan(321);
   await page.emulateMedia({media:"screen"});
   await page.getByRole("button",{name:"Clear selection"}).click();
