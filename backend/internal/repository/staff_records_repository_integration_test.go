@@ -186,6 +186,80 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
     bulkCount, err := attendanceRepo.MarkBulk(ctx, actorID, schoolID, []int64{secondStaff.PrincipalID}, today, "present", nil)
     if err != nil || bulkCount != 1 { t.Fatalf("bulk attendance success count=%d err=%v", bulkCount, err) }
 
+    // A failed audit insert must roll back the attendance row in the same
+    // transaction, for both individual and bulk writes.
+    singleFailureDate := today.AddDate(0, 0, -2)
+    if _, err := tx.Exec(ctx, `
+        CREATE OR REPLACE FUNCTION public.test_staff_attendance_audit_failure()
+        RETURNS trigger LANGUAGE plpgsql AS $
+        BEGIN
+            IF NEW.action = 'school.staff_attendance.marked'
+               AND NEW.metadata->>'attendance_date' = '${singleFailureDate.Format("2006-01-02")}' THEN
+                RAISE EXCEPTION 'forced staff attendance audit failure';
+            END IF;
+            RETURN NEW;
+        END $;
+    `); err != nil { t.Fatalf("create attendance audit failure function: %v", err) }
+    if _, err := tx.Exec(ctx, `
+        CREATE TRIGGER trg_test_staff_attendance_audit_failure
+        BEFORE INSERT ON public.audit_events
+        FOR EACH ROW EXECUTE FUNCTION public.test_staff_attendance_audit_failure()
+    `); err != nil { t.Fatalf("create attendance audit failure trigger: %v", err) }
+    _, singleAuditErr := attendanceRepo.Mark(ctx, actorID, schoolID, secondStaff.PrincipalID, singleFailureDate, "present", nil)
+    if singleAuditErr == nil { t.Fatal("individual attendance mark succeeded despite forced audit failure") }
+    var singleRowCount int
+    if err := tx.QueryRow(ctx, `
+        SELECT COUNT(*) FROM staff_attendance_records
+        WHERE school_id=$1 AND staff_principal_id=$2 AND attendance_date=$3::date
+    `, schoolID, secondStaff.PrincipalID, singleFailureDate.Format("2006-01-02")).Scan(&singleRowCount); err != nil {
+        t.Fatalf("check individual attendance rollback: %v", err)
+    }
+    if singleRowCount != 0 { t.Fatalf("individual attendance rows after audit failure=%d want=0", singleRowCount) }
+    if _, err := tx.Exec(ctx, `DROP TRIGGER trg_test_staff_attendance_audit_failure ON public.audit_events`); err != nil { t.Fatalf("drop individual audit failure trigger: %v", err) }
+    if _, err := tx.Exec(ctx, `DROP FUNCTION public.test_staff_attendance_audit_failure()`); err != nil { t.Fatalf("drop individual audit failure function: %v", err) }
+
+    bulkFailureDate := today.AddDate(0, 0, -3)
+    if _, err := tx.Exec(ctx, fmt.Sprintf(`
+        CREATE OR REPLACE FUNCTION public.test_staff_attendance_bulk_audit_failure()
+        RETURNS trigger LANGUAGE plpgsql AS $
+        BEGIN
+            IF NEW.action = 'school.staff_attendance.marked'
+               AND NEW.metadata->>'attendance_date' = '%s'
+               AND NEW.metadata->>'staff_principal_id' = '%d' THEN
+                RAISE EXCEPTION 'forced second staff attendance audit failure';
+            END IF;
+            RETURN NEW;
+        END $;
+    `, bulkFailureDate.Format("2006-01-02"), secondStaff.PrincipalID)); err != nil {
+        t.Fatalf("create bulk attendance audit failure function: %v", err)
+    }
+    if _, err := tx.Exec(ctx, `
+        CREATE TRIGGER trg_test_staff_attendance_bulk_audit_failure
+        BEFORE INSERT ON public.audit_events
+        FOR EACH ROW EXECUTE FUNCTION public.test_staff_attendance_bulk_audit_failure()
+    `); err != nil { t.Fatalf("create bulk attendance audit failure trigger: %v", err) }
+    _, bulkAuditErr := attendanceRepo.MarkBulk(ctx, actorID, schoolID, []int64{staff.PrincipalID, secondStaff.PrincipalID}, bulkFailureDate, "present", nil)
+    if bulkAuditErr == nil { t.Fatal("bulk attendance succeeded despite forced second audit failure") }
+    var partialRows, partialAudits int
+    if err := tx.QueryRow(ctx, `
+        SELECT COUNT(*) FROM staff_attendance_records
+        WHERE school_id=$1 AND staff_principal_id=ANY($2::bigint[]) AND attendance_date=$3::date
+    `, schoolID, []int64{staff.PrincipalID, secondStaff.PrincipalID}, bulkFailureDate.Format("2006-01-02")).Scan(&partialRows); err != nil {
+        t.Fatalf("check bulk attendance rollback: %v", err)
+    }
+    if partialRows != 0 { t.Fatalf("bulk attendance rows after second audit failure=%d want=0", partialRows) }
+    if err := tx.QueryRow(ctx, `
+        SELECT COUNT(*) FROM audit_events
+        WHERE school_id=$1 AND action='school.staff_attendance.marked'
+          AND metadata->>'attendance_date'=$2
+          AND metadata->>'staff_principal_id'=ANY($3::text[])
+    `, schoolID, bulkFailureDate.Format("2006-01-02"), []string{fmt.Sprint(staff.PrincipalID), fmt.Sprint(secondStaff.PrincipalID)}).Scan(&partialAudits); err != nil {
+        t.Fatalf("check bulk attendance audit rollback: %v", err)
+    }
+    if partialAudits != 0 { t.Fatalf("bulk attendance audit rows after second audit failure=%d want=0", partialAudits) }
+    if _, err := tx.Exec(ctx, `DROP TRIGGER trg_test_staff_attendance_bulk_audit_failure ON public.audit_events`); err != nil { t.Fatalf("drop bulk audit failure trigger: %v", err) }
+    if _, err := tx.Exec(ctx, `DROP FUNCTION public.test_staff_attendance_bulk_audit_failure()`); err != nil { t.Fatalf("drop bulk audit failure function: %v", err) }
+
 	if _,err:=repo.UpdateStaffQualification(ctx,actorID,schoolID+1,staff.PrincipalID,qualification.ID,StaffQualification{
 		QualificationType:"postgraduate",QualificationName:"Cross tenant",Institution:"Denied",
 	});!errors.Is(err,ErrStaffRecordAccessDenied){t.Fatalf("cross-school qualification update error=%v",err)}
