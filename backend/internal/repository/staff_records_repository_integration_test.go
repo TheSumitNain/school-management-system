@@ -188,18 +188,21 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
 
     // A failed audit insert must roll back the attendance row in the same
     // transaction, for both individual and bulk writes.
-    singleFailureDate := today.AddDate(0, 0, -2)
-    if _, err := tx.Exec(ctx, `
+        singleFailureDate := today.AddDate(0, 0, -2)
+    if _, err := tx.Exec(ctx, fmt.Sprintf(`
         CREATE OR REPLACE FUNCTION public.test_staff_attendance_audit_failure()
-        RETURNS trigger LANGUAGE plpgsql AS $
+        RETURNS trigger LANGUAGE plpgsql AS $body$
         BEGIN
             IF NEW.action = 'school.staff_attendance.marked'
-               AND NEW.metadata->>'attendance_date' = '${singleFailureDate.Format("2006-01-02")}' THEN
+               AND NEW.metadata->>'attendance_date' = '%s' THEN
                 RAISE EXCEPTION 'forced staff attendance audit failure';
             END IF;
             RETURN NEW;
-        END $;
-    `); err != nil { t.Fatalf("create attendance audit failure function: %v", err) }
+        END;
+        $body$;
+    `, singleFailureDate.Format("2006-01-02"))); err != nil {
+        t.Fatalf("create attendance audit failure function: %v", err)
+    }
     if _, err := tx.Exec(ctx, `
         CREATE TRIGGER trg_test_staff_attendance_audit_failure
         BEFORE INSERT ON public.audit_events
@@ -221,7 +224,7 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
     bulkFailureDate := today.AddDate(0, 0, -3)
     if _, err := tx.Exec(ctx, fmt.Sprintf(`
         CREATE OR REPLACE FUNCTION public.test_staff_attendance_bulk_audit_failure()
-        RETURNS trigger LANGUAGE plpgsql AS $
+        RETURNS trigger LANGUAGE plpgsql AS $body$
         BEGIN
             IF NEW.action = 'school.staff_attendance.marked'
                AND NEW.metadata->>'attendance_date' = '%s'
@@ -229,7 +232,8 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
                 RAISE EXCEPTION 'forced second staff attendance audit failure';
             END IF;
             RETURN NEW;
-        END $;
+        END;
+        $body$;
     `, bulkFailureDate.Format("2006-01-02"), secondStaff.PrincipalID)); err != nil {
         t.Fatalf("create bulk attendance audit failure function: %v", err)
     }
