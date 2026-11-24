@@ -231,7 +231,7 @@ func TestStaffProfileEmailValidationMatchesDatabaseCharacterConstraints(t *testi
 		EmployeeCode: "EMP-27", FullName: "Teacher One", Designation: "Teacher",
 		MobileNumber: "9876543210", EmploymentStatus: "active",
 	}
-	validUnicodeEmail := strings.Repeat("é", 252) + "@x" // 254 Unicode characters, despite >254 UTF-8 bytes.
+	validUnicodeEmail := strings.Repeat("é", 250) + "@x.y" // 254 Unicode characters, despite >254 UTF-8 bytes.
 	profile.Email = validUnicodeEmail
 	if _, err := service.UpdateProfile(context.Background(), 31, 8, 27, profile); err != nil {
 		t.Fatalf("254-character Unicode email update returned error: %v", err)
@@ -240,7 +240,7 @@ func TestStaffProfileEmailValidationMatchesDatabaseCharacterConstraints(t *testi
 		t.Fatalf("valid Unicode email update calls=%d want=1", repo.profileCalls)
 	}
 
-	for _, email := range []string{"a@", "@domain", strings.Repeat("a", 255) + "@x"} {
+	for _, email := range []string{"a@", "@domain.com", "teacher@domain", "teacher@@domain.com", "teacher @domain.com", strings.Repeat("a", 250) + "@x.y"} {
 		profile.Email = email
 		if _, err := service.UpdateProfile(context.Background(), 31, 8, 27, profile); err != ErrInvalidStaffAccount {
 			t.Errorf("UpdateProfile email %q error = %v, want ErrInvalidStaffAccount", email, err)
