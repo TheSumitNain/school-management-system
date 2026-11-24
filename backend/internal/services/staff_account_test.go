@@ -222,3 +222,43 @@ func TestStaffProfileTextLimitsCountUnicodeCharactersOnCreate(t *testing.T) {
 		t.Fatalf("invalid Unicode profile creations reached repository; calls=%d want=1", repo.profileCalls)
 	}
 }
+
+
+func TestStaffProfileEmailValidationMatchesDatabaseCharacterConstraints(t *testing.T) {
+	repo := &fakeStaffAccountRepository{user: &models.User{ID: 15, PrincipalID: 27, SchoolID: 8}}
+	service := NewStaffAccountService(repo, alwaysClearPasswordChecker{})
+	profile := models.StaffProfile{
+		EmployeeCode: "EMP-27", FullName: "Teacher One", Designation: "Teacher",
+		MobileNumber: "9876543210", EmploymentStatus: "active",
+	}
+	validUnicodeEmail := strings.Repeat("é", 252) + "@x" // 254 Unicode characters, despite >254 UTF-8 bytes.
+	profile.Email = validUnicodeEmail
+	if _, err := service.UpdateProfile(context.Background(), 31, 8, 27, profile); err != nil {
+		t.Fatalf("254-character Unicode email update returned error: %v", err)
+	}
+	if repo.profileCalls != 1 {
+		t.Fatalf("valid Unicode email update calls=%d want=1", repo.profileCalls)
+	}
+
+	for _, email := range []string{"a@", "@domain", strings.Repeat("a", 255) + "@x"} {
+		profile.Email = email
+		if _, err := service.UpdateProfile(context.Background(), 31, 8, 27, profile); err != ErrInvalidStaffAccount {
+			t.Errorf("UpdateProfile email %q error = %v, want ErrInvalidStaffAccount", email, err)
+		}
+	}
+	if repo.profileCalls != 1 {
+		t.Fatalf("invalid email updates reached repository; calls=%d want=1", repo.profileCalls)
+	}
+
+	profile.Email = "a@"
+	if _, err := service.CreateWithProfile(context.Background(), 31, 8, "teacher.one", "A-Strong-Initial-Pass-123", profile); err != ErrInvalidStaffAccount {
+		t.Fatalf("CreateWithProfile short email error = %v, want ErrInvalidStaffAccount", err)
+	}
+	profile.Email = validUnicodeEmail
+	if _, err := service.CreateWithProfile(context.Background(), 31, 8, "teacher.two", "A-Strong-Initial-Pass-123", profile); err != nil {
+		t.Fatalf("254-character Unicode email creation returned error: %v", err)
+	}
+	if repo.profileCalls != 2 {
+		t.Fatalf("profile creation calls=%d want=2 (one valid update, one valid create)", repo.profileCalls)
+	}
+}
