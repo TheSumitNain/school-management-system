@@ -1072,6 +1072,35 @@ test("staff profile shows only the selected employee's academic assignments and 
   await expect(dialog.getByText("2 active")).toBeVisible();
 });
 
+test("staff profile clears the previous employee's academic assignments while the next profile loads", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [
+    { id: 1, principal_id: 411, school_id: 10, username: "teacher.first", employee_code: "EMP-FIRST", full_name: "First Teacher", designation: "Teacher", mobile_number: "9876543212", employment_status: "active", profile_complete: true, status: "active" },
+    { id: 2, principal_id: 412, school_id: 10, username: "teacher.second", employee_code: "EMP-SECOND", full_name: "Second Teacher", designation: "Teacher", mobile_number: "9876543213", employment_status: "active", profile_complete: true, status: "active" },
+  ];
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "teacher_assignments.read"]);
+  await page.route("**/api/school/teacher-assignments?*", async route => {
+    const teacherID = new URL(route.request().url()).searchParams.get("teacher_principal_id");
+    if (teacherID === "412") await new Promise(resolve => setTimeout(resolve, 400));
+    await route.fulfill({ json: { assignments: teacherID === "411" ? [
+      { id: 1, academic_year_id: 3, class_name: "Class 8", section_name: "A", subject_name: "First Teacher Private Subject", assigned_at: "2026-04-01T00:00:00.000Z", teacher_principal_id: 411, revoked_at: null },
+    ] : [
+      { id: 2, academic_year_id: 3, class_name: "Class 9", section_name: "B", subject_name: "Second Teacher Subject", assigned_at: "2026-04-01T00:00:00.000Z", teacher_principal_id: 412, revoked_at: null },
+    ] } });
+  });
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "First Teacher" }).click();
+  let dialog = page.getByRole("dialog", { name: "First Teacher" });
+  await dialog.getByRole("button", { name: "Academic Assignments" }).click();
+  await expect(dialog.getByText("First Teacher Private Subject")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Second Teacher" }).click();
+  dialog = page.getByRole("dialog", { name: "Second Teacher" });
+  await dialog.getByRole("button", { name: "Academic Assignments" }).click();
+  await expect(dialog.getByRole("status")).toContainText("Loading academic assignments");
+  await expect(dialog.getByText("First Teacher Private Subject")).toHaveCount(0);
+  await expect(dialog.getByText("Second Teacher Subject")).toBeVisible();
+});
+
 test("staff account access keeps role assignments read-only without delegation permissions", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 513, school_id: 10, username: "teacher.role-reader",
