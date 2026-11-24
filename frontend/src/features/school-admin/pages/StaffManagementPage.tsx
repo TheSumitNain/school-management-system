@@ -63,7 +63,7 @@ export function StaffManagementPage({ permissions }: Props) {
   const canManageOverrides = permissions.includes("permissions.override");
   const canReadStaff = permissions.includes("users.read");
   const hasLeaveWorkspace = permissions.includes("staff.leave.read") || permissions.includes("staff.holidays.read") || permissions.includes("staff.holidays.manage");
-  const hasSubstitutionWorkspace = permissions.includes("staff.substitutions.read") || permissions.includes("staff.substitutions.manage");
+  const hasSubstitutionWorkspace = permissions.includes("staff.substitutions.read") || (canReadStaff && permissions.includes("staff.substitutions.manage"));
   const initialTab: "overview" | "directory" | "reports" | "assignments" | "attendance" | "leave" | "substitutions" | "workloadReport" | "idCards" =
     canReadStaff || canCreate ? "overview" :
     permissions.includes("staff.attendance.read") ? "attendance" :
@@ -376,7 +376,7 @@ export function StaffManagementPage({ permissions }: Props) {
         {(permissions.includes("teacher_assignments.read") || permissions.includes("class_incharge_assignments.read")) && <button type="button" className={activeTab === "assignments" ? "active" : ""} aria-current={activeTab === "assignments" ? "page" : undefined} onClick={() => setActiveTab("assignments")}><BookOpen size={16}/> Academic Assignments</button>}
         {permissions.includes("staff.attendance.read") && <button type="button" className={activeTab === "attendance" ? "active" : ""} aria-current={activeTab === "attendance" ? "page" : undefined} onClick={() => setActiveTab("attendance")}><CalendarDays size={16}/> Attendance</button>}
         {(permissions.includes("staff.leave.read") || permissions.includes("staff.holidays.read") || permissions.includes("staff.holidays.manage")) && <button type="button" className={activeTab === "leave" ? "active" : ""} aria-current={activeTab === "leave" ? "page" : undefined} onClick={() => setActiveTab("leave")}><CalendarDays size={16}/> Leave & Holidays</button>}
-        {(permissions.includes("staff.substitutions.read") || permissions.includes("staff.substitutions.manage")) && <button type="button" className={activeTab === "substitutions" ? "active" : ""} aria-current={activeTab === "substitutions" ? "page" : undefined} onClick={() => setActiveTab("substitutions")}><CalendarDays size={16}/> Substitutions</button>}
+        {hasSubstitutionWorkspace && <button type="button" className={activeTab === "substitutions" ? "active" : ""} aria-current={activeTab === "substitutions" ? "page" : undefined} onClick={() => setActiveTab("substitutions")}><CalendarDays size={16}/> Substitutions</button>}
         {permissions.includes("timetable.read") && <button type="button" className={activeTab === "workloadReport" ? "active" : ""} aria-current={activeTab === "workloadReport" ? "page" : undefined} onClick={() => setActiveTab("workloadReport")}><BarChart3 size={16}/> Workload Report</button>}
         {!(permissions.includes("staff.leave.read") || permissions.includes("staff.holidays.read") || permissions.includes("staff.holidays.manage")) && <button type="button" className="upcoming" disabled title="Leave read permission required to open this workspace"><CalendarDays size={16}/> Leave <span>Restricted</span></button>}
         {permissions.includes("users.read") && <button type="button" className={activeTab === "reports" ? "active" : ""} aria-current={activeTab === "reports" ? "page" : undefined} onClick={() => setActiveTab("reports")}><FileText size={16}/> Reports</button>}
