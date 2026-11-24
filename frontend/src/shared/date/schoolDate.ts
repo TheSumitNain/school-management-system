@@ -24,3 +24,11 @@ export function schoolDateValueYearsAgo(years: number, instant: Date = new Date(
   const targetDay = Math.min(day, new Date(targetYear, month, 0).getDate());
   return [targetYear, String(month).padStart(2, "0"), String(targetDay).padStart(2, "0")].join("-");
 }
+
+/** Returns a school-local calendar date a whole number of years after today. */
+export function schoolDateValueYearsAhead(years: number, instant: Date = new Date()) {
+  const { year, month, day } = schoolDateParts(instant);
+  const targetYear = year + years;
+  const targetDay = Math.min(day, new Date(targetYear, month, 0).getDate());
+  return [targetYear, String(month).padStart(2, "0"), String(targetDay).padStart(2, "0")].join("-");
+}
