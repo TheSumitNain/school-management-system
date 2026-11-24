@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
 import { notifyToast } from "../../../shared/notifications";
@@ -126,6 +126,10 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
   const past = date < today;
   const canMark = past ? permissions.includes("staff.attendance.correct_past") : permissions.includes("staff.attendance.mark");
   const canUpdate = past ? permissions.includes("staff.attendance.correct_past") : permissions.includes("staff.attendance.update_same_day");
+  useEffect(() => {
+    if (!canRead || !canMark) setBulkConfirmOpen(false);
+    if (!canRead || !canUpdate) setPendingCorrection(null);
+  }, [canRead, canMark, canUpdate]);
   const approvedLeaveByStaff = useMemo(() => {
     const grouped = new Map<number, StaffLeaveRequest[]>();
     for (const item of approvedLeaveContext.data?.data ?? []) {
@@ -318,7 +322,7 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
       description={`This will mark ${bulkTargets.length} unmarked employees on ${date} as ${statuses.find(status => status.value === bulkStatus)?.label ?? "the selected status"}. The batch is atomic: if any employee already has a mark or fails validation, no records will be saved.`}
       confirmLabel={`Mark ${bulkTargets.length} staff`}
       pending={bulkMark.isPending}
-      onConfirm={() => { if (bulkStatus && bulkTargets.length > 0) bulkMark.mutate({ staff_principal_ids: bulkTargets.map(item => item.staff_principal_id), attendance_date: date, status: bulkStatus, remarks: bulkRemarks.trim() || undefined }); }}
+      onConfirm={() => { if (!canRead || !canMark) { setBulkConfirmOpen(false); return; } if (bulkStatus && bulkTargets.length > 0) bulkMark.mutate({ staff_principal_ids: bulkTargets.map(item => item.staff_principal_id), attendance_date: date, status: bulkStatus, remarks: bulkRemarks.trim() || undefined }); }}
       onCancel={() => setBulkConfirmOpen(false)}
     />
     <ConfirmDialog
@@ -327,7 +331,7 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
       description={pendingCorrection ? `This changes attendance for ${pendingCorrection.item.full_name} on ${date} to ${statuses.find(status => status.value === pendingCorrection.draft.status)?.label ?? "the selected status"}. This action will be recorded in the audit history.` : ""}
       confirmLabel="Confirm correction"
       pending={mark.isPending || update.isPending}
-      onConfirm={() => { if (pendingCorrection) submit(pendingCorrection.item, pendingCorrection.draft); }}
+      onConfirm={() => { if (!canRead || !canUpdate) { setPendingCorrection(null); return; } if (pendingCorrection) submit(pendingCorrection.item, pendingCorrection.draft); }}
       onCancel={() => setPendingCorrection(null)}
     />
   </section>;
