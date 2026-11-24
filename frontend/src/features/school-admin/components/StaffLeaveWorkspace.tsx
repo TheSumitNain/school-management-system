@@ -14,13 +14,13 @@ import {
 } from "../queries";
 import "./StaffLeaveWorkspace.css";
 
-type Props={permissions:string[];staff:StaffRecord[]};
+type Props={permissions:string[];staff:StaffRecord[];canReadStaff:boolean};
 type Duration="full_day"|"half_day";
 function todayIST(){return new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Kolkata",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());}
 function yearRange(){const y=todayIST().slice(0,4);return {from:y+"-01-01",to:y+"-12-31"};}
 function errorText(error:unknown,fallback:string){return error instanceof ApiError?error.message:fallback;}
 
-export function StaffLeaveWorkspace({permissions,staff}:Props){
+export function StaffLeaveWorkspace({permissions,staff,canReadStaff}:Props){
  const canRead=permissions.includes("staff.leave.read");
  const canManageTypes=permissions.includes("staff.leave.manage_types");
  const canManageRequests=permissions.includes("staff.leave.manage_requests");
@@ -121,7 +121,8 @@ export function StaffLeaveWorkspace({permissions,staff}:Props){
   <nav className="staff-leave-subtabs" aria-label="Leave and holiday views">{panes.map(item=><button type="button" key={item.id} className={activePane===item.id?"active":""} onClick={()=>setPane(item.id)}><item.icon size={15}/>{item.label}</button>)}</nav>
 
   {activePane==="requests"&&<div className="staff-leave-grid">
-   {canManageRequests&&<form className="staff-leave-panel staff-leave-form" onSubmit={submitRequest} noValidate>
+   {canManageRequests&&!canReadStaff&&<p className="staff-leave-note" role="status">Creating a leave request on behalf of an employee also requires Staff Directory read access so an authorized employee can be selected. Your leave viewing and decision permissions remain available.</p>}
+   {canManageRequests&&canReadStaff&&<form className="staff-leave-panel staff-leave-form" onSubmit={submitRequest} noValidate>
     <h3><Plus size={16}/> New leave request</h3>
     <label>Staff member <span className="required">*</span><Select value={requestStaffID} onChange={v=>{setRequestStaffID(v);setErrors(current=>({...current,staff:""}));setRequestFormError("");}} ariaLabel="Staff member" options={requestStaffOptions} invalid={Boolean(errors.staff)} describedBy={errors.staff?"leave-staff-error":undefined}/>{errors.staff&&<small id="leave-staff-error" className="app-field-error" role="alert">{errors.staff}</small>}</label>
     <label>Leave type <span className="required">*</span><Select value={leaveTypeID} onChange={v=>{setLeaveTypeID(v);setErrors(current=>({...current,leave_type:""}));setRequestFormError("");}} ariaLabel="Leave type" placeholder="Select leave type" options={typeOptions} invalid={Boolean(errors.leave_type)} describedBy={errors.leave_type?"leave-type-error":undefined}/>{errors.leave_type&&<small id="leave-type-error" className="app-field-error" role="alert">{errors.leave_type}</small>}{activeTypes.length===0&&<small>Create an active leave type before submitting requests.</small>}</label>
