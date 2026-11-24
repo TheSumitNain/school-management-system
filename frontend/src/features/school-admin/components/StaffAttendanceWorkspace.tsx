@@ -78,20 +78,21 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
   const monthly = useQuery({
     queryKey: ["staff-attendance", "monthly", month],
     queryFn: ({ signal }) => getMonthlyStaffAttendance(month, signal),
-    enabled: canRead && view === "monthly",
+    enabled: canRead && view === "monthly" && validMonth,
   });
-  const monthStart = month ? `${month}-01` : "";
-  const monthEnd = month ? new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)).toISOString().slice(0, 10) : "";
+  const validMonth = /^\\d{4}-(0[1-9]|1[0-2])$/.test(month);
+  const monthStart = validMonth ? `${month}-01` : "";
+  const monthEnd = validMonth ? new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)).toISOString().slice(0, 10) : "";
   const approvedMonthLeave = useQuery({
     queryKey: ["staff-leave-report", "approved", month],
     queryFn: ({ signal }) => getStaffLeaveRequests({ status: "approved", fromDate: monthStart, toDate: monthEnd }, signal),
-    enabled: canRead && canReadLeaveContext && view === "monthly" && Boolean(monthStart && monthEnd),
+    enabled: canRead && canReadLeaveContext && view === "monthly" && validMonth,
     staleTime: 10_000,
   });
   const monthHolidays = useQuery({
     queryKey: ["school-holiday-report", month],
     queryFn: ({ signal }) => getSchoolHolidays(monthStart, monthEnd, signal),
-    enabled: canRead && canReadHolidayContext && view === "monthly" && Boolean(monthStart && monthEnd),
+    enabled: canRead && canReadHolidayContext && view === "monthly" && validMonth,
     staleTime: 30_000,
   });
   const invalidate = async () => {
@@ -136,7 +137,7 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
   }, [approvedLeaveContext.data]);
   const schoolHolidayNames = (holidayContext.data?.data ?? []).map(item => item.name);
 
-  const monthlyReportReady = monthly.isSuccess &&
+  const monthlyReportReady = validMonth && monthly.isSuccess &&
     (!canReadLeaveContext || approvedMonthLeave.isSuccess) &&
     (!canReadHolidayContext || monthHolidays.isSuccess);
 
@@ -285,11 +286,12 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
       </table></div>}
     </>}
     {view === "monthly" && <>
-      <div className="staff-attendance-toolbar"><label><span>Month</span><input aria-label="Attendance month" type="month" value={month} max={today.slice(0, 7)} onChange={event => setMonth(event.target.value)}/></label><button type="button" className="staff-secondary-button" onClick={() => void Promise.all([monthly.refetch(), ...(canReadLeaveContext ? [approvedMonthLeave.refetch()] : []), ...(canReadHolidayContext ? [monthHolidays.refetch()] : [])])} disabled={monthly.isFetching || approvedMonthLeave.isFetching || monthHolidays.isFetching}><RefreshCw size={15}/> Refresh</button><button type="button" className="staff-attendance-save" onClick={exportMonthlyReport} disabled={!monthlyReportReady || monthly.data.data.length === 0}>Download monthly report</button></div>
-      {monthly.isPending && <p role="status" className="staff-attendance-message">Loading monthly register…</p>}
-      {monthly.isError && <div className="staff-attendance-message error" role="alert">Unable to load monthly register. <button type="button" onClick={() => void monthly.refetch()}>Try again</button></div>}
-      {monthly.isSuccess && monthly.data.data.length === 0 && <p className="staff-attendance-message">No active staff profiles are available for this school.</p>}
-      {monthly.isSuccess && monthly.data.data.length > 0 && <div className="staff-attendance-table-wrap"><table className="staff-attendance-table"><thead><tr><th>Employee</th><th>Present</th><th>Absent</th><th>Late</th><th>Half day</th><th>Recorded days</th></tr></thead><tbody>
+      <div className="staff-attendance-toolbar"><label><span>Month</span><input aria-label="Attendance month" type="month" value={month} max={today.slice(0, 7)} onChange={event => setMonth(event.target.value)}/></label><button type="button" className="staff-secondary-button" onClick={() => void Promise.all([monthly.refetch(), ...(canReadLeaveContext ? [approvedMonthLeave.refetch()] : []), ...(canReadHolidayContext ? [monthHolidays.refetch()] : [])])} disabled={!validMonth || monthly.isFetching || approvedMonthLeave.isFetching || monthHolidays.isFetching}><RefreshCw size={15}/> Refresh</button><button type="button" className="staff-attendance-save" onClick={exportMonthlyReport} disabled={!monthlyReportReady || monthly.data.data.length === 0}>Download monthly report</button></div>
+      {!validMonth && <p className="staff-attendance-message error" role="alert">Select a valid attendance month to load the monthly register.</p>}
+      {validMonth && monthly.isPending && <p role="status" className="staff-attendance-message">Loading monthly register…</p>}
+      {validMonth && monthly.isError && <div className="staff-attendance-message error" role="alert">Unable to load monthly register. <button type="button" onClick={() => void monthly.refetch()}>Try again</button></div>}
+      {validMonth && monthly.isSuccess && monthly.data.data.length === 0 && <p className="staff-attendance-message">No active staff profiles are available for this school.</p>}
+      {validMonth && monthly.isSuccess && monthly.data.data.length > 0 && <div className="staff-attendance-table-wrap"><table className="staff-attendance-table"><thead><tr><th>Employee</th><th>Present</th><th>Absent</th><th>Late</th><th>Half day</th><th>Recorded days</th></tr></thead><tbody>
         {monthly.data.data.map(item => <tr key={item.staff_principal_id}><td><strong>{item.full_name}</strong><small>{item.employee_code} · {item.designation}</small><details><summary>View daily entries ({item.records.length})</summary><ul>{item.records.map(record => <li key={record.id}>{record.date}: {statuses.find(status => status.value === record.status)?.label ?? record.status}{record.remarks ? ` — ${record.remarks}` : ""}</li>)}</ul></details></td><td>{item.present_days}</td><td>{item.absent_days}</td><td>{item.late_days}</td><td>{item.half_days}</td><td>{item.present_days + item.absent_days + item.late_days + item.half_days}</td></tr>)}
       </tbody></table></div>}
       {(canReadLeaveContext || canReadHolidayContext) && <section className="staff-attendance-calendar-note" aria-label="Monthly leave and holiday context">
