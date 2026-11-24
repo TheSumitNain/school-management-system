@@ -60,6 +60,30 @@ var staffMobilePattern = regexp.MustCompile("^\\+?[0-9]{10,15}$")
 
 // validStaffProfileEmail enforces the application email format and is stricter than the database storage constraint.
 // Count Unicode characters, matching PostgreSQL length(), rather than bytes.
+// validStaffJoiningDate compares date-only values in the system-wide school timezone.
+func validStaffJoiningDate(joiningDate *time.Time, now time.Time) bool {
+	if joiningDate == nil {
+		return true
+	}
+	if joiningDate.Year() < 1 {
+		return false
+	}
+	location, err := time.LoadLocation("Asia/Kolkata")
+	if err != nil {
+		location = time.FixedZone("Asia/Kolkata", 5*60*60+30*60)
+	}
+	localNow := now.In(location)
+	year, month, day := localNow.Date()
+	targetYear := year + 1
+	lastDay := time.Date(targetYear, month+1, 0, 0, 0, 0, 0, time.UTC).Day()
+	if day > lastDay {
+		day = lastDay
+	}
+	latestAllowed := time.Date(targetYear, month, day, 0, 0, 0, 0, time.UTC)
+	dateOnly := time.Date(joiningDate.Year(), joiningDate.Month(), joiningDate.Day(), 0, 0, 0, 0, time.UTC)
+	return !dateOnly.After(latestAllowed)
+}
+
 func validStaffProfileEmail(email string) bool {
 	if email == "" {
 		return true
@@ -113,7 +137,7 @@ func (s *StaffAccountService) CreateWithProfile(ctx context.Context, actorPrinci
 		!staffEmployeeCodePattern.MatchString(profile.EmployeeCode) || profile.FullName == "" || len([]rune(profile.FullName)) > 160 ||
 		profile.Designation == "" || len([]rune(profile.Designation)) > 100 || !staffMobilePattern.MatchString(profile.MobileNumber) ||
 		!validStaffProfileEmail(profile.Email) ||
-		(profile.JoiningDate != nil && (profile.JoiningDate.Year() < 1 || profile.JoiningDate.After(time.Now().AddDate(1, 0, 0)))) {
+		!validStaffJoiningDate(profile.JoiningDate, time.Now()) {
 		return nil, ErrInvalidStaffAccount
 	}
 	creator, ok := s.repository.(staffProfileCreator)
