@@ -5,15 +5,13 @@ import { getClassInchargeAssignments, getMonthlyStaffAttendance, getStaffLeaveRe
 import type { ClassInchargeAssignment, TeacherSubjectAssignment } from "../api";
 import { useStaffSubstitutionTimetableYearQuery } from "../queries";
 import type { StaffAttendanceMonthlySummary, StaffLeaveRequest, StaffQualificationReportRow, StaffExperienceReportRow } from "../api";
+import { schoolDateValue } from "../../../shared/date/schoolDate";
 import "./StaffOperationalReportsWorkspace.css";
 
 type Props = { permissions: string[] };
 
 function currentMonthIST() {
-  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit" }).formatToParts(new Date());
-  const year = parts.find(part => part.type === "year")?.value ?? "2026";
-  const month = parts.find(part => part.type === "month")?.value ?? "01";
-  return year + "-" + month;
+  return schoolDateValue().slice(0, 7);
 }
 
 function csvCell(value: string | number | null | undefined) {
