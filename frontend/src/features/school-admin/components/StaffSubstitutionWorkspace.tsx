@@ -39,16 +39,18 @@ export function StaffSubstitutionWorkspace({permissions,staff}:Props){
   const [cancelTarget,setCancelTarget]=useState<StaffSubstitution|null>(null);
   useEffect(()=>{
     if(!canManage)setCancelTarget(null);
-  },[canManage]);
+    if(!canReadTimetable)setEntryID("");
+    if(!canReadLeave)setLeaveRequestID("");
+  },[canManage,canReadTimetable,canReadLeave]);
 
   const yearQuery=useStaffSubstitutionTimetableYearQuery(canManage&&canReadTimetable);
   const academicYearID=yearQuery.data?.academic_year?.id??0;
   const timetableQuery=useStaffSubstitutionTimetableEntriesQuery(academicYearID,canManage&&canReadTimetable);
-  const entries=timetableQuery.data?.entries??[];
+  const entries=canManage&&canReadTimetable?(timetableQuery.data?.entries??[]):[];
   const selectedEntry=entries.find(item=>String(item.id)===entryID);
   const originalTeacherID=selectedEntry?.teacher_principal_id??0;
   const leaveQuery=useStaffLeaveRequestsQuery({status:"approved",staffPrincipalID:originalTeacherID},canManage&&canReadLeave&&originalTeacherID>0);
-  const eligibleLeaveRequests=(leaveQuery.data?.data??[]).filter(item=>item.duration_type==="full_day"&&item.start_date<=coverDate&&item.end_date>=coverDate);
+  const eligibleLeaveRequests=canManage&&canReadLeave?(leaveQuery.data?.data??[]).filter(item=>item.duration_type==="full_day"&&item.start_date<=coverDate&&item.end_date>=coverDate):[];
   const validRange=Boolean(fromDate&&toDate&&fromDate<=toDate);
   const filtersChanged=fromDate!==range.from||toDate!==range.to||filterStaffID!=="0";
   const substitutionsQuery=useStaffSubstitutionsQuery({fromDate,toDate,staffPrincipalID:Number(filterStaffID)||undefined},canRead&&validRange);
