@@ -75,8 +75,8 @@ export function StaffWorkloadReportWorkspace({permissions}:Props){
     <header className="staff-workload-report-heading">
       <div><h2>School-wide Workload Report</h2><p>{year?year.name:"Current academic year"} · Actual recurring timetable entries</p></div>
       <div className="staff-workload-report-actions">
-        <button type="button" className="staff-workload-report-export" onClick={()=>exportWorkloadCSV(filtered,year?.id??0)} disabled={!reportQuery.isSuccess||reportQuery.isFetching||filtered.length===0}><Download size={14}/> Export filtered CSV</button>
-        <button type="button" className="staff-workload-report-refresh" onClick={()=>void reportQuery.refetch()} disabled={reportQuery.isFetching}><RefreshCw size={14}/> Refresh</button>
+        <button type="button" className="staff-workload-report-export" onClick={()=>exportWorkloadCSV(filtered,year?.id??0)} disabled={!year?.id||!reportQuery.isSuccess||reportQuery.isFetching||filtered.length===0}><Download size={14}/> Export filtered CSV</button>
+        <button type="button" className="staff-workload-report-refresh" onClick={()=>void (year?.id?reportQuery.refetch():yearQuery.refetch())} disabled={reportQuery.isFetching||yearQuery.isFetching}><RefreshCw size={14}/> Refresh</button>
       </div>
     </header>
     <div className="staff-workload-report-summary">
@@ -91,6 +91,7 @@ export function StaffWorkloadReportWorkspace({permissions}:Props){
     </div>
     {yearQuery.isLoading&&<p className="staff-workload-report-muted">Loading current academic year…</p>}
     {yearQuery.isError&&<p className="staff-workload-report-error" role="alert">Unable to load current academic year. <button type="button" onClick={()=>void yearQuery.refetch()}>Retry</button></p>}
+    {yearQuery.isSuccess&&!year&&<p className="staff-workload-report-empty" role="status">No current academic year is configured. Set a current academic year before viewing staff workload.</p>}
     {reportQuery.isLoading&&<p className="staff-workload-report-muted">Loading school workload…</p>}
     {reportQuery.isError&&<p className="staff-workload-report-error" role="alert">Unable to load workload report. <button type="button" onClick={()=>void reportQuery.refetch()}>Retry</button></p>}
     {reportQuery.isSuccess&&filtered.length===0&&<p className="staff-workload-report-empty">{groups.length===0?"No staff profiles are available for this academic year.":"No staff match the current filters."}</p>}
