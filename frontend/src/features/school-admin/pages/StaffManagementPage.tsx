@@ -412,7 +412,7 @@ export function StaffManagementPage({ permissions }: Props) {
       {feedback && (action === null || feedback.kind === "success") && <div className={`staff-feedback ${feedback.kind}`} role="status">{feedback.message}</div>}
 
       <Modal
-        open={action !== null}
+        open={action !== null && actionAllowed}
         title={formTitle}
         description={selected ? `Employee: ${selected.full_name || selected.username}. Login usernames must be unique across the platform.` : "Create the employee profile and login account together."}
         onClose={closeAction}
@@ -514,7 +514,7 @@ export function StaffManagementPage({ permissions }: Props) {
             </Fragment>)}
           </tbody></table></div>}
       </section>}
-      {profileFor && <Modal open title={profileFor.full_name || profileFor.username} description={`Staff profile · ${profileFor.employee_code || "Employee code not set"} · ${profileFor.username}`} onClose={() => setProfileFor(null)}>
+      {profileFor && canReadStaff && <Modal open title={profileFor.full_name || profileFor.username} description={`Staff profile · ${profileFor.employee_code || "Employee code not set"} · ${profileFor.username}`} onClose={() => setProfileFor(null)}>
         <nav className="staff-profile-tabs" aria-label="Staff profile sections">
           {(["Overview","Personal Details","Employment","Qualifications & Experience","Documents","Academic Assignments",...(permissions.includes("timetable.read") ? ["Workload & Timetable" as const] : []),"Account & Access","History & Activity"] as const).map(tab => <button type="button" key={tab} className={profileTab === tab ? "active" : ""} aria-current={profileTab === tab ? "page" : undefined} onClick={() => setProfileTab(tab)}>{tab}</button>)}
         </nav>
@@ -588,7 +588,7 @@ export function StaffManagementPage({ permissions }: Props) {
       {rolesForPrincipal !== null && canReadRoles && (() => { const target=staff.find(item=>item.principal_id===rolesForPrincipal); return target ? <Modal open title={`Access roles · ${target.username}`} description="Review the roles assigned to this staff account. Add or remove roles here; changes take effect on the next protected request." onClose={()=>setRolesForPrincipal(null)}><StaffRoleAssignments staff={target} canAssign={canAssignRoles}/></Modal> : null; })()}
       {overridesForPrincipal !== null && canManageOverrides && (() => { const target=staff.find(item=>item.principal_id===overridesForPrincipal); return target ? <Modal open title={`Permission overrides · ${target.username}`} description="Review individual access exceptions. Use an override only when the staff member's role permissions need a documented exception." onClose={()=>setOverridesForPrincipal(null)}><StaffPermissionOverrides staff={target}/></Modal> : null; })()}
       <p className="staff-security-note"><ShieldCheck size={15}/> Every action is checked again by the server using your current school permissions.</p>
-      <ConfirmDialog open={Boolean(staffToDisable)} title="Disable staff account?" description={staffToDisable ? `Disable ${staffToDisable.username}? Their active sessions will be revoked and they will no longer be able to sign in.` : ""} confirmLabel="Disable account" pending={disable.isPending} error={disableError || undefined} onCancel={() => {setStaffToDisable(null);setDisableError("");}} onConfirm={() => void confirmDeactivate()}/>
+      <ConfirmDialog open={Boolean(staffToDisable && canDisable && canReadStaff)} title="Disable staff account?" description={staffToDisable ? `Disable ${staffToDisable.username}? Their active sessions will be revoked and they will no longer be able to sign in.` : ""} confirmLabel="Disable account" pending={disable.isPending} error={disableError || undefined} onCancel={() => {setStaffToDisable(null);setDisableError("");}} onConfirm={() => void confirmDeactivate()}/>
     </div>
   );
 }
