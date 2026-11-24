@@ -110,7 +110,14 @@ async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, un
     if (path === "/school/staff-leave/requests" && method === "GET") {
       const status = url.searchParams.get("status") ?? "";
       const staffID = Number(url.searchParams.get("staff_principal_id") ?? 0);
-      const data = leaveRequests.filter(item => (!status || item.status === status) && (!staffID || item.staff_principal_id === staffID));
+      const fromDate = url.searchParams.get("from_date") ?? "";
+      const toDate = url.searchParams.get("to_date") ?? "";
+      const data = leaveRequests.filter(item => {
+        const startsOn = String(item.start_date ?? "");
+        const endsOn = String(item.end_date ?? "");
+        const overlapsDateRange = (!fromDate || endsOn >= fromDate) && (!toDate || startsOn <= toDate);
+        return (!status || item.status === status) && (!staffID || item.staff_principal_id === staffID) && overlapsDateRange;
+      });
       await route.fulfill({ json: { data } });
       return;
     }
@@ -507,7 +514,7 @@ test("staff leave request filters send the selected status and staff scope", asy
   await expect(page.getByText("No leave requests match these filters.")).toBeVisible();
 });
 
-test("staff leave request date filters are sent to the API and can be cleared together", async ({ page }) => {
+test("staff leave request date filters return only overlapping requests and can be cleared together", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 501, school_id: 10, username: "leave.dates",
     employee_code: "EMP-LEAVE-DATE-01", full_name: "Date Filter Teacher", designation: "Teacher",
@@ -516,24 +523,37 @@ test("staff leave request date filters are sent to the API and can be cleared to
   await signInAndOpenStaff(page, rows, undefined, ["users.read", "staff.leave.read"]);
   await page.getByRole("button", { name: "Leave & Holidays" }).click();
 
+  const today = schoolDateValue();
+  const tomorrow = schoolDateOffset(1).toISOString().slice(0, 10);
   const dateRequest = page.waitForRequest(request => {
     const url = new URL(request.url());
     return request.method() === "GET" && url.pathname.endsWith("/school/staff-leave/requests") &&
-      url.searchParams.get("from_date") === "2026-11-01" &&
-      url.searchParams.get("to_date") === "2026-11-30";
+      url.searchParams.get("from_date") === today &&
+      url.searchParams.get("to_date") === tomorrow;
   });
-  await page.getByLabel("Leave requests from date").click();
-  await page.getByRole("dialog", { name: "Choose leave requests from date" }).getByRole("button", { name: /November 1, 2026/ }).click();
-  await page.getByLabel("Leave requests to date").click();
-  await page.getByRole("dialog", { name: "Choose leave requests to date" }).getByRole("button", { name: /November 30, 2026/ }).click();
+  await chooseDatePickerValue(page, "Leave requests from date", today);
+  await chooseDatePickerValue(page, "Leave requests to date", tomorrow);
   const filteredURL = new URL((await dateRequest).url());
-  expect(filteredURL.searchParams.get("from_date")).toBe("2026-11-01");
-  expect(filteredURL.searchParams.get("to_date")).toBe("2026-11-30");
+  expect(filteredURL.searchParams.get("from_date")).toBe(today);
+  expect(filteredURL.searchParams.get("to_date")).toBe(tomorrow);
+  await expect(page.getByText("Leave Teacher")).toBeVisible();
+
+  const narrowedRequest = page.waitForRequest(request => {
+    const url = new URL(request.url());
+    return request.method() === "GET" && url.pathname.endsWith("/school/staff-leave/requests") &&
+      url.searchParams.get("from_date") === tomorrow &&
+      url.searchParams.get("to_date") === tomorrow;
+  });
+  await chooseDatePickerValue(page, "Leave requests from date", tomorrow);
+  await expect(narrowedRequest).resolves.toBeTruthy();
+  await expect(page.getByText("No leave requests match these filters.")).toBeVisible();
+  await expect(page.getByText("Leave Teacher")).toHaveCount(0);
 
   await page.getByRole("button", { name: "Clear filters" }).click();
   await expect(page.getByLabel("Leave requests from date")).toContainText("Any start date");
   await expect(page.getByLabel("Leave requests to date")).toContainText("Any end date");
   await expect(page.getByRole("button", { name: "Clear filters" })).toHaveCount(0);
+  await expect(page.getByText("Leave Teacher")).toBeVisible();
 });
 
 test("staff leave date filter errors are field-specific and invalid ranges do not fetch", async ({ page }) => {
