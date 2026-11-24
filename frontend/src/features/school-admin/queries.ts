@@ -419,7 +419,7 @@ export function useUpdateStaffExperienceMutation(principalID:number) {
 export const staffLeaveQueryKeys = {
   all: [...schoolAdminQueryKeys.staff(), "leave"] as const,
   types: () => [...staffLeaveQueryKeys.all, "types"] as const,
-  requests: (filters:{status?:string;staffPrincipalID?:number;onDate?:string}) => [...staffLeaveQueryKeys.all,"requests",filters] as const,
+  requests: (filters:{status?:string;staffPrincipalID?:number;onDate?:string;fromDate?:string;toDate?:string}) => [...staffLeaveQueryKeys.all,"requests",filters] as const,
   holidays: (from:string,to:string,includeInactive:boolean) => [...staffLeaveQueryKeys.all,"holidays",from,to,includeInactive] as const,
 };
 export function useStaffLeaveTypesQuery(enabled=true){return useQuery({queryKey:staffLeaveQueryKeys.types(),queryFn:({signal})=>getStaffLeaveTypes(signal),enabled,staleTime:15000});}
