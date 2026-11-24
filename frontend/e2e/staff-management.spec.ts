@@ -1144,8 +1144,8 @@ test("staff profile does not retain the previous employee's qualifications while
   ];
   await signInAndOpenStaff(page, rows);
   await page.route("**/api/school/staff/*/qualifications", async route => {
-    const match = new URL(route.request().url()).pathname.match(/\\/staff\\/(\\d+)\\/qualifications$/);
-    const principalID = match?.[1];
+    const principalID = new URL(route.request().url()).pathname.split("/")[3];
+
     if (principalID === "432") await new Promise(resolve => setTimeout(resolve, 400));
     const qualification = principalID === "431"
       ? { id: 1, staff_principal_id: 431, qualification_name: "First Employee Private Qualification", institution: "First Teacher College", verification_status: "verified" }
