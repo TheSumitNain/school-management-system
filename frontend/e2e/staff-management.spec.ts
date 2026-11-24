@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { expect, test, type Page, type Route } from "@playwright/test";
+import { expect, test, type Locator, type Page, type Route } from "@playwright/test";
 import { schoolDateValue } from "../src/shared/date/schoolDate";
 
 function schoolDateOffset(days: number) {
@@ -15,10 +15,10 @@ function schoolDateLabel(date: Date) {
   });
 }
 
-async function chooseDatePickerValue(page: Page, ariaLabel: string, value: string) {
+async function chooseDatePickerValue(scope: Locator, ariaLabel: string, value: string) {
   const [year, month, day] = value.split("-").map(Number);
-  await page.getByRole("button", { name: ariaLabel }).click();
-  const calendar = page.getByRole("dialog", { name: `Choose ${ariaLabel.toLowerCase()}` });
+  await scope.getByRole("button", { name: ariaLabel }).click();
+  const calendar = scope.getByRole("dialog", { name: `Choose ${ariaLabel.toLowerCase()}` });
   await calendar.getByRole("button", { name: "Choose year" }).click();
   while (true) {
     const range = await calendar.locator(".app-date-header strong").innerText();
@@ -983,7 +983,7 @@ test("staff profile creates education, certification and experience records", as
   const expiryCalendar = dialog.getByRole("dialog", { name: "Choose certification expiry date" });
   await expiryCalendar.getByRole("button", { name: "Choose year" }).click();
   await expect(expiryCalendar.locator(".app-date-year-grid button").filter({ hasText: /^2021$/ })).toBeDisabled();
-  await expiryCalendar.getByRole("button", { name: "Escape" }).press("Escape").catch(() => {});
+  await page.keyboard.press("Escape");
   await chooseDatePickerValue(dialog, "Certification expiry date", "2027-05-01");
   await dialog.getByRole("button", { name: "Save record" }).click();
   await expect(dialog.getByText("Teacher Training")).toBeVisible();
