@@ -499,15 +499,17 @@ test("staff leave request date filters are sent to the API and can be cleared to
       url.searchParams.get("from_date") === "2026-11-01" &&
       url.searchParams.get("to_date") === "2026-11-30";
   });
-  await page.getByLabel("Leave requests from date").fill("2026-11-01");
-  await page.getByLabel("Leave requests to date").fill("2026-11-30");
+  await page.getByLabel("Leave requests from date").click();
+  await page.getByRole("dialog", { name: "Choose leave requests from date" }).getByRole("button", { name: /1 November 2026/ }).click();
+  await page.getByLabel("Leave requests to date").click();
+  await page.getByRole("dialog", { name: "Choose leave requests to date" }).getByRole("button", { name: /30 November 2026/ }).click();
   const filteredURL = new URL((await dateRequest).url());
   expect(filteredURL.searchParams.get("from_date")).toBe("2026-11-01");
   expect(filteredURL.searchParams.get("to_date")).toBe("2026-11-30");
 
   await page.getByRole("button", { name: "Clear filters" }).click();
-  await expect(page.getByLabel("Leave requests from date")).toHaveValue("");
-  await expect(page.getByLabel("Leave requests to date")).toHaveValue("");
+  await expect(page.getByLabel("Leave requests from date")).toContainText("Any start date");
+  await expect(page.getByLabel("Leave requests to date")).toContainText("Any end date");
   await expect(page.getByRole("button", { name: "Clear filters" })).toHaveCount(0);
 });
 
