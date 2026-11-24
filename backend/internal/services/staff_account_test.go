@@ -270,7 +270,7 @@ func TestStaffProfileEmailValidationMatchesDatabaseCharacterConstraints(t *testi
 		t.Fatalf("shortest valid email creation calls=%d want=3", repo.profileCalls)
 	}
 
-	for _, email := range []string{strings.Repeat("a", 252) + "@x.y", "teacher@@domain.com", "teacher @domain.com", "teacher@domain"} {
+	for _, email := range []string{strings.Repeat("a", 252) + "@x.y", "teacher@@domain.com", "teacher @domain.com", "teacher@domain", "teacher@domain..com", "teacher@domain.com.", ".teacher@domain.com", "teacher..name@domain.com", "teacher@-domain.com", "teacher@domain-.com", "teacher@domain,com"} {
 		profile.Email = email
 		if _, err := service.CreateWithProfile(context.Background(), 31, 8, "invalid.teacher", "A-Strong-Initial-Pass-123", profile); err != ErrInvalidStaffAccount {
 			t.Errorf("CreateWithProfile email %q error = %v, want ErrInvalidStaffAccount", email, err)
