@@ -70,7 +70,7 @@ export function StaffLeaveWorkspace({permissions,staff,canReadStaff}:Props){
  const decide=useDecideStaffLeaveRequestMutation();
  const cancel=useCancelStaffLeaveRequestMutation();
  const saveHoliday=useSaveSchoolHolidayMutation();
- const activeStaff=staff.filter(item=>item.employment_status==="active"&&item.profile_complete!==false);
+ const activeStaff=staff.filter(item=>item.employment_status==="active"&&item.profile_complete===true);
  const activeTypes=types.data?.data.filter(item=>item.is_active)??[];
  const requestStaffOptions=activeStaff.map(item=>({value:String(item.principal_id),label:(item.full_name||item.username)+" · "+(item.employee_code||"No code")}));
  const filterStaffOptions=[{value:"0",label:"All staff"},...requestStaffOptions];
