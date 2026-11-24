@@ -1794,6 +1794,26 @@ test("staff substitution assigns a dated cover, validates the timetable weekday 
 });
 
 
+test("substitution list staff filter can be reset without changing the default date window", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [
+    { id: 1, principal_id: 501, school_id: 10, username: "teacher.original", employee_code: "EMP-ORIGINAL", full_name: "Original Teacher", designation: "Mathematics Teacher", employment_status: "active", profile_complete: true, status: "active", must_change_password: false },
+    { id: 2, principal_id: 502, school_id: 10, username: "teacher.substitute", employee_code: "EMP-SUBSTITUTE", full_name: "Substitute Teacher", designation: "Mathematics Teacher", employment_status: "active", profile_complete: true, status: "active", must_change_password: false },
+  ];
+  const requests: string[] = [];
+  page.on("request", request => {
+    const url = new URL(request.url());
+    if (url.pathname.endsWith("/school/staff-substitutions") && request.method() === "GET") requests.push(url.search);
+  });
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "staff.substitutions.read"]);
+  await page.getByRole("button", { name: "Substitutions" }).click();
+  await page.getByRole("button", { name: "Filter substitutions by staff" }).click();
+  await page.getByRole("option", { name: /Original Teacher/ }).click();
+  await expect.poll(() => requests.some(query => query.includes("staff_principal_id=501"))).toBe(true);
+  await page.getByRole("button", { name: "Clear filters" }).click();
+  await expect(page.getByRole("button", { name: "Clear filters" })).toHaveCount(0);
+  await expect.poll(() => requests.some(query => !query.includes("staff_principal_id"))).toBe(true);
+});
+
 test("completed substitute coverage remains visible without a cancellation action", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [
     {
