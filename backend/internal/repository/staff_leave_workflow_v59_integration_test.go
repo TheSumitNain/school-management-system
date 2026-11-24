@@ -348,13 +348,20 @@ func TestStaffLeaveDecisionRejectRequiresReasonAndPersistsAuditPostgresIntegrati
 
 func TestStaffLeaveReportDateRangePostgresIntegration(t *testing.T) {
  f:=newStaffLeaveIntegrationFixture(t)
+ beforeRange:=f.request(t,f.staffPrincipalID,"2027-02-28","2027-03-02")
  inside:=f.request(t,f.staffPrincipalID,"2027-03-10","2027-03-11")
+ afterRange:=f.request(t,f.staffPrincipalID,"2027-03-30","2027-04-02")
  outside:=f.request(t,f.staffPrincipalID,"2027-04-10","2027-04-10")
- if err:=f.repo.Decide(f.ctx,f.adminPrincipalID,f.schoolID,inside.ID,true,nil);err!=nil{t.Fatalf("approve in-range leave: %v",err)}
- if err:=f.repo.Decide(f.ctx,f.adminPrincipalID,f.schoolID,outside.ID,true,nil);err!=nil{t.Fatalf("approve out-of-range leave: %v",err)}
+ for _,item:=range []*StaffLeaveRequest{beforeRange,inside,afterRange,outside} {
+  if err:=f.repo.Decide(f.ctx,f.adminPrincipalID,f.schoolID,item.ID,true,nil);err!=nil{t.Fatalf("approve leave request %d: %v",item.ID,err)}
+ }
  got,err:=f.repo.ListRequests(f.ctx,f.adminPrincipalID,f.schoolID,"approved",0,"","2027-03-01","2027-03-31")
  if err!=nil{t.Fatalf("list approved leave overlapping March range: %v",err)}
- if len(got)!=1||got[0].ID!=inside.ID{t.Fatalf("range returned %+v; want only request %d",got,inside.ID)}
+ found:=map[int64]bool{}
+ for _,item:=range got{found[item.ID]=true}
+ if len(got)!=3||!found[beforeRange.ID]||!found[inside.ID]||!found[afterRange.ID]||found[outside.ID] {
+  t.Fatalf("range returned %+v; want requests %d, %d and %d, excluding %d",got,beforeRange.ID,inside.ID,afterRange.ID,outside.ID)
+ }
 }
 
 func TestSchoolHolidayInactiveListingRequiresManagePermissionPostgresIntegration(t *testing.T) {
