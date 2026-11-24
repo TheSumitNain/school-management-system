@@ -1,3 +1,9 @@
+## 2026-11-24 — Staff attendance PostgreSQL write-path coverage gap
+
+- Re-audited `staff_attendance_repository.go` against the V58 PostgreSQL integration suite. Existing integration coverage verifies schema/permissions, duplicate-date uniqueness, Asia/Kolkata future-date protection and authorization-before-target-resolution.
+- Identified a remaining test-only gap: the PostgreSQL suite does not yet exercise successful individual marking, successful same-day update, successful bulk marking, or rollback of a partially written bulk batch when a later target or audit insert fails. Service-level tests and handler/browser tests do not replace these database transaction assertions.
+- No production defect was confirmed by this review, and no runtime code or database schema was changed. The next attendance hardening task is to add real-PostgreSQL write/rollback integration coverage before considering the attendance workflow fully verified.
+
 ## 2026-11-24 — Staff profile record-isolation regression coverage
 
 - Added delayed-response Playwright coverage proving a staff profile does not display the previous employee's qualifications, certifications or employment history while another employee's records load.
