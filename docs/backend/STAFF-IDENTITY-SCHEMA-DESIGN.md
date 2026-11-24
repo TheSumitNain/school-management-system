@@ -249,3 +249,56 @@ Until the design decisions and migration plan are approved:
 - Do not alter local, test, staging or production databases.
 - Do not implement staff document or photo upload/storage.
 - Continue improving existing Staff Management behavior only where it fits the current schema and approved permissions.
+
+## 3.5 Staff classification and designation catalog — product proposal
+
+This section records a proposed school-friendly starting catalog only. It does not authorize a migration, seed data, or a production enum. Confirm the final values and labels with the product owner before implementing UI/API validation.
+
+### Staff Type (two primary categories)
+
+- `teaching` — employees whose work includes teaching, academic instruction, class-in-charge or timetable assignments.
+- `non_teaching` — employees in administration, operations, support and other non-instructional roles.
+
+Staff Type is a classification, not a job title. Academic assignment eligibility must be based on Staff Type plus active employment status; never infer it from a designation string.
+
+### Designation (school-configurable job title)
+
+Suggested teaching designations:
+- Principal; Vice Principal; PGT; TGT; PRT; Nursery / Pre-Primary Teacher.
+- Special Educator; Physical Education / Sports Teacher; Computer Teacher; Art Teacher; Music Teacher; Lab Instructor.
+
+Suggested non-teaching designations:
+- Accountant; Clerk / Office Assistant; Receptionist; Librarian; Lab Assistant; IT / Computer Operator.
+- Nurse; Counsellor; Transport In-charge; Driver; Conductor; Security Guard; Peon / Office Attendant; Housekeeping; Maintenance.
+
+These are suggestions, not a closed enum. Each school should be able to add, rename or deactivate its own designations. Deactivation must not rewrite existing employee history. Avoid hard-coding PGT/TGT/PRT as the only teaching roles; schools may use different naming conventions.
+
+### Department (school-managed master)
+
+Suggested starting departments:
+- Administration; Academics; Accounts & Finance; Examination; Library; Laboratory; IT; Sports; Transport; Medical; Security; Housekeeping; Maintenance; Other.
+
+Department values should be school-managed master records, not a global enum and not arbitrary free text on each employee. A department may remain unassigned where a school has not configured its department list.
+
+### Employment Type (controlled values)
+
+Proposed values:
+- `permanent` — Permanent
+- `contract` — Contract
+- `part_time` — Part-time
+- `temporary` — Temporary
+- `internship` — Internship
+- `visiting_faculty` — Visiting Faculty
+
+The existing experience-history field has a separate legacy value set; do not silently reuse or change it as the employee's current Employment Type. Review compatibility and migration mapping before introducing this profile-level field. Visiting Faculty may be applicable to teaching staff, but should not be assumed to be the same as contract employment.
+
+### Validation and UX rules for the eventual implementation
+
+- Show Staff Type, Designation, Department and Employment Type as separate fields with clear labels.
+- Designation options may be filtered by Staff Type for convenience, but the server must not reject a valid school-defined designation solely because it is absent from the suggested catalog.
+- Keep stable machine values separate from localized/display labels.
+- Do not infer Staff Type from designation text during migration. Existing records require a reviewed mapping or an explicit unclassified state until resolved.
+- Do not expose a deactivated designation/department for new selections; continue displaying its historical label on existing staff records.
+- Add audit events for master-data create, rename and deactivate operations, and show the affected employee count before deactivation where applicable.
+- Any department or designation master-data administration requires school-scoped permissions and tenant-safe uniqueness.
+
