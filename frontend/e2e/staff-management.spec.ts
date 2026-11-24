@@ -1005,7 +1005,10 @@ test("staff record server field errors render under the matching field and prese
     });
   });
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await page.getByRole("button", { name: "Record Validation Teacher", exact: true }).click();
+  await expect(page.getByText("1 of 1 staff members")).toBeVisible();
+  const staffRow = page.locator("tr").filter({ hasText: "teacher.record-validation" });
+  await expect(staffRow).toBeVisible();
+  await staffRow.locator("button.staff-profile-link").click();
   const dialog = page.getByRole("dialog", { name: "Record Validation Teacher" });
   await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
   await dialog.getByRole("button", { name: "Add qualification" }).click();
