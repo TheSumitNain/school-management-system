@@ -440,11 +440,11 @@ export function StaffManagementPage({ permissions }: Props) {
             {canReadStaff && <button type="button" onClick={() => setActiveTab("directory")}><Search size={16}/> Find an employee</button>}
             {(permissions.includes("teacher_assignments.read") || permissions.includes("class_incharge_assignments.read")) && <button type="button" onClick={() => setActiveTab("assignments")}><BookOpen size={16}/> Manage academic assignments</button>}
           </div></section>
-          <section className="staff-overview-panel"><h3>Account readiness</h3><p>Keep employment and login status aligned without mixing the two.</p><ul className="staff-readiness-list">
+          {canReadStaff && <section className="staff-overview-panel"><h3>Account readiness</h3><p>Keep employment and login status aligned without mixing the two.</p><ul className="staff-readiness-list">
             <li><span>Active employees with disabled login</span><strong>{staff.filter(item => item.employment_status === "active" && item.status !== "active").length}</strong></li>
             <li><span>Temporary password change pending</span><strong>{staff.filter(item => item.must_change_password).length}</strong></li>
-            <li><span>Inactive employees</span><strong>{staff.filter(item => item.employment_status === "inactive").length}</strong></li>
-          </ul></section>
+            <li><span>Inactive employees</span><strong>{staff.filter(item => item.employment_status === "inactive").length}</li>
+          </ul></section>}
         </div>
         {query.isError && <p className="staff-overview-error" role="alert">Staff summary could not be loaded. Open Staff Directory and retry the request.</p>}
       </section>}
