@@ -2294,6 +2294,8 @@ test("staff ID cards select only complete active profiles and expose approved pr
   const preview = page.locator(".staff-id-print-area");
   await expect(preview.getByText("Active Teacher",{exact:true})).toBeVisible();
   await expect(preview.getByText("EMP-501",{exact:true})).toBeVisible();
+  await expect(preview.getByText("1 Apr 2024",{exact:true})).toBeVisible();
+  await expect(preview.getByText("Active",{exact:true})).toBeVisible();
   await expect(preview.getByText("Mathematics Teacher",{exact:true})).toBeVisible();
   await expect(preview.locator(".staff-id-avatar")).toHaveText("AT");
   await expect(page.getByText("private@example.test")).toHaveCount(0);
