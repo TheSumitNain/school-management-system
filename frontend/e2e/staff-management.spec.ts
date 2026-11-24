@@ -2065,6 +2065,21 @@ test("staff reports include active academic assignments and export only permitte
   expect(csv).not.toContain("Science");
 });
 
+test("staff academic assignment report explains missing current academic year", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [];
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "teacher_assignments.read", "class_incharge_assignments.read"]);
+  await page.route("**/api/school/timetable/current-year", route =>
+    route.fulfill({ json: { academic_year: null } }),
+  );
+  await page.getByRole("button", { name: "Reports", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Academic assignments" })).toBeVisible();
+  await expect(page.getByText("No current academic year is configured. Set a current academic year before viewing academic assignments.")).toBeVisible();
+  await expect(page.getByText("Assigned teachers")).toHaveCount(0);
+  await expect(page.getByText("Subject assignments")).toHaveCount(0);
+  await expect(page.getByText("Class-in-charge assignments")).toHaveCount(0);
+  await expect(page.getByText("No active academic assignments were found for this academic year.")).toHaveCount(0);
+});
+
 test("staff reports do not request attendance or leave data without their read permissions", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [];
   await signInAndOpenStaff(page, rows, undefined, ["users.read"]);
