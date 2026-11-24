@@ -706,6 +706,28 @@ test("add staff wizard validates each step before allowing progress", async ({ p
 });
 
 
+test("staff profile email validation rejects malformed address components", async ({ page }) => {
+  await signInAndOpenStaff(page, [], async (_path, route) => {
+    await route.fulfill({ status: 201, json: { staff: { id: 93, principal_id: 293, school_id: 10, username: "email.teacher", employee_code: "EMP-EMAIL", full_name: "Email Teacher", designation: "Class Teacher", mobile_number: "9876543210", employment_status: "active", profile_complete: true, status: "active", must_change_password: true } } });
+  });
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Add staff" }).click();
+  const dialog = page.getByRole("dialog", { name: "Add employee" });
+  await dialog.getByLabel("Full name").fill("Email Teacher");
+  await dialog.getByLabel("Employee code").fill("EMP-EMAIL");
+  await dialog.getByLabel("Mobile number").fill("9876543210");
+  const email = dialog.getByLabel("Email address");
+  for (const invalid of ["teacher@domain..com", "teacher..name@domain.com", "teacher@domain.com.", "teacher@-domain.com"]) {
+    await email.fill(invalid);
+    await dialog.getByRole("button", { name: "Continue" }).click();
+    await expect(dialog.getByText("Enter a valid email address.")).toBeVisible();
+  }
+  await email.fill("a@b.c");
+  await dialog.getByRole("button", { name: "Continue" }).click();
+  await expect(dialog.getByText("Enter a valid email address.")).toHaveCount(0);
+  await expect(dialog.getByLabel("Designation")).toBeVisible();
+});
+
 test("staff profile creation accepts Unicode names and designations at database character limits", async ({ page }) => {
   const created: Array<Record<string, unknown>> = [];
   await signInAndOpenStaff(page, [], async (_path, route) => {
