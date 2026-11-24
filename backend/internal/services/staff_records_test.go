@@ -293,3 +293,21 @@ func TestQualificationScoreValidationFieldTargetsScoreOrScale(t *testing.T) {
 		})
 	}
 }
+
+
+func TestStaffRecordsServiceReturnsAllQualificationFieldValidationErrors(t *testing.T) {
+	repo := &fakeStaffRecordsRepository{}
+	svc := NewStaffRecordsService(repo)
+	_, err := svc.CreateQualification(context.Background(), 1, 2, 3, repository.StaffQualification{
+		QualificationType: "invalid",
+		QualificationName: "",
+		Institution: "",
+	})
+	var validation *StaffRecordFieldValidationError
+	if !errors.As(err, &validation) { t.Fatalf("error type=%T want StaffRecordFieldValidationError", err) }
+	for _, field := range []string{"qualification_type", "qualification_name", "institution"} {
+		if validation.FieldErrors[field] == "" { t.Errorf("missing %q error: %+v", field, validation.FieldErrors) }
+	}
+	if len(validation.FieldErrors) != 3 { t.Fatalf("got %d errors, want 3: %+v", len(validation.FieldErrors), validation.FieldErrors) }
+	if repo.calls != 0 { t.Fatalf("invalid qualification reached repository %d times", repo.calls) }
+}
