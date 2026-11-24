@@ -2515,6 +2515,32 @@ test("staff reports show monthly attendance and leave summaries only with matchi
   expect(leaveCSV).toContain("Casual Leave");
 });
 
+test("staff operational reports calculate month boundaries correctly for early years", async ({ page }) => {
+  await signInAndOpenStaff(page, [], undefined, ["users.read", "staff.attendance.read", "staff.leave.read"]);
+  const requested: string[] = [];
+  await page.route("**/api/school/staff-attendance/month?*", async route => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get("month") === "0001-02") requested.push("attendance:" + url.searchParams.get("month"));
+    await route.fulfill({ json: { month: url.searchParams.get("month"), data: [] } });
+  });
+  await page.route("**/api/school/staff-leave/requests?*", async route => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get("from_date") === "0001-02-01") {
+      requested.push("leave:" + url.searchParams.get("from_date") + ":" + url.searchParams.get("to_date"));
+    }
+    await route.fulfill({ json: { data: [] } });
+  });
+  await page.getByRole("button", { name: "Reports", exact: true }).click();
+  const month = page.getByLabel("Select attendance and leave report month");
+  await month.fill("0001-02");
+  await expect.poll(() => requested.length).toBe(2);
+  expect(requested).toContain("attendance:0001-02");
+  expect(requested).toContain("leave:0001-02-01:0001-02-28");
+  await month.fill("0000-02");
+  await expect(page.getByText("Select a valid report month to load attendance and leave records.")).toBeVisible();
+  await expect.poll(() => requested.length).toBe(2);
+});
+
 test("staff monthly reports do not request data when the report month is cleared", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [];
   let attendanceRequests = 0;

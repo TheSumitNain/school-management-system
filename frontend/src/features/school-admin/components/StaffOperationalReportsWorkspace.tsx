@@ -35,7 +35,9 @@ function exportCSV(filename: string, rows: Array<Array<string | number | null | 
 
 function monthBounds(month: string) {
   const [year, value] = month.split("-").map(Number);
-  const lastDay = new Date(Date.UTC(year, value, 0)).getUTCDate();
+  const monthEnd = new Date(0);
+  monthEnd.setUTCFullYear(year, value, 0);
+  const lastDay = monthEnd.getUTCDate();
   return { from: month + "-01", to: month + "-" + String(lastDay).padStart(2, "0") };
 }
 
@@ -291,7 +293,7 @@ export function StaffOperationalReportsWorkspace({ permissions }: Props) {
   const canReadAttendance = permissions.includes("staff.attendance.read");
   const canReadLeave = permissions.includes("staff.leave.read");
   const [month, setMonth] = useState(currentMonthIST);
-  const validMonth = /^\d{4}-(0[1-9]|1[0-2])$/.test(month);
+  const validMonth = /^\d{4}-(0[1-9]|1[0-2])$/.test(month) && Number(month.slice(0, 4)) >= 1;
   const safeMonth = validMonth ? month : currentMonthIST();
   const bounds = useMemo(() => monthBounds(safeMonth), [safeMonth]);
   const attendance = useQuery({
