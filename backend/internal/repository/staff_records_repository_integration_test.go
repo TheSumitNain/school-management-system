@@ -354,8 +354,15 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
 	if err!=nil{t.Fatalf("create leave request for rejection history: %v",err)}
 	rejectionComment:="Not approved in integration fixture"
 	if err:=leaveRepo.Decide(ctx,actorID,schoolID,rejectRequest.ID,false,&rejectionComment);err!=nil{t.Fatalf("reject leave request for history fallback: %v",err)}
-	events,err:=repo.ListStaffAuditEvents(ctx,actorID,schoolID,staff.PrincipalID)
+	firstPage,err:=repo.ListStaffAuditEvents(ctx,actorID,schoolID,staff.PrincipalID,StaffAuditEventFilter{Limit:2,Offset:0})
+	if err!=nil{t.Fatalf("list first staff audit history page: %v",err)}
+	if len(firstPage.Events)!=2||!firstPage.HasMore||firstPage.Offset!=0||firstPage.Limit!=2{t.Fatalf("first audit page=%+v want 2 rows and has_more=true",firstPage)}
+	secondPage,err:=repo.ListStaffAuditEvents(ctx,actorID,schoolID,staff.PrincipalID,StaffAuditEventFilter{Limit:2,Offset:2})
+	if err!=nil{t.Fatalf("list second staff audit history page: %v",err)}
+	if len(secondPage.Events)!=2||secondPage.Events[0].ID==firstPage.Events[0].ID{t.Fatalf("second audit page did not advance: first=%+v second=%+v",firstPage,secondPage)}
+	allEvents,err:=repo.ListStaffAuditEvents(ctx,actorID,schoolID,staff.PrincipalID,StaffAuditEventFilter{Limit:100,Offset:0})
 	if err!=nil{t.Fatalf("list staff audit history: %v",err)}
+	events:=allEvents.Events
 	if len(events)<9{t.Fatalf("staff audit history events=%d want at least 9 including account creation, six record mutations and two attendance actions",len(events))}
 	foundQualificationUpdate:=false
 	for _,event:=range events{if event.Action=="staff.qualification.updated"{foundQualificationUpdate=true}}
@@ -384,5 +391,5 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
 	}
 	if !foundOverrideSet{t.Fatal("staff audit history omitted permission override set event")}
 	if !foundOverrideRemoved{t.Fatal("staff audit history omitted permission override removal event")}
-	if _,err:=repo.ListStaffAuditEvents(ctx,actorID,schoolID+1,staff.PrincipalID);!errors.Is(err,ErrStaffRecordAccessDenied){t.Fatalf("cross-school staff audit history error=%v",err)}
+	if _,err:=repo.ListStaffAuditEvents(ctx,actorID,schoolID+1,staff.PrincipalID,StaffAuditEventFilter{Limit:50});!errors.Is(err,ErrStaffRecordAccessDenied){t.Fatalf("cross-school staff audit history error=%v",err)}
 }

@@ -3459,6 +3459,45 @@ test("staff profile history never flashes the previous employee's audit events w
 });
 
 
+test("staff history paginates older audit events without mixing employees", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [
+    { id: 1, principal_id: 541, school_id: 10, username: "teacher.audit.pages", employee_code: "EMP-AUD-PAGES", full_name: "Audit Pages", designation: "Teacher", mobile_number: "9876543241", employment_status: "active", profile_complete: true, status: "active", must_change_password: false },
+  ];
+  const requestedOffsets: string[] = [];
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "school.audit.read"]);
+  await page.route("**/api/school/staff/541/audit-events**", async route => {
+    const url = new URL(route.request().url());
+    const offset = url.searchParams.get("offset") || "0";
+    requestedOffsets.push(offset);
+    const events = offset === "0"
+      ? Array.from({ length: 50 }, (_, index) => ({
+          id: index + 1, action: index === 0 ? "staff.profile.updated" : "staff.account.created",
+          resource_type: "staff_user", outcome: "success", actor_username: "school.admin",
+          created_at: "2026-11-22T10:00:00.000Z",
+        }))
+      : [{
+          id: 51, action: "staff.leave.approved", resource_type: "staff_leave_request",
+          outcome: "success", actor_username: "school.admin", created_at: "2026-11-22T11:00:00.000Z",
+        }];
+    await route.fulfill({ json: { events, limit: 50, offset: Number(offset), has_more: offset === "0" } });
+  });
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Audit Pages" }).click();
+  const dialog = page.getByRole("dialog", { name: "Audit Pages" });
+  await dialog.getByRole("button", { name: "History & Activity" }).click();
+  await expect(dialog.getByText("Profile updated")).toBeVisible();
+  await expect(dialog.getByText("Page 1")).toBeVisible();
+  await dialog.getByRole("button", { name: "Older events" }).click();
+  await expect(dialog.getByText("Leave approved")).toBeVisible();
+  await expect(dialog.getByText("Page 2")).toBeVisible();
+  await expect.poll(() => requestedOffsets).toContain("50");
+  await dialog.getByRole("button", { name: "Newer events" }).click();
+  await expect(dialog.getByText("Profile updated")).toBeVisible();
+  await expect(dialog.getByText("Page 1")).toBeVisible();
+  await expect.poll(() => requestedOffsets).toContain("0");
+});
+
 test("closing and reopening the same staff profile reloads audit history instead of reusing cached events", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [
     { id: 1, principal_id: 531, school_id: 10, username: "teacher.audit.reopen", employee_code: "EMP-AUD-REOPEN", full_name: "Audit Reopen", designation: "Teacher", mobile_number: "9876543231", employment_status: "active", profile_complete: true, status: "active", must_change_password: false },
