@@ -42,7 +42,7 @@ const staffUser = {
   school_id: 10,
 };
 
-async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, unknown>>, onStaffMutation?: (path: string, route: Route) => Promise<void>, permissions = ["users.read", "users.create", "users.update"]) {
+async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, unknown>>, onStaffMutation?: (path: string, route: Route) => Promise<void>, permissions = ["users.read", "users.create", "users.update"], onStaffRecordMutation?: (collection: string, route: Route) => Promise<void>) {
   const staffRecords: Record<string, Array<Record<string, unknown>>> = { qualifications: [], certifications: [], experience: [] };
   const leaveTypes: Array<Record<string, unknown>> = [{ id: 1, name: "Casual Leave", is_paid: true, requires_approval: true, is_active: true }];
   const leaveRequests: Array<Record<string, unknown>> = [{
@@ -264,6 +264,10 @@ async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, un
         return;
       }
       if (method === "POST") {
+        if (onStaffRecordMutation) {
+          await onStaffRecordMutation(collection, route);
+          return;
+        }
         const payload = request.postDataJSON() as Record<string, unknown>;
         const saved = { ...payload, id: staffRecords[collection].length + 1, staff_principal_id: principalID, verification_status: "pending", created_at: "2026-11-21T00:00:00.000Z", updated_at: "2026-11-21T00:00:00.000Z" };
         staffRecords[collection].push(saved);
@@ -980,6 +984,37 @@ test("staff profile edit uses the shared employment-status select and sends the 
   await expect(dialog).toHaveCount(0);
   await expect(timezonePage.locator("select")).toHaveCount(0);
   await timezoneContext.close();
+});
+
+test("staff record server field errors render under the matching field and preserve entered values", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 612, school_id: 10, username: "teacher.record-validation",
+    employee_code: "EMP-REC-02", full_name: "Record Validation Teacher", designation: "Science Teacher",
+    mobile_number: "9876543214", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false,
+  }];
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "users.update"], async (collection, route) => {
+    expect(collection).toBe("qualifications");
+    await route.fulfill({
+      status: 400,
+      json: {
+        status: "error",
+        message: "Check the highlighted staff record fields",
+        field_errors: { qualification_name: "The qualification name needs a valid value." },
+      },
+    });
+  });
+  await page.getByRole("button", { name: "Record Validation Teacher" }).click();
+  const dialog = page.getByRole("dialog", { name: "Record Validation Teacher" });
+  await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
+  await dialog.getByRole("button", { name: "Add qualification" }).click();
+  await dialog.locator('input[name="qualification_name"]').fill("M.Sc. Physics");
+  await dialog.locator('input[name="institution"]').fill("State University");
+  await dialog.getByRole("button", { name: "Save record" }).click();
+  await expect(dialog.getByText("The qualification name needs a valid value.")).toBeVisible();
+  await expect(dialog.locator('input[name="qualification_name"]')).toHaveValue("M.Sc. Physics");
+  await expect(dialog.locator('input[name="qualification_name"]')).toHaveAttribute("aria-invalid", "true");
+  await expect(dialog.locator(".staff-record-form").getByText("Check the highlighted staff record fields")).toHaveCount(0);
 });
 
 test("staff profile creates education, certification and experience records", async ({ page }) => {
