@@ -375,6 +375,14 @@ func TestStaffLeaveReportDateRangePostgresIntegration(t *testing.T) {
  if len(byStaff)!=1||byStaff[0].ID!=adminRequest.ID {
   t.Fatalf("staff filter returned %+v; want only request %d",byStaff,adminRequest.ID)
  }
+
+ crossSchool,err:=f.repo.ListRequests(f.ctx,f.adminPrincipalID,f.schoolID+999999,"",0,"","","")
+ if !errors.Is(err,ErrStaffLeaveAccessDenied) {
+  t.Fatalf("cross-school leave list error=%v; want access denied",err)
+ }
+ if len(crossSchool)!=0 {
+  t.Fatalf("cross-school leave list returned records: %+v",crossSchool)
+ }
 }
 
 func TestSchoolHolidayInactiveListingRequiresManagePermissionPostgresIntegration(t *testing.T) {
