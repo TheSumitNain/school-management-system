@@ -1,3 +1,11 @@
+## 2026-11-24 — Staff attendance early-year month-boundary fix
+
+- Fixed monthly attendance context date calculation for years 0001–0099. JavaScript's `Date.UTC` remaps years 0–99 into 1900–1999; the component now constructs the month-end date with `setUTCFullYear` and rejects year 0000.
+- Added Playwright regression coverage verifying February 0001 requests attendance month `0001-02` and the exact leave/holiday range `0001-02-01` through `0001-02-28`.
+- Frontend CI [45416803915](https://github.com/TheSumitNain/school-management-system/actions/runs/45416803915) **PASS** on `b291e11baef26a0cf78a4a3fcad75a5898bdf252`: TypeScript/Vite production build and the full Playwright browser acceptance suite passed.
+- Backend CI [45416803934](https://github.com/TheSumitNain/school-management-system/actions/runs/45416803934) **PASS** on the same commit: full Go tests, ephemeral PostgreSQL integration and `go vet` passed.
+- No schema, migration, persistent database or application data changed.
+
 ## 2026-11-24 — Staff attendance PostgreSQL write-path rollback verification
 
 - Added real-PostgreSQL integration assertions for successful individual attendance marking, same-day update and bulk marking in the existing staff-record integration fixture.
