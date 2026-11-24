@@ -151,10 +151,18 @@ function AssignmentReport({ permissions }: Props) {
       }
       return row;
     };
-    for (const item of subjects.data?.assignments ?? []) if (!item.revoked_at) get(item.teacher_principal_id, item.teacher_username).subjectAssignments.push(item);
-    for (const item of incharges.data?.assignments ?? []) if (!item.revoked_at) get(item.teacher_principal_id, item.teacher_username).classInchargeAssignments.push(item);
+    if (canReadSubjects) {
+      for (const item of subjects.data?.assignments ?? []) {
+        if (!item.revoked_at) get(item.teacher_principal_id, item.teacher_username).subjectAssignments.push(item);
+      }
+    }
+    if (canReadIncharges) {
+      for (const item of incharges.data?.assignments ?? []) {
+        if (!item.revoked_at) get(item.teacher_principal_id, item.teacher_username).classInchargeAssignments.push(item);
+      }
+    }
     return Array.from(grouped.values()).sort((a, b) => a.username.localeCompare(b.username));
-  }, [subjects.data, incharges.data]);
+  }, [subjects.data, incharges.data, canReadSubjects, canReadIncharges]);
   const isLoading = (canReadSubjects && (yearQuery.isLoading || (yearID > 0 && subjects.isLoading))) ||
     (canReadIncharges && (yearQuery.isLoading || (yearID > 0 && incharges.isLoading)));
   const isError = yearQuery.isError || (canReadSubjects && subjects.isError) || (canReadIncharges && incharges.isError);
