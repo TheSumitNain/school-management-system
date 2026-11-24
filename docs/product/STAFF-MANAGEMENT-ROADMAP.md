@@ -768,3 +768,11 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Frontend CI [45323508729](https://github.com/TheSumitNain/school-management-system/actions/runs/45323508729) **PASS** on `59b7a82f3a81ba1ca89db753dbc8794d9b5318f2`: TypeScript, Vite production build and **98 Playwright browser tests**. The three latest leave-request acceptance cases verify that managers without Staff Directory read access receive a safe selection gate, only active staff with `profile_complete === true` are selectable, and an empty eligible-staff set produces a clear empty state rather than a broken form.
 - Backend CI [45323508810](https://github.com/TheSumitNain/school-management-system/actions/runs/45323508810) **PASS** on the same commit: full Go tests, ephemeral PostgreSQL integration suite and `go vet`.
 - No persistent database migration or data change. `main` remains untouched. Profile-only onboarding/Bulk Import, external document storage and other previously recorded approval-gated work remain deferred.
+
+
+## 2026-11-24 implementation checkpoint — employee profile record isolation
+
+- Added delayed-response Playwright coverage for Qualifications & Experience proving that qualifications, certifications and previous-employment history from one employee never flash in the next employee's profile while their requests are pending.
+- Added PostgreSQL integration coverage for same-school employee ownership boundaries: listing another employee's qualification, certification or experience returns no records, and updating another employee's record by ID is rejected.
+- Frontend CI [45356454122](https://github.com/TheSumitNain/school-management-system/actions/runs/45356454122) **PASS** with TypeScript, Vite production build and **118 Playwright tests**. Backend CI [45356977023](https://github.com/TheSumitNain/school-management-system/actions/runs/45356977023) **PASS** with full Go tests, ephemeral PostgreSQL integration and `go vet`.
+- No migration, seed, persistent database or application data changed. Phase 4 leave-policy approval and Phase 6 identity-schema approval gates remain open; document storage and sensitive personal-field collection remain deferred.
