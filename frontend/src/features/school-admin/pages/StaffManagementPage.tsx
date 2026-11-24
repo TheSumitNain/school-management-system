@@ -273,9 +273,9 @@ export function StaffManagementPage({ permissions }: Props) {
     const employmentStatus = String(form.get("employment_status") ?? "active");
     if ((action === "create" || action === "edit") && !/^[a-z0-9._-]{3,32}$/.test(username)) nextErrors.username = "Use 3–32 lowercase letters, numbers, dots, underscores or hyphens.";
     if (action === "create" || action === "edit") {
-      if (!fullName || fullName.length > 160) nextErrors.full_name = "Enter the employee's full name (up to 160 characters).";
+      if (!fullName || Array.from(fullName).length > 160) nextErrors.full_name = "Enter the employee's full name (up to 160 characters).";
       if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/.test(employeeCode)) nextErrors.employee_code = "Use 1–32 letters, numbers, dots, underscores or hyphens.";
-      if (!designation || designation.length > 100) nextErrors.designation = "Enter a designation (up to 100 characters).";
+      if (!designation || Array.from(designation).length > 100) nextErrors.designation = "Enter a designation (up to 100 characters).";
       if (!/^\+?[0-9]{10,15}$/.test(mobileNumber)) nextErrors.mobile_number = "Enter one mobile number with 10–15 digits; an international + prefix is allowed.";
       if (email && (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254)) nextErrors.email = "Enter a valid email address.";
       if (employmentStatus !== "active" && employmentStatus !== "inactive") nextErrors.employment_status = "Choose Active or Inactive.";
