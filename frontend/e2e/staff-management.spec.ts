@@ -2151,6 +2151,46 @@ test("staff academic assignment report explains missing current academic year", 
   await expect(page.locator(".staff-operational-report-table-wrap")).toHaveCount(0);
 });
 
+test("staff assignment report only aggregates data allowed by each assignment permission", async ({ page }) => {
+  await signInAndOpenStaff(page, [], undefined, ["users.read", "class_incharge_assignments.read"]);
+  let subjectAssignmentRequests = 0;
+  await page.route("**/api/school/timetable/current-year", route =>
+    route.fulfill({ json: { academic_year: { id: 3, name: "2026–27" } } }),
+  );
+  await page.route("**/api/school/teacher-assignments**", route => {
+    subjectAssignmentRequests += 1;
+    return route.fulfill({ json: { assignments: [{
+      id: 21, academic_year_id: 3, section_id: 80, section_name: "Class 8 A",
+      subject_id: 9, subject_name: "Science", teacher_principal_id: 801,
+      teacher_username: "teacher.subject-only", revoked_at: null,
+    }] } });
+  });
+  await page.route("**/api/school/class-incharge-assignments**", route =>
+    route.fulfill({ json: { assignments: [{
+      id: 31, academic_year_id: 3, section_id: 81, section_name: "Class 7 B",
+      class_name: "Class 7", teacher_principal_id: 802,
+      teacher_username: "teacher.incharge-only", revoked_at: null,
+    }] } }),
+  );
+  await page.getByRole("button", { name: "Reports", exact: true }).click();
+  const report = page.locator(".staff-operational-report-section").filter({
+    has: page.getByRole("heading", { name: "Academic assignments" }),
+  });
+  await expect(report.getByText("teacher.incharge-only")).toBeVisible();
+  await expect(report.getByText("teacher.subject-only")).toHaveCount(0);
+  await expect(report.getByText("1", { exact: true }).first()).toBeVisible();
+  await expect.poll(() => subjectAssignmentRequests).toBe(0);
+  const downloadPromise = page.waitForEvent("download");
+  await report.getByRole("button", { name: "Export assignments CSV" }).click();
+  const download = await downloadPromise;
+  const csvPath = await download.path();
+  expect(csvPath).toBeTruthy();
+  const csv = await readFile(csvPath!, "utf8");
+  expect(csv).toContain("teacher.incharge-only");
+  expect(csv).not.toContain("teacher.subject-only");
+  expect(csv).not.toContain("Science");
+});
+
 test("staff reports do not request attendance or leave data without their read permissions", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [];
   await signInAndOpenStaff(page, rows, undefined, ["users.read"]);
