@@ -18,7 +18,11 @@ export function StaffRoleAssignments({ staff, canAssign }: Props) {
   const [roleToRevoke, setRoleToRevoke] = useState<{id:number;name:string}|null>(null);
   const [roleError, setRoleError] = useState("");
   useEffect(() => {
-    if (!canAssign) setRoleToRevoke(null);
+    if (!canAssign) {
+      setRoleID("");
+      setRoleError("");
+      setRoleToRevoke(null);
+    }
   }, [canAssign]);
   const rolesQuery = useQuery({
     queryKey: ["school-admin", "roles"],
@@ -57,7 +61,21 @@ export function StaffRoleAssignments({ staff, canAssign }: Props) {
     [rolesQuery.data?.roles, assignments],
   );
   const busy = assign.isPending || revoke.isPending;
-  function submitAssign(event: FormEvent<HTMLFormElement>) { event.preventDefault(); if(!roleID){setRoleError("Choose a role to assign.");return;} setRoleError("");setFeedback("");assign.mutate(); }
+  function submitAssign(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!canAssign) {
+      setRoleID("");
+      setRoleError("");
+      return;
+    }
+    if (!roleID) {
+      setRoleError("Choose a role to assign.");
+      return;
+    }
+    setRoleError("");
+    setFeedback("");
+    assign.mutate();
+  }
 
   return (
     <section className="staff-role-panel" aria-label={`Roles for ${staff.username}`}>
