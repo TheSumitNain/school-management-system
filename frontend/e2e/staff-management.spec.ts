@@ -3006,3 +3006,38 @@ test.describe("staff ID card school-date formatting in non-school browser timezo
     await expect(preview.getByText("1 Apr 2024",{exact:true})).toBeVisible();
   });
 });
+
+test("staff profile history never flashes the previous employee's audit events while the next employee loads", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [
+    { id: 1, principal_id: 521, school_id: 10, username: "teacher.audit.first", employee_code: "EMP-AUD-01", full_name: "Audit First", designation: "Teacher", mobile_number: "9876543221", employment_status: "active", profile_complete: true, status: "active", must_change_password: false },
+    { id: 2, principal_id: 522, school_id: 10, username: "teacher.audit.second", employee_code: "EMP-AUD-02", full_name: "Audit Second", designation: "Teacher", mobile_number: "9876543222", employment_status: "active", profile_complete: true, status: "active", must_change_password: false },
+  ];
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "school.audit.read"]);
+  await page.route("**/api/school/staff/521/audit-events", async route => {
+    await route.fulfill({ json: { events: [
+      { id: 1, action: "staff.profile.updated", resource_type: "staff_user", outcome: "success", actor_username: "school.admin", metadata: {}, created_at: "2026-11-22T10:00:00.000Z" },
+      { id: 2, action: "staff.account.created", resource_type: "staff_user", outcome: "success", actor_username: "school.admin", metadata: {}, created_at: "2026-11-22T09:00:00.000Z" },
+    ] } });
+  });
+  await page.route("**/api/school/staff/522/audit-events", async route => {
+    await new Promise(resolve => setTimeout(resolve, 400));
+    await route.fulfill({ json: { events: [
+      { id: 3, action: "staff.leave.approved", resource_type: "staff_leave_request", outcome: "success", actor_username: "school.admin", metadata: {}, created_at: "2026-11-22T11:00:00.000Z" },
+    ] } });
+  });
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Audit First" }).click();
+  let dialog = page.getByRole("dialog", { name: "Audit First" });
+  await dialog.getByRole("button", { name: "History & Activity" }).click();
+  await expect(dialog.getByText("Profile updated")).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "Audit Second" }).click();
+  dialog = page.getByRole("dialog", { name: "Audit Second" });
+  await dialog.getByRole("button", { name: "History & Activity" }).click();
+  await expect(dialog.getByRole("status")).toContainText("Loading staff activity");
+  await expect(dialog.getByText("Profile updated")).toHaveCount(0);
+  await expect(dialog.getByText("Account created")).toHaveCount(0);
+  await expect(dialog.getByText("Leave approved")).toBeVisible();
+});
