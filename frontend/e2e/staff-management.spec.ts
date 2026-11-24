@@ -1168,6 +1168,48 @@ test("staff profile does not retain the previous employee's qualifications while
   await expect(dialog.getByText("Second Employee Qualification")).toBeVisible();
 });
 
+test("staff profile does not retain the previous employee's certifications or experience while the next profile loads", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [
+    { id: 1, principal_id: 433, school_id: 10, username: "teacher.records.first", employee_code: "EMP-RECORDS-FIRST", full_name: "Records First", designation: "Teacher", mobile_number: "9876543218", employment_status: "active", profile_complete: true, status: "active" },
+    { id: 2, principal_id: 434, school_id: 10, username: "teacher.records.second", employee_code: "EMP-RECORDS-SECOND", full_name: "Records Second", designation: "Teacher", mobile_number: "9876543219", employment_status: "active", profile_complete: true, status: "active" },
+  ];
+  await signInAndOpenStaff(page, rows);
+  await page.route("**/api/school/staff/*/certifications", async route => {
+    const principalID = new URL(route.request().url()).pathname.split("/")[4];
+    if (principalID === "434") await new Promise(resolve => setTimeout(resolve, 400));
+    const certification = principalID === "433"
+      ? { id: 1, staff_principal_id: 433, certificate_name: "First Employee Private Certificate", issuing_organization: "First Certification Board", verification_status: "verified" }
+      : { id: 2, staff_principal_id: 434, certificate_name: "Second Employee Certificate", issuing_organization: "Second Certification Board", verification_status: "verified" };
+    await route.fulfill({ json: { certifications: [certification] } });
+  });
+  await page.route("**/api/school/staff/*/experience", async route => {
+    const principalID = new URL(route.request().url()).pathname.split("/")[4];
+    if (principalID === "434") await new Promise(resolve => setTimeout(resolve, 400));
+    const experience = principalID === "433"
+      ? { id: 1, staff_principal_id: 433, employer_name: "First Employee Private School", designation: "Senior Teacher First", employment_type: "permanent", start_date: "2018-04-01", end_date: "2021-03-31", is_current: false }
+      : { id: 2, staff_principal_id: 434, employer_name: "Second Employee School", designation: "Teacher Second", employment_type: "contract", start_date: "2022-04-01", is_current: true };
+    await route.fulfill({ json: { experience: [experience] } });
+  });
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Records First" }).click();
+  let dialog = page.getByRole("dialog", { name: "Records First" });
+  await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
+  await expect(dialog.getByText("First Employee Private Certificate")).toBeVisible();
+  await expect(dialog.getByText("First Employee Private School")).toBeVisible();
+
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Records Second" }).click();
+  dialog = page.getByRole("dialog", { name: "Records Second" });
+  await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
+  await expect(dialog.getByRole("status").filter({ hasText: "Loading certifications" })).toBeVisible();
+  await expect(dialog.getByRole("status").filter({ hasText: "Loading experience" })).toBeVisible();
+  await expect(dialog.getByText("First Employee Private Certificate")).toHaveCount(0);
+  await expect(dialog.getByText("First Employee Private School")).toHaveCount(0);
+  await expect(dialog.getByText("Second Employee Certificate")).toBeVisible();
+  await expect(dialog.getByText("Second Employee School")).toBeVisible();
+});
+
 test("staff account access keeps role assignments read-only without delegation permissions", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 513, school_id: 10, username: "teacher.role-reader",
