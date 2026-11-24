@@ -82,6 +82,31 @@ Proposed `staff_departments`:
 - Do not seed arbitrary department names or use free-text department values. Each school administers its own list.
 - A nullable department supports schools that have not configured the master yet.
 
+### 3.2.1 Designation master and employment classification
+
+Proposed `staff_designations`:
+- `id` identity PK, `school_id` NOT NULL, `name`, applicable `staff_type` (teaching, non_teaching or both), `is_active`, timestamps.
+- `UNIQUE(id, school_id)` and case-insensitive `UNIQUE(school_id, lower(btrim(name)))`.
+- Staff profiles reference a designation by a school-scoped `designation_id`; do not store a per-employee arbitrary designation string as the authoritative value once this master is introduced.
+- Designations are school-configurable. The suggested labels in this document are starter suggestions, not a closed global enum or mandatory seed list.
+- A designation may be renamed or deactivated only through a permission-gated, audited operation. Show the affected employee count before deactivation; do not delete or rewrite historical employee records.
+- If a designation is renamed, decide whether existing profiles display the current master label or preserve a historical label snapshot. This must be explicit and consistent in audit/history exports.
+- The designation's applicable Staff Type is a validation aid, not a substitute for the employee's explicit Staff Type. The backend must reject a teaching assignment unless the employee is explicitly `teaching` and active; never infer teaching status from a designation name.
+
+### 3.2.2 Employment type value contract
+
+The proposed profile-level controlled values are:
+- `permanent` — Permanent
+- `contract` — Contract
+- `part_time` — Part-time
+- `temporary` — Temporary
+- `internship` — Internship
+- `visiting_faculty` — Visiting Faculty
+
+Keep the profile's current Employment Type separate from the historical employment-type field used by previous-experience records. The current experience-history service accepts a legacy set; do not change or silently reinterpret those existing values as part of this proposal. Any mapping requires an explicit compatibility review and tests.
+
+Employment Type is not the same as Employment Status (active/inactive), login-account status, payroll classification or leave entitlement. Do not infer compensation, benefits or leave policy from it.
+
 ### 3.3 Personal details and sensitive information
 
 Keep sensitive personal fields in a separate `staff_personal_details` table keyed by `(staff_id, school_id)`, rather than returning them in every directory/list API.
