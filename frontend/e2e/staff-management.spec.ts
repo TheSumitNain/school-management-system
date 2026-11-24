@@ -2298,6 +2298,14 @@ test("staff ID cards select only complete active profiles and expose approved pr
   await expect(preview.getByText("Active",{exact:true})).toBeVisible();
   await expect(preview.getByText("Mathematics Teacher",{exact:true})).toBeVisible();
   await expect(preview.locator(".staff-id-avatar")).toHaveText("AT");
+  const validUntilPicker = page.getByRole("button", { name: "ID card valid until" });
+  await expect(validUntilPicker).toContainText("No expiry date");
+  await expect(page.locator('.staff-id-controls input[type="date"]')).toHaveCount(0);
+  await validUntilPicker.click();
+  const expiryCalendar = page.getByRole("dialog", { name: "Choose id card valid until" });
+  await expect(expiryCalendar.getByRole("button", { name: schoolDateLabel(schoolDateOffset(-1)) })).toBeDisabled();
+  await expiryCalendar.getByRole("button", { name: "Today", exact: true }).click();
+  await expect(validUntilPicker).toContainText(new Date(schoolDateValue() + "T12:00:00").toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }));
   await expect(page.getByText("private@example.test")).toHaveCount(0);
   await expect(page.getByText("9876543210")).toHaveCount(0);
   await expect(preview.getByText("active.teacher")).toHaveCount(0);
