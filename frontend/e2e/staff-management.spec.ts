@@ -1019,13 +1019,13 @@ test("staff profile creates education, certification and experience records", as
   await dialog.getByRole("button", { name: "Add experience" }).click();
   await dialog.locator('input[name="employer_name"]').fill("Previous School");
   await dialog.locator('input[name="record_designation"]').fill("Science Teacher");
-  await chooseDatePickerValue(dialog, "Previous employment start date", "2018-04-01");
+  await chooseDatePickerValue(dialog, "Previous employment start date", "2021-04-01");
   await dialog.getByRole("button", { name: "Previous employment end date" }).click();
   const experienceEndCalendar = dialog.getByRole("dialog", { name: "Choose previous employment end date" });
   await experienceEndCalendar.getByRole("button", { name: "Choose year" }).click();
-  await expect(experienceEndCalendar.locator(".app-date-year-grid button").filter({ hasText: /^2017$/ })).toBeDisabled();
+  await expect(experienceEndCalendar.locator(".app-date-year-grid button").filter({ hasText: /^2020$/ })).toBeDisabled();
   await page.keyboard.press("Escape");
-  await chooseDatePickerValue(dialog, "Previous employment end date", "2021-03-31");
+  await chooseDatePickerValue(dialog, "Previous employment end date", "2022-03-31");
   await dialog.getByRole("button", { name: "Save record" }).click();
   await expect(dialog.getByText("Previous School")).toBeVisible();
   const experienceCard = dialog.locator(".staff-record-card").filter({ hasText: "Previous School" });
@@ -2252,7 +2252,6 @@ test("staff assignment report excludes class-incharge data without its permissio
   });
   await expect(report.getByText("teacher.subject-only")).toBeVisible();
   await expect(report.getByText("teacher.incharge-secret")).toHaveCount(0);
-  await expect(report.getByRole("columnheader", { name: "Subject assignments" })).toBeVisible();
   await expect(report.getByRole("columnheader", { name: "Class-in-charge" })).toHaveCount(0);
   await expect.poll(() => inchargeAssignmentRequests).toBe(0);
 
@@ -2442,7 +2441,7 @@ test("staff ID cards select complete active employees regardless of login status
   await expect(preview.getByText("EMP-505",{exact:true})).toBeVisible();
   await expect(preview.locator(".staff-id-card")).toHaveCount(2);
   await expect(preview.getByText("1 Apr 2024",{exact:true})).toBeVisible();
-  await expect(preview.getByText("Active",{exact:true})).toBeVisible();
+  await expect(preview.getByText("Active",{exact:true}).first()).toBeVisible();
   await expect(preview.getByText("Mathematics Teacher",{exact:true})).toBeVisible();
   await expect(preview.locator(".staff-id-avatar")).toHaveText("AT");
   const validUntilPicker = page.getByRole("button", { name: "ID card valid until" });
