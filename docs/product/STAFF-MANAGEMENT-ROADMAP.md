@@ -752,3 +752,10 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Finalized permission isolation for Staff workspace entry: substitution management is not exposed as a standalone entry capability unless the user can also read staff records; cached staff-directory data is suppressed whenever `users.read` is absent, and directory errors are not surfaced in create-only views.
 - Frontend CI [45319733688](https://github.com/TheSumitNain/school-management-system/actions/runs/45319733688) **PASS**: production build and **95 Playwright tests**. Backend CI [45319733387](https://github.com/TheSumitNain/school-management-system/actions/runs/45319733387) **PASS**: PostgreSQL integration, full Go tests and `go vet`.
 - No database migration or persistent data change; `main` remains untouched.
+
+
+## 2026-11-24 implementation checkpoint — report date and CSV download reliability
+
+- Staff attendance CSV object URLs now remain available through the browser download handoff before cleanup, matching the other staff report exporters. The operational reports default month now derives from the shared Asia/Kolkata school-date helper rather than a hard-coded fallback year.
+- Frontend CI [45320435562](https://github.com/TheSumitNain/school-management-system/actions/runs/45320435562) **PASS**: production build and 95 Playwright tests. Backend CI [45320435534](https://github.com/TheSumitNain/school-management-system/actions/runs/45320435534) **PASS**: full Go/PostgreSQL integration and `go vet`.
+- No schema migration or persistent database change.
