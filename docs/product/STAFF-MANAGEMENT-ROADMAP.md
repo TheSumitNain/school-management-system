@@ -57,7 +57,7 @@ Selecting a staff row opens a full profile page (preferred for deep profiles and
 | # | Profile tab | Phase | Contents |
 |---:|---|---|---|
 | 1 | Overview | P0 | Identity summary, employment/account status, current assignments and recent activity |
-| 2 | Personal Details | P0 | Name, contact, DOB, gender, address and emergency contact |
+| 2 | Personal Details | P0 / gated fields | Supported name and contact fields; sensitive personal fields stay unavailable until schema, access and privacy approval |
 | 3 | Employment | P0 | Employee code, staff type, department, designation, employment type, dates and status |
 | 4 | Qualifications & Experience | P0 | Education, specialization, certifications, experience and previous employment |
 | 5 | Documents | Deferred | Explanatory disabled state only; upload/download waits until go-live storage approval |
@@ -66,7 +66,7 @@ Selecting a staff row opens a full profile page (preferred for deep profiles and
 | 8 | Account & Access | P0 | Login lifecycle, roles, delegated permissions and password reset |
 | 9 | History & Activity | P0 | Employment, assignment and relevant audit/activity events |
 
-Tabs with no records must show an explanatory empty state and an action when the viewer has permission. Sensitive fields/documents must be field-authorized; directory access does not imply access to every profile field.
+Tabs with no records must show an explanatory empty state and an action when the viewer has permission. Sensitive fields/documents must be field-authorized; directory access does not imply access to every profile field. DOB, gender, addresses and emergency contacts are deferred pending dedicated schema, field-level permission, retention and privacy approval. Do not collect them through placeholder/local-only forms.
 
 ## 3. Forms and field specifications
 
@@ -148,14 +148,14 @@ Edit from the relevant profile tab. Use a focused form for the selected section,
 | Full Name | Required |
 | Mobile Number | Required |
 | Email | Optional |
-| Date of Birth | Optional |
-| Gender | Optional |
+| Date of Birth | Deferred |
+| Gender | Deferred |
 | Photograph | Deferred |
-| Current Address | Optional |
-| Permanent Address | Optional |
-| Emergency Contact Name | Optional |
-| Emergency Contact Relationship | Optional |
-| Emergency Contact Mobile | Optional |
+| Current Address | Deferred |
+| Permanent Address | Deferred |
+| Emergency Contact Name | Deferred |
+| Emergency Contact Relationship | Deferred |
+| Emergency Contact Mobile | Deferred |
 
 **Employment form**
 
