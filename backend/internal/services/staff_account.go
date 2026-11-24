@@ -57,6 +57,13 @@ func (s *StaffAccountService) Create(
 var staffEmployeeCodePattern = regexp.MustCompile("^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$")
 var staffMobilePattern = regexp.MustCompile("^\\+?[0-9]{10,15}$")
 
+// validStaffProfileEmail mirrors the staff_profiles email CHECK constraint.
+// Count Unicode characters, matching PostgreSQL length(), rather than bytes.
+func validStaffProfileEmail(email string) bool {
+\tif email == "" { return true }
+\treturn len([]rune(email)) >= 3 && len([]rune(email)) <= 254 && strings.Index(email, "@") > 0
+}
+
 // CreateWithProfile creates a login account and employee profile in one repository transaction.
 func (s *StaffAccountService) CreateWithProfile(ctx context.Context, actorPrincipalID, schoolID int64, username, initialPassword string, profile models.StaffProfile) (*models.User, error) {
 	username = strings.ToLower(strings.TrimSpace(username))
@@ -69,7 +76,7 @@ func (s *StaffAccountService) CreateWithProfile(ctx context.Context, actorPrinci
 	if s == nil || s.repository == nil || actorPrincipalID <= 0 || schoolID <= 0 || !validStaffUsername(username) ||
 		!staffEmployeeCodePattern.MatchString(profile.EmployeeCode) || profile.FullName == "" || len([]rune(profile.FullName)) > 160 ||
 		profile.Designation == "" || len([]rune(profile.Designation)) > 100 || !staffMobilePattern.MatchString(profile.MobileNumber) ||
-		(profile.Email != "" && (!strings.Contains(profile.Email, "@") || len(profile.Email) > 254)) ||
+		!validStaffProfileEmail(profile.Email) ||
 		(profile.JoiningDate != nil && (profile.JoiningDate.Year() < 1 || profile.JoiningDate.After(time.Now().AddDate(1, 0, 0)))) {
 		return nil, ErrInvalidStaffAccount
 	}
@@ -122,7 +129,7 @@ func (s *StaffAccountService) UpdateProfile(ctx context.Context, actorPrincipalI
     if s == nil || s.repository == nil || actorPrincipalID <= 0 || schoolID <= 0 || targetPrincipalID <= 0 ||
        !staffEmployeeCodePattern.MatchString(profile.EmployeeCode) || profile.FullName == "" || len([]rune(profile.FullName)) > 160 ||
        profile.Designation == "" || len([]rune(profile.Designation)) > 100 || !staffMobilePattern.MatchString(profile.MobileNumber) ||
-       (profile.Email != "" && (!strings.Contains(profile.Email, "@") || len(profile.Email) > 254)) ||
+       !validStaffProfileEmail(profile.Email) ||
        (profile.JoiningDate != nil && (profile.JoiningDate.Year() < 1 || profile.JoiningDate.After(time.Now().AddDate(1, 0, 0)))) ||
        (profile.EmploymentStatus != "active" && profile.EmploymentStatus != "inactive") {
         return nil, ErrInvalidStaffAccount
