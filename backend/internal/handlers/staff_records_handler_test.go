@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"school-management-system/internal/middleware"
 	"school-management-system/internal/repository"
+	"school-management-system/internal/services"
 )
 
 func TestStaffRecordsHandlersReturnUnavailableWithoutService(t *testing.T) {
@@ -143,5 +144,24 @@ func TestStaffRecordsListHandlersReturnEmptyArraysForNilResults(t *testing.T) {
 				t.Fatalf("nil list must serialize as an empty JSON array for %q: %s", tt.key, recorder.Body.String())
 			}
 		})
+	}
+}
+
+func TestStaffRecordsHandlerReturnsStructuredFieldValidationErrors(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	handler := NewStaffRecordsHandler(nil)
+	router.POST("/validation", func(c *gin.Context) {
+		handler.fail(c, &services.StaffRecordFieldValidationError{
+			FieldErrors: map[string]string{"qualification_name": "Enter a valid qualification name."},
+		})
+	})
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/validation", strings.NewReader("{}")))
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d want=%d body=%s", recorder.Code, http.StatusBadRequest, recorder.Body.String())
+	}
+	if !strings.Contains(recorder.Body.String(), `"qualification_name":"Enter a valid qualification name."`) {
+		t.Fatalf("field error missing from response: %s", recorder.Body.String())
 	}
 }
