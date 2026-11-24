@@ -24,7 +24,7 @@ const makeDate = (year: number, monthIndex: number, day = 1) => {
   date.setFullYear(year, monthIndex, day);
   return date;
 };
-const toISO = (date: Date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+const toISO = (date: Date) => `${String(date.getFullYear()).padStart(4, "0")}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 const fromISO = (value: string) => {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (!match) return null;
