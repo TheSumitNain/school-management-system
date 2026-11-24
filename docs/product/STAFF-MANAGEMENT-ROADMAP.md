@@ -447,7 +447,7 @@ Phases are dependency ordered, not a claim that every listed item is absent. Ins
 3. Monthly register and reports. **Implemented: monthly report, separate attendance/approved-leave/active-holiday context, and permission-aware CSV export with formula-injection protection.**
 4. Connect approved leave and school calendar rules. **Implemented as informational context only; approved leave and holidays never create or overwrite attendance marks.**
 
-**Exit gate:** duplicate/date/permission safeguards, audited corrections, accurate reports and responsive browser coverage.
+**Exit gate: MET for the currently approved Phase 3 scope (2026-11-24).** Duplicate/date/permission safeguards, audited corrections, accurate monthly reports, approved-leave/holiday informational context, permission-scoped exports and responsive browser acceptance are implemented and verified by the current Backend CI [45320435534](https://github.com/TheSumitNain/school-management-system/actions/runs/45320435534) and Frontend CI [45320435562](https://github.com/TheSumitNain/school-management-system/actions/runs/45320435562) (95 Playwright tests). This does not authorize leave-balance policy or automatic attendance changes.
 
 ### Phase 4 — Leave & Holiday Management (P1)
 
@@ -458,7 +458,7 @@ Phases are dependency ordered, not a claim that every listed item is absent. Ins
 5. Attendance context and reporting. **Implemented:** approved leave and active holidays appear separately in daily/monthly attendance context when the viewer has the relevant read permissions. Monthly CSV export separates attendance, approved leave and holidays and protects against spreadsheet formula injection. No attendance rows are automatically created or overwritten.
 6. Permission boundaries and browser acceptance. **Implemented:** the workspace requires a read permission; write/decision-only grants cannot expose leave list views. Browser coverage includes the leave workflows, holiday reactivation, form-error isolation, monthly CSV export and responsive layouts. A read-only holiday-calendar acceptance test verifies that `staff.holidays.read` without `staff.holidays.manage` exposes the active calendar but no mutation controls or inactive records (frontend and backend CI pass at `eaaea2f2f0f4a3665221a3fe0d1807f404eac6a7`).
 
-**Exit gate remains open:** complete any remaining end-to-end workflow review and school-specific policy approval. Leave balances, quotas, accrual and carry-forward must not be implemented until the school explicitly approves the policy. Keep attendance context informational; manual attendance conflicts require explicit human resolution.
+**Exit gate: PARTIALLY MET (2026-11-24).** The end-to-end leave/holiday workflow review and permission-specific browser acceptance are complete, including read-only leave access without staff-directory permission; current Backend CI [45320435534](https://github.com/TheSumitNain/school-management-system/actions/runs/45320435534) and Frontend CI [45320435562](https://github.com/TheSumitNain/school-management-system/actions/runs/45320435562) pass. School-specific leave policy approval remains open. Leave balances, quotas, accrual and carry-forward must not be implemented until the school explicitly approves the policy. Keep attendance context informational; manual attendance conflicts require explicit human resolution.
 
 ### Phase 5 — Workload, Timetable & Substitution (P1)
 
