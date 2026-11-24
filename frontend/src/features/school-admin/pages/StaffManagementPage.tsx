@@ -158,6 +158,8 @@ export function StaffManagementPage({ permissions }: Props) {
       // Staff records and audit events are employee-specific; do not retain them in
       // the shared query cache after the profile is closed.
       queryClient.removeQueries({ queryKey: [...schoolAdminQueryKeys.staff(), principalID] });
+      queryClient.removeQueries({ queryKey: ["school-admin", "staff-roles", principalID] });
+      queryClient.removeQueries({ queryKey: ["school-admin", "staff-overrides", principalID] });
       queryClient.removeQueries({ queryKey: ["staff-audit-events", principalID] });
     }
     setProfileFor(null);
