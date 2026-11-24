@@ -27,10 +27,10 @@ async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, un
   const leaveTypes: Array<Record<string, unknown>> = [{ id: 1, name: "Casual Leave", is_paid: true, requires_approval: true, is_active: true }];
   const leaveRequests: Array<Record<string, unknown>> = [{
     id: 21, staff_principal_id: 501, employee_code: "EMP-LEAVE-01", staff_name: "Leave Teacher",
-    leave_type_id: 1, leave_type_name: "Casual Leave", start_date: "2026-11-24", end_date: "2026-11-24",
+    leave_type_id: 1, leave_type_name: "Casual Leave", start_date: schoolDateValue(), end_date: schoolDateValue(),
     duration_type: "full_day", reason: "Family commitment", status: "pending", created_at: "2026-11-21T00:00:00.000Z",
   }];
-  const schoolHolidays: Array<Record<string, unknown>> = [{ id: 31, holiday_date: "2026-11-26", name: "School Foundation Day", description: "Annual school holiday", is_active: true }];
+  const schoolHolidays: Array<Record<string, unknown>> = [{ id: 31, holiday_date: schoolDateOffset(2).toISOString().slice(0, 10), name: "School Foundation Day", description: "Annual school holiday", is_active: true }];
   const substitutions: Array<Record<string, unknown>> = [];
   await page.route("**/api/**", async route => {
     const request = route.request();
@@ -2277,7 +2277,7 @@ test("read-only substitution access lists coverage without exposing management a
   await page.route("**/api/school/staff-substitutions*", async route => {
     if (route.request().method() === "GET") {
       await route.fulfill({ json: { substitutions: [{
-        id: 91, timetable_entry_id: 701, cover_date: "2026-11-23",
+        id: 91, timetable_entry_id: 701, cover_date: schoolDateValue(),
         original_teacher_principal_id: 501, original_teacher_name: "Original Teacher",
         substitute_teacher_principal_id: 502, substitute_teacher_name: "Cover Teacher",
         reason: "Approved cover", status: "active", section_name: "A", class_name: "Class 6",
@@ -2331,7 +2331,7 @@ test("attendance read-only permission cannot mark, update or bulk-save records",
       await route.fulfill({ status: 403, json: { message: "Forbidden" } });
       return;
     }
-    const date = new URL(route.request().url()).searchParams.get("date") ?? "2026-11-23";
+    const date = new URL(route.request().url()).searchParams.get("date") ?? schoolDateValue();
     await route.fulfill({ json: { date, data: [
       { id: null, school_id: 10, staff_principal_id: 514, employee_code: "EMP-ATT-READ-01", full_name: "Read Only Teacher", designation: "Teacher", attendance_date: date, status: null },
       { id: 52, school_id: 10, staff_principal_id: 515, employee_code: "EMP-ATT-READ-02", full_name: "Already Marked Teacher", designation: "Teacher", attendance_date: date, status: "present" },
