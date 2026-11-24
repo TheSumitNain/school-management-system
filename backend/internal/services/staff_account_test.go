@@ -129,6 +129,27 @@ func TestStaffAccountServiceHashesTemporaryPasswordBeforeReEnable(t *testing.T) 
 	}
 }
 
+func TestValidStaffJoiningDateUsesAsiaKolkataCalendarBoundary(t *testing.T) {
+	now := time.Date(2026, time.November, 24, 20, 0, 0, 0, time.UTC) // 2026-11-25 in Asia/Kolkata
+	within := time.Date(2027, time.November, 25, 0, 0, 0, 0, time.UTC)
+	beyond := time.Date(2027, time.November, 26, 0, 0, 0, 0, time.UTC)
+	if !validStaffJoiningDate(nil, now) {
+		t.Fatal("nil joining date should be valid")
+	}
+	if !validStaffJoiningDate(&within, now) {
+		t.Fatal("joining date on the school-local one-year boundary should be valid")
+	}
+	if validStaffJoiningDate(&beyond, now) {
+		t.Fatal("joining date after the school-local one-year boundary should be invalid")
+	}
+	leapNow := time.Date(2024, time.February, 29, 12, 0, 0, 0, time.FixedZone("IST", 5*60*60+30*60))
+	leapBoundary := time.Date(2025, time.February, 28, 0, 0, 0, 0, time.UTC)
+	leapBeyond := time.Date(2025, time.March, 1, 0, 0, 0, 0, time.UTC)
+	if !validStaffJoiningDate(&leapBoundary, leapNow) || validStaffJoiningDate(&leapBeyond, leapNow) {
+		t.Fatal("leap-day anniversary should clamp to the final valid day of February")
+	}
+}
+
 func TestStaffAccountServiceRejectsJoiningDateBeyondOneYearOnProfileUpdate(t *testing.T) {
 	repo := &fakeStaffAccountRepository{user: &models.User{ID: 15, PrincipalID: 27, SchoolID: 8}}
 	service := NewStaffAccountService(repo, alwaysClearPasswordChecker{})
