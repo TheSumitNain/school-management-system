@@ -875,7 +875,7 @@ test("staff profile edit uses the shared employment-status select and sends the 
   }];
   const browser = page.context().browser();
   if (!browser) throw new Error("Browser context is unavailable.");
-  const timezoneContext = await browser.newContext({ timezoneId: "America/Los_Angeles" });
+  const timezoneContext = await browser.newContext({ baseURL: "http://127.0.0.1:4173", timezoneId: "America/Los_Angeles" });
   const timezonePage = await timezoneContext.newPage();
   await signInAndOpenStaff(timezonePage, rows, async (_path, route) => {
     updates.push(route.request().postDataJSON() as Record<string, unknown>);
