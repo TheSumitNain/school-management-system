@@ -180,7 +180,7 @@ function AssignmentReport({ permissions }: Props) {
     {yearQuery.isSuccess&&!year&&<p className="staff-operational-report-empty">No current academic year is configured. Set a current academic year before viewing academic assignments.</p>}
     {isLoading && <p role="status">Loading academic assignment report…</p>}
     {isError && <p className="staff-operational-report-error" role="alert">Academic assignments could not be loaded. <button type="button" onClick={retry}>Retry</button></p>}
-    {!isLoading && !isError && rows.length === 0 && <p className="staff-operational-report-empty">No active academic assignments were found for this academic year.</p>}
+    {year && !isLoading && !isError && rows.length === 0 && <p className="staff-operational-report-empty">No active academic assignments were found for this academic year.</p>}
     {!isLoading && !isError && rows.length > 0 && <div className="staff-operational-report-table-wrap"><table><thead><tr><th>Staff username</th>{canReadSubjects && <th>Subject assignments</th>}{canReadIncharges && <th>Class-in-charge</th>}<th>Classes / sections</th>{canReadSubjects && <th>Distinct subjects</th>}</tr></thead><tbody>
       {rows.map(row => <tr key={row.principalID}><td>{row.username}</td>{canReadSubjects && <td>{row.subjectAssignments.length}</td>}{canReadIncharges && <td>{row.classInchargeAssignments.length}</td>}<td>{new Set([...row.subjectAssignments.map(item => item.section_id), ...row.classInchargeAssignments.map(item => item.section_id)]).size}</td>{canReadSubjects && <td>{new Set(row.subjectAssignments.map(item => item.subject_id)).size}</td>}</tr>)}
     </tbody></table></div>}
