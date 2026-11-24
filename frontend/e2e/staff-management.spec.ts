@@ -1361,6 +1361,44 @@ test("staff attendance supports search, individual and atomic bulk marking, and 
   expect(monthlyCSV).not.toContain("PRIVATE_LEAVE_REASON");
 });
 
+test("attendance drafts stay scoped to their selected date", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 520, school_id: 10, username: "teacher.date-draft",
+    employee_code: "EMP-DATE-01", full_name: "Date Draft Teacher", designation: "Teacher",
+    employment_status: "active", profile_complete: true, status: "active", must_change_password: false,
+  }];
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "staff.attendance.read", "staff.attendance.mark", "staff.attendance.correct_past"]);
+  await page.route("**/api/school/staff-attendance**", async route => {
+    if (route.request().method() !== "GET") { await route.fulfill({ status: 201, json: { data: {} } }); return; }
+    const requestedDate = new URL(route.request().url()).searchParams.get("date") ?? schoolDateValue();
+    await route.fulfill({ json: { date: requestedDate, data: [{
+      id: null, school_id: 10, staff_principal_id: 520, employee_code: "EMP-DATE-01",
+      full_name: "Date Draft Teacher", designation: "Teacher", attendance_date: requestedDate, status: null, remarks: "",
+    }] } });
+  });
+  await page.getByRole("button", { name: "Attendance", exact: true }).click();
+  const status = page.getByLabel("Attendance status for Date Draft Teacher");
+  await status.selectOption("late");
+  const selectedDate = schoolDateValue();
+  const [year, month, day] = selectedDate.split("-").map(Number);
+  const previousDate = new Date(year, month - 1, day - 1, 12);
+  const previousLabel = previousDate.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  await page.getByLabel("Staff attendance date").click();
+  const calendar = page.getByRole("dialog", { name: "Choose staff attendance date" });
+  if (previousDate.getMonth() !== month - 1 || previousDate.getFullYear() !== year) {
+    await calendar.getByRole("button", { name: "Previous month" }).click();
+  }
+  await calendar.getByRole("button", { name: previousLabel }).click();
+  await expect(page.getByLabel("Attendance status for Date Draft Teacher")).toHaveValue("");
+  await page.getByLabel("Staff attendance date").click();
+  const returnCalendar = page.getByRole("dialog", { name: "Choose staff attendance date" });
+  if (previousDate.getMonth() !== month - 1 || previousDate.getFullYear() !== year) {
+    await returnCalendar.getByRole("button", { name: "Next month" }).click();
+  }
+  await returnCalendar.getByRole("button", { name: new Date(year, month - 1, day, 12).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" }) }).click();
+  await expect(page.getByLabel("Attendance status for Date Draft Teacher")).toHaveValue("late");
+});
+
 test("staff leave request field errors clear as each required field is corrected", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 501, school_id: 10, username: "leave.validation",
