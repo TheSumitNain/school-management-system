@@ -263,7 +263,10 @@ export function StaffManagementPage({ permissions }: Props) {
       if (!/^\+?[0-9]{10,15}$/.test(mobileNumber)) stepErrors.mobile_number = "Enter one mobile number with 10–15 digits.";
       if (!isValidStaffEmail(email)) stepErrors.email = "Enter a valid email address.";
     }
-    if (createStep === 2 && (!designation || Array.from(designation).length > 100)) stepErrors.designation = "Enter a designation (up to 100 characters).";
+    if (createStep === 2) {
+      if (!designation || Array.from(designation).length > 100) stepErrors.designation = "Enter a designation (up to 100 characters).";
+      if (joiningDate && joiningDate > schoolDateValueYearsAhead(1)) stepErrors.joining_date = "Joining date cannot be more than one year ahead.";
+    }
     if (createStep === 3) {
       if (!/^[a-z0-9._-]{3,32}$/.test(username)) stepErrors.username = "Use 3–32 lowercase letters, numbers, dots, underscores or hyphens.";
       if (password.length < 12) stepErrors.password = "Password must contain at least 12 characters.";
@@ -295,6 +298,7 @@ export function StaffManagementPage({ permissions }: Props) {
       if (!designation || Array.from(designation).length > 100) nextErrors.designation = "Enter a designation (up to 100 characters).";
       if (!/^\+?[0-9]{10,15}$/.test(mobileNumber)) nextErrors.mobile_number = "Enter one mobile number with 10–15 digits; an international + prefix is allowed.";
       if (!isValidStaffEmail(email)) nextErrors.email = "Enter a valid email address.";
+      if (joiningDate && joiningDate > schoolDateValueYearsAhead(1)) nextErrors.joining_date = "Joining date cannot be more than one year ahead.";
       if (employmentStatus !== "active" && employmentStatus !== "inactive") nextErrors.employment_status = "Choose Active or Inactive.";
     }
     if (action !== "edit" && password.length < 12) nextErrors.password = "Password must contain at least 12 characters.";
