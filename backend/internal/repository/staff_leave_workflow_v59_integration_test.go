@@ -352,6 +352,7 @@ func TestStaffLeaveReportDateRangePostgresIntegration(t *testing.T) {
  inside:=f.request(t,f.staffPrincipalID,"2027-03-10","2027-03-11")
  afterRange:=f.request(t,f.staffPrincipalID,"2027-03-30","2027-04-02")
  outside:=f.request(t,f.staffPrincipalID,"2027-04-10","2027-04-10")
+ adminRequest:=f.request(t,f.adminPrincipalID,"2027-03-20","2027-03-20")
  for _,item:=range []*StaffLeaveRequest{beforeRange,inside,afterRange,outside} {
   if err:=f.repo.Decide(f.ctx,f.adminPrincipalID,f.schoolID,item.ID,true,nil);err!=nil{t.Fatalf("approve leave request %d: %v",item.ID,err)}
  }
@@ -361,6 +362,18 @@ func TestStaffLeaveReportDateRangePostgresIntegration(t *testing.T) {
  for _,item:=range got{found[item.ID]=true}
  if len(got)!=3||!found[beforeRange.ID]||!found[inside.ID]||!found[afterRange.ID]||found[outside.ID] {
   t.Fatalf("range returned %+v; want requests %d, %d and %d, excluding %d",got,beforeRange.ID,inside.ID,afterRange.ID,outside.ID)
+ }
+
+ onDate,err:=f.repo.ListRequests(f.ctx,f.adminPrincipalID,f.schoolID,"approved",0,"2027-03-01","","")
+ if err!=nil{t.Fatalf("list approved leave on March 1: %v",err)}
+ if len(onDate)!=1||onDate[0].ID!=beforeRange.ID {
+  t.Fatalf("single-date filter returned %+v; want only overlapping request %d",onDate,beforeRange.ID)
+ }
+
+ byStaff,err:=f.repo.ListRequests(f.ctx,f.adminPrincipalID,f.schoolID,"pending",f.adminPrincipalID,"","","")
+ if err!=nil{t.Fatalf("list pending leave for one staff member: %v",err)}
+ if len(byStaff)!=1||byStaff[0].ID!=adminRequest.ID {
+  t.Fatalf("staff filter returned %+v; want only request %d",byStaff,adminRequest.ID)
  }
 }
 
