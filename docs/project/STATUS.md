@@ -1,3 +1,10 @@
+## 2026-11-24 — Staff classification catalog proposal
+
+- Documented the proposed distinction between Staff Type (Teaching / Non-Teaching), school-configurable Designation, school-managed Department and controlled Employment Type values in `docs/backend/STAFF-IDENTITY-SCHEMA-DESIGN.md`.
+- Added suggested teaching/non-teaching designation and department catalogs, plus rules for custom school values, historical labels, auditability and migration safety.
+- This is a product/schema proposal only: no migration, enum enforcement, seed data or application write path was added. Existing staff classification must not be guessed from designation text. Final catalog values still require product approval.
+- Latest verified code checkpoint remains `528c976c`: Backend CI and Frontend CI both **PASS**. This documentation-only commit does not change runtime behavior.
+
 ## 2026-11-23 — Staff list response contract hardening
 
 - Staff qualifications, certifications, experience and history list endpoints now serialize nil service collections as empty JSON arrays.
