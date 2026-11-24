@@ -807,3 +807,10 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - The frontend uses a text input with an email keyboard hint so browser-native ASCII email validation does not reject Unicode values that the shared backend/frontend validator accepts. The backend validator comment now accurately describes it as stricter than the database storage constraint.
 - Frontend CI [45403612085](https://github.com/TheSumitNain/school-management-system/actions/runs/45403612085) **PASS** on `606ff51b5af809f0ceb1eadef13bf77b6ab6d995`: TypeScript, Vite production build and full Playwright browser acceptance suite. Backend CI [45403916189](https://github.com/TheSumitNain/school-management-system/actions/runs/45403916189) **PASS** on `5c5f91c75a6db42f1863dfad94a8396413580a3d`: ephemeral database migrations, full Go tests including PostgreSQL integration and `go vet`.
 - No schema migration or persistent database/application-data change. Phase 4 leave-policy approval, Phase 6 identity-schema approval, and external document-storage deferral remain open; `main` remains untouched.
+
+
+## 2026-11-24 implementation checkpoint — optional staff email clearing
+
+- Added a PostgreSQL integration regression to update an existing employee profile with a blank optional email and verify the database stores SQL `NULL` while the API model returns an empty string. This protects the profile editor's ability to remove a previously saved email without violating the staff profile constraint.
+- Backend CI [45404634591](https://github.com/TheSumitNain/school-management-system/actions/runs/45404634591) **PASS** on `6454bb9779254cc1a2619cbb4870f3f3630e73c7`: all migrations, full Go tests including PostgreSQL integration and `go vet`.
+- No schema migration or persistent database/application-data change. Phase 4 leave-policy approval, Phase 6 identity-schema approval, and external document-storage deferral remain open; `main` remains untouched.
