@@ -1701,7 +1701,7 @@ test("staff profile history does not request audit events without school.audit.r
   }];
   await signInAndOpenStaff(page, rows, undefined, ["users.read"]);
   let auditRequests = 0;
-  await page.route("**/api/school/staff/513/audit-events", async route => {
+  await page.route("**/api/school/staff/513/audit-events**", async route => {
     auditRequests += 1;
     await route.fulfill({ json: { events: [] } });
   });
@@ -1721,7 +1721,7 @@ test("staff profile history is permission-gated and renders staff audit events",
     status: "active", must_change_password: false, created_at: "2026-04-01T00:00:00.000Z",
   }];
   await signInAndOpenStaff(page, rows, undefined, ["users.read", "users.create", "users.update", "school.audit.read"]);
-  await page.route("**/api/school/staff/512/audit-events", async route => {
+  await page.route("**/api/school/staff/512/audit-events**", async route => {
     await route.fulfill({ json: { events: [
       { id: 12, action: "staff.substitution.cancelled", resource_type: "staff_substitution", outcome: "success", actor_username: "school.admin", metadata: {}, created_at: "2026-11-22T11:00:00.000Z" },
       { id: 11, action: "staff.substitution.assigned", resource_type: "staff_substitution", outcome: "success", actor_username: "school.admin", metadata: {}, created_at: "2026-11-22T10:00:00.000Z" },
@@ -3425,14 +3425,14 @@ test("staff profile history never flashes the previous employee's audit events w
   ];
   let auditRequests = 0;
   await signInAndOpenStaff(page, rows, undefined, ["users.read", "school.audit.read"]);
-  await page.route("**/api/school/staff/521/audit-events", async route => {
+  await page.route("**/api/school/staff/521/audit-events**", async route => {
     auditRequests += 1;
     await route.fulfill({ json: { events: [
       { id: 1, action: "staff.profile.updated", resource_type: "staff_user", outcome: "success", actor_username: "school.admin", metadata: {}, created_at: "2026-11-22T10:00:00.000Z" },
       { id: 2, action: "staff.account.created", resource_type: "staff_user", outcome: "success", actor_username: "school.admin", metadata: {}, created_at: "2026-11-22T09:00:00.000Z" },
     ] } });
   });
-  await page.route("**/api/school/staff/522/audit-events", async route => {
+  await page.route("**/api/school/staff/522/audit-events**", async route => {
     auditRequests += 1;
     await new Promise(resolve => setTimeout(resolve, 400));
     await route.fulfill({ json: { events: [
@@ -3504,7 +3504,7 @@ test("closing and reopening the same staff profile reloads audit history instead
   ];
   let auditRequests = 0;
   await signInAndOpenStaff(page, rows, undefined, ["users.read", "school.audit.read"]);
-  await page.route("**/api/school/staff/531/audit-events", async route => {
+  await page.route("**/api/school/staff/531/audit-events**", async route => {
     auditRequests += 1;
     await route.fulfill({ json: { events: [
       { id: auditRequests, action: "staff.profile.updated", resource_type: "staff_user", outcome: "success", actor_username: "school.admin", metadata: {}, created_at: "2026-11-22T10:00:00.000Z" },
