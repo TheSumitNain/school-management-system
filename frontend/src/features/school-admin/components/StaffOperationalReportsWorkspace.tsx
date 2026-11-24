@@ -283,7 +283,7 @@ export function StaffOperationalReportsWorkspace({ permissions }: Props) {
   const canReadAttendance = permissions.includes("staff.attendance.read");
   const canReadLeave = permissions.includes("staff.leave.read");
   const [month, setMonth] = useState(currentMonthIST);
-  const validMonth = /^\\d{4}-(0[1-9]|1[0-2])$/.test(month);
+  const validMonth = /^\d{4}-(0[1-9]|1[0-2])$/.test(month);
   const safeMonth = validMonth ? month : currentMonthIST();
   const bounds = useMemo(() => monthBounds(safeMonth), [safeMonth]);
   const attendance = useQuery({
