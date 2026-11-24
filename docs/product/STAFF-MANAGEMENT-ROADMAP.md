@@ -792,3 +792,10 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Backend regression tests cover 120/121 Unicode-character credential references and certification IDs on create/update, with invalid records rejected before repository writes. Frontend browser acceptance exercises 120-character Unicode credential values.
 - Backend CI [45392293745](https://github.com/TheSumitNain/school-management-system/actions/runs/45392293745) **PASS**: migrations, full Go/PostgreSQL integration tests and `go vet`. Frontend CI [45392293732](https://github.com/TheSumitNain/school-management-system/actions/runs/45392293732) **PASS**: TypeScript/design-token checks, Vite production build and Playwright browser acceptance suite.
 - No schema migration or persistent database/application-data change. Phase 4 leave-policy approval, Phase 6 identity-schema approval, and the previously agreed external document-storage deferral remain open; `main` remains untouched.
+
+## 2026-11-24 implementation checkpoint — staff profile email validation
+
+- Staff profile create/update now share an application-level email validator: optional blank values remain valid; supplied values must be 5–254 Unicode code points, contain exactly one `@`, contain no whitespace, and have a non-empty dotted domain. This matches the frontend's email-format rule and 254-character cap while remaining stricter than the database's basic storage constraint.
+- Added service regression coverage for valid 254-character Unicode email values, malformed/over-limit values, and create/update repository-call boundaries.
+- Backend CI [45401808973](https://github.com/TheSumitNain/school-management-system/actions/runs/45401808973) **PASS** on `22977d39356d0df4c4e04b5cb44743c393e6306e`: migrations, full Go/PostgreSQL integration tests and `go vet`.
+- No schema migration or persistent database/application-data change. Phase 4 leave-policy approval, Phase 6 identity-schema approval, and external document-storage deferral remain open; `main` remains untouched.
