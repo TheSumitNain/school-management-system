@@ -759,3 +759,10 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Staff attendance CSV object URLs now remain available through the browser download handoff before cleanup, matching the other staff report exporters. The operational reports default month now derives from the shared Asia/Kolkata school-date helper rather than a hard-coded fallback year.
 - Frontend CI [45320435562](https://github.com/TheSumitNain/school-management-system/actions/runs/45320435562) **PASS**: production build and 95 Playwright tests. Backend CI [45320435534](https://github.com/TheSumitNain/school-management-system/actions/runs/45320435534) **PASS**: full Go/PostgreSQL integration and `go vet`.
 - No schema migration or persistent database change.
+
+
+## 2026-11-24 follow-up — consolidated Staff Management CI and leave eligibility acceptance
+
+- Frontend CI [45323508729](https://github.com/TheSumitNain/school-management-system/actions/runs/45323508729) **PASS** on `59b7a82f3a81ba1ca89db753dbc8794d9b5318f2`: TypeScript, Vite production build and **98 Playwright browser tests**. The three latest leave-request acceptance cases verify that managers without Staff Directory read access receive a safe selection gate, only active staff with `profile_complete === true` are selectable, and an empty eligible-staff set produces a clear empty state rather than a broken form.
+- Backend CI [45323508810](https://github.com/TheSumitNain/school-management-system/actions/runs/45323508810) **PASS** on the same commit: full Go tests, ephemeral PostgreSQL integration suite and `go vet`.
+- No persistent database migration or data change. `main` remains untouched. Profile-only onboarding/Bulk Import, external document storage and other previously recorded approval-gated work remain deferred.
