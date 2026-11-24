@@ -2,6 +2,19 @@ import { readFile } from "node:fs/promises";
 import { expect, test, type Page, type Route } from "@playwright/test";
 import { schoolDateValue } from "../src/shared/date/schoolDate";
 
+function schoolDateOffset(days: number) {
+  const [year, month, day] = schoolDateValue().split("-").map(Number);
+  const date = new Date(year, month - 1, day, 12);
+  date.setDate(date.getDate() + days);
+  return date;
+}
+
+function schoolDateLabel(date: Date) {
+  return date.toLocaleDateString(undefined, {
+    weekday: "long", month: "long", day: "numeric", year: "numeric",
+  });
+}
+
 const staffUser = {
   principal_id: 101,
   principal_type: "staff",
@@ -1281,21 +1294,24 @@ test("staff leave request field errors clear as each required field is corrected
   await page.getByRole("option", { name: /Casual Leave/ }).click();
   await expect(page.getByText("Select a leave type.")).toHaveCount(0);
 
+  const today = schoolDateOffset(0);
+  const tomorrow = schoolDateOffset(1);
+  const dayAfterTomorrow = schoolDateOffset(2);
   await page.getByLabel("Leave start date").click();
-  await page.getByRole("dialog", { name: "Choose leave start date" }).getByRole("button", { name: /25/ }).click();
+  await page.getByRole("dialog", { name: "Choose leave start date" }).getByRole("button", { name: schoolDateLabel(tomorrow) }).click();
   await expect(page.getByText("Select a start date.")).toHaveCount(0);
   await page.getByLabel("Leave end date").click();
-  await page.getByRole("dialog", { name: "Choose leave end date" }).getByRole("button", { name: "Wednesday, November 25, 2026" }).click();
+  await page.getByRole("dialog", { name: "Choose leave end date" }).getByRole("button", { name: schoolDateLabel(tomorrow) }).click();
   await expect(page.getByText("Select an end date.")).toHaveCount(0);
 
   await page.getByLabel("Leave start date").click();
-  await page.getByRole("dialog", { name: "Choose leave start date" }).getByRole("button", { name: "Thursday, November 26, 2026" }).click();
+  await page.getByRole("dialog", { name: "Choose leave start date" }).getByRole("button", { name: schoolDateLabel(dayAfterTomorrow) }).click();
   await page.getByRole("button", { name: "Submit leave request" }).click();
   await expect(page.getByText("End date must be on or after the start date.")).toBeVisible();
   await expect(page.getByLabel("Leave end date")).toHaveAttribute("aria-describedby", "leave-end-date-error");
 
   await page.getByLabel("Leave start date").click();
-  await page.getByRole("dialog", { name: "Choose leave start date" }).getByRole("button", { name: "Tuesday, November 24, 2026" }).click();
+  await page.getByRole("dialog", { name: "Choose leave start date" }).getByRole("button", { name: schoolDateLabel(today) }).click();
   await expect(page.getByText("End date must be on or after the start date.")).toHaveCount(0);
 
   await page.getByLabel("Leave duration").click();
@@ -1305,7 +1321,7 @@ test("staff leave request field errors clear as each required field is corrected
   await expect(page.getByLabel("Leave duration")).toHaveAttribute("aria-describedby", "leave-duration-error");
 
   await page.getByLabel("Leave end date").click();
-  await page.getByRole("dialog", { name: "Choose leave end date" }).getByRole("button", { name: "Tuesday, November 24, 2026" }).click();
+  await page.getByRole("dialog", { name: "Choose leave end date" }).getByRole("button", { name: schoolDateLabel(today) }).click();
   await expect(page.getByText("Half-day leave must cover one date only.")).toHaveCount(0);
 
   await page.getByLabel("Reason").fill("Personal appointment");
@@ -1333,10 +1349,11 @@ test("staff leave request submits a valid half-day application with its selected
   await page.getByRole("option", { name: /Submission Teacher/ }).click();
   await page.getByLabel("Leave type").click();
   await page.getByRole("option", { name: /Casual Leave/ }).click();
+  const todayLabel = schoolDateLabel(schoolDateOffset(0));
   await page.getByLabel("Leave start date").click();
-  await page.getByRole("dialog", { name: "Choose leave start date" }).getByRole("button", { name: "Tuesday, November 24, 2026" }).click();
+  await page.getByRole("dialog", { name: "Choose leave start date" }).getByRole("button", { name: todayLabel }).click();
   await page.getByLabel("Leave end date").click();
-  await page.getByRole("dialog", { name: "Choose leave end date" }).getByRole("button", { name: "Tuesday, November 24, 2026" }).click();
+  await page.getByRole("dialog", { name: "Choose leave end date" }).getByRole("button", { name: todayLabel }).click();
   await page.getByLabel("Leave duration").click();
   await page.getByRole("option", { name: "Half day" }).click();
   const leaveDuration = page.getByRole("button", { name: "Leave duration" });
@@ -1355,8 +1372,8 @@ test("staff leave request submits a valid half-day application with its selected
   expect(submitted).toMatchObject({
     staff_principal_id: 501,
     leave_type_id: 1,
-    start_date: "2026-11-24",
-    end_date: "2026-11-24",
+    start_date: schoolDateValue(),
+    end_date: schoolDateValue(),
     duration_type: "half_day",
     half_day_session: "second_half",
     reason: "Medical appointment",
@@ -1533,7 +1550,7 @@ test("holiday save errors clear when the holiday details are corrected", async (
   await expect(page.getByLabel(/Holiday name/)).toHaveAttribute("aria-describedby", "holiday-name-error");
 
   await page.getByLabel("Holiday date").click();
-  await page.getByRole("dialog", { name: "Choose holiday date" }).getByRole("button", { name: "Wednesday, November 25, 2026" }).click();
+  await page.getByRole("dialog", { name: "Choose holiday date" }).getByRole("button", { name: schoolDateLabel(schoolDateOffset(1)) }).click();
   await expect(page.getByText("Select the holiday date.")).toHaveCount(0);
   await expect(page.getByLabel("Holiday date")).not.toHaveAttribute("aria-invalid", "true");
   await page.getByLabel(/Holiday name/).fill("School Event");
