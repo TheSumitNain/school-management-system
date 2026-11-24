@@ -233,6 +233,7 @@
 
 .staff-directory-export{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:6px 10px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-surface);color:var(--color-text);font-size:10px;font-weight:600;white-space:nowrap}
 .staff-directory-export:disabled{opacity:.5;cursor:not-allowed}
+.staff-management-page .staff-clear-filters{align-self:flex-end;min-height:32px;padding:6px 10px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-surface);color:var(--color-text-secondary);font-size:11px;font-weight:600;white-space:nowrap}.staff-management-page .staff-clear-filters:hover{background:var(--color-surface-muted);color:var(--color-text)}
 
 .staff-reports-workspace{display:grid;gap:14px;min-width:0}
 .staff-reports-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
