@@ -2415,3 +2415,12 @@ This update supersedes older status bullets that listed the following database-b
 - Standardized Staff Attendance CSV object-URL cleanup to preserve the browser download handoff, and replaced the operational report's hard-coded month fallback with the shared IST school-date helper.
 - Frontend CI [45320435562](https://github.com/TheSumitNain/school-management-system/actions/runs/45320435562) **PASS** (TypeScript, design-token check, production build and 95 Playwright tests). Backend CI [45320435534](https://github.com/TheSumitNain/school-management-system/actions/runs/45320435534) **PASS** (ephemeral PostgreSQL migrations, Go/PostgreSQL integration and `go vet`).
 - No persistent database changes; `main` remains untouched.
+
+
+## 2026-11-24 — Staff Management consolidated browser and backend acceptance
+
+- Staff Management's currently approved implementation scope is browser-verified on commit `59b7a82f3a81ba1ca89db753dbc8794d9b5318f2`: Frontend CI [45323508729](https://github.com/TheSumitNain/school-management-system/actions/runs/45323508729) **PASS** with TypeScript, Vite production build and **98 Playwright tests**; Backend CI [45323508810](https://github.com/TheSumitNain/school-management-system/actions/runs/45323508810) **PASS** with full Go tests, ephemeral PostgreSQL integration and `go vet`.
+- Latest leave acceptance verifies staff-directory permission gating, active + explicitly complete employee eligibility and the no-eligible-staff empty state. The previous false empty-state failure was corrected by opening the Leave & Holidays workspace in the test.
+- Updated the Staff Management roadmap and implementation audit to reflect the 98-test checkpoint and separate implemented scope from approval-gated capabilities.
+- Phase 4 remains partial pending school-specific leave-policy approval. Phase 6 remains partial because Bulk Import requires explicit identity-schema/product approval. Staff profile-only onboarding, document/photo storage, sensitive personal fields and Payroll remain deferred under existing decisions.
+- No persistent database migration or data change. `main` remains untouched; work continues on `work`.
