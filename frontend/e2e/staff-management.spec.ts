@@ -880,11 +880,11 @@ test("staff profile edit uses the shared employment-status select and sends the 
 
   await page.getByRole("button", { name: /Staff Directory/ }).click();
   const teacherRow = page.locator("tr").filter({ hasText: "teacher.two" });
-  await expect(teacherRow).toContainText("01 Apr 2026");
+  await expect(teacherRow).toContainText("1 Apr 2026");
   await page.getByRole("button", { name: "Teacher Two", exact: true }).click();
   const profileDialog = page.getByRole("dialog", { name: "Teacher Two" });
   await profileDialog.getByRole("button", { name: "Employment" }).click();
-  await expect(profileDialog.getByText("01 Apr 2026")).toBeVisible();
+  await expect(profileDialog.getByText("1 Apr 2026")).toBeVisible();
   await profileDialog.getByRole("button", { name: "Close dialog" }).click();
   await page.getByRole("button", { name: "Edit employee profile for teacher.two" }).click();
   const dialog = page.getByRole("dialog", { name: "Edit employee profile" });
