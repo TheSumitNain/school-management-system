@@ -1,3 +1,9 @@
+## 2026-11-24 — Staff designation and employment-type contract
+
+- Extended the proposal-only staff identity design with a school-scoped `staff_designations` master, explicit applicability to Teaching / Non-Teaching staff, case-insensitive tenant-safe uniqueness, audited deactivation and impact-preview requirements.
+- Defined profile Employment Type machine values and explicitly separated them from employment status, login status, payroll/leave policy and the legacy previous-experience employment-type field.
+- No migration, seed data, runtime API or UI behavior was added. This remains a design proposal and requires approval before implementation.
+
 ## 2026-11-24 — Staff roadmap scope and privacy alignment
 
 - Aligned the Staff Management roadmap with the documented classification proposal: Teaching / Non-Teaching Staff Type; school-configurable Designation; school-managed Department; and Permanent, Contract, Part-time, Temporary, Internship and Visiting Faculty employment types.
