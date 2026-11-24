@@ -79,6 +79,9 @@ export function StaffWorkloadReportWorkspace({permissions}:Props){
         <button type="button" className="staff-workload-report-refresh" onClick={()=>void (year?.id?reportQuery.refetch():yearQuery.refetch())} disabled={reportQuery.isFetching||yearQuery.isFetching}><RefreshCw size={14}/> Refresh</button>
       </div>
     </header>
+    {yearQuery.isLoading&&<p className="staff-workload-report-muted">Loading current academic year…</p>}
+    {yearQuery.isError&&<p className="staff-workload-report-error" role="alert">Unable to load current academic year. <button type="button" onClick={()=>void yearQuery.refetch()}>Retry</button></p>}
+    {yearQuery.isSuccess&&!year&&<p className="staff-workload-report-empty" role="status">No current academic year is configured. Set a current academic year before viewing staff workload.</p>}
     {year&&<>
     <div className="staff-workload-report-summary">
       <article><span>Staff profiles</span><strong>{groups.length}</strong></article>
@@ -90,9 +93,6 @@ export function StaffWorkloadReportWorkspace({permissions}:Props){
       <label><span>Employment status</span><select value={employmentFilter} onChange={event=>setEmploymentFilter(event.target.value)} aria-label="Filter workload report by employment status"><option value="all">All employment statuses</option><option value="active">Active</option><option value="inactive">Inactive</option></select></label>
       {filtersChanged&&<div className="staff-workload-report-filter-actions"><button type="button" onClick={()=>{setSearch("");setEmploymentFilter("all");}}>Clear filters</button></div>}
     </div>
-    {yearQuery.isLoading&&<p className="staff-workload-report-muted">Loading current academic year…</p>}
-    {yearQuery.isError&&<p className="staff-workload-report-error" role="alert">Unable to load current academic year. <button type="button" onClick={()=>void yearQuery.refetch()}>Retry</button></p>}
-    {yearQuery.isSuccess&&!year&&<p className="staff-workload-report-empty" role="status">No current academic year is configured. Set a current academic year before viewing staff workload.</p>}
     {reportQuery.isLoading&&<p className="staff-workload-report-muted">Loading school workload…</p>}
     {reportQuery.isError&&<p className="staff-workload-report-error" role="alert">Unable to load workload report. <button type="button" onClick={()=>void reportQuery.refetch()}>Retry</button></p>}
     {reportQuery.isSuccess&&filtered.length===0&&<p className="staff-workload-report-empty">{groups.length===0?"No staff profiles are available for this academic year.":"No staff match the current filters."}</p>}
