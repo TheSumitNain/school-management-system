@@ -376,6 +376,25 @@ func TestStaffLeaveReportDateRangePostgresIntegration(t *testing.T) {
   t.Fatalf("staff filter returned %+v; want only request %d",byStaff,adminRequest.ID)
  }
 
+ invalidFilters := []struct {
+  name, onDate, fromDate, toDate string
+ }{
+  {name: "partial range", fromDate: "2027-03-01"},
+  {name: "reversed range", fromDate: "2027-03-31", toDate: "2027-03-01"},
+  {name: "invalid calendar date", onDate: "2027-02-30"},
+  {name: "non-canonical date", onDate: "2027-3-1"},
+ }
+ for _, testCase := range invalidFilters {
+  t.Run("rejects "+testCase.name+" leave list filter", func(t *testing.T) {
+   if _, err := f.repo.ListRequests(f.ctx, f.adminPrincipalID, f.schoolID, "", 0, testCase.onDate, testCase.fromDate, testCase.toDate); !errors.Is(err, ErrInvalidStaffLeave) {
+    t.Fatalf("invalid filter error=%v; want ErrInvalidStaffLeave", err)
+   }
+  })
+ }
+ if _, err := f.repo.ListRequests(f.ctx, f.staffPrincipalID, f.schoolID, "", 0, "2027-02-30", "", ""); !errors.Is(err, ErrStaffLeaveAccessDenied) {
+  t.Fatalf("unauthorized invalid leave-list filter error=%v; want access denied before validation", err)
+ }
+
  crossSchool,err:=f.repo.ListRequests(f.ctx,f.adminPrincipalID,f.schoolID+999999,"",0,"","","")
  if !errors.Is(err,ErrStaffLeaveAccessDenied) {
   t.Fatalf("cross-school leave list error=%v; want access denied",err)
