@@ -1629,9 +1629,26 @@ test("staff substitution assigns a dated cover, validates the timetable weekday 
   await page.getByRole("option", { name: /Monday · Class 6 A · Mathematics/ }).click();
   await expect(page.getByText("Original teacher: Original Teacher")).toBeVisible();
 
+  const [year, month, day] = schoolDateValue().split("-").map(Number);
+  const today = new Date(year, month - 1, day, 12);
+  const daysUntil = (weekday: number) => {
+    const delta = (weekday - today.getDay() + 7) % 7;
+    return delta === 0 ? 7 : delta;
+  };
+  const nextTuesday = new Date(today);
+  nextTuesday.setDate(today.getDate() + daysUntil(2));
+  const nextMonday = new Date(today);
+  nextMonday.setDate(today.getDate() + daysUntil(1));
+  const dateLabel = (date: Date) => date.toLocaleDateString(undefined, {
+    weekday: "long", month: "long", day: "numeric", year: "numeric",
+  });
+
   await page.getByLabel("Substitution cover date").click();
   const dateDialog = page.getByRole("dialog", { name: "Choose substitution cover date" });
-  await dateDialog.getByRole("button", { name: "Tuesday, November 24, 2026" }).click();
+  if (nextTuesday.getMonth() !== today.getMonth() || nextTuesday.getFullYear() !== today.getFullYear()) {
+    await dateDialog.getByRole("button", { name: "Next month" }).click();
+  }
+  await dateDialog.getByRole("button", { name: dateLabel(nextTuesday) }).click();
   await page.getByRole("button", { name: "Substitute staff member" }).click();
   await page.getByRole("option", { name: /Substitute Teacher/ }).click();
   await page.getByLabel("Reason").fill("Original teacher unavailable");
@@ -1639,7 +1656,11 @@ test("staff substitution assigns a dated cover, validates the timetable weekday 
   await expect(page.getByText("This date is not a Monday; choose a matching date.")).toBeVisible();
 
   await page.getByLabel("Substitution cover date").click();
-  await page.getByRole("dialog", { name: "Choose substitution cover date" }).getByRole("button", { name: "Monday, November 23, 2026" }).click();
+  const mondayDialog = page.getByRole("dialog", { name: "Choose substitution cover date" });
+  if (nextMonday.getMonth() !== nextTuesday.getMonth() || nextMonday.getFullYear() !== nextTuesday.getFullYear()) {
+    await mondayDialog.getByRole("button", { name: "Previous month" }).click();
+  }
+  await mondayDialog.getByRole("button", { name: dateLabel(nextMonday) }).click();
   await expect(page.getByText("This date is not a Monday; choose a matching date.")).toHaveCount(0);
   await page.getByRole("button", { name: "Assign substitute" }).click();
 
