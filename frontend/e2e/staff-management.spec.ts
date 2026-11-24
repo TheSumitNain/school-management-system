@@ -2151,6 +2151,26 @@ test("staff leave and holiday workspace remains usable without horizontal overfl
   }
 });
 
+test("attendance-only staff access does not request or expose the staff directory", async ({ page }) => {
+  const staffListRequests: string[] = [];
+  page.on("request", request => {
+    const url = new URL(request.url());
+    if (url.pathname === "/api/school/staff" && request.method() === "GET") {
+      staffListRequests.push(request.method() + " " + url.pathname);
+    }
+  });
+  await signInAndOpenStaff(page, [], undefined, ["staff.attendance.read"]);
+  await page.route("**/api/school/staff-attendance?*", async route => {
+    const date = new URL(route.request().url()).searchParams.get("date");
+    await route.fulfill({ json: { date, data: [] } });
+  });
+
+  await expect(page.getByRole("heading", { name: "Staff attendance" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Staff management sections" }).getByRole("button", { name: "Overview" })).toHaveCount(0);
+  await expect(page.getByRole("navigation", { name: "Staff management sections" }).getByRole("button", { name: "Staff Directory" })).toHaveCount(0);
+  expect(staffListRequests).toEqual([]);
+});
+
 test("staff attendance workspace remains usable on mobile, tablet and desktop", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [
     { id: 1, principal_id: 521, school_id: 10, username: "attendance.responsive", employee_code: "EMP-RESP-ATT-01", full_name: "Responsive Attendance Teacher", designation: "Science Teacher", employment_status: "active", profile_complete: true, status: "active", must_change_password: false },
