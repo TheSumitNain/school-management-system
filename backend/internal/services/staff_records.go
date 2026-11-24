@@ -69,6 +69,49 @@ func qualificationScoreValidationField(score *float64, scale string) string {
 
 func validRecordText(value string,max int)bool{return len([]rune(strings.TrimSpace(value)))>0&&len([]rune(strings.TrimSpace(value)))<=max&&staffRecordTextPattern.MatchString(value)}
 
+
+func staffRecordValidationError(fieldErrors map[string]string) error {
+	if len(fieldErrors) == 0 { return nil }
+	return &StaffRecordFieldValidationError{FieldErrors: fieldErrors}
+}
+func validateQualificationFields(item repository.StaffQualification) map[string]string {
+	errs := map[string]string{}; add := func(f,m string){ errs[f]=m }
+	types:=map[string]bool{"school":true,"diploma":true,"undergraduate":true,"postgraduate":true,"doctorate":true,"other":true}
+	if !types[item.QualificationType]{add("qualification_type","Select a valid qualification type.")}
+	if !validRecordText(item.QualificationName,160){add("qualification_name","Enter a qualification name of 160 characters or fewer.")}
+	if !validRecordText(item.Institution,200){add("institution","Enter an institution of 200 characters or fewer.")}
+	if len([]rune(item.Specialization))>160{add("specialization","Specialization must be 160 characters or fewer.")}
+	if len([]rune(item.BoardUniversity))>200{add("board_university","Board / University must be 200 characters or fewer.")}
+	if len(item.CredentialReference)>120{add("credential_reference","Credential reference must be 120 characters or fewer.")}
+	if item.CompletionYear!=nil&&(*item.CompletionYear<1900||*item.CompletionYear>2200){add("completion_year","Completion year must be between 1900 and 2200.")}
+	if field:=qualificationScoreValidationField(item.Score,item.ScoreScale);field!=""{if field=="score_scale"{add(field,"Choose a valid score scale when a score is entered.")}else{add(field,"Enter a valid score.")}}
+	return errs
+}
+func validateCertificationFields(item repository.StaffCertification) map[string]string {
+	errs:=map[string]string{};add:=func(f,m string){errs[f]=m}
+	if !validRecordText(item.CertificateName,180){add("certificate_name","Enter a certificate name of 180 characters or fewer.")}
+	if !validRecordText(item.IssuingOrganization,200){add("issuing_organization","Enter an issuing organization of 200 characters or fewer.")}
+	if len(item.CredentialID)>120{add("credential_id","Credential ID must be 120 characters or fewer.")}
+	var issue,expiry time.Time
+	hasIssue,hasExpiry:=item.IssueDate!="",item.ExpiryDate!=""
+	issueOK,expiryOK:=false,false
+	if hasIssue{issue,issueOK=parseStaffRecordDate(item.IssueDate);if !issueOK{add("issue_date","Enter a valid issue date.")}}
+	if hasExpiry{expiry,expiryOK=parseStaffRecordDate(item.ExpiryDate);if !expiryOK{add("expiry_date","Enter a valid expiry date.")}}
+	if issueOK&&expiryOK&&expiry.Before(issue){add("expiry_date","Expiry date cannot be before the issue date.")}
+	return errs
+}
+func validateExperienceFields(item repository.StaffExperience) map[string]string {
+	errs:=map[string]string{};add:=func(f,m string){errs[f]=m}
+	if !validRecordText(item.EmployerName,200){add("employer_name","Enter an employer name of 200 characters or fewer.")}
+	if !validRecordText(item.Designation,120){add("designation","Enter a designation of 120 characters or fewer.")}
+	if len([]rune(item.Description))>2000{add("description","Description must be 2,000 characters or fewer.")}
+	start,startOK:=parseStaffRecordDate(item.StartDate);if !startOK{add("start_date","Enter a valid start date.")}
+	if item.IsCurrent{if item.EndDate!=""{add("end_date","A current role cannot have an end date.")}}else if item.EndDate!=""{end,endOK:=parseStaffRecordDate(item.EndDate);if !endOK||(startOK&&end.Before(start)){add("end_date","End date must be valid and on or after the start date.")}}
+	types:=map[string]bool{"permanent":true,"contract":true,"part_time":true,"temporary":true,"internship":true,"other":true}
+	if !types[item.EmploymentType]{add("employment_type","Select a valid employment type.")}
+	return errs
+}
+
 func(s *StaffRecordsService) ListQualifications(ctx context.Context,actor,school,staff int64)([]repository.StaffQualification,error){
 	if s==nil||s.repository==nil||actor<=0||school<=0||staff<=0{return nil,ErrInvalidStaffRecord}
 	return s.repository.ListStaffQualifications(ctx,actor,school,staff)
@@ -76,19 +119,7 @@ func(s *StaffRecordsService) ListQualifications(ctx context.Context,actor,school
 func(s *StaffRecordsService) CreateQualification(ctx context.Context,actor,school,staff int64,item repository.StaffQualification)(*repository.StaffQualification,error){
 	if s==nil||s.repository==nil||actor<=0||school<=0||staff<=0{return nil,ErrInvalidStaffRecord}
 	item.QualificationName=strings.TrimSpace(item.QualificationName);item.Specialization=strings.TrimSpace(item.Specialization);item.Institution=strings.TrimSpace(item.Institution);item.BoardUniversity=strings.TrimSpace(item.BoardUniversity);item.CredentialReference=strings.TrimSpace(item.CredentialReference)
-	types:=map[string]bool{"school":true,"diploma":true,"undergraduate":true,"postgraduate":true,"doctorate":true,"other":true}
-	if !types[item.QualificationType] { return nil, staffRecordFieldError("qualification_type", "Select a valid qualification type.") }
-	if !validRecordText(item.QualificationName,160) { return nil, staffRecordFieldError("qualification_name", "Enter a qualification name of 160 characters or fewer.") }
-	if !validRecordText(item.Institution,200) { return nil, staffRecordFieldError("institution", "Enter an institution of 200 characters or fewer.") }
-	if len([]rune(item.Specialization))>160 { return nil, staffRecordFieldError("specialization", "Specialization must be 160 characters or fewer.") }
-	if len([]rune(item.BoardUniversity))>200 { return nil, staffRecordFieldError("board_university", "Board / University must be 200 characters or fewer.") }
-	if len(item.CredentialReference)>120 { return nil, staffRecordFieldError("credential_reference", "Credential reference must be 120 characters or fewer.") }
-	if item.CompletionYear!=nil&&(*item.CompletionYear<1900||*item.CompletionYear>2200){return nil,staffRecordFieldError("completion_year","Completion year must be between 1900 and 2200.")}
-	if field := qualificationScoreValidationField(item.Score,item.ScoreScale); field != "" {
-		message := "Enter a valid score."
-		if field == "score_scale" { message = "Choose a valid score scale when a score is entered." }
-		return nil, staffRecordFieldError(field, message)
-	}
+	if err := staffRecordValidationError(validateQualificationFields(item)); err != nil { return nil, err }
 	return s.repository.CreateStaffQualification(ctx,actor,school,staff,item)
 }
 func(s *StaffRecordsService) ListCertifications(ctx context.Context,actor,school,staff int64)([]repository.StaffCertification,error){
@@ -98,22 +129,7 @@ func(s *StaffRecordsService) ListCertifications(ctx context.Context,actor,school
 func(s *StaffRecordsService) CreateCertification(ctx context.Context,actor,school,staff int64,item repository.StaffCertification)(*repository.StaffCertification,error){
 	if s==nil||s.repository==nil||actor<=0||school<=0||staff<=0{return nil,ErrInvalidStaffRecord}
 	item.CertificateName=strings.TrimSpace(item.CertificateName);item.IssuingOrganization=strings.TrimSpace(item.IssuingOrganization);item.CredentialID=strings.TrimSpace(item.CredentialID)
-	if !validRecordText(item.CertificateName,180){return nil,staffRecordFieldError("certificate_name","Enter a certificate name of 180 characters or fewer.")}
-	if !validRecordText(item.IssuingOrganization,200){return nil,staffRecordFieldError("issuing_organization","Enter an issuing organization of 200 characters or fewer.")}
-	if len(item.CredentialID)>120{return nil,staffRecordFieldError("credential_id","Credential ID must be 120 characters or fewer.")}
-	var issue, expiry time.Time
-	hasIssue, hasExpiry := item.IssueDate != "", item.ExpiryDate != ""
-	if hasIssue {
-		var ok bool
-		issue, ok = parseStaffRecordDate(item.IssueDate)
-		if !ok { return nil, staffRecordFieldError("issue_date", "Enter a valid issue date.") }
-	}
-	if hasExpiry {
-		var ok bool
-		expiry, ok = parseStaffRecordDate(item.ExpiryDate)
-		if !ok { return nil, staffRecordFieldError("expiry_date", "Enter a valid expiry date.") }
-	}
-	if hasIssue && hasExpiry && expiry.Before(issue) { return nil, staffRecordFieldError("expiry_date", "Expiry date cannot be before the issue date.") }
+	if err := staffRecordValidationError(validateCertificationFields(item)); err != nil { return nil, err }
 	return s.repository.CreateStaffCertification(ctx,actor,school,staff,item)
 }
 func(s *StaffRecordsService) ListExperience(ctx context.Context,actor,school,staff int64)([]repository.StaffExperience,error){
@@ -123,19 +139,7 @@ func(s *StaffRecordsService) ListExperience(ctx context.Context,actor,school,sta
 func(s *StaffRecordsService) CreateExperience(ctx context.Context,actor,school,staff int64,item repository.StaffExperience)(*repository.StaffExperience,error){
 	if s==nil||s.repository==nil||actor<=0||school<=0||staff<=0{return nil,ErrInvalidStaffRecord}
 	item.EmployerName=strings.TrimSpace(item.EmployerName);item.Designation=strings.TrimSpace(item.Designation);item.Description=strings.TrimSpace(item.Description)
-	if !validRecordText(item.EmployerName,200){return nil,staffRecordFieldError("employer_name","Enter an employer name of 200 characters or fewer.")}
-	if !validRecordText(item.Designation,120){return nil,staffRecordFieldError("designation","Enter a designation of 120 characters or fewer.")}
-	if len([]rune(item.Description))>2000{return nil,staffRecordFieldError("description","Description must be 2,000 characters or fewer.")}
-	start, validStart := parseStaffRecordDate(item.StartDate)
-	if !validStart { return nil, staffRecordFieldError("start_date", "Enter a valid start date.") }
-	if item.IsCurrent {
-		if item.EndDate != "" { return nil, staffRecordFieldError("end_date", "A current role cannot have an end date.") }
-	} else if item.EndDate != "" {
-		end, validEnd := parseStaffRecordDate(item.EndDate)
-		if !validEnd || end.Before(start) { return nil, staffRecordFieldError("end_date", "End date must be valid and on or after the start date.") }
-	}
-	types:=map[string]bool{"permanent":true,"contract":true,"part_time":true,"temporary":true,"internship":true,"other":true}
-	if !types[item.EmploymentType]{return nil,staffRecordFieldError("employment_type","Select a valid employment type.")}
+	if err := staffRecordValidationError(validateExperienceFields(item)); err != nil { return nil, err }
 	return s.repository.CreateStaffExperience(ctx,actor,school,staff,item)
 }
 
@@ -143,60 +147,21 @@ func(s *StaffRecordsService) CreateExperience(ctx context.Context,actor,school,s
 func (s *StaffRecordsService) UpdateQualification(ctx context.Context, actor, school, staff, record int64, item repository.StaffQualification) (*repository.StaffQualification,error) {
 	if s==nil||s.repository==nil||actor<=0||school<=0||staff<=0||record<=0{return nil,ErrInvalidStaffRecord}
 	item.QualificationName=strings.TrimSpace(item.QualificationName);item.Specialization=strings.TrimSpace(item.Specialization);item.Institution=strings.TrimSpace(item.Institution);item.BoardUniversity=strings.TrimSpace(item.BoardUniversity);item.CredentialReference=strings.TrimSpace(item.CredentialReference)
-	types:=map[string]bool{"school":true,"diploma":true,"undergraduate":true,"postgraduate":true,"doctorate":true,"other":true}
-	if !types[item.QualificationType] { return nil, staffRecordFieldError("qualification_type", "Select a valid qualification type.") }
-	if !validRecordText(item.QualificationName,160) { return nil, staffRecordFieldError("qualification_name", "Enter a qualification name of 160 characters or fewer.") }
-	if !validRecordText(item.Institution,200) { return nil, staffRecordFieldError("institution", "Enter an institution of 200 characters or fewer.") }
-	if len([]rune(item.Specialization))>160 { return nil, staffRecordFieldError("specialization", "Specialization must be 160 characters or fewer.") }
-	if len([]rune(item.BoardUniversity))>200 { return nil, staffRecordFieldError("board_university", "Board / University must be 200 characters or fewer.") }
-	if len(item.CredentialReference)>120 { return nil, staffRecordFieldError("credential_reference", "Credential reference must be 120 characters or fewer.") }
-	if item.CompletionYear!=nil&&(*item.CompletionYear<1900||*item.CompletionYear>2200){return nil,staffRecordFieldError("completion_year","Completion year must be between 1900 and 2200.")}
-	if field := qualificationScoreValidationField(item.Score,item.ScoreScale); field != "" {
-		message := "Enter a valid score."
-		if field == "score_scale" { message = "Choose a valid score scale when a score is entered." }
-		return nil, staffRecordFieldError(field, message)
-	}
+	if err := staffRecordValidationError(validateQualificationFields(item)); err != nil { return nil, err }
 	return s.repository.UpdateStaffQualification(ctx,actor,school,staff,record,item)
 }
 
 func (s *StaffRecordsService) UpdateCertification(ctx context.Context, actor, school, staff, record int64, item repository.StaffCertification) (*repository.StaffCertification,error) {
 	if s==nil||s.repository==nil||actor<=0||school<=0||staff<=0||record<=0{return nil,ErrInvalidStaffRecord}
 	item.CertificateName=strings.TrimSpace(item.CertificateName);item.IssuingOrganization=strings.TrimSpace(item.IssuingOrganization);item.CredentialID=strings.TrimSpace(item.CredentialID)
-	if !validRecordText(item.CertificateName,180){return nil,staffRecordFieldError("certificate_name","Enter a certificate name of 180 characters or fewer.")}
-	if !validRecordText(item.IssuingOrganization,200){return nil,staffRecordFieldError("issuing_organization","Enter an issuing organization of 200 characters or fewer.")}
-	if len(item.CredentialID)>120{return nil,staffRecordFieldError("credential_id","Credential ID must be 120 characters or fewer.")}
-	var issue, expiry time.Time
-	hasIssue, hasExpiry := item.IssueDate != "", item.ExpiryDate != ""
-	if hasIssue {
-		var ok bool
-		issue, ok = parseStaffRecordDate(item.IssueDate)
-		if !ok { return nil, staffRecordFieldError("issue_date", "Enter a valid issue date.") }
-	}
-	if hasExpiry {
-		var ok bool
-		expiry, ok = parseStaffRecordDate(item.ExpiryDate)
-		if !ok { return nil, staffRecordFieldError("expiry_date", "Enter a valid expiry date.") }
-	}
-	if hasIssue && hasExpiry && expiry.Before(issue) { return nil, staffRecordFieldError("expiry_date", "Expiry date cannot be before the issue date.") }
+	if err := staffRecordValidationError(validateCertificationFields(item)); err != nil { return nil, err }
 	return s.repository.UpdateStaffCertification(ctx,actor,school,staff,record,item)
 }
 
 func (s *StaffRecordsService) UpdateExperience(ctx context.Context, actor, school, staff, record int64, item repository.StaffExperience) (*repository.StaffExperience,error) {
 	if s==nil||s.repository==nil||actor<=0||school<=0||staff<=0||record<=0{return nil,ErrInvalidStaffRecord}
 	item.EmployerName=strings.TrimSpace(item.EmployerName);item.Designation=strings.TrimSpace(item.Designation);item.Description=strings.TrimSpace(item.Description)
-	if !validRecordText(item.EmployerName,200){return nil,staffRecordFieldError("employer_name","Enter an employer name of 200 characters or fewer.")}
-	if !validRecordText(item.Designation,120){return nil,staffRecordFieldError("designation","Enter a designation of 120 characters or fewer.")}
-	if len([]rune(item.Description))>2000{return nil,staffRecordFieldError("description","Description must be 2,000 characters or fewer.")}
-	start, validStart := parseStaffRecordDate(item.StartDate)
-	if !validStart { return nil, staffRecordFieldError("start_date", "Enter a valid start date.") }
-	if item.IsCurrent {
-		if item.EndDate != "" { return nil, staffRecordFieldError("end_date", "A current role cannot have an end date.") }
-	} else if item.EndDate != "" {
-		end, validEnd := parseStaffRecordDate(item.EndDate)
-		if !validEnd || end.Before(start) { return nil, staffRecordFieldError("end_date", "End date must be valid and on or after the start date.") }
-	}
-	types:=map[string]bool{"permanent":true,"contract":true,"part_time":true,"temporary":true,"internship":true,"other":true}
-	if !types[item.EmploymentType]{return nil,staffRecordFieldError("employment_type","Select a valid employment type.")}
+	if err := staffRecordValidationError(validateExperienceFields(item)); err != nil { return nil, err }
 	return s.repository.UpdateStaffExperience(ctx,actor,school,staff,record,item)
 }
 
