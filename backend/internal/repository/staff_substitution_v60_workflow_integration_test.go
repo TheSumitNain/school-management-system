@@ -146,10 +146,10 @@ func TestStaffSubstitutionV60DatabaseGuardsPostgresIntegration(t *testing.T) {
 	if err=(&AcademicRepository{db:tx}).CancelStaffSubstitution(ctx,actorPrincipalID,schoolID,substitutionID);err!=nil{t.Fatalf("cancel dated substitution through repository workflow: %v",err)}
 	historyRepo:=NewUserRepository(tx)
 	for _,teacherID:=range []int64{originalID,substituteID}{
-		history,historyErr:=historyRepo.ListStaffAuditEvents(ctx,actorPrincipalID,schoolID,teacherID)
+		history,historyErr:=historyRepo.ListStaffAuditEvents(ctx,actorPrincipalID,schoolID,teacherID,StaffAuditEventFilter{Limit:100,Offset:0})
 		if historyErr!=nil{t.Fatalf("list substitution history for teacher %d: %v",teacherID,historyErr)}
 		foundCancellation:=false
-		for _,event:=range history{if event.Action=="staff.substitution.cancelled"{foundCancellation=true;break}}
+		for _,event:=range history.Events{if event.Action=="staff.substitution.cancelled"{foundCancellation=true;break}}
 		if !foundCancellation{t.Fatalf("staff history for teacher %d omitted cancellation resolved through substitution resource ID",teacherID)}
 	}
 	cancelledReason,err:=tx.Begin(ctx);if err!=nil{t.Fatalf("begin cancelled history guard savepoint: %v",err)}
