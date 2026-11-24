@@ -2240,6 +2240,8 @@ test("leave request managers see an empty-state gate when no eligible staff exis
     { id: 2, principal_id: 586, school_id: 10, username: "leave.unknownonly", employee_code: "EMP-LEAVE-UNKNOWN-02", full_name: "Unknown Only Staff", designation: "Teacher", employment_status: "active", status: "active", must_change_password: false },
   ];
   await signInAndOpenStaff(page, rows, undefined, ["users.read", "staff.leave.read", "staff.leave.manage_requests"]);
+  await page.getByRole("navigation", { name: "Staff management sections" }).getByRole("button", { name: "Leave & Holidays" }).click();
+  await expect(page.locator(".staff-leave-workspace")).toBeVisible();
 
   const workspace = page.locator(".staff-leave-workspace");
   await expect(workspace.getByRole("status").filter({ hasText: "No eligible active staff members are available for a new leave request" })).toBeVisible();
