@@ -1101,6 +1101,42 @@ test("staff profile clears the previous employee's academic assignments while th
   await expect(dialog.getByText("Second Teacher Subject")).toBeVisible();
 });
 
+
+test("staff profile does not retain the previous employee's timetable while the next workload loads", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [
+    { id: 1, principal_id: 421, school_id: 10, username: "teacher.load.first", employee_code: "EMP-LOAD-FIRST", full_name: "Workload First", designation: "Teacher", mobile_number: "9876543214", employment_status: "active", profile_complete: true, status: "active" },
+    { id: 2, principal_id: 422, school_id: 10, username: "teacher.load.second", employee_code: "EMP-LOAD-SECOND", full_name: "Workload Second", designation: "Teacher", mobile_number: "9876543215", employment_status: "active", profile_complete: true, status: "active" },
+  ];
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "timetable.read"]);
+  await page.route("**/api/school/timetable/current-year", async route => {
+    await route.fulfill({ json: { academic_year: { id: 3, name: "2026–27", starts_on: "2026-04-01", ends_on: "2027-03-31", status: "active", is_current: true } } });
+  });
+  await page.route("**/api/school/timetable/periods?*", async route => {
+    await route.fulfill({ json: { periods: [{ id: 7, school_id: 10, academic_year_id: 3, period_number: 1, name: "Period 1", starts_at: "09:00", ends_at: "09:45", is_break: false }] } });
+  });
+  await page.route("**/api/school/timetable/entries?*", async route => {
+    const teacherID = new URL(route.request().url()).searchParams.get("teacher_principal_id");
+    if (teacherID === "422") await new Promise(resolve => setTimeout(resolve, 400));
+    await route.fulfill({ json: { entries: teacherID === "421" ? [
+      { id: 1, school_id: 10, academic_year_id: 3, section_id: 8, section_name: "A", class_name: "Class 8", subject_id: 9, subject_name: "First Teacher Timetable Secret", teacher_principal_id: 421, teacher_username: "teacher.load.first", teacher_subject_assignment_id: 1, period_id: 7, period_number: 1, period_name: "Period 1", starts_at: "09:00", ends_at: "09:45", day_of_week: 1 },
+    ] : [
+      { id: 2, school_id: 10, academic_year_id: 3, section_id: 9, section_name: "B", class_name: "Class 9", subject_id: 10, subject_name: "Second Teacher Timetable", teacher_principal_id: 422, teacher_username: "teacher.load.second", teacher_subject_assignment_id: 2, period_id: 7, period_number: 1, period_name: "Period 1", starts_at: "09:00", ends_at: "09:45", day_of_week: 1 },
+    ] } });
+  });
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Workload First" }).click();
+  let dialog = page.getByRole("dialog", { name: "Workload First" });
+  await dialog.getByRole("button", { name: "Workload & Timetable" }).click();
+  await expect(dialog.getByText("First Teacher Timetable Secret")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Workload Second" }).click();
+  dialog = page.getByRole("dialog", { name: "Workload Second" });
+  await dialog.getByRole("button", { name: "Workload & Timetable" }).click();
+  await expect(dialog.getByRole("status")).toContainText("Loading teacher-scoped timetable");
+  await expect(dialog.getByText("First Teacher Timetable Secret")).toHaveCount(0);
+  await expect(dialog.getByText("Second Teacher Timetable")).toBeVisible();
+});
+
 test("staff account access keeps role assignments read-only without delegation permissions", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 513, school_id: 10, username: "teacher.role-reader",
