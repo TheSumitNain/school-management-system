@@ -73,7 +73,7 @@ export function StaffLeaveWorkspace({permissions,staff,canReadStaff}:Props){
  const activeStaff=staff.filter(item=>item.employment_status==="active"&&item.profile_complete===true);
  const activeTypes=types.data?.data.filter(item=>item.is_active)??[];
  const requestStaffOptions=activeStaff.map(item=>({value:String(item.principal_id),label:(item.full_name||item.username)+" · "+(item.employee_code||"No code")}));
- const filterStaffOptions=[{value:"0",label:"All staff"},...requestStaffOptions];
+ const filterStaffOptions=[{value:"0",label:"All staff"},...staff.map(item=>({value:String(item.principal_id),label:(item.full_name||item.username)+" · "+(item.employee_code||"No code")}))];
  const typeOptions=activeTypes.map(item=>({value:String(item.id),label:item.name+(item.is_paid?" · Paid":" · Unpaid")}));
  const statusOptions=[{value:"",label:"All statuses"},{value:"pending",label:"Pending"},{value:"approved",label:"Approved"},{value:"rejected",label:"Rejected"},{value:"cancelled",label:"Cancelled"}];
  const busy=createRequest.isPending||saveType.isPending||decide.isPending||cancel.isPending||saveHoliday.isPending;
