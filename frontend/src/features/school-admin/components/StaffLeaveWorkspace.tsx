@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { CalendarDays, Check, ClipboardList, Plus, RefreshCw, Settings2, X } from "lucide-react";
 import { ApiError } from "../../../lib/api";
 import { notifyToast } from "../../../shared/notifications";
@@ -63,6 +63,12 @@ export function StaffLeaveWorkspace({permissions,staff,canReadStaff}:Props){
  const [decisionCommentError,setDecisionCommentError]=useState("");
  const [decisionError,setDecisionError]=useState("");
  const [cancelTarget,setCancelTarget]=useState<number|null>(null);
+ useEffect(()=>{
+  if(!canDecide)setDecisionTarget(null);
+  if(!canManageRequests)setCancelTarget(null);
+  if(!canManageTypes){setTypeToDeactivate(null);setEditingTypeID(null);}
+  if(!canManageHolidays){setHolidayToDeactivate(null);setHolidayToReactivate(null);setHolidayEditingID(null);}
+ },[canDecide,canManageRequests,canManageTypes,canManageHolidays]);
  const types=useStaffLeaveTypesQuery(canRead);
  const validDateRange=(!fromDate&&!toDate)||(Boolean(fromDate&&toDate)&&fromDate<=toDate);
  const requests=useStaffLeaveRequestsQuery({status,staffPrincipalID:Number(filterStaffID)||undefined,fromDate:fromDate||undefined,toDate:toDate||undefined},canRead&&validDateRange);
@@ -82,7 +88,7 @@ export function StaffLeaveWorkspace({permissions,staff,canReadStaff}:Props){
  const busy=createRequest.isPending||saveType.isPending||decide.isPending||cancel.isPending||saveHoliday.isPending;
 
  async function submitRequest(event:FormEvent<HTMLFormElement>){
-  event.preventDefault();const next:Record<string,string>={};
+  event.preventDefault();if(!canManageRequests||!canReadStaff)return;const next:Record<string,string>={};
   if(!requestStaffID)next.staff="Select one employee.";
   if(!leaveTypeID)next.leave_type="Select a leave type.";
   if(!startDate)next.start_date="Select a start date.";
@@ -98,23 +104,24 @@ export function StaffLeaveWorkspace({permissions,staff,canReadStaff}:Props){
   }catch(e){setRequestFormError(errorText(e,"Unable to create leave request. Check the dates and try again."));}
  }
  async function submitType(event:FormEvent<HTMLFormElement>){
-  event.preventDefault();const name=typeName.trim();if(name.length<2||name.length>100){setTypeFieldError("Leave type name must be 2–100 characters.");return;}
+  event.preventDefault();if(!canManageTypes)return;const name=typeName.trim();if(name.length<2||name.length>100){setTypeFieldError("Leave type name must be 2–100 characters.");return;}
   try{await saveType.mutateAsync({id:editingTypeID??undefined,name,is_paid:isPaid,requires_approval:requiresApproval,is_active:typeIsActive});notifyToast("success",editingTypeID?"Leave type updated.":"Leave type created.");setTypeName("");setTypeFormError("");setTypeFieldError("");setEditingTypeID(null);setIsPaid(true);setRequiresApproval(true);setTypeIsActive(true);}
   catch(e){setTypeFormError(errorText(e,"Unable to save leave type."));}
  }
  async function submitHoliday(event:FormEvent<HTMLFormElement>){
-  event.preventDefault();const next:Record<string,string>={};if(!holidayDate)next.holiday_date="Select the holiday date.";if(holidayName.trim().length<2)next.name="Enter a holiday name (at least 2 characters).";setHolidayFieldErrors(next);if(Object.keys(next).length)return;
+  event.preventDefault();if(!canManageHolidays)return;const next:Record<string,string>={};if(!holidayDate)next.holiday_date="Select the holiday date.";if(holidayName.trim().length<2)next.name="Enter a holiday name (at least 2 characters).";setHolidayFieldErrors(next);if(Object.keys(next).length)return;
   try{await saveHoliday.mutateAsync({id:holidayEditingID??undefined,holiday_date:holidayDate,name:holidayName.trim(),description:holidayDescription.trim()||null,is_active:holidayEditingID===null?true:holidayEditingIsActive});notifyToast("success",holidayEditingID?"School holiday updated.":"School holiday saved.");setHolidayDate("");setHolidayName("");setHolidayDescription("");setHolidayEditingID(null);setHolidayEditingIsActive(true);setHolidayFieldErrors({});setHolidayFormError("");}
   catch(e){setHolidayFormError(errorText(e,"Unable to save holiday. Check for a duplicate entry."));}
  }
  async function confirmDecision(){
   if(!decisionTarget)return;
+  if(!canDecide){setDecisionTarget(null);return;}
   if(decisionTarget.decision==="reject"&&!decisionComment.trim()){setDecisionCommentError("A comment is required when rejecting a request.");return;}
   setDecisionCommentError("");setDecisionError("");
   try{await decide.mutateAsync({requestID:decisionTarget.id,decision:decisionTarget.decision,...(decisionComment.trim()?{comment:decisionComment.trim()}:{})});notifyToast("success",decisionTarget.decision==="approve"?"Leave request approved.":"Leave request rejected.");setDecisionTarget(null);setDecisionComment("");setDecisionCommentError("");setDecisionError("");}
   catch(e){setDecisionError(errorText(e,"Unable to save the leave decision."));}
  }
- async function confirmCancel(){if(cancelTarget===null)return;try{await cancel.mutateAsync(cancelTarget);notifyToast("success","Leave request cancelled.");setCancelTarget(null);}catch(e){notifyToast("error",errorText(e,"Unable to cancel the leave request."));}}
+ async function confirmCancel(){if(cancelTarget===null)return;if(!canManageRequests){setCancelTarget(null);return;}try{await cancel.mutateAsync(cancelTarget);}notifyToast("success","Leave request cancelled.");setCancelTarget(null);}catch(e){notifyToast("error",errorText(e,"Unable to cancel the leave request."));}}
  const canShowRequests=canRead;
  const panes=[...(canShowRequests?[{id:"requests" as const,label:"Leave requests",icon:ClipboardList}]:[]),...(canRead&&canManageTypes?[{id:"types" as const,label:"Leave types",icon:Settings2}]:[]),...(canReadHolidays||canManageHolidays?[{id:"holidays" as const,label:"Holiday calendar",icon:CalendarDays}]:[])];
  const activePane=panes.some(item=>item.id===pane)?pane:(panes[0]?.id??"requests");
@@ -172,9 +179,9 @@ export function StaffLeaveWorkspace({permissions,staff,canReadStaff}:Props){
    {decisionError&&<p className="staff-leave-error" role="alert">{decisionError}</p>}
    <div className="staff-leave-modal-actions"><button type="button" className="staff-secondary-button" onClick={()=>{setDecisionTarget(null);setDecisionCommentError("");setDecisionError("");}} disabled={decide.isPending}>Back</button><button type="button" className="primary" onClick={()=>void confirmDecision()} disabled={decide.isPending}>{decide.isPending?"Saving…":decisionTarget?.decision==="approve"?"Confirm approval":"Confirm rejection"}</button></div>
   </Modal>
-  <ConfirmDialog open={typeToDeactivate!==null} title="Deactivate leave type?" description={typeToDeactivate ? "Deactivate " + typeToDeactivate.name + " for future requests? Existing requests and history will remain unchanged." : ""} confirmLabel="Deactivate leave type" pending={saveType.isPending} onCancel={()=>setTypeToDeactivate(null)} onConfirm={()=>{if(!typeToDeactivate)return;void saveType.mutateAsync({id:typeToDeactivate.id,name:typeToDeactivate.name,is_paid:typeToDeactivate.is_paid,requires_approval:typeToDeactivate.requires_approval,is_active:false}).then(()=>{notifyToast("success","Leave type deactivated.");setTypeToDeactivate(null);if(editingTypeID===typeToDeactivate.id){setEditingTypeID(null);setTypeName("");setTypeIsActive(true);}}).catch(e=>notifyToast("error",errorText(e,"Unable to deactivate leave type.")));}}/>
-  <ConfirmDialog open={holidayToDeactivate!==null} title="Deactivate school holiday?" description={holidayToDeactivate ? "This will deactivate " + holidayToDeactivate.name + " in the school calendar. Existing attendance records will not be changed." : ""} confirmLabel="Deactivate holiday" pending={saveHoliday.isPending} onCancel={()=>setHolidayToDeactivate(null)} onConfirm={()=>{if(!holidayToDeactivate)return;void saveHoliday.mutateAsync({id:holidayToDeactivate.id,holiday_date:holidayToDeactivate.holiday_date,name:holidayToDeactivate.name,description:holidayToDeactivate.description??null,is_active:false}).then(()=>{notifyToast("success","Holiday deactivated.");if(holidayEditingID===holidayToDeactivate.id)setHolidayEditingIsActive(false);setHolidayToDeactivate(null);}).catch(e=>notifyToast("error",errorText(e,"Unable to deactivate holiday.")));}}/>
-  <ConfirmDialog open={holidayToReactivate!==null} title="Reactivate school holiday?" description={holidayToReactivate ? "Restore " + holidayToReactivate.name + " to the active school calendar?" : ""} confirmLabel="Reactivate holiday" pending={saveHoliday.isPending} onCancel={()=>setHolidayToReactivate(null)} onConfirm={()=>{if(!holidayToReactivate)return;void saveHoliday.mutateAsync({id:holidayToReactivate.id,holiday_date:holidayToReactivate.holiday_date,name:holidayToReactivate.name,description:holidayToReactivate.description??null,is_active:true}).then(()=>{notifyToast("success","Holiday reactivated.");if(holidayEditingID===holidayToReactivate.id)setHolidayEditingIsActive(true);setHolidayToReactivate(null);}).catch(e=>notifyToast("error",errorText(e,"Unable to reactivate holiday.")));}}/>
+  <ConfirmDialog open={typeToDeactivate!==null} title="Deactivate leave type?" description={typeToDeactivate ? "Deactivate " + typeToDeactivate.name + " for future requests? Existing requests and history will remain unchanged." : ""} confirmLabel="Deactivate leave type" pending={saveType.isPending} onCancel={()=>setTypeToDeactivate(null)} onConfirm={()=>{if(!canManageTypes||!typeToDeactivate){setTypeToDeactivate(null);return;}void saveType.mutateAsync({id:typeToDeactivate.id,name:typeToDeactivate.name,is_paid:typeToDeactivate.is_paid,requires_approval:typeToDeactivate.requires_approval,is_active:false}).then(()=>{notifyToast("success","Leave type deactivated.");setTypeToDeactivate(null);if(editingTypeID===typeToDeactivate.id){setEditingTypeID(null);setTypeName("");setTypeIsActive(true);}}).catch(e=>notifyToast("error",errorText(e,"Unable to deactivate leave type.")));}}/>
+  <ConfirmDialog open={holidayToDeactivate!==null} title="Deactivate school holiday?" description={holidayToDeactivate ? "This will deactivate " + holidayToDeactivate.name + " in the school calendar. Existing attendance records will not be changed." : ""} confirmLabel="Deactivate holiday" pending={saveHoliday.isPending} onCancel={()=>setHolidayToDeactivate(null)} onConfirm={()=>{if(!canManageHolidays||!holidayToDeactivate){setHolidayToDeactivate(null);return;}void saveHoliday.mutateAsync({id:holidayToDeactivate.id,holiday_date:holidayToDeactivate.holiday_date,name:holidayToDeactivate.name,description:holidayToDeactivate.description??null,is_active:false}).then(()=>{notifyToast("success","Holiday deactivated.");if(holidayEditingID===holidayToDeactivate.id)setHolidayEditingIsActive(false);setHolidayToDeactivate(null);}).catch(e=>notifyToast("error",errorText(e,"Unable to deactivate holiday.")));}}/>
+  <ConfirmDialog open={holidayToReactivate!==null} title="Reactivate school holiday?" description={holidayToReactivate ? "Restore " + holidayToReactivate.name + " to the active school calendar?" : ""} confirmLabel="Reactivate holiday" pending={saveHoliday.isPending} onCancel={()=>setHolidayToReactivate(null)} onConfirm={()=>{if(!canManageHolidays||!holidayToReactivate){setHolidayToReactivate(null);return;}void saveHoliday.mutateAsync({id:holidayToReactivate.id,holiday_date:holidayToReactivate.holiday_date,name:holidayToReactivate.name,description:holidayToReactivate.description??null,is_active:true}).then(()=>{notifyToast("success","Holiday reactivated.");if(holidayEditingID===holidayToReactivate.id)setHolidayEditingIsActive(true);setHolidayToReactivate(null);}).catch(e=>notifyToast("error",errorText(e,"Unable to reactivate holiday.")));}}/>
   <ConfirmDialog open={cancelTarget!==null} title="Cancel leave request?" description="Only a pending request can be cancelled. This action will be recorded in the audit history." confirmLabel="Cancel request" pending={cancel.isPending} onCancel={()=>setCancelTarget(null)} onConfirm={()=>void confirmCancel()}/>
  </section>;
 }
