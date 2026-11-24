@@ -500,9 +500,9 @@ test("staff leave request date filters are sent to the API and can be cleared to
       url.searchParams.get("to_date") === "2026-11-30";
   });
   await page.getByLabel("Leave requests from date").click();
-  await page.getByRole("dialog", { name: "Choose leave requests from date" }).getByRole("button", { name: /1 November 2026/ }).click();
+  await page.getByRole("dialog", { name: "Choose leave requests from date" }).getByRole("button", { name: /November 1, 2026/ }).click();
   await page.getByLabel("Leave requests to date").click();
-  await page.getByRole("dialog", { name: "Choose leave requests to date" }).getByRole("button", { name: /30 November 2026/ }).click();
+  await page.getByRole("dialog", { name: "Choose leave requests to date" }).getByRole("button", { name: /November 30, 2026/ }).click();
   const filteredURL = new URL((await dateRequest).url());
   expect(filteredURL.searchParams.get("from_date")).toBe("2026-11-01");
   expect(filteredURL.searchParams.get("to_date")).toBe("2026-11-30");
