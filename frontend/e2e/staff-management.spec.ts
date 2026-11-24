@@ -873,7 +873,7 @@ test("staff profile edit uses the shared employment-status select and sends the 
     employment_status: "active", profile_complete: true, status: "active",
     must_change_password: false, created_at: "2026-04-01T00:00:00.000Z",
   }];
-  const browser = timezonePage.context().browser();
+  const browser = page.context().browser();
   if (!browser) throw new Error("Browser context is unavailable.");
   const timezoneContext = await browser.newContext({ timezoneId: "America/Los_Angeles" });
   const timezonePage = await timezoneContext.newPage();
