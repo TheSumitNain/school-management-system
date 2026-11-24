@@ -994,6 +994,8 @@ test("staff profile shows only the selected employee's academic assignments and 
   await dialog.getByRole("button", { name: "Academic Assignments" }).click();
   await expect(dialog.getByRole("heading", { name: "Subject teaching" })).toBeVisible();
   await expect(dialog.getByText("Class 8 · A", { exact: true }).first()).toBeVisible();
+  const expectedAssignmentDate = new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeZone: "Asia/Kolkata" }).format(new Date("2026-04-01T00:00:00.000Z"));
+  await expect(dialog.getByText(`Assigned ${expectedAssignmentDate}`).first()).toBeVisible();
   await expect(dialog.getByText(/Revoked ·/)).toBeVisible();
   await expect(dialog.getByText("2 active")).toBeVisible();
 });
