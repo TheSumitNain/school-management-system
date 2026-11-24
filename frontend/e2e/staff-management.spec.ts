@@ -568,6 +568,10 @@ test("staff leave date filter errors are field-specific and invalid ranges do no
   await expect(page.getByText("The To date must be on or after the From date.")).toBeVisible();
   await page.waitForLoadState("networkidle");
   expect(requestCount).toBe(initialRequestCount);
+  await expect(page.getByRole("button", { name: "Refresh", exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "Refresh", exact: true }).click({ force: true });
+  await page.waitForLoadState("networkidle");
+  expect(requestCount).toBe(initialRequestCount);
 });
 
 test("staff leave types can be edited and safely deactivated", async ({ page }) => {
