@@ -158,11 +158,11 @@ export function StaffManagementPage({ permissions }: Props) {
     setCreateStep(1);
   }
   const actionAllowed = action === "create" ? canCreate
-    : action === "edit" || action === "enable" ? canUpdate
-    : action === "reset" ? canReset : true;
+    : action === "edit" || action === "enable" ? canUpdate && canReadStaff
+    : action === "reset" ? canReset && canReadStaff : true;
   useEffect(() => {
     if (action && !actionAllowed) closeAction();
-    if (staffToDisable && !canDisable) {
+    if (staffToDisable && (!canDisable || !canReadStaff)) {
       setStaffToDisable(null);
       setDisableError("");
     }
@@ -372,7 +372,7 @@ export function StaffManagementPage({ permissions }: Props) {
   function deactivate(item: StaffRecord) { setDisableError(""); setStaffToDisable(item); }
   async function confirmDeactivate() {
     if (!staffToDisable) return;
-    if (!canDisable) { setStaffToDisable(null); setDisableError(""); return; }
+    if (!canDisable || !canReadStaff) { setStaffToDisable(null); setDisableError(""); return; }
     const item = staffToDisable;
     setDisableError("");
     setFeedback(null);
