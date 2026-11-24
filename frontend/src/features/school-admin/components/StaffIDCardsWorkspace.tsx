@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import { Printer } from "lucide-react";
+import { DatePicker } from "../../../shared/components/DatePicker";
+import { schoolDateValue } from "../../../shared/date/schoolDate";
 import type { StaffRecord } from "../api";
 import "./StaffIDCardsWorkspace.css";
 
@@ -36,7 +38,7 @@ export function StaffIDCardsWorkspace({ staff }: Props) {
     </div>
     <div className="staff-id-controls">
       <label>Card template<select value={template} onChange={event => setTemplate(event.target.value as typeof template)}><option value="classic">Classic</option><option value="compact">Compact</option><option value="modern">Modern</option></select></label>
-      <label>Valid until <span>(optional)</span><input type="date" value={validUntil} onChange={event => setValidUntil(event.target.value)} min={new Date().toLocaleDateString("en-CA",{timeZone:"Asia/Kolkata"})}/></label>
+      <label>Valid until <span>(optional)</span><DatePicker value={validUntil} onChange={setValidUntil} ariaLabel="ID card valid until" placeholder="No expiry date" min={schoolDateValue()}/></label>
       <div className="staff-id-selection-actions"><button type="button" onClick={selectAll} disabled={eligible.length === 0}>Select all eligible</button><button type="button" onClick={clearSelection} disabled={selectedIDs.length === 0}>Clear selection</button></div>
     </div>
     {eligible.length === 0 ? <p className="staff-id-empty">No complete staff profiles are available for ID card generation. Complete the required employee profile fields first.</p> : <div className="staff-id-selection" aria-label="Select staff for ID cards">
