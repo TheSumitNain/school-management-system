@@ -422,7 +422,7 @@ Phases are dependency ordered, not a claim that every listed item is absent. Ins
 
 1. Staff Management shell with Overview and Staff Directory tabs.
 2. Add Staff 4-step form and employee profile creation.
-3. Profile page with 8 tabs; implement Personal Details, Employment, Qualifications, Documents and History foundations.
+3. Profile page with 9 tabs (Workload & Timetable is permission-conditional); implement Personal Details, Employment, Qualifications, Documents and History foundations.
 4. Preserve existing username/password/account creation, reset, role assignment and permission override behavior.
 5. Separate employment status from account status; implement safe deactivate/reactivate/relieve semantics.
 6. Add audit events and profile completeness indicators.
