@@ -2223,12 +2223,14 @@ test("leave request employee selector includes only active staff with explicitly
 
   const workspace = page.locator(".staff-leave-workspace");
   await expect(workspace.getByRole("heading", { name: "New leave request" })).toBeVisible();
-  const employeeSelect = workspace.getByLabel("Staff member");
-  await expect(employeeSelect.locator("option")).toHaveCount(2);
-  await expect(employeeSelect.locator("option").nth(1)).toHaveText(/Complete Profile Staff/);
-  await expect(employeeSelect.locator("option").filter({ hasText: "Incomplete Profile Staff" })).toHaveCount(0);
-  await expect(employeeSelect.locator("option").filter({ hasText: "Unknown Profile Staff" })).toHaveCount(0);
-  await expect(employeeSelect.locator("option").filter({ hasText: "Inactive Complete Staff" })).toHaveCount(0);
+  const employeeSelect = workspace.getByRole("button", { name: "Staff member" });
+  await employeeSelect.click();
+  const employeeOptions = workspace.getByRole("listbox", { name: "Staff member" }).getByRole("option");
+  await expect(employeeOptions).toHaveCount(1);
+  await expect(employeeOptions.first()).toHaveText(/Complete Profile Staff/);
+  await expect(employeeOptions.filter({ hasText: "Incomplete Profile Staff" })).toHaveCount(0);
+  await expect(employeeOptions.filter({ hasText: "Unknown Profile Staff" })).toHaveCount(0);
+  await expect(employeeOptions.filter({ hasText: "Inactive Complete Staff" })).toHaveCount(0);
 });
 
 test("leave request managers see an empty-state gate when no eligible staff exist", async ({ page }) => {
