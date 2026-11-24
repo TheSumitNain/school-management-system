@@ -54,7 +54,8 @@ Proposed target columns:
 | `full_name` | VARCHAR(160) NOT NULL | Employee display name |
 | `designation_id` | BIGINT NULL | School-scoped link to `staff_designations`; nullable only while a school has not configured its catalog or a legacy row is under reviewed reconciliation |
 | `designation_name_snapshot` | VARCHAR(100) NOT NULL | Display/history snapshot captured when the designation is assigned; not an independent free-text master |
-| `department_id` | BIGINT NULL | School-scoped link to `staff_departments`; nullable until a school configures its catalog or reviewed legacy reconciliation completes |\n| `department_name_snapshot` | VARCHAR(100) NULL | Display/history label captured when the department is assigned; not an independent free-text master |
+| `department_id` | BIGINT NULL | School-scoped link to `staff_departments`; nullable until a school configures its catalog or reviewed legacy reconciliation completes |
+| `department_name_snapshot` | VARCHAR(100) NULL | Display/history label captured when the department is assigned; not an independent free-text master |
 | `employment_type` | Controlled value | `permanent`, `contract`, `part_time`, `temporary`, `internship`, `visiting_faculty` |
 | `mobile_number` | VARCHAR(16) NOT NULL | Work contact |
 | `email` | VARCHAR(254) NULL | Work email |
@@ -80,7 +81,8 @@ The current `principal_id`-keyed uniqueness must be retained as a candidate key 
 Proposed `staff_departments`:
 - `id` identity PK, `school_id` NOT NULL, `name`, `is_active`, timestamps.
 - `UNIQUE(id, school_id)` and case-insensitive `UNIQUE(school_id, lower(btrim(name)))`.
-- Department deactivation is allowed only after impact is shown; it must not delete employee records or rewrite historical department snapshots.\n- Existing profiles retain `department_name_snapshot`; renaming a master does not silently rewrite existing employee labels. A deliberate employee reassignment refreshes the snapshot. Historical reports use the saved snapshot; new selections use the current active master label.
+- Department deactivation is allowed only after impact is shown; it must not delete employee records or rewrite historical department snapshots.
+- Existing profiles retain `department_name_snapshot`; renaming a master does not silently rewrite existing employee labels. A deliberate employee reassignment refreshes the snapshot. Historical reports use the saved snapshot; new selections use the current active master label.
 - Do not seed arbitrary department names or use free-text department values. Each school administers its own list.
 - A nullable department supports schools that have not configured the master yet.
 
