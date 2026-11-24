@@ -54,7 +54,7 @@ Proposed target columns:
 | `full_name` | VARCHAR(160) NOT NULL | Employee display name |
 | `designation_id` | BIGINT NULL | School-scoped link to `staff_designations`; nullable only while a school has not configured its catalog or a legacy row is under reviewed reconciliation |
 | `designation_name_snapshot` | VARCHAR(100) NOT NULL | Display/history snapshot captured when the designation is assigned; not an independent free-text master |
-| `department_id` | BIGINT NULL | School-controlled department master |
+| `department_id` | BIGINT NULL | School-scoped link to `staff_departments`; nullable until a school configures its catalog or reviewed legacy reconciliation completes |\n| `department_name_snapshot` | VARCHAR(100) NULL | Display/history label captured when the department is assigned; not an independent free-text master |
 | `employment_type` | Controlled value | `permanent`, `contract`, `part_time`, `temporary`, `internship`, `visiting_faculty` |
 | `mobile_number` | VARCHAR(16) NOT NULL | Work contact |
 | `email` | VARCHAR(254) NULL | Work email |
@@ -68,7 +68,7 @@ Required constraints and indexes:
 - `UNIQUE (principal_id, school_id)` allowing multiple NULL principal IDs but at most one linked staff profile per principal/school.
 - Composite FK `(principal_id, school_id) → users(principal_id, school_id)`; NULL principal means no login is linked.
 - `UNIQUE (school_id, lower(employee_code))`.
-- Composite FK `(department_id, school_id) → staff_departments(id, school_id)`.
+- Composite FK `(department_id, school_id) → staff_departments(id, school_id)`; a NULL department is permitted until the school configures its catalog or reviewed legacy reconciliation completes.
 - Composite FK `(designation_id, school_id) → staff_designations(id, school_id)`; a NULL designation is permitted only until the school configures its catalog or a reviewed legacy reconciliation completes.
 - Check `staff_type`, `employment_type` and `employment_status` against explicit controlled values.
 - Do not cascade-delete staff, department, assignment or history rows.
@@ -80,7 +80,7 @@ The current `principal_id`-keyed uniqueness must be retained as a candidate key 
 Proposed `staff_departments`:
 - `id` identity PK, `school_id` NOT NULL, `name`, `is_active`, timestamps.
 - `UNIQUE(id, school_id)` and case-insensitive `UNIQUE(school_id, lower(btrim(name)))`.
-- Department deactivation is allowed only after impact is shown; it must not delete employee records or rewrite historical department snapshots.
+- Department deactivation is allowed only after impact is shown; it must not delete employee records or rewrite historical department snapshots.\n- Existing profiles retain `department_name_snapshot`; renaming a master does not silently rewrite existing employee labels. A deliberate employee reassignment refreshes the snapshot. Historical reports use the saved snapshot; new selections use the current active master label.
 - Do not seed arbitrary department names or use free-text department values. Each school administers its own list.
 - A nullable department supports schools that have not configured the master yet.
 
@@ -193,7 +193,7 @@ Use additive, expand/contract migrations. Do not combine the full conversion int
 1. **Preflight inventory:** verify current migration version/dirty state on every environment, count staff profiles, find duplicate employee codes, orphaned child references, cross-school references, current teacher assignments/timetable/substitutions, and accounts with/without profile rows. Capture counts and checksums without exporting PII.
 2. **Verified backup gate:** take a consistent database backup and prove restore to an isolated database. Never delete existing backups to make room without explicit approval.
 3. **Expand identity:** add `staff_id` to `staff_profiles`, backfill one ID per existing profile, add unique/candidate constraints and nullable optional `principal_id` only after dependent FKs are understood. Preserve existing principal IDs and user relationships.
-4. **Master/profile fields:** add staff type, employment type, department and designation masters/FKs plus a designation display snapshot. Existing rows need a reviewed deterministic classification; do not guess teaching/non-teaching from designation text. During expand/backfill, unresolved legacy rows may use a temporary explicit `unclassified` state, but must be excluded from teaching assignment and any workflow requiring a known staff type. The final operational profile contract remains `teaching` or `non_teaching`; do not leave `unclassified` as a selectable user-facing staff type or silently treat it as teaching.
+4. **Master/profile fields:** add staff type, employment type, department and designation masters/FKs plus department/designation display snapshots. Existing rows need a reviewed deterministic classification; do not guess teaching/non-teaching from designation text. During expand/backfill, unresolved legacy rows may use a temporary explicit `unclassified` state, but must be excluded from teaching assignment and any workflow requiring a known staff type. The final operational profile contract remains `teaching` or `non_teaching`; do not leave `unclassified` as a selectable user-facing staff type or silently treat it as teaching.
 5. **Dependent table expansion:** add staff_id columns, backfill from principal IDs and add NOT VALID composite FKs/checks where supported. Validate constraints after backfill; abort on any mismatch. Do not remove legacy columns yet.
 6. **Application dual-read/write release:** deploy code that reads canonical staff_id, writes staff_id plus legacy principal ID when one exists, and accepts staff_id in routes/API. Preserve old API response fields temporarily for compatibility; introduce explicit staff_id fields. No route may accept a school ID that overrides authenticated tenant scope.
 7. **Profile-only workflow:** add create/update/list by staff_id, with no username/password requirement. Account linking/unlinking is separate and permission-gated. Update directory, profile, reports, attendance and leave flows to represent missing login as a normal state rather than a broken profile.
@@ -325,7 +325,7 @@ The existing experience-history field has a separate legacy value set; do not si
 - Designation options may be filtered by Staff Type for convenience, but the server must not reject a valid school-defined designation solely because it is absent from the suggested catalog.
 - Keep stable machine values separate from localized/display labels.
 - Do not infer Staff Type from designation text during migration. Existing records require a reviewed mapping or an explicit unclassified state until resolved.
-- Do not expose a deactivated designation/department for new selections; continue displaying the saved designation label snapshot on existing staff records. A deliberate reassignment to an active designation updates the snapshot.
+- Do not expose a deactivated designation/department for new selections; continue displaying the saved designation and department label snapshots on existing staff records. A deliberate reassignment to an active master updates the relevant snapshot. A deliberate reassignment to an active designation updates the snapshot.
 - Add audit events for master-data create, rename and deactivate operations, and show the affected employee count before deactivation where applicable.
 - Any department or designation master-data administration requires school-scoped permissions and tenant-safe uniqueness.
 
