@@ -799,3 +799,11 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Added service regression coverage for valid 254-character Unicode email values, malformed/over-limit values, and create/update repository-call boundaries.
 - Backend CI [45401808973](https://github.com/TheSumitNain/school-management-system/actions/runs/45401808973) **PASS** on `22977d39356d0df4c4e04b5cb44743c393e6306e`: migrations, full Go/PostgreSQL integration tests and `go vet`.
 - No schema migration or persistent database/application-data change. Phase 4 leave-policy approval, Phase 6 identity-schema approval, and external document-storage deferral remain open; `main` remains untouched.
+
+
+## 2026-11-24 implementation checkpoint — staff profile email browser parity
+
+- Tightened the frontend browser acceptance coverage for malformed email components (consecutive dots, trailing domain dot, and leading domain-label hyphen), accepted the shortest supported address, accepted a Unicode address, and verified a 254-code-point Unicode email is not truncated by the input limit.
+- The frontend uses a text input with an email keyboard hint so browser-native ASCII email validation does not reject Unicode values that the shared backend/frontend validator accepts. The backend validator comment now accurately describes it as stricter than the database storage constraint.
+- Frontend CI [45403612085](https://github.com/TheSumitNain/school-management-system/actions/runs/45403612085) **PASS** on `606ff51b5af809f0ceb1eadef13bf77b6ab6d995`: TypeScript, Vite production build and full Playwright browser acceptance suite. Backend CI [45403916189](https://github.com/TheSumitNain/school-management-system/actions/runs/45403916189) **PASS** on `5c5f91c75a6db42f1863dfad94a8396413580a3d`: ephemeral database migrations, full Go tests including PostgreSQL integration and `go vet`.
+- No schema migration or persistent database/application-data change. Phase 4 leave-policy approval, Phase 6 identity-schema approval, and external document-storage deferral remain open; `main` remains untouched.
