@@ -2,7 +2,7 @@
 
 **Status:** Approved planning baseline; Phase 0 audit is complete and the P0 Staff Management workspace rebuild is in progress.  
 **Scope:** Phase 1 School Admin web workspace, with Teacher self-service as a separate future experience.  
-**Last updated:** 2026-11-23
+**Last updated:** 2026-11-24
 
 This document defines what Staff Management will build, in what order, the screens/tabs and forms users will see, each field's required/optional status, the key workflows, security boundaries and acceptance criteria. It is a roadmap, not evidence that a feature is implemented. Check [Project Status](../project/STATUS.md) before each phase and verify existing code before changing it.
 
@@ -728,3 +728,11 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Added mobile/tablet/desktop browser coverage for the teacher-specific Workload & Timetable tab inside the employee profile. It verifies the profile stays within the viewport and timetable/report tables scroll within their own containers.
 - Frontend CI [45172972979](https://github.com/TheSumitNain/school-management-system/actions/runs/45172972979) **PASS**; Backend CI [45172973009](https://github.com/TheSumitNain/school-management-system/actions/runs/45172973009) **PASS** on `93da54e6` (PostgreSQL integration and `go vet` included).
 - No persistent DB changes. Schema-bound profile fields and the previously deferred identity/document-storage capabilities remain subject to their approval gates.
+
+
+## 2026-11-24 implementation checkpoint — credential handoff and date-stable browser acceptance
+
+- The one-time credential handoff now clears after both successful copy and **Do this later**; Playwright covers both creation paths.
+- Staff substitution, leave and holiday browser scenarios derive calendar dates from the current IST school date. The substitution database-guard integration fixture selects the next Monday in IST to keep its future-cover assertion valid over time.
+- Backend CI [45315575893](https://github.com/TheSumitNain/school-management-system/actions/runs/45315575893) **PASS** and Frontend CI [45315575878](https://github.com/TheSumitNain/school-management-system/actions/runs/45315575878) **PASS** (93 Playwright tests) on checkpoint `3c9b6d57`.
+- These improvements do not close the identity-schema approval gate, document-storage deferral or consolidated final Staff Management acceptance. No persistent database was changed.
