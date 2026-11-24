@@ -736,3 +736,11 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Added school-scoped designation and department references with saved display-label snapshots. Master renames do not silently rewrite historical employee labels; explicit reassignment refreshes the snapshot. New selections use active school-managed master values.
 - Hardened the future CSV bulk-import contract: read-only preview, actor/school/preview-bound expiring confirmation, revalidation and duplicate checks inside the all-or-nothing write transaction, idempotent batch keys, bounded parsing and safe treatment of imported cell content.
 - These remain design-only requirements. Profile-only onboarding and Bulk Import are still blocked pending explicit schema/product approval. No migration, runtime code or persistent database was changed.
+
+
+## 2026-11-24 implementation checkpoint — permission-scoped Staff workspace entry
+
+- The Staff workspace navigation now appears for users who have a relevant staff-specific read capability (attendance, leave/holidays, substitutions, academic assignments or timetable workload), as well as staff directory readers and staff creators. The page opens directly on the first permitted workspace; directory, overview metrics, reports and ID cards remain hidden without `users.read`.
+- The staff directory query is disabled when `users.read` is absent, preventing an unauthorized `/school/staff` request from a user who only has access to a separate staff workspace. Added Playwright acceptance for attendance-only access, including no directory request and no directory/overview controls.
+- Frontend CI [45318837352](https://github.com/TheSumitNain/school-management-system/actions/runs/45318837352) **PASS**: TypeScript, design-token check, production build and **94 Playwright tests**. Backend CI [45318837314](https://github.com/TheSumitNain/school-management-system/actions/runs/45318837314) **PASS**: migrations, Go/PostgreSQL integration suite and `go vet`.
+- No database migration or persistent database change. `main` remains untouched; identity-schema approval gates and the previously agreed document/photo deferral remain in force.
