@@ -668,6 +668,49 @@ test("staff creation uses the shared IST date picker and clears the credential h
   await expect(page.locator('input[type="date"]')).toHaveCount(0);
 });
 
+test("staff creation keeps entered details available after a temporary server failure so the admin can retry", async ({ page }) => {
+  let attempts = 0;
+  await signInAndOpenStaff(page, [], async (_path, route) => {
+    attempts += 1;
+    if (attempts === 1) {
+      await route.fulfill({ status: 503, json: { message: "Staff account creation is temporarily unavailable." } });
+      return;
+    }
+    const payload = route.request().postDataJSON() as Record<string, unknown>;
+    await route.fulfill({ status: 201, json: { staff: {
+      id: 1, principal_id: 601, school_id: 10, username: payload.username,
+      employee_code: payload.employee_code, full_name: payload.full_name,
+      designation: payload.designation, mobile_number: payload.mobile_number,
+      employment_status: "active", profile_complete: true, status: "active",
+      must_change_password: true,
+    } } });
+  });
+
+  await page.getByRole("button", { name: "Add staff", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Add employee" });
+  await dialog.getByLabel("Full name").fill("Retry Teacher");
+  await dialog.getByLabel("Employee code").fill("EMP-RETRY-01");
+  await dialog.getByLabel("Mobile number").fill("9876543211");
+  await dialog.getByRole("button", { name: "Continue" }).click();
+  await dialog.getByLabel("Designation").fill("English Teacher");
+  await dialog.getByRole("button", { name: "Continue" }).click();
+  await dialog.getByLabel("Login username").fill("retry.teacher");
+  await dialog.getByLabel("Initial password").fill("E2E-Strong-Password-2028");
+  await dialog.getByRole("button", { name: "Continue" }).click();
+
+  await dialog.getByRole("button", { name: "Create employee" }).click();
+  await expect(dialog.getByText("Staff account creation is temporarily unavailable.")).toBeVisible();
+  await expect(dialog.getByLabel("Full name")).toHaveValue("Retry Teacher");
+  await expect(dialog.getByLabel("Employee code")).toHaveValue("EMP-RETRY-01");
+  await expect(dialog.getByLabel("Login username")).toHaveValue("retry.teacher");
+  await expect(dialog.getByLabel("Initial password")).toHaveValue("E2E-Strong-Password-2028");
+
+  await dialog.getByRole("button", { name: "Create employee" }).click();
+  await expect.poll(() => attempts).toBe(2);
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: "Share staff login credentials" })).toBeVisible();
+});
+
 test("disabling a staff account requires explicit confirmation and refreshes its status", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 516, school_id: 10, username: "disable.teacher",
