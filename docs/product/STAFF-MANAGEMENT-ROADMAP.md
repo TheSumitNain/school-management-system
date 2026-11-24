@@ -1,6 +1,6 @@
 # Staff Management — Product and Implementation Roadmap
 
-**Status:** Approved planning baseline; Phase 0 audit is complete and the P0 Staff Management workspace rebuild is in progress.  
+**Status:** Approved planning baseline; the currently approved Staff Management implementation scope is built and browser-verified. Phase 4 remains partial pending school leave-policy approval; Phase 6 remains partial because Bulk Import is blocked on identity-schema approval. Payroll, document storage and profile-only onboarding remain deferred.  
 **Scope:** Phase 1 School Admin web workspace, with Teacher self-service as a separate future experience.  
 **Last updated:** 2026-11-24
 
@@ -482,7 +482,7 @@ Phases are dependency ordered, not a claim that every listed item is absent. Ins
 4. Permission-controlled exports remain implemented for the existing reports and directory workspace. Exports omit restricted remarks/reasons, exclude revoked assignments, omit unauthorized assignment columns, and neutralize spreadsheet formula injection.
 5. Staff document upload/download, expiry reminders and verification remain deferred until the user purchases/selects an external storage service and approves its integration. Until then, do not implement upload UI, local-disk storage or file APIs.
 
-**Exit gate:** import preview must not write; explicit confirmation and accurate row counts; atomic confirmed batch writes; sensitive exports restricted; ID cards use approved fields; all report and print workflows pass browser acceptance.
+**Exit gate: PARTIALLY MET for Phase 6 (2026-11-24).** Reports, permission-controlled exports and ID-card print workflows are implemented and browser-verified; the latest consolidated Frontend CI [45323508729](https://github.com/TheSumitNain/school-management-system/actions/runs/45323508729) passes 98 Playwright tests, and Backend CI [45323508810](https://github.com/TheSumitNain/school-management-system/actions/runs/45323508810) passes Go/PostgreSQL integration and `go vet`. Bulk Staff Import is not implemented and remains blocked until the identity-schema/product proposal is explicitly approved; its preview/confirmation/atomicity criteria apply only after that approval. Document storage remains separately deferred.
 
 ### Phase 7 — Payroll (P2, separate approval gate)
 
