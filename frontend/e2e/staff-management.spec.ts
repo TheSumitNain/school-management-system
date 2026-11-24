@@ -2041,6 +2041,30 @@ test("staff reports show monthly attendance and leave summaries only with matchi
   expect(leaveCSV).toContain("Casual Leave");
 });
 
+test("staff monthly reports do not request data when the report month is cleared", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [];
+  let attendanceRequests = 0;
+  let leaveRequests = 0;
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "staff.attendance.read", "staff.leave.read"]);
+  await page.route("**/api/school/staff-attendance/month**", route => {
+    attendanceRequests += 1;
+    return route.fulfill({ json: { month: "2026-11", data: [] } });
+  });
+  await page.route("**/api/school/staff-leave/requests**", route => {
+    leaveRequests += 1;
+    return route.fulfill({ json: { data: [] } });
+  });
+  await page.getByRole("button", { name: "Reports", exact: true }).click();
+  const monthInput = page.getByRole("textbox", { name: "Select attendance and leave report month" });
+  await expect(monthInput).toHaveValue(/\\d{4}-\\d{2}/);
+  await expect.poll(() => attendanceRequests).toBe(1);
+  await expect.poll(() => leaveRequests).toBe(1);
+  await monthInput.fill("");
+  await expect(page.getByText("Select a valid report month to load attendance and leave records.")).toBeVisible();
+  await expect.poll(() => attendanceRequests).toBe(1);
+  await expect.poll(() => leaveRequests).toBe(1);
+});
+
 test("staff reports include active academic assignments and export only permitted assignment fields", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [
     { id: 1, principal_id: 501, school_id: 10, username: "teacher.active", employee_code: "EMP-ACTIVE", full_name: "Active Teacher", designation: "Mathematics Teacher", employment_status: "active", profile_complete: true, status: "active", must_change_password: false },
