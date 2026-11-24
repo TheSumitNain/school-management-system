@@ -58,7 +58,7 @@ func (s *StaffAccountService) Create(
 var staffEmployeeCodePattern = regexp.MustCompile("^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$")
 var staffMobilePattern = regexp.MustCompile("^\\+?[0-9]{10,15}$")
 
-// validStaffProfileEmail mirrors the staff_profiles email CHECK constraint.
+// validStaffProfileEmail enforces the application email format and is stricter than the database storage constraint.
 // Count Unicode characters, matching PostgreSQL length(), rather than bytes.
 func validStaffProfileEmail(email string) bool {
 	if email == "" {
