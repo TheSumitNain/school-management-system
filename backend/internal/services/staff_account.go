@@ -161,7 +161,6 @@ func (s *StaffAccountService) UpdateProfile(ctx context.Context, actorPrincipalI
     profile.Designation = strings.TrimSpace(profile.Designation)
     profile.MobileNumber = strings.TrimSpace(profile.MobileNumber)
     profile.Email = strings.TrimSpace(profile.Email)
-    if profile.EmploymentStatus == "" { profile.EmploymentStatus = "active" }
     if s == nil || s.repository == nil || actorPrincipalID <= 0 || schoolID <= 0 || targetPrincipalID <= 0 ||
        !staffEmployeeCodePattern.MatchString(profile.EmployeeCode) || profile.FullName == "" || len([]rune(profile.FullName)) > 160 ||
        profile.Designation == "" || len([]rune(profile.Designation)) > 100 || !staffMobilePattern.MatchString(profile.MobileNumber) ||
