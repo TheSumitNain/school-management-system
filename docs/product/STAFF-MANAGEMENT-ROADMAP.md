@@ -728,3 +728,11 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Staff substitution, leave and holiday browser scenarios derive calendar dates from the current IST school date. The substitution database-guard integration fixture selects the next Monday in IST to keep its future-cover assertion valid over time.
 - Backend CI [45315575893](https://github.com/TheSumitNain/school-management-system/actions/runs/45315575893) **PASS** and Frontend CI [45315575878](https://github.com/TheSumitNain/school-management-system/actions/runs/45315575878) **PASS** (93 Playwright tests) on checkpoint `3c9b6d57`.
 - These improvements do not close the identity-schema approval gate, document-storage deferral or consolidated final Staff Management acceptance. No persistent database was changed.
+
+
+## 2026-11-24 design checkpoint — staff identity and import contract consistency
+
+- Clarified the proposal-only staff identity model: operational Staff Type is teaching/non-teaching; `unclassified` is temporary migration reconciliation only and is never teaching-eligible. Employment Type values are aligned to the product list.
+- Added school-scoped designation and department references with saved display-label snapshots. Master renames do not silently rewrite historical employee labels; explicit reassignment refreshes the snapshot. New selections use active school-managed master values.
+- Hardened the future CSV bulk-import contract: read-only preview, actor/school/preview-bound expiring confirmation, revalidation and duplicate checks inside the all-or-nothing write transaction, idempotent batch keys, bounded parsing and safe treatment of imported cell content.
+- These remain design-only requirements. Profile-only onboarding and Bulk Import are still blocked pending explicit schema/product approval. No migration, runtime code or persistent database was changed.
