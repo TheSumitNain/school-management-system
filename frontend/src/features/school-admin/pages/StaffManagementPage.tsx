@@ -33,6 +33,22 @@ import "./StaffManagementPage.css";
 type Action = "create" | "edit" | "reset" | "enable" | null;
 type Props = { permissions: string[] };
 
+function isValidStaffEmail(email: string): boolean {
+  if (!email) return true;
+  const characters = Array.from(email);
+  if (characters.length < 5 || characters.length > 254 || (email.match(/@/g) ?? []).length !== 1 || /\s/u.test(email)) return false;
+  const [localPart, domain] = email.split("@");
+  if (!localPart || !domain || localPart.startsWith(".") || localPart.endsWith(".") || localPart.includes("..")) return false;
+  if (!/^[\p{L}\p{N}!#$%&'*+/=?^_`{|}~.-]+$/u.test(localPart)) return false;
+  const labels = domain.split(".");
+  return labels.length >= 2 && labels.every(label =>
+    label.length > 0 &&
+    !label.startsWith("-") &&
+    !label.endsWith("-") &&
+    /^[\p{L}\p{N}-]+$/u.test(label)
+  );
+}
+
 function staffCSVCell(value:unknown){
   const text=String(value??"");
   const safe=/^\s*[=+\-@]/.test(text)?"'"+text:text;
@@ -244,7 +260,7 @@ export function StaffManagementPage({ permissions }: Props) {
       if (!fullName || Array.from(fullName).length > 160) stepErrors.full_name = "Enter the employee full name (up to 160 characters).";
       if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/.test(employeeCode)) stepErrors.employee_code = "Use 1–32 letters, numbers, dots, underscores or hyphens.";
       if (!/^\+?[0-9]{10,15}$/.test(mobileNumber)) stepErrors.mobile_number = "Enter one mobile number with 10–15 digits.";
-      if (email && (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254)) stepErrors.email = "Enter a valid email address.";
+      if (!isValidStaffEmail(email)) stepErrors.email = "Enter a valid email address.";
     }
     if (createStep === 2 && (!designation || Array.from(designation).length > 100)) stepErrors.designation = "Enter a designation (up to 100 characters).";
     if (createStep === 3) {
@@ -277,7 +293,7 @@ export function StaffManagementPage({ permissions }: Props) {
       if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/.test(employeeCode)) nextErrors.employee_code = "Use 1–32 letters, numbers, dots, underscores or hyphens.";
       if (!designation || Array.from(designation).length > 100) nextErrors.designation = "Enter a designation (up to 100 characters).";
       if (!/^\+?[0-9]{10,15}$/.test(mobileNumber)) nextErrors.mobile_number = "Enter one mobile number with 10–15 digits; an international + prefix is allowed.";
-      if (email && (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254)) nextErrors.email = "Enter a valid email address.";
+      if (!isValidStaffEmail(email)) nextErrors.email = "Enter a valid email address.";
       if (employmentStatus !== "active" && employmentStatus !== "inactive") nextErrors.employment_status = "Choose Active or Inactive.";
     }
     if (action !== "edit" && password.length < 12) nextErrors.password = "Password must contain at least 12 characters.";
@@ -511,7 +527,7 @@ export function StaffManagementPage({ permissions }: Props) {
             <label hidden={action === "create" && createStep !== 1}>Employee code<input name="employee_code" placeholder="e.g. EMP-001" defaultValue={selected?.employee_code ?? ""} maxLength={32} required aria-invalid={Boolean(fieldErrors.employee_code)} aria-describedby={fieldErrors.employee_code ? "staff-employee-code-error" : undefined} onChange={()=>setFieldErrors(current=>({...current,employee_code:""}))}/><small>Must be unique within this school.</small>{fieldErrors.employee_code && <small className="app-field-error" id="staff-employee-code-error" role="alert">{fieldErrors.employee_code}</small>}</label>
             <label hidden={action === "create" && createStep !== 2}>Designation<input name="designation" placeholder="e.g. Mathematics Teacher" defaultValue={selected?.designation ?? ""} maxLength={200} required aria-invalid={Boolean(fieldErrors.designation)} aria-describedby={fieldErrors.designation ? "staff-designation-error" : undefined} onChange={()=>setFieldErrors(current=>({...current,designation:""}))}/>{fieldErrors.designation && <small className="app-field-error" id="staff-designation-error" role="alert">{fieldErrors.designation}</small>}</label>
             <label hidden={action === "create" && createStep !== 1}>Mobile number<input name="mobile_number" type="tel" placeholder="e.g. 9876543210" defaultValue={selected?.mobile_number ?? ""} maxLength={16} required aria-invalid={Boolean(fieldErrors.mobile_number)} aria-describedby={fieldErrors.mobile_number ? "staff-mobile-error" : undefined} onChange={()=>setFieldErrors(current=>({...current,mobile_number:""}))}/><small>Enter one contact number (10–15 digits).</small>{fieldErrors.mobile_number && <small className="app-field-error" id="staff-mobile-error" role="alert">{fieldErrors.mobile_number}</small>}</label>
-            <label hidden={action === "create" && createStep !== 1}>Email address <small>(optional)</small><input name="email" type="email" placeholder="e.g. rahul@example.com" defaultValue={selected?.email ?? ""} maxLength={254} aria-invalid={Boolean(fieldErrors.email)} aria-describedby={fieldErrors.email ? "staff-email-error" : undefined} onChange={()=>setFieldErrors(current=>({...current,email:""}))}/>{fieldErrors.email && <small className="app-field-error" id="staff-email-error" role="alert">{fieldErrors.email}</small>}</label>
+            <label hidden={action === "create" && createStep !== 1}>Email address <small>(optional)</small><input name="email" type="email" placeholder="e.g. rahul@example.com" defaultValue={selected?.email ?? ""} maxLength={508} aria-invalid={Boolean(fieldErrors.email)} aria-describedby={fieldErrors.email ? "staff-email-error" : undefined} onChange={()=>setFieldErrors(current=>({...current,email:""}))}/>{fieldErrors.email && <small className="app-field-error" id="staff-email-error" role="alert">{fieldErrors.email}</small>}</label>
             <label hidden={action === "create" && createStep !== 2}>Joining date <small>(optional)</small><input type="hidden" name="joining_date" value={joiningDate}/><DatePicker value={joiningDate} onChange={value => { setJoiningDate(value); setFieldErrors(current => ({ ...current, joining_date: "" })); }} ariaLabel="Joining date" placeholder="Select joining date" invalid={Boolean(fieldErrors.joining_date)} describedBy={fieldErrors.joining_date ? "staff-joining-date-error" : undefined}/>{fieldErrors.joining_date && <small className="app-field-error" id="staff-joining-date-error" role="alert">{fieldErrors.joining_date}</small>}</label>
             {action === "edit" && <label>Employment status<input type="hidden" name="employment_status" value={employmentStatus}/><Select value={employmentStatus} onChange={value => { setEmploymentStatus(value as "active" | "inactive"); setFieldErrors(current => ({ ...current, employment_status: "" })); }} ariaLabel="Employment status" options={[{ value: "active", label: "Active" }, { value: "inactive", label: "Inactive" }]} invalid={Boolean(fieldErrors.employment_status)} describedBy={fieldErrors.employment_status ? "staff-employment-status-error" : undefined}/><small>Inactive employees cannot sign in. Reactivating employment does not automatically enable a disabled login.</small>{fieldErrors.employment_status && <small className="app-field-error" id="staff-employment-status-error" role="alert">{fieldErrors.employment_status}</small>}</label>}
           </>}
