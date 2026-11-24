@@ -175,7 +175,9 @@ export function StaffManagementPage({ permissions }: Props) {
       setRolesForPrincipal(null);
       setOverridesForPrincipal(null);
     }
-  }, [action, actionAllowed, staffToDisable, canDisable, canUpdate, canReadStaff]);
+    if (!canReadRoles) setRolesForPrincipal(null);
+    if (!canManageOverrides) setOverridesForPrincipal(null);
+  }, [action, actionAllowed, staffToDisable, canDisable, canUpdate, canReadStaff, canReadRoles, canManageOverrides]);
   function advanceCreateStep(form: HTMLFormElement) {
     if (action !== "create" || createStep >= 4) return;
     const values = new FormData(form);
