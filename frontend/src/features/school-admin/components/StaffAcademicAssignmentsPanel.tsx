@@ -39,8 +39,10 @@ export function StaffAcademicAssignmentsPanel({ staff, permissions, onOpenWorksp
     return () => controller.abort();
   }, [staff.principal_id, canReadSubjects, canReadIncharges, reloadKey]);
 
-  const activeCount = subjects.filter(item => !item.revoked_at).length + incharges.filter(item => !item.revoked_at).length;
-  const historyCount = subjects.length + incharges.length - activeCount;
+  const visibleSubjects = canReadSubjects ? subjects : [];
+  const visibleIncharges = canReadIncharges ? incharges : [];
+  const activeCount = visibleSubjects.filter(item => !item.revoked_at).length + visibleIncharges.filter(item => !item.revoked_at).length;
+  const historyCount = visibleSubjects.length + visibleIncharges.length - activeCount;
   return <section className="staff-records-panel staff-academic-profile">
     <div className="staff-records-heading"><div><h3>Academic assignments</h3><p>Assignments linked to {staff.full_name || staff.username}. Revoked records remain visible as history.</p></div>{(canReadSubjects || canReadIncharges) && <button type="button" className="staff-secondary-button" onClick={onOpenWorkspace}>Open assignments workspace</button>}</div>
     {!canReadSubjects && !canReadIncharges ? <p className="staff-record-empty">You do not have permission to view academic assignments.</p> : loading ? <p role="status">Loading academic assignments…</p> : error ? <div className="staff-record-error" role="alert"><span>{error}</span><button type="button" onClick={() => setReloadKey(value => value + 1)}>Try again</button></div> : <>
