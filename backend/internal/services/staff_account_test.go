@@ -29,6 +29,13 @@ func (f *fakeStaffAccountRepository) CreateStaffAccount(_ context.Context, actor
 	return f.user, nil
 }
 
+func (f *fakeStaffAccountRepository) CreateStaffAccountWithProfile(_ context.Context, actorID, schoolID int64, username, passwordHash string, profile models.StaffProfile) (*models.User, error) {
+	f.profileCalls++
+	f.actorID, f.schoolID, f.username, f.passwordHash = actorID, schoolID, username, passwordHash
+	f.profile = profile
+	return f.user, nil
+}
+
 func (f *fakeStaffAccountRepository) ListStaffAccounts(context.Context, int64, int64) ([]models.User, error) {
 	return []models.User{}, nil
 }
@@ -182,5 +189,36 @@ func TestStaffProfileTextLimitsCountUnicodeCharacters(t *testing.T) {
 	}
 	if repo.profileCalls != 1 {
 		t.Fatalf("invalid Unicode profile updates reached repository; calls=%d want=1", repo.profileCalls)
+	}
+}
+
+func TestStaffProfileTextLimitsCountUnicodeCharactersOnCreate(t *testing.T) {
+	repo := &fakeStaffAccountRepository{user: &models.User{ID: 15, PrincipalID: 27, SchoolID: 8}}
+	service := NewStaffAccountService(repo, alwaysClearPasswordChecker{})
+	profile := models.StaffProfile{
+		EmployeeCode: "EMP-27", FullName: strings.Repeat("🔤", 160), Designation: strings.Repeat("📚", 100),
+		MobileNumber: "9876543210", EmploymentStatus: "active",
+	}
+	user, err := service.CreateWithProfile(context.Background(), 31, 8, "teacher.one", "A-Strong-Initial-Pass-123", profile)
+	if err != nil {
+		t.Fatalf("valid Unicode profile creation returned error: %v", err)
+	}
+	if user != repo.user || repo.profileCalls != 1 || repo.passwordHash == "" ||
+		repo.passwordHash == "A-Strong-Initial-Pass-123" || len([]rune(repo.profile.FullName)) != 160 ||
+		len([]rune(repo.profile.Designation)) != 100 {
+		t.Fatalf("valid Unicode profile creation did not reach repository correctly: user=%+v calls=%d", user, repo.profileCalls)
+	}
+
+	profile.FullName = strings.Repeat("🔤", 161)
+	if _, err := service.CreateWithProfile(context.Background(), 31, 8, "teacher.two", "A-Strong-Initial-Pass-123", profile); err != ErrInvalidStaffAccount {
+		t.Fatalf("161-character full name creation error = %v, want ErrInvalidStaffAccount", err)
+	}
+	profile.FullName = strings.Repeat("🔤", 160)
+	profile.Designation = strings.Repeat("📚", 101)
+	if _, err := service.CreateWithProfile(context.Background(), 31, 8, "teacher.three", "A-Strong-Initial-Pass-123", profile); err != ErrInvalidStaffAccount {
+		t.Fatalf("101-character designation creation error = %v, want ErrInvalidStaffAccount", err)
+	}
+	if repo.profileCalls != 1 {
+		t.Fatalf("invalid Unicode profile creations reached repository; calls=%d want=1", repo.profileCalls)
 	}
 }
