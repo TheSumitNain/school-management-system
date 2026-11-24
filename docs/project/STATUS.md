@@ -1,3 +1,12 @@
+## 2026-11-24 — Staff operational reports early-year month-boundary fix
+
+- Fixed operational attendance/leave report month-end calculation for years 0001–0099 using `setUTCFullYear` rather than `Date.UTC`, which remaps JavaScript years 0–99 into 1900–1999. The report month validator also rejects year 0000.
+- Added Playwright regression coverage proving February 0001 requests attendance month `0001-02` and leave range `0001-02-01` through `0001-02-28`.
+- Frontend CI [45418687118](https://github.com/TheSumitNain/school-management-system/actions/runs/45418687118) **PASS** on `49c94ac066d5433b299f43eeaa7804f02e7cd8c9`: TypeScript/Vite production build and the full Playwright browser acceptance suite passed.
+- Backend CI [45418687451](https://github.com/TheSumitNain/school-management-system/actions/runs/45418687451) **PASS** on the same commit: full Go tests, ephemeral PostgreSQL integration and `go vet` passed.
+- The first frontend run on `b0139cc` exposed a test-only issue: native `input[type=month]` rejects year 0000 before the component handler runs. The regression test was corrected to assert the supported early-year case; no production behavior was changed by that correction.
+- No schema, migration, persistent database or application data changed.
+
 ## 2026-11-24 — Staff attendance early-year month-boundary fix
 
 - Fixed monthly attendance context date calculation for years 0001–0099. JavaScript's `Date.UTC` remaps years 0–99 into 1900–1999; the component now constructs the month-end date with `setUTCFullYear` and rejects year 0000.
