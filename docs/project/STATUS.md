@@ -1,3 +1,10 @@
+## 2026-11-24 — Staff roadmap scope and privacy alignment
+
+- Aligned the Staff Management roadmap with the documented classification proposal: Teaching / Non-Teaching Staff Type; school-configurable Designation; school-managed Department; and Permanent, Contract, Part-time, Temporary, Internship and Visiting Faculty employment types.
+- Corrected the roadmap's storage scope: staff document upload/download and profile-photo upload are deferred until go-live and approval of an external private-storage provider. The Documents tab remains an explanatory disabled state; no local/mock storage or file APIs are in scope now.
+- Gated DOB, gender, home addresses and emergency-contact fields pending dedicated schema, field-level access, retention and privacy/legal review. These fields must not be collected through placeholder or local-only forms.
+- Documentation-only changes on `work`; no application behavior, migrations, persistent database or data changed. Latest code verification remains Backend CI and Frontend CI **PASS** on `528c976c`; the recent documentation commits have no code changes.
+
 ## 2026-11-24 — Staff classification catalog proposal
 
 - Documented the proposed distinction between Staff Type (Teaching / Non-Teaching), school-configurable Designation, school-managed Department and controlled Employment Type values in `docs/backend/STAFF-IDENTITY-SCHEMA-DESIGN.md`.
