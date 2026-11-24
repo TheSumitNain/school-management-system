@@ -2463,7 +2463,9 @@ test("staff ID cards select complete active employees regardless of login status
   await expect(page.locator(".staff-id-card--modern")).toHaveCount(2);
   await page.setViewportSize({width:390,height:844});
   await expect.poll(() => page.locator(".staff-id-selection").evaluate(element => getComputedStyle(element).gridTemplateColumns.trim().split(/\s+/).length)).toBe(1);
-  await expect(page.locator(".staff-id-card")).toBeVisible();
+  await expect(page.locator(".staff-id-card")).toHaveCount(2);
+  await expect(page.locator(".staff-id-card").nth(0)).toBeVisible();
+  await expect(page.locator(".staff-id-card").nth(1)).toBeVisible();
   await page.setViewportSize({width:768,height:900});
   await expect.poll(() => page.locator(".staff-id-selection").evaluate(element => getComputedStyle(element).gridTemplateColumns.trim().split(/\s+/).length)).toBe(2);
   await page.setViewportSize({width:1280,height:900});
