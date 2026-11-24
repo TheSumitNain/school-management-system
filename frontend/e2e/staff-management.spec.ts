@@ -3041,3 +3041,31 @@ test("staff profile history never flashes the previous employee's audit events w
   await expect(dialog.getByText("Account created")).toHaveCount(0);
   await expect(dialog.getByText("Leave approved")).toBeVisible();
 });
+
+
+test("closing and reopening the same staff profile reloads audit history instead of reusing cached events", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [
+    { id: 1, principal_id: 531, school_id: 10, username: "teacher.audit.reopen", employee_code: "EMP-AUD-REOPEN", full_name: "Audit Reopen", designation: "Teacher", mobile_number: "9876543231", employment_status: "active", profile_complete: true, status: "active", must_change_password: false },
+  ];
+  let auditRequests = 0;
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "school.audit.read"]);
+  await page.route("**/api/school/staff/531/audit-events", async route => {
+    auditRequests += 1;
+    await route.fulfill({ json: { events: [
+      { id: auditRequests, action: "staff.profile.updated", resource_type: "staff_user", outcome: "success", actor_username: "school.admin", metadata: {}, created_at: "2026-11-22T10:00:00.000Z" },
+    ] } });
+  });
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Audit Reopen" }).click();
+  let dialog = page.getByRole("dialog", { name: "Audit Reopen" });
+  await dialog.getByRole("button", { name: "History & Activity" }).click();
+  await expect(dialog.getByText("Profile updated")).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "Audit Reopen" }).click();
+  dialog = page.getByRole("dialog", { name: "Audit Reopen" });
+  await dialog.getByRole("button", { name: "History & Activity" }).click();
+  await expect(dialog.getByText("Profile updated")).toBeVisible();
+  await expect.poll(() => auditRequests).toBe(2);
+});
