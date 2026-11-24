@@ -244,7 +244,9 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
 		INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
 		VALUES
 		($1,$2,'staff.leave.requested','staff_leave_request','history-leave-fixture','success',jsonb_build_object('staff_principal_id',$3::bigint)),
-		($1,$2,'staff.substitution.assigned','staff_substitution','history-substitution-fixture','success',jsonb_build_object('original_teacher_principal_id',$3::bigint,'substitute_teacher_principal_id',$4::bigint))
+		($1,$2,'staff.substitution.assigned','staff_substitution','history-substitution-fixture','success',jsonb_build_object('original_teacher_principal_id',$3::bigint,'substitute_teacher_principal_id',$4::bigint)),
+		($1,$2,'school.staff.permission_override.set','user_permission_override',$3::text,'success',jsonb_build_object('permission_key','attendance.update','effect','deny')),
+		($1,$2,'school.staff.permission_override.removed','user_permission_override',$3::text,'success',jsonb_build_object('permission_key','attendance.update'))
 	`,actorID,schoolID,staff.PrincipalID,secondStaff.PrincipalID);err!=nil{t.Fatalf("insert leave/substitution history fixtures: %v",err)}
 	// Decision audit events intentionally omit employee IDs from metadata.
 	// The history query must resolve the employee through the school-scoped
@@ -297,5 +299,12 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
 	if !foundRejectedLeaveActivity{t.Fatal("staff audit history omitted leave rejection resolved through resource ID")}
 	if !foundCancelledLeaveActivity{t.Fatal("staff audit history omitted leave cancellation resolved through resource ID")}
 	if !foundSubstitutionActivity{t.Fatal("staff audit history omitted substitution activity")}
+	foundOverrideSet,foundOverrideRemoved:=false,false
+	for _,event:=range events{
+		if event.Action=="school.staff.permission_override.set"{foundOverrideSet=true}
+		if event.Action=="school.staff.permission_override.removed"{foundOverrideRemoved=true}
+	}
+	if !foundOverrideSet{t.Fatal("staff audit history omitted permission override set event")}
+	if !foundOverrideRemoved{t.Fatal("staff audit history omitted permission override removal event")}
 	if _,err:=repo.ListStaffAuditEvents(ctx,actorID,schoolID+1,staff.PrincipalID);!errors.Is(err,ErrStaffRecordAccessDenied){t.Fatalf("cross-school staff audit history error=%v",err)}
 }

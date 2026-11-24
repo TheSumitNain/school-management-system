@@ -369,6 +369,7 @@ func (r *UserRepository) ListStaffAuditEvents(ctx context.Context, actorID, scho
 		WHERE ae.school_id = $1
 		  AND (
 		       (ae.resource_type = 'staff_principal' AND ae.resource_id = $2::text)
+		    OR (ae.resource_type = 'user_permission_override' AND ae.resource_id = $2::text)
 		    OR (ae.resource_type = 'staff_user' AND (
 		           ae.metadata->>'principal_id' = $2::text
 		        OR ae.metadata->>'target_principal_id' = $2::text
