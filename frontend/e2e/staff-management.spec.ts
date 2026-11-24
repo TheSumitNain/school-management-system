@@ -2918,3 +2918,19 @@ test("workload report explains missing current academic year without requesting 
   await page.getByRole("button", { name: "Refresh" }).click();
   await expect.poll(() => workloadRequests).toBe(0);
 });
+
+
+test.describe("staff ID card school-date formatting in non-school browser timezones", () => {
+  test.use({ timezoneId: "America/Los_Angeles" });
+
+  test("joining dates retain the school calendar date", async ({ page }) => {
+    const rows:Array<Record<string,unknown>>=[
+      {id:1,principal_id:501,school_id:10,username:"active.teacher",employee_code:"EMP-501",full_name:"Active Teacher",designation:"Mathematics Teacher",joining_date:"2024-04-01",employment_status:"active",profile_complete:true,status:"active",must_change_password:false},
+    ];
+    await signInAndOpenStaff(page,rows,undefined,["users.read"]);
+    await page.getByRole("button",{name:"ID Cards",exact:true}).click();
+    await page.getByRole("button",{name:"Select all eligible"}).click();
+    const preview=page.locator(".staff-id-print-area");
+    await expect(preview.getByText("1 Apr 2024",{exact:true})).toBeVisible();
+  });
+});
