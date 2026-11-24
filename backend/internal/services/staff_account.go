@@ -82,7 +82,9 @@ func validStaffJoiningDate(joiningDate *time.Time, now time.Time) bool {
 	return !dateOnly.After(latestAllowed)
 }
 
-// validStaffProfileEmail enforces the application email format and is stricter than the database storage constraint.\n// Count Unicode characters, matching PostgreSQL length(), rather than bytes.\nfunc validStaffProfileEmail(email string) bool {
+// validStaffProfileEmail enforces the application email format and is stricter than the database storage constraint.
+// Count Unicode characters, matching PostgreSQL length(), rather than bytes.
+func validStaffProfileEmail(email string) bool {
 	if email == "" {
 		return true
 	}
