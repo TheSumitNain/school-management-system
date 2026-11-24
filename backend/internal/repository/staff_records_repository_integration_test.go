@@ -142,6 +142,37 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
     })
     if err != nil { t.Fatalf("create second staff for bulk attendance: %v", err) }
 
+    // A record ID from another employee in the same school must not bypass
+    // the staff principal ID supplied by the profile route.
+    otherQualifications, err := repo.ListStaffQualifications(ctx, actorID, schoolID, secondStaff.PrincipalID)
+    if err != nil || len(otherQualifications) != 0 {
+        t.Fatalf("second employee qualifications leaked: items=%+v err=%v", otherQualifications, err)
+    }
+    otherCertifications, err := repo.ListStaffCertifications(ctx, actorID, schoolID, secondStaff.PrincipalID)
+    if err != nil || len(otherCertifications) != 0 {
+        t.Fatalf("second employee certifications leaked: items=%+v err=%v", otherCertifications, err)
+    }
+    otherExperiences, err := repo.ListStaffExperience(ctx, actorID, schoolID, secondStaff.PrincipalID)
+    if err != nil || len(otherExperiences) != 0 {
+        t.Fatalf("second employee experience leaked: items=%+v err=%v", otherExperiences, err)
+    }
+    if _, err := repo.UpdateStaffQualification(ctx, actorID, schoolID, secondStaff.PrincipalID, qualification.ID, StaffQualification{
+        QualificationType: "postgraduate", QualificationName: "Unauthorized Update", Institution: "Other University", CompletionYear: &year, Score: &score, ScoreScale: "percentage",
+    }); !errors.Is(err, ErrInvalidStaffRecord) {
+        t.Fatalf("cross-employee qualification update error=%v want ErrInvalidStaffRecord", err)
+    }
+    if _, err := repo.UpdateStaffCertification(ctx, actorID, schoolID, secondStaff.PrincipalID, certification.ID, StaffCertification{
+        CertificateName: "Unauthorized Update", IssuingOrganization: "Other Board",
+    }); !errors.Is(err, ErrInvalidStaffRecord) {
+        t.Fatalf("cross-employee certification update error=%v want ErrInvalidStaffRecord", err)
+    }
+    if _, err := repo.UpdateStaffExperience(ctx, actorID, schoolID, secondStaff.PrincipalID, experience.ID, StaffExperience{
+        EmployerName: "Other School", Designation: "Unauthorized Update", EmploymentType: "permanent", StartDate: "2018-04-01",
+    }); !errors.Is(err, ErrInvalidStaffRecord) {
+        t.Fatalf("cross-employee experience update error=%v want ErrInvalidStaffRecord", err)
+    }
+
+
     if _, err := attendanceRepo.MarkBulk(ctx, actorID, schoolID, []int64{secondStaff.PrincipalID, staff.PrincipalID}, today, "absent", nil); !errors.Is(err, ErrStaffAttendanceConflict) {
         t.Fatalf("bulk attendance with an existing daily mark error=%v want conflict", err)
     }
