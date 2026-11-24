@@ -705,6 +705,46 @@ test("add staff wizard validates each step before allowing progress", async ({ p
   await expect(dialog.getByRole("heading", { name: "Review & create" })).toBeVisible();
 });
 
+
+test("staff profile creation accepts Unicode names and designations at database character limits", async ({ page }) => {
+  const created: Array<Record<string, unknown>> = [];
+  await signInAndOpenStaff(page, [], async (_path, route) => {
+    created.push(route.request().postDataJSON() as Record<string, unknown>);
+    await route.fulfill({ status: 201, json: { staff: {
+      id: 91, principal_id: 291, school_id: 10, username: "unicode.teacher",
+      employee_code: "EMP-UNICODE", full_name: created[0].full_name,
+      designation: created[0].designation, mobile_number: "9876543210",
+      employment_status: "active", profile_complete: true, status: "active",
+      must_change_password: true,
+    } } });
+  });
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Add staff" }).click();
+  const dialog = page.getByRole("dialog", { name: "Add employee" });
+  const fullName = "🔤".repeat(160);
+  const designation = "📚".repeat(100);
+  await dialog.getByLabel("Full name").fill(fullName);
+  await dialog.getByLabel("Employee code").fill("EMP-UNICODE");
+  await dialog.getByLabel("Mobile number").fill("9876543210");
+  await dialog.getByRole("button", { name: "Continue" }).click();
+
+  await dialog.getByLabel("Designation").fill(designation);
+  await dialog.getByRole("button", { name: "Continue" }).click();
+  await dialog.getByLabel("Login username").fill("unicode.teacher");
+  await dialog.getByLabel("Initial password").fill("E2E-Strong-Password-2026");
+  await dialog.getByRole("button", { name: "Continue" }).click();
+
+  await expect(dialog.getByRole("heading", { name: "Review & create" })).toBeVisible();
+  await dialog.getByRole("button", { name: "Create employee" }).click();
+  await expect.poll(() => created.length).toBe(1);
+  expect(Array.from(String(created[0].full_name)).length).toBe(160);
+  expect(Array.from(String(created[0].designation)).length).toBe(100);
+  expect(created[0].full_name).toBe(fullName);
+  expect(created[0].designation).toBe(designation);
+  await expect(page.getByRole("dialog", { name: "Share staff login credentials" })).toBeVisible();
+});
+
 test("staff creation uses the shared IST date picker and clears the credential handoff after copying", async ({ page }) => {
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
   const created: Array<Record<string, unknown>> = [];
