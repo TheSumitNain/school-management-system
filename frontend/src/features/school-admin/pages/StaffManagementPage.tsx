@@ -190,7 +190,8 @@ export function StaffManagementPage({ permissions }: Props) {
     }
     if (!canReadRoles) setRolesForPrincipal(null);
     if (!canManageOverrides) setOverridesForPrincipal(null);
-  }, [action, actionAllowed, staffToDisable, canDisable, canUpdate, canReadStaff, canReadRoles, canManageOverrides]);
+    if (!canCreate) setCredentialHandoff(null);
+  }, [action, actionAllowed, staffToDisable, canDisable, canUpdate, canReadStaff, canReadRoles, canManageOverrides, canCreate]);
   function advanceCreateStep(form: HTMLFormElement) {
     if (action !== "create" || createStep >= 4) return;
     const values = new FormData(form);
@@ -460,7 +461,7 @@ export function StaffManagementPage({ permissions }: Props) {
         </form>
       </Modal>
 
-      <Modal open={credentialHandoff !== null} title="Share staff login credentials" description="This one-time handoff is shown only after account creation succeeds. The password is not stored for later retrieval." onClose={() => setCredentialHandoff(null)}>
+      <Modal open={credentialHandoff !== null && canCreate} title="Share staff login credentials" description="This one-time handoff is shown only after account creation succeeds. The password is not stored for later retrieval." onClose={() => setCredentialHandoff(null)}>
         {credentialHandoff && <section className="staff-credential-handoff"><p>Confirm the staff member's identity and use a trusted channel you have verified. Nothing is sent automatically.</p>
           <dl><div><dt>Staff member</dt><dd>{credentialHandoff.fullName}</dd></div><div><dt>Login username</dt><dd>{credentialHandoff.username}</dd></div><div><dt>Temporary password</dt><dd>{credentialHandoff.password}</dd></div></dl>
           <p className="staff-wizard-note">Do not share credentials in a public or group channel. The staff member must change this password at first sign-in.</p>
