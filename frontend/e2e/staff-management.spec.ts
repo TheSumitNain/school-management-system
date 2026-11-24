@@ -545,7 +545,9 @@ test("staff leave request date filters return only overlapping requests and can 
       url.searchParams.get("to_date") === tomorrow;
   });
   await chooseDatePickerValue(page, "Leave requests from date", tomorrow);
-  await expect(narrowedRequest).resolves.toBeTruthy();
+  const narrowedURL = new URL((await narrowedRequest).url());
+  expect(narrowedURL.searchParams.get("from_date")).toBe(tomorrow);
+  expect(narrowedURL.searchParams.get("to_date")).toBe(tomorrow);
   await expect(page.getByText("No leave requests match these filters.")).toBeVisible();
   await expect(page.getByText("Leave Teacher")).toHaveCount(0);
 
