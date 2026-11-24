@@ -74,9 +74,30 @@ func validStaffProfileEmail(email string) bool {
 		}
 	}
 	at := strings.IndexRune(email, '@')
-	domain := email[at+1:]
-	dot := strings.IndexRune(domain, '.')
-	return at > 0 && dot > 0 && dot < len(domain)-1
+	localPart, domain := email[:at], email[at+1:]
+	if localPart == "" || domain == "" || strings.HasPrefix(localPart, ".") || strings.HasSuffix(localPart, ".") || strings.Contains(localPart, "..") {
+		return false
+	}
+	for _, character := range localPart {
+		if !(unicode.IsLetter(character) || unicode.IsNumber(character) || strings.ContainsRune("!#$%&'*+-/=?^_`{|}~.", character)) {
+			return false
+		}
+	}
+	labels := strings.Split(domain, ".")
+	if len(labels) < 2 {
+		return false
+	}
+	for _, label := range labels {
+		if label == "" || strings.HasPrefix(label, "-") || strings.HasSuffix(label, "-") {
+			return false
+		}
+		for _, character := range label {
+			if !(unicode.IsLetter(character) || unicode.IsNumber(character) || character == '-') {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // CreateWithProfile creates a login account and employee profile in one repository transaction.
