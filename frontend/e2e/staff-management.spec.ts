@@ -451,8 +451,8 @@ test("staff leave request filters send the selected status and staff scope", asy
     {
       id: 2, principal_id: 502, school_id: 10, username: "second.teacher",
       employee_code: "EMP-LEAVE-02", full_name: "Second Teacher", designation: "Math Teacher",
-      mobile_number: "9876543216", employment_status: "active", profile_complete: true,
-      status: "active", must_change_password: false,
+      mobile_number: "9876543216", employment_status: "inactive", profile_complete: false,
+      status: "disabled", must_change_password: false,
     },
   ];
   const permissions = ["users.read", "staff.leave.read"];
