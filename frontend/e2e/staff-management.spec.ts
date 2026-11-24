@@ -2443,7 +2443,7 @@ test("staff ID cards select complete active employees regardless of login status
   await expect(preview.getByText("1 Apr 2024",{exact:true})).toBeVisible();
   await expect(preview.getByText("Active",{exact:true}).first()).toBeVisible();
   await expect(preview.getByText("Mathematics Teacher",{exact:true})).toBeVisible();
-  await expect(preview.locator(".staff-id-avatar")).toHaveText("AT");
+  await expect(preview.locator(".staff-id-avatar")).toHaveText(["AT", "DL"]);
   const validUntilPicker = page.getByRole("button", { name: "ID card valid until" });
   await expect(validUntilPicker).toContainText("No expiry date");
   await expect(page.locator('.staff-id-controls input[type="date"]')).toHaveCount(0);
