@@ -118,7 +118,7 @@ export function StaffManagementPage({ permissions }: Props) {
   const [staffToDisable, setStaffToDisable] = useState<StaffRecord | null>(null);
   const [disableError, setDisableError] = useState("");
 
-  const staff = query.data?.staff ?? [];
+  const staff = canReadStaff ? query.data?.staff ?? [] : [];
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     return staff.filter(item => {
