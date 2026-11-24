@@ -47,7 +47,7 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
   const [view, setView] = useState<"daily" | "monthly">("daily");
   const [date, setDate] = useState(today);
   const [month, setMonth] = useState(today.slice(0, 7));
-  const [drafts, setDrafts] = useState<Record<number, Draft>>({});
+  const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [pendingCorrection, setPendingCorrection] = useState<PendingCorrection | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "unmarked" | Status>("all");
@@ -197,13 +197,13 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
     return acc;
   }, { present: 0, absent: 0, late: 0, half_day: 0, unmarked: 0 }), [records]);
 
-  const draftFor = (item: StaffAttendanceRecord): Draft => drafts[item.staff_principal_id] ?? {
+  const draftFor = (item: StaffAttendanceRecord): Draft => drafts[`${date}:${item.staff_principal_id}`] ?? {
     status: item.status ?? "",
     remarks: item.remarks ?? "",
     attempted: false,
   };
   const changeDraft = (id: number, patch: Partial<Draft>, item: StaffAttendanceRecord) => {
-    setDrafts(current => ({ ...current, [id]: { ...draftFor(item), ...patch } }));
+    setDrafts(current => ({ ...current, [`${date}:${id}`]: { ...draftFor(item), ...patch } }));
   };
   const save = (item: StaffAttendanceRecord) => {
     const draft = draftFor(item);
