@@ -71,7 +71,7 @@ Required constraints and indexes:
 - `UNIQUE (school_id, lower(employee_code))`.
 - Composite FK `(department_id, school_id) → staff_departments(id, school_id)`; a NULL department is permitted until the school configures its catalog or reviewed legacy reconciliation completes.
 - Composite FK `(designation_id, school_id) → staff_designations(id, school_id)`; a NULL designation is permitted only until the school configures its catalog or a reviewed legacy reconciliation completes.
-- Check `staff_type`, `employment_type` and `employment_status` against explicit controlled values.
+- Final `staff_type` CHECK allows only `teaching` / `non_teaching`. During an approved expand/backfill migration, a temporary migration-only constraint may also allow `unclassified` until reviewed reconciliation completes; never expose `unclassified` in the UI or allow it in teaching assignments. `employment_type` and `employment_status` have their own explicit controlled-value checks.
 - Do not cascade-delete staff, department, assignment or history rows.
 
 The current `principal_id`-keyed uniqueness must be retained as a candidate key while legacy FKs are being transitioned. Do not drop it until all dependent FKs and application queries have been migrated and verified.
