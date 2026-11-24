@@ -1,3 +1,12 @@
+## 2026-11-24 — Shared DatePicker early-year correctness fix
+
+- Replaced JavaScript date constructors that remap years 0001–0099 into 1901–1999 with a shared date constructor based on `setFullYear`. ISO serialization now zero-pads years below 100; invalid year 0000 remains rejected.
+- Applied the corrected date construction to month grids, month-length calculations, calendar navigation, keyboard day movement and range checks. The default minimum year is now 0001.
+- Added Playwright browser regression coverage opening a staff joining date of `0001-02-28`, navigating one day forward across the month boundary, and selecting `0001-03-01`.
+- Frontend CI [45421371233](https://github.com/TheSumitNain/school-management-system/actions/runs/45421371233) **PASS** on `8327933b9642398d9c0fd618ee59419569690eaa`: TypeScript/Vite production build and the full Playwright browser acceptance suite passed.
+- Backend CI [45421371169](https://github.com/TheSumitNain/school-management-system/actions/runs/45421371169) **PASS** on the same commit: full Go tests, ephemeral PostgreSQL integration and `go vet` passed.
+- No schema, migration, persistent database or application data changed.
+
 ## 2026-11-24 — Staff operational reports early-year month-boundary fix
 
 - Fixed operational attendance/leave report month-end calculation for years 0001–0099 using `setUTCFullYear` rather than `Date.UTC`, which remaps JavaScript years 0–99 into 1900–1999. The report month validator also rejects year 0000.
