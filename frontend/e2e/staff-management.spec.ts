@@ -2465,6 +2465,11 @@ test("staff-create-only access can start onboarding without loading or revealing
   await expect(page.getByRole("heading", { name: "Staff Management" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "People at a glance" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Add staff", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Add staff", exact: true }).click();
+  const createDialog = page.getByRole("dialog", { name: "Add employee" });
+  await expect(createDialog).toBeVisible();
+  await expect(createDialog.getByText("Identity", { exact: true })).toBeVisible();
+  await expect(createDialog.getByRole("button", { name: "Continue", exact: true })).toBeEnabled();
   await expect(page.getByText("Total staff")).toHaveCount(0);
   await expect(page.locator(".staff-overview-cards")).toHaveCount(0);
   await expect(page.locator(".staff-readiness-list")).toHaveCount(0);
