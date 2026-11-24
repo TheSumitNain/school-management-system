@@ -1192,6 +1192,7 @@ test("staff role assignment and removal require the delegated permission and exp
   }];
   let assignCalls = 0;
   let revokeCalls = 0;
+  let roleAssignmentReads = 0;
   await signInAndOpenStaff(page, rows, undefined, ["users.read", "roles.read", "roles.assign"]);
   await page.route("**/api/school/roles", async route => {
     if (route.request().method() === "GET") {
@@ -1207,6 +1208,7 @@ test("staff role assignment and removal require the delegated permission and exp
     const url = new URL(route.request().url());
     const path = url.pathname.replace(/^\/api/, "");
     if (path === "/school/staff/514/roles" && route.request().method() === "GET") {
+      roleAssignmentReads += 1;
       await route.fulfill({ json: { roles: assignedRoles } });
       return;
     }
@@ -1230,7 +1232,13 @@ test("staff role assignment and removal require the delegated permission and exp
   await page.getByRole("button", { name: "Role Admin" }).click();
   const profile = page.getByRole("dialog", { name: "Role Admin" });
   await profile.getByRole("button", { name: "Account & Access" }).click();
-  const roleSelect = profile.locator('button[aria-label="Role to assign to teacher.role-admin"]');
+  await expect(profile.getByText("Teacher", { exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Role Admin" }).click();
+  const reopenedProfile = page.getByRole("dialog", { name: "Role Admin" });
+  await reopenedProfile.getByRole("button", { name: "Account & Access" }).click();
+  await expect.poll(() => roleAssignmentReads).toBe(2);
+  const roleSelect = reopenedProfile.locator('button[aria-label="Role to assign to teacher.role-admin"]');
   await roleSelect.click();
   await profile.getByRole("option", { name: "Librarian (custom)" }).click();
   await profile.getByRole("button", { name: "Assign", exact: true }).click();
@@ -1261,6 +1269,7 @@ test("staff permission overrides require a delegated permission, reason and remo
   let saveCalls = 0;
   let deleteCalls = 0;
   let submittedPayload: Record<string, unknown> | null = null;
+  let overrideReads = 0;
   await signInAndOpenStaff(page, rows, undefined, ["users.read", "permissions.override"]);
   await page.route("**/api/school/roles", async route => {
     await route.fulfill({ json: { roles: [
@@ -1285,6 +1294,7 @@ test("staff permission overrides require a delegated permission, reason and remo
   await page.route("**/api/school/staff/515/permission-overrides**", async route => {
     const method = route.request().method();
     if (method === "GET") {
+      overrideReads += 1;
       await route.fulfill({ json: { overrides } });
       return;
     }
@@ -1313,8 +1323,15 @@ test("staff permission overrides require a delegated permission, reason and remo
   const profile = page.getByRole("dialog", { name: "Override Admin" });
   await profile.getByRole("button", { name: "Account & Access" }).click();
   await expect(profile.getByText("Individual permission overrides", { exact: true })).toBeVisible();
+  await expect.poll(() => overrideReads).toBe(1);
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Override Admin" }).click();
+  const reopenedProfile = page.getByRole("dialog", { name: "Override Admin" });
+  await reopenedProfile.getByRole("button", { name: "Account & Access" }).click();
+  await expect(reopenedProfile.getByText("Individual permission overrides", { exact: true })).toBeVisible();
+  await expect.poll(() => overrideReads).toBe(2);
 
-  const permissionSelect = profile.locator('button[aria-label="Delegated permission override for teacher.override-admin"]');
+  const permissionSelect = reopenedProfile.locator('button[aria-label="Delegated permission override for teacher.override-admin"]');
   await permissionSelect.click();
   await profile.getByRole("option", { name: /students.read_basic/ }).click();
   await profile.getByRole("button", { name: "Save override" }).click();
