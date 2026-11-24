@@ -156,3 +156,31 @@ func TestStaffAccountServiceRejectsJoiningDateBeyondOneYearOnProfileUpdate(t *te
 		t.Fatalf("valid profile update calls=%d want=1", repo.profileCalls)
 	}
 }
+
+func TestStaffProfileTextLimitsCountUnicodeCharacters(t *testing.T) {
+	repo := &fakeStaffAccountRepository{user: &models.User{ID: 15, PrincipalID: 27, SchoolID: 8}}
+	service := NewStaffAccountService(repo, alwaysClearPasswordChecker{})
+	base := models.StaffProfile{
+		EmployeeCode: "EMP-27", FullName: strings.Repeat("🔤", 160), Designation: strings.Repeat("📚", 100),
+		MobileNumber: "9876543210", EmploymentStatus: "active",
+	}
+	if _, err := service.UpdateProfile(context.Background(), 31, 8, 27, base); err != nil {
+		t.Fatalf("valid Unicode profile update returned error: %v", err)
+	}
+	if repo.profileCalls != 1 {
+		t.Fatalf("valid Unicode profile update calls=%d want=1", repo.profileCalls)
+	}
+
+	base.FullName = strings.Repeat("🔤", 161)
+	if _, err := service.UpdateProfile(context.Background(), 31, 8, 27, base); err != ErrInvalidStaffAccount {
+		t.Fatalf("161-character full name error = %v, want ErrInvalidStaffAccount", err)
+	}
+	base.FullName = strings.Repeat("🔤", 160)
+	base.Designation = strings.Repeat("📚", 101)
+	if _, err := service.UpdateProfile(context.Background(), 31, 8, 27, base); err != ErrInvalidStaffAccount {
+		t.Fatalf("101-character designation error = %v, want ErrInvalidStaffAccount", err)
+	}
+	if repo.profileCalls != 1 {
+		t.Fatalf("invalid Unicode profile updates reached repository; calls=%d want=1", repo.profileCalls)
+	}
+}
