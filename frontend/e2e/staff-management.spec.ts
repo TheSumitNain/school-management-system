@@ -1364,6 +1364,79 @@ test("staff permission overrides require a delegated permission, reason and remo
   expect(deleteCalls).toBe(1);
 });
 
+test("standalone staff role and permission override dialogs reload employee access data after closing", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 516, school_id: 10, username: "teacher.standalone-access",
+    employee_code: "EMP-STANDALONE", full_name: "Standalone Access Teacher", designation: "Teacher",
+    mobile_number: "9876543214", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false,
+  }];
+  let roleReads = 0;
+  let overrideReads = 0;
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "roles.read", "roles.assign", "permissions.override"]);
+  await page.route("**/api/school/roles", async route => {
+    await route.fulfill({ json: { roles: [
+      { id: 4, role_key: "teacher", name: "Teacher", is_system: true, created_at: "2026-01-01T00:00:00Z" },
+    ] } });
+  });
+  await page.route("**/api/school/staff/516/roles", async route => {
+    if (route.request().method() === "GET") {
+      roleReads += 1;
+      await route.fulfill({ json: { roles: [
+        { role_id: 4, role_key: "teacher", name: "Teacher", is_system: true, assigned_at: "2026-01-01T00:00:00Z" },
+      ] } });
+      return;
+    }
+    await route.fulfill({ status: 405, json: { message: "Unexpected role mutation." } });
+  });
+  await page.route("**/api/school/permissions", async route => {
+    await route.fulfill({ json: { permissions: [
+      { permission_key: "students.read_basic", description: "Read basic student information", is_delegable: true },
+    ] } });
+  });
+  await page.route("**/api/school/permission-delegations", async route => {
+    await route.fulfill({ json: { delegations: [
+      { id: 31, school_id: 10, permission_key: "students.read_basic", can_assign_to_roles: false, can_override_users: true, granted_by: 2, created_at: "2026-01-01T00:00:00Z" },
+    ] } });
+  });
+  await page.route("**/api/school/staff/516/permission-overrides**", async route => {
+    if (route.request().method() === "GET") {
+      overrideReads += 1;
+      await route.fulfill({ json: { overrides: [] } });
+      return;
+    }
+    await route.fulfill({ status: 405, json: { message: "Unexpected permission override mutation." } });
+  });
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  const manageRoles = page.getByRole("button", { name: "Manage roles for teacher.standalone-access" });
+  await manageRoles.click();
+  const roleDialog = page.getByRole("dialog", { name: "Access roles · teacher.standalone-access" });
+  await expect(roleDialog.getByText("Teacher", { exact: true })).toBeVisible();
+  const firstRoleReadCount = roleReads;
+  expect(firstRoleReadCount).toBeGreaterThan(0);
+  await page.keyboard.press("Escape");
+  await expect(roleDialog).toHaveCount(0);
+  await manageRoles.click();
+  const reopenedRoleDialog = page.getByRole("dialog", { name: "Access roles · teacher.standalone-access" });
+  await expect(reopenedRoleDialog.getByText("Teacher", { exact: true })).toBeVisible();
+  await expect.poll(() => roleReads).toBeGreaterThan(firstRoleReadCount);
+  await page.keyboard.press("Escape");
+
+  const manageOverrides = page.getByRole("button", { name: "Manage permission overrides for teacher.standalone-access" });
+  await manageOverrides.click();
+  const overrideDialog = page.getByRole("dialog", { name: "Permission overrides · teacher.standalone-access" });
+  await expect(overrideDialog.getByText("Individual permission overrides", { exact: true })).toBeVisible();
+  const firstOverrideReadCount = overrideReads;
+  expect(firstOverrideReadCount).toBeGreaterThan(0);
+  await page.keyboard.press("Escape");
+  await expect(overrideDialog).toHaveCount(0);
+  await manageOverrides.click();
+  const reopenedOverrideDialog = page.getByRole("dialog", { name: "Permission overrides · teacher.standalone-access" });
+  await expect(reopenedOverrideDialog.getByText("Individual permission overrides", { exact: true })).toBeVisible();
+  await expect.poll(() => overrideReads).toBeGreaterThan(firstOverrideReadCount);
+});
+
 test("staff profile history does not request audit events without school.audit.read", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 513, school_id: 10, username: "teacher.history.readonly",
