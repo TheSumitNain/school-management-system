@@ -1025,7 +1025,7 @@ test("staff profile edit uses the shared employment-status select and sends the 
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 301, school_id: 10, username: "teacher.two",
     employee_code: "EMP-002", full_name: "Teacher Two", designation: "Science Teacher",
-    mobile_number: "9876543211", joining_date: "2026-04-01",
+    mobile_number: "9876543211", email: "teacher.two@example.com", joining_date: "2026-04-01",
     employment_status: "active", profile_complete: true, status: "active",
     must_change_password: false, created_at: "2026-04-01T00:00:00.000Z",
   }];
@@ -1049,12 +1049,14 @@ test("staff profile edit uses the shared employment-status select and sends the 
   await timezonePage.getByRole("button", { name: "Edit employee profile for teacher.two" }).click();
   const dialog = timezonePage.getByRole("dialog", { name: "Edit employee profile" });
   await expect(dialog.getByRole("button", { name: "Joining date" })).toContainText("01 Apr 2026");
+  await dialog.getByLabel(/Email address/).fill("");
   await dialog.getByRole("button", { name: "Employment status" }).click();
   await dialog.getByRole("listbox", { name: "Employment status" }).getByRole("option", { name: "Inactive" }).click();
   await dialog.getByRole("button", { name: "Save changes" }).click();
 
   await expect.poll(() => updates.length).toBe(1);
   expect(updates[0].employment_status).toBe("inactive");
+  expect(updates[0].email).toBe("");
   await expect(dialog).toHaveCount(0);
   await expect(timezonePage.locator("select")).toHaveCount(0);
   await timezoneContext.close();
