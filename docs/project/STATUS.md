@@ -2400,3 +2400,11 @@ This update supersedes older status bullets that listed the following database-b
 - Staff account listing is not requested when `users.read` is absent. Added browser regression coverage for attendance-only access, verifying that the Staff workspace is reachable, attendance loads, and no staff-directory request or directory controls appear.
 - Frontend CI [45318837352](https://github.com/TheSumitNain/school-management-system/actions/runs/45318837352) **PASS** (TypeScript, design-token check, production build and 94 Playwright tests). Backend CI [45318837314](https://github.com/TheSumitNain/school-management-system/actions/runs/45318837314) **PASS** (ephemeral PostgreSQL migrations, Go/PostgreSQL integration tests and `go vet`).
 - No persistent database migration/data changes. `main` remains untouched. Staff identity onboarding/Bulk Import remain behind explicit schema/product approval; staff document upload/download and profile photos remain deferred until go-live and approved private storage.
+
+
+## 2026-11-24 — Leave-only workspace and staff-data isolation acceptance
+
+- Added leave-only Staff workspace browser acceptance. `staff.leave.read` users can open the leave application workspace without `users.read`; the UI does not expose Staff Directory/overview or issue a staff account-list request.
+- Staff list query execution, cached staff records and directory error messages are now gated by live `users.read` permission. Substitution management tab visibility also requires staff-list access unless the user has substitution read permission.
+- Frontend CI [45319733688](https://github.com/TheSumitNain/school-management-system/actions/runs/45319733688) **PASS** (TypeScript, design-token check, Vite production build and 95 Playwright tests). Backend CI [45319733387](https://github.com/TheSumitNain/school-management-system/actions/runs/45319733387) **PASS** (ephemeral PostgreSQL migrations, Go/PostgreSQL integration tests and `go vet`).
+- No persistent database changes. `main` remains untouched; identity-schema/Bulk Import approval gates and the go-live document/photo deferral remain unchanged.
