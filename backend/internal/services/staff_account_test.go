@@ -240,7 +240,7 @@ func TestStaffProfileEmailValidationMatchesDatabaseCharacterConstraints(t *testi
 		t.Fatalf("valid Unicode email update calls=%d want=1", repo.profileCalls)
 	}
 
-	for _, email := range []string{"a@", "@domain.com", "teacher@domain", "teacher@@domain.com", "teacher @domain.com", strings.Repeat("a", 250) + "@x.y"} {
+	for _, email := range []string{"a@", "@domain.com", "teacher@domain", "teacher@@domain.com", "teacher @domain.com", strings.Repeat("a", 251) + "@x.y"} {
 		profile.Email = email
 		if _, err := service.UpdateProfile(context.Background(), 31, 8, 27, profile); err != ErrInvalidStaffAccount {
 			t.Errorf("UpdateProfile email %q error = %v, want ErrInvalidStaffAccount", email, err)
