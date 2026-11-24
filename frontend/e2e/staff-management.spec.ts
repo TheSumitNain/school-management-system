@@ -787,6 +787,30 @@ test("staff profile creation accepts Unicode names and designations at database 
   await expect(page.getByRole("dialog", { name: "Share staff login credentials" })).toBeVisible();
 });
 
+test("shared date picker preserves years below 100 and navigates across month boundaries", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 710, school_id: 10, username: "teacher.early-date",
+    employee_code: "EMP-EARLY-DATE", full_name: "Early Date Teacher", designation: "History Teacher",
+    mobile_number: "9876543210", joining_date: "0001-02-28", employment_status: "active",
+    profile_complete: true, status: "active", must_change_password: false,
+  }];
+  await signInAndOpenStaff(page, rows);
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Edit employee profile for teacher.early-date" }).click();
+  const dialog = page.getByRole("dialog", { name: "Edit employee profile" });
+  await dialog.getByRole("button", { name: "Joining date" }).click();
+  const calendar = dialog.getByRole("dialog", { name: "Choose joining date" });
+  await expect(calendar.getByRole("button", { name: "Choose year" })).toHaveText("1");
+  const activeDate = calendar.locator(".app-date-day[tabindex='0']");
+  await expect(activeDate).toHaveText("28");
+  await activeDate.press("ArrowRight");
+  await expect(calendar.getByRole("button", { name: "Choose month" })).toHaveText("March");
+  const nextDate = calendar.locator(".app-date-day[tabindex='0']");
+  await expect(nextDate).toHaveText("1");
+  await nextDate.click();
+  await expect(dialog.locator('input[name="joining_date"]')).toHaveValue("0001-03-01");
+});
+
 test("staff creation uses the shared IST date picker and clears the credential handoff after copying", async ({ page }) => {
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
   const created: Array<Record<string, unknown>> = [];

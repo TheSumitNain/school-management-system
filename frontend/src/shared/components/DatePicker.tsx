@@ -18,18 +18,27 @@ type Props = {
 type CalendarView = "days" | "months" | "years";
 
 const pad = (value: number) => String(value).padStart(2, "0");
+const makeDate = (year: number, monthIndex: number, day = 1) => {
+  const date = new Date(0);
+  date.setHours(0, 0, 0, 0);
+  date.setFullYear(year, monthIndex, day);
+  return date;
+};
 const toISO = (date: Date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 const fromISO = (value: string) => {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (!match) return null;
-  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  const year = Number(match[1]);
+  if (year < 1) return null;
+  const date = makeDate(year, Number(match[2]) - 1, Number(match[3]));
   return toISO(date) === value ? date : null;
 };
 const todayAsDate = () => fromISO(schoolDateValue()) ?? new Date();
-const startOfMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1);
-const addMonths = (date: Date, amount: number) => new Date(date.getFullYear(), date.getMonth() + amount, 1);
+const startOfMonth = (date: Date) => makeDate(date.getFullYear(), date.getMonth(), 1);
+const addMonths = (date: Date, amount: number) => makeDate(date.getFullYear(), date.getMonth() + amount, 1);
+const daysInMonth = (year: number, monthIndex: number) => makeDate(year, monthIndex + 1, 0).getDate();
 const withDayInMonth = (month: Date, day: number) =>
-  new Date(month.getFullYear(), month.getMonth(), Math.min(day, new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate()));
+  makeDate(month.getFullYear(), month.getMonth(), Math.min(day, daysInMonth(month.getFullYear(), month.getMonth())));
 const isWithinBounds = (date: Date, min?: string, max?: string) => {
   const iso = toISO(date);
   return (!min || iso >= min) && (!max || iso <= max);
@@ -42,7 +51,7 @@ const clampToBounds = (date: Date, min?: string, max?: string) => {
 };
 const monthHasAvailableDate = (month: Date, min?: string, max?: string) => {
   const first = toISO(startOfMonth(month));
-  const last = toISO(new Date(month.getFullYear(), month.getMonth() + 1, 0));
+  const last = toISO(makeDate(month.getFullYear(), month.getMonth() + 1, 0));
   return (!min || last >= min) && (!max || first <= max);
 };
 const yearHasAvailableDate = (year: number, min?: string, max?: string) =>
@@ -67,15 +76,15 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
   const year = visibleMonth.getFullYear();
   const monthLabel = visibleMonth.toLocaleDateString(undefined, { month: "long" });
   const yearRangeStart = Math.floor(year / 10) * 10;
-  const minYear = min ? Number(min.slice(0, 4)) : 1900;
+  const minYear = min ? Number(min.slice(0, 4)) : 1;
   const maxYear = max ? Number(max.slice(0, 4)) : 2100;
   const firstWeekday = (visibleMonth.getDay() + 6) % 7;
-  const daysInMonth = new Date(year, visibleMonth.getMonth() + 1, 0).getDate();
+  const visibleDaysInMonth = daysInMonth(year, visibleMonth.getMonth());
   const today = schoolDateValue();
   const weeks = useMemo(() => {
     const days = [
       ...Array.from({ length: firstWeekday }, () => null as number | null),
-      ...Array.from({ length: daysInMonth }, (_, index) => index + 1),
+      ...Array.from({ length: visibleDaysInMonth }, (_, index) => index + 1),
     ];
     while (days.length % 7 !== 0) days.push(null);
     return Array.from({ length: days.length / 7 }, (_, index) => days.slice(index * 7, index * 7 + 7));
@@ -142,7 +151,7 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
 
   function changeYear(nextYear: number) {
     if (!yearHasAvailableDate(nextYear, min, max)) return;
-    const nextMonth = new Date(nextYear, visibleMonth.getMonth(), 1);
+    const nextMonth = makeDate(nextYear, visibleMonth.getMonth(), 1);
     const nextDate = clampToBounds(withDayInMonth(nextMonth, fromISO(activeDate)?.getDate() ?? 1), min, max);
     setVisibleMonth(startOfMonth(nextDate));
     setActiveDate(toISO(nextDate));
@@ -155,7 +164,7 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
     if (nextStart + 9 < minYear || nextStart > maxYear) return;
     const firstAvailable = Math.max(nextStart, minYear);
     const nextYear = Math.min(Math.max(year, firstAvailable), Math.min(nextStart + 9, maxYear));
-    const nextMonth = new Date(nextYear, visibleMonth.getMonth(), 1);
+    const nextMonth = makeDate(nextYear, visibleMonth.getMonth(), 1);
     const nextDate = clampToBounds(withDayInMonth(nextMonth, fromISO(activeDate)?.getDate() ?? 1), min, max);
     setVisibleMonth(startOfMonth(nextDate));
     setActiveDate(toISO(nextDate));
@@ -177,12 +186,12 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
   function handleDayKeyDown(event: ReactKeyboardEvent<HTMLButtonElement>, date: Date) {
     let next: Date | null = null;
     switch (event.key) {
-      case "ArrowLeft": next = new Date(date.getFullYear(), date.getMonth(), date.getDate() - 1); break;
-      case "ArrowRight": next = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1); break;
-      case "ArrowUp": next = new Date(date.getFullYear(), date.getMonth(), date.getDate() - 7); break;
-      case "ArrowDown": next = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 7); break;
-      case "Home": next = new Date(date.getFullYear(), date.getMonth(), date.getDate() - ((date.getDay() + 6) % 7)); break;
-      case "End": next = new Date(date.getFullYear(), date.getMonth(), date.getDate() + (6 - ((date.getDay() + 6) % 7))); break;
+      case "ArrowLeft": next = makeDate(date.getFullYear(), date.getMonth(), date.getDate() - 1); break;
+      case "ArrowRight": next = makeDate(date.getFullYear(), date.getMonth(), date.getDate() + 1); break;
+      case "ArrowUp": next = makeDate(date.getFullYear(), date.getMonth(), date.getDate() - 7); break;
+      case "ArrowDown": next = makeDate(date.getFullYear(), date.getMonth(), date.getDate() + 7); break;
+      case "Home": next = makeDate(date.getFullYear(), date.getMonth(), date.getDate() - ((date.getDay() + 6) % 7)); break;
+      case "End": next = makeDate(date.getFullYear(), date.getMonth(), date.getDate() + (6 - ((date.getDay() + 6) % 7))); break;
       case "PageUp": next = withDayInMonth(addMonths(date, event.shiftKey ? -12 : -1), date.getDate()); break;
       case "PageDown": next = withDayInMonth(addMonths(date, event.shiftKey ? 12 : 1), date.getDate()); break;
       default: return;
@@ -249,7 +258,7 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
                 <div className="app-date-row" role="row" key={weekIndex}>
                   {week.map((day, dayIndex) => {
                     if (day === null) return <span key={`empty-${weekIndex}-${dayIndex}`} className="app-date-empty" role="gridcell" aria-disabled="true" />;
-                    const date = new Date(year, visibleMonth.getMonth(), day);
+                    const date = makeDate(year, visibleMonth.getMonth(), day);
                     const iso = toISO(date);
                     const unavailable = !isWithinBounds(date, min, max);
                     const isSelected = iso === value;
@@ -277,10 +286,10 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
           {view === "months" && (
             <div className="app-date-choice-grid app-date-month-grid" role="group" aria-label="Months">
               {Array.from({ length: 12 }, (_, monthIndex) => {
-                const monthDate = new Date(year, monthIndex, 1);
+                const monthDate = makeDate(year, monthIndex, 1);
                 const unavailable = !monthHasAvailableDate(monthDate, min, max);
                 return <button key={monthIndex} ref={element => { if (element) monthRefs.current.set(monthIndex, element); else monthRefs.current.delete(monthIndex); }} type="button" className="app-date-choice" disabled={unavailable} aria-pressed={monthIndex === visibleMonth.getMonth()} onClick={() => {
-                  const nextMonth = new Date(year, monthIndex, 1);
+                  const nextMonth = makeDate(year, monthIndex, 1);
                   const nextDate = clampToBounds(withDayInMonth(nextMonth, fromISO(activeDate)?.getDate() ?? 1), min, max);
                   setVisibleMonth(startOfMonth(nextDate));
                   setActiveDate(toISO(nextDate));
