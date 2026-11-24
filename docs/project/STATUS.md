@@ -2392,3 +2392,11 @@ This update supersedes older status bullets that listed the following database-b
 - Clarified migration-only `unclassified` handling, the operational teaching/non-teaching Staff Type boundary and the exact Employment Type value set.
 - Strengthened the future CSV import contract with read-only preview, expiring preview-bound confirmation, server-side revalidation, transactional duplicate checks, all-or-nothing writes, idempotent batch keys and bounded safe parsing.
 - No application code, migration, local database or persistent database was changed. Profile-only onboarding/Bulk Import remain blocked pending explicit approval; staff document upload/download and photographs remain deferred until the project is live and external storage is selected and approved.
+
+
+## 2026-11-24 — Staff workspace permission-scoped navigation and query acceptance
+
+- Staff navigation now supports users granted staff-specific workspace read permissions without requiring `users.read`. The page selects an accessible starting workspace and hides staff directory, overview metrics, reports and ID cards unless the user has `users.read`.
+- Staff account listing is not requested when `users.read` is absent. Added browser regression coverage for attendance-only access, verifying that the Staff workspace is reachable, attendance loads, and no staff-directory request or directory controls appear.
+- Frontend CI [45318837352](https://github.com/TheSumitNain/school-management-system/actions/runs/45318837352) **PASS** (TypeScript, design-token check, production build and 94 Playwright tests). Backend CI [45318837314](https://github.com/TheSumitNain/school-management-system/actions/runs/45318837314) **PASS** (ephemeral PostgreSQL migrations, Go/PostgreSQL integration tests and `go vet`).
+- No persistent database migration/data changes. `main` remains untouched. Staff identity onboarding/Bulk Import remain behind explicit schema/product approval; staff document upload/download and profile photos remain deferred until go-live and approved private storage.
