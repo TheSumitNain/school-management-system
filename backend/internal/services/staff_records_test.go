@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"math"
 
@@ -40,30 +41,30 @@ func TestStaffRecordsServiceValidatesAndNormalizesQualification(t *testing.T){
 func TestStaffRecordsServiceRejectsInvalidQualificationScorePair(t *testing.T){
 	repo:=&fakeStaffRecordsRepository{};svc:=NewStaffRecordsService(repo);score:=88.0
 	_,err:=svc.CreateQualification(context.Background(),1,2,3,repository.StaffQualification{QualificationType:"undergraduate",QualificationName:"B.A.",Institution:"College",Score:&score})
-	if err!=ErrInvalidStaffRecord{t.Fatalf("error=%v want=%v",err,ErrInvalidStaffRecord)}
+	if !errors.Is(err,ErrInvalidStaffRecord){t.Fatalf("error=%v want=%v",err,ErrInvalidStaffRecord)}
 	if repo.calls!=0{t.Fatal("invalid qualification reached repository")}
 }
 func TestStaffRecordsServiceValidatesCertificationDates(t *testing.T){
 	repo:=&fakeStaffRecordsRepository{};svc:=NewStaffRecordsService(repo)
 	_,err:=svc.CreateCertification(context.Background(),1,2,3,repository.StaffCertification{CertificateName:"Teacher Training",IssuingOrganization:"Board",IssueDate:"2025-05-01",ExpiryDate:"2024-05-01"})
-	if err!=ErrInvalidStaffRecord{t.Fatalf("error=%v want=%v",err,ErrInvalidStaffRecord)}
+	if !errors.Is(err,ErrInvalidStaffRecord){t.Fatalf("error=%v want=%v",err,ErrInvalidStaffRecord)}
 	if repo.calls!=0{t.Fatal("invalid certification reached repository")}
 }
 func TestStaffRecordsServiceValidatesCurrentExperienceEndDate(t *testing.T){
 	repo:=&fakeStaffRecordsRepository{};svc:=NewStaffRecordsService(repo)
 	_,err:=svc.CreateExperience(context.Background(),1,2,3,repository.StaffExperience{EmployerName:"School",Designation:"Teacher",EmploymentType:"permanent",StartDate:"2020-01-01",EndDate:"2024-01-01",IsCurrent:true})
-	if err!=ErrInvalidStaffRecord{t.Fatalf("error=%v want=%v",err,ErrInvalidStaffRecord)}
+	if !errors.Is(err,ErrInvalidStaffRecord){t.Fatalf("error=%v want=%v",err,ErrInvalidStaffRecord)}
 	if repo.calls!=0{t.Fatal("invalid experience reached repository")}
 }
 
 func TestStaffRecordsServiceRejectsInvalidUpdatesBeforeRepository(t *testing.T) {
 	repo:=&fakeStaffRecordsRepository{};svc:=NewStaffRecordsService(repo);score:=90.0
 	_,err:=svc.UpdateQualification(context.Background(),1,2,3,4,repository.StaffQualification{QualificationType:"postgraduate",QualificationName:"M.Sc.",Institution:"University",Score:&score})
-	if err!=ErrInvalidStaffRecord{t.Fatalf("qualification update error=%v want=%v",err,ErrInvalidStaffRecord)}
+	if !errors.Is(err,ErrInvalidStaffRecord){t.Fatalf("qualification update error=%v want=%v",err,ErrInvalidStaffRecord)}
 	_,err=svc.UpdateCertification(context.Background(),1,2,3,5,repository.StaffCertification{CertificateName:"Training",IssuingOrganization:"Board",IssueDate:"2025-01-01",ExpiryDate:"2024-01-01"})
-	if err!=ErrInvalidStaffRecord{t.Fatalf("certification update error=%v want=%v",err,ErrInvalidStaffRecord)}
+	if !errors.Is(err,ErrInvalidStaffRecord){t.Fatalf("certification update error=%v want=%v",err,ErrInvalidStaffRecord)}
 	_,err=svc.UpdateExperience(context.Background(),1,2,3,6,repository.StaffExperience{EmployerName:"School",Designation:"Teacher",EmploymentType:"permanent",StartDate:"2020-01-01",EndDate:"2019-01-01"})
-	if err!=ErrInvalidStaffRecord{t.Fatalf("experience update error=%v want=%v",err,ErrInvalidStaffRecord)}
+	if !errors.Is(err,ErrInvalidStaffRecord){t.Fatalf("experience update error=%v want=%v",err,ErrInvalidStaffRecord)}
 	if repo.calls!=0{t.Fatalf("invalid updates reached repository %d times",repo.calls)}
 }
 
@@ -80,7 +81,7 @@ func TestStaffRecordsServiceValidatesQualificationReportFilters(t *testing.T) {
 		{Offset:-1},
 		{Offset:1000001},
 	} {
-		if _, err := svc.ListQualificationsReport(context.Background(),1,2,filter); err != ErrInvalidStaffRecord {
+		if _, err := svc.ListQualificationsReport(context.Background(),1,2,filter); !errors.Is(err, ErrInvalidStaffRecord) {
 			t.Fatalf("filter %+v error=%v want=%v",filter,err,ErrInvalidStaffRecord)
 		}
 	}
@@ -92,7 +93,7 @@ func TestStaffRecordsServiceValidatesExperienceReportFilters(t *testing.T) {
     if err!=nil {t.Fatalf("default experience report filter: %v",err)}
     if page.Limit!=50 || page.Offset!=0 {t.Fatalf("unexpected defaults: %+v",page)}
     for _,filter:=range []repository.StaffExperienceReportFilter{{EmploymentType:"unknown"},{Limit:201},{Offset:-1},{Offset:1000001}} {
-        if _,err:=svc.ListExperienceReport(context.Background(),1,2,filter);err!=ErrInvalidStaffRecord {t.Fatalf("filter %+v error=%v want=%v",filter,err,ErrInvalidStaffRecord)}
+        if _,err:=svc.ListExperienceReport(context.Background(),1,2,filter);!errors.Is(err,ErrInvalidStaffRecord) {t.Fatalf("filter %+v error=%v want=%v",filter,err,ErrInvalidStaffRecord)}
     }
 }
 
@@ -108,7 +109,7 @@ func TestStaffRecordsServiceRejectsInvalidCertificationCalendarDates(t *testing.
 			} else {
 				_, err = svc.CreateCertification(context.Background(), 1, 2, 3, item)
 			}
-			if err != ErrInvalidStaffRecord {
+			if !errors.Is(err, ErrInvalidStaffRecord) {
 				t.Fatalf("certification issue date %q update=%v error=%v want ErrInvalidStaffRecord", value, update, err)
 			}
 			item = repository.StaffCertification{CertificateName: "Training", IssuingOrganization: "Board", ExpiryDate: value}
@@ -117,7 +118,7 @@ func TestStaffRecordsServiceRejectsInvalidCertificationCalendarDates(t *testing.
 			} else {
 				_, err = svc.CreateCertification(context.Background(), 1, 2, 3, item)
 			}
-			if err != ErrInvalidStaffRecord {
+			if !errors.Is(err, ErrInvalidStaffRecord) {
 				t.Fatalf("certification expiry date %q update=%v error=%v want ErrInvalidStaffRecord", value, update, err)
 			}
 		}
@@ -134,7 +135,7 @@ func TestStaffRecordsServiceComparesYearOneCertificationDates(t *testing.T) {
 		CertificateName: "Training", IssuingOrganization: "Board",
 		IssueDate: "0001-01-02", ExpiryDate: "0001-01-01",
 	}
-	if _, err := svc.CreateCertification(context.Background(), 1, 2, 3, item); err != ErrInvalidStaffRecord {
+	if _, err := svc.CreateCertification(context.Background(), 1, 2, 3, item); !errors.Is(err, ErrInvalidStaffRecord) {
 		t.Fatalf("reversed year-one certification dates error=%v want ErrInvalidStaffRecord", err)
 	}
 	if repo.calls != 0 {
@@ -164,7 +165,7 @@ func TestStaffRecordsServiceRejectsInvalidExperienceCalendarDates(t *testing.T) 
 			} else {
 				_, err = svc.CreateExperience(context.Background(), 1, 2, 3, item)
 			}
-			if err != ErrInvalidStaffRecord {
+			if !errors.Is(err, ErrInvalidStaffRecord) {
 				t.Fatalf("experience start date %q update=%v error=%v want ErrInvalidStaffRecord", value, update, err)
 			}
 			item = repository.StaffExperience{
@@ -176,7 +177,7 @@ func TestStaffRecordsServiceRejectsInvalidExperienceCalendarDates(t *testing.T) 
 			} else {
 				_, err = svc.CreateExperience(context.Background(), 1, 2, 3, item)
 			}
-			if err != ErrInvalidStaffRecord {
+			if !errors.Is(err, ErrInvalidStaffRecord) {
 				t.Fatalf("experience end date %q update=%v error=%v want ErrInvalidStaffRecord", value, update, err)
 			}
 		}
@@ -206,7 +207,7 @@ func TestStaffRecordsRejectsNonFiniteAndOutOfRangeQualificationScores(t *testing
 			} else {
 				_, err = svc.CreateQualification(context.Background(), 1, 2, 3, item)
 			}
-			if err != ErrInvalidStaffRecord {
+			if !errors.Is(err, ErrInvalidStaffRecord) {
 				t.Fatalf("score=%v update=%v error=%v want ErrInvalidStaffRecord", score, update, err)
 			}
 		}
@@ -242,5 +243,28 @@ func TestStaffRecordsRejectsNonFiniteAndOutOfRangeQualificationScores(t *testing
 	}
 	if repo.calls != 2 {
 		t.Fatalf("valid qualification repository calls=%d want=2", repo.calls)
+	}
+}
+
+func TestStaffRecordsServiceReturnsFieldSpecificValidationErrors(t *testing.T) {
+	repo := &fakeStaffRecordsRepository{}
+	svc := NewStaffRecordsService(repo)
+	_, err := svc.CreateQualification(context.Background(), 1, 2, 3, repository.StaffQualification{
+		QualificationType: "undergraduate",
+		QualificationName: "",
+		Institution: "University",
+	})
+	var validation *StaffRecordFieldValidationError
+	if !errors.As(err, &validation) {
+		t.Fatalf("error type=%T want StaffRecordFieldValidationError", err)
+	}
+	if !errors.Is(err, ErrInvalidStaffRecord) {
+		t.Fatalf("field validation error must remain compatible with ErrInvalidStaffRecord: %v", err)
+	}
+	if got := validation.FieldErrors["qualification_name"]; got == "" {
+		t.Fatalf("qualification_name field error missing: %+v", validation.FieldErrors)
+	}
+	if repo.calls != 0 {
+		t.Fatalf("invalid qualification reached repository %d times", repo.calls)
 	}
 }
