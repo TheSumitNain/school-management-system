@@ -47,6 +47,7 @@ export function StaffSubstitutionWorkspace({permissions,staff}:Props){
   const leaveQuery=useStaffLeaveRequestsQuery({status:"approved",staffPrincipalID:originalTeacherID},canManage&&canReadLeave&&originalTeacherID>0);
   const eligibleLeaveRequests=(leaveQuery.data?.data??[]).filter(item=>item.duration_type==="full_day"&&item.start_date<=coverDate&&item.end_date>=coverDate);
   const validRange=Boolean(fromDate&&toDate&&fromDate<=toDate);
+  const filtersChanged=fromDate!==range.from||toDate!==range.to||filterStaffID!=="0";
   const substitutionsQuery=useStaffSubstitutionsQuery({fromDate,toDate,staffPrincipalID:Number(filterStaffID)||undefined},canRead&&validRange);
   const create=useCreateStaffSubstitutionMutation();
   const cancel=useCancelStaffSubstitutionMutation();
@@ -152,11 +153,12 @@ export function StaffSubstitutionWorkspace({permissions,staff}:Props){
         <label>To date <DatePicker value={toDate} onChange={setToDate} ariaLabel="Substitution list to date" placeholder="To date"/></label>
         <label>Staff member <Select value={filterStaffID} onChange={setFilterStaffID} ariaLabel="Filter substitutions by staff" options={staffOptions}/></label>
       </div>
-      {!validRange&&<p className="staff-substitution-error" role="alert">To date must be on or after from date.</p>}
-      {substitutionsQuery.isLoading&&<p className="staff-substitution-muted">Loading substitution records…</p>}
-      {substitutionsQuery.isError&&<p className="staff-substitution-error" role="alert">Unable to load substitution records. <button type="button" onClick={()=>void substitutionsQuery.refetch()}>Retry</button></p>}
-      {substitutionsQuery.isSuccess&&substitutionsQuery.data.substitutions.length===0&&<p className="staff-substitution-empty">No substitute coverage records in this date range.</p>}
-      {substitutionsQuery.data?.substitutions.map(item=>{
+      {!fromDate||!toDate?<p className="staff-substitution-error" role="alert">Select both a From date and a To date.</p>:!validRange&&<p className="staff-substitution-error" role="alert">To date must be on or after from date.</p>}
+      {filtersChanged&&<div className="staff-substitution-filter-actions"><button type="button" className="staff-substitution-refresh" onClick={()=>{setFromDate(range.from);setToDate(range.to);setFilterStaffID("0");}}>Clear filters</button></div>}
+      {validRange&&substitutionsQuery.isLoading&&<p className="staff-substitution-muted">Loading substitution records…</p>}
+      {validRange&&substitutionsQuery.isError&&<p className="staff-substitution-error" role="alert">Unable to load substitution records. <button type="button" onClick={()=>void substitutionsQuery.refetch()}>Retry</button></p>}
+      {validRange&&substitutionsQuery.isSuccess&&substitutionsQuery.data.substitutions.length===0&&<p className="staff-substitution-empty">No substitute coverage records in this date range.</p>}
+      {validRange&&substitutionsQuery.data?.substitutions.map(item=>{
         const status=item.status==="cancelled"?"Cancelled":item.cover_date<todayIST()?"Completed":"Scheduled";
         const canCancel=canManage&&item.status==="active"&&item.cover_date>=todayIST();
         return <article className="staff-substitution-record" key={item.id}>
