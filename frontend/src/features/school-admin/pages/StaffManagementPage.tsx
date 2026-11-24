@@ -78,6 +78,19 @@ export function StaffManagementPage({ permissions }: Props) {
   const enable = useEnableSchoolStaffMutation();
   const reset = useResetSchoolStaffPasswordMutation();
   const [activeTab, setActiveTab] = useState<"overview" | "directory" | "reports" | "assignments" | "attendance" | "leave" | "substitutions" | "workloadReport" | "idCards">(initialTab);
+  const activeTabAllowed =
+    (activeTab === "overview" && (canReadStaff || canCreate)) ||
+    (activeTab === "directory" && canReadStaff) ||
+    (activeTab === "reports" && canReadStaff) ||
+    (activeTab === "idCards" && canReadStaff) ||
+    (activeTab === "assignments" && (permissions.includes("teacher_assignments.read") || permissions.includes("class_incharge_assignments.read"))) ||
+    (activeTab === "attendance" && permissions.includes("staff.attendance.read")) ||
+    (activeTab === "leave" && hasLeaveWorkspace) ||
+    (activeTab === "substitutions" && hasSubstitutionWorkspace) ||
+    (activeTab === "workloadReport" && permissions.includes("timetable.read"));
+  useEffect(() => {
+    if (!activeTabAllowed) setActiveTab(initialTab);
+  }, [activeTabAllowed, initialTab]);
   const [search, setSearch] = useState("");
   const [employmentFilter, setEmploymentFilter] = useState("all");
   const [accountFilter, setAccountFilter] = useState("all");
