@@ -2212,11 +2212,33 @@ test("leave request managers without staff-directory access get a clear employee
   expect(staffListRequests).toEqual([]);
 });
 
-test("leave request managers see an empty-state gate when no eligible staff exist", async ({ page }) => {
-  await signInAndOpenStaff(page, [], undefined, ["users.read", "staff.leave.read", "staff.leave.manage_requests"]);
+test("leave request employee selector includes only active staff with explicitly complete profiles", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [
+    { id: 1, principal_id: 581, school_id: 10, username: "leave.complete", employee_code: "EMP-LEAVE-OK-01", full_name: "Complete Profile Staff", designation: "Teacher", employment_status: "active", profile_complete: true, status: "active", must_change_password: false },
+    { id: 2, principal_id: 582, school_id: 10, username: "leave.incomplete", employee_code: "EMP-LEAVE-NO-01", full_name: "Incomplete Profile Staff", designation: "Teacher", employment_status: "active", profile_complete: false, status: "active", must_change_password: false },
+    { id: 3, principal_id: 583, school_id: 10, username: "leave.unknown", employee_code: "EMP-LEAVE-UNKNOWN-01", full_name: "Unknown Profile Staff", designation: "Teacher", employment_status: "active", status: "active", must_change_password: false },
+    { id: 4, principal_id: 584, school_id: 10, username: "leave.inactive", employee_code: "EMP-LEAVE-INACTIVE-01", full_name: "Inactive Complete Staff", designation: "Teacher", employment_status: "inactive", profile_complete: true, status: "active", must_change_password: false },
+  ];
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "staff.leave.read", "staff.leave.manage_requests"]);
 
   const workspace = page.locator(".staff-leave-workspace");
-  await expect(workspace.getByRole("heading", { name: "Leave & Holidays" })).toBeVisible();
+  await expect(workspace.getByRole("heading", { name: "New leave request" })).toBeVisible();
+  const employeeSelect = workspace.getByLabel("Staff member");
+  await expect(employeeSelect.locator("option")).toHaveCount(2);
+  await expect(employeeSelect.locator("option").nth(1)).toHaveText(/Complete Profile Staff/);
+  await expect(employeeSelect.locator("option").filter({ hasText: "Incomplete Profile Staff" })).toHaveCount(0);
+  await expect(employeeSelect.locator("option").filter({ hasText: "Unknown Profile Staff" })).toHaveCount(0);
+  await expect(employeeSelect.locator("option").filter({ hasText: "Inactive Complete Staff" })).toHaveCount(0);
+});
+
+test("leave request managers see an empty-state gate when no eligible staff exist", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [
+    { id: 1, principal_id: 585, school_id: 10, username: "leave.incompleteonly", employee_code: "EMP-LEAVE-NO-02", full_name: "Incomplete Only Staff", designation: "Teacher", employment_status: "active", profile_complete: false, status: "active", must_change_password: false },
+    { id: 2, principal_id: 586, school_id: 10, username: "leave.unknownonly", employee_code: "EMP-LEAVE-UNKNOWN-02", full_name: "Unknown Only Staff", designation: "Teacher", employment_status: "active", status: "active", must_change_password: false },
+  ];
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "staff.leave.read", "staff.leave.manage_requests"]);
+
+  const workspace = page.locator(".staff-leave-workspace");
   await expect(workspace.getByRole("status").filter({ hasText: "No eligible active staff members are available for a new leave request" })).toBeVisible();
   await expect(workspace.getByRole("heading", { name: "New leave request" })).toHaveCount(0);
 });
