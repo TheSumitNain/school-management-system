@@ -49,11 +49,16 @@ Once the identity model is approved, the import workflow will:
 - Validate every row before any write; report row number, field, issue and correction guidance.
 - Detect case-insensitive duplicate employee codes within the file and existing school records.
 - Never import passwords, session tokens, roles or permission overrides.
-- Show a preview and exact create/skip/error counts before explicit confirmation.
+- Show a preview and exact create/skip/error counts before explicit confirmation. Preview must be read-only and must not create accounts, profiles, master data or audit events that imply a completed import.
+- Bind confirmation to the authenticated actor, school, exact normalized preview and a short expiry. Do not trust client-edited preview rows; the server must validate the confirmed payload again and reject a stale/expired preview.
+- Recheck employee-code uniqueness and all row constraints inside the final write transaction; a conflict introduced after preview must fail safely.
 - Use a single all-or-nothing transaction for the confirmed valid batch. If any row fails at commit time, roll back the whole batch and report the row-level conflict; do not partially create staff.
 - Audit the batch and each created employee without recording personal secrets.
-- Recheck live `users.create`/staff-create permission and authenticated school scope on the server. Never accept a client-supplied school ID.
-- Be idempotent against duplicate submission (request/batch key) and enforce a bounded row count/file size.
+- Recheck the currently approved staff-create permission (the exact permission identifier must be confirmed against the final RBAC contract) and authenticated school scope on both preview and confirmation. Never accept a client-supplied school ID.
+- Be idempotent against duplicate submission using an actor- and school-scoped request/batch key; retrying the same confirmed batch must not create duplicate employees.
+- Enforce explicit maximum upload size and row count, strict UTF-8/CSV parsing rules, bounded field lengths and safe handling of quoted delimiters/newlines. Reject malformed rows rather than silently shifting columns.
+- Treat imported values strictly as data: never execute spreadsheet formulas, macros, links or embedded content. Do not accept formula-bearing cells as instructions; apply the normal output-escaping rules when later exporting imported values.
+- Define short-lived staging, preview-token expiry, cleanup and failure recovery before implementation. Do not retain original upload files or add an external document-storage dependency as a side effect of import.
 
 ## 5. Interim capability
 
