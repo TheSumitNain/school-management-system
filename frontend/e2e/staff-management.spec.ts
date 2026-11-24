@@ -1578,6 +1578,8 @@ test("staff profile history is permission-gated and renders staff audit events",
   await dialog.getByRole("button", { name: "History & Activity" }).click();
   await expect(dialog.getByText("Profile updated")).toBeVisible();
   await expect(dialog.getByText("Account created")).toBeVisible();
+  await expect(dialog.getByText("Individual permission override saved")).toBeVisible();
+  await expect(dialog.getByText("Individual permission override removed")).toBeVisible();
   await expect(dialog.getByText("Leave approved")).toBeVisible();
   await expect(dialog.getByText("Class substitution assigned")).toBeVisible();
   await expect(dialog.getByText("Class substitution cancelled")).toBeVisible();
