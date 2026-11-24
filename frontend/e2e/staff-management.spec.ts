@@ -1137,6 +1137,37 @@ test("staff profile does not retain the previous employee's timetable while the 
   await expect(dialog.getByText("Second Teacher Timetable")).toBeVisible();
 });
 
+test("staff profile does not retain the previous employee's qualifications while the next profile loads", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [
+    { id: 1, principal_id: 431, school_id: 10, username: "teacher.qualification.first", employee_code: "EMP-QUAL-FIRST", full_name: "Qualification First", designation: "Teacher", mobile_number: "9876543216", employment_status: "active", profile_complete: true, status: "active" },
+    { id: 2, principal_id: 432, school_id: 10, username: "teacher.qualification.second", employee_code: "EMP-QUAL-SECOND", full_name: "Qualification Second", designation: "Teacher", mobile_number: "9876543217", employment_status: "active", profile_complete: true, status: "active" },
+  ];
+  await signInAndOpenStaff(page, rows);
+  await page.route("**/api/school/staff/*/qualifications", async route => {
+    const match = new URL(route.request().url()).pathname.match(/\\/staff\\/(\\d+)\\/qualifications$/);
+    const principalID = match?.[1];
+    if (principalID === "432") await new Promise(resolve => setTimeout(resolve, 400));
+    const qualification = principalID === "431"
+      ? { id: 1, staff_principal_id: 431, qualification_name: "First Employee Private Qualification", institution: "First Teacher College", verification_status: "verified" }
+      : { id: 2, staff_principal_id: 432, qualification_name: "Second Employee Qualification", institution: "Second Teacher College", verification_status: "verified" };
+    await route.fulfill({ json: { qualifications: [qualification] } });
+  });
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Qualification First" }).click();
+  let dialog = page.getByRole("dialog", { name: "Qualification First" });
+  await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
+  await expect(dialog.getByText("First Employee Private Qualification")).toBeVisible();
+
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Qualification Second" }).click();
+  dialog = page.getByRole("dialog", { name: "Qualification Second" });
+  await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
+  await expect(dialog.getByRole("status").filter({ hasText: "Loading qualifications" })).toBeVisible();
+  await expect(dialog.getByText("First Employee Private Qualification")).toHaveCount(0);
+  await expect(dialog.getByText("Second Employee Qualification")).toBeVisible();
+});
+
 test("staff account access keeps role assignments read-only without delegation permissions", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 513, school_id: 10, username: "teacher.role-reader",
