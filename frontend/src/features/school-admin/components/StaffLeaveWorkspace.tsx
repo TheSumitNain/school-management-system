@@ -121,7 +121,15 @@ export function StaffLeaveWorkspace({permissions,staff,canReadStaff}:Props){
   try{await decide.mutateAsync({requestID:decisionTarget.id,decision:decisionTarget.decision,...(decisionComment.trim()?{comment:decisionComment.trim()}:{})});notifyToast("success",decisionTarget.decision==="approve"?"Leave request approved.":"Leave request rejected.");setDecisionTarget(null);setDecisionComment("");setDecisionCommentError("");setDecisionError("");}
   catch(e){setDecisionError(errorText(e,"Unable to save the leave decision."));}
  }
- async function confirmCancel(){if(cancelTarget===null)return;if(!canManageRequests){setCancelTarget(null);return;}try{await cancel.mutateAsync(cancelTarget);}notifyToast("success","Leave request cancelled.");setCancelTarget(null);}catch(e){notifyToast("error",errorText(e,"Unable to cancel the leave request."));}}
+ async function confirmCancel(){
+  if(cancelTarget===null)return;
+  if(!canManageRequests){setCancelTarget(null);return;}
+  try{
+   await cancel.mutateAsync(cancelTarget);
+   notifyToast("success","Leave request cancelled.");
+   setCancelTarget(null);
+  }catch(e){notifyToast("error",errorText(e,"Unable to cancel the leave request."));}
+ }
  const canShowRequests=canRead;
  const panes=[...(canShowRequests?[{id:"requests" as const,label:"Leave requests",icon:ClipboardList}]:[]),...(canRead&&canManageTypes?[{id:"types" as const,label:"Leave types",icon:Settings2}]:[]),...(canReadHolidays||canManageHolidays?[{id:"holidays" as const,label:"Holiday calendar",icon:CalendarDays}]:[])];
  const activePane=panes.some(item=>item.id===pane)?pane:(panes[0]?.id??"requests");
