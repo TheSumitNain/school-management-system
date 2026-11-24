@@ -2263,7 +2263,8 @@ test("staff assignment report excludes class-incharge data without its permissio
   expect(csvPath).toBeTruthy();
   const csv = await readFile(csvPath!, "utf8");
   expect(csv).toContain("teacher.subject-only");
-  expect(csv).toContain("Mathematics");
+  expect(csv).toContain("Subject assignments");
+  expect(csv).not.toContain("Mathematics");
   expect(csv).not.toContain("teacher.incharge-secret");
   expect(csv).not.toContain("Class-in-charge assignments");
 });
