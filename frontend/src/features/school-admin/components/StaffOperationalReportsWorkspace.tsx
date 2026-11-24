@@ -168,7 +168,7 @@ function AssignmentReport({ permissions }: Props) {
   const totalIncharges = rows.reduce((sum, row) => sum + row.classInchargeAssignments.length, 0);
   return <section className="staff-operational-report-section">
     <div className="staff-operational-report-title">
-      <div><h3>Academic assignments</h3><p>{yearQuery.data?.academic_year.name ?? "Current academic year"} · Active assignments only</p></div>
+      <div><h3>Academic assignments</h3><p>{yearQuery.data?.academic_year?.name ?? "Current academic year"} · Active assignments only</p></div>
       <button type="button" className="staff-operational-report-export" onClick={() => assignmentCSV(rows, yearQuery.data?.academic_year.name ?? "Current academic year", canReadSubjects, canReadIncharges)} disabled={!year || isLoading || isError || rows.length === 0}><Download size={14}/> Export assignments CSV</button>
     </div>
     {year&&<div className="staff-operational-report-metrics">
