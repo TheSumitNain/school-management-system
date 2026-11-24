@@ -2533,6 +2533,36 @@ test("staff monthly attendance summary remains contained and readable across vie
   }
 });
 
+test("staff attendance monthly summary does not request data for an invalid month", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 532, school_id: 10, username: "attendance.invalidmonth",
+    employee_code: "EMP-MONTH-INVALID", full_name: "Invalid Month Teacher", designation: "Teacher",
+    employment_status: "active", profile_complete: true, status: "active", must_change_password: false,
+  }];
+  let monthlyRequests = 0;
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "staff.attendance.read"]);
+  await page.route("**/api/school/staff-attendance/month?*", async route => {
+    monthlyRequests += 1;
+    const url = new URL(route.request().url());
+    await route.fulfill({ json: { month: url.searchParams.get("month"), data: [{
+      staff_principal_id: 532, employee_code: "EMP-MONTH-INVALID", full_name: "Invalid Month Teacher",
+      designation: "Teacher", present_days: 18, absent_days: 0, late_days: 0, half_days: 0, records: [],
+    }] } });
+  });
+  await page.getByRole("button", { name: "Attendance", exact: true }).click();
+  const workspace = page.locator(".staff-attendance-panel");
+  await workspace.getByRole("button", { name: "Monthly summary" }).click();
+  await expect(workspace.getByRole("cell", { name: "Invalid Month Teacher" })).toBeVisible();
+  await expect.poll(() => monthlyRequests).toBe(1);
+
+  await workspace.getByLabel("Attendance month").fill("");
+  await expect(workspace.getByRole("alert")).toContainText("Select a valid attendance month");
+  await expect(workspace.getByRole("button", { name: "Download monthly report" })).toBeDisabled();
+  await expect(workspace.locator(".staff-attendance-table-wrap")).toHaveCount(0);
+  await expect(workspace.getByText("No active staff profiles are available for this school.")).toHaveCount(0);
+  expect(monthlyRequests).toBe(1);
+});
+
 test("staff profile dialog and section navigation remain responsive on mobile, tablet and desktop", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 541, school_id: 10, username: "profile.responsive",
