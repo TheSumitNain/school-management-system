@@ -60,8 +60,8 @@ var staffMobilePattern = regexp.MustCompile("^\\+?[0-9]{10,15}$")
 // validStaffProfileEmail mirrors the staff_profiles email CHECK constraint.
 // Count Unicode characters, matching PostgreSQL length(), rather than bytes.
 func validStaffProfileEmail(email string) bool {
-\tif email == "" { return true }
-\treturn len([]rune(email)) >= 3 && len([]rune(email)) <= 254 && strings.Index(email, "@") > 0
+	if email == "" { return true }
+	return len([]rune(email)) >= 3 && len([]rune(email)) <= 254 && strings.Index(email, "@") > 0
 }
 
 // CreateWithProfile creates a login account and employee profile in one repository transaction.
