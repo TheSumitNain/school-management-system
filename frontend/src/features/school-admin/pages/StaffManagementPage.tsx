@@ -170,7 +170,12 @@ export function StaffManagementPage({ permissions }: Props) {
       setRecordFormKind(null);
       setEditingRecordID(null);
     }
-  }, [action, actionAllowed, staffToDisable, canDisable, canUpdate]);
+    if (!canReadStaff) {
+      setProfileFor(null);
+      setRolesForPrincipal(null);
+      setOverridesForPrincipal(null);
+    }
+  }, [action, actionAllowed, staffToDisable, canDisable, canUpdate, canReadStaff]);
   function advanceCreateStep(form: HTMLFormElement) {
     if (action !== "create" || createStep >= 4) return;
     const values = new FormData(form);
