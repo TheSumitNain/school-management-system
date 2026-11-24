@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { notifyToast } from "../../../shared/notifications";
 import { BarChart3, BookOpen, CalendarDays, Download, FileText, KeyRound, LayoutDashboard, LockKeyhole, Pencil, Plus, Search, Shield, ShieldCheck, UserCheck, UserMinus } from "lucide-react";
 import { StaffRoleAssignments } from "../components/StaffRoleAssignments";
@@ -19,6 +20,7 @@ import {
   useStaffQualificationsQuery, useStaffCertificationsQuery, useStaffExperienceQuery,
   useCreateStaffQualificationMutation, useCreateStaffCertificationMutation, useCreateStaffExperienceMutation,
   useUpdateStaffQualificationMutation, useUpdateStaffCertificationMutation, useUpdateStaffExperienceMutation,
+  schoolAdminQueryKeys,
 } from "../queries";
 import type { StaffRecord } from "../api";
 import { ApiError } from "../../../lib/api";
@@ -54,6 +56,7 @@ function exportStaffDirectoryCSV(rows:StaffRecord[]){
 }
 
 export function StaffManagementPage({ permissions }: Props) {
+  const queryClient = useQueryClient();
   const canCreate = permissions.includes("users.create");
   const canUpdate = permissions.includes("users.update");
   const canDisable = permissions.includes("users.disable");
@@ -149,6 +152,24 @@ export function StaffManagementPage({ permissions }: Props) {
     });
   }, [staff, search, employmentFilter, accountFilter, profileFilter]);
 
+  function closeProfile() {
+    const principalID = profileFor?.principal_id;
+    if (principalID) {
+      // Staff records and audit events are employee-specific; do not retain them in
+      // the shared query cache after the profile is closed.
+      queryClient.removeQueries({ queryKey: [...schoolAdminQueryKeys.staff(), principalID] });
+      queryClient.removeQueries({ queryKey: ["staff-audit-events", principalID] });
+    }
+    setProfileFor(null);
+    setRecordFormKind(null);
+    setEditingRecordID(null);
+    setRecordError("");
+    setRecordFieldErrors({});
+    setCertificationIssueDate("");
+    setCertificationExpiryDate("");
+    setExperienceStartDate("");
+    setExperienceEndDate("");
+  }
   function openProfile(item: StaffRecord) { setProfileFor(item); setProfileTab("Overview"); setRecordFormKind(null); setEditingRecordID(null); setRecordError(""); setRecordFieldErrors({}); setCertificationIssueDate(""); setCertificationExpiryDate(""); setExperienceStartDate(""); setExperienceEndDate(""); }
   function openAction(next: Action, item: StaffRecord | null = null) {
     setSelected(item);
@@ -530,11 +551,11 @@ export function StaffManagementPage({ permissions }: Props) {
             </Fragment>)}
           </tbody></table></div>}
       </section>}
-      {profileFor && canReadStaff && <Modal key={profileFor.principal_id} open title={profileFor.full_name || profileFor.username} description={`Staff profile · ${profileFor.employee_code || "Employee code not set"} · ${profileFor.username}`} onClose={() => setProfileFor(null)}>
+      {profileFor && canReadStaff && <Modal key={profileFor.principal_id} open title={profileFor.full_name || profileFor.username} description={`Staff profile · ${profileFor.employee_code || "Employee code not set"} · ${profileFor.username}`} onClose={closeProfile}>
         <nav className="staff-profile-tabs" aria-label="Staff profile sections">
           {(["Overview","Personal Details","Employment","Qualifications & Experience","Documents","Academic Assignments",...(permissions.includes("timetable.read") ? ["Workload & Timetable" as const] : []),"Account & Access","History & Activity"] as const).map(tab => <button type="button" key={tab} className={profileTab === tab ? "active" : ""} aria-current={profileTab === tab ? "page" : undefined} onClick={() => setProfileTab(tab)}>{tab}</button>)}
         </nav>
-        {profileTab === "Overview" && <section className="staff-profile-overview"><div><span>Employee code</span><strong>{profileFor.employee_code || "Not set"}</strong></div><div><span>Designation</span><strong>{profileFor.designation || "Not set"}</strong></div><div><span>Employment</span><strong>{profileFor.employment_status || "Profile incomplete"}</strong></div><div><span>Login</span><strong>{profileFor.status === "active" ? "Enabled" : "Disabled"}</strong></div>{canUpdate && <button className="primary" type="button" onClick={() => {const item=profileFor;setProfileFor(null);openAction("edit",item);}}>Edit employee details</button>}</section>}
+        {profileTab === "Overview" && <section className="staff-profile-overview"><div><span>Employee code</span><strong>{profileFor.employee_code || "Not set"}</strong></div><div><span>Designation</span><strong>{profileFor.designation || "Not set"}</strong></div><div><span>Employment</span><strong>{profileFor.employment_status || "Profile incomplete"}</strong></div><div><span>Login</span><strong>{profileFor.status === "active" ? "Enabled" : "Disabled"}</strong></div>{canUpdate && <button className="primary" type="button" onClick={() => {const item=profileFor;closeProfile();openAction("edit",item);}}>Edit employee details</button>}</section>}
         {profileTab === "Personal Details" && <section className="staff-profile-section"><h3>Personal details</h3><dl><div><dt>Full name</dt><dd>{profileFor.full_name || "Not set"}</dd></div><div><dt>Employee code</dt><dd>{profileFor.employee_code || "Not set"}</dd></div><div><dt>Mobile number</dt><dd>{profileFor.mobile_number || "Not set"}</dd></div><div><dt>Email address</dt><dd>{profileFor.email || "Not provided"}</dd></div></dl>{canUpdate && <button className="primary" type="button" onClick={() => {const item=profileFor;setProfileFor(null);openAction("edit",item);}}>Edit personal details</button>}</section>}
         {profileTab === "Employment" && <section className="staff-profile-section"><h3>Employment details</h3><dl><div><dt>Designation</dt><dd>{profileFor.designation || "Not set"}</dd></div><div><dt>Joining date</dt><dd>{profileFor.joining_date ? new Intl.DateTimeFormat("en-IN",{dateStyle:"medium",timeZone:"Asia/Kolkata"}).format(new Date(profileFor.joining_date)) : "Not provided"}</dd></div><div><dt>Employment status</dt><dd>{profileFor.employment_status || "Profile incomplete"}</dd></div><div><dt>Login status</dt><dd>{profileFor.status === "active" ? "Enabled" : "Disabled"}</dd></div></dl>{canUpdate && <button className="primary" type="button" onClick={() => {const item=profileFor;setProfileFor(null);openAction("edit",item);}}>Edit employment details</button>}</section>}
         {profileTab === "Qualifications & Experience" && <section className="staff-records-panel">
