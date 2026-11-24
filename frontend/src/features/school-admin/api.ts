@@ -11,7 +11,7 @@ export type StaffRecord = {
   mobile_number?: string;
   email?: string;
   joining_date?: string | null;
-  employment_status?: "active" | "inactive" | string;
+  employment_status: "active" | "inactive" | string;
   profile_complete?: boolean;
   status: string;
   must_change_password: boolean;
