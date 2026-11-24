@@ -75,12 +75,12 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
     enabled: canRead && canReadHolidayContext && view === "daily",
     staleTime: 30_000,
   });
+  const validMonth = /^\d{4}-(0[1-9]|1[0-2])$/.test(month);
   const monthly = useQuery({
     queryKey: ["staff-attendance", "monthly", month],
     queryFn: ({ signal }) => getMonthlyStaffAttendance(month, signal),
     enabled: canRead && view === "monthly" && validMonth,
   });
-  const validMonth = /^\\d{4}-(0[1-9]|1[0-2])$/.test(month);
   const monthStart = validMonth ? `${month}-01` : "";
   const monthEnd = validMonth ? new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)).toISOString().slice(0, 10) : "";
   const approvedMonthLeave = useQuery({
