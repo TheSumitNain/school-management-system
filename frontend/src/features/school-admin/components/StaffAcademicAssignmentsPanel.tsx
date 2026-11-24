@@ -22,6 +22,9 @@ export function StaffAcademicAssignmentsPanel({ staff, permissions, onOpenWorksp
     const controller = new AbortController();
     setLoading(true);
     setError("");
+    // Never leave the previous employee's assignments visible while the next profile loads.
+    setSubjects([]);
+    setIncharges([]);
     const jobs: Promise<unknown>[] = [];
     if (canReadSubjects) jobs.push(getTeacherSubjectAssignments({ teacherPrincipalID: staff.principal_id }, controller.signal).then(result => setSubjects(result.assignments)));
     else setSubjects([]);
