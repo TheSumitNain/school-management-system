@@ -450,7 +450,7 @@ export function StaffManagementPage({ permissions }: Props) {
       </section>}
       {activeTab === "assignments" && <TeacherAssignmentsPage permissions={permissions}/>}
       {activeTab === "attendance" && <StaffAttendanceWorkspace permissions={permissions}/>}
-      {activeTab === "leave" && <StaffLeaveWorkspace permissions={permissions} staff={staff}/>}
+      {activeTab === "leave" && <StaffLeaveWorkspace permissions={permissions} staff={staff} canReadStaff={canReadStaff}/>}
       {activeTab === "substitutions" && <StaffSubstitutionWorkspace permissions={permissions} staff={staff}/>}
       {activeTab === "workloadReport" && <StaffWorkloadReportWorkspace permissions={permissions}/>}
       {activeTab === "reports" && permissions.includes("users.read") && <section className="staff-reports-workspace">
