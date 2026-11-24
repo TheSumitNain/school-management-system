@@ -2644,3 +2644,27 @@ test("staff-create-only access can start onboarding without loading or revealing
   await expect(page.getByRole("button", { name: "Staff Directory", exact: true })).toHaveCount(0);
   expect(staffListRequests).toEqual([]);
 });
+
+test("workload report explains missing current academic year without requesting a zero-year report", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 501, school_id: 10, username: "teacher.workload",
+    employee_code: "EMP-WORK-01", full_name: "Workload Teacher", designation: "Mathematics Teacher",
+    mobile_number: "9876543215", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false,
+  }];
+  let workloadRequests = 0;
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "timetable.read"]);
+  await page.route("**/api/school/timetable/current-year", route =>
+    route.fulfill({ json: { academic_year: null } }),
+  );
+  await page.route("**/api/school/timetable/workload-report**", route => {
+    workloadRequests += 1;
+    return route.fulfill({ json: { workloads: [] } });
+  });
+  await page.locator(".staff-workspace-tabs").getByRole("button", { name: "Workload Report" }).click();
+  await expect(page.getByRole("heading", { name: "School-wide Workload Report" })).toBeVisible();
+  await expect(page.getByRole("status")).toContainText("No current academic year is configured");
+  await expect.poll(() => workloadRequests).toBe(0);
+  await page.getByRole("button", { name: "Refresh" }).click();
+  await expect.poll(() => workloadRequests).toBe(0);
+});
