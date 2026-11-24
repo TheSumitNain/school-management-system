@@ -2194,6 +2194,24 @@ test("leave-only staff access opens leave applications without requesting the st
   expect(staffListRequests).toEqual([]);
 });
 
+test("leave request managers without staff-directory access get a clear employee-selection gate", async ({ page }) => {
+  const staffListRequests: string[] = [];
+  page.on("request", request => {
+    const url = new URL(request.url());
+    if (url.pathname === "/api/school/staff" && request.method() === "GET") {
+      staffListRequests.push(request.method() + " " + url.pathname);
+    }
+  });
+  await signInAndOpenStaff(page, [], undefined, ["staff.leave.read", "staff.leave.manage_requests"]);
+
+  const workspace = page.locator(".staff-leave-workspace");
+  await expect(workspace.getByRole("heading", { name: "Leave & Holidays" })).toBeVisible();
+  await expect(workspace.getByRole("heading", { name: "Applications" })).toBeVisible();
+  await expect(workspace.getByRole("status").filter({ hasText: "Creating a leave request on behalf of an employee also requires Staff Directory read access" })).toBeVisible();
+  await expect(workspace.getByRole("heading", { name: "New leave request" })).toHaveCount(0);
+  expect(staffListRequests).toEqual([]);
+});
+
 test("staff attendance workspace remains usable on mobile, tablet and desktop", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [
     { id: 1, principal_id: 521, school_id: 10, username: "attendance.responsive", employee_code: "EMP-RESP-ATT-01", full_name: "Responsive Attendance Teacher", designation: "Science Teacher", employment_status: "active", profile_complete: true, status: "active", must_change_password: false },
