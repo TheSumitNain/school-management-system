@@ -26,7 +26,9 @@ The Teacher's daily-work experience (own timetable, assigned classes, attendance
 5. Deactivate/relieve/archive instead of hard-deleting records that have history or dependencies. Preserve attendance, leave, assignments, timetable, payroll and audit history.
 6. Reuse Academic Structure's academic years, classes, sections and subject catalogue. Do not create duplicate master-data screens or models.
 7. No paid SMS/OTP dependency. Parent OTP and parent-facing workflows remain deferred under the project-wide Phase 1 boundary.
-8. This roadmap does not authorize speculative database migrations. Confirm the existing schema/API and define each required additive migration before implementation.
+8. Staff document upload/download and profile photograph upload are explicitly deferred until the project is ready to go live and an external private-storage provider and access model are selected and approved. Until then, the Documents profile tab is an explanatory disabled state; do not build upload APIs, local-disk storage, file metadata writes, expiry reminders or mock uploads.
+9. DOB, gender, home addresses and emergency contacts require a separate field-level access, minimization, retention and legal/privacy review before collection or storage. Do not expose these fields through directory/list/report/ID-card APIs.
+10. This roadmap does not authorize speculative database migrations. Confirm the existing schema/API and define each required additive migration before implementation.
 
 ## 2. Navigation and tab plan
 
@@ -58,7 +60,7 @@ Selecting a staff row opens a full profile page (preferred for deep profiles and
 | 2 | Personal Details | P0 | Name, contact, DOB, gender, address and emergency contact |
 | 3 | Employment | P0 | Employee code, staff type, department, designation, employment type, dates and status |
 | 4 | Qualifications & Experience | P0 | Education, specialization, certifications, experience and previous employment |
-| 5 | Documents | P0 | Staff documents, category, issue/expiry dates and verification status |
+| 5 | Documents | Deferred | Explanatory disabled state only; upload/download waits until go-live storage approval |
 | 6 | Academic Assignments | P0 | Class-in-charge and subject teaching assignments with history |
 | 7 | Workload & Timetable | P1 | Current-year teacher-specific scheduled periods and timetable rows; unscheduled slots are not confirmed availability |
 | 8 | Account & Access | P0 | Login lifecycle, roles, delegated permissions and password reset |
@@ -83,7 +85,7 @@ Open from Overview → Add Staff or Staff Directory → Add Staff. Use the share
 | Employee Code | Required | Unique within the school; normalize before duplicate check |
 | Mobile Number | Required | Valid Indian mobile format for current India-focused release |
 | Email | Optional | Valid format; normalize case; apply uniqueness only if data contract requires it |
-| Photograph | Optional | Supported image types/size limits; preview before save |
+| Photograph | Deferred | Profile-photo upload is deferred with document storage; do not accept or persist a local/mock upload |
 
 #### Step 2 — Employment Details
 
@@ -92,7 +94,7 @@ Open from Overview → Add Staff or Staff Directory → Add Staff. Use the share
 | Designation | Required | Select from school designation master; controlled setup if catalogue is absent |
 | Department | Optional initially | Select from school department master; avoid duplicate free text |
 | Joining Date | Optional | Shared IST-aware DatePicker; store date-only value |
-| Employment Type | Optional initially | Full-time, Part-time, Contract, Temporary, Visiting |
+| Employment Type | Optional initially | Permanent, Contract, Part-time, Temporary, Internship, Visiting Faculty; keep machine values separate from labels |
 | Employment Status | Required | Active / Inactive; default Active for new employee |
 | Reporting Manager | Optional | Active staff in same school; prevent self-reference/cycles |
 | Work Location / Branch | Optional | Only if multiple locations are configured |
@@ -148,7 +150,7 @@ Edit from the relevant profile tab. Use a focused form for the selected section,
 | Email | Optional |
 | Date of Birth | Optional |
 | Gender | Optional |
-| Photograph | Optional |
+| Photograph | Deferred |
 | Current Address | Optional |
 | Permanent Address | Optional |
 | Emergency Contact Name | Optional |
@@ -190,23 +192,13 @@ Repeatable form; one staff member may have multiple qualification records.
 
 Add a separate repeatable **Certification / Training** record with Certificate Name (Required), Issuing Organization (Optional), Issue Date (Optional), Expiry Date (Optional), Credential ID (Optional), Document (Optional), Verification Status (Required). Qualification mismatch should warn by default, not block assignment, unless a school policy explicitly requires it.
 
-### 3.4 Form D — Add / Edit Staff Document (P0)
+### 3.4 Documents tab — deferred until go-live storage approval
 
-**Backend security contract:** see [Staff Qualifications & Documents — Backend Contract](../backend/STAFF-QUALIFICATIONS-DOCUMENTS.md). Qualifications, certifications and experience require school-scoped CRUD, verification permissions and transactional audit. Document upload/download remains gated on private storage; do not implement public URLs or mock uploads.
+The Documents profile tab must remain a clear, disabled explanatory state during the current development phase. The user has explicitly deferred document upload/download until the project is ready to go live. Profile photograph upload is deferred for the same private-storage reason.
 
+Do not implement a local-disk upload workaround, public URL, mock upload, document metadata write path, expiry reminder, or file API in this phase. Before reopening this scope, select and approve an external private-storage provider, authenticated download/preview authorization, file validation and size limits, malware/content scanning expectations, retention/deletion policy, audit events and backup/recovery responsibilities. The existing [Staff Qualifications & Documents — Backend Contract](../backend/STAFF-QUALIFICATIONS-DOCUMENTS.md) remains a security reference, not permission to implement storage now.
 
-| Field | Required? |
-|---|---|
-| Document Type / Category | Required |
-| Display Name | Required |
-| File | Required on create; optional on metadata-only edit |
-| Document Number | Optional |
-| Issue Date | Optional |
-| Expiry Date | Optional |
-| Verification Status | Required, default Pending |
-| Notes | Optional |
-
-Validate allowed MIME/type, file size and upload errors. Restrict access to authorized roles. Do not expose document URLs or sensitive metadata to unauthorized users. P0 records expiry dates; expiry reminders are P2.
+Qualifications, certifications and experience records remain separate structured staff records and are not blocked by this document-storage deferral.
 
 ### 3.5 Form E — Academic Assignment (P0)
 
