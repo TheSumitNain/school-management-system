@@ -52,7 +52,8 @@ Proposed target columns:
 | `employee_code` | VARCHAR(32) NOT NULL | Case-insensitive unique within a school |
 | `staff_type` | `teaching` / `non_teaching`, required for an operational profile | Determines teaching-specific workflow eligibility; legacy rows may temporarily remain explicitly `unclassified` during reviewed backfill only |
 | `full_name` | VARCHAR(160) NOT NULL | Employee display name |
-| `designation_id` | BIGINT NULL | School-scoped link to `staff_designations`; nullable only while a school has not configured its catalog or a legacy row is under reviewed reconciliation |\n| `designation_name_snapshot` | VARCHAR(100) NOT NULL | Display/history snapshot captured when the designation is assigned; not an independent free-text master |
+| `designation_id` | BIGINT NULL | School-scoped link to `staff_designations`; nullable only while a school has not configured its catalog or a legacy row is under reviewed reconciliation |
+| `designation_name_snapshot` | VARCHAR(100) NOT NULL | Display/history snapshot captured when the designation is assigned; not an independent free-text master |
 | `department_id` | BIGINT NULL | School-controlled department master |
 | `employment_type` | Controlled value | `permanent`, `contract`, `part_time`, `temporary`, `internship`, `visiting_faculty` |
 | `mobile_number` | VARCHAR(16) NOT NULL | Work contact |
@@ -67,7 +68,8 @@ Required constraints and indexes:
 - `UNIQUE (principal_id, school_id)` allowing multiple NULL principal IDs but at most one linked staff profile per principal/school.
 - Composite FK `(principal_id, school_id) → users(principal_id, school_id)`; NULL principal means no login is linked.
 - `UNIQUE (school_id, lower(employee_code))`.
-- Composite FK `(department_id, school_id) → staff_departments(id, school_id)`.\n- Composite FK `(designation_id, school_id) → staff_designations(id, school_id)`; a NULL designation is permitted only until the school configures its catalog or a reviewed legacy reconciliation completes.
+- Composite FK `(department_id, school_id) → staff_departments(id, school_id)`.
+- Composite FK `(designation_id, school_id) → staff_designations(id, school_id)`; a NULL designation is permitted only until the school configures its catalog or a reviewed legacy reconciliation completes.
 - Check `staff_type`, `employment_type` and `employment_status` against explicit controlled values.
 - Do not cascade-delete staff, department, assignment or history rows.
 
