@@ -1,8 +1,9 @@
-## 2026-11-24 — Staff attendance PostgreSQL write-path coverage gap
+## 2026-11-24 — Staff attendance PostgreSQL write-path rollback verification
 
-- Re-audited `staff_attendance_repository.go` against the V58 PostgreSQL integration suite. Existing integration coverage verifies schema/permissions, duplicate-date uniqueness, Asia/Kolkata future-date protection and authorization-before-target-resolution.
-- Identified a remaining test-only gap: the PostgreSQL suite does not yet exercise successful individual marking, successful same-day update, successful bulk marking, or rollback of a partially written bulk batch when a later target or audit insert fails. Service-level tests and handler/browser tests do not replace these database transaction assertions.
-- No production defect was confirmed by this review, and no runtime code or database schema was changed. The next attendance hardening task is to add real-PostgreSQL write/rollback integration coverage before considering the attendance workflow fully verified.
+- Added real-PostgreSQL integration assertions for successful individual attendance marking, same-day update and bulk marking in the existing staff-record integration fixture.
+- Added database-trigger fault injection proving an audit insert failure rolls back an individual attendance write, and a failure on the second employee's bulk audit insert rolls back every attendance row and audit event in that batch.
+- Backend CI [45415860549](https://github.com/TheSumitNain/school-management-system/actions/runs/45415860549) **PASS** on `d09500b14b6c7291ecddae74e3a24b4be0d38173`: all migrations applied to the ephemeral PostgreSQL database, full Go tests including PostgreSQL integration passed, and `go vet` passed.
+- No production attendance repository behavior, schema, migration, persistent database or application data changed. This closes the previously documented attendance write-path integration coverage gap.
 
 ## 2026-11-24 — Staff profile record-isolation regression coverage
 
