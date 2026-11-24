@@ -88,7 +88,7 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
     ];
     while (days.length % 7 !== 0) days.push(null);
     return Array.from({ length: days.length / 7 }, (_, index) => days.slice(index * 7, index * 7 + 7));
-  }, [firstWeekday, daysInMonth]);
+  }, [firstWeekday, visibleDaysInMonth]);
 
   useEffect(() => {
     if (shouldFocusActiveYear.current) {
