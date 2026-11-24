@@ -164,6 +164,21 @@ func TestStaffAccountServiceRejectsJoiningDateBeyondOneYearOnProfileUpdate(t *te
 	}
 }
 
+func TestStaffAccountServiceRejectsMissingEmploymentStatusOnProfileUpdate(t *testing.T) {
+    repo := &fakeStaffAccountRepository{user: &models.User{ID: 15, PrincipalID: 27, SchoolID: 8}}
+    service := NewStaffAccountService(repo, alwaysClearPasswordChecker{})
+    profile := models.StaffProfile{
+        EmployeeCode: "EMP-27", FullName: "Teacher One", Designation: "Teacher",
+        MobileNumber: "9876543210", EmploymentStatus: "",
+    }
+    if _, err := service.UpdateProfile(context.Background(), 31, 8, 27, profile); err != ErrInvalidStaffAccount {
+        t.Fatalf("missing employment status update error = %v, want ErrInvalidStaffAccount", err)
+    }
+    if repo.profileCalls != 0 {
+        t.Fatalf("profile update without employment status reached repository %d times", repo.profileCalls)
+    }
+}
+
 func TestStaffProfileTextLimitsCountUnicodeCharacters(t *testing.T) {
 	repo := &fakeStaffAccountRepository{user: &models.User{ID: 15, PrincipalID: 27, SchoolID: 8}}
 	service := NewStaffAccountService(repo, alwaysClearPasswordChecker{})
