@@ -268,3 +268,28 @@ func TestStaffRecordsServiceReturnsFieldSpecificValidationErrors(t *testing.T) {
 		t.Fatalf("invalid qualification reached repository %d times", repo.calls)
 	}
 }
+
+func TestQualificationScoreValidationFieldTargetsScoreOrScale(t *testing.T) {
+	valid := 95.0
+	invalid := 101.0
+	cases := []struct {
+		name string
+		score *float64
+		scale string
+		want string
+	}{
+		{name: "no score and no scale", want: ""},
+		{name: "scale without score", scale: "percentage", want: "score_scale"},
+		{name: "score without scale", score: &valid, want: "score_scale"},
+		{name: "unknown scale", score: &valid, scale: "unknown", want: "score_scale"},
+		{name: "out of range percentage", score: &invalid, scale: "percentage", want: "score"},
+		{name: "valid percentage", score: &valid, scale: "percentage", want: ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := qualificationScoreValidationField(tc.score, tc.scale); got != tc.want {
+				t.Fatalf("validation field=%q want=%q", got, tc.want)
+			}
+		})
+	}
+}
