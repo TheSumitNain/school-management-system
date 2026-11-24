@@ -311,3 +311,56 @@ func TestStaffRecordsServiceReturnsAllQualificationFieldValidationErrors(t *test
 	if len(validation.FieldErrors) != 3 { t.Fatalf("got %d errors, want 3: %+v", len(validation.FieldErrors), validation.FieldErrors) }
 	if repo.calls != 0 { t.Fatalf("invalid qualification reached repository %d times", repo.calls) }
 }
+
+
+func TestStaffRecordsServiceReturnsAllCertificationFieldValidationErrors(t *testing.T) {
+	for _, update := range []bool{false, true} {
+		t.Run(map[bool]string{false:"create", true:"update"}[update], func(t *testing.T) {
+			repo := &fakeStaffRecordsRepository{}
+			svc := NewStaffRecordsService(repo)
+			item := repository.StaffCertification{
+				CertificateName: "", IssuingOrganization: "",
+				IssueDate: "2026-02-30", ExpiryDate: "2025-01-01",
+			}
+			var err error
+			if update {
+				_, err = svc.UpdateCertification(context.Background(), 1, 2, 3, 4, item)
+			} else {
+				_, err = svc.CreateCertification(context.Background(), 1, 2, 3, item)
+			}
+			var validation *StaffRecordFieldValidationError
+			if !errors.As(err, &validation) { t.Fatalf("error type=%T want StaffRecordFieldValidationError", err) }
+			for _, field := range []string{"certificate_name", "issuing_organization", "issue_date"} {
+				if validation.FieldErrors[field] == "" { t.Errorf("missing %q error: %+v", field, validation.FieldErrors) }
+			}
+			if len(validation.FieldErrors) != 3 { t.Fatalf("got %d errors, want 3: %+v", len(validation.FieldErrors), validation.FieldErrors) }
+			if repo.calls != 0 { t.Fatalf("invalid certification reached repository %d times", repo.calls) }
+		})
+	}
+}
+
+func TestStaffRecordsServiceReturnsAllExperienceFieldValidationErrors(t *testing.T) {
+	for _, update := range []bool{false, true} {
+		t.Run(map[bool]string{false:"create", true:"update"}[update], func(t *testing.T) {
+			repo := &fakeStaffRecordsRepository{}
+			svc := NewStaffRecordsService(repo)
+			item := repository.StaffExperience{
+				EmployerName: "", Designation: "", EmploymentType: "unknown",
+				StartDate: "2026-02-30", EndDate: "2025-01-01",
+			}
+			var err error
+			if update {
+				_, err = svc.UpdateExperience(context.Background(), 1, 2, 3, 4, item)
+			} else {
+				_, err = svc.CreateExperience(context.Background(), 1, 2, 3, item)
+			}
+			var validation *StaffRecordFieldValidationError
+			if !errors.As(err, &validation) { t.Fatalf("error type=%T want StaffRecordFieldValidationError", err) }
+			for _, field := range []string{"employer_name", "designation", "employment_type", "start_date", "end_date"} {
+				if validation.FieldErrors[field] == "" { t.Errorf("missing %q error: %+v", field, validation.FieldErrors) }
+			}
+			if len(validation.FieldErrors) != 5 { t.Fatalf("got %d errors, want 5: %+v", len(validation.FieldErrors), validation.FieldErrors) }
+			if repo.calls != 0 { t.Fatalf("invalid experience reached repository %d times", repo.calls) }
+		})
+	}
+}
