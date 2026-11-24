@@ -27,18 +27,7 @@ async function chooseDatePickerValue(scope: Locator, ariaLabel: string, value: s
     else if (year > last) await calendar.getByRole("button", { name: "Next decade" }).click();
     else break;
   }
-  await calendar.locator(".app-date-year-grid button").filter({ hasText: new RegExp(`^${year}import { readFile } from "node:fs/promises";
-import { expect, test, type Page, type Route } from "@playwright/test";
-import { schoolDateValue } from "../src/shared/date/schoolDate";
-
-function schoolDateOffset(days: number) {
-  const [year, month, day] = schoolDateValue().split("-").map(Number);
-  const date = new Date(year, month - 1, day, 12);
-  date.setDate(date.getDate() + days);
-  return date;
-}
-
-) }).click();
+  await calendar.locator(".app-date-year-grid button").filter({ hasText: new RegExp(`^${year}$`) }).click();
   await calendar.getByRole("button", { name: "Choose month" }).click();
   const monthDate = new Date(year, month - 1, 1, 12);
   await calendar.locator(".app-date-month-grid button").filter({ hasText: monthDate.toLocaleDateString(undefined, { month: "short" }) }).click();
