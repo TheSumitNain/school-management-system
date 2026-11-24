@@ -5,6 +5,19 @@ import "./StaffIDCardsWorkspace.css";
 
 type Props = { staff: StaffRecord[] };
 
+function formatJoiningDate(value?: string | null) {
+  if (!value) return "—";
+  const date = new Date(`${value.slice(0, 10)}T12:00:00`);
+  return Number.isNaN(date.getTime())
+    ? "—"
+    : new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeZone: "Asia/Kolkata" }).format(date);
+}
+
+function employmentLabel(value?: string | null) {
+  if (!value) return "Active";
+  return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+}
+
 export function StaffIDCardsWorkspace({ staff }: Props) {
   const eligible = useMemo(() => staff.filter(item => item.employment_status === "active" && item.profile_complete === true && item.employee_code && item.full_name && item.designation), [staff]);
   const [selectedIDs, setSelectedIDs] = useState<number[]>([]);
@@ -37,7 +50,7 @@ export function StaffIDCardsWorkspace({ staff }: Props) {
           <div className="staff-id-avatar" aria-hidden="true">{item.full_name!.trim().split(/\s+/).slice(0,2).map(part=>part[0]?.toUpperCase()).join("")}</div>
           <div className="staff-id-person"><h4>{item.full_name}</h4><p>{item.designation}</p></div>
         </div>
-        <dl><div><dt>Employee ID</dt><dd>{item.employee_code}</dd></div><div><dt>Joining date</dt><dd>{item.joining_date || "—"}</dd></div><div><dt>Employment</dt><dd>{item.employment_status || "Active"}</dd></div></dl>
+        <dl><div><dt>Employee ID</dt><dd>{item.employee_code}</dd></div><div><dt>Joining date</dt><dd>{formatJoiningDate(item.joining_date)}</dd></div><div><dt>Employment</dt><dd>{employmentLabel(item.employment_status)}</dd></div></dl>
         <footer><span>School staff</span><span>{validUntil ? `Valid until ${validUntil}` : "Validity not specified"}</span></footer>
       </article>)}
     </div>}
