@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { CalendarDays, CheckCircle2, Clock3, Plus, RefreshCw, UserRound, XCircle } from "lucide-react";
 import { ApiError } from "../../../lib/api";
 import { notifyToast } from "../../../shared/notifications";
@@ -37,6 +37,9 @@ export function StaffSubstitutionWorkspace({permissions,staff}:Props){
   const [fieldErrors,setFieldErrors]=useState<Record<string,string>>({});
   const [formError,setFormError]=useState("");
   const [cancelTarget,setCancelTarget]=useState<StaffSubstitution|null>(null);
+  useEffect(()=>{
+    if(!canManage)setCancelTarget(null);
+  },[canManage]);
 
   const yearQuery=useStaffSubstitutionTimetableYearQuery(canManage&&canReadTimetable);
   const academicYearID=yearQuery.data?.academic_year?.id??0;
@@ -62,6 +65,7 @@ export function StaffSubstitutionWorkspace({permissions,staff}:Props){
 
   const submit=async(event:FormEvent<HTMLFormElement>)=>{
     event.preventDefault();
+    if(!canManage||!canReadTimetable)return;
     const next:Record<string,string>={};
     if(!selectedEntry)next.entry="Select a recurring timetable entry.";
     if(!coverDate)next.date="Select the date for this cover.";
@@ -90,6 +94,7 @@ export function StaffSubstitutionWorkspace({permissions,staff}:Props){
 
   const confirmCancel=async()=>{
     if(!cancelTarget)return;
+    if(!canManage){setCancelTarget(null);return;}
     try{
       await cancel.mutateAsync(cancelTarget.id);
       notifyToast("success","Substitution cancelled. Its history has been retained.");
