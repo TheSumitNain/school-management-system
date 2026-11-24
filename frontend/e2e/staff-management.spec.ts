@@ -2212,6 +2212,15 @@ test("leave request managers without staff-directory access get a clear employee
   expect(staffListRequests).toEqual([]);
 });
 
+test("leave request managers see an empty-state gate when no eligible staff exist", async ({ page }) => {
+  await signInAndOpenStaff(page, [], undefined, ["users.read", "staff.leave.read", "staff.leave.manage_requests"]);
+
+  const workspace = page.locator(".staff-leave-workspace");
+  await expect(workspace.getByRole("heading", { name: "Leave & Holidays" })).toBeVisible();
+  await expect(workspace.getByRole("status").filter({ hasText: "No eligible active staff members are available for a new leave request" })).toBeVisible();
+  await expect(workspace.getByRole("heading", { name: "New leave request" })).toHaveCount(0);
+});
+
 test("staff attendance workspace remains usable on mobile, tablet and desktop", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [
     { id: 1, principal_id: 521, school_id: 10, username: "attendance.responsive", employee_code: "EMP-RESP-ATT-01", full_name: "Responsive Attendance Teacher", designation: "Science Teacher", employment_status: "active", profile_complete: true, status: "active", must_change_password: false },
