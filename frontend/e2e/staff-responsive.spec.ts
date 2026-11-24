@@ -93,7 +93,7 @@ test("Staff Management tabs remain usable without page overflow on mobile, table
 
   await page.getByRole("button", { name: "Staff Directory", exact: true }).click();
   await expect(page.getByRole("heading", { name: "All staff" })).toBeVisible();
-  await expect(page.getByRole("textbox", { name: "Search staff by name, code, designation or username" })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Search staff by name, code, designation, mobile or username" })).toBeVisible();
 
   await page.getByRole("button", { name: "Attendance", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Staff attendance" })).toBeVisible();
