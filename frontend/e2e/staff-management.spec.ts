@@ -731,6 +731,13 @@ test("staff profile email validation rejects malformed address components", asyn
   await dialog.getByRole("button", { name: "Continue" }).click();
   await expect(dialog.getByText("Enter a valid email address.")).toHaveCount(0);
   await expect(dialog.getByLabel("Designation")).toBeVisible();
+  await dialog.getByRole("button", { name: "Back" }).click();
+  const maxLengthUnicodeEmail = "é".repeat(250) + "@x.y";
+  await email.fill(maxLengthUnicodeEmail);
+  await expect(email).toHaveValue(maxLengthUnicodeEmail);
+  await dialog.getByRole("button", { name: "Continue" }).click();
+  await expect(dialog.getByText("Enter a valid email address.")).toHaveCount(0);
+  await expect(dialog.getByLabel("Designation")).toBeVisible();
 });
 
 test("staff profile creation accepts Unicode names and designations at database character limits", async ({ page }) => {
