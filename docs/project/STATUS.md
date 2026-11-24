@@ -2424,3 +2424,11 @@ This update supersedes older status bullets that listed the following database-b
 - Updated the Staff Management roadmap and implementation audit to reflect the 98-test checkpoint and separate implemented scope from approval-gated capabilities.
 - Phase 4 remains partial pending school-specific leave-policy approval. Phase 6 remains partial because Bulk Import requires explicit identity-schema/product approval. Staff profile-only onboarding, document/photo storage, sensitive personal fields and Payroll remain deferred under existing decisions.
 - No persistent database migration or data change. `main` remains untouched; work continues on `work`.
+
+
+## 2026-11-24 — Staff Management final browser acceptance follow-up
+
+- Re-ran the full frontend acceptance suite after fixing the ID-card print-width assertion to target each of the two rendered cards independently. Frontend CI [45349696996](https://github.com/TheSumitNain/school-management-system/actions/runs/45349696996) **PASS** on `027716641cd385ca0ee6e2ddc890b6e845ea5ca3`: TypeScript, Vite production build and **111 Playwright browser tests**.
+- Backend CI [45349696946](https://github.com/TheSumitNain/school-management-system/actions/runs/45349696946) **PASS** on the same commit: full Go tests, ephemeral PostgreSQL integration suite and `go vet`.
+- The preceding frontend run [45349180670](https://github.com/TheSumitNain/school-management-system/actions/runs/45349180670) exposed a test-only strict-mode failure because a print-width assertion evaluated a locator matching both ID cards. The assertion now checks each card separately; the rerun passes. No application behavior change was needed for this correction.
+- No persistent database migration or data change. `main` remains untouched; current work stays on `work`. Existing identity-schema/product approval gates, external document/photo storage deferral, sensitive personal-field review and postponed Payroll/leave-balance policy remain in force. This verifies the currently implemented scope and does not declare all Staff Management roadmap items complete.
