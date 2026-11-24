@@ -64,7 +64,7 @@ export function StaffLeaveWorkspace({permissions,staff,canReadStaff}:Props){
  const [decisionError,setDecisionError]=useState("");
  const [cancelTarget,setCancelTarget]=useState<number|null>(null);
  const types=useStaffLeaveTypesQuery(canRead);
- const validDateRange=!fromDate||!toDate||fromDate<=toDate;
+ const validDateRange=(!fromDate&&!toDate)||(Boolean(fromDate&&toDate)&&fromDate<=toDate);
  const requests=useStaffLeaveRequestsQuery({status,staffPrincipalID:Number(filterStaffID)||undefined,fromDate:fromDate||undefined,toDate:toDate||undefined},canRead&&validDateRange);
  const range=useMemo(yearRange,[]);
  const holidays=useSchoolHolidaysQuery(range.from,range.to,canReadHolidays||canManageHolidays,canManageHolidays);
@@ -140,7 +140,7 @@ export function StaffLeaveWorkspace({permissions,staff,canReadStaff}:Props){
    <div className="staff-leave-panel staff-leave-list-panel">
     <div className="staff-leave-list-heading"><h3>Applications</h3><button type="button" className="staff-secondary-button" onClick={()=>void requests.refetch()} disabled={requests.isFetching}><RefreshCw size={14}/> Refresh</button></div>
     <div className="staff-leave-filters"><label>Status <Select value={status} onChange={setStatus} ariaLabel="Leave request status" options={statusOptions}/></label><label>Staff <Select value={filterStaffID} onChange={setFilterStaffID} ariaLabel="Filter by staff" options={filterStaffOptions}/></label><label>From date <DatePicker value={fromDate} onChange={setFromDate} ariaLabel="Leave requests from date" placeholder="Any start date"/></label><label>To date <DatePicker value={toDate} onChange={setToDate} ariaLabel="Leave requests to date" placeholder="Any end date"/></label></div>
-    {!validDateRange&&<p className="staff-leave-error" role="alert">The To date must be on or after the From date.</p>}
+    {Boolean(fromDate)!==Boolean(toDate)&&<p className="staff-leave-error" role="alert">Select both a From date and a To date to filter by date range.</p>}{fromDate&&toDate&&fromDate>toDate&&<p className="staff-leave-error" role="alert">The To date must be on or after the From date.</p>}
     {(status!=="pending"||filterStaffID!=="0"||fromDate||toDate)&&<div className="staff-leave-filter-actions"><button type="button" className="staff-secondary-button" onClick={()=>{setStatus("pending");setFilterStaffID("0");setFromDate("");setToDate("");}}>Clear filters</button></div>}
     {validDateRange&&requests.isPending&&<p role="status">Loading leave requests…</p>}
     {validDateRange&&requests.isError&&<p className="staff-leave-error" role="alert">Unable to load leave requests. <button type="button" onClick={()=>void requests.refetch()}>Try again</button></p>}
