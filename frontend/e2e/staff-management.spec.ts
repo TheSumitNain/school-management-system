@@ -2220,6 +2220,7 @@ test("leave request employee selector includes only active staff with explicitly
     { id: 4, principal_id: 584, school_id: 10, username: "leave.inactive", employee_code: "EMP-LEAVE-INACTIVE-01", full_name: "Inactive Complete Staff", designation: "Teacher", employment_status: "inactive", profile_complete: true, status: "active", must_change_password: false },
   ];
   await signInAndOpenStaff(page, rows, undefined, ["users.read", "staff.leave.read", "staff.leave.manage_requests"]);
+  await page.getByRole("button", { name: "Leave & Holidays" }).click();
 
   const workspace = page.locator(".staff-leave-workspace");
   await expect(workspace.getByRole("heading", { name: "New leave request" })).toBeVisible();
