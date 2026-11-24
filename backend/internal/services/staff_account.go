@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode"
 
 	"school-management-system/internal/models"
 )
@@ -60,8 +61,22 @@ var staffMobilePattern = regexp.MustCompile("^\\+?[0-9]{10,15}$")
 // validStaffProfileEmail mirrors the staff_profiles email CHECK constraint.
 // Count Unicode characters, matching PostgreSQL length(), rather than bytes.
 func validStaffProfileEmail(email string) bool {
-	if email == "" { return true }
-	return len([]rune(email)) >= 3 && len([]rune(email)) <= 254 && strings.Index(email, "@") > 0
+	if email == "" {
+		return true
+	}
+	characters := []rune(email)
+	if len(characters) < 6 || len(characters) > 254 || strings.Count(email, "@") != 1 {
+		return false
+	}
+	for _, character := range characters {
+		if unicode.IsSpace(character) {
+			return false
+		}
+	}
+	at := strings.IndexRune(email, '@')
+	domain := email[at+1:]
+	dot := strings.IndexRune(domain, '.')
+	return at > 0 && dot > 0 && dot < len(domain)-1
 }
 
 // CreateWithProfile creates a login account and employee profile in one repository transaction.
