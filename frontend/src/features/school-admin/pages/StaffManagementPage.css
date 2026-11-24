@@ -44,8 +44,9 @@
   background: transparent !important;
 }
 .staff-management-page .search:focus-within {
-  border-color: var(--color-border);
-  outline: none !important;
+  border-color: var(--color-focus);
+  outline: 2px solid var(--color-focus) !important;
+  outline-offset: 2px;
   box-shadow: none !important;
 }
 
