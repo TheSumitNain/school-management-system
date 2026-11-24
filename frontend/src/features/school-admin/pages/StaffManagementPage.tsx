@@ -417,7 +417,12 @@ export function StaffManagementPage({ permissions }: Props) {
       setEditingRecordID(null);
       notifyToast("success", editingRecordID !== null ? "Staff record updated." : "Staff record saved.");
     } catch (error) {
-      setRecordError(error instanceof Error ? error.message : "Unable to save this record. Your entered details are still available.");
+      if (error instanceof ApiError && Object.keys(error.fieldErrors).length > 0) {
+        setRecordFieldErrors(error.fieldErrors);
+        setRecordError("");
+      } else {
+        setRecordError(error instanceof Error ? error.message : "Unable to save this record. Your entered details are still available.");
+      }
     }
   }
   function deactivate(item: StaffRecord) { setDisableError(""); setStaffToDisable(item); }
