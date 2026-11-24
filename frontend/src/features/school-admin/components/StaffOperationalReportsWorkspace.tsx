@@ -283,16 +283,18 @@ export function StaffOperationalReportsWorkspace({ permissions }: Props) {
   const canReadAttendance = permissions.includes("staff.attendance.read");
   const canReadLeave = permissions.includes("staff.leave.read");
   const [month, setMonth] = useState(currentMonthIST);
-  const bounds = useMemo(() => monthBounds(month), [month]);
+  const validMonth = /^\\d{4}-(0[1-9]|1[0-2])$/.test(month);
+  const safeMonth = validMonth ? month : currentMonthIST();
+  const bounds = useMemo(() => monthBounds(safeMonth), [safeMonth]);
   const attendance = useQuery({
     queryKey: ["staff-operational-report", "attendance", month],
     queryFn: ({ signal }) => getMonthlyStaffAttendance(month, signal),
-    enabled: canReadAttendance,
+    enabled: canReadAttendance && validMonth,
   });
   const leave = useQuery({
     queryKey: ["staff-operational-report", "leave", month],
     queryFn: ({ signal }) => getStaffLeaveRequests({ fromDate: bounds.from, toDate: bounds.to }, signal),
-    enabled: canReadLeave,
+    enabled: canReadLeave && validMonth,
   });
 
   return <section className="staff-operational-reports">
@@ -300,6 +302,7 @@ export function StaffOperationalReportsWorkspace({ permissions }: Props) {
       <div><h2>Attendance & leave reports</h2><p>Monthly operational records, loaded only when the viewer has the matching read permission.</p></div>
       <label>Report month<input type="month" value={month} onChange={event => setMonth(event.target.value)} aria-label="Select attendance and leave report month"/></label>
     </div>}
+    {(canReadAttendance || canReadLeave) && !validMonth && <p className="staff-operational-report-error" role="alert">Select a valid report month to load attendance and leave records.</p>}
     {!canReadAttendance && !canReadLeave && <p className="staff-operational-report-denied" role="status">Attendance and leave reports are hidden because you do not have their read permissions.</p>}
     {(permissions.includes("teacher_assignments.read") || permissions.includes("class_incharge_assignments.read")) && <div className="staff-operational-report-panel"><AssignmentReport permissions={permissions}/></div>}
     {permissions.includes("users.read") && <div className="staff-operational-report-panel"><QualificationsReport permissions={permissions}/></div>}
