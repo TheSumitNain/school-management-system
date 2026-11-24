@@ -346,7 +346,7 @@ func TestStaffRecordsServiceReturnsAllExperienceFieldValidationErrors(t *testing
 			svc := NewStaffRecordsService(repo)
 			item := repository.StaffExperience{
 				EmployerName: "", Designation: "", EmploymentType: "unknown",
-				StartDate: "2026-02-30", EndDate: "2025-01-01",
+				StartDate: "2026-02-30", EndDate: "2025-02-30",
 			}
 			var err error
 			if update {
