@@ -79,6 +79,7 @@ export function StaffWorkloadReportWorkspace({permissions}:Props){
         <button type="button" className="staff-workload-report-refresh" onClick={()=>void (year?.id?reportQuery.refetch():yearQuery.refetch())} disabled={reportQuery.isFetching||yearQuery.isFetching}><RefreshCw size={14}/> Refresh</button>
       </div>
     </header>
+    {year&&<>
     <div className="staff-workload-report-summary">
       <article><span>Staff profiles</span><strong>{groups.length}</strong></article>
       <article><span>Teachers with scheduled lessons</span><strong>{scheduledTeachers}</strong></article>
@@ -113,5 +114,6 @@ export function StaffWorkloadReportWorkspace({permissions}:Props){
       </details>)}
     </div>
     <p className="staff-workload-report-note">This report counts recurring scheduled lessons only. It does not infer working days, free-period availability or workload limits, and it excludes approved leave and dated substitute coverage.</p>
+    </>}
   </section>;
 }
