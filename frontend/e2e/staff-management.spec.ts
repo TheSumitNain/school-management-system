@@ -2663,7 +2663,7 @@ test("workload report explains missing current academic year without requesting 
   });
   await page.locator(".staff-workspace-tabs").getByRole("button", { name: "Workload Report" }).click();
   await expect(page.getByRole("heading", { name: "School-wide Workload Report" })).toBeVisible();
-  await expect(page.getByRole("status")).toContainText("No current academic year is configured");
+  await expect(page.locator(".staff-workload-report-empty")).toContainText("No current academic year is configured");
   await expect.poll(() => workloadRequests).toBe(0);
   await page.getByRole("button", { name: "Refresh" }).click();
   await expect.poll(() => workloadRequests).toBe(0);
