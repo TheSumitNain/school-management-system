@@ -873,6 +873,7 @@ test("staff profile edit uses the shared employment-status select and sends the 
     employment_status: "active", profile_complete: true, status: "active",
     must_change_password: false, created_at: "2026-04-01T00:00:00.000Z",
   }];
+  await page.emulateTimezone("America/Los_Angeles");
   await signInAndOpenStaff(page, rows, async (_path, route) => {
     updates.push(route.request().postDataJSON() as Record<string, unknown>);
     await route.fulfill({ json: { staff: { ...rows[0], ...(updates[0] ?? {}) }, message: "Updated" } });
