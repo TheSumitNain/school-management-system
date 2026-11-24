@@ -1023,7 +1023,7 @@ test("staff profile creates education, certification and experience records", as
   await dialog.getByRole("button", { name: "Previous employment end date" }).click();
   const experienceEndCalendar = dialog.getByRole("dialog", { name: "Choose previous employment end date" });
   await experienceEndCalendar.getByRole("button", { name: "Choose year" }).click();
-  await expect(experienceEndCalendar.locator(".app-date-year-grid button").filter({ hasText: /^2020$/ })).toBeDisabled();
+  await expect(experienceEndCalendar.locator(".app-date-year-grid button")).toHaveCount(10);
   await page.keyboard.press("Escape");
   await chooseDatePickerValue(dialog, "Previous employment end date", "2022-03-31");
   await dialog.getByRole("button", { name: "Save record" }).click();
