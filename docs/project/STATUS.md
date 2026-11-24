@@ -2408,3 +2408,10 @@ This update supersedes older status bullets that listed the following database-b
 - Staff list query execution, cached staff records and directory error messages are now gated by live `users.read` permission. Substitution management tab visibility also requires staff-list access unless the user has substitution read permission.
 - Frontend CI [45319733688](https://github.com/TheSumitNain/school-management-system/actions/runs/45319733688) **PASS** (TypeScript, design-token check, Vite production build and 95 Playwright tests). Backend CI [45319733387](https://github.com/TheSumitNain/school-management-system/actions/runs/45319733387) **PASS** (ephemeral PostgreSQL migrations, Go/PostgreSQL integration tests and `go vet`).
 - No persistent database changes. `main` remains untouched; identity-schema/Bulk Import approval gates and the go-live document/photo deferral remain unchanged.
+
+
+## 2026-11-24 — Staff report date and CSV download hardening
+
+- Standardized Staff Attendance CSV object-URL cleanup to preserve the browser download handoff, and replaced the operational report's hard-coded month fallback with the shared IST school-date helper.
+- Frontend CI [45320435562](https://github.com/TheSumitNain/school-management-system/actions/runs/45320435562) **PASS** (TypeScript, design-token check, production build and 95 Playwright tests). Backend CI [45320435534](https://github.com/TheSumitNain/school-management-system/actions/runs/45320435534) **PASS** (ephemeral PostgreSQL migrations, Go/PostgreSQL integration and `go vet`).
+- No persistent database changes; `main` remains untouched.
