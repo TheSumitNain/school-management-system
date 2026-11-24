@@ -602,7 +602,7 @@ test("staff creation uses the shared IST date picker and clears the credential h
 
   await expect(page.getByRole("heading", { name: "Staff Management" })).toBeVisible();
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await expect(page.getByRole("textbox", { name: "Search staff by name, code, designation or username" })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Search staff by name, code, designation, mobile or username" })).toBeVisible();
   await page.getByRole("button", { name: "Add staff" }).click();
   const dialog = page.getByRole("dialog", { name: "Add employee" });
   await dialog.getByLabel("Full name").fill("Teacher One");
@@ -1983,7 +1983,7 @@ test("staff directory CSV export is filtered, UTF-8 compatible and safe from spr
   ];
   await signInAndOpenStaff(page, rows, undefined, ["users.read"]);
   await page.getByRole("button", { name: "Staff Directory", exact: true }).click();
-  await page.getByLabel("Search staff by name, code, designation or username").fill("HYPERLINK");
+  await page.getByLabel("Search staff by name, code, designation, mobile or username").fill("HYPERLINK");
   await expect(page.getByText("Filtered Out Teacher")).toHaveCount(0);
 
   const exportButton = page.getByRole("button", { name: /Export CSV/ });
