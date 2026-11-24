@@ -1743,6 +1743,14 @@ test("staff workload requests only the selected teacher timetable and explains u
   await expect(dialog.locator(".staff-workload-table")).toBeVisible();
   await expect(dialog.getByText("Unscheduled", { exact: true }).first()).toBeVisible();
   await expect(dialog.getByText(/do not confirm teacher availability/)).toBeVisible();
+  await page.getByLabel("Search workload report staff").fill("Original");
+  await expect(page.getByText("Inactive Teacher")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Clear filters" })).toBeVisible();
+  await page.getByRole("button", { name: "Clear filters" }).click();
+  await expect(page.getByLabel("Search workload report staff")).toHaveValue("");
+  await expect(page.getByLabel("Filter workload report by employment status")).toHaveValue("all");
+  await expect(page.getByText("Inactive Teacher")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Clear filters" })).toHaveCount(0);
   for (const viewport of [{ width: 390, height: 844 }, { width: 768, height: 900 }, { width: 1280, height: 900 }]) {
     await page.setViewportSize(viewport);
     await expect(dialog.getByRole("heading", { name: "Teaching workload" })).toBeVisible();
