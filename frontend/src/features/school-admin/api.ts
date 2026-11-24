@@ -26,7 +26,7 @@ export function getSchoolStaff(signal?: AbortSignal) {
 export function createSchoolStaff(input: { username: string; initial_password: string } & { employee_code: string; full_name: string; designation: string; mobile_number: string; email?: string; joining_date?: string; employment_status?: "active" | "inactive" }) {
   return api<{ staff: StaffRecord }>("/school/staff", { method: "POST", body: JSON.stringify(input) });
 }
-export function updateSchoolStaff(principalID: number, input: { username: string } & { employee_code: string; full_name: string; designation: string; mobile_number: string; email?: string; joining_date?: string; employment_status?: "active" | "inactive" }) {
+export function updateSchoolStaff(principalID: number, input: { username: string } & { employee_code: string; full_name: string; designation: string; mobile_number: string; email?: string; joining_date?: string; employment_status: "active" | "inactive" }) {
   return api<{ staff: StaffRecord; message: string }>(`/school/staff/${principalID}`, { method: "PATCH", body: JSON.stringify(input) });
 }
 export function disableSchoolStaff(principalID: number) {
