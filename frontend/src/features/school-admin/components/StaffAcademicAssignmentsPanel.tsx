@@ -6,7 +6,7 @@ type Props = { staff: StaffRecord; permissions: string[]; onOpenWorkspace: () =>
 function formatDate(value?: string | null) {
   if (!value) return "Date not recorded";
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "Date not recorded" : new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(date);
+  return Number.isNaN(date.getTime()) ? "Date not recorded" : new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeZone: "Asia/Kolkata" }).format(date);
 }
 
 export function StaffAcademicAssignmentsPanel({ staff, permissions, onOpenWorkspace }: Props) {
