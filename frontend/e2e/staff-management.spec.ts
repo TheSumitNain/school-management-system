@@ -536,6 +536,40 @@ test("staff leave request date filters are sent to the API and can be cleared to
   await expect(page.getByRole("button", { name: "Clear filters" })).toHaveCount(0);
 });
 
+test("staff leave date filter errors are field-specific and invalid ranges do not fetch", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 501, school_id: 10, username: "leave.filter.validation",
+    employee_code: "EMP-LEAVE-FILTER-01", full_name: "Filter Validation Teacher", designation: "Teacher",
+    employment_status: "active", profile_complete: true, status: "active", must_change_password: false,
+  }];
+  let requestCount = 0;
+  page.on("request", request => {
+    const url = new URL(request.url());
+    if (request.method() === "GET" && url.pathname.endsWith("/school/staff-leave/requests")) requestCount += 1;
+  });
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "staff.leave.read"]);
+  await page.getByRole("button", { name: "Leave & Holidays" }).click();
+  await expect.poll(() => requestCount).toBeGreaterThan(0);
+  await page.waitForLoadState("networkidle");
+  const initialRequestCount = requestCount;
+
+  const today = schoolDateOffset(0);
+  const tomorrow = schoolDateOffset(1);
+  await page.getByLabel("Leave requests to date").click();
+  await page.getByRole("dialog", { name: "Choose leave requests to date" }).getByRole("button", { name: schoolDateLabel(today) }).click();
+  await expect(page.getByLabel("Leave requests from date")).toHaveAttribute("aria-invalid", "true");
+  await expect(page.getByLabel("Leave requests from date")).toHaveAttribute("aria-describedby", "leave-filter-from-date-error");
+  await expect(page.getByText("Select both a From date and a To date to filter by date range.")).toBeVisible();
+
+  await page.getByLabel("Leave requests from date").click();
+  await page.getByRole("dialog", { name: "Choose leave requests from date" }).getByRole("button", { name: schoolDateLabel(tomorrow) }).click();
+  await expect(page.getByLabel("Leave requests to date")).toHaveAttribute("aria-invalid", "true");
+  await expect(page.getByLabel("Leave requests to date")).toHaveAttribute("aria-describedby", "leave-filter-to-date-error");
+  await expect(page.getByText("The To date must be on or after the From date.")).toBeVisible();
+  await page.waitForLoadState("networkidle");
+  expect(requestCount).toBe(initialRequestCount);
+});
+
 test("staff leave types can be edited and safely deactivated", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 501, school_id: 10, username: "leave.teacher",
