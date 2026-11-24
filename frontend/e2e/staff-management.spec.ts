@@ -15,6 +15,37 @@ function schoolDateLabel(date: Date) {
   });
 }
 
+async function chooseDatePickerValue(page: Page, ariaLabel: string, value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  await page.getByRole("button", { name: ariaLabel }).click();
+  const calendar = page.getByRole("dialog", { name: `Choose ${ariaLabel.toLowerCase()}` });
+  await calendar.getByRole("button", { name: "Choose year" }).click();
+  while (true) {
+    const range = await calendar.locator(".app-date-header strong").innerText();
+    const [first, last] = range.split("–").map(Number);
+    if (year < first) await calendar.getByRole("button", { name: "Previous decade" }).click();
+    else if (year > last) await calendar.getByRole("button", { name: "Next decade" }).click();
+    else break;
+  }
+  await calendar.locator(".app-date-year-grid button").filter({ hasText: new RegExp(`^${year}import { readFile } from "node:fs/promises";
+import { expect, test, type Page, type Route } from "@playwright/test";
+import { schoolDateValue } from "../src/shared/date/schoolDate";
+
+function schoolDateOffset(days: number) {
+  const [year, month, day] = schoolDateValue().split("-").map(Number);
+  const date = new Date(year, month - 1, day, 12);
+  date.setDate(date.getDate() + days);
+  return date;
+}
+
+) }).click();
+  await calendar.getByRole("button", { name: "Choose month" }).click();
+  const monthDate = new Date(year, month - 1, 1, 12);
+  await calendar.locator(".app-date-month-grid button").filter({ hasText: monthDate.toLocaleDateString(undefined, { month: "short" }) }).click();
+  const selectedDate = new Date(year, month - 1, day, 12);
+  await calendar.getByRole("button", { name: schoolDateLabel(selectedDate) }).click();
+}
+
 const staffUser = {
   principal_id: 101,
   principal_type: "staff",
@@ -947,11 +978,13 @@ test("staff profile creates education, certification and experience records", as
   await dialog.getByRole("button", { name: "Add certification" }).click();
   await dialog.locator('input[name="certificate_name"]').fill("Teacher Training");
   await dialog.locator('input[name="issuing_organization"]').fill("State Board");
-  await dialog.locator('input[name="issue_date"]').fill("2022-05-01");
-  await dialog.locator('input[name="expiry_date"]').fill("2021-05-01");
-  await dialog.getByRole("button", { name: "Save record" }).click();
-  await expect(dialog.getByText("Expiry date cannot be before the issue date.")).toBeVisible();
-  await dialog.locator('input[name="expiry_date"]').fill("2027-05-01");
+  await chooseDatePickerValue(dialog, "Certification issue date", "2022-05-01");
+  await dialog.getByRole("button", { name: "Certification expiry date" }).click();
+  const expiryCalendar = dialog.getByRole("dialog", { name: "Choose certification expiry date" });
+  await expiryCalendar.getByRole("button", { name: "Choose year" }).click();
+  await expect(expiryCalendar.locator(".app-date-year-grid button").filter({ hasText: /^2021$/ })).toBeDisabled();
+  await expiryCalendar.getByRole("button", { name: "Escape" }).press("Escape").catch(() => {});
+  await chooseDatePickerValue(dialog, "Certification expiry date", "2027-05-01");
   await dialog.getByRole("button", { name: "Save record" }).click();
   await expect(dialog.getByText("Teacher Training")).toBeVisible();
   const certificationCard = dialog.locator(".staff-record-card").filter({ hasText: "Teacher Training" });
@@ -963,11 +996,13 @@ test("staff profile creates education, certification and experience records", as
   await dialog.getByRole("button", { name: "Add experience" }).click();
   await dialog.locator('input[name="employer_name"]').fill("Previous School");
   await dialog.locator('input[name="record_designation"]').fill("Science Teacher");
-  await dialog.locator('input[name="start_date"]').fill("2018-04-01");
-  await dialog.locator('input[name="end_date"]').fill("2017-03-31");
-  await dialog.getByRole("button", { name: "Save record" }).click();
-  await expect(dialog.getByText("End date must be on or after the start date.")).toBeVisible();
-  await dialog.locator('input[name="end_date"]').fill("2021-03-31");
+  await chooseDatePickerValue(dialog, "Previous employment start date", "2018-04-01");
+  await dialog.getByRole("button", { name: "Previous employment end date" }).click();
+  const experienceEndCalendar = dialog.getByRole("dialog", { name: "Choose previous employment end date" });
+  await experienceEndCalendar.getByRole("button", { name: "Choose year" }).click();
+  await expect(experienceEndCalendar.locator(".app-date-year-grid button").filter({ hasText: /^2017$/ })).toBeDisabled();
+  await page.keyboard.press("Escape");
+  await chooseDatePickerValue(dialog, "Previous employment end date", "2021-03-31");
   await dialog.getByRole("button", { name: "Save record" }).click();
   await expect(dialog.getByText("Previous School")).toBeVisible();
   const experienceCard = dialog.locator(".staff-record-card").filter({ hasText: "Previous School" });
