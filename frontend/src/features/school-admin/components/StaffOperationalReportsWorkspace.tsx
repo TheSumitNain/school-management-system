@@ -169,7 +169,7 @@ function AssignmentReport({ permissions }: Props) {
   return <section className="staff-operational-report-section">
     <div className="staff-operational-report-title">
       <div><h3>Academic assignments</h3><p>{yearQuery.data?.academic_year.name ?? "Current academic year"} · Active assignments only</p></div>
-      <button type="button" className="staff-operational-report-export" onClick={() => assignmentCSV(rows, yearQuery.data?.academic_year.name ?? "Current academic year", canReadSubjects, canReadIncharges)} disabled={isLoading || isError || rows.length === 0}><Download size={14}/> Export assignments CSV</button>
+      <button type="button" className="staff-operational-report-export" onClick={() => assignmentCSV(rows, yearQuery.data?.academic_year.name ?? "Current academic year", canReadSubjects, canReadIncharges)} disabled={!year || isLoading || isError || rows.length === 0}><Download size={14}/> Export assignments CSV</button>
     </div>
     {year&&<div className="staff-operational-report-metrics">
       <article><span>Assigned teachers</span><strong>{rows.length}</strong></article>
@@ -181,7 +181,7 @@ function AssignmentReport({ permissions }: Props) {
     {isLoading && <p role="status">Loading academic assignment report…</p>}
     {isError && <p className="staff-operational-report-error" role="alert">Academic assignments could not be loaded. <button type="button" onClick={retry}>Retry</button></p>}
     {year && !isLoading && !isError && rows.length === 0 && <p className="staff-operational-report-empty">No active academic assignments were found for this academic year.</p>}
-    {!isLoading && !isError && rows.length > 0 && <div className="staff-operational-report-table-wrap"><table><thead><tr><th>Staff username</th>{canReadSubjects && <th>Subject assignments</th>}{canReadIncharges && <th>Class-in-charge</th>}<th>Classes / sections</th>{canReadSubjects && <th>Distinct subjects</th>}</tr></thead><tbody>
+    {year && !isLoading && !isError && rows.length > 0 && <div className="staff-operational-report-table-wrap"><table><thead><tr><th>Staff username</th>{canReadSubjects && <th>Subject assignments</th>}{canReadIncharges && <th>Class-in-charge</th>}<th>Classes / sections</th>{canReadSubjects && <th>Distinct subjects</th>}</tr></thead><tbody>
       {rows.map(row => <tr key={row.principalID}><td>{row.username}</td>{canReadSubjects && <td>{row.subjectAssignments.length}</td>}{canReadIncharges && <td>{row.classInchargeAssignments.length}</td>}<td>{new Set([...row.subjectAssignments.map(item => item.section_id), ...row.classInchargeAssignments.map(item => item.section_id)]).size}</td>{canReadSubjects && <td>{new Set(row.subjectAssignments.map(item => item.subject_id)).size}</td>}</tr>)}
     </tbody></table></div>}
   </section>;
