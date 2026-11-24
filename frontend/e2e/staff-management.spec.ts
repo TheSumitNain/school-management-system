@@ -3105,14 +3105,17 @@ test("staff profile history never flashes the previous employee's audit events w
     { id: 1, principal_id: 521, school_id: 10, username: "teacher.audit.first", employee_code: "EMP-AUD-01", full_name: "Audit First", designation: "Teacher", mobile_number: "9876543221", employment_status: "active", profile_complete: true, status: "active", must_change_password: false },
     { id: 2, principal_id: 522, school_id: 10, username: "teacher.audit.second", employee_code: "EMP-AUD-02", full_name: "Audit Second", designation: "Teacher", mobile_number: "9876543222", employment_status: "active", profile_complete: true, status: "active", must_change_password: false },
   ];
+  let auditRequests = 0;
   await signInAndOpenStaff(page, rows, undefined, ["users.read", "school.audit.read"]);
   await page.route("**/api/school/staff/521/audit-events", async route => {
+    auditRequests += 1;
     await route.fulfill({ json: { events: [
       { id: 1, action: "staff.profile.updated", resource_type: "staff_user", outcome: "success", actor_username: "school.admin", metadata: {}, created_at: "2026-11-22T10:00:00.000Z" },
       { id: 2, action: "staff.account.created", resource_type: "staff_user", outcome: "success", actor_username: "school.admin", metadata: {}, created_at: "2026-11-22T09:00:00.000Z" },
     ] } });
   });
   await page.route("**/api/school/staff/522/audit-events", async route => {
+    auditRequests += 1;
     await new Promise(resolve => setTimeout(resolve, 400));
     await route.fulfill({ json: { events: [
       { id: 3, action: "staff.leave.approved", resource_type: "staff_leave_request", outcome: "success", actor_username: "school.admin", metadata: {}, created_at: "2026-11-22T11:00:00.000Z" },
@@ -3156,6 +3159,8 @@ test("closing and reopening the same staff profile reloads audit history instead
   let dialog = page.getByRole("dialog", { name: "Audit Reopen" });
   await dialog.getByRole("button", { name: "History & Activity" }).click();
   await expect(dialog.getByText("Profile updated")).toBeVisible();
+  const firstAuditReadCount = auditRequests;
+  expect(firstAuditReadCount).toBeGreaterThan(0);
   await page.keyboard.press("Escape");
 
   await page.getByRole("button", { name: "Audit Reopen" }).click();
