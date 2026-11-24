@@ -60,6 +60,10 @@ async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, un
       await route.fulfill({ json: { staff: staffRows } });
       return;
     }
+    if (path === "/school/staff-attendance" && method === "GET") {
+      await route.fulfill({ json: { date: url.searchParams.get("date") ?? schoolDateValue(), data: [] } });
+      return;
+    }
     if (path === "/school/staff-attendance/month" && method === "GET") {
       await route.fulfill({ json: { month: url.searchParams.get("month"), data: [{ staff_principal_id: 501, employee_code: "EMP-ACTIVE", full_name: "Active Teacher", designation: "Mathematics Teacher", present_days: 18, absent_days: 1, late_days: 2, half_days: 0, records: [] }] } });
       return;
