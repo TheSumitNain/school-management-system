@@ -198,3 +198,24 @@ func TestStaffLeaveListRequestsRejectsInvalidStaffPrincipalIDBeforeService(t *te
 		})
 	}
 }
+
+func TestStaffLeaveListRequestsTreatsBlankStaffPrincipalFilterAsUnfiltered(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	service := &captureStaffLeaveListService{}
+	handler := NewStaffLeaveHandler(service)
+	router := gin.New()
+	router.GET("/staff/requests", func(c *gin.Context) {
+		c.Set(middleware.ContextPrincipalIDKey, int64(100))
+		c.Set(middleware.ContextSchoolIDKey, int64(10))
+		c.Next()
+	}, handler.ListRequests)
+
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/staff/requests?staff_principal_id=%20%20", nil))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status=%d want=%d body=%s", recorder.Code, http.StatusOK, recorder.Body.String())
+	}
+	if !service.called || service.staffID != 0 {
+		t.Fatalf("blank staff filter should mean all staff: called=%v staffID=%d", service.called, service.staffID)
+	}
+}
