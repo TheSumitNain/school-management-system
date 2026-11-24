@@ -82,7 +82,7 @@ func validateQualificationFields(item repository.StaffQualification) map[string]
 	if !validRecordText(item.Institution,200){add("institution","Enter an institution of 200 characters or fewer.")}
 	if len([]rune(item.Specialization))>160{add("specialization","Specialization must be 160 characters or fewer.")}
 	if len([]rune(item.BoardUniversity))>200{add("board_university","Board / University must be 200 characters or fewer.")}
-	if len(item.CredentialReference)>120{add("credential_reference","Credential reference must be 120 characters or fewer.")}
+	if len([]rune(item.CredentialReference))>120{add("credential_reference","Credential reference must be 120 characters or fewer.")}
 	if item.CompletionYear!=nil&&(*item.CompletionYear<1900||*item.CompletionYear>2200){add("completion_year","Completion year must be between 1900 and 2200.")}
 	if field:=qualificationScoreValidationField(item.Score,item.ScoreScale);field!=""{if field=="score_scale"{add(field,"Choose a valid score scale when a score is entered.")}else{add(field,"Enter a valid score.")}}
 	return errs
@@ -91,7 +91,7 @@ func validateCertificationFields(item repository.StaffCertification) map[string]
 	errs:=map[string]string{};add:=func(f,m string){errs[f]=m}
 	if !validRecordText(item.CertificateName,180){add("certificate_name","Enter a certificate name of 180 characters or fewer.")}
 	if !validRecordText(item.IssuingOrganization,200){add("issuing_organization","Enter an issuing organization of 200 characters or fewer.")}
-	if len(item.CredentialID)>120{add("credential_id","Credential ID must be 120 characters or fewer.")}
+	if len([]rune(item.CredentialID))>120{add("credential_id","Credential ID must be 120 characters or fewer.")}
 	var issue,expiry time.Time
 	hasIssue,hasExpiry:=item.IssueDate!="",item.ExpiryDate!=""
 	issueOK,expiryOK:=false,false

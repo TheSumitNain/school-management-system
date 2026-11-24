@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 	"math"
+	"strings"
 
 	"school-management-system/internal/repository"
 )
@@ -362,5 +363,47 @@ func TestStaffRecordsServiceReturnsAllExperienceFieldValidationErrors(t *testing
 			if len(validation.FieldErrors) != 5 { t.Fatalf("got %d errors, want 5: %+v", len(validation.FieldErrors), validation.FieldErrors) }
 			if repo.calls != 0 { t.Fatalf("invalid experience reached repository %d times", repo.calls) }
 		})
+	}
+}
+
+
+func TestStaffRecordCredentialReferenceLimitsCountUnicodeCharacters(t *testing.T) {
+	valid := strings.Repeat("界", 120)
+	invalid := strings.Repeat("界", 121)
+	for _, update := range []bool{false, true} {
+		for _, value := range []struct{name, reference string; wantErr bool}{
+			{name: "120 characters accepted", reference: valid},
+			{name: "121 characters rejected", reference: invalid, wantErr: true},
+		} {
+			t.Run(map[bool]string{false:"create/", true:"update/"}[update]+value.name, func(t *testing.T) {
+				repo := &fakeStaffRecordsRepository{}
+				svc := NewStaffRecordsService(repo)
+				item := repository.StaffQualification{QualificationType:"undergraduate", QualificationName:"B.Sc.", Institution:"University", CredentialReference:value.reference}
+				var err error
+				if update { _, err = svc.UpdateQualification(context.Background(), 1, 2, 3, 4, item) } else { _, err = svc.CreateQualification(context.Background(), 1, 2, 3, item) }
+				if value.wantErr {
+					var validation *StaffRecordFieldValidationError
+					if !errors.As(err, &validation) || validation.FieldErrors["credential_reference"] == "" { t.Fatalf("error=%v want credential_reference validation", err) }
+					if repo.calls != 0 { t.Fatalf("invalid qualification reached repository %d times", repo.calls) }
+				} else if err != nil || repo.calls != 1 { t.Fatalf("valid Unicode credential reference: error=%v calls=%d", err, repo.calls) }
+			})
+		}
+		for _, value := range []struct{name, id string; wantErr bool}{
+			{name:"120 characters accepted", id:valid},
+			{name:"121 characters rejected", id:invalid, wantErr:true},
+		} {
+			t.Run(map[bool]string{false:"certification-create/", true:"certification-update/"}[update]+value.name, func(t *testing.T) {
+				repo := &fakeStaffRecordsRepository{}
+				svc := NewStaffRecordsService(repo)
+				item := repository.StaffCertification{CertificateName:"Training", IssuingOrganization:"Board", CredentialID:value.id}
+				var err error
+				if update { _, err = svc.UpdateCertification(context.Background(), 1, 2, 3, 4, item) } else { _, err = svc.CreateCertification(context.Background(), 1, 2, 3, item) }
+				if value.wantErr {
+					var validation *StaffRecordFieldValidationError
+					if !errors.As(err, &validation) || validation.FieldErrors["credential_id"] == "" { t.Fatalf("error=%v want credential_id validation", err) }
+					if repo.calls != 0 { t.Fatalf("invalid certification reached repository %d times", repo.calls) }
+				} else if err != nil || repo.calls != 1 { t.Fatalf("valid Unicode credential ID: error=%v calls=%d", err, repo.calls) }
+			})
+		}
 	}
 }
