@@ -129,7 +129,8 @@ function AssignmentReport({ permissions }: Props) {
   const canReadSubjects = permissions.includes("teacher_assignments.read");
   const canReadIncharges = permissions.includes("class_incharge_assignments.read");
   const yearQuery = useStaffSubstitutionTimetableYearQuery(canReadSubjects || canReadIncharges);
-  const yearID = yearQuery.data?.academic_year.id ?? 0;
+  const year = yearQuery.data?.academic_year;
+  const yearID = year?.id ?? 0;
   const subjects = useQuery({
     queryKey: ["staff-operational-report", "subject-assignments", yearID],
     queryFn: ({ signal }) => getTeacherSubjectAssignments({ academicYearID: yearID }, signal),
@@ -170,12 +171,13 @@ function AssignmentReport({ permissions }: Props) {
       <div><h3>Academic assignments</h3><p>{yearQuery.data?.academic_year.name ?? "Current academic year"} · Active assignments only</p></div>
       <button type="button" className="staff-operational-report-export" onClick={() => assignmentCSV(rows, yearQuery.data?.academic_year.name ?? "Current academic year", canReadSubjects, canReadIncharges)} disabled={isLoading || isError || rows.length === 0}><Download size={14}/> Export assignments CSV</button>
     </div>
-    <div className="staff-operational-report-metrics">
+    {year&&<div className="staff-operational-report-metrics">
       <article><span>Assigned teachers</span><strong>{rows.length}</strong></article>
       {canReadSubjects && <article><span>Subject assignments</span><strong>{totalSubjects}</strong></article>}
       {canReadIncharges && <article><span>Class-in-charge assignments</span><strong>{totalIncharges}</strong></article>}
       <article><span>Academic year</span><strong className="staff-operational-report-year">{yearQuery.data?.academic_year.name ?? "—"}</strong></article>
-    </div>
+    </div>}
+    {yearQuery.isSuccess&&!year&&<p className="staff-operational-report-empty">No current academic year is configured. Set a current academic year before viewing academic assignments.</p>}
     {isLoading && <p role="status">Loading academic assignment report…</p>}
     {isError && <p className="staff-operational-report-error" role="alert">Academic assignments could not be loaded. <button type="button" onClick={retry}>Retry</button></p>}
     {!isLoading && !isError && rows.length === 0 && <p className="staff-operational-report-empty">No active academic assignments were found for this academic year.</p>}
