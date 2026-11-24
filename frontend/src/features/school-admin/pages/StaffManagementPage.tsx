@@ -597,7 +597,7 @@ export function StaffManagementPage({ permissions }: Props) {
         </section>}
         {profileTab === "Documents" && <section className="staff-profile-placeholder"><h3>Staff documents</h3><p>Document upload is not enabled yet. It will be added only with private file storage, staff-scoped access checks and secure download authorization.</p></section>}
         {profileTab === "Workload & Timetable" && permissions.includes("timetable.read") && <StaffWorkloadPanel staff={profileFor}/>} 
-        {profileTab === "Academic Assignments" && <StaffAcademicAssignmentsPanel staff={profileFor} permissions={permissions} onOpenWorkspace={() => {setProfileFor(null);setActiveTab("assignments");}}/>}
+        {profileTab === "Academic Assignments" && <StaffAcademicAssignmentsPanel key={profileFor.principal_id} staff={profileFor} permissions={permissions} onOpenWorkspace={() => {setProfileFor(null);setActiveTab("assignments");}}/>}
         {profileTab === "Account & Access" && <section className="staff-profile-access">{canReadRoles ? <StaffRoleAssignments staff={profileFor} canAssign={canAssignRoles}/> : <p>You do not have permission to view role assignments.</p>}{canManageOverrides ? <StaffPermissionOverrides staff={profileFor}/> : <p>You do not have permission to manage individual permission overrides.</p>}<p className="staff-wizard-note">Login identity, role grants and individual overrides remain separate from employee profile details.</p></section>}
         {profileTab === "History & Activity" && <StaffHistoryActivityPanel staff={profileFor} permissions={permissions}/>}
       </Modal>}
