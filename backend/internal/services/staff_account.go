@@ -58,8 +58,6 @@ func (s *StaffAccountService) Create(
 var staffEmployeeCodePattern = regexp.MustCompile("^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$")
 var staffMobilePattern = regexp.MustCompile("^\\+?[0-9]{10,15}$")
 
-// validStaffProfileEmail enforces the application email format and is stricter than the database storage constraint.
-// Count Unicode characters, matching PostgreSQL length(), rather than bytes.
 // validStaffJoiningDate compares date-only values in the system-wide school timezone.
 func validStaffJoiningDate(joiningDate *time.Time, now time.Time) bool {
 	if joiningDate == nil {
@@ -84,7 +82,7 @@ func validStaffJoiningDate(joiningDate *time.Time, now time.Time) bool {
 	return !dateOnly.After(latestAllowed)
 }
 
-func validStaffProfileEmail(email string) bool {
+// validStaffProfileEmail enforces the application email format and is stricter than the database storage constraint.\n// Count Unicode characters, matching PostgreSQL length(), rather than bytes.\nfunc validStaffProfileEmail(email string) bool {
 	if email == "" {
 		return true
 	}
