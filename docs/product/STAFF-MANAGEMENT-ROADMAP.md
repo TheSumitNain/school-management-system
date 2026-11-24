@@ -4,6 +4,8 @@
 **Scope:** Phase 1 School Admin web workspace, with Teacher self-service as a separate future experience.  
 **Last updated:** 2026-11-24
 
+**Latest consolidated verification (2026-11-24):** Frontend CI [45349696996](https://github.com/TheSumitNain/school-management-system/actions/runs/45349696996) **PASS** on `027716641cd385ca0ee6e2ddc890b6e845ea5ca3` with TypeScript, production build and **111 Playwright tests**; Backend CI [45349696946](https://github.com/TheSumitNain/school-management-system/actions/runs/45349696946) **PASS** on the same code checkpoint with full Go tests, ephemeral PostgreSQL integration and `go vet`. This verifies the implemented scope only; Phase 4 and Phase 6 remain partial for their separately documented policy/schema approval gates.
+
 This document defines what Staff Management will build, in what order, the screens/tabs and forms users will see, each field's required/optional status, the key workflows, security boundaries and acceptance criteria. It is a roadmap, not evidence that a feature is implemented. Check [Project Status](../project/STATUS.md) before each phase and verify existing code before changing it.
 
 ## 1. Product decisions and goals
