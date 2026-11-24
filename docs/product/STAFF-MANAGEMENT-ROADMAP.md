@@ -784,3 +784,11 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Added PostgreSQL integration fixtures and assertions for both permission-override set and remove events. The change contains no schema migration or persistent database change.
 - Backend CI [45384692873](https://github.com/TheSumitNain/school-management-system/actions/runs/45384692873) **PASS** on `9d77be79745e99787b885c9736b3db778ec72813` (full Go tests, PostgreSQL integration and `go vet`). The previously completed frontend CI [45383871353](https://github.com/TheSumitNain/school-management-system/actions/runs/45383871353) **PASS** on `66af8c6adb08d6937f1abf13d50f1d7e9a7f3e14`; this backend-only change does not alter frontend code.
 - Phase 4 leave-policy approval and Phase 6 identity-schema approval remain open. No persistent database or application data was changed.
+
+
+## 2026-11-24 implementation checkpoint — staff record Unicode length parity
+
+- Staff qualification, certification and employment-history text validation now counts Unicode code points consistently across Go service validation and frontend local validation. Browser input limits allow supplementary-plane characters up to the backend's equivalent character limit rather than truncating emoji/supplementary Unicode by UTF-16 code units.
+- Backend regression tests cover 120/121 Unicode-character credential references and certification IDs on create/update, with invalid records rejected before repository writes. Frontend browser acceptance exercises 120-character Unicode credential values.
+- Backend CI [45392293745](https://github.com/TheSumitNain/school-management-system/actions/runs/45392293745) **PASS**: migrations, full Go/PostgreSQL integration tests and `go vet`. Frontend CI [45392293732](https://github.com/TheSumitNain/school-management-system/actions/runs/45392293732) **PASS**: TypeScript/design-token checks, Vite production build and Playwright browser acceptance suite.
+- No schema migration or persistent database/application-data change. Phase 4 leave-policy approval, Phase 6 identity-schema approval, and the previously agreed external document-storage deferral remain open; `main` remains untouched.
