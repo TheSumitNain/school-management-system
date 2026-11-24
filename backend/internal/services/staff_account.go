@@ -65,7 +65,7 @@ func validStaffProfileEmail(email string) bool {
 		return true
 	}
 	characters := []rune(email)
-	if len(characters) < 6 || len(characters) > 254 || strings.Count(email, "@") != 1 {
+	if len(characters) < 5 || len(characters) > 254 || strings.Count(email, "@") != 1 {
 		return false
 	}
 	for _, character := range characters {
