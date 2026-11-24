@@ -1254,6 +1254,8 @@ test("staff profile history is permission-gated and renders staff audit events",
   await expect(dialog.getByText("Class substitution cancelled")).toBeVisible();
   await expect(dialog.getByText(/attendance, leave and substitution events/)).toBeVisible();
   await expect(dialog.getByText("school.admin").first()).toBeVisible();
+  const expectedIST = new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" }).format(new Date("2026-11-22T11:00:00.000Z"));
+  await expect(dialog.getByText(expectedIST)).toBeVisible();
 });
 
 test("staff attendance supports search, individual and atomic bulk marking, and monthly summaries", async ({ page }) => {
