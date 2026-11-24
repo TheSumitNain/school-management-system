@@ -873,22 +873,25 @@ test("staff profile edit uses the shared employment-status select and sends the 
     employment_status: "active", profile_complete: true, status: "active",
     must_change_password: false, created_at: "2026-04-01T00:00:00.000Z",
   }];
-  await page.emulateTimezone("America/Los_Angeles");
-  await signInAndOpenStaff(page, rows, async (_path, route) => {
+  const browser = timezonePage.context().browser();
+  if (!browser) throw new Error("Browser context is unavailable.");
+  const timezoneContext = await browser.newContext({ timezoneId: "America/Los_Angeles" });
+  const timezonePage = await timezoneContext.newPage();
+  await signInAndOpenStaff(timezonePage, rows, async (_path, route) => {
     updates.push(route.request().postDataJSON() as Record<string, unknown>);
     await route.fulfill({ json: { staff: { ...rows[0], ...(updates[0] ?? {}) }, message: "Updated" } });
   });
 
-  await page.getByRole("button", { name: /Staff Directory/ }).click();
-  const teacherRow = page.locator("tr").filter({ hasText: "teacher.two" });
+  await timezonePage.getByRole("button", { name: /Staff Directory/ }).click();
+  const teacherRow = timezonePage.locator("tr").filter({ hasText: "teacher.two" });
   await expect(teacherRow).toContainText("1 Apr 2026");
-  await page.getByRole("button", { name: "Teacher Two", exact: true }).click();
-  const profileDialog = page.getByRole("dialog", { name: "Teacher Two" });
+  await timezonePage.getByRole("button", { name: "Teacher Two", exact: true }).click();
+  const profileDialog = timezonePage.getByRole("dialog", { name: "Teacher Two" });
   await profileDialog.getByRole("button", { name: "Employment" }).click();
   await expect(profileDialog.getByText("1 Apr 2026")).toBeVisible();
   await profileDialog.getByRole("button", { name: "Close dialog" }).click();
-  await page.getByRole("button", { name: "Edit employee profile for teacher.two" }).click();
-  const dialog = page.getByRole("dialog", { name: "Edit employee profile" });
+  await timezonePage.getByRole("button", { name: "Edit employee profile for teacher.two" }).click();
+  const dialog = timezonePage.getByRole("dialog", { name: "Edit employee profile" });
   await expect(dialog.getByRole("button", { name: "Joining date" })).toContainText("01 Apr 2026");
   await dialog.getByRole("button", { name: "Employment status" }).click();
   await dialog.getByRole("listbox", { name: "Employment status" }).getByRole("option", { name: "Inactive" }).click();
@@ -897,7 +900,8 @@ test("staff profile edit uses the shared employment-status select and sends the 
   await expect.poll(() => updates.length).toBe(1);
   expect(updates[0].employment_status).toBe("inactive");
   await expect(dialog).toHaveCount(0);
-  await expect(page.locator("select")).toHaveCount(0);
+  await expect(timezonePage.locator("select")).toHaveCount(0);
+  await timezoneContext.close();
 });
 
 test("staff profile creates education, certification and experience records", async ({ page }) => {
