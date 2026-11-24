@@ -417,11 +417,25 @@ export function StaffManagementPage({ permissions }: Props) {
       setEditingRecordID(null);
       notifyToast("success", editingRecordID !== null ? "Staff record updated." : "Staff record saved.");
     } catch (error) {
-      if (error instanceof ApiError && Object.keys(error.fieldErrors).length > 0) {
-        setRecordFieldErrors(error.fieldErrors);
+      const message = error instanceof Error ? error.message : "Unable to save this record. Your entered details are still available.";
+      const fieldNames = new Set([
+        "qualification_type", "qualification_name", "specialization", "institution", "board_university",
+        "completion_year", "score", "score_scale", "credential_reference", "certificate_name",
+        "issuing_organization", "issue_date", "expiry_date", "credential_id", "employer_name",
+        "record_designation", "employment_type", "start_date", "end_date", "is_current", "description",
+      ]);
+      const mapped: Record<string, string> = {};
+      if (error instanceof ApiError) {
+        for (const [key, value] of Object.entries(error.fieldErrors)) {
+          const field = key === "designation" ? "record_designation" : key;
+          if (fieldNames.has(field)) mapped[field] = value;
+        }
+      }
+      if (Object.keys(mapped).length > 0) {
+        setRecordFieldErrors(mapped);
         setRecordError("");
       } else {
-        setRecordError(error instanceof Error ? error.message : "Unable to save this record. Your entered details are still available.");
+        setRecordError(message);
       }
     }
   }
