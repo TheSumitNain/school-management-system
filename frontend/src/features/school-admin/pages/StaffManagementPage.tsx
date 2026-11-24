@@ -443,7 +443,7 @@ export function StaffManagementPage({ permissions }: Props) {
           {canReadStaff && <section className="staff-overview-panel"><h3>Account readiness</h3><p>Keep employment and login status aligned without mixing the two.</p><ul className="staff-readiness-list">
             <li><span>Active employees with disabled login</span><strong>{staff.filter(item => item.employment_status === "active" && item.status !== "active").length}</strong></li>
             <li><span>Temporary password change pending</span><strong>{staff.filter(item => item.must_change_password).length}</strong></li>
-            <li><span>Inactive employees</span><strong>{staff.filter(item => item.employment_status === "inactive").length}</li>
+            <li><span>Inactive employees</span><strong>{staff.filter(item => item.employment_status === "inactive").length}</strong></li>
           </ul></section>}
         </div>
         {query.isError && <p className="staff-overview-error" role="alert">Staff summary could not be loaded. Open Staff Directory and retry the request.</p>}
