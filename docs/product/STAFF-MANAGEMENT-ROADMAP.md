@@ -4,7 +4,7 @@
 **Scope:** Phase 1 School Admin web workspace, with Teacher self-service as a separate future experience.  
 **Last updated:** 2026-11-24
 
-**Latest consolidated verification (2026-11-24):** Frontend CI [45356454122](https://github.com/TheSumitNain/school-management-system/actions/runs/45356454122) **PASS** on `a1d51e590e62f0d83708970574c925d97bbbc423` with TypeScript, Vite production build and **118 Playwright tests**, including delayed-response employee-profile isolation for qualifications, certifications and experience. Backend CI [45356977023](https://github.com/TheSumitNain/school-management-system/actions/runs/45356977023) **PASS** on `16329156595fb89ff4b50656b1b2136d10396624` with full Go tests, ephemeral PostgreSQL integration and `go vet`, including same-school cross-employee record ownership checks. This verifies the implemented scope only; Phase 4 and Phase 6 remain partial for their separately documented policy/schema approval gates.
+**Latest consolidated verification (2026-11-24):** Frontend CI [45383871353](https://github.com/TheSumitNain/school-management-system/actions/runs/45383871353) **PASS** on `66af8c6adb08d6937f1abf13d50f1d7e9a7f3e14` with TypeScript, Vite production build and the Playwright browser acceptance suite. Backend CI [45384692873](https://github.com/TheSumitNain/school-management-system/actions/runs/45384692873) **PASS** on `9d77be79745e99787b885c9736b3db778ec72813` with full Go tests, ephemeral PostgreSQL integration and `go vet`, including the regression test that verifies staff permission-override events appear in the correct employee's audit history. This verifies the implemented scope only; Phase 4 and Phase 6 remain partial for their separately documented policy/schema approval gates.
 
 This document defines what Staff Management will build, in what order, the screens/tabs and forms users will see, each field's required/optional status, the key workflows, security boundaries and acceptance criteria. It is a roadmap, not evidence that a feature is implemented. Check [Project Status](../project/STATUS.md) before each phase and verify existing code before changing it.
 
@@ -776,3 +776,11 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Added PostgreSQL integration coverage for same-school employee ownership boundaries: listing another employee's qualification, certification or experience returns no records, and updating another employee's record by ID is rejected.
 - Frontend CI [45356454122](https://github.com/TheSumitNain/school-management-system/actions/runs/45356454122) **PASS** with TypeScript, Vite production build and **118 Playwright tests**. Backend CI [45356977023](https://github.com/TheSumitNain/school-management-system/actions/runs/45356977023) **PASS** with full Go tests, ephemeral PostgreSQL integration and `go vet`.
 - No migration, seed, persistent database or application data changed. Phase 4 leave-policy approval and Phase 6 identity-schema approval gates remain open; document storage and sensitive personal-field collection remain deferred.
+
+
+## 2026-11-24 implementation checkpoint — permission override audit history
+
+- Fixed the staff audit-history query so `user_permission_override` events are included for the target employee using the target principal ID, while retaining the school-scoped filter.
+- Added PostgreSQL integration fixtures and assertions for both permission-override set and remove events. The change contains no schema migration or persistent database change.
+- Backend CI [45384692873](https://github.com/TheSumitNain/school-management-system/actions/runs/45384692873) **PASS** on `9d77be79745e99787b885c9736b3db778ec72813` (full Go tests, PostgreSQL integration and `go vet`). The previously completed frontend CI [45383871353](https://github.com/TheSumitNain/school-management-system/actions/runs/45383871353) **PASS** on `66af8c6adb08d6937f1abf13d50f1d7e9a7f3e14`; this backend-only change does not alter frontend code.
+- Phase 4 leave-policy approval and Phase 6 identity-schema approval remain open. No persistent database or application data was changed.
