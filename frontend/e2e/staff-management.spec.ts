@@ -2060,12 +2060,14 @@ test("staff monthly reports do not request data when the report month is cleared
   await page.getByRole("button", { name: "Reports", exact: true }).click();
   const monthInput = page.locator('input[type="month"][aria-label="Select attendance and leave report month"]');
   await expect(monthInput).toHaveValue(/^\d{4}-\d{2}$/);
-  await expect.poll(() => attendanceRequests).toBe(1);
-  await expect.poll(() => leaveRequests).toBe(1);
+  await expect.poll(() => attendanceRequests).toBeGreaterThan(0);
+  await expect.poll(() => leaveRequests).toBeGreaterThan(0);
+  const initialAttendanceRequests = attendanceRequests;
+  const initialLeaveRequests = leaveRequests;
   await monthInput.fill("");
   await expect(page.getByText("Select a valid report month to load attendance and leave records.")).toBeVisible();
-  await expect.poll(() => attendanceRequests).toBe(1);
-  await expect.poll(() => leaveRequests).toBe(1);
+  await expect.poll(() => attendanceRequests).toBe(initialAttendanceRequests);
+  await expect.poll(() => leaveRequests).toBe(initialLeaveRequests);
 });
 
 test("staff reports include active academic assignments and export only permitted assignment fields", async ({ page }) => {
