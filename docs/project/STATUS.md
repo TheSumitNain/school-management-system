@@ -1,3 +1,10 @@
+## 2026-11-24 — Staff profile record-isolation regression coverage
+
+- Added delayed-response Playwright coverage proving a staff profile does not display the previous employee's qualifications, certifications or employment history while another employee's records load.
+- Added PostgreSQL integration assertions proving a staff member cannot read or update another employee's qualification, certification or experience record by supplying that record ID under their own same-school profile route.
+- Frontend CI [45356454122](https://github.com/TheSumitNain/school-management-system/actions/runs/45356454122) **PASS** with TypeScript, Vite production build and **118 Playwright tests**. Backend CI [45356977023](https://github.com/TheSumitNain/school-management-system/actions/runs/45356977023) **PASS** with full Go tests, ephemeral PostgreSQL integration and `go vet`.
+- No schema migration, seed, persistent database or application data changed. The approved profile-only onboarding, Bulk Import, document-storage and sensitive personal-field approval gates remain unchanged.
+
 ## 2026-11-24 — Staff designation and employment-type contract
 
 - Extended the proposal-only staff identity design with a school-scoped `staff_designations` master, explicit applicability to Teaching / Non-Teaching staff, case-insensitive tenant-safe uniqueness, audited deactivation and impact-preview requirements.
