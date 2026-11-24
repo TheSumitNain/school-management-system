@@ -142,6 +142,23 @@ func TestStaffProfileRepositoryPostgresIntegration(t *testing.T) {
         t.Fatalf("reactivating employment unexpectedly enabled login: %+v", updated)
     }
 
+    // Email is optional: clearing it in the profile editor must persist SQL NULL,
+    // not an empty string that violates the staff_profiles email constraint.
+    profile.Email = ""
+    updated, err = repo.UpdateStaffProfile(ctx, actorPrincipalID, schoolID, user.PrincipalID, profile)
+    if err != nil {
+        t.Fatalf("clear optional employee email: %v", err)
+    }
+    var emailIsNull bool
+    if err := tx.QueryRow(ctx, `
+        SELECT email IS NULL FROM staff_profiles WHERE principal_id = $1
+    `, user.PrincipalID).Scan(&emailIsNull); err != nil {
+        t.Fatalf("verify cleared optional employee email: %v", err)
+    }
+    if !emailIsNull || updated.Email != "" {
+        t.Fatalf("cleared optional email was not represented as empty in API and NULL in storage: is_null=%v email=%q", emailIsNull, updated.Email)
+    }
+
     if err := repo.EnableStaffAccount(ctx, actorPrincipalID, schoolID, user.PrincipalID, "integration-temporary-password-hash"); err != nil {
         t.Fatalf("explicitly enable active employee login: %v", err)
     }
