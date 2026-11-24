@@ -149,7 +149,7 @@ export function StaffManagementPage({ permissions }: Props) {
     });
   }, [staff, search, employmentFilter, accountFilter, profileFilter]);
 
-  function openProfile(item: StaffRecord) { setProfileFor(item); setProfileTab("Overview"); setRecordFormKind(null); setEditingRecordID(null); setRecordError(""); }
+  function openProfile(item: StaffRecord) { setProfileFor(item); setProfileTab("Overview"); setRecordFormKind(null); setEditingRecordID(null); setRecordError(""); setRecordFieldErrors({}); setCertificationIssueDate(""); setCertificationExpiryDate(""); setExperienceStartDate(""); setExperienceEndDate(""); }
   function openAction(next: Action, item: StaffRecord | null = null) {
     setSelected(item);
     setAction(next);
@@ -530,7 +530,7 @@ export function StaffManagementPage({ permissions }: Props) {
             </Fragment>)}
           </tbody></table></div>}
       </section>}
-      {profileFor && canReadStaff && <Modal open title={profileFor.full_name || profileFor.username} description={`Staff profile · ${profileFor.employee_code || "Employee code not set"} · ${profileFor.username}`} onClose={() => setProfileFor(null)}>
+      {profileFor && canReadStaff && <Modal key={profileFor.principal_id} open title={profileFor.full_name || profileFor.username} description={`Staff profile · ${profileFor.employee_code || "Employee code not set"} · ${profileFor.username}`} onClose={() => setProfileFor(null)}>
         <nav className="staff-profile-tabs" aria-label="Staff profile sections">
           {(["Overview","Personal Details","Employment","Qualifications & Experience","Documents","Academic Assignments",...(permissions.includes("timetable.read") ? ["Workload & Timetable" as const] : []),"Account & Access","History & Activity"] as const).map(tab => <button type="button" key={tab} className={profileTab === tab ? "active" : ""} aria-current={profileTab === tab ? "page" : undefined} onClick={() => setProfileTab(tab)}>{tab}</button>)}
         </nav>
