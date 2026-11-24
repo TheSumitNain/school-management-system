@@ -92,6 +92,24 @@ func TestStaffProfileRepositoryPostgresIntegration(t *testing.T) {
         t.Fatalf("created staff profile not returned: %+v", user)
     }
 
+    // Optional email may be omitted during initial onboarding as well as cleared later.
+    blankEmailProfile := profile
+    blankEmailProfile.EmployeeCode = "EMP-BLANK-" + suffix
+    blankEmailProfile.Email = ""
+    blankEmailUser, err := repo.CreateStaffAccountWithProfile(ctx, actorPrincipalID, schoolID,
+        "staffblank-"+suffix, "integration-test-password-hash", blankEmailProfile)
+    if err != nil {
+        t.Fatalf("create employee profile without optional email: %v", err)
+    }
+    var blankEmailIsNull bool
+    if err := tx.QueryRow(ctx, "SELECT email IS NULL FROM staff_profiles WHERE principal_id = $1",
+        blankEmailUser.PrincipalID).Scan(&blankEmailIsNull); err != nil {
+        t.Fatalf("verify omitted optional email: %v", err)
+    }
+    if !blankEmailIsNull || blankEmailUser.Email != "" {
+        t.Fatalf("omitted optional email was not represented as empty in API and NULL in storage: is_null=%v email=%q", blankEmailIsNull, blankEmailUser.Email)
+    }
+
     listed, err := repo.ListStaffAccounts(ctx, actorPrincipalID, schoolID)
     if err != nil { t.Fatalf("list school staff profiles: %v", err) }
     found := false
