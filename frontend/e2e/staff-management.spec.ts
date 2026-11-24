@@ -354,6 +354,9 @@ test("staff directory filters independently narrow employment, login account and
   await expect(page.getByRole("button", { name: "Active Enabled" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Profile Unknown" })).toHaveCount(0);
 
+  // Search is tested independently of the profile filter selected above.
+  await profileCompletenessFilter.click();
+  await page.getByRole("option", { name: "All profiles", exact: true }).click();
   const search = page.getByRole("textbox", { name: "Search staff by name, code, designation, mobile or username" });
   await search.fill("9876543213");
   await expect(page.getByText("1 of 5 staff members")).toBeVisible();
@@ -1744,18 +1747,7 @@ test("staff workload requests only the selected teacher timetable and explains u
   await expect(dialog.getByText("Unscheduled", { exact: true }).first()).toBeVisible();
   await expect(dialog.getByText(/do not confirm teacher availability/)).toBeVisible();
 
-  // The school-wide report is a separate permission-gated workspace, not part
-  // of the individual employee profile dialog.
-  await page.keyboard.press("Escape");
-  await page.locator(".staff-workspace-tabs").getByRole("button", { name: "Workload Report" }).click();
-  await expect(page.getByRole("heading", { name: "School-wide Workload Report" })).toBeVisible();
-  await page.getByLabel("Search workload report staff").fill("Workload");
-  await expect(page.getByText("Workload Teacher")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Clear filters" })).toBeVisible();
-  await page.getByRole("button", { name: "Clear filters" }).click();
-  await expect(page.getByLabel("Search workload report staff")).toHaveValue("");
-  await expect(page.getByLabel("Filter workload report by employment status")).toHaveValue("all");
-  await expect(page.getByRole("button", { name: "Clear filters" })).toHaveCount(0);
+  // Verify the employee workload dialog at each viewport while it is still open.
   for (const viewport of [{ width: 390, height: 844 }, { width: 768, height: 900 }, { width: 1280, height: 900 }]) {
     await page.setViewportSize(viewport);
     await expect(dialog.getByRole("heading", { name: "Teaching workload" })).toBeVisible();
@@ -1771,6 +1763,19 @@ test("staff workload requests only the selected teacher timetable and explains u
       expect(["auto", "scroll"]).toContain(overflowX);
     }
   }
+
+  // The school-wide report is a separate permission-gated workspace, not part
+  // of the individual employee profile dialog.
+  await page.keyboard.press("Escape");
+  await page.locator(".staff-workspace-tabs").getByRole("button", { name: "Workload Report" }).click();
+  await expect(page.getByRole("heading", { name: "School-wide Workload Report" })).toBeVisible();
+  await page.getByLabel("Search workload report staff").fill("Workload");
+  await expect(page.getByText("Workload Teacher")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Clear filters" })).toBeVisible();
+  await page.getByRole("button", { name: "Clear filters" }).click();
+  await expect(page.getByLabel("Search workload report staff")).toHaveValue("");
+  await expect(page.getByLabel("Filter workload report by employment status")).toHaveValue("all");
+  await expect(page.getByRole("button", { name: "Clear filters" })).toHaveCount(0);
 });
 
 
@@ -2359,7 +2364,7 @@ test("staff leave and holiday workspace remains usable without horizontal overfl
     await expect.poll(async () => grid.evaluate(element =>
       getComputedStyle(element).gridTemplateColumns.trim().split(/\s+/).length,
     )).toBe(viewport.columns);
-    await expect(workspace.getByRole("button", { name: "Leave requests" })).toBeVisible();
+    await expect(workspace.getByRole("button", { name: "Leave requests", exact: true })).toBeVisible();
     await expect(workspace.getByRole("button", { name: "Holiday calendar" })).toBeVisible();
   }
 });
