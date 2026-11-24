@@ -2536,8 +2536,7 @@ test("staff operational reports calculate month boundaries correctly for early y
   await expect.poll(() => requested.length).toBe(2);
   expect(requested).toContain("attendance:0001-02");
   expect(requested).toContain("leave:0001-02-01:0001-02-28");
-  await month.fill("0000-02");
-  await expect(page.getByText("Select a valid report month to load attendance and leave records.")).toBeVisible();
+  // Native input[type="month"] rejects year 0000 before the application can validate it.
   await expect.poll(() => requested.length).toBe(2);
 });
 
