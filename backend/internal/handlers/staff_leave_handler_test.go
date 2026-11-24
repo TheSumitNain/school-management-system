@@ -129,3 +129,72 @@ func TestStaffLeaveHandlersRejectNilSuccessfulWriteResults(t *testing.T) {
 		if rec.Code!=http.StatusInternalServerError{t.Fatalf("nil successful service result must return 500: status=%d body=%s",rec.Code,rec.Body.String())}
 	})}
 }
+
+
+type captureStaffLeaveListService struct {
+	StaffLeaveManagementService
+	actorID, schoolID, staffID int64
+	status, onDate, fromDate, toDate string
+	called bool
+}
+
+func (s *captureStaffLeaveListService) ListRequests(_ context.Context, actorID, schoolID int64, status string, staffID int64, onDate, fromDate, toDate string) ([]repository.StaffLeaveRequest, error) {
+	s.called = true
+	s.actorID, s.schoolID, s.staffID = actorID, schoolID, staffID
+	s.status, s.onDate, s.fromDate, s.toDate = status, onDate, fromDate, toDate
+	return []repository.StaffLeaveRequest{}, nil
+}
+
+func TestStaffLeaveListRequestsPassesTrimmedFiltersToService(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	service := &captureStaffLeaveListService{}
+	handler := NewStaffLeaveHandler(service)
+	router := gin.New()
+	router.GET("/staff/requests", func(c *gin.Context) {
+		c.Set(middleware.ContextPrincipalIDKey, int64(100))
+		c.Set(middleware.ContextSchoolIDKey, int64(10))
+		c.Next()
+	}, handler.ListRequests)
+
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/staff/requests?status=%20pending%20&staff_principal_id=321&on_date=%202026-11-12%20&from_date=%202026-11-01%20&to_date=%202026-11-30%20", nil)
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status=%d want=%d body=%s", recorder.Code, http.StatusOK, recorder.Body.String())
+	}
+	if !service.called {
+		t.Fatal("leave list service was not called")
+	}
+	if service.actorID != 100 || service.schoolID != 10 || service.staffID != 321 {
+		t.Fatalf("identity filters actor=%d school=%d staff=%d", service.actorID, service.schoolID, service.staffID)
+	}
+	if service.status != " pending " || service.onDate != "2026-11-12" || service.fromDate != "2026-11-01" || service.toDate != "2026-11-30" {
+		t.Fatalf("unexpected forwarded filters: status=%q onDate=%q fromDate=%q toDate=%q", service.status, service.onDate, service.fromDate, service.toDate)
+	}
+}
+
+func TestStaffLeaveListRequestsRejectsInvalidStaffPrincipalIDBeforeService(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	service := &captureStaffLeaveListService{}
+	handler := NewStaffLeaveHandler(service)
+	router := gin.New()
+	router.GET("/staff/requests", func(c *gin.Context) {
+		c.Set(middleware.ContextPrincipalIDKey, int64(100))
+		c.Set(middleware.ContextSchoolIDKey, int64(10))
+		c.Next()
+	}, handler.ListRequests)
+
+	for _, value := range []string{"0", "-1", "not-a-number"} {
+		t.Run(value, func(t *testing.T) {
+			recorder := httptest.NewRecorder()
+			router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/staff/requests?staff_principal_id="+value, nil))
+			if recorder.Code != http.StatusBadRequest {
+				t.Fatalf("status=%d want=%d body=%s", recorder.Code, http.StatusBadRequest, recorder.Body.String())
+			}
+			if service.called {
+				t.Fatal("leave list service must not be called for an invalid staff principal ID")
+			}
+		})
+	}
+}
