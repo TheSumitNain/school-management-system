@@ -167,9 +167,9 @@ function AssignmentReport({ permissions }: Props) {
     (canReadIncharges && (yearQuery.isLoading || (yearID > 0 && incharges.isLoading)));
   const isError = yearQuery.isError || (canReadSubjects && subjects.isError) || (canReadIncharges && incharges.isError);
   const retry = () => {
-    if (yearQuery.isError) void yearQuery.refetch();
-    if (subjects.isError) void subjects.refetch();
-    if (incharges.isError) void incharges.refetch();
+    if (yearQuery.isError && (canReadSubjects || canReadIncharges)) void yearQuery.refetch();
+    if (canReadSubjects && subjects.isError) void subjects.refetch();
+    if (canReadIncharges && incharges.isError) void incharges.refetch();
   };
   if (!canReadSubjects && !canReadIncharges) return null;
   const totalSubjects = rows.reduce((sum, row) => sum + row.subjectAssignments.length, 0);
