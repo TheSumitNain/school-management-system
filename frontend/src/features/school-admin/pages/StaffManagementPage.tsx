@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useRef, useState, type FormEvent } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { notifyToast } from "../../../shared/notifications";
 import { BarChart3, BookOpen, CalendarDays, Download, FileText, KeyRound, LayoutDashboard, LockKeyhole, Pencil, Plus, Search, Shield, ShieldCheck, UserCheck, UserMinus } from "lucide-react";
 import { StaffRoleAssignments } from "../components/StaffRoleAssignments";
@@ -157,6 +157,20 @@ export function StaffManagementPage({ permissions }: Props) {
     setFieldErrors({});
     setCreateStep(1);
   }
+  const actionAllowed = action === "create" ? canCreate
+    : action === "edit" || action === "enable" ? canUpdate
+    : action === "reset" ? canReset : true;
+  useEffect(() => {
+    if (action && !actionAllowed) closeAction();
+    if (staffToDisable && !canDisable) {
+      setStaffToDisable(null);
+      setDisableError("");
+    }
+    if (!canUpdate) {
+      setRecordFormKind(null);
+      setEditingRecordID(null);
+    }
+  }, [action, actionAllowed, staffToDisable, canDisable, canUpdate]);
   function advanceCreateStep(form: HTMLFormElement) {
     if (action !== "create" || createStep >= 4) return;
     const values = new FormData(form);
@@ -188,6 +202,7 @@ export function StaffManagementPage({ permissions }: Props) {
   }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!actionAllowed) { closeAction(); setFeedback({ kind: "error", message: "Your permission to perform this staff account action is no longer available." }); return; }
     const form = new FormData(event.currentTarget);
     if (action === "create" && createStep < 4) { advanceCreateStep(event.currentTarget); return; }
     const nextErrors: Record<string, string> = {};
@@ -266,6 +281,7 @@ export function StaffManagementPage({ permissions }: Props) {
   }
   async function submitStaffRecord(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!canUpdate) { setRecordFormKind(null); setEditingRecordID(null); return; }
     if (!profileFor || !recordFormKind) return;
     const form = new FormData(event.currentTarget);
     const value = (key: string) => String(form.get(key) ?? "").trim();
@@ -351,6 +367,7 @@ export function StaffManagementPage({ permissions }: Props) {
   function deactivate(item: StaffRecord) { setDisableError(""); setStaffToDisable(item); }
   async function confirmDeactivate() {
     if (!staffToDisable) return;
+    if (!canDisable) { setStaffToDisable(null); setDisableError(""); return; }
     const item = staffToDisable;
     setDisableError("");
     setFeedback(null);
