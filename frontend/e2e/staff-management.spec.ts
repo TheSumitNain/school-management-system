@@ -1019,6 +1019,9 @@ test("staff record server field errors render under the matching field and prese
   await expect(dialog.locator('input[name="qualification_name"]')).toHaveValue("M.Sc. Physics");
   await expect(dialog.locator('input[name="qualification_name"]')).toHaveAttribute("aria-invalid", "true");
   await expect(dialog.locator(".staff-record-form").getByText("Check the highlighted staff record fields")).toHaveCount(0);
+  await dialog.locator('input[name="qualification_name"]').fill("M.Sc. Corrected Physics");
+  await expect(dialog.getByText("The qualification name needs a valid value.")).toHaveCount(0);
+  await expect(dialog.locator('input[name="qualification_name"]')).not.toHaveAttribute("aria-invalid", "true");
 });
 
 test("staff profile creates education, certification and experience records", async ({ page }) => {
