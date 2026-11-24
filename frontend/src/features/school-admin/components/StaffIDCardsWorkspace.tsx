@@ -9,7 +9,7 @@ type Props = { staff: StaffRecord[] };
 
 function formatJoiningDate(value?: string | null) {
   if (!value) return "—";
-  const date = new Date(`${value.slice(0, 10)}T12:00:00`);
+  const date = new Date(`${value.slice(0, 10)}T12:00:00Z`);
   return Number.isNaN(date.getTime())
     ? "—"
     : new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeZone: "Asia/Kolkata" }).format(date);
