@@ -13,6 +13,8 @@ const labels: Record<string, string> = {
   "staff.password.changed": "Password changed",
   "school.staff.role_assigned": "Role assigned",
   "school.staff.role_revoked": "Role removed",
+  "school.staff.permission_override.set": "Individual permission override saved",
+  "school.staff.permission_override.removed": "Individual permission override removed",
   "staff.qualification.created": "Qualification added",
   "staff.qualification.updated": "Qualification updated",
   "staff.certification.created": "Certification added",
