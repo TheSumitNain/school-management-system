@@ -2064,6 +2064,9 @@ test("staff ID cards select only complete active profiles and expose approved pr
   await expect(preview.locator(".staff-id-avatar")).toHaveText("AT");
   await expect(page.getByText("private@example.test")).toHaveCount(0);
   await expect(page.getByText("9876543210")).toHaveCount(0);
+  await expect(preview.getByText("active.teacher")).toHaveCount(0);
+  await expect(preview.locator("canvas, svg, img, [data-qr]")).toHaveCount(0);
+  await expect(preview).not.toContainText(/password|credential|login status/i);
   await page.getByLabel("Card template").selectOption("modern");
   await expect(page.locator(".staff-id-card--modern")).toHaveCount(1);
   await page.setViewportSize({width:390,height:844});
