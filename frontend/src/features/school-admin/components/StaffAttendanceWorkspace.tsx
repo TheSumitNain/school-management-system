@@ -38,7 +38,7 @@ function downloadCSV(filename: string, rows: Array<Array<string | number | null 
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 export function StaffAttendanceWorkspace({ permissions }: Props) {
