@@ -51,18 +51,20 @@ func parseStaffRecordDate(value string) (time.Time, bool) {
 	return parsed, true
 }
 
-func validQualificationScore(score *float64, scale string) bool {
+func qualificationScoreValidationField(score *float64, scale string) string {
 	scales := map[string]bool{"percentage": true, "cgpa": true, "gpa": true, "marks": true, "grade": true}
 	if score == nil {
-		return scale == ""
+		if scale != "" { return "score_scale" }
+		return ""
 	}
-	if math.IsNaN(*score) || math.IsInf(*score, 0) || *score < 0 || *score > 99999.999 || !scales[scale] {
-		return false
+	if !scales[scale] { return "score_scale" }
+	if math.IsNaN(*score) || math.IsInf(*score, 0) || *score < 0 || *score > 99999.999 {
+		return "score"
 	}
 	if scale == "percentage" && *score > 100 {
-		return false
+		return "score"
 	}
-	return true
+	return ""
 }
 
 func validRecordText(value string,max int)bool{return len([]rune(strings.TrimSpace(value)))>0&&len([]rune(strings.TrimSpace(value)))<=max&&staffRecordTextPattern.MatchString(value)}
@@ -82,7 +84,11 @@ func(s *StaffRecordsService) CreateQualification(ctx context.Context,actor,schoo
 	if len([]rune(item.BoardUniversity))>200 { return nil, staffRecordFieldError("board_university", "Board / University must be 200 characters or fewer.") }
 	if len(item.CredentialReference)>120 { return nil, staffRecordFieldError("credential_reference", "Credential reference must be 120 characters or fewer.") }
 	if item.CompletionYear!=nil&&(*item.CompletionYear<1900||*item.CompletionYear>2200){return nil,staffRecordFieldError("completion_year","Completion year must be between 1900 and 2200.")}
-	if !validQualificationScore(item.Score,item.ScoreScale){return nil,staffRecordFieldError("score","Enter a valid score and matching score scale.")}
+	if field := qualificationScoreValidationField(item.Score,item.ScoreScale); field != "" {
+		message := "Enter a valid score."
+		if field == "score_scale" { message = "Choose a valid score scale when a score is entered." }
+		return nil, staffRecordFieldError(field, message)
+	}
 	return s.repository.CreateStaffQualification(ctx,actor,school,staff,item)
 }
 func(s *StaffRecordsService) ListCertifications(ctx context.Context,actor,school,staff int64)([]repository.StaffCertification,error){
@@ -145,7 +151,11 @@ func (s *StaffRecordsService) UpdateQualification(ctx context.Context, actor, sc
 	if len([]rune(item.BoardUniversity))>200 { return nil, staffRecordFieldError("board_university", "Board / University must be 200 characters or fewer.") }
 	if len(item.CredentialReference)>120 { return nil, staffRecordFieldError("credential_reference", "Credential reference must be 120 characters or fewer.") }
 	if item.CompletionYear!=nil&&(*item.CompletionYear<1900||*item.CompletionYear>2200){return nil,staffRecordFieldError("completion_year","Completion year must be between 1900 and 2200.")}
-	if !validQualificationScore(item.Score,item.ScoreScale){return nil,staffRecordFieldError("score","Enter a valid score and matching score scale.")}
+	if field := qualificationScoreValidationField(item.Score,item.ScoreScale); field != "" {
+		message := "Enter a valid score."
+		if field == "score_scale" { message = "Choose a valid score scale when a score is entered." }
+		return nil, staffRecordFieldError(field, message)
+	}
 	return s.repository.UpdateStaffQualification(ctx,actor,school,staff,record,item)
 }
 
