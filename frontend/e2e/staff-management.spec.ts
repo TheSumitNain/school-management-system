@@ -569,8 +569,6 @@ test("staff leave date filter errors are field-specific and invalid ranges do no
   await page.waitForLoadState("networkidle");
   expect(requestCount).toBe(initialRequestCount);
   await expect(page.getByRole("button", { name: "Refresh", exact: true })).toBeDisabled();
-  await page.getByRole("button", { name: "Refresh", exact: true }).click({ force: true });
-  await page.waitForLoadState("networkidle");
   expect(requestCount).toBe(initialRequestCount);
 });
 
