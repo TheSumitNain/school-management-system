@@ -2450,3 +2450,24 @@ test("attendance read-only permission cannot mark, update or bulk-save records",
   await expect(page.getByRole("button", { name: /Mark .* unmarked staff/ })).toBeDisabled();
   expect(writes).toEqual([]);
 });
+
+test("staff-create-only access can start onboarding without loading or revealing staff directory metrics", async ({ page }) => {
+  const staffListRequests: string[] = [];
+  page.on("request", request => {
+    const url = new URL(request.url());
+    if (url.pathname === "/api/school/staff" && request.method() === "GET") {
+      staffListRequests.push(request.method() + " " + url.pathname);
+    }
+  });
+
+  await signInAndOpenStaff(page, [], undefined, ["users.create"]);
+
+  await expect(page.getByRole("heading", { name: "Staff Management" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "People at a glance" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Add staff/ })).toBeVisible();
+  await expect(page.getByText("Total staff")).toHaveCount(0);
+  await expect(page.locator(".staff-overview-cards")).toHaveCount(0);
+  await expect(page.locator(".staff-readiness-list")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Staff Directory", exact: true })).toHaveCount(0);
+  expect(staffListRequests).toEqual([]);
+});
