@@ -744,3 +744,11 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - The staff directory query is disabled when `users.read` is absent, preventing an unauthorized `/school/staff` request from a user who only has access to a separate staff workspace. Added Playwright acceptance for attendance-only access, including no directory request and no directory/overview controls.
 - Frontend CI [45318837352](https://github.com/TheSumitNain/school-management-system/actions/runs/45318837352) **PASS**: TypeScript, design-token check, production build and **94 Playwright tests**. Backend CI [45318837314](https://github.com/TheSumitNain/school-management-system/actions/runs/45318837314) **PASS**: migrations, Go/PostgreSQL integration suite and `go vet`.
 - No database migration or persistent database change. `main` remains untouched; identity-schema approval gates and the previously agreed document/photo deferral remain in force.
+
+
+## 2026-11-24 follow-up — read-only leave workspace isolation
+
+- Added a leave-only role acceptance case: a user with `staff.leave.read` can open Leave & Holidays and view applications without receiving Staff Directory or overview access and without triggering `/school/staff`.
+- Finalized permission isolation for Staff workspace entry: substitution management is not exposed as a standalone entry capability unless the user can also read staff records; cached staff-directory data is suppressed whenever `users.read` is absent, and directory errors are not surfaced in create-only views.
+- Frontend CI [45319733688](https://github.com/TheSumitNain/school-management-system/actions/runs/45319733688) **PASS**: production build and **95 Playwright tests**. Backend CI [45319733387](https://github.com/TheSumitNain/school-management-system/actions/runs/45319733387) **PASS**: PostgreSQL integration, full Go tests and `go vet`.
+- No database migration or persistent data change; `main` remains untouched.
