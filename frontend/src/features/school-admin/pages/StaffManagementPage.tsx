@@ -220,11 +220,11 @@ export function StaffManagementPage({ permissions }: Props) {
     }
     if (!canReadStaff) {
       closeProfile();
-      setRolesForPrincipal(null);
-      setOverridesForPrincipal(null);
+      closeStandaloneRoleAssignments();
+      closeStandalonePermissionOverrides();
     }
-    if (!canReadRoles) setRolesForPrincipal(null);
-    if (!canManageOverrides) setOverridesForPrincipal(null);
+    if (!canReadRoles) closeStandaloneRoleAssignments();
+    if (!canManageOverrides) closeStandalonePermissionOverrides();
     if (!canCreate) setCredentialHandoff(null);
   }, [action, actionAllowed, staffToDisable, canDisable, canUpdate, canReadStaff, canReadRoles, canManageOverrides, canCreate]);
   function advanceCreateStep(form: HTMLFormElement) {
