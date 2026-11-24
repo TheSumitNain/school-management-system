@@ -66,6 +66,7 @@ export function StaffWorkloadReportWorkspace({permissions}:Props){
     const matchesStatus=employmentFilter==="all"||group.employmentStatus===employmentFilter;
     return matchesText&&matchesStatus;
   });
+  const filtersChanged=search.trim().length>0||employmentFilter!=="all";
   const scheduledTeachers=groups.filter(group=>group.totalPeriods>0).length;
   const totalPeriods=groups.reduce((sum,group)=>sum+group.totalPeriods,0);
 
@@ -86,6 +87,7 @@ export function StaffWorkloadReportWorkspace({permissions}:Props){
     <div className="staff-workload-report-filters">
       <label><span>Search staff</span><div className="staff-workload-report-search"><Search size={14}/><input type="search" value={search} onChange={event=>setSearch(event.target.value)} placeholder="Name, employee code or designation" aria-label="Search workload report staff"/></div></label>
       <label><span>Employment status</span><select value={employmentFilter} onChange={event=>setEmploymentFilter(event.target.value)} aria-label="Filter workload report by employment status"><option value="all">All employment statuses</option><option value="active">Active</option><option value="inactive">Inactive</option></select></label>
+      {filtersChanged&&<div className="staff-workload-report-filter-actions"><button type="button" onClick={()=>{setSearch("");setEmploymentFilter("all");}}>Clear filters</button></div>}
     </div>
     {yearQuery.isLoading&&<p className="staff-workload-report-muted">Loading current academic year…</p>}
     {yearQuery.isError&&<p className="staff-workload-report-error" role="alert">Unable to load current academic year. <button type="button" onClick={()=>void yearQuery.refetch()}>Retry</button></p>}
