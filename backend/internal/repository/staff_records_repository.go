@@ -348,9 +348,21 @@ type StaffAuditEvent struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-func (r *UserRepository) ListStaffAuditEvents(ctx context.Context, actorID, schoolID, staffID int64) ([]StaffAuditEvent, error) {
+type StaffAuditEventFilter struct { Limit int; Offset int }
+
+type StaffAuditEventPage struct {
+	Events []StaffAuditEvent `json:"events"`
+	Limit int `json:"limit"`
+	Offset int `json:"offset"`
+	HasMore bool `json:"has_more"`
+}
+
+func (r *UserRepository) ListStaffAuditEvents(ctx context.Context, actorID, schoolID, staffID int64, filter StaffAuditEventFilter) (*StaffAuditEventPage, error) {
 	if r == nil || r.db == nil {
 		return nil, ErrStaffRecordAccessDenied
+	}
+	if filter.Limit < 1 || filter.Limit > 100 || filter.Offset < 0 || filter.Offset > 1000000 {
+		return nil, ErrInvalidStaffRecord
 	}
 	if err := authorizeStaffRecord(ctx, r.db, actorID, schoolID, staffID, "school.audit.read"); err != nil {
 		return nil, err
@@ -408,13 +420,13 @@ func (r *UserRepository) ListStaffAuditEvents(ctx context.Context, actorID, scho
 		    ))
 		  )
 		ORDER BY ae.created_at DESC, ae.id DESC
-		LIMIT 100
-	`, schoolID, staffID)
+		LIMIT $3 OFFSET $4
+	`, schoolID, staffID, filter.Limit+1, filter.Offset)
 	if err != nil {
 		return nil, fmt.Errorf("list staff audit events: %w", err)
 	}
 	defer rows.Close()
-	items := make([]StaffAuditEvent, 0)
+	items := make([]StaffAuditEvent, 0, filter.Limit+1)
 	for rows.Next() {
 		var item StaffAuditEvent
 		if err := rows.Scan(&item.ID, &item.Action, &item.ResourceType, &item.Outcome, &item.ActorUsername, &item.CreatedAt); err != nil {
@@ -425,7 +437,9 @@ func (r *UserRepository) ListStaffAuditEvents(ctx context.Context, actorID, scho
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("iterate staff audit events: %w", err)
 	}
-	return items, nil
+	hasMore:=len(items)>filter.Limit
+	if hasMore { items=items[:filter.Limit] }
+	return &StaffAuditEventPage{Events:items,Limit:filter.Limit,Offset:filter.Offset,HasMore:hasMore}, nil
 }
 
 

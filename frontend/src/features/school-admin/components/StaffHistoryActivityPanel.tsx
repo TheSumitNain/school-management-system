@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getStaffAuditEvents, type StaffRecord } from "../api";
 
@@ -42,9 +43,12 @@ function dateTime(value: string) {
 
 export function StaffHistoryActivityPanel({ staff, permissions }: Props) {
   const allowed = permissions.includes("school.audit.read");
+  const pageSize = 50;
+  const [offset, setOffset] = useState(0);
+  useEffect(() => setOffset(0), [staff.principal_id]);
   const query = useQuery({
-    queryKey: ["staff-audit-events", staff.principal_id],
-    queryFn: ({ signal }) => getStaffAuditEvents(staff.principal_id, signal),
+    queryKey: ["staff-audit-events", staff.principal_id, offset],
+    queryFn: ({ signal }) => getStaffAuditEvents(staff.principal_id, { limit: pageSize, offset }, signal),
     enabled: allowed,
   });
 
@@ -52,15 +56,22 @@ export function StaffHistoryActivityPanel({ staff, permissions }: Props) {
 
   return <section className="staff-records-panel">
     <div className="staff-records-heading">
-      <div><h3>History & activity</h3><p>Audited account, profile, role, academic assignment, attendance, leave and substitution events for {staff.full_name || staff.username}. Latest 100 events.</p></div>
+      <div><h3>History & activity</h3><p>Audited account, profile, role, academic assignment, attendance, leave and substitution events for {staff.full_name || staff.username}. Showing 50 events per page.</p></div>
       <button type="button" className="staff-secondary-button" onClick={() => void query.refetch()} disabled={query.isFetching}>Refresh</button>
     </div>
     {query.isLoading && <p role="status">Loading staff activity…</p>}
     {query.isError && <div className="staff-record-error" role="alert"><span>Unable to load staff activity.</span><button type="button" onClick={() => void query.refetch()}>Try again</button></div>}
     {query.isSuccess && query.data.events.length === 0 && <p className="staff-history-empty">No audited activity is recorded for this employee yet.</p>}
-    {query.isSuccess && query.data.events.length > 0 && <div className="staff-history-list">{query.data.events.map(event => <article className="staff-history-item" key={event.id}>
-      <div><strong>{labels[event.action] || event.action.replaceAll(".", " ").replaceAll("_", " ")}</strong><p>By {event.actor_username}</p></div>
-      <div><span className={event.outcome === "success" ? "staff-record-status" : "staff-record-status inactive"}>{event.outcome === "success" ? "Successful" : "Failed"}</span><time dateTime={event.created_at}>{dateTime(event.created_at)}</time></div>
-    </article>)}</div>}
+    {query.isSuccess && query.data.events.length > 0 && <>
+      <div className="staff-history-list">{query.data.events.map(event => <article className="staff-history-item" key={event.id}>
+        <div><strong>{labels[event.action] || event.action.replaceAll(".", " ").replaceAll("_", " ")}</strong><p>By {event.actor_username}</p></div>
+        <div><span className={event.outcome === "success" ? "staff-record-status" : "staff-record-status inactive"}>{event.outcome === "success" ? "Successful" : "Failed"}</span><time dateTime={event.created_at}>{dateTime(event.created_at)}</time></div>
+      </article>)}</div>
+      <div className="staff-records-heading" aria-label="Audit history pagination">
+        <button type="button" className="staff-secondary-button" onClick={() => setOffset(current => Math.max(0, current - pageSize))} disabled={offset===0 || query.isFetching}>Newer events</button>
+        <span aria-live="polite">Page {Math.floor(offset/pageSize)+1}</span>
+        <button type="button" className="staff-secondary-button" onClick={() => setOffset(current => current + pageSize)} disabled={!query.data.has_more || query.isFetching}>Older events</button>
+      </div>
+    </>}
   </section>;
 }

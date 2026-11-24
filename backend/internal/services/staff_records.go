@@ -36,7 +36,7 @@ type staffRecordsRepository interface {
 	UpdateStaffQualification(context.Context,int64,int64,int64,int64,repository.StaffQualification)(*repository.StaffQualification,error)
 	UpdateStaffCertification(context.Context,int64,int64,int64,int64,repository.StaffCertification)(*repository.StaffCertification,error)
 	UpdateStaffExperience(context.Context,int64,int64,int64,int64,repository.StaffExperience)(*repository.StaffExperience,error)
-	ListStaffAuditEvents(context.Context,int64,int64,int64)([]repository.StaffAuditEvent,error)
+	ListStaffAuditEvents(context.Context,int64,int64,int64,repository.StaffAuditEventFilter)(*repository.StaffAuditEventPage,error)
 }
 
 type StaffRecordsService struct { repository staffRecordsRepository }
@@ -165,9 +165,11 @@ func (s *StaffRecordsService) UpdateExperience(ctx context.Context, actor, schoo
 	return s.repository.UpdateStaffExperience(ctx,actor,school,staff,record,item)
 }
 
-func(s *StaffRecordsService) ListAuditEvents(ctx context.Context,actor,school,staff int64)([]repository.StaffAuditEvent,error){
+func(s *StaffRecordsService) ListAuditEvents(ctx context.Context,actor,school,staff int64,filter repository.StaffAuditEventFilter)(*repository.StaffAuditEventPage,error){
 	if s==nil||s.repository==nil||actor<=0||school<=0||staff<=0{return nil,ErrInvalidStaffRecord}
-	return s.repository.ListStaffAuditEvents(ctx,actor,school,staff)
+	if filter.Limit==0 { filter.Limit=50 }
+	if filter.Limit<1||filter.Limit>100||filter.Offset<0||filter.Offset>1000000 { return nil,ErrInvalidStaffRecord }
+	return s.repository.ListStaffAuditEvents(ctx,actor,school,staff,filter)
 }
 
 func (s *StaffRecordsService) ListQualificationsReport(ctx context.Context, actor, school int64, filter repository.StaffQualificationReportFilter) (*repository.StaffQualificationReportPage, error) {

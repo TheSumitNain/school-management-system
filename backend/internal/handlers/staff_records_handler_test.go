@@ -81,7 +81,7 @@ type nilStaffRecordsResultService struct { StaffRecordsManagementService }
 func (nilStaffRecordsResultService) ListQualifications(context.Context,int64,int64,int64)([]repository.StaffQualification,error){return nil,nil}
 func (nilStaffRecordsResultService) ListCertifications(context.Context,int64,int64,int64)([]repository.StaffCertification,error){return nil,nil}
 func (nilStaffRecordsResultService) ListExperience(context.Context,int64,int64,int64)([]repository.StaffExperience,error){return nil,nil}
-func (nilStaffRecordsResultService) ListAuditEvents(context.Context,int64,int64,int64)([]repository.StaffAuditEvent,error){return nil,nil}
+func (nilStaffRecordsResultService) ListAuditEvents(context.Context,int64,int64,int64,repository.StaffAuditEventFilter)(*repository.StaffAuditEventPage,error){return nil,nil}
 
 func (nilStaffRecordsResultService) CreateQualification(context.Context,int64,int64,int64,repository.StaffQualification)(*repository.StaffQualification,error){return nil,nil}
 func (nilStaffRecordsResultService) CreateCertification(context.Context,int64,int64,int64,repository.StaffCertification)(*repository.StaffCertification,error){return nil,nil}

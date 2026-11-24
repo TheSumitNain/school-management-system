@@ -25,7 +25,7 @@ type StaffRecordsManagementService interface {
 	UpdateQualification(context.Context,int64,int64,int64,int64,repository.StaffQualification)(*repository.StaffQualification,error)
 	UpdateCertification(context.Context,int64,int64,int64,int64,repository.StaffCertification)(*repository.StaffCertification,error)
 	UpdateExperience(context.Context,int64,int64,int64,int64,repository.StaffExperience)(*repository.StaffExperience,error)
-	ListAuditEvents(context.Context,int64,int64,int64)([]repository.StaffAuditEvent,error)
+	ListAuditEvents(context.Context,int64,int64,int64,repository.StaffAuditEventFilter)(*repository.StaffAuditEventPage,error)
 }
 
 type StaffRecordsHandler struct { service StaffRecordsManagementService }
@@ -150,9 +150,13 @@ func(h *StaffRecordsHandler) ListAuditEvents(c *gin.Context){
 	actor,school,ok:=staffRecordActor(c);if !ok{c.JSON(401,gin.H{"status":"error","message":"School staff authentication required"});return}
 	if h.unavailable(c) { return }
 	staff,ok:=staffRecordTarget(c);if !ok{c.JSON(400,gin.H{"status":"error","message":"Invalid staff principal ID"});return}
-	items,err:=h.service.ListAuditEvents(c.Request.Context(),actor,school,staff);if err!=nil{h.fail(c,err);return}
-	if items == nil { items = []repository.StaffAuditEvent{} }
-	c.JSON(200,gin.H{"status":"success","events":items})
+	filter:=repository.StaffAuditEventFilter{Limit:50,Offset:0}
+	if raw:=c.Query("limit");raw!="" { value,err:=strconv.Atoi(raw);if err!=nil||value<1||value>100 { c.JSON(400,gin.H{"status":"error","message":"Invalid audit event limit"});return };filter.Limit=value }
+	if raw:=c.Query("offset");raw!="" { value,err:=strconv.Atoi(raw);if err!=nil||value<0||value>1000000 { c.JSON(400,gin.H{"status":"error","message":"Invalid audit event offset"});return };filter.Offset=value }
+	page,err:=h.service.ListAuditEvents(c.Request.Context(),actor,school,staff,filter);if err!=nil{h.fail(c,err);return}
+	if page==nil { page=&repository.StaffAuditEventPage{Events:[]repository.StaffAuditEvent{},Limit:filter.Limit,Offset:filter.Offset} }
+	if page.Events==nil { page.Events=[]repository.StaffAuditEvent{} }
+	c.JSON(200,gin.H{"status":"success","events":page.Events,"limit":page.Limit,"offset":page.Offset,"has_more":page.HasMore})
 }
 
 func (h *StaffRecordsHandler) ListQualificationsReport(c *gin.Context) {

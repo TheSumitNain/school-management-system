@@ -602,8 +602,10 @@ export function updateStaffExperience(principalID: number, recordID: number, inp
 }
 
 export type StaffAuditEvent = { id: number; action: string; resource_type: string; outcome: "success" | "failure"; actor_username: string; created_at: string };
-export function getStaffAuditEvents(principalID: number, signal?: AbortSignal) {
-  return api<{ events: StaffAuditEvent[] }>(`/school/staff/${principalID}/audit-events`, { signal });
+export type StaffAuditEventPage = { events: StaffAuditEvent[]; limit: number; offset: number; has_more: boolean };
+export function getStaffAuditEvents(principalID: number, pagination: { limit: number; offset: number } = { limit: 50, offset: 0 }, signal?: AbortSignal) {
+  const params = new URLSearchParams({ limit: String(pagination.limit), offset: String(pagination.offset) });
+  return api<StaffAuditEventPage>(`/school/staff/${principalID}/audit-events?${params.toString()}`, { signal });
 }
 
 export type StaffAttendanceRecord = {
