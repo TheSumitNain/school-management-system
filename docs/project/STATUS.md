@@ -2384,3 +2384,11 @@ This update supersedes older status bullets that listed the following database-b
 - Replaced hard-coded calendar dates in staff substitution, leave validation/half-day application and holiday browser scenarios with dates derived from the current IST school date. The substitution PostgreSQL guard integration fixture now chooses the next Monday in IST, so it continues to exercise future-cover protections after midnight/day changes.
 - Backend CI [45315575893](https://github.com/TheSumitNain/school-management-system/actions/runs/45315575893) **PASS** (ephemeral PostgreSQL migrations, full Go/PostgreSQL integration suite and go vet). Frontend CI [45315575878](https://github.com/TheSumitNain/school-management-system/actions/runs/45315575878) **PASS** (TypeScript, production build, design-token check and 93 Playwright browser tests) on commit 3c9b6d57.
 - No persistent database migration or data change. main remains untouched. Staff Management is not declared complete: the final consolidated scope/security acceptance remains open; profile-only onboarding/Bulk Import remain gated on explicit identity-schema approval; document upload/download and profile photos remain deferred until the project is live and external storage is selected and approved.
+
+
+## 2026-11-24 — Staff identity proposal and import safety contract refinement
+
+- Refined the proposal-only identity schema with school-scoped designation/department master references and historical display snapshots. Master renames/deactivation do not silently rewrite existing employee labels; explicit reassignment updates the snapshot.
+- Clarified migration-only `unclassified` handling, the operational teaching/non-teaching Staff Type boundary and the exact Employment Type value set.
+- Strengthened the future CSV import contract with read-only preview, expiring preview-bound confirmation, server-side revalidation, transactional duplicate checks, all-or-nothing writes, idempotent batch keys and bounded safe parsing.
+- No application code, migration, local database or persistent database was changed. Profile-only onboarding/Bulk Import remain blocked pending explicit approval; staff document upload/download and photographs remain deferred until the project is live and external storage is selected and approved.
