@@ -3140,6 +3140,40 @@ test("staff attendance monthly summary does not request data for an invalid mont
   expect(monthlyRequests).toBe(1);
 });
 
+test("staff attendance monthly context uses correct dates for years below 100", async ({ page }) => {
+  await signInAndOpenStaff(page, [], undefined, [
+    "staff.attendance.read", "staff.leave.read", "staff.holidays.read",
+  ]);
+  const requested: string[] = [];
+  await page.route("**/api/school/staff-attendance/month?*", async route => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get("month") === "0001-02") requested.push("attendance:" + url.searchParams.get("month"));
+    await route.fulfill({ json: { month: url.searchParams.get("month"), data: [] } });
+  });
+  await page.route("**/api/school/staff-leave/requests?*", async route => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get("from_date") === "0001-02-01") {
+      requested.push("leave:" + url.searchParams.get("from_date") + ":" + url.searchParams.get("to_date"));
+    }
+    await route.fulfill({ json: { data: [] } });
+  });
+  await page.route("**/api/school/holidays?*", async route => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get("from") === "0001-02-01") {
+      requested.push("holiday:" + url.searchParams.get("from") + ":" + url.searchParams.get("to"));
+    }
+    await route.fulfill({ json: { data: [] } });
+  });
+  await page.getByRole("button", { name: "Attendance", exact: true }).click();
+  await page.getByRole("button", { name: "Monthly summary" }).click();
+  const month = page.getByLabel("Attendance month");
+  await month.fill("0001-02");
+  await expect.poll(() => requested.length).toBe(3);
+  expect(requested).toContain("attendance:0001-02");
+  expect(requested).toContain("leave:0001-02-01:0001-02-28");
+  expect(requested).toContain("holiday:0001-02-01:0001-02-28");
+});
+
 test("staff profile dialog and section navigation remain responsive on mobile, tablet and desktop", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 541, school_id: 10, username: "profile.responsive",
