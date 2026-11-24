@@ -120,8 +120,8 @@ func (s *StaffAccountService) UpdateProfile(ctx context.Context, actorPrincipalI
     profile.Email = strings.TrimSpace(profile.Email)
     if profile.EmploymentStatus == "" { profile.EmploymentStatus = "active" }
     if s == nil || s.repository == nil || actorPrincipalID <= 0 || schoolID <= 0 || targetPrincipalID <= 0 ||
-       !staffEmployeeCodePattern.MatchString(profile.EmployeeCode) || profile.FullName == "" || len(profile.FullName) > 160 ||
-       profile.Designation == "" || len(profile.Designation) > 100 || !staffMobilePattern.MatchString(profile.MobileNumber) ||
+       !staffEmployeeCodePattern.MatchString(profile.EmployeeCode) || profile.FullName == "" || len([]rune(profile.FullName)) > 160 ||
+       profile.Designation == "" || len([]rune(profile.Designation)) > 100 || !staffMobilePattern.MatchString(profile.MobileNumber) ||
        (profile.Email != "" && (!strings.Contains(profile.Email, "@") || len(profile.Email) > 254)) ||
        (profile.JoiningDate != nil && (profile.JoiningDate.Year() < 1 || profile.JoiningDate.After(time.Now().AddDate(1, 0, 0)))) ||
        (profile.EmploymentStatus != "active" && profile.EmploymentStatus != "inactive") {
