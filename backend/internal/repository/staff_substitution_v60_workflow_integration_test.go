@@ -84,7 +84,12 @@ func TestStaffSubstitutionV60DatabaseGuardsPostgresIntegration(t *testing.T) {
 	if err=tx.QueryRow(ctx,`INSERT INTO timetable_entries(school_id,academic_year_id,section_id,subject_id,teacher_principal_id,teacher_subject_assignment_id,period_id,day_of_week,room,created_by_principal_id,updated_by_principal_id)
 		VALUES($1,$2,$3,$4,$5,$6,$7,1,'Original room',$8,$8) RETURNING id`,schoolID,yearID,sectionID,subjectID,originalID,originalAssignmentID,periodID,originalID).Scan(&timetableEntryID);err!=nil{t.Fatalf("create recurring timetable entry: %v",err)}
 
-	const coverDate="2026-11-23" // Monday; same weekday as the recurring entry.
+	// Use the next Monday in the school's IST calendar so this remains a
+	// future substitution regardless of when CI runs.
+	nowIST:=time.Now().In(time.FixedZone("IST",5*60*60+30*60))
+	daysUntilMonday:=(int(time.Monday)-int(nowIST.Weekday())+7)%7
+	if daysUntilMonday==0{daysUntilMonday=7}
+	coverDate:=nowIST.AddDate(0,0,daysUntilMonday).Format("2006-01-02")
 	var substitutionID int64
 	if err=tx.QueryRow(ctx,`INSERT INTO staff_substitutions(school_id,timetable_entry_id,period_id,cover_date,original_teacher_principal_id,substitute_teacher_principal_id,reason,created_by_principal_id)
 		VALUES($1,$2,$3,$4::date,$5,$6,'Cover for approved absence',$5) RETURNING id`,schoolID,timetableEntryID,periodID,coverDate,originalID,substituteID).Scan(&substitutionID);err!=nil{t.Fatalf("create valid dated substitution: %v",err)}
