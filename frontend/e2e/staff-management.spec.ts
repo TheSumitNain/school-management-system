@@ -353,6 +353,15 @@ test("staff directory filters independently narrow employment, login account and
   await expect(page.getByText("3 of 5 staff members")).toBeVisible();
   await expect(page.getByRole("button", { name: "Active Enabled" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Profile Unknown" })).toHaveCount(0);
+
+  const search = page.getByRole("textbox", { name: "Search staff by name, code, designation, mobile or username" });
+  await search.fill("9876543213");
+  await expect(page.getByText("1 of 5 staff members")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Profile Pending" })).toBeVisible();
+  await page.getByRole("button", { name: "Clear filters" }).click();
+  await expect(search).toHaveValue("");
+  await expect(page.getByText("5 of 5 staff members")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Clear filters" })).toHaveCount(0);
 });
 
 
