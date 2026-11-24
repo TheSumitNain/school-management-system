@@ -42,7 +42,12 @@ func(h *StaffRecordsHandler) fail(c *gin.Context,err error){
 	case errors.Is(err,repository.ErrStaffRecordAccessDenied),errors.Is(err,repository.ErrRolePermissionDenied):
 		c.JSON(http.StatusForbidden,gin.H{"status":"error","message":"Staff record access is not authorized"})
 	case errors.Is(err,services.ErrInvalidStaffRecord),errors.Is(err,repository.ErrInvalidStaffRecord):
-		c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Check the highlighted staff record fields","field_errors":gin.H{}})
+		var validation *services.StaffRecordFieldValidationError
+		if errors.As(err, &validation) && len(validation.FieldErrors) > 0 {
+			c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Check the highlighted staff record fields","field_errors":validation.FieldErrors})
+			return
+		}
+		c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Check the submitted staff record","field_errors":gin.H{}})
 	default:c.JSON(http.StatusInternalServerError,gin.H{"status":"error","message":"Unable to process staff record"})
 	}
 }
