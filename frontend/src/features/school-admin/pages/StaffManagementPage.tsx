@@ -446,7 +446,7 @@ export function StaffManagementPage({ permissions }: Props) {
             <li><span>Inactive employees</span><strong>{staff.filter(item => item.employment_status === "inactive").length}</strong></li>
           </ul></section>}
         </div>
-        {query.isError && <p className="staff-overview-error" role="alert">Staff summary could not be loaded. Open Staff Directory and retry the request.</p>}
+        {canReadStaff && query.isError && <p className="staff-overview-error" role="alert">Staff summary could not be loaded. Open Staff Directory and retry the request.</p>}
       </section>}
       {activeTab === "assignments" && <TeacherAssignmentsPage permissions={permissions}/>}
       {activeTab === "attendance" && <StaffAttendanceWorkspace permissions={permissions}/>}
