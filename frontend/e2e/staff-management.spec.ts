@@ -484,6 +484,33 @@ test("staff leave request filters send the selected status and staff scope", asy
   await expect(page.getByText("No leave requests match these filters.")).toBeVisible();
 });
 
+test("staff leave request date filters are sent to the API and can be cleared together", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 501, school_id: 10, username: "leave.dates",
+    employee_code: "EMP-LEAVE-DATE-01", full_name: "Date Filter Teacher", designation: "Teacher",
+    employment_status: "active", profile_complete: true, status: "active", must_change_password: false,
+  }];
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "staff.leave.read"]);
+  await page.getByRole("button", { name: "Leave & Holidays" }).click();
+
+  const dateRequest = page.waitForRequest(request => {
+    const url = new URL(request.url());
+    return request.method() === "GET" && url.pathname.endsWith("/school/staff-leave/requests") &&
+      url.searchParams.get("from_date") === "2026-11-01" &&
+      url.searchParams.get("to_date") === "2026-11-30";
+  });
+  await page.getByLabel("Leave requests from date").fill("2026-11-01");
+  await page.getByLabel("Leave requests to date").fill("2026-11-30");
+  const filteredURL = new URL((await dateRequest).url());
+  expect(filteredURL.searchParams.get("from_date")).toBe("2026-11-01");
+  expect(filteredURL.searchParams.get("to_date")).toBe("2026-11-30");
+
+  await page.getByRole("button", { name: "Clear filters" }).click();
+  await expect(page.getByLabel("Leave requests from date")).toHaveValue("");
+  await expect(page.getByLabel("Leave requests to date")).toHaveValue("");
+  await expect(page.getByRole("button", { name: "Clear filters" })).toHaveCount(0);
+});
+
 test("staff leave types can be edited and safely deactivated", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 501, school_id: 10, username: "leave.teacher",
