@@ -23,9 +23,13 @@ async function chooseDatePickerValue(scope: Locator, ariaLabel: string, value: s
   while (true) {
     const range = await calendar.locator(".app-date-header strong").innerText();
     const [first, last] = range.split("–").map(Number);
-    if (year < first) await calendar.getByRole("button", { name: "Previous decade" }).click();
-    else if (year > last) await calendar.getByRole("button", { name: "Next decade" }).click();
-    else break;
+    if (year < first) {
+      await calendar.getByRole("button", { name: "Previous decade" }).click();
+      await expect(calendar.locator(".app-date-year-grid button[aria-pressed='true']")).toBeFocused();
+    } else if (year > last) {
+      await calendar.getByRole("button", { name: "Next decade" }).click();
+      await expect(calendar.locator(".app-date-year-grid button[aria-pressed='true']")).toBeFocused();
+    } else break;
   }
   await calendar.locator(".app-date-year-grid button").filter({ hasText: new RegExp(`^${year}$`) }).click();
   await calendar.getByRole("button", { name: "Choose month" }).click();
@@ -1173,7 +1177,7 @@ test("staff profile creates education, certification and experience records", as
   await dialog.getByRole("button", { name: "Add experience" }).click();
   await dialog.locator('input[name="employer_name"]').fill("Previous School");
   await dialog.locator('input[name="record_designation"]').fill("Science Teacher");
-  await chooseDatePickerValue(dialog, "Previous employment start date", "2021-04-01");
+  await chooseDatePickerValue(dialog, "Previous employment start date", "2012-04-01");
   await dialog.getByRole("button", { name: "Previous employment end date" }).click();
   const experienceEndCalendar = dialog.getByRole("dialog", { name: "Choose previous employment end date" });
   await experienceEndCalendar.getByRole("button", { name: "Choose year" }).click();

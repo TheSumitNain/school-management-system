@@ -53,7 +53,9 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dayRefs = useRef(new Map<string, HTMLButtonElement>());
+  const yearRefs = useRef(new Map<number, HTMLButtonElement>());
   const shouldFocusActiveDate = useRef(false);
+  const shouldFocusActiveYear = useRef(false);
   const shouldRestoreTriggerFocus = useRef(false);
   const gridId = useId();
   const [open, setOpen] = useState(false);
@@ -78,6 +80,10 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
   }, [firstWeekday, daysInMonth]);
 
   useEffect(() => {
+    if (shouldFocusActiveYear.current) {
+      yearRefs.current.get(year)?.focus();
+      shouldFocusActiveYear.current = false;
+    }
     if (shouldFocusActiveDate.current) {
       dayRefs.current.get(activeDate)?.focus();
       shouldFocusActiveDate.current = false;
@@ -143,8 +149,12 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
     if (nextStart + 9 < minYear || nextStart > maxYear) return;
     const firstAvailable = Math.max(nextStart, minYear);
     const nextYear = Math.min(Math.max(year, firstAvailable), Math.min(nextStart + 9, maxYear));
-    changeYear(nextYear);
+    const nextMonth = new Date(nextYear, visibleMonth.getMonth(), 1);
+    const nextDate = clampToBounds(withDayInMonth(nextMonth, fromISO(activeDate)?.getDate() ?? 1), min, max);
+    setVisibleMonth(startOfMonth(nextDate));
+    setActiveDate(toISO(nextDate));
     setView("years");
+    shouldFocusActiveYear.current = true;
   }
 
   function closeAndRestoreFocus() {
@@ -279,7 +289,7 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
             <div className="app-date-choice-grid app-date-year-grid" role="group" aria-label="Years">
               {Array.from({ length: 10 }, (_, index) => yearRangeStart + index).map(itemYear => {
                 const unavailable = itemYear < minYear || itemYear > maxYear || !yearHasAvailableDate(itemYear, min, max);
-                return <button key={itemYear} type="button" className="app-date-choice" disabled={unavailable} aria-pressed={itemYear === year} onClick={() => { changeYear(itemYear); setView("days"); }}>{itemYear}</button>;
+                return <button key={itemYear} ref={element => { if (element) yearRefs.current.set(itemYear, element); else yearRefs.current.delete(itemYear); }} type="button" className="app-date-choice" disabled={unavailable} aria-pressed={itemYear === year} onClick={() => { changeYear(itemYear); setView("days"); }}>{itemYear}</button>;
               })}
             </div>
           )}
