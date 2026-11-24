@@ -2341,12 +2341,13 @@ test("staff experience report uses one paginated school aggregate endpoint and e
 });
 
 
-test("staff ID cards select only complete active profiles and expose approved print fields", async ({ page }) => {
+test("staff ID cards select complete active employees regardless of login status and expose approved print fields", async ({ page }) => {
   const rows:Array<Record<string,unknown>>=[
     {id:1,principal_id:501,school_id:10,username:"active.teacher",employee_code:"EMP-501",full_name:"Active Teacher",designation:"Mathematics Teacher",mobile_number:"9876543210",email:"private@example.test",joining_date:"2024-04-01",employment_status:"active",profile_complete:true,status:"active",must_change_password:false},
     {id:2,principal_id:502,school_id:10,username:"inactive.teacher",employee_code:"EMP-502",full_name:"Inactive Teacher",designation:"Former Teacher",employment_status:"inactive",profile_complete:true,status:"disabled",must_change_password:false},
     {id:3,principal_id:503,school_id:10,username:"incomplete.teacher",employee_code:"",full_name:"Incomplete Teacher",designation:"",employment_status:"active",profile_complete:false,status:"active",must_change_password:false},
     {id:4,principal_id:504,school_id:10,username:"unknown.profile",employee_code:"EMP-504",full_name:"Unknown Profile",designation:"Teacher",employment_status:"active",status:"active",must_change_password:false},
+    {id:5,principal_id:505,school_id:10,username:"disabled.login.active.employee",employee_code:"EMP-505",full_name:"Disabled Login Teacher",designation:"English Teacher",joining_date:"2025-06-01",employment_status:"active",profile_complete:true,status:"disabled",must_change_password:false},
   ];
   await signInAndOpenStaff(page,rows,undefined,["users.read"]);
   await page.getByRole("button",{name:"ID Cards",exact:true}).click();
@@ -2354,10 +2355,14 @@ test("staff ID cards select only complete active profiles and expose approved pr
   await expect(page.getByLabel(/Inactive Teacher/)).toHaveCount(0);
   await expect(page.getByLabel(/Incomplete Teacher/)).toHaveCount(0);
   await expect(page.getByLabel(/Unknown Profile/)).toHaveCount(0);
+  await expect(page.getByLabel(/Disabled Login Teacher/)).toBeVisible();
   await page.getByRole("button",{name:"Select all eligible"}).click();
   const preview = page.locator(".staff-id-print-area");
   await expect(preview.getByText("Active Teacher",{exact:true})).toBeVisible();
   await expect(preview.getByText("EMP-501",{exact:true})).toBeVisible();
+  await expect(preview.getByText("Disabled Login Teacher",{exact:true})).toBeVisible();
+  await expect(preview.getByText("EMP-505",{exact:true})).toBeVisible();
+  await expect(preview.locator(".staff-id-card")).toHaveCount(2);
   await expect(preview.getByText("1 Apr 2024",{exact:true})).toBeVisible();
   await expect(preview.getByText("Active",{exact:true})).toBeVisible();
   await expect(preview.getByText("Mathematics Teacher",{exact:true})).toBeVisible();
@@ -2376,7 +2381,7 @@ test("staff ID cards select only complete active profiles and expose approved pr
   await expect(preview.locator("canvas, svg, img, [data-qr]")).toHaveCount(0);
   await expect(preview).not.toContainText(/password|credential|login status/i);
   await page.getByLabel("Card template").selectOption("modern");
-  await expect(page.locator(".staff-id-card--modern")).toHaveCount(1);
+  await expect(page.locator(".staff-id-card--modern")).toHaveCount(2);
   await page.setViewportSize({width:390,height:844});
   await expect.poll(() => page.locator(".staff-id-selection").evaluate(element => getComputedStyle(element).gridTemplateColumns.trim().split(/\s+/).length)).toBe(1);
   await expect(page.locator(".staff-id-card")).toBeVisible();
@@ -2388,7 +2393,7 @@ test("staff ID cards select only complete active profiles and expose approved pr
     Object.defineProperty(window,"__staffPrintCalled",{value:false,writable:true,configurable:true});
     window.print = () => { (window as Window & {__staffPrintCalled?:boolean}).__staffPrintCalled = true; };
   });
-  await page.getByRole("button",{name:"Print 1 card"}).click();
+  await page.getByRole("button",{name:"Print 2 cards"}).click();
   await expect.poll(() => page.evaluate(() => Boolean((window as Window & {__staffPrintCalled?:boolean}).__staffPrintCalled))).toBe(true);
   await page.emulateMedia({media:"print"});
   await expect(page.locator(".staff-workspace-tabs")).toHaveCSS("visibility","hidden");
