@@ -172,6 +172,18 @@ export function StaffManagementPage({ permissions }: Props) {
     setExperienceStartDate("");
     setExperienceEndDate("");
   }
+  function closeStandaloneRoleAssignments() {
+    if (rolesForPrincipal !== null) {
+      queryClient.removeQueries({ queryKey: ["school-admin", "staff-roles", rolesForPrincipal] });
+    }
+    setRolesForPrincipal(null);
+  }
+  function closeStandalonePermissionOverrides() {
+    if (overridesForPrincipal !== null) {
+      queryClient.removeQueries({ queryKey: ["school-admin", "staff-overrides", overridesForPrincipal] });
+    }
+    setOverridesForPrincipal(null);
+  }
   function openProfile(item: StaffRecord) { setProfileFor(item); setProfileTab("Overview"); setRecordFormKind(null); setEditingRecordID(null); setRecordError(""); setRecordFieldErrors({}); setCertificationIssueDate(""); setCertificationExpiryDate(""); setExperienceStartDate(""); setExperienceEndDate(""); }
   function openAction(next: Action, item: StaffRecord | null = null) {
     setSelected(item);
@@ -624,8 +636,8 @@ export function StaffManagementPage({ permissions }: Props) {
         {profileTab === "Account & Access" && <section className="staff-profile-access">{canReadRoles ? <StaffRoleAssignments key={profileFor.principal_id} staff={profileFor} canAssign={canAssignRoles}/> : <p>You do not have permission to view role assignments.</p>}{canManageOverrides ? <StaffPermissionOverrides key={profileFor.principal_id} staff={profileFor}/> : <p>You do not have permission to manage individual permission overrides.</p>}<p className="staff-wizard-note">Login identity, role grants and individual overrides remain separate from employee profile details.</p></section>}
         {profileTab === "History & Activity" && <StaffHistoryActivityPanel key={profileFor.principal_id} staff={profileFor} permissions={permissions}/>}
       </Modal>}
-      {rolesForPrincipal !== null && canReadRoles && (() => { const target=staff.find(item=>item.principal_id===rolesForPrincipal); return target ? <Modal open title={`Access roles · ${target.username}`} description="Review the roles assigned to this staff account. Add or remove roles here; changes take effect on the next protected request." onClose={()=>setRolesForPrincipal(null)}><StaffRoleAssignments key={target.principal_id} staff={target} canAssign={canAssignRoles}/></Modal> : null; })()}
-      {overridesForPrincipal !== null && canManageOverrides && (() => { const target=staff.find(item=>item.principal_id===overridesForPrincipal); return target ? <Modal open title={`Permission overrides · ${target.username}`} description="Review individual access exceptions. Use an override only when the staff member's role permissions need a documented exception." onClose={()=>setOverridesForPrincipal(null)}><StaffPermissionOverrides key={target.principal_id} staff={target}/></Modal> : null; })()}
+      {rolesForPrincipal !== null && canReadRoles && (() => { const target=staff.find(item=>item.principal_id===rolesForPrincipal); return target ? <Modal open title={`Access roles · ${target.username}`} description="Review the roles assigned to this staff account. Add or remove roles here; changes take effect on the next protected request." onClose={closeStandaloneRoleAssignments}><StaffRoleAssignments key={target.principal_id} staff={target} canAssign={canAssignRoles}/></Modal> : null; })()}
+      {overridesForPrincipal !== null && canManageOverrides && (() => { const target=staff.find(item=>item.principal_id===overridesForPrincipal); return target ? <Modal open title={`Permission overrides · ${target.username}`} description="Review individual access exceptions. Use an override only when the staff member's role permissions need a documented exception." onClose={closeStandalonePermissionOverrides}><StaffPermissionOverrides key={target.principal_id} staff={target}/></Modal> : null; })()}
       <p className="staff-security-note"><ShieldCheck size={15}/> Every action is checked again by the server using your current school permissions.</p>
       <ConfirmDialog open={Boolean(staffToDisable && canDisable && canReadStaff)} title="Disable staff account?" description={staffToDisable ? `Disable ${staffToDisable.username}? Their active sessions will be revoked and they will no longer be able to sign in.` : ""} confirmLabel="Disable account" pending={disable.isPending} error={disableError || undefined} onCancel={() => {setStaffToDisable(null);setDisableError("");}} onConfirm={() => void confirmDeactivate()}/>
     </div>
