@@ -246,3 +246,10 @@ Migration V59 and the first end-to-end Leave & Holiday workflow are implemented 
 - Verified the holiday calendar remains visible, the request does not ask for inactive records, and Edit, Deactivate, Reactivate and Save controls are absent.
 - Exact checkpoint `eaaea2f2f0f4a3665221a3fe0d1807f404eac6a7`: Frontend CI [45001889888](https://github.com/TheSumitNain/school-management-system/actions/runs/45001889888) **PASS**, including the complete Playwright browser suite; Backend CI [45001889885](https://github.com/TheSumitNain/school-management-system/actions/runs/45001889885) **PASS**, including PostgreSQL integration and `go vet`.
 - This is permission-focused browser coverage only; no application behavior, API schema, database migration or persistent data was changed.
+
+## 20. Leave holiday-calendar validation and handler error mapping (2026-11-25)
+
+- Added service-level holiday-calendar date-range validation regressions: a 366-day range is accepted; ranges over 366 days, reversed or malformed dates, year zero and missing dates are rejected before repository access. Valid school-scoped filters are forwarded unchanged.
+- Added handler regressions for stable HTTP mappings: permission denial → 403, missing leave record → 404, overlap conflict → 409, validation → 400, and unexpected internal errors → 500 without leaking database details.
+- Backend CI [45601046350](https://github.com/TheSumitNain/school-management-system/actions/runs/45601046350) **PASS** on `53a31c317a72af379b10d71fe6beb7672f842bf5`: full migration chain on ephemeral PostgreSQL, complete Go/PostgreSQL integration suite and `go vet`.
+- These are validation and regression-test changes; no schema migration or persistent school data change. School leave entitlement policy remains approval-gated.
