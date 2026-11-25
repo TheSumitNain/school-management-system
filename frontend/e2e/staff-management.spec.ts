@@ -1057,6 +1057,43 @@ test("enabling a disabled staff account validates a temporary password and enfor
   await expect(page.getByRole("button", { name: "Enable enable.teacher" })).toHaveCount(0);
 });
 
+test("staff account re-enable keeps the dialog open and explains an inactive employee conflict", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 519, school_id: 10, username: "inactive.enable",
+    employee_code: "EMP-INACTIVE-ENABLE", full_name: "Inactive Enable", designation: "Teacher",
+    mobile_number: "9876543218", employment_status: "active", profile_complete: true,
+    status: "disabled", must_change_password: false,
+  }];
+  let enableCalls = 0;
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "users.update"]);
+  await page.route("**/api/school/staff/519/enable", async route => {
+    if (route.request().method() !== "POST") { await route.fallback(); return; }
+    enableCalls += 1;
+    await route.fulfill({
+      status: 409,
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "error",
+        message: "Reactivate the employee profile before enabling this login account",
+      }),
+    });
+  });
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  const staffRow = page.locator("tr").filter({ hasText: "inactive.enable" });
+  await expect(staffRow).toBeVisible();
+  await staffRow.getByRole("button", { name: "Enable inactive.enable" }).click();
+  const enableDialog = page.getByRole("dialog", { name: "Enable staff account" });
+  await enableDialog.getByLabel("Temporary password").fill("EnableTempPass!2026");
+  await enableDialog.getByRole("button", { name: "Enable account", exact: true }).click();
+
+  await expect(enableDialog).toBeVisible();
+  await expect(enableDialog.getByText("Reactivate the employee profile before enabling this login account")).toBeVisible();
+  expect(enableCalls).toBe(1);
+  await expect(staffRow).toContainText("disabled");
+  await expect(page.getByText("Staff account enabled. A password change is required at next sign-in.")).toHaveCount(0);
+});
+
 test("staff profile edit uses the shared employment-status select and sends the selected value", async ({ page }) => {
   const updates: Array<Record<string, unknown>> = [];
   const rows: Array<Record<string, unknown>> = [{
