@@ -23,6 +23,27 @@ export type StaffListResponse = { staff: StaffRecord[] };
 export function getSchoolStaff(signal?: AbortSignal) {
   return api<StaffListResponse>("/school/staff", { signal });
 }
+
+export type StaffDirectoryResponse = StaffListResponse & { total: number; limit: number; offset: number };
+export type StaffDirectoryFilters = {
+  search: string;
+  employmentStatus: string;
+  accountStatus: string;
+  profileStatus: string;
+  limit: number;
+  offset: number;
+};
+export function getSchoolStaffDirectory(filters: StaffDirectoryFilters, signal?: AbortSignal) {
+  const params = new URLSearchParams();
+  params.set("limit", String(filters.limit));
+  params.set("offset", String(filters.offset));
+  if (filters.search.trim()) params.set("search", filters.search.trim());
+  if (filters.employmentStatus) params.set("employment_status", filters.employmentStatus);
+  if (filters.accountStatus) params.set("account_status", filters.accountStatus);
+  if (filters.profileStatus) params.set("profile_status", filters.profileStatus);
+  return api<StaffDirectoryResponse>("/school/staff?" + params.toString(), { signal });
+}
+
 export function createSchoolStaff(input: { username: string; initial_password: string } & { employee_code: string; full_name: string; designation: string; mobile_number: string; email?: string; joining_date?: string; employment_status?: "active" | "inactive" }) {
   return api<{ staff: StaffRecord }>("/school/staff", { method: "POST", body: JSON.stringify(input) });
 }
