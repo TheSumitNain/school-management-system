@@ -988,3 +988,10 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Added direct PostgreSQL failure-injection coverage for all six qualification/certification/experience repository write paths (create and update). If the matching audit event cannot be inserted, the operation must fail atomically: create leaves no row behind, while update retains the original field values.
 - Backend CI [45627964262](https://github.com/TheSumitNain/school-management-system/actions/runs/45627964262) **PASS** on `4c07ed148cd939add6dffca03635c67f8fb6a53e`, including full migrations, Go/PostgreSQL integration tests and `go vet`.
 - This is regression-test hardening only; no production code or schema migration changed. Verification approval and archive/retention policy remain undefined product decisions and are not enabled. Document/photo storage remains deferred and excluded from the completion estimate; `main` remains untouched.
+
+
+## 2026-11-25 follow-up — leave request creation transaction regression
+
+- Added a PostgreSQL failure-injection test for staff leave request creation. When the required `staff.leave.requested` audit event cannot be inserted, the transaction must leave neither a request row nor an audit row. Existing integration coverage already verifies rollback for decisions, cancellation and holiday creation.
+- Backend CI [45630342631](https://github.com/TheSumitNain/school-management-system/actions/runs/45630342631) **PASS** on `c9ee6e8671b0fcf3faa76fa2ec0aa02fb58a68af`: all migrations, full Go/PostgreSQL integration tests and `go vet`.
+- Test-only hardening; no production code or schema migration changed. School leave quotas, accrual and carry-forward remain approval-gated; `main` remains untouched.
