@@ -533,7 +533,7 @@ WHERE LOWER(u.username) = LOWER($1)
 // GetStaffPasswordCredential returns the password hash for a canonical staff
 // principal. Password hashes are only consumed by the password service.
 func (r *UserRepository) GetStaffPasswordCredential(ctx context.Context, principalID int64) (int64, string, error) {
-	if principalID <= 0 {
+	if r == nil || r.db == nil || principalID <= 0 {
 		return 0, "", ErrInvalidUser
 	}
 	var userID int64
@@ -574,7 +574,7 @@ func (r *UserRepository) ChangeStaffPassword(
 	expectedPasswordHash string,
 	newPasswordHash string,
 ) error {
-	if principalID <= 0 || expectedPasswordHash == "" || newPasswordHash == "" {
+	if r == nil || r.db == nil || principalID <= 0 || expectedPasswordHash == "" || newPasswordHash == "" {
 		return ErrInvalidUser
 	}
 	tx, err := r.db.Begin(ctx)
