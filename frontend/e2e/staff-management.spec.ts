@@ -1834,6 +1834,8 @@ test("staff profile history is permission-gated and renders staff audit events",
   await signInAndOpenStaff(page, rows, undefined, ["users.read", "users.create", "users.update", "school.audit.read"]);
   await page.route("**/api/school/staff/512/audit-events**", async route => {
     await route.fulfill({ json: { events: [
+      { id: 17, action: "staff.password.changed", resource_type: "staff_user", outcome: "success", actor_username: "history.teacher", metadata: { password_change_required_cleared: true }, created_at: "2026-11-22T16:00:00.000Z" },
+      { id: 16, action: "staff.account.updated", resource_type: "staff_user", outcome: "success", actor_username: "school.admin", metadata: { old_username: "old-history-teacher", username: "history.teacher", sessions_revoked: true }, created_at: "2026-11-22T15:00:00.000Z" },
       { id: 15, action: "staff.account.disabled", resource_type: "staff_user", outcome: "success", actor_username: "school.admin", metadata: { target_principal_id: 512 }, created_at: "2026-11-22T14:00:00.000Z" },
       { id: 14, action: "staff.account.enabled", resource_type: "staff_user", outcome: "success", actor_username: "school.admin", metadata: { target_principal_id: 512 }, created_at: "2026-11-22T13:00:00.000Z" },
       { id: 13, action: "staff.password.reset", resource_type: "staff_user", outcome: "success", actor_username: "school.admin", metadata: { must_change_password: true }, created_at: "2026-11-22T12:00:00.000Z" },
@@ -1855,6 +1857,8 @@ test("staff profile history is permission-gated and renders staff audit events",
   await expect(dialog.getByText("Profile updated")).toBeVisible();
   await expect(dialog.getByText("Account disabled")).toBeVisible();
   await expect(dialog.getByText("Account enabled")).toBeVisible();
+  await expect(dialog.getByText("Account credentials updated")).toBeVisible();
+  await expect(dialog.getByText("Password changed")).toBeVisible();
   await expect(dialog.getByText("Password reset")).toBeVisible();
   await expect(dialog.getByText("Account created")).toBeVisible();
   await expect(dialog.getByText("Role assigned")).toBeVisible();
