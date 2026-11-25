@@ -1,3 +1,9 @@
+## 2026-11-25 — Staff profile Unicode validation acceptance
+
+- Aligned the Staff Directory profile form's full-name (160), designation (100), and email (254) client-side limits with the backend service's Unicode-code-point validation. Employee code (32) and mobile number constraints were already aligned.
+- Added Playwright regression coverage for supplementary Unicode input and the profile field limits. The follow-up browser suite passed on `4eb297516f652de07d4900455fcab4a119b0da57`; Frontend CI [45543354522](https://github.com/TheSumitNain/school-management-system/actions/runs/45543354522) **PASS**. Backend CI [45543354503](https://github.com/TheSumitNain/school-management-system/actions/runs/45543354503) **PASS** on the same code checkpoint.
+- This follows the record-field Unicode limit fix and its regression tests in the preceding commits. No production schema, migration, persistent database or application data changed. Approval-gated identity/profile schema work and deferred document/photo storage remain unchanged.
+
 ## 2026-11-25 — Staff reports contract audit
 
 - Reviewed the school-wide Qualifications & Certifications and Experience History report implementations end-to-end across route registration, handlers, service validation, repository SQL, frontend API client and report workspace.
