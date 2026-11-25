@@ -388,11 +388,11 @@ test("staff directory filters independently narrow employment, login account and
   ];
   await signInAndOpenStaff(page, rows);
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await expect(page.getByText("5 of 5 staff members")).toBeVisible();
+  await expect(page.getByText("1–5 of 5 staff members")).toBeVisible();
 
   await page.getByRole("button", { name: "Filter by employment status" }).click();
   await page.getByRole("option", { name: "Active", exact: true }).click();
-  await expect(page.getByText("4 of 5 staff members")).toBeVisible();
+  await expect(page.getByText("1–4 of 5 staff members")).toBeVisible();
   await expect(page.getByRole("button", { name: "Active Enabled" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Active Disabled" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Profile Pending" })).toBeVisible();
@@ -401,7 +401,7 @@ test("staff directory filters independently narrow employment, login account and
 
   await page.getByRole("button", { name: "Filter by login account status" }).click();
   await page.getByRole("option", { name: "Disabled", exact: true }).click();
-  await expect(page.getByText("3 of 5 staff members")).toBeVisible();
+  await expect(page.getByText("1–3 of 5 staff members")).toBeVisible();
   await expect(page.getByRole("button", { name: "Active Disabled" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Profile Pending" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Profile Unknown" })).toBeVisible();
@@ -416,7 +416,7 @@ test("staff directory filters independently narrow employment, login account and
   await expect(profileCompletenessFilter).toBeVisible();
   await profileCompletenessFilter.click();
   await page.getByRole("option", { name: "Incomplete", exact: true }).click();
-  await expect(page.getByText("2 of 5 staff members")).toBeVisible();
+  await expect(page.getByText("1–2 of 5 staff members")).toBeVisible();
   await expect(page.getByRole("button", { name: "Profile Pending" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Profile Unknown" })).toBeVisible();
 
@@ -424,7 +424,7 @@ test("staff directory filters independently narrow employment, login account and
   await expect(profileCompletenessFilter).toHaveAttribute("aria-expanded", "false");
   await profileCompletenessFilter.click();
   await page.getByRole("option", { name: "Complete", exact: true }).click();
-  await expect(page.getByText("3 of 5 staff members")).toBeVisible();
+  await expect(page.getByText("1–3 of 5 staff members")).toBeVisible();
   await expect(page.getByRole("button", { name: "Active Enabled" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Profile Unknown" })).toHaveCount(0);
 
@@ -437,11 +437,11 @@ test("staff directory filters independently narrow employment, login account and
   await search.focus();
   await expect(searchContainer).toHaveCSS("outline-style", "solid");
   await expect(searchContainer).toHaveCSS("outline-width", "2px");
-  await expect(page.getByText("1 of 5 staff members")).toBeVisible();
+  await expect(page.getByText("1–1 of 5 staff members")).toBeVisible();
   await expect(page.getByRole("button", { name: "Profile Pending" })).toBeVisible();
   await page.getByRole("button", { name: "Clear filters" }).click();
   await expect(search).toHaveValue("");
-  await expect(page.getByText("5 of 5 staff members")).toBeVisible();
+  await expect(page.getByText("1–5 of 5 staff members")).toBeVisible();
   await expect(page.getByRole("button", { name: "Clear filters" })).toHaveCount(0);
 });
 
@@ -483,7 +483,7 @@ test("staff directory uses server-side search and stable pagination", async ({ p
 
   const search = page.getByRole("textbox", { name: "Search staff by name, code, designation, mobile or username" });
   await search.fill("Directory Employee 075");
-  await expect(page.getByText("1–1 of 1 staff members")).toBeVisible();
+  await expect(page.getByText("1–1–1 of 1 staff members")).toBeVisible();
   await expect(page.getByRole("button", { name: "Directory Employee 075" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Previous" })).toHaveCount(0);
 });
@@ -535,7 +535,7 @@ test("staff directory filters stay within mobile, tablet and desktop layouts", a
   await page.setViewportSize({ width: 390, height: 844 });
   await filters.locator("button.app-select-trigger").first().click();
   await page.getByRole("option", { name: "Active", exact: true }).click();
-  await expect(page.getByText("1 of 2 staff members")).toBeVisible();
+  await expect(page.getByText("1–1 of 2 staff members")).toBeVisible();
 });
 
 
@@ -1350,7 +1350,7 @@ test("staff record server field errors render under the matching field and prese
     });
   });
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await expect(page.getByText("1 of 1 staff members")).toBeVisible();
+  await expect(page.getByText("1–1 of 1 staff members")).toBeVisible();
   const staffRow = page.locator("tr").filter({ hasText: "teacher.record-validation" });
   await expect(staffRow).toBeVisible();
   await staffRow.locator("button.staff-profile-link").click();
