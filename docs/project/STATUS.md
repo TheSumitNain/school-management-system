@@ -1,3 +1,10 @@
+## 2026-11-25 — Staff attendance audit-history cache refresh verified
+
+- Attendance mark, bulk-mark and update mutations now invalidate both staff-attendance data and staff audit-history queries, so the History & Activity panel refreshes after attendance writes. The history query uses a 30-second freshness window while explicit mutation invalidation still forces it stale.
+- Existing Playwright coverage in `staff-management.spec.ts` already exercises this exact lifecycle: it reads the employee's history, performs individual and bulk attendance changes, reopens the employee profile, and asserts a fresh audit-history request.
+- Frontend CI [45623944157](https://github.com/TheSumitNain/school-management-system/actions/runs/45623944157) **PASS** and Backend CI [45623944253](https://github.com/TheSumitNain/school-management-system/actions/runs/45623944253) **PASS** on `248287a36ea205aa4ef2bb1ed7205984b9e632e3`. Frontend TypeScript, Vite production build and full Playwright suite passed; backend full migration chain, Go/PostgreSQL integration suite and `go vet` passed.
+- No schema migration, persistent database or application data changed. Manual authenticated-school sign-off and existing product approval gates remain separate.
+
 ## 2026-11-25 — Staff ID card and audit-history privacy review
 
 - Reviewed the printable staff ID card workspace and its Playwright coverage: only active, complete profiles with employee code, name and designation are eligible; disabled login alone does not exclude an otherwise active employee. Card output is limited to approved identity fields and does not expose mobile/email, username, login state, password or permissions. Expiry date is optional and cannot be set in the past.

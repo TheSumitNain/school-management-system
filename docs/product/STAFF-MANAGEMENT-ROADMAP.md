@@ -1,3 +1,10 @@
+## 2026-11-25 — Staff attendance audit-history refresh verified
+
+- Attendance mark, bulk-mark and update mutations invalidate staff audit-history queries as well as attendance queries. The History & Activity query's 30-second freshness window does not prevent explicit invalidation from refreshing the history.
+- Existing Playwright coverage verifies the end-to-end path: open a staff member's audit history, perform individual and bulk attendance writes, reopen the profile, and confirm another audit-history read occurs.
+- Frontend CI [45623944157](https://github.com/TheSumitNain/school-management-system/actions/runs/45623944157) **PASS** and Backend CI [45623944253](https://github.com/TheSumitNain/school-management-system/actions/runs/45623944253) **PASS** on `248287a36ea205aa4ef2bb1ed7205984b9e632e3`; full browser acceptance and backend migration/integration/vet checks passed.
+- No schema migration, persistent database or application data changed. Manual authenticated-school sign-off and existing identity-schema, leave-policy and payroll approval gates remain separate; private document/photo storage remains deferred.
+
 ## 2026-11-25 — Staff ID card and audit-history privacy review
 
 - ID card eligibility is restricted to active, complete staff profiles with employee code, full name and designation. Disabled login does not incorrectly exclude an active employee. The printable card allowlist excludes mobile/email, username, login status, passwords and permissions; optional validity date rejects past dates.
