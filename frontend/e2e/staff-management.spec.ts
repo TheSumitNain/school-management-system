@@ -2924,7 +2924,7 @@ test("staff qualifications report uses one paginated aggregate endpoint and expo
   const csv = await readFile(path!, "utf8");
   expect(csv.startsWith("\uFEFF")).toBe(true);
   expect(csv).toContain("Child Safety Training");
-  expect(csv).toContain("'\\t=HYPERLINK(");
+  expect(csv).toContain("'\t=HYPERLINK(");
   expect(csv).not.toContain("credential");
   expect(csv).not.toContain("verification_notes");
 });
