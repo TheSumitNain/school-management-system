@@ -26,6 +26,9 @@ type fakeStaffAccountService struct {
 	profile models.StaffProfile
 	profileTargetID int64
 	profileCalls int
+	directoryFilter models.StaffDirectoryFilter
+	directoryActorID int64
+	directorySchoolID int64
 }
 
 func (f *fakeStaffAccountService) UpdateProfile(_ context.Context, actorID, schoolID, targetID int64, profile models.StaffProfile) (*models.User, error) {
@@ -48,6 +51,11 @@ func (f *fakeStaffAccountService) CreateWithProfile(_ context.Context, actorID, 
 
 func (f *fakeStaffAccountService) List(context.Context, int64, int64) ([]models.User, error) {
 	return []models.User{{ID: 15, PrincipalID: 27, SchoolID: 8, Username: "teacher.one", PasswordHash: "private-hash-marker", Status: "active", MustChangePassword: true}}, f.err
+}
+
+func (f *fakeStaffAccountService) ListDirectoryPage(_ context.Context, actorID, schoolID int64, filter models.StaffDirectoryFilter) (*models.StaffDirectoryPage, error) {
+	f.directoryActorID, f.directorySchoolID, f.directoryFilter = actorID, schoolID, filter
+	return &models.StaffDirectoryPage{Staff: []models.User{{ID: 15, PrincipalID: 27, SchoolID: schoolID, Username: "teacher.one", Status: "active"}}, Total: 51, Limit: filter.Limit, Offset: filter.Offset}, f.err
 }
 
 func (f *fakeStaffAccountService) Disable(context.Context, int64, int64, int64) error {
@@ -165,6 +173,45 @@ func TestStaffHandlerListUsesAuthenticatedSchoolAndReturnsPrincipalIDs(t *testin
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"principal_id":27`) ||
 		!strings.Contains(rec.Body.String(), "teacher.one") || strings.Contains(rec.Body.String(), "PasswordHash") || strings.Contains(rec.Body.String(), "private-hash-marker") {
 		t.Fatalf("unexpected staff listing response: status=%d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestStaffHandlerDirectoryPageForwardsAuthenticatedScopeAndFilters(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	service := &fakeStaffAccountService{}
+	router := gin.New()
+	router.GET("/school/staff/directory", func(c *gin.Context) {
+		c.Set("auth_principal_id", int64(31))
+		c.Set("auth_school_id", int64(8))
+		c.Next()
+	}, NewStaffHandler(service).ListDirectoryPage)
+	req := httptest.NewRequest(http.MethodGet, "/school/staff/directory?search=teacher&employment_status=active&account_status=enabled&profile_status=complete&limit=25&offset=50", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK || service.directoryActorID != 31 || service.directorySchoolID != 8 {
+		t.Fatalf("directory request status=%d actor=%d school=%d body=%s", rec.Code, service.directoryActorID, service.directorySchoolID, rec.Body.String())
+	}
+	want := models.StaffDirectoryFilter{Search:"teacher", EmploymentStatus:"active", AccountStatus:"enabled", ProfileStatus:"complete", Limit:25, Offset:50}
+	if service.directoryFilter != want || !strings.Contains(rec.Body.String(), `"total":51`) || !strings.Contains(rec.Body.String(), `"offset":50`) {
+		t.Fatalf("directory filter/metadata mismatch: got=%+v body=%s", service.directoryFilter, rec.Body.String())
+	}
+}
+
+func TestStaffHandlerDirectoryPageRejectsMalformedPaginationBeforeService(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	service := &fakeStaffAccountService{}
+	router := gin.New()
+	router.GET("/school/staff/directory", func(c *gin.Context) {
+		c.Set("auth_principal_id", int64(31))
+		c.Set("auth_school_id", int64(8))
+		c.Next()
+	}, NewStaffHandler(service).ListDirectoryPage)
+	for _, target := range []string{"/school/staff/directory?limit=abc", "/school/staff/directory?offset=1.5"} {
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, target, nil))
+		if rec.Code != http.StatusBadRequest || service.directoryFilter.Limit != 0 {
+			t.Fatalf("target=%s status=%d filter=%+v body=%s", target, rec.Code, service.directoryFilter, rec.Body.String())
+		}
 	}
 }
 
