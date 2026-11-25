@@ -2524,3 +2524,10 @@ This update supersedes older status bullets that listed the following database-b
 - Added PostgreSQL assertions that an inactive employee profile returns `ErrStaffInactive` during authentication lookup, and that changing employment back to active does not restore sign-in before the explicit account re-enable workflow. Existing trigger and account-status enforcement were already present; this commit hardens regression coverage rather than fixing a newly discovered production bypass.
 - Frontend CI [45537542153](https://github.com/TheSumitNain/school-management-system/actions/runs/45537542153) **PASS** on `3340a97ef8971894f5be109acb54dd5166397fab`: TypeScript, Vite production build and full Playwright browser suite. The new browser test verifies that inactive-employee login re-enable is rejected with HTTP 409 and no false success UI.
 - No migration or persistent database change. `main` remains untouched; work continues on `work`. Document/photo storage remains deferred and excluded from Staff Management completion estimates.
+
+
+## 2026-11-25 — Staff qualification/certification verification-state regression
+
+- Added PostgreSQL integration assertions that forged client-supplied `verified` status is ignored on qualification and certification creation, and that update requests cannot change the existing verification status.
+- Backend CI [45540370935](https://github.com/TheSumitNain/school-management-system/actions/runs/45540370935) **PASS** on `6f21d439daa010cd997ee0dc60e90d380d87e66a`: migrations, full Go/PostgreSQL integration tests and `go vet`.
+- No production code, schema migration or persistent data change. Verification authorization and archive/retention policy remain approval-gated; `main` remains untouched and work continues on `work`.
