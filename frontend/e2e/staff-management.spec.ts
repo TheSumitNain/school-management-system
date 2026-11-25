@@ -1340,6 +1340,7 @@ test("staff profile clears the previous employee's academic assignments while th
   await page.route("**/api/school/teacher-assignments?*", async route => {
     const teacherID = new URL(route.request().url()).searchParams.get("teacher_principal_id");
     if (teacherID === "411") await new Promise(resolve => setTimeout(resolve, 500));
+    if (teacherID === "412") await new Promise(resolve => setTimeout(resolve, 300));
     try {
       await route.fulfill({ json: { assignments: teacherID === "411" ? [
         { id: 1, academic_year_id: 3, class_name: "Class 8", section_name: "A", subject_name: "First Teacher Private Subject", assigned_at: "2026-04-01T00:00:00.000Z", teacher_principal_id: 411, revoked_at: null },
@@ -1362,7 +1363,12 @@ test("staff profile clears the previous employee's academic assignments while th
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Second Teacher" }).click();
   dialog = page.getByRole("dialog", { name: "Second Teacher" });
+  const secondAssignmentRequest = page.waitForRequest(request => {
+    const url = new URL(request.url());
+    return url.pathname.endsWith("/teacher-assignments") && url.searchParams.get("teacher_principal_id") === "412";
+  });
   await dialog.getByRole("button", { name: "Academic Assignments" }).click();
+  await secondAssignmentRequest;
   await expect(dialog.getByRole("status")).toContainText("Loading academic assignments");
   await expect(dialog.getByText("First Teacher Private Subject")).toHaveCount(0);
   await expect(dialog.getByText("Second Teacher Subject")).toBeVisible();
@@ -1387,6 +1393,7 @@ test("staff profile does not retain the previous employee's timetable while the 
   await page.route("**/api/school/timetable/entries?*", async route => {
     const teacherID = new URL(route.request().url()).searchParams.get("teacher_principal_id");
     if (teacherID === "421") await new Promise(resolve => setTimeout(resolve, 500));
+    if (teacherID === "422") await new Promise(resolve => setTimeout(resolve, 300));
     try {
       await route.fulfill({ json: { entries: teacherID === "421" ? [
         { id: 1, school_id: 10, academic_year_id: 3, section_id: 8, section_name: "A", class_name: "Class 8", subject_id: 9, subject_name: "First Teacher Timetable Secret", teacher_principal_id: 421, teacher_username: "teacher.load.first", teacher_subject_assignment_id: 1, period_id: 7, period_number: 1, period_name: "Period 1", starts_at: "09:00", ends_at: "09:45", day_of_week: 1 },
@@ -1409,7 +1416,12 @@ test("staff profile does not retain the previous employee's timetable while the 
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Workload Second" }).click();
   dialog = page.getByRole("dialog", { name: "Workload Second" });
+  const secondTimetableRequest = page.waitForRequest(request => {
+    const url = new URL(request.url());
+    return url.pathname.endsWith("/timetable/entries") && url.searchParams.get("teacher_principal_id") === "422";
+  });
   await dialog.getByRole("button", { name: "Workload & Timetable" }).click();
+  await secondTimetableRequest;
   await expect(dialog.getByRole("status")).toContainText("Loading teacher-scoped timetable");
   await expect(dialog.getByText("First Teacher Timetable Secret")).toHaveCount(0);
   await expect(dialog.getByText("Second Teacher Timetable")).toBeVisible();
