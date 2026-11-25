@@ -407,6 +407,48 @@ test("staff directory filters independently narrow employment, login account and
 });
 
 
+test("staff directory uses server-side search and stable pagination", async ({ page }) => {
+  await signInAndOpenStaff(page, []);
+  await page.route(url => url.pathname === "/api/school/staff" && url.searchParams.has("limit"), async route => {
+    const url = new URL(route.request().url());
+    const limit = Number(url.searchParams.get("limit"));
+    const offset = Number(url.searchParams.get("offset"));
+    const search = url.searchParams.get("search") ?? "";
+    const all = Array.from({ length: 120 }, (_, index) => ({
+      id: index + 1,
+      principal_id: index + 1001,
+      school_id: 10,
+      username: `directory.${String(index + 1).padStart(3, "0")}`,
+      employee_code: `DIR-${String(index + 1).padStart(3, "0")}`,
+      full_name: `Directory Employee ${String(index + 1).padStart(3, "0")}`,
+      designation: "Office Staff",
+      mobile_number: "9876543210",
+      employment_status: "active",
+      profile_complete: true,
+      status: "active",
+      must_change_password: false,
+    }));
+    const matching = search ? all.filter(item => item.full_name.toLowerCase().includes(search.toLowerCase())) : all;
+    const staff = matching.slice(offset, offset + limit);
+    await route.fulfill({ json: { staff, total: matching.length, limit, offset } });
+  });
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await expect(page.getByText("1–50 of 120 staff members")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Directory Employee 001" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Directory Employee 051" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Next" }).click();
+  await expect(page.getByText("51–100 of 120 staff members")).toBeVisible();
+  await expect(page.getByText("Page 2 of 3")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Directory Employee 051" })).toBeVisible();
+
+  const search = page.getByRole("textbox", { name: "Search staff by name, code, designation, mobile or username" });
+  await search.fill("Directory Employee 075");
+  await expect(page.getByText("1–1 of 1 staff members")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Directory Employee 075" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Previous" })).toHaveCount(0);
+});
+
 test("staff directory filters stay within mobile, tablet and desktop layouts", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [
     { id: 1, principal_id: 621, school_id: 10, username: "responsive.active", employee_code: "EMP-R-01", full_name: "Responsive Active", designation: "Teacher", employment_status: "active", profile_complete: true, status: "active", must_change_password: false },
