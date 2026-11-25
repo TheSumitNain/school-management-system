@@ -2516,3 +2516,11 @@ This update supersedes older status bullets that listed the following database-b
 - Added cross-school mutation rejection coverage for profile and account lifecycle operations, duplicate employee-code atomicity coverage, and a guard preventing login re-enable while the employee profile is inactive. Handler tests cover HTTP 409 for incomplete/inactive employee profiles; nil dependency checks protect password-related service paths from panics.
 - Fixed a malformed SQL dollar-quote delimiter in the staff-profile audit-trigger test. Final Backend CI [45537146943](https://github.com/TheSumitNain/school-management-system/actions/runs/45537146943) **PASS** on `c4345e9f2d01ed2bc7115d2606c6c3f0792b4c20`: migrations, full Go/PostgreSQL integration suite and `go vet`.
 - No schema migration or persistent database change. `main` remains untouched; work continues on `work`. Staff document/photo storage remains deferred and excluded from the Staff Management completion estimate.
+
+
+## 2026-11-25 — Staff account lifecycle regression acceptance
+
+- Backend CI [45537784441](https://github.com/TheSumitNain/school-management-system/actions/runs/45537784441) **PASS** on `a254525b22b00594aea358b76e05f2c8aee70064`: full migration chain, Go tests including PostgreSQL integration and `go vet`.
+- Added PostgreSQL assertions that an inactive employee profile returns `ErrStaffInactive` during authentication lookup, and that changing employment back to active does not restore sign-in before the explicit account re-enable workflow. Existing trigger and account-status enforcement were already present; this commit hardens regression coverage rather than fixing a newly discovered production bypass.
+- Frontend CI [45537542153](https://github.com/TheSumitNain/school-management-system/actions/runs/45537542153) **PASS** on `3340a97ef8971894f5be109acb54dd5166397fab`: TypeScript, Vite production build and full Playwright browser suite. The new browser test verifies that inactive-employee login re-enable is rejected with HTTP 409 and no false success UI.
+- No migration or persistent database change. `main` remains untouched; work continues on `work`. Document/photo storage remains deferred and excluded from Staff Management completion estimates.
