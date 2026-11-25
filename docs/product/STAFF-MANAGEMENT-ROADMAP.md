@@ -1002,3 +1002,10 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Added PostgreSQL failure-injection checks for leave-type creation and update. Both operations must roll back when their required audit event fails; the new type must not persist, the original type must remain unchanged, and no false audit event may be committed.
 - Backend CI [45631108229](https://github.com/TheSumitNain/school-management-system/actions/runs/45631108229) **PASS** on `67267c6a7c2b5f9c4fc240d6df34fe0c0148b85c`: full migrations, Go/PostgreSQL integration suite and `go vet`.
 - Test-only hardening; no production code or schema migration changed. School leave entitlement rules remain approval-gated; `main` remains untouched.
+
+
+## 2026-11-25 follow-up — attendance correction audit rollback
+
+- Added PostgreSQL regression coverage for an audit insert failure during individual attendance correction. The prior attendance status must remain unchanged and no additional `school.staff_attendance.updated` audit event may commit. This complements existing single-mark and bulk-mark rollback tests.
+- Backend CI [45632375019](https://github.com/TheSumitNain/school-management-system/actions/runs/45632375019) **PASS** on `236eac8c11764f9e12a3057ab3c08e29c2d629f1`: all migrations, full Go/PostgreSQL integration suite and `go vet`.
+- Test-only hardening; no production behavior or schema change. `main` remains untouched.
