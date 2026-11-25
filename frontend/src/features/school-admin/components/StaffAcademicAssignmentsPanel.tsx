@@ -26,9 +26,9 @@ export function StaffAcademicAssignmentsPanel({ staff, permissions, onOpenWorksp
     setSubjects([]);
     setIncharges([]);
     const jobs: Promise<unknown>[] = [];
-    if (canReadSubjects) jobs.push(getTeacherSubjectAssignments({ teacherPrincipalID: staff.principal_id }, controller.signal).then(result => setSubjects(result.assignments)));
+    if (canReadSubjects) jobs.push(getTeacherSubjectAssignments({ teacherPrincipalID: staff.principal_id }, controller.signal).then(result => { if (!controller.signal.aborted) setSubjects(result.assignments); }));
     else setSubjects([]);
-    if (canReadIncharges) jobs.push(getClassInchargeAssignments(undefined, controller.signal, staff.principal_id).then(result => setIncharges(result.assignments)));
+    if (canReadIncharges) jobs.push(getClassInchargeAssignments(undefined, controller.signal, staff.principal_id).then(result => { if (!controller.signal.aborted) setIncharges(result.assignments); }));
     else setIncharges([]);
     if (jobs.length === 0) {
       setLoading(false);
