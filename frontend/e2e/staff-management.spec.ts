@@ -518,6 +518,64 @@ test("staff leave decisions refresh the employee audit history when the profile 
   await expect.poll(() => auditReads).toBeGreaterThan(firstAuditReadCount);
 });
 
+test("staff leave creation and cancellation refresh employee audit history", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 501, school_id: 10, username: "leave.teacher",
+    employee_code: "EMP-LEAVE-01", full_name: "Leave Teacher", designation: "Science Teacher",
+    mobile_number: "9876543215", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false,
+  }];
+  let auditReads = 0;
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "staff.leave.read", "staff.leave.manage_requests", "school.audit.read"]);
+  await page.route("**/api/school/staff/501/audit-events**", async route => {
+    auditReads += 1;
+    await route.fulfill({ json: { events: [] } });
+  });
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Leave Teacher" }).click();
+  let profile = page.getByRole("dialog", { name: "Leave Teacher" });
+  await profile.getByRole("button", { name: "History & Activity" }).click();
+  await expect(profile.getByText("No audited activity is recorded for this employee yet.")).toBeVisible();
+  const firstAuditReadCount = auditReads;
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "Leave & Holidays" }).click();
+  await page.getByRole("button", { name: "Staff member", exact: true }).click();
+  await page.getByRole("option", { name: /Leave Teacher/ }).click();
+  await page.getByLabel("Leave type").click();
+  await page.getByRole("option", { name: /Casual Leave/ }).click();
+  const todayLabel = schoolDateLabel(schoolDateOffset(0));
+  await page.getByLabel("Leave start date").click();
+  await page.getByRole("dialog", { name: "Choose leave start date" }).getByRole("button", { name: todayLabel }).click();
+  await page.getByLabel("Leave end date").click();
+  await page.getByRole("dialog", { name: "Choose leave end date" }).getByRole("button", { name: todayLabel }).click();
+  await page.getByLabel("Reason").fill("Audit history create and cancel");
+  await page.getByRole("button", { name: "Submit leave request" }).click();
+  const createdRequest = page.locator("article").filter({ hasText: "Audit history create and cancel" });
+  await expect(createdRequest).toBeVisible();
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Leave Teacher" }).click();
+  profile = page.getByRole("dialog", { name: "Leave Teacher" });
+  await profile.getByRole("button", { name: "History & Activity" }).click();
+  await expect.poll(() => auditReads).toBeGreaterThan(firstAuditReadCount);
+  const afterCreateAuditReadCount = auditReads;
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "Leave & Holidays" }).click();
+  await createdRequest.getByRole("button", { name: "Cancel request" }).click();
+  const confirmation = page.getByRole("dialog", { name: "Cancel leave request?" });
+  await confirmation.getByRole("button", { name: "Cancel request", exact: true }).click();
+  await expect(page.getByText("No leave requests match these filters.")).toBeVisible();
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Leave Teacher" }).click();
+  profile = page.getByRole("dialog", { name: "Leave Teacher" });
+  await profile.getByRole("button", { name: "History & Activity" }).click();
+  await expect.poll(() => auditReads).toBeGreaterThan(afterCreateAuditReadCount);
+});
+
 test("staff leave request filters send the selected status and staff scope", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [
     {
