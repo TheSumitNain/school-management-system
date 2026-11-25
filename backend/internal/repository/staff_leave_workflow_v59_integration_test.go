@@ -129,6 +129,26 @@ func TestStaffLeaveWorkflowPostgresIntegration(t *testing.T) {
 		if status!="pending"{t.Fatalf("self-approved request status=%q want pending",status)}
 	})
 
+	t.Run("leave type audit failures roll back create and update",func(t *testing.T){
+		const triggerName="trg_test_staff_leave_type_audit_failure"
+		const functionName="test_staff_leave_type_audit_failure"
+		if _,err:=f.pool.Exec(f.ctx,`CREATE OR REPLACE FUNCTION public.test_staff_leave_type_audit_failure() RETURNS trigger LANGUAGE plpgsql AS $body$ BEGIN IF NEW.action IN ('staff.leave_type.created','staff.leave_type.updated') THEN RAISE EXCEPTION 'forced leave type audit failure'; END IF; RETURN NEW; END; $body$`);err!=nil{t.Fatalf("create leave type audit failure function: %v",err)}
+		if _,err:=f.pool.Exec(f.ctx,`CREATE TRIGGER trg_test_staff_leave_type_audit_failure BEFORE INSERT ON public.audit_events FOR EACH ROW EXECUTE FUNCTION public.test_staff_leave_type_audit_failure()`);err!=nil{t.Fatalf("create leave type audit failure trigger: %v",err)}
+		t.Cleanup(func(){_,_=f.pool.Exec(context.Background(),`DROP TRIGGER IF EXISTS trg_test_staff_leave_type_audit_failure ON public.audit_events`);_,_=f.pool.Exec(context.Background(),`DROP FUNCTION IF EXISTS public.test_staff_leave_type_audit_failure()`)})
+		var originalName string
+		if err:=f.pool.QueryRow(f.ctx,`SELECT name FROM staff_leave_types WHERE id=$1 AND school_id=$2`,f.leaveTypeID,f.schoolID).Scan(&originalName);err!=nil{t.Fatalf("read original leave type: %v",err)}
+		var createdAuditBefore,updatedAuditBefore int
+		if err:=f.pool.QueryRow(f.ctx,`SELECT COUNT(*) FILTER (WHERE action='staff.leave_type.created'),COUNT(*) FILTER (WHERE action='staff.leave_type.updated') FROM audit_events WHERE school_id=$1 AND actor_principal_id=$2 AND resource_type='staff_leave_type'`,f.schoolID,f.adminPrincipalID).Scan(&createdAuditBefore,&updatedAuditBefore);err!=nil{t.Fatalf("count leave type audit events before failure: %v",err)}
+		if item,err:=f.repo.SaveType(f.ctx,f.adminPrincipalID,f.schoolID,0,StaffLeaveType{Name:"Audit Failure Leave Type",IsPaid:true,RequiresApproval:true,IsActive:true});err==nil||item!=nil{t.Fatalf("leave type create with audit failure returned item=%+v err=%v",item,err)}
+		if item,err:=f.repo.SaveType(f.ctx,f.adminPrincipalID,f.schoolID,f.leaveTypeID,StaffLeaveType{Name:"Must Roll Back Leave Type",IsPaid:true,RequiresApproval:true,IsActive:true});err==nil||item!=nil{t.Fatalf("leave type update with audit failure returned item=%+v err=%v",item,err)}
+		var createdRows int
+		if err:=f.pool.QueryRow(f.ctx,`SELECT COUNT(*) FROM staff_leave_types WHERE school_id=$1 AND name='Audit Failure Leave Type'`,f.schoolID).Scan(&createdRows);err!=nil{t.Fatalf("count failed leave type create: %v",err)}
+		var currentName string
+		if err:=f.pool.QueryRow(f.ctx,`SELECT name FROM staff_leave_types WHERE id=$1 AND school_id=$2`,f.leaveTypeID,f.schoolID).Scan(&currentName);err!=nil{t.Fatalf("read leave type after failed update: %v",err)}
+		var createdAuditAfter,updatedAuditAfter int
+		if err:=f.pool.QueryRow(f.ctx,`SELECT COUNT(*) FILTER (WHERE action='staff.leave_type.created'),COUNT(*) FILTER (WHERE action='staff.leave_type.updated') FROM audit_events WHERE school_id=$1 AND actor_principal_id=$2 AND resource_type='staff_leave_type'`,f.schoolID,f.adminPrincipalID).Scan(&createdAuditAfter,&updatedAuditAfter);err!=nil{t.Fatalf("count leave type audit events after failure: %v",err)}
+		if createdRows!=0||currentName!=originalName||createdAuditAfter!=createdAuditBefore||updatedAuditAfter!=updatedAuditBefore{t.Fatalf("leave type audit failure left partial state: created rows=%d name=%q original=%q create audits=%d/%d update audits=%d/%d",createdRows,currentName,originalName,createdAuditBefore,createdAuditAfter,updatedAuditBefore,updatedAuditAfter)}
+	})
 	t.Run("request creation audit failure rolls back the request",func(t *testing.T){
 		start:=time.Now().AddDate(0,0,49).Format("2006-01-02")
 		if _,err:=f.pool.Exec(f.ctx,`CREATE OR REPLACE FUNCTION public.test_staff_leave_request_audit_failure() RETURNS trigger LANGUAGE plpgsql AS $body$ BEGIN IF NEW.action='staff.leave.requested' THEN RAISE EXCEPTION 'forced request audit failure'; END IF; RETURN NEW; END; $body$`);err!=nil{t.Fatalf("create request audit failure function: %v",err)}
