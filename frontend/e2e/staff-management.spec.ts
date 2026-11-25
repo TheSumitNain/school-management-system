@@ -482,6 +482,42 @@ test("staff leave workspace reviews applications and displays configured leave t
   await expect(page.getByText("Casual Leave")).toBeVisible();
 });
 
+test("staff leave decisions refresh the employee audit history when the profile is reopened", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 501, school_id: 10, username: "leave.teacher",
+    employee_code: "EMP-LEAVE-01", full_name: "Leave Teacher", designation: "Science Teacher",
+    mobile_number: "9876543215", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false,
+  }];
+  let auditReads = 0;
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "staff.leave.read", "staff.leave.decide", "school.audit.read"]);
+  await page.route("**/api/school/staff/501/audit-events**", async route => {
+    auditReads += 1;
+    await route.fulfill({ json: { events: [] } });
+  });
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Leave Teacher" }).click();
+  const profile = page.getByRole("dialog", { name: "Leave Teacher" });
+  await profile.getByRole("button", { name: "History & Activity" }).click();
+  await expect(profile.getByText("No audited activity is recorded for this employee yet.")).toBeVisible();
+  const firstAuditReadCount = auditReads;
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "Leave & Holidays" }).click();
+  await expect(page.getByText("Family commitment")).toBeVisible();
+  await page.getByRole("button", { name: "Approve" }).click();
+  const decision = page.getByRole("dialog", { name: "Approve leave request" });
+  await decision.getByRole("button", { name: "Confirm approval" }).click();
+  await expect(page.getByText("No leave requests match these filters.")).toBeVisible();
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Leave Teacher" }).click();
+  const reopenedProfile = page.getByRole("dialog", { name: "Leave Teacher" });
+  await reopenedProfile.getByRole("button", { name: "History & Activity" }).click();
+  await expect.poll(() => auditReads).toBeGreaterThan(firstAuditReadCount);
+});
+
 test("staff leave request filters send the selected status and staff scope", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [
     {
