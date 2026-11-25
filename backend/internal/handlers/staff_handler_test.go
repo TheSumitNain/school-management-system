@@ -38,7 +38,7 @@ func (f *fakeStaffAccountService) CreateWithProfile(_ context.Context, actorID, 
 }
 
 func (f *fakeStaffAccountService) List(context.Context, int64, int64) ([]models.User, error) {
-	return []models.User{{ID: 15, PrincipalID: 27, SchoolID: 8, Username: "teacher.one", Status: "active", MustChangePassword: true}}, f.err
+	return []models.User{{ID: 15, PrincipalID: 27, SchoolID: 8, Username: "teacher.one", PasswordHash: "private-hash-marker", Status: "active", MustChangePassword: true}}, f.err
 }
 
 func (f *fakeStaffAccountService) Disable(context.Context, int64, int64, int64) error {
@@ -56,7 +56,7 @@ func (f *fakeStaffAccountService) Enable(context.Context, int64, int64, int64, s
 func TestStaffHandlerCreateSuccessDoesNotExposePassword(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	service := &fakeStaffAccountService{user: &models.User{
-		ID: 15, PrincipalID: 27, SchoolID: 8, Username: "teacher.one",
+		ID: 15, PrincipalID: 27, SchoolID: 8, Username: "teacher.one", PasswordHash: "private-hash-marker",
 		Status: "active", MustChangePassword: true,
 	}}
 	router := gin.New()
@@ -74,7 +74,7 @@ func TestStaffHandlerCreateSuccessDoesNotExposePassword(t *testing.T) {
 		service.actorID != 31 || service.schoolID != 8 || service.username != "teacher.one" {
 		t.Fatalf("unexpected staff create response: status=%d service=%+v body=%s", rec.Code, service, rec.Body.String())
 	}
-	if strings.Contains(rec.Body.String(), "A-Strong-Initial-Pass-123") || strings.Contains(rec.Body.String(), "PasswordHash") {
+	if strings.Contains(rec.Body.String(), "A-Strong-Initial-Pass-123") || strings.Contains(rec.Body.String(), "PasswordHash") || strings.Contains(rec.Body.String(), "private-hash-marker") {
 		t.Fatalf("staff create response leaked password material: %s", rec.Body.String())
 	}
 	if !strings.Contains(rec.Body.String(), `"must_change_password":true`) {
@@ -152,7 +152,7 @@ func TestStaffHandlerListUsesAuthenticatedSchoolAndReturnsPrincipalIDs(t *testin
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/school/staff", nil))
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"principal_id":27`) ||
-		!strings.Contains(rec.Body.String(), "teacher.one") || strings.Contains(rec.Body.String(), "PasswordHash") {
+		!strings.Contains(rec.Body.String(), "teacher.one") || strings.Contains(rec.Body.String(), "PasswordHash") || strings.Contains(rec.Body.String(), "private-hash-marker") {
 		t.Fatalf("unexpected staff listing response: status=%d body=%s", rec.Code, rec.Body.String())
 	}
 }
