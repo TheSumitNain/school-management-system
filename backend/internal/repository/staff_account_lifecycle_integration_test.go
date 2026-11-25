@@ -533,6 +533,37 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
 			finalUsername, finalUserStatus, finalPrincipalStatus, mustChangePassword, tokenVersion)
 	}
 
+
+	// Lifecycle operations must not cross school boundaries, even when the
+	// caller is otherwise a fully authorized School Admin.
+	if _, err := repo.UpdateStaffAccount(ctx, actorPrincipalID, schoolID+1, created.PrincipalID,
+		"cross-school-rename-"+suffix[len(suffix)-8:]); !errors.Is(err, ErrUserNotFound) {
+		t.Fatalf("cross-school staff username update error = %v, want ErrUserNotFound", err)
+	}
+	if err := repo.ResetStaffPassword(ctx, actorPrincipalID, schoolID+1, created.PrincipalID,
+		"cross-school-password-takeover-hash"); !errors.Is(err, ErrUserNotFound) {
+		t.Fatalf("cross-school staff password reset error = %v, want ErrUserNotFound", err)
+	}
+	if err := repo.DisableStaffAccount(ctx, actorPrincipalID, schoolID+1, created.PrincipalID); !errors.Is(err, ErrUserNotFound) {
+		t.Fatalf("cross-school staff account disable error = %v, want ErrUserNotFound", err)
+	}
+	var isolatedUsername, isolatedUserStatus, isolatedPrincipalStatus, isolatedPasswordHash string
+	var isolatedTokenVersion int64
+	if err := tx.QueryRow(ctx, `
+		SELECT u.username, u.status, ap.status, u.password_hash, ap.token_version
+		  FROM users u JOIN auth_principals ap ON ap.id = u.principal_id
+		 WHERE u.principal_id = $1
+	`, created.PrincipalID).Scan(
+		&isolatedUsername, &isolatedUserStatus, &isolatedPrincipalStatus, &isolatedPasswordHash, &isolatedTokenVersion,
+	); err != nil {
+		t.Fatalf("read staff state after cross-school lifecycle attempts: %v", err)
+	}
+	if isolatedUsername != renamedUsername || isolatedUserStatus != "active" || isolatedPrincipalStatus != "active" ||
+		isolatedPasswordHash != replacementPasswordHash || isolatedTokenVersion != 5 {
+		t.Fatalf("cross-school lifecycle attempt changed target state: username=%q user=%q principal=%q token_version=%d",
+			isolatedUsername, isolatedUserStatus, isolatedPrincipalStatus, isolatedTokenVersion)
+	}
+
 	var auditCount int
 	if err := tx.QueryRow(ctx, `
 		SELECT COUNT(*)
