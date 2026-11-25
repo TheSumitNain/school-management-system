@@ -197,3 +197,59 @@ func TestStaffReportHandlersRejectMalformedPaginationAndFilters(t *testing.T) {
 		})
 	}
 }
+
+
+type captureStaffReportFiltersService struct {
+	StaffRecordsManagementService
+	qualificationFilter repository.StaffQualificationReportFilter
+	experienceFilter repository.StaffExperienceReportFilter
+}
+
+func (s *captureStaffReportFiltersService) ListQualificationsReport(_ context.Context, _, _ int64, filter repository.StaffQualificationReportFilter) (*repository.StaffQualificationReportPage, error) {
+	s.qualificationFilter = filter
+	return &repository.StaffQualificationReportPage{Rows: []repository.StaffQualificationReportRow{}, Counts: []repository.StaffQualificationReportCount{}, Total: 0, Limit: filter.Limit, Offset: filter.Offset}, nil
+}
+
+func (s *captureStaffReportFiltersService) ListExperienceReport(_ context.Context, _, _ int64, filter repository.StaffExperienceReportFilter) (*repository.StaffExperienceReportPage, error) {
+	s.experienceFilter = filter
+	return &repository.StaffExperienceReportPage{Rows: []repository.StaffExperienceReportRow{}, Counts: []repository.StaffExperienceReportCount{}, Total: 0, Limit: filter.Limit, Offset: filter.Offset}, nil
+}
+
+func TestStaffReportHandlersForwardValidFiltersAndPagination(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	service := &captureStaffReportFiltersService{}
+	handler := NewStaffRecordsHandler(service)
+	auth := func(c *gin.Context) {
+		c.Set(middleware.ContextPrincipalIDKey, int64(100))
+		c.Set(middleware.ContextSchoolIDKey, int64(10))
+		c.Next()
+	}
+	tests := []struct {
+		name, path string
+		handler func(*StaffRecordsHandler, *gin.Context)
+	}{
+		{"qualifications", "/staff/qualifications/report?record_type=certification&verification_status=pending&limit=17&offset=34", (*StaffRecordsHandler).ListQualificationsReport},
+		{"experience", "/staff/experience/report?employment_type=contract&current_only=true&limit=23&offset=46", (*StaffRecordsHandler).ListExperienceReport},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			router := gin.New()
+			router.GET("/staff/qualifications/report", auth, func(c *gin.Context) { tt.handler(handler, c) })
+			router.GET("/staff/experience/report", auth, func(c *gin.Context) { tt.handler(handler, c) })
+			recorder := httptest.NewRecorder()
+			router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, tt.path, nil))
+			if recorder.Code != http.StatusOK {
+				t.Fatalf("valid report query status=%d want=%d body=%s", recorder.Code, http.StatusOK, recorder.Body.String())
+			}
+			if !strings.Contains(recorder.Body.String(), `"total":0`) {
+				t.Fatalf("report response omitted total count: %s", recorder.Body.String())
+			}
+		})
+	}
+	if got := service.qualificationFilter; got.RecordType != "certification" || got.VerificationStatus != "pending" || got.Limit != 17 || got.Offset != 34 {
+		t.Fatalf("qualification report filter=%+v want record_type=certification verification_status=pending limit=17 offset=34", got)
+	}
+	if got := service.experienceFilter; got.EmploymentType != "contract" || !got.CurrentOnly || got.Limit != 23 || got.Offset != 46 {
+		t.Fatalf("experience report filter=%+v want employment_type=contract current_only=true limit=23 offset=46", got)
+	}
+}
