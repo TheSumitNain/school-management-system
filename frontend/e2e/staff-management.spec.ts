@@ -1353,11 +1353,12 @@ test("staff profile clears the previous employee's academic assignments while th
   await page.getByRole("button", { name: /Staff Directory/ }).click();
   await page.getByRole("button", { name: "First Teacher" }).click();
   let dialog = page.getByRole("dialog", { name: "First Teacher" });
-  await dialog.getByRole("button", { name: "Academic Assignments" }).click();
-  await page.waitForRequest(request => {
+  const firstAssignmentRequest = page.waitForRequest(request => {
     const url = new URL(request.url());
     return url.pathname.endsWith("/teacher-assignments") && url.searchParams.get("teacher_principal_id") === "411";
   });
+  await dialog.getByRole("button", { name: "Academic Assignments" }).click();
+  await firstAssignmentRequest;
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Second Teacher" }).click();
   dialog = page.getByRole("dialog", { name: "Second Teacher" });
@@ -1399,11 +1400,12 @@ test("staff profile does not retain the previous employee's timetable while the 
   await page.getByRole("button", { name: /Staff Directory/ }).click();
   await page.getByRole("button", { name: "Workload First" }).click();
   let dialog = page.getByRole("dialog", { name: "Workload First" });
-  await dialog.getByRole("button", { name: "Workload & Timetable" }).click();
-  await page.waitForRequest(request => {
+  const firstTimetableRequest = page.waitForRequest(request => {
     const url = new URL(request.url());
     return url.pathname.endsWith("/timetable/entries") && url.searchParams.get("teacher_principal_id") === "421";
   });
+  await dialog.getByRole("button", { name: "Workload & Timetable" }).click();
+  await firstTimetableRequest;
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Workload Second" }).click();
   dialog = page.getByRole("dialog", { name: "Workload Second" });
