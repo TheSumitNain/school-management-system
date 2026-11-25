@@ -438,6 +438,35 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
 		t.Fatalf("disable status mismatch: users=%q principal=%q", userStatus, principalStatus)
 	}
 
+    // A disabled employee whose employment itself is inactive must not
+    // regain login access merely because an administrator requests re-enable.
+    if _, err := tx.Exec(ctx, `
+        UPDATE staff_profiles SET employment_status = 'inactive'
+         WHERE principal_id = $1 AND school_id = $2
+    `, created.PrincipalID, schoolID); err != nil {
+        t.Fatalf("mark disabled employee employment inactive: %v", err)
+    }
+    if err := repo.EnableStaffAccount(ctx, actorPrincipalID, schoolID, created.PrincipalID, "inactive-employee-must-not-enable"); !errors.Is(err, ErrStaffProfileInactive) {
+        t.Fatalf("re-enable inactive employee error = %v, want ErrStaffProfileInactive", err)
+    }
+    var inactiveEnableStatus, inactiveEnablePrincipalStatus string
+    if err := tx.QueryRow(ctx, `
+        SELECT u.status, ap.status
+          FROM users u JOIN auth_principals ap ON ap.id = u.principal_id
+         WHERE u.principal_id = $1
+    `, created.PrincipalID).Scan(&inactiveEnableStatus, &inactiveEnablePrincipalStatus); err != nil {
+        t.Fatalf("read account after inactive employee re-enable rejection: %v", err)
+    }
+    if inactiveEnableStatus != "disabled" || inactiveEnablePrincipalStatus != "disabled" {
+        t.Fatalf("inactive employee was re-enabled: user=%q principal=%q", inactiveEnableStatus, inactiveEnablePrincipalStatus)
+    }
+    if _, err := tx.Exec(ctx, `
+        UPDATE staff_profiles SET employment_status = 'active'
+         WHERE principal_id = $1 AND school_id = $2
+    `, created.PrincipalID, schoolID); err != nil {
+        t.Fatalf("restore active employment before re-enable lifecycle checks: %v", err)
+    }
+
     // A failed enable audit must not reactivate the principal or replace
     // the password. The subsequent successful enable below proves retryability.
     enableFailureSuffix := suffix[len(suffix)-8:]
