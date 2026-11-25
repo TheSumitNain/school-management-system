@@ -740,6 +740,9 @@ test("staff profile email validation rejects malformed address components", asyn
   await expect(dialog.getByText("Enter a valid email address.")).toHaveCount(0);
   await expect(dialog.getByLabel("Designation")).toBeVisible();
   await dialog.getByRole("button", { name: "Back" }).click();
+  const tooLongUnicodeEmail = "é".repeat(251) + "@x.y";
+  await email.fill(tooLongUnicodeEmail);
+  await expect(email).toHaveValue("é".repeat(251) + "@x.");
   const maxLengthUnicodeEmail = "é".repeat(250) + "@x.y";
   await email.fill(maxLengthUnicodeEmail);
   await expect(email).toHaveValue(maxLengthUnicodeEmail);
@@ -766,12 +769,18 @@ test("staff profile creation accepts Unicode names and designations at database 
   const dialog = page.getByRole("dialog", { name: "Add employee" });
   const fullName = "🔤".repeat(160);
   const designation = "📚".repeat(100);
-  await dialog.getByLabel("Full name").fill(fullName);
+  const fullNameInput = dialog.getByLabel("Full name");
+  await fullNameInput.fill("🔤".repeat(161));
+  await expect(fullNameInput).toHaveValue(fullName);
+  await fullNameInput.fill(fullName);
   await dialog.getByLabel("Employee code").fill("EMP-UNICODE");
   await dialog.getByLabel("Mobile number").fill("9876543210");
   await dialog.getByRole("button", { name: "Continue" }).click();
 
-  await dialog.getByLabel("Designation").fill(designation);
+  const designationInput = dialog.getByLabel("Designation");
+  await designationInput.fill("📚".repeat(101));
+  await expect(designationInput).toHaveValue(designation);
+  await designationInput.fill(designation);
   await dialog.getByRole("button", { name: "Continue" }).click();
   await dialog.getByLabel("Login username").fill("unicode.teacher");
   await dialog.getByLabel("Initial password").fill("E2E-Strong-Password-2026");
