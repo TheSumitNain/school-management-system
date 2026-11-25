@@ -9,8 +9,6 @@ import (
 	"time"
 
 	"school-management-system/internal/middleware"
-	"school-management-system/internal/repository"
-
 	"github.com/gin-gonic/gin"
 )
 
@@ -101,4 +99,3 @@ func TestStaffAttendanceBulkHandlerRequiresAuthenticatedSchoolContext(t *testing
 	}
 }
 
-var _ = repository.ErrInvalidStaffAttendance
