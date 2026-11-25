@@ -1009,3 +1009,10 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Added PostgreSQL regression coverage for an audit insert failure during individual attendance correction. The prior attendance status must remain unchanged and no additional `school.staff_attendance.updated` audit event may commit. This complements existing single-mark and bulk-mark rollback tests.
 - Backend CI [45632375019](https://github.com/TheSumitNain/school-management-system/actions/runs/45632375019) **PASS** on `236eac8c11764f9e12a3057ab3c08e29c2d629f1`: all migrations, full Go/PostgreSQL integration suite and `go vet`.
 - Test-only hardening; no production behavior or schema change. `main` remains untouched.
+
+
+## 2026-11-25 follow-up — holiday update audit rollback
+
+- Extended the holiday audit-failure regression to cover both create and update. A failed update audit must leave the existing holiday's date and name intact and must not append a false success event; failed creation must leave no partial holiday row or audit event.
+- Backend CI [45633050577](https://github.com/TheSumitNain/school-management-system/actions/runs/45633050577) **PASS** on `27bea4e68dbdf6bb2e4c5997d9f602d3b3523dbc`: migrations, full Go/PostgreSQL integration tests and `go vet`.
+- Test-only hardening; no production behavior or schema change. `main` remains untouched.
