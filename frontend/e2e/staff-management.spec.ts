@@ -1839,6 +1839,8 @@ test("staff profile history is permission-gated and renders staff audit events",
       { id: 10, action: "staff.leave.approved", resource_type: "staff_leave_request", outcome: "success", actor_username: "school.admin", metadata: {}, created_at: "2026-11-21T10:00:00.000Z" },
       { id: 9, action: "staff.profile.updated", resource_type: "staff_user", outcome: "success", actor_username: "school.admin", metadata: { employment_status: "active" }, created_at: "2026-11-20T10:00:00.000Z" },
       { id: 8, action: "staff.account.created", resource_type: "staff_user", outcome: "success", actor_username: "school.admin", metadata: { employee_code: "EMP-HIS-01" }, created_at: "2026-04-01T09:00:00.000Z" },
+      { id: 9, action: "school.staff.role_assigned", resource_type: "staff_principal", outcome: "success", actor_username: "school.admin", metadata: { role_id: 4 }, created_at: "2026-03-31T09:00:00.000Z" },
+      { id: 8, action: "school.staff.role_revoked", resource_type: "staff_principal", outcome: "success", actor_username: "school.admin", metadata: { role_id: 4 }, created_at: "2026-03-30T12:00:00.000Z" },
       { id: 7, action: "school.staff.permission_override.set", resource_type: "user_permission_override", outcome: "success", actor_username: "school.admin", metadata: { permission_key: "attendance.update", effect: "deny" }, created_at: "2026-03-30T09:00:00.000Z" },
       { id: 6, action: "school.staff.permission_override.removed", resource_type: "user_permission_override", outcome: "success", actor_username: "school.admin", metadata: { permission_key: "attendance.update" }, created_at: "2026-03-29T09:00:00.000Z" },
     ] } });
@@ -1849,6 +1851,8 @@ test("staff profile history is permission-gated and renders staff audit events",
   await dialog.getByRole("button", { name: "History & Activity" }).click();
   await expect(dialog.getByText("Profile updated")).toBeVisible();
   await expect(dialog.getByText("Account created")).toBeVisible();
+  await expect(dialog.getByText("Role assigned")).toBeVisible();
+  await expect(dialog.getByText("Role removed")).toBeVisible();
   await expect(dialog.getByText("Individual permission override saved")).toBeVisible();
   await expect(dialog.getByText("Individual permission override removed")).toBeVisible();
   await expect(dialog.getByText("Leave approved")).toBeVisible();
