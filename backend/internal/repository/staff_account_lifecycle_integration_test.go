@@ -127,6 +127,37 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
         t.Fatalf("create active employee profile for lifecycle fixture: %v", err)
     }
 
+	// Duplicate employee codes must fail with a stable domain error and roll
+	// back the newly inserted user/principal as well as the profile row.
+	duplicateEmployeeUsername := "duplicate-employee-" + suffix
+	duplicateEmployeeProfile := models.StaffProfile{
+		EmployeeCode: "LIFE-" + suffix,
+		FullName: "Duplicate Employee Code",
+		Designation: "Teacher",
+		MobileNumber: "9876543211",
+	}
+	if _, err := repo.CreateStaffAccountWithProfile(ctx, actorPrincipalID, schoolID,
+		duplicateEmployeeUsername, "duplicate-employee-password-hash", duplicateEmployeeProfile); !errors.Is(err, ErrEmployeeCodeTaken) {
+		t.Fatalf("duplicate employee code error = %v, want ErrEmployeeCodeTaken", err)
+	}
+	var duplicateEmployeeUsers, duplicateEmployeeProfiles int
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*) FROM users WHERE school_id = $1 AND username = $2
+	`, schoolID, duplicateEmployeeUsername).Scan(&duplicateEmployeeUsers); err != nil {
+		t.Fatalf("count user rows after duplicate employee code rejection: %v", err)
+	}
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*) FROM staff_profiles sp
+		JOIN users u ON u.principal_id = sp.principal_id
+		WHERE u.school_id = $1 AND u.username = $2
+	`, schoolID, duplicateEmployeeUsername).Scan(&duplicateEmployeeProfiles); err != nil {
+		t.Fatalf("count profile rows after duplicate employee code rejection: %v", err)
+	}
+	if duplicateEmployeeUsers != 0 || duplicateEmployeeProfiles != 0 {
+		t.Fatalf("duplicate employee code left partial onboarding state: users=%d profiles=%d",
+			duplicateEmployeeUsers, duplicateEmployeeProfiles)
+	}
+
 	// Force the audit write to fail and prove the user/principal insert rolls
 	// back with it. This guards the all-or-nothing account provisioning contract.
 	auditFailureSuffix := suffix[len(suffix)-8:]
