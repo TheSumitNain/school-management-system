@@ -341,7 +341,10 @@ function useAttendanceMutation<TInput>(mutationFn: (input: TInput) => Promise<un
   const client = useQueryClient();
   return useMutation({
     mutationFn,
-    onSuccess: () => client.invalidateQueries({ queryKey: schoolAttendanceQueryKeys.all }),
+    onSuccess: async () => await Promise.all([
+      client.invalidateQueries({ queryKey: schoolAttendanceQueryKeys.all }),
+      client.invalidateQueries({ queryKey: ["staff-audit-events"] }),
+    ]),
   });
 }
 export function useMarkSchoolAttendanceMutation() {
