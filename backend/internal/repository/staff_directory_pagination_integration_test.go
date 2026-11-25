@@ -35,7 +35,7 @@ func TestStaffDirectoryPaginationFiltersAndSchoolIsolationPostgresIntegration(t 
 	if _, err := fixture.pool.Exec(fixture.ctx, `
 		INSERT INTO users (school_id, username, password_hash, status)
 		VALUES ($1, $2, 'integration-password-hash', 'active')
-	`, fixture.schoolID, "directory-legacy-"+suffix); err != nil {
+	`, fixture.schoolID, "dir-leg-"+suffix); err != nil {
 		t.Fatalf("create legacy account: %v", err)
 	}
 
