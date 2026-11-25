@@ -295,11 +295,23 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
 	}
 	experiences,err:=repo.ListStaffExperience(ctx,actorID,schoolID,staff.PrincipalID)
 	if err!=nil||len(experiences)!=1||experiences[0].ID!=experience.ID{t.Fatalf("list experience: items=%+v err=%v",experiences,err)}
-    experienceReport,err:=repo.ListStaffExperienceReport(ctx,actorID,schoolID,StaffExperienceReportFilter{Limit:50})
-    if err!=nil || experienceReport.Total!=1 || len(experienceReport.Rows)!=1 {t.Fatalf("experience report page=%+v err=%v",experienceReport,err)}
-    experienceRow:=experienceReport.Rows[0]
-    if experienceRow.RecordID!=experience.ID || experienceRow.StaffPrincipalID!=staff.PrincipalID || experienceRow.EmployeeCode!=staff.EmployeeCode || experienceRow.StaffName!=staff.FullName || experienceRow.EmployerName!=experience.EmployerName || experienceRow.PreviousDesignation!=updatedExperience.Designation {
-        t.Fatalf("experience report row missing same-school identity/history: %+v",experienceRow)
+    // Add historical rows directly so this repository integration test can
+    // verify report pagination without changing the audited CRUD count above.
+    if _,err:=tx.Exec(ctx, `
+        INSERT INTO staff_experience
+            (school_id,staff_principal_id,employer_name,designation,employment_type,start_date,end_date,is_current)
+        VALUES
+            ($1,$2,'Recent Academy','Senior Teacher','contract','2022-04-01','2024-03-31',FALSE),
+            ($1,$2,'Older Academy','Teacher','temporary','2015-04-01','2017-03-31',FALSE)
+    `,schoolID,staff.PrincipalID);err!=nil{t.Fatalf("insert experience report pagination fixtures: %v",err)}
+    experienceReport,err:=repo.ListStaffExperienceReport(ctx,actorID,schoolID,StaffExperienceReportFilter{Limit:2})
+    if err!=nil || experienceReport.Total!=3 || len(experienceReport.Rows)!=2 {t.Fatalf("experience report first page=%+v err=%v want 2 of 3",experienceReport,err)}
+    if experienceReport.Rows[0].EmployerName!="Recent Academy" || experienceReport.Rows[1].RecordID!=experience.ID || experienceReport.Rows[1].PreviousDesignation!=updatedExperience.Designation {
+        t.Fatalf("experience report first-page ordering/identity incorrect: %+v",experienceReport.Rows)
+    }
+    secondExperiencePage,err:=repo.ListStaffExperienceReport(ctx,actorID,schoolID,StaffExperienceReportFilter{Limit:2,Offset:2})
+    if err!=nil || secondExperiencePage.Total!=3 || len(secondExperiencePage.Rows)!=1 || secondExperiencePage.Rows[0].EmployerName!="Older Academy" {
+        t.Fatalf("experience report second page=%+v err=%v want final Older Academy row",secondExperiencePage,err)
     }
     currentOnly,err:=repo.ListStaffExperienceReport(ctx,actorID,schoolID,StaffExperienceReportFilter{CurrentOnly:true,Limit:50})
     if err!=nil || currentOnly.Total!=0 {t.Fatalf("current-only experience report page=%+v err=%v",currentOnly,err)}
