@@ -146,7 +146,6 @@ func TestStaffSubstitutionV60DatabaseGuardsPostgresIntegration(t *testing.T) {
 	var auditFailureEntryID int64
 	if err=tx.QueryRow(ctx,`INSERT INTO timetable_entries(school_id,academic_year_id,section_id,subject_id,teacher_principal_id,teacher_subject_assignment_id,period_id,day_of_week,created_by_principal_id,updated_by_principal_id)
 		VALUES($1,$2,$3,$4,$5,$6,$7,1,$8,$8) RETURNING id`,schoolID,yearID,sectionID,subjectID,originalID,originalAssignmentID,secondPeriodID,actorPrincipalID).Scan(&auditFailureEntryID);err!=nil{t.Fatalf("create second timetable entry for audit rollback test: %v",err)}
-	const assignAuditTrigger="trg_test_staff_substitution_assign_audit_failure"
 	if _,err=tx.Exec(ctx,`CREATE OR REPLACE FUNCTION public.test_staff_substitution_assign_audit_failure() RETURNS trigger LANGUAGE plpgsql AS $audit$ BEGIN IF NEW.action='staff.substitution.assigned' THEN RAISE EXCEPTION 'forced substitution assignment audit failure'; END IF; RETURN NEW; END $audit$`);err!=nil{t.Fatalf("create assignment audit failure function: %v",err)}
 	if _,err=tx.Exec(ctx,`CREATE TRIGGER trg_test_staff_substitution_assign_audit_failure BEFORE INSERT ON public.audit_events FOR EACH ROW EXECUTE FUNCTION public.test_staff_substitution_assign_audit_failure()`);err!=nil{t.Fatalf("create assignment audit failure trigger: %v",err)}
 	_,createAuditErr:=(&AcademicRepository{db:tx}).CreateStaffSubstitution(ctx,actorPrincipalID,schoolID,auditFailureEntryID,originalID,substituteID,coverDate,nil,"Audit rollback test")
