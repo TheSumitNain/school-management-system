@@ -1,3 +1,10 @@
+## 2026-11-25 — Staff report API filter-forwarding and qualification pagination verification
+
+- Backend CI [45550085168](https://github.com/TheSumitNain/school-management-system/actions/runs/45550085168) **PASS** on `f9291fe9e721188907d136f49cb1363a35b93922`: all migrations applied to ephemeral PostgreSQL, the complete Go test suite including PostgreSQL integration passed, and `go vet` passed.
+- Added qualification-report PostgreSQL assertions for both first and second page boundaries, total-count consistency and stable record ordering.
+- Added handler tests proving valid qualification/certification and experience report filters plus limit/offset values reach the service unchanged. Existing malformed query tests continue to require HTTP 400.
+- Regression coverage only; no production behavior, schema, persistent database or application data changed. Approval-gated work and document/photo-storage deferral remain unchanged.
+
 ## 2026-11-25 — Staff report pagination verification update
 
 Backend CI [45547729975](https://github.com/TheSumitNain/school-management-system/actions/runs/45547729975) **PASS** on `64ee5559d50eb7ac58582ba3fd0c62fcf684506a`, including the full Go/PostgreSQL integration suite and `go vet`. New coverage verifies multi-page Experience History repository results/counts/filtering and HTTP 400 handling for malformed pagination/filter query parameters. Combined with Frontend CI [45546968103](https://github.com/TheSumitNain/school-management-system/actions/runs/45546968103), report pagination is verified across database, handler and browser layers. Regression tests only; no production schema or data changes. Approval-gated work and document/photo-storage deferral remain unchanged.
