@@ -132,6 +132,8 @@ func TestStaffHandlerCreateRejectsMissingAuthMalformedAndServiceErrors(t *testin
 	}{
 		{err: services.ErrInvalidStaffAccount, want: http.StatusBadRequest},
 		{err: services.ErrInvalidPassword, want: http.StatusBadRequest},
+		{err: services.ErrCompromisedPassword, want: http.StatusBadRequest},
+		{err: services.ErrPasswordBreachCheckUnavailable, want: http.StatusServiceUnavailable},
 		{err: repository.ErrUsernameTaken, want: http.StatusConflict},
         {err: repository.ErrEmployeeCodeTaken, want: http.StatusConflict},
 		{err: repository.ErrRolePermissionDenied, want: http.StatusForbidden},
