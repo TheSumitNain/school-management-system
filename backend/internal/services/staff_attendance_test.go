@@ -114,3 +114,54 @@ func TestStaffAttendanceServiceAcceptsYearOneCalendarDates(t *testing.T) {
         t.Fatalf("repository calls daily=%d monthly=%d mark=%d", fake.listDailyCalls, fake.listMonthlyCalls, fake.markCalls)
     }
 }
+
+func TestStaffAttendanceServiceEnforcesBulkBatchLimit(t *testing.T) {
+	day := time.Date(2026, 11, 22, 0, 0, 0, 0, time.UTC)
+	t.Run("accepts maximum batch", func(t *testing.T) {
+		fake := &fakeStaffAttendanceRepository{}
+		service := NewStaffAttendanceService(fake)
+		ids := make([]int64, 1000)
+		for i := range ids { ids[i] = int64(i + 1) }
+		count, err := service.MarkBulk(context.Background(), 1, 2, ids, day, "present", nil)
+		if err != nil || count != 1000 || fake.markCalls != 1 {
+			t.Fatalf("count=%d calls=%d err=%v; want 1000, 1, nil", count, fake.markCalls, err)
+		}
+	})
+	t.Run("rejects oversized batch before repository", func(t *testing.T) {
+		fake := &fakeStaffAttendanceRepository{}
+		service := NewStaffAttendanceService(fake)
+		ids := make([]int64, 1001)
+		for i := range ids { ids[i] = int64(i + 1) }
+		if _, err := service.MarkBulk(context.Background(), 1, 2, ids, day, "present", nil); !errors.Is(err, ErrInvalidStaffAttendance) {
+			t.Fatalf("oversized batch error=%v want ErrInvalidStaffAttendance", err)
+		}
+		if fake.markCalls != 0 { t.Fatalf("repository calls=%d want=0", fake.markCalls) }
+	})
+}
+
+func TestStaffAttendanceServiceRejectsInvalidBulkStatusAndRemarks(t *testing.T) {
+	fake := &fakeStaffAttendanceRepository{}
+	service := NewStaffAttendanceService(fake)
+	day := time.Date(2026, 11, 22, 0, 0, 0, 0, time.UTC)
+	longRemarks := strings.Repeat("x", 501)
+	cases := []struct {
+		name string
+		actor int64
+		school int64
+		status string
+		remarks *string
+	}{
+		{name: "zero actor", actor: 0, school: 2, status: "present"},
+		{name: "zero school", actor: 1, school: 0, status: "present"},
+		{name: "invalid status", actor: 1, school: 2, status: "holiday"},
+		{name: "oversized remarks", actor: 1, school: 2, status: "present", remarks: &longRemarks},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := service.MarkBulk(context.Background(), tc.actor, tc.school, []int64{3}, day, tc.status, tc.remarks); !errors.Is(err, ErrInvalidStaffAttendance) {
+				t.Fatalf("error=%v want ErrInvalidStaffAttendance", err)
+			}
+		})
+	}
+	if fake.markCalls != 0 { t.Fatalf("repository calls=%d want=0", fake.markCalls) }
+}
