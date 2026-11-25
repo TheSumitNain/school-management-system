@@ -927,3 +927,11 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Strengthened the PostgreSQL integration regression by explicitly submitting forged `verification_status: "verified"` values on both qualification and certification create and update operations. The repository must return newly created records as `pending` and preserve the existing `pending` state after edits.
 - Backend CI [45540370935](https://github.com/TheSumitNain/school-management-system/actions/runs/45540370935) **PASS** on `6f21d439daa010cd997ee0dc60e90d380d87e66a`: full migration chain, Go tests including PostgreSQL integration and `go vet`.
 - This is regression-test hardening; no production behavior change, schema migration or persistent data change. A verification/approval workflow and archive/delete policy remain undefined and are not being enabled without an explicit permission and retention decision. Document/photo storage remains deferred and excluded from the Staff Management completion estimate. `main` remains untouched.
+
+
+## 2026-11-25 follow-up — staff leave validation and API error contract
+
+- Added holiday-calendar service validation tests for the 366-day maximum, invalid/reversed/missing dates, year zero, and repository non-invocation on invalid input; valid school-scoped filters are forwarded unchanged.
+- Added leave-handler tests for stable 400/403/404/409/500 responses and for suppressing internal database error details from client responses.
+- Backend CI [45601046350](https://github.com/TheSumitNain/school-management-system/actions/runs/45601046350) **PASS** on `53a31c317a72af379b10d71fe6beb7672f842bf5`: full migrations, Go/PostgreSQL integration tests and `go vet`.
+- Regression-test changes only; no schema or persistent database changes. Leave balances, accrual and carry-forward remain blocked on explicit school policy approval. Document/photo storage remains deferred and excluded from the Staff Management completion estimate; `main` remains untouched.
