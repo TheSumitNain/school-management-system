@@ -662,3 +662,9 @@ This section supersedes older statements in this audit that describe browser ver
 - Handler regression tests now provide a non-empty fake PasswordHash and assert that neither staff-create nor staff-directory JSON responses contain the password hash marker, password field name, or initial password.
 - Backend CI [45534647049](https://github.com/TheSumitNain/school-management-system/actions/runs/45534647049) **PASS** on eb863eb2bbf888a08f9ac53fc4f166c2ac13e3dc: migrations, full Go/PostgreSQL integration tests and go vet.
 - This is a verification of the implemented profile and credential-response scope only. It does not change the separately documented approval gates for identity-schema changes, leave policy, sensitive personal fields, Payroll or document/photo storage; main remains untouched.
+
+## 2026-11-25 follow-up — Staff Profile Update handler contract
+
+- Added handler-level coverage of the complete Edit Staff profile update request, checking authenticated actor/school scope, target principal, all profile fields, date parsing, safe response fields and malformed date rejection before service invocation.
+- Backend CI [45535081221](https://github.com/TheSumitNain/school-management-system/actions/runs/45535081221) **PASS** on `9eb6150429718d559f88933c04c7487181af78d9`: all migrations, full Go/PostgreSQL integration tests and `go vet`.
+- No persistent database/data change. Existing approval gates and deferred document/photo storage remain unchanged; `main` remains untouched.
