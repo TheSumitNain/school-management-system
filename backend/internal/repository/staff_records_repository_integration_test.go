@@ -355,7 +355,7 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
 		($1,$2,'staff.password.reset','staff_user',$5::text,'success',jsonb_build_object('must_change_password',TRUE)),
 		($1,$2,'staff.account.updated','staff_user',$5::text,'success',jsonb_build_object('old_username','old-staff','username','new-staff','sessions_revoked',TRUE)),
 		($1,$2,'staff.password.changed','staff_user',$5::text,'success',jsonb_build_object('password_change_required_cleared',TRUE))
-	`,actorID,schoolID,staff.PrincipalID,secondStaff.PrincipalID,staff.ID);err!=nil{t.Fatalf("insert leave/substitution history fixtures: %v",err)}
+	`,actorID,schoolID,staff.PrincipalID,secondStaff.PrincipalID,fmt.Sprint(staff.ID));err!=nil{t.Fatalf("insert leave/substitution history fixtures: %v",err)}
 	// Decision audit events intentionally omit employee IDs from metadata.
 	// The history query must resolve the employee through the school-scoped
 	// leave request resource ID instead.
