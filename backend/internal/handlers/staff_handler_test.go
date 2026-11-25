@@ -316,6 +316,8 @@ func TestStaffHandlerEnableMapsPasswordAndNotFoundErrors(t *testing.T) {
 		want int
 	}{
 		{err: services.ErrInvalidPassword, want: http.StatusBadRequest},
+		{err: repository.ErrStaffProfileIncomplete, want: http.StatusConflict},
+		{err: repository.ErrStaffProfileInactive, want: http.StatusConflict},
 		{err: repository.ErrUserNotFound, want: http.StatusNotFound},
 		{err: repository.ErrRolePermissionDenied, want: http.StatusForbidden},
 		{err: errors.New("internal"), want: http.StatusInternalServerError},
