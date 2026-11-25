@@ -1196,12 +1196,17 @@ test("staff profile creates education, certification and experience records", as
   await dialog.getByRole("button", { name: "Save record" }).click();
   await expect(dialog.getByText("Enter qualification name.")).toBeVisible();
   await expect(dialog.getByText("Enter institution.")).toBeVisible();
-  await dialog.locator('input[name="qualification_name"]').fill("M.Sc. Mathematics");
+  const qualificationNameInput = dialog.locator('input[name="qualification_name"]');
+  await qualificationNameInput.fill("Q".repeat(161));
+  await expect(qualificationNameInput).toHaveValue("Q".repeat(160));
+  await qualificationNameInput.fill("M.Sc. Mathematics");
+  const specializationInput = dialog.locator('input[name="specialization"]');
+  await specializationInput.fill("🔐".repeat(161));
+  await expect(specializationInput).toHaveValue("🔐".repeat(160));
   await dialog.locator('input[name="institution"]').fill("State University");
   const unicodeCredential = "🔐".repeat(120);
   await expect(dialog.locator('input[name="credential_reference"]')).not.toHaveAttribute("maxLength");
   await dialog.locator('input[name="credential_reference"]').fill("🔐".repeat(121));
-  await expect(dialog.locator('input[name="credential_reference"]')).toHaveValue(unicodeCredential);
   await expect(dialog.locator('input[name="credential_reference"]')).toHaveValue(unicodeCredential);
   await dialog.locator('input[name="completion_year"]').fill("1899");
   await dialog.locator('input[name="score"]').fill("8.5");
@@ -1225,11 +1230,13 @@ test("staff profile creates education, certification and experience records", as
   await expect(dialog.getByText("M.Sc. Applied Mathematics")).toBeVisible();
 
   await dialog.getByRole("button", { name: "Add certification" }).click();
-  await dialog.locator('input[name="certificate_name"]').fill("Teacher Training");
+  const certificateNameInput = dialog.locator('input[name="certificate_name"]');
+  await certificateNameInput.fill("C".repeat(181));
+  await expect(certificateNameInput).toHaveValue("C".repeat(180));
+  await certificateNameInput.fill("Teacher Training");
   await dialog.locator('input[name="issuing_organization"]').fill("State Board");
   await expect(dialog.locator('input[name="credential_id"]')).not.toHaveAttribute("maxLength");
   await dialog.locator('input[name="credential_id"]').fill("🔐".repeat(121));
-  await expect(dialog.locator('input[name="credential_id"]')).toHaveValue(unicodeCredential);
   await expect(dialog.locator('input[name="credential_id"]')).toHaveValue(unicodeCredential);
   await chooseDatePickerValue(dialog, "Certification issue date", "2022-05-01");
   await dialog.getByRole("button", { name: "Certification expiry date" }).click();
@@ -1247,8 +1254,17 @@ test("staff profile creates education, certification and experience records", as
   await expect(dialog.getByText("Advanced Teacher Training")).toBeVisible();
 
   await dialog.getByRole("button", { name: "Add experience" }).click();
-  await dialog.locator('input[name="employer_name"]').fill("Previous School");
-  await dialog.locator('input[name="record_designation"]').fill("Science Teacher");
+  const employerNameInput = dialog.locator('input[name="employer_name"]');
+  await employerNameInput.fill("E".repeat(201));
+  await expect(employerNameInput).toHaveValue("E".repeat(200));
+  await employerNameInput.fill("Previous School");
+  const recordDesignationInput = dialog.locator('input[name="record_designation"]');
+  await recordDesignationInput.fill("D".repeat(121));
+  await expect(recordDesignationInput).toHaveValue("D".repeat(120));
+  await recordDesignationInput.fill("Science Teacher");
+  const experienceDescription = dialog.locator('textarea[name="description"]');
+  await experienceDescription.fill("X".repeat(2001));
+  await expect(experienceDescription).toHaveValue("X".repeat(2000));
   await chooseDatePickerValue(dialog, "Previous employment start date", "2012-04-01");
   await dialog.getByRole("button", { name: "Previous employment end date" }).click();
   const experienceEndCalendar = dialog.getByRole("dialog", { name: "Choose previous employment end date" });
