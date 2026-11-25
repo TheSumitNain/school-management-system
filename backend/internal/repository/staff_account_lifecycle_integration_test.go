@@ -311,6 +311,52 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
 		t.Fatalf("expected exactly one staff password reset audit event, got %d", resetAuditCount)
 	}
 
+    // Password reset must roll back credential replacement, token-version
+    // invalidation and refresh-session revocation if its audit write fails.
+    resetFailureSuffix := suffix[len(suffix)-8:]
+    resetFailureTrigger := "test_reject_staff_reset_audit_" + resetFailureSuffix
+    resetFailureFunction := "test_reject_staff_reset_audit_fn_" + resetFailureSuffix
+    resetFailureSession := integrationTokenHash("staff-reset-audit-failure-" + suffix)
+    if err := NewPrincipalRefreshSessionRepository(pool).CreatePrincipalInTx(ctx, tx, created.PrincipalID, resetFailureSession, time.Now().Add(time.Hour)); err != nil {
+        t.Fatalf("create refresh session before rejected password reset: %v", err)
+    }
+    if _, err := tx.Exec(ctx, fmt.Sprintf(`
+        CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $
+        BEGIN
+            IF NEW.action = 'staff.password.reset' THEN
+                RAISE EXCEPTION 'forced staff password reset audit failure';
+            END IF;
+            RETURN NEW;
+        END;
+        $;
+        CREATE TRIGGER %s BEFORE INSERT ON audit_events
+        FOR EACH ROW EXECUTE FUNCTION %s();
+    `, resetFailureFunction, resetFailureTrigger, resetFailureFunction)); err != nil {
+        t.Fatalf("install password reset audit failure trigger: %v", err)
+    }
+    if err := repo.ResetStaffPassword(ctx, actorPrincipalID, schoolID, created.PrincipalID, "must-not-be-committed-hash"); err == nil {
+        t.Fatal("password reset unexpectedly succeeded when its audit insert failed")
+    }
+    if _, err := tx.Exec(ctx, fmt.Sprintf("DROP TRIGGER %s ON audit_events; DROP FUNCTION %s();", resetFailureTrigger, resetFailureFunction)); err != nil {
+        t.Fatalf("remove password reset audit failure trigger: %v", err)
+    }
+    var preservedPasswordHash string
+    var preservedMustChange bool
+    var preservedResetTokenVersion int64
+    var resetSessionStillActive bool
+    if err := tx.QueryRow(ctx, `
+        SELECT u.password_hash, u.must_change_password, ap.token_version,
+               EXISTS (SELECT 1 FROM refresh_sessions rs WHERE rs.token_hash = $2 AND rs.revoked_at IS NULL)
+          FROM users u JOIN auth_principals ap ON ap.id = u.principal_id
+         WHERE u.principal_id = $1
+    `, created.PrincipalID, resetFailureSession).Scan(&preservedPasswordHash, &preservedMustChange, &preservedResetTokenVersion, &resetSessionStillActive); err != nil {
+        t.Fatalf("read state after rejected password reset: %v", err)
+    }
+    if preservedPasswordHash != resetPasswordHash || !preservedMustChange || preservedResetTokenVersion != 3 || !resetSessionStillActive {
+        t.Fatalf("failed password reset left partial side effects: password_hash=%q must_change=%v token_version=%d session_active=%v",
+            preservedPasswordHash, preservedMustChange, preservedResetTokenVersion, resetSessionStillActive)
+    }
+
 	// Seed a separate live refresh session in the same outer transaction before disable.
 	// The repository must serialize with refresh rotation and revoke this session
 	// atomically with principal deactivation.
