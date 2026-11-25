@@ -671,8 +671,8 @@ func (r *UserRepository) ResetStaffPassword(
 	targetPrincipalID int64,
 	newPasswordHash string,
 ) error {
-	if actorPrincipalID <= 0 || schoolID <= 0 || targetPrincipalID <= 0 ||
-		actorPrincipalID == targetPrincipalID || newPasswordHash == "" {
+	if r == nil || r.db == nil || actorPrincipalID <= 0 || schoolID <= 0 ||
+		targetPrincipalID <= 0 || actorPrincipalID == targetPrincipalID || newPasswordHash == "" {
 		return ErrInvalidUser
 	}
 	tx, err := r.db.Begin(ctx)
