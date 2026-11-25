@@ -255,6 +255,33 @@ func TestStaffHandlerUpdateProfileParsesAndPassesCompleteProfile(t *testing.T) {
 	}
 }
 
+func TestStaffHandlerUpdateProfileDoesNotExposePasswordHash(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	service := &fakeStaffAccountService{user: &models.User{
+		ID: 15, PrincipalID: 27, SchoolID: 8, Username: "teacher.one",
+		PasswordHash: "private-hash-marker", EmployeeCode: "EMP-001",
+		FullName: "Teacher One", Designation: "Class Teacher",
+		MobileNumber: "9876543210", EmploymentStatus: "active",
+	}}
+	router := gin.New()
+	router.PATCH("/school/staff/:principalID", func(c *gin.Context) {
+		c.Set("auth_principal_id", int64(31))
+		c.Set("auth_school_id", int64(8))
+		c.Next()
+	}, NewStaffHandler(service).Update)
+	req := httptest.NewRequest(http.MethodPatch, "/school/staff/27", strings.NewReader(
+		`{"employee_code":"EMP-001","full_name":"Teacher One","designation":"Class Teacher","mobile_number":"9876543210","employment_status":"active"}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK || service.profileCalls != 1 {
+		t.Fatalf("profile update status=%d calls=%d body=%s", rec.Code, service.profileCalls, rec.Body.String())
+	}
+	if strings.Contains(rec.Body.String(), "private-hash-marker") || strings.Contains(rec.Body.String(), "PasswordHash") {
+		t.Fatalf("staff profile update response leaked password hash: %s", rec.Body.String())
+	}
+}
+
 func TestStaffHandlerUpdateProfileRejectsMalformedJoiningDateBeforeService(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	service := &fakeStaffAccountService{user: &models.User{}}
