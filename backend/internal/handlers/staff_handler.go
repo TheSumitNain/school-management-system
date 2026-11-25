@@ -31,6 +31,10 @@ type staffDirectoryPageService interface {
 	ListDirectoryPage(ctx context.Context, actorPrincipalID, schoolID int64, filter models.StaffDirectoryFilter) (*models.StaffDirectoryPage, error)
 }
 
+type staffDirectorySummaryService interface {
+	GetDirectorySummary(ctx context.Context, actorPrincipalID, schoolID int64) (*models.StaffDirectorySummary, error)
+}
+
 type staffProfileUpdateService interface {
     UpdateProfile(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64, profile models.StaffProfile) (*models.User, error)
 }
@@ -179,6 +183,35 @@ func (h *StaffHandler) List(c *gin.Context) {
 		})
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "success", "staff": staff})
+}
+
+func (h *StaffHandler) GetDirectorySummary(c *gin.Context) {
+	actorValue, actorExists := c.Get(middleware.ContextPrincipalIDKey)
+	actorID, actorOK := actorValue.(int64)
+	schoolValue, schoolExists := c.Get(middleware.ContextSchoolIDKey)
+	schoolID, schoolOK := schoolValue.(int64)
+	if !actorExists || !actorOK || actorID <= 0 || !schoolExists || !schoolOK || schoolID <= 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "School staff authentication required"})
+		return
+	}
+	if h == nil || h.service == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Staff directory summary is unavailable"})
+		return
+	}
+	summaryService, ok := h.service.(staffDirectorySummaryService)
+	if !ok {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Staff directory summary is unavailable"})
+		return
+	}
+	summary, err := summaryService.GetDirectorySummary(c.Request.Context(), actorID, schoolID)
+	switch {
+	case errors.Is(err, repository.ErrRolePermissionDenied):
+		c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": "Staff directory summary is not authorized"})
+	case err != nil || summary == nil:
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unable to load staff directory summary"})
+	default:
+		c.JSON(http.StatusOK, gin.H{"status": "success", "summary": summary})
+	}
 }
 
 func (h *StaffHandler) ListDirectoryPage(c *gin.Context) {
