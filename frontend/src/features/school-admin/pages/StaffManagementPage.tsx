@@ -67,7 +67,7 @@ async function exportStaffDirectoryCSV(rows:StaffRecord[], filters?:StaffDirecto
       const first = await getSchoolStaffDirectory({ ...filters, offset: 0 });
       if (typeof first.total === "number") {
         exportRows = [...first.staff];
-        for (let offset = first.staff.length; offset < first.total; offset += filters.limit) {
+        for (let offset = filters.limit; offset < first.total; offset += filters.limit) {
           const page = await getSchoolStaffDirectory({ ...filters, offset });
           if (page.staff.length === 0) break;
           exportRows.push(...page.staff);
