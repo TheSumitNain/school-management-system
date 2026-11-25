@@ -654,3 +654,11 @@ This section supersedes older statements in this audit that describe browser ver
 - Backend CI [45349696946](https://github.com/TheSumitNain/school-management-system/actions/runs/45349696946) **PASS** on the same commit: full Go tests, ephemeral PostgreSQL integration suite and `go vet`.
 - The preceding frontend run [45349180670](https://github.com/TheSumitNain/school-management-system/actions/runs/45349180670) failed only because a Playwright print-width assertion called `evaluate` on a locator matching both ID cards. The regression now asserts the width of each card separately; the full rerun passes.
 - No migration or persistent database/data change. `main` remains untouched. This checkpoint verifies the currently implemented Staff Management scope only; it does not approve or implement profile-only onboarding/Bulk Import, the proposed identity/catalog schema, external document/photo storage, sensitive personal fields, Payroll or leave-balance policy.
+
+
+## 2026-11-25 follow-up — profile date parity and credential privacy
+
+- The Staff Profile Update service now uses the shared validStaffJoiningDate validator already used by profile creation. It validates date-only values against the Asia/Kolkata calendar date, including the one-year-ahead and leap-day boundary, independent of the backend host timezone. No migration or persistent data change.
+- Handler regression tests now provide a non-empty fake PasswordHash and assert that neither staff-create nor staff-directory JSON responses contain the password hash marker, password field name, or initial password.
+- Backend CI [45534647049](https://github.com/TheSumitNain/school-management-system/actions/runs/45534647049) **PASS** on eb863eb2bbf888a08f9ac53fc4f166c2ac13e3dc: migrations, full Go/PostgreSQL integration tests and go vet.
+- This is a verification of the implemented profile and credential-response scope only. It does not change the separately documented approval gates for identity-schema changes, leave policy, sensitive personal fields, Payroll or document/photo storage; main remains untouched.
