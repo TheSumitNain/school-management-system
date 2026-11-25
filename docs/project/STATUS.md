@@ -2622,3 +2622,11 @@ This update supersedes older status bullets that listed the following database-b
 - Playwright regression fills 121 emoji and verifies the input retains exactly 120 code points for both fields. TypeScript/Vite production build and the complete browser acceptance suite pass.
 - Frontend CI [45541856053](https://github.com/TheSumitNain/school-management-system/actions/runs/45541856053) **PASS** and Backend CI [45541856057](https://github.com/TheSumitNain/school-management-system/actions/runs/45541856057) **PASS** on `bfe587984dbc645fbd93ee80584bd82561b5c6fc`.
 - No production database migration or persistent data change. `main` remains untouched; work continues on `work`. Document/photo storage remains deferred and excluded from the Staff Management completion estimate.
+
+
+## 2026-11-25 — Staff Leave API validation and error-contract verification
+
+- Added holiday-calendar service boundary tests: exactly 366 days accepted; longer, reversed, malformed, missing and year-zero date ranges rejected before repository calls; valid school ID, date bounds and inactive-record filter are forwarded correctly.
+- Added handler tests for permission denial (403), missing records (404), overlap conflicts (409), validation errors (400), and generic internal errors (500) without exposing database details.
+- Backend CI [45601046350](https://github.com/TheSumitNain/school-management-system/actions/runs/45601046350) **PASS** on `53a31c317a72af379b10d71fe6beb7672f842bf5`: ephemeral PostgreSQL migration chain, full Go/PostgreSQL integration suite and `go vet`.
+- No production schema migration or persistent school data change. Leave entitlement policy remains approval-gated; document/photo storage remains deferred and excluded from Staff Management completion estimates. `main` remains untouched.
