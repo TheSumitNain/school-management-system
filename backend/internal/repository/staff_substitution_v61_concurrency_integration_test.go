@@ -2,10 +2,13 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 )
 
 // TestStaffSubstitutionV61SerializesConcurrentSubstituteSlotAssignmentsPostgresIntegration
@@ -21,10 +24,36 @@ func TestStaffSubstitutionV61SerializesConcurrentSubstituteSlotAssignmentsPostgr
 		t.Fatalf("load integration actor: %v", err)
 	}
 
+	var schoolAdminRoleID int64
+	if err:=pool.QueryRow(ctx,`SELECT id FROM roles WHERE school_id=$1 AND principal_type='staff'
+		AND scope_type='school' AND role_key='school_admin' AND is_system=TRUE`,schoolID).Scan(&schoolAdminRoleID);err!=nil { t.Fatalf("load School Admin role: %v",err) }
+
 	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
 	setupTx, err := pool.Begin(ctx)
 	if err != nil { t.Fatalf("begin concurrent substitution fixture: %v", err) }
 	defer func() { _ = setupTx.Rollback(context.Background()) }()
+
+	var platformAdminPrincipalID int64
+	err=setupTx.QueryRow(ctx,`SELECT ap.id FROM platform_admin_accounts pa
+		JOIN auth_principals ap ON ap.id=pa.principal_id
+		JOIN principal_roles pr ON pr.principal_id=ap.id AND pr.revoked_at IS NULL
+		JOIN roles r ON r.id=pr.role_id
+		JOIN role_permissions rp ON rp.role_id=r.id
+		JOIN permissions p ON p.id=rp.permission_id
+		WHERE ap.principal_type='platform_admin' AND ap.status='active'
+		  AND r.role_key='platform_admin' AND r.scope_type='platform' AND r.is_system=TRUE
+		  AND p.permission_key='platform.permissions.delegate' AND p.scope_type='platform' AND p.is_active=TRUE
+		LIMIT 1`).Scan(&platformAdminPrincipalID)
+	if errors.Is(err,pgx.ErrNoRows) {
+		var bootstrapExists bool
+		if checkErr:=setupTx.QueryRow(ctx,`SELECT EXISTS(SELECT 1 FROM platform_admin_accounts)
+			OR EXISTS(SELECT 1 FROM principal_roles pr JOIN roles r ON r.id=pr.role_id
+				WHERE r.principal_type='platform_admin' AND r.scope_type='platform' AND r.role_key='platform_admin')`).Scan(&bootstrapExists);checkErr!=nil { t.Fatalf("check Platform Admin bootstrap state: %v",checkErr) }
+		if bootstrapExists { t.Skip("Platform Admin bootstrap exists but no active administrator has platform.permissions.delegate") }
+		platformAdminPrincipalID,err=NewPlatformAdminRepository(pool).bootstrapFirstInTx(ctx,setupTx,fmt.Sprintf("substitution-race-%d@example.invalid",time.Now().UnixNano()),"integration-test-password-hash")
+	}
+	if err!=nil { t.Fatalf("resolve Platform Admin actor: %v",err) }
+	if _,err=setupTx.Exec(ctx,`INSERT INTO principal_roles(principal_id,role_id,assigned_by) VALUES($1,$2,$3)`,actorPrincipalID,schoolAdminRoleID,platformAdminPrincipalID);err!=nil { t.Fatalf("grant School Admin role to race actor: %v",err) }
 
 	var originalOne, originalTwo, substitute int64
 	for i, target := range []*int64{&originalOne, &originalTwo, &substitute} {
@@ -90,8 +119,7 @@ func TestStaffSubstitutionV61SerializesConcurrentSubstituteSlotAssignmentsPostgr
 	for i,entryID:=range entries {
 		originalID:=originals[i]
 		go func(id,original int64){
-			_,insertErr:=pool.Exec(ctx,`INSERT INTO staff_substitutions(school_id,timetable_entry_id,period_id,cover_date,original_teacher_principal_id,substitute_teacher_principal_id,reason,created_by_principal_id)
-				VALUES($1,$2,$3,$4::date,$5,$6,'Concurrent substitute slot race',$7)`,schoolID,id,periodID,coverDate,original,substitute,actorPrincipalID)
+			_,insertErr:=(&AcademicRepository{db:pool}).CreateStaffSubstitution(ctx,actorPrincipalID,schoolID,id,original,substitute,coverDate,nil,"Concurrent substitute slot race")
 			results<-outcome{entryID:id,err:insertErr}
 		}(entryID,originalID)
 	}
@@ -114,7 +142,7 @@ func TestStaffSubstitutionV61SerializesConcurrentSubstituteSlotAssignmentsPostgr
 	for i:=0;i<2;i++ {
 		select {
 		case result:=<-results:
-			if result.err==nil { successes++ } else if strings.Contains(result.err.Error(),"ux_staff_substitutions_substitute_period_active") { conflicts++ } else { t.Fatalf("unexpected concurrent insert error for timetable entry %d: %v",result.entryID,result.err) }
+			if result.err==nil { successes++ } else if errors.Is(result.err,ErrStaffSubstitutionConflict) { conflicts++ } else { t.Fatalf("unexpected concurrent insert error for timetable entry %d: %v",result.entryID,result.err) }
 		case <-ctx.Done(): t.Fatalf("timed out collecting concurrent substitution results: %v",ctx.Err())
 		}
 	}
