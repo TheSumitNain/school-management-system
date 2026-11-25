@@ -2495,3 +2495,11 @@ This update supersedes older status bullets that listed the following database-b
 - Added a dedicated Playwright browser scenario for the school-wide Qualifications & Certifications and Experience History reports. It verifies 50-row pagination (including the page-2 offset), certification + pending filters, experience current-only filtering, and visibility of historical experience for an inactive employee.
 - Frontend CI [45533775269](https://github.com/TheSumitNain/school-management-system/actions/runs/45533775269) **PASS** on `d34a7c3ccf50626463e5e99ef012b9a61c9bdd7c`: TypeScript, Vite production build and full Playwright browser acceptance suite. Backend CI [45533775348](https://github.com/TheSumitNain/school-management-system/actions/runs/45533775348) **PASS** on the same commit: migrations, full Go/PostgreSQL integration tests and `go vet`.
 - Browser test uses mocked HTTP responses for UI/request-contract coverage; PostgreSQL integration tests independently cover repository filters, pagination and tenant isolation. No persistent database migration or data change. `main` remains untouched; work continues on `work`.
+
+
+## 2026-11-25 — Staff profile validation and credential-response regression
+
+- Aligned Staff Profile Edit validation with the existing Asia/Kolkata calendar-date rule used during Add Staff. The same one-year-ahead boundary and leap-day handling now apply to both create and update; no schema change was required. Code commit: 7af9c226bb02f8d0d5beba5ab6a3a47dbc8ae9ac.
+- Strengthened handler tests by seeding a fake password hash and asserting neither staff creation nor staff directory responses expose that hash marker or password field. Test commit: eb863eb2bbf888a08f9ac53fc4f166c2ac13e3dc.
+- Backend CI [45534647049](https://github.com/TheSumitNain/school-management-system/actions/runs/45534647049) **PASS** on eb863eb2bbf888a08f9ac53fc4f166c2ac13e3dc: all migrations, full Go tests including PostgreSQL integration, and go vet.
+- No persistent database migration or data change. main remains untouched; current work remains on work. Document upload/photo storage remains excluded from this Staff Management acceptance scope.
