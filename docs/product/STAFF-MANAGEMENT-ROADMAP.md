@@ -935,3 +935,11 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Added leave-handler tests for stable 400/403/404/409/500 responses and for suppressing internal database error details from client responses.
 - Backend CI [45601046350](https://github.com/TheSumitNain/school-management-system/actions/runs/45601046350) **PASS** on `53a31c317a72af379b10d71fe6beb7672f842bf5`: full migrations, Go/PostgreSQL integration tests and `go vet`.
 - Regression-test changes only; no schema or persistent database changes. Leave balances, accrual and carry-forward remain blocked on explicit school policy approval. Document/photo storage remains deferred and excluded from the Staff Management completion estimate; `main` remains untouched.
+
+
+## 2026-11-25 follow-up — leave decision payload and holiday-manager access
+
+- Fixed chunked/unknown-length leave decision request parsing so approval/rejection comments are not dropped; added a handler regression.
+- Aligned the holiday calendar GET route with the existing frontend permission model: either `staff.holidays.read` or `staff.holidays.manage` may reach the handler. Repository checks continue to distinguish active-only reads from inactive-record management access. Added route-level regression coverage for manage-only access.
+- Backend CI [45602173749](https://github.com/TheSumitNain/school-management-system/actions/runs/45602173749) **PASS** on `42ca6cf7709a742dd53029c284cae5c25d671a7c`: full migrations, Go/PostgreSQL integration tests and `go vet`.
+- No persistent database change. Leave entitlement policy remains approval-gated; document/photo storage remains deferred and excluded from the Staff Management completion estimate. `main` remains untouched.
