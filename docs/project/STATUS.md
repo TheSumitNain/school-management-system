@@ -2662,3 +2662,11 @@ This update supersedes older status bullets that listed the following database-b
 - Frontend CI [45617925032](https://github.com/TheSumitNain/school-management-system/actions/runs/45617925032) **PASS** on `6d417e76a4f0df1734932c48ee13a5e763e63e79`: TypeScript, Vite production build and full Playwright browser acceptance suite.
 - Backend CI [45618359896](https://github.com/TheSumitNain/school-management-system/actions/runs/45618359896) **PASS** on `e716c44a6b0f991f3918d338a4c31d19894f509d`: full migration chain, Go tests including PostgreSQL integration and `go vet`. An initial test run caught an integer-to-text pgx fixture encoding mismatch; the fixture now passes the resource ID as text and the complete suite passes.
 - No schema migration or persistent school-data change. `main` remains untouched; work continues on `work`. Leave entitlement policy, identity-schema redesign and qualification/certification approval/retention policy remain approval-gated. Document/photo storage remains deferred and excluded from Staff Management completion estimates.
+
+
+## 2026-11-25 — Staff leave decisions refresh employee audit history
+
+- Leave request creation, approval/rejection and cancellation now invalidate staff audit-history queries after successful writes. This prevents a recently viewed employee History & Activity panel from showing stale leave events when the profile is reopened.
+- Added a Playwright regression that loads an employee's audit history, approves that employee's pending leave request, reopens the profile and verifies a fresh audit-history read.
+- Backend CI [45619016333](https://github.com/TheSumitNain/school-management-system/actions/runs/45619016333) **PASS** on `13252cc13af9763dc18d7238f33622683673077c`: full migration chain, Go/PostgreSQL integration tests and `go vet`. Frontend CI [45619016246](https://github.com/TheSumitNain/school-management-system/actions/runs/45619016246) **PASS** on the same commit: TypeScript, Vite production build and full Playwright browser acceptance suite.
+- No schema migration or persistent school-data change. Leave entitlement policy and other product approval gates remain unchanged; document/photo storage remains deferred and excluded from the Staff Management completion estimate. `main` remains untouched.
