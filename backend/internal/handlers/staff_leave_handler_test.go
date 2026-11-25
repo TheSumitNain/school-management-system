@@ -275,3 +275,47 @@ func TestStaffLeaveHandlerMapsServiceErrorsToStableHTTPStatuses(t *testing.T) {
 		})
 	}
 }
+
+
+type captureStaffLeaveDecisionService struct {
+	StaffLeaveManagementService
+	requestID int64
+	approve bool
+	comment *string
+	called bool
+}
+
+func (s *captureStaffLeaveDecisionService) Decide(_ context.Context, _ int64, _ int64, requestID int64, approve bool, comment *string) error {
+	s.called = true
+	s.requestID, s.approve, s.comment = requestID, approve, comment
+	return nil
+}
+
+func TestStaffLeaveDecisionParsesChunkedJSONComment(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	service := &captureStaffLeaveDecisionService{}
+	handler := NewStaffLeaveHandler(service)
+	router := gin.New()
+	router.POST("/staff/requests/:requestID/approve", func(c *gin.Context) {
+		c.Set(middleware.ContextPrincipalIDKey, int64(100))
+		c.Set(middleware.ContextSchoolIDKey, int64(10))
+		c.Next()
+	}, handler.Approve)
+
+	request := httptest.NewRequest(http.MethodPost, "/staff/requests/42/approve", strings.NewReader(`{"comment":"Reviewed after checking the timetable"}`))
+	request.ContentLength = -1
+	request.TransferEncoding = []string{"chunked"}
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status=%d want=%d body=%s", recorder.Code, http.StatusOK, recorder.Body.String())
+	}
+	if !service.called || service.requestID != 42 || !service.approve {
+		t.Fatalf("decision was not forwarded: called=%v requestID=%d approve=%v", service.called, service.requestID, service.approve)
+	}
+	if service.comment == nil || *service.comment != "Reviewed after checking the timetable" {
+		t.Fatalf("chunked decision comment was dropped: %#v", service.comment)
+	}
+}
