@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"school-management-system/internal/models"
+
 	"github.com/jackc/pgx/v5"
 )
 
@@ -659,6 +661,17 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
 	}
 	if err := repo.DisableStaffAccount(ctx, actorPrincipalID, schoolID, protectedAdminPrincipalID); !errors.Is(err, ErrUserNotFound) {
 		t.Fatalf("disabling another active School Admin error = %v, want ErrUserNotFound", err)
+	}
+	if _, err := repo.UpdateStaffProfile(ctx, actorPrincipalID, schoolID, protectedAdminPrincipalID, models.StaffProfile{}); !errors.Is(err, ErrUserNotFound) {
+		t.Fatalf("updating another active School Admin profile error = %v, want ErrUserNotFound", err)
+	}
+	var protectedProfileCount int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM staff_profiles WHERE principal_id = $1 AND school_id = $2`,
+		protectedAdminPrincipalID, schoolID).Scan(&protectedProfileCount); err != nil {
+		t.Fatalf("count protected School Admin profiles after rejected update: %v", err)
+	}
+	if protectedProfileCount != 0 {
+		t.Fatalf("rejected peer-admin profile update created %d staff profiles", protectedProfileCount)
 	}
 	var protectedUserStatus, protectedPrincipalStatus, protectedPasswordHash string
 	var protectedTokenVersion int64
