@@ -57,10 +57,10 @@ function Dashboard({user}:{user:AuthUser}){
  useEffect(()=>{let alive=true;async function load(){
   setLoading(true);setErrors([]);
   const jobs=[
-   {p:"users.read",url:"/school/staff",key:"staff",label:"Staff accounts",note:"People in your school",icon:Users,tone:"blue"},
+   {p:"users.read",url:"/school/staff/summary",key:"summary",label:"Staff accounts",note:"People in your school",icon:Users,tone:"blue"},
    {p:"classes.read",url:"/school/classes",key:"classes",label:"Classes",note:"Academic structure",icon:BookOpen,tone:"violet"}
   ].filter(x=>user.permissions.includes(x.p));
-  const results=await Promise.all(jobs.map(async j=>{try{const d=await api<Record<string,unknown>>(j.url);const v=d[j.key];return {metric:{label:j.label,value:String(Array.isArray(v)?v.length:0),note:j.note,icon:j.icon,tone:j.tone} as Metric,error:""};}catch(e){return {metric:null,error:j.label+": "+(e instanceof Error?e.message:"Unavailable")};}}));
+  const results=await Promise.all(jobs.map(async j=>{try{const d=await api<Record<string,unknown>>(j.url);const v=d[j.key];const count=j.key==="summary"&&v&&typeof v==="object"&&"total" in v?(v as {total:number}).total:Array.isArray(v)?v.length:0;return {metric:{label:j.label,value:String(count),note:j.note,icon:j.icon,tone:j.tone} as Metric,error:""};}catch(e){return {metric:null,error:j.label+": "+(e instanceof Error?e.message:"Unavailable")};}}));
   const nextMetrics=results.flatMap(x=>x.metric?[x.metric]:[]);const nextErrors=results.flatMap(x=>x.error?[x.error]:[]);
   if(user.permissions.includes("academic_years.read")){
    try{
