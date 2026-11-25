@@ -71,6 +71,13 @@ func TestStaffSubstitutionV61SerializesConcurrentSubstituteSlotAssignmentsPostgr
 		}
 	}
 
+	var teacherRoleID int64
+	if err:=setupTx.QueryRow(ctx,`SELECT id FROM roles WHERE school_id=$1 AND principal_type='staff'
+		AND scope_type='school' AND role_key='teacher' AND is_system=TRUE`,schoolID).Scan(&teacherRoleID);err!=nil { t.Fatalf("load system Teacher role: %v",err) }
+	for _,teacherID:=range []int64{originalOne,originalTwo,substitute} {
+		if _,err:=setupTx.Exec(ctx,`INSERT INTO principal_roles(principal_id,role_id,assigned_by) VALUES($1,$2,$3)`,teacherID,teacherRoleID,actorPrincipalID);err!=nil { t.Fatalf("assign Teacher role to race fixture %d: %v",teacherID,err) }
+	}
+
 	var yearID,classID,sectionOne,sectionTwo,subjectID,periodID int64
 	if err := setupTx.QueryRow(ctx, `INSERT INTO academic_years(school_id,name,starts_on,ends_on,status)
 		VALUES($1,$2,CURRENT_DATE-30,CURRENT_DATE+365,'active') RETURNING id`,schoolID,"substitution-race-"+suffix).Scan(&yearID); err != nil { t.Fatalf("create race academic year: %v",err) }
