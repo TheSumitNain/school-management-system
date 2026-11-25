@@ -16,6 +16,7 @@ var ErrInvalidStaffAccount = errors.New("invalid staff account details")
 type staffAccountRepository interface {
 	CreateStaffAccount(ctx context.Context, actorPrincipalID, schoolID int64, username, passwordHash string) (*models.User, error)
 	ListStaffAccounts(ctx context.Context, actorPrincipalID, schoolID int64) ([]models.User, error)
+	ListStaffDirectoryPage(ctx context.Context, actorPrincipalID, schoolID int64, filter models.StaffDirectoryFilter) (*models.StaffDirectoryPage, error)
 	DisableStaffAccount(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64) error
 	UpdateStaffAccount(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64, username string) (*models.User, error)
 	EnableStaffAccount(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64, newPasswordHash string) error
@@ -165,6 +166,32 @@ func (s *StaffAccountService) List(ctx context.Context, actorPrincipalID, school
 		return nil, ErrInvalidStaffAccount
 	}
 	return s.repository.ListStaffAccounts(ctx, actorPrincipalID, schoolID)
+}
+
+func (s *StaffAccountService) ListDirectoryPage(ctx context.Context, actorPrincipalID, schoolID int64, filter models.StaffDirectoryFilter) (*models.StaffDirectoryPage, error) {
+	if s == nil || s.repository == nil || actorPrincipalID <= 0 || schoolID <= 0 {
+		return nil, ErrInvalidStaffAccount
+	}
+	filter.Search = strings.TrimSpace(filter.Search)
+	if len([]rune(filter.Search)) > 100 {
+		return nil, ErrInvalidStaffAccount
+	}
+	if filter.EmploymentStatus != "" && filter.EmploymentStatus != "active" && filter.EmploymentStatus != "inactive" {
+		return nil, ErrInvalidStaffAccount
+	}
+	if filter.AccountStatus != "" && filter.AccountStatus != "enabled" && filter.AccountStatus != "disabled" {
+		return nil, ErrInvalidStaffAccount
+	}
+	if filter.ProfileStatus != "" && filter.ProfileStatus != "complete" && filter.ProfileStatus != "incomplete" {
+		return nil, ErrInvalidStaffAccount
+	}
+	if filter.Limit == 0 {
+		filter.Limit = 50
+	}
+	if filter.Limit < 1 || filter.Limit > 100 || filter.Offset < 0 || filter.Offset > 1_000_000 {
+		return nil, ErrInvalidStaffAccount
+	}
+	return s.repository.ListStaffDirectoryPage(ctx, actorPrincipalID, schoolID, filter)
 }
 
 func (s *StaffAccountService) Disable(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64) error {
