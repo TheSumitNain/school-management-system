@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
-	"sync"
 
 	"school-management-system/internal/schooltime"
 	"github.com/jackc/pgx/v5/pgxpool"
