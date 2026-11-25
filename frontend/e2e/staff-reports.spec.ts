@@ -85,25 +85,25 @@ test("staff qualifications and experience reports filter, paginate and retain hi
 
   await expect(page.getByRole("heading", { name: "Staff Reports" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Qualifications & certifications" })).toBeVisible();
-  await expect(page.getByText("Qualification 1")).toBeVisible();
+  await expect(page.getByText("Qualification 1", { exact: true })).toBeVisible();
   const qualificationPagination = page.locator(".staff-operational-report-section").nth(0).locator(".staff-operational-report-pagination");
   await expect(qualificationPagination).toContainText("Showing 1–50 of 51");
   await qualificationPagination.getByRole("button", { name: "Next" }).click();
-  await expect(page.getByText("Qualification 51")).toBeVisible();
+  await expect(page.getByText("Qualification 51", { exact: true })).toBeVisible();
   await expect(qualificationPagination).toContainText("Showing 51–51 of 51");
   expect(qualificationRequests.some(url => url.searchParams.get("offset") === "50")).toBeTruthy();
 
   const qualificationSection = page.locator(".staff-operational-report-section").nth(0);
   await qualificationSection.getByLabel("Record type").selectOption("certification");
   await qualificationSection.getByLabel("Verification status").selectOption("pending");
-  await expect(page.getByText("First Aid Certificate")).toBeVisible();
+  await expect(page.getByText("First Aid Certificate", { exact: true })).toBeVisible();
   expect(qualificationRequests.some(url => url.searchParams.get("record_type") === "certification" && url.searchParams.get("verification_status") === "pending" && url.searchParams.get("offset") === "0")).toBeTruthy();
 
   await expect(page.getByRole("heading", { name: "Staff experience history" })).toBeVisible();
-  await expect(page.getByText("Previous School")).toBeVisible();
-  await expect(page.getByText("Former Teacher")).toBeVisible();
   const experienceSection = page.locator(".staff-operational-report-section").nth(1);
+  await expect(experienceSection.getByText("Previous School", { exact: true })).toBeVisible();
+  await expect(experienceSection.getByText("Former Teacher").first()).toBeVisible();
   await experienceSection.getByLabel("Experience status").selectOption("current");
-  await expect(page.getByText("Current Academy")).toBeVisible();
+  await expect(experienceSection.getByText("Current Academy", { exact: true })).toBeVisible();
   expect(experienceRequests.some(url => url.searchParams.get("current_only") === "true")).toBeTruthy();
 });
