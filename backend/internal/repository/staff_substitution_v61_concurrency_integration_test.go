@@ -75,19 +75,13 @@ func TestStaffSubstitutionV61SerializesConcurrentSubstituteSlotAssignmentsPostgr
 	if daysUntilMonday==0 { daysUntilMonday=7 }
 	coverDate:=nowIST.AddDate(0,0,daysUntilMonday).Format("2006-01-02")
 
-	barrierKey:=time.Now().UnixNano()
-	barrierSuffix:=suffix[len(suffix)-8:]
-	functionName:="test_substitution_race_barrier_fn_"+barrierSuffix
-	triggerName:="aaa_test_substitution_race_barrier_"+barrierSuffix
-	if _,err:=pool.Exec(ctx,fmt.Sprintf("CREATE FUNCTION public.%s() RETURNS trigger LANGUAGE plpgsql AS 'BEGIN PERFORM pg_advisory_xact_lock(%d); RETURN NEW; END;'",functionName,barrierKey));err!=nil { t.Fatalf("create deterministic race barrier function: %v",err) }
-	if _,err:=pool.Exec(ctx,fmt.Sprintf("CREATE TRIGGER %s BEFORE INSERT ON public.staff_substitutions FOR EACH ROW EXECUTE FUNCTION public.%s()",triggerName,functionName));err!=nil {
-		_,_=pool.Exec(context.Background(),fmt.Sprintf("DROP FUNCTION IF EXISTS public.%s()",functionName))
-		t.Fatalf("create deterministic race barrier trigger: %v",err)
-	}
-	defer func(){ cleanupCtx,cleanupCancel:=context.WithTimeout(context.Background(),5*time.Second);defer cleanupCancel();_,_=pool.Exec(cleanupCtx,fmt.Sprintf("DROP TRIGGER IF EXISTS %s ON public.staff_substitutions",triggerName));_,_=pool.Exec(cleanupCtx,fmt.Sprintf("DROP FUNCTION IF EXISTS public.%s()",functionName)) }()
-
-	barrierConn,err:=pool.Acquire(ctx);if err!=nil { t.Fatalf("acquire race barrier connection: %v",err) };defer barrierConn.Release()
-	if _,err:=barrierConn.Exec(ctx,"SELECT pg_advisory_lock($1)",barrierKey);err!=nil { t.Fatalf("hold deterministic race barrier: %v",err) }
+	// Hold the exact V61 advisory lock before launching either insert. Both
+	// independent transactions must reach the real V61 trigger and wait there.
+	lockKeyText:=fmt.Sprintf("%d:%d:%d:%d",schoolID,substitute,1,periodID)
+	var barrierKey int64
+	if err:=pool.QueryRow(ctx,"SELECT hashtextextended($1,0)",lockKeyText).Scan(&barrierKey);err!=nil { t.Fatalf("compute V61 slot lock key: %v",err) }
+	barrierConn,err:=pool.Acquire(ctx);if err!=nil { t.Fatalf("acquire V61 lock holder connection: %v",err) };defer barrierConn.Release()
+	if _,err:=barrierConn.Exec(ctx,"SELECT pg_advisory_lock($1)",barrierKey);err!=nil { t.Fatalf("hold V61 slot lock: %v",err) }
 	barrierHeld:=true
 	defer func(){if barrierHeld { _,_=barrierConn.Exec(context.Background(),"SELECT pg_advisory_unlock($1)",barrierKey) }}()
 
@@ -105,12 +99,15 @@ func TestStaffSubstitutionV61SerializesConcurrentSubstituteSlotAssignmentsPostgr
 	deadline:=time.Now().Add(10*time.Second)
 	for {
 		var waiting int
-		if err:=pool.QueryRow(ctx,"SELECT count(*) FROM pg_locks WHERE locktype='advisory' AND NOT granted").Scan(&waiting);err!=nil { t.Fatalf("inspect concurrent substitution lock waiters: %v",err) }
+		if err:=pool.QueryRow(ctx,`SELECT count(*) FROM pg_locks
+			WHERE locktype='advisory' AND NOT granted AND objsubid=1
+			AND classid=(($1::bigint >> 32) & 4294967295)::oid
+			AND objid=($1::bigint & 4294967295)::oid`,barrierKey).Scan(&waiting);err!=nil { t.Fatalf("inspect V61 slot lock waiters: %v",err) }
 		if waiting>=2 { break }
-		if time.Now().After(deadline) { t.Fatalf("both assignments did not reach race barrier; waiting=%d",waiting) }
+		if time.Now().After(deadline) { t.Fatalf("both inserts did not reach the V61 slot lock; waiting=%d",waiting) }
 		time.Sleep(10*time.Millisecond)
 	}
-	if _,err:=barrierConn.Exec(ctx,"SELECT pg_advisory_unlock($1)",barrierKey);err!=nil { t.Fatalf("release deterministic race barrier: %v",err) }
+	if _,err:=barrierConn.Exec(ctx,"SELECT pg_advisory_unlock($1)",barrierKey);err!=nil { t.Fatalf("release V61 slot lock: %v",err) }
 	barrierHeld=false
 
 	successes,conflicts:=0,0
