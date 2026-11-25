@@ -1,3 +1,10 @@
+## 2026-11-25 — Staff report API and PostgreSQL pagination regression verification
+
+- Backend CI [45547729975](https://github.com/TheSumitNain/school-management-system/actions/runs/45547729975) **PASS** on `64ee5559d50eb7ac58582ba3fd0c62fcf684506a`: all migrations applied to ephemeral PostgreSQL, the complete Go suite including PostgreSQL integration passed, and `go vet` passed.
+- Added real-PostgreSQL Experience History report pagination assertions for a three-row filtered dataset: first page (2 rows), second page (1 row), stable descending date order, total count, current-only filtering and employment-type filtering.
+- Added HTTP handler regressions requiring HTTP 400 for malformed limit/offset parameters on both report endpoints and invalid `current_only` values on Experience History. Existing service tests continue to cover negative and excessive offsets and invalid limits.
+- Together with Frontend CI [45546968103](https://github.com/TheSumitNain/school-management-system/actions/runs/45546968103) **PASS**, report pagination now has backend database, handler-contract and browser navigation coverage. No production behavior, schema, persistent database or application data changed; `main` remains untouched.
+
 ## 2026-11-25 — Staff Experience History pagination browser verification
 
 - Frontend CI [45546968103](https://github.com/TheSumitNain/school-management-system/actions/runs/45546968103) **PASS** on `129a6e1e3383a783529940e5e99892d992169737`: TypeScript/Vite production build and the complete Playwright browser acceptance suite passed.
