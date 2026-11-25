@@ -2677,3 +2677,10 @@ This update supersedes older status bullets that listed the following database-b
 - Added a Playwright regression that loads an employee's audit history, approves that employee's pending leave request, reopens the profile and verifies a fresh audit-history read.
 - Backend CI [45619016333](https://github.com/TheSumitNain/school-management-system/actions/runs/45619016333) **PASS** on `13252cc13af9763dc18d7238f33622683673077c`: full migration chain, Go/PostgreSQL integration tests and `go vet`. Frontend CI [45619016246](https://github.com/TheSumitNain/school-management-system/actions/runs/45619016246) **PASS** on the same commit: TypeScript, Vite production build and full Playwright browser acceptance suite.
 - No schema migration or persistent school-data change. Leave entitlement policy and other product approval gates remain unchanged; document/photo storage remains deferred and excluded from the Staff Management completion estimate. `main` remains untouched.
+
+
+## 2026-11-25 — Staff record audit-failure rollback regression
+
+- Added a PostgreSQL integration regression that forces audit inserts to fail independently across qualification, certification and experience create/update operations. It verifies all six writes return errors, failed creates leave no partial rows, and failed updates preserve the previously committed record values.
+- Backend CI [45627964262](https://github.com/TheSumitNain/school-management-system/actions/runs/45627964262) **PASS** on `4c07ed148cd939add6dffca03635c67f8fb6a53e`: full migration chain, Go tests including PostgreSQL integration and `go vet`.
+- Regression-test change only; no production behavior change, schema migration or persistent school-data change. Qualification/certification verification and archive/retention policy remain approval-gated; document/photo storage remains deferred and excluded from the Staff Management completion estimate. `main` remains untouched.
