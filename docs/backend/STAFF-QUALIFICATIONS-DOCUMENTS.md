@@ -178,3 +178,12 @@ Contract:
 - Repository authorization independently checks the active same-school School Admin, live `users.read` role grant and explicit DENY override. Experience and staff-profile joins are tenant constrained. PostgreSQL integration covers row identity, filters, pagination contract and cross-school denial.
 - No migration or persistent database change was introduced.
 
+
+
+### 3.3 Reports browser acceptance (verified 2026-11-25)
+
+- Added `frontend/e2e/staff-reports.spec.ts` to exercise both school-wide report screens through the Staff → Reports UI.
+- The browser scenario verifies the qualifications report's 50-row page boundary and offset=50 request, the certification + pending filter request, the experience current-only filter request, and historical experience visibility for an inactive employee.
+- Frontend CI [45533775269](https://github.com/TheSumitNain/school-management-system/actions/runs/45533775269) **PASS** on commit `d34a7c3ccf50626463e5e99ef012b9a61c9bdd7c`, including the full Playwright suite. Backend CI [45533775348](https://github.com/TheSumitNain/school-management-system/actions/runs/45533775348) **PASS**, including ephemeral PostgreSQL migrations/integration tests and `go vet`.
+- The Playwright scenario mocks HTTP responses and validates browser behavior/request parameters; it does not replace the PostgreSQL integration coverage of repository filtering, pagination and school isolation.
+- No persistent database migration or data change. Document upload/download and profile photographs remain deferred under the existing go-live storage approval gate.
