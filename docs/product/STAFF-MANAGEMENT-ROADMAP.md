@@ -842,3 +842,12 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Added direct backend handler regression coverage for Edit Staff profile updates: authenticated actor/school/target propagation, complete profile payload mapping, date-only parsing, safe response allowlist and malformed joining-date rejection without a service call.
 - Backend CI [45535081221](https://github.com/TheSumitNain/school-management-system/actions/runs/45535081221) **PASS** on `9eb6150429718d559f88933c04c7487181af78d9`, including migrations, full Go/PostgreSQL integration tests and `go vet`.
 - No schema or persistent data change. Leave-policy and identity-schema approvals remain open; document/photo storage remains deferred; `main` remains untouched.
+
+## 2026-11-25 follow-up — Staff account lifecycle transaction and isolation regressions
+
+- Added PostgreSQL integration regressions proving staff profile updates roll back when their audit insert fails, reject cross-school targets without mutation, and reject duplicate employee codes atomically without a success audit event.
+- Added lifecycle rollback regressions for username changes, password resets, account disable and account re-enable. Each forces the corresponding audit insert to fail and verifies the account/principal state, token version, password state and active refresh-session state remain unchanged.
+- Added an inactive-employment guard regression: a disabled login cannot be re-enabled while its employee profile is inactive. Added cross-school lifecycle coverage and nil-dependency safety checks for credential lookup/password operations; handler coverage verifies incomplete or inactive employee profiles map to HTTP 409.
+- The initial run exposed a malformed dollar-quote delimiter in the staff-profile audit-trigger test. Replaced it with a named PL/pgSQL dollar-quote delimiter in commit `c4345e9f2d01ed2bc7115d2606c6c3f0792b4c20`.
+- Backend CI [45537146943](https://github.com/TheSumitNain/school-management-system/actions/runs/45537146943) **PASS** on `c4345e9f2d01ed2bc7115d2606c6c3f0792b4c20`: all migrations, full Go tests including PostgreSQL integration, and `go vet`.
+- These are regression-test and test-fixture changes; no schema migration or persistent school data change. Leave-policy and identity-schema approvals remain open; document/photo storage remains deferred and excluded from the Staff Management completion estimate. `main` remains untouched.
