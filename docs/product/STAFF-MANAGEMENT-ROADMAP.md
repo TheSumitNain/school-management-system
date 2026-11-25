@@ -52,7 +52,7 @@ Backend CI [45547729975](https://github.com/TheSumitNain/school-management-syste
 
 # Staff Management — Product and Implementation Roadmap
 
-**Status:** Approved planning baseline; the currently approved Staff Management implementation scope is built and browser-verified. Phase 4 remains partial pending school leave-policy approval; Phase 6 remains partial because Bulk Import is blocked on identity-schema approval. Payroll, document storage and profile-only onboarding remain deferred.  
+**Status:** The implemented School Admin Staff Management workflows are automated-test and browser-verified. Phase 1 remains partially met because profile-only onboarding is blocked on identity-schema approval; Phase 4 remains partial pending school leave-policy approval; Phase 6 remains partial because Bulk Import shares the identity-schema gate. Payroll and document storage remain separately deferred.  
 **Scope:** Phase 1 School Admin web workspace, with Teacher self-service as a separate future experience.  
 **Last updated:** 2026-11-25
 
@@ -482,7 +482,7 @@ Phases are dependency ordered, not a claim that every listed item is absent. Ins
 6. Add audit events and profile completeness indicators.
 7. Support non-teaching staff in same foundation without Teacher access by default.
 
-**Exit gate:** create/edit/view teaching and non-teaching profiles; profile-only employee; teacher login provisioning; safe account/employment lifecycle; strict school isolation; field-level validation; automated tests and responsive browser coverage.
+**Exit gate: PARTIALLY MET.** The implemented login-backed staff profile, account lifecycle, role/override, qualification/experience and audit workflows are browser-verified. Profile-only employee creation (and any dependent bulk onboarding) remains blocked until the identity/profile schema proposal is explicitly approved and migrated. Confirm teaching/non-teaching staff-type support against the approved schema before declaring this phase complete.
 
 ### Phase 2 — Teacher Academic Assignments (P0)
 
