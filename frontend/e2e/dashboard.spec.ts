@@ -28,8 +28,8 @@ test("dashboard shows permission-scoped staff, class and current-year enrollment
       } });
       return;
     }
-    if (path === "/school/staff") {
-      await route.fulfill({ json: { staff: Array.from({ length: 7 }, (_, index) => ({ id: index + 1 })) } });
+    if (path === "/school/staff/summary") {
+      await route.fulfill({ json: { summary: { total: 7 } } });
       return;
     }
     if (path === "/school/classes") {
@@ -68,6 +68,8 @@ test("dashboard shows permission-scoped staff, class and current-year enrollment
     await expect(metric.locator("strong")).toHaveText(value);
   }
   expect(requested).toContain("/school/enrollments?academic_year_id=7");
+  expect(requested).toContain("/school/staff/summary");
+  expect(requested).not.toContain("/school/staff");
 });
 
 
@@ -96,12 +98,12 @@ test("dashboard explains partial loading failures and lets the user retry", asyn
       } });
       return;
     }
-    if (path === "/school/staff") {
+    if (path === "/school/staff/summary") {
       staffRequests += 1;
       if (staffRequests <= 2) {
         await route.fulfill({ status: 503, json: { message: "Staff service is temporarily unavailable while the school workspace is loading. Please retry in a moment or contact your administrator if the problem continues." } });
       } else {
-        await route.fulfill({ json: { staff: [{ id: 1 }, { id: 2 }] } });
+        await route.fulfill({ json: { summary: { total: 2 } } });
       }
       return;
     }
@@ -158,8 +160,8 @@ test("dashboard metrics and feedback remain readable without viewport overflow",
       } });
       return;
     }
-    if (path === "/school/staff") {
-      await route.fulfill({ json: { staff: Array.from({ length: 7 }, (_, index) => ({ id: index + 1 })) } });
+    if (path === "/school/staff/summary") {
+      await route.fulfill({ json: { summary: { total: 7 } } });
       return;
     }
     if (path === "/school/classes") {
