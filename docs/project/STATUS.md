@@ -1,3 +1,11 @@
+## 2026-11-25 — Staff Leave and Substitution consistency audit
+
+- Re-verified Staff Leave repository workflows and PostgreSQL integration coverage: school-scoped authorization, active staff/leave-type eligibility, concurrent overlap serialization per school/staff, pending/approved overlap rejection, row-locked decisions, self-approval prevention, rejection-reason validation, and transactional audit rollback for decisions/cancellations.
+- Re-verified School Holiday writes use school-scoped transactions and audit events; integration coverage checks duplicate/conflicting dates and rollback on audit failure. Holiday overlays remain informational for attendance; no attendance status is automatically mutated.
+- Re-verified Staff Substitution validation and database guards: same-school timetable/period scope, matching original teacher and weekday, active original/substitute staff, enabled substitute login, matching active class/subject assignment, optional approved full-day leave reference for the original teacher/date, duplicate active cover constraints, teacher-period conflicts, and timetable write serialization. Current/future active covers block relevant timetable, assignment and staff/login lifecycle changes; cancellation retains immutable history and releases the recurring slot.
+- Substitution repository create/cancel writes and their audit events share a transaction. Follow-up test gap retained: the inspected substitution integration suite does not contain a dedicated forced-audit-failure rollback scenario or a true concurrent repository-level assignment race test. Existing unique constraints, database triggers, V61 lock-order coverage and database-guard integration tests are present; this follow-up is not being represented as a known production defect.
+- No application code, schema migration, production data, leave-policy entitlement rules, or attendance auto-marking behavior changed. No approval-gated policy was introduced.
+
 ## 2026-11-25 — School-wide staff report browser acceptance audit
 
 - Re-inspected the complete Staff Management Playwright spec and confirmed dedicated scenarios exist for Qualifications & Certifications and Staff Experience History. The scenarios exercise the respective aggregate report endpoints, type/status filters, visible result rows and CSV export privacy allowlists.
