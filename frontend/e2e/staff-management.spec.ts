@@ -1339,18 +1339,25 @@ test("staff profile clears the previous employee's academic assignments while th
   await signInAndOpenStaff(page, rows, undefined, ["users.read", "teacher_assignments.read"]);
   await page.route("**/api/school/teacher-assignments?*", async route => {
     const teacherID = new URL(route.request().url()).searchParams.get("teacher_principal_id");
-    if (teacherID === "412") await new Promise(resolve => setTimeout(resolve, 400));
-    await route.fulfill({ json: { assignments: teacherID === "411" ? [
-      { id: 1, academic_year_id: 3, class_name: "Class 8", section_name: "A", subject_name: "First Teacher Private Subject", assigned_at: "2026-04-01T00:00:00.000Z", teacher_principal_id: 411, revoked_at: null },
-    ] : [
-      { id: 2, academic_year_id: 3, class_name: "Class 9", section_name: "B", subject_name: "Second Teacher Subject", assigned_at: "2026-04-01T00:00:00.000Z", teacher_principal_id: 412, revoked_at: null },
-    ] } });
+    if (teacherID === "411") await new Promise(resolve => setTimeout(resolve, 500));
+    try {
+      await route.fulfill({ json: { assignments: teacherID === "411" ? [
+        { id: 1, academic_year_id: 3, class_name: "Class 8", section_name: "A", subject_name: "First Teacher Private Subject", assigned_at: "2026-04-01T00:00:00.000Z", teacher_principal_id: 411, revoked_at: null },
+      ] : [
+        { id: 2, academic_year_id: 3, class_name: "Class 9", section_name: "B", subject_name: "Second Teacher Subject", assigned_at: "2026-04-01T00:00:00.000Z", teacher_principal_id: 412, revoked_at: null },
+      ] } });
+    } catch {
+      // The first employee's in-flight request is intentionally aborted on profile change.
+    }
   });
   await page.getByRole("button", { name: /Staff Directory/ }).click();
   await page.getByRole("button", { name: "First Teacher" }).click();
   let dialog = page.getByRole("dialog", { name: "First Teacher" });
   await dialog.getByRole("button", { name: "Academic Assignments" }).click();
-  await expect(dialog.getByText("First Teacher Private Subject")).toBeVisible();
+  await page.waitForRequest(request => {
+    const url = new URL(request.url());
+    return url.pathname.endsWith("/teacher-assignments") && url.searchParams.get("teacher_principal_id") === "411";
+  });
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Second Teacher" }).click();
   dialog = page.getByRole("dialog", { name: "Second Teacher" });
@@ -1358,6 +1365,9 @@ test("staff profile clears the previous employee's academic assignments while th
   await expect(dialog.getByRole("status")).toContainText("Loading academic assignments");
   await expect(dialog.getByText("First Teacher Private Subject")).toHaveCount(0);
   await expect(dialog.getByText("Second Teacher Subject")).toBeVisible();
+  await page.waitForTimeout(600);
+  await expect(dialog.getByText("Second Teacher Subject")).toBeVisible();
+  await expect(dialog.getByText("First Teacher Private Subject")).toHaveCount(0);
 });
 
 
