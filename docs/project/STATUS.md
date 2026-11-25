@@ -1,3 +1,11 @@
+
+## 2026-11-25 — Staff Attendance bulk verification checkpoint
+
+- Bulk HTTP handler tests passed in Backend CI [45598938508](https://github.com/TheSumitNain/school-management-system/actions/runs/45598938508).
+- Backend CI [45599478011](https://github.com/TheSumitNain/school-management-system/actions/runs/45599478011) **PASS** on `41851e988b17bd90a32c9cf623913aa61556ae28`: all ephemeral database migrations, full Go tests including PostgreSQL integration, and `go vet`.
+- Added service validation coverage for actor/school/status/remarks, empty/duplicate/non-positive staff IDs, and the 1,000-target batch boundary. Added a concurrent PostgreSQL bulk-mark regression proving one full transaction wins and the conflicting transaction leaves no partial records or audit events.
+- No production code, schema, persistent database, or application data changed. Staff Management's existing identity-schema, leave-policy, payroll and private-document-storage approval gates remain unchanged; document upload remains excluded from the Staff Management completion estimate.
+
 ## 2026-11-25 — Latest Staff Management verification on b8e46ac
 
 - Backend CI [45593176075](https://github.com/TheSumitNain/school-management-system/actions/runs/45593176075) **PASS**: complete Go tests, PostgreSQL integration suite and `go vet`.
