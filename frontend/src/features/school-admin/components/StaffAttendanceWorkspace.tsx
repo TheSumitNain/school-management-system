@@ -101,6 +101,7 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["staff-attendance", "daily"] }),
       queryClient.invalidateQueries({ queryKey: ["staff-attendance", "monthly"] }),
+      queryClient.invalidateQueries({ queryKey: ["staff-audit-events"] }),
     ]);
   };
   const mark = useMutation({

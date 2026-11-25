@@ -474,7 +474,10 @@ export function useStaffSubstitutionTimetableEntriesQuery(academicYearID:number,
 }
 function useStaffSubstitutionMutation<T>(fn:(input:T)=>Promise<unknown>){
   const client=useQueryClient();
-  return useMutation({mutationFn:fn,onSuccess:()=>client.invalidateQueries({queryKey:staffSubstitutionQueryKeys.all})});
+  return useMutation({mutationFn:fn,onSuccess:async()=>await Promise.all([
+ client.invalidateQueries({queryKey:staffSubstitutionQueryKeys.all}),
+ client.invalidateQueries({queryKey:["staff-audit-events"]}),
+])});
 }
 export function useCreateStaffSubstitutionMutation(){
   return useStaffSubstitutionMutation(createStaffSubstitution);

@@ -1940,8 +1940,20 @@ test("staff attendance supports search, individual and atomic bulk marking, and 
   await signInAndOpenStaff(page, rows, undefined, [
     "users.read", "staff.attendance.read", "staff.attendance.mark",
     "staff.attendance.update_same_day", "staff.attendance.correct_past",
-    "staff.leave.read", "staff.holidays.read",
+    "staff.leave.read", "staff.holidays.read", "school.audit.read",
   ]);
+  let auditReads = 0;
+  await page.route("**/api/school/staff/512/audit-events**", async route => {
+    auditReads += 1;
+    await route.fulfill({ json: { events: [] } });
+  });
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Attendance Teacher" }).click();
+  const attendanceProfile = page.getByRole("dialog", { name: "Attendance Teacher" });
+  await attendanceProfile.getByRole("button", { name: "History & Activity" }).click();
+  await expect(attendanceProfile.getByText("No audited activity is recorded for this employee yet.")).toBeVisible();
+  const firstAttendanceAuditRead = auditReads;
+  await page.keyboard.press("Escape");
   await page.route("**/api/school/staff-leave/requests?*", async route => {
     const url = new URL(route.request().url());
     if (!url.searchParams.has("from_date")) { await route.fallback(); return; }
@@ -2036,6 +2048,12 @@ test("staff attendance supports search, individual and atomic bulk marking, and 
   expect(monthlyCSV).toContain("EMP-ATT-01");
   expect(monthlyCSV).not.toContain("PRIVATE_ATTENDANCE_REMARK");
   expect(monthlyCSV).not.toContain("PRIVATE_LEAVE_REASON");
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Attendance Teacher" }).click();
+  const refreshedAttendanceProfile = page.getByRole("dialog", { name: "Attendance Teacher" });
+  await refreshedAttendanceProfile.getByRole("button", { name: "History & Activity" }).click();
+  await expect.poll(() => auditReads).toBeGreaterThan(firstAttendanceAuditRead);
 });
 
 test("attendance drafts stay scoped to their selected date", async ({ page }) => {
@@ -2468,8 +2486,20 @@ test("staff substitution assigns a dated cover, validates the timetable weekday 
       status: "active", must_change_password: false,
     },
   ];
-  const permissions = ["users.read", "staff.substitutions.read", "staff.substitutions.manage", "timetable.read", "staff.leave.read"];
+  const permissions = ["users.read", "staff.substitutions.read", "staff.substitutions.manage", "timetable.read", "staff.leave.read", "school.audit.read"];
   await signInAndOpenStaff(page, rows, undefined, permissions);
+  let auditReads = 0;
+  await page.route("**/api/school/staff/501/audit-events**", async route => {
+    auditReads += 1;
+    await route.fulfill({ json: { events: [] } });
+  });
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Original Teacher" }).click();
+  const originalProfile = page.getByRole("dialog", { name: "Original Teacher" });
+  await originalProfile.getByRole("button", { name: "History & Activity" }).click();
+  await expect(originalProfile.getByText("No audited activity is recorded for this employee yet.")).toBeVisible();
+  const firstSubstitutionAuditRead = auditReads;
+  await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Substitutions" }).click();
   await expect(page.getByRole("heading", { name: "Substitute Teacher Coverage" })).toBeVisible();
 
@@ -2521,6 +2551,12 @@ test("staff substitution assigns a dated cover, validates the timetable weekday 
   await page.getByRole("button", { name: "Cancel cover" }).last().click();
   await expect(record).toContainText("Cancelled");
   await expect(record.getByRole("button", { name: "Cancel cover" })).toHaveCount(0);
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Original Teacher" }).click();
+  const refreshedOriginalProfile = page.getByRole("dialog", { name: "Original Teacher" });
+  await refreshedOriginalProfile.getByRole("button", { name: "History & Activity" }).click();
+  await expect.poll(() => auditReads).toBeGreaterThan(firstSubstitutionAuditRead);
 });
 
 
