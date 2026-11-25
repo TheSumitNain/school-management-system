@@ -715,7 +715,7 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
 	// the DENY checks in the repository remain defense-in-depth, not a way to
 	// bypass the platform's delegation policy.
 	roleRepo := NewRoleRepository(tx)
-	for _, permissionKey := range []string{"users.update", "users.disable", "users.password_reset"} {
+	for _, permissionKey := range []string{"users.create", "users.update", "users.disable", "users.password_reset"} {
 		if _, err := roleRepo.GrantSchoolPermissionDelegation(
 			ctx, platformAdminPrincipalID, schoolID, permissionKey, false, true,
 		); !errors.Is(err, ErrRoleNotFound) {
