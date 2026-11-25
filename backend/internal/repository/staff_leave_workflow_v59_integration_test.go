@@ -541,6 +541,11 @@ func TestSchoolHolidayDuplicateAndConflictingUpdatePostgresIntegration(t *testin
 func TestSchoolHolidayCrossSchoolWriteAndAuditRollbackPostgresIntegration(t *testing.T) {
 	f := newStaffLeaveIntegrationFixture(t)
 
+	updateTarget,err:=f.repo.SaveHoliday(f.ctx,f.adminPrincipalID,f.schoolID,0,SchoolHoliday{HolidayDate:"2027-08-16",Name:"Audit rollback update target",IsActive:true})
+	if err!=nil{t.Fatalf("create holiday update target: %v",err)}
+	var updateAuditBefore int
+	if err:=f.pool.QueryRow(f.ctx,`SELECT COUNT(*) FROM audit_events WHERE school_id=$1 AND actor_principal_id=$2 AND resource_type='school_holiday' AND resource_id=$3`,f.schoolID,f.adminPrincipalID,fmt.Sprint(updateTarget.ID)).Scan(&updateAuditBefore);err!=nil{t.Fatalf("count holiday update audit before failure: %v",err)}
+
 	if _, err := f.repo.SaveHoliday(f.ctx, f.adminPrincipalID, f.schoolID+999999, 0, SchoolHoliday{
 		HolidayDate: "2027-08-15", Name: "Cross-school holiday", IsActive: true,
 	}); !errors.Is(err, ErrStaffLeaveAccessDenied) {
@@ -549,7 +554,7 @@ func TestSchoolHolidayCrossSchoolWriteAndAuditRollbackPostgresIntegration(t *tes
 
 	const functionName = "test_school_holiday_audit_failure"
 	const triggerName = "trg_test_school_holiday_audit_failure"
-	if _, err := f.pool.Exec(f.ctx, `CREATE OR REPLACE FUNCTION public.test_school_holiday_audit_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action='school.holiday.created' THEN RAISE EXCEPTION 'forced holiday audit failure'; END IF; RETURN NEW; END $$`); err != nil {
+	if _, err := f.pool.Exec(f.ctx, `CREATE OR REPLACE FUNCTION public.test_school_holiday_audit_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action IN ('school.holiday.created','school.holiday.updated') THEN RAISE EXCEPTION 'forced holiday audit failure'; END IF; RETURN NEW; END $$`); err != nil {
 		t.Fatalf("create holiday audit failure function: %v", err)
 	}
 	if _, err := f.pool.Exec(f.ctx, `CREATE TRIGGER trg_test_school_holiday_audit_failure BEFORE INSERT ON public.audit_events FOR EACH ROW EXECUTE FUNCTION public.test_school_holiday_audit_failure()`); err != nil {
@@ -565,6 +570,13 @@ func TestSchoolHolidayCrossSchoolWriteAndAuditRollbackPostgresIntegration(t *tes
 	}); err == nil {
 		t.Fatal("holiday create unexpectedly succeeded when audit insert failed")
 	}
+
+	if _,err:=f.repo.SaveHoliday(f.ctx,f.adminPrincipalID,f.schoolID,updateTarget.ID,SchoolHoliday{HolidayDate:"2027-08-17",Name:"Should Not Persist",IsActive:false});err==nil{t.Fatal("holiday update unexpectedly succeeded when audit insert failed")}
+	var currentDate,currentName string
+	if err:=f.pool.QueryRow(f.ctx,`SELECT holiday_date::text,name FROM school_holidays WHERE id=$1 AND school_id=$2`,updateTarget.ID,f.schoolID).Scan(&currentDate,&currentName);err!=nil{t.Fatalf("read holiday after update audit failure: %v",err)}
+	var updateAuditAfter int
+	if err:=f.pool.QueryRow(f.ctx,`SELECT COUNT(*) FROM audit_events WHERE school_id=$1 AND actor_principal_id=$2 AND resource_type='school_holiday' AND resource_id=$3`,f.schoolID,f.adminPrincipalID,fmt.Sprint(updateTarget.ID)).Scan(&updateAuditAfter);err!=nil{t.Fatalf("count holiday update audit after failure: %v",err)}
+	if currentDate!="2027-08-16"||currentName!="Audit rollback update target"||updateAuditAfter!=updateAuditBefore{t.Fatalf("holiday update audit failure left partial state: date=%q name=%q audits before=%d after=%d",currentDate,currentName,updateAuditBefore,updateAuditAfter)}
 
 	var holidayCount, auditCount int
 	if err := f.pool.QueryRow(f.ctx, `SELECT COUNT(*) FROM school_holidays WHERE school_id=$1 AND name='Audit rollback holiday'`, f.schoolID).Scan(&holidayCount); err != nil {
