@@ -246,3 +246,6 @@
 .staff-reports-summary strong{color:var(--color-text);font-size:22px;font-variant-numeric:tabular-nums}
 @media(max-width:900px){.staff-reports-summary{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:620px){.staff-reports-heading{flex-direction:column}.staff-reports-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.staff-management-page .staff-directory-pagination{display:flex;align-items:center;justify-content:flex-end;gap:12px;padding:14px 0;color:var(--color-text-muted);font-size:11px}.staff-management-page .staff-directory-pagination button:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:480px){.staff-management-page .staff-directory-pagination{justify-content:space-between;flex-wrap:wrap}}
