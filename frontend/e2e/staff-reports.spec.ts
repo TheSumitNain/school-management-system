@@ -1,0 +1,109 @@
+import { expect, test } from "@playwright/test";
+
+const schoolAdmin = {
+  principal_id: 101,
+  principal_type: "staff",
+  status: "active",
+  school_id: 10,
+  username: "reports-admin",
+  permissions: ["users.read"],
+};
+
+test("staff qualifications and experience reports filter, paginate and retain historical employees", async ({ page }) => {
+  const qualificationRequests: URL[] = [];
+  const experienceRequests: URL[] = [];
+
+  await page.route("**/api/**", async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname.replace(/^\/api/, "");
+
+    if (path === "/auth/refresh") {
+      await route.fulfill({ status: 401, json: { message: "No active session" } });
+      return;
+    }
+    if (path === "/auth/login" && request.method() === "POST") {
+      await route.fulfill({ json: { access_token: "staff-reports-e2e-token", token_type: "Bearer", principal: schoolAdmin } });
+      return;
+    }
+    if (path === "/auth/me") {
+      await route.fulfill({ json: schoolAdmin });
+      return;
+    }
+    if (path === "/school/staff" && request.method() === "GET") {
+      await route.fulfill({ json: { staff: [
+        { id: 1, principal_id: 201, school_id: 10, username: "active.teacher", employee_code: "EMP-201", full_name: "Active Teacher", designation: "Teacher", employment_status: "active", profile_complete: true, status: "active" },
+        { id: 2, principal_id: 202, school_id: 10, username: "former.teacher", employee_code: "EMP-202", full_name: "Former Teacher", designation: "Teacher", employment_status: "inactive", profile_complete: true, status: "disabled" },
+      ] } });
+      return;
+    }
+    if (path === "/school/staff/qualifications-report" && request.method() === "GET") {
+      qualificationRequests.push(url);
+      const recordType = url.searchParams.get("record_type") ?? "all";
+      const status = url.searchParams.get("verification_status") ?? "";
+      const offset = Number(url.searchParams.get("offset") ?? "0");
+      const filtered = recordType === "certification" && status === "pending";
+      const rows = filtered
+        ? [{ record_type: "certification", record_id: 900, staff_principal_id: 201, employee_code: "EMP-201", staff_name: "Active Teacher", record_name: "First Aid Certificate", organization: "Safety Institute", record_date: "2026-01-10", expiry_date: "2028-01-10", verification_status: "pending" }]
+        : offset >= 50
+          ? [{ record_type: "qualification", record_id: 51, staff_principal_id: 201, employee_code: "EMP-201", staff_name: "Active Teacher", record_name: "Qualification 51", organization: "State University", record_date: "2021", expiry_date: "", verification_status: "pending" }]
+          : Array.from({ length: 50 }, (_, index) => ({
+              record_type: "qualification", record_id: index + 1, staff_principal_id: 201, employee_code: "EMP-201",
+              staff_name: "Active Teacher", record_name: `Qualification ${index + 1}`, organization: "State University",
+              record_date: "2021", expiry_date: "", verification_status: "pending",
+            }));
+      const counts = filtered
+        ? [{ record_type: "certification", verification_status: "pending", count: 1 }]
+        : [{ record_type: "qualification", verification_status: "pending", count: 51 }];
+      await route.fulfill({ json: { report: { rows, counts, limit: 50, offset, total: filtered ? 1 : 51 } } });
+      return;
+    }
+    if (path === "/school/staff/experience-report" && request.method() === "GET") {
+      experienceRequests.push(url);
+      const currentOnly = url.searchParams.get("current_only") === "true";
+      const rows = currentOnly
+        ? [{ record_id: 702, staff_principal_id: 202, employee_code: "EMP-202", staff_name: "Former Teacher", designation: "Teacher", employment_status: "inactive", employer_name: "Current Academy", previous_designation: "Senior Teacher", employment_type: "permanent", start_date: "2022-04-01", end_date: "", is_current: true }]
+        : [
+            { record_id: 701, staff_principal_id: 202, employee_code: "EMP-202", staff_name: "Former Teacher", designation: "Teacher", employment_status: "inactive", employer_name: "Previous School", previous_designation: "Teacher", employment_type: "contract", start_date: "2018-04-01", end_date: "2022-03-31", is_current: false },
+            { record_id: 702, staff_principal_id: 202, employee_code: "EMP-202", staff_name: "Former Teacher", designation: "Teacher", employment_status: "inactive", employer_name: "Current Academy", previous_designation: "Senior Teacher", employment_type: "permanent", start_date: "2022-04-01", end_date: "", is_current: true },
+          ];
+      const counts = currentOnly
+        ? [{ employment_type: "permanent", is_current: true, count: 1 }]
+        : [{ employment_type: "contract", is_current: false, count: 1 }, { employment_type: "permanent", is_current: true, count: 1 }];
+      await route.fulfill({ json: { report: { rows, counts, limit: 50, offset: Number(url.searchParams.get("offset") ?? "0"), total: rows.length } } });
+      return;
+    }
+    await route.fulfill({ status: 404, json: { message: `Unmocked E2E API request: ${request.method()} ${path}` } });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Username").fill("reports-admin");
+  await page.getByLabel("Password").fill("E2E-only-password");
+  await page.getByRole("button", { name: /Continue/ }).click();
+  await page.getByRole("button", { name: "Staff", exact: true }).click();
+  await page.getByRole("button", { name: "Reports", exact: true }).click();
+
+  await expect(page.getByRole("heading", { name: "Staff Reports" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Qualifications & certifications" })).toBeVisible();
+  await expect(page.getByText("Qualification 1")).toBeVisible();
+  const qualificationPagination = page.locator(".staff-operational-report-section").nth(0).locator(".staff-operational-report-pagination");
+  await expect(qualificationPagination).toContainText("Showing 1–50 of 51");
+  await qualificationPagination.getByRole("button", { name: "Next" }).click();
+  await expect(page.getByText("Qualification 51")).toBeVisible();
+  await expect(qualificationPagination).toContainText("Showing 51–51 of 51");
+  expect(qualificationRequests.some(url => url.searchParams.get("offset") === "50")).toBeTruthy();
+
+  const qualificationSection = page.locator(".staff-operational-report-section").nth(0);
+  await qualificationSection.getByLabel("Record type").selectOption("certification");
+  await qualificationSection.getByLabel("Verification status").selectOption("pending");
+  await expect(page.getByText("First Aid Certificate")).toBeVisible();
+  expect(qualificationRequests.some(url => url.searchParams.get("record_type") === "certification" && url.searchParams.get("verification_status") === "pending" && url.searchParams.get("offset") === "0")).toBeTruthy();
+
+  await expect(page.getByRole("heading", { name: "Staff experience history" })).toBeVisible();
+  await expect(page.getByText("Previous School")).toBeVisible();
+  await expect(page.getByText("Former Teacher")).toBeVisible();
+  const experienceSection = page.locator(".staff-operational-report-section").nth(1);
+  await experienceSection.getByLabel("Experience status").selectOption("current");
+  await expect(page.getByText("Current Academy")).toBeVisible();
+  expect(experienceRequests.some(url => url.searchParams.get("current_only") === "true")).toBeTruthy();
+});
