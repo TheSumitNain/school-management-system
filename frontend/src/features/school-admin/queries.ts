@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getSchoolClassCurricula, getSchoolStudentEnrollmentCurriculum, getSchoolStudentEnrollmentDirectory, previewSchoolClassCurriculumRemoval, saveSchoolClassCurriculum,
   saveSchoolStudentEnrollmentSubjects,
-  createSchoolStaff, disableSchoolStaff, enableSchoolStaff, getSchoolStaff,
+  createSchoolStaff, disableSchoolStaff, enableSchoolStaff, getSchoolStaff, getSchoolStaffDirectory,
   resetSchoolStaffPassword, updateSchoolStaff,
   getStaffQualifications, createStaffQualification, updateStaffQualification, getStaffCertifications, createStaffCertification, updateStaffCertification, getStaffExperience, createStaffExperience, updateStaffExperience,
   getStaffLeaveTypes, saveStaffLeaveType, getStaffLeaveRequests, createStaffLeaveRequest, decideStaffLeaveRequest, cancelStaffLeaveRequest, getSchoolHolidays, saveSchoolHoliday,
@@ -13,6 +13,7 @@ import {
 export const schoolAdminQueryKeys = {
   all: ["school-admin"] as const,
   staff: () => [...schoolAdminQueryKeys.all, "staff"] as const,
+  staffDirectory: () => [...schoolAdminQueryKeys.all, "staff-directory"] as const,
 };
 
 export function useSchoolStaffQuery(enabled = true) {
@@ -20,6 +21,15 @@ export function useSchoolStaffQuery(enabled = true) {
     queryKey: schoolAdminQueryKeys.staff(),
     queryFn: ({ signal }) => getSchoolStaff(signal),
     staleTime: 30_000,
+    enabled,
+  });
+}
+
+export function useSchoolStaffDirectoryQuery(enabled: boolean, filters: Parameters<typeof getSchoolStaffDirectory>[0]) {
+  return useQuery({
+    queryKey: [...schoolAdminQueryKeys.staffDirectory(), filters],
+    queryFn: ({ signal }) => getSchoolStaffDirectory(filters, signal),
+    staleTime: 15_000,
     enabled,
   });
 }
@@ -32,7 +42,10 @@ function useStaffMutation<TInput>(
   return useMutation({
     mutationFn,
     onSuccess: async (_data, input) => {
-      await queryClient.invalidateQueries({ queryKey: schoolAdminQueryKeys.staff() });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: schoolAdminQueryKeys.staff() }),
+        queryClient.invalidateQueries({ queryKey: schoolAdminQueryKeys.staffDirectory() }),
+      ]);
       const principalID = getPrincipalID?.(input);
       if (principalID) {
         await queryClient.invalidateQueries({ queryKey: ["staff-audit-events", principalID] });
