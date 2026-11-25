@@ -1199,6 +1199,7 @@ test("staff profile creates education, certification and experience records", as
   await dialog.locator('input[name="qualification_name"]').fill("M.Sc. Mathematics");
   await dialog.locator('input[name="institution"]').fill("State University");
   const unicodeCredential = "🔐".repeat(120);
+  await expect(dialog.locator('input[name="credential_reference"]')).toHaveAttribute("maxLength", "120");
   await dialog.locator('input[name="credential_reference"]').fill(unicodeCredential);
   await expect(dialog.locator('input[name="credential_reference"]')).toHaveValue(unicodeCredential);
   await dialog.locator('input[name="completion_year"]').fill("1899");
@@ -1225,6 +1226,7 @@ test("staff profile creates education, certification and experience records", as
   await dialog.getByRole("button", { name: "Add certification" }).click();
   await dialog.locator('input[name="certificate_name"]').fill("Teacher Training");
   await dialog.locator('input[name="issuing_organization"]').fill("State Board");
+  await expect(dialog.locator('input[name="credential_id"]')).toHaveAttribute("maxLength", "120");
   await dialog.locator('input[name="credential_id"]').fill(unicodeCredential);
   await expect(dialog.locator('input[name="credential_id"]')).toHaveValue(unicodeCredential);
   await chooseDatePickerValue(dialog, "Certification issue date", "2022-05-01");
