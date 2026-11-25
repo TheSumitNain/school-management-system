@@ -1,3 +1,11 @@
+## 2026-11-25 — Staff reports contract audit
+
+- Reviewed the school-wide Qualifications & Certifications and Experience History report implementations end-to-end across route registration, handlers, service validation, repository SQL, frontend API client and report workspace.
+- Confirmed both routes derive school identity from authenticated context and require live `users.read`; repository authorization independently resolves the active same-school School Admin's effective permissions. Qualification/certification rows are restricted to active employees; experience history intentionally includes inactive employees.
+- Confirmed controlled filter validation (`record_type`, `verification_status`, `employment_type`, and `current_only`), bounded 50-row frontend / 200-row API pagination, count metadata, same-school joins, and omission of credential references, verification notes and free-text experience descriptions from report output/CSV.
+- PostgreSQL integration tests cover mixed record types, pending filters, pagination/counts, same-school identity joins and cross-school denial. Latest Backend CI [45424385188](https://github.com/TheSumitNain/school-management-system/actions/runs/45424385188) and Frontend CI [45424385301](https://github.com/TheSumitNain/school-management-system/actions/runs/45424385301) passed on code checkpoint `6019bc1802567d98a2a3c73e609a8189c77796fa`.
+- Remaining acceptance gap: a dedicated Playwright scenario for the two school-wide report screens was not identified in the inspected staff E2E spec. Do not mark those report screens fully browser-accepted until that scenario is added/run. No schema migration or persistent database was changed. Document upload/photo storage remains excluded/deferred.
+
 ## 2026-11-25 — Staff History & Activity pagination verification
 
 - Staff History & Activity now loads audit events in bounded pages of 50, ordered newest-first with stable ordering and an explicit `has_more` indicator. The frontend exposes Older/Newer navigation and the current page indicator.
