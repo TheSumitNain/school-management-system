@@ -1,3 +1,10 @@
+## 2026-11-25 — Staff report CSV formula-injection regression verification
+
+- Added browser regression coverage for tab-prefixed user-controlled report values in CSV exports, ensuring spreadsheet formula-like input is escaped as text.
+- Backend CI [45602855583](https://github.com/TheSumitNain/school-management-system/actions/runs/45602855583) **PASS** and Frontend CI [45602855658](https://github.com/TheSumitNain/school-management-system/actions/runs/45602855658) **PASS** on `bb7e0af18c3eb2af3e0bb4129c1408f0a41f12f5`; complete ephemeral PostgreSQL migration/integration suite, Go tests, `go vet`, frontend production build and Playwright suite all passed.
+- Report audit reconfirmed tenant-scoped queries, bounded filters/pagination, active-only qualification/certification reporting, intentional retention of former employees in experience history, and privacy exclusions for credential references, verifier notes and free-text descriptions.
+- Verification/test-only checkpoint; no production behavior, schema, persistent database or application data changed. Existing identity-schema, leave-policy and payroll approval gates remain unchanged; private document/photo storage remains deferred and excluded from completion estimates.
+
 
 ## 2026-11-25 — Staff Leave decision/cancellation concurrency regression
 
