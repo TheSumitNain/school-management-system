@@ -828,3 +828,11 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - The staff form's date picker now disables dates beyond the same school-local one-year limit, and create/edit submission validation places an out-of-range date error under the Joining date field. The update API and mutation types now require an explicit `employment_status`, matching backend validation.
 - Added deterministic backend boundary tests for the school-local date transition and leap-day clamp, plus Playwright coverage that dates beyond the supported year are disabled. Backend CI [45408217416](https://github.com/TheSumitNain/school-management-system/actions/runs/45408217416) **PASS**: all migrations, full Go/PostgreSQL integration tests and `go vet`. Frontend CI [45407819629](https://github.com/TheSumitNain/school-management-system/actions/runs/45407819629) **PASS**: TypeScript, Vite production build and full Playwright browser acceptance suite.
 - No schema migration or persistent database/application-data change. Phase 4 leave-policy approval, Phase 6 identity-schema approval, and external document-storage deferral remain open; `main` remains untouched.
+
+
+## 2026-11-25 follow-up — staff profile date parity and credential privacy
+
+- Staff profile create and edit now share the same Asia/Kolkata calendar-date validator for the optional joining date, including the one-year-ahead limit and leap-day-safe boundary. The update path no longer relies on the backend host's local clock. No database migration or persistent data change.
+- Added explicit handler regression assertions that seeded password hashes are absent from staff-create and staff-directory responses.
+- Backend CI [45534647049](https://github.com/TheSumitNain/school-management-system/actions/runs/45534647049) **PASS** on eb863eb2bbf888a08f9ac53fc4f166c2ac13e3dc, including migrations, full Go/PostgreSQL integration tests and go vet.
+- Existing Phase 4 leave-policy and Phase 6 identity-schema approvals remain outstanding; sensitive personal fields, Payroll and external document/photo storage remain deferred. main remains untouched.
