@@ -1,3 +1,12 @@
+
+## 2026-11-25 — Staff Attendance bulk API and transaction verification
+
+- Backend CI [45598938508](https://github.com/TheSumitNain/school-management-system/actions/runs/45598938508) **PASS**: bulk attendance HTTP handler contract tests cover authenticated school context, payload forwarding, invalid date rejection, and missing authentication.
+- Backend CI [45599478011](https://github.com/TheSumitNain/school-management-system/actions/runs/45599478011) **PASS** on `41851e988b17bd90a32c9cf623913aa61556ae28`: full migration chain, Go unit/integration suite including PostgreSQL, and `go vet`.
+- Bulk attendance service coverage now checks invalid actor/school, invalid status/remarks, empty/duplicate/non-positive IDs, and the 1,000-target batch boundary.
+- PostgreSQL integration coverage verifies concurrent bulk marking serializes through the unique school/staff/date constraint: one complete transaction wins, one conflicts, and only the winning records/audit events persist.
+- Automated backend verification is green. Existing frontend CI remains applicable because no frontend source or browser test files changed. Manual authenticated-school browser sign-off, approved leave-entitlement policy, identity-schema approval, and persistent-database migration remain separate gates. No production behavior/schema/data changed.
+
 ## 2026-11-25 — Latest Staff Management verification on b8e46ac
 
 - Backend CI [45593176075](https://github.com/TheSumitNain/school-management-system/actions/runs/45593176075) **PASS**: complete Go tests, PostgreSQL integration suite and `go vet`.
