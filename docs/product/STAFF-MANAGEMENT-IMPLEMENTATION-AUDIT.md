@@ -668,3 +668,9 @@ This section supersedes older statements in this audit that describe browser ver
 - Added handler-level coverage of the complete Edit Staff profile update request, checking authenticated actor/school scope, target principal, all profile fields, date parsing, safe response fields and malformed date rejection before service invocation.
 - Backend CI [45535081221](https://github.com/TheSumitNain/school-management-system/actions/runs/45535081221) **PASS** on `9eb6150429718d559f88933c04c7487181af78d9`: all migrations, full Go/PostgreSQL integration tests and `go vet`.
 - No persistent database/data change. Existing approval gates and deferred document/photo storage remain unchanged; `main` remains untouched.
+
+## 2026-11-25 final follow-up — Unicode credential length acceptance
+
+- Credential Reference and Credential ID now enforce the existing 120-character limit by Unicode code points in the browser, matching backend rune-count validation. Native HTML `maxLength` was removed because it counts UTF-16 code units and truncated emoji inputs prematurely.
+- Playwright regression verifies that entering 121 supplementary-plane emoji retains exactly 120 characters for both fields. Frontend CI [45541856053](https://github.com/TheSumitNain/school-management-system/actions/runs/45541856053) **PASS** and Backend CI [45541856057](https://github.com/TheSumitNain/school-management-system/actions/runs/45541856057) **PASS** on `bfe587984dbc645fbd93ee80584bd82561b5c6fc`.
+- This is a client/backend validation parity correction and regression checkpoint; it adds no new product scope, schema migration or persistent data change. `main` remains untouched. Document/photo storage remains deferred and excluded from the Staff Management completion estimate.
