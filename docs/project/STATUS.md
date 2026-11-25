@@ -1,4 +1,12 @@
 
+## 2026-11-25 — Staff Leave concurrency verification
+
+- Backend CI [45600058755](https://github.com/TheSumitNain/school-management-system/actions/runs/45600058755) **PASS** on `decc195c592003394d0b01e72f9498c9162b3c0e`: full Go unit/integration suite against ephemeral PostgreSQL and `go vet`.
+- New PostgreSQL regression races approval against cancellation for one pending request and confirms exactly one audited state transition commits; the losing action cannot overwrite it or add a second audit event.
+- Staff Leave/holiday review found no new production defect. School-specific leave entitlement rules remain approval-gated; automatic approval for leave types marked `requires_approval=false` is intentionally not assumed.
+- No production code, schema, persistent database or school data changed. Other Staff Management identity, payroll and private-storage gates remain unchanged.
+
+
 ## 2026-11-25 — Staff Attendance bulk verification checkpoint
 
 - Bulk HTTP handler tests passed in Backend CI [45598938508](https://github.com/TheSumitNain/school-management-system/actions/runs/45598938508).
