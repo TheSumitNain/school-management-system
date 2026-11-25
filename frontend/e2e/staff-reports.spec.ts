@@ -61,16 +61,23 @@ test("staff qualifications and experience reports filter, paginate and retain hi
     if (path === "/school/staff/experience-report" && request.method() === "GET") {
       experienceRequests.push(url);
       const currentOnly = url.searchParams.get("current_only") === "true";
+      const offset = Number(url.searchParams.get("offset") ?? "0");
       const rows = currentOnly
         ? [{ record_id: 702, staff_principal_id: 202, employee_code: "EMP-202", staff_name: "Former Teacher", designation: "Teacher", employment_status: "inactive", employer_name: "Current Academy", previous_designation: "Senior Teacher", employment_type: "permanent", start_date: "2022-04-01", end_date: "", is_current: true }]
-        : [
-            { record_id: 701, staff_principal_id: 202, employee_code: "EMP-202", staff_name: "Former Teacher", designation: "Teacher", employment_status: "inactive", employer_name: "Previous School", previous_designation: "Teacher", employment_type: "contract", start_date: "2018-04-01", end_date: "2022-03-31", is_current: false },
-            { record_id: 702, staff_principal_id: 202, employee_code: "EMP-202", staff_name: "Former Teacher", designation: "Teacher", employment_status: "inactive", employer_name: "Current Academy", previous_designation: "Senior Teacher", employment_type: "permanent", start_date: "2022-04-01", end_date: "", is_current: true },
-          ];
+        : offset >= 50
+          ? [{ record_id: 751, staff_principal_id: 202, employee_code: "EMP-202", staff_name: "Former Teacher", designation: "Teacher", employment_status: "inactive", employer_name: "Older Academy", previous_designation: "Teacher", employment_type: "contract", start_date: "2015-04-01", end_date: "2018-03-31", is_current: false }]
+          : [
+              { record_id: 701, staff_principal_id: 202, employee_code: "EMP-202", staff_name: "Former Teacher", designation: "Teacher", employment_status: "inactive", employer_name: "Previous School", previous_designation: "Teacher", employment_type: "contract", start_date: "2018-04-01", end_date: "2022-03-31", is_current: false },
+              { record_id: 702, staff_principal_id: 202, employee_code: "EMP-202", staff_name: "Former Teacher", designation: "Teacher", employment_status: "inactive", employer_name: "Current Academy", previous_designation: "Senior Teacher", employment_type: "permanent", start_date: "2022-04-01", end_date: "", is_current: true },
+              ...Array.from({ length: 48 }, (_, index) => ({
+                record_id: 703 + index, staff_principal_id: 202, employee_code: "EMP-202", staff_name: "Former Teacher", designation: "Teacher", employment_status: "inactive",
+                employer_name: `Historical School ${index + 1}`, previous_designation: "Teacher", employment_type: "contract", start_date: "2010-04-01", end_date: "2011-03-31", is_current: false,
+              })),
+            ];
       const counts = currentOnly
         ? [{ employment_type: "permanent", is_current: true, count: 1 }]
-        : [{ employment_type: "contract", is_current: false, count: 1 }, { employment_type: "permanent", is_current: true, count: 1 }];
-      await route.fulfill({ json: { report: { rows, counts, limit: 50, offset: Number(url.searchParams.get("offset") ?? "0"), total: rows.length } } });
+        : [{ employment_type: "contract", is_current: false, count: 50 }, { employment_type: "permanent", is_current: true, count: 1 }];
+      await route.fulfill({ json: { report: { rows, counts, limit: 50, offset, total: currentOnly ? 1 : 51 } } });
       return;
     }
     await route.fulfill({ status: 404, json: { message: `Unmocked E2E API request: ${request.method()} ${path}` } });
@@ -103,6 +110,14 @@ test("staff qualifications and experience reports filter, paginate and retain hi
   const experienceSection = page.locator(".staff-operational-report-section").nth(1);
   await expect(experienceSection.getByText("Previous School", { exact: true })).toBeVisible();
   await expect(experienceSection.getByText("Former Teacher").first()).toBeVisible();
+  const experiencePagination = experienceSection.locator(".staff-operational-report-pagination");
+  await expect(experiencePagination).toContainText("Showing 1–50 of 51");
+  await experiencePagination.getByRole("button", { name: "Next" }).click();
+  await expect(experienceSection.getByText("Older Academy", { exact: true })).toBeVisible();
+  await expect(experiencePagination).toContainText("Showing 51–51 of 51");
+  expect(experienceRequests.some(url => url.searchParams.get("offset") === "50")).toBeTruthy();
+  await experiencePagination.getByRole("button", { name: "Previous" }).click();
+  await expect(experienceSection.getByText("Previous School", { exact: true })).toBeVisible();
   await experienceSection.getByLabel("Experience status").selectOption("current");
   await expect(experienceSection.getByText("Current Academy", { exact: true })).toBeVisible();
   expect(experienceRequests.some(url => url.searchParams.get("current_only") === "true")).toBeTruthy();
