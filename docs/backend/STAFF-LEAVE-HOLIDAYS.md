@@ -253,3 +253,12 @@ Migration V59 and the first end-to-end Leave & Holiday workflow are implemented 
 - Added handler regressions for stable HTTP mappings: permission denial → 403, missing leave record → 404, overlap conflict → 409, validation → 400, and unexpected internal errors → 500 without leaking database details.
 - Backend CI [45601046350](https://github.com/TheSumitNain/school-management-system/actions/runs/45601046350) **PASS** on `53a31c317a72af379b10d71fe6beb7672f842bf5`: full migration chain on ephemeral PostgreSQL, complete Go/PostgreSQL integration suite and `go vet`.
 - These are validation and regression-test changes; no schema migration or persistent school data change. School leave entitlement policy remains approval-gated.
+
+
+## 21. Leave decision payload and holiday-manager route alignment (2026-11-25)
+
+- Fixed decision-handler parsing for chunked/unknown-length HTTP bodies. Approve/reject comments are no longer silently dropped when `Content-Length` is `-1`; a handler regression verifies the comment reaches the service.
+- Fixed the school-holiday GET route to accept either `staff.holidays.read` or `staff.holidays.manage`. This matches the frontend, which requests the holiday calendar including inactive records for a holiday manager without requiring a separate read grant. Repository authorization still enforces read permission for active-only listing and manage permission for inactive records.
+- Added route-level regression coverage for a manage-only principal reaching the holiday calendar handler.
+- Backend CI [45602173749](https://github.com/TheSumitNain/school-management-system/actions/runs/45602173749) **PASS** on `42ca6cf7709a742dd53029c284cae5c25d671a7c`: complete ephemeral PostgreSQL migration chain, full Go/PostgreSQL integration suite and `go vet`.
+- No schema migration or persistent school data change.
