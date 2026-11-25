@@ -286,9 +286,20 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
 	if err != nil || filtered.Total != 1 || len(filtered.Rows) != 1 || filtered.Rows[0].RecordType != "certification" {
 		t.Fatalf("filtered report: page=%+v err=%v",filtered,err)
 	}
-	paged, err := repo.ListStaffQualificationReport(ctx, actorID, schoolID, StaffQualificationReportFilter{RecordType:"all",Limit:1,Offset:1})
-	if err != nil || paged.Total != 2 || len(paged.Rows) != 1 {
-		t.Fatalf("paginated report: page=%+v err=%v",paged,err)
+	firstQualificationPage, err := repo.ListStaffQualificationReport(ctx, actorID, schoolID, StaffQualificationReportFilter{RecordType:"all",Limit:1,Offset:0})
+	if err != nil || firstQualificationPage.Total != 2 || len(firstQualificationPage.Rows) != 1 {
+		t.Fatalf("qualification report first page: page=%+v err=%v",firstQualificationPage,err)
+	}
+	secondQualificationPage, err := repo.ListStaffQualificationReport(ctx, actorID, schoolID, StaffQualificationReportFilter{RecordType:"all",Limit:1,Offset:1})
+	if err != nil || secondQualificationPage.Total != 2 || len(secondQualificationPage.Rows) != 1 {
+		t.Fatalf("qualification report second page: page=%+v err=%v",secondQualificationPage,err)
+	}
+	if firstQualificationPage.Rows[0].RecordType != report.Rows[0].RecordType ||
+		firstQualificationPage.Rows[0].RecordID != report.Rows[0].RecordID ||
+		secondQualificationPage.Rows[0].RecordType != report.Rows[1].RecordType ||
+		secondQualificationPage.Rows[0].RecordID != report.Rows[1].RecordID {
+		t.Fatalf("qualification report pages are not stable: all=%+v first=%+v second=%+v",
+			report.Rows, firstQualificationPage.Rows, secondQualificationPage.Rows)
 	}
 	if _, err := repo.ListStaffQualificationReport(ctx, actorID, schoolID+1, StaffQualificationReportFilter{RecordType:"all",Limit:50}); !errors.Is(err,ErrStaffRecordAccessDenied) {
 		t.Fatalf("cross-school report access error=%v want access denied",err)
