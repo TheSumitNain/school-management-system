@@ -31,3 +31,20 @@ type User struct {
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 }
+
+
+type StaffDirectoryFilter struct {
+	Search string
+	EmploymentStatus string
+	AccountStatus string
+	ProfileStatus string
+	Limit int
+	Offset int
+}
+
+type StaffDirectoryPage struct {
+	Staff []User
+	Total int64
+	Limit int
+	Offset int
+}
