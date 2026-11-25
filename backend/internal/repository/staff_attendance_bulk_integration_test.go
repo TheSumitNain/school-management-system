@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"testing"
 	"time"
+	"sync"
 
 	"school-management-system/internal/schooltime"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -108,4 +109,52 @@ func TestStaffAttendanceBulkMarkRollsBackWhenAnyTargetIsInvalidPostgresIntegrati
 		t.Fatalf("count records after invalid-target rollback: %v", err)
 	}
 	if records != 0 { t.Fatalf("records after invalid-target rollback=%d want=0", records) }
+}
+
+func TestStaffAttendanceConcurrentBulkMarksSerializeThroughUniqueConstraintPostgresIntegration(t *testing.T) {
+	f := newStaffAttendanceIntegrationFixture(t)
+	day, err := time.Parse("2006-01-02", schooltime.TodayDate())
+	if err != nil { t.Fatalf("parse school date: %v", err) }
+
+	start := make(chan struct{})
+	errs := make(chan error, 2)
+	var wg sync.WaitGroup
+	for i := 0; i < 2; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			_, markErr := f.repo.MarkBulk(f.ctx, f.actorID, f.schoolID, f.staffIDs, day, "present", nil)
+			errs <- markErr
+		}()
+	}
+	close(start)
+	wg.Wait()
+	close(errs)
+
+	successes, conflicts := 0, 0
+	for markErr := range errs {
+		switch {
+		case markErr == nil:
+			successes++
+		case errors.Is(markErr, ErrStaffAttendanceConflict):
+			conflicts++
+		default:
+			t.Fatalf("unexpected concurrent bulk mark error: %v", markErr)
+		}
+	}
+	if successes != 1 || conflicts != 1 {
+		t.Fatalf("concurrent results successes=%d conflicts=%d; want 1 each", successes, conflicts)
+	}
+
+	var records, audits int
+	if err := f.pool.QueryRow(f.ctx, `SELECT COUNT(*) FROM staff_attendance_records WHERE school_id=$1 AND staff_principal_id=ANY($2::bigint[]) AND attendance_date=$3::date`, f.schoolID, f.staffIDs, schooltime.TodayDate()).Scan(&records); err != nil {
+		t.Fatalf("count records after concurrent bulk marks: %v", err)
+	}
+	if err := f.pool.QueryRow(f.ctx, `SELECT COUNT(*) FROM audit_events WHERE school_id=$1 AND actor_principal_id=$2 AND action='school.staff_attendance.marked' AND metadata->>'bulk'='true' AND metadata->>'attendance_date'=$3`, f.schoolID, f.actorID, schooltime.TodayDate()).Scan(&audits); err != nil {
+		t.Fatalf("count audits after concurrent bulk marks: %v", err)
+	}
+	if records != len(f.staffIDs) || audits != len(f.staffIDs) {
+		t.Fatalf("records=%d audits=%d want=%d each; losing transaction must leave no partial rows", records, audits, len(f.staffIDs))
+	}
 }
