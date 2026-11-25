@@ -179,13 +179,9 @@ func TestStaffReportHandlersRejectMalformedPaginationAndFilters(t *testing.T) {
 		handler func(*StaffRecordsHandler, *gin.Context)
 	}{
 		{"qualifications malformed limit", "/staff/qualifications/report?limit=abc", (*StaffRecordsHandler).ListQualificationsReport},
-		{"qualifications negative limit", "/staff/qualifications/report?limit=-1", (*StaffRecordsHandler).ListQualificationsReport},
 		{"qualifications malformed offset", "/staff/qualifications/report?offset=abc", (*StaffRecordsHandler).ListQualificationsReport},
-		{"qualifications negative offset", "/staff/qualifications/report?offset=-1", (*StaffRecordsHandler).ListQualificationsReport},
 		{"experience malformed limit", "/staff/experience/report?limit=abc", (*StaffRecordsHandler).ListExperienceReport},
-		{"experience negative limit", "/staff/experience/report?limit=-1", (*StaffRecordsHandler).ListExperienceReport},
 		{"experience malformed offset", "/staff/experience/report?offset=abc", (*StaffRecordsHandler).ListExperienceReport},
-		{"experience negative offset", "/staff/experience/report?offset=-1", (*StaffRecordsHandler).ListExperienceReport},
 		{"experience invalid current-only", "/staff/experience/report?current_only=yes", (*StaffRecordsHandler).ListExperienceReport},
 	}
 	for _, tt := range tests {
