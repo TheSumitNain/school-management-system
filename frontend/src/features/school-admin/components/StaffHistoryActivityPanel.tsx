@@ -56,7 +56,7 @@ export function StaffHistoryActivityPanel({ staff, permissions }: Props) {
 
   return <section className="staff-records-panel">
     <div className="staff-records-heading">
-      <div><h3>History & activity</h3><p>Audited account, profile, role, academic assignment, attendance, leave and substitution events for {staff.full_name || staff.username}. Showing 50 events per page.</p></div>
+      <div><h3>History & activity</h3><p>Audited account, profile, role, qualification, certification, experience, academic assignment, attendance, leave and substitution events for {staff.full_name || staff.username}. Showing 50 events per page.</p></div>
       <button type="button" className="staff-secondary-button" onClick={() => void query.refetch()} disabled={query.isFetching}>Refresh</button>
     </div>
     {query.isLoading && <p role="status">Loading staff activity…</p>}
