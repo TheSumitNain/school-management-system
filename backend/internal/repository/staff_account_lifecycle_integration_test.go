@@ -205,14 +205,14 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
     usernameTrigger := "test_reject_staff_updated_audit_" + usernameFailureSuffix
     usernameFunction := "test_reject_staff_updated_audit_fn_" + usernameFailureSuffix
     if _, err := tx.Exec(ctx, fmt.Sprintf(`
-        CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $
+        CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $$
         BEGIN
             IF NEW.action = 'staff.account.updated' THEN
                 RAISE EXCEPTION 'forced staff username audit failure';
             END IF;
             RETURN NEW;
         END;
-        $;
+        $$;
         CREATE TRIGGER %s BEFORE INSERT ON audit_events
         FOR EACH ROW EXECUTE FUNCTION %s();
     `, usernameFunction, usernameTrigger, usernameFunction)); err != nil {
@@ -321,14 +321,14 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
         t.Fatalf("create refresh session before rejected password reset: %v", err)
     }
     if _, err := tx.Exec(ctx, fmt.Sprintf(`
-        CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $
+        CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $$
         BEGIN
             IF NEW.action = 'staff.password.reset' THEN
                 RAISE EXCEPTION 'forced staff password reset audit failure';
             END IF;
             RETURN NEW;
         END;
-        $;
+        $$;
         CREATE TRIGGER %s BEFORE INSERT ON audit_events
         FOR EACH ROW EXECUTE FUNCTION %s();
     `, resetFailureFunction, resetFailureTrigger, resetFailureFunction)); err != nil {
@@ -367,14 +367,14 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
         t.Fatalf("create refresh session before rejected account disable: %v", err)
     }
     if _, err := tx.Exec(ctx, fmt.Sprintf(`
-        CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $
+        CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $$
         BEGIN
             IF NEW.action = 'staff.account.disabled' THEN
                 RAISE EXCEPTION 'forced staff disable audit failure';
             END IF;
             RETURN NEW;
         END;
-        $;
+        $$;
         CREATE TRIGGER %s BEFORE INSERT ON audit_events
         FOR EACH ROW EXECUTE FUNCTION %s();
     `, disableFailureFunction, disableFailureTrigger, disableFailureFunction)); err != nil {
@@ -473,14 +473,14 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
     enableFailureTrigger := "test_reject_staff_enable_audit_" + enableFailureSuffix
     enableFailureFunction := "test_reject_staff_enable_audit_fn_" + enableFailureSuffix
     if _, err := tx.Exec(ctx, fmt.Sprintf(`
-        CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $
+        CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $$
         BEGIN
             IF NEW.action = 'staff.account.enabled' THEN
                 RAISE EXCEPTION 'forced staff enable audit failure';
             END IF;
             RETURN NEW;
         END;
-        $;
+        $$;
         CREATE TRIGGER %s BEFORE INSERT ON audit_events
         FOR EACH ROW EXECUTE FUNCTION %s();
     `, enableFailureFunction, enableFailureTrigger, enableFailureFunction)); err != nil {
