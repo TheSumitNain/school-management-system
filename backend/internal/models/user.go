@@ -48,3 +48,13 @@ type StaffDirectoryPage struct {
 	Limit int
 	Offset int
 }
+
+type StaffDirectorySummary struct {
+	Total int64
+	ActiveEmployment int64
+	LoginEnabled int64
+	ProfileIncomplete int64
+	ActiveEmploymentDisabledLogin int64
+	MustChangePassword int64
+	InactiveEmployment int64
+}
