@@ -1,3 +1,11 @@
+## 2026-11-25 — Staff History & Activity pagination verification
+
+- Staff History & Activity now loads audit events in bounded pages of 50, ordered newest-first with stable ordering and an explicit `has_more` indicator. The frontend exposes Older/Newer navigation and the current page indicator.
+- The endpoint retains the live `school.audit.read` permission check and school-scoped history query; pagination uses bounded limit/offset inputs. PostgreSQL integration coverage verifies page boundaries.
+- Frontend Playwright acceptance verifies page 1 → page 2 → page 1 navigation. The first browser run exposed stale route interceptors that did not match pagination query strings; commit [6019bc1](https://github.com/TheSumitNain/school-management-system/commit/6019bc1802567d98a2a3c73e609a8189c77796fa) corrected the test route patterns to match query-string URLs.
+- Backend CI [45424385188](https://github.com/TheSumitNain/school-management-system/actions/runs/45424385188) **PASS**: all migrations applied to ephemeral PostgreSQL, full Go/PostgreSQL integration suite and `go vet`. Frontend CI [45424385301](https://github.com/TheSumitNain/school-management-system/actions/runs/45424385301) **PASS**: TypeScript, Vite production build and full Playwright browser acceptance suite.
+- No schema migration, persistent database or application data changed. Staff Management consolidated acceptance remains open; documented leave-policy and identity-schema approval gates remain unchanged. Document/photo storage remains deferred and excluded from the active implementation scope.
+
 ## 2026-11-24 — Shared DatePicker early-year correctness fix
 
 - Replaced JavaScript date constructors that remap years 0001–0099 into 1901–1999 with a shared date constructor based on `setFullYear`. ISO serialization now zero-pads years below 100; invalid year 0000 remains rejected.
