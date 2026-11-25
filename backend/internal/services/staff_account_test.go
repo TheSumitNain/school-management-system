@@ -44,6 +44,10 @@ func (f *fakeStaffAccountRepository) ListStaffDirectoryPage(_ context.Context, _
 	return &models.StaffDirectoryPage{Staff: []models.User{}, Total: 0, Limit: filter.Limit, Offset: filter.Offset}, nil
 }
 
+func (f *fakeStaffAccountRepository) GetStaffDirectorySummary(context.Context, int64, int64) (*models.StaffDirectorySummary, error) {
+	return &models.StaffDirectorySummary{Total: 12, ActiveEmployment: 10, LoginEnabled: 9, ProfileIncomplete: 2, ActiveEmploymentDisabledLogin: 1, MustChangePassword: 3, InactiveEmployment: 2}, nil
+}
+
 func (f *fakeStaffAccountRepository) DisableStaffAccount(context.Context, int64, int64, int64) error {
 	return nil
 }
@@ -80,6 +84,20 @@ func TestStaffAccountServiceValidatesDirectoryFiltersAndPagination(t *testing.T)
 	} {
 		if _, err := service.ListDirectoryPage(context.Background(), 31, 8, invalid); err != ErrInvalidStaffAccount {
 			t.Fatalf("invalid directory filter %+v error=%v, want ErrInvalidStaffAccount", invalid, err)
+		}
+	}
+}
+
+func TestStaffAccountServiceReturnsDirectorySummaryForSchoolActor(t *testing.T) {
+	repo := &fakeStaffAccountRepository{}
+	service := NewStaffAccountService(repo, alwaysClearPasswordChecker{})
+	summary, err := service.GetDirectorySummary(context.Background(), 31, 8)
+	if err != nil || summary == nil || summary.Total != 12 || summary.ActiveEmployment != 10 || summary.MustChangePassword != 3 {
+		t.Fatalf("directory summary mismatch: summary=%+v err=%v", summary, err)
+	}
+	for _, invalid := range [][2]int64{{0, 8}, {31, 0}} {
+		if _, err := service.GetDirectorySummary(context.Background(), invalid[0], invalid[1]); err != ErrInvalidStaffAccount {
+			t.Fatalf("invalid actor/school %v error=%v, want ErrInvalidStaffAccount", invalid, err)
 		}
 	}
 }
