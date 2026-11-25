@@ -49,7 +49,10 @@ export function StaffPermissionOverrides({ staff }: Props) {
       setReason("");
       setFieldErrors({});
       setFeedback("Permission override saved. It takes effect on the next protected request.");
-      await queryClient.invalidateQueries({ queryKey: ["school-admin", "staff-overrides", staff.principal_id] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["school-admin", "staff-overrides", staff.principal_id] }),
+        queryClient.invalidateQueries({ queryKey: ["staff-audit-events", staff.principal_id] }),
+      ]);
     },
   });
   const remove = useMutation({
@@ -57,7 +60,10 @@ export function StaffPermissionOverrides({ staff }: Props) {
     onSuccess: async () => {
       setOverrideToRemove(null);
       setFeedback("Permission override removed. Effective permissions update on the next protected request.");
-      await queryClient.invalidateQueries({ queryKey: ["school-admin", "staff-overrides", staff.principal_id] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["school-admin", "staff-overrides", staff.principal_id] }),
+        queryClient.invalidateQueries({ queryKey: ["staff-audit-events", staff.principal_id] }),
+      ]);
     },
   });
   const busy = save.isPending || remove.isPending;
