@@ -131,8 +131,6 @@ func TestStaffLeaveWorkflowPostgresIntegration(t *testing.T) {
 
 	t.Run("request creation audit failure rolls back the request",func(t *testing.T){
 		start:=time.Now().AddDate(0,0,49).Format("2006-01-02")
-		const triggerName="trg_test_staff_leave_request_audit_failure"
-		const functionName="test_staff_leave_request_audit_failure"
 		if _,err:=f.pool.Exec(f.ctx,`CREATE OR REPLACE FUNCTION public.test_staff_leave_request_audit_failure() RETURNS trigger LANGUAGE plpgsql AS $body$ BEGIN IF NEW.action='staff.leave.requested' THEN RAISE EXCEPTION 'forced request audit failure'; END IF; RETURN NEW; END; $bodypackage repository
 
 import (
