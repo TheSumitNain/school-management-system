@@ -1559,7 +1559,12 @@ test("staff role assignment and removal require the delegated permission and exp
   let assignCalls = 0;
   let revokeCalls = 0;
   let roleAssignmentReads = 0;
-  await signInAndOpenStaff(page, rows, undefined, ["users.read", "roles.read", "roles.assign"]);
+  let auditReads = 0;
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "roles.read", "roles.assign", "school.audit.read"]);
+  await page.route("**/api/school/staff/514/audit-events**", async route => {
+    auditReads += 1;
+    await route.fulfill({ json: { events: [] } });
+  });
   await page.route("**/api/school/roles", async route => {
     if (route.request().method() === "GET") {
       await route.fulfill({ json: { roles: [
@@ -1597,6 +1602,9 @@ test("staff role assignment and removal require the delegated permission and exp
   await page.getByRole("button", { name: /Staff Directory/ }).click();
   await page.getByRole("button", { name: "Role Admin" }).click();
   const profile = page.getByRole("dialog", { name: "Role Admin" });
+  await profile.getByRole("button", { name: "History & Activity" }).click();
+  await expect(profile.getByText("No audited activity is recorded for this employee yet.")).toBeVisible();
+  const firstAuditReadCount = auditReads;
   await profile.getByRole("button", { name: "Account & Access" }).click();
   await expect(profile.getByText("Teacher", { exact: true })).toBeVisible();
   const firstRoleReadCount = roleAssignmentReads;
@@ -1624,6 +1632,8 @@ test("staff role assignment and removal require the delegated permission and exp
   await expect(profile.getByText("Role removed. Updated permissions apply on the next protected request.")).toBeVisible();
   await expect(profile.getByText("Librarian", { exact: true })).toHaveCount(0);
   expect(revokeCalls).toBe(1);
+  await profile.getByRole("button", { name: "History & Activity" }).click();
+  await expect.poll(() => auditReads).toBeGreaterThan(firstAuditReadCount);
 });
 
 test("staff permission overrides require a delegated permission, reason and removal confirmation", async ({ page }) => {
@@ -1638,7 +1648,12 @@ test("staff permission overrides require a delegated permission, reason and remo
   let deleteCalls = 0;
   let submittedPayload: Record<string, unknown> | null = null;
   let overrideReads = 0;
-  await signInAndOpenStaff(page, rows, undefined, ["users.read", "permissions.override"]);
+  let auditReads = 0;
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "permissions.override", "school.audit.read"]);
+  await page.route("**/api/school/staff/515/audit-events**", async route => {
+    auditReads += 1;
+    await route.fulfill({ json: { events: [] } });
+  });
   await page.route("**/api/school/roles", async route => {
     await route.fulfill({ json: { roles: [
       { id: 4, role_key: "teacher", name: "Teacher", is_system: true, created_at: "2026-01-01T00:00:00Z" },
@@ -1689,6 +1704,9 @@ test("staff permission overrides require a delegated permission, reason and remo
   await page.getByRole("button", { name: /Staff Directory/ }).click();
   await page.getByRole("button", { name: "Override Admin" }).click();
   const profile = page.getByRole("dialog", { name: "Override Admin" });
+  await profile.getByRole("button", { name: "History & Activity" }).click();
+  await expect(profile.getByText("No audited activity is recorded for this employee yet.")).toBeVisible();
+  const firstAuditReadCount = auditReads;
   await profile.getByRole("button", { name: "Account & Access" }).click();
   await expect(profile.getByText("Individual permission overrides", { exact: true })).toBeVisible();
   const firstOverrideReadCount = overrideReads;
@@ -1728,6 +1746,8 @@ test("staff permission overrides require a delegated permission, reason and remo
   await expect(profile.getByText("Permission override removed. Effective permissions update on the next protected request.")).toBeVisible();
   await expect(profile.getByText("students.read_basic", { exact: true })).toHaveCount(0);
   expect(deleteCalls).toBe(1);
+  await profile.getByRole("button", { name: "History & Activity" }).click();
+  await expect.poll(() => auditReads).toBeGreaterThan(firstAuditReadCount);
 });
 
 test("standalone staff role and permission override dialogs reload employee access data after closing", async ({ page }) => {
