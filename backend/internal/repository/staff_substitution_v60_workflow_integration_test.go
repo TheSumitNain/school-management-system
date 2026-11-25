@@ -55,7 +55,7 @@ func TestStaffSubstitutionV60DatabaseGuardsPostgresIntegration(t *testing.T) {
 	if err=tx.QueryRow(ctx,`INSERT INTO users(school_id,username,password_hash,status)
 		VALUES($1,$2,$3,'active') RETURNING id,principal_id`,schoolID,fmt.Sprintf("substitute-%d",suffix),"integration-test-password-hash").Scan(&substituteUserID,&substituteID);err!=nil{t.Fatalf("create substitute user: %v",err)}
 	if err=tx.QueryRow(ctx,`INSERT INTO users(school_id,username,password_hash,status)
-		VALUES($1,$2,$3,'active') RETURNING id,principal_id`,schoolID,fmt.Sprintf("second-original-%d",suffix),"integration-test-password-hash").Scan(&secondOriginalUserID,&secondOriginalID);err!=nil{t.Fatalf("create second original teacher user: %v",err)}
+		VALUES($1,$2,$3,'active') RETURNING id,principal_id`,schoolID,fmt.Sprintf("second-orig-%d",suffix),"integration-test-password-hash").Scan(&secondOriginalUserID,&secondOriginalID);err!=nil{t.Fatalf("create second original teacher user: %v",err)}
 	var teacherRoleID int64
 	if err=tx.QueryRow(ctx,`SELECT id FROM roles WHERE school_id=$1 AND principal_type='staff'
 		AND scope_type='school' AND role_key='teacher' AND is_system=TRUE`,schoolID).Scan(&teacherRoleID);err!=nil{t.Fatalf("load Teacher role: %v",err)}
