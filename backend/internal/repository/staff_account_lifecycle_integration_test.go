@@ -438,6 +438,46 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
 		t.Fatalf("disable status mismatch: users=%q principal=%q", userStatus, principalStatus)
 	}
 
+    // A failed enable audit must not reactivate the principal or replace
+    // the password. The subsequent successful enable below proves retryability.
+    enableFailureSuffix := suffix[len(suffix)-8:]
+    enableFailureTrigger := "test_reject_staff_enable_audit_" + enableFailureSuffix
+    enableFailureFunction := "test_reject_staff_enable_audit_fn_" + enableFailureSuffix
+    if _, err := tx.Exec(ctx, fmt.Sprintf(`
+        CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $
+        BEGIN
+            IF NEW.action = 'staff.account.enabled' THEN
+                RAISE EXCEPTION 'forced staff enable audit failure';
+            END IF;
+            RETURN NEW;
+        END;
+        $;
+        CREATE TRIGGER %s BEFORE INSERT ON audit_events
+        FOR EACH ROW EXECUTE FUNCTION %s();
+    `, enableFailureFunction, enableFailureTrigger, enableFailureFunction)); err != nil {
+        t.Fatalf("install account enable audit failure trigger: %v", err)
+    }
+    if err := repo.EnableStaffAccount(ctx, actorPrincipalID, schoolID, created.PrincipalID, "must-not-be-committed-enable-hash"); err == nil {
+        t.Fatal("account enable unexpectedly succeeded when its audit insert failed")
+    }
+    if _, err := tx.Exec(ctx, fmt.Sprintf("DROP TRIGGER %s ON audit_events; DROP FUNCTION %s();", enableFailureTrigger, enableFailureFunction)); err != nil {
+        t.Fatalf("remove account enable audit failure trigger: %v", err)
+    }
+    var failedEnableUserStatus, failedEnablePrincipalStatus, failedEnablePasswordHash string
+    var failedEnableTokenVersion int64
+    if err := tx.QueryRow(ctx, `
+        SELECT u.status, ap.status, u.password_hash, ap.token_version
+          FROM users u JOIN auth_principals ap ON ap.id = u.principal_id
+         WHERE u.principal_id = $1
+    `, created.PrincipalID).Scan(&failedEnableUserStatus, &failedEnablePrincipalStatus, &failedEnablePasswordHash, &failedEnableTokenVersion); err != nil {
+        t.Fatalf("read state after rejected account enable: %v", err)
+    }
+    if failedEnableUserStatus != "disabled" || failedEnablePrincipalStatus != "disabled" ||
+        failedEnablePasswordHash != resetPasswordHash || failedEnableTokenVersion != 4 {
+        t.Fatalf("failed account enable left partial side effects: user=%q principal=%q password_hash=%q token_version=%d",
+            failedEnableUserStatus, failedEnablePrincipalStatus, failedEnablePasswordHash, failedEnableTokenVersion)
+    }
+
 	const replacementPasswordHash = "replacement-temporary-password-hash"
 	if err := repo.EnableStaffAccount(ctx, actorPrincipalID, schoolID, created.PrincipalID, replacementPasswordHash); err != nil {
 		t.Fatalf("authorized staff account re-enable failed: %v", err)
