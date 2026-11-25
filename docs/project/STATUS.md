@@ -2684,3 +2684,10 @@ This update supersedes older status bullets that listed the following database-b
 - Added a PostgreSQL integration regression that forces audit inserts to fail independently across qualification, certification and experience create/update operations. It verifies all six writes return errors, failed creates leave no partial rows, and failed updates preserve the previously committed record values.
 - Backend CI [45627964262](https://github.com/TheSumitNain/school-management-system/actions/runs/45627964262) **PASS** on `4c07ed148cd939add6dffca03635c67f8fb6a53e`: full migration chain, Go tests including PostgreSQL integration and `go vet`.
 - Regression-test change only; no production behavior change, schema migration or persistent school-data change. Qualification/certification verification and archive/retention policy remain approval-gated; document/photo storage remains deferred and excluded from the Staff Management completion estimate. `main` remains untouched.
+
+
+## 2026-11-25 — Staff leave request creation audit rollback
+
+- Added a PostgreSQL integration regression that forces the `staff.leave.requested` audit insert to fail during request creation, then verifies both the leave-request row and its audit event are absent. This confirms request creation is atomic, complementing existing decision, cancellation and holiday audit-failure rollback coverage.
+- Backend CI [45630342631](https://github.com/TheSumitNain/school-management-system/actions/runs/45630342631) **PASS** on `c9ee6e8671b0fcf3faa76fa2ec0aa02fb58a68af`: full migration chain, Go tests including PostgreSQL integration and `go vet`.
+- Regression-test change only; no production behavior change, schema migration or persistent school-data change. Leave entitlement policy remains approval-gated; `main` remains untouched.
