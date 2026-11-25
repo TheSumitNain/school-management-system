@@ -43,6 +43,7 @@ export function StaffRoleAssignments({ staff, canAssign }: Props) {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["school-admin", "staff-roles", staff.principal_id] }),
         queryClient.invalidateQueries({ queryKey: ["school-admin", "staff"] }),
+        queryClient.invalidateQueries({ queryKey: ["staff-audit-events", staff.principal_id] }),
       ]);
     },
   });
@@ -51,7 +52,10 @@ export function StaffRoleAssignments({ staff, canAssign }: Props) {
     onSuccess: async () => {
       setRoleToRevoke(null);
       setFeedback("Role removed. Updated permissions apply on the next protected request.");
-      await queryClient.invalidateQueries({ queryKey: ["school-admin", "staff-roles", staff.principal_id] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["school-admin", "staff-roles", staff.principal_id] }),
+        queryClient.invalidateQueries({ queryKey: ["staff-audit-events", staff.principal_id] }),
+      ]);
     },
   });
   const assignments = assignmentsQuery.data?.roles ?? [];
