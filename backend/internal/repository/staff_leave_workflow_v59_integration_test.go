@@ -547,3 +547,59 @@ func TestSchoolHolidayCrossSchoolWriteAndAuditRollbackPostgresIntegration(t *tes
 		t.Fatalf("audit failure left partial state: holiday rows=%d audit rows=%d; want both zero", holidayCount, auditCount)
 	}
 }
+
+func TestStaffLeaveDecisionAndCancellationRaceHasOneAuditedWinnerPostgresIntegration(t *testing.T) {
+	f := newStaffLeaveIntegrationFixture(t)
+	day := time.Now().AddDate(0, 0, 70).Format("2006-01-02")
+	request := f.request(t, f.staffPrincipalID, day, day)
+
+	start := make(chan struct{})
+	results := make(chan error, 2)
+	go func() {
+		<-start
+		results <- f.repo.Decide(f.ctx, f.adminPrincipalID, f.schoolID, request.ID, true, nil)
+	}()
+	go func() {
+		<-start
+		results <- f.repo.Cancel(f.ctx, f.adminPrincipalID, f.schoolID, request.ID)
+	}()
+	close(start)
+
+	successes, notFound := 0, 0
+	for i := 0; i < 2; i++ {
+		err := <-results
+		switch {
+		case err == nil:
+			successes++
+		case errors.Is(err, ErrStaffLeaveNotFound):
+			notFound++
+		default:
+			t.Fatalf("unexpected decision/cancellation race error: %v", err)
+		}
+	}
+	if successes != 1 || notFound != 1 {
+		t.Fatalf("race outcomes successes=%d notFound=%d; want one winner and one loser", successes, notFound)
+	}
+
+	var status string
+	if err := f.pool.QueryRow(f.ctx, `SELECT status FROM staff_leave_requests WHERE id=$1 AND school_id=$2`, request.ID, f.schoolID).Scan(&status); err != nil {
+		t.Fatalf("read final leave request status: %v", err)
+	}
+	if status != "approved" && status != "cancelled" {
+		t.Fatalf("final status=%q want approved or cancelled", status)
+	}
+
+	var decisionAudits, cancellationAudits int
+	if err := f.pool.QueryRow(f.ctx, `SELECT COUNT(*) FILTER (WHERE action='staff.leave.approved'), COUNT(*) FILTER (WHERE action='staff.leave.cancelled') FROM audit_events WHERE school_id=$1 AND resource_type='staff_leave_request' AND resource_id=$2`, f.schoolID, fmt.Sprint(request.ID)).Scan(&decisionAudits, &cancellationAudits); err != nil {
+		t.Fatalf("count competing leave transition audits: %v", err)
+	}
+	if decisionAudits+cancellationAudits != 1 {
+		t.Fatalf("decision audits=%d cancellation audits=%d; want exactly one committed transition audit", decisionAudits, cancellationAudits)
+	}
+	if status == "approved" && (decisionAudits != 1 || cancellationAudits != 0) {
+		t.Fatalf("approved request has inconsistent audit counts: decision=%d cancellation=%d", decisionAudits, cancellationAudits)
+	}
+	if status == "cancelled" && (decisionAudits != 0 || cancellationAudits != 1) {
+		t.Fatalf("cancelled request has inconsistent audit counts: decision=%d cancellation=%d", decisionAudits, cancellationAudits)
+	}
+}
