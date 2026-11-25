@@ -1,6 +1,6 @@
 # Staff Attendance — implementation contract
 
-Status: Daily/monthly register, employee search/status filtering and atomic bulk marking are implemented and CI-verified. Phase 3 remains open for downloadable/report views and leave/calendar integration.
+Status: Daily/monthly register, employee search/status filtering, atomic bulk marking, monthly CSV export, and permission-gated approved-leave/school-holiday calendar context are implemented. Automated backend and browser acceptance coverage exists; manual authenticated-school sign-off remains separate.
 
 ## Scope
 
@@ -76,3 +76,13 @@ Required before declaring complete:
 - Leave requests are filtered by date-range overlap with the selected month; holiday rows are bounded to the same month.
 - Backend PostgreSQL CI [44986574096](https://github.com/TheSumitNain/school-management-system/actions/runs/44986574096) **PASS** at code checkpoint `a01514119b0d395b106accd990f59b2f7a5e992f`, including the new date-range repository integration test and `go vet`. Frontend production build passed; final Playwright run is pending.
 
+
+
+## 2026-11-25 follow-up — bulk transaction rollback coverage
+
+- Added PostgreSQL integration regressions for successful multi-employee marking with one audit event per record, full rollback when an audit insert fails, duplicate-target rejection before writes, and full rollback when a later target is invalid after an earlier target has been inserted in the transaction.
+- The initial test run exposed an overlong generated fixture username; shortened it to comply with the database's 3–32 character username constraint. No production code or schema change was needed.
+- Backend CI [45598044386](https://github.com/TheSumitNain/school-management-system/actions/runs/45598044386) **PASS** on `3bad57eb5ced6d3686824ef0e2c1e3575c5438cc`: full migration chain, Go tests including PostgreSQL integration and `go vet`.
+- Backend CI [45598469332](https://github.com/TheSumitNain/school-management-system/actions/runs/45598469332) **PASS** on `e84c46d7e56d3cdb64d39ebeac281c3f8ab0e464`: full migration chain, Go tests including the added invalid-target rollback case, and `go vet`.
+- Existing Playwright acceptance covers individual marking, explicit bulk-count confirmation, atomic bulk request, monthly summary/export, permission-denied controls, and calendar context. Frontend CI [45593176068](https://github.com/TheSumitNain/school-management-system/actions/runs/45593176068) **PASS** on the unchanged frontend code checkpoint `b8e46ac4bbe936ac64517524f3af328e7ac6d5d4`.
+- No production behavior change, schema migration or persistent school data change. Manual authenticated-school sign-off and the separately approved leave-entitlement policy remain outside this automated verification.
