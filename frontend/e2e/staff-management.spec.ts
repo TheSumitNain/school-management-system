@@ -1375,18 +1375,25 @@ test("staff profile does not retain the previous employee's timetable while the 
   });
   await page.route("**/api/school/timetable/entries?*", async route => {
     const teacherID = new URL(route.request().url()).searchParams.get("teacher_principal_id");
-    if (teacherID === "422") await new Promise(resolve => setTimeout(resolve, 400));
-    await route.fulfill({ json: { entries: teacherID === "421" ? [
-      { id: 1, school_id: 10, academic_year_id: 3, section_id: 8, section_name: "A", class_name: "Class 8", subject_id: 9, subject_name: "First Teacher Timetable Secret", teacher_principal_id: 421, teacher_username: "teacher.load.first", teacher_subject_assignment_id: 1, period_id: 7, period_number: 1, period_name: "Period 1", starts_at: "09:00", ends_at: "09:45", day_of_week: 1 },
-    ] : [
-      { id: 2, school_id: 10, academic_year_id: 3, section_id: 9, section_name: "B", class_name: "Class 9", subject_id: 10, subject_name: "Second Teacher Timetable", teacher_principal_id: 422, teacher_username: "teacher.load.second", teacher_subject_assignment_id: 2, period_id: 7, period_number: 1, period_name: "Period 1", starts_at: "09:00", ends_at: "09:45", day_of_week: 1 },
-    ] } });
+    if (teacherID === "421") await new Promise(resolve => setTimeout(resolve, 500));
+    try {
+      await route.fulfill({ json: { entries: teacherID === "421" ? [
+        { id: 1, school_id: 10, academic_year_id: 3, section_id: 8, section_name: "A", class_name: "Class 8", subject_id: 9, subject_name: "First Teacher Timetable Secret", teacher_principal_id: 421, teacher_username: "teacher.load.first", teacher_subject_assignment_id: 1, period_id: 7, period_number: 1, period_name: "Period 1", starts_at: "09:00", ends_at: "09:45", day_of_week: 1 },
+      ] : [
+        { id: 2, school_id: 10, academic_year_id: 3, section_id: 9, section_name: "B", class_name: "Class 9", subject_id: 10, subject_name: "Second Teacher Timetable", teacher_principal_id: 422, teacher_username: "teacher.load.second", teacher_subject_assignment_id: 2, period_id: 7, period_number: 1, period_name: "Period 1", starts_at: "09:00", ends_at: "09:45", day_of_week: 1 },
+      ] } });
+    } catch {
+      // The first employee's in-flight request is intentionally aborted on profile change.
+    }
   });
   await page.getByRole("button", { name: /Staff Directory/ }).click();
   await page.getByRole("button", { name: "Workload First" }).click();
   let dialog = page.getByRole("dialog", { name: "Workload First" });
   await dialog.getByRole("button", { name: "Workload & Timetable" }).click();
-  await expect(dialog.getByText("First Teacher Timetable Secret")).toBeVisible();
+  await page.waitForRequest(request => {
+    const url = new URL(request.url());
+    return url.pathname.endsWith("/timetable/entries") && url.searchParams.get("teacher_principal_id") === "421";
+  });
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Workload Second" }).click();
   dialog = page.getByRole("dialog", { name: "Workload Second" });
@@ -1394,6 +1401,9 @@ test("staff profile does not retain the previous employee's timetable while the 
   await expect(dialog.getByRole("status")).toContainText("Loading teacher-scoped timetable");
   await expect(dialog.getByText("First Teacher Timetable Secret")).toHaveCount(0);
   await expect(dialog.getByText("Second Teacher Timetable")).toBeVisible();
+  await page.waitForTimeout(600);
+  await expect(dialog.getByText("Second Teacher Timetable")).toBeVisible();
+  await expect(dialog.getByText("First Teacher Timetable Secret")).toHaveCount(0);
 });
 
 test("staff profile does not retain the previous employee's qualifications while the next profile loads", async ({ page }) => {
