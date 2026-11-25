@@ -1,3 +1,9 @@
+## 2026-11-25 — Staff profile Unicode validation acceptance
+
+- Staff profile form limits for full name (160), designation (100) and email (254) now enforce the same Unicode-code-point limits as backend validation. Employee code (32) and mobile number constraints were already aligned.
+- Playwright regression coverage includes supplementary Unicode input. Frontend CI [45543354522](https://github.com/TheSumitNain/school-management-system/actions/runs/45543354522) **PASS** and Backend CI [45543354503](https://github.com/TheSumitNain/school-management-system/actions/runs/45543354503) **PASS** on `4eb297516f652de07d4900455fcab4a119b0da57`.
+- No schema migration, persistent database or application data changed. This acceptance does not remove the existing approval gates for identity/profile schema, Bulk Import, leave policy, sensitive personal fields or external private document/photo storage.
+
 # Staff Management — Product and Implementation Roadmap
 
 **Status:** Approved planning baseline; the currently approved Staff Management implementation scope is built and browser-verified. Phase 4 remains partial pending school leave-policy approval; Phase 6 remains partial because Bulk Import is blocked on identity-schema approval. Payroll, document storage and profile-only onboarding remain deferred.  
