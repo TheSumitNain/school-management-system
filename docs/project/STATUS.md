@@ -2531,3 +2531,10 @@ This update supersedes older status bullets that listed the following database-b
 - Added PostgreSQL integration assertions that forged client-supplied `verified` status is ignored on qualification and certification creation, and that update requests cannot change the existing verification status.
 - Backend CI [45540370935](https://github.com/TheSumitNain/school-management-system/actions/runs/45540370935) **PASS** on `6f21d439daa010cd997ee0dc60e90d380d87e66a`: migrations, full Go/PostgreSQL integration tests and `go vet`.
 - No production code, schema migration or persistent data change. Verification authorization and archive/retention policy remain approval-gated; `main` remains untouched and work continues on `work`.
+
+## 2026-11-25 — Staff credential Unicode length validation and final CI acceptance
+
+- Credential Reference and Credential ID inputs now enforce the existing 120-character contract by Unicode code points in the client, matching backend rune-count validation. Native HTML `maxLength` was removed because browsers count UTF-16 code units and would incorrectly truncate supplementary-plane characters such as emoji.
+- Playwright regression fills 121 emoji and verifies the input retains exactly 120 code points for both fields. TypeScript/Vite production build and the complete browser acceptance suite pass.
+- Frontend CI [45541856053](https://github.com/TheSumitNain/school-management-system/actions/runs/45541856053) **PASS** and Backend CI [45541856057](https://github.com/TheSumitNain/school-management-system/actions/runs/45541856057) **PASS** on `bfe587984dbc645fbd93ee80584bd82561b5c6fc`.
+- No production database migration or persistent data change. `main` remains untouched; work continues on `work`. Document/photo storage remains deferred and excluded from the Staff Management completion estimate.
