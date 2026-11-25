@@ -14,6 +14,7 @@ import (
 var (
 	ErrStaffSubstitutionAccessDenied = errors.New("staff substitution operation is not authorized")
 	ErrStaffSubstitutionNotFound = errors.New("staff substitution not found")
+	ErrStaffSubstitutionNotCancellable = errors.New("completed staff substitution cannot be cancelled")
 	ErrStaffSubstitutionConflict = errors.New("staff substitution conflicts with existing coverage or timetable")
 	ErrInvalidStaffSubstitution = errors.New("invalid staff substitution input")
 )
@@ -157,8 +158,17 @@ func (r *AcademicRepository) CancelStaffSubstitution(ctx context.Context,actorID
 	defer func(){_=tx.Rollback(ctx)}()
 	if err:=staffSubstitutionAuthorize(ctx,tx,actorID,schoolID,"staff.substitutions.manage");err!=nil{return err}
 	if id<=0{return ErrInvalidStaffSubstitution}
+	var status string
+	var isCancellableDate bool
+	err=tx.QueryRow(ctx,`SELECT status,cover_date >= (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date
+		FROM staff_substitutions WHERE id=$1 AND school_id=$2 FOR UPDATE`,id,schoolID).Scan(&status,&isCancellableDate)
+	if errors.Is(err,pgx.ErrNoRows){return ErrStaffSubstitutionNotFound}
+	if err!=nil{return fmt.Errorf("load substitution before cancellation: %w",err)}
+	if status!="active"{return ErrStaffSubstitutionNotFound}
+	if !isCancellableDate{return ErrStaffSubstitutionNotCancellable}
 	tag,err:=tx.Exec(ctx,`UPDATE staff_substitutions SET status='cancelled',cancelled_by_principal_id=$3,cancelled_at=NOW(),updated_at=NOW()
-		WHERE id=$1 AND school_id=$2 AND status='active'`,id,schoolID,actorID)
+		WHERE id=$1 AND school_id=$2 AND status='active'
+		  AND cover_date >= (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date`,id,schoolID,actorID)
 	if err!=nil{return substitutionWriteError(err)}
 	if tag.RowsAffected()!=1{return ErrStaffSubstitutionNotFound}
 	if _,err=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome)
