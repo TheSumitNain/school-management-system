@@ -155,6 +155,8 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
         t.Fatalf("update same-day staff attendance: record=%+v err=%v", updatedAttendance, err)
     }
     // An audit failure during an attendance correction must preserve the prior status.
+    var updateAuditCountBefore int
+    if err:=tx.QueryRow(ctx,`SELECT COUNT(*) FROM audit_events WHERE school_id=$1 AND action='school.staff_attendance.updated' AND resource_id=$2`,schoolID,fmt.Sprint(*marked.ID)).Scan(&updateAuditCountBefore);err!=nil{t.Fatalf("count attendance update audit events before failure: %v",err)}
     if _,err:=tx.Exec(ctx,`CREATE OR REPLACE FUNCTION public.test_staff_attendance_update_audit_failure() RETURNS trigger LANGUAGE plpgsql AS $body$ BEGIN IF NEW.action='school.staff_attendance.updated' THEN RAISE EXCEPTION 'forced attendance update audit failure'; END IF; RETURN NEW; END; $body$`);err!=nil{t.Fatalf("create attendance update audit failure function: %v",err)}
     if _,err:=tx.Exec(ctx,`CREATE TRIGGER trg_test_staff_attendance_update_audit_failure BEFORE INSERT ON public.audit_events FOR EACH ROW EXECUTE FUNCTION public.test_staff_attendance_update_audit_failure()`);err!=nil{t.Fatalf("create attendance update audit failure trigger: %v",err)}
     if _,err:=attendanceRepo.Update(ctx,actorID,schoolID,*marked.ID,"absent",nil);err==nil{t.Fatal("attendance update succeeded despite forced audit failure")}
@@ -163,7 +165,7 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
     if statusAfterAuditFailure!="late"{t.Fatalf("attendance status after audit failure=%q want prior status late",statusAfterAuditFailure)}
     var updateAuditCount int
     if err:=tx.QueryRow(ctx,`SELECT COUNT(*) FROM audit_events WHERE school_id=$1 AND action='school.staff_attendance.updated' AND resource_id=$2`,schoolID,fmt.Sprint(*marked.ID)).Scan(&updateAuditCount);err!=nil{t.Fatalf("count attendance update audit events: %v",err)}
-    if updateAuditCount!=0{t.Fatalf("attendance update audit rows after failure=%d want=0",updateAuditCount)}
+    if updateAuditCount!=updateAuditCountBefore{t.Fatalf("attendance update audit rows changed after failed update: before=%d after=%d",updateAuditCountBefore,updateAuditCount)}
     if _,err:=tx.Exec(ctx,`DROP TRIGGER trg_test_staff_attendance_update_audit_failure ON public.audit_events`);err!=nil{t.Fatalf("drop attendance update audit failure trigger: %v",err)}
     if _,err:=tx.Exec(ctx,`DROP FUNCTION public.test_staff_attendance_update_audit_failure()`);err!=nil{t.Fatalf("drop attendance update audit failure function: %v",err)}
     yesterday := today.AddDate(0, 0, -1)
