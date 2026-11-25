@@ -141,6 +141,33 @@ func TestStaffSubstitutionV60DatabaseGuardsPostgresIntegration(t *testing.T) {
 	if rollbackErr:=conflictSlot.Rollback(ctx);rollbackErr!=nil{t.Fatalf("rollback conflicting timetable slot savepoint: %v",rollbackErr)}
 	if slotErr==nil{t.Fatal("new recurring timetable slot conflicted with active dated substitution but was accepted")}
 
+	// Force the assignment audit insert to fail and prove the repository transaction
+	// does not leave an unaudited substitution row behind.
+	var auditFailureEntryID int64
+	if err=tx.QueryRow(ctx,`INSERT INTO timetable_entries(school_id,academic_year_id,section_id,subject_id,teacher_principal_id,teacher_subject_assignment_id,period_id,day_of_week,created_by_principal_id,updated_by_principal_id)
+		VALUES($1,$2,$3,$4,$5,$6,$7,1,$8,$8) RETURNING id`,schoolID,yearID,sectionID,subjectID,originalID,originalAssignmentID,secondPeriodID,actorPrincipalID).Scan(&auditFailureEntryID);err!=nil{t.Fatalf("create second timetable entry for audit rollback test: %v",err)}
+	const assignAuditTrigger="trg_test_staff_substitution_assign_audit_failure"
+	if _,err=tx.Exec(ctx,`CREATE OR REPLACE FUNCTION public.test_staff_substitution_assign_audit_failure() RETURNS trigger LANGUAGE plpgsql AS $ BEGIN IF NEW.action='staff.substitution.assigned' THEN RAISE EXCEPTION 'forced substitution assignment audit failure'; END IF; RETURN NEW; END $`);err!=nil{t.Fatalf("create assignment audit failure function: %v",err)}
+	if _,err=tx.Exec(ctx,`CREATE TRIGGER trg_test_staff_substitution_assign_audit_failure BEFORE INSERT ON public.audit_events FOR EACH ROW EXECUTE FUNCTION public.test_staff_substitution_assign_audit_failure()`);err!=nil{t.Fatalf("create assignment audit failure trigger: %v",err)}
+	_,createAuditErr:=(&AcademicRepository{db:tx}).CreateStaffSubstitution(ctx,actorPrincipalID,schoolID,auditFailureEntryID,originalID,substituteID,coverDate,nil,"Audit rollback test")
+	if createAuditErr==nil{t.Fatal("substitution creation unexpectedly succeeded when assignment audit insert failed")}
+	var unauditedRows int
+	if err=tx.QueryRow(ctx,`SELECT count(*) FROM staff_substitutions WHERE school_id=$1 AND timetable_entry_id=$2 AND cover_date=$3::date AND status='active'`,schoolID,auditFailureEntryID,coverDate).Scan(&unauditedRows);err!=nil{t.Fatalf("count substitution rows after assignment audit failure: %v",err)}
+	if unauditedRows!=0{t.Fatalf("assignment audit failure left %d substitution rows; want 0",unauditedRows)}
+	if _,err=tx.Exec(ctx,`DROP TRIGGER IF EXISTS trg_test_staff_substitution_assign_audit_failure ON public.audit_events`);err!=nil{t.Fatalf("drop assignment audit failure trigger: %v",err)}
+	if _,err=tx.Exec(ctx,`DROP FUNCTION IF EXISTS public.test_staff_substitution_assign_audit_failure()`);err!=nil{t.Fatalf("drop assignment audit failure function: %v",err)}
+
+	// Cancellation is equally atomic: an audit failure must leave the cover active.
+	if _,err=tx.Exec(ctx,`CREATE OR REPLACE FUNCTION public.test_staff_substitution_cancel_audit_failure() RETURNS trigger LANGUAGE plpgsql AS $ BEGIN IF NEW.action='staff.substitution.cancelled' THEN RAISE EXCEPTION 'forced substitution cancellation audit failure'; END IF; RETURN NEW; END $`);err!=nil{t.Fatalf("create cancellation audit failure function: %v",err)}
+	if _,err=tx.Exec(ctx,`CREATE TRIGGER trg_test_staff_substitution_cancel_audit_failure BEFORE INSERT ON public.audit_events FOR EACH ROW EXECUTE FUNCTION public.test_staff_substitution_cancel_audit_failure()`);err!=nil{t.Fatalf("create cancellation audit failure trigger: %v",err)}
+	cancelAuditErr:=(&AcademicRepository{db:tx}).CancelStaffSubstitution(ctx,actorPrincipalID,schoolID,substitutionID)
+	if cancelAuditErr==nil{t.Fatal("substitution cancellation unexpectedly succeeded when audit insert failed")}
+	var activeAfterAuditFailure int
+	if err=tx.QueryRow(ctx,`SELECT count(*) FROM staff_substitutions WHERE school_id=$1 AND id=$2 AND status='active'`,schoolID,substitutionID).Scan(&activeAfterAuditFailure);err!=nil{t.Fatalf("read substitution after cancellation audit failure: %v",err)}
+	if activeAfterAuditFailure!=1{t.Fatalf("cancellation audit failure left active row count=%d; want 1",activeAfterAuditFailure)}
+	if _,err=tx.Exec(ctx,`DROP TRIGGER IF EXISTS trg_test_staff_substitution_cancel_audit_failure ON public.audit_events`);err!=nil{t.Fatalf("drop cancellation audit failure trigger: %v",err)}
+	if _,err=tx.Exec(ctx,`DROP FUNCTION IF EXISTS public.test_staff_substitution_cancel_audit_failure()`);err!=nil{t.Fatalf("drop cancellation audit failure function: %v",err)}
+
 	// Exercise the production cancellation workflow, including its atomic audit write.
 	// Cancellation audit rows intentionally omit teacher IDs from metadata.
 	if err=(&AcademicRepository{db:tx}).CancelStaffSubstitution(ctx,actorPrincipalID,schoolID,substitutionID);err!=nil{t.Fatalf("cancel dated substitution through repository workflow: %v",err)}
