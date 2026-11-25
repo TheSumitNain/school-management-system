@@ -130,8 +130,6 @@ func TestStaffLeaveWorkflowPostgresIntegration(t *testing.T) {
 	})
 
 	t.Run("leave type audit failures roll back create and update",func(t *testing.T){
-		const triggerName="trg_test_staff_leave_type_audit_failure"
-		const functionName="test_staff_leave_type_audit_failure"
 		if _,err:=f.pool.Exec(f.ctx,`CREATE OR REPLACE FUNCTION public.test_staff_leave_type_audit_failure() RETURNS trigger LANGUAGE plpgsql AS $body$ BEGIN IF NEW.action IN ('staff.leave_type.created','staff.leave_type.updated') THEN RAISE EXCEPTION 'forced leave type audit failure'; END IF; RETURN NEW; END; $body$`);err!=nil{t.Fatalf("create leave type audit failure function: %v",err)}
 		if _,err:=f.pool.Exec(f.ctx,`CREATE TRIGGER trg_test_staff_leave_type_audit_failure BEFORE INSERT ON public.audit_events FOR EACH ROW EXECUTE FUNCTION public.test_staff_leave_type_audit_failure()`);err!=nil{t.Fatalf("create leave type audit failure trigger: %v",err)}
 		t.Cleanup(func(){_,_=f.pool.Exec(context.Background(),`DROP TRIGGER IF EXISTS trg_test_staff_leave_type_audit_failure ON public.audit_events`);_,_=f.pool.Exec(context.Background(),`DROP FUNCTION IF EXISTS public.test_staff_leave_type_audit_failure()`)})
