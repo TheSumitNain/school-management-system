@@ -50,6 +50,7 @@ export function StaffHistoryActivityPanel({ staff, permissions }: Props) {
     queryKey: ["staff-audit-events", staff.principal_id, offset],
     queryFn: ({ signal }) => getStaffAuditEvents(staff.principal_id, { limit: pageSize, offset }, signal),
     enabled: allowed,
+    staleTime: 30_000,
   });
 
   if (!allowed) return <section className="staff-records-panel"><h3>History & activity</h3><p className="staff-record-empty">You do not have permission to view audit history.</p></section>;
