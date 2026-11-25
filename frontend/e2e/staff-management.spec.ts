@@ -80,8 +80,36 @@ async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, un
       });
       return;
     }
+    if (path === "/school/staff/summary" && method === "GET") {
+      await route.fulfill({ json: { summary: {
+        total: staffRows.length,
+        active_employment: staffRows.filter(item => item.employment_status === "active").length,
+        login_enabled: staffRows.filter(item => item.status === "active").length,
+        profile_incomplete: staffRows.filter(item => item.profile_complete !== true).length,
+        active_employment_disabled_login: staffRows.filter(item => item.employment_status === "active" && item.status !== "active").length,
+        must_change_password: staffRows.filter(item => item.must_change_password === true).length,
+        inactive_employment: staffRows.filter(item => item.employment_status === "inactive").length,
+      } } });
+      return;
+    }
     if (path === "/school/staff" && method === "GET") {
-      await route.fulfill({ json: { staff: staffRows } });
+      if (url.searchParams.has("limit")) {
+        const limit = Number(url.searchParams.get("limit"));
+        const offset = Number(url.searchParams.get("offset") ?? "0");
+        const search = (url.searchParams.get("search") ?? "").toLowerCase();
+        const employment = url.searchParams.get("employment_status") ?? "";
+        const account = url.searchParams.get("account_status") ?? "";
+        const profile = url.searchParams.get("profile_status") ?? "";
+        const matching = staffRows.filter(item =>
+          (!search || [item.username, item.full_name, item.employee_code, item.designation, item.mobile_number].some(value => String(value ?? "").toLowerCase().includes(search))) &&
+          (!employment || item.employment_status === employment) &&
+          (!account || (account === "enabled" ? item.status === "active" : item.status !== "active")) &&
+          (!profile || (profile === "complete" ? item.profile_complete === true : item.profile_complete !== true))
+        );
+        await route.fulfill({ json: { staff: matching.slice(offset, offset + limit), total: matching.length, limit, offset } });
+      } else {
+        await route.fulfill({ json: { staff: staffRows } });
+      }
       return;
     }
     if (path === "/school/staff-attendance" && method === "GET") {
