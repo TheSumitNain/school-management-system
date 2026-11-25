@@ -851,3 +851,10 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - The initial run exposed a malformed dollar-quote delimiter in the staff-profile audit-trigger test. Replaced it with a named PL/pgSQL dollar-quote delimiter in commit `c4345e9f2d01ed2bc7115d2606c6c3f0792b4c20`.
 - Backend CI [45537146943](https://github.com/TheSumitNain/school-management-system/actions/runs/45537146943) **PASS** on `c4345e9f2d01ed2bc7115d2606c6c3f0792b4c20`: all migrations, full Go tests including PostgreSQL integration, and `go vet`.
 - These are regression-test and test-fixture changes; no schema migration or persistent school data change. Leave-policy and identity-schema approvals remain open; document/photo storage remains deferred and excluded from the Staff Management completion estimate. `main` remains untouched.
+
+
+## 2026-11-25 follow-up — qualification/certification verification-state integrity
+
+- Strengthened the PostgreSQL integration regression by explicitly submitting forged `verification_status: "verified"` values on both qualification and certification create and update operations. The repository must return newly created records as `pending` and preserve the existing `pending` state after edits.
+- Backend CI [45540370935](https://github.com/TheSumitNain/school-management-system/actions/runs/45540370935) **PASS** on `6f21d439daa010cd997ee0dc60e90d380d87e66a`: full migration chain, Go tests including PostgreSQL integration and `go vet`.
+- This is regression-test hardening; no production behavior change, schema migration or persistent data change. A verification/approval workflow and archive/delete policy remain undefined and are not being enabled without an explicit permission and retention decision. Document/photo storage remains deferred and excluded from the Staff Management completion estimate. `main` remains untouched.
