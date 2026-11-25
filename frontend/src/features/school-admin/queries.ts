@@ -403,7 +403,15 @@ export function useStaffExperienceQuery(principalID: number, enabled: boolean) {
 }
 function useStaffRecordMutation<TInput>(principalID: number, mutationFn: (input:TInput)=>Promise<unknown>, key: string) {
   const client = useQueryClient();
-  return useMutation({ mutationFn, onSuccess: () => client.invalidateQueries({queryKey:[...schoolAdminQueryKeys.staff(),principalID,key]}) });
+  return useMutation({
+    mutationFn,
+    onSuccess: async () => {
+      await Promise.all([
+        client.invalidateQueries({queryKey:[...schoolAdminQueryKeys.staff(),principalID,key]}),
+        client.invalidateQueries({queryKey:["staff-audit-events",principalID]}),
+      ]);
+    },
+  });
 }
 export function useCreateStaffQualificationMutation(principalID:number) {
   return useStaffRecordMutation(principalID,(input:Parameters<typeof createStaffQualification>[1])=>createStaffQualification(principalID,input),"qualifications");
