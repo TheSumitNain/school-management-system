@@ -25,6 +25,18 @@ export function getSchoolStaff(signal?: AbortSignal) {
 }
 
 export type StaffDirectoryResponse = StaffListResponse & { total: number; limit: number; offset: number };
+export type StaffDirectorySummary = {
+  total: number;
+  active_employment: number;
+  login_enabled: number;
+  profile_incomplete: number;
+  active_employment_disabled_login: number;
+  must_change_password: number;
+  inactive_employment: number;
+};
+export function getSchoolStaffDirectorySummary(signal?: AbortSignal) {
+  return api<{ summary: StaffDirectorySummary }>("/school/staff/summary", { signal });
+}
 export type StaffDirectoryFilters = {
   search: string;
   employmentStatus: string;
