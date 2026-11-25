@@ -210,14 +210,14 @@ func TestStaffProfileRepositoryPostgresIntegration(t *testing.T) {
     failFunction := "test_fail_staff_profile_audit_" + suffix
     failTrigger := "test_fail_staff_profile_audit_trigger_" + suffix
     if _, err := tx.Exec(ctx, fmt.Sprintf(`
-        CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $
+        CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $staff_profile_audit_failure$
         BEGIN
             IF NEW.action = 'staff.profile.updated' THEN
                 RAISE EXCEPTION 'injected staff profile audit failure';
             END IF;
             RETURN NEW;
         END;
-        $;
+        $staff_profile_audit_failure$;
         CREATE TRIGGER %s BEFORE INSERT ON audit_events
         FOR EACH ROW EXECUTE FUNCTION %s();
     `, failFunction, failTrigger, failFunction)); err != nil {
