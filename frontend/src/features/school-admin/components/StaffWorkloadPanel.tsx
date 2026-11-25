@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getCurrentTimetableYear, getTimetableEntries, getTimetablePeriods, type TimetableEntry, type TimetablePeriod } from "../api";
 import type { StaffRecord } from "../api";
 
@@ -12,8 +12,13 @@ export function StaffWorkloadPanel({ staff }: Props) {
   const [yearName, setYearName] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const requestController = useRef<AbortController | null>(null);
 
-  const load = useCallback(async (signal?: AbortSignal) => {
+  const load = useCallback(async () => {
+    requestController.current?.abort();
+    const controller = new AbortController();
+    requestController.current = controller;
+    const { signal } = controller;
     setLoading(true);
     setError("");
     try {
@@ -36,9 +41,8 @@ export function StaffWorkloadPanel({ staff }: Props) {
   }, [staff.principal_id]);
 
   useEffect(() => {
-    const controller = new AbortController();
-    void load(controller.signal);
-    return () => controller.abort();
+    void load();
+    return () => requestController.current?.abort();
   }, [load]);
 
   const dailyWorkload = weekdays.map((day, index) => {
