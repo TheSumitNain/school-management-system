@@ -1042,3 +1042,12 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Extended browser acceptance coverage beyond leave decisions: after creating a pending request and after cancelling it, reopening the employee profile must trigger a fresh History & Activity read. The test confirms both invalidation paths work through the UI.
 - Backend CI [45634722560](https://github.com/TheSumitNain/school-management-system/actions/runs/45634722560) **PASS** and Frontend CI [45634722478](https://github.com/TheSumitNain/school-management-system/actions/runs/45634722478) **PASS** on `117b25a6ec0820d0371fdf7c7cafda79b305c5c0`.
 - Test-only hardening; no production behavior or schema change. Leave entitlement policy remains approval-gated; `main` remains untouched.
+
+
+## 2026-11-25 follow-up — completed substitution cancellation enforced by backend
+
+- Consolidated audit found that the Substitutions UI correctly hides cancellation for past/completed cover dates, but the repository cancellation operation previously accepted any active row. A caller with the manage permission could bypass the UI and cancel historical coverage.
+- The repository now locks and checks the target record using the Asia/Kolkata school date and rejects cancellation of completed covers with a stable conflict response. The update itself repeats the date predicate to keep the write condition authoritative; cancelled and unknown records retain the existing not-found behavior.
+- Added PostgreSQL integration coverage proving a past substitution remains active and retained when cancellation is attempted. Existing browser acceptance already verifies that completed covers show no cancellation action.
+- Backend and Frontend CI are pending for the new code checkpoint; do not mark this fix verified until both complete successfully.
+- No schema migration or persistent database change. `main` remains untouched.
