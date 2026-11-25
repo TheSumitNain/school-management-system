@@ -1,3 +1,10 @@
+## 2026-11-25 — Staff reports CSV formula-injection regression verification
+
+- Added browser regression coverage for CSV formula injection when user-controlled report text begins with a tab character; the export must prefix the value as text rather than allowing spreadsheet formula interpretation.
+- Backend CI [45602855583](https://github.com/TheSumitNain/school-management-system/actions/runs/45602855583) **PASS** and Frontend CI [45602855658](https://github.com/TheSumitNain/school-management-system/actions/runs/45602855658) **PASS** on `bb7e0af18c3eb2af3e0bb4129c1408f0a41f12f5`. Backend migrations, Go/PostgreSQL integration tests and `go vet` passed; frontend production build and full Playwright browser suite passed.
+- Report review reconfirmed school-scoped report queries, bounded pagination, active-only qualification/certification rows, retained inactive-employee experience history, and exclusion of credential references, verifier notes and free-text experience descriptions from report exports.
+- Test/documentation-only verification checkpoint; no production code, schema, persistent database or application data changed. Manual authenticated-school sign-off and existing product approval gates remain separate.
+
 
 ## 2026-11-25 — Staff Leave concurrency verification
 
