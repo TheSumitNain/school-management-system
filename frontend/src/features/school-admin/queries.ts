@@ -24,27 +24,36 @@ export function useSchoolStaffQuery(enabled = true) {
   });
 }
 
-function useStaffMutation<TInput>(mutationFn: (input: TInput) => Promise<unknown>) {
+function useStaffMutation<TInput>(
+  mutationFn: (input: TInput) => Promise<unknown>,
+  getPrincipalID?: (input: TInput) => number,
+) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: schoolAdminQueryKeys.staff() }),
+    onSuccess: async (_data, input) => {
+      await queryClient.invalidateQueries({ queryKey: schoolAdminQueryKeys.staff() });
+      const principalID = getPrincipalID?.(input);
+      if (principalID) {
+        await queryClient.invalidateQueries({ queryKey: ["staff-audit-events", principalID] });
+      }
+    },
   });
 }
 export function useCreateSchoolStaffMutation() {
   return useStaffMutation(createSchoolStaff);
 }
 export function useUpdateSchoolStaffMutation() {
-  return useStaffMutation(({ principalID, ...input }: { principalID: number; username: string; employee_code: string; full_name: string; designation: string; mobile_number: string; email?: string; joining_date?: string; employment_status: "active" | "inactive" }) => updateSchoolStaff(principalID, input));
+  return useStaffMutation(({ principalID, ...input }: { principalID: number; username: string; employee_code: string; full_name: string; designation: string; mobile_number: string; email?: string; joining_date?: string; employment_status: "active" | "inactive" }) => updateSchoolStaff(principalID, input), input => input.principalID);
 }
 export function useDisableSchoolStaffMutation() {
-  return useStaffMutation(disableSchoolStaff);
+  return useStaffMutation(disableSchoolStaff, principalID => principalID);
 }
 export function useEnableSchoolStaffMutation() {
-  return useStaffMutation(({ principalID, temporaryPassword }: { principalID: number; temporaryPassword: string }) => enableSchoolStaff(principalID, temporaryPassword));
+  return useStaffMutation(({ principalID, temporaryPassword }: { principalID: number; temporaryPassword: string }) => enableSchoolStaff(principalID, temporaryPassword), input => input.principalID);
 }
 export function useResetSchoolStaffPasswordMutation() {
-  return useStaffMutation(({ principalID, newPassword }: { principalID: number; newPassword: string }) => resetSchoolStaffPassword(principalID, newPassword));
+  return useStaffMutation(({ principalID, newPassword }: { principalID: number; newPassword: string }) => resetSchoolStaffPassword(principalID, newPassword), input => input.principalID);
 }
 
 
