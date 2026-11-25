@@ -1228,3 +1228,84 @@ func (r *UserRepository) EnableStaffAccount(
 	}
 	return nil
 }
+
+
+func (r *UserRepository) ListStaffDirectoryPage(ctx context.Context, actorPrincipalID, schoolID int64, filter models.StaffDirectoryFilter) (*models.StaffDirectoryPage, error) {
+	if r == nil || r.db == nil || actorPrincipalID <= 0 || schoolID <= 0 {
+		return nil, ErrRolePermissionDenied
+	}
+	var authorized bool
+	if err := r.db.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM auth_principals ap
+			JOIN users actor ON actor.principal_id = ap.id
+			JOIN schools s ON s.id = actor.school_id
+			JOIN principal_roles pr ON pr.principal_id = ap.id AND pr.revoked_at IS NULL
+			JOIN roles role ON role.id = pr.role_id
+			JOIN role_permissions rp ON rp.role_id = role.id
+			JOIN permissions p ON p.id = rp.permission_id
+			WHERE ap.id = $1 AND ap.principal_type = 'staff' AND ap.status = 'active'
+			  AND actor.status = 'active' AND actor.school_id = $2 AND s.status = 'active'
+			  AND role.school_id = $2 AND role.scope_type = 'school'
+			  AND role.principal_type = 'staff' AND role.role_key = 'school_admin' AND role.is_system = TRUE
+			  AND p.permission_key = 'users.read' AND p.scope_type = 'school' AND p.is_active = TRUE
+			  AND NOT EXISTS (
+			      SELECT 1 FROM user_permission_overrides denied
+			      WHERE denied.principal_id = ap.id AND denied.school_id = $2
+			        AND denied.permission_id = p.id AND denied.effect = 'deny'
+			  )
+		)
+	`, actorPrincipalID, schoolID).Scan(&authorized); err != nil {
+		return nil, fmt.Errorf("authorize staff directory page: %w", err)
+	}
+	if !authorized {
+		return nil, ErrRolePermissionDenied
+	}
+
+	const filtered = `
+		FROM users u
+		LEFT JOIN staff_profiles sp ON sp.principal_id = u.principal_id AND sp.school_id = u.school_id
+		WHERE u.school_id = $1
+		  AND ($2 = '' OR concat_ws(' ', u.username, sp.full_name, sp.employee_code, sp.designation, sp.mobile_number) ILIKE '%' || $2 || '%')
+		  AND ($3 = '' OR COALESCE(sp.employment_status, '') = $3)
+		  AND ($4 = '' OR ($4 = 'enabled' AND u.status = 'active') OR ($4 = 'disabled' AND u.status <> 'active'))
+		  AND ($5 = '' OR ($5 = 'complete' AND sp.principal_id IS NOT NULL) OR ($5 = 'incomplete' AND sp.principal_id IS NULL))
+	`
+	page := &models.StaffDirectoryPage{Staff: make([]models.User, 0), Limit: filter.Limit, Offset: filter.Offset}
+	countQuery := "SELECT COUNT(*) " + filtered
+	if err := r.db.QueryRow(ctx, countQuery, schoolID, filter.Search, filter.EmploymentStatus, filter.AccountStatus, filter.ProfileStatus).Scan(&page.Total); err != nil {
+		return nil, fmt.Errorf("count school staff directory: %w", err)
+	}
+	rows, err := r.db.Query(ctx, `
+		SELECT u.id, u.principal_id, u.school_id, u.username, u.status,
+		       u.must_change_password, u.created_at, u.updated_at,
+		       COALESCE(sp.employee_code, ''), COALESCE(sp.full_name, ''),
+		       COALESCE(sp.designation, ''), COALESCE(sp.mobile_number, ''),
+		       COALESCE(sp.email, ''), sp.joining_date,
+		       COALESCE(sp.employment_status, ''), (sp.principal_id IS NOT NULL)
+	`+filtered+`
+		ORDER BY LOWER(COALESCE(NULLIF(sp.full_name, ''), u.username)), u.id
+		LIMIT $6 OFFSET $7
+	`, schoolID, filter.Search, filter.EmploymentStatus, filter.AccountStatus, filter.ProfileStatus, filter.Limit, filter.Offset)
+	if err != nil {
+		return nil, fmt.Errorf("query school staff directory page: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var user models.User
+		var joiningDate *time.Time
+		if err := rows.Scan(&user.ID, &user.PrincipalID, &user.SchoolID, &user.Username,
+			&user.Status, &user.MustChangePassword, &user.CreatedAt, &user.UpdatedAt,
+			&user.EmployeeCode, &user.FullName, &user.Designation, &user.MobileNumber,
+			&user.Email, &joiningDate, &user.EmploymentStatus, &user.ProfileComplete); err != nil {
+			return nil, fmt.Errorf("scan school staff directory page: %w", err)
+		}
+		user.JoiningDate = joiningDate
+		page.Staff = append(page.Staff, user)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate school staff directory page: %w", err)
+	}
+	return page, nil
+}
