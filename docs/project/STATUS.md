@@ -2691,3 +2691,10 @@ This update supersedes older status bullets that listed the following database-b
 - Added a PostgreSQL integration regression that forces the `staff.leave.requested` audit insert to fail during request creation, then verifies both the leave-request row and its audit event are absent. This confirms request creation is atomic, complementing existing decision, cancellation and holiday audit-failure rollback coverage.
 - Backend CI [45630342631](https://github.com/TheSumitNain/school-management-system/actions/runs/45630342631) **PASS** on `c9ee6e8671b0fcf3faa76fa2ec0aa02fb58a68af`: full migration chain, Go tests including PostgreSQL integration and `go vet`.
 - Regression-test change only; no production behavior change, schema migration or persistent school-data change. Leave entitlement policy remains approval-gated; `main` remains untouched.
+
+
+## 2026-11-25 — Staff leave-type audit rollback coverage
+
+- Added PostgreSQL failure-injection coverage for leave-type create and update operations. When the matching `staff.leave_type.created` or `staff.leave_type.updated` audit insert fails, no new leave type remains, the existing type retains its original name, and no false audit event is committed.
+- Backend CI [45631108229](https://github.com/TheSumitNain/school-management-system/actions/runs/45631108229) **PASS** on `67267c6a7c2b5f9c4fc240d6df34fe0c0148b85c`: full migration chain, complete Go/PostgreSQL integration tests and `go vet`.
+- Regression-test changes only; no production behavior, schema migration or persistent school data changed. `main` remains untouched.
