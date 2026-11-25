@@ -58,6 +58,11 @@ func (f *fakeStaffAccountService) ListDirectoryPage(_ context.Context, actorID, 
 	return &models.StaffDirectoryPage{Staff: []models.User{{ID: 15, PrincipalID: 27, SchoolID: schoolID, Username: "teacher.one", Status: "active"}}, Total: 51, Limit: filter.Limit, Offset: filter.Offset}, f.err
 }
 
+func (f *fakeStaffAccountService) GetDirectorySummary(_ context.Context, actorID, schoolID int64) (*models.StaffDirectorySummary, error) {
+	f.directoryActorID, f.directorySchoolID = actorID, schoolID
+	return &models.StaffDirectorySummary{Total: 12, ActiveEmployment: 10, LoginEnabled: 9, ProfileIncomplete: 2, ActiveEmploymentDisabledLogin: 1, MustChangePassword: 3, InactiveEmployment: 2}, f.err
+}
+
 func (f *fakeStaffAccountService) Disable(context.Context, int64, int64, int64) error {
 	return f.err
 }
@@ -156,6 +161,35 @@ func TestStaffHandlerCreateRejectsMissingAuthMalformedAndServiceErrors(t *testin
 		if rec.Code != test.want {
 			t.Fatalf("error %v: status=%d want=%d body=%s", test.err, rec.Code, test.want, rec.Body.String())
 		}
+	}
+}
+
+func TestStaffHandlerDirectorySummaryUsesAuthenticatedSchoolAndReturnsCounts(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	service := &fakeStaffAccountService{}
+	router := gin.New()
+	router.GET("/school/staff/summary", func(c *gin.Context) {
+		c.Set("auth_principal_id", int64(31))
+		c.Set("auth_school_id", int64(8))
+		c.Next()
+	}, NewStaffHandler(service).GetDirectorySummary)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/school/staff/summary", nil))
+	if rec.Code != http.StatusOK || service.directoryActorID != 31 || service.directorySchoolID != 8 ||
+		!strings.Contains(rec.Body.String(), `"total":12`) || !strings.Contains(rec.Body.String(), `"must_change_password":3`) {
+		t.Fatalf("summary response status=%d actor=%d school=%d body=%s", rec.Code, service.directoryActorID, service.directorySchoolID, rec.Body.String())
+	}
+}
+
+func TestStaffHandlerDirectorySummaryRejectsMissingSchoolContext(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	service := &fakeStaffAccountService{}
+	router := gin.New()
+	router.GET("/school/staff/summary", NewStaffHandler(service).GetDirectorySummary)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/school/staff/summary", nil))
+	if rec.Code != http.StatusUnauthorized || service.directoryActorID != 0 {
+		t.Fatalf("missing school context status=%d service actor=%d body=%s", rec.Code, service.directoryActorID, rec.Body.String())
 	}
 }
 
