@@ -1,3 +1,10 @@
+## 2026-11-25 — Staff Experience History pagination browser verification
+
+- Frontend CI [45546968103](https://github.com/TheSumitNain/school-management-system/actions/runs/45546968103) **PASS** on `129a6e1e3383a783529940e5e99892d992169737`: TypeScript/Vite production build and the complete Playwright browser acceptance suite passed.
+- The new Experience History browser scenario verifies 51-row pagination (50 + 1), Next/Previous navigation, offset=50 request behavior, and filter reset to the first page. Qualifications pagination and filtering remain covered in the same report scenario.
+- Paired Backend CI [45546968090](https://github.com/TheSumitNain/school-management-system/actions/runs/45546968090) **PASS** on the same test checkpoint: ephemeral PostgreSQL migrations, full Go/PostgreSQL integration suite and `go vet` passed.
+- No production schema, persistent database or application data changed; this checkpoint adds regression coverage only.
+
 ## 2026-11-25 — Staff report pagination regression backend verification
 
 - Backend CI [45546968090](https://github.com/TheSumitNain/school-management-system/actions/runs/45546968090) **PASS** on the report-pagination test checkpoint: all migrations applied to ephemeral PostgreSQL, the complete Go test suite including PostgreSQL integration passed, and `go vet` passed.
