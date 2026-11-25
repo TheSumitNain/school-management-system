@@ -127,6 +127,35 @@ func TestStaffProfileRepositoryPostgresIntegration(t *testing.T) {
         t.Fatalf("omitted optional email was not represented as empty in API and NULL in storage: is_null=%v email=%q", blankEmailIsNull, blankEmailUser.Email)
     }
 
+    // Updating an existing profile to another employee's code must be
+    // rejected without partially changing the profile or recording success.
+    duplicateCodeUpdate := profile
+    duplicateCodeUpdate.EmployeeCode = blankEmailProfile.EmployeeCode
+    duplicateCodeUpdate.FullName = "Must Not Replace Existing Employee"
+    if _, err := repo.UpdateStaffProfile(ctx, actorPrincipalID, schoolID, user.PrincipalID, duplicateCodeUpdate); !errors.Is(err, ErrEmployeeCodeTaken) {
+        t.Fatalf("duplicate employee code profile update error = %v, want ErrEmployeeCodeTaken", err)
+    }
+    var preservedCode, preservedName string
+    if err := tx.QueryRow(ctx, `
+        SELECT employee_code, full_name FROM staff_profiles WHERE principal_id = $1
+    `, user.PrincipalID).Scan(&preservedCode, &preservedName); err != nil {
+        t.Fatalf("read profile after duplicate employee code update: %v", err)
+    }
+    if preservedCode != profile.EmployeeCode || preservedName != profile.FullName {
+        t.Fatalf("duplicate employee code update partially changed profile: code=%q name=%q", preservedCode, preservedName)
+    }
+    var duplicateUpdateAuditCount int
+    if err := tx.QueryRow(ctx, `
+        SELECT COUNT(*) FROM audit_events
+         WHERE actor_principal_id = $1 AND school_id = $2
+           AND action = 'staff.profile.updated' AND resource_id = $3
+    `, actorPrincipalID, schoolID, fmt.Sprint(user.ID)).Scan(&duplicateUpdateAuditCount); err != nil {
+        t.Fatalf("count audit events after duplicate employee code update: %v", err)
+    }
+    if duplicateUpdateAuditCount != 0 {
+        t.Fatalf("rejected duplicate employee code update created %d success audit events", duplicateUpdateAuditCount)
+    }
+
     listed, err := repo.ListStaffAccounts(ctx, actorPrincipalID, schoolID)
     if err != nil { t.Fatalf("list school staff profiles: %v", err) }
     found := false
