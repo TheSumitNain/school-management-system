@@ -39,12 +39,33 @@ func TestStaffDirectoryPaginationFiltersAndSchoolIsolationPostgresIntegration(t 
 		t.Fatalf("create legacy account: %v", err)
 	}
 
+	var inactivePrincipalID int64
+	if err := fixture.pool.QueryRow(fixture.ctx, `
+		INSERT INTO users (school_id, username, password_hash, status)
+		VALUES ($1, $2, 'integration-password-hash', 'active')
+		RETURNING principal_id
+	`, fixture.schoolID, "dir-off-"+suffix).Scan(&inactivePrincipalID); err != nil {
+		t.Fatalf("create inactive directory account: %v", err)
+	}
+	if _, err := fixture.pool.Exec(fixture.ctx, `
+		INSERT INTO staff_profiles
+			(principal_id, school_id, employee_code, full_name, designation, mobile_number, employment_status)
+		VALUES ($1, $2, $3, 'Directory Inactive', 'Office Staff', '9876543221', 'active')
+	`, inactivePrincipalID, fixture.schoolID, "DIR-OFF-"+suffix); err != nil {
+		t.Fatalf("create inactive directory profile: %v", err)
+	}
+	if _, err := fixture.pool.Exec(fixture.ctx, `
+		UPDATE staff_profiles SET employment_status='inactive' WHERE principal_id=$1 AND school_id=$2
+	`, inactivePrincipalID, fixture.schoolID); err != nil {
+		t.Fatalf("inactivate directory employee: %v", err)
+	}
+
 	page, err := repo.ListStaffDirectoryPage(fixture.ctx, fixture.adminPrincipalID, fixture.schoolID,
 		models.StaffDirectoryFilter{Limit: 2, Offset: 1})
 	if err != nil {
 		t.Fatalf("list first filtered page: %v", err)
 	}
-	if page.Total != 7 || len(page.Staff) != 2 || page.Limit != 2 || page.Offset != 1 {
+	if page.Total != 8 || len(page.Staff) != 2 || page.Limit != 2 || page.Offset != 1 {
 		t.Fatalf("unexpected page metadata: total=%d rows=%d limit=%d offset=%d", page.Total, len(page.Staff), page.Limit, page.Offset)
 	}
 	if page.Staff[0].FullName > page.Staff[1].FullName {
@@ -67,6 +88,22 @@ func TestStaffDirectoryPaginationFiltersAndSchoolIsolationPostgresIntegration(t 
 	}
 	if incompletePage.Total != 1 || len(incompletePage.Staff) != 1 || incompletePage.Staff[0].ProfileComplete {
 		t.Fatalf("incomplete-profile filter mismatch: %+v", incompletePage)
+	}
+
+	activePage, err := repo.ListStaffDirectoryPage(fixture.ctx, fixture.adminPrincipalID, fixture.schoolID,
+		models.StaffDirectoryFilter{EmploymentStatus: "active", Limit: 50})
+	if err != nil || activePage.Total != 6 {
+		t.Fatalf("active-employment filter total=%v err=%v, want 6", activePage, err)
+	}
+	inactivePage, err := repo.ListStaffDirectoryPage(fixture.ctx, fixture.adminPrincipalID, fixture.schoolID,
+		models.StaffDirectoryFilter{EmploymentStatus: "inactive", Limit: 50})
+	if err != nil || inactivePage.Total != 1 || inactivePage.Staff[0].FullName != "Directory Inactive" {
+		t.Fatalf("inactive-employment filter mismatch: page=%+v err=%v", inactivePage, err)
+	}
+	disabledPage, err := repo.ListStaffDirectoryPage(fixture.ctx, fixture.adminPrincipalID, fixture.schoolID,
+		models.StaffDirectoryFilter{AccountStatus: "disabled", Limit: 50})
+	if err != nil || disabledPage.Total != 1 || disabledPage.Staff[0].PrincipalID != inactivePrincipalID {
+		t.Fatalf("disabled-account filter mismatch: page=%+v err=%v", disabledPage, err)
 	}
 
 	foreignPage, err := repo.ListStaffDirectoryPage(fixture.ctx, fixture.staffPrincipalID, fixture.schoolID,
