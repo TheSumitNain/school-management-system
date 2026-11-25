@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"school-management-system/internal/middleware"
 	"school-management-system/internal/repository"
+	"school-management-system/internal/services"
 )
 
 func TestStaffLeaveHandlersReturnUnavailableWithoutService(t *testing.T) {
@@ -217,5 +219,59 @@ func TestStaffLeaveListRequestsTreatsBlankStaffPrincipalFilterAsUnfiltered(t *te
 	}
 	if !service.called || service.staffID != 0 {
 		t.Fatalf("blank staff filter should mean all staff: called=%v staffID=%d", service.called, service.staffID)
+	}
+}
+
+
+type staffLeaveListErrorService struct {
+	StaffLeaveManagementService
+	err error
+}
+
+func (s staffLeaveListErrorService) ListTypes(context.Context, int64, int64) ([]repository.StaffLeaveType, error) {
+	return nil, s.err
+}
+
+func TestStaffLeaveHandlerMapsServiceErrorsToStableHTTPStatuses(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	tests := []struct {
+		name string
+		err error
+		wantStatus int
+		wantMessage string
+	}{
+		{"leave permission denied", repository.ErrStaffLeaveAccessDenied, http.StatusForbidden, "You are not authorized to manage staff leave or holidays"},
+		{"role permission denied", repository.ErrRolePermissionDenied, http.StatusForbidden, "You are not authorized to manage staff leave or holidays"},
+		{"record not found", repository.ErrStaffLeaveNotFound, http.StatusNotFound, "Staff leave record, leave type or employee not found"},
+		{"overlap conflict", repository.ErrStaffLeaveConflict, http.StatusConflict, "This leave request overlaps another pending or approved request, or the record already exists"},
+		{"repository validation", repository.ErrInvalidStaffLeave, http.StatusBadRequest, "Check the leave or holiday fields"},
+		{"service validation", services.ErrInvalidStaffLeave, http.StatusBadRequest, "Check the leave or holiday fields"},
+		{"unexpected internal error", errors.New("sensitive database detail"), http.StatusInternalServerError, "Unable to process staff leave or holiday"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			handler := NewStaffLeaveHandler(staffLeaveListErrorService{err: tt.err})
+			router := gin.New()
+			router.GET("/staff/leave-types", func(c *gin.Context) {
+				c.Set(middleware.ContextPrincipalIDKey, int64(100))
+				c.Set(middleware.ContextSchoolIDKey, int64(10))
+				c.Next()
+			}, handler.ListTypes)
+			recorder := httptest.NewRecorder()
+			router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/staff/leave-types", nil))
+			if recorder.Code != tt.wantStatus {
+				t.Fatalf("status=%d want=%d body=%s", recorder.Code, tt.wantStatus, recorder.Body.String())
+			}
+			var body map[string]any
+			if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
+				t.Fatalf("invalid JSON response: %v", err)
+			}
+			if body["message"] != tt.wantMessage {
+				t.Fatalf("message=%q want=%q", body["message"], tt.wantMessage)
+			}
+			if strings.Contains(recorder.Body.String(), "sensitive database detail") {
+				t.Fatal("internal error detail leaked to the client")
+			}
+		})
 	}
 }
