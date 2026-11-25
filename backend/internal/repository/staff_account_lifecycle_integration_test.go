@@ -199,6 +199,62 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
 		t.Fatalf("new staff account principal %d was absent from the same-school listing", created.PrincipalID)
 	}
 
+    // Username changes must also roll back token invalidation and session
+    // revocation when their required audit event cannot be written.
+    usernameFailureSuffix := suffix[len(suffix)-8:]
+    usernameTrigger := "test_reject_staff_updated_audit_" + usernameFailureSuffix
+    usernameFunction := "test_reject_staff_updated_audit_fn_" + usernameFailureSuffix
+    if _, err := tx.Exec(ctx, fmt.Sprintf(`
+        CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $
+        BEGIN
+            IF NEW.action = 'staff.account.updated' THEN
+                RAISE EXCEPTION 'forced staff username audit failure';
+            END IF;
+            RETURN NEW;
+        END;
+        $;
+        CREATE TRIGGER %s BEFORE INSERT ON audit_events
+        FOR EACH ROW EXECUTE FUNCTION %s();
+    `, usernameFunction, usernameTrigger, usernameFunction)); err != nil {
+        t.Fatalf("install username update audit failure trigger: %v", err)
+    }
+    usernameSessionHash := integrationTokenHash("staff-username-audit-failure-" + suffix)
+    if err := NewPrincipalRefreshSessionRepository(tx).CreatePrincipalInTx(ctx, tx, created.PrincipalID, usernameSessionHash, time.Now().Add(time.Hour)); err != nil {
+        t.Fatalf("create refresh session before rejected username update: %v", err)
+    }
+    if _, err := repo.UpdateStaffAccount(ctx, actorPrincipalID, schoolID, created.PrincipalID, "audit-fail-"+suffix); err == nil {
+        t.Fatal("username update unexpectedly succeeded when its audit insert failed")
+    }
+    if _, err := tx.Exec(ctx, fmt.Sprintf("DROP TRIGGER %s ON audit_events; DROP FUNCTION %s();", usernameTrigger, usernameFunction)); err != nil {
+        t.Fatalf("remove username update audit failure trigger: %v", err)
+    }
+    var preservedUsername, preservedPrincipalStatus string
+    var preservedTokenVersion int64
+    var usernameSessionStillActive bool
+    if err := tx.QueryRow(ctx, `
+        SELECT u.username, ap.status, ap.token_version,
+               EXISTS (SELECT 1 FROM refresh_sessions rs WHERE rs.token_hash = $2 AND rs.revoked_at IS NULL)
+          FROM users u JOIN auth_principals ap ON ap.id = u.principal_id
+         WHERE u.principal_id = $1
+    `, created.PrincipalID, usernameSessionHash).Scan(&preservedUsername, &preservedPrincipalStatus, &preservedTokenVersion, &usernameSessionStillActive); err != nil {
+        t.Fatalf("read account state after rejected username update: %v", err)
+    }
+    if preservedUsername != username || preservedPrincipalStatus != "active" || preservedTokenVersion != 1 || !usernameSessionStillActive {
+        t.Fatalf("failed username update left partial side effects: username=%q principal=%q token_version=%d session_active=%v",
+            preservedUsername, preservedPrincipalStatus, preservedTokenVersion, usernameSessionStillActive)
+    }
+    var failedUsernameAuditCount int
+    if err := tx.QueryRow(ctx, `
+        SELECT COUNT(*) FROM audit_events
+         WHERE actor_principal_id = $1 AND school_id = $2
+           AND action = 'staff.account.updated' AND resource_id = $3
+    `, actorPrincipalID, schoolID, fmt.Sprint(created.ID)).Scan(&failedUsernameAuditCount); err != nil {
+        t.Fatalf("count username update audit events after injected failure: %v", err)
+    }
+    if failedUsernameAuditCount != 0 {
+        t.Fatalf("failed username update created %d success audit events", failedUsernameAuditCount)
+    }
+
 	renamedUsername := "renamed-" + suffix
 	updated, err := repo.UpdateStaffAccount(ctx, actorPrincipalID, schoolID, created.PrincipalID, renamedUsername)
 	if err != nil {
