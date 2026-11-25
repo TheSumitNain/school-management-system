@@ -2503,3 +2503,9 @@ This update supersedes older status bullets that listed the following database-b
 - Strengthened handler tests by seeding a fake password hash and asserting neither staff creation nor staff directory responses expose that hash marker or password field. Test commit: eb863eb2bbf888a08f9ac53fc4f166c2ac13e3dc.
 - Backend CI [45534647049](https://github.com/TheSumitNain/school-management-system/actions/runs/45534647049) **PASS** on eb863eb2bbf888a08f9ac53fc4f166c2ac13e3dc: all migrations, full Go tests including PostgreSQL integration, and go vet.
 - No persistent database migration or data change. main remains untouched; current work remains on work. Document upload/photo storage remains excluded from this Staff Management acceptance scope.
+
+## 2026-11-25 — Staff Profile Update HTTP contract regression
+
+- Added direct handler tests for the Edit Staff profile PATCH path. The valid case verifies authenticated actor/school/target IDs and every profile field (including parsed joining date and employment status) reach the profile-update service intact; the malformed calendar date case is rejected before any service call.
+- Backend CI [45535081221](https://github.com/TheSumitNain/school-management-system/actions/runs/45535081221) **PASS** on `9eb6150429718d559f88933c04c7487181af78d9`: migrations, full Go tests including PostgreSQL integration, and `go vet`.
+- No schema migration or persistent database/data change. `main` remains untouched; work continues on `work`.
