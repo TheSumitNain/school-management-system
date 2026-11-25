@@ -1016,3 +1016,10 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Extended the holiday audit-failure regression to cover both create and update. A failed update audit must leave the existing holiday's date and name intact and must not append a false success event; failed creation must leave no partial holiday row or audit event.
 - Backend CI [45633050577](https://github.com/TheSumitNain/school-management-system/actions/runs/45633050577) **PASS** on `27bea4e68dbdf6bb2e4c5997d9f602d3b3523dbc`: migrations, full Go/PostgreSQL integration tests and `go vet`.
 - Test-only hardening; no production behavior or schema change. `main` remains untouched.
+
+
+## 2026-11-25 follow-up — leave creation and cancellation history refresh
+
+- Extended browser acceptance coverage beyond leave decisions: after creating a pending request and after cancelling it, reopening the employee profile must trigger a fresh History & Activity read. The test confirms both invalidation paths work through the UI.
+- Backend CI [45634722560](https://github.com/TheSumitNain/school-management-system/actions/runs/45634722560) **PASS** and Frontend CI [45634722478](https://github.com/TheSumitNain/school-management-system/actions/runs/45634722478) **PASS** on `117b25a6ec0820d0371fdf7c7cafda79b305c5c0`.
+- Test-only hardening; no production behavior or schema change. Leave entitlement policy remains approval-gated; `main` remains untouched.
