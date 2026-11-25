@@ -23,6 +23,15 @@ type fakeStaffAccountService struct {
 	username string
 	password string
 	calls int
+	profile models.StaffProfile
+	profileTargetID int64
+	profileCalls int
+}
+
+func (f *fakeStaffAccountService) UpdateProfile(_ context.Context, actorID, schoolID, targetID int64, profile models.StaffProfile) (*models.User, error) {
+	f.profileCalls++
+	f.actorID, f.schoolID, f.profileTargetID, f.profile = actorID, schoolID, targetID, profile
+	return f.user, f.err
 }
 
 func (f *fakeStaffAccountService) Create(_ context.Context, actorID, schoolID int64, username, password string) (*models.User, error) {
@@ -205,6 +214,63 @@ func TestStaffHandlerUpdateAndEnableUseAuthenticatedScope(t *testing.T) {
 	router.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "password change is required") {
 		t.Fatalf("unexpected staff enable response: status=%d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestStaffHandlerUpdateProfileParsesAndPassesCompleteProfile(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	service := &fakeStaffAccountService{user: &models.User{
+		ID: 15, PrincipalID: 27, SchoolID: 8, Username: "teacher.one",
+		EmployeeCode: "EMP-001", FullName: "Teacher One", Designation: "Class Teacher",
+		MobileNumber: "9876543210", Email: "teacher@example.com",
+		EmploymentStatus: "inactive", ProfileComplete: true, Status: "disabled",
+	}}
+	router := gin.New()
+	router.PATCH("/school/staff/:principalID", func(c *gin.Context) {
+		c.Set("auth_principal_id", int64(31))
+		c.Set("auth_school_id", int64(8))
+		c.Next()
+	}, NewStaffHandler(service).Update)
+
+	req := httptest.NewRequest(http.MethodPatch, "/school/staff/27", strings.NewReader(
+		`{"username":"teacher.one","employee_code":"EMP-001","full_name":"Teacher One","designation":"Class Teacher","mobile_number":"9876543210","email":"teacher@example.com","joining_date":"2026-04-01","employment_status":"inactive"}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK || service.profileCalls != 1 ||
+		service.actorID != 31 || service.schoolID != 8 || service.profileTargetID != 27 {
+		t.Fatalf("profile update status=%d calls=%d service=%+v body=%s", rec.Code, service.profileCalls, service, rec.Body.String())
+	}
+	if service.profile.EmployeeCode != "EMP-001" || service.profile.FullName != "Teacher One" ||
+		service.profile.Designation != "Class Teacher" || service.profile.MobileNumber != "9876543210" ||
+		service.profile.Email != "teacher@example.com" || service.profile.EmploymentStatus != "inactive" ||
+		service.profile.JoiningDate == nil || service.profile.JoiningDate.Format("2006-01-02") != "2026-04-01" {
+		t.Fatalf("profile payload was not passed intact: %+v", service.profile)
+	}
+	if !strings.Contains(rec.Body.String(), `"employment_status":"inactive"`) ||
+		!strings.Contains(rec.Body.String(), `"joining_date"`) ||
+		strings.Contains(rec.Body.String(), "PasswordHash") {
+		t.Fatalf("unexpected profile update response: %s", rec.Body.String())
+	}
+}
+
+func TestStaffHandlerUpdateProfileRejectsMalformedJoiningDateBeforeService(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	service := &fakeStaffAccountService{user: &models.User{}}
+	router := gin.New()
+	router.PATCH("/school/staff/:principalID", func(c *gin.Context) {
+		c.Set("auth_principal_id", int64(31))
+		c.Set("auth_school_id", int64(8))
+		c.Next()
+	}, NewStaffHandler(service).Update)
+	req := httptest.NewRequest(http.MethodPatch, "/school/staff/27", strings.NewReader(
+		`{"employee_code":"EMP-001","full_name":"Teacher One","designation":"Class Teacher","mobile_number":"9876543210","email":"teacher@example.com","joining_date":"2026-02-30","employment_status":"active"}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest || service.profileCalls != 0 {
+		t.Fatalf("malformed joining date status=%d service calls=%d body=%s", rec.Code, service.profileCalls, rec.Body.String())
 	}
 }
 
