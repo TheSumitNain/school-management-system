@@ -1309,3 +1309,57 @@ func (r *UserRepository) ListStaffDirectoryPage(ctx context.Context, actorPrinci
 	}
 	return page, nil
 }
+
+
+func (r *UserRepository) GetStaffDirectorySummary(ctx context.Context, actorPrincipalID, schoolID int64) (*models.StaffDirectorySummary, error) {
+	if r == nil || r.db == nil || actorPrincipalID <= 0 || schoolID <= 0 {
+		return nil, ErrRolePermissionDenied
+	}
+	var authorized bool
+	if err := r.db.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM auth_principals ap
+			JOIN users actor ON actor.principal_id = ap.id
+			JOIN schools s ON s.id = actor.school_id
+			JOIN principal_roles pr ON pr.principal_id = ap.id AND pr.revoked_at IS NULL
+			JOIN roles role ON role.id = pr.role_id
+			JOIN role_permissions rp ON rp.role_id = role.id
+			JOIN permissions p ON p.id = rp.permission_id
+			WHERE ap.id = $1 AND ap.principal_type = 'staff' AND ap.status = 'active'
+			  AND actor.status = 'active' AND actor.school_id = $2 AND s.status = 'active'
+			  AND role.school_id = $2 AND role.scope_type = 'school'
+			  AND role.principal_type = 'staff' AND role.role_key = 'school_admin' AND role.is_system = TRUE
+			  AND p.permission_key = 'users.read' AND p.scope_type = 'school' AND p.is_active = TRUE
+			  AND NOT EXISTS (
+			      SELECT 1 FROM user_permission_overrides denied
+			      WHERE denied.principal_id = ap.id AND denied.school_id = $2
+			        AND denied.permission_id = p.id AND denied.effect = 'deny'
+			  )
+		)
+	`, actorPrincipalID, schoolID).Scan(&authorized); err != nil {
+		return nil, fmt.Errorf("authorize staff directory summary: %w", err)
+	}
+	if !authorized {
+		return nil, ErrRolePermissionDenied
+	}
+
+	summary := &models.StaffDirectorySummary{}
+	if err := r.db.QueryRow(ctx, `
+		SELECT COUNT(*)::bigint,
+		       COUNT(*) FILTER (WHERE sp.employment_status = 'active')::bigint,
+		       COUNT(*) FILTER (WHERE u.status = 'active')::bigint,
+		       COUNT(*) FILTER (WHERE sp.principal_id IS NULL)::bigint,
+		       COUNT(*) FILTER (WHERE sp.employment_status = 'active' AND u.status <> 'active')::bigint,
+		       COUNT(*) FILTER (WHERE u.must_change_password = TRUE)::bigint,
+		       COUNT(*) FILTER (WHERE sp.employment_status = 'inactive')::bigint
+		FROM users u
+		LEFT JOIN staff_profiles sp ON sp.principal_id = u.principal_id AND sp.school_id = u.school_id
+		WHERE u.school_id = $1
+	`, schoolID).Scan(&summary.Total, &summary.ActiveEmployment, &summary.LoginEnabled,
+		&summary.ProfileIncomplete, &summary.ActiveEmploymentDisabledLogin,
+		&summary.MustChangePassword, &summary.InactiveEmployment); err != nil {
+		return nil, fmt.Errorf("query school staff directory summary: %w", err)
+	}
+	return summary, nil
+}
