@@ -1,6 +1,6 @@
 # Staff Qualifications & Documents — Backend Contract
 
-**Status:** V57 schema and school-scoped GET/POST/PATCH APIs for qualifications, certifications and experience, with frontend create/edit integration, are committed on `work`. Browser acceptance covers create, validation and edit flows for all three record types. The dedicated verification workflow remains intentionally unavailable pending a separate permission decision; private document upload/download remains gated on a private storage adapter. CI verification for the latest Staff Management checkpoint is recorded in `docs/project/STATUS.md`; do not infer local or persistent database migration state from CI.
+**Status:** V57 schema and school-scoped GET/POST/PATCH APIs for qualifications, certifications and experience, with frontend create/edit integration, are committed on `work`. Browser acceptance covers create, validation and edit flows for all three record types. The school-wide qualifications/certifications and experience reports are implemented with bounded pagination, controlled filters, school scoping and safe export fields. Backend CI (full Go suite, PostgreSQL integration and `go vet`) and frontend CI (TypeScript, production build and Playwright suite) passed on checkpoint `6019bc1802567d98a2a3c73e609a8189c77796fa`; report-specific browser coverage should still be verified separately before claiming the report screens fully accepted. The dedicated verification workflow remains intentionally unavailable pending a separate permission decision; private document upload/download remains gated on a private storage adapter. Do not infer local or persistent database migration state from CI.
 **Reviewed branch:** `work`
 **Review date:** 2026-11-21
 
@@ -86,7 +86,7 @@ Routes are authenticated School Admin endpoints. School ownership comes only fro
 
 Create/update requests must reject unknown enum values, malformed dates, overlong strings, invalid score/scale combinations, and cross-school target IDs. Return stable field-level validation errors. Return a generic 403 response for unauthorized or cross-school targets without disclosing target details.
 
-### 3.1 School-wide qualification and certification report (implemented; CI verification pending)
+### 3.1 School-wide qualification and certification report (implemented; CI passed on 2026-11-25)
 
 The profile APIs above remain intentionally staff-scoped. The Reports workspace must **not** call either profile endpoint once per employee. A single aggregate read endpoint has now been added; verify it through the pending backend/frontend CI before treating it as complete:
 
@@ -102,7 +102,7 @@ Contract:
 - Implement school scoping in every repository query. Join each record to `staff_profiles` on both principal and school IDs. Do not include archived/inactive staff unless an explicit filter is later approved.
 - Use stable ordering (record type, staff name, record ID); validate filters and pagination strictly.
 - Enforce live `users.read` permission at the route and repository/service boundary. A report permission must not imply verification or mutation authority.
-- Added service filter validation and PostgreSQL integration coverage for mixed record types, pending filters, pagination, count consistency, same-school staff joins and cross-school denial. Missing-permission route coverage and final CI verification remain to be confirmed.
+- Added service filter validation and PostgreSQL integration coverage for mixed record types, pending filters, pagination, count consistency, same-school staff joins and cross-school denial. The latest backend CI passed the full PostgreSQL integration suite and `go vet`; route middleware requires live `users.read`, and the repository independently resolves the active School Admin's effective permissions. The frontend report component is implemented, but a report-specific Playwright scenario remains to be confirmed.
 - CSV export must use only returned authorized report fields and the existing formula-injection-safe CSV helper.
 
 This endpoint is a prerequisite for the frontend report. Do not substitute client-side N+1 requests or fabricate totals. No schema migration is expected for this read-only report.
@@ -161,7 +161,7 @@ Frontend:
 - No qualification-based assignment blocking was introduced.
 
 
-### 3.2 School-wide experience history report (implemented; CI verification pending)
+### 3.2 School-wide experience history report (implemented; CI passed on 2026-11-25)
 
 The Staff Reports workspace uses one aggregate read endpoint; it does not call the individual staff profile experience endpoint once per employee.
 
