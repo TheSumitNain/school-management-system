@@ -1,3 +1,12 @@
+
+## 2026-11-25 — leave decision/cancellation race verification
+
+- Added a PostgreSQL integration regression that races School Admin approval against cancellation of the same pending leave request.
+- Backend CI [45600058755](https://github.com/TheSumitNain/school-management-system/actions/runs/45600058755) **PASS** on `decc195c592003394d0b01e72f9498c9162b3c0e`: ephemeral PostgreSQL migrations, complete Go unit/integration suite, and `go vet`.
+- The race test verifies exactly one transition succeeds, the losing transition returns not-found, final status matches the winner, and exactly one matching append-only audit event commits.
+- Existing policy boundary remains unchanged: leave types with `requires_approval=false` still create pending requests until automatic approval is explicitly approved and implemented. No balances, accrual, carry-forward or payroll effects are introduced.
+- Regression test only; no production behavior, schema, persistent database or school data changed.
+
 # Staff Leave & Holiday Management — Backend Contract
 
 **Status:** Initial backend and frontend workflows implemented; phase exit gate remains open.  
