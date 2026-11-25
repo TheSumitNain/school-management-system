@@ -14,6 +14,10 @@ type staffLeaveRepositoryStub struct {
 	saveHolidayCalls int
 	savedHoliday repository.SchoolHoliday
 	listRequestsCalls int
+	listHolidaysCalls int
+	listedHolidayFrom string
+	listedHolidayTo string
+	listedHolidayIncludeInactive bool
 }
 
 func (s *staffLeaveRepositoryStub) ListTypes(context.Context, int64, int64) ([]repository.StaffLeaveType, error) {
@@ -37,8 +41,10 @@ func (s *staffLeaveRepositoryStub) Decide(context.Context, int64, int64, int64, 
 func (s *staffLeaveRepositoryStub) Cancel(context.Context, int64, int64, int64) error {
 	return nil
 }
-func (s *staffLeaveRepositoryStub) ListHolidays(context.Context, int64, int64, string, string, bool) ([]repository.SchoolHoliday, error) {
-	return nil, nil
+func (s *staffLeaveRepositoryStub) ListHolidays(_ context.Context, _, _ int64, from, to string, includeInactive bool) ([]repository.SchoolHoliday, error) {
+	s.listHolidaysCalls++
+	s.listedHolidayFrom, s.listedHolidayTo, s.listedHolidayIncludeInactive = from, to, includeInactive
+	return []repository.SchoolHoliday{}, nil
 }
 func (s *staffLeaveRepositoryStub) SaveHoliday(_ context.Context, _, _ , _ int64, item repository.SchoolHoliday) (*repository.SchoolHoliday, error) {
 	s.saveHolidayCalls++
@@ -198,5 +204,50 @@ func TestStaffLeaveServiceEnforcesFilterRangeLimitAndStaffID(t *testing.T) {
 				t.Fatalf("repository calls=%d want=%d", repo.listRequestsCalls, wantCalls)
 			}
 		})
+	}
+}
+
+func TestStaffLeaveServiceValidatesHolidayCalendarRangeBeforeRepository(t *testing.T) {
+	repo := &staffLeaveRepositoryStub{}
+	service := NewStaffLeaveService(repo)
+	tests := []struct {
+		name, from, to string
+		wantErr bool
+	}{
+		{"valid 366-day range", "2026-01-01", "2027-01-02", false},
+		{"range exceeds 366 days", "2026-01-01", "2027-01-03", true},
+		{"reversed range", "2026-11-30", "2026-11-01", true},
+		{"invalid start date", "2026-02-30", "2026-03-01", true},
+		{"invalid end date", "2026-11-01", "2026-11-31", true},
+		{"year zero", "0000-01-01", "0000-01-02", true},
+		{"missing start date", "", "2026-11-30", true},
+		{"missing end date", "2026-11-01", "", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			before := repo.listHolidaysCalls
+			_, err := service.ListHolidays(context.Background(), 1, 2, tt.from, tt.to, false)
+			if tt.wantErr && !errors.Is(err, ErrInvalidStaffLeave) {
+				t.Fatalf("error=%v want ErrInvalidStaffLeave", err)
+			}
+			if !tt.wantErr && err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			wantCalls := before
+			if !tt.wantErr { wantCalls++ }
+			if repo.listHolidaysCalls != wantCalls {
+				t.Fatalf("repository calls=%d want=%d; invalid ranges must not reach database", repo.listHolidaysCalls, wantCalls)
+			}
+		})
+	}
+}
+
+func TestStaffLeaveServiceForwardsHolidayCalendarScope(t *testing.T) {
+	repo := &staffLeaveRepositoryStub{}
+	service := NewStaffLeaveService(repo)
+	_, err := service.ListHolidays(context.Background(), 17, 29, "2026-11-01", "2026-11-30", true)
+	if err != nil { t.Fatalf("ListHolidays returned error: %v", err) }
+	if repo.listHolidaysCalls != 1 || repo.listedHolidayFrom != "2026-11-01" || repo.listedHolidayTo != "2026-11-30" || !repo.listedHolidayIncludeInactive {
+		t.Fatalf("holiday query forwarding mismatch: calls=%d from=%q to=%q includeInactive=%v", repo.listHolidaysCalls, repo.listedHolidayFrom, repo.listedHolidayTo, repo.listedHolidayIncludeInactive)
 	}
 }
