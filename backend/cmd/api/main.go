@@ -329,7 +329,7 @@ func setupRouterWithHandlers(
 		router.POST("/school/staff-leave/requests/:requestID/approve", leaveAuth, middleware.RequirePermission("staff.leave.decide"), staffLeaveHandler.Approve)
 		router.POST("/school/staff-leave/requests/:requestID/reject", leaveAuth, middleware.RequirePermission("staff.leave.decide"), staffLeaveHandler.Reject)
 		router.POST("/school/staff-leave/requests/:requestID/cancel", leaveAuth, middleware.RequirePermission("staff.leave.manage_requests"), staffLeaveHandler.Cancel)
-		router.GET("/school/holidays", leaveAuth, middleware.RequirePermission("staff.holidays.read"), staffLeaveHandler.ListHolidays)
+		router.GET("/school/holidays", leaveAuth, middleware.RequireAnyPermission("staff.holidays.read", "staff.holidays.manage"), staffLeaveHandler.ListHolidays)
 		router.POST("/school/holidays", leaveAuth, middleware.RequirePermission("staff.holidays.manage"), staffLeaveHandler.SaveHoliday)
 		router.PATCH("/school/holidays/:holidayID", leaveAuth, middleware.RequirePermission("staff.holidays.manage"), staffLeaveHandler.SaveHoliday)
 	}
