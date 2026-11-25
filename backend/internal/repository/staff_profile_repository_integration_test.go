@@ -195,6 +195,9 @@ func TestStaffProfileRepositoryPostgresIntegration(t *testing.T) {
         t.Fatalf("read refresh session after employee inactivation: %v", err)
     }
     if !profileSessionRevoked { t.Fatal("inactivating employee profile did not revoke active refresh sessions") }
+    if _, err := repo.GetStaffPrincipalByUsername(ctx, user.Username); !errors.Is(err, ErrStaffInactive) {
+        t.Fatalf("inactive employee authentication lookup error = %v, want ErrStaffInactive", err)
+    }
     if err := repo.EnableStaffAccount(ctx, actorPrincipalID, schoolID, user.PrincipalID, "must-not-enable-hash"); !errors.Is(err, ErrStaffProfileInactive) {
         t.Fatalf("inactive employee login enable error = %v, want ErrStaffProfileInactive", err)
     }
@@ -204,6 +207,9 @@ func TestStaffProfileRepositoryPostgresIntegration(t *testing.T) {
     if err != nil { t.Fatalf("reactivate employee profile: %v", err) }
     if updated.Status != "disabled" || updated.EmploymentStatus != "active" {
         t.Fatalf("reactivating employment unexpectedly enabled login: %+v", updated)
+    }
+    if _, err := repo.GetStaffPrincipalByUsername(ctx, user.Username); !errors.Is(err, ErrStaffInactive) {
+        t.Fatalf("reactivated employee authentication lookup error = %v, want ErrStaffInactive until explicit login enable", err)
     }
 
     // An audit failure must roll back the employee profile mutation.
