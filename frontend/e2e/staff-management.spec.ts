@@ -348,6 +348,13 @@ test("staff workspace opens on a real-data overview and hides permission-gated o
       status: "disabled", must_change_password: false, created_at: "2026-04-02T00:00:00.000Z",
     },
   ];
+  const unboundedStaffListRequests: string[] = [];
+  page.on("request", request => {
+    const url = new URL(request.url());
+    if (url.pathname === "/api/school/staff" && request.method() === "GET" && !url.searchParams.has("limit")) {
+      unboundedStaffListRequests.push(request.url());
+    }
+  });
   await signInAndOpenStaff(page, rows);
   await expect(page.getByRole("heading", { name: "Staff Management" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "People at a glance" })).toBeVisible();
@@ -364,6 +371,10 @@ test("staff workspace opens on a real-data overview and hides permission-gated o
   await expect(page.getByRole("button", { name: /Attendance/ })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /Leave/ })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Reports", exact: true })).toBeEnabled();
+  expect(unboundedStaffListRequests).toEqual([]);
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await expect(page.getByText("1–2 of 2 staff members")).toBeVisible();
+  expect(unboundedStaffListRequests).toEqual([]);
 });
 
 
