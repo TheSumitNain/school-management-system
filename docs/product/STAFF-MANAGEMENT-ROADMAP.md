@@ -1,3 +1,13 @@
+## 2026-11-25 — Staff Directory aggregate summary and lazy full-list loading
+
+- The overview now loads aggregate counts from `GET /school/staff/summary`; it no longer downloads all staff records. The Dashboard staff metric uses the same summary endpoint instead of the unbounded list API.
+- The Directory uses bounded PostgreSQL pagination, search and server-side filters without requesting the legacy full staff list. Full-list retrieval is lazy-loaded only by Reports, Leave, Substitutions and ID Cards where existing workflows still need full row-level data.
+- Staff mutations invalidate the aggregate summary query. Backend authorization and integration tests cover summary count consistency, School Admin/live `users.read` access and school scoping; Playwright verifies Dashboard, overview and Directory avoid unbounded list requests.
+- Backend CI [45644907855](https://github.com/TheSumitNain/school-management-system/actions/runs/45644907855) **PASS** and Frontend CI [45644907743](https://github.com/TheSumitNain/school-management-system/actions/runs/45644907743) **PASS** on `5c3584666626115c76983cf933e52c9936edfb34`; all **130 Playwright tests** passed.
+- No schema migration or persistent database change. This improves the large-school directory path without changing the legacy report/ID-card data contracts.
+
+---
+
 ## 2026-11-25 — Staff Directory server-side pagination
 
 - The directory now requests bounded PostgreSQL pages (default 50, maximum 100) instead of downloading every staff row for directory search and filtering. Search is case-insensitive across username, employee name, employee code, designation and mobile; employment, account and profile-completeness filters are applied server-side. Stable ordering uses normalized employee name/username plus ID.
