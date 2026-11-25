@@ -2509,3 +2509,10 @@ This update supersedes older status bullets that listed the following database-b
 - Added direct handler tests for the Edit Staff profile PATCH path. The valid case verifies authenticated actor/school/target IDs and every profile field (including parsed joining date and employment status) reach the profile-update service intact; the malformed calendar date case is rejected before any service call.
 - Backend CI [45535081221](https://github.com/TheSumitNain/school-management-system/actions/runs/45535081221) **PASS** on `9eb6150429718d559f88933c04c7487181af78d9`: migrations, full Go tests including PostgreSQL integration, and `go vet`.
 - No schema migration or persistent database/data change. `main` remains untouched; work continues on `work`.
+
+## 2026-11-25 — Staff account lifecycle transactional acceptance
+
+- PostgreSQL integration coverage now verifies atomic rollback when audit writes fail during staff profile update, username update, password reset, account disable and account re-enable. Assertions cover unchanged employee/account state, token versions, password state, active refresh sessions and absence of false success audit events.
+- Added cross-school mutation rejection coverage for profile and account lifecycle operations, duplicate employee-code atomicity coverage, and a guard preventing login re-enable while the employee profile is inactive. Handler tests cover HTTP 409 for incomplete/inactive employee profiles; nil dependency checks protect password-related service paths from panics.
+- Fixed a malformed SQL dollar-quote delimiter in the staff-profile audit-trigger test. Final Backend CI [45537146943](https://github.com/TheSumitNain/school-management-system/actions/runs/45537146943) **PASS** on `c4345e9f2d01ed2bc7115d2606c6c3f0792b4c20`: migrations, full Go/PostgreSQL integration suite and `go vet`.
+- No schema migration or persistent database change. `main` remains untouched; work continues on `work`. Staff document/photo storage remains deferred and excluded from the Staff Management completion estimate.
