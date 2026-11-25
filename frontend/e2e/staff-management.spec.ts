@@ -567,7 +567,7 @@ test("staff leave creation and cancellation refresh employee audit history", asy
   await createdRequest.getByRole("button", { name: "Cancel request" }).click();
   const confirmation = page.getByRole("dialog", { name: "Cancel leave request?" });
   await confirmation.getByRole("button", { name: "Cancel request", exact: true }).click();
-  await expect(page.getByText("No leave requests match these filters.")).toBeVisible();
+  await expect(createdRequest).toHaveCount(0);
 
   await page.getByRole("button", { name: /Staff Directory/ }).click();
   await page.getByRole("button", { name: "Leave Teacher" }).click();
