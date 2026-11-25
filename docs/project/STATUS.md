@@ -1,3 +1,9 @@
+## 2026-11-25 — Staff Substitution transactional and concurrency regression verification
+
+- Added a distinct, valid-length teacher username to the V60 database-guard fixture after CI exposed the 32-character username constraint; no production behavior or schema was changed.
+- Backend CI [45546585508](https://github.com/TheSumitNain/school-management-system/actions/runs/45546585508) **PASS** on `c516b63716bbba555d6abdbb78328476b149791f`: all migrations applied to ephemeral PostgreSQL, the complete Go test suite including PostgreSQL integration passed, and `go vet` passed.
+- This run verifies the V60 database-guard integration fixture and the new V61 repository-level concurrent substitution race plus forced audit-failure rollback coverage. No persistent database, schema or application data changed. `main` remains untouched.
+
 ## 2026-11-25 — Staff Leave and Substitution consistency audit
 
 - Re-verified Staff Leave repository workflows and PostgreSQL integration coverage: school-scoped authorization, active staff/leave-type eligibility, concurrent overlap serialization per school/staff, pending/approved overlap rejection, row-locked decisions, self-approval prevention, rejection-reason validation, and transactional audit rollback for decisions/cancellations.
