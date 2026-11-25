@@ -215,6 +215,13 @@ func TestStaffSubstitutionV60DatabaseGuardsPostgresIntegration(t *testing.T) {
 		VALUES($1,$2,$3,(date_trunc('week',CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date-7),$4,$5,'Completed cover history',$4) RETURNING id`,
 		schoolID,pastEntryID,thirdPeriodID,secondOriginalID,substituteID).Scan(&pastSubstitutionID)
 	if err!=nil{t.Fatalf("create past dated substitution history: %v",err)}
+	if cancelErr:=(&AcademicRepository{db:tx}).CancelStaffSubstitution(ctx,actorPrincipalID,schoolID,pastSubstitutionID);!errors.Is(cancelErr,ErrStaffSubstitutionNotCancellable){
+		t.Fatalf("completed substitution cancellation error=%v want ErrStaffSubstitutionNotCancellable",cancelErr)
+	}
+	var pastStatus string
+	if err=tx.QueryRow(ctx,`SELECT status FROM staff_substitutions WHERE id=$1 AND school_id=$2`,pastSubstitutionID,schoolID).Scan(&pastStatus);err!=nil||pastStatus!="active"{
+		t.Fatalf("completed substitution history status=%q err=%v; want active and retained",pastStatus,err)
+	}
 	if _,err=tx.Exec(ctx,`UPDATE timetable_entries SET room='Updated after completed cover' WHERE id=$1`,pastEntryID);err!=nil{t.Fatalf("completed cover history should not block future recurring timetable edits: %v",err)}
 	pastDelete,err:=tx.Begin(ctx);if err!=nil{t.Fatalf("begin past timetable history delete savepoint: %v",err)}
 	_,pastDeleteErr:=pastDelete.Exec(ctx,`DELETE FROM timetable_entries WHERE id=$1`,pastEntryID)
