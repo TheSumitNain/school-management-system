@@ -349,8 +349,11 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
 		($1,$2,'school.staff.permission_override.set','user_permission_override',$3::text,'success',jsonb_build_object('permission_key','attendance.update','effect','deny')),
 		($1,$2,'school.staff.permission_override.removed','user_permission_override',$3::text,'success',jsonb_build_object('permission_key','attendance.update')),
 		($1,$2,'school.staff.role_assigned','staff_principal',$3::text,'success',jsonb_build_object('role_id',4)),
-		($1,$2,'school.staff.role_revoked','staff_principal',$3::text,'success',jsonb_build_object('role_id',4))
-	`,actorID,schoolID,staff.PrincipalID,secondStaff.PrincipalID);err!=nil{t.Fatalf("insert leave/substitution history fixtures: %v",err)}
+		($1,$2,'school.staff.role_revoked','staff_principal',$3::text,'success',jsonb_build_object('role_id',4)),
+		($1,$2,'staff.account.disabled','staff_user',$5::text,'success',jsonb_build_object('target_principal_id',$3::bigint,'sessions_revoked',TRUE)),
+		($1,$2,'staff.account.enabled','staff_user',$5::text,'success',jsonb_build_object('target_principal_id',$3::bigint,'sessions_revoked',TRUE)),
+		($1,$2,'staff.password.reset','staff_user',$5::text,'success',jsonb_build_object('must_change_password',TRUE))
+	`,actorID,schoolID,staff.PrincipalID,secondStaff.PrincipalID,staff.ID);err!=nil{t.Fatalf("insert leave/substitution history fixtures: %v",err)}
 	// Decision audit events intentionally omit employee IDs from metadata.
 	// The history query must resolve the employee through the school-scoped
 	// leave request resource ID instead.
@@ -423,5 +426,14 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
 	}
 	if !foundRoleAssigned{t.Fatal("staff audit history omitted role assignment event")}
 	if !foundRoleRevoked{t.Fatal("staff audit history omitted role revocation event")}
+	foundAccountDisabled,foundAccountEnabled,foundPasswordReset:=false,false,false
+	for _,event:=range events{
+		if event.Action=="staff.account.disabled"{foundAccountDisabled=true}
+		if event.Action=="staff.account.enabled"{foundAccountEnabled=true}
+		if event.Action=="staff.password.reset"{foundPasswordReset=true}
+	}
+	if !foundAccountDisabled{t.Fatal("staff audit history omitted account disable event")}
+	if !foundAccountEnabled{t.Fatal("staff audit history omitted account re-enable event")}
+	if !foundPasswordReset{t.Fatal("staff audit history omitted password reset event")}
 	if _,err:=repo.ListStaffAuditEvents(ctx,actorID,schoolID+1,staff.PrincipalID,StaffAuditEventFilter{Limit:50});!errors.Is(err,ErrStaffRecordAccessDenied){t.Fatalf("cross-school staff audit history error=%v",err)}
 }
