@@ -836,3 +836,9 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Added explicit handler regression assertions that seeded password hashes are absent from staff-create and staff-directory responses.
 - Backend CI [45534647049](https://github.com/TheSumitNain/school-management-system/actions/runs/45534647049) **PASS** on eb863eb2bbf888a08f9ac53fc4f166c2ac13e3dc, including migrations, full Go/PostgreSQL integration tests and go vet.
 - Existing Phase 4 leave-policy and Phase 6 identity-schema approvals remain outstanding; sensitive personal fields, Payroll and external document/photo storage remain deferred. main remains untouched.
+
+## 2026-11-25 follow-up — Edit Staff HTTP acceptance
+
+- Added direct backend handler regression coverage for Edit Staff profile updates: authenticated actor/school/target propagation, complete profile payload mapping, date-only parsing, safe response allowlist and malformed joining-date rejection without a service call.
+- Backend CI [45535081221](https://github.com/TheSumitNain/school-management-system/actions/runs/45535081221) **PASS** on `9eb6150429718d559f88933c04c7487181af78d9`, including migrations, full Go/PostgreSQL integration tests and `go vet`.
+- No schema or persistent data change. Leave-policy and identity-schema approvals remain open; document/photo storage remains deferred; `main` remains untouched.
