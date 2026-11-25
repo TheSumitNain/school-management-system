@@ -137,6 +137,10 @@ func (h *StaffHandler) Create(c *gin.Context) {
 }
 
 func (h *StaffHandler) List(c *gin.Context) {
+	if c.Query("limit") != "" || c.Query("offset") != "" || c.Query("search") != "" || c.Query("employment_status") != "" || c.Query("account_status") != "" || c.Query("profile_status") != "" {
+		h.ListDirectoryPage(c)
+		return
+	}
 	actorValue, actorExists := c.Get(middleware.ContextPrincipalIDKey)
 	actorID, actorOK := actorValue.(int64)
 	schoolValue, schoolExists := c.Get(middleware.ContextSchoolIDKey)
