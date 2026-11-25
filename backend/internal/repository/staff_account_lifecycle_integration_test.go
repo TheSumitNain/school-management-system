@@ -710,81 +710,16 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
 		t.Fatalf("rejected School Admin disable must not create a success audit event; got %d", protectedAuditCount)
 	}
 
-	// Explicit DENY overrides must take precedence over the School Admin role
-	// for every staff-account lifecycle operation, including profile updates.
+	// Staff account lifecycle permissions are intentionally non-delegable.
+	// Verify that the platform cannot create user-override ceilings for them;
+	// the DENY checks in the repository remain defense-in-depth, not a way to
+	// bypass the platform's delegation policy.
 	roleRepo := NewRoleRepository(tx)
-	updateDelegation, err := roleRepo.GrantSchoolPermissionDelegation(
-		ctx, platformAdminPrincipalID, schoolID, "users.update", false, true,
-	)
-	if err != nil {
-		t.Fatalf("grant users.update override delegation: %v", err)
-	}
-	disableDelegation, err := roleRepo.GrantSchoolPermissionDelegation(
-		ctx, platformAdminPrincipalID, schoolID, "users.disable", false, true,
-	)
-	if err != nil {
-		t.Fatalf("grant users.disable override delegation: %v", err)
-	}
-	if err := roleRepo.SetStaffPermissionOverride(
-		ctx, actorPrincipalID, schoolID, protectedAdminPrincipalID,
-		updateDelegation.ID, "users.update", "deny", "integration test deny staff updates",
-	); err != nil {
-		t.Fatalf("deny peer School Admin users.update permission: %v", err)
-	}
-	if err := roleRepo.SetStaffPermissionOverride(
-		ctx, actorPrincipalID, schoolID, protectedAdminPrincipalID,
-		disableDelegation.ID, "users.disable", "deny", "integration test deny staff disable",
-	); err != nil {
-		t.Fatalf("deny peer School Admin users.disable permission: %v", err)
-	}
-	deniedAdminRepo := NewUserRepository(tx)
-	if _, err := deniedAdminRepo.UpdateStaffAccount(
-		ctx, protectedAdminPrincipalID, schoolID, created.PrincipalID, "denied-peer-rename",
-	); !errors.Is(err, ErrUserNotFound) {
-		t.Fatalf("DENY-overridden School Admin username update error = %v, want ErrUserNotFound", err)
-	}
-	if _, err := deniedAdminRepo.UpdateStaffProfile(
-		ctx, protectedAdminPrincipalID, schoolID, created.PrincipalID,
-		models.StaffProfile{EmployeeCode: "DENIED-" + suffix, FullName: "Denied Profile Mutation",
-			Designation: "Teacher", MobileNumber: "9876543210", EmploymentStatus: "active"},
-	); !errors.Is(err, ErrUserNotFound) {
-		t.Fatalf("DENY-overridden School Admin profile update error = %v, want ErrUserNotFound", err)
-	}
-	if err := deniedAdminRepo.DisableStaffAccount(
-		ctx, protectedAdminPrincipalID, schoolID, created.PrincipalID,
-	); !errors.Is(err, ErrUserNotFound) {
-		t.Fatalf("DENY-overridden School Admin account disable error = %v, want ErrUserNotFound", err)
-	}
-	// The authorized administrator can still disable the account; the DENY
-	// override then also blocks the peer administrator from re-enabling it.
-	if err := repo.DisableStaffAccount(ctx, actorPrincipalID, schoolID, created.PrincipalID); err != nil {
-		t.Fatalf("authorized account disable after peer DENY checks: %v", err)
-	}
-	if err := deniedAdminRepo.EnableStaffAccount(
-		ctx, protectedAdminPrincipalID, schoolID, created.PrincipalID, "denied-peer-enable-hash",
-	); !errors.Is(err, ErrUserNotFound) {
-		t.Fatalf("DENY-overridden School Admin account enable error = %v, want ErrUserNotFound", err)
-	}
-	var deniedTargetUsername, deniedTargetUserStatus, deniedTargetPrincipalStatus, deniedTargetPasswordHash string
-	var deniedTargetTokenVersion int64
-	var deniedTargetProfileName string
-	if err := tx.QueryRow(ctx, `
-		SELECT u.username, u.status, ap.status, u.password_hash, ap.token_version, sp.full_name
-		  FROM users u
-		  JOIN auth_principals ap ON ap.id = u.principal_id
-		  JOIN staff_profiles sp ON sp.principal_id = u.principal_id AND sp.school_id = u.school_id
-		 WHERE u.principal_id = $1
-	`, created.PrincipalID).Scan(
-		&deniedTargetUsername, &deniedTargetUserStatus, &deniedTargetPrincipalStatus,
-		&deniedTargetPasswordHash, &deniedTargetTokenVersion, &deniedTargetProfileName,
-	); err != nil {
-		t.Fatalf("verify target state after explicit DENY lifecycle attempts: %v", err)
-	}
-	if deniedTargetUsername != renamedUsername || deniedTargetUserStatus != "disabled" ||
-		deniedTargetPrincipalStatus != "disabled" || deniedTargetPasswordHash != replacementPasswordHash ||
-		deniedTargetTokenVersion != 6 || deniedTargetProfileName != "Lifecycle Teacher" {
-		t.Fatalf("explicit DENY lifecycle attempts changed target state: username=%q user=%q principal=%q token_version=%d profile=%q",
-			deniedTargetUsername, deniedTargetUserStatus, deniedTargetPrincipalStatus,
-			deniedTargetTokenVersion, deniedTargetProfileName)
+	for _, permissionKey := range []string{"users.update", "users.disable", "users.password_reset"} {
+		if _, err := roleRepo.GrantSchoolPermissionDelegation(
+			ctx, platformAdminPrincipalID, schoolID, permissionKey, false, true,
+		); !errors.Is(err, ErrRoleNotFound) {
+			t.Fatalf("delegation for non-delegable %q error = %v, want ErrRoleNotFound", permissionKey, err)
+		}
 	}
 }
