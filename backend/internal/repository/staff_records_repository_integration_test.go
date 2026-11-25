@@ -67,13 +67,13 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
 	year:=2021
 	score:=86.25
 	qualification,err:=repo.CreateStaffQualification(ctx,actorID,schoolID,staff.PrincipalID,StaffQualification{
-		QualificationType:"postgraduate",QualificationName:"M.Sc. Mathematics",Institution:"State University",CompletionYear:&year,Score:&score,ScoreScale:"percentage",
+		QualificationType:"postgraduate",QualificationName:"M.Sc. Mathematics",Institution:"State University",CompletionYear:&year,Score:&score,ScoreScale:"percentage",VerificationStatus:"verified",
 	})
 	if err!=nil{t.Fatalf("create staff qualification: %v",err)}
 	if qualification.ID<=0||qualification.VerificationStatus!="pending"{t.Fatalf("unexpected qualification response: %+v",qualification)}
 
 	certification,err:=repo.CreateStaffCertification(ctx,actorID,schoolID,staff.PrincipalID,StaffCertification{
-		CertificateName:"Teacher Training",IssuingOrganization:"State Board",IssueDate:"2022-01-10",ExpiryDate:"2027-01-10",
+		CertificateName:"Teacher Training",IssuingOrganization:"State Board",IssueDate:"2022-01-10",ExpiryDate:"2027-01-10",VerificationStatus:"verified",
 	})
 	if err!=nil{t.Fatalf("create staff certification: %v",err)}
 	if certification.ID<=0||certification.VerificationStatus!="pending"{t.Fatalf("unexpected certification response: %+v",certification)}
@@ -85,13 +85,13 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
 	if experience.ID<=0{t.Fatalf("unexpected experience response: %+v",experience)}
 
 	updatedQualification,err:=repo.UpdateStaffQualification(ctx,actorID,schoolID,staff.PrincipalID,qualification.ID,StaffQualification{
-		QualificationType:"postgraduate",QualificationName:"M.Sc. Applied Mathematics",Institution:"State University",CompletionYear:&year,Score:&score,ScoreScale:"percentage",
+		QualificationType:"postgraduate",QualificationName:"M.Sc. Applied Mathematics",Institution:"State University",CompletionYear:&year,Score:&score,ScoreScale:"percentage",VerificationStatus:"verified",
 	})
-	if err!=nil||updatedQualification.QualificationName!="M.Sc. Applied Mathematics"{t.Fatalf("update qualification: item=%+v err=%v",updatedQualification,err)}
+	if err!=nil||updatedQualification.QualificationName!="M.Sc. Applied Mathematics"||updatedQualification.VerificationStatus!="pending"{t.Fatalf("update qualification must preserve pending verification despite forged input: item=%+v err=%v",updatedQualification,err)}
 	updatedCertification,err:=repo.UpdateStaffCertification(ctx,actorID,schoolID,staff.PrincipalID,certification.ID,StaffCertification{
-		CertificateName:"Advanced Teacher Training",IssuingOrganization:"State Board",IssueDate:"2022-01-10",ExpiryDate:"2028-01-10",
+		CertificateName:"Advanced Teacher Training",IssuingOrganization:"State Board",IssueDate:"2022-01-10",ExpiryDate:"2028-01-10",VerificationStatus:"verified",
 	})
-	if err!=nil||updatedCertification.CertificateName!="Advanced Teacher Training"{t.Fatalf("update certification: item=%+v err=%v",updatedCertification,err)}
+	if err!=nil||updatedCertification.CertificateName!="Advanced Teacher Training"||updatedCertification.VerificationStatus!="pending"{t.Fatalf("update certification must preserve pending verification despite forged input: item=%+v err=%v",updatedCertification,err)}
 	updatedExperience,err:=repo.UpdateStaffExperience(ctx,actorID,schoolID,staff.PrincipalID,experience.ID,StaffExperience{
 		EmployerName:"Previous School",Designation:"Senior Mathematics Teacher",EmploymentType:"permanent",StartDate:"2018-04-01",EndDate:"2021-03-31",
 	})
