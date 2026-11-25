@@ -27,6 +27,10 @@ type StaffAccountManagementService interface {
 type staffProfileCreateService interface {
 	CreateWithProfile(ctx context.Context, actorPrincipalID, schoolID int64, username, initialPassword string, profile models.StaffProfile) (*models.User, error)
 }
+type staffDirectoryPageService interface {
+	ListDirectoryPage(ctx context.Context, actorPrincipalID, schoolID int64, filter models.StaffDirectoryFilter) (*models.StaffDirectoryPage, error)
+}
+
 type staffProfileUpdateService interface {
     UpdateProfile(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64, profile models.StaffProfile) (*models.User, error)
 }
@@ -171,6 +175,70 @@ func (h *StaffHandler) List(c *gin.Context) {
 		})
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "success", "staff": staff})
+}
+
+func (h *StaffHandler) ListDirectoryPage(c *gin.Context) {
+	actorValue, actorExists := c.Get(middleware.ContextPrincipalIDKey)
+	actorID, actorOK := actorValue.(int64)
+	schoolValue, schoolExists := c.Get(middleware.ContextSchoolIDKey)
+	schoolID, schoolOK := schoolValue.(int64)
+	if !actorExists || !actorOK || actorID <= 0 || !schoolExists || !schoolOK || schoolID <= 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "School staff authentication required"})
+		return
+	}
+	if h == nil || h.service == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Staff directory is unavailable"})
+		return
+	}
+	pageService, ok := h.service.(staffDirectoryPageService)
+	if !ok {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Staff directory pagination is unavailable"})
+		return
+	}
+	parseQueryInt := func(key string, fallback int) (int, bool) {
+		raw := strings.TrimSpace(c.Query(key))
+		if raw == "" { return fallback, true }
+		value, err := strconv.Atoi(raw)
+		return value, err == nil
+	}
+	limit, limitOK := parseQueryInt("limit", 50)
+	offset, offsetOK := parseQueryInt("offset", 0)
+	if !limitOK || !offsetOK {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "limit and offset must be valid integers"})
+		return
+	}
+	filter := models.StaffDirectoryFilter{
+		Search: c.Query("search"),
+		EmploymentStatus: c.Query("employment_status"),
+		AccountStatus: c.Query("account_status"),
+		ProfileStatus: c.Query("profile_status"),
+		Limit: limit,
+		Offset: offset,
+	}
+	page, err := pageService.ListDirectoryPage(c.Request.Context(), actorID, schoolID, filter)
+	switch {
+	case errors.Is(err, services.ErrInvalidStaffAccount):
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid staff directory filters or pagination"})
+	case errors.Is(err, repository.ErrRolePermissionDenied):
+		c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": "Staff directory access is not authorized"})
+	case err != nil:
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unable to load staff directory"})
+	case page == nil:
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unable to load staff directory"})
+	default:
+		staff := make([]gin.H, 0, len(page.Staff))
+		for _, user := range page.Staff {
+			staff = append(staff, gin.H{
+				"id": user.ID, "principal_id": user.PrincipalID, "school_id": user.SchoolID,
+				"username": user.Username, "status": user.Status, "must_change_password": user.MustChangePassword,
+				"created_at": user.CreatedAt, "updated_at": user.UpdatedAt,
+				"employee_code": user.EmployeeCode, "full_name": user.FullName, "designation": user.Designation,
+				"mobile_number": user.MobileNumber, "email": user.Email, "joining_date": user.JoiningDate,
+				"employment_status": user.EmploymentStatus, "profile_complete": user.ProfileComplete,
+			})
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "success", "staff": staff, "total": page.Total, "limit": page.Limit, "offset": page.Offset})
+	}
 }
 
 func (h *StaffHandler) Disable(c *gin.Context) {
