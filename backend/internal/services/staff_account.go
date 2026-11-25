@@ -17,6 +17,7 @@ type staffAccountRepository interface {
 	CreateStaffAccount(ctx context.Context, actorPrincipalID, schoolID int64, username, passwordHash string) (*models.User, error)
 	ListStaffAccounts(ctx context.Context, actorPrincipalID, schoolID int64) ([]models.User, error)
 	ListStaffDirectoryPage(ctx context.Context, actorPrincipalID, schoolID int64, filter models.StaffDirectoryFilter) (*models.StaffDirectoryPage, error)
+	GetStaffDirectorySummary(ctx context.Context, actorPrincipalID, schoolID int64) (*models.StaffDirectorySummary, error)
 	DisableStaffAccount(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64) error
 	UpdateStaffAccount(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64, username string) (*models.User, error)
 	EnableStaffAccount(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64, newPasswordHash string) error
@@ -166,6 +167,13 @@ func (s *StaffAccountService) List(ctx context.Context, actorPrincipalID, school
 		return nil, ErrInvalidStaffAccount
 	}
 	return s.repository.ListStaffAccounts(ctx, actorPrincipalID, schoolID)
+}
+
+func (s *StaffAccountService) GetDirectorySummary(ctx context.Context, actorPrincipalID, schoolID int64) (*models.StaffDirectorySummary, error) {
+	if s == nil || s.repository == nil || actorPrincipalID <= 0 || schoolID <= 0 {
+		return nil, ErrInvalidStaffAccount
+	}
+	return s.repository.GetStaffDirectorySummary(ctx, actorPrincipalID, schoolID)
 }
 
 func (s *StaffAccountService) ListDirectoryPage(ctx context.Context, actorPrincipalID, schoolID int64, filter models.StaffDirectoryFilter) (*models.StaffDirectoryPage, error) {
