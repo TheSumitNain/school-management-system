@@ -16,7 +16,7 @@ import { StaffOperationalReportsWorkspace } from "../components/StaffOperational
 import { StaffIDCardsWorkspace } from "../components/StaffIDCardsWorkspace";
 import {
   useCreateSchoolStaffMutation, useDisableSchoolStaffMutation, useEnableSchoolStaffMutation,
-  useResetSchoolStaffPasswordMutation, useSchoolStaffQuery, useSchoolStaffDirectoryQuery, useUpdateSchoolStaffMutation,
+  useResetSchoolStaffPasswordMutation, useSchoolStaffQuery, useSchoolStaffDirectoryQuery, useSchoolStaffDirectorySummaryQuery, useUpdateSchoolStaffMutation,
   useStaffQualificationsQuery, useStaffCertificationsQuery, useStaffExperienceQuery,
   useCreateStaffQualificationMutation, useCreateStaffCertificationMutation, useCreateStaffExperienceMutation,
   useUpdateStaffQualificationMutation, useUpdateStaffCertificationMutation, useUpdateStaffExperienceMutation,
@@ -112,13 +112,15 @@ export function StaffManagementPage({ permissions }: Props) {
     hasSubstitutionWorkspace ? "substitutions" :
     (permissions.includes("teacher_assignments.read") || permissions.includes("class_incharge_assignments.read")) ? "assignments" :
     permissions.includes("timetable.read") ? "workloadReport" : "overview";
-  const query = useSchoolStaffQuery(canReadStaff);
   const create = useCreateSchoolStaffMutation();
   const update = useUpdateSchoolStaffMutation();
   const disable = useDisableSchoolStaffMutation();
   const enable = useEnableSchoolStaffMutation();
   const reset = useResetSchoolStaffPasswordMutation();
   const [activeTab, setActiveTab] = useState<"overview" | "directory" | "reports" | "assignments" | "attendance" | "leave" | "substitutions" | "workloadReport" | "idCards">(initialTab);
+  const needsFullStaffList = ["reports", "leave", "substitutions", "idCards"].includes(activeTab);
+  const query = useSchoolStaffQuery(canReadStaff && needsFullStaffList);
+  const summaryQuery = useSchoolStaffDirectorySummaryQuery(canReadStaff && activeTab === "overview");
   const activeTabAllowed =
     (activeTab === "overview" && (canReadStaff || canCreate)) ||
     (activeTab === "directory" && canReadStaff) ||
@@ -589,10 +591,10 @@ export function StaffManagementPage({ permissions }: Props) {
       {activeTab === "overview" && (canReadStaff || canCreate) && <section className="staff-overview">
         <div className="staff-overview-intro"><div><h2>People at a glance</h2><p>A quick view of employee records and account readiness.</p></div>{canReadStaff && <button type="button" className="staff-overview-link" onClick={() => setActiveTab("directory")}>Open staff directory <span aria-hidden="true">→</span></button>}</div>
         {canReadStaff && <div className="staff-overview-cards">
-          <article><span>Total staff</span><strong>{query.isPending ? "—" : staff.length}</strong><small>Employee records in this school</small></article>
-          <article><span>Active employment</span><strong>{query.isPending ? "—" : staff.filter(item => item.employment_status === "active").length}</strong><small>Currently marked as active</small></article>
-          <article><span>Login enabled</span><strong>{query.isPending ? "—" : staff.filter(item => item.status === "active").length}</strong><small>Accounts currently able to sign in</small></article>
-          <article><span>Profile completion needed</span><strong>{query.isPending ? "—" : staff.filter(item => item.profile_complete !== true).length}</strong><small>Existing records needing attention</small></article>
+          <article><span>Total staff</span><strong>{summaryQuery.isPending ? "—" : summaryQuery.data?.summary.total ?? 0}</strong><small>Employee records in this school</small></article>
+          <article><span>Active employment</span><strong>{summaryQuery.isPending ? "—" : summaryQuery.data?.summary.active_employment ?? 0}</strong><small>Currently marked as active</small></article>
+          <article><span>Login enabled</span><strong>{summaryQuery.isPending ? "—" : summaryQuery.data?.summary.login_enabled ?? 0}</strong><small>Accounts currently able to sign in</small></article>
+          <article><span>Profile completion needed</span><strong>{summaryQuery.isPending ? "—" : summaryQuery.data?.summary.profile_incomplete ?? 0}</strong><small>Existing records needing attention</small></article>
         </div>}
         <div className="staff-overview-lower">
           <section className="staff-overview-panel"><h3>Quick actions</h3><p>Start with the most common staff administration tasks.</p><div className="staff-quick-actions">
@@ -601,12 +603,12 @@ export function StaffManagementPage({ permissions }: Props) {
             {(permissions.includes("teacher_assignments.read") || permissions.includes("class_incharge_assignments.read")) && <button type="button" onClick={() => setActiveTab("assignments")}><BookOpen size={16}/> Manage academic assignments</button>}
           </div></section>
           {canReadStaff && <section className="staff-overview-panel"><h3>Account readiness</h3><p>Keep employment and login status aligned without mixing the two.</p><ul className="staff-readiness-list">
-            <li><span>Active employees with disabled login</span><strong>{staff.filter(item => item.employment_status === "active" && item.status !== "active").length}</strong></li>
-            <li><span>Temporary password change pending</span><strong>{staff.filter(item => item.must_change_password).length}</strong></li>
-            <li><span>Inactive employees</span><strong>{staff.filter(item => item.employment_status === "inactive").length}</strong></li>
+            <li><span>Active employees with disabled login</span><strong>{summaryQuery.isPending ? "—" : summaryQuery.data?.summary.active_employment_disabled_login ?? 0}</strong></li>
+            <li><span>Temporary password change pending</span><strong>{summaryQuery.isPending ? "—" : summaryQuery.data?.summary.must_change_password ?? 0}</strong></li>
+            <li><span>Inactive employees</span><strong>{summaryQuery.isPending ? "—" : summaryQuery.data?.summary.inactive_employment ?? 0}</strong></li>
           </ul></section>}
         </div>
-        {canReadStaff && query.isError && <p className="staff-overview-error" role="alert">Staff summary could not be loaded. Open Staff Directory and retry the request.</p>}
+        {canReadStaff && summaryQuery.isError && <p className="staff-overview-error" role="alert">Staff summary could not be loaded. <button type="button" onClick={() => void summaryQuery.refetch()}>Retry</button></p>}
       </section>}
       {activeTab === "assignments" && <TeacherAssignmentsPage permissions={permissions}/>}
       {activeTab === "attendance" && <StaffAttendanceWorkspace permissions={permissions}/>}
@@ -635,8 +637,8 @@ export function StaffManagementPage({ permissions }: Props) {
         <div className="toolbar staff-directory-toolbar"><div><h2>All staff</h2><small>{serverDirectory ? `${filtered.length ? directoryPageIndex * 50 + 1 : 0}–${directoryPageIndex * 50 + filtered.length} of ${directoryTotal}` : `${filtered.length} of ${staff.length}`} staff members</small></div><div className="staff-directory-controls"><button type="button" className="staff-directory-export" onClick={() => void exportStaffDirectoryCSV(filtered, directoryFilters).then(() => notifyToast("success", "Filtered staff directory exported.")).catch(error => notifyToast("error", error instanceof Error ? error.message : "Unable to export staff directory."))} disabled={filtered.length===0 || !permissions.includes("users.read")}><Download size={14}/> Export CSV</button><div className="search"><Search size={16}/><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search by name, code, designation, mobile or username" aria-label="Search staff by name, code, designation, mobile or username"/></div><div className="staff-directory-filters"><label>Employment<Select value={employmentFilter} onChange={setEmploymentFilter} ariaLabel="Filter by employment status" options={[{value:"all",label:"All employment"},{value:"active",label:"Active"},{value:"inactive",label:"Inactive"}]}/></label><label>Login account<Select value={accountFilter} onChange={setAccountFilter} ariaLabel="Filter by login account status" options={[{value:"all",label:"All accounts"},{value:"enabled",label:"Enabled"},{value:"disabled",label:"Disabled"}]}/></label><label>Profile<Select value={profileFilter} onChange={setProfileFilter} ariaLabel="Filter by profile completeness" options={[{value:"all",label:"All profiles"},{value:"complete",label:"Complete"},{value:"incomplete",label:"Incomplete"}]}/></label></div>{(search.trim() || employmentFilter !== "all" || accountFilter !== "all" || profileFilter !== "all") && <button type="button" className="staff-clear-filters" onClick={() => {setSearch("");setEmploymentFilter("all");setAccountFilter("all");setProfileFilter("all");}}>Clear filters</button>}</div></div>
         {(directoryQuery.isPending || (directoryQuery.isFetching && !directoryQuery.data)) ? <div className="table-message" aria-live="polite">Loading staff accounts…</div>
           : directoryQuery.isError ? <div className="table-message error-text">{directoryQuery.error instanceof Error ? directoryQuery.error.message : "Unable to load staff accounts."}<button className="staff-retry-button" type="button" onClick={() => void directoryQuery.refetch()}>Try again</button></div>
-          : query.isError ? <div className="table-message error-text">{query.error instanceof Error ? query.error.message : "Unable to load staff accounts."}<button className="staff-retry-button" type="button" onClick={() => void query.refetch()}>Try again</button></div>
-          : filtered.length === 0 ? <div className="table-message">{staff.length === 0 ? "No staff accounts yet. Add the first staff account to get started." : "No staff match the current search and filters."}</div>
+          
+          : filtered.length === 0 ? <div className="table-message">{directoryTotal === 0 && !search.trim() && employmentFilter === "all" && accountFilter === "all" && profileFilter === "all" ? "No staff accounts yet. Add the first staff account to get started." : "No staff match the current search and filters."}</div>
           : <div className="table-scroll"><table><thead><tr><th>Employee</th><th>Employee code</th><th>Designation</th><th>Mobile</th><th>Login status</th><th>Employment</th><th>Password</th><th>Created</th><th>Actions</th></tr></thead><tbody>
             {filtered.map(item => <Fragment key={item.principal_id}><tr><td><button type="button" className="staff-profile-link" onClick={() => openProfile(item)}>{item.full_name || "Profile incomplete"}</button><small className="staff-id">{item.username} · Principal #{item.principal_id}</small></td><td>{item.employee_code || "—"}</td><td>{item.designation || "—"}</td><td>{item.mobile_number || "—"}</td><td><span className={`pill ${item.status === "active" ? "active" : "inactive"}`}>{item.status}</span></td><td>{item.employment_status ? <span className={`pill ${item.employment_status === "active" ? "active" : "inactive"}`}>{item.employment_status}</span> : "Profile pending"}</td><td>{item.must_change_password ? <span className="staff-password-required">Change required</span> : "—"}</td><td>{item.created_at ? new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeZone: "Asia/Kolkata" }).format(new Date(item.created_at)) : "—"}</td><td><div className="staff-row-actions">
               {canUpdate && <button type="button" onClick={() => openAction("edit", item)} title="Edit employee profile" aria-label={`Edit employee profile for ${item.username}`}><Pencil size={15}/></button>}
@@ -721,8 +723,8 @@ export function StaffManagementPage({ permissions }: Props) {
         {profileTab === "Account & Access" && <section className="staff-profile-access">{canReadRoles ? <StaffRoleAssignments key={profileFor.principal_id} staff={profileFor} canAssign={canAssignRoles}/> : <p>You do not have permission to view role assignments.</p>}{canManageOverrides ? <StaffPermissionOverrides key={profileFor.principal_id} staff={profileFor}/> : <p>You do not have permission to manage individual permission overrides.</p>}<p className="staff-wizard-note">Login identity, role grants and individual overrides remain separate from employee profile details.</p></section>}
         {profileTab === "History & Activity" && <StaffHistoryActivityPanel key={profileFor.principal_id} staff={profileFor} permissions={permissions}/>}
       </Modal>}
-      {rolesForPrincipal !== null && canReadRoles && (() => { const target=staff.find(item=>item.principal_id===rolesForPrincipal); return target ? <Modal open title={`Access roles · ${target.username}`} description="Review the roles assigned to this staff account. Add or remove roles here; changes take effect on the next protected request." onClose={closeStandaloneRoleAssignments}><StaffRoleAssignments key={target.principal_id} staff={target} canAssign={canAssignRoles}/></Modal> : null; })()}
-      {overridesForPrincipal !== null && canManageOverrides && (() => { const target=staff.find(item=>item.principal_id===overridesForPrincipal); return target ? <Modal open title={`Permission overrides · ${target.username}`} description="Review individual access exceptions. Use an override only when the staff member's role permissions need a documented exception." onClose={closeStandalonePermissionOverrides}><StaffPermissionOverrides key={target.principal_id} staff={target}/></Modal> : null; })()}
+      {rolesForPrincipal !== null && canReadRoles && (() => { const target=directoryQuery.data?.staff.find(item=>item.principal_id===rolesForPrincipal) ?? staff.find(item=>item.principal_id===rolesForPrincipal); return target ? <Modal open title={`Access roles · ${target.username}`} description="Review the roles assigned to this staff account. Add or remove roles here; changes take effect on the next protected request." onClose={closeStandaloneRoleAssignments}><StaffRoleAssignments key={target.principal_id} staff={target} canAssign={canAssignRoles}/></Modal> : null; })()}
+      {overridesForPrincipal !== null && canManageOverrides && (() => { const target=directoryQuery.data?.staff.find(item=>item.principal_id===overridesForPrincipal) ?? staff.find(item=>item.principal_id===overridesForPrincipal); return target ? <Modal open title={`Permission overrides · ${target.username}`} description="Review individual access exceptions. Use an override only when the staff member's role permissions need a documented exception." onClose={closeStandalonePermissionOverrides}><StaffPermissionOverrides key={target.principal_id} staff={target}/></Modal> : null; })()}
       <p className="staff-security-note"><ShieldCheck size={15}/> Every action is checked again by the server using your current school permissions.</p>
       <ConfirmDialog open={Boolean(staffToDisable && canDisable && canReadStaff)} title="Disable staff account?" description={staffToDisable ? `Disable ${staffToDisable.username}? Their active sessions will be revoked and they will no longer be able to sign in.` : ""} confirmLabel="Disable account" pending={disable.isPending} error={disableError || undefined} onCancel={() => {setStaffToDisable(null);setDisableError("");}} onConfirm={() => void confirmDeactivate()}/>
     </div>
