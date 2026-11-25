@@ -2630,3 +2630,11 @@ This update supersedes older status bullets that listed the following database-b
 - Added handler tests for permission denial (403), missing records (404), overlap conflicts (409), validation errors (400), and generic internal errors (500) without exposing database details.
 - Backend CI [45601046350](https://github.com/TheSumitNain/school-management-system/actions/runs/45601046350) **PASS** on `53a31c317a72af379b10d71fe6beb7672f842bf5`: ephemeral PostgreSQL migration chain, full Go/PostgreSQL integration suite and `go vet`.
 - No production schema migration or persistent school data change. Leave entitlement policy remains approval-gated; document/photo storage remains deferred and excluded from Staff Management completion estimates. `main` remains untouched.
+
+
+## 2026-11-25 — Staff Leave API edge-case and holiday permission fixes
+
+- Leave decision handlers now parse chunked/unknown-length request bodies; regression coverage verifies an approval comment is forwarded instead of being silently ignored.
+- Holiday calendar GET now accepts either `staff.holidays.read` or `staff.holidays.manage`, matching the frontend's manage-only calendar flow. Repository-level checks still require `staff.holidays.manage` when inactive holiday records are requested. Added a route authorization regression for a manage-only account.
+- Backend CI [45602173749](https://github.com/TheSumitNain/school-management-system/actions/runs/45602173749) **PASS** on `42ca6cf7709a742dd53029c284cae5c25d671a7c`: ephemeral PostgreSQL migration chain, complete Go/PostgreSQL integration suite and `go vet`.
+- No schema migration or persistent school data change. `main` remains untouched; document/photo storage remains deferred and excluded from Staff Management completion estimates.
