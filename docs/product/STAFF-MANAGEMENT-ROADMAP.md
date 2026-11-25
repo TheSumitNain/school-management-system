@@ -1,3 +1,11 @@
+## 2026-11-25 — Latest Staff Management verification on b8e46ac
+
+- Backend CI [45593176075](https://github.com/TheSumitNain/school-management-system/actions/runs/45593176075) **PASS**: complete Go tests, PostgreSQL integration suite and `go vet`.
+- Frontend CI [45593176068](https://github.com/TheSumitNain/school-management-system/actions/runs/45593176068) **PASS**: TypeScript, Vite production build and full Playwright browser acceptance suite.
+- Rechecked staff profile/query lifecycle: employee-specific qualification, certification, experience and audit queries are keyed by principal ID and removed when the profile closes; authentication/session changes clear the shared React Query cache, preventing previous-school records from remaining available after sign-out/account changes.
+- Closed the older substitution test-gap note below: current `staff_substitution_v60_workflow_integration_test.go` contains forced audit-failure rollback checks for both assignment and cancellation, and `staff_substitution_v61_concurrency_integration_test.go` verifies concurrent substitute-slot serialization. These are included in the passing backend suite above.
+- No new production defect found in this review. No document upload work was started; private storage and staff-scoped secure download remain approval-gated. This verification does not claim manual authenticated-school browser sign-off or persistent-database migration.
+
 ## 2026-11-25 — Staff Management consolidated automated-acceptance audit
 
 - Re-audited the Staff Management browser suite across `staff-management.spec.ts`, `staff-reports.spec.ts`, `staff-monthly-report.spec.ts` and `staff-responsive.spec.ts`. Coverage includes directory/profile onboarding and account controls, qualification/experience records and reports, academic assignments, history pagination, attendance, leave/holidays, substitutions, workload, CSV privacy, ID cards, permission-limited views and responsive layouts.
