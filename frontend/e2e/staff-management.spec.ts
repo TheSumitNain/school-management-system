@@ -699,8 +699,14 @@ test("add staff wizard validates each step before allowing progress", async ({ p
   await dialog.getByLabel("Designation").fill("Class Teacher");
   await dialog.getByRole("button", { name: "Continue" }).click();
   await dialog.getByRole("button", { name: "Continue" }).click();
-  await expect(dialog.getByText("Use 3–32 lowercase letters, numbers, dots, underscores or hyphens.")).toBeVisible();
+  await expect(dialog.getByText("Use 3–32 lowercase letters, numbers, dots, underscores or hyphens; start with a letter or number.")).toBeVisible();
   await expect(dialog.getByText("Password must contain at least 12 characters.")).toBeVisible();
+
+  await dialog.getByLabel("Login username").fill(".validation");
+  await dialog.getByLabel("Initial password").fill("E2E-Strong-Password-2026");
+  await dialog.getByRole("button", { name: "Continue" }).click();
+  await expect(dialog.getByText("Use 3–32 lowercase letters, numbers, dots, underscores or hyphens; start with a letter or number.")).toBeVisible();
+  await expect(dialog.getByRole("heading", { name: "Review & create" })).toHaveCount(0);
 
   await dialog.getByLabel("Login username").fill("validation.teacher");
   await dialog.getByLabel("Initial password").fill("short");
