@@ -1086,6 +1086,10 @@ test("staff profile edit uses the shared employment-status select and sends the 
   await timezonePage.getByRole("button", { name: "Edit employee profile for teacher.two" }).click();
   const dialog = timezonePage.getByRole("dialog", { name: "Edit employee profile" });
   await expect(dialog.getByRole("button", { name: "Joining date" })).toContainText("01 Apr 2026");
+  await dialog.getByRole("button", { name: "Joining date" }).click();
+  const joiningCalendar = dialog.getByRole("dialog", { name: "Choose joining date" });
+  await joiningCalendar.getByRole("button", { name: "Today", exact: true }).click();
+  await expect(dialog.locator('input[name="joining_date"]')).toHaveValue(schoolDateValue());
   await dialog.getByLabel(/Email address/).fill("");
   await dialog.getByRole("button", { name: "Employment status" }).click();
   await dialog.getByRole("listbox", { name: "Employment status" }).getByRole("option", { name: "Inactive" }).click();
@@ -1093,6 +1097,7 @@ test("staff profile edit uses the shared employment-status select and sends the 
 
   await expect.poll(() => updates.length).toBe(1);
   expect(updates[0].employment_status).toBe("inactive");
+  expect(updates[0].joining_date).toBe(schoolDateValue());
   expect(updates[0].email).toBe("");
   await expect(dialog).toHaveCount(0);
   await expect(timezonePage.locator("select")).toHaveCount(0);
