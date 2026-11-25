@@ -50,11 +50,11 @@ type StaffDirectoryPage struct {
 }
 
 type StaffDirectorySummary struct {
-	Total int64
-	ActiveEmployment int64
-	LoginEnabled int64
-	ProfileIncomplete int64
-	ActiveEmploymentDisabledLogin int64
-	MustChangePassword int64
-	InactiveEmployment int64
+	Total int64 `json:"total"`
+	ActiveEmployment int64 `json:"active_employment"`
+	LoginEnabled int64 `json:"login_enabled"`
+	ProfileIncomplete int64 `json:"profile_incomplete"`
+	ActiveEmploymentDisabledLogin int64 `json:"active_employment_disabled_login"`
+	MustChangePassword int64 `json:"must_change_password"`
+	InactiveEmployment int64 `json:"inactive_employment"`
 }
