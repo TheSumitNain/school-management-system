@@ -31,12 +31,12 @@ export function StaffWorkloadPanel({ staff }: Props) {
       setEntries(result.entries);
       setPeriods(periodResult.periods);
     } catch (cause) {
-      if (signal?.aborted) return;
+      if (signal.aborted) return;
       setError(cause instanceof Error ? cause.message : "Unable to load this staff member's timetable.");
       setEntries([]);
       setPeriods([]);
     } finally {
-      if (!signal?.aborted) setLoading(false);
+      if (!signal.aborted) setLoading(false);
     }
   }, [staff.principal_id]);
 
