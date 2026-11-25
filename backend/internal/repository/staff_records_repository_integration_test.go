@@ -95,7 +95,49 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
 	updatedExperience,err:=repo.UpdateStaffExperience(ctx,actorID,schoolID,staff.PrincipalID,experience.ID,StaffExperience{
 		EmployerName:"Previous School",Designation:"Senior Mathematics Teacher",EmploymentType:"permanent",StartDate:"2018-04-01",EndDate:"2021-03-31",
 	})
-	if err!=nil||updatedExperience.Designation!="Senior Mathematics Teacher"{t.Fatalf("update experience: item=%+v err=%v",updatedExperience,err)}
+
+    // Force audit inserts to fail and verify all six record write paths roll back.
+    auditFailureFunction := "test_staff_record_audit_failure_" + suffix
+    auditFailureTrigger := "test_staff_record_audit_failure_trigger_" + suffix
+    if _, err := tx.Exec(ctx, fmt.Sprintf("CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $staff_record_audit_failure$ BEGIN IF NEW.action IN ('staff.qualification.created','staff.qualification.updated','staff.certification.created','staff.certification.updated','staff.experience.created','staff.experience.updated') THEN RAISE EXCEPTION 'injected staff record audit failure'; END IF; RETURN NEW; END; $staff_record_audit_failure$; CREATE TRIGGER %s BEFORE INSERT ON audit_events FOR EACH ROW EXECUTE FUNCTION %s();", auditFailureFunction, auditFailureTrigger, auditFailureFunction)); err != nil {
+        t.Fatalf("install staff record audit failure trigger: %v", err)
+    }
+    if item, err := repo.CreateStaffQualification(ctx, actorID, schoolID, staff.PrincipalID, StaffQualification{QualificationType:"diploma",QualificationName:"Must Roll Back",Institution:"Failure Test"}); err == nil || item != nil {
+        t.Fatalf("qualification create with audit failure returned item=%+v err=%v", item, err)
+    }
+    if item, err := repo.CreateStaffCertification(ctx, actorID, schoolID, staff.PrincipalID, StaffCertification{CertificateName:"Must Roll Back",IssuingOrganization:"Failure Test",IssueDate:"2023-01-01"}); err == nil || item != nil {
+        t.Fatalf("certification create with audit failure returned item=%+v err=%v", item, err)
+    }
+    if item, err := repo.CreateStaffExperience(ctx, actorID, schoolID, staff.PrincipalID, StaffExperience{EmployerName:"Must Roll Back",Designation:"Failure Test",EmploymentType:"permanent",StartDate:"2017-01-01"}); err == nil || item != nil {
+        t.Fatalf("experience create with audit failure returned item=%+v err=%v", item, err)
+    }
+    if _, err := repo.UpdateStaffQualification(ctx, actorID, schoolID, staff.PrincipalID, qualification.ID, StaffQualification{QualificationType:"postgraduate",QualificationName:"Must Roll Back",Institution:"Failure Test"}); err == nil {
+        t.Fatal("qualification update unexpectedly succeeded when audit insert failed")
+    }
+    if _, err := repo.UpdateStaffCertification(ctx, actorID, schoolID, staff.PrincipalID, certification.ID, StaffCertification{CertificateName:"Must Roll Back",IssuingOrganization:"Failure Test",IssueDate:"2022-01-10"}); err == nil {
+        t.Fatal("certification update unexpectedly succeeded when audit insert failed")
+    }
+    if _, err := repo.UpdateStaffExperience(ctx, actorID, schoolID, staff.PrincipalID, experience.ID, StaffExperience{EmployerName:"Must Roll Back",Designation:"Must Roll Back",EmploymentType:"permanent",StartDate:"2018-04-01"}); err == nil {
+        t.Fatal("experience update unexpectedly succeeded when audit insert failed")
+    }
+    var qualificationCount, certificationCount, experienceCount int
+    if err := tx.QueryRow(ctx, "SELECT COUNT(*) FROM staff_qualifications WHERE school_id=$1 AND staff_principal_id=$2", schoolID, staff.PrincipalID).Scan(&qualificationCount); err != nil { t.Fatalf("count qualifications after audit failures: %v", err) }
+    if err := tx.QueryRow(ctx, "SELECT COUNT(*) FROM staff_certifications WHERE school_id=$1 AND staff_principal_id=$2", schoolID, staff.PrincipalID).Scan(&certificationCount); err != nil { t.Fatalf("count certifications after audit failures: %v", err) }
+    if err := tx.QueryRow(ctx, "SELECT COUNT(*) FROM staff_experience WHERE school_id=$1 AND staff_principal_id=$2", schoolID, staff.PrincipalID).Scan(&experienceCount); err != nil { t.Fatalf("count experience after audit failures: %v", err) }
+    if qualificationCount != 1 || certificationCount != 1 || experienceCount != 1 {
+        t.Fatalf("failed creates left partial records: qualifications=%d certifications=%d experience=%d", qualificationCount, certificationCount, experienceCount)
+    }
+    var qualificationName, certificationName, experienceDesignation string
+    if err := tx.QueryRow(ctx, "SELECT qualification_name FROM staff_qualifications WHERE id=$1", qualification.ID).Scan(&qualificationName); err != nil { t.Fatalf("read qualification after audit failure: %v", err) }
+    if err := tx.QueryRow(ctx, "SELECT certificate_name FROM staff_certifications WHERE id=$1", certification.ID).Scan(&certificationName); err != nil { t.Fatalf("read certification after audit failure: %v", err) }
+    if err := tx.QueryRow(ctx, "SELECT designation FROM staff_experience WHERE id=$1", experience.ID).Scan(&experienceDesignation); err != nil { t.Fatalf("read experience after audit failure: %v", err) }
+    if qualificationName != "M.Sc. Applied Mathematics" || certificationName != "Advanced Teacher Training" || experienceDesignation != "Senior Mathematics Teacher" {
+        t.Fatalf("audit failure did not roll back updates: qualification=%q certification=%q experience=%q", qualificationName, certificationName, experienceDesignation)
+    }
+    if _, err := tx.Exec(ctx, fmt.Sprintf("DROP TRIGGER %s ON audit_events; DROP FUNCTION %s();", auditFailureTrigger, auditFailureFunction)); err != nil {
+        t.Fatalf("remove staff record audit failure trigger: %v", err)
+    }
+
     attendanceRepo := NewStaffAttendanceRepository(tx)
     today := schooltime.Today()
     marked, err := attendanceRepo.Mark(ctx, actorID, schoolID, staff.PrincipalID, today, "present", nil)
