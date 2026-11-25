@@ -129,7 +129,7 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
 
 	// Duplicate employee codes must fail with a stable domain error and roll
 	// back the newly inserted user/principal as well as the profile row.
-	duplicateEmployeeUsername := "duplicate-employee-" + suffix
+	duplicateEmployeeUsername := "dup-" + suffix[len(suffix)-20:]
 	duplicateEmployeeProfile := models.StaffProfile{
 		EmployeeCode: "LIFE-" + suffix,
 		FullName: "Duplicate Employee Code",
