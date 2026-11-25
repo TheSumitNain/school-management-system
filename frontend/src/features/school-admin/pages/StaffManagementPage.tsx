@@ -60,20 +60,22 @@ function staffCSVCell(value:unknown){
   const safe=/^\s*[=+\-@]/.test(text)?"'"+text:text;
   return '"'+safe.replace(/"/g,'""')+'"';
 }
-async function exportStaffDirectoryCSV(rows:StaffRecord[], filters:StaffDirectoryFilters){
+async function exportStaffDirectoryCSV(rows:StaffRecord[], filters?:StaffDirectoryFilters){
   let exportRows = rows;
-  try {
-    const first = await getSchoolStaffDirectory({ ...filters, offset: 0 });
-    if (typeof first.total === "number") {
-      exportRows = [...first.staff];
-      for (let offset = first.staff.length; offset < first.total; offset += filters.limit) {
-        const page = await getSchoolStaffDirectory({ ...filters, offset });
-        if (page.staff.length === 0) break;
-        exportRows.push(...page.staff);
+  if (filters) {
+    try {
+      const first = await getSchoolStaffDirectory({ ...filters, offset: 0 });
+      if (typeof first.total === "number") {
+        exportRows = [...first.staff];
+        for (let offset = first.staff.length; offset < first.total; offset += filters.limit) {
+          const page = await getSchoolStaffDirectory({ ...filters, offset });
+          if (page.staff.length === 0) break;
+          exportRows.push(...page.staff);
+        }
       }
+    } catch {
+      throw new Error("Unable to prepare the complete filtered staff export. Please try again.");
     }
-  } catch {
-    throw new Error("Unable to prepare the complete filtered staff export. Please try again.");
   }
   const headers=["Employee Code","Name","Designation","Employment Status","Login Account","Profile Status"];
   const lines=[headers,...exportRows.map(item=>[
