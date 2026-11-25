@@ -507,6 +507,31 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
             failedEnableUserStatus, failedEnablePrincipalStatus, failedEnablePasswordHash, failedEnableTokenVersion)
     }
 
+
+	// Re-enable is also strictly school-scoped; a different school must not
+	// reactivate this disabled principal or replace its credential.
+	if err := repo.EnableStaffAccount(ctx, actorPrincipalID, schoolID+1, created.PrincipalID,
+		"cross-school-enable-takeover-hash"); !errors.Is(err, ErrUserNotFound) {
+		t.Fatalf("cross-school staff account re-enable error = %v, want ErrUserNotFound", err)
+	}
+	var crossSchoolEnableUserStatus, crossSchoolEnablePrincipalStatus, crossSchoolEnablePasswordHash string
+	var crossSchoolEnableTokenVersion int64
+	if err := tx.QueryRow(ctx, `
+		SELECT u.status, ap.status, u.password_hash, ap.token_version
+		  FROM users u JOIN auth_principals ap ON ap.id = u.principal_id
+		 WHERE u.principal_id = $1
+	`, created.PrincipalID).Scan(
+		&crossSchoolEnableUserStatus, &crossSchoolEnablePrincipalStatus,
+		&crossSchoolEnablePasswordHash, &crossSchoolEnableTokenVersion,
+	); err != nil {
+		t.Fatalf("read account after cross-school re-enable attempt: %v", err)
+	}
+	if crossSchoolEnableUserStatus != "disabled" || crossSchoolEnablePrincipalStatus != "disabled" ||
+		crossSchoolEnablePasswordHash != resetPasswordHash || crossSchoolEnableTokenVersion != 4 {
+		t.Fatalf("cross-school re-enable changed target state: user=%q principal=%q token_version=%d",
+			crossSchoolEnableUserStatus, crossSchoolEnablePrincipalStatus, crossSchoolEnableTokenVersion)
+	}
+
 	const replacementPasswordHash = "replacement-temporary-password-hash"
 	if err := repo.EnableStaffAccount(ctx, actorPrincipalID, schoolID, created.PrincipalID, replacementPasswordHash); err != nil {
 		t.Fatalf("authorized staff account re-enable failed: %v", err)
