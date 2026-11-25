@@ -1,3 +1,9 @@
+## 2026-11-25 verification — substitution concurrency and audit rollback
+
+- The V60 database-guard fixture now uses a username within the enforced 3–32 lowercase ASCII character limit. This is test-fixture-only; no production behavior or schema changed.
+- Backend CI [45546585508](https://github.com/TheSumitNain/school-management-system/actions/runs/45546585508) **PASS** on `c516b63716bbba555d6abdbb78328476b149791f`: ephemeral PostgreSQL migrations, full Go/PostgreSQL integration suite and `go vet` all passed.
+- The successful run verifies the new V61 repository-level concurrent assignment race and transactional audit-failure rollback regressions alongside the V60 database guards. No persistent database or application data changed; existing leave-policy/identity-schema approval gates and document/photo storage deferral remain unchanged.
+
 ## 2026-11-25 — Staff Leave and Substitution consistency audit
 
 - Re-verified Staff Leave repository workflows and PostgreSQL integration coverage: school-scoped authorization, active staff/leave-type eligibility, concurrent overlap serialization per school/staff, pending/approved overlap rejection, row-locked decisions, self-approval prevention, rejection-reason validation, and transactional audit rollback for decisions/cancellations.
