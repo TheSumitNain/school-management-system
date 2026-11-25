@@ -1,3 +1,12 @@
+## 2026-11-25 — Staff Directory server-side pagination
+
+- The directory now requests bounded PostgreSQL pages (default 50, maximum 100) instead of downloading every staff row for directory search and filtering. Search is case-insensitive across username, employee name, employee code, designation and mobile; employment, account and profile-completeness filters are applied server-side. Stable ordering uses normalized employee name/username plus ID.
+- The UI provides Previous/Next navigation, accurate total counts, resets pagination when filters change, and exports all matching rows by fetching every filtered page. Existing unfiltered staff data remains available to overview/report/ID-card consumers.
+- Added service/handler/PostgreSQL integration tests and a browser test for server-side filtering, page totals and navigation. Backend CI [45641156564](https://github.com/TheSumitNain/school-management-system/actions/runs/45641156564) **PASS** and Frontend CI [45641156148](https://github.com/TheSumitNain/school-management-system/actions/runs/45641156148) **PASS** on `d896f8b28b2de81c94ff4d243f91c045093b6a00`; the frontend suite passed **130 Playwright tests**.
+- No schema migration or persistent database change. This closes the Staff Directory server-pagination requirement in Phase 1; profile-only onboarding and Bulk Import remain separately blocked on the unapproved identity-schema migration.
+
+---
+
 ## 2026-11-25 — Staff attendance audit-history refresh verified
 
 - Attendance mark, bulk-mark and update mutations invalidate staff audit-history queries as well as attendance queries. The History & Activity query's 30-second freshness window does not prevent explicit invalidation from refreshing the history.
