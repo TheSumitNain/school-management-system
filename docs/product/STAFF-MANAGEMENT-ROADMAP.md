@@ -1,4 +1,12 @@
 
+## 2026-11-25 — Staff Leave decision/cancellation concurrency regression
+
+- Added PostgreSQL coverage for concurrent approval and cancellation of the same pending leave request. The test requires one winner, one not-found loser, final status matching the winner, and exactly one corresponding audit event.
+- Backend CI [45600058755](https://github.com/TheSumitNain/school-management-system/actions/runs/45600058755) **PASS** on `decc195c592003394d0b01e72f9498c9162b3c0e`: full ephemeral migration chain, complete Go/PostgreSQL integration suite, and `go vet`.
+- Leave and holiday workflow audit found no new production defect. Leave entitlement policy (quotas, accrual, carry-forward/balances) remains an explicit school-approval gate; `requires_approval=false` remains pending by design until automatic approval behavior is explicitly authorized. No balances or payroll effects are claimed.
+- Test-only change; no production code, schema, persistent database or application data changed.
+
+
 ## 2026-11-25 — Staff Attendance bulk API and transaction verification
 
 - Backend CI [45598938508](https://github.com/TheSumitNain/school-management-system/actions/runs/45598938508) **PASS**: bulk attendance HTTP handler contract tests cover authenticated school context, payload forwarding, invalid date rejection, and missing authentication.
