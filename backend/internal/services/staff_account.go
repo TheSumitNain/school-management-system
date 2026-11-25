@@ -189,7 +189,7 @@ func (s *StaffAccountService) UpdateProfile(ctx context.Context, actorPrincipalI
        !staffEmployeeCodePattern.MatchString(profile.EmployeeCode) || profile.FullName == "" || len([]rune(profile.FullName)) > 160 ||
        profile.Designation == "" || len([]rune(profile.Designation)) > 100 || !staffMobilePattern.MatchString(profile.MobileNumber) ||
        !validStaffProfileEmail(profile.Email) ||
-       (profile.JoiningDate != nil && (profile.JoiningDate.Year() < 1 || profile.JoiningDate.After(time.Now().AddDate(1, 0, 0)))) ||
+       !validStaffJoiningDate(profile.JoiningDate, time.Now()) ||
        (profile.EmploymentStatus != "active" && profile.EmploymentStatus != "inactive") {
         return nil, ErrInvalidStaffAccount
     }
