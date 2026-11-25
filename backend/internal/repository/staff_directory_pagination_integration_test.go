@@ -112,3 +112,50 @@ func TestStaffDirectoryPaginationFiltersAndSchoolIsolationPostgresIntegration(t 
 		t.Fatalf("ordinary staff unexpectedly read directory: page=%+v err=%v", foreignPage, err)
 	}
 }
+
+
+func TestStaffDirectorySummaryMatchesFilteredCountsAndEnforcesSchoolAdminPostgresIntegration(t *testing.T) {
+	fixture := newStaffLeaveIntegrationFixture(t)
+	repo := NewUserRepository(fixture.pool)
+	summary, err := repo.GetStaffDirectorySummary(fixture.ctx, fixture.adminPrincipalID, fixture.schoolID)
+	if err != nil || summary == nil {
+		t.Fatalf("get staff directory summary: summary=%+v err=%v", summary, err)
+	}
+	all, err := repo.ListStaffDirectoryPage(fixture.ctx, fixture.adminPrincipalID, fixture.schoolID, models.StaffDirectoryFilter{Limit: 1})
+	if err != nil {
+		t.Fatalf("count all staff: %v", err)
+	}
+	active, err := repo.ListStaffDirectoryPage(fixture.ctx, fixture.adminPrincipalID, fixture.schoolID, models.StaffDirectoryFilter{EmploymentStatus: "active", Limit: 1})
+	if err != nil {
+		t.Fatalf("count active employment: %v", err)
+	}
+	enabled, err := repo.ListStaffDirectoryPage(fixture.ctx, fixture.adminPrincipalID, fixture.schoolID, models.StaffDirectoryFilter{AccountStatus: "enabled", Limit: 1})
+	if err != nil {
+		t.Fatalf("count enabled accounts: %v", err)
+	}
+	incomplete, err := repo.ListStaffDirectoryPage(fixture.ctx, fixture.adminPrincipalID, fixture.schoolID, models.StaffDirectoryFilter{ProfileStatus: "incomplete", Limit: 1})
+	if err != nil {
+		t.Fatalf("count incomplete profiles: %v", err)
+	}
+	activeDisabled, err := repo.ListStaffDirectoryPage(fixture.ctx, fixture.adminPrincipalID, fixture.schoolID, models.StaffDirectoryFilter{EmploymentStatus: "active", AccountStatus: "disabled", Limit: 1})
+	if err != nil {
+		t.Fatalf("count active employees with disabled login: %v", err)
+	}
+	inactive, err := repo.ListStaffDirectoryPage(fixture.ctx, fixture.adminPrincipalID, fixture.schoolID, models.StaffDirectoryFilter{EmploymentStatus: "inactive", Limit: 1})
+	if err != nil {
+		t.Fatalf("count inactive employment: %v", err)
+	}
+	var mustChange int64
+	if err := fixture.pool.QueryRow(fixture.ctx, `SELECT COUNT(*) FROM users WHERE school_id=$1 AND must_change_password=TRUE`, fixture.schoolID).Scan(&mustChange); err != nil {
+		t.Fatalf("count required password changes: %v", err)
+	}
+	if summary.Total != all.Total || summary.ActiveEmployment != active.Total || summary.LoginEnabled != enabled.Total ||
+		summary.ProfileIncomplete != incomplete.Total || summary.ActiveEmploymentDisabledLogin != activeDisabled.Total ||
+		summary.MustChangePassword != mustChange || summary.InactiveEmployment != inactive.Total {
+		t.Fatalf("summary disagrees with directory filters: summary=%+v all=%d active=%d enabled=%d incomplete=%d active-disabled=%d must-change=%d inactive=%d",
+			summary, all.Total, active.Total, enabled.Total, incomplete.Total, activeDisabled.Total, mustChange, inactive.Total)
+	}
+	if denied, err := repo.GetStaffDirectorySummary(fixture.ctx, fixture.staffPrincipalID, fixture.schoolID); err == nil || denied != nil {
+		t.Fatalf("ordinary staff unexpectedly read directory summary: summary=%+v err=%v", denied, err)
+	}
+}
