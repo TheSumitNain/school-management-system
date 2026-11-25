@@ -72,7 +72,10 @@ func TestStaffAttendanceBulkMarkRollsBackWhenAuditFailsPostgresIntegration(t *te
 		$attendance_audit_failure$;
 	`, functionName)); err != nil { t.Fatalf("create attendance audit failure function: %v", err) }
 	if _, err := f.pool.Exec(f.ctx, fmt.Sprintf("CREATE TRIGGER %s BEFORE INSERT ON audit_events FOR EACH ROW EXECUTE FUNCTION %s()", triggerName, functionName)); err != nil { t.Fatalf("create attendance audit failure trigger: %v", err) }
-	t.Cleanup(func() { _, _ = f.pool.Exec(context.Background(), fmt.Sprintf("DROP TRIGGER IF EXISTS %s ON audit_events; DROP FUNCTION IF EXISTS %s();", triggerName, functionName)) })
+	t.Cleanup(func() {
+		_, _ = f.pool.Exec(context.Background(), fmt.Sprintf("DROP TRIGGER IF EXISTS %s ON audit_events", triggerName))
+		_, _ = f.pool.Exec(context.Background(), fmt.Sprintf("DROP FUNCTION IF EXISTS %s()", functionName))
+	})
 	_, err = f.repo.MarkBulk(f.ctx, f.actorID, f.schoolID, f.staffIDs, day, "present", nil)
 	if err == nil { t.Fatal("bulk attendance mark succeeded despite forced audit failure") }
 	var records int
