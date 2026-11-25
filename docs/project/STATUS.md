@@ -2698,3 +2698,10 @@ This update supersedes older status bullets that listed the following database-b
 - Added PostgreSQL failure-injection coverage for leave-type create and update operations. When the matching `staff.leave_type.created` or `staff.leave_type.updated` audit insert fails, no new leave type remains, the existing type retains its original name, and no false audit event is committed.
 - Backend CI [45631108229](https://github.com/TheSumitNain/school-management-system/actions/runs/45631108229) **PASS** on `67267c6a7c2b5f9c4fc240d6df34fe0c0148b85c`: full migration chain, complete Go/PostgreSQL integration tests and `go vet`.
 - Regression-test changes only; no production behavior, schema migration or persistent school data changed. `main` remains untouched.
+
+
+## 2026-11-25 — Individual staff attendance correction audit rollback
+
+- Added a PostgreSQL failure-injection regression for `StaffAttendanceRepository.Update`. If the `school.staff_attendance.updated` audit insert fails, the transaction preserves the previously committed attendance status and does not add a false update audit event. Existing coverage separately verifies single-mark and bulk-mark rollback.
+- Backend CI [45632375019](https://github.com/TheSumitNain/school-management-system/actions/runs/45632375019) **PASS** on `236eac8c11764f9e12a3057ab3c08e29c2d629f1`: full migration chain, complete Go/PostgreSQL integration tests and `go vet`.
+- Regression-test change only; no production code, schema migration or persistent school-data change. `main` remains untouched.
