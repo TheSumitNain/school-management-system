@@ -407,6 +407,32 @@ func TestSchoolStaffListingRouteEnforcesLiveUsersReadPermission(t *testing.T) {
 	if allowedRec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("authorized request should reach handler (nil service), got status=%d body=%s", allowedRec.Code, allowedRec.Body.String())
 	}
+
+	for _, test := range []struct {
+		name string
+		permissions []string
+		want int
+	}{
+		{name: "summary denied without users.read", permissions: []string{}, want: http.StatusForbidden},
+		{name: "summary reaches handler with users.read", permissions: []string{"users.read"}, want: http.StatusServiceUnavailable},
+	} {
+		router, err := setupTestRouterWithHandlers(
+			fakeDatabase{}, nil, validator,
+			fakePrincipalLoader{principal: principal},
+			fakePermissionLoader{permissions: test.permissions},
+			nil, nil, staffHandler,
+		)
+		if err != nil {
+			t.Fatalf("setup %s router: %v", test.name, err)
+		}
+		req := httptest.NewRequest(http.MethodGet, "/school/staff/summary", nil)
+		req.Header.Set("Authorization", "Bearer valid-test-token")
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		if rec.Code != test.want {
+			t.Fatalf("%s: status=%d want=%d body=%s", test.name, rec.Code, test.want, rec.Body.String())
+		}
+	}
 }
 
 
