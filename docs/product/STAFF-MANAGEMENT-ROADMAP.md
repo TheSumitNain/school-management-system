@@ -995,3 +995,10 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Added a PostgreSQL failure-injection test for staff leave request creation. When the required `staff.leave.requested` audit event cannot be inserted, the transaction must leave neither a request row nor an audit row. Existing integration coverage already verifies rollback for decisions, cancellation and holiday creation.
 - Backend CI [45630342631](https://github.com/TheSumitNain/school-management-system/actions/runs/45630342631) **PASS** on `c9ee6e8671b0fcf3faa76fa2ec0aa02fb58a68af`: all migrations, full Go/PostgreSQL integration tests and `go vet`.
 - Test-only hardening; no production code or schema migration changed. School leave quotas, accrual and carry-forward remain approval-gated; `main` remains untouched.
+
+
+## 2026-11-25 follow-up — leave-type audit transaction regressions
+
+- Added PostgreSQL failure-injection checks for leave-type creation and update. Both operations must roll back when their required audit event fails; the new type must not persist, the original type must remain unchanged, and no false audit event may be committed.
+- Backend CI [45631108229](https://github.com/TheSumitNain/school-management-system/actions/runs/45631108229) **PASS** on `67267c6a7c2b5f9c4fc240d6df34fe0c0148b85c`: full migrations, Go/PostgreSQL integration suite and `go vet`.
+- Test-only hardening; no production code or schema migration changed. School leave entitlement rules remain approval-gated; `main` remains untouched.
