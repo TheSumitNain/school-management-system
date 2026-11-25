@@ -44,6 +44,8 @@ func staffSubstitutionError(c *gin.Context,err error) {
 		c.JSON(http.StatusForbidden,gin.H{"status":"error","message":"You are not authorized to manage staff substitutions"})
 	case errors.Is(err,repository.ErrStaffSubstitutionNotFound):
 		c.JSON(http.StatusNotFound,gin.H{"status":"error","message":"Staff substitution not found or already cancelled"})
+	case errors.Is(err,repository.ErrStaffSubstitutionNotCancellable):
+		c.JSON(http.StatusConflict,gin.H{"status":"error","code":"staff_substitution_completed","message":"Completed substitutions cannot be cancelled; historical coverage is retained."})
 	case errors.Is(err,repository.ErrStaffSubstitutionConflict):
 		c.JSON(http.StatusConflict,gin.H{"status":"error","code":"staff_substitution_conflict","message":"The substitute already has a class or another coverage assignment in this period. Refresh the timetable and choose another substitute."})
 	case errors.Is(err,repository.ErrInvalidStaffSubstitution),errors.Is(err,services.ErrInvalidStaffSubstitution):
