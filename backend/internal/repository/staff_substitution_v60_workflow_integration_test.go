@@ -49,19 +49,21 @@ func TestStaffSubstitutionV60DatabaseGuardsPostgresIntegration(t *testing.T) {
 	if _,err=tx.Exec(ctx,`INSERT INTO principal_roles(principal_id,role_id,assigned_by) VALUES($1,$2,$3)`,actorPrincipalID,schoolAdminRoleID,platformAdminPrincipalID);err!=nil{t.Fatalf("grant School Admin role to test actor: %v",err)}
 
 	suffix:=time.Now().UnixNano()
-	var originalUserID,originalID,substituteUserID,substituteID int64
+	var originalUserID,originalID,substituteUserID,substituteID,secondOriginalUserID,secondOriginalID int64
 	if err=tx.QueryRow(ctx,`INSERT INTO users(school_id,username,password_hash,status)
 		VALUES($1,$2,$3,'active') RETURNING id,principal_id`,schoolID,fmt.Sprintf("original-%d",suffix),"integration-test-password-hash").Scan(&originalUserID,&originalID);err!=nil{t.Fatalf("create original teacher user: %v",err)}
 	if err=tx.QueryRow(ctx,`INSERT INTO users(school_id,username,password_hash,status)
 		VALUES($1,$2,$3,'active') RETURNING id,principal_id`,schoolID,fmt.Sprintf("substitute-%d",suffix),"integration-test-password-hash").Scan(&substituteUserID,&substituteID);err!=nil{t.Fatalf("create substitute user: %v",err)}
+	if err=tx.QueryRow(ctx,`INSERT INTO users(school_id,username,password_hash,status)
+		VALUES($1,$2,$3,'active') RETURNING id,principal_id`,schoolID,fmt.Sprintf("second-original-%d",suffix),"integration-test-password-hash").Scan(&secondOriginalUserID,&secondOriginalID);err!=nil{t.Fatalf("create second original teacher user: %v",err)}
 	var teacherRoleID int64
 	if err=tx.QueryRow(ctx,`SELECT id FROM roles WHERE school_id=$1 AND principal_type='staff'
 		AND scope_type='school' AND role_key='teacher' AND is_system=TRUE`,schoolID).Scan(&teacherRoleID);err!=nil{t.Fatalf("load Teacher role: %v",err)}
-	for _,teacherID:=range []int64{originalID,substituteID}{
+	for _,teacherID:=range []int64{originalID,substituteID,secondOriginalID}{
 		if _,err=tx.Exec(ctx,`INSERT INTO principal_roles(principal_id,role_id,assigned_by) VALUES($1,$2,$3)`,teacherID,teacherRoleID,actorPrincipalID);err!=nil{t.Fatalf("assign Teacher role to %d: %v",teacherID,err)}
 	}
 
-	for _,staff:=range []struct{id int64;code,name string}{{originalID,fmt.Sprintf("OR-%d",suffix),"Original Teacher"},{substituteID,fmt.Sprintf("SU-%d",suffix),"Substitute Teacher"}} {
+	for _,staff:=range []struct{id int64;code,name string}{{originalID,fmt.Sprintf("OR-%d",suffix),"Original Teacher"},{substituteID,fmt.Sprintf("SU-%d",suffix),"Substitute Teacher"},{secondOriginalID,fmt.Sprintf("OR2-%d",suffix),"Second Original Teacher"}} {
 		if _,err=tx.Exec(ctx,`INSERT INTO staff_profiles(principal_id,school_id,employee_code,full_name,designation,mobile_number)
 			VALUES($1,$2,$3,$4,'Teacher','9876543210')`,staff.id,schoolID,staff.code,staff.name);err!=nil{t.Fatalf("create staff profile %s: %v",staff.name,err)}
 	}
@@ -204,14 +206,14 @@ func TestStaffSubstitutionV60DatabaseGuardsPostgresIntegration(t *testing.T) {
 		VALUES($1,$2,3,'Period 3',TIME '11:00',TIME '11:40') RETURNING id`,schoolID,yearID).Scan(&thirdPeriodID);err!=nil{t.Fatalf("create third timetable period: %v",err)}
 	var secondOriginalAssignmentID int64
 	if err=tx.QueryRow(ctx,`INSERT INTO teacher_subject_assignments(school_id,academic_year_id,section_id,subject_id,teacher_principal_id,assigned_by_principal_id)
-		VALUES($1,$2,$3,$4,$5,$6) RETURNING id`,schoolID,yearID,secondSectionID,subjectID,originalID,actorPrincipalID).Scan(&secondOriginalAssignmentID);err!=nil{t.Fatalf("assign original teacher to second section: %v",err)}
+		VALUES($1,$2,$3,$4,$5,$6) RETURNING id`,schoolID,yearID,secondSectionID,subjectID,secondOriginalID,actorPrincipalID).Scan(&secondOriginalAssignmentID);err!=nil{t.Fatalf("assign original teacher to second section: %v",err)}
 	var pastEntryID int64
 	if err=tx.QueryRow(ctx,`INSERT INTO timetable_entries(school_id,academic_year_id,section_id,subject_id,teacher_principal_id,teacher_subject_assignment_id,period_id,day_of_week,created_by_principal_id,updated_by_principal_id)
-		VALUES($1,$2,$3,$4,$5,$6,$7,1,$8,$8) RETURNING id`,schoolID,yearID,secondSectionID,subjectID,originalID,secondOriginalAssignmentID,thirdPeriodID,actorPrincipalID).Scan(&pastEntryID);err!=nil{t.Fatalf("create original teacher's third-period timetable entry: %v",err)}
+		VALUES($1,$2,$3,$4,$5,$6,$7,1,$8,$8) RETURNING id`,schoolID,yearID,secondSectionID,subjectID,secondOriginalID,secondOriginalAssignmentID,thirdPeriodID,actorPrincipalID).Scan(&pastEntryID);err!=nil{t.Fatalf("create original teacher's third-period timetable entry: %v",err)}
 	var pastSubstitutionID int64
 	err=tx.QueryRow(ctx,`INSERT INTO staff_substitutions(school_id,timetable_entry_id,period_id,cover_date,original_teacher_principal_id,substitute_teacher_principal_id,reason,created_by_principal_id)
 		VALUES($1,$2,$3,(date_trunc('week',CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date-7),$4,$5,'Completed cover history',$4) RETURNING id`,
-		schoolID,pastEntryID,thirdPeriodID,originalID,substituteID).Scan(&pastSubstitutionID)
+		schoolID,pastEntryID,thirdPeriodID,secondOriginalID,substituteID).Scan(&pastSubstitutionID)
 	if err!=nil{t.Fatalf("create past dated substitution history: %v",err)}
 	if _,err=tx.Exec(ctx,`UPDATE timetable_entries SET room='Updated after completed cover' WHERE id=$1`,pastEntryID);err!=nil{t.Fatalf("completed cover history should not block future recurring timetable edits: %v",err)}
 	pastDelete,err:=tx.Begin(ctx);if err!=nil{t.Fatalf("begin past timetable history delete savepoint: %v",err)}
