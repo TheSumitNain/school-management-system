@@ -1,3 +1,9 @@
+## 2026-11-25 — School-wide staff report browser acceptance audit
+
+- Re-inspected the complete Staff Management Playwright spec and confirmed dedicated scenarios exist for Qualifications & Certifications and Staff Experience History. The scenarios exercise the respective aggregate report endpoints, type/status filters, visible result rows and CSV export privacy allowlists.
+- The qualification CSV regression asserts credential references and verification notes are absent; the experience CSV regression asserts free-text descriptions are absent. The complete frontend Playwright suite passed in CI [45543354522](https://github.com/TheSumitNain/school-management-system/actions/runs/45543354522) on `4eb297516f652de07d4900455fcab4a119b0da57`. Backend CI [45543354503](https://github.com/TheSumitNain/school-management-system/actions/runs/45543354503) also passed on the same code checkpoint.
+- This closes the previously documented gap about not locating dedicated report-screen Playwright scenarios. It does not claim separate browser coverage for every pagination interaction. No schema migration, persistent database or application data changed.
+
 ## 2026-11-25 — Staff profile Unicode validation acceptance
 
 - Staff profile form limits for full name (160), designation (100) and email (254) now enforce the same Unicode-code-point limits as backend validation. Employee code (32) and mobile number constraints were already aligned.
