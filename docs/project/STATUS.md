@@ -1,3 +1,9 @@
+## 2026-11-25 — Staff report pagination regression backend verification
+
+- Backend CI [45546968090](https://github.com/TheSumitNain/school-management-system/actions/runs/45546968090) **PASS** on the report-pagination test checkpoint: all migrations applied to ephemeral PostgreSQL, the complete Go test suite including PostgreSQL integration passed, and `go vet` passed.
+- The paired Frontend CI [45546968103](https://github.com/TheSumitNain/school-management-system/actions/runs/45546968103) is still running its Playwright browser acceptance suite. The new Experience History pagination browser scenario is not marked verified until that run completes successfully.
+- No production code, schema, persistent database or application data changed in this verification checkpoint.
+
 ## 2026-11-25 — Staff Substitution transactional and concurrency regression verification
 
 - Added a distinct, valid-length teacher username to the V60 database-guard fixture after CI exposed the 32-character username constraint; no production behavior or schema was changed.
