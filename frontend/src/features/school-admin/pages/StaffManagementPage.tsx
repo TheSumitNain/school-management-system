@@ -273,7 +273,7 @@ export function StaffManagementPage({ permissions }: Props) {
       if (joiningDate && joiningDate > schoolDateValueYearsAhead(1)) stepErrors.joining_date = "Joining date cannot be more than one year ahead.";
     }
     if (createStep === 3) {
-      if (!/^[a-z0-9._-]{3,32}$/.test(username)) stepErrors.username = "Use 3–32 lowercase letters, numbers, dots, underscores or hyphens.";
+      if (!/^[a-z0-9][a-z0-9._-]{2,31}$/.test(username)) stepErrors.username = "Use 3–32 lowercase letters, numbers, dots, underscores or hyphens; start with a letter or number.";
       if (password.length < 12) stepErrors.password = "Password must contain at least 12 characters.";
     }
     setFieldErrors(stepErrors);
@@ -296,7 +296,7 @@ export function StaffManagementPage({ permissions }: Props) {
     const email = String(form.get("email") ?? "").trim();
     const joiningDate = String(form.get("joining_date") ?? "").trim();
     const employmentStatus = String(form.get("employment_status") ?? "active");
-    if ((action === "create" || action === "edit") && !/^[a-z0-9._-]{3,32}$/.test(username)) nextErrors.username = "Use 3–32 lowercase letters, numbers, dots, underscores or hyphens.";
+    if ((action === "create" || action === "edit") && !/^[a-z0-9][a-z0-9._-]{2,31}$/.test(username)) nextErrors.username = "Use 3–32 lowercase letters, numbers, dots, underscores or hyphens; start with a letter or number.";
     if (action === "create" || action === "edit") {
       if (!fullName || Array.from(fullName).length > 160) nextErrors.full_name = "Enter the employee's full name (up to 160 characters).";
       if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/.test(employeeCode)) nextErrors.employee_code = "Use 1–32 letters, numbers, dots, underscores or hyphens.";
@@ -530,7 +530,7 @@ export function StaffManagementPage({ permissions }: Props) {
           <dl>{createReview && <><div><dt>Full name</dt><dd>{createReview.fullName}</dd></div><div><dt>Employee code</dt><dd>{createReview.employeeCode}</dd></div><div><dt>Mobile</dt><dd>{createReview.mobileNumber}</dd></div><div><dt>Email</dt><dd>{createReview.email || "Not provided"}</dd></div><div><dt>Designation</dt><dd>{createReview.designation}</dd></div><div><dt>Joining date</dt><dd>{createReview.joiningDate || "Not set"}</dd></div><div><dt>Login username</dt><dd>{createReview.username}</dd></div></>}</dl>
           <p>Temporary password change is required at first sign-in. After creation, you can explicitly copy credentials for a trusted handoff. Nothing is sent automatically.</p></section>}
         <form ref={wizardFormRef} onSubmit={submit} noValidate>
-          {action === "create" && <label hidden={createStep !== 3}>Login username<input name="username" placeholder="e.g. rahul.sharma" minLength={3} maxLength={32} pattern="[a-z0-9._-]{3,32}" autoComplete="off" required aria-invalid={Boolean(fieldErrors.username)} aria-describedby={fieldErrors.username ? "staff-username-error" : "staff-username-help"} onChange={()=>setFieldErrors(current=>({...current,username:""}))}/><small id="staff-username-help">3–32 lowercase letters, numbers, dots, underscores or hyphens. Unique across the platform.</small>{fieldErrors.username && <small className="app-field-error" id="staff-username-error" role="alert">{fieldErrors.username}</small>}</label>}
+          {action === "create" && <label hidden={createStep !== 3}>Login username<input name="username" placeholder="e.g. rahul.sharma" minLength={3} maxLength={32} pattern="[a-z0-9][a-z0-9._-]{2,31}" autoComplete="off" required aria-invalid={Boolean(fieldErrors.username)} aria-describedby={fieldErrors.username ? "staff-username-error" : "staff-username-help"} onChange={()=>setFieldErrors(current=>({...current,username:""}))}/><small id="staff-username-help">3–32 lowercase letters, numbers, dots, underscores or hyphens. Unique across the platform.</small>{fieldErrors.username && <small className="app-field-error" id="staff-username-error" role="alert">{fieldErrors.username}</small>}</label>}
           {action === "edit" && <label>Login username<input value={selected?.username ?? ""} disabled/><small>Login identity is managed separately from employee details.</small></label>}
           {(action === "create" || action === "edit") && <>
             <label hidden={action === "create" && createStep !== 1}>Full name<input name="full_name" placeholder="e.g. Rahul Sharma" defaultValue={selected?.full_name ?? ""} required aria-invalid={Boolean(fieldErrors.full_name)} aria-describedby={fieldErrors.full_name ? "staff-full-name-error" : undefined} onChange={event => { limitStaffRecordInput(event, 160); setFieldErrors(current=>({...current,full_name:""})); }}/>{fieldErrors.full_name && <small className="app-field-error" id="staff-full-name-error" role="alert">{fieldErrors.full_name}</small>}</label>
