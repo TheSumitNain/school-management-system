@@ -1123,13 +1123,14 @@ func TestStaffAttendanceRoutesEnforceDedicatedPermissions(t *testing.T) {
         path string
         body string
         permissions []string
+        alternatePermissions []string
         want int
     }{
         {name:"daily read",method:http.MethodGet,path:"/school/staff-attendance",permissions:[]string{"staff.attendance.read"},want:http.StatusServiceUnavailable},
         {name:"monthly read",method:http.MethodGet,path:"/school/staff-attendance/month",permissions:[]string{"staff.attendance.read"},want:http.StatusServiceUnavailable},
-        {name:"mark",method:http.MethodPost,path:"/school/staff-attendance",body:`{"staff_principal_id":52,"attendance_date":"2026-11-22","status":"present"}`,permissions:[]string{"staff.attendance.mark"},want:http.StatusServiceUnavailable},
-        {name:"same-day update",method:http.MethodPatch,path:"/school/staff-attendance/7",body:`{"status":"late"}`,permissions:[]string{"staff.attendance.update_same_day"},want:http.StatusServiceUnavailable},
-        {name:"bulk mark",method:http.MethodPost,path:"/school/staff-attendance/bulk",body:`{"staff_principal_ids":[52,53],"attendance_date":"2026-11-22","status":"present"}`,permissions:[]string{"staff.attendance.mark"},want:http.StatusServiceUnavailable},
+        {name:"mark",method:http.MethodPost,path:"/school/staff-attendance",body:`{"staff_principal_id":52,"attendance_date":"2026-11-22","status":"present"}`,permissions:[]string{"staff.attendance.mark"},alternatePermissions:[]string{"staff.attendance.correct_past"},want:http.StatusServiceUnavailable},
+        {name:"same-day update",method:http.MethodPatch,path:"/school/staff-attendance/7",body:`{"status":"late"}`,permissions:[]string{"staff.attendance.update_same_day"},alternatePermissions:[]string{"staff.attendance.correct_past"},want:http.StatusServiceUnavailable},
+        {name:"bulk mark",method:http.MethodPost,path:"/school/staff-attendance/bulk",body:`{"staff_principal_ids":[52,53],"attendance_date":"2026-11-22","status":"present"}`,permissions:[]string{"staff.attendance.mark"},alternatePermissions:[]string{"staff.attendance.correct_past"},want:http.StatusServiceUnavailable},
         {name:"historical mark",method:http.MethodPost,path:"/school/staff-attendance",body:`{"staff_principal_id":52,"attendance_date":"2026-11-20","status":"absent"}`,permissions:[]string{"staff.attendance.correct_past"},want:http.StatusServiceUnavailable},
         {name:"historical update",method:http.MethodPatch,path:"/school/staff-attendance/7",body:`{"status":"absent"}`,permissions:[]string{"staff.attendance.correct_past"},want:http.StatusServiceUnavailable},
     }
@@ -1147,6 +1148,9 @@ func TestStaffAttendanceRoutesEnforceDedicatedPermissions(t *testing.T) {
             }
             if denied:=request(nil);denied.Code!=http.StatusForbidden{t.Fatalf("without permission status=%d body=%s want=403",denied.Code,denied.Body.String())}
             if allowed:=request(tc.permissions);allowed.Code!=tc.want{t.Fatalf("with permission status=%d body=%s want=%d",allowed.Code,allowed.Body.String(),tc.want)}
+            if len(tc.alternatePermissions)>0 {
+                if allowed:=request(tc.alternatePermissions);allowed.Code!=tc.want{t.Fatalf("with alternate permission status=%d body=%s want=%d",allowed.Code,allowed.Body.String(),tc.want)}
+            }
         })
     }
 }
