@@ -97,7 +97,7 @@ func (r *AcademicRepository) ListStaffSubstitutions(ctx context.Context,actorID,
 		FROM staff_substitutions ss
 		WHERE ss.school_id=$1 AND ss.cover_date BETWEEN $2::date AND $3::date
 		  AND ($4=0 OR ss.original_teacher_principal_id=$4 OR ss.substitute_teacher_principal_id=$4)
-		ORDER BY ss.cover_date,ss.period_number_snapshot,ss.id LIMIT 1000`,schoolID,fromDate,toDate,staffID)
+		ORDER BY ss.cover_date,ss.period_number_snapshot,ss.id`,schoolID,fromDate,toDate,staffID)
 	if err!=nil{return nil,fmt.Errorf("list staff substitutions: %w",err)}
 	defer rows.Close()
 	items:=make([]StaffSubstitution,0)
