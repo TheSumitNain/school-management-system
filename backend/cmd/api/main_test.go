@@ -1393,3 +1393,33 @@ func TestStaffTimetableAndWorkloadRoutesEnforceLivePermissions(t *testing.T) {
 		})
 	}
 }
+
+
+func TestHolidayManagerCanReachCalendarReadRouteWithoutSeparateReadGrant(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	validator := fakeTokenValidator{claims: &services.TokenClaims{
+		RegisteredClaims: jwt.RegisteredClaims{Subject: "31"},
+		PrincipalType: "staff",
+		TokenVersion: 1,
+	}}
+	principal := &models.AuthPrincipal{
+		ID: 31, Type: "staff", Status: "active", TokenVersion: 1,
+		SchoolID: 8, Username: "holiday.manager",
+	}
+	router, err := setupTestRouterWithHandlers(
+		fakeDatabase{}, nil, validator,
+		fakePrincipalLoader{principal: principal},
+		fakePermissionLoader{permissions: []string{"staff.holidays.manage"}},
+		nil, nil, handlers.NewStaffLeaveHandler(nil),
+	)
+	if err != nil {
+		t.Fatalf("setup router: %v", err)
+	}
+	request := httptest.NewRequest(http.MethodGet, "/school/holidays?from=2026-01-01&to=2026-12-31&include_inactive=true", nil)
+	request.Header.Set("Authorization", "Bearer valid-test-token")
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusServiceUnavailable {
+		t.Fatalf("holiday manager should pass route authorization and reach handler: status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+}
