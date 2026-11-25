@@ -958,3 +958,11 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Aligned the holiday calendar GET route with the existing frontend permission model: either `staff.holidays.read` or `staff.holidays.manage` may reach the handler. Repository checks continue to distinguish active-only reads from inactive-record management access. Added route-level regression coverage for manage-only access.
 - Backend CI [45602173749](https://github.com/TheSumitNain/school-management-system/actions/runs/45602173749) **PASS** on `42ca6cf7709a742dd53029c284cae5c25d671a7c`: full migrations, Go/PostgreSQL integration tests and `go vet`.
 - No persistent database change. Leave entitlement policy remains approval-gated; document/photo storage remains deferred and excluded from the Staff Management completion estimate. `main` remains untouched.
+
+
+## 2026-11-25 follow-up — staff audit history lifecycle and immediate refresh
+
+- Audit-history coverage now includes account disabled/enabled, username updated, password reset/changed, role assigned/revoked and individual permission override set/removed events. PostgreSQL integration fixtures mirror the production metadata needed for school-scoped target resolution; Playwright verifies the corresponding event labels.
+- Fixed stale open audit-history panels after account/profile/credential changes, qualification/certification/experience mutations, role assignment/removal and permission-override save/removal. These mutations now invalidate the selected employee's audit-history query; browser regressions verify role and override changes trigger a fresh history read.
+- Frontend CI [45617925032](https://github.com/TheSumitNain/school-management-system/actions/runs/45617925032) **PASS**: TypeScript, Vite build and full Playwright suite. Backend CI [45618359896](https://github.com/TheSumitNain/school-management-system/actions/runs/45618359896) **PASS**: all migrations, full Go/PostgreSQL integration suite and `go vet`.
+- No schema or persistent data change. Existing leave-policy, employee identity-schema and qualification/certification approval/retention decisions remain explicit product gates. Document/photo storage remains deferred and excluded from the completion estimate; `main` remains untouched.
