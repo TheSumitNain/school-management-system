@@ -2712,3 +2712,10 @@ This update supersedes older status bullets that listed the following database-b
 - Extended PostgreSQL failure-injection coverage to holiday updates as well as creation. If `school.holiday.updated` audit insertion fails, the existing holiday date/name remain unchanged and no additional audit event commits; create rollback continues to verify no partial row or event remains.
 - Backend CI [45633050577](https://github.com/TheSumitNain/school-management-system/actions/runs/45633050577) **PASS** on `27bea4e68dbdf6bb2e4c5997d9f602d3b3523dbc`: full migration chain, Go/PostgreSQL integration suite and `go vet`.
 - Regression-test change only; no production code, schema migration or persistent school data changed. `main` remains untouched.
+
+
+## 2026-11-25 — Staff leave create/cancel audit-history browser acceptance
+
+- Added a Playwright scenario that opens an employee's History & Activity panel, creates a leave request, reopens the profile and verifies a fresh audit-history read; it then cancels the pending request and verifies another fresh read. This complements the existing approval/rejection refresh coverage.
+- Backend CI [45634722560](https://github.com/TheSumitNain/school-management-system/actions/runs/45634722560) **PASS** and Frontend CI [45634722478](https://github.com/TheSumitNain/school-management-system/actions/runs/45634722478) **PASS** on `117b25a6ec0820d0371fdf7c7cafda79b305c5c0`. Backend verification includes migrations, full Go/PostgreSQL integration suite and `go vet`; frontend verification includes TypeScript, Vite production build and the full Playwright suite.
+- Test-only hardening; no production behavior or schema change. `main` remains untouched; current work remains on `work`.
