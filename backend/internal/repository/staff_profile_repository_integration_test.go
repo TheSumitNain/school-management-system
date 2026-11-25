@@ -92,6 +92,23 @@ func TestStaffProfileRepositoryPostgresIntegration(t *testing.T) {
         t.Fatalf("created staff profile not returned: %+v", user)
     }
 
+    // The profile update must not cross a tenant boundary, even when the
+    // caller knows the target principal identifier.
+    crossSchoolProfile := profile
+    crossSchoolProfile.FullName = "Cross-School Mutation"
+    if _, err := repo.UpdateStaffProfile(ctx, actorPrincipalID, schoolID+1, user.PrincipalID, crossSchoolProfile); !errors.Is(err, ErrUserNotFound) {
+        t.Fatalf("cross-school profile update error = %v, want ErrUserNotFound", err)
+    }
+    var nameAfterCrossSchoolAttempt string
+    if err := tx.QueryRow(ctx, `
+        SELECT full_name FROM staff_profiles WHERE principal_id = $1
+    `, user.PrincipalID).Scan(&nameAfterCrossSchoolAttempt); err != nil {
+        t.Fatalf("read profile after cross-school update attempt: %v", err)
+    }
+    if nameAfterCrossSchoolAttempt != profile.FullName {
+        t.Fatalf("cross-school profile update changed employee data: name=%q", nameAfterCrossSchoolAttempt)
+    }
+
     // Optional email may be omitted during initial onboarding as well as cleared later.
     blankEmailProfile := profile
     blankEmailProfile.EmployeeCode = "EMP-BLANK-" + suffix
