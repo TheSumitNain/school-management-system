@@ -1,3 +1,11 @@
+## 2026-11-25 — Staff ID card and audit-history privacy review
+
+- ID card eligibility is restricted to active, complete staff profiles with employee code, full name and designation. Disabled login does not incorrectly exclude an active employee. The printable card allowlist excludes mobile/email, username, login status, passwords and permissions; optional validity date rejects past dates.
+- Staff History & Activity requires `school.audit.read` in both UI and backend. Unauthorized viewers do not trigger an audit fetch; repository authorization rechecks live permission and same-school actor/target membership. Events are scoped by authenticated school and staff principal, metadata is excluded from API JSON, results are capped at 100, newest-first and paginated.
+- Existing Playwright and PostgreSQL tests cover permission denial, event rendering, employee switching, pagination, profile reopen refresh, cross-school denial and metadata privacy.
+- No new production defect found. Backend [45602855583](https://github.com/TheSumitNain/school-management-system/actions/runs/45602855583) and Frontend [45602855658](https://github.com/TheSumitNain/school-management-system/actions/runs/45602855658) **PASS** on `bb7e0af18c3eb2af3e0bb4129c1408f0a41f12f5`; this checkpoint changes documentation only.
+- No production behavior, schema, persistent database or application data changed. Existing identity-schema, leave-policy and payroll approval gates remain unchanged; private document/photo storage remains deferred and excluded from completion estimates.
+
 ## 2026-11-25 — Staff report CSV formula-injection regression verification
 
 - Added browser regression coverage for tab-prefixed user-controlled report values in CSV exports, ensuring spreadsheet formula-like input is escaped as text.
