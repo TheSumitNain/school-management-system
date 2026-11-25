@@ -357,6 +357,50 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
             preservedPasswordHash, preservedMustChange, preservedResetTokenVersion, resetSessionStillActive)
     }
 
+    // Disable must likewise preserve active access and sessions when its
+    // mandatory audit insert fails.
+    disableFailureSuffix := suffix[len(suffix)-8:]
+    disableFailureTrigger := "test_reject_staff_disable_audit_" + disableFailureSuffix
+    disableFailureFunction := "test_reject_staff_disable_audit_fn_" + disableFailureSuffix
+    disableFailureSession := integrationTokenHash("staff-disable-audit-failure-" + suffix)
+    if err := NewPrincipalRefreshSessionRepository(pool).CreatePrincipalInTx(ctx, tx, created.PrincipalID, disableFailureSession, time.Now().Add(time.Hour)); err != nil {
+        t.Fatalf("create refresh session before rejected account disable: %v", err)
+    }
+    if _, err := tx.Exec(ctx, fmt.Sprintf(`
+        CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $
+        BEGIN
+            IF NEW.action = 'staff.account.disabled' THEN
+                RAISE EXCEPTION 'forced staff disable audit failure';
+            END IF;
+            RETURN NEW;
+        END;
+        $;
+        CREATE TRIGGER %s BEFORE INSERT ON audit_events
+        FOR EACH ROW EXECUTE FUNCTION %s();
+    `, disableFailureFunction, disableFailureTrigger, disableFailureFunction)); err != nil {
+        t.Fatalf("install account disable audit failure trigger: %v", err)
+    }
+    if err := repo.DisableStaffAccount(ctx, actorPrincipalID, schoolID, created.PrincipalID); err == nil {
+        t.Fatal("account disable unexpectedly succeeded when its audit insert failed")
+    }
+    if _, err := tx.Exec(ctx, fmt.Sprintf("DROP TRIGGER %s ON audit_events; DROP FUNCTION %s();", disableFailureTrigger, disableFailureFunction)); err != nil {
+        t.Fatalf("remove account disable audit failure trigger: %v", err)
+    }
+    var preservedAccountStatus string
+    var preservedDisableTokenVersion int64
+    var disableSessionStillActive bool
+    if err := tx.QueryRow(ctx, `
+        SELECT ap.status, ap.token_version,
+               EXISTS (SELECT 1 FROM refresh_sessions rs WHERE rs.token_hash = $2 AND rs.revoked_at IS NULL)
+          FROM auth_principals ap WHERE ap.id = $1
+    `, created.PrincipalID, disableFailureSession).Scan(&preservedAccountStatus, &preservedDisableTokenVersion, &disableSessionStillActive); err != nil {
+        t.Fatalf("read state after rejected account disable: %v", err)
+    }
+    if preservedAccountStatus != "active" || preservedDisableTokenVersion != 3 || !disableSessionStillActive {
+        t.Fatalf("failed account disable left partial side effects: status=%q token_version=%d session_active=%v",
+            preservedAccountStatus, preservedDisableTokenVersion, disableSessionStillActive)
+    }
+
 	// Seed a separate live refresh session in the same outer transaction before disable.
 	// The repository must serialize with refresh rotation and revoke this session
 	// atomically with principal deactivation.
