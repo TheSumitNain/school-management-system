@@ -2705,3 +2705,10 @@ This update supersedes older status bullets that listed the following database-b
 - Added a PostgreSQL failure-injection regression for `StaffAttendanceRepository.Update`. If the `school.staff_attendance.updated` audit insert fails, the transaction preserves the previously committed attendance status and does not add a false update audit event. Existing coverage separately verifies single-mark and bulk-mark rollback.
 - Backend CI [45632375019](https://github.com/TheSumitNain/school-management-system/actions/runs/45632375019) **PASS** on `236eac8c11764f9e12a3057ab3c08e29c2d629f1`: full migration chain, complete Go/PostgreSQL integration tests and `go vet`.
 - Regression-test change only; no production code, schema migration or persistent school-data change. `main` remains untouched.
+
+
+## 2026-11-25 — School holiday update audit rollback
+
+- Extended PostgreSQL failure-injection coverage to holiday updates as well as creation. If `school.holiday.updated` audit insertion fails, the existing holiday date/name remain unchanged and no additional audit event commits; create rollback continues to verify no partial row or event remains.
+- Backend CI [45633050577](https://github.com/TheSumitNain/school-management-system/actions/runs/45633050577) **PASS** on `27bea4e68dbdf6bb2e4c5997d9f602d3b3523dbc`: full migration chain, Go/PostgreSQL integration suite and `go vet`.
+- Regression-test change only; no production code, schema migration or persistent school data changed. `main` remains untouched.
