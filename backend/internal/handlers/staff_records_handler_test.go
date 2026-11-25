@@ -165,3 +165,39 @@ func TestStaffRecordsHandlerReturnsStructuredFieldValidationErrors(t *testing.T)
 		t.Fatalf("field error missing from response: %s", recorder.Body.String())
 	}
 }
+
+func TestStaffReportHandlersRejectMalformedPaginationAndFilters(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	handler := NewStaffRecordsHandler(nilStaffRecordsResultService{})
+	auth := func(c *gin.Context) {
+		c.Set(middleware.ContextPrincipalIDKey, int64(100))
+		c.Set(middleware.ContextSchoolIDKey, int64(10))
+		c.Next()
+	}
+	tests := []struct {
+		name, path string
+		handler func(*StaffRecordsHandler, *gin.Context)
+	}{
+		{"qualifications malformed limit", "/staff/qualifications/report?limit=abc", (*StaffRecordsHandler).ListQualificationsReport},
+		{"qualifications negative limit", "/staff/qualifications/report?limit=-1", (*StaffRecordsHandler).ListQualificationsReport},
+		{"qualifications malformed offset", "/staff/qualifications/report?offset=abc", (*StaffRecordsHandler).ListQualificationsReport},
+		{"qualifications negative offset", "/staff/qualifications/report?offset=-1", (*StaffRecordsHandler).ListQualificationsReport},
+		{"experience malformed limit", "/staff/experience/report?limit=abc", (*StaffRecordsHandler).ListExperienceReport},
+		{"experience negative limit", "/staff/experience/report?limit=-1", (*StaffRecordsHandler).ListExperienceReport},
+		{"experience malformed offset", "/staff/experience/report?offset=abc", (*StaffRecordsHandler).ListExperienceReport},
+		{"experience negative offset", "/staff/experience/report?offset=-1", (*StaffRecordsHandler).ListExperienceReport},
+		{"experience invalid current-only", "/staff/experience/report?current_only=yes", (*StaffRecordsHandler).ListExperienceReport},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			router := gin.New()
+			router.GET("/staff/qualifications/report", auth, func(c *gin.Context) { tt.handler(handler, c) })
+			router.GET("/staff/experience/report", auth, func(c *gin.Context) { tt.handler(handler, c) })
+			recorder := httptest.NewRecorder()
+			router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, tt.path, nil))
+			if recorder.Code != http.StatusBadRequest {
+				t.Fatalf("malformed report query must return 400: status=%d body=%s", recorder.Code, recorder.Body.String())
+			}
+		})
+	}
+}
