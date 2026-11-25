@@ -2882,7 +2882,7 @@ test("staff qualifications report uses one paginated aggregate endpoint and expo
     const certificationOnly = url.searchParams.get("record_type") === "certification";
     const rows = certificationOnly ? [{
       record_type: "certification", record_id: 22, staff_principal_id: 501, employee_code: "EMP-ACTIVE",
-      staff_name: "Active Teacher", record_name: "Child Safety Training", organization: "State Board",
+      staff_name: "Active Teacher", record_name: "Child Safety Training", organization: "\\t=HYPERLINK(\\"x\\")",
       record_date: "2025-04-01", expiry_date: "2027-04-01", verification_status: "pending",
     }] : [{
       record_type: "qualification", record_id: 11, staff_principal_id: 501, employee_code: "EMP-ACTIVE",
@@ -2890,7 +2890,7 @@ test("staff qualifications report uses one paginated aggregate endpoint and expo
       record_date: "2022", expiry_date: "", verification_status: "verified",
     }, {
       record_type: "certification", record_id: 22, staff_principal_id: 501, employee_code: "EMP-ACTIVE",
-      staff_name: "Active Teacher", record_name: "Child Safety Training", organization: "State Board",
+      staff_name: "Active Teacher", record_name: "Child Safety Training", organization: "\\t=HYPERLINK(\\"x\\")",
       record_date: "2025-04-01", expiry_date: "2027-04-01", verification_status: "pending",
     }];
     await route.fulfill({ json: { report: {
@@ -2924,6 +2924,7 @@ test("staff qualifications report uses one paginated aggregate endpoint and expo
   const csv = await readFile(path!, "utf8");
   expect(csv.startsWith("\uFEFF")).toBe(true);
   expect(csv).toContain("Child Safety Training");
+  expect(csv).toContain("'\\t=HYPERLINK(");
   expect(csv).not.toContain("credential");
   expect(csv).not.toContain("verification_notes");
 });
