@@ -93,3 +93,19 @@ func TestStaffAttendanceBulkMarkRejectsDuplicateTargetsBeforeWritesPostgresInteg
 	if err := f.pool.QueryRow(f.ctx, `SELECT COUNT(*) FROM staff_attendance_records WHERE school_id=$1 AND attendance_date=$2::date`, f.schoolID, schooltime.TodayDate()).Scan(&records); err != nil { t.Fatalf("count records after duplicate-target rejection: %v", err) }
 	if records != 0 { t.Fatalf("records after duplicate-target rejection=%d want=0", records) }
 }
+
+func TestStaffAttendanceBulkMarkRollsBackWhenAnyTargetIsInvalidPostgresIntegration(t *testing.T) {
+	f := newStaffAttendanceIntegrationFixture(t)
+	day, err := time.Parse("2006-01-02", schooltime.TodayDate())
+	if err != nil { t.Fatalf("parse school date: %v", err) }
+
+	_, err = f.repo.MarkBulk(f.ctx, f.actorID, f.schoolID, []int64{f.staffIDs[0], 9_999_999_999}, day, "present", nil)
+	if !errors.Is(err, ErrStaffAttendanceNotFound) {
+		t.Fatalf("invalid target error=%v want ErrStaffAttendanceNotFound", err)
+	}
+	var records int
+	if err := f.pool.QueryRow(f.ctx, `SELECT COUNT(*) FROM staff_attendance_records WHERE school_id=$1 AND attendance_date=$2::date`, f.schoolID, schooltime.TodayDate()).Scan(&records); err != nil {
+		t.Fatalf("count records after invalid-target rollback: %v", err)
+	}
+	if records != 0 { t.Fatalf("records after invalid-target rollback=%d want=0", records) }
+}
