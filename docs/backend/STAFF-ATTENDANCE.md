@@ -1,3 +1,12 @@
+
+## 2026-11-25 — bulk attendance HTTP, service validation and concurrency verification
+
+- Backend CI [45598938508](https://github.com/TheSumitNain/school-management-system/actions/runs/45598938508) **PASS**: bulk HTTP handler tests verify authenticated principal/school context, payload forwarding, created-count response, invalid-date rejection before service invocation, and unauthenticated rejection.
+- Backend CI [45599478011](https://github.com/TheSumitNain/school-management-system/actions/runs/45599478011) **PASS** on `41851e988b17bd90a32c9cf623913aa61556ae28`: ephemeral PostgreSQL migrations, full Go suite including integration tests, and `go vet`.
+- New service tests verify invalid actor/school, status, remarks, empty/duplicate/non-positive IDs, the 1,000-record maximum, and acceptance at the maximum batch size.
+- New PostgreSQL concurrency regression starts two simultaneous bulk requests for the same staff/date set: exactly one transaction succeeds, the competing transaction returns the attendance conflict, and the final state contains exactly one complete set of attendance records and audit events (no partial losing transaction).
+- Regression coverage only; no production behavior, schema, persistent database, or school data changed.
+
 # Staff Attendance — implementation contract
 
 Status: Daily/monthly register, employee search/status filtering, atomic bulk marking, monthly CSV export, and permission-gated approved-leave/school-holiday calendar context are implemented. Automated backend and browser acceptance coverage exists; manual authenticated-school sign-off remains separate.
