@@ -160,6 +160,41 @@ func TestStaffProfileRepositoryPostgresIntegration(t *testing.T) {
         t.Fatalf("reactivating employment unexpectedly enabled login: %+v", updated)
     }
 
+    // An audit failure must roll back the employee profile mutation.
+    failFunction := "test_fail_staff_profile_audit_" + suffix
+    failTrigger := "test_fail_staff_profile_audit_trigger_" + suffix
+    if _, err := tx.Exec(ctx, fmt.Sprintf(`
+        CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $
+        BEGIN
+            IF NEW.action = 'staff.profile.updated' THEN
+                RAISE EXCEPTION 'injected staff profile audit failure';
+            END IF;
+            RETURN NEW;
+        END;
+        $;
+        CREATE TRIGGER %s BEFORE INSERT ON audit_events
+        FOR EACH ROW EXECUTE FUNCTION %s();
+    `, failFunction, failTrigger, failFunction)); err != nil {
+        t.Fatalf("install staff profile audit failure trigger: %v", err)
+    }
+    failedUpdate := profile
+    failedUpdate.FullName = "Must Roll Back"
+    if _, err := repo.UpdateStaffProfile(ctx, actorPrincipalID, schoolID, user.PrincipalID, failedUpdate); err == nil {
+        t.Fatal("profile update unexpectedly succeeded when its audit insert failed")
+    }
+    var nameAfterAuditFailure string
+    if err := tx.QueryRow(ctx, `
+        SELECT full_name FROM staff_profiles WHERE principal_id = $1
+    `, user.PrincipalID).Scan(&nameAfterAuditFailure); err != nil {
+        t.Fatalf("read profile after injected audit failure: %v", err)
+    }
+    if nameAfterAuditFailure != profile.FullName {
+        t.Fatalf("profile update was not rolled back with audit failure: name=%q want=%q", nameAfterAuditFailure, profile.FullName)
+    }
+    if _, err := tx.Exec(ctx, fmt.Sprintf("DROP TRIGGER %s ON audit_events; DROP FUNCTION %s();", failTrigger, failFunction)); err != nil {
+        t.Fatalf("remove staff profile audit failure trigger: %v", err)
+    }
+
     // Email is optional: clearing it in the profile editor must persist SQL NULL,
     // not an empty string that violates the staff_profiles email constraint.
     profile.Email = ""
