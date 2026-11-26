@@ -65,8 +65,8 @@ func TestStaffSubstitutionV61SerializesConcurrentSubstituteSlotAssignmentsPostgr
 	for i, teacher := range []struct{id int64; name, code string}{
 		{originalOne,"Race Original One","R1"},{originalTwo,"Race Original Two","R2"},{substitute,"Race Substitute","RS"},
 	} {
-		if _, err := setupTx.Exec(ctx, `INSERT INTO staff_profiles(principal_id,school_id,employee_code,full_name,designation,mobile_number)
-			VALUES($1,$2,$3,$4,'Teacher','9876543210')`, teacher.id, schoolID, fmt.Sprintf("%s-%s-%d",teacher.code,suffix,i), teacher.name); err != nil {
+		if _, err := setupTx.Exec(ctx, `INSERT INTO staff_profiles(principal_id,school_id,employee_code,full_name,designation,mobile_number,staff_type)
+			VALUES($1,$2,$3,$4,'Teacher','9876543210','teaching')`, teacher.id, schoolID, fmt.Sprintf("%s-%s-%d",teacher.code,suffix,i), teacher.name); err != nil {
 			t.Fatalf("create race staff profile %d: %v", i, err)
 		}
 	}

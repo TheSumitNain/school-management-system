@@ -117,14 +117,14 @@ func TestTeacherWorkloadReportPostgresIntegration(t *testing.T) {
 	var teacherRoleID int64
 	if err=tx.QueryRow(ctx,`SELECT id FROM roles WHERE school_id=$1 AND principal_type='staff' AND scope_type='school' AND role_key='teacher' AND is_system=TRUE`,schoolID).Scan(&teacherRoleID);err!=nil{t.Fatalf("load Teacher role: %v",err)}
 	if _,err=tx.Exec(ctx,`INSERT INTO principal_roles(principal_id,role_id,assigned_by) VALUES($1,$2,$3)`,teacherID,teacherRoleID,actorID);err!=nil{t.Fatalf("assign Teacher role: %v",err)}
-	if _,err=tx.Exec(ctx,`INSERT INTO staff_profiles(principal_id,school_id,employee_code,full_name,designation,mobile_number)
-		VALUES($1,$2,$3,'Workload Teacher','Teacher','9876543218')`,teacherID,schoolID,fmt.Sprintf("WL-%d",suffix));err!=nil{t.Fatalf("create workload teacher profile: %v",err)}
+	if _,err=tx.Exec(ctx,`INSERT INTO staff_profiles(principal_id,school_id,employee_code,full_name,designation,mobile_number,staff_type)
+		VALUES($1,$2,$3,'Workload Teacher','Teacher','9876543218','teaching')`,teacherID,schoolID,fmt.Sprintf("WL-%d",suffix));err!=nil{t.Fatalf("create workload teacher profile: %v",err)}
 	var peerID int64
 	if err=tx.QueryRow(ctx,`INSERT INTO users(school_id,username,password_hash,status)
 		VALUES($1,$2,'integration-test-password-hash','active') RETURNING principal_id`,schoolID,fmt.Sprintf("wlp-%d",suffix)).Scan(&peerID);err!=nil{t.Fatalf("create peer workload teacher: %v",err)}
 	if _,err=tx.Exec(ctx,`INSERT INTO principal_roles(principal_id,role_id,assigned_by) VALUES($1,$2,$3)`,peerID,teacherRoleID,actorID);err!=nil{t.Fatalf("assign Teacher role to peer: %v",err)}
-	if _,err=tx.Exec(ctx,`INSERT INTO staff_profiles(principal_id,school_id,employee_code,full_name,designation,mobile_number)
-		VALUES($1,$2,$3,'Peer Workload Teacher','Teacher','9876543219')`,peerID,schoolID,fmt.Sprintf("WP-%d",suffix));err!=nil{t.Fatalf("create peer workload teacher profile: %v",err)}
+	if _,err=tx.Exec(ctx,`INSERT INTO staff_profiles(principal_id,school_id,employee_code,full_name,designation,mobile_number,staff_type)
+		VALUES($1,$2,$3,'Peer Workload Teacher','Teacher','9876543219','teaching')`,peerID,schoolID,fmt.Sprintf("WP-%d",suffix));err!=nil{t.Fatalf("create peer workload teacher profile: %v",err)}
 
 	var yearID,classID,sectionID,subjectID,periodID,assignmentID int64
 	if err=tx.QueryRow(ctx,`INSERT INTO academic_years(school_id,name,starts_on,ends_on,status)

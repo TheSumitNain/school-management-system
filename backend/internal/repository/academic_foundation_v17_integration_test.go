@@ -173,7 +173,7 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO users (school_id, username, password_hash, status)
 		VALUES ($1, $2, $3, 'active') RETURNING principal_id
-	`, schoolID, "v17-nonteaching-"+suffix, "integration-test-password-hash").Scan(&nonTeachingPrincipalID); err != nil {
+	`, schoolID, "v17-nt-"+suffix, "integration-test-password-hash").Scan(&nonTeachingPrincipalID); err != nil {
 		t.Fatalf("create non-teaching Teacher-role account: %v", err)
 	}
 	if _, err := tx.Exec(ctx, `
@@ -192,7 +192,7 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO users (school_id, username, password_hash, status)
 		VALUES ($1, $2, $3, 'active') RETURNING principal_id
-	`, schoolID, "v17-inactive-teacher-"+suffix, "integration-test-password-hash").Scan(&inactiveTeacherPrincipalID); err != nil {
+	`, schoolID, "v17-it-"+suffix, "integration-test-password-hash").Scan(&inactiveTeacherPrincipalID); err != nil {
 		t.Fatalf("create inactive-employment Teacher account: %v", err)
 	}
 	if _, err := tx.Exec(ctx, `
