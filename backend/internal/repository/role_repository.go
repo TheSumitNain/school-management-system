@@ -1220,6 +1220,17 @@ func (r *RoleRepository) AssignStaffRole(ctx context.Context, actorPrincipalID, 
 		  AND target_principal.principal_type = 'staff'
 		  AND target_role.school_id = $3 AND target_role.scope_type = 'school'
 		  AND target_role.principal_type = 'staff' AND target_role.role_key <> 'school_admin'
+		  AND NOT EXISTS (
+		      SELECT 1
+		      FROM principal_roles protected_assignment
+		      JOIN roles protected_role ON protected_role.id = protected_assignment.role_id
+		      WHERE protected_assignment.principal_id = target.principal_id
+		        AND protected_assignment.revoked_at IS NULL
+		        AND protected_role.school_id = $3
+		        AND protected_role.scope_type = 'school'
+		        AND protected_role.principal_type = 'staff'
+		        AND protected_role.role_key = 'school_admin'
+		  )
 		RETURNING id
 	`, actorPrincipalID, targetPrincipalID, schoolID, roleID).Scan(&assignmentID)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -1249,6 +1260,10 @@ func (r *RoleRepository) AssignStaffRole(ctx context.Context, actorPrincipalID, 
 
 func (r *RoleRepository) RevokeStaffRole(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID, roleID int64) error {
 	if r == nil || r.db == nil || actorPrincipalID <= 0 || schoolID <= 0 || targetPrincipalID <= 0 || roleID <= 0 {
+		return ErrRolePermissionDenied
+	}
+	// Self-revocation can remove the caller's own administrative authority.
+	if actorPrincipalID == targetPrincipalID {
 		return ErrRolePermissionDenied
 	}
 	tx, err := r.db.Begin(ctx)
@@ -1300,6 +1315,17 @@ func (r *RoleRepository) RevokeStaffRole(ctx context.Context, actorPrincipalID, 
 		  AND target_role.scope_type = 'school'
 		  AND target_role.principal_type = 'staff'
 		  AND target_role.role_key <> 'school_admin'
+		  AND NOT EXISTS (
+		      SELECT 1
+		      FROM principal_roles protected_assignment
+		      JOIN roles protected_role ON protected_role.id = protected_assignment.role_id
+		      WHERE protected_assignment.principal_id = target.principal_id
+		        AND protected_assignment.revoked_at IS NULL
+		        AND protected_role.school_id = $2
+		        AND protected_role.scope_type = 'school'
+		        AND protected_role.principal_type = 'staff'
+		        AND protected_role.role_key = 'school_admin'
+		  )
 		RETURNING pr.id
 	`, targetPrincipalID, schoolID, roleID).Scan(&revokedAssignmentID)
 	if errors.Is(err, pgx.ErrNoRows) {

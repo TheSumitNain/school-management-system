@@ -233,6 +233,9 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 	if err := repo.AssignStaffRole(ctx, actorPrincipalID, schoolID, actorPrincipalID, customRole.ID); !errors.Is(err, ErrRolePermissionDenied) {
 		t.Fatalf("self role assignment error = %v, want ErrRolePermissionDenied", err)
 	}
+	if err := repo.RevokeStaffRole(ctx, actorPrincipalID, schoolID, actorPrincipalID, customRole.ID); !errors.Is(err, ErrRolePermissionDenied) {
+		t.Fatalf("self role revocation error = %v, want ErrRolePermissionDenied", err)
+	}
 	if err := repo.SetStaffPermissionOverride(
 		ctx, actorPrincipalID, schoolID, actorPrincipalID, overrideDelegation.ID,
 		"homework.create", "allow", "self-escalation prevention test",
@@ -442,6 +445,28 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 	}
 	if err := repo.AssignStaffRole(ctx, actorPrincipalID, schoolID, targetPrincipalID, schoolAdminRoleID); !errors.Is(err, ErrRoleNotFound) {
 		t.Fatalf("reserved School Admin assignment error = %v, want ErrRoleNotFound", err)
+	}
+
+	// A peer School Admin is protected from role mutation, including the
+	// addition or removal of otherwise assignable custom roles.
+	var peerAdminPrincipalID int64
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO users (school_id, username, password_hash, status)
+		VALUES ($1, $2, $3, 'active') RETURNING principal_id
+	`, schoolID, "role-peer-"+suffix, "integration-test-password-hash").Scan(&peerAdminPrincipalID); err != nil {
+		t.Fatalf("create peer School Admin fixture: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO principal_roles (principal_id, role_id, assigned_by)
+		VALUES ($1, $2, $3)
+	`, peerAdminPrincipalID, schoolAdminRoleID, platformAdminPrincipalID); err != nil {
+		t.Fatalf("assign protected peer School Admin role: %v", err)
+	}
+	if err := repo.AssignStaffRole(ctx, actorPrincipalID, schoolID, peerAdminPrincipalID, customRole.ID); !errors.Is(err, ErrRoleNotFound) {
+		t.Fatalf("assigning extra role to peer School Admin error = %v, want ErrRoleNotFound", err)
+	}
+	if err := repo.RevokeStaffRole(ctx, actorPrincipalID, schoolID, peerAdminPrincipalID, schoolAdminRoleID); !errors.Is(err, ErrRoleNotFound) {
+		t.Fatalf("revoking peer School Admin role error = %v, want ErrRoleNotFound", err)
 	}
 
 	if err := repo.SetStaffPermissionOverride(

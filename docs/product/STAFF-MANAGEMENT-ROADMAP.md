@@ -1215,3 +1215,11 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Hardened `ResetStaffPassword` repository validation so a direct repository caller cannot replace a credential with an empty password hash.
 - Added PostgreSQL regression assertions for empty-hash and self-target reset rejection, including preservation of the existing password hash.
 - Added service coverage for an empty reset password; it is rejected before repository mutation.
+
+
+## 2026-11-26 follow-up — role lifecycle and password-reset validation
+
+- Corrected the staff password-reset guard placement so only `ResetStaffPassword` validates the supplied hash; this resolves the CI compile failure before further role work.
+- Staff role revocation now rejects self-targets and prevents adding/removing non-admin roles on a protected peer School Admin account.
+- Added PostgreSQL regressions for self-revocation and peer School Admin role-mutation denial.
+- Cross-school role reads/writes, DENY-over-ALLOW resolution, delegation revocation and transactional audit coverage remain in the integration suite.

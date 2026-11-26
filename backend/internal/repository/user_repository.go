@@ -672,7 +672,7 @@ func (r *UserRepository) ResetStaffPassword(
 	newPasswordHash string,
 ) error {
 	if r == nil || r.db == nil || actorPrincipalID <= 0 || schoolID <= 0 ||
-		targetPrincipalID <= 0 || actorPrincipalID == targetPrincipalID || newPasswordHash == "" {
+		targetPrincipalID <= 0 || actorPrincipalID == targetPrincipalID {
 		return ErrInvalidUser
 	}
 	tx, err := r.db.Begin(ctx)
