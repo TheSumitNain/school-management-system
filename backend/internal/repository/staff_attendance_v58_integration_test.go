@@ -156,4 +156,12 @@ func TestStaffAttendanceMarkAuthorizesBeforeResolvingTargetPostgresIntegration(t
     if !errors.Is(err, ErrStaffAttendanceAccessDenied) {
         t.Fatalf("unauthorized bulk mark with invalid fields error = %v, want access denied", err)
     }
+
+    if _, err = NewStaffAttendanceRepository(pool).ListDaily(ctx, actorPrincipalID, schoolID, date); !errors.Is(err, ErrStaffAttendanceAccessDenied) {
+        t.Fatalf("unauthorized daily attendance read error = %v, want access denied", err)
+    }
+    month := time.Date(date.Year(), date.Month(), 1, 0, 0, 0, 0, time.UTC)
+    if _, err = NewStaffAttendanceRepository(pool).ListMonthly(ctx, actorPrincipalID, schoolID, month); !errors.Is(err, ErrStaffAttendanceAccessDenied) {
+        t.Fatalf("unauthorized monthly attendance read error = %v, want access denied", err)
+    }
 }
