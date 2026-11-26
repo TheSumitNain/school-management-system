@@ -438,7 +438,7 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 	auditFailureFunction := "test_role_audit_failure_" + auditFailureSuffix
 	auditFailureTrigger := "trg_test_role_audit_failure_" + auditFailureSuffix
 	if _, err := tx.Exec(ctx, fmt.Sprintf(
-		"CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $role_audit_failure$ BEGIN IF NEW.action IN ('school.role.created','platform.permission_delegation.granted','platform.permission_delegation.revoked','school.custom_role.permission_revoked','school.staff.role_assigned','school.staff.role_revoked','school.staff.permission_override.set') THEN RAISE EXCEPTION 'injected role audit failure'; END IF; RETURN NEW; END; $role_audit_failure$; CREATE TRIGGER %s BEFORE INSERT ON audit_events FOR EACH ROW EXECUTE FUNCTION %s();",
+		"CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $role_audit_failure$ BEGIN IF NEW.action IN ('school.role.created','platform.permission_delegation.granted','platform.permission_delegation.revoked','school.custom_role.permission_granted','school.custom_role.permission_revoked','school.staff.role_assigned','school.staff.role_revoked','school.staff.permission_override.set','school.staff.permission_override.removed') THEN RAISE EXCEPTION 'injected role audit failure'; END IF; RETURN NEW; END; $role_audit_failure$; CREATE TRIGGER %s BEFORE INSERT ON audit_events FOR EACH ROW EXECUTE FUNCTION %s();",
 		auditFailureFunction, auditFailureTrigger, auditFailureFunction,
 	)); err != nil {
 		t.Fatalf("install role audit failure trigger: %v", err)
@@ -493,6 +493,40 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 		t.Fatalf("count role assignments after failed audited create: %v", err)
 	}
 	if failedAssignmentCount != 0 { t.Fatalf("role assignments after failed audited create=%d want=0", failedAssignmentCount) }
+
+	// A custom-role permission grant must roll back if its append-only audit event fails.
+	var grantFailureDelegationID int64
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO role_permission_delegations (school_id, permission_id, can_assign_to_roles, can_override_users, granted_by)
+		SELECT $1, id, TRUE, FALSE, $2 FROM permissions WHERE permission_key='homework.create' RETURNING id
+	`, schoolID, platformAdminPrincipalID).Scan(&grantFailureDelegationID); err != nil {
+		t.Fatalf("seed custom-role grant audit-failure delegation: %v", err)
+	}
+	if err := repo.GrantCustomRolePermission(ctx, actorPrincipalID, schoolID, customRole.ID, grantFailureDelegationID, "homework.create"); err == nil {
+		t.Fatal("custom-role permission grant succeeded despite forced audit failure")
+	}
+	var failedRoleGrantCount int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM role_permissions rp JOIN permissions p ON p.id=rp.permission_id WHERE rp.role_id=$1 AND p.permission_key='homework.create'`, customRole.ID).Scan(&failedRoleGrantCount); err != nil {
+		t.Fatalf("count custom-role grants after failed audited grant: %v", err)
+	}
+	if failedRoleGrantCount != 0 { t.Fatalf("custom-role grants after failed audited grant=%d want=0", failedRoleGrantCount) }
+
+	// Removing a user override is also atomic with its audit event.
+	if tag, err := tx.Exec(ctx, `
+		INSERT INTO user_permission_overrides (principal_id, school_id, permission_id, effect, reason, granted_by, delegation_id)
+		SELECT $1, $2, p.id, 'deny', 'audit failure deletion fixture', $3, $4
+		FROM permissions p WHERE p.permission_key='homework.create'
+	`, targetPrincipalID, schoolID, actorPrincipalID, overrideDelegation.ID); err != nil || tag.RowsAffected() != 1 {
+		t.Fatalf("seed permission override deletion audit-failure fixture: rows=%d err=%v", tag.RowsAffected(), err)
+	}
+	if err := repo.DeleteStaffPermissionOverride(ctx, actorPrincipalID, schoolID, targetPrincipalID, "homework.create"); err == nil {
+		t.Fatal("permission override deletion succeeded despite forced audit failure")
+	}
+	var retainedOverrideCount int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM user_permission_overrides o JOIN permissions p ON p.id=o.permission_id WHERE o.principal_id=$1 AND o.school_id=$2 AND p.permission_key='homework.create'`, targetPrincipalID, schoolID).Scan(&retainedOverrideCount); err != nil {
+		t.Fatalf("count permission overrides after failed audited deletion: %v", err)
+	}
+	if retainedOverrideCount != 1 { t.Fatalf("permission overrides after failed audited deletion=%d want=1", retainedOverrideCount) }
 
 	if err := repo.RevokeStaffRole(ctx, actorPrincipalID, schoolID, targetPrincipalID, customRole.ID); err == nil {
 		t.Fatal("role revocation succeeded despite forced audit failure")
