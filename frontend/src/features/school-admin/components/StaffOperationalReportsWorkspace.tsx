@@ -271,7 +271,7 @@ function QualificationsReport({ permissions }: Props) {
   return <section className="staff-operational-report-section">
     <div className="staff-operational-report-title">
       <div><h3>Qualifications & certifications</h3><p>Active employees only · Verification notes and credential references are not included.</p></div>
-      <div className="staff-operational-report-actions"><button type="button" className="staff-operational-report-export" onClick={() => { if (offset === 0) void report.refetch(); else setOffset(0); }} disabled={report.isFetching || exporting || report.isError}><RefreshCw size={14}/> Refresh</button><button type="button" className="staff-operational-report-export" onClick={() => void exportAll()} disabled={!page || page.total === 0 || exporting || report.isFetching || report.isError}><Download size={14}/> {exporting ? "Preparing CSV…" : "Export all matching CSV"}</button></div>
+      <div className="staff-operational-report-actions"><button type="button" className="staff-operational-report-export" onClick={() => { void queryClient.invalidateQueries({ queryKey: ["staff-operational-report", "qualifications", recordType, verificationStatus] }); setOffset(0); }} disabled={report.isFetching || exporting || report.isError}><RefreshCw size={14}/> Refresh</button><button type="button" className="staff-operational-report-export" onClick={() => void exportAll()} disabled={!page || page.total === 0 || exporting || report.isFetching || report.isError}><Download size={14}/> {exporting ? "Preparing CSV…" : "Export all matching CSV"}</button></div>
     </div>
     {exportError && <p className="staff-operational-report-error" role="alert">{exportError}</p>}
     <div className="staff-operational-report-filters">
@@ -355,7 +355,7 @@ function ExperienceReport({ permissions }: Props) {
   return <section className="staff-operational-report-section">
     <div className="staff-operational-report-title">
       <div><h3>Staff experience history</h3><p>School-wide employment history, including inactive employees. Free-text descriptions are excluded.</p></div>
-      <div className="staff-operational-report-actions"><button type="button" className="staff-operational-report-export" onClick={()=>{if(offset===0)void report.refetch();else setOffset(0);}} disabled={report.isFetching||exporting||report.isError}><RefreshCw size={14}/> Refresh</button><button type="button" className="staff-operational-report-export" onClick={()=>void exportAll()} disabled={!page||page.total===0||exporting||report.isFetching||report.isError}><Download size={14}/> {exporting?"Preparing CSV…":"Export all matching CSV"}</button></div>
+      <div className="staff-operational-report-actions"><button type="button" className="staff-operational-report-export" onClick={()=>{void queryClient.invalidateQueries({queryKey:["staff-operational-report","experience",employmentType,currentOnly]});setOffset(0);}} disabled={report.isFetching||exporting||report.isError}><RefreshCw size={14}/> Refresh</button><button type="button" className="staff-operational-report-export" onClick={()=>void exportAll()} disabled={!page||page.total===0||exporting||report.isFetching||report.isError}><Download size={14}/> {exporting?"Preparing CSV…":"Export all matching CSV"}</button></div>
     </div>
     {exportError&&<p className="staff-operational-report-error" role="alert">{exportError}</p>}
     <div className="staff-operational-report-filters">
