@@ -66,6 +66,8 @@ func TestStaffAttendanceUnauthenticatedRequestDoesNotExposeServiceAvailability(t
 type nilStaffAttendanceListService struct { StaffAttendanceManagementService }
 func (nilStaffAttendanceListService) ListDaily(context.Context,int64,int64,time.Time)([]repository.StaffAttendanceRecord,error){return nil,nil}
 func (nilStaffAttendanceListService) ListMonthly(context.Context,int64,int64,time.Time)([]repository.StaffAttendanceMonthlySummary,error){return nil,nil}
+func (nilStaffAttendanceListService) ListDailyPage(context.Context,int64,int64,time.Time,int,int)([]repository.StaffAttendanceRecord,int,error){return nil,0,nil}
+func (nilStaffAttendanceListService) ListMonthlyPage(context.Context,int64,int64,time.Time,int,int)([]repository.StaffAttendanceMonthlySummary,int,error){return nil,0,nil}
 
 func TestStaffAttendanceListHandlersReturnEmptyArrays(t *testing.T) {
 	gin.SetMode(gin.TestMode)

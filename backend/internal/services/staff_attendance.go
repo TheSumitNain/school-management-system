@@ -14,6 +14,8 @@ var ErrInvalidStaffAttendance = errors.New("invalid staff attendance input")
 type staffAttendanceRepository interface {
     ListDaily(context.Context, int64, int64, time.Time) ([]repository.StaffAttendanceRecord, error)
     ListMonthly(context.Context, int64, int64, time.Time) ([]repository.StaffAttendanceMonthlySummary, error)
+    ListDailyPage(context.Context, int64, int64, time.Time, int, int) ([]repository.StaffAttendanceRecord, int, error)
+    ListMonthlyPage(context.Context, int64, int64, time.Time, int, int) ([]repository.StaffAttendanceMonthlySummary, int, error)
     Mark(context.Context, int64, int64, int64, time.Time, string, *string) (*repository.StaffAttendanceRecord, error)
     MarkBulk(context.Context, int64, int64, []int64, time.Time, string, *string) (int, error)
     Update(context.Context, int64, int64, int64, string, *string) (*repository.StaffAttendanceRecord, error)
@@ -30,9 +32,19 @@ func (s *StaffAttendanceService) ListDaily(ctx context.Context, actor, school in
     return s.repository.ListDaily(ctx, actor, school, day)
 }
 
+func (s *StaffAttendanceService) ListDailyPage(ctx context.Context, actor, school int64, day time.Time, limit, offset int) ([]repository.StaffAttendanceRecord, int, error) {
+    if s == nil || s.repository == nil || actor <= 0 || school <= 0 || day.Year() < 1 || limit < 1 || limit > 100 || offset < 0 { return nil, 0, ErrInvalidStaffAttendance }
+    return s.repository.ListDailyPage(ctx, actor, school, day, limit, offset)
+}
+
 func (s *StaffAttendanceService) ListMonthly(ctx context.Context, actor, school int64, month time.Time) ([]repository.StaffAttendanceMonthlySummary, error) {
     if s == nil || s.repository == nil || actor <= 0 || school <= 0 || month.Year() < 1 { return nil, ErrInvalidStaffAttendance }
     return s.repository.ListMonthly(ctx, actor, school, month)
+}
+
+func (s *StaffAttendanceService) ListMonthlyPage(ctx context.Context, actor, school int64, month time.Time, limit, offset int) ([]repository.StaffAttendanceMonthlySummary, int, error) {
+    if s == nil || s.repository == nil || actor <= 0 || school <= 0 || month.Year() < 1 || limit < 1 || limit > 100 || offset < 0 { return nil, 0, ErrInvalidStaffAttendance }
+    return s.repository.ListMonthlyPage(ctx, actor, school, month, limit, offset)
 }
 
 func (s *StaffAttendanceService) Mark(ctx context.Context, actor, school, staff int64, day time.Time, status string, remarks *string) (*repository.StaffAttendanceRecord, error) {

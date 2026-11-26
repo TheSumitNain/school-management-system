@@ -18,6 +18,8 @@ import (
 type StaffAttendanceManagementService interface {
     ListDaily(context.Context, int64, int64, time.Time) ([]repository.StaffAttendanceRecord, error)
     ListMonthly(context.Context, int64, int64, time.Time) ([]repository.StaffAttendanceMonthlySummary, error)
+    ListDailyPage(context.Context, int64, int64, time.Time, int, int) ([]repository.StaffAttendanceRecord, int, error)
+    ListMonthlyPage(context.Context, int64, int64, time.Time, int, int) ([]repository.StaffAttendanceMonthlySummary, int, error)
     Mark(context.Context, int64, int64, int64, time.Time, string, *string) (*repository.StaffAttendanceRecord, error)
     MarkBulk(context.Context, int64, int64, []int64, time.Time, string, *string) (int, error)
     Update(context.Context, int64, int64, int64, string, *string) (*repository.StaffAttendanceRecord, error)
@@ -53,6 +55,17 @@ func (h *StaffAttendanceHandler) unavailable(c *gin.Context) bool {
     return false
 }
 
+func parseStaffAttendancePagination(c *gin.Context) (int, int, bool) {
+    limit, offset := 50, 0
+    if raw := strings.TrimSpace(c.Query("limit")); raw != "" {
+        n, err := strconv.Atoi(raw); if err != nil || n < 1 || n > 100 { return 0,0,false }; limit=n
+    }
+    if raw := strings.TrimSpace(c.Query("offset")); raw != "" {
+        n, err := strconv.Atoi(raw); if err != nil || n < 0 || n > 1000000000 { return 0,0,false }; offset=n
+    }
+    return limit,offset,true
+}
+
 func (h *StaffAttendanceHandler) ListDaily(c *gin.Context) {
     actor, school, ok := staffRecordActor(c)
     if !ok { c.JSON(http.StatusUnauthorized, gin.H{"status":"error","message":"School staff authentication required"}); return }
@@ -61,10 +74,12 @@ func (h *StaffAttendanceHandler) ListDaily(c *gin.Context) {
     if raw == "" { raw = schooltime.TodayDate() }
     day, valid := parseStaffAttendanceDate(raw)
     if !valid { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"date must use YYYY-MM-DD"}); return }
-    items, err := h.service.ListDaily(c.Request.Context(), actor, school, day)
+    limit, offset, ok := parseStaffAttendancePagination(c)
+    if !ok { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"limit must be 1-100 and offset must be a non-negative integer"}); return }
+    items, total, err := h.service.ListDailyPage(c.Request.Context(), actor, school, day, limit, offset)
     if err != nil { writeStaffAttendanceError(c, err); return }
     if items == nil { items = []repository.StaffAttendanceRecord{} }
-    c.JSON(http.StatusOK, gin.H{"status":"success","date":raw,"data":items})
+    c.JSON(http.StatusOK, gin.H{"status":"success","date":raw,"data":items,"pagination":gin.H{"limit":limit,"offset":offset,"total":total}})
 }
 
 func (h *StaffAttendanceHandler) ListMonthly(c *gin.Context) {
@@ -75,10 +90,12 @@ func (h *StaffAttendanceHandler) ListMonthly(c *gin.Context) {
     if raw == "" { raw = schooltime.Today().Format("2006-01") }
     month, valid := parseStaffAttendanceMonth(raw)
     if !valid { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"month must use YYYY-MM"}); return }
-    items, err := h.service.ListMonthly(c.Request.Context(), actor, school, month)
+    limit, offset, ok := parseStaffAttendancePagination(c)
+    if !ok { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"limit must be 1-100 and offset must be a non-negative integer"}); return }
+    items, total, err := h.service.ListMonthlyPage(c.Request.Context(), actor, school, month, limit, offset)
     if err != nil { writeStaffAttendanceError(c, err); return }
     if items == nil { items = []repository.StaffAttendanceMonthlySummary{} }
-    c.JSON(http.StatusOK, gin.H{"status":"success","month":raw,"data":items})
+    c.JSON(http.StatusOK, gin.H{"status":"success","month":raw,"data":items,"pagination":gin.H{"limit":limit,"offset":offset,"total":total}})
 }
 
 type staffAttendanceMarkRequest struct {

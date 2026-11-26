@@ -13,6 +13,10 @@ import (
 type fakeStaffAttendanceRepository struct {
     listDailyCalls int
     listMonthlyCalls int
+    listDailyPageCalls int
+    listMonthlyPageCalls int
+    lastLimit int
+    lastOffset int
     markCalls int
     updateCalls int
     lastStatus string
@@ -26,6 +30,8 @@ func (f *fakeStaffAttendanceRepository) ListMonthly(context.Context, int64, int6
     f.listMonthlyCalls++
     return []repository.StaffAttendanceMonthlySummary{}, nil
 }
+func (f *fakeStaffAttendanceRepository) ListDailyPage(_ context.Context,_,_ int64,_ time.Time,limit,offset int)([]repository.StaffAttendanceRecord,int,error){f.listDailyPageCalls++;f.lastLimit=limit;f.lastOffset=offset;return []repository.StaffAttendanceRecord{},0,nil}
+func (f *fakeStaffAttendanceRepository) ListMonthlyPage(_ context.Context,_,_ int64,_ time.Time,limit,offset int)([]repository.StaffAttendanceMonthlySummary,int,error){f.listMonthlyPageCalls++;f.lastLimit=limit;f.lastOffset=offset;return []repository.StaffAttendanceMonthlySummary{},0,nil}
 func (f *fakeStaffAttendanceRepository) Mark(_ context.Context, _, _, _ int64, _ time.Time, status string, _ *string) (*repository.StaffAttendanceRecord, error) {
     f.markCalls++
     f.lastStatus = status
@@ -164,4 +170,15 @@ func TestStaffAttendanceServiceRejectsInvalidBulkStatusAndRemarks(t *testing.T) 
 		})
 	}
 	if fake.markCalls != 0 { t.Fatalf("repository calls=%d want=0", fake.markCalls) }
+}
+
+func TestStaffAttendanceServicePaginationBoundsAndDelegation(t *testing.T) {
+    fake:=&fakeStaffAttendanceRepository{}; service:=NewStaffAttendanceService(fake)
+    day:=time.Date(2026,11,22,0,0,0,0,time.UTC)
+    if _,total,err:=service.ListDailyPage(context.Background(),1,2,day,50,100);err!=nil||total!=0||fake.listDailyPageCalls!=1||fake.lastOffset!=100 { t.Fatalf("daily pagination total=%d calls=%d offset=%d err=%v",total,fake.listDailyPageCalls,fake.lastOffset,err) }
+    if _,total,err:=service.ListMonthlyPage(context.Background(),1,2,day,100,200);err!=nil||total!=0||fake.listMonthlyPageCalls!=1||fake.lastLimit!=100 { t.Fatalf("monthly pagination total=%d calls=%d limit=%d err=%v",total,fake.listMonthlyPageCalls,fake.lastLimit,err) }
+    for _,v:=range [][2]int{{0,0},{101,0},{50,-1}} {
+        if _,_,err:=service.ListDailyPage(context.Background(),1,2,day,v[0],v[1]);!errors.Is(err,ErrInvalidStaffAttendance){t.Fatalf("daily invalid pagination %v: %v",v,err)}
+        if _,_,err:=service.ListMonthlyPage(context.Background(),1,2,day,v[0],v[1]);!errors.Is(err,ErrInvalidStaffAttendance){t.Fatalf("monthly invalid pagination %v: %v",v,err)}
+    }
 }
