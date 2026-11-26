@@ -137,7 +137,7 @@ func (s *StaffAccountService) CreateWithProfile(ctx context.Context, actorPrinci
 	profile.Email = strings.TrimSpace(profile.Email)
 	profile.EmploymentStatus = "active"
 	if s == nil || s.repository == nil || actorPrincipalID <= 0 || schoolID <= 0 || !validStaffUsername(username) ||
-		!validStaffType(profile.StaffType) || !validStaffType(profile.StaffType) || !staffEmployeeCodePattern.MatchString(profile.EmployeeCode) || profile.FullName == "" || len([]rune(profile.FullName)) > 160 ||
+		!validStaffType(profile.StaffType) || !staffEmployeeCodePattern.MatchString(profile.EmployeeCode) || profile.FullName == "" || len([]rune(profile.FullName)) > 160 ||
 		profile.Designation == "" || len([]rune(profile.Designation)) > 100 || !staffMobilePattern.MatchString(profile.MobileNumber) ||
 		!validStaffProfileEmail(profile.Email) ||
 		!validStaffJoiningDate(profile.JoiningDate, time.Now()) {
@@ -225,7 +225,7 @@ func (s *StaffAccountService) UpdateProfile(ctx context.Context, actorPrincipalI
     profile.MobileNumber = strings.TrimSpace(profile.MobileNumber)
     profile.Email = strings.TrimSpace(profile.Email)
     if s == nil || s.repository == nil || actorPrincipalID <= 0 || schoolID <= 0 || targetPrincipalID <= 0 ||
-       !staffEmployeeCodePattern.MatchString(profile.EmployeeCode) || profile.FullName == "" || len([]rune(profile.FullName)) > 160 ||
+       !validStaffType(profile.StaffType) || !staffEmployeeCodePattern.MatchString(profile.EmployeeCode) || profile.FullName == "" || len([]rune(profile.FullName)) > 160 ||
        profile.Designation == "" || len([]rune(profile.Designation)) > 100 || !staffMobilePattern.MatchString(profile.MobileNumber) ||
        !validStaffProfileEmail(profile.Email) ||
        !validStaffJoiningDate(profile.JoiningDate, time.Now()) ||

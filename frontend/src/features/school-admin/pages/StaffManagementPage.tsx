@@ -98,9 +98,9 @@ async function exportStaffDirectoryCSV(rows:StaffRecord[], filters?:StaffDirecto
       throw new Error("Unable to prepare the complete filtered staff export. No partial CSV was created; please try again.");
     }
   }
-  const headers=["Employee Code","Name","Designation","Employment Status","Login Account","Profile Status"];
+  const headers=["Employee Code","Name","Staff Type","Designation","Employment Status","Login Account","Profile Status"];
   const lines=[headers,...exportRows.map(item=>[
-    item.employee_code,item.full_name||item.username,item.designation,item.employment_status,
+    item.employee_code,item.full_name||item.username,item.staff_type==="teaching"?"Teaching":item.staff_type==="non_teaching"?"Non-teaching":"Unclassified",item.designation,item.employment_status,
     item.status==="active"?"Enabled":"Disabled",item.profile_complete===true?"Complete":"Incomplete",
   ])].map(row=>row.map(staffCSVCell).join(",")).join("\r\n");
   const blob=new Blob(["\uFEFF",lines],{type:"text/csv;charset=utf-8"});

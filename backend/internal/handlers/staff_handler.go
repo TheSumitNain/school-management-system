@@ -120,7 +120,7 @@ func (h *StaffHandler) Create(c *gin.Context) {
                 "employee_code": user.EmployeeCode, "full_name": user.FullName, "designation": user.Designation,
                 "mobile_number": user.MobileNumber, "email": user.Email, "joining_date": user.JoiningDate,
                 "employment_status": user.EmploymentStatus,
-                "staff_type": user.StaffType, "staff_type": user.StaffType, "profile_complete": user.ProfileComplete,
+                "staff_type": user.StaffType, "profile_complete": user.ProfileComplete,
 			},
 		})
 	case errors.Is(err, services.ErrInvalidStaffAccount):
@@ -398,6 +398,7 @@ func (h *StaffHandler) Update(c *gin.Context) {
                 "email": user.Email,
                 "joining_date": user.JoiningDate,
                 "employment_status": user.EmploymentStatus,
+                "staff_type": user.StaffType,
                 "profile_complete": user.ProfileComplete,
 			},
 			"message": message,

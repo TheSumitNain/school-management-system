@@ -74,7 +74,7 @@ func (f *fakeStaffAccountRepository) EnableStaffAccount(_ context.Context, _, _,
 func TestStaffAccountServiceValidatesDirectoryFiltersAndPagination(t *testing.T) {
 	repo := &fakeStaffAccountRepository{}
 	service := NewStaffAccountService(repo, alwaysClearPasswordChecker{})
-	valid := models.StaffDirectoryFilter{Search: "  teacher  ", StaffType: "teaching", EmploymentStatus: "active", AccountStatus: "enabled", ProfileStatus: "complete", Limit: 50, Offset: 100}
+	valid := models.StaffDirectoryFilter{Search: "  teacher  ", EmploymentStatus: "active", AccountStatus: "enabled", ProfileStatus: "complete", Limit: 50, Offset: 100}
 	page, err := service.ListDirectoryPage(context.Background(), 31, 8, valid)
 	if err != nil || page == nil || page.Limit != 50 || page.Offset != 100 {
 		t.Fatalf("valid directory query failed: page=%+v err=%v", page, err)
@@ -406,4 +406,17 @@ func TestStaffProfileEmailValidationMatchesDatabaseCharacterConstraints(t *testi
 	if repo.profileCalls != 3 {
 		t.Fatalf("invalid email creations reached repository; calls=%d want=3", repo.profileCalls)
 	}
+}
+
+
+func TestStaffTypeIsRequiredForCreateAndProfileUpdate(t *testing.T) {
+	repo := &fakeStaffAccountRepository{user: &models.User{ID: 15, PrincipalID: 27, SchoolID: 8}}
+	service := NewStaffAccountService(repo, alwaysClearPasswordChecker{})
+	profile := models.StaffProfile{EmployeeCode: "EMP-27", FullName: "Teacher One", Designation: "Teacher", MobileNumber: "9876543210", EmploymentStatus: "active"}
+	for _, value := range []string{"", "admin"} {
+		profile.StaffType = value
+		if _, err := service.CreateWithProfile(context.Background(), 31, 8, "teacher.one", "A-Strong-Initial-Pass-123", profile); err != ErrInvalidStaffAccount { t.Fatalf("create with staff type %q error=%v, want ErrInvalidStaffAccount", value, err) }
+		if _, err := service.UpdateProfile(context.Background(), 31, 8, 27, profile); err != ErrInvalidStaffAccount { t.Fatalf("update with staff type %q error=%v, want ErrInvalidStaffAccount", value, err) }
+	}
+	if repo.profileCalls != 0 { t.Fatalf("invalid staff types reached repository %d times", repo.profileCalls) }
 }

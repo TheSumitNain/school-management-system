@@ -89,7 +89,7 @@ func TestStaffProfileRepositoryPostgresIntegration(t *testing.T) {
     user, err := repo.CreateStaffAccountWithProfile(ctx, actorPrincipalID, schoolID,
         "staffprof-"+suffix, "integration-test-password-hash", profile)
     if err != nil { t.Fatalf("create account and employee profile atomically: %v", err) }
-    if user == nil || !user.ProfileComplete || user.EmployeeCode != profile.EmployeeCode || user.FullName != profile.FullName {
+    if user == nil || !user.ProfileComplete || user.StaffType != profile.StaffType || user.EmployeeCode != profile.EmployeeCode || user.FullName != profile.FullName {
         t.Fatalf("created staff profile not returned: %+v", user)
     }
 

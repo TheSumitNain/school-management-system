@@ -326,7 +326,7 @@ func TestStaffHandlerUpdateProfileParsesAndPassesCompleteProfile(t *testing.T) {
 		t.Fatalf("profile update status=%d calls=%d service=%+v body=%s", rec.Code, service.profileCalls, service, rec.Body.String())
 	}
 	if service.profile.EmployeeCode != "EMP-001" || service.profile.FullName != "Teacher One" ||
-		service.profile.Designation != "Class Teacher" || service.profile.MobileNumber != "9876543210" ||
+		service.profile.Designation != "Class Teacher" || service.profile.StaffType != "teaching" || service.profile.MobileNumber != "9876543210" ||
 		service.profile.Email != "teacher@example.com" || service.profile.EmploymentStatus != "inactive" ||
 		service.profile.JoiningDate == nil || service.profile.JoiningDate.Format("2006-01-02") != "2026-04-01" {
 		t.Fatalf("profile payload was not passed intact: %+v", service.profile)
@@ -484,4 +484,17 @@ func TestStaffHandlerUpdateRejectsNilUserWithoutError(t *testing.T) {
 	if rec.Code != http.StatusInternalServerError || !strings.Contains(rec.Body.String(), "Unable to update staff account") {
 		t.Fatalf("nil successful update result must return a controlled 500: status=%d body=%s", rec.Code, rec.Body.String())
 	}
+}
+
+
+func TestStaffHandlerCreateRequiresStaffType(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	service := &fakeStaffAccountService{}
+	router := gin.New()
+	router.POST("/school/staff", func(c *gin.Context) { c.Set("auth_principal_id", int64(31)); c.Set("auth_school_id", int64(8)); c.Next() }, NewStaffHandler(service).Create)
+	req := httptest.NewRequest(http.MethodPost, "/school/staff", strings.NewReader(`{"username":"teacher.one","initial_password":"A-Strong-Initial-Pass-123","full_name":"Teacher One","employee_code":"EMP-001","designation":"Teacher","mobile_number":"9876543210"}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest || service.calls != 0 { t.Fatalf("missing staff type status=%d service calls=%d body=%s", rec.Code, service.calls, rec.Body.String()) }
 }

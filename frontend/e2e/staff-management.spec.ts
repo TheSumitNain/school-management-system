@@ -905,8 +905,11 @@ test("add staff wizard validates each step before allowing progress", async ({ p
   await dialog.getByLabel("Employee code").fill("EMP-VAL-01");
   await dialog.getByLabel("Mobile number").fill("9876543219");
   await dialog.getByRole("button", { name: "Continue" }).click();
+  await dialog.getByLabel("Staff type").selectOption("teaching");
   await dialog.getByRole("button", { name: "Continue" }).click();
   await expect(dialog.getByText("Enter a designation (up to 100 characters).")).toBeVisible();
+
+  await dialog.getByLabel("Staff type").selectOption("teaching");
 
   await dialog.getByLabel("Designation").fill("Class Teacher");
   await dialog.getByRole("button", { name: "Continue" }).click();
@@ -1019,6 +1022,7 @@ test("staff profile creation accepts Unicode names and designations at database 
   await dialog.getByLabel("Mobile number").fill("9876543210");
   await dialog.getByRole("button", { name: "Continue" }).click();
 
+  await dialog.getByLabel("Staff type").selectOption("teaching");
   const designationInput = dialog.getByLabel("Designation");
   await designationInput.fill("📚".repeat(101));
   await expect(designationInput).toHaveValue(designation);
@@ -1090,6 +1094,8 @@ test("staff creation uses the shared IST date picker and clears the credential h
   await dialog.getByLabel("Mobile number").fill("9876543210");
   await dialog.getByRole("button", { name: "Continue" }).click();
 
+  await dialog.getByLabel("Staff type").selectOption("teaching");
+
   await dialog.getByLabel("Designation").fill("Class Teacher");
   await dialog.getByRole("button", { name: "Joining date" }).click();
   const calendar = dialog.getByRole("dialog", { name: "Choose joining date" });
@@ -1139,6 +1145,7 @@ test("staff creation uses the shared IST date picker and clears the credential h
   await secondDialog.getByLabel("Employee code").fill("EMP-002");
   await secondDialog.getByLabel("Mobile number").fill("9876543212");
   await secondDialog.getByRole("button", { name: "Continue" }).click();
+  await secondDialog.getByLabel("Staff type").selectOption("teaching");
   await secondDialog.getByLabel("Designation").fill("Science Teacher");
   await secondDialog.getByRole("button", { name: "Continue" }).click();
   await secondDialog.getByLabel("Login username").fill("teacher.two");
@@ -1177,6 +1184,7 @@ test("staff creation keeps entered details available after a temporary server fa
   await dialog.getByLabel("Employee code").fill("EMP-RETRY-01");
   await dialog.getByLabel("Mobile number").fill("9876543211");
   await dialog.getByRole("button", { name: "Continue" }).click();
+  await dialog.getByLabel("Staff type").selectOption("teaching");
   await dialog.getByLabel("Designation").fill("English Teacher");
   await dialog.getByRole("button", { name: "Continue" }).click();
   await dialog.getByLabel("Login username").fill("retry.teacher");
