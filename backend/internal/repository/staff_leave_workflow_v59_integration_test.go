@@ -697,6 +697,14 @@ func TestStaffLeaveRequestPaginationPostgresIntegration(t *testing.T) {
 		t.Fatalf("single-date filter total=%d rows=%d; want exactly the matching request", byDate.Total, len(byDate.Items))
 	}
 
+	rangeFrom := base.AddDate(0, 0, 2).Format("2006-01-02")
+	rangeTo := base.AddDate(0, 0, 4).Format("2006-01-02")
+	byRange, err := f.repo.ListRequestsPage(f.ctx, f.adminPrincipalID, f.schoolID, "", f.staffPrincipalID, "", rangeFrom, rangeTo, 1, 10)
+	if err != nil { t.Fatalf("read leave request overlapping date-range filter: %v", err) }
+	if byRange.Total != 2 || len(byRange.Items) != 2 {
+		t.Fatalf("date-range filter total=%d rows=%d; want exactly two overlapping requests", byRange.Total, len(byRange.Items))
+	}
+
 	_, err = f.repo.ListRequestsPage(f.ctx, f.adminPrincipalID, f.schoolID+999999, "", 0, "", "", "", 1, 2)
 	if !errors.Is(err, ErrStaffLeaveAccessDenied) {
 		t.Fatalf("cross-school pagination error=%v, want access denied", err)
