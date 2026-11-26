@@ -713,6 +713,14 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	`, otherSchoolID).Scan(&foreignClassID); err != nil {
 		t.Fatalf("create second-school configurable class: %v", err)
 	}
+	var foreignAcademicYearID int64
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO academic_years (school_id, name, starts_on, ends_on, status)
+		VALUES ($1, $2, DATE '2028-04-01', DATE '2029-03-31', 'planned')
+		RETURNING id
+	`, otherSchoolID, "Foreign API Academic "+suffix).Scan(&foreignAcademicYearID); err != nil {
+		t.Fatalf("create foreign-school academic year fixture: %v", err)
+	}
 	expectRejected("cross-school section class reference", func() error {
 		_, err := tx.Exec(ctx, `INSERT INTO sections (school_id, academic_year_id, class_id, name) VALUES ($1, $2, $3, 'Foreign')`, schoolID, year1, foreignClassID)
 		return err
@@ -789,6 +797,13 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	if err != nil || len(teacherAssignments) != 1 || teacherAssignments[0].ID != teacherAssignment.ID {
 		t.Fatalf("list teacher subject assignments through repository: items=%+v err=%v", teacherAssignments, err)
 	}
+	if items, err := academicRepo.ListTeacherSubjectAssignments(ctx, actorPrincipalID, schoolID, foreignAcademicYearID, 0); err != nil || len(items) != 0 {
+		t.Fatalf("foreign academic year leaked into teacher assignment list: items=%+v err=%v", items, err)
+	}
+	if _, err := academicRepo.CreateTeacherSubjectAssignment(ctx, actorPrincipalID, schoolID,
+		foreignAcademicYearID, apiSection.ID, apiSubject.ID, teacherPrincipalID); err == nil {
+		t.Fatal("teacher subject assignment accepted a foreign-school academic year")
+	}
 	if _, err := academicRepo.ListEligibleTeachers(ctx, actorPrincipalID, otherSchoolID); !errors.Is(err, ErrAcademicAccessDenied) {
 		t.Fatalf("forged foreign-school eligible teacher list error=%v; want access denied", err)
 	}
@@ -831,6 +846,13 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	classIncharges, err := academicRepo.ListClassInchargeAssignments(ctx, actorPrincipalID, schoolID, apiYear.ID)
 	if err != nil || len(classIncharges) != 1 || classIncharges[0].ID != classIncharge.ID {
 		t.Fatalf("list class in-charge assignments through repository: items=%+v err=%v", classIncharges, err)
+	}
+	if items, err := academicRepo.ListClassInchargeAssignments(ctx, actorPrincipalID, schoolID, foreignAcademicYearID); err != nil || len(items) != 0 {
+		t.Fatalf("foreign academic year leaked into class in-charge list: items=%+v err=%v", items, err)
+	}
+	if _, err := academicRepo.CreateClassInchargeAssignment(ctx, actorPrincipalID, schoolID,
+		foreignAcademicYearID, apiSection.ID, teacherPrincipalID); err == nil {
+		t.Fatal("class in-charge assignment accepted a foreign-school academic year")
 	}
 	if _, err := academicRepo.ListClassInchargeAssignments(ctx, actorPrincipalID, otherSchoolID, apiYear.ID); !errors.Is(err, ErrAcademicAccessDenied) {
 		t.Fatalf("forged foreign-school class in-charge list error=%v; want access denied", err)
