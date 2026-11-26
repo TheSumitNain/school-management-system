@@ -21,13 +21,6 @@ func (r *StaffLeaveRepository) ListRequestsPage(ctx context.Context, actor, scho
 	if offset > 1000000 {
 		return result, ErrInvalidStaffLeave
 	}
-	if err := validateStaffLeaveRequestDateFilters(onDate, fromDate, toDate); err != nil {
-		return result, err
-	}
-	if onDate != "" && (fromDate != "" || toDate != "") {
-		return result, ErrInvalidStaffLeave
-	}
-
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return result, fmt.Errorf("begin staff leave page snapshot: %w", err)
@@ -40,6 +33,12 @@ func (r *StaffLeaveRepository) ListRequestsPage(ctx context.Context, actor, scho
 	}
 	if err := authorizeGuardian(ctx, tx, actor, school, "staff.leave.read"); err != nil {
 		return result, ErrStaffLeaveAccessDenied
+	}
+	if err := validateStaffLeaveRequestDateFilters(onDate, fromDate, toDate); err != nil {
+		return result, err
+	}
+	if onDate != "" && (fromDate != "" || toDate != "") {
+		return result, ErrInvalidStaffLeave
 	}
 
 	const where = ` WHERE q.school_id=$1 AND ($2='' OR q.status=$2) AND ($3=0 OR q.staff_principal_id=$3)

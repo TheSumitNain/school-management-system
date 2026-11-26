@@ -21,10 +21,6 @@ func (r *AcademicRepository) ListStaffSubstitutionsPage(ctx context.Context, act
 	if offset > 1000000 {
 		return result, ErrInvalidStaffSubstitution
 	}
-	if err := validateStaffSubstitutionDateRange(fromDate, toDate); err != nil {
-		return result, err
-	}
-
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return result, fmt.Errorf("begin staff substitution page snapshot: %w", err)
@@ -36,6 +32,9 @@ func (r *AcademicRepository) ListStaffSubstitutionsPage(ctx context.Context, act
 		}
 	}
 	if err := staffSubstitutionAuthorize(ctx, tx, actorID, schoolID, "staff.substitutions.read"); err != nil {
+		return result, err
+	}
+	if err := validateStaffSubstitutionDateRange(fromDate, toDate); err != nil {
 		return result, err
 	}
 

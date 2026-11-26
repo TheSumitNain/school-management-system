@@ -194,7 +194,11 @@ func TestStaffReportsUsePoolBackedReadOnlySnapshotPostgresIntegration(t *testing
 	if err != nil {
 		t.Fatalf("list pool-backed staff substitution page snapshot: %v", err)
 	}
-	if substitutionPage.Total != int64(len(substitutionPage.Items)) {
-		t.Fatalf("substitution page snapshot total=%d items=%d want matching empty/current page", substitutionPage.Total, len(substitutionPage.Items))
+	expectedSubstitutionRows := int64(50)
+	if substitutionPage.Total < expectedSubstitutionRows {
+		expectedSubstitutionRows = substitutionPage.Total
+	}
+	if substitutionPage.Total < 0 || int64(len(substitutionPage.Items)) != expectedSubstitutionRows {
+		t.Fatalf("substitution page snapshot total=%d items=%d want=%d rows on first page", substitutionPage.Total, len(substitutionPage.Items), expectedSubstitutionRows)
 	}
 }
