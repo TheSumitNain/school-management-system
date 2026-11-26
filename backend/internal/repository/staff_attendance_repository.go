@@ -93,15 +93,23 @@ func (r *StaffAttendanceRepository) ListDailyPage(ctx context.Context, actorID, 
 func (r *StaffAttendanceRepository) ListDailyFilteredPage(ctx context.Context, actorID, schoolID int64, day time.Time, filter StaffAttendanceDailyFilter, limit, offset int) ([]StaffAttendanceRecord, int, error) {
     filter.Search = strings.TrimSpace(filter.Search)
     if filter.Status == "" { filter.Status = "all" }
-    if r == nil || r.db == nil || day.Year() < 1 || limit < 1 || limit > 100 || offset < 0 ||
+    if r == nil || r.db == nil || actorID <= 0 || schoolID <= 0 || day.Year() < 1 || limit < 1 || limit > 100 || offset < 0 ||
         len([]rune(filter.Search)) > 100 ||
         (filter.Status != "all" && filter.Status != "unmarked" && !validStaffAttendanceStatus(filter.Status)) {
         return nil, 0, ErrInvalidStaffAttendance
     }
-    if err := authorizeGuardian(ctx, r.db, actorID, schoolID, "staff.attendance.read"); err != nil { return nil, 0, ErrStaffAttendanceAccessDenied }
+    tx, err := r.db.Begin(ctx)
+    if err != nil { return nil, 0, fmt.Errorf("begin daily staff attendance snapshot: %w", err) }
+    defer func() { _ = tx.Rollback(ctx) }()
+    if _, callerOwnsTransaction := r.db.(pgx.Tx); !callerOwnsTransaction {
+        if _, err := tx.Exec(ctx, "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY"); err != nil {
+            return nil, 0, fmt.Errorf("set daily staff attendance snapshot: %w", err)
+        }
+    }
+    if err := authorizeGuardian(ctx, tx, actorID, schoolID, "staff.attendance.read"); err != nil { return nil, 0, ErrStaffAttendanceAccessDenied }
     dayValue := day.Format("2006-01-02")
     var total int
-    if err := r.db.QueryRow(ctx, `
+    if err := tx.QueryRow(ctx, `
         SELECT COUNT(*)::integer
         FROM staff_profiles sp
         LEFT JOIN staff_attendance_records a
@@ -114,7 +122,7 @@ func (r *StaffAttendanceRepository) ListDailyFilteredPage(ctx context.Context, a
     `, schoolID, dayValue, filter.Search, filter.Status).Scan(&total); err != nil {
         return nil, 0, fmt.Errorf("count daily staff attendance: %w", err)
     }
-    rows, err := r.db.Query(ctx, `
+    rows, err := tx.Query(ctx, `
         SELECT a.id, sp.principal_id, sp.employee_code, sp.full_name, sp.designation,
                $2::date::text, a.status, a.remarks, marker.username, a.updated_at
         FROM staff_profiles sp
@@ -142,6 +150,8 @@ func (r *StaffAttendanceRepository) ListDailyFilteredPage(ctx context.Context, a
         items = append(items, item)
     }
     if err := rows.Err(); err != nil { return nil, 0, fmt.Errorf("iterate daily staff attendance: %w", err) }
+    rows.Close()
+    if err := tx.Commit(ctx); err != nil { return nil, 0, fmt.Errorf("commit daily staff attendance snapshot: %w", err) }
     return items, total, nil
 }
 
