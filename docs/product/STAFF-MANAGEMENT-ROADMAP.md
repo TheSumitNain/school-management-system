@@ -1,11 +1,15 @@
-## 2026-11-26 — Leave, substitution and holiday result-set capacity verification
+## 2026-11-26 — Staff Leave/Substitution pagination and complete report export verified
 
-- Removed the former 1,000-row SQL result cap from Staff Leave Requests and Staff Substitution History; removed the same silent truncation cap from the school-scoped Holiday Calendar query. These endpoints no longer silently omit records solely because a result set exceeds 1,000 rows.
-- Backend CI [45735778800](https://github.com/TheSumitNain/school-management-system/actions/runs/45735778800) **PASS** on `dac260948dafefe8c424ff93cbe79337ed372e39`; the full configured backend workflow completed successfully.
-- This closes the silent-truncation defect only. Bounded pagination with total counts for Leave Requests and Substitution History, plus complete all-record report export, remain open and are not represented as complete.
-- No schema migration or persistent database change. Changes are on `work`; `main` remains untouched.
+- Staff Leave Requests and Substitution History now use bounded server-side pages (default 50, maximum 100), exact filtered totals, stable ordering, and Previous/Next navigation. Query keys include pagination state and filters reset to page one.
+- Staff Leave report CSV export fetches every matching page in bounded batches and fails visibly if pagination metadata is invalid or the server stops returning rows before the reported total. The export continues to use the privacy allowlist and does not expose free-text leave reasons.
+- Empty leave/substitution API responses preserve arrays and include pagination metadata. The earlier 1,000-row SQL caps were also removed from Leave Requests, Substitution History and the school-scoped Holiday Calendar.
+- Added backend handler coverage, frontend pagination/export acceptance, and fixture/response-contract checks. Latest Frontend CI [45737923385](https://github.com/TheSumitNain/school-management-system/actions/runs/45737923385) **PASS** on `b164d1b9ffe838e25df9034b39b27340847b522e`, including TypeScript, production build and **132 Playwright tests**. Latest Backend CI [45737923468](https://github.com/TheSumitNain/school-management-system/actions/runs/45737923468) **PASS** on the same commit, including migrations, Go tests, PostgreSQL integration and `go vet`.
+- This closes the previously open Leave/Substitution bounded-pagination and complete Leave CSV-export items for the implemented workflows. It does not claim manual sign-off on a live authenticated school account or approval-gated product decisions.
+- No schema migration or persistent school data change in this batch. Changes remain on `work`; `main` remains untouched.
 
 ---
+
+
 
 ## 2026-11-25 — Staff Directory aggregate summary and lazy full-list loading
 
