@@ -156,7 +156,7 @@ export function StaffSubstitutionWorkspace({permissions,staff}:Props){
       downloadSubstitutionCsv(collected);
       notifyToast("success",collected.length+" substitution records exported.");
     }catch(error){
-      notifyToast("error",errorText(error,"Unable to export substitution history. No partial CSV was created."));
+      notifyToast("error","Unable to export substitution history. "+errorText(error,"The report could not be loaded.")+" No partial CSV was created.");
     }finally{setIsExporting(false);}
   };
 
