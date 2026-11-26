@@ -4209,7 +4209,7 @@ test("staff leave requests use bounded pages and show the matching total", async
     await requestRow.getByRole("button",{name:"Cancel request"}).click();
     const confirmation=page.getByRole("dialog",{name:"Cancel leave request?"});
     await confirmation.getByRole("button",{name:"Cancel request",exact:true}).click();
-    await expect(page.getByText("Leave request cancelled.")).toBeVisible();
+    await expect(requestRow).toHaveCount(0);
   }
   await expect(page.getByText("Showing 1–50 of 50")).toBeVisible();
   await expect(page.getByText("Leave request 1",{exact:true})).toBeVisible();
