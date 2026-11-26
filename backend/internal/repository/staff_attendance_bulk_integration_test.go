@@ -358,3 +358,65 @@ func TestStaffAttendanceMonthlyRetainsInactiveStaffHistoryPostgresIntegration(t 
 	t.Fatal("monthly attendance omitted inactive employee with retained attendance history")
 }
 
+
+
+// A School Admin's attendance permissions are bound to the actor's own school.
+// Passing a different school ID to any attendance read/write path must not
+// bypass that boundary, even when the staff or record ID belongs to the home school.
+func TestStaffAttendanceOperationsRejectForeignSchoolScopePostgresIntegration(t *testing.T) {
+	f := newStaffAttendanceIntegrationFixture(t)
+	suffix := fmt.Sprint(time.Now().UnixNano())
+	var foreignSchoolID int64
+	if err := f.pool.QueryRow(f.ctx, `
+		INSERT INTO schools(name, code, status)
+		VALUES($1, $2, 'active') RETURNING id
+	`, "Attendance Isolation School "+suffix, "AI-"+suffix).Scan(&foreignSchoolID); err != nil {
+		t.Fatalf("create foreign school fixture: %v", err)
+	}
+	if foreignSchoolID == f.schoolID {
+		t.Fatal("foreign school fixture unexpectedly matches actor school")
+	}
+
+	day, err := time.Parse("2006-01-02", schooltime.TodayDate())
+	if err != nil {
+		t.Fatalf("parse school-local attendance date: %v", err)
+	}
+	repo := f.repo
+	if _, err := repo.ListDaily(f.ctx, f.actorID, foreignSchoolID, day); !errors.Is(err, ErrStaffAttendanceAccessDenied) {
+		t.Fatalf("foreign-school daily read error=%v; want access denied", err)
+	}
+	month := time.Date(day.Year(), day.Month(), 1, 0, 0, 0, 0, time.UTC)
+	if _, err := repo.ListMonthly(f.ctx, f.actorID, foreignSchoolID, month); !errors.Is(err, ErrStaffAttendanceAccessDenied) {
+		t.Fatalf("foreign-school monthly read error=%v; want access denied", err)
+	}
+	if _, err := repo.Mark(f.ctx, f.actorID, foreignSchoolID, f.staffIDs[0], day, "present", nil); !errors.Is(err, ErrStaffAttendanceAccessDenied) {
+		t.Fatalf("foreign-school mark error=%v; want access denied", err)
+	}
+	if _, err := repo.MarkBulk(f.ctx, f.actorID, foreignSchoolID, f.staffIDs, day, "present", nil); !errors.Is(err, ErrStaffAttendanceAccessDenied) {
+		t.Fatalf("foreign-school bulk mark error=%v; want access denied", err)
+	}
+
+	// Create a legitimate home-school record, then try to update it while
+	// supplying the foreign school ID. The update must be denied as well.
+	created, err := repo.Mark(f.ctx, f.actorID, f.schoolID, f.staffIDs[0], day, "present", nil)
+	if err != nil {
+		t.Fatalf("create home-school attendance fixture: %v", err)
+	}
+	if created == nil || created.ID == nil {
+		t.Fatal("home-school attendance fixture returned no record ID")
+	}
+	if _, err := repo.Update(f.ctx, f.actorID, foreignSchoolID, *created.ID, "late", nil); !errors.Is(err, ErrStaffAttendanceAccessDenied) {
+		t.Fatalf("foreign-school update error=%v; want access denied", err)
+	}
+
+	var foreignRecords int
+	if err := f.pool.QueryRow(f.ctx, `
+		SELECT COUNT(*) FROM staff_attendance_records
+		WHERE school_id=$1 AND attendance_date=$2::date
+	`, foreignSchoolID, schooltime.TodayDate()).Scan(&foreignRecords); err != nil {
+		t.Fatalf("count foreign-school attendance records: %v", err)
+	}
+	if foreignRecords != 0 {
+		t.Fatalf("foreign-school attendance records=%d after denied operations; want 0", foreignRecords)
+	}
+}
