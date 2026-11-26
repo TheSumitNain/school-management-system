@@ -1,3 +1,13 @@
+## 2026-11-26 — Staff Leave/Substitution pagination PostgreSQL and service regressions pass
+
+- Added real-PostgreSQL repository coverage for Leave Requests pagination: five matching rows across three pages, stable newest-first ordering, exact totals, status/staff filtering, single-date filtering, empty out-of-range pages and cross-school denial.
+- Added real-PostgreSQL Substitution History coverage for the paginated query, filtered staff results, exact totals, out-of-range pages and cross-school denial. Added service validation/forwarding tests for both workflows, including invalid filters, page bounds and offset overflow.
+- Backend CI [45739937574](https://github.com/TheSumitNain/school-management-system/actions/runs/45739937574) **PASS** on `c5ad27a213da8249e2010b70a07129020376eacf`: full migration chain, complete Go suite including PostgreSQL integration tests, and `go vet`.
+- Frontend source and E2E tests were unchanged in this backend-only batch; the latest frontend CI [45737923385](https://github.com/TheSumitNain/school-management-system/actions/runs/45737923385) remains **PASS** with TypeScript, Vite production build and 132 Playwright tests.
+- No schema migration or persistent school data change. Automated acceptance is verified; manual authenticated-school browser sign-off remains outstanding. Product approval gates remain unchanged; `main` remains untouched.
+
+---
+
 ## 2026-11-26 — Staff Leave/Substitution pagination and complete report export verified
 
 - Staff Leave Requests and Substitution History now use bounded server-side pagination (default 50, maximum 100), exact filtered totals, stable ordering and Previous/Next navigation. Filter changes reset the page; query keys include page state to prevent cache collisions.
