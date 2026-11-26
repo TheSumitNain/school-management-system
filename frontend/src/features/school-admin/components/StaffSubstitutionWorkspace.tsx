@@ -29,6 +29,8 @@ export function StaffSubstitutionWorkspace({permissions,staff}:Props){
   const [fromDate,setFromDate]=useState(range.from);
   const [toDate,setToDate]=useState(range.to);
   const [filterStaffID,setFilterStaffID]=useState("0");
+  const [substitutionPage,setSubstitutionPage]=useState(1);
+  const substitutionPageSize=50;
   const [entryID,setEntryID]=useState("");
   const [coverDate,setCoverDate]=useState("");
   const [substituteID,setSubstituteID]=useState("");
@@ -49,11 +51,11 @@ export function StaffSubstitutionWorkspace({permissions,staff}:Props){
   const entries=canManage&&canReadTimetable?(timetableQuery.data?.entries??[]):[];
   const selectedEntry=entries.find(item=>String(item.id)===entryID);
   const originalTeacherID=selectedEntry?.teacher_principal_id??0;
-  const leaveQuery=useStaffLeaveRequestsQuery({status:"approved",staffPrincipalID:originalTeacherID},canManage&&canReadLeave&&originalTeacherID>0);
+  const leaveQuery=useStaffLeaveRequestsQuery({status:"approved",staffPrincipalID:originalTeacherID,fromDate:coverDate||undefined,toDate:coverDate||undefined,page:1,pageSize:100},canManage&&canReadLeave&&originalTeacherID>0&&Boolean(coverDate));
   const eligibleLeaveRequests=canManage&&canReadLeave?(leaveQuery.data?.data??[]).filter(item=>item.duration_type==="full_day"&&item.start_date<=coverDate&&item.end_date>=coverDate):[];
   const validRange=Boolean(fromDate&&toDate&&fromDate<=toDate);
   const filtersChanged=fromDate!==range.from||toDate!==range.to||filterStaffID!=="0";
-  const substitutionsQuery=useStaffSubstitutionsQuery({fromDate,toDate,staffPrincipalID:Number(filterStaffID)||undefined},canRead&&validRange);
+  const substitutionsQuery=useStaffSubstitutionsQuery({fromDate,toDate,staffPrincipalID:Number(filterStaffID)||undefined,page:substitutionPage,pageSize:substitutionPageSize},canRead&&validRange);
   const create=useCreateStaffSubstitutionMutation();
   const cancel=useCancelStaffSubstitutionMutation();
 
@@ -156,12 +158,12 @@ export function StaffSubstitutionWorkspace({permissions,staff}:Props){
     {canRead&&<section className="staff-substitution-panel">
       <div className="staff-substitution-list-heading"><h3><CalendarDays size={16}/> Dated coverage records</h3><button type="button" className="staff-substitution-refresh" onClick={()=>void substitutionsQuery.refetch()} disabled={substitutionsQuery.isFetching}><RefreshCw size={14}/> Refresh</button></div>
       <div className="staff-substitution-filters">
-        <label>From date <DatePicker value={fromDate} onChange={setFromDate} ariaLabel="Substitution list from date" placeholder="From date"/></label>
-        <label>To date <DatePicker value={toDate} onChange={setToDate} ariaLabel="Substitution list to date" placeholder="To date"/></label>
-        <label>Staff member <Select value={filterStaffID} onChange={setFilterStaffID} ariaLabel="Filter substitutions by staff" options={staffOptions}/></label>
+        <label>From date <DatePicker value={fromDate} onChange={value=>{setFromDate(value);setSubstitutionPage(1);}} ariaLabel="Substitution list from date" placeholder="From date"/></label>
+        <label>To date <DatePicker value={toDate} onChange={value=>{setToDate(value);setSubstitutionPage(1);}} ariaLabel="Substitution list to date" placeholder="To date"/></label>
+        <label>Staff member <Select value={filterStaffID} onChange={value=>{setFilterStaffID(value);setSubstitutionPage(1);}} ariaLabel="Filter substitutions by staff" options={staffOptions}/></label>
       </div>
       {!fromDate||!toDate?<p className="staff-substitution-error" role="alert">Select both a From date and a To date.</p>:!validRange&&<p className="staff-substitution-error" role="alert">To date must be on or after from date.</p>}
-      {filtersChanged&&<div className="staff-substitution-filter-actions"><button type="button" className="staff-substitution-refresh" onClick={()=>{setFromDate(range.from);setToDate(range.to);setFilterStaffID("0");}}>Clear filters</button></div>}
+      {filtersChanged&&<div className="staff-substitution-filter-actions"><button type="button" className="staff-substitution-refresh" onClick={()=>{setFromDate(range.from);setToDate(range.to);setFilterStaffID("0");setSubstitutionPage(1);}}>Clear filters</button></div>}
       {validRange&&substitutionsQuery.isLoading&&<p className="staff-substitution-muted">Loading substitution records…</p>}
       {validRange&&substitutionsQuery.isError&&<p className="staff-substitution-error" role="alert">Unable to load substitution records. <button type="button" onClick={()=>void substitutionsQuery.refetch()}>Retry</button></p>}
       {validRange&&substitutionsQuery.isSuccess&&substitutionsQuery.data.substitutions.length===0&&<p className="staff-substitution-empty">No substitute coverage records in this date range.</p>}
@@ -178,6 +180,7 @@ export function StaffSubstitutionWorkspace({permissions,staff}:Props){
           {canCancel&&<button type="button" className="staff-substitution-cancel" onClick={()=>setCancelTarget(item)}><XCircle size={14}/> Cancel cover</button>}
         </article>;
       })}
+      {validRange&&substitutionsQuery.data?.pagination&&substitutionsQuery.data.pagination.total>0&&<div className="staff-substitution-filter-actions" aria-label="Substitution history pagination"><span>Showing {(substitutionPage-1)*substitutionPageSize+1}–{Math.min(substitutionPage*substitutionPageSize,substitutionsQuery.data.pagination.total)} of {substitutionsQuery.data.pagination.total}</span><button type="button" className="staff-substitution-refresh" onClick={()=>setSubstitutionPage(page=>Math.max(1,page-1))} disabled={substitutionPage===1||substitutionsQuery.isFetching}>Previous</button><button type="button" className="staff-substitution-refresh" onClick={()=>setSubstitutionPage(page=>page+1)} disabled={substitutionPage*substitutionPageSize>=substitutionsQuery.data.pagination.total||substitutionsQuery.isFetching}>Next</button></div>}
       <p className="staff-substitution-footnote"><Clock3 size={13}/> Completed is derived from the cover date. Cancelled records remain in history. Timetable entries with substitution history cannot be hard-deleted.</p>
     </section>}
     {!canRead&&!canManage&&<p className="staff-substitution-error" role="alert">You do not have permission to view or manage substitute coverage.</p>}
