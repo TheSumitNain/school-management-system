@@ -765,3 +765,10 @@ This section supersedes older statements in this audit that describe browser ver
 - Extended Staff Reports browser acceptance to simulate duplicate qualification record IDs and inconsistent experience-report pagination totals during multi-page CSV export. Both scenarios must abort export, show the existing safe error, and produce no partial download; the existing transient HTTP failure case remains covered.
 - Re-checked report SQL tenant predicates and permission authorization: qualification/certification and experience report queries constrain rows by the authenticated school ID, join staff profiles on both principal and school, and exclude credential references/verifier notes or free-text experience descriptions from report payloads.
 - No production behavior or schema change in this pass. Backend CI and frontend build/Playwright verification are required on the resulting work commit. main remains untouched; authenticated School Admin browser sign-off and documented approval-gated scope remain outstanding.
+
+
+## 2026-11-26 follow-up — staff profile update validation batch
+
+- Added service-level regression coverage for profile update normalization and authenticated actor/school/target forwarding, plus invalid employee code, Unicode name/designation limits, mobile number, email, employment status, future joining date, and missing identity/school/target rejection before repository mutation.
+- Existing PostgreSQL integration coverage already verifies cross-school update denial, duplicate employee-code handling, optional email clearing, employment/login lifecycle, and transaction rollback when profile audit insertion fails.
+- Backend CI must pass before considering this batch verified. Frontend CI from the preceding report-export batch passed. Authenticated School Admin acceptance/sign-off remains outstanding; `main` is unchanged.
