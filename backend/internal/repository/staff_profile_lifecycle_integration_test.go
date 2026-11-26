@@ -56,6 +56,16 @@ func TestStaffProfileInactiveLoginGuardPostgresIntegration(t *testing.T) {
         t.Fatalf("create active staff profile: %v", err)
     }
 
+    sessions := NewPrincipalRefreshSessionRepository(pool)
+    refreshHash := integrationTokenHash("staff-profile-inactivation-" + suffix)
+    if err := sessions.CreatePrincipal(ctx, principalID, refreshHash, time.Now().Add(time.Hour)); err != nil {
+        t.Fatalf("create refresh session before profile inactivation: %v", err)
+    }
+    var initialTokenVersion int64
+    if err := pool.QueryRow(ctx, `SELECT token_version FROM auth_principals WHERE id = $1`, principalID).Scan(&initialTokenVersion); err != nil {
+        t.Fatalf("read initial staff token version: %v", err)
+    }
+
     if _, err := pool.Exec(ctx, `
         UPDATE staff_profiles SET employment_status = 'inactive', updated_at = NOW()
         WHERE principal_id = $1
@@ -64,15 +74,20 @@ func TestStaffProfileInactiveLoginGuardPostgresIntegration(t *testing.T) {
     }
 
     var principalStatus, accountStatus string
+    var tokenVersion int64
+    var refreshRevoked bool
     if err := pool.QueryRow(ctx, `
-        SELECT ap.status, u.status
+        SELECT ap.status, u.status, ap.token_version,
+               (SELECT revoked_at IS NOT NULL FROM refresh_sessions WHERE token_hash = $2)
           FROM auth_principals ap JOIN users u ON u.principal_id = ap.id
          WHERE ap.id = $1
-    `, principalID).Scan(&principalStatus, &accountStatus); err != nil {
-        t.Fatalf("read disabled staff state: %v", err)
+    `, principalID, refreshHash).Scan(&principalStatus, &accountStatus, &tokenVersion, &refreshRevoked); err != nil {
+        t.Fatalf("read disabled staff state and refresh session: %v", err)
     }
-    if principalStatus != "disabled" || accountStatus != "disabled" {
-        t.Fatalf("inactive profile left login enabled: principal=%q account=%q", principalStatus, accountStatus)
+    if principalStatus != "disabled" || accountStatus != "disabled" ||
+        tokenVersion != initialTokenVersion+1 || !refreshRevoked {
+        t.Fatalf("profile inactivation did not fully invalidate login: principal=%q account=%q token_version=%d initial=%d refresh_revoked=%v",
+            principalStatus, accountStatus, tokenVersion, initialTokenVersion, refreshRevoked)
     }
 
     if _, err := pool.Exec(ctx, `
