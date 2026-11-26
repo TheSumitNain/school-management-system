@@ -1,3 +1,14 @@
+## 2026-11-26 — Staff Attendance global filters and consistent pagination verified
+
+- Daily Attendance now applies employee search (name, employee code, designation) and status filters on the server before pagination. Supported status filters are all, unmarked, present, absent, late and half-day; search is trimmed and bounded to 100 Unicode code points.
+- Daily count and page rows are read in one read-only repeatable-read transaction for pool-backed requests, so the filtered total cannot disagree with the returned page because an attendance mark changed between separate queries. Caller-owned transactions retain their existing isolation.
+- Daily and Monthly pagination remain bounded (default 50, maximum 100). Bulk marking is still limited to visible, unmarked employees on the current page and remains atomic.
+- PostgreSQL integration and service/handler tests cover search/status filtering, filter validation and exact filtered totals. Playwright now verifies that searching for a staff member beyond the first 50-row page returns that employee, and that status filters update the filtered total before pagination.
+- Backend CI [45825300901](https://github.com/TheSumitNain/school-management-system/actions/runs/45825300901) **PASS** on `c78032b27df34672e7e7cc0d258cc8ce90b78917`: full migrations, Go/PostgreSQL integration tests and `go vet`. Frontend CI [45825300711](https://github.com/TheSumitNain/school-management-system/actions/runs/45825300711) **PASS** on the same checkpoint: TypeScript, Vite production build and **154 Playwright tests passed**.
+- No schema migration or persistent school-data change. Changes remain on `work`; `main` remains untouched.
+
+---
+
 ## 2026-11-26 — Staff qualification and experience report consistency hardened
 
 - Qualifications/Certifications and Experience report endpoints now validate supported filter enums, enforce page sizes from 1–200, and cap offsets at 1,000,000 in both handler and repository layers. Backend CI [45824021653](https://github.com/TheSumitNain/school-management-system/actions/runs/45824021653) **PASS** on `e1032f027b5b1e14a000bbe337c760ea6fe60c51`, including full migrations, Go/PostgreSQL integration and `go vet`.

@@ -1,3 +1,14 @@
+## 2026-11-26 — Staff Attendance global filters and consistent pagination verified
+
+- Daily Attendance now applies employee search (name, employee code, designation) and status filters on the server before pagination. Supported status filters are all, unmarked, present, absent, late and half-day; search is trimmed and bounded to 100 Unicode code points.
+- Daily count and page rows are read in one read-only repeatable-read transaction for pool-backed requests, so the filtered total cannot disagree with the returned page because an attendance mark changed between separate queries. Caller-owned transactions retain their existing isolation.
+- Daily and Monthly pagination remain bounded (default 50, maximum 100). Bulk marking is still limited to visible, unmarked employees on the current page and remains atomic.
+- PostgreSQL integration and service/handler tests cover search/status filtering, filter validation and exact filtered totals. Playwright now verifies that searching for a staff member beyond the first 50-row page returns that employee, and that status filters update the filtered total before pagination.
+- Backend CI [45825300901](https://github.com/TheSumitNain/school-management-system/actions/runs/45825300901) **PASS** on `c78032b27df34672e7e7cc0d258cc8ce90b78917`: full migrations, Go/PostgreSQL integration tests and `go vet`. Frontend CI [45825300711](https://github.com/TheSumitNain/school-management-system/actions/runs/45825300711) **PASS** on the same checkpoint: TypeScript, Vite production build and **154 Playwright tests passed**.
+- No schema migration or persistent school-data change. Changes remain on `work`; `main` remains untouched.
+
+---
+
 
 ## 2026-11-25 — bulk attendance HTTP, service validation and concurrency verification
 
@@ -49,8 +60,8 @@ Every API operation must re-evaluate effective permissions on the server, includ
 
 ## API contract
 
-- `GET /school/staff-attendance?date=YYYY-MM-DD`: active staff roster and that day's attendance state.
-- `GET /school/staff-attendance/month?month=YYYY-MM`: month register with derived per-staff totals and daily entries.
+- `GET /school/staff-attendance?date=YYYY-MM-DD&limit=50&offset=0`: active staff roster and that day's attendance state. Optional `search` matches name, employee code or designation across the school roster; optional `status` accepts `all`, `unmarked`, `present`, `absent`, `late` or `half_day`. Daily limit is 1–100 (default 50), offset is non-negative, and totals reflect the active filters.
+- `GET /school/staff-attendance/month?month=YYYY-MM&limit=50&offset=0`: month register with derived per-staff totals and daily entries; pagination is bounded to 1–100 (default 50).
 - `POST /school/staff-attendance`: create one daily record; duplicate staff/date returns conflict, never silently overwrites.
 - `POST /school/staff-attendance/bulk`: atomically create records for 1–1000 unique staff principals; if any target is invalid or any duplicate exists, the entire batch rolls back.
 - `PATCH /school/staff-attendance/:recordID`: update status/remarks under same-day or historical permission.
@@ -61,7 +72,7 @@ Every list is school-scoped and bounded to one date or one calendar month. Mutat
 
 Staff Management → Attendance:
 - Date picker defaults to the school-local current date.
-- Roster supports employee name/code/designation search and status filtering; shows clear Present/Absent/Late/Half-day/Not marked state.
+- Roster supports school-wide employee name/code/designation search and status filtering before pagination; filtered totals and pages stay aligned. Shows clear Present/Absent/Late/Half-day/Not marked state.
 - Bulk status entry applies only to visible, unmarked staff and requires explicit count confirmation; all-or-nothing transaction semantics prevent partial batches.
 - Marking and edits have field-level validation, pending/disabled states, success/error toasts and explicit correction confirmation.
 - Month view shows derived counts and per-day status without mixing leave or holidays into attendance totals.
