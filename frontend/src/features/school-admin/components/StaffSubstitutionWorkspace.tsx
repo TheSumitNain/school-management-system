@@ -22,7 +22,7 @@ function formatDate(value:string){return new Date(value+"T00:00:00Z").toLocaleDa
 function errorText(error:unknown,fallback:string){return error instanceof ApiError?error.message:fallback;}
 function substitutionCsvCell(value:string|number|null|undefined){
   const raw=String(value??"");
-  const safe=/^\s*(?:=|\\+|-|@)/.test(raw)?"'"+raw:raw;
+  const safe=/^\s*(?:=|\+|-|@)/.test(raw)?"'"+raw:raw;
   return '"'+safe.replace(/"/g,'""')+'"';
 }
 function downloadSubstitutionCsv(rows:StaffSubstitution[]){
