@@ -39,6 +39,9 @@ func TestStaffProfileInactiveLoginGuardPostgresIntegration(t *testing.T) {
         if _, err := tx.Exec(cleanupCtx, `DELETE FROM staff_profiles WHERE principal_id = $1`, principalID); err != nil {
             t.Errorf("delete staff profile fixture: %v", err); return
         }
+        if _, err := tx.Exec(cleanupCtx, `DELETE FROM refresh_sessions WHERE principal_id = $1`, principalID); err != nil {
+            t.Errorf("delete staff refresh-session fixture: %v", err); return
+        }
         if _, err := tx.Exec(cleanupCtx, `DELETE FROM users WHERE id = $1`, userID); err != nil {
             t.Errorf("delete staff user fixture: %v", err); return
         }
