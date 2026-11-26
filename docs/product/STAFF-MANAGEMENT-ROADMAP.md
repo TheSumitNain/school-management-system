@@ -1325,3 +1325,10 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - PostgreSQL regression coverage verifies that inactivation increments token version and revokes active refresh sessions, and that a direct profile update fails fast without partial state changes while the refresh lock is held.
 - Backend CI [45811037214](https://github.com/TheSumitNain/school-management-system/actions/runs/45811037214) **PASS** on `87de3be8f5110ebfaa4d78fb72c76b3a23ef9a18`, including V68/V69 migrations, full Go/PostgreSQL integration and `go vet`.
 - This closes the automated account/profile inactivation serialization regression. It does not close the authenticated School Admin sign-off or previously documented approval gates; no existing school data is rewritten and `main` remains untouched.
+
+
+## 2026-11-26 — Add Staff request-to-profile contract regression
+
+- Strengthened the backend HTTP handler test so the fake create service captures the `StaffProfile` payload. The test now verifies Staff Type, Employee Code, Full Name, Designation, Mobile Number, optional Email/Joining Date and active employment status are forwarded, while the response still excludes plaintext credentials and password hashes.
+- Backend CI [45811766096](https://github.com/TheSumitNain/school-management-system/actions/runs/45811766096) **PASS** on `4762ec3a471525084898bd05db3e0a6959cba3ac`: full migrations, Go/PostgreSQL integration tests and `go vet`.
+- No production code, migration or persistent data changed. This verifies the existing login-backed create request contract; it does not implement profile-only onboarding or automatic role assignment, which remain blocked on the separately documented identity-schema and role-mapping approvals.
