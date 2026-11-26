@@ -43,9 +43,9 @@ func (f *fakeStaffAccountService) Create(_ context.Context, actorID, schoolID in
 	return f.user, f.err
 }
 
-func (f *fakeStaffAccountService) CreateWithProfile(_ context.Context, actorID, schoolID int64, username, password string, _ models.StaffProfile) (*models.User, error) {
+func (f *fakeStaffAccountService) CreateWithProfile(_ context.Context, actorID, schoolID int64, username, password string, profile models.StaffProfile) (*models.User, error) {
 	f.calls++
-	f.actorID, f.schoolID, f.username, f.password = actorID, schoolID, username, password
+	f.actorID, f.schoolID, f.username, f.password, f.profile = actorID, schoolID, username, password, profile
 	return f.user, f.err
 }
 
@@ -98,6 +98,11 @@ func TestStaffHandlerCreateSuccessDoesNotExposePassword(t *testing.T) {
 	}
 	if strings.Contains(rec.Body.String(), "A-Strong-Initial-Pass-123") || strings.Contains(rec.Body.String(), "PasswordHash") || strings.Contains(rec.Body.String(), "private-hash-marker") {
 		t.Fatalf("staff create response leaked password material: %s", rec.Body.String())
+	}
+	if f := service.profile; f.StaffType != "teaching" || f.EmployeeCode != "EMP-001" ||
+		f.FullName != "Rahul Sharma" || f.Designation != "Teacher" || f.MobileNumber != "9876543210" ||
+		f.Email != "" || f.JoiningDate != nil || f.EmploymentStatus != "active" {
+		t.Fatalf("staff create did not forward the complete normalized employee profile: %+v", f)
 	}
 	if !strings.Contains(rec.Body.String(), `"must_change_password":true`) || !strings.Contains(rec.Body.String(), `"staff_type":"teaching"`) {
 		t.Fatalf("new staff account must require first-login password change: %s", rec.Body.String())
