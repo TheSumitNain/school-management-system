@@ -759,6 +759,9 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	if err != nil || len(teacherAssignments) != 1 || teacherAssignments[0].ID != teacherAssignment.ID {
 		t.Fatalf("list teacher subject assignments through repository: items=%+v err=%v", teacherAssignments, err)
 	}
+	if _, err := academicRepo.ListEligibleTeachers(ctx, actorPrincipalID, otherSchoolID); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("forged foreign-school eligible teacher list error=%v; want access denied", err)
+	}
 	if _, err := academicRepo.ListTeacherSubjectAssignments(ctx, actorPrincipalID, otherSchoolID, apiYear.ID, apiSection.ID); !errors.Is(err, ErrAcademicAccessDenied) {
 		t.Fatalf("forged foreign-school teacher assignment list error=%v; want access denied", err)
 	}
@@ -793,6 +796,23 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	}
 	if err := academicRepo.RevokeClassInchargeAssignment(ctx, actorPrincipalID, schoolID, classIncharge.ID); err != nil {
 		t.Fatalf("revoke class in-charge assignment through repository: %v", err)
+	}
+	var assignmentAuditEvents int
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*)::integer FROM audit_events
+		 WHERE school_id=$1 AND actor_principal_id=$2
+		   AND (
+		     (resource_type='teacher_subject_assignment' AND resource_id=$3
+		       AND action IN ('school.teacher_subject_assignment.created','school.teacher_subject_assignment.revoked'))
+		     OR
+		     (resource_type='class_incharge_assignment' AND resource_id=$4
+		       AND action IN ('school.class_incharge_assignment.created','school.class_incharge_assignment.revoked'))
+		   )`,
+		schoolID, actorPrincipalID, fmt.Sprint(teacherAssignment.ID), fmt.Sprint(classIncharge.ID)).Scan(&assignmentAuditEvents); err != nil {
+		t.Fatalf("count teacher assignment audit events: %v", err)
+	}
+	if assignmentAuditEvents != 4 {
+		t.Fatalf("teacher subject and class in-charge audit event count=%d; want 4", assignmentAuditEvents)
 	}
 
 	// Exercise enrollment and promotion through the production repository.
