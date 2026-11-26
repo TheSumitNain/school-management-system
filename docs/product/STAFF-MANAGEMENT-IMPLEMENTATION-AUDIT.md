@@ -749,3 +749,12 @@ This section supersedes older statements in this audit that describe browser ver
 - Backend CI [45762500363](https://github.com/TheSumitNain/school-management-system/actions/runs/45762500363) and Frontend CI [45762500412](https://github.com/TheSumitNain/school-management-system/actions/runs/45762500412) **PASS** on `f5ebe69cab22423344ebcd1c84b76e06b4ede242`. Frontend verification includes TypeScript, Vite production build and the full Playwright browser acceptance suite.
 - ID Cards and Workload Report review found existing coverage for active/complete profile eligibility, disabled-login employees, privacy-safe printed fields, school-date handling, responsive layouts, workload aggregation, filtered formula-safe CSV export and missing academic-year behavior; no duplicate tests or further production changes were justified in this pass.
 - No schema migration or persistent data change. `main` remains untouched. Authenticated School Admin browser sign-off and documented approval-gated scope remain outstanding; Staff Management is not marked complete.
+
+
+## 2026-11-26 — Report-only permission matrix and academic assignment access
+
+- Added separate Playwright browser regressions for `teacher_assignments.read`-only and `class_incharge_assignments.read`-only principals. Each principal can open Reports, sees only its permitted academic-assignment report, and does not trigger the other assignment endpoint.
+- Re-checked the report workspace permission gates: Attendance (`staff.attendance.read`), Leave (`staff.leave.read`), academic assignments (their respective read permissions), and Qualifications/Experience (`users.read`). The staff directory remains unloaded for report-only principals without `users.read`.
+- Backend CI [45764093965](https://github.com/TheSumitNain/school-management-system/actions/runs/45764093965) **PASS** and Frontend CI [45764093995](https://github.com/TheSumitNain/school-management-system/actions/runs/45764093995) **PASS** on `a39e0c1552ef4951ff2a91ad4141282e7221d167`. Frontend verification includes TypeScript, Vite production build and the complete Playwright browser acceptance suite.
+- Workload Report remains separately gated by `timetable.read` and is not conflated with the operational Reports tab. No additional production defect was confirmed in this permission-matrix pass.
+- No schema migration or persistent data change. `main` remains untouched. Authenticated School Admin browser sign-off and the previously documented approval-gated scope remain outstanding; Staff Management is not marked complete.
