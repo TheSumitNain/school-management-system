@@ -3447,21 +3447,23 @@ test("staff reports do not request attendance or leave data without their read p
 test("staff directory CSV export is filtered, UTF-8 compatible and safe from spreadsheet formulas", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [
     {
-      id: 1, principal_id: 501, school_id: 10, username: "teacher.original",
-      employee_code: "EMP-ORIGINAL", full_name: '\t=HYPERLINK("https://example.invalid","Click")', designation: "Mathematics Teacher",
+      id: 1, principal_id: 501, school_id: 10, username: "teacher.original", staff_type: "teaching",
+      employee_code: "EMP-ORIGINAL", full_name: '\t=HYPERLINK("https://example.invalid","Click")', designation: "Teacher",
       mobile_number: "9876543215", employment_status: "active", profile_complete: true,
       status: "active", must_change_password: false,
     },
     {
-      id: 2, principal_id: 502, school_id: 10, username: "teacher.filtered",
-      employee_code: "EMP-FILTERED", full_name: "Filtered Out Teacher", designation: "Science Teacher",
+      id: 2, principal_id: 502, school_id: 10, username: "teacher.filtered", staff_type: "non_teaching",
+      employee_code: "EMP-FILTERED", full_name: "Filtered Out Teacher", designation: "Teacher",
       mobile_number: "9876543216", employment_status: "inactive", profile_complete: false,
       status: "disabled", must_change_password: false,
     },
   ];
   await signInAndOpenStaff(page, rows, undefined, ["users.read"]);
   await page.getByRole("button", { name: "Staff Directory", exact: true }).click();
-  await page.getByLabel("Search staff by name, code, designation, mobile or username").fill("HYPERLINK");
+  await page.getByRole("button", { name: "Filter by staff type" }).click();
+  await page.getByRole("option", { name: "Teaching", exact: true }).click();
+  await page.getByLabel("Search staff by name, code, designation, mobile or username").fill("Teacher");
   await expect(page.getByText("Filtered Out Teacher")).toHaveCount(0);
 
   const exportButton = page.getByRole("button", { name: /Export CSV/ });
