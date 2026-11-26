@@ -39,6 +39,12 @@ function limitStaffRecordInput(event: ChangeEvent<HTMLInputElement | HTMLTextAre
   if (event.currentTarget.value !== limited) event.currentTarget.value = limited;
 }
 
+function isValidISODate(value: string): boolean {
+  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}
+
 function isValidStaffEmail(email: string): boolean {
   if (!email) return true;
   const characters = Array.from(email);
