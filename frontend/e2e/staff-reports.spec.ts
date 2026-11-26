@@ -12,6 +12,7 @@ const schoolAdmin = {
 test("staff qualifications and experience reports filter, paginate and retain historical employees", async ({ page }) => {
   const qualificationRequests: URL[] = [];
   const experienceRequests: URL[] = [];
+  let failQualificationExportSecondPage = false;
 
   await page.route("**/api/**", async route => {
     const request = route.request();
@@ -39,6 +40,10 @@ test("staff qualifications and experience reports filter, paginate and retain hi
     }
     if (path === "/school/staff/qualifications-report" && request.method() === "GET") {
       qualificationRequests.push(url);
+      if (failQualificationExportSecondPage && url.searchParams.get("limit") === "200" && url.searchParams.get("offset") === "50") {
+        await route.fulfill({ status: 503, json: { message: "Temporary report failure" } });
+        return;
+      }
       const recordType = url.searchParams.get("record_type") ?? "all";
       const status = url.searchParams.get("verification_status") ?? "";
       const offset = Number(url.searchParams.get("offset") ?? "0");
@@ -133,4 +138,13 @@ test("staff qualifications and experience reports filter, paginate and retain hi
   await experienceSection.getByLabel("Experience status").selectOption("current");
   await expect(experienceSection.getByText("Current Academy", { exact: true })).toBeVisible();
   expect(experienceRequests.some(url => url.searchParams.get("current_only") === "true")).toBeTruthy();
+
+  // A later page failure must not create a misleading partial CSV.
+  failQualificationExportSecondPage = true;
+  await qualificationSection.getByLabel("Record type").selectOption("all");
+  await qualificationSection.getByLabel("Verification status").selectOption("");
+  const failedDownload = page.waitForEvent("download", { timeout: 1000 }).catch(() => null);
+  await qualificationSection.getByRole("button", { name: "Export all matching CSV" }).click();
+  await expect(qualificationSection.getByRole("alert")).toContainText("No partial CSV was created");
+  expect(await failedDownload).toBeNull();
 });
