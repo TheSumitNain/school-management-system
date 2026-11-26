@@ -3891,6 +3891,35 @@ test("closing and reopening the same staff profile reloads audit history instead
 });
 
 
+
+test("staff leave report CSV exports every matching page", async ({ page }) => {
+  const staffRows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 501, school_id: 10, username: "leave.export.teacher",
+    employee_code: "EMP-EXPORT-01", full_name: "Export Teacher", designation: "Teacher",
+    employment_status: "active", profile_complete: true, status: "active", must_change_password: false,
+  }];
+  const requests = Array.from({ length: 205 }, (_, index) => ({
+    id: index + 1, staff_principal_id: 501, employee_code: "EMP-EXPORT-01", staff_name: "Export Teacher",
+    leave_type_id: 1, leave_type_name: "Casual Leave", start_date: schoolDateValue(), end_date: schoolDateValue(),
+    duration_type: "full_day", reason: "Export request " + (index + 1), status: "approved",
+    created_at: "2026-11-21T00:00:00.000Z",
+  }));
+  await signInAndOpenStaff(page, staffRows, undefined,
+    ["users.read", "staff.leave.read"], undefined, requests);
+  await page.getByRole("button", { name: "Reports", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Leave requests" })).toBeVisible();
+  await expect(page.getByText("205", { exact: true })).toBeVisible();
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export leave CSV" }).click();
+  const download = await downloadPromise;
+  const path = await download.path();
+  expect(path).toBeTruthy();
+  const csv = await readFile(path!, "utf8");
+  expect(csv.startsWith("\uFEFF")).toBe(true);
+  expect(csv.split(/\r?\n/)).toHaveLength(206);
+  expect(csv).toContain("Export request 205");
+});
+
 test("staff leave requests use bounded pages and show the matching total", async ({ page }) => {
   const staffRows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 501, school_id: 10, username: "leave.page.teacher",
