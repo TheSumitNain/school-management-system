@@ -835,3 +835,13 @@ This section supersedes older statements in this audit that describe browser ver
 - Follow-up hardening: the role-assignment submit handler now rechecks protected School Admin state as well as the caller's live UI permission, so a stale rendered form cannot initiate an assignment after the protected target state is known.
 
 - Expanded RBAC PostgreSQL regressions: update and deletion attempts against an existing permission override on a protected peer School Admin are rejected without changing or deleting the row; cross-school role revocation and permission-override deletion are also explicitly denied. This closes delete-path gaps alongside existing create/set/read isolation checks.
+
+
+## 2026-11-26 follow-up — protected peer School Admin override immutability
+
+- Added PostgreSQL regression coverage for attempts to set, update, and delete individual permission overrides on an existing protected peer School Admin. The update/delete assertions verify the original DENY effect and reason remain unchanged.
+- Added cross-school role-revoke and permission-override-delete rejection assertions to the same integration batch.
+- Backend CI [45774065525](https://github.com/TheSumitNain/school-management-system/actions/runs/45774065525) **PASS** on `6ae620d3f2cc2b729ca40220614332d7c5d6576e`: complete migration chain, full Go suite including PostgreSQL integration, and `go vet`.
+- Frontend CI [45773653025](https://github.com/TheSumitNain/school-management-system/actions/runs/45773653025) **PASS** on `2100c56`: TypeScript, Vite production build, and complete Playwright browser acceptance suite.
+- Re-audited Staff Leave, Attendance and Substitution transactional/audit behavior and concurrent overlap/slot tests; no additional production defect was confirmed. No schema or persistent data changes. `main` remains untouched.
+- Staff Management remains in progress pending authenticated School Admin browser acceptance/sign-off and documented approval-gated scope.

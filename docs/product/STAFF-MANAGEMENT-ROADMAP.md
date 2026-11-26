@@ -1246,3 +1246,12 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Follow-up hardening: the role-assignment submit handler now rechecks protected School Admin state as well as the caller's live UI permission, so a stale rendered form cannot initiate an assignment after the protected target state is known.
 
 - Expanded RBAC PostgreSQL regressions: deletion of an existing permission override from a protected peer School Admin is rejected without deleting the row; cross-school role revocation and permission-override deletion are also explicitly denied. This closes delete-path gaps alongside existing create/set/read isolation checks.
+
+
+## 2026-11-26 follow-up — protected peer School Admin override immutability
+
+- Added PostgreSQL checks that a protected peer School Admin's existing permission override cannot be created, changed, or deleted by School Admin role/permission administration. Rejected update/delete operations must preserve the original effect and reason.
+- Added explicit cross-school role revocation and permission-override deletion regression checks.
+- Backend CI [45774065525](https://github.com/TheSumitNain/school-management-system/actions/runs/45774065525) **PASS** on `6ae620d3f2cc2b729ca40220614332d7c5d6576e`; frontend CI [45773653025](https://github.com/TheSumitNain/school-management-system/actions/runs/45773653025) **PASS** on `2100c56`, including the complete Playwright suite.
+- Re-audited leave, attendance and substitution transaction/audit and concurrency regression coverage. No new production change was justified in this pass.
+- No schema or persistent data changes. `main` remains untouched. Authenticated School Admin acceptance/sign-off and documented approval-gated scope remain outstanding; Staff Management is not complete.
