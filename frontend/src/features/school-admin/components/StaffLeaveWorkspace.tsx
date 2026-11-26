@@ -82,6 +82,12 @@ export function StaffLeaveWorkspace({permissions,staff,canReadStaff}:Props){
    : "";
  const validDateRange=(!fromDate&&!toDate)||(Boolean(fromDate&&toDate)&&fromDate<=toDate);
  const requests=useStaffLeaveRequestsQuery({status,staffPrincipalID:Number(filterStaffID)||undefined,fromDate:fromDate||undefined,toDate:toDate||undefined,page:requestPage,pageSize:requestPageSize},canRead&&validDateRange);
+ useEffect(()=>{
+  const total=requests.data?.pagination?.total;
+  if(total===undefined)return;
+  const lastPage=Math.max(1,Math.ceil(total/requestPageSize));
+  if(requestPage>lastPage)setRequestPage(lastPage);
+ },[requests.data?.pagination?.total,requestPage,requestPageSize]);
  const range=useMemo(yearRange,[]);
  const holidays=useSchoolHolidaysQuery(range.from,range.to,canReadHolidays||canManageHolidays,canManageHolidays);
  const createRequest=useCreateStaffLeaveRequestMutation();
