@@ -433,6 +433,12 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 		staleRolePermissions[0].DelegationID != roleDelegation.ID {
 		t.Fatalf("revoked delegation grant should remain visible as stale: %+v", staleRolePermissions)
 	}
+	// Re-grant the same permission after revocation so the later forced audit
+	// failure exercises an authorized role grant rather than a stale delegation.
+	grantFailureDelegation, err := repo.GrantSchoolPermissionDelegation(
+		ctx, platformAdminPrincipalID, schoolID, "students.read_basic", true, false,
+	)
+	if err != nil { t.Fatalf("create active delegation for custom-role audit rollback: %v", err) }
 
 	// Role revocation and permission override writes must roll back when
 	// their append-only audit event cannot be inserted.
@@ -497,9 +503,9 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 	if failedAssignmentCount != 0 { t.Fatalf("role assignments after failed audited create=%d want=0", failedAssignmentCount) }
 
 	// A custom-role permission grant must roll back if its append-only audit event fails.
-	// Use the original immutable role-delegation grant and an isolated custom role;
+	// Use an active immutable role-delegation grant and an isolated custom role;
 	// never mutate delegation provenance just to manufacture a test fixture.
-	if err := repo.GrantCustomRolePermission(ctx, actorPrincipalID, schoolID, grantFailureRole.ID, roleDelegation.ID, "students.read_basic"); err == nil {
+	if err := repo.GrantCustomRolePermission(ctx, actorPrincipalID, schoolID, grantFailureRole.ID, grantFailureDelegation.ID, "students.read_basic"); err == nil {
 		t.Fatal("custom-role permission grant succeeded despite forced audit failure")
 	}
 	var failedRoleGrantCount int
