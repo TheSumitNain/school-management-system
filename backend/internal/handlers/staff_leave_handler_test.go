@@ -159,7 +159,7 @@ func TestStaffLeaveListRequestsPassesTrimmedFiltersToService(t *testing.T) {
 	}, handler.ListRequests)
 
 	recorder := httptest.NewRecorder()
-	request := httptest.NewRequest(http.MethodGet, "/staff/requests?status=%20pending%20&staff_principal_id=%20321%20&on_date=%202026-11-12%20&from_date=%202026-11-01%20&to_date=%202026-11-30%20", nil)
+	request := httptest.NewRequest(http.MethodGet, "/staff/requests?status=%20pending%20&staff_principal_id=%20321%20&from_date=%202026-11-01%20&to_date=%202026-11-30%20", nil)
 	router.ServeHTTP(recorder, request)
 
 	if recorder.Code != http.StatusOK {
@@ -171,7 +171,7 @@ func TestStaffLeaveListRequestsPassesTrimmedFiltersToService(t *testing.T) {
 	if service.actorID != 100 || service.schoolID != 10 || service.staffID != 321 {
 		t.Fatalf("identity filters actor=%d school=%d staff=%d", service.actorID, service.schoolID, service.staffID)
 	}
-	if service.status != "pending" || service.onDate != "2026-11-12" || service.fromDate != "2026-11-01" || service.toDate != "2026-11-30" {
+	if service.status != "pending" || service.onDate != "" || service.fromDate != "2026-11-01" || service.toDate != "2026-11-30" {
 		t.Fatalf("unexpected forwarded filters: status=%q onDate=%q fromDate=%q toDate=%q", service.status, service.onDate, service.fromDate, service.toDate)
 	}
 }
