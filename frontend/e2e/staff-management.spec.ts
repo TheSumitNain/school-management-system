@@ -3369,6 +3369,35 @@ test("staff experience report uses one paginated school aggregate endpoint and e
 });
 
 
+test("staff qualification and experience exports reject duplicate records without partial downloads", async ({ page }) => {
+  const staffRows:Array<Record<string,unknown>>=[
+    {id:1,principal_id:501,school_id:10,username:"teacher.active",employee_code:"EMP-ACTIVE",full_name:"Active Teacher",designation:"Mathematics Teacher",employment_status:"active",profile_complete:true,status:"active",must_change_password:false},
+  ];
+  await signInAndOpenStaff(page,staffRows,undefined,["users.read"]);
+  await page.route("**/api/school/staff/qualifications-report**",async route=>{
+    const url=new URL(route.request().url());
+    const row={record_type:"qualification",record_id:71,staff_principal_id:501,employee_code:"EMP-ACTIVE",staff_name:"Active Teacher",record_name:"B.Ed.",organization:"University",record_date:"2022",expiry_date:"",verification_status:"verified"};
+    await route.fulfill({json:{report:{rows:[row,{...row}],limit:Number(url.searchParams.get("limit")??50),offset:Number(url.searchParams.get("offset")??0),total:2,counts:[]}}});
+  });
+  await page.route("**/api/school/staff/experience-report**",async route=>{
+    const url=new URL(route.request().url());
+    const row={record_id:81,staff_principal_id:501,employee_code:"EMP-ACTIVE",staff_name:"Active Teacher",designation:"Teacher",employment_status:"active",employer_name:"School",previous_designation:"Teacher",employment_type:"permanent",start_date:"2020-04-01",end_date:"",is_current:true};
+    await route.fulfill({json:{report:{rows:[row,{...row}],limit:Number(url.searchParams.get("limit")??50),offset:Number(url.searchParams.get("offset")??0),total:2,counts:[]}}});
+  });
+  await page.getByRole("button",{name:"Reports",exact:true}).click();
+  const qualificationSection=page.locator(".staff-operational-report-section").filter({has:page.getByRole("heading",{name:"Qualifications & certifications"})});
+  const noQualificationDownload=page.waitForEvent("download",{timeout:1000}).catch(()=>null);
+  await qualificationSection.getByRole("button",{name:"Export all matching CSV"}).click();
+  await expect(qualificationSection.getByRole("alert").filter({hasText:"No partial CSV was created"})).toBeVisible();
+  expect(await noQualificationDownload).toBeNull();
+
+  const experienceSection=page.locator(".staff-operational-report-section").filter({has:page.getByRole("heading",{name:"Staff experience history"})});
+  const noExperienceDownload=page.waitForEvent("download",{timeout:1000}).catch(()=>null);
+  await experienceSection.getByRole("button",{name:"Export all matching CSV"}).click();
+  await expect(experienceSection.getByRole("alert").filter({hasText:"No partial CSV was created"})).toBeVisible();
+  expect(await noExperienceDownload).toBeNull();
+});
+
 test("staff ID cards select complete active employees regardless of login status and expose approved print fields", async ({ page }) => {
   const rows:Array<Record<string,unknown>>=[
     {id:1,principal_id:501,school_id:10,username:"active.teacher",employee_code:"EMP-501",full_name:"Active Teacher",designation:"Mathematics Teacher",mobile_number:"9876543210",email:"private@example.test",joining_date:"2024-04-01",employment_status:"active",profile_complete:true,status:"active",must_change_password:false},
