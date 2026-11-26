@@ -2164,7 +2164,7 @@ test("staff substitution history exports every matching page", async ({ page }) 
   expect(path).toBeTruthy();
   const csv = await readFile(path!, "utf8");
   expect(csv.startsWith("\uFEFF")).toBe(true);
-  expect(csv.split(/\\r?\\n/)).toHaveLength(52);
+  expect(csv.split(/\r?\n/)).toHaveLength(52);
   expect(csv).toContain("Substitute Teacher");
   expect(csv).not.toContain("Private reason");
   expect(requestedPages).toContain(2);
