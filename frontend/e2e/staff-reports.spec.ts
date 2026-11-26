@@ -13,6 +13,8 @@ test("staff qualifications and experience reports filter, paginate and retain hi
   const qualificationRequests: URL[] = [];
   const experienceRequests: URL[] = [];
   let failQualificationExport = false;
+  let duplicateQualificationExport = false;
+  let invalidExperienceExportMetadata = false;
   let qualificationTotal = 51;
   let experienceTotal = 51;
 
@@ -59,6 +61,7 @@ test("staff qualifications and experience reports filter, paginate and retain hi
       const rows = filtered
         ? [{ record_type: "certification", record_id: 900, staff_principal_id: 201, employee_code: "EMP-201", staff_name: "Active Teacher", record_name: "First Aid Certificate", organization: "Safety Institute", record_date: "2026-01-10", expiry_date: "2028-01-10", verification_status: "pending" }]
         : allRows.slice(offset, Math.min(offset + requestedLimit, qualificationTotal));
+      if (duplicateQualificationExport && requestedLimit === 200 && rows.length > 1) rows[1] = { ...rows[1], record_id: rows[0].record_id };
       const counts = filtered
         ? [{ record_type: "certification", verification_status: "pending", count: 1 }]
         : [{ record_type: "qualification", verification_status: "pending", count: qualificationTotal }];
@@ -83,7 +86,7 @@ test("staff qualifications and experience reports filter, paginate and retain hi
       const counts = currentOnly
         ? [{ employment_type: "permanent", is_current: true, count: 1 }]
         : [{ employment_type: "contract", is_current: false, count: 50 }, { employment_type: "permanent", is_current: true, count: 1 }];
-      await route.fulfill({ json: { report: { rows, counts, limit: requestedLimit, offset, total: currentOnly ? 1 : experienceTotal } } });
+      await route.fulfill({ json: { report: { rows, counts, limit: requestedLimit, offset, total: invalidExperienceExportMetadata && requestedLimit === 200 ? experienceTotal + 1 : currentOnly ? 1 : experienceTotal } } });
       return;
     }
     await route.fulfill({ status: 404, json: { message: `Unmocked E2E API request: ${request.method()} ${path}` } });
@@ -147,6 +150,14 @@ test("staff qualifications and experience reports filter, paginate and retain hi
   await experienceSection.getByLabel("Experience status").selectOption("current");
   await expect(experienceSection.getByText("Current Academy", { exact: true })).toBeVisible();
   expect(experienceRequests.some(url => url.searchParams.get("current_only") === "true")).toBeTruthy();
+  await experienceSection.getByLabel("Experience status").selectOption("all");
+  await expect(experienceSection.getByText("Previous School", { exact: true })).toBeVisible();
+  invalidExperienceExportMetadata = true;
+  const invalidExperienceDownload = page.waitForEvent("download", { timeout: 1000 }).catch(() => null);
+  await experienceSection.getByRole("button", { name: "Export all matching CSV" }).click();
+  await expect(experienceSection.getByRole("alert")).toContainText("No partial CSV was created");
+  expect(await invalidExperienceDownload).toBeNull();
+  invalidExperienceExportMetadata = false;
 
   // An export-page failure must not create a misleading partial CSV.
   failQualificationExport = true;
@@ -156,6 +167,14 @@ test("staff qualifications and experience reports filter, paginate and retain hi
   await qualificationSection.getByRole("button", { name: "Export all matching CSV" }).click();
   await expect(qualificationSection.getByRole("alert")).toContainText("No partial CSV was created");
   expect(await failedDownload).toBeNull();
+
+  // Duplicate record IDs must abort the whole export rather than silently duplicating data.
+  failQualificationExport = false;
+  duplicateQualificationExport = true;
+  const duplicateDownload = page.waitForEvent("download", { timeout: 1000 }).catch(() => null);
+  await qualificationSection.getByRole("button", { name: "Export all matching CSV" }).click();
+  await expect(qualificationSection.getByRole("alert")).toContainText("No partial CSV was created");
+  expect(await duplicateDownload).toBeNull();
 });
 
 test("staff operational reports are reachable with report-only permissions without loading the staff directory", async ({ page }) => {

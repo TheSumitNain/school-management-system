@@ -758,3 +758,10 @@ This section supersedes older statements in this audit that describe browser ver
 - Backend CI [45764093965](https://github.com/TheSumitNain/school-management-system/actions/runs/45764093965) **PASS** and Frontend CI [45764093995](https://github.com/TheSumitNain/school-management-system/actions/runs/45764093995) **PASS** on `a39e0c1552ef4951ff2a91ad4141282e7221d167`. Frontend verification includes TypeScript, Vite production build and the complete Playwright browser acceptance suite.
 - Workload Report remains separately gated by `timetable.read` and is not conflated with the operational Reports tab. No additional production defect was confirmed in this permission-matrix pass.
 - No schema migration or persistent data change. `main` remains untouched. Authenticated School Admin browser sign-off and the previously documented approval-gated scope remain outstanding; Staff Management is not marked complete.
+
+
+## 2026-11-26 follow-up — report export integrity regressions
+
+- Extended Staff Reports browser acceptance to simulate duplicate qualification record IDs and inconsistent experience-report pagination totals during multi-page CSV export. Both scenarios must abort export, show the existing safe error, and produce no partial download; the existing transient HTTP failure case remains covered.
+- Re-checked report SQL tenant predicates and permission authorization: qualification/certification and experience report queries constrain rows by the authenticated school ID, join staff profiles on both principal and school, and exclude credential references/verifier notes or free-text experience descriptions from report payloads.
+- No production behavior or schema change in this pass. Backend CI and frontend build/Playwright verification are required on the resulting work commit. main remains untouched; authenticated School Admin browser sign-off and documented approval-gated scope remain outstanding.
