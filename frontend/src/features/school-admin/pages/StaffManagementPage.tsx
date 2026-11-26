@@ -72,8 +72,13 @@ async function exportStaffDirectoryCSV(rows:StaffRecord[], filters?:StaffDirecto
         throw new Error("The first staff directory page is incomplete.");
       }
       exportRows=[...first.staff];
-      const seenIDs=new Set(exportRows.map(item=>item.principal_id));
-      if(seenIDs.size!==exportRows.length)throw new Error("The staff directory contains duplicate employee IDs.");
+      const seenIDs=new Set<number>();
+      for(const item of exportRows){
+        if(!Number.isSafeInteger(item.principal_id)||item.principal_id<=0||seenIDs.has(item.principal_id)){
+          throw new Error("The staff directory contains a duplicate or invalid employee ID.");
+        }
+        seenIDs.add(item.principal_id);
+      }
       for(let offset=pageSize;offset<first.total;offset+=pageSize){
         const page=await getSchoolStaffDirectory({...filters,offset});
         const expectedCount=Math.min(pageSize,first.total-offset);
@@ -82,7 +87,9 @@ async function exportStaffDirectoryCSV(rows:StaffRecord[], filters?:StaffDirecto
           throw new Error("A staff directory page is incomplete or inconsistent.");
         }
         for(const item of page.staff){
-          if(seenIDs.has(item.principal_id))throw new Error("The staff directory contains duplicate employee IDs.");
+          if(!Number.isSafeInteger(item.principal_id)||item.principal_id<=0||seenIDs.has(item.principal_id)){
+            throw new Error("The staff directory contains a duplicate or invalid employee ID.");
+          }
           seenIDs.add(item.principal_id);exportRows.push(item);
         }
       }
