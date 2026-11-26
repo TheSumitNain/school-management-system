@@ -750,6 +750,33 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	subjects, err := academicRepo.ListSubjects(ctx, actorPrincipalID, schoolID)
 	if err != nil || len(subjects) < 3 || apiSubject.ID <= 0 { t.Fatalf("list subjects through repository: count=%d err=%v", len(subjects), err) }
 
+	// Force audit failures for each assignment mutation and verify that the
+	// data mutation is rolled back with its mandatory audit event.
+	if _, err := tx.Exec(ctx, `
+		CREATE FUNCTION test_fail_academic_assignment_audit() RETURNS trigger
+		LANGUAGE plpgsql AS $
+		BEGIN
+			IF current_setting('test.fail_academic_assignment_audit', true) = NEW.action THEN
+				RAISE EXCEPTION 'forced academic assignment audit failure';
+			END IF;
+			RETURN NEW;
+		END $;
+		CREATE TRIGGER test_fail_academic_assignment_audit
+		BEFORE INSERT ON audit_events FOR EACH ROW
+		EXECUTE FUNCTION test_fail_academic_assignment_audit()
+	`); err != nil {
+		t.Fatalf("install academic assignment audit failure trigger: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `SELECT set_config('test.fail_academic_assignment_audit', 'school.teacher_subject_assignment.created', true)`); err != nil { t.Fatal(err) }
+	if _, err := academicRepo.CreateTeacherSubjectAssignment(ctx, actorPrincipalID, schoolID, apiYear.ID, apiSection.ID, apiSubject.ID, teacherPrincipalID); err == nil {
+		t.Fatal("teacher subject assignment create succeeded despite audit failure")
+	}
+	var failedTeacherCount int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*)::integer FROM teacher_subject_assignments WHERE school_id=$1 AND academic_year_id=$2 AND section_id=$3 AND subject_id=$4 AND teacher_principal_id=$5`, schoolID, apiYear.ID, apiSection.ID, apiSubject.ID, teacherPrincipalID).Scan(&failedTeacherCount); err != nil || failedTeacherCount != 0 {
+		t.Fatalf("teacher subject assignment survived audit failure: count=%d err=%v", failedTeacherCount, err)
+	}
+	if _, err := tx.Exec(ctx, `SELECT set_config('test.fail_academic_assignment_audit', '', true)`); err != nil { t.Fatal(err) }
+
 	teacherAssignment, err := academicRepo.CreateTeacherSubjectAssignment(ctx, actorPrincipalID, schoolID,
 		apiYear.ID, apiSection.ID, apiSubject.ID, teacherPrincipalID)
 	if err != nil || teacherAssignment == nil || teacherAssignment.TeacherPrincipalID != teacherPrincipalID {
@@ -772,9 +799,27 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	if err := academicRepo.RevokeTeacherSubjectAssignment(ctx, actorPrincipalID, otherSchoolID, teacherAssignment.ID); !errors.Is(err, ErrAcademicAccessDenied) {
 		t.Fatalf("forged foreign-school teacher assignment revoke error=%v; want access denied", err)
 	}
+	if _, err := tx.Exec(ctx, `SELECT set_config('test.fail_academic_assignment_audit', 'school.teacher_subject_assignment.revoked', true)`); err != nil { t.Fatal(err) }
+	if err := academicRepo.RevokeTeacherSubjectAssignment(ctx, actorPrincipalID, schoolID, teacherAssignment.ID); err == nil {
+		t.Fatal("teacher subject assignment revoke succeeded despite audit failure")
+	}
+	var teacherRevokedAt *time.Time
+	if err := tx.QueryRow(ctx, `SELECT revoked_at FROM teacher_subject_assignments WHERE id=$1`, teacherAssignment.ID).Scan(&teacherRevokedAt); err != nil || teacherRevokedAt != nil {
+		t.Fatalf("teacher subject assignment revoke survived audit failure: revoked_at=%v err=%v", teacherRevokedAt, err)
+	}
+	if _, err := tx.Exec(ctx, `SELECT set_config('test.fail_academic_assignment_audit', '', true)`); err != nil { t.Fatal(err) }
 	if err := academicRepo.RevokeTeacherSubjectAssignment(ctx, actorPrincipalID, schoolID, teacherAssignment.ID); err != nil {
 		t.Fatalf("revoke teacher subject assignment through repository: %v", err)
 	}
+	if _, err := tx.Exec(ctx, `SELECT set_config('test.fail_academic_assignment_audit', 'school.class_incharge_assignment.created', true)`); err != nil { t.Fatal(err) }
+	if _, err := academicRepo.CreateClassInchargeAssignment(ctx, actorPrincipalID, schoolID, apiYear.ID, apiSection.ID, teacherPrincipalID); err == nil {
+		t.Fatal("class in-charge assignment create succeeded despite audit failure")
+	}
+	var failedInchargeCount int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*)::integer FROM class_incharge_assignments WHERE school_id=$1 AND academic_year_id=$2 AND section_id=$3 AND teacher_principal_id=$4`, schoolID, apiYear.ID, apiSection.ID, teacherPrincipalID).Scan(&failedInchargeCount); err != nil || failedInchargeCount != 0 {
+		t.Fatalf("class in-charge assignment survived audit failure: count=%d err=%v", failedInchargeCount, err)
+	}
+	if _, err := tx.Exec(ctx, `SELECT set_config('test.fail_academic_assignment_audit', '', true)`); err != nil { t.Fatal(err) }
 	classIncharge, err := academicRepo.CreateClassInchargeAssignment(ctx, actorPrincipalID, schoolID,
 		apiYear.ID, apiSection.ID, teacherPrincipalID)
 	if err != nil || classIncharge == nil || classIncharge.TeacherPrincipalID != teacherPrincipalID {
@@ -794,6 +839,15 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	if err := academicRepo.RevokeClassInchargeAssignment(ctx, actorPrincipalID, otherSchoolID, classIncharge.ID); !errors.Is(err, ErrAcademicAccessDenied) {
 		t.Fatalf("forged foreign-school class in-charge revoke error=%v; want access denied", err)
 	}
+	if _, err := tx.Exec(ctx, `SELECT set_config('test.fail_academic_assignment_audit', 'school.class_incharge_assignment.revoked', true)`); err != nil { t.Fatal(err) }
+	if err := academicRepo.RevokeClassInchargeAssignment(ctx, actorPrincipalID, schoolID, classIncharge.ID); err == nil {
+		t.Fatal("class in-charge assignment revoke succeeded despite audit failure")
+	}
+	var inchargeRevokedAt *time.Time
+	if err := tx.QueryRow(ctx, `SELECT revoked_at FROM class_incharge_assignments WHERE id=$1`, classIncharge.ID).Scan(&inchargeRevokedAt); err != nil || inchargeRevokedAt != nil {
+		t.Fatalf("class in-charge assignment revoke survived audit failure: revoked_at=%v err=%v", inchargeRevokedAt, err)
+	}
+	if _, err := tx.Exec(ctx, `SELECT set_config('test.fail_academic_assignment_audit', '', true)`); err != nil { t.Fatal(err) }
 	if err := academicRepo.RevokeClassInchargeAssignment(ctx, actorPrincipalID, schoolID, classIncharge.ID); err != nil {
 		t.Fatalf("revoke class in-charge assignment through repository: %v", err)
 	}
@@ -814,6 +868,8 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	if assignmentAuditEvents != 4 {
 		t.Fatalf("teacher subject and class in-charge audit event count=%d; want 4", assignmentAuditEvents)
 	}
+	if _, err := tx.Exec(ctx, `DROP TRIGGER test_fail_academic_assignment_audit ON audit_events`); err != nil { t.Fatalf("drop academic assignment audit trigger: %v", err) }
+	if _, err := tx.Exec(ctx, `DROP FUNCTION test_fail_academic_assignment_audit()`); err != nil { t.Fatalf("drop academic assignment audit trigger function: %v", err) }
 
 	// Exercise enrollment and promotion through the production repository.
 	var apiStudentID int64
