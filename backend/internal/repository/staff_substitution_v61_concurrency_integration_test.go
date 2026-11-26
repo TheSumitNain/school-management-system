@@ -145,10 +145,11 @@ func TestStaffSubstitutionV61SerializesConcurrentSubstituteSlotAssignmentsPostgr
 	barrierHeld=false
 
 	successes,conflicts:=0,0
+	var successfulEntryID, conflictingEntryID int64
 	for i:=0;i<2;i++ {
 		select {
 		case result:=<-results:
-			if result.err==nil { successes++ } else if errors.Is(result.err,ErrStaffSubstitutionConflict) { conflicts++ } else { t.Fatalf("unexpected concurrent insert error for timetable entry %d: %v",result.entryID,result.err) }
+			if result.err==nil { successes++; successfulEntryID=result.entryID } else if errors.Is(result.err,ErrStaffSubstitutionConflict) { conflicts++; conflictingEntryID=result.entryID } else { t.Fatalf("unexpected concurrent insert error for timetable entry %d: %v",result.entryID,result.err) }
 		case <-ctx.Done(): t.Fatalf("timed out collecting concurrent substitution results: %v",ctx.Err())
 		}
 	}
@@ -171,4 +172,44 @@ func TestStaffSubstitutionV61SerializesConcurrentSubstituteSlotAssignmentsPostgr
 		t.Fatalf("verify both substitution teachers remain active: %v", err)
 	}
 	if stillActive != 2 { t.Fatalf("active substitution teachers remaining=%d; want 2", stillActive) }
+
+	// Cancel the winning cover, then hold a canonical principal disable
+	// uncommitted while the losing timetable slot is retried. The insertion
+	// must wait for the same principal-row lock and reject the disabled
+	// substitute after the disable transaction commits.
+	var substitutionID int64
+	if err := pool.QueryRow(ctx, `SELECT id FROM staff_substitutions WHERE school_id=$1 AND timetable_entry_id=$2 AND status='active'`, schoolID, successfulEntryID).Scan(&substitutionID); err != nil {
+		t.Fatalf("load winning substitution before lifecycle race: %v", err)
+	}
+	if err := (&AcademicRepository{db:pool}).CancelStaffSubstitution(ctx, actorPrincipalID, schoolID, substitutionID); err != nil {
+		t.Fatalf("cancel winning substitution before disable race: %v", err)
+	}
+	disableTx, err := pool.Begin(ctx)
+	if err != nil { t.Fatalf("begin uncommitted substitute disable: %v", err) }
+	if _, err := disableTx.Exec(ctx, `UPDATE auth_principals SET status='disabled',token_version=token_version+1,updated_at=NOW() WHERE id=$1 AND status='active'`, substitute); err != nil {
+		_ = disableTx.Rollback(ctx)
+		t.Fatalf("disable substitute inside lifecycle race transaction: %v", err)
+	}
+	var conflictingOriginal int64
+	if conflictingEntryID == entries[0] { conflictingOriginal = originalOne } else { conflictingOriginal = originalTwo }
+	retryResult := make(chan error, 1)
+	go func() {
+		_, createErr := (&AcademicRepository{db:pool}).CreateStaffSubstitution(ctx, actorPrincipalID, schoolID, conflictingEntryID, conflictingOriginal, substitute, coverDate, nil, "Substitution racing account disable")
+		retryResult <- createErr
+	}()
+	select {
+	case err := <-retryResult:
+		_ = disableTx.Rollback(ctx)
+		t.Fatalf("substitution creation completed before the in-flight disable committed: %v", err)
+	case <-time.After(150 * time.Millisecond):
+	}
+	if err := disableTx.Commit(ctx); err != nil { t.Fatalf("commit substitute disable during race: %v", err) }
+	select {
+	case err := <-retryResult:
+		if !errors.Is(err, ErrInvalidStaffSubstitution) {
+			t.Fatalf("substitution after concurrent substitute disable error=%v; want ErrInvalidStaffSubstitution", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("substitution insert did not finish after substitute disable committed")
+	}
 }
