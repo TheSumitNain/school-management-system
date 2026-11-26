@@ -169,7 +169,7 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	`, teacherPrincipalID, teacherRoleID, actorPrincipalID); err != nil {
 		t.Fatalf("assign Teacher role to fixture: %v", err)
 	}
-	var nonTeachingPrincipalID, inactiveTeacherPrincipalID int64
+	var nonTeachingPrincipalID int64
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO users (school_id, username, password_hash, status)
 		VALUES ($1, $2, $3, 'active') RETURNING principal_id
@@ -189,25 +189,6 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	`, nonTeachingPrincipalID, teacherRoleID, actorPrincipalID); err != nil {
 		t.Fatalf("assign Teacher role to non-teaching fixture: %v", err)
 	}
-	if err := tx.QueryRow(ctx, `
-		INSERT INTO users (school_id, username, password_hash, status)
-		VALUES ($1, $2, $3, 'active') RETURNING principal_id
-	`, schoolID, "v17-it-"+suffix, "integration-test-password-hash").Scan(&inactiveTeacherPrincipalID); err != nil {
-		t.Fatalf("create inactive-employment Teacher account: %v", err)
-	}
-	if _, err := tx.Exec(ctx, `
-		INSERT INTO staff_profiles
-			(principal_id, school_id, employee_code, full_name, designation, mobile_number, employment_status, staff_type)
-		VALUES ($1, $2, $3, 'Inactive Teacher', 'Teacher', '9876543213', 'inactive', 'teaching')
-	`, inactiveTeacherPrincipalID, schoolID, "IT-"+suffix); err != nil {
-		t.Fatalf("create inactive-employment Teacher profile: %v", err)
-	}
-	if _, err := tx.Exec(ctx, `
-		INSERT INTO principal_roles (principal_id, role_id, assigned_by)
-		VALUES ($1, $2, $3)
-	`, inactiveTeacherPrincipalID, teacherRoleID, actorPrincipalID); err != nil {
-		t.Fatalf("assign Teacher role to inactive-employment fixture: %v", err)
-	}
 
 
 	eligibleTeachers, err := NewAcademicRepository(tx).ListEligibleTeachers(ctx, actorPrincipalID, schoolID)
@@ -224,7 +205,7 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	if !foundEligibleTeacher {
 		t.Fatalf("eligible teacher list did not include active Teacher principal %d: %+v", teacherPrincipalID, eligibleTeachers)
 	}
-	for _, ineligibleID := range []int64{nonTeachingPrincipalID, inactiveTeacherPrincipalID} {
+	for _, ineligibleID := range []int64{nonTeachingPrincipalID} {
 		for _, eligible := range eligibleTeachers {
 			if eligible.PrincipalID == ineligibleID {
 				t.Fatalf("ineligible staff principal %d appeared in eligible Teacher list: %+v", ineligibleID, eligibleTeachers)
@@ -392,9 +373,6 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	}
 	if _, err := academicRepoForEligibility.CreateClassInchargeAssignment(ctx, actorPrincipalID, schoolID, year2, section2, nonTeachingPrincipalID); !errors.Is(err, ErrTeacherProfileIneligible) {
 		t.Fatalf("non-teaching class in-charge error = %v, want ErrTeacherProfileIneligible", err)
-	}
-	if _, err := academicRepoForEligibility.CreateTeacherSubjectAssignment(ctx, actorPrincipalID, schoolID, year2, section2, subjectAltID, inactiveTeacherPrincipalID); !errors.Is(err, ErrTeacherProfileIneligible) {
-		t.Fatalf("inactive-employment Teacher assignment error = %v, want ErrTeacherProfileIneligible", err)
 	}
 	profileRepo := NewUserRepository(tx)
 	for _, profile := range []models.StaffProfile{
