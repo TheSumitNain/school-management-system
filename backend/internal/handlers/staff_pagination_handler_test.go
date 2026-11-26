@@ -76,6 +76,7 @@ func TestStaffPaginationHandlersRejectInvalidPageParameters(t *testing.T){
 		{"zero page size","?page_size=0"},
 		{"page size above maximum","?page_size=101"},
 		{"non-numeric page size","?page_size=abc"},
+		{"page offset overflow","?page=9223372036854775807&page_size=100"},
 	}
 	for _,tt:=range tests{t.Run(tt.name,func(t *testing.T){
 		router:=gin.New()
