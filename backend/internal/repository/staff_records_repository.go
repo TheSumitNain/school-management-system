@@ -364,8 +364,27 @@ func (r *UserRepository) ListStaffAuditEvents(ctx context.Context, actorID, scho
 	if filter.Limit < 1 || filter.Limit > 100 || filter.Offset < 0 || filter.Offset > 1000000 {
 		return nil, ErrInvalidStaffRecord
 	}
-	if err := authorizeStaffRecord(ctx, r.db, actorID, schoolID, staffID, "school.audit.read"); err != nil {
+	if err := authorizeStaffRecordsPermission(ctx, r.db, actorID, schoolID, "school.audit.read"); err != nil {
 		return nil, err
+	}
+	// Account history also exists for legacy staff accounts that predate
+	// staff_profiles. Verify the target principal and school membership without
+	// requiring a completed employee profile.
+	var targetExists bool
+	if err := r.db.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM auth_principals target_principal
+			JOIN users target_user ON target_user.principal_id = target_principal.id
+			WHERE target_principal.id = $1
+			  AND target_principal.principal_type = 'staff'
+			  AND target_user.school_id = $2
+		)
+	`, staffID, schoolID).Scan(&targetExists); err != nil {
+		return nil, fmt.Errorf("verify staff audit target: %w", err)
+	}
+	if !targetExists {
+		return nil, ErrStaffRecordAccessDenied
 	}
 	rows, err := r.db.Query(ctx, `
 		SELECT ae.id, ae.action, ae.resource_type, ae.outcome,

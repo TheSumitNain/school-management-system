@@ -528,5 +528,17 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
 	if !foundPasswordReset{t.Fatal("staff audit history omitted password reset event")}
 	if !foundAccountUpdated{t.Fatal("staff audit history omitted username update event")}
 	if !foundPasswordChanged{t.Fatal("staff audit history omitted password changed event")}
+	// Legacy staff accounts without staff_profiles still have account audit history.
+	legacyUsername := "staffhistorylegacy-" + suffix
+	legacy, err := repo.CreateStaffAccount(ctx, actorID, schoolID, legacyUsername, "integration-test-password-hash")
+	if err != nil { t.Fatalf("create profile-incomplete legacy staff account: %v", err) }
+	if legacy.ProfileComplete { t.Fatal("legacy staff fixture unexpectedly has a completed profile") }
+	legacyHistory, err := repo.ListStaffAuditEvents(ctx, actorID, schoolID, legacy.PrincipalID, StaffAuditEventFilter{Limit:50})
+	if err != nil { t.Fatalf("list audit history for profile-incomplete legacy staff account: %v", err) }
+	foundLegacyCreate := false
+	for _, event := range legacyHistory.Events {
+		if event.Action == "staff.account.created" { foundLegacyCreate = true }
+	}
+	if !foundLegacyCreate { t.Fatal("profile-incomplete legacy staff history omitted account creation event") }
 	if _,err:=repo.ListStaffAuditEvents(ctx,actorID,schoolID+1,staff.PrincipalID,StaffAuditEventFilter{Limit:50});!errors.Is(err,ErrStaffRecordAccessDenied){t.Fatalf("cross-school staff audit history error=%v",err)}
 }

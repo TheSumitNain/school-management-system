@@ -779,3 +779,10 @@ This section supersedes older statements in this audit that describe browser ver
 - Added service regression tests proving a School Admin cannot disable or re-enable their own staff principal through the staff-account lifecycle service.
 - Missing actor, school, or target identifiers are rejected before repository calls or temporary-password hashing/repository mutation.
 - Existing PostgreSQL lifecycle tests continue to cover cross-school denial, protected peer School Admin accounts, session/token invalidation, and audit-failure rollback. CI verification is required for this added batch; authenticated School Admin acceptance remains pending.
+
+
+## 2026-11-26 follow-up — legacy staff history access
+
+- Fixed Staff History target verification so account audit history is available to same-school legacy staff accounts even when no `staff_profiles` row exists.
+- Kept live `school.audit.read` permission resolution and strict staff-principal/school membership checks; qualification/certification/experience record access continues to require its employee profile target.
+- Added PostgreSQL regression coverage for a profile-incomplete staff account and its `staff.account.created` event. Backend CI must pass before this fix is considered verified.
