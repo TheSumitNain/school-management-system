@@ -7,6 +7,17 @@
 
 This audit records what exists in the repository today. It is not an implementation-completion claim. The approved [Staff Management Roadmap](./STAFF-MANAGEMENT-ROADMAP.md) remains the product source of truth.
 
+## 2026-11-26 — Staff attendance workflow cross-check
+
+- Re-reviewed the daily/monthly attendance repository, service, handler, School Admin workspace and PostgreSQL integration regressions.
+- Confirmed school-scoped daily/monthly reads; inactive staff remain represented in monthly historical summaries; attendance writes validate active same-school staff, date/status/remarks and permission scope.
+- Bulk marking validates duplicate/invalid targets and batch bounds, writes each attendance row with its audit event in one transaction, and has PostgreSQL coverage for audit-failure rollback, invalid-target rollback and concurrent duplicate batches (one winner, one conflict, no partial rows).
+- Single mark and update audit-failure rollback are covered. Update authorization distinguishes same-day update from past-date correction without leaking record existence to callers lacking both scopes.
+- Frontend bulk marking only targets currently visible, unmarked employees, shows a confirmation, and refreshes daily/monthly/history queries after success. CSV excludes private attendance remarks and leave reasons in browser coverage.
+- No new production defect confirmed in this pass; no code or schema change was needed. This is repository/automated-test review, not live authenticated School Admin sign-off.
+
+---
+
 ## 2026-11-26 — Add Staff role-assignment contract gap
 
 - Repository review confirms `CreateStaffAccountWithProfile` creates the login account and employee profile but does not create a `principal_roles` assignment. The Add Staff wizard also has no role selector or role-assignment step.
