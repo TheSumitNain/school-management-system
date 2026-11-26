@@ -693,3 +693,11 @@ This section supersedes older statements in this audit that describe browser ver
 - Added a PostgreSQL failure-injection regression for staff account + employee-profile creation. If the required `staff.account.created` audit insert fails, neither the login account nor profile nor success audit row may persist. Existing profile-update audit-failure coverage also verifies the profile mutation is rolled back.
 - Backend CI [45758112429](https://github.com/TheSumitNain/school-management-system/actions/runs/45758112429) **PASS** on `8468f1ad`: full migrations, Go tests including PostgreSQL integration tests, and `go vet`.
 - No production behavior change or schema migration in the onboarding test-only commit; the report refresh correction is a frontend cache/UX fix. `main` remains untouched. Authenticated School Admin browser sign-off and previously recorded approval-gated/deferred scope remain outstanding; this checkpoint does not declare Staff Management complete.
+
+
+## 2026-11-26 audit clarification — Leave and Substitution database pagination
+
+- The earlier roadmap note that bounded Leave/Substitution pages remained open is superseded by the current implementation: both list APIs now use repository-level PostgreSQL `COUNT(*)` plus stable ordered `LIMIT/OFFSET` queries, scoped by authenticated school and supplied filters. The page size is bounded to 1–100 and page-offset overflow is rejected before SQL.
+- Verified repository integration coverage: `TestStaffLeaveRequestPaginationPostgresIntegration` checks page boundaries, totals, filtered pages, empty pages, date/range filters and cross-school denial; substitution workflow integration checks first/second/empty/filtered pages and cross-school denial.
+- Verified handler/service tests cover forwarding filters and pagination metadata, invalid page parameters and offset overflow. The UI uses 50-row pages and clamps the current page when totals shrink. Substitution CSV export fetches and validates every page before producing a file.
+- This corrects the status of bounded list pagination; it does not claim an all-pages CSV export for Leave Requests. No schema or persistent data change. `main` remains untouched.
