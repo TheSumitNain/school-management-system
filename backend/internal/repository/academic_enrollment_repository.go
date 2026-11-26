@@ -249,6 +249,11 @@ func (r *AcademicRepository) ListStudentEnrollments(ctx context.Context, actorID
 			)
 			OR (
 				EXISTS (
+					SELECT 1 FROM staff_profiles tsp
+					WHERE tsp.principal_id=$4 AND tsp.school_id=e.school_id
+					  AND tsp.staff_type='teaching' AND tsp.employment_status='active'
+				)
+				AND EXISTS (
 					SELECT 1 FROM principal_roles tpr
 					JOIN roles tr ON tr.id=tpr.role_id
 					WHERE tpr.principal_id=$4 AND tpr.revoked_at IS NULL

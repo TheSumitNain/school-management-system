@@ -170,6 +170,11 @@ func (r *AcademicRepository) ListTimetableEntries(ctx context.Context, actorID, 
 	if err := timetableAuthorize(ctx, r.db, actorID, schoolID, "timetable.read"); err != nil { return nil, err }
 	teacherOnly, err := isTeacherWithoutSchoolAdmin(ctx, r.db, actorID, schoolID)
 	if err != nil { return nil, fmt.Errorf("check timetable teacher boundary: %w", err) }
+	if teacherOnly {
+		eligible, eligibilityErr := isActiveTeachingStaff(ctx, r.db, actorID, schoolID)
+		if eligibilityErr != nil { return nil, eligibilityErr }
+		if !eligible { return nil, ErrTimetableAccessDenied }
+	}
 	rows, err := r.db.Query(ctx, `SELECT `+timetableEntryColumns+`
 		FROM timetable_entries te
 		JOIN sections s ON s.id=te.section_id AND s.school_id=te.school_id AND s.academic_year_id=te.academic_year_id
@@ -223,6 +228,11 @@ func (r *AcademicRepository) ListTeacherWorkloadReport(ctx context.Context,actor
 	if !yearExists{return nil,ErrTimetableNotFound}
 	teacherOnly,err:=isTeacherWithoutSchoolAdmin(ctx,r.db,actorID,schoolID)
 	if err!=nil{return nil,fmt.Errorf("check workload teacher boundary: %w",err)}
+	if teacherOnly {
+		eligible, eligibilityErr := isActiveTeachingStaff(ctx, r.db, actorID, schoolID)
+		if eligibilityErr != nil { return nil, eligibilityErr }
+		if !eligible { return nil, ErrTimetableAccessDenied }
+	}
 	rows,err:=r.db.Query(ctx,`SELECT sp.principal_id,sp.full_name,sp.employee_code,sp.designation,sp.employment_status,ap.status,
 		COALESCE(te.day_of_week,0)::integer,COUNT(te.id)::integer,
 		COUNT(DISTINCT te.section_id)::integer,COUNT(DISTINCT te.subject_id)::integer,

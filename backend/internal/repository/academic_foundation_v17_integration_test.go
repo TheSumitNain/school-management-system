@@ -523,6 +523,46 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	if err != nil || len(teacherSelfEntries) != 1 || teacherSelfEntries[0].TeacherPrincipalID != teacherPrincipalID {
 		t.Fatalf("Teacher self timetable scope = %+v, err=%v; want only own entry", teacherSelfEntries, err)
 	}
+
+	legacyTeacherScope, err := timetableScopeTx.Begin(ctx)
+	if err != nil { t.Fatalf("begin legacy Staff Type read-scope regression: %v", err) }
+	if _, err := legacyTeacherScope.Exec(ctx, `ALTER TABLE staff_profiles DISABLE TRIGGER trg_guard_v65_staff_profile_teacher_assignments`); err != nil {
+		_ = legacyTeacherScope.Rollback(ctx)
+		t.Fatalf("temporarily disable profile assignment guard for legacy fixture: %v", err)
+	}
+	if _, err := legacyTeacherScope.Exec(ctx, `UPDATE staff_profiles SET staff_type=NULL WHERE principal_id=$1 AND school_id=$2`, teacherPrincipalID, schoolID); err != nil {
+		_ = legacyTeacherScope.Rollback(ctx)
+		t.Fatalf("simulate legacy unclassified teacher profile: %v", err)
+	}
+	if _, err := legacyTeacherScope.Exec(ctx, `ALTER TABLE staff_profiles ENABLE TRIGGER trg_guard_v65_staff_profile_teacher_assignments`); err != nil {
+		_ = legacyTeacherScope.Rollback(ctx)
+		t.Fatalf("restore profile assignment guard after legacy fixture: %v", err)
+	}
+	legacyRepo := NewAcademicRepository(legacyTeacherScope)
+	if _, err := legacyRepo.ListTimetableEntries(ctx, teacherPrincipalID, schoolID, year1, 0, 0); !errors.Is(err, ErrTimetableAccessDenied) {
+		_ = legacyTeacherScope.Rollback(ctx)
+		t.Fatalf("legacy unclassified teacher timetable access = %v, want ErrTimetableAccessDenied", err)
+	}
+	if _, err := legacyRepo.ListTeacherWorkloadReport(ctx, teacherPrincipalID, schoolID, year1); !errors.Is(err, ErrTimetableAccessDenied) {
+		_ = legacyTeacherScope.Rollback(ctx)
+		t.Fatalf("legacy unclassified teacher workload access = %v, want ErrTimetableAccessDenied", err)
+	}
+	legacyEnrollments, err := legacyRepo.ListStudentEnrollments(ctx, teacherPrincipalID, schoolID, year1, studentID)
+	if err != nil || len(legacyEnrollments) != 0 {
+		_ = legacyTeacherScope.Rollback(ctx)
+		t.Fatalf("legacy unclassified teacher enrollment access = %+v, err=%v; want no rows", legacyEnrollments, err)
+	}
+	legacyDirectory, legacyTotal, err := legacyRepo.ListStudentEnrollmentDirectory(ctx, teacherPrincipalID, schoolID, year1, 10, 0)
+	if err != nil || legacyTotal != 0 || len(legacyDirectory) != 0 {
+		_ = legacyTeacherScope.Rollback(ctx)
+		t.Fatalf("legacy unclassified teacher enrollment directory = %+v total=%d err=%v; want no rows", legacyDirectory, legacyTotal, err)
+	}
+	if _, err := legacyRepo.ListAttendance(ctx, teacherPrincipalID, schoolID, year1, section2, time.Date(2026, 11, 26, 0, 0, 0, 0, time.UTC)); !errors.Is(err, ErrAttendanceAccessDenied) {
+		_ = legacyTeacherScope.Rollback(ctx)
+		t.Fatalf("legacy unclassified teacher attendance access = %v, want ErrAttendanceAccessDenied", err)
+	}
+	if err := legacyTeacherScope.Rollback(ctx); err != nil { t.Fatalf("rollback legacy Staff Type read-scope fixture: %v", err) }
+
 	var foreignSchoolID, foreignTeacherPrincipalID int64
 	if err := timetableScopeTx.QueryRow(ctx, `
 		INSERT INTO schools (name, code, status)

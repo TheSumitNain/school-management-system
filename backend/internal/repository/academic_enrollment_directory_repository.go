@@ -28,6 +28,11 @@ const enrollmentDirectoryVisibleCTE = `WITH visible_enrollments AS (
 		)
 		OR (
 			EXISTS (
+				SELECT 1 FROM staff_profiles tsp
+				WHERE tsp.principal_id=$3 AND tsp.school_id=e.school_id
+				  AND tsp.staff_type='teaching' AND tsp.employment_status='active'
+			)
+			AND EXISTS (
 				SELECT 1 FROM principal_roles tpr JOIN roles tr ON tr.id=tpr.role_id
 				WHERE tpr.principal_id=$3 AND tpr.revoked_at IS NULL AND tr.school_id=e.school_id
 				  AND tr.scope_type='school' AND tr.principal_type='staff' AND tr.role_key='teacher' AND tr.is_system=TRUE

@@ -178,6 +178,26 @@ func isTeacherWithoutSchoolAdmin(ctx context.Context, db repositoryDB, principal
 	return isTeacher && !isSchoolAdmin, nil
 }
 
+// isActiveTeachingStaff is the live identity/profile eligibility check used by
+// teacher-scoped reads. A Teacher role or a legacy assignment alone is not
+// sufficient when Staff Type is unclassified or employment is inactive.
+func isActiveTeachingStaff(ctx context.Context, db repositoryDB, principalID, schoolID int64) (bool, error) {
+	if db == nil || principalID <= 0 || schoolID <= 0 { return false, nil }
+	var eligible bool
+	err := db.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM staff_profiles sp
+			JOIN users u ON u.principal_id=sp.principal_id AND u.school_id=sp.school_id
+			JOIN auth_principals ap ON ap.id=sp.principal_id AND ap.principal_type='staff'
+			WHERE sp.principal_id=$1 AND sp.school_id=$2
+			  AND sp.staff_type='teaching' AND sp.employment_status='active'
+			  AND u.status='active' AND ap.status='active'
+		)
+	`, principalID, schoolID).Scan(&eligible)
+	if err != nil { return false, fmt.Errorf("check active Teaching staff profile: %w", err) }
+	return eligible, nil
+}
+
 func authorizeAcademic(ctx context.Context, db repositoryDB, actorID, schoolID int64, permission string) error {
 	if db == nil || actorID <= 0 || schoolID <= 0 || permission == "" {
 		return ErrAcademicAccessDenied

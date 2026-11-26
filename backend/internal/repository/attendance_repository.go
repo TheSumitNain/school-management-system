@@ -63,6 +63,8 @@ func attendanceSectionAllowed(ctx context.Context, db repositoryDB, actorID, sch
 		SELECT 1 FROM class_incharge_assignments a
 		JOIN auth_principals ap ON ap.id=a.teacher_principal_id
 		JOIN users u ON u.principal_id=ap.id AND u.school_id=a.school_id
+		JOIN staff_profiles sp ON sp.principal_id=ap.id AND sp.school_id=a.school_id
+		 AND sp.staff_type='teaching' AND sp.employment_status='active'
 		WHERE a.school_id=$1 AND a.section_id=$2 AND a.teacher_principal_id=$3
 		  AND a.revoked_at IS NULL AND ap.status='active' AND u.status='active'
 		  AND EXISTS (
@@ -121,6 +123,11 @@ func (r *AcademicRepository) ListAttendance(ctx context.Context,actorID,schoolID
 		       WHERE ci.school_id=$1 AND ci.section_id=e.section_id
 		         AND ci.teacher_principal_id=$5 AND ci.revoked_at IS NULL
 		         AND cap.status='active' AND cu.status='active'
+		         AND EXISTS (
+				SELECT 1 FROM staff_profiles csp
+				WHERE csp.principal_id=cap.id AND csp.school_id=ci.school_id
+				  AND csp.staff_type='teaching' AND csp.employment_status='active'
+			 )
 		         AND EXISTS (
 				SELECT 1 FROM principal_roles tpr
 				JOIN roles tr ON tr.id=tpr.role_id

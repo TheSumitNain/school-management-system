@@ -108,6 +108,38 @@ func TestStaffSubstitutionV60DatabaseGuardsPostgresIntegration(t *testing.T) {
 	if err=tx.QueryRow(ctx,`INSERT INTO staff_substitutions(school_id,timetable_entry_id,period_id,cover_date,original_teacher_principal_id,substitute_teacher_principal_id,reason,created_by_principal_id)
 		VALUES($1,$2,$3,$4::date,$5,$6,'Second period cover',$5) RETURNING id`,schoolID,secondTimetableEntryID,secondPeriodID,coverDate,originalID,substituteID).Scan(&secondSubstitutionID);err!=nil{t.Fatalf("create second-period substitution: %v",err)}
 
+	// Simulate pre-existing legacy assignments whose Staff Type was not
+	// classified. The database boundary must reject any new substitute cover
+	// when either side is no longer explicitly active Teaching staff.
+	legacyCoverDate, parseErr := time.Parse("2006-01-02", coverDate)
+	if parseErr != nil { t.Fatalf("parse substitution cover date: %v", parseErr) }
+	legacyCoverDate = legacyCoverDate.AddDate(0, 0, 7)
+	for _, fixture := range []struct{name string; principalID int64}{
+		{"original", originalID},
+		{"substitute", substituteID},
+	} {
+		legacyTypeTx, beginErr := tx.Begin(ctx)
+		if beginErr != nil { t.Fatalf("begin legacy %s Staff Type guard savepoint: %v", fixture.name, beginErr) }
+		if _, err = legacyTypeTx.Exec(ctx, `ALTER TABLE staff_profiles DISABLE TRIGGER trg_guard_v65_staff_profile_teacher_assignments`); err != nil {
+			_ = legacyTypeTx.Rollback(ctx)
+			t.Fatalf("disable assignment guard for legacy %s fixture: %v", fixture.name, err)
+		}
+		if _, err = legacyTypeTx.Exec(ctx, `UPDATE staff_profiles SET staff_type='non_teaching' WHERE principal_id=$1 AND school_id=$2`, fixture.principalID, schoolID); err != nil {
+			_ = legacyTypeTx.Rollback(ctx)
+			t.Fatalf("simulate legacy non-teaching %s profile: %v", fixture.name, err)
+		}
+		if _, err = legacyTypeTx.Exec(ctx, `ALTER TABLE staff_profiles ENABLE TRIGGER trg_guard_v65_staff_profile_teacher_assignments`); err != nil {
+			_ = legacyTypeTx.Rollback(ctx)
+			t.Fatalf("restore assignment guard after legacy %s fixture: %v", fixture.name, err)
+		}
+		_, insertErr := legacyTypeTx.Exec(ctx, `INSERT INTO staff_substitutions
+			(school_id,timetable_entry_id,period_id,cover_date,original_teacher_principal_id,substitute_teacher_principal_id,reason,created_by_principal_id)
+			VALUES($1,$2,$3,$4::date,$5,$6,'Must reject legacy Staff Type',$5)`,
+			schoolID,timetableEntryID,periodID,legacyCoverDate.Format("2006-01-02"),originalID,substituteID)
+		if insertErr == nil { _ = legacyTypeTx.Rollback(ctx); t.Fatalf("substitution accepted when %s profile was Non-teaching", fixture.name) }
+		if rollbackErr := legacyTypeTx.Rollback(ctx); rollbackErr != nil { t.Fatalf("rollback legacy %s Staff Type fixture: %v", fixture.name, rollbackErr) }
+	}
+
 	// Exercise the production pagination query against the real PostgreSQL fixture.
 	subRepo := &AcademicRepository{db: tx}
 
