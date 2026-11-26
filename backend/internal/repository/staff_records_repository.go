@@ -499,7 +499,9 @@ type StaffQualificationReportPage struct {
 // types using two bounded SQL queries. It intentionally excludes inactive
 // employment records and never returns credential references or verifier notes.
 func (r *UserRepository) ListStaffQualificationReport(ctx context.Context, actorID, schoolID int64, filter StaffQualificationReportFilter) (*StaffQualificationReportPage, error) {
-	if r == nil || r.db == nil || actorID <= 0 || schoolID <= 0 || filter.Limit < 1 || filter.Limit > 200 || filter.Offset < 0 {
+	if r == nil || r.db == nil || actorID <= 0 || schoolID <= 0 || filter.Limit < 1 || filter.Limit > 200 || filter.Offset < 0 || filter.Offset > 1000000 ||
+		(filter.RecordType != "all" && filter.RecordType != "qualification" && filter.RecordType != "certification") ||
+		(filter.VerificationStatus != "" && filter.VerificationStatus != "pending" && filter.VerificationStatus != "verified" && filter.VerificationStatus != "rejected") {
 		return nil, ErrInvalidStaffRecord
 	}
 	tx, err := r.db.Begin(ctx)
@@ -609,7 +611,14 @@ type StaffExperienceReportPage struct {
 // ListStaffExperienceReport reads all retained experience history for this
 // school, including inactive employees. Free-text descriptions are excluded.
 func (r *UserRepository) ListStaffExperienceReport(ctx context.Context, actorID, schoolID int64, filter StaffExperienceReportFilter) (*StaffExperienceReportPage,error) {
-    if r==nil || r.db==nil || actorID<=0 || schoolID<=0 || filter.Limit<1 || filter.Limit>200 || filter.Offset<0 { return nil,ErrInvalidStaffRecord }
+    if r==nil || r.db==nil || actorID<=0 || schoolID<=0 || filter.Limit<1 || filter.Limit>200 || filter.Offset<0 || filter.Offset>1000000 {
+        return nil,ErrInvalidStaffRecord
+    }
+    switch filter.EmploymentType {
+    case "", "permanent", "contract", "part_time", "temporary", "internship", "other":
+    default:
+        return nil,ErrInvalidStaffRecord
+    }
     tx, err := r.db.Begin(ctx)
     if err != nil { return nil, fmt.Errorf("begin staff experience report snapshot: %w", err) }
     defer func() { _ = tx.Rollback(ctx) }()

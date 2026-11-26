@@ -179,6 +179,22 @@ func (h *StaffRecordsHandler) ListQualificationsReport(c *gin.Context) {
 		if err != nil { c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid report offset"}); return }
 		filter.Offset = value
 	}
+	if filter.Limit < 1 || filter.Limit > 200 {
+		c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Report limit must be between 1 and 200"})
+		return
+	}
+	if filter.Offset < 0 || filter.Offset > 1000000 {
+		c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Report offset must be between 0 and 1000000"})
+		return
+	}
+	if filter.RecordType != "all" && filter.RecordType != "qualification" && filter.RecordType != "certification" {
+		c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid qualification report record type"})
+		return
+	}
+	if filter.VerificationStatus != "" && filter.VerificationStatus != "pending" && filter.VerificationStatus != "verified" && filter.VerificationStatus != "rejected" {
+		c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid verification status"})
+		return
+	}
 	page, err := h.service.ListQualificationsReport(c.Request.Context(),actor,school,filter)
 	if err != nil { h.fail(c,err); return }
 	if page == nil { c.JSON(http.StatusInternalServerError,gin.H{"status":"error","message":"Unable to load staff qualifications report"}); return }
@@ -196,6 +212,17 @@ func (h *StaffRecordsHandler) ListExperienceReport(c *gin.Context) {
     filter:=repository.StaffExperienceReportFilter{EmploymentType:c.Query("employment_type"),CurrentOnly:currentOnly=="true",Limit:50}
     if raw:=c.Query("limit");raw!="" { value,err:=strconv.Atoi(raw);if err!=nil {c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid report limit"});return};filter.Limit=value }
     if raw:=c.Query("offset");raw!="" { value,err:=strconv.Atoi(raw);if err!=nil {c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Invalid report offset"});return};filter.Offset=value }
+    if filter.Limit < 1 || filter.Limit > 200 {
+        c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Report limit must be between 1 and 200"}); return
+    }
+    if filter.Offset < 0 || filter.Offset > 1000000 {
+        c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Report offset must be between 0 and 1000000"}); return
+    }
+    switch filter.EmploymentType {
+    case "", "permanent", "contract", "part_time", "temporary", "internship", "other":
+    default:
+        c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid employment type"}); return
+    }
     page,err:=h.service.ListExperienceReport(c.Request.Context(),actor,school,filter)
     if err!=nil {h.fail(c,err);return}
     if page == nil { c.JSON(http.StatusInternalServerError,gin.H{"status":"error","message":"Unable to load staff experience report"}); return }

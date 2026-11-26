@@ -201,8 +201,16 @@ func TestStaffReportHandlersRejectMalformedPaginationAndFilters(t *testing.T) {
 	}{
 		{"qualifications malformed limit", "/staff/qualifications/report?limit=abc", (*StaffRecordsHandler).ListQualificationsReport},
 		{"qualifications malformed offset", "/staff/qualifications/report?offset=abc", (*StaffRecordsHandler).ListQualificationsReport},
+		{"qualifications limit too small", "/staff/qualifications/report?limit=0", (*StaffRecordsHandler).ListQualificationsReport},
+		{"qualifications limit too large", "/staff/qualifications/report?limit=201", (*StaffRecordsHandler).ListQualificationsReport},
+		{"qualifications offset too large", "/staff/qualifications/report?offset=1000001", (*StaffRecordsHandler).ListQualificationsReport},
+		{"qualifications invalid record type", "/staff/qualifications/report?record_type=payroll", (*StaffRecordsHandler).ListQualificationsReport},
+		{"qualifications invalid verification status", "/staff/qualifications/report?verification_status=approved", (*StaffRecordsHandler).ListQualificationsReport},
 		{"experience malformed limit", "/staff/experience/report?limit=abc", (*StaffRecordsHandler).ListExperienceReport},
 		{"experience malformed offset", "/staff/experience/report?offset=abc", (*StaffRecordsHandler).ListExperienceReport},
+		{"experience limit too large", "/staff/experience/report?limit=201", (*StaffRecordsHandler).ListExperienceReport},
+		{"experience offset too large", "/staff/experience/report?offset=1000001", (*StaffRecordsHandler).ListExperienceReport},
+		{"experience invalid employment type", "/staff/experience/report?employment_type=casual", (*StaffRecordsHandler).ListExperienceReport},
 		{"experience invalid current-only", "/staff/experience/report?current_only=yes", (*StaffRecordsHandler).ListExperienceReport},
 	}
 	for _, tt := range tests {
