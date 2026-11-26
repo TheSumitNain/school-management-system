@@ -23,6 +23,7 @@ var (
     ErrEmployeeCodeTaken = errors.New("employee code already exists in this school")
     ErrStaffProfileInactive = errors.New("staff employee profile is inactive")
     ErrStaffProfileIncomplete = errors.New("staff employee profile is incomplete")
+    ErrStaffProfileHasActiveAssignments = errors.New("staff profile has active teaching assignments")
 )
 
 type UserRepository struct {
@@ -263,6 +264,9 @@ func (r *UserRepository) CreateStaffAccountWithProfile(
         var pgErr *pgconn.PgError
         if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "ux_staff_profiles_school_employee_code" {
             return nil, ErrEmployeeCodeTaken
+        }
+        if errors.As(err, &pgErr) && pgErr.Code == "23514" && pgErr.ConstraintName == "staff_profiles_teacher_assignments_check" {
+            return nil, ErrStaffProfileHasActiveAssignments
         }
         return nil, fmt.Errorf("insert staff employee profile: %w", err)
     }

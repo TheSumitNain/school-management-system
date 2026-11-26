@@ -26,6 +26,7 @@ var (
 	ErrInactiveSubjectInCurriculum = errors.New("new enrollment cannot use a curriculum containing an inactive subject")
 	ErrInactiveSubjectSelection = errors.New("inactive subjects cannot be newly selected by a student")
 	ErrInactiveSubjectAssignment = errors.New("inactive subjects cannot receive new teacher assignments")
+	ErrTeacherProfileIneligible = errors.New("teacher must have an active Teaching staff profile")
 	ErrAcademicImpactChanged = errors.New("academic dependency impact changed; review the impact again")
 	ErrAcademicAdmissionNumberConflict = errors.New("academic admission number already exists in this school year")
 	ErrAcademicRollNumberConflict = errors.New("academic roll number already exists in this active section")
@@ -257,6 +258,7 @@ func academicWriteError(err error) error {
 			}
 			return ErrInvalidAcademicInput
 		case "23503", "23514", "22001", "22007":
+			if pgErr.ConstraintName == "teacher_assignment_staff_profile_check" { return ErrTeacherProfileIneligible }
 			if strings.Contains(strings.ToLower(pgErr.Message), "assignment actor") { return ErrAcademicAccessDenied }
 			return ErrInvalidAcademicInput
 		}

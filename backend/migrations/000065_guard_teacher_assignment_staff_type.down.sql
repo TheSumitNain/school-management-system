@@ -1,0 +1,6 @@
+DROP TRIGGER IF EXISTS trg_guard_v65_staff_profile_teacher_assignments ON public.staff_profiles;
+DROP FUNCTION IF EXISTS public.guard_v65_staff_profile_teacher_assignments();
+
+DROP TRIGGER IF EXISTS trg_validate_v65_class_incharge_staff_profile ON public.class_incharge_assignments;
+DROP TRIGGER IF EXISTS trg_validate_v65_teacher_subject_staff_profile ON public.teacher_subject_assignments;
+DROP FUNCTION IF EXISTS public.validate_v65_teacher_assignment_staff_profile();

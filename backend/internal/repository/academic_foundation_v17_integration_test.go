@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"school-management-system/internal/models"
 )
 
 // TestAcademicFoundationAndStudentLifecyclePostgresIntegration exercises
@@ -84,6 +86,13 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	`, schoolID, "v17-teacher-"+suffix, "integration-test-password-hash").Scan(&teacherPrincipalID); err != nil {
 		t.Fatalf("create Teacher account fixture: %v", err)
 	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO staff_profiles
+			(principal_id, school_id, employee_code, full_name, designation, mobile_number, staff_type)
+		VALUES ($1, $2, $3, 'V17 Teaching Teacher', 'Teacher', '9876543210', 'teaching')
+	`, teacherPrincipalID, schoolID, "T0-"+suffix); err != nil {
+		t.Fatalf("create Teaching profile for Teacher fixture: %v", err)
+	}
 	// The principal_roles guard requires the assigning actor to be an
 	// authorized School Admin. Grant that role to the fixture actor through a
 	// rollback-scoped Platform Admin, matching the production authorization path.
@@ -160,6 +169,46 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	`, teacherPrincipalID, teacherRoleID, actorPrincipalID); err != nil {
 		t.Fatalf("assign Teacher role to fixture: %v", err)
 	}
+	var nonTeachingPrincipalID, inactiveTeacherPrincipalID int64
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO users (school_id, username, password_hash, status)
+		VALUES ($1, $2, $3, 'active') RETURNING principal_id
+	`, schoolID, "v17-nonteaching-"+suffix, "integration-test-password-hash").Scan(&nonTeachingPrincipalID); err != nil {
+		t.Fatalf("create non-teaching Teacher-role account: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO staff_profiles
+			(principal_id, school_id, employee_code, full_name, designation, mobile_number, employment_status, staff_type)
+		VALUES ($1, $2, $3, 'Non-teaching Employee', 'Office Staff', '9876543212', 'active', 'non_teaching')
+	`, nonTeachingPrincipalID, schoolID, "NT-"+suffix); err != nil {
+		t.Fatalf("create non-teaching profile fixture: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO principal_roles (principal_id, role_id, assigned_by)
+		VALUES ($1, $2, $3)
+	`, nonTeachingPrincipalID, teacherRoleID, actorPrincipalID); err != nil {
+		t.Fatalf("assign Teacher role to non-teaching fixture: %v", err)
+	}
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO users (school_id, username, password_hash, status)
+		VALUES ($1, $2, $3, 'active') RETURNING principal_id
+	`, schoolID, "v17-inactive-teacher-"+suffix, "integration-test-password-hash").Scan(&inactiveTeacherPrincipalID); err != nil {
+		t.Fatalf("create inactive-employment Teacher account: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO staff_profiles
+			(principal_id, school_id, employee_code, full_name, designation, mobile_number, employment_status, staff_type)
+		VALUES ($1, $2, $3, 'Inactive Teacher', 'Teacher', '9876543213', 'inactive', 'teaching')
+	`, inactiveTeacherPrincipalID, schoolID, "IT-"+suffix); err != nil {
+		t.Fatalf("create inactive-employment Teacher profile: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO principal_roles (principal_id, role_id, assigned_by)
+		VALUES ($1, $2, $3)
+	`, inactiveTeacherPrincipalID, teacherRoleID, actorPrincipalID); err != nil {
+		t.Fatalf("assign Teacher role to inactive-employment fixture: %v", err)
+	}
+
 
 	eligibleTeachers, err := NewAcademicRepository(tx).ListEligibleTeachers(ctx, actorPrincipalID, schoolID)
 	if err != nil {
@@ -174,6 +223,13 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	}
 	if !foundEligibleTeacher {
 		t.Fatalf("eligible teacher list did not include active Teacher principal %d: %+v", teacherPrincipalID, eligibleTeachers)
+	}
+	for _, ineligibleID := range []int64{nonTeachingPrincipalID, inactiveTeacherPrincipalID} {
+		for _, eligible := range eligibleTeachers {
+			if eligible.PrincipalID == ineligibleID {
+				t.Fatalf("ineligible staff principal %d appeared in eligible Teacher list: %+v", ineligibleID, eligibleTeachers)
+			}
+		}
 	}
 
 	var year1, year2, classLKG, classUKG, section1, section2, subjectID, subjectAltID, studentID int64
@@ -330,6 +386,32 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	`, schoolID, year2, section2, subjectID, teacherPrincipalID, actorPrincipalID); err != nil {
 		t.Fatalf("assign active same-school teacher to subject/section: %v", err)
 	}
+	academicRepoForEligibility := NewAcademicRepository(tx)
+	if _, err := academicRepoForEligibility.CreateTeacherSubjectAssignment(ctx, actorPrincipalID, schoolID, year2, section2, subjectAltID, nonTeachingPrincipalID); !errors.Is(err, ErrTeacherProfileIneligible) {
+		t.Fatalf("non-teaching employee assignment error = %v, want ErrTeacherProfileIneligible", err)
+	}
+	if _, err := academicRepoForEligibility.CreateClassInchargeAssignment(ctx, actorPrincipalID, schoolID, year2, section2, nonTeachingPrincipalID); !errors.Is(err, ErrTeacherProfileIneligible) {
+		t.Fatalf("non-teaching class in-charge error = %v, want ErrTeacherProfileIneligible", err)
+	}
+	if _, err := academicRepoForEligibility.CreateTeacherSubjectAssignment(ctx, actorPrincipalID, schoolID, year2, section2, subjectAltID, inactiveTeacherPrincipalID); !errors.Is(err, ErrTeacherProfileIneligible) {
+		t.Fatalf("inactive-employment Teacher assignment error = %v, want ErrTeacherProfileIneligible", err)
+	}
+	profileRepo := NewUserRepository(tx)
+	for _, profile := range []models.StaffProfile{
+		{StaffType: "non_teaching", EmployeeCode: "T0-"+suffix, FullName: "V17 Teaching Teacher", Designation: "Teacher", MobileNumber: "9876543210", EmploymentStatus: "active"},
+		{StaffType: "teaching", EmployeeCode: "T0-"+suffix, FullName: "V17 Teaching Teacher", Designation: "Teacher", MobileNumber: "9876543210", EmploymentStatus: "inactive"},
+	} {
+		if _, err := profileRepo.UpdateStaffProfile(ctx, actorPrincipalID, schoolID, teacherPrincipalID, profile); !errors.Is(err, ErrStaffProfileHasActiveAssignments) {
+			t.Fatalf("profile change with active teacher assignment error = %v, want ErrStaffProfileHasActiveAssignments", err)
+		}
+	}
+	var storedType, storedEmployment string
+	if err := tx.QueryRow(ctx, `SELECT staff_type, employment_status FROM staff_profiles WHERE principal_id=$1 AND school_id=$2`, teacherPrincipalID, schoolID).Scan(&storedType, &storedEmployment); err != nil {
+		t.Fatalf("verify blocked profile change left profile intact: %v", err)
+	}
+	if storedType != "teaching" || storedEmployment != "active" {
+		t.Fatalf("blocked profile change mutated assignment owner: staff_type=%q employment_status=%q", storedType, storedEmployment)
+	}
 
 	// Exercise the teacher-filtered timetable read in a savepoint so the additional
 	// teaching assignment fixtures do not affect the later attendance-scope assertions.
@@ -340,13 +422,7 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	// Exercise the teacher-filtered timetable read against real PostgreSQL rows.
 	// The School Admin may select either same-school teacher, while a Teacher
 	// requesting another teacher's principal ID must still see only their own.
-	if _, err := timetableScopeTx.Exec(ctx, `
-		INSERT INTO staff_profiles
-			(principal_id, school_id, employee_code, full_name, designation, mobile_number)
-		VALUES ($1, $2, $3, 'Scoped Teacher One', 'Teacher', '9876543210')
-	`, teacherPrincipalID, schoolID, "T1-"+suffix); err != nil {
-		t.Fatalf("create first teacher profile for timetable scope: %v", err)
-	}
+
 	var secondTeacherPrincipalID int64
 	if err := timetableScopeTx.QueryRow(ctx, `
 		INSERT INTO users (school_id, username, password_hash, status)
@@ -362,8 +438,8 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	}
 	if _, err := timetableScopeTx.Exec(ctx, `
 		INSERT INTO staff_profiles
-			(principal_id, school_id, employee_code, full_name, designation, mobile_number)
-		VALUES ($1, $2, $3, 'Scoped Teacher Two', 'Teacher', '9876543211')
+			(principal_id, school_id, employee_code, full_name, designation, mobile_number, staff_type)
+		VALUES ($1, $2, $3, 'Scoped Teacher Two', 'Teacher', '9876543211', 'teaching')
 	`, secondTeacherPrincipalID, schoolID, "T2-"+suffix); err != nil {
 		t.Fatalf("create second teacher profile for timetable scope: %v", err)
 	}

@@ -498,3 +498,23 @@ func TestStaffHandlerCreateRequiresStaffType(t *testing.T) {
 	router.ServeHTTP(rec, req)
 	if rec.Code != http.StatusBadRequest || service.calls != 0 { t.Fatalf("missing staff type status=%d service calls=%d body=%s", rec.Code, service.calls, rec.Body.String()) }
 }
+
+
+func TestStaffHandlerProfileUpdateRejectsActiveTeachingAssignmentConflict(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	service := &fakeStaffAccountService{err: repository.ErrStaffProfileHasActiveAssignments}
+	router := gin.New()
+	router.PATCH("/school/staff/:principalID", func(c *gin.Context) {
+		c.Set("auth_principal_id", int64(31))
+		c.Set("auth_school_id", int64(8))
+		c.Next()
+	}, NewStaffHandler(service).Update)
+	req := httptest.NewRequest(http.MethodPatch, "/school/staff/27", strings.NewReader(`{"employee_code":"EMP-001","full_name":"Teacher One","designation":"Teacher","mobile_number":"9876543210","staff_type":"non_teaching","employment_status":"active"}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), "staff_has_active_teaching_assignments") ||
+		!strings.Contains(rec.Body.String(), "Reassign or remove") {
+		t.Fatalf("expected actionable assignment conflict, got status=%d body=%s", rec.Code, rec.Body.String())
+	}
+}

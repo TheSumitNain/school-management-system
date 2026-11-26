@@ -1,3 +1,14 @@
+## 2026-11-26 — Teaching assignment eligibility enforced by Staff Type and employment status
+
+- Teacher subject and class in-charge assignment writes now require a same-school staff profile explicitly classified as Teaching with active employment, in addition to the existing active principal, Teacher role, School Admin permission and tenant checks.
+- The eligible-teacher API excludes unclassified, Non-teaching, inactive-employment and inactive-login accounts. Legacy NULL Staff Type records remain visible in the Staff Directory's Unclassified filter but cannot receive new teaching assignments until explicitly classified.
+- V65 adds database-level guards for both assignment tables and prevents changing a Teaching employee to Non-teaching or Inactive while active subject/class-in-charge assignments remain. The profile row lock serializes concurrent assignment creation against type/employment changes.
+- Conflicts return HTTP 409 with an actionable message. No automatic Teacher role grant is introduced; role assignment remains a separate authorization/product-contract gate.
+- PostgreSQL integration coverage verifies non-teaching and inactive-employment assignment rejection, eligible-teacher filtering, and rollback-safe rejection of Staff Type/employment changes while assignments remain active. Automated CI for this checkpoint is pending.
+- No persistent database migration has been applied. V65 is included in the repository migration chain only; main remains untouched.
+
+---
+
 
 ## 2026-11-26 — Teaching / Non-teaching staff classification added
 

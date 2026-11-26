@@ -195,8 +195,11 @@ func (r *AcademicRepository) ListEligibleTeachers(ctx context.Context, actorID, 
 		  JOIN auth_principals ap ON ap.id = u.principal_id
 		  JOIN principal_roles pr ON pr.principal_id = ap.id AND pr.revoked_at IS NULL
 		  JOIN roles r ON r.id = pr.role_id
+		  JOIN staff_profiles sp ON sp.principal_id = ap.id AND sp.school_id = u.school_id
 		 WHERE u.school_id = $1
 		   AND u.status = 'active'
+		   AND sp.staff_type = 'teaching'
+		   AND sp.employment_status = 'active'
 		   AND ap.principal_type = 'staff'
 		   AND ap.status = 'active'
 		   AND r.school_id = $1
