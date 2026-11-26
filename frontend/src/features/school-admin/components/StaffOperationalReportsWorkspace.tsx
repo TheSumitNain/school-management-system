@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, RefreshCw } from "lucide-react";
-import { getClassInchargeAssignments, getMonthlyStaffAttendance, getAllStaffLeaveRequests, getStaffQualificationsReport, getStaffExperienceReport, getTeacherSubjectAssignments } from "../api";
+import { getClassInchargeAssignments, getAllMonthlyStaffAttendance, getAllStaffLeaveRequests, getStaffQualificationsReport, getStaffExperienceReport, getTeacherSubjectAssignments } from "../api";
 import type { ClassInchargeAssignment, TeacherSubjectAssignment } from "../api";
 import { useStaffSubstitutionTimetableYearQuery } from "../queries";
 import type { StaffAttendanceMonthlySummary, StaffLeaveRequest, StaffQualificationReportRow, StaffExperienceReportRow } from "../api";

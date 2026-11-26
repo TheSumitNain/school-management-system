@@ -4030,7 +4030,7 @@ test("staff attendance monthly summary does not request data for an invalid mont
 
   await workspace.getByLabel("Attendance month").fill("");
   await expect(workspace.getByRole("alert")).toContainText("Select a valid attendance month");
-  await expect(workspace.getByRole("button", { name: "Download monthly report" })).toBeDisabled();
+  await expect(workspace.getByRole("button", { name: "Download complete monthly report" })).toBeDisabled();
   await expect(workspace.locator(".staff-attendance-table-wrap")).toHaveCount(0);
   await expect(workspace.getByText("No active staff profiles are available for this school.")).toHaveCount(0);
   expect(monthlyRequests).toBe(1);
