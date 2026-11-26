@@ -463,11 +463,11 @@ export function useUpdateStaffExperienceMutation(principalID:number) {
 export const staffLeaveQueryKeys = {
   all: [...schoolAdminQueryKeys.staff(), "leave"] as const,
   types: () => [...staffLeaveQueryKeys.all, "types"] as const,
-  requests: (filters:{status?:string;staffPrincipalID?:number;onDate?:string;fromDate?:string;toDate?:string}) => [...staffLeaveQueryKeys.all,"requests",filters] as const,
+  requests: (filters:{status?:string;staffPrincipalID?:number;onDate?:string;fromDate?:string;toDate?:string;page?:number;pageSize?:number}) => [...staffLeaveQueryKeys.all,"requests",filters] as const,
   holidays: (from:string,to:string,includeInactive:boolean) => [...staffLeaveQueryKeys.all,"holidays",from,to,includeInactive] as const,
 };
 export function useStaffLeaveTypesQuery(enabled=true){return useQuery({queryKey:staffLeaveQueryKeys.types(),queryFn:({signal})=>getStaffLeaveTypes(signal),enabled,staleTime:15000});}
-export function useStaffLeaveRequestsQuery(filters:{status?:string;staffPrincipalID?:number;onDate?:string;fromDate?:string;toDate?:string},enabled=true){return useQuery({queryKey:staffLeaveQueryKeys.requests(filters),queryFn:({signal})=>getStaffLeaveRequests(filters,signal),enabled,staleTime:10000});}
+export function useStaffLeaveRequestsQuery(filters:{status?:string;staffPrincipalID?:number;onDate?:string;fromDate?:string;toDate?:string;page?:number;pageSize?:number},enabled=true){return useQuery({queryKey:staffLeaveQueryKeys.requests(filters),queryFn:({signal})=>getStaffLeaveRequests(filters,signal),enabled,staleTime:10000});}
 export function useSchoolHolidaysQuery(from:string,to:string,enabled=true,includeInactive=false){return useQuery({queryKey:staffLeaveQueryKeys.holidays(from,to,includeInactive),queryFn:({signal})=>getSchoolHolidays(from,to,signal,includeInactive),enabled:enabled&&Boolean(from)&&Boolean(to),staleTime:30000});}
 function useStaffLeaveMutation<T>(fn:(input:T)=>Promise<unknown>,refreshAuditHistory=false){
  const client=useQueryClient();
@@ -490,7 +490,7 @@ export const staffSubstitutionQueryKeys = {
   timetableYear: () => [...staffSubstitutionQueryKeys.all,"timetable-year"] as const,
   timetableEntries: (academicYearID:number) => [...staffSubstitutionQueryKeys.all,"timetable-entries",academicYearID] as const,
 };
-export function useStaffSubstitutionsQuery(filters:{fromDate:string;toDate:string;staffPrincipalID?:number},enabled=true){
+export function useStaffSubstitutionsQuery(filters:{fromDate:string;toDate:string;staffPrincipalID?:number;page?:number;pageSize?:number},enabled=true){
   return useQuery({queryKey:staffSubstitutionQueryKeys.list(filters),queryFn:({signal})=>getStaffSubstitutions(filters,signal),enabled:enabled&&Boolean(filters.fromDate)&&Boolean(filters.toDate),staleTime:10000});
 }
 export function useStaffSubstitutionTimetableYearQuery(enabled=true){
