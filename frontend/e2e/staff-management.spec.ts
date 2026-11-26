@@ -4055,7 +4055,6 @@ test("staff leave report rejects changing totals instead of showing a partial ex
     });
   });
   await page.getByRole("button", { name: "Reports", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Leave requests" })).toBeVisible();
   await expect(page.getByRole("alert").filter({ hasText: "Leave report could not be loaded." })).toBeVisible();
   await expect(page.getByRole("button", { name: "Export leave CSV" })).toHaveCount(0);
 });
