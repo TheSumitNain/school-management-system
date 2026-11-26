@@ -440,7 +440,7 @@ func (r *StaffAttendanceRepository) MarkBulk(ctx context.Context, actorID, schoo
             SELECT $6,$1,'school.staff_attendance.marked','staff_attendance_record',inserted.id::text,'success',
                    jsonb_build_object('staff_principal_id',inserted.staff_principal_id,'attendance_date',$3::date,'status',$4::text,'bulk',TRUE)
               FROM inserted
-            RETURNING id
+            RETURNING 1
         )
         SELECT COUNT(*)::integer FROM audited
     `, schoolID, staffIDs, date, status, remarks, actorID).Scan(&created)
