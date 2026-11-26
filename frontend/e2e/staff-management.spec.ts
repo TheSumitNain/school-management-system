@@ -3138,7 +3138,19 @@ test("school-wide workload report shows scheduled periods without inferring avai
     {
       id: 2, principal_id: 502, school_id: 10, username: "teacher.inactive",
       employee_code: "EMP-INACTIVE", full_name: "Inactive Teacher", designation: "Science Teacher",
-      mobile_number: "9876543217", employment_status: "inactive", profile_complete: true,
+      mobile_number: "9876543217", staff_type: "teaching", employment_status: "inactive", profile_complete: true,
+      status: "disabled", must_change_password: false,
+    },
+    {
+      id: 3, principal_id: 503, school_id: 10, username: "staff.non-teaching",
+      employee_code: "EMP-NONTEACH", full_name: "Non-teaching Staff", designation: "Office Assistant",
+      mobile_number: "9876543218", staff_type: "non_teaching", employment_status: "active", profile_complete: true,
+      status: "active", must_change_password: false,
+    },
+    {
+      id: 4, principal_id: 504, school_id: 10, username: "staff.unclassified",
+      employee_code: "EMP-UNCLASSIFIED", full_name: "Unclassified Employee", designation: "Legacy Staff",
+      mobile_number: "9876543219", employment_status: "inactive", profile_complete: true,
       status: "disabled", must_change_password: false,
     },
   ];
@@ -3153,6 +3165,9 @@ test("school-wide workload report shows scheduled periods without inferring avai
   await expect(row).toContainText("Subjects");
   await expect(page.getByText(/does not infer working days, free-period availability or workload limits/)).toBeVisible();
   await expect(page.getByText("Inactive Teacher")).toBeVisible();
+  await expect(page.getByText("Non-teaching Staff")).toBeVisible();
+  await expect(page.getByText("Unclassified Employee")).toBeVisible();
+  await expect(page.getByText("Staff profiles").locator("..")).toContainText("4");
 
   await page.getByLabel("Filter workload report by employment status").selectOption("active");
   const exportButton = page.getByRole("button", { name: "Export filtered CSV" });
@@ -3166,7 +3181,9 @@ test("school-wide workload report shows scheduled periods without inferring avai
   const csv = await readFile(downloadPath!, "utf8");
   expect(csv.startsWith("\uFEFF")).toBe(true);
   expect(csv).toContain("Original Teacher");
+  expect(csv).toContain("Non-teaching Staff");
   expect(csv).not.toContain("Inactive Teacher");
+  expect(csv).not.toContain("Unclassified Employee");
   expect(csv).toContain(`'   =HYPERLINK(""x"")`);
   for (const viewport of [{ width: 390, height: 844 }, { width: 768, height: 900 }, { width: 1280, height: 900 }]) {
     await page.setViewportSize(viewport);
