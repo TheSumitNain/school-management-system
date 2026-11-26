@@ -197,11 +197,25 @@ func TestStaffSubstitutionV61SerializesConcurrentSubstituteSlotAssignmentsPostgr
 		_, createErr := (&AcademicRepository{db:pool}).CreateStaffSubstitution(ctx, actorPrincipalID, schoolID, conflictingEntryID, conflictingOriginal, substitute, coverDate, nil, "Substitution racing account disable")
 		retryResult <- createErr
 	}()
-	select {
-	case err := <-retryResult:
-		_ = disableTx.Rollback(ctx)
-		t.Fatalf("substitution creation completed before the in-flight disable committed: %v", err)
-	case <-time.After(150 * time.Millisecond):
+	deadline = time.Now().Add(10 * time.Second)
+	for {
+		var waiting int
+		if err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM pg_stat_activity WHERE wait_event_type='Lock' AND query ILIKE '%INSERT INTO staff_substitutions%'`).Scan(&waiting); err != nil {
+			_ = disableTx.Rollback(ctx)
+			t.Fatalf("inspect substitution insert waiting on principal lock: %v", err)
+		}
+		if waiting > 0 { break }
+		select {
+		case err := <-retryResult:
+			_ = disableTx.Rollback(ctx)
+			t.Fatalf("substitution creation completed before the in-flight disable committed: %v", err)
+		default:
+		}
+		if time.Now().After(deadline) {
+			_ = disableTx.Rollback(ctx)
+			t.Fatal("substitution insert never waited on the principal lock held by the disable transaction")
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 	if err := disableTx.Commit(ctx); err != nil { t.Fatalf("commit substitute disable during race: %v", err) }
 	select {
