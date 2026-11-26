@@ -17,6 +17,7 @@ type fakeStaffAttendanceRepository struct {
     listMonthlyPageCalls int
     lastLimit int
     lastOffset int
+    lastDailyFilter repository.StaffAttendanceDailyFilter
     markCalls int
     updateCalls int
     lastStatus string
@@ -31,6 +32,13 @@ func (f *fakeStaffAttendanceRepository) ListMonthly(context.Context, int64, int6
     return []repository.StaffAttendanceMonthlySummary{}, nil
 }
 func (f *fakeStaffAttendanceRepository) ListDailyPage(_ context.Context,_,_ int64,_ time.Time,limit,offset int)([]repository.StaffAttendanceRecord,int,error){f.listDailyPageCalls++;f.lastLimit=limit;f.lastOffset=offset;return []repository.StaffAttendanceRecord{},0,nil}
+func (f *fakeStaffAttendanceRepository) ListDailyFilteredPage(_ context.Context, _, _ int64, _ time.Time, filter repository.StaffAttendanceDailyFilter, limit, offset int) ([]repository.StaffAttendanceRecord, int, error) {
+    f.listDailyPageCalls++
+    f.lastDailyFilter = filter
+    f.lastLimit = limit
+    f.lastOffset = offset
+    return []repository.StaffAttendanceRecord{}, 0, nil
+}
 func (f *fakeStaffAttendanceRepository) ListMonthlyPage(_ context.Context,_,_ int64,_ time.Time,limit,offset int)([]repository.StaffAttendanceMonthlySummary,int,error){f.listMonthlyPageCalls++;f.lastLimit=limit;f.lastOffset=offset;return []repository.StaffAttendanceMonthlySummary{},0,nil}
 func (f *fakeStaffAttendanceRepository) Mark(_ context.Context, _, _, _ int64, _ time.Time, status string, _ *string) (*repository.StaffAttendanceRecord, error) {
     f.markCalls++
@@ -180,5 +188,32 @@ func TestStaffAttendanceServicePaginationBoundsAndDelegation(t *testing.T) {
     for _,v:=range [][2]int{{0,0},{101,0},{50,-1}} {
         if _,_,err:=service.ListDailyPage(context.Background(),1,2,day,v[0],v[1]);!errors.Is(err,ErrInvalidStaffAttendance){t.Fatalf("daily invalid pagination %v: %v",v,err)}
         if _,_,err:=service.ListMonthlyPage(context.Background(),1,2,day,v[0],v[1]);!errors.Is(err,ErrInvalidStaffAttendance){t.Fatalf("monthly invalid pagination %v: %v",v,err)}
+    }
+}
+
+func TestStaffAttendanceServiceValidatesAndDelegatesDailyFilters(t *testing.T) {
+    fake := &fakeStaffAttendanceRepository{}
+    service := NewStaffAttendanceService(fake)
+    day := time.Date(2026, 11, 26, 0, 0, 0, 0, time.UTC)
+
+    filter := repository.StaffAttendanceDailyFilter{Search: "  Alice  ", Status: "unmarked"}
+    if _, _, err := service.ListDailyFilteredPage(context.Background(), 1, 2, day, filter, 25, 50); err != nil {
+        t.Fatalf("valid daily filters: %v", err)
+    }
+    if fake.listDailyPageCalls != 1 || fake.lastDailyFilter.Search != "Alice" || fake.lastDailyFilter.Status != "unmarked" || fake.lastLimit != 25 || fake.lastOffset != 50 {
+        t.Fatalf("daily filter delegation mismatch: calls=%d filter=%+v limit=%d offset=%d", fake.listDailyPageCalls, fake.lastDailyFilter, fake.lastLimit, fake.lastOffset)
+    }
+
+    invalid := []repository.StaffAttendanceDailyFilter{
+        {Search: strings.Repeat("x", 101), Status: "all"},
+        {Search: "Alice", Status: "unknown"},
+    }
+    for _, candidate := range invalid {
+        if _, _, err := service.ListDailyFilteredPage(context.Background(), 1, 2, day, candidate, 25, 0); !errors.Is(err, ErrInvalidStaffAttendance) {
+            t.Fatalf("invalid daily filter %+v error=%v want ErrInvalidStaffAttendance", candidate, err)
+        }
+    }
+    if fake.listDailyPageCalls != 1 {
+        t.Fatalf("invalid filters reached repository: calls=%d want=1", fake.listDailyPageCalls)
     }
 }
