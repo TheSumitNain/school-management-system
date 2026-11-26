@@ -15,6 +15,7 @@ type staffAttendanceRepository interface {
     ListDaily(context.Context, int64, int64, time.Time) ([]repository.StaffAttendanceRecord, error)
     ListMonthly(context.Context, int64, int64, time.Time) ([]repository.StaffAttendanceMonthlySummary, error)
     ListDailyPage(context.Context, int64, int64, time.Time, int, int) ([]repository.StaffAttendanceRecord, int, error)
+    ListDailyFilteredPage(context.Context, int64, int64, time.Time, repository.StaffAttendanceDailyFilter, int, int) ([]repository.StaffAttendanceRecord, int, error)
     ListMonthlyPage(context.Context, int64, int64, time.Time, int, int) ([]repository.StaffAttendanceMonthlySummary, int, error)
     Mark(context.Context, int64, int64, int64, time.Time, string, *string) (*repository.StaffAttendanceRecord, error)
     MarkBulk(context.Context, int64, int64, []int64, time.Time, string, *string) (int, error)
@@ -35,6 +36,20 @@ func (s *StaffAttendanceService) ListDaily(ctx context.Context, actor, school in
 func (s *StaffAttendanceService) ListDailyPage(ctx context.Context, actor, school int64, day time.Time, limit, offset int) ([]repository.StaffAttendanceRecord, int, error) {
     if s == nil || s.repository == nil || actor <= 0 || school <= 0 || day.Year() < 1 || limit < 1 || limit > 100 || offset < 0 { return nil, 0, ErrInvalidStaffAttendance }
     return s.repository.ListDailyPage(ctx, actor, school, day, limit, offset)
+}
+
+func (s *StaffAttendanceService) ListDailyFilteredPage(ctx context.Context, actor, school int64, day time.Time, filter repository.StaffAttendanceDailyFilter, limit, offset int) ([]repository.StaffAttendanceRecord, int, error) {
+    if s == nil || s.repository == nil || actor <= 0 || school <= 0 || day.Year() < 1 || limit < 1 || limit > 100 || offset < 0 {
+        return nil, 0, ErrInvalidStaffAttendance
+    }
+    filter.Search = strings.TrimSpace(filter.Search)
+    if filter.Status == "" { filter.Status = "all" }
+    if len([]rune(filter.Search)) > 100 ||
+        (filter.Status != "all" && filter.Status != "unmarked" && filter.Status != "present" &&
+            filter.Status != "absent" && filter.Status != "late" && filter.Status != "half_day") {
+        return nil, 0, ErrInvalidStaffAttendance
+    }
+    return s.repository.ListDailyFilteredPage(ctx, actor, school, day, filter, limit, offset)
 }
 
 func (s *StaffAttendanceService) ListMonthly(ctx context.Context, actor, school int64, month time.Time) ([]repository.StaffAttendanceMonthlySummary, error) {
