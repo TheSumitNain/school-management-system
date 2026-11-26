@@ -1308,3 +1308,11 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Added a PostgreSQL integration regression that inspects the installed guard function; V67 migration/rollback and backend CI verification are pending.
 - Existing substitution history is preserved; no data rewrite. Authenticated School Admin acceptance/sign-off and the previously documented approval gates remain outstanding.
 - Verification update: Backend CI [45809288242](https://github.com/TheSumitNain/school-management-system/actions/runs/45809288242) **PASS** on `fe6c7ae67d96e1767471b1af9282d3f3b16946c0`; full migrations, PostgreSQL integration (including V67 regression) and `go vet` all passed.
+
+
+## 2026-11-26 follow-up — staff schema and constraint review
+
+- Rechecked staff profile, attendance, leave/holiday, qualifications/certifications/experience and substitution table constraints, school-composite foreign keys, uniqueness rules, lookup indexes, audit actor references and append-only substitution state constraints.
+- Confirmed attendance has one row per school/staff/date; leave requests enforce date ordering, valid half-day shape, decision actor/timestamp consistency and rejection comments; substitution enforces same-school references, distinct original/substitute teachers, cancellation actor/timestamp consistency and active-slot uniqueness.
+- No additional schema defect was confirmed in this review. Existing policy approvals (leave balance/accrual, qualification/certification verification, archive retention and private document storage) remain intentionally outside implementation scope.
+- V67 full migration, PostgreSQL integration and `go vet` verification passed in Backend CI [45809288242](https://github.com/TheSumitNain/school-management-system/actions/runs/45809288242). `main` remains untouched.
