@@ -2864,3 +2864,5 @@ This update supersedes older status bullets that listed the following database-b
 - Added forward migration V67 to make the login-disable guard use `(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date`; added a rollback migration restoring the previous V60 function definition.
 - Added PostgreSQL integration coverage that inspects the installed trigger function and rejects regressions to session-dependent `CURRENT_DATE`.
 - Backend CI verification is pending for V67 and its integration test. No existing attendance, leave or substitution records are rewritten. Current work remains on `work`; `main` remains untouched.
+
+- V67 verification completed: Backend CI [45809288242](https://github.com/TheSumitNain/school-management-system/actions/runs/45809288242) **PASS** on `fe6c7ae67d96e1767471b1af9282d3f3b16946c0`; the ephemeral database applied the full migration chain, PostgreSQL integration tests passed (including the new V67 guard-definition regression), and `go vet` passed.
