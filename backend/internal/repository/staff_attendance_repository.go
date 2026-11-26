@@ -81,23 +81,54 @@ func (r *StaffAttendanceRepository) ListDaily(ctx context.Context, actorID, scho
     return items, err
 }
 
+type StaffAttendanceDailyFilter struct {
+    Search string
+    Status string
+}
+
 func (r *StaffAttendanceRepository) ListDailyPage(ctx context.Context, actorID, schoolID int64, day time.Time, limit, offset int) ([]StaffAttendanceRecord, int, error) {
-    if r == nil || r.db == nil || day.Year() < 1 || limit < 1 || limit > 100 || offset < 0 { return nil, 0, ErrInvalidStaffAttendance }
+    return r.ListDailyFilteredPage(ctx, actorID, schoolID, day, StaffAttendanceDailyFilter{Status: "all"}, limit, offset)
+}
+
+func (r *StaffAttendanceRepository) ListDailyFilteredPage(ctx context.Context, actorID, schoolID int64, day time.Time, filter StaffAttendanceDailyFilter, limit, offset int) ([]StaffAttendanceRecord, int, error) {
+    filter.Search = strings.TrimSpace(filter.Search)
+    if filter.Status == "" { filter.Status = "all" }
+    if r == nil || r.db == nil || day.Year() < 1 || limit < 1 || limit > 100 || offset < 0 ||
+        len([]rune(filter.Search)) > 100 ||
+        (filter.Status != "all" && filter.Status != "unmarked" && !validStaffAttendanceStatus(filter.Status)) {
+        return nil, 0, ErrInvalidStaffAttendance
+    }
     if err := authorizeGuardian(ctx, r.db, actorID, schoolID, "staff.attendance.read"); err != nil { return nil, 0, ErrStaffAttendanceAccessDenied }
+    dayValue := day.Format("2006-01-02")
     var total int
-    if err := r.db.QueryRow(ctx, `SELECT COUNT(*)::integer FROM staff_profiles WHERE school_id=$1 AND employment_status='active'`, schoolID).Scan(&total); err != nil {
+    if err := r.db.QueryRow(ctx, `
+        SELECT COUNT(*)::integer
+        FROM staff_profiles sp
+        LEFT JOIN staff_attendance_records a
+          ON a.school_id=sp.school_id AND a.staff_principal_id=sp.principal_id AND a.attendance_date=$2::date
+        WHERE sp.school_id=$1 AND sp.employment_status='active'
+          AND ($3='' OR strpos(lower(sp.full_name),lower($3))>0
+                    OR strpos(lower(sp.employee_code),lower($3))>0
+                    OR strpos(lower(sp.designation),lower($3))>0)
+          AND ($4='all' OR ($4='unmarked' AND a.id IS NULL) OR a.status=$4)
+    `, schoolID, dayValue, filter.Search, filter.Status).Scan(&total); err != nil {
         return nil, 0, fmt.Errorf("count daily staff attendance: %w", err)
     }
     rows, err := r.db.Query(ctx, `
         SELECT a.id, sp.principal_id, sp.employee_code, sp.full_name, sp.designation,
                $2::date::text, a.status, a.remarks, marker.username, a.updated_at
         FROM staff_profiles sp
-        LEFT JOIN staff_attendance_records a ON a.school_id=sp.school_id AND a.staff_principal_id=sp.principal_id AND a.attendance_date=$2::date
+        LEFT JOIN staff_attendance_records a
+          ON a.school_id=sp.school_id AND a.staff_principal_id=sp.principal_id AND a.attendance_date=$2::date
         LEFT JOIN users marker ON marker.principal_id=a.marked_by_principal_id AND marker.school_id=a.school_id
         WHERE sp.school_id=$1 AND sp.employment_status='active'
+          AND ($3='' OR strpos(lower(sp.full_name),lower($3))>0
+                    OR strpos(lower(sp.employee_code),lower($3))>0
+                    OR strpos(lower(sp.designation),lower($3))>0)
+          AND ($4='all' OR ($4='unmarked' AND a.id IS NULL) OR a.status=$4)
         ORDER BY LOWER(sp.full_name), sp.employee_code, sp.principal_id
-        LIMIT $3 OFFSET $4
-    `, schoolID, day.Format("2006-01-02"), limit, offset)
+        LIMIT $5 OFFSET $6
+    `, schoolID, dayValue, filter.Search, filter.Status, limit, offset)
     if err != nil { return nil, 0, fmt.Errorf("list daily staff attendance: %w", err) }
     defer rows.Close()
     items := make([]StaffAttendanceRecord, 0)
