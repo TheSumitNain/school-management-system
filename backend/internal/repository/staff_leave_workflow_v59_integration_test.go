@@ -128,6 +128,40 @@ func TestStaffLeaveWorkflowPostgresIntegration(t *testing.T) {
 		if err:=f.pool.QueryRow(f.ctx,`SELECT status FROM staff_leave_requests WHERE id=$1`,request.ID).Scan(&status);err!=nil{t.Fatalf("read self-approval status: %v",err)}
 		if status!="pending"{t.Fatalf("self-approved request status=%q want pending",status)}
 	})
+	t.Run("concurrent approval and rejection permit exactly one terminal decision",func(t *testing.T){
+		day:=time.Now().AddDate(0,0,47).Format("2006-01-02")
+		request:=f.request(t,f.staffPrincipalID,day,day)
+		type decisionResult struct { approve bool; err error }
+		start:=make(chan struct{})
+		results:=make(chan decisionResult,2)
+		for _,approve:=range []bool{true,false} {
+			go func(approve bool){
+				<-start
+				comment:="Concurrent rejection"
+				var commentPtr *string
+				if !approve { commentPtr=&comment }
+				err:=f.repo.Decide(f.ctx,f.adminPrincipalID,f.schoolID,request.ID,approve,commentPtr)
+				results<-decisionResult{approve:approve,err:err}
+			}(approve)
+		}
+		close(start)
+		successes,stale:=0,0
+		for i:=0;i<2;i++ {
+			result:=<-results
+			switch {
+			case result.err==nil: successes++
+			case errors.Is(result.err,ErrStaffLeaveNotFound): stale++
+			default: t.Fatalf("unexpected concurrent leave decision error (approve=%v): %v",result.approve,result.err)
+			}
+		}
+		if successes!=1||stale!=1 { t.Fatalf("concurrent decision outcomes success=%d stale=%d; want 1 each",successes,stale) }
+		var status string
+		if err:=f.pool.QueryRow(f.ctx,`SELECT status FROM staff_leave_requests WHERE id=$1 AND school_id=$2`,request.ID,f.schoolID).Scan(&status);err!=nil{t.Fatalf("read terminal leave decision: %v",err)}
+		if status!="approved"&&status!="rejected" { t.Fatalf("final leave status=%q; want approved or rejected",status) }
+		var auditCount int
+		if err:=f.pool.QueryRow(f.ctx,`SELECT COUNT(*) FROM audit_events WHERE school_id=$1 AND resource_type='staff_leave_request' AND resource_id=$2 AND action IN ('staff.leave.approved','staff.leave.rejected')`,f.schoolID,fmt.Sprint(request.ID)).Scan(&auditCount);err!=nil{t.Fatalf("count terminal decision audit events: %v",err)}
+		if auditCount!=1 { t.Fatalf("terminal decision audit events=%d want=1",auditCount) }
+	})
 
 	t.Run("leave type audit failures roll back create and update",func(t *testing.T){
 		if _,err:=f.pool.Exec(f.ctx,`CREATE OR REPLACE FUNCTION public.test_staff_leave_type_audit_failure() RETURNS trigger LANGUAGE plpgsql AS $body$ BEGIN IF NEW.action IN ('staff.leave_type.created','staff.leave_type.updated') THEN RAISE EXCEPTION 'forced leave type audit failure'; END IF; RETURN NEW; END; $body$`);err!=nil{t.Fatalf("create leave type audit failure function: %v",err)}
