@@ -232,6 +232,12 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
 		t.Fatalf("new staff account principal %d was absent from the same-school listing", created.PrincipalID)
 	}
 
+	// A caller cannot switch the legacy account listing to another school by
+	// supplying a forged school ID, even when the actor is a valid School Admin.
+	if foreignListing, err := repo.ListStaffAccounts(ctx, actorPrincipalID, schoolID+1); !errors.Is(err, ErrRolePermissionDenied) || foreignListing != nil {
+		t.Fatalf("forged foreign-school account listing = %+v, err=%v; want nil listing and ErrRolePermissionDenied", foreignListing, err)
+	}
+
     // Username changes must also roll back token invalidation and session
     // revocation when their required audit event cannot be written.
     usernameFailureSuffix := suffix[len(suffix)-8:]
