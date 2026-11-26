@@ -2,6 +2,7 @@
 
 - Staff Directory page counts and page rows now run in one read-only repeatable-read transaction for pool-backed requests. The directory summary's authorization and aggregate query also share one snapshot. Caller-owned transactions retain their existing isolation.
 - Staff Attendance Daily and Monthly totals and rows now use the same read-only repeatable-read pattern for pool-backed requests, preventing page totals from drifting away from returned rows while attendance is being marked or corrected.
+- Monthly Attendance CSV export now requires valid pagination metadata on the first and every subsequent page, verifies page size/offset/total/row count and unique staff identities, and refuses to create a CSV if metadata is missing or any page is incomplete. Playwright covers 101 staff across two export pages and verifies missing metadata produces no download; frontend CI [45825300711](https://github.com/TheSumitNain/school-management-system/actions/runs/45825300711) **PASS** with 154 tests.
 - Backend CI [45827227688](https://github.com/TheSumitNain/school-management-system/actions/runs/45827227688) **PASS** on `ec0825d386889bbc84bd4a243f0d58fe2ced6881`: full migrations, Go/PostgreSQL integration tests and `go vet`.
 - Frontend CI [45825300711](https://github.com/TheSumitNain/school-management-system/actions/runs/45825300711) **PASS** on the preceding frontend checkpoint: TypeScript, Vite production build and 154 Playwright tests.
 - No schema migration or persistent school-data change. Changes remain on `work`; `main` remains untouched.

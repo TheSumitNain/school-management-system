@@ -1,3 +1,13 @@
+## 2026-11-26 — Staff Leave paginated read consistency hardened
+
+- Staff Leave request page authorization, aggregate count and paginated rows now run in one read-only repeatable-read transaction for pool-backed requests. This keeps the response total and page rows on one database snapshot while requests are being created, decided or cancelled; caller-owned transactions retain their existing isolation.
+- Staff Substitution history pages use the same snapshot pattern. Authorization still occurs before date-filter validation, preserving the existing access-control ordering.
+- Both repositories and the shared handler parser cap the computed page offset at 1,000,000; page size remains 1–100.
+- Pool-backed PostgreSQL integration exercises the leave page with a real pending request and the substitution page query. Backend CI [45827227688](https://github.com/TheSumitNain/school-management-system/actions/runs/45827227688) **PASS** on `ec0825d386889bbc84bd4a243f0d58fe2ced6881`: full migrations, Go/PostgreSQL integration tests and `go vet`.
+- No schema migration, leave entitlement/balance policy or persistent school data change.
+
+---
+
 ## 2026-11-26 — paginated staff reads bounded and snapshot-consistent
 
 - Staff Directory, Attendance Daily/Monthly, Qualifications/Experience reports, Leave Requests and Substitutions now keep authorization and their count/page reads in a single read-only repeatable-read transaction for pool-backed requests. Existing caller-owned transactions retain their isolation level.
