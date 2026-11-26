@@ -297,3 +297,41 @@ func TestStaffAttendanceDailyAndMonthlyReadsAreSchoolScopedPostgresIntegration(t
 	}
 }
 
+func TestStaffAttendanceMonthlyRetainsInactiveStaffHistoryPostgresIntegration(t *testing.T) {
+	f := newStaffAttendanceIntegrationFixture(t)
+	day, err := time.Parse("2006-01-02", schooltime.TodayDate())
+	if err != nil {
+		t.Fatalf("parse school date: %v", err)
+	}
+	if _, err := f.repo.Mark(f.ctx, f.actorID, f.schoolID, f.staffIDs[0], day, "present", nil); err != nil {
+		t.Fatalf("mark attendance before staff inactivation: %v", err)
+	}
+	if _, err := f.pool.Exec(f.ctx, `UPDATE staff_profiles SET employment_status='inactive' WHERE principal_id=$1 AND school_id=$2`, f.staffIDs[0], f.schoolID); err != nil {
+		t.Fatalf("inactivate staff profile after attendance: %v", err)
+	}
+
+	daily, err := f.repo.ListDaily(f.ctx, f.actorID, f.schoolID, day)
+	if err != nil {
+		t.Fatalf("list current daily attendance after inactivation: %v", err)
+	}
+	for _, item := range daily {
+		if item.StaffPrincipalID == f.staffIDs[0] {
+			t.Fatal("inactive employee remained in the current daily attendance roster")
+		}
+	}
+
+	monthly, err := f.repo.ListMonthly(f.ctx, f.actorID, f.schoolID, day)
+	if err != nil {
+		t.Fatalf("list monthly attendance history after inactivation: %v", err)
+	}
+	for _, item := range monthly {
+		if item.StaffPrincipalID == f.staffIDs[0] {
+			if item.PresentDays != 1 {
+				t.Fatalf("inactive employee monthly present days=%d want=1", item.PresentDays)
+			}
+			return
+		}
+	}
+	t.Fatal("monthly attendance omitted inactive employee with retained attendance history")
+}
+
