@@ -2339,6 +2339,33 @@ test("staff attendance supports search, individual and atomic bulk marking, and 
   await expect.poll(() => auditReads).toBeGreaterThan(firstAttendanceAuditRead);
 });
 
+test("leave decisions refresh approved-leave context when attendance is reopened", async ({ page }) => {
+  const staffRows:Array<Record<string,unknown>>=[{
+    id:1,principal_id:530,school_id:10,username:"teacher.leave-context",
+    employee_code:"EMP-LEAVE-CONTEXT",full_name:"Leave Context Teacher",designation:"Teacher",
+    employment_status:"active",profile_complete:true,status:"active",must_change_password:false,
+  }];
+  let approvedContextReads=0;
+  page.on("request",request=>{
+    const url=new URL(request.url());
+    if(request.method()==="GET"&&url.pathname==="/api/school/staff-leave/requests"&&url.searchParams.has("on_date"))approvedContextReads++;
+  });
+  await signInAndOpenStaff(page,staffRows,undefined,[
+    "users.read","staff.attendance.read","staff.leave.read","staff.leave.decide",
+  ]);
+  await page.getByRole("button",{name:"Attendance",exact:true}).click();
+  await expect.poll(()=>approvedContextReads).toBeGreaterThan(0);
+  const initialReads=approvedContextReads;
+  await page.getByRole("button",{name:"Leave & Holidays"}).click();
+  const requestRow=page.locator("article.staff-leave-request").filter({hasText:"Family commitment"});
+  await requestRow.getByRole("button",{name:"Approve"}).click();
+  const decision=page.getByRole("dialog",{name:"Approve leave request"});
+  await decision.getByRole("button",{name:"Confirm approval"}).click();
+  await expect(requestRow.getByText("approved")).toBeVisible();
+  await page.getByRole("button",{name:"Attendance",exact:true}).click();
+  await expect.poll(()=>approvedContextReads).toBeGreaterThan(initialReads);
+});
+
 test("attendance drafts stay scoped to their selected date", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 520, school_id: 10, username: "teacher.date-draft",
