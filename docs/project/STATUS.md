@@ -3,7 +3,7 @@
 - Teacher-filtered timetable reads require the selected same-school profile to be explicitly classified as Teaching with active employment, preventing legacy timetable rows from being exposed for Non-teaching, Unclassified or inactive employees.
 - Preserved the documented School Admin workload contract: the school-wide report includes all same-school staff profiles, including Non-teaching, Unclassified and inactive employees, with employment/login status visible. Teacher-role workload access remains self-only and requires an active Teaching profile.
 - Extended the PostgreSQL workload integration fixture with Non-teaching, Unclassified and inactive Teaching profiles, and asserts that School Admin sees all five same-school profiles while the Teacher sees only their own row.
-- Changes are on the existing `work` branch. Repository-side tests/CI have not yet been executed for this checkpoint; do not treat this batch as verified until backend integration and CI pass. No migration or persistent school data change.
+- Changes are on the existing `work` branch. GitHub Actions run `45802850948` for commit `5fb07b83d997fc4263feca2b865ddcd314fef9f4` completed successfully: all migrations, backend tests including PostgreSQL integration, and `go vet` passed. No migration or persistent school data change.
 
 ---
 
