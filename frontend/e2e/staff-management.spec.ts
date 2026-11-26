@@ -1524,6 +1524,12 @@ test("staff profile creates education, certification and experience records", as
   await expect(certificateNameInput).toHaveValue("C".repeat(180));
   await certificateNameInput.fill("Teacher Training");
   await dialog.locator('input[name="issuing_organization"]').fill("State Board");
+  await dialog.locator('input[name="issue_date"]').evaluate((element: HTMLInputElement) => {
+    element.value = "2026-02-30";
+  });
+  await dialog.getByRole("button", { name: "Save record" }).click();
+  await expect(dialog.getByText("Enter a real calendar issue date.")).toBeVisible();
+  await expect(dialog.getByText("Teacher Training")).toHaveCount(0);
   await expect(dialog.locator('input[name="credential_id"]')).not.toHaveAttribute("maxLength");
   await dialog.locator('input[name="credential_id"]').fill("🔐".repeat(121));
   await expect(dialog.locator('input[name="credential_id"]')).toHaveValue(unicodeCredential);
