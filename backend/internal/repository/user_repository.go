@@ -1264,11 +1264,19 @@ func (r *UserRepository) EnableStaffAccount(
 
 
 func (r *UserRepository) ListStaffDirectoryPage(ctx context.Context, actorPrincipalID, schoolID int64, filter models.StaffDirectoryFilter) (*models.StaffDirectoryPage, error) {
-	if r == nil || r.db == nil || actorPrincipalID <= 0 || schoolID <= 0 {
+	if r == nil || r.db == nil || actorPrincipalID <= 0 || schoolID <= 0 || filter.Limit < 1 || filter.Limit > 100 || filter.Offset < 0 {
 		return nil, ErrRolePermissionDenied
 	}
+	tx, err := r.db.Begin(ctx)
+	if err != nil { return nil, fmt.Errorf("begin staff directory page snapshot: %w", err) }
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, callerOwnsTransaction := r.db.(pgx.Tx); !callerOwnsTransaction {
+		if _, err := tx.Exec(ctx, "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY"); err != nil {
+			return nil, fmt.Errorf("set staff directory page snapshot: %w", err)
+		}
+	}
 	var authorized bool
-	if err := r.db.QueryRow(ctx, `
+	if err := tx.QueryRow(ctx, `
 		SELECT EXISTS (
 			SELECT 1
 			FROM auth_principals ap
@@ -1308,10 +1316,10 @@ func (r *UserRepository) ListStaffDirectoryPage(ctx context.Context, actorPrinci
 	`
 	page := &models.StaffDirectoryPage{Staff: make([]models.User, 0), Limit: filter.Limit, Offset: filter.Offset}
 	countQuery := "SELECT COUNT(*) " + filtered
-	if err := r.db.QueryRow(ctx, countQuery, schoolID, filter.Search, filter.EmploymentStatus, filter.StaffType, filter.AccountStatus, filter.ProfileStatus).Scan(&page.Total); err != nil {
+	if err := tx.QueryRow(ctx, countQuery, schoolID, filter.Search, filter.EmploymentStatus, filter.StaffType, filter.AccountStatus, filter.ProfileStatus).Scan(&page.Total); err != nil {
 		return nil, fmt.Errorf("count school staff directory: %w", err)
 	}
-	rows, err := r.db.Query(ctx, `
+	rows, err := tx.Query(ctx, `
 		SELECT u.id, u.principal_id, u.school_id, u.username, u.status,
 		       u.must_change_password, u.created_at, u.updated_at,
 		       COALESCE(sp.employee_code, ''), COALESCE(sp.full_name, ''),
@@ -1353,6 +1361,8 @@ func (r *UserRepository) ListStaffDirectoryPage(ctx context.Context, actorPrinci
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("iterate school staff directory page: %w", err)
 	}
+	rows.Close()
+	if err := tx.Commit(ctx); err != nil { return nil, fmt.Errorf("commit staff directory page snapshot: %w", err) }
 	return page, nil
 }
 
@@ -1361,8 +1371,16 @@ func (r *UserRepository) GetStaffDirectorySummary(ctx context.Context, actorPrin
 	if r == nil || r.db == nil || actorPrincipalID <= 0 || schoolID <= 0 {
 		return nil, ErrRolePermissionDenied
 	}
+	tx, err := r.db.Begin(ctx)
+	if err != nil { return nil, fmt.Errorf("begin staff directory summary snapshot: %w", err) }
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, callerOwnsTransaction := r.db.(pgx.Tx); !callerOwnsTransaction {
+		if _, err := tx.Exec(ctx, "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY"); err != nil {
+			return nil, fmt.Errorf("set staff directory summary snapshot: %w", err)
+		}
+	}
 	var authorized bool
-	if err := r.db.QueryRow(ctx, `
+	if err := tx.QueryRow(ctx, `
 		SELECT EXISTS (
 			SELECT 1
 			FROM auth_principals ap
@@ -1391,7 +1409,7 @@ func (r *UserRepository) GetStaffDirectorySummary(ctx context.Context, actorPrin
 	}
 
 	summary := &models.StaffDirectorySummary{}
-	if err := r.db.QueryRow(ctx, `
+	if err := tx.QueryRow(ctx, `
 		SELECT COUNT(*)::bigint,
 		       COUNT(*) FILTER (WHERE sp.employment_status = 'active')::bigint,
 		       COUNT(*) FILTER (WHERE u.status = 'active')::bigint,
@@ -1407,5 +1425,6 @@ func (r *UserRepository) GetStaffDirectorySummary(ctx context.Context, actorPrin
 		&summary.MustChangePassword, &summary.InactiveEmployment); err != nil {
 		return nil, fmt.Errorf("query school staff directory summary: %w", err)
 	}
+	if err := tx.Commit(ctx); err != nil { return nil, fmt.Errorf("commit staff directory summary snapshot: %w", err) }
 	return summary, nil
 }
