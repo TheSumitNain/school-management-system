@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Download, RefreshCw } from "lucide-react";
 import { getClassInchargeAssignments, getMonthlyStaffAttendance, getAllStaffLeaveRequests, getStaffQualificationsReport, getStaffExperienceReport, getTeacherSubjectAssignments } from "../api";
@@ -212,6 +212,12 @@ function QualificationsReport({ permissions }: Props) {
   });
   if (!canRead) return null;
   const page = report.data?.report;
+  useEffect(() => {
+    const total = page?.total;
+    if (total === undefined) return;
+    const lastOffset = total === 0 ? 0 : Math.floor((total - 1) / limit) * limit;
+    if (offset > lastOffset) setOffset(lastOffset);
+  }, [page?.total, offset]);
   const exportRows = (rows: StaffQualificationReportRow[]) => exportCSV("staff-qualifications-certifications.csv", [
     ["Record type", "Employee code", "Staff name", "Record", "Institution / issuing organization", "Completion / issue date", "Expiry date", "Verification status"],
     ...rows.map(row => [row.record_type, row.employee_code, row.staff_name, row.record_name, row.organization, row.record_date, row.expiry_date, row.verification_status]),
@@ -261,7 +267,7 @@ function QualificationsReport({ permissions }: Props) {
   return <section className="staff-operational-report-section">
     <div className="staff-operational-report-title">
       <div><h3>Qualifications & certifications</h3><p>Active employees only · Verification notes and credential references are not included.</p></div>
-      <button type="button" className="staff-operational-report-export" onClick={() => void exportAll()} disabled={!page || page.total === 0 || exporting || report.isFetching || report.isError}><Download size={14}/> {exporting ? "Preparing CSV…" : "Export all matching CSV"}</button>
+      <div className="staff-operational-report-actions"><button type="button" className="staff-operational-report-export" onClick={() => void report.refetch()} disabled={report.isFetching || exporting || report.isError}><RefreshCw size={14}/> Refresh</button><button type="button" className="staff-operational-report-export" onClick={() => void exportAll()} disabled={!page || page.total === 0 || exporting || report.isFetching || report.isError}><Download size={14}/> {exporting ? "Preparing CSV…" : "Export all matching CSV"}</button></div>
     </div>
     {exportError && <p className="staff-operational-report-error" role="alert">{exportError}</p>}
     <div className="staff-operational-report-filters">
@@ -299,6 +305,12 @@ function ExperienceReport({ permissions }: Props) {
   });
   if(!canRead)return null;
   const page=report.data?.report;
+  useEffect(()=>{
+    const total=page?.total;
+    if(total===undefined)return;
+    const lastOffset=total===0?0:Math.floor((total-1)/limit)*limit;
+    if(offset>lastOffset)setOffset(lastOffset);
+  },[page?.total,offset]);
   const current=(page?.counts??[]).filter(item=>item.is_current).reduce((sum,item)=>sum+item.count,0);
   const previous=(page?.counts??[]).filter(item=>!item.is_current).reduce((sum,item)=>sum+item.count,0);
   const exportRows=(rows:StaffExperienceReportRow[])=>exportCSV("staff-experience-report.csv",[
@@ -335,7 +347,7 @@ function ExperienceReport({ permissions }: Props) {
   return <section className="staff-operational-report-section">
     <div className="staff-operational-report-title">
       <div><h3>Staff experience history</h3><p>School-wide employment history, including inactive employees. Free-text descriptions are excluded.</p></div>
-      <button type="button" className="staff-operational-report-export" onClick={()=>void exportAll()} disabled={!page||page.total===0||exporting||report.isFetching||report.isError}><Download size={14}/> {exporting?"Preparing CSV…":"Export all matching CSV"}</button>
+      <div className="staff-operational-report-actions"><button type="button" className="staff-operational-report-export" onClick={()=>void report.refetch()} disabled={report.isFetching||exporting||report.isError}><RefreshCw size={14}/> Refresh</button><button type="button" className="staff-operational-report-export" onClick={()=>void exportAll()} disabled={!page||page.total===0||exporting||report.isFetching||report.isError}><Download size={14}/> {exporting?"Preparing CSV…":"Export all matching CSV"}</button></div>
     </div>
     {exportError&&<p className="staff-operational-report-error" role="alert">{exportError}</p>}
     <div className="staff-operational-report-filters">

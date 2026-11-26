@@ -13,6 +13,8 @@ test("staff qualifications and experience reports filter, paginate and retain hi
   const qualificationRequests: URL[] = [];
   const experienceRequests: URL[] = [];
   let failQualificationExport = false;
+  let qualificationTotal = 51;
+  let experienceTotal = 51;
 
   await page.route("**/api/**", async route => {
     const request = route.request();
@@ -59,8 +61,8 @@ test("staff qualifications and experience reports filter, paginate and retain hi
         : allRows.slice(offset, offset + requestedLimit);
       const counts = filtered
         ? [{ record_type: "certification", verification_status: "pending", count: 1 }]
-        : [{ record_type: "qualification", verification_status: "pending", count: 51 }];
-      await route.fulfill({ json: { report: { rows, counts, limit: requestedLimit, offset, total: filtered ? 1 : 51 } } });
+        : [{ record_type: "qualification", verification_status: "pending", count: qualificationTotal }];
+      await route.fulfill({ json: { report: { rows, counts, limit: requestedLimit, offset, total: filtered ? 1 : qualificationTotal } } });
       return;
     }
     if (path === "/school/staff/experience-report" && request.method() === "GET") {
@@ -81,7 +83,7 @@ test("staff qualifications and experience reports filter, paginate and retain hi
       const counts = currentOnly
         ? [{ employment_type: "permanent", is_current: true, count: 1 }]
         : [{ employment_type: "contract", is_current: false, count: 50 }, { employment_type: "permanent", is_current: true, count: 1 }];
-      await route.fulfill({ json: { report: { rows, counts, limit: requestedLimit, offset, total: currentOnly ? 1 : 51 } } });
+      await route.fulfill({ json: { report: { rows, counts, limit: requestedLimit, offset, total: currentOnly ? 1 : experienceTotal } } });
       return;
     }
     await route.fulfill({ status: 404, json: { message: `Unmocked E2E API request: ${request.method()} ${path}` } });
@@ -110,7 +112,11 @@ test("staff qualifications and experience reports filter, paginate and retain hi
   const qualificationDownload = await qualificationDownloadPromise;
   expect(qualificationDownload.suggestedFilename()).toBe("staff-qualifications-certifications.csv");
   expect(qualificationRequests.some(url => url.searchParams.get("offset") === "0" && url.searchParams.get("limit") === "200")).toBeTruthy();
-  expect(qualificationRequests.some(url => url.searchParams.get("offset") === "0" && url.searchParams.get("limit") === "200")).toBeTruthy();
+  qualificationTotal = 50;
+  await qualificationSection.getByRole("button", { name: "Refresh" }).click();
+  await expect(qualificationPagination).toContainText("Showing 1–50 of 50");
+  await expect(qualificationSection.getByText("Qualification 50", { exact: true })).toBeVisible();
+  await expect(qualificationSection.getByText("Qualification 51", { exact: true })).toHaveCount(0);
   await qualificationSection.getByLabel("Record type").selectOption("certification");
   await qualificationSection.getByLabel("Verification status").selectOption("pending");
   await expect(page.getByText("First Aid Certificate", { exact: true })).toBeVisible();
@@ -131,9 +137,11 @@ test("staff qualifications and experience reports filter, paginate and retain hi
   const experienceDownload = await experienceDownloadPromise;
   expect(experienceDownload.suggestedFilename()).toBe("staff-experience-report.csv");
   expect(experienceRequests.some(url => url.searchParams.get("offset") === "0" && url.searchParams.get("limit") === "200")).toBeTruthy();
-  expect(experienceRequests.some(url => url.searchParams.get("offset") === "0" && url.searchParams.get("limit") === "200")).toBeTruthy();
-  await experiencePagination.getByRole("button", { name: "Previous" }).click();
+  experienceTotal = 50;
+  await experienceSection.getByRole("button", { name: "Refresh" }).click();
+  await expect(experiencePagination).toContainText("Showing 1–50 of 50");
   await expect(experienceSection.getByText("Previous School", { exact: true })).toBeVisible();
+  await expect(experienceSection.getByText("Older Academy", { exact: true })).toHaveCount(0);
   await experienceSection.getByLabel("Experience status").selectOption("current");
   await expect(experienceSection.getByText("Current Academy", { exact: true })).toBeVisible();
   expect(experienceRequests.some(url => url.searchParams.get("current_only") === "true")).toBeTruthy();

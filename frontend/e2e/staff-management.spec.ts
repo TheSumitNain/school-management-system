@@ -2930,7 +2930,7 @@ test("substitution history clamps to the last valid page when the server-side to
   await expect(page.getByText("Showing 51–51 of 51")).toBeVisible();
   await expect(page.getByText("Coverage record 51")).toBeVisible();
   total=50;
-  await page.getByRole("button",{name:/Refresh/}).click();
+  await page.locator(".staff-substitution-list-heading").getByRole("button",{name:"Refresh",exact:true}).click();
   await expect(page.getByText("Showing 1–50 of 50")).toBeVisible();
   await expect(page.getByText("Coverage record 50")).toBeVisible();
   await expect(page.getByText("Coverage record 51")).toHaveCount(0);
