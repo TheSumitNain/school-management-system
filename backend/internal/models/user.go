@@ -3,6 +3,7 @@ package models
 import "time"
 
 type StaffProfile struct {
+    StaffType string
     EmployeeCode string
     FullName string
     Designation string
@@ -13,6 +14,7 @@ type StaffProfile struct {
 }
 
 type User struct {
+    StaffType string `json:"staff_type"`
     EmployeeCode string `json:"employee_code"`
     FullName string `json:"full_name"`
     Designation string `json:"designation"`

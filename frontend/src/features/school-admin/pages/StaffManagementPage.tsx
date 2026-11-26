@@ -212,10 +212,11 @@ export function StaffManagementPage({ permissions }: Props) {
   const [showPassword, setShowPassword] = useState(false);
   const [createStep, setCreateStep] = useState(1);
   const wizardFormRef = useRef<HTMLFormElement>(null);
-  const [createReview, setCreateReview] = useState<{fullName:string;employeeCode:string;mobileNumber:string;email:string;designation:string;joiningDate:string;username:string} | null>(null);
+  const [createReview, setCreateReview] = useState<{fullName:string;employeeCode:string;mobileNumber:string;email:string;designation:string;staffType:string;joiningDate:string;username:string} | null>(null);
   const [credentialHandoff, setCredentialHandoff] = useState<{ fullName: string; username: string; password: string } | null>(null);
   const [joiningDate, setJoiningDate] = useState("");
   const [employmentStatus, setEmploymentStatus] = useState<"active" | "inactive">("active");
+  const [staffType, setStaffType] = useState<"teaching" | "non_teaching" | "">("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [rolesForPrincipal, setRolesForPrincipal] = useState<number | null>(null);
   const [overridesForPrincipal, setOverridesForPrincipal] = useState<number | null>(null);
@@ -288,6 +289,7 @@ export function StaffManagementPage({ permissions }: Props) {
     setAction(next);
     setJoiningDate(item?.joining_date ? item.joining_date.slice(0, 10) : "");
     setEmploymentStatus(item?.employment_status === "inactive" ? "inactive" : "active");
+    setStaffType(item?.staff_type === "teaching" || item?.staff_type === "non_teaching" ? item.staff_type : "");
     setShowPassword(false);
     setCreateStep(1);
     setCreateReview(null);
@@ -299,6 +301,7 @@ export function StaffManagementPage({ permissions }: Props) {
     setSelected(null);
     setJoiningDate("");
     setEmploymentStatus("active");
+    setStaffType("");
     setShowPassword(false);
     setFieldErrors({});
     setCreateStep(1);
@@ -337,6 +340,7 @@ export function StaffManagementPage({ permissions }: Props) {
     const mobileNumber = value("mobile_number");
     const email = value("email");
     const joiningDate = value("joining_date");
+    const selectedStaffType = value("staff_type");
     const stepErrors: Record<string, string> = {};
     if (createStep === 1) {
       if (!fullName || Array.from(fullName).length > 160) stepErrors.full_name = "Enter the employee full name (up to 160 characters).";
@@ -345,6 +349,7 @@ export function StaffManagementPage({ permissions }: Props) {
       if (!isValidStaffEmail(email)) stepErrors.email = "Enter a valid email address.";
     }
     if (createStep === 2) {
+      if (selectedStaffType !== "teaching" && selectedStaffType !== "non_teaching") stepErrors.staff_type = "Choose Teaching or Non-teaching staff.";
       if (!designation || Array.from(designation).length > 100) stepErrors.designation = "Enter a designation (up to 100 characters).";
       if (joiningDate && joiningDate > schoolDateValueYearsAhead(1)) stepErrors.joining_date = "Joining date cannot be more than one year ahead.";
     }
@@ -354,7 +359,7 @@ export function StaffManagementPage({ permissions }: Props) {
     }
     setFieldErrors(stepErrors);
     if (Object.keys(stepErrors).length) return;
-    if (createStep === 3) setCreateReview({fullName,employeeCode,mobileNumber,email,designation,joiningDate,username});
+    if (createStep === 3) setCreateReview({fullName,employeeCode,mobileNumber,email,designation,staffType:selectedStaffType,joiningDate,username});
     setCreateStep(step => step + 1);
   }
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -372,8 +377,10 @@ export function StaffManagementPage({ permissions }: Props) {
     const email = String(form.get("email") ?? "").trim();
     const joiningDate = String(form.get("joining_date") ?? "").trim();
     const employmentStatus = String(form.get("employment_status") ?? "active");
+    const selectedStaffType = String(form.get("staff_type") ?? "");
     if ((action === "create" || action === "edit") && !/^[a-z0-9][a-z0-9._-]{2,31}$/.test(username)) nextErrors.username = "Use 3–32 lowercase letters, numbers, dots, underscores or hyphens; start with a letter or number.";
     if (action === "create" || action === "edit") {
+      if (selectedStaffType !== "teaching" && selectedStaffType !== "non_teaching") nextErrors.staff_type = "Choose Teaching or Non-teaching staff.";
       if (!fullName || Array.from(fullName).length > 160) nextErrors.full_name = "Enter the employee's full name (up to 160 characters).";
       if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/.test(employeeCode)) nextErrors.employee_code = "Use 1–32 letters, numbers, dots, underscores or hyphens.";
       if (!designation || Array.from(designation).length > 100) nextErrors.designation = "Enter a designation (up to 100 characters).";
@@ -388,12 +395,12 @@ export function StaffManagementPage({ permissions }: Props) {
     setFeedback(null);
     try {
       if (action === "create") {
-        await create.mutateAsync({ username, initial_password: password, full_name: fullName, employee_code: employeeCode, designation, mobile_number: mobileNumber, email, joining_date: joiningDate || undefined });
+        await create.mutateAsync({ username, initial_password: password, full_name: fullName, employee_code: employeeCode, designation, staff_type: selectedStaffType as "teaching" | "non_teaching", mobile_number: mobileNumber, email, joining_date: joiningDate || undefined });
         setCredentialHandoff({ fullName, username, password });
         notifyToast("success", "Employee profile and staff login created. Review the one-time credential handoff.");
         setFeedback(null);
       } else if (action === "edit" && selected) {
-        await update.mutateAsync({ principalID: selected.principal_id, username, full_name: fullName, employee_code: employeeCode, designation, mobile_number: mobileNumber, email, joining_date: joiningDate || undefined, employment_status: employmentStatus as "active" | "inactive" });
+        await update.mutateAsync({ principalID: selected.principal_id, username, full_name: fullName, employee_code: employeeCode, designation, staff_type: selectedStaffType as "teaching" | "non_teaching", mobile_number: mobileNumber, email, joining_date: joiningDate || undefined, employment_status: employmentStatus as "active" | "inactive" });
         notifyToast("success", "Employee profile and login details updated.");
         setFeedback(null);
       } else if (action === "reset" && selected) {
@@ -410,7 +417,7 @@ export function StaffManagementPage({ permissions }: Props) {
       const message = error instanceof Error ? error.message : "The request could not be completed.";
       const mapped: Record<string, string> = {};
       if (error instanceof ApiError) {
-        for (const key of ["username", "initial_password", "full_name", "employee_code", "designation", "mobile_number", "email", "joining_date", "employment_status"]) {
+        for (const key of ["username", "initial_password", "full_name", "employee_code", "designation", "staff_type", "mobile_number", "email", "joining_date", "employment_status"]) {
           if (error.fieldErrors[key]) mapped[key === "initial_password" ? "password" : key] = error.fieldErrors[key];
         }
       }
@@ -603,7 +610,7 @@ export function StaffManagementPage({ permissions }: Props) {
           {["Identity", "Employment", "Login & Access", "Review"].map((step, index) => <div key={step} className={createStep === index + 1 ? "current" : createStep > index + 1 ? "complete" : ""} aria-current={createStep === index + 1 ? "step" : undefined}><span>{createStep > index + 1 ? "✓" : index + 1}</span><small>{step}</small></div>)}
         </div>}
         {action === "create" && createStep === 4 && <section className="staff-wizard-review"><h3>Review & create</h3><p>Check the details before creating this employee and login account.</p>
-          <dl>{createReview && <><div><dt>Full name</dt><dd>{createReview.fullName}</dd></div><div><dt>Employee code</dt><dd>{createReview.employeeCode}</dd></div><div><dt>Mobile</dt><dd>{createReview.mobileNumber}</dd></div><div><dt>Email</dt><dd>{createReview.email || "Not provided"}</dd></div><div><dt>Designation</dt><dd>{createReview.designation}</dd></div><div><dt>Joining date</dt><dd>{createReview.joiningDate || "Not set"}</dd></div><div><dt>Login username</dt><dd>{createReview.username}</dd></div></>}</dl>
+          <dl>{createReview && <><div><dt>Full name</dt><dd>{createReview.fullName}</dd></div><div><dt>Employee code</dt><dd>{createReview.employeeCode}</dd></div><div><dt>Mobile</dt><dd>{createReview.mobileNumber}</dd></div><div><dt>Email</dt><dd>{createReview.email || "Not provided"}</dd></div><div><dt>Designation</dt><dd>{createReview.designation}</dd></div><div><dt>Staff type</dt><dd>{createReview.staffType === "teaching" ? "Teaching" : "Non-teaching"}</dd></div><div><dt>Joining date</dt><dd>{createReview.joiningDate || "Not set"}</dd></div><div><dt>Login username</dt><dd>{createReview.username}</dd></div></>}</dl>
           <p>Temporary password change is required at first sign-in. After creation, you can explicitly copy credentials for a trusted handoff. Nothing is sent automatically.</p></section>}
         <form ref={wizardFormRef} onSubmit={submit} noValidate>
           {action === "create" && <label hidden={createStep !== 3}>Login username<input name="username" placeholder="e.g. rahul.sharma" minLength={3} maxLength={32} pattern="[a-z0-9][a-z0-9._-]{2,31}" autoComplete="off" required aria-invalid={Boolean(fieldErrors.username)} aria-describedby={fieldErrors.username ? "staff-username-error" : "staff-username-help"} onChange={()=>setFieldErrors(current=>({...current,username:""}))}/><small id="staff-username-help">3–32 lowercase letters, numbers, dots, underscores or hyphens. Unique across the platform.</small>{fieldErrors.username && <small className="app-field-error" id="staff-username-error" role="alert">{fieldErrors.username}</small>}</label>}
@@ -611,6 +618,7 @@ export function StaffManagementPage({ permissions }: Props) {
           {(action === "create" || action === "edit") && <>
             <label hidden={action === "create" && createStep !== 1}>Full name<input name="full_name" placeholder="e.g. Rahul Sharma" defaultValue={selected?.full_name ?? ""} required aria-invalid={Boolean(fieldErrors.full_name)} aria-describedby={fieldErrors.full_name ? "staff-full-name-error" : undefined} onChange={event => { limitStaffRecordInput(event, 160); setFieldErrors(current=>({...current,full_name:""})); }}/>{fieldErrors.full_name && <small className="app-field-error" id="staff-full-name-error" role="alert">{fieldErrors.full_name}</small>}</label>
             <label hidden={action === "create" && createStep !== 1}>Employee code<input name="employee_code" placeholder="e.g. EMP-001" defaultValue={selected?.employee_code ?? ""} maxLength={32} required aria-invalid={Boolean(fieldErrors.employee_code)} aria-describedby={fieldErrors.employee_code ? "staff-employee-code-error" : undefined} onChange={()=>setFieldErrors(current=>({...current,employee_code:""}))}/><small>Must be unique within this school.</small>{fieldErrors.employee_code && <small className="app-field-error" id="staff-employee-code-error" role="alert">{fieldErrors.employee_code}</small>}</label>
+            <label hidden={action === "create" && createStep !== 2}>Staff type<input type="hidden" name="staff_type" value={staffType}/><Select value={staffType} onChange={value => { setStaffType(value as "teaching" | "non_teaching" | ""); setFieldErrors(current => ({ ...current, staff_type: "" })); }} ariaLabel="Staff type" options={[{ value: "", label: "Choose staff type" }, { value: "teaching", label: "Teaching" }, { value: "non_teaching", label: "Non-teaching" }]} invalid={Boolean(fieldErrors.staff_type)} describedBy={fieldErrors.staff_type ? "staff-type-error" : undefined}/><small>Classification does not automatically grant a login role.</small>{fieldErrors.staff_type && <small className="app-field-error" id="staff-type-error" role="alert">{fieldErrors.staff_type}</small>}</label>
             <label hidden={action === "create" && createStep !== 2}>Designation<input name="designation" placeholder="e.g. Mathematics Teacher" defaultValue={selected?.designation ?? ""} required aria-invalid={Boolean(fieldErrors.designation)} aria-describedby={fieldErrors.designation ? "staff-designation-error" : undefined} onChange={event => { limitStaffRecordInput(event, 100); setFieldErrors(current=>({...current,designation:""})); }}/>{fieldErrors.designation && <small className="app-field-error" id="staff-designation-error" role="alert">{fieldErrors.designation}</small>}</label>
             <label hidden={action === "create" && createStep !== 1}>Mobile number<input name="mobile_number" type="tel" placeholder="e.g. 9876543210" defaultValue={selected?.mobile_number ?? ""} maxLength={16} required aria-invalid={Boolean(fieldErrors.mobile_number)} aria-describedby={fieldErrors.mobile_number ? "staff-mobile-error" : undefined} onChange={()=>setFieldErrors(current=>({...current,mobile_number:""}))}/><small>Enter one contact number (10–15 digits).</small>{fieldErrors.mobile_number && <small className="app-field-error" id="staff-mobile-error" role="alert">{fieldErrors.mobile_number}</small>}</label>
             <label hidden={action === "create" && createStep !== 1}>Email address <small>(optional)</small><input name="email" type="text" inputMode="email" autoComplete="email" placeholder="e.g. rahul@example.com" defaultValue={selected?.email ?? ""} aria-invalid={Boolean(fieldErrors.email)} aria-describedby={fieldErrors.email ? "staff-email-error" : undefined} onChange={event => { limitStaffRecordInput(event, 254); setFieldErrors(current=>({...current,email:""})); }}/>{fieldErrors.email && <small className="app-field-error" id="staff-email-error" role="alert">{fieldErrors.email}</small>}</label>

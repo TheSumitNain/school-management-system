@@ -88,7 +88,7 @@ func TestStaffHandlerCreateSuccessDoesNotExposePassword(t *testing.T) {
 		c.Next()
 	}, NewStaffHandler(service).Create)
 	req := httptest.NewRequest(http.MethodPost, "/school/staff",
-		strings.NewReader(`{"username":"teacher.one","initial_password":"A-Strong-Initial-Pass-123","full_name":"Rahul Sharma","employee_code":"EMP-001","designation":"Teacher","mobile_number":"9876543210"}`))
+		strings.NewReader(`{"username":"teacher.one","initial_password":"A-Strong-Initial-Pass-123","full_name":"Rahul Sharma","employee_code":"EMP-001","designation":"Teacher","mobile_number":"9876543210","staff_type":"teaching"}`))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -154,7 +154,7 @@ func TestStaffHandlerCreateRejectsMissingAuthMalformedAndServiceErrors(t *testin
 	} {
 		service.err = test.err
 		req = httptest.NewRequest(http.MethodPost, "/school/staff",
-			strings.NewReader(`{"username":"teacher.one","initial_password":"A-Strong-Initial-Pass-123","full_name":"Rahul Sharma","employee_code":"EMP-001","designation":"Teacher","mobile_number":"9876543210"}`))
+			strings.NewReader(`{"username":"teacher.one","initial_password":"A-Strong-Initial-Pass-123","full_name":"Rahul Sharma","employee_code":"EMP-001","designation":"Teacher","mobile_number":"9876543210","staff_type":"teaching"}`))
 		req.Header.Set("Content-Type", "application/json")
 		rec = httptest.NewRecorder()
 		router.ServeHTTP(rec, req)
@@ -316,7 +316,7 @@ func TestStaffHandlerUpdateProfileParsesAndPassesCompleteProfile(t *testing.T) {
 	}, NewStaffHandler(service).Update)
 
 	req := httptest.NewRequest(http.MethodPatch, "/school/staff/27", strings.NewReader(
-		`{"username":"teacher.one","employee_code":"EMP-001","full_name":"Teacher One","designation":"Class Teacher","mobile_number":"9876543210","email":"teacher@example.com","joining_date":"2026-04-01","employment_status":"inactive"}`))
+		`{"username":"teacher.one","employee_code":"EMP-001","full_name":"Teacher One","designation":"Class Teacher","mobile_number":"9876543210","staff_type":"teaching","email":"teacher@example.com","joining_date":"2026-04-01","employment_status":"inactive"}`))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -353,7 +353,7 @@ func TestStaffHandlerUpdateProfileDoesNotExposePasswordHash(t *testing.T) {
 		c.Next()
 	}, NewStaffHandler(service).Update)
 	req := httptest.NewRequest(http.MethodPatch, "/school/staff/27", strings.NewReader(
-		`{"employee_code":"EMP-001","full_name":"Teacher One","designation":"Class Teacher","mobile_number":"9876543210","employment_status":"active"}`))
+		`{"employee_code":"EMP-001","full_name":"Teacher One","designation":"Class Teacher","mobile_number":"9876543210","staff_type":"teaching","employment_status":"active"}`))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -375,7 +375,7 @@ func TestStaffHandlerUpdateProfileRejectsMalformedJoiningDateBeforeService(t *te
 		c.Next()
 	}, NewStaffHandler(service).Update)
 	req := httptest.NewRequest(http.MethodPatch, "/school/staff/27", strings.NewReader(
-		`{"employee_code":"EMP-001","full_name":"Teacher One","designation":"Class Teacher","mobile_number":"9876543210","email":"teacher@example.com","joining_date":"2026-02-30","employment_status":"active"}`))
+		`{"employee_code":"EMP-001","full_name":"Teacher One","designation":"Class Teacher","mobile_number":"9876543210","staff_type":"teaching","email":"teacher@example.com","joining_date":"2026-02-30","employment_status":"active"}`))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -459,7 +459,7 @@ func TestStaffHandlerCreateRejectsNilUserWithoutError(t *testing.T) {
 		c.Set("auth_school_id", int64(8))
 		c.Next()
 	}, NewStaffHandler(service).Create)
-	req := httptest.NewRequest(http.MethodPost, "/school/staff", strings.NewReader(`{"username":"teacher.one","initial_password":"A-Strong-Initial-Pass-123","full_name":"Rahul Sharma","employee_code":"EMP-001","designation":"Teacher","mobile_number":"9876543210"}`))
+	req := httptest.NewRequest(http.MethodPost, "/school/staff", strings.NewReader(`{"username":"teacher.one","initial_password":"A-Strong-Initial-Pass-123","full_name":"Rahul Sharma","employee_code":"EMP-001","designation":"Teacher","mobile_number":"9876543210","staff_type":"teaching"}`))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)

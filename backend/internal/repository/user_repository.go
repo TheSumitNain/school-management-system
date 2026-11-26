@@ -72,7 +72,7 @@ func (r *UserRepository) ListStaffAccounts(ctx context.Context, actorPrincipalID
                COALESCE(sp.employee_code, ''), COALESCE(sp.full_name, ''),
                COALESCE(sp.designation, ''), COALESCE(sp.mobile_number, ''),
                COALESCE(sp.email, ''), sp.joining_date,
-               COALESCE(sp.employment_status, ''), (sp.principal_id IS NOT NULL), EXISTS (
+               COALESCE(sp.employment_status, ''), COALESCE(sp.staff_type, ''), (sp.principal_id IS NOT NULL), EXISTS (
 		       SELECT 1
 		       FROM principal_roles protected_assignment
 		       JOIN roles protected_role ON protected_role.id = protected_assignment.role_id
@@ -100,7 +100,7 @@ func (r *UserRepository) ListStaffAccounts(ctx context.Context, actorPrincipalID
 		if err := rows.Scan(&user.ID, &user.PrincipalID, &user.SchoolID, &user.Username,
 			&user.Status, &user.MustChangePassword, &user.CreatedAt, &user.UpdatedAt,
             &user.EmployeeCode, &user.FullName, &user.Designation, &user.MobileNumber,
-            &user.Email, &joiningDate, &user.EmploymentStatus, &user.ProfileComplete,
+            &user.Email, &joiningDate, &user.EmploymentStatus, &user.StaffType, &user.ProfileComplete,
             &user.ProtectedSchoolAdmin); err != nil {
 			return nil, fmt.Errorf("scan school staff account: %w", err)
 		}
@@ -257,15 +257,16 @@ func (r *UserRepository) CreateStaffAccountWithProfile(
 
     if _, err := tx.Exec(ctx, `
         INSERT INTO staff_profiles
-            (principal_id, school_id, employee_code, full_name, designation, mobile_number, email, joining_date, employment_status)
-        VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7, ''), $8, 'active')
-    `, user.PrincipalID, schoolID, profile.EmployeeCode, profile.FullName, profile.Designation, profile.MobileNumber, profile.Email, profile.JoiningDate); err != nil {
+            (principal_id, school_id, staff_type, employee_code, full_name, designation, mobile_number, email, joining_date, employment_status)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, NULLIF($8, ''), $9, 'active')
+    `, user.PrincipalID, schoolID, profile.StaffType, profile.EmployeeCode, profile.FullName, profile.Designation, profile.MobileNumber, profile.Email, profile.JoiningDate); err != nil {
         var pgErr *pgconn.PgError
         if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "ux_staff_profiles_school_employee_code" {
             return nil, ErrEmployeeCodeTaken
         }
         return nil, fmt.Errorf("insert staff employee profile: %w", err)
     }
+    user.StaffType = profile.StaffType
     user.EmployeeCode = profile.EmployeeCode
     user.FullName = profile.FullName
     user.Designation = profile.Designation
@@ -280,8 +281,8 @@ func (r *UserRepository) CreateStaffAccountWithProfile(
 		    (actor_principal_id, school_id, action, resource_type, resource_id, outcome, metadata)
 		VALUES ($1, $2, 'staff.account.created', 'staff_user', $3, 'success',
 		        jsonb_build_object('principal_id', $4::bigint, 'username', $5::text, 'must_change_password', $6::boolean,
-                    'employee_code', $7::text, 'employment_status', 'active'))
-	`, actorPrincipalID, schoolID, fmt.Sprint(user.ID), user.PrincipalID, user.Username, user.MustChangePassword, profile.EmployeeCode); err != nil {
+                    'staff_type', $7::text, 'employee_code', $8::text, 'employment_status', 'active'))
+	`, actorPrincipalID, schoolID, fmt.Sprint(user.ID), user.PrincipalID, user.Username, user.MustChangePassword, profile.StaffType, profile.EmployeeCode); err != nil {
 		return nil, fmt.Errorf("audit staff account creation: %w", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -349,9 +350,10 @@ func (r *UserRepository) UpdateStaffProfile(ctx context.Context, actorPrincipalI
 
     _, err = tx.Exec(ctx, `
         INSERT INTO staff_profiles
-            (principal_id, school_id, employee_code, full_name, designation, mobile_number, email, joining_date, employment_status)
-        VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7, ''), $8, $9)
+            (principal_id, school_id, staff_type, employee_code, full_name, designation, mobile_number, email, joining_date, employment_status)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, NULLIF($8, ''), $9, $10)
         ON CONFLICT (principal_id) DO UPDATE SET
+            staff_type = EXCLUDED.staff_type,
             employee_code = EXCLUDED.employee_code,
             full_name = EXCLUDED.full_name,
             designation = EXCLUDED.designation,
@@ -360,7 +362,7 @@ func (r *UserRepository) UpdateStaffProfile(ctx context.Context, actorPrincipalI
             joining_date = EXCLUDED.joining_date,
             employment_status = EXCLUDED.employment_status,
             updated_at = NOW()
-    `, targetPrincipalID, schoolID, profile.EmployeeCode, profile.FullName, profile.Designation,
+    `, targetPrincipalID, schoolID, profile.StaffType, profile.EmployeeCode, profile.FullName, profile.Designation,
         profile.MobileNumber, profile.Email, profile.JoiningDate, profile.EmploymentStatus)
     if err != nil {
         var pgErr *pgconn.PgError
@@ -373,8 +375,8 @@ func (r *UserRepository) UpdateStaffProfile(ctx context.Context, actorPrincipalI
     if _, err := tx.Exec(ctx, `
         INSERT INTO audit_events (actor_principal_id, school_id, action, resource_type, resource_id, outcome, metadata)
         VALUES ($1, $2, 'staff.profile.updated', 'staff_user', $3, 'success',
-                jsonb_build_object('employee_code', $4::text, 'employment_status', $5::text))
-    `, actorPrincipalID, schoolID, fmt.Sprint(targetUserID), profile.EmployeeCode, profile.EmploymentStatus); err != nil {
+                jsonb_build_object('staff_type', $4::text, 'employee_code', $5::text, 'employment_status', $6::text))
+    `, actorPrincipalID, schoolID, fmt.Sprint(targetUserID), profile.StaffType, profile.EmployeeCode, profile.EmploymentStatus); err != nil {
         return nil, fmt.Errorf("audit staff profile update: %w", err)
     }
 
@@ -383,13 +385,13 @@ func (r *UserRepository) UpdateStaffProfile(ctx context.Context, actorPrincipalI
     err = tx.QueryRow(ctx, `
         SELECT u.id, u.principal_id, u.school_id, u.username, u.status, u.must_change_password, u.created_at, u.updated_at,
                sp.employee_code, sp.full_name, sp.designation, sp.mobile_number, COALESCE(sp.email, ''),
-               sp.joining_date, sp.employment_status
+               sp.joining_date, sp.employment_status, sp.staff_type
           FROM users u
           JOIN staff_profiles sp ON sp.principal_id = u.principal_id AND sp.school_id = u.school_id
          WHERE u.id = $1
     `, targetUserID).Scan(&user.ID, &user.PrincipalID, &user.SchoolID, &user.Username, &user.Status,
         &user.MustChangePassword, &user.CreatedAt, &user.UpdatedAt, &user.EmployeeCode, &user.FullName,
-        &user.Designation, &user.MobileNumber, &user.Email, &joiningDate, &user.EmploymentStatus)
+        &user.Designation, &user.MobileNumber, &user.Email, &joiningDate, &user.EmploymentStatus, &user.StaffType)
     if err != nil { return nil, fmt.Errorf("read updated staff profile: %w", err) }
     user.JoiningDate = joiningDate
     user.ProfileComplete = true
@@ -1295,7 +1297,7 @@ func (r *UserRepository) ListStaffDirectoryPage(ctx context.Context, actorPrinci
 		       COALESCE(sp.employee_code, ''), COALESCE(sp.full_name, ''),
 		       COALESCE(sp.designation, ''), COALESCE(sp.mobile_number, ''),
 		       COALESCE(sp.email, ''), sp.joining_date,
-		       COALESCE(sp.employment_status, ''), (sp.principal_id IS NOT NULL), EXISTS (
+		       COALESCE(sp.employment_status, ''), COALESCE(sp.staff_type, ''), (sp.principal_id IS NOT NULL), EXISTS (
 		       SELECT 1
 		       FROM principal_roles protected_assignment
 		       JOIN roles protected_role ON protected_role.id = protected_assignment.role_id
@@ -1321,7 +1323,7 @@ func (r *UserRepository) ListStaffDirectoryPage(ctx context.Context, actorPrinci
 		if err := rows.Scan(&user.ID, &user.PrincipalID, &user.SchoolID, &user.Username,
 			&user.Status, &user.MustChangePassword, &user.CreatedAt, &user.UpdatedAt,
 			&user.EmployeeCode, &user.FullName, &user.Designation, &user.MobileNumber,
-			&user.Email, &joiningDate, &user.EmploymentStatus, &user.ProfileComplete,
+			&user.Email, &joiningDate, &user.EmploymentStatus, &user.StaffType, &user.ProfileComplete,
             &user.ProtectedSchoolAdmin); err != nil {
 			return nil, fmt.Errorf("scan school staff directory page: %w", err)
 		}

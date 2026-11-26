@@ -1,3 +1,11 @@
+
+## 2026-11-26 — Teaching / Non-teaching staff classification added
+
+- Add Staff and Edit Staff require an explicit Teaching or Non-teaching classification. The choice is shown in the review step and returned by staff list/profile API responses.
+- Persisted as `staff_profiles.staff_type` with a database CHECK constraint. Existing rows remain NULL so historic staff are not silently classified; editing a legacy profile requires the School Admin to choose a value.
+- Classification is descriptive only. It does not auto-assign Teacher or any other role; role grants remain explicit in Account & Access under existing permission/delegation controls.
+- Create/update validation and audit metadata include staff type. Automated verification is pending for this commit.
+
 # Staff Management — Existing Implementation Audit
 
 **Audit date:** 2026-11-21  

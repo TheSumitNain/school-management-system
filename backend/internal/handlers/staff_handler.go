@@ -79,13 +79,14 @@ func (h *StaffHandler) Create(c *gin.Context) {
 		Designation string `json:"designation"`
 		MobileNumber string `json:"mobile_number"`
 		Email string `json:"email"`
+		StaffType string `json:"staff_type"`
 		JoiningDate string `json:"joining_date"`
 	}
 	if err := c.ShouldBindJSON(&request); err != nil ||
 		strings.TrimSpace(request.Username) == "" || request.InitialPassword == "" ||
 		strings.TrimSpace(request.EmployeeCode) == "" || strings.TrimSpace(request.FullName) == "" ||
-		strings.TrimSpace(request.Designation) == "" || strings.TrimSpace(request.MobileNumber) == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "username, initial_password, full_name, employee_code, designation and mobile_number are required"})
+		strings.TrimSpace(request.Designation) == "" || strings.TrimSpace(request.MobileNumber) == "" || strings.TrimSpace(request.StaffType) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "username, initial_password, staff_type, full_name, employee_code, designation and mobile_number are required"})
 		return
 	}
 	joiningDate, validJoiningDate := parseStaffJoiningDate(request.JoiningDate)
@@ -98,7 +99,7 @@ func (h *StaffHandler) Create(c *gin.Context) {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Employee profile creation is unavailable"})
 		return
 	}
-	profile := models.StaffProfile{EmployeeCode: request.EmployeeCode, FullName: request.FullName,
+	profile := models.StaffProfile{StaffType: request.StaffType, EmployeeCode: request.EmployeeCode, FullName: request.FullName,
 		Designation: request.Designation, MobileNumber: request.MobileNumber, Email: request.Email,
 		JoiningDate: joiningDate, EmploymentStatus: "active"}
 	user, err := profileService.CreateWithProfile(c.Request.Context(), actorID, schoolID,
@@ -118,7 +119,8 @@ func (h *StaffHandler) Create(c *gin.Context) {
 				"must_change_password": user.MustChangePassword,
                 "employee_code": user.EmployeeCode, "full_name": user.FullName, "designation": user.Designation,
                 "mobile_number": user.MobileNumber, "email": user.Email, "joining_date": user.JoiningDate,
-                "employment_status": user.EmploymentStatus, "profile_complete": user.ProfileComplete,
+                "employment_status": user.EmploymentStatus,
+                "staff_type": user.StaffType, "staff_type": user.StaffType, "profile_complete": user.ProfileComplete,
 			},
 		})
 	case errors.Is(err, services.ErrInvalidStaffAccount):
@@ -179,7 +181,7 @@ func (h *StaffHandler) List(c *gin.Context) {
 			"updated_at": user.UpdatedAt,
             "employee_code": user.EmployeeCode, "full_name": user.FullName, "designation": user.Designation,
             "mobile_number": user.MobileNumber, "email": user.Email, "joining_date": user.JoiningDate,
-            "employment_status": user.EmploymentStatus, "profile_complete": user.ProfileComplete,
+            "employment_status": user.EmploymentStatus, "staff_type": user.StaffType, "profile_complete": user.ProfileComplete,
 				"protected_school_admin": user.ProtectedSchoolAdmin,
 		})
 	}
@@ -272,7 +274,7 @@ func (h *StaffHandler) ListDirectoryPage(c *gin.Context) {
 				"created_at": user.CreatedAt, "updated_at": user.UpdatedAt,
 				"employee_code": user.EmployeeCode, "full_name": user.FullName, "designation": user.Designation,
 				"mobile_number": user.MobileNumber, "email": user.Email, "joining_date": user.JoiningDate,
-				"employment_status": user.EmploymentStatus, "profile_complete": user.ProfileComplete,
+				"employment_status": user.EmploymentStatus, "staff_type": user.StaffType, "profile_complete": user.ProfileComplete,
 				"protected_school_admin": user.ProtectedSchoolAdmin,
 			})
 		}
@@ -342,6 +344,7 @@ func (h *StaffHandler) Update(c *gin.Context) {
         Email string `json:"email"`
         JoiningDate string `json:"joining_date"`
         EmploymentStatus string `json:"employment_status"`
+        StaffType string `json:"staff_type"`
 	}
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid staff update request"})
@@ -350,7 +353,7 @@ func (h *StaffHandler) Update(c *gin.Context) {
     hasProfile := strings.TrimSpace(request.EmployeeCode) != "" || strings.TrimSpace(request.FullName) != "" ||
         strings.TrimSpace(request.Designation) != "" || strings.TrimSpace(request.MobileNumber) != "" ||
         strings.TrimSpace(request.Email) != "" || strings.TrimSpace(request.JoiningDate) != "" ||
-        strings.TrimSpace(request.EmploymentStatus) != ""
+        strings.TrimSpace(request.EmploymentStatus) != "" || strings.TrimSpace(request.StaffType) != ""
     var user *models.User
     if hasProfile {
         updater, ok := h.service.(staffProfileUpdateService)
@@ -364,7 +367,7 @@ func (h *StaffHandler) Update(c *gin.Context) {
             return
         }
         profile := models.StaffProfile{EmployeeCode:request.EmployeeCode, FullName:request.FullName, Designation:request.Designation,
-            MobileNumber:request.MobileNumber, Email:request.Email, JoiningDate:joiningDate, EmploymentStatus:request.EmploymentStatus}
+            MobileNumber:request.MobileNumber, Email:request.Email, JoiningDate:joiningDate, EmploymentStatus:request.EmploymentStatus, StaffType:request.StaffType}
         user, err = updater.UpdateProfile(c.Request.Context(), actorID, schoolID, targetID, profile)
     } else {
         if strings.TrimSpace(request.Username) == "" {

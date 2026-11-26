@@ -78,6 +78,7 @@ func TestStaffProfileRepositoryPostgresIntegration(t *testing.T) {
     repo := NewUserRepository(tx)
     suffix := fmt.Sprintf("%d", time.Now().UnixNano())
     profile := models.StaffProfile{
+        StaffType: "teaching",
         EmployeeCode: "EMP-" + suffix,
         FullName: "Integration Teacher",
         Designation: "Mathematics Teacher",

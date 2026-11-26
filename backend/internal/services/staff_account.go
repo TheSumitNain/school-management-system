@@ -129,6 +129,7 @@ func validStaffProfileEmail(email string) bool {
 // CreateWithProfile creates a login account and employee profile in one repository transaction.
 func (s *StaffAccountService) CreateWithProfile(ctx context.Context, actorPrincipalID, schoolID int64, username, initialPassword string, profile models.StaffProfile) (*models.User, error) {
 	username = strings.ToLower(strings.TrimSpace(username))
+	profile.StaffType = strings.TrimSpace(profile.StaffType)
 	profile.EmployeeCode = strings.TrimSpace(profile.EmployeeCode)
 	profile.FullName = strings.TrimSpace(profile.FullName)
 	profile.Designation = strings.TrimSpace(profile.Designation)
@@ -136,7 +137,7 @@ func (s *StaffAccountService) CreateWithProfile(ctx context.Context, actorPrinci
 	profile.Email = strings.TrimSpace(profile.Email)
 	profile.EmploymentStatus = "active"
 	if s == nil || s.repository == nil || actorPrincipalID <= 0 || schoolID <= 0 || !validStaffUsername(username) ||
-		!staffEmployeeCodePattern.MatchString(profile.EmployeeCode) || profile.FullName == "" || len([]rune(profile.FullName)) > 160 ||
+		!validStaffType(profile.StaffType) || !validStaffType(profile.StaffType) || !staffEmployeeCodePattern.MatchString(profile.EmployeeCode) || profile.FullName == "" || len([]rune(profile.FullName)) > 160 ||
 		profile.Designation == "" || len([]rune(profile.Designation)) > 100 || !staffMobilePattern.MatchString(profile.MobileNumber) ||
 		!validStaffProfileEmail(profile.Email) ||
 		!validStaffJoiningDate(profile.JoiningDate, time.Now()) {
@@ -148,6 +149,8 @@ func (s *StaffAccountService) CreateWithProfile(ctx context.Context, actorPrinci
 	if err != nil { return nil, err }
 	return creator.CreateStaffAccountWithProfile(ctx, actorPrincipalID, schoolID, username, passwordHash, profile)
 }
+func validStaffType(value string) bool { return value == "teaching" || value == "non_teaching" }
+
 func validStaffUsername(username string) bool {
 	if len(username) < 3 || len(username) > 32 {
 		return false
@@ -215,6 +218,7 @@ func (s *StaffAccountService) Disable(ctx context.Context, actorPrincipalID, sch
 // UpdateProfile validates and persists an employee profile without re-enabling
 // a disabled login. An inactive profile remains blocked by the database guard.
 func (s *StaffAccountService) UpdateProfile(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64, profile models.StaffProfile) (*models.User, error) {
+    profile.StaffType = strings.TrimSpace(profile.StaffType)
     profile.EmployeeCode = strings.TrimSpace(profile.EmployeeCode)
     profile.FullName = strings.TrimSpace(profile.FullName)
     profile.Designation = strings.TrimSpace(profile.Designation)

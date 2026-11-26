@@ -74,7 +74,7 @@ func (f *fakeStaffAccountRepository) EnableStaffAccount(_ context.Context, _, _,
 func TestStaffAccountServiceValidatesDirectoryFiltersAndPagination(t *testing.T) {
 	repo := &fakeStaffAccountRepository{}
 	service := NewStaffAccountService(repo, alwaysClearPasswordChecker{})
-	valid := models.StaffDirectoryFilter{Search: "  teacher  ", EmploymentStatus: "active", AccountStatus: "enabled", ProfileStatus: "complete", Limit: 50, Offset: 100}
+	valid := models.StaffDirectoryFilter{Search: "  teacher  ", StaffType: "teaching", EmploymentStatus: "active", AccountStatus: "enabled", ProfileStatus: "complete", Limit: 50, Offset: 100}
 	page, err := service.ListDirectoryPage(context.Background(), 31, 8, valid)
 	if err != nil || page == nil || page.Limit != 50 || page.Offset != 100 {
 		t.Fatalf("valid directory query failed: page=%+v err=%v", page, err)
@@ -246,7 +246,7 @@ func TestStaffAccountServiceRejectsJoiningDateBeyondOneYearOnProfileUpdate(t *te
 	service := NewStaffAccountService(repo, alwaysClearPasswordChecker{})
 	base := models.StaffProfile{
 		EmployeeCode: "EMP-27", FullName: "Teacher One", Designation: "Teacher",
-		MobileNumber: "9876543210", EmploymentStatus: "active",
+		MobileNumber: "9876543210", StaffType: "teaching", EmploymentStatus: "active",
 	}
 	yearZero := time.Date(0, time.January, 1, 0, 0, 0, 0, time.UTC)
 	base.JoiningDate = &yearZero
@@ -296,7 +296,7 @@ func TestStaffProfileTextLimitsCountUnicodeCharacters(t *testing.T) {
 	service := NewStaffAccountService(repo, alwaysClearPasswordChecker{})
 	base := models.StaffProfile{
 		EmployeeCode: "EMP-27", FullName: strings.Repeat("🔤", 160), Designation: strings.Repeat("📚", 100),
-		MobileNumber: "9876543210", EmploymentStatus: "active",
+		MobileNumber: "9876543210", StaffType: "teaching", EmploymentStatus: "active",
 	}
 	if _, err := service.UpdateProfile(context.Background(), 31, 8, 27, base); err != nil {
 		t.Fatalf("valid Unicode profile update returned error: %v", err)
@@ -324,7 +324,7 @@ func TestStaffProfileTextLimitsCountUnicodeCharactersOnCreate(t *testing.T) {
 	service := NewStaffAccountService(repo, alwaysClearPasswordChecker{})
 	profile := models.StaffProfile{
 		EmployeeCode: "EMP-27", FullName: strings.Repeat("🔤", 160), Designation: strings.Repeat("📚", 100),
-		MobileNumber: "9876543210", EmploymentStatus: "active",
+		MobileNumber: "9876543210", StaffType: "teaching", EmploymentStatus: "active",
 	}
 	user, err := service.CreateWithProfile(context.Background(), 31, 8, "teacher.one", "A-Strong-Initial-Pass-123", profile)
 	if err != nil {
@@ -356,7 +356,7 @@ func TestStaffProfileEmailValidationMatchesDatabaseCharacterConstraints(t *testi
 	service := NewStaffAccountService(repo, alwaysClearPasswordChecker{})
 	profile := models.StaffProfile{
 		EmployeeCode: "EMP-27", FullName: "Teacher One", Designation: "Teacher",
-		MobileNumber: "9876543210", EmploymentStatus: "active",
+		MobileNumber: "9876543210", StaffType: "teaching", EmploymentStatus: "active",
 	}
 	validUnicodeEmail := strings.Repeat("é", 250) + "@x.y" // 254 Unicode characters, despite >254 UTF-8 bytes.
 	profile.Email = validUnicodeEmail
