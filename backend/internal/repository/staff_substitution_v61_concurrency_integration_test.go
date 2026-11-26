@@ -156,4 +156,19 @@ func TestStaffSubstitutionV61SerializesConcurrentSubstituteSlotAssignmentsPostgr
 	var activeCount int
 	if err:=pool.QueryRow(ctx,`SELECT count(*) FROM staff_substitutions WHERE school_id=$1 AND substitute_teacher_principal_id=$2 AND cover_date=$3::date AND period_id=$4 AND status='active'`,schoolID,substitute,coverDate,periodID).Scan(&activeCount);err!=nil { t.Fatalf("count active substitute assignments: %v",err) }
 	if activeCount!=1 { t.Fatalf("race left %d active assignments; want 1",activeCount) }
+
+	// Neither side of an active future substitution may be disabled. The
+	// database guard is authoritative, and the repository returns a stable
+	// domain error so the School Admin UI can explain the required action.
+	userRepo := NewUserRepository(pool)
+	for _, teacherID := range []int64{originalOne, substitute} {
+		if err := userRepo.DisableStaffAccount(ctx, actorPrincipalID, schoolID, teacherID); !errors.Is(err, ErrStaffProfileHasActiveSubstitutions) {
+			t.Fatalf("disable teacher %d with active substitution error=%v; want ErrStaffProfileHasActiveSubstitutions", teacherID, err)
+		}
+	}
+	var stillActive int
+	if err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM auth_principals WHERE id=ANY($1::bigint[]) AND status='active'`, []int64{originalOne, substitute}).Scan(&stillActive); err != nil {
+		t.Fatalf("verify both substitution teachers remain active: %v", err)
+	}
+	if stillActive != 2 { t.Fatalf("active substitution teachers remaining=%d; want 2", stillActive) }
 }
