@@ -482,7 +482,7 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 	if retainedRolePermissionCount != 1 { t.Fatalf("custom-role grants after failed audited revoke=%d want=1", retainedRolePermissionCount) }
 
 	var assignmentFailureTargetID int64
-	if err := tx.QueryRow(ctx, "INSERT INTO users (school_id, username, password_hash, status) VALUES ($1,$2,$3,'active') RETURNING principal_id", schoolID, "role-audit-fail-"+auditFailureSuffix, "integration-test-password-hash").Scan(&assignmentFailureTargetID); err != nil {
+	if err := tx.QueryRow(ctx, "INSERT INTO users (school_id, username, password_hash, status) VALUES ($1,$2,$3,'active') RETURNING principal_id", schoolID, "ra-"+auditFailureSuffix, "integration-test-password-hash").Scan(&assignmentFailureTargetID); err != nil {
 		t.Fatalf("create role-assignment audit-failure target: %v", err)
 	}
 	if err := repo.AssignStaffRole(ctx, actorPrincipalID, schoolID, assignmentFailureTargetID, customRole.ID); err == nil {
