@@ -1183,3 +1183,10 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Added service-level regression coverage for profile update normalization and authenticated actor/school/target forwarding, plus invalid employee code, Unicode name/designation limits, mobile number, email, employment status, future joining date, and missing identity/school/target rejection before repository mutation.
 - Existing PostgreSQL integration coverage already verifies cross-school update denial, duplicate employee-code handling, optional email clearing, employment/login lifecycle, and transaction rollback when profile audit insertion fails.
 - Backend CI must pass before considering this batch verified. Frontend CI from the preceding report-export batch passed. Authenticated School Admin acceptance/sign-off remains outstanding; `main` is unchanged.
+
+
+## 2026-11-26 follow-up — staff account self-service boundary tests
+
+- Added service regression tests proving a School Admin cannot disable or re-enable their own staff principal through the staff-account lifecycle service.
+- Missing actor, school, or target identifiers are rejected before repository calls or temporary-password hashing/repository mutation.
+- Existing PostgreSQL lifecycle tests continue to cover cross-school denial, protected peer School Admin accounts, session/token invalidation, and audit-failure rollback. CI verification is required for this added batch; authenticated School Admin acceptance remains pending.

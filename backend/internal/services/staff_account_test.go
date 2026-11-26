@@ -18,6 +18,7 @@ type fakeStaffAccountRepository struct {
 	calls int
 	updateCalls int
 	enableCalls int
+	disableCalls int
 	enablePasswordHash string
 	profileCalls int
 	profile models.StaffProfile
@@ -49,6 +50,7 @@ func (f *fakeStaffAccountRepository) GetStaffDirectorySummary(context.Context, i
 }
 
 func (f *fakeStaffAccountRepository) DisableStaffAccount(context.Context, int64, int64, int64) error {
+	f.disableCalls++
 	return nil
 }
 
@@ -150,6 +152,54 @@ func TestStaffAccountServiceValidatesUsernameUpdate(t *testing.T) {
 	}
 	if _, err := service.Update(context.Background(), 31, 8, 27, "bad name"); err != ErrInvalidStaffAccount {
 		t.Fatalf("invalid username update error = %v, want ErrInvalidStaffAccount", err)
+	}
+}
+
+func TestStaffAccountServiceRejectsSelfDisableAndInvalidDisableScope(t *testing.T) {
+	repo := &fakeStaffAccountRepository{}
+	service := NewStaffAccountService(repo, alwaysClearPasswordChecker{})
+	cases := []struct {
+		name string
+		actor, school, target int64
+	}{
+		{"missing actor", 0, 8, 27},
+		{"missing school", 31, 0, 27},
+		{"missing target", 31, 8, 0},
+		{"self disable", 31, 8, 31},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := service.Disable(context.Background(), tc.actor, tc.school, tc.target); err != ErrInvalidStaffAccount {
+				t.Fatalf("Disable error = %v, want ErrInvalidStaffAccount", err)
+			}
+		})
+	}
+	if repo.disableCalls != 0 {
+		t.Fatalf("invalid or self-disable requests reached repository %d times", repo.disableCalls)
+	}
+}
+
+func TestStaffAccountServiceRejectsSelfEnableAndInvalidEnableScopeBeforeHashing(t *testing.T) {
+	repo := &fakeStaffAccountRepository{}
+	service := NewStaffAccountService(repo, alwaysClearPasswordChecker{})
+	cases := []struct {
+		name string
+		actor, school, target int64
+	}{
+		{"missing actor", 0, 8, 27},
+		{"missing school", 31, 0, 27},
+		{"missing target", 31, 8, 0},
+		{"self enable", 31, 8, 31},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := service.Enable(context.Background(), tc.actor, tc.school, tc.target, "A-Strong-Temporary-Pass-123"); err != ErrInvalidStaffAccount {
+				t.Fatalf("Enable error = %v, want ErrInvalidStaffAccount", err)
+			}
+		})
+	}
+	if repo.enableCalls != 0 {
+		t.Fatalf("invalid or self-enable requests reached repository %d times", repo.enableCalls)
 	}
 }
 
