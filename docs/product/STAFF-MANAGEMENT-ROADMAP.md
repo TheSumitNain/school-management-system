@@ -1,3 +1,14 @@
+## 2026-11-26 — Staff Attendance pagination and complete monthly exports verified
+
+- Staff Attendance Daily and Monthly read APIs now support bounded `limit`/`offset` pagination (default 50, maximum 100) and return exact school-scoped totals. Daily reads retain the active-employment roster; monthly reads continue to retain inactive employees who have attendance history in the selected month.
+- The Attendance workspace now has Previous/Next navigation for both registers. Search, status filters, attendance totals and bulk marking apply to the currently loaded daily page; bulk marking remains atomic and the UI states that only visible, unmarked staff are included.
+- Monthly CSV export fetches every attendance page, checks page offsets/totals/row counts and duplicate staff identities, and refuses to download a partial report if the pages cannot be verified. Free-text attendance remarks and leave reasons remain excluded. The separate Staff Operational Reports attendance view also loads all monthly pages rather than silently showing only the first page.
+- PostgreSQL integration tests verify daily/monthly page ordering, distinct records across pages and stable exact totals; service/handler tests cover pagination bounds and invalid query parameters. Frontend Playwright coverage exercises 101 monthly staff across pages and confirms the final staff row is present in the complete CSV.
+- Backend CI [45816841281](https://github.com/TheSumitNain/school-management-system/actions/runs/45816841281) **PASS** on `10caf50cd3e9a2f9ebd77531ecd5d82ceeb80d51`: full migration chain, Go/PostgreSQL integration suite and `go vet`. Frontend CI [45816840999](https://github.com/TheSumitNain/school-management-system/actions/runs/45816840999) **PASS** on the same commit: TypeScript, Vite production build and **153 Playwright tests passed**.
+- No schema migration or persistent school data change. Changes remain on `work`; `main` remains untouched.
+
+---
+
 ## 2026-11-26 — Staff Type enforced across teacher assignment, reads and substitution
 
 - Teacher subject and class-in-charge assignment writes require a same-school profile explicitly classified as Teaching with active employment, alongside the existing active principal, Teacher role, School Admin permission and tenant checks. The eligible-teacher API excludes Unclassified, Non-teaching, inactive-employment and inactive-login accounts.
