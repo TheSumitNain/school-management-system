@@ -2096,6 +2096,28 @@ test("leave-read-only permission opens applications without staff directory or m
   expect(staffDirectoryRequests).toEqual([]);
 });
 
+test("holiday-read-only permission opens the calendar without staff directory or mutation controls", async ({ page }) => {
+  const staffDirectoryRequests: string[] = [];
+  const holidayReads: string[] = [];
+  page.on("request", request => {
+    const pathname = new URL(request.url()).pathname;
+    if (/^\/api\/school\/staff(?:\/|$)/.test(pathname)) staffDirectoryRequests.push(request.url());
+    if (pathname === "/api/school/holidays") holidayReads.push(request.url());
+  });
+  await signInAndOpenStaff(page, [], undefined, ["staff.holidays.read"]);
+  await expect(page.getByRole("heading", { name: "Staff Management" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Leave & Holidays" })).toBeVisible();
+  await expect(page.getByText(/School holiday calendar/)).toBeVisible();
+  await expect(page.getByText("School Foundation Day")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Add school holiday" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Edit" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Deactivate" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Reactivate" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Staff Directory/ })).toHaveCount(0);
+  expect(holidayReads.length).toBeGreaterThan(0);
+  expect(staffDirectoryRequests).toEqual([]);
+});
+
 test("attendance-only permission opens the attendance workspace without loading the staff directory", async ({ page }) => {
   const staffDirectoryRequests: string[] = [];
   page.on("request", request => {
