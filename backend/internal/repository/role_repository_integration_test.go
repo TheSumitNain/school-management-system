@@ -513,9 +513,6 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 		t.Fatalf("count custom-role grants after failed audited grant: %v", err)
 	}
 	if failedRoleGrantCount != 0 { t.Fatalf("custom-role grants after failed audited grant=%d want=0", failedRoleGrantCount) }
-	if err := repo.RevokeSchoolPermissionDelegation(ctx, platformAdminPrincipalID, grantFailureDelegation.ID); err != nil {
-		t.Fatalf("revoke active delegation used by audit-failure grant fixture: %v", err)
-	}
 
 	// Removing a user override is also atomic with its audit event.
 	if tag, err := tx.Exec(ctx, `
@@ -565,6 +562,9 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 	}
 	if _, err := tx.Exec(ctx, fmt.Sprintf("DROP TRIGGER %s ON audit_events; DROP FUNCTION %s();", auditFailureTrigger, auditFailureFunction)); err != nil {
 		t.Fatalf("remove role audit failure trigger: %v", err)
+	}
+	if err := repo.RevokeSchoolPermissionDelegation(ctx, platformAdminPrincipalID, grantFailureDelegation.ID); err != nil {
+		t.Fatalf("revoke active delegation used by audit-failure grant fixture: %v", err)
 	}
 
 	if err := repo.RevokeStaffRole(ctx, actorPrincipalID, schoolID, targetPrincipalID, customRole.ID); err != nil {
