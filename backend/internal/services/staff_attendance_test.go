@@ -213,7 +213,10 @@ func TestStaffAttendanceServiceValidatesAndDelegatesDailyFilters(t *testing.T) {
             t.Fatalf("invalid daily filter %+v error=%v want ErrInvalidStaffAttendance", candidate, err)
         }
     }
+    if _, _, err := service.ListDailyFilteredPage(context.Background(), 1, 2, day, filter, 25, 1_000_001); !errors.Is(err, ErrInvalidStaffAttendance) {
+        t.Fatalf("excessive daily filter offset error=%v want ErrInvalidStaffAttendance", err)
+    }
     if fake.listDailyPageCalls != 1 {
-        t.Fatalf("invalid filters reached repository: calls=%d want=1", fake.listDailyPageCalls)
+        t.Fatalf("invalid filters or offsets reached repository: calls=%d want=1", fake.listDailyPageCalls)
     }
 }
