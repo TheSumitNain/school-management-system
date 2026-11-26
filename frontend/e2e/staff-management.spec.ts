@@ -3295,6 +3295,7 @@ test("staff directory filters stay locked while the complete CSV is being prepar
   }));
   await signInAndOpenStaff(page,rows,undefined,["users.read"]);
   await page.getByRole("button",{name:"Staff Directory",exact:true}).click();
+  await page.getByLabel("Filter by employment status").selectOption("active");
   await page.route("**/api/school/staff?**",async route=>{
     const url=new URL(route.request().url());
     const limit=Number(url.searchParams.get("limit")??50);
