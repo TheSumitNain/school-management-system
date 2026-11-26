@@ -1051,3 +1051,10 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Added PostgreSQL integration coverage proving a past substitution remains active and retained when cancellation is attempted. Existing browser acceptance already verifies that completed covers show no cancellation action.
 - Backend and Frontend CI are pending for the new code checkpoint; do not mark this fix verified until both complete successfully.
 - No schema migration or persistent database change. `main` remains untouched.
+
+## 2026-11-26 — Leave and substitution result-set capacity checkpoint
+
+- Removed the former 1,000-row SQL caps from the school-scoped Staff Leave Requests and Substitution History queries. The APIs no longer silently return an incomplete result set when a date/filter combination exceeds that threshold.
+- Backend CI [45648554311](https://github.com/TheSumitNain/school-management-system/actions/runs/45648554311) **PASS** on `5304b86609762741b500046e730e91c874a6bb81`: migrations, Go tests including PostgreSQL integration tests, and `go vet` passed.
+- This is a capacity/truncation correction, **not** server-side pagination. Bounded Leave/Substitution pages with total counts and complete all-pages CSV/report export remain open; do not describe these workflows as fully scalable until those are implemented and verified.
+- `main` remains untouched. No schema migration or persistent database change was made.
