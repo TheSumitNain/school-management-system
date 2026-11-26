@@ -2856,3 +2856,11 @@ This update supersedes older status bullets that listed the following database-b
 - Backend CI [45803817474](https://github.com/TheSumitNain/school-management-system/actions/runs/45803817474) **PASS** and Frontend CI [45803817695](https://github.com/TheSumitNain/school-management-system/actions/runs/45803817695) **PASS** on commit `71f64e6637c3280efc8f9fe33c3f53f37a57d946`. Backend verification includes the full ephemeral migration chain, Go/PostgreSQL integration suite and `go vet`; frontend verification includes TypeScript, Vite production build and the complete Playwright browser acceptance suite.
 - Clarified the integration-test fixture comment to match the verified role-specific workload contract (School Admin school-wide visibility versus Teacher self-only active Teaching access). Follow-up Backend CI [45804863849](https://github.com/TheSumitNain/school-management-system/actions/runs/45804863849) **PASS** on `2e3e677e33a5631ec82fc837bbde2f770d132b2a`, including migrations, Go/PostgreSQL integration and `go vet`.
 - No database migration or persistent school-data change. Current work remains on `work`; `main` remains untouched.
+
+
+## 2026-11-26 — Staff substitution login guard uses school-local date
+
+- Database review found one remaining calendar-boundary inconsistency: the V60 guard against disabling a substitute's login compared cover dates with PostgreSQL session `CURRENT_DATE`, while related staff attendance/substitution lifecycle rules use the Asia/Kolkata school date.
+- Added forward migration V67 to make the login-disable guard use `(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date`; added a rollback migration restoring the previous V60 function definition.
+- Added PostgreSQL integration coverage that inspects the installed trigger function and rejects regressions to session-dependent `CURRENT_DATE`.
+- Backend CI verification is pending for V67 and its integration test. No existing attendance, leave or substitution records are rewritten. Current work remains on `work`; `main` remains untouched.
