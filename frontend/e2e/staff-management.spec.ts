@@ -933,7 +933,7 @@ test("add staff wizard validates each step before allowing progress", async ({ p
 
 
 test("staff modal traps focus from its dialog container and restores focus to its trigger", async ({ page }) => {
-  await signInAndOpenStaff(page, []);
+  await signInAndOpenStaff(page, [], undefined, ["users.read", "users.create"]);
   const trigger = page.getByRole("button", { name: "Add staff", exact: true });
   await trigger.focus();
   await trigger.click();
