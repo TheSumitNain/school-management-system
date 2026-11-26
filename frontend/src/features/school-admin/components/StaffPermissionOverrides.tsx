@@ -82,7 +82,7 @@ export function StaffPermissionOverrides({ staff }: Props) {
       <div className="staff-override-title"><LockKeyhole size={16}/><div><b>Individual permission overrides</b><small>Exceptions to this staff member's assigned roles</small></div></div>
       {loading ? <p className="staff-override-message">Loading permissions…</p>
         : error ? <div className="staff-override-message error-text">{error instanceof Error ? error.message : "Unable to load permission settings."}
-          <button type="button" onClick={() => { void permissionsQuery.refetch(); void delegationsQuery.refetch(); void overridesQuery.refetch(); }}>Retry</button>
+          <button type="button" onClick={() => { void permissionsQuery.refetch(); void delegationsQuery.refetch(); void targetRolesQuery.refetch(); void overridesQuery.refetch(); }}>Retry</button>
         </div>
         : <>
           {overrides.length ? <ul className="staff-override-list">{overrides.map(item => <li key={item.id}>

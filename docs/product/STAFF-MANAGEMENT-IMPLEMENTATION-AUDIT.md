@@ -824,3 +824,10 @@ This section supersedes older statements in this audit that describe browser ver
 
 - Added PostgreSQL failure-injection coverage proving staff role revocation and individual permission override writes roll back when their audit event insert fails.
 - The regression checks the role assignment remains active and no permission override row survives the failed transaction.
+
+
+## 2026-11-26 follow-up — protected School Admin UI
+
+- Staff role assignment and individual permission override panels now detect a target holding the protected `school_admin` role and render existing access as read-only, without assignment, revoke, save, or delete controls.
+- Added Playwright coverage asserting a peer School Admin profile exposes neither role nor permission-override mutation controls and issues no mutation requests.
+- Backend remains authoritative: repository-level protected-target checks continue to reject direct mutation attempts.
