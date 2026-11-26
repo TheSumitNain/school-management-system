@@ -50,12 +50,12 @@ func (f *fakeStaffAccountService) CreateWithProfile(_ context.Context, actorID, 
 }
 
 func (f *fakeStaffAccountService) List(context.Context, int64, int64) ([]models.User, error) {
-	return []models.User{{ID: 15, PrincipalID: 27, SchoolID: 8, Username: "teacher.one", PasswordHash: "private-hash-marker", Status: "active", MustChangePassword: true, ProtectedSchoolAdmin: true}}, f.err
+	return []models.User{{ID: 15, PrincipalID: 27, SchoolID: 8, Username: "teacher.one", PasswordHash: "private-hash-marker", Status: "active", MustChangePassword: true, StaffType: "teaching", ProtectedSchoolAdmin: true}}, f.err
 }
 
 func (f *fakeStaffAccountService) ListDirectoryPage(_ context.Context, actorID, schoolID int64, filter models.StaffDirectoryFilter) (*models.StaffDirectoryPage, error) {
 	f.directoryActorID, f.directorySchoolID, f.directoryFilter = actorID, schoolID, filter
-	return &models.StaffDirectoryPage{Staff: []models.User{{ID: 15, PrincipalID: 27, SchoolID: schoolID, Username: "teacher.one", Status: "active", ProtectedSchoolAdmin: true}}, Total: 51, Limit: filter.Limit, Offset: filter.Offset}, f.err
+	return &models.StaffDirectoryPage{Staff: []models.User{{ID: 15, PrincipalID: 27, SchoolID: schoolID, Username: "teacher.one", Status: "active", StaffType: "non_teaching", ProtectedSchoolAdmin: true}}, Total: 51, Limit: filter.Limit, Offset: filter.Offset}, f.err
 }
 
 func (f *fakeStaffAccountService) GetDirectorySummary(_ context.Context, actorID, schoolID int64) (*models.StaffDirectorySummary, error) {
@@ -79,7 +79,7 @@ func TestStaffHandlerCreateSuccessDoesNotExposePassword(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	service := &fakeStaffAccountService{user: &models.User{
 		ID: 15, PrincipalID: 27, SchoolID: 8, Username: "teacher.one", PasswordHash: "private-hash-marker",
-		Status: "active", MustChangePassword: true,
+		Status: "active", MustChangePassword: true, StaffType: "teaching",
 	}}
 	router := gin.New()
 	router.POST("/school/staff", func(c *gin.Context) {
@@ -99,7 +99,7 @@ func TestStaffHandlerCreateSuccessDoesNotExposePassword(t *testing.T) {
 	if strings.Contains(rec.Body.String(), "A-Strong-Initial-Pass-123") || strings.Contains(rec.Body.String(), "PasswordHash") || strings.Contains(rec.Body.String(), "private-hash-marker") {
 		t.Fatalf("staff create response leaked password material: %s", rec.Body.String())
 	}
-	if !strings.Contains(rec.Body.String(), `"must_change_password":true`) {
+	if !strings.Contains(rec.Body.String(), `"must_change_password":true`) || !strings.Contains(rec.Body.String(), `"staff_type":"teaching"`) {
 		t.Fatalf("new staff account must require first-login password change: %s", rec.Body.String())
 	}
 }
@@ -205,7 +205,7 @@ func TestStaffHandlerListUsesAuthenticatedSchoolAndReturnsPrincipalIDs(t *testin
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/school/staff", nil))
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"principal_id":27`) ||
-		!strings.Contains(rec.Body.String(), "teacher.one") || !strings.Contains(rec.Body.String(), `"protected_school_admin":true`) || strings.Contains(rec.Body.String(), "PasswordHash") || strings.Contains(rec.Body.String(), "private-hash-marker") {
+		!strings.Contains(rec.Body.String(), "teacher.one") || !strings.Contains(rec.Body.String(), `"protected_school_admin":true`) || !strings.Contains(rec.Body.String(), `"staff_type":"teaching"`) || strings.Contains(rec.Body.String(), "PasswordHash") || strings.Contains(rec.Body.String(), "private-hash-marker") {
 		t.Fatalf("unexpected staff listing response: status=%d body=%s", rec.Code, rec.Body.String())
 	}
 }
@@ -226,7 +226,7 @@ func TestStaffHandlerDirectoryPageForwardsAuthenticatedScopeAndFilters(t *testin
 		t.Fatalf("directory request status=%d actor=%d school=%d body=%s", rec.Code, service.directoryActorID, service.directorySchoolID, rec.Body.String())
 	}
 	want := models.StaffDirectoryFilter{Search:"teacher", EmploymentStatus:"active", AccountStatus:"enabled", ProfileStatus:"complete", Limit:25, Offset:50}
-	if service.directoryFilter != want || !strings.Contains(rec.Body.String(), `"total":51`) || !strings.Contains(rec.Body.String(), `"offset":50`) || !strings.Contains(rec.Body.String(), `"protected_school_admin":true`) {
+	if service.directoryFilter != want || !strings.Contains(rec.Body.String(), `"total":51`) || !strings.Contains(rec.Body.String(), `"offset":50`) || !strings.Contains(rec.Body.String(), `"protected_school_admin":true`) || !strings.Contains(rec.Body.String(), `"staff_type":"non_teaching"`) {
 		t.Fatalf("directory filter/metadata mismatch: got=%+v body=%s", service.directoryFilter, rec.Body.String())
 	}
 }
@@ -306,7 +306,7 @@ func TestStaffHandlerUpdateProfileParsesAndPassesCompleteProfile(t *testing.T) {
 		ID: 15, PrincipalID: 27, SchoolID: 8, Username: "teacher.one",
 		EmployeeCode: "EMP-001", FullName: "Teacher One", Designation: "Class Teacher",
 		MobileNumber: "9876543210", Email: "teacher@example.com",
-		EmploymentStatus: "inactive", ProfileComplete: true, Status: "disabled",
+		EmploymentStatus: "inactive", StaffType: "teaching", ProfileComplete: true, Status: "disabled",
 	}}
 	router := gin.New()
 	router.PATCH("/school/staff/:principalID", func(c *gin.Context) {
