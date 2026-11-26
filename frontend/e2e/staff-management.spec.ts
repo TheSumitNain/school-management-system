@@ -590,7 +590,7 @@ test("staff directory filters stay within mobile, tablet and desktop layouts", a
   }
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await filters.locator("button.app-select-trigger").first().click();
+  await filters.locator("label").nth(1).locator("button.app-select-trigger").click();
   await page.getByRole("option", { name: "Active", exact: true }).click();
   await expect(page.getByText("1–1 of 1 staff members")).toBeVisible();
 });
