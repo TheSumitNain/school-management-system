@@ -311,6 +311,8 @@ func (h *StaffHandler) Disable(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid staff account disable request"})
 	case errors.Is(err, repository.ErrRolePermissionDenied):
 		c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": "Staff account disable is not authorized"})
+	case errors.Is(err, repository.ErrStaffProfileHasActiveSubstitutions):
+		c.JSON(http.StatusConflict, gin.H{"status": "error", "code": "staff_has_active_substitutions", "message": "Cancel or reassign this employee’s active substitutions before disabling the staff account."})
 	case errors.Is(err, repository.ErrUserNotFound):
 		c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": "Staff account not found in this school"})
 	default:
@@ -412,6 +414,8 @@ func (h *StaffHandler) Update(c *gin.Context) {
 		c.JSON(http.StatusConflict, gin.H{"status": "error", "code": "employee_code_taken", "message": "This employee code is already used in this school"})
 	case errors.Is(err, repository.ErrStaffProfileHasActiveAssignments):
 		c.JSON(http.StatusConflict, gin.H{"status": "error", "code": "staff_has_active_teaching_assignments", "message": "Reassign or remove this employee’s active teaching and class in-charge assignments before changing Staff Type to Non-teaching or Employment Status to Inactive."})
+	case errors.Is(err, repository.ErrStaffProfileHasActiveSubstitutions):
+		c.JSON(http.StatusConflict, gin.H{"status": "error", "code": "staff_has_active_substitutions", "message": "Cancel or reassign this employee’s active substitutions before changing Employment Status to Inactive."})
 	case errors.Is(err, repository.ErrUsernameTaken):
 		c.JSON(http.StatusConflict, gin.H{"status": "error", "message": "This username is already in use"})
 	case errors.Is(err, repository.ErrUserNotFound):
