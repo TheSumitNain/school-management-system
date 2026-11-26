@@ -120,17 +120,17 @@ func TestStaffSubstitutionV60DatabaseGuardsPostgresIntegration(t *testing.T) {
 	} {
 		legacyTypeTx, beginErr := tx.Begin(ctx)
 		if beginErr != nil { t.Fatalf("begin legacy %s Staff Type guard savepoint: %v", fixture.name, beginErr) }
-		if _, err = legacyTypeTx.Exec(ctx, `ALTER TABLE staff_profiles DISABLE TRIGGER trg_guard_v65_staff_profile_teacher_assignments`); err != nil {
+		if _, err = legacyTypeTx.Exec(ctx, `SET LOCAL session_replication_role = replica`); err != nil {
 			_ = legacyTypeTx.Rollback(ctx)
-			t.Fatalf("disable assignment guard for legacy %s fixture: %v", fixture.name, err)
+			t.Fatalf("temporarily bypass profile trigger for legacy %s fixture: %v", fixture.name, err)
 		}
 		if _, err = legacyTypeTx.Exec(ctx, `UPDATE staff_profiles SET staff_type='non_teaching' WHERE principal_id=$1 AND school_id=$2`, fixture.principalID, schoolID); err != nil {
 			_ = legacyTypeTx.Rollback(ctx)
 			t.Fatalf("simulate legacy non-teaching %s profile: %v", fixture.name, err)
 		}
-		if _, err = legacyTypeTx.Exec(ctx, `ALTER TABLE staff_profiles ENABLE TRIGGER trg_guard_v65_staff_profile_teacher_assignments`); err != nil {
+		if _, err = legacyTypeTx.Exec(ctx, `SET LOCAL session_replication_role = origin`); err != nil {
 			_ = legacyTypeTx.Rollback(ctx)
-			t.Fatalf("restore assignment guard after legacy %s fixture: %v", fixture.name, err)
+			t.Fatalf("restore profile triggers after legacy %s fixture: %v", fixture.name, err)
 		}
 		_, insertErr := legacyTypeTx.Exec(ctx, `INSERT INTO staff_substitutions
 			(school_id,timetable_entry_id,period_id,cover_date,original_teacher_principal_id,substitute_teacher_principal_id,reason,created_by_principal_id)

@@ -531,17 +531,17 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 
 	legacyTeacherScope, err := timetableScopeTx.Begin(ctx)
 	if err != nil { t.Fatalf("begin legacy Staff Type read-scope regression: %v", err) }
-	if _, err := legacyTeacherScope.Exec(ctx, `ALTER TABLE staff_profiles DISABLE TRIGGER trg_guard_v65_staff_profile_teacher_assignments`); err != nil {
+	if _, err := legacyTeacherScope.Exec(ctx, `SET LOCAL session_replication_role = replica`); err != nil {
 		_ = legacyTeacherScope.Rollback(ctx)
-		t.Fatalf("temporarily disable profile assignment guard for legacy fixture: %v", err)
+		t.Fatalf("temporarily bypass profile trigger for legacy fixture: %v", err)
 	}
 	if _, err := legacyTeacherScope.Exec(ctx, `UPDATE staff_profiles SET staff_type=NULL WHERE principal_id=$1 AND school_id=$2`, teacherPrincipalID, schoolID); err != nil {
 		_ = legacyTeacherScope.Rollback(ctx)
 		t.Fatalf("simulate legacy unclassified teacher profile: %v", err)
 	}
-	if _, err := legacyTeacherScope.Exec(ctx, `ALTER TABLE staff_profiles ENABLE TRIGGER trg_guard_v65_staff_profile_teacher_assignments`); err != nil {
+	if _, err := legacyTeacherScope.Exec(ctx, `SET LOCAL session_replication_role = origin`); err != nil {
 		_ = legacyTeacherScope.Rollback(ctx)
-		t.Fatalf("restore profile assignment guard after legacy fixture: %v", err)
+		t.Fatalf("restore profile triggers after legacy fixture: %v", err)
 	}
 	legacyRepo := NewAcademicRepository(legacyTeacherScope)
 	if _, err := legacyRepo.ListTimetableEntries(ctx, teacherPrincipalID, schoolID, year1, 0, 0); !errors.Is(err, ErrTimetableAccessDenied) {
