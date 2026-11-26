@@ -202,6 +202,8 @@ function QualificationsReport({ permissions }: Props) {
   const [recordType, setRecordType] = useState<"all" | "qualification" | "certification">("all");
   const [verificationStatus, setVerificationStatus] = useState<"" | "pending" | "verified" | "rejected">("");
   const [offset, setOffset] = useState(0);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState("");
   const limit = 50;
   const report = useQuery({
     queryKey: ["staff-operational-report", "qualifications", recordType, verificationStatus, offset],
@@ -214,17 +216,44 @@ function QualificationsReport({ permissions }: Props) {
     ["Record type", "Employee code", "Staff name", "Record", "Institution / issuing organization", "Completion / issue date", "Expiry date", "Verification status"],
     ...rows.map(row => [row.record_type, row.employee_code, row.staff_name, row.record_name, row.organization, row.record_date, row.expiry_date, row.verification_status]),
   ]);
+  const exportAll = async () => {
+    if (!page || page.total === 0 || exporting) return;
+    setExporting(true);
+    setExportError("");
+    try {
+      const rows = [...page.rows];
+      let nextOffset = rows.length;
+      while (nextOffset < page.total) {
+        const result = await getStaffQualificationsReport({
+          recordType,
+          verificationStatus: verificationStatus || undefined,
+          limit: 200,
+          offset: nextOffset,
+        });
+        if (result.report.rows.length === 0) throw new Error("The report returned an incomplete page.");
+        rows.push(...result.report.rows);
+        nextOffset += result.report.rows.length;
+      }
+      if (rows.length !== page.total) throw new Error("The report total changed while exporting.");
+      exportRows(rows);
+    } catch {
+      setExportError("The complete report could not be exported. No partial CSV was created; please retry.");
+    } finally {
+      setExporting(false);
+    }
+  };
   const pending = (page?.counts ?? []).filter(item => item.verification_status === "pending").reduce((sum,item) => sum + item.count,0);
   const verified = (page?.counts ?? []).filter(item => item.verification_status === "verified").reduce((sum,item) => sum + item.count,0);
   const rejected = (page?.counts ?? []).filter(item => item.verification_status === "rejected").reduce((sum,item) => sum + item.count,0);
   return <section className="staff-operational-report-section">
     <div className="staff-operational-report-title">
       <div><h3>Qualifications & certifications</h3><p>Active employees only · Verification notes and credential references are not included.</p></div>
-      <button type="button" className="staff-operational-report-export" onClick={() => page && exportRows(page.rows)} disabled={!page || page.rows.length === 0 || report.isError}><Download size={14}/> Export current page CSV</button>
+      <button type="button" className="staff-operational-report-export" onClick={() => void exportAll()} disabled={!page || page.total === 0 || exporting || report.isError}><Download size={14}/> {exporting ? "Preparing CSV…" : "Export all matching CSV"}</button>
     </div>
+    {exportError && <p className="staff-operational-report-error" role="alert">{exportError}</p>}
     <div className="staff-operational-report-filters">
-      <label>Record type<select value={recordType} onChange={event => { setRecordType(event.target.value as typeof recordType); setOffset(0); }}><option value="all">All records</option><option value="qualification">Qualifications</option><option value="certification">Certifications</option></select></label>
-      <label>Verification status<select value={verificationStatus} onChange={event => { setVerificationStatus(event.target.value as typeof verificationStatus); setOffset(0); }}><option value="">All statuses</option><option value="pending">Pending</option><option value="verified">Verified</option><option value="rejected">Rejected</option></select></label>
+      <label>Record type<select value={recordType} onChange={event => { setRecordType(event.target.value as typeof recordType); setOffset(0); setExportError(""); }}><option value="all">All records</option><option value="qualification">Qualifications</option><option value="certification">Certifications</option></select></label>
+      <label>Verification status<select value={verificationStatus} onChange={event => { setVerificationStatus(event.target.value as typeof verificationStatus); setOffset(0); setExportError(""); }}><option value="">All statuses</option><option value="pending">Pending</option><option value="verified">Verified</option><option value="rejected">Rejected</option></select></label>
     </div>
     <div className="staff-operational-report-metrics">
       <article><span>Matching records</span><strong>{page?.total ?? "—"}</strong></article>
@@ -238,16 +267,17 @@ function QualificationsReport({ permissions }: Props) {
     {report.isSuccess && !!page?.rows.length && <div className="staff-operational-report-table-wrap"><table><thead><tr><th>Employee</th><th>Record type</th><th>Record</th><th>Institution / organization</th><th>Completion / issue</th><th>Expiry</th><th>Status</th></tr></thead><tbody>
       {page.rows.map(row => <tr key={row.record_type + "-" + row.record_id}><td>{row.staff_name}<small>{row.employee_code}</small></td><td>{row.record_type === "qualification" ? "Qualification" : "Certification"}</td><td>{row.record_name}</td><td>{row.organization}</td><td>{row.record_date || "—"}</td><td>{row.expiry_date || "—"}</td><td><span className={"staff-operational-report-status " + row.verification_status}>{row.verification_status}</span></td></tr>)}
     </tbody></table></div>}
-    {page && page.total > limit && <div className="staff-operational-report-pagination"><span>Showing {offset + 1}–{Math.min(offset + limit,page.total)} of {page.total}</span><button type="button" onClick={() => setOffset(Math.max(0,offset-limit))} disabled={offset===0 || report.isFetching}>Previous</button><button type="button" onClick={() => setOffset(offset+limit)} disabled={offset+limit>=page.total || report.isFetching}>Next</button></div>}
+    {page && page.total > limit && <div className="staff-operational-report-pagination"><span>Showing {offset + 1}–{Math.min(offset + limit,page.total)} of {page.total}</span><button type="button" onClick={() => setOffset(Math.max(0,offset-limit))} disabled={offset===0 || report.isFetching || exporting}>Previous</button><button type="button" onClick={() => setOffset(offset+limit)} disabled={offset+limit>=page.total || report.isFetching || exporting}>Next</button></div>}
   </section>;
 }
-
 
 function ExperienceReport({ permissions }: Props) {
   const canRead=permissions.includes("users.read");
   const [employmentType,setEmploymentType]=useState<""|StaffExperienceReportRow["employment_type"]>("");
   const [currentOnly,setCurrentOnly]=useState(false);
   const [offset,setOffset]=useState(0);
+  const [exporting,setExporting]=useState(false);
+  const [exportError,setExportError]=useState("");
   const limit=50;
   const report=useQuery({
     queryKey:["staff-operational-report","experience",employmentType,currentOnly,offset],
@@ -262,16 +292,33 @@ function ExperienceReport({ permissions }: Props) {
     ["Employee code","Staff name","Current designation","Employment status","Employer","Previous designation","Employment type","Start date","End date","Current role"],
     ...rows.map(row=>[row.employee_code,row.staff_name,row.designation,row.employment_status,row.employer_name,row.previous_designation,row.employment_type,row.start_date,row.end_date,row.is_current?"Yes":"No"]),
   ]);
+  const exportAll=async()=>{
+    if(!page||page.total===0||exporting)return;
+    setExporting(true);setExportError("");
+    try{
+      const rows=[...page.rows];let nextOffset=rows.length;
+      while(nextOffset<page.total){
+        const result=await getStaffExperienceReport({employmentType:employmentType||undefined,currentOnly,limit:200,offset:nextOffset});
+        if(result.report.rows.length===0)throw new Error("The report returned an incomplete page.");
+        rows.push(...result.report.rows);nextOffset+=result.report.rows.length;
+      }
+      if(rows.length!==page.total)throw new Error("The report total changed while exporting.");
+      exportRows(rows);
+    }catch{
+      setExportError("The complete report could not be exported. No partial CSV was created; please retry.");
+    }finally{setExporting(false);}
+  };
   return <section className="staff-operational-report-section">
     <div className="staff-operational-report-title">
       <div><h3>Staff experience history</h3><p>School-wide employment history, including inactive employees. Free-text descriptions are excluded.</p></div>
-      <button type="button" className="staff-operational-report-export" onClick={()=>page&&exportRows(page.rows)} disabled={!page||page.rows.length===0||report.isError}><Download size={14}/> Export current page CSV</button>
+      <button type="button" className="staff-operational-report-export" onClick={()=>void exportAll()} disabled={!page||page.total===0||exporting||report.isError}><Download size={14}/> {exporting?"Preparing CSV…":"Export all matching CSV"}</button>
     </div>
+    {exportError&&<p className="staff-operational-report-error" role="alert">{exportError}</p>}
     <div className="staff-operational-report-filters">
-      <label>Employment type<select value={employmentType} onChange={event=>{setEmploymentType(event.target.value as typeof employmentType);setOffset(0);}}>
+      <label>Employment type<select value={employmentType} onChange={event=>{setEmploymentType(event.target.value as typeof employmentType);setOffset(0);setExportError("");}}>
         <option value="">All employment types</option><option value="permanent">Permanent</option><option value="contract">Contract</option><option value="part_time">Part time</option><option value="temporary">Temporary</option><option value="internship">Internship</option><option value="other">Other</option>
       </select></label>
-      <label>Experience status<select value={currentOnly?"current":"all"} onChange={event=>{setCurrentOnly(event.target.value==="current");setOffset(0);}}><option value="all">All history</option><option value="current">Current roles only</option></select></label>
+      <label>Experience status<select value={currentOnly?"current":"all"} onChange={event=>{setCurrentOnly(event.target.value==="current");setOffset(0);setExportError("");}}><option value="all">All history</option><option value="current">Current roles only</option></select></label>
     </div>
     <div className="staff-operational-report-metrics">
       <article><span>Matching records</span><strong>{page?.total??"—"}</strong></article>
@@ -285,7 +332,7 @@ function ExperienceReport({ permissions }: Props) {
     {report.isSuccess&&!!page?.rows.length&&<div className="staff-operational-report-table-wrap"><table><thead><tr><th>Employee</th><th>Current designation</th><th>Employer</th><th>Previous designation</th><th>Employment type</th><th>From</th><th>To</th><th>Record status</th></tr></thead><tbody>
       {page.rows.map(row=><tr key={row.record_id}><td>{row.staff_name}<small>{row.employee_code}</small></td><td>{row.designation}</td><td>{row.employer_name}</td><td>{row.previous_designation}</td><td>{row.employment_type.replace("_"," ")}</td><td>{row.start_date}</td><td>{row.is_current?"Present":row.end_date||"—"}</td><td>{row.employment_status}</td></tr>)}
     </tbody></table></div>}
-    {page&&page.total>limit&&<div className="staff-operational-report-pagination"><span>Showing {offset+1}–{Math.min(offset+limit,page.total)} of {page.total}</span><button type="button" onClick={()=>setOffset(Math.max(0,offset-limit))} disabled={offset===0||report.isFetching}>Previous</button><button type="button" onClick={()=>setOffset(offset+limit)} disabled={offset+limit>=page.total||report.isFetching}>Next</button></div>}
+    {page&&page.total>limit&&<div className="staff-operational-report-pagination"><span>Showing {offset+1}–{Math.min(offset+limit,page.total)} of {page.total}</span><button type="button" onClick={()=>setOffset(Math.max(0,offset-limit))} disabled={offset===0||report.isFetching||exporting}>Previous</button><button type="button" onClick={()=>setOffset(offset+limit)} disabled={offset+limit>=page.total||report.isFetching||exporting}>Next</button></div>}
   </section>;
 }
 
