@@ -230,9 +230,22 @@ function QualificationsReport({ permissions }: Props) {
           limit: 200,
           offset: nextOffset,
         });
-        if (result.report.rows.length === 0) throw new Error("The report returned an incomplete page.");
-        rows.push(...result.report.rows);
-        nextOffset += result.report.rows.length;
+        const batch = result.report;
+        const expectedRows = Math.min(200, page.total - nextOffset);
+        if (batch.limit !== 200 || batch.offset !== nextOffset || batch.total !== page.total ||
+          batch.rows.length !== expectedRows) {
+          throw new Error("The report page is incomplete or changed during export.");
+        }
+        const seen = new Set(rows.map(row => row.record_type + ":" + row.record_id));
+        for (const row of batch.rows) {
+          const key = row.record_type + ":" + row.record_id;
+          if (!Number.isSafeInteger(row.record_id) || row.record_id <= 0 || seen.has(key)) {
+            throw new Error("The report contains a duplicate or invalid record.");
+          }
+          seen.add(key);
+        }
+        rows.push(...batch.rows);
+        nextOffset += batch.rows.length;
       }
       if (rows.length !== page.total) throw new Error("The report total changed while exporting.");
       exportRows(rows);
@@ -299,8 +312,19 @@ function ExperienceReport({ permissions }: Props) {
       const rows:StaffExperienceReportRow[]=[];let nextOffset=0;
       while(nextOffset<page.total){
         const result=await getStaffExperienceReport({employmentType:employmentType||undefined,currentOnly,limit:200,offset:nextOffset});
-        if(result.report.rows.length===0)throw new Error("The report returned an incomplete page.");
-        rows.push(...result.report.rows);nextOffset+=result.report.rows.length;
+        const batch=result.report;
+        const expectedRows=Math.min(200,page.total-nextOffset);
+        if(batch.limit!==200||batch.offset!==nextOffset||batch.total!==page.total||batch.rows.length!==expectedRows){
+          throw new Error("The report page is incomplete or changed during export.");
+        }
+        const seen=new Set(rows.map(row=>row.record_id));
+        for(const row of batch.rows){
+          if(!Number.isSafeInteger(row.record_id)||row.record_id<=0||seen.has(row.record_id)){
+            throw new Error("The report contains a duplicate or invalid record.");
+          }
+          seen.add(row.record_id);
+        }
+        rows.push(...batch.rows);nextOffset+=batch.rows.length;
       }
       if(rows.length!==page.total)throw new Error("The report total changed while exporting.");
       exportRows(rows);
