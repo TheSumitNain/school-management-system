@@ -215,7 +215,7 @@ export function StaffSubstitutionWorkspace({permissions,staff}:Props){
         </label>
         <p className="staff-substitution-note">The substitute must not have another class or cover in the same period. Approved leave is not created or approved by this action. Unscheduled timetable slots are not treated as availability.</p>
         {formError&&<p className="staff-substitution-error" role="alert">{formError}</p>}
-        <button className="primary" type="submit" disabled={create.isPending||!canReadTimetable||entries.length===0}>{create.isPending?"Assigning…":"Assign substitute"}</button>
+        <button className="primary" type="submit" disabled={create.isPending||isExporting||!canReadTimetable||entries.length===0}>{create.isPending?"Assigning…":"Assign substitute"}</button>
       </form>
     </div>}
 
@@ -227,7 +227,7 @@ export function StaffSubstitutionWorkspace({permissions,staff}:Props){
         <label>Staff member <Select value={filterStaffID} onChange={value=>{setFilterStaffID(value);setSubstitutionPage(1);}} disabled={isExporting} ariaLabel="Filter substitutions by staff" options={staffOptions}/></label>
       </div>
       {!fromDate||!toDate?<p className="staff-substitution-error" role="alert">Select both a From date and a To date.</p>:!validRange&&<p className="staff-substitution-error" role="alert">To date must be on or after from date.</p>}
-      {filtersChanged&&<div className="staff-substitution-filter-actions"><button type="button" className="staff-substitution-refresh" onClick={()=>{setFromDate(range.from);setToDate(range.to);setFilterStaffID("0");setSubstitutionPage(1);}}>Clear filters</button></div>}
+      {filtersChanged&&<div className="staff-substitution-filter-actions"><button type="button" className="staff-substitution-refresh" onClick={()=>{setFromDate(range.from);setToDate(range.to);setFilterStaffID("0");setSubstitutionPage(1);}} disabled={isExporting}>Clear filters</button></div>}
       {validRange&&substitutionsQuery.isLoading&&<p className="staff-substitution-muted">Loading substitution records…</p>}
       {validRange&&substitutionsQuery.isError&&<p className="staff-substitution-error" role="alert">Unable to load substitution records. <button type="button" onClick={()=>void substitutionsQuery.refetch()}>Retry</button></p>}
       {validRange&&substitutionsQuery.isSuccess&&substitutionsQuery.data.substitutions.length===0&&<p className="staff-substitution-empty">No substitute coverage records in this date range.</p>}
@@ -241,7 +241,7 @@ export function StaffSubstitutionWorkspace({permissions,staff}:Props){
             <p><UserRound size={13}/> {item.original_teacher_name} <span aria-hidden="true">→</span> <strong>{item.substitute_teacher_name}</strong></p>
             <small>{item.reason}{item.approved_leave_request_id?" · Leave request #"+item.approved_leave_request_id:""}</small>
           </div>
-          {canCancel&&<button type="button" className="staff-substitution-cancel" onClick={()=>setCancelTarget(item)}><XCircle size={14}/> Cancel cover</button>}
+          {canCancel&&<button type="button" className="staff-substitution-cancel" onClick={()=>setCancelTarget(item)} disabled={isExporting||cancel.isPending}><XCircle size={14}/> Cancel cover</button>}
         </article>;
       })}
       {validRange&&substitutionsQuery.data?.pagination&&substitutionsQuery.data.pagination.total>0&&<div className="staff-substitution-filter-actions" aria-label="Substitution history pagination"><span>Showing {(substitutionPage-1)*substitutionPageSize+1}–{Math.min(substitutionPage*substitutionPageSize,substitutionsQuery.data.pagination.total)} of {substitutionsQuery.data.pagination.total}</span><button type="button" className="staff-substitution-refresh" onClick={()=>setSubstitutionPage(page=>Math.max(1,page-1))} disabled={substitutionPage===1||substitutionsQuery.isFetching||isExporting}>Previous</button><button type="button" className="staff-substitution-refresh" onClick={()=>setSubstitutionPage(page=>page+1)} disabled={substitutionPage*substitutionPageSize>=substitutionsQuery.data.pagination.total||substitutionsQuery.isFetching||isExporting}>Next</button></div>}
