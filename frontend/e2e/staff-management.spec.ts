@@ -494,6 +494,37 @@ test("staff directory uses server-side search and stable pagination", async ({ p
   await expect(page.getByRole("button", { name: "Previous" })).toHaveCount(0);
 });
 
+test("staff directory returns to the last valid page after disabling the final account", async ({ page }) => {
+  const all=Array.from({length:51},(_,index)=>({
+    id:index+1,principal_id:index+2001,school_id:10,username:`directory.disable.${index+1}`,
+    employee_code:`DIR-DIS-${index+1}`,full_name:`Directory Disable ${index+1}`,
+    designation:"Office Staff",mobile_number:"9876543210",employment_status:"active",
+    profile_complete:true,status:"active",must_change_password:false,
+  }));
+  let disabled=false;
+  await signInAndOpenStaff(page,[],undefined,["users.read","users.disable"]);
+  await page.route(url=>url.pathname==="/api/school/staff"&&url.searchParams.has("limit"),async route=>{
+    const url=new URL(route.request().url());const limit=Number(url.searchParams.get("limit"));const offset=Number(url.searchParams.get("offset"));
+    const matching=disabled?all.slice(0,50):all;
+    await route.fulfill({json:{staff:matching.slice(offset,offset+limit),total:matching.length,limit,offset}});
+  });
+  await page.route("**/api/school/staff/2051",async route=>{
+    if(route.request().method()!=="DELETE"){await route.fallback();return;}
+    disabled=true;await route.fulfill({json:{message:"Staff account disabled."}});
+  });
+  await page.getByRole("button",{name:/Staff Directory/}).click();
+  await expect(page.getByText("Page 1 of 2")).toBeVisible();
+  await page.getByRole("button",{name:"Next"}).click();
+  const lastRow=page.locator("tr").filter({hasText:"directory.disable.51"});
+  await expect(lastRow).toBeVisible();
+  await lastRow.getByRole("button",{name:"Disable directory.disable.51"}).click();
+  await page.getByRole("dialog",{name:"Disable staff account?"}).getByRole("button",{name:"Disable account"}).click();
+  await expect(page.getByText("1–50 of 50 staff members")).toBeVisible();
+  await expect(page.getByText("Page 1 of 1")).toHaveCount(0);
+  await expect(page.getByRole("button",{name:"Directory Disable 1"})).toBeVisible();
+  await expect(page.getByRole("button",{name:"Previous"})).toHaveCount(0);
+});
+
 test("staff directory filters stay within mobile, tablet and desktop layouts", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [
     { id: 1, principal_id: 621, school_id: 10, username: "responsive.active", employee_code: "EMP-R-01", full_name: "Responsive Active", designation: "Teacher", employment_status: "active", profile_complete: true, status: "active", must_change_password: false },
