@@ -1,3 +1,15 @@
+## 2026-11-26 — Staff Attendance single-write rollback and read authorization pass
+
+- Added real-PostgreSQL regression coverage proving a failed audit insert rolls back a single attendance mark (no attendance row and no success audit event).
+- Added a forced audit-failure update regression proving the prior attendance status and remarks remain unchanged and no update audit event is committed.
+- Added daily/monthly read checks against actual attendance rows, including correct present-day aggregation, and verified that a caller without `staff.attendance.read` cannot access either read endpoint at repository level.
+- Added cross-school daily/monthly read denial checks. Existing bulk attendance atomicity, invalid-target rollback, duplicate-target rejection and concurrent-write serialization tests remain in the same passing suite.
+- Backend CI [45743894444](https://github.com/TheSumitNain/school-management-system/actions/runs/45743894444) **PASS** on `66a0f0377ba194c908fd39ded500da91b5704784`: full migration chain, complete Go/PostgreSQL integration suite and `go vet`.
+- Frontend source was unchanged; Frontend CI [45737923385](https://github.com/TheSumitNain/school-management-system/actions/runs/45737923385) remains **PASS** with TypeScript, Vite production build and 132 Playwright tests.
+- No schema migration or persistent school data change. Manual authenticated-school sign-off and previously documented product approval gates remain outstanding; `main` remains untouched.
+
+---
+
 ## 2026-11-26 — Staff Leave/Substitution pagination ordering and filter coverage pass
 
 - Extended real-PostgreSQL Leave Requests coverage to verify inclusive overlapping date-range filters in addition to single-date filters, exact totals, multi-page results, stable newest-first ordering and cross-school denial.
