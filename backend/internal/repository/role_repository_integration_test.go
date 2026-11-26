@@ -438,11 +438,62 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 	auditFailureFunction := "test_role_audit_failure_" + auditFailureSuffix
 	auditFailureTrigger := "trg_test_role_audit_failure_" + auditFailureSuffix
 	if _, err := tx.Exec(ctx, fmt.Sprintf(
-		"CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $role_audit_failure$ BEGIN IF NEW.action IN ('school.staff.role_revoked','school.staff.permission_override.set') THEN RAISE EXCEPTION 'injected role audit failure'; END IF; RETURN NEW; END; $role_audit_failure$; CREATE TRIGGER %s BEFORE INSERT ON audit_events FOR EACH ROW EXECUTE FUNCTION %s();",
+		"CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $role_audit_failure$ BEGIN IF NEW.action IN ('school.role.created','platform.permission_delegation.granted','platform.permission_delegation.revoked','school.custom_role.permission_revoked','school.staff.role_assigned','school.staff.role_revoked','school.staff.permission_override.set') THEN RAISE EXCEPTION 'injected role audit failure'; END IF; RETURN NEW; END; $role_audit_failure$; CREATE TRIGGER %s BEFORE INSERT ON audit_events FOR EACH ROW EXECUTE FUNCTION %s();",
 		auditFailureFunction, auditFailureTrigger, auditFailureFunction,
 	)); err != nil {
 		t.Fatalf("install role audit failure trigger: %v", err)
 	}
+	// Extend audit-failure atomicity checks across the remaining role-admin writes.
+	failedRoleKey := "audit_failure_role_" + auditFailureSuffix
+	if _, err := repo.CreateCustomRole(ctx, actorPrincipalID, schoolID, failedRoleKey, "Must Roll Back"); err == nil {
+		t.Fatal("custom role creation succeeded despite forced audit failure")
+	}
+	var failedRoleCount int
+	if err := tx.QueryRow(ctx, "SELECT COUNT(*) FROM roles WHERE school_id=$1 AND role_key=$2", schoolID, failedRoleKey).Scan(&failedRoleCount); err != nil {
+		t.Fatalf("count custom roles after audit failure: %v", err)
+	}
+	if failedRoleCount != 0 { t.Fatalf("custom roles after failed audited create=%d want=0", failedRoleCount) }
+
+	if _, err := repo.GrantSchoolPermissionDelegation(ctx, platformAdminPrincipalID, schoolID, "students.read_basic", true, false); err == nil {
+		t.Fatal("permission delegation grant succeeded despite forced audit failure")
+	}
+	var activeRoleDelegations int
+	if err := tx.QueryRow(ctx, "SELECT COUNT(*) FROM role_permission_delegations d JOIN permissions p ON p.id=d.permission_id WHERE d.school_id=$1 AND p.permission_key='students.read_basic' AND d.revoked_at IS NULL", schoolID).Scan(&activeRoleDelegations); err != nil {
+		t.Fatalf("count delegations after failed grant: %v", err)
+	}
+	if activeRoleDelegations != 0 { t.Fatalf("active delegations after failed audited grant=%d want=0", activeRoleDelegations) }
+
+	if err := repo.RevokeSchoolPermissionDelegation(ctx, platformAdminPrincipalID, overrideDelegation.ID); err == nil {
+		t.Fatal("permission delegation revocation succeeded despite forced audit failure")
+	}
+	var delegationStillActive bool
+	if err := tx.QueryRow(ctx, "SELECT revoked_at IS NULL FROM role_permission_delegations WHERE id=$1", overrideDelegation.ID).Scan(&delegationStillActive); err != nil {
+		t.Fatalf("check delegation after failed revoke: %v", err)
+	}
+	if !delegationStillActive { t.Fatal("delegation was revoked despite audit failure") }
+
+	if err := repo.RevokeCustomRolePermission(ctx, actorPrincipalID, schoolID, customRole.ID, "students.read_basic"); err == nil {
+		t.Fatal("custom-role permission revocation succeeded despite forced audit failure")
+	}
+	var retainedRolePermissionCount int
+	if err := tx.QueryRow(ctx, "SELECT COUNT(*) FROM role_permissions rp JOIN permissions p ON p.id=rp.permission_id WHERE rp.role_id=$1 AND p.permission_key='students.read_basic'", customRole.ID).Scan(&retainedRolePermissionCount); err != nil {
+		t.Fatalf("count custom-role grants after failed revoke: %v", err)
+	}
+	if retainedRolePermissionCount != 1 { t.Fatalf("custom-role grants after failed audited revoke=%d want=1", retainedRolePermissionCount) }
+
+	var assignmentFailureTargetID int64
+	if err := tx.QueryRow(ctx, "INSERT INTO users (school_id, username, password_hash, status) VALUES ($1,$2,$3,'active') RETURNING principal_id", schoolID, "role-audit-fail-"+auditFailureSuffix, "integration-test-password-hash").Scan(&assignmentFailureTargetID); err != nil {
+		t.Fatalf("create role-assignment audit-failure target: %v", err)
+	}
+	if err := repo.AssignStaffRole(ctx, actorPrincipalID, schoolID, assignmentFailureTargetID, customRole.ID); err == nil {
+		t.Fatal("staff role assignment succeeded despite forced audit failure")
+	}
+	var failedAssignmentCount int
+	if err := tx.QueryRow(ctx, "SELECT COUNT(*) FROM principal_roles WHERE principal_id=$1 AND role_id=$2 AND revoked_at IS NULL", assignmentFailureTargetID, customRole.ID).Scan(&failedAssignmentCount); err != nil {
+		t.Fatalf("count role assignments after failed audited create: %v", err)
+	}
+	if failedAssignmentCount != 0 { t.Fatalf("role assignments after failed audited create=%d want=0", failedAssignmentCount) }
+
 	if err := repo.RevokeStaffRole(ctx, actorPrincipalID, schoolID, targetPrincipalID, customRole.ID); err == nil {
 		t.Fatal("role revocation succeeded despite forced audit failure")
 	}
