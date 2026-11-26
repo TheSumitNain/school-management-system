@@ -278,8 +278,12 @@ func academicWriteError(err error) error {
 			}
 			return ErrInvalidAcademicInput
 		case "23503", "23514", "22001", "22007":
-			if pgErr.ConstraintName == "teacher_assignment_staff_profile_check" { return ErrTeacherProfileIneligible }
-			if strings.Contains(strings.ToLower(pgErr.Message), "assignment actor") { return ErrAcademicAccessDenied }
+			message := strings.ToLower(pgErr.Message)
+			if pgErr.ConstraintName == "teacher_assignment_staff_profile_check" ||
+				strings.Contains(message, "teacher assignment requires an active") {
+				return ErrTeacherProfileIneligible
+			}
+			if strings.Contains(message, "assignment actor") { return ErrAcademicAccessDenied }
 			return ErrInvalidAcademicInput
 		}
 	}
