@@ -13,6 +13,7 @@ export type StaffRecord = {
   joining_date?: string | null;
   employment_status: "active" | "inactive" | string;
   profile_complete?: boolean;
+  protected_school_admin: boolean;
   status: string;
   must_change_password: boolean;
   created_at?: string;

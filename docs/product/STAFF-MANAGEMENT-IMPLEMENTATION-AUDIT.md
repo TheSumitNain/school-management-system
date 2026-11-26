@@ -883,3 +883,10 @@ This section supersedes older statements in this audit that describe browser ver
 - Updated the shared Modal focusable-element list to exclude elements without a rendered box, hidden visibility, `aria-hidden` ancestry or inert ancestry. Tab and Shift+Tab now wrap from the dialog container as well as from the first/last visible control.
 - Added a Staff Management Playwright regression for reverse-tab from initial dialog focus, forward wrapping from the final visible control, Escape close, and focus restoration to the Add staff trigger.
 - Backend behavior and database schema are unchanged. Frontend CI is required to verify the shared component change and full browser suite. `main` remains untouched; authenticated School Admin acceptance/sign-off and documented approval-gated scope remain outstanding.
+
+
+## 2026-11-26 follow-up — protected School Admin lifecycle UI
+
+- Source audit found the Staff Directory and profile Overview still rendered ordinary edit, password-reset, disable and re-enable controls for peer School Admin accounts, even though the backend correctly rejects those mutations. The role and permission-override panels were already read-only, but that did not cover account lifecycle actions.
+- Staff list and paginated directory responses now expose a server-derived 'protected_school_admin' flag based on the active same-school system role assignment. The frontend uses it to hide ordinary lifecycle controls and independently guards action-opening/submit paths; role and override panels remain visible read-only.
+- Added PostgreSQL assertions for the protected flag in both list APIs and Playwright coverage for active and disabled protected School Admin rows. Backend and frontend CI must pass before this batch is considered verified.

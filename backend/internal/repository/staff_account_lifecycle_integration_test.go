@@ -695,6 +695,35 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
 	`, protectedAdminPrincipalID, schoolID, platformAdminPrincipalID); err != nil {
 		t.Fatalf("assign protected School Admin role: %v", err)
 	}
+	// Staff list and paginated directory responses explicitly identify protected
+	// School Admin accounts so the frontend can keep ordinary lifecycle actions hidden.
+	listedStaff, err := repo.ListStaffAccounts(ctx, actorPrincipalID, schoolID)
+	if err != nil {
+		t.Fatalf("list staff accounts with protected School Admin: %v", err)
+	}
+	protectedInList := false
+	for _, item := range listedStaff {
+		if item.PrincipalID == protectedAdminPrincipalID {
+			protectedInList = item.ProtectedSchoolAdmin
+		}
+	}
+	if !protectedInList {
+		t.Fatal("staff account list did not mark the peer School Admin as protected")
+	}
+	directoryPage, err := repo.ListStaffDirectoryPage(ctx, actorPrincipalID, schoolID, models.StaffDirectoryFilter{Limit: 50})
+	if err != nil {
+		t.Fatalf("list staff directory with protected School Admin: %v", err)
+	}
+	protectedInDirectory := false
+	for _, item := range directoryPage.Staff {
+		if item.PrincipalID == protectedAdminPrincipalID {
+			protectedInDirectory = item.ProtectedSchoolAdmin
+		}
+	}
+	if !protectedInDirectory {
+		t.Fatal("staff directory did not mark the peer School Admin as protected")
+	}
+
 	// School Admin lifecycle protections are consistent: another School Admin
 	// cannot be disabled or have their password reset by a peer administrator.
 	protectedAdminSessionHash := integrationTokenHash("protected-admin-reset-" + suffix)

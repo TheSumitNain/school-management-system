@@ -21,6 +21,7 @@ type User struct {
     JoiningDate *time.Time `json:"joining_date"`
     EmploymentStatus string `json:"employment_status"`
     ProfileComplete bool `json:"profile_complete"`
+    ProtectedSchoolAdmin bool `json:"protected_school_admin"`
 	ID           int64     `json:"id"`
 	PrincipalID  int64     `json:"-"`
 	SchoolID     int64     `json:"school_id"`

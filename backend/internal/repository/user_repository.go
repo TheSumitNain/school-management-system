@@ -72,7 +72,18 @@ func (r *UserRepository) ListStaffAccounts(ctx context.Context, actorPrincipalID
                COALESCE(sp.employee_code, ''), COALESCE(sp.full_name, ''),
                COALESCE(sp.designation, ''), COALESCE(sp.mobile_number, ''),
                COALESCE(sp.email, ''), sp.joining_date,
-               COALESCE(sp.employment_status, ''), (sp.principal_id IS NOT NULL)
+               COALESCE(sp.employment_status, ''), (sp.principal_id IS NOT NULL), EXISTS (
+		       SELECT 1
+		       FROM principal_roles protected_assignment
+		       JOIN roles protected_role ON protected_role.id = protected_assignment.role_id
+		       WHERE protected_assignment.principal_id = u.principal_id
+		         AND protected_assignment.revoked_at IS NULL
+		         AND protected_role.school_id = $1
+		         AND protected_role.scope_type = 'school'
+		         AND protected_role.principal_type = 'staff'
+		         AND protected_role.role_key = 'school_admin'
+		         AND protected_role.is_system = TRUE
+		   )
 		FROM users u
         LEFT JOIN staff_profiles sp ON sp.principal_id = u.principal_id AND sp.school_id = u.school_id
 		WHERE u.school_id = $1
@@ -89,7 +100,8 @@ func (r *UserRepository) ListStaffAccounts(ctx context.Context, actorPrincipalID
 		if err := rows.Scan(&user.ID, &user.PrincipalID, &user.SchoolID, &user.Username,
 			&user.Status, &user.MustChangePassword, &user.CreatedAt, &user.UpdatedAt,
             &user.EmployeeCode, &user.FullName, &user.Designation, &user.MobileNumber,
-            &user.Email, &joiningDate, &user.EmploymentStatus, &user.ProfileComplete); err != nil {
+            &user.Email, &joiningDate, &user.EmploymentStatus, &user.ProfileComplete,
+            &user.ProtectedSchoolAdmin); err != nil {
 			return nil, fmt.Errorf("scan school staff account: %w", err)
 		}
         user.JoiningDate = joiningDate
@@ -1283,7 +1295,18 @@ func (r *UserRepository) ListStaffDirectoryPage(ctx context.Context, actorPrinci
 		       COALESCE(sp.employee_code, ''), COALESCE(sp.full_name, ''),
 		       COALESCE(sp.designation, ''), COALESCE(sp.mobile_number, ''),
 		       COALESCE(sp.email, ''), sp.joining_date,
-		       COALESCE(sp.employment_status, ''), (sp.principal_id IS NOT NULL)
+		       COALESCE(sp.employment_status, ''), (sp.principal_id IS NOT NULL), EXISTS (
+		       SELECT 1
+		       FROM principal_roles protected_assignment
+		       JOIN roles protected_role ON protected_role.id = protected_assignment.role_id
+		       WHERE protected_assignment.principal_id = u.principal_id
+		         AND protected_assignment.revoked_at IS NULL
+		         AND protected_role.school_id = $1
+		         AND protected_role.scope_type = 'school'
+		         AND protected_role.principal_type = 'staff'
+		         AND protected_role.role_key = 'school_admin'
+		         AND protected_role.is_system = TRUE
+		   )
 	`+filtered+`
 		ORDER BY LOWER(COALESCE(NULLIF(sp.full_name, ''), u.username)), u.id
 		LIMIT $6 OFFSET $7
@@ -1298,7 +1321,8 @@ func (r *UserRepository) ListStaffDirectoryPage(ctx context.Context, actorPrinci
 		if err := rows.Scan(&user.ID, &user.PrincipalID, &user.SchoolID, &user.Username,
 			&user.Status, &user.MustChangePassword, &user.CreatedAt, &user.UpdatedAt,
 			&user.EmployeeCode, &user.FullName, &user.Designation, &user.MobileNumber,
-			&user.Email, &joiningDate, &user.EmploymentStatus, &user.ProfileComplete); err != nil {
+			&user.Email, &joiningDate, &user.EmploymentStatus, &user.ProfileComplete,
+            &user.ProtectedSchoolAdmin); err != nil {
 			return nil, fmt.Errorf("scan school staff directory page: %w", err)
 		}
 		user.JoiningDate = joiningDate

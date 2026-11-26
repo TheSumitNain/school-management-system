@@ -4400,3 +4400,42 @@ test("staff leave requests use bounded pages and show the matching total", async
   await expect(page.getByText("Showing 1–50 of 50")).toBeVisible();
   await expect(page.getByText("Leave request 1",{exact:true})).toBeVisible();
 });
+
+
+test("protected School Admin staff records expose no ordinary account lifecycle actions", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [
+    {
+      id: 1, principal_id: 941, school_id: 10, username: "protected.admin",
+      employee_code: "ADM-941", full_name: "Protected Admin", designation: "School Admin",
+      mobile_number: "9876543210", employment_status: "active", profile_complete: true,
+      protected_school_admin: true, status: "active", must_change_password: false,
+    },
+    {
+      id: 2, principal_id: 942, school_id: 10, username: "protected.disabled",
+      employee_code: "ADM-942", full_name: "Disabled Protected Admin", designation: "School Admin",
+      mobile_number: "9876543212", employment_status: "active", profile_complete: true,
+      protected_school_admin: true, status: "disabled", must_change_password: true,
+    },
+  ];
+  await signInAndOpenStaff(page, rows, undefined, [
+    "users.read", "users.update", "users.disable", "users.password_reset",
+    "roles.read", "roles.assign", "permissions.override",
+  ]);
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+
+  const activeRow = page.locator("tr").filter({ hasText: "protected.admin" });
+  const disabledRow = page.locator("tr").filter({ hasText: "protected.disabled" });
+  await expect(activeRow).toBeVisible();
+  await expect(disabledRow).toBeVisible();
+  for (const [row, username] of [[activeRow, "protected.admin"], [disabledRow, "protected.disabled"]] as const) {
+    await expect(row.getByRole("button", { name: "Edit employee profile for " + username })).toHaveCount(0);
+    await expect(row.getByRole("button", { name: "Reset password for " + username })).toHaveCount(0);
+    await expect(row.getByRole("button", { name: "Disable " + username })).toHaveCount(0);
+    await expect(row.getByRole("button", { name: "Enable " + username })).toHaveCount(0);
+  }
+
+  await activeRow.getByRole("button", { name: "Protected Admin", exact: true }).click();
+  const profile = page.getByRole("dialog", { name: "Protected Admin" });
+  await expect(profile.getByRole("button", { name: "Edit employee details" })).toHaveCount(0);
+  await expect(profile.getByRole("button", { name: "Edit personal details" })).toHaveCount(0);
+});

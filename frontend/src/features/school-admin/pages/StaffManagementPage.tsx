@@ -283,6 +283,7 @@ export function StaffManagementPage({ permissions }: Props) {
   }
   function openProfile(item: StaffRecord) { setProfileFor(item); setProfileTab("Overview"); setRecordFormKind(null); setEditingRecordID(null); setRecordError(""); setRecordFieldErrors({}); setCertificationIssueDate(""); setCertificationExpiryDate(""); setExperienceStartDate(""); setExperienceEndDate(""); }
   function openAction(next: Action, item: StaffRecord | null = null) {
+    if (next !== "create" && item?.protected_school_admin) return;
     setSelected(item);
     setAction(next);
     setJoiningDate(item?.joining_date ? item.joining_date.slice(0, 10) : "");
@@ -303,8 +304,8 @@ export function StaffManagementPage({ permissions }: Props) {
     setCreateStep(1);
   }
   const actionAllowed = action === "create" ? canCreate
-    : action === "edit" || action === "enable" ? canUpdate && canReadStaff
-    : action === "reset" ? canReset && canReadStaff : true;
+    : action === "edit" || action === "enable" ? canUpdate && canReadStaff && !selected?.protected_school_admin
+    : action === "reset" ? canReset && canReadStaff && !selected?.protected_school_admin : true;
   useEffect(() => {
     if (action && !actionAllowed) closeAction();
     if (staffToDisable && (!canDisable || !canReadStaff)) {
@@ -548,10 +549,10 @@ export function StaffManagementPage({ permissions }: Props) {
       }
     }
   }
-  function deactivate(item: StaffRecord) { setDisableError(""); setStaffToDisable(item); }
+  function deactivate(item: StaffRecord) { if (item.protected_school_admin) return; setDisableError(""); setStaffToDisable(item); }
   async function confirmDeactivate() {
     if (!staffToDisable) return;
-    if (!canDisable || !canReadStaff) { setStaffToDisable(null); setDisableError(""); return; }
+    if (!canDisable || !canReadStaff || staffToDisable.protected_school_admin) { setStaffToDisable(null); setDisableError(""); return; }
     const item = staffToDisable;
     setDisableError("");
     setFeedback(null);
@@ -684,12 +685,12 @@ export function StaffManagementPage({ permissions }: Props) {
           : filtered.length === 0 ? <div className="table-message">{directoryTotal === 0 && !search.trim() && employmentFilter === "all" && accountFilter === "all" && profileFilter === "all" ? "No staff accounts yet. Add the first staff account to get started." : "No staff match the current search and filters."}</div>
           : <div className="table-scroll"><table><thead><tr><th>Employee</th><th>Employee code</th><th>Designation</th><th>Mobile</th><th>Login status</th><th>Employment</th><th>Password</th><th>Created</th><th>Actions</th></tr></thead><tbody>
             {filtered.map(item => <Fragment key={item.principal_id}><tr><td><button type="button" className="staff-profile-link" onClick={() => openProfile(item)}>{item.full_name || "Profile incomplete"}</button><small className="staff-id">{item.username} · Principal #{item.principal_id}</small></td><td>{item.employee_code || "—"}</td><td>{item.designation || "—"}</td><td>{item.mobile_number || "—"}</td><td><span className={`pill ${item.status === "active" ? "active" : "inactive"}`}>{item.status}</span></td><td>{item.employment_status ? <span className={`pill ${item.employment_status === "active" ? "active" : "inactive"}`}>{item.employment_status}</span> : "Profile pending"}</td><td>{item.must_change_password ? <span className="staff-password-required">Change required</span> : "—"}</td><td>{item.created_at ? new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeZone: "Asia/Kolkata" }).format(new Date(item.created_at)) : "—"}</td><td><div className="staff-row-actions">
-              {canUpdate && <button type="button" onClick={() => openAction("edit", item)} title="Edit employee profile" aria-label={`Edit employee profile for ${item.username}`}><Pencil size={15}/></button>}
-              {canReset && item.status === "active" && <button type="button" onClick={() => openAction("reset", item)} title="Reset password" aria-label={`Reset password for ${item.username}`}><KeyRound size={15}/></button>}
+              {canUpdate && !item.protected_school_admin && <button type="button" onClick={() => openAction("edit", item)} title="Edit employee profile" aria-label={`Edit employee profile for ${item.username}`}><Pencil size={15}/></button>}
+              {canReset && !item.protected_school_admin && item.status === "active" && <button type="button" onClick={() => openAction("reset", item)} title="Reset password" aria-label={`Reset password for ${item.username}`}><KeyRound size={15}/></button>}
               {canReadRoles && item.status === "active" && <button type="button" className={rolesForPrincipal === item.principal_id ? "selected" : ""} onClick={() => setRolesForPrincipal(item.principal_id)} title="Manage roles" aria-label={`Manage roles for ${item.username}`} aria-expanded={rolesForPrincipal === item.principal_id}><Shield size={15}/></button>}
               {canManageOverrides && item.status === "active" && <button type="button" className={overridesForPrincipal === item.principal_id ? "selected" : ""} onClick={() => setOverridesForPrincipal(item.principal_id)} title="Manage permission overrides" aria-label={`Manage permission overrides for ${item.username}`} aria-expanded={overridesForPrincipal === item.principal_id}><LockKeyhole size={15}/></button>}
-              {item.status === "active" && canDisable && <button type="button" className="danger" onClick={() => void deactivate(item)} disabled={disable.isPending} title="Disable account" aria-label={`Disable ${item.username}`}><UserMinus size={15}/></button>}
-              {item.status !== "active" && item.profile_complete === true && item.employment_status === "active" && canUpdate && <button type="button" onClick={() => openAction("enable", item)} title="Enable account" aria-label={`Enable ${item.username}`}><UserCheck size={15}/></button>}
+              {item.status === "active" && canDisable && !item.protected_school_admin && <button type="button" className="danger" onClick={() => void deactivate(item)} disabled={disable.isPending} title="Disable account" aria-label={`Disable ${item.username}`}><UserMinus size={15}/></button>}
+              {item.status !== "active" && item.profile_complete === true && item.employment_status === "active" && canUpdate && !item.protected_school_admin && <button type="button" onClick={() => openAction("enable", item)} title="Enable account" aria-label={`Enable ${item.username}`}><UserCheck size={15}/></button>}
             </div></td></tr>
             </Fragment>)}
           </tbody></table></div>}
@@ -699,9 +700,9 @@ export function StaffManagementPage({ permissions }: Props) {
         <nav className="staff-profile-tabs" aria-label="Staff profile sections">
           {(["Overview","Personal Details","Employment","Qualifications & Experience","Documents","Academic Assignments",...(permissions.includes("timetable.read") ? ["Workload & Timetable" as const] : []),"Account & Access","History & Activity"] as const).map(tab => <button type="button" key={tab} className={profileTab === tab ? "active" : ""} aria-current={profileTab === tab ? "page" : undefined} onClick={() => setProfileTab(tab)}>{tab}</button>)}
         </nav>
-        {profileTab === "Overview" && <section className="staff-profile-overview"><div><span>Employee code</span><strong>{profileFor.employee_code || "Not set"}</strong></div><div><span>Designation</span><strong>{profileFor.designation || "Not set"}</strong></div><div><span>Employment</span><strong>{profileFor.employment_status || "Profile incomplete"}</strong></div><div><span>Login</span><strong>{profileFor.status === "active" ? "Enabled" : "Disabled"}</strong></div>{canUpdate && <button className="primary" type="button" onClick={() => {const item=profileFor;closeProfile();openAction("edit",item);}}>Edit employee details</button>}</section>}
-        {profileTab === "Personal Details" && <section className="staff-profile-section"><h3>Personal details</h3><dl><div><dt>Full name</dt><dd>{profileFor.full_name || "Not set"}</dd></div><div><dt>Employee code</dt><dd>{profileFor.employee_code || "Not set"}</dd></div><div><dt>Mobile number</dt><dd>{profileFor.mobile_number || "Not set"}</dd></div><div><dt>Email address</dt><dd>{profileFor.email || "Not provided"}</dd></div></dl>{canUpdate && <button className="primary" type="button" onClick={() => {const item=profileFor;closeProfile();openAction("edit",item);}}>Edit personal details</button>}</section>}
-        {profileTab === "Employment" && <section className="staff-profile-section"><h3>Employment details</h3><dl><div><dt>Designation</dt><dd>{profileFor.designation || "Not set"}</dd></div><div><dt>Joining date</dt><dd>{profileFor.joining_date ? new Intl.DateTimeFormat("en-IN",{dateStyle:"medium",timeZone:"Asia/Kolkata"}).format(new Date(profileFor.joining_date)) : "Not provided"}</dd></div><div><dt>Employment status</dt><dd>{profileFor.employment_status || "Profile incomplete"}</dd></div><div><dt>Login status</dt><dd>{profileFor.status === "active" ? "Enabled" : "Disabled"}</dd></div></dl>{canUpdate && <button className="primary" type="button" onClick={() => {const item=profileFor;closeProfile();openAction("edit",item);}}>Edit employment details</button>}</section>}
+        {profileTab === "Overview" && <section className="staff-profile-overview"><div><span>Employee code</span><strong>{profileFor.employee_code || "Not set"}</strong></div><div><span>Designation</span><strong>{profileFor.designation || "Not set"}</strong></div><div><span>Employment</span><strong>{profileFor.employment_status || "Profile incomplete"}</strong></div><div><span>Login</span><strong>{profileFor.status === "active" ? "Enabled" : "Disabled"}</strong></div>{canUpdate && !profileFor.protected_school_admin && <button className="primary" type="button" onClick={() => {const item=profileFor;closeProfile();openAction("edit",item);}}>Edit employee details</button>}</section>}
+        {profileTab === "Personal Details" && <section className="staff-profile-section"><h3>Personal details</h3><dl><div><dt>Full name</dt><dd>{profileFor.full_name || "Not set"}</dd></div><div><dt>Employee code</dt><dd>{profileFor.employee_code || "Not set"}</dd></div><div><dt>Mobile number</dt><dd>{profileFor.mobile_number || "Not set"}</dd></div><div><dt>Email address</dt><dd>{profileFor.email || "Not provided"}</dd></div></dl>{canUpdate && !profileFor.protected_school_admin && <button className="primary" type="button" onClick={() => {const item=profileFor;closeProfile();openAction("edit",item);}}>Edit personal details</button>}</section>}
+        {profileTab === "Employment" && <section className="staff-profile-section"><h3>Employment details</h3><dl><div><dt>Designation</dt><dd>{profileFor.designation || "Not set"}</dd></div><div><dt>Joining date</dt><dd>{profileFor.joining_date ? new Intl.DateTimeFormat("en-IN",{dateStyle:"medium",timeZone:"Asia/Kolkata"}).format(new Date(profileFor.joining_date)) : "Not provided"}</dd></div><div><dt>Employment status</dt><dd>{profileFor.employment_status || "Profile incomplete"}</dd></div><div><dt>Login status</dt><dd>{profileFor.status === "active" ? "Enabled" : "Disabled"}</dd></div></dl>{canUpdate && !profileFor.protected_school_admin && <button className="primary" type="button" onClick={() => {const item=profileFor;closeProfile();openAction("edit",item);}}>Edit employment details</button>}</section>}
         {profileTab === "Qualifications & Experience" && <section className="staff-records-panel">
           <div className="staff-records-heading"><div><h3>Qualifications & experience</h3><p>Education, professional certificates and previous employment records for this employee.</p></div></div>
           <div className="staff-record-group">
