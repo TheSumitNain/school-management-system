@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { CalendarDays, CheckCircle2, Clock3, Plus, RefreshCw, UserRound, XCircle } from "lucide-react";
+import { CalendarDays, CheckCircle2, Clock3, Download, Plus, RefreshCw, UserRound, XCircle } from "lucide-react";
 import { ApiError } from "../../../lib/api";
 import { notifyToast } from "../../../shared/notifications";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { DatePicker } from "../../../shared/components/DatePicker";
 import { Select } from "../../../shared/components/Select";
+import { getStaffSubstitutions } from "../api";
 import type { StaffRecord, StaffSubstitution } from "../api";
 import {
   useCancelStaffSubstitutionMutation, useCreateStaffSubstitutionMutation, useStaffSubstitutionsQuery,
@@ -19,6 +20,27 @@ function monthRange(){const today=todayIST();const parts=today.split("-").map(Nu
 function weekdayOf(value:string){const day=new Date(value+"T00:00:00Z").getUTCDay();return day===0?7:day;}
 function formatDate(value:string){return new Date(value+"T00:00:00Z").toLocaleDateString("en-IN",{timeZone:"UTC",day:"2-digit",month:"short",year:"numeric"});}
 function errorText(error:unknown,fallback:string){return error instanceof ApiError?error.message:fallback;}
+function substitutionCsvCell(value:string|number|null|undefined){
+  const raw=String(value??"");
+  const safe=/^\\s*(?:=|\\+|-|@)/.test(raw)?"'"+raw:raw;
+  return '"'+safe.replace(/"/g,'""')+'"';
+}
+function downloadSubstitutionCsv(rows:StaffSubstitution[]){
+  const header=["Cover date","Class","Section","Subject","Period","Start time","End time","Room","Original teacher","Substitute teacher","Status","Leave request ID"];
+  const values=[header,...rows.map(item=>[
+    item.cover_date,item.class_name,item.section_name,item.subject_name,item.period_number,
+    item.starts_at,item.ends_at,item.room??"",item.original_teacher_name,item.substitute_teacher_name,
+    item.status==="cancelled"?"Cancelled":item.cover_date<todayIST()?"Completed":"Scheduled",
+    item.approved_leave_request_id??"",
+  ])];
+  const csv=values.map(row=>row.map(substitutionCsvCell).join(",")).join("\\r\\n");
+  const blob=new Blob(["\\uFEFF",csv],{type:"text/csv;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const link=document.createElement("a");
+  link.href=url;link.download="staff-substitution-history.csv";
+  document.body.appendChild(link);link.click();link.remove();
+  window.setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
 
 export function StaffSubstitutionWorkspace({permissions,staff}:Props){
   const canRead=permissions.includes("staff.substitutions.read");
@@ -96,6 +118,47 @@ export function StaffSubstitutionWorkspace({permissions,staff}:Props){
     }catch(error){setFormError(errorText(error,"Unable to assign substitute. Check staff eligibility and timetable conflicts."));}
   };
 
+  const exportAllSubstitutions=async()=>{
+    if(!canRead||!validRange||isExporting||substitutionsQuery.isFetching)return;
+    setIsExporting(true);
+    try{
+      const collected:StaffSubstitution[]=[];
+      const ids=new Set<number>();
+      let expectedTotal:number|undefined;
+      let page=1;
+      while(expectedTotal===undefined||collected.length<expectedTotal){
+        const response=await getStaffSubstitutions({
+          fromDate,toDate,staffPrincipalID:Number(filterStaffID)||undefined,
+          page,pageSize:substitutionPageSize,
+        });
+        const pagination=response.pagination;
+        if(!pagination||pagination.page!==page||pagination.page_size!==substitutionPageSize||
+          !Number.isInteger(pagination.total)||pagination.total<0||
+          (expectedTotal!==undefined&&pagination.total!==expectedTotal)){
+          throw new Error("Substitution history changed while exporting. No partial CSV was created.");
+        }
+        expectedTotal=pagination.total;
+        if(response.substitutions.length>substitutionPageSize||
+          response.substitutions.length!==Math.min(substitutionPageSize,Math.max(0,expectedTotal-collected.length))){
+          throw new Error("Substitution history returned an incomplete page. No partial CSV was created.");
+        }
+        for(const item of response.substitutions){
+          if(!Number.isSafeInteger(item.id)||item.id<=0||ids.has(item.id)){
+            throw new Error("Substitution history contained a duplicate or invalid record. No partial CSV was created.");
+          }
+          ids.add(item.id);collected.push(item);
+        }
+        page+=1;
+        if(expectedTotal===0)break;
+      }
+      if(collected.length!==expectedTotal)throw new Error("Substitution history was incomplete. No partial CSV was created.");
+      downloadSubstitutionCsv(collected);
+      notifyToast("success",collected.length+" substitution records exported.");
+    }catch(error){
+      notifyToast("error",errorText(error,"Unable to export substitution history. No partial CSV was created."));
+    }finally{setIsExporting(false);}
+  };
+
   const confirmCancel=async()=>{
     if(!cancelTarget)return;
     if(!canManage){setCancelTarget(null);return;}
@@ -156,11 +219,11 @@ export function StaffSubstitutionWorkspace({permissions,staff}:Props){
     </div>}
 
     {canRead&&<section className="staff-substitution-panel">
-      <div className="staff-substitution-list-heading"><h3><CalendarDays size={16}/> Dated coverage records</h3><button type="button" className="staff-substitution-refresh" onClick={()=>void substitutionsQuery.refetch()} disabled={substitutionsQuery.isFetching}><RefreshCw size={14}/> Refresh</button></div>
+      <div className="staff-substitution-list-heading"><h3><CalendarDays size={16}/> Dated coverage records</h3><div className="staff-substitution-filter-actions"><button type="button" className="staff-substitution-refresh" onClick={()=>void substitutionsQuery.refetch()} disabled={substitutionsQuery.isFetching||isExporting}><RefreshCw size={14}/> Refresh</button><button type="button" className="staff-substitution-refresh" onClick={()=>void exportAllSubstitutions()} disabled={!validRange||substitutionsQuery.isLoading||substitutionsQuery.isFetching||isExporting||!substitutionsQuery.data?.pagination?.total}><Download size={14}/>{isExporting?"Exporting…":"Export all CSV"}</button></div>
       <div className="staff-substitution-filters">
-        <label>From date <DatePicker value={fromDate} onChange={value=>{setFromDate(value);setSubstitutionPage(1);}} ariaLabel="Substitution list from date" placeholder="From date"/></label>
-        <label>To date <DatePicker value={toDate} onChange={value=>{setToDate(value);setSubstitutionPage(1);}} ariaLabel="Substitution list to date" placeholder="To date"/></label>
-        <label>Staff member <Select value={filterStaffID} onChange={value=>{setFilterStaffID(value);setSubstitutionPage(1);}} ariaLabel="Filter substitutions by staff" options={staffOptions}/></label>
+        <label>From date <DatePicker value={fromDate} onChange={value=>{setFromDate(value);setSubstitutionPage(1);}} disabled={isExporting} ariaLabel="Substitution list from date" placeholder="From date"/></label>
+        <label>To date <DatePicker value={toDate} onChange={value=>{setToDate(value);setSubstitutionPage(1);}} disabled={isExporting} ariaLabel="Substitution list to date" placeholder="To date"/></label>
+        <label>Staff member <Select value={filterStaffID} onChange={value=>{setFilterStaffID(value);setSubstitutionPage(1);}} disabled={isExporting} ariaLabel="Filter substitutions by staff" options={staffOptions}/></label>
       </div>
       {!fromDate||!toDate?<p className="staff-substitution-error" role="alert">Select both a From date and a To date.</p>:!validRange&&<p className="staff-substitution-error" role="alert">To date must be on or after from date.</p>}
       {filtersChanged&&<div className="staff-substitution-filter-actions"><button type="button" className="staff-substitution-refresh" onClick={()=>{setFromDate(range.from);setToDate(range.to);setFilterStaffID("0");setSubstitutionPage(1);}}>Clear filters</button></div>}
@@ -180,7 +243,7 @@ export function StaffSubstitutionWorkspace({permissions,staff}:Props){
           {canCancel&&<button type="button" className="staff-substitution-cancel" onClick={()=>setCancelTarget(item)}><XCircle size={14}/> Cancel cover</button>}
         </article>;
       })}
-      {validRange&&substitutionsQuery.data?.pagination&&substitutionsQuery.data.pagination.total>0&&<div className="staff-substitution-filter-actions" aria-label="Substitution history pagination"><span>Showing {(substitutionPage-1)*substitutionPageSize+1}–{Math.min(substitutionPage*substitutionPageSize,substitutionsQuery.data.pagination.total)} of {substitutionsQuery.data.pagination.total}</span><button type="button" className="staff-substitution-refresh" onClick={()=>setSubstitutionPage(page=>Math.max(1,page-1))} disabled={substitutionPage===1||substitutionsQuery.isFetching}>Previous</button><button type="button" className="staff-substitution-refresh" onClick={()=>setSubstitutionPage(page=>page+1)} disabled={substitutionPage*substitutionPageSize>=substitutionsQuery.data.pagination.total||substitutionsQuery.isFetching}>Next</button></div>}
+      {validRange&&substitutionsQuery.data?.pagination&&substitutionsQuery.data.pagination.total>0&&<div className="staff-substitution-filter-actions" aria-label="Substitution history pagination"><span>Showing {(substitutionPage-1)*substitutionPageSize+1}–{Math.min(substitutionPage*substitutionPageSize,substitutionsQuery.data.pagination.total)} of {substitutionsQuery.data.pagination.total}</span><button type="button" className="staff-substitution-refresh" onClick={()=>setSubstitutionPage(page=>Math.max(1,page-1))} disabled={substitutionPage===1||substitutionsQuery.isFetching||isExporting}>Previous</button><button type="button" className="staff-substitution-refresh" onClick={()=>setSubstitutionPage(page=>page+1)} disabled={substitutionPage*substitutionPageSize>=substitutionsQuery.data.pagination.total||substitutionsQuery.isFetching||isExporting}>Next</button></div>}
       <p className="staff-substitution-footnote"><Clock3 size={13}/> Completed is derived from the cover date. Cancelled records remain in history. Timetable entries with substitution history cannot be hard-deleted.</p>
     </section>}
     {!canRead&&!canManage&&<p className="staff-substitution-error" role="alert">You do not have permission to view or manage substitute coverage.</p>}
