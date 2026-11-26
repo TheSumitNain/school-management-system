@@ -4047,10 +4047,13 @@ test("staff monthly attendance summary remains contained and readable across vie
   await signInAndOpenStaff(page, rows, undefined, ["users.read", "staff.attendance.read"]);
   await page.route("**/api/school/staff-attendance/month?*", async route => {
     const url = new URL(route.request().url());
-    await route.fulfill({ json: { month: url.searchParams.get("month"), data: [{
+    const limit = Number(url.searchParams.get("limit") ?? 50);
+    const offset = Number(url.searchParams.get("offset") ?? 0);
+    const data = [{
       staff_principal_id: 531, employee_code: "EMP-MONTH-RESP-01", full_name: "Monthly Responsive Teacher",
       designation: "Teacher", present_days: 18, absent_days: 1, late_days: 2, half_days: 0, records: [],
-    }] } });
+    }];
+    await route.fulfill({ json: { month: url.searchParams.get("month"), data: data.slice(offset, offset + limit), pagination: { limit, offset, total: data.length } } });
   });
   await page.getByRole("button", { name: "Attendance", exact: true }).click();
   const workspace = page.locator(".staff-attendance-panel");
@@ -4086,10 +4089,13 @@ test("staff attendance monthly summary does not request data for an invalid mont
   await page.route("**/api/school/staff-attendance/month?*", async route => {
     monthlyRequests += 1;
     const url = new URL(route.request().url());
-    await route.fulfill({ json: { month: url.searchParams.get("month"), data: [{
+    const limit = Number(url.searchParams.get("limit") ?? 50);
+    const offset = Number(url.searchParams.get("offset") ?? 0);
+    const data = [{
       staff_principal_id: 532, employee_code: "EMP-MONTH-INVALID", full_name: "Invalid Month Teacher",
       designation: "Teacher", present_days: 18, absent_days: 0, late_days: 0, half_days: 0, records: [],
-    }] } });
+    }];
+    await route.fulfill({ json: { month: url.searchParams.get("month"), data: data.slice(offset, offset + limit), pagination: { limit, offset, total: data.length } } });
   });
   await page.getByRole("button", { name: "Attendance", exact: true }).click();
   const workspace = page.locator(".staff-attendance-panel");
