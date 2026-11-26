@@ -94,7 +94,7 @@ func TestStaffProfileInactivationFailsFastDuringRefreshLockPostgresIntegration(t
     `, principalID)
     var pgErr *pgconn.PgError
     if !strings.Contains(fmt.Sprintf("%v", err), "conflicts with an in-flight authentication change") ||
-        !asPostgresCode(err, &pgErr) || pgErr.Code != "40001" {
+        !errors.As(err, &pgErr) || pgErr.Code != "40001" {
         t.Fatalf("profile inactivation should fail fast with SQLSTATE 40001 while refresh lock is held; got %v", err)
     }
 
@@ -111,7 +111,3 @@ func TestStaffProfileInactivationFailsFastDuringRefreshLockPostgresIntegration(t
     }
 }
 
-func asPostgresCode(err error, target **pgconn.PgError) bool {
-    if err == nil { return false }
-    return errors.As(err, target)
-}
