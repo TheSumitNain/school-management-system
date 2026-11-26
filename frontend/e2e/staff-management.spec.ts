@@ -1524,17 +1524,6 @@ test("staff profile creates education, certification and experience records", as
   await expect(certificateNameInput).toHaveValue("C".repeat(180));
   await certificateNameInput.fill("Teacher Training");
   await dialog.locator('input[name="issuing_organization"]').fill("State Board");
-  await dialog.locator('input[name="issue_date"]').evaluate((element: HTMLInputElement) => {
-    element.value = "2026-02-30";
-  });
-  await dialog.getByRole("button", { name: "Save record" }).click();
-  await expect(dialog.getByText("Enter a real calendar issue date.")).toBeVisible();
-  await expect(dialog.getByText("Teacher Training")).toHaveCount(0);
-  // Discard the deliberately invalid form and retry with a clean form state.
-  await dialog.locator(".staff-record-form").getByRole("button", { name: "Cancel" }).first().click();
-  await dialog.getByRole("button", { name: "Add certification" }).click();
-  await certificateNameInput.fill("Teacher Training");
-  await dialog.locator('input[name="issuing_organization"]').fill("State Board");
   await expect(dialog.locator('input[name="credential_id"]')).not.toHaveAttribute("maxLength");
   await dialog.locator('input[name="credential_id"]').fill("🔐".repeat(121));
   await expect(dialog.locator('input[name="credential_id"]')).toHaveValue(unicodeCredential);
@@ -1579,6 +1568,29 @@ test("staff profile creates education, certification and experience records", as
   await dialog.locator('input[name="record_designation"]').fill("Senior Science Teacher");
   await dialog.getByRole("button", { name: "Save changes" }).click();
   await expect(dialog.getByText("Senior Science Teacher")).toBeVisible();
+});
+
+test("staff certification rejects impossible calendar dates before saving", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 612, school_id: 10, username: "teacher.date-check",
+    employee_code: "EMP-DATE-01", full_name: "Date Check Teacher", designation: "Teacher",
+    mobile_number: "9876543214", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false, created_at: "2026-04-01T00:00:00.000Z",
+  }];
+  await signInAndOpenStaff(page, rows);
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Date Check Teacher" }).click();
+  const dialog = page.getByRole("dialog", { name: "Date Check Teacher" });
+  await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
+  await dialog.getByRole("button", { name: "Add certification" }).click();
+  await dialog.locator('input[name="certificate_name"]').fill("Impossible Date Certificate");
+  await dialog.locator('input[name="issuing_organization"]').fill("State Board");
+  await dialog.locator('input[name="issue_date"]').evaluate((element: HTMLInputElement) => {
+    element.value = "2026-02-30";
+  });
+  await dialog.getByRole("button", { name: "Save record" }).click();
+  await expect(dialog.getByText("Enter a real calendar issue date.")).toBeVisible();
+  await expect(dialog.locator('input[name="certificate_name"]')).toHaveValue("Impossible Date Certificate");
 });
 
 test("staff profile shows only the selected employee's academic assignments and retained history", async ({ page }) => {
