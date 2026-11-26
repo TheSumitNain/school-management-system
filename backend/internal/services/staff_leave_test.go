@@ -14,6 +14,7 @@ type staffLeaveRepositoryStub struct {
 	saveHolidayCalls int
 	savedHoliday repository.SchoolHoliday
 	listRequestsCalls int
+	listPageCalls int
 	listHolidaysCalls int
 	listedHolidayFrom string
 	listedHolidayTo string
@@ -29,6 +30,10 @@ func (s *staffLeaveRepositoryStub) SaveType(context.Context, int64, int64, int64
 func (s *staffLeaveRepositoryStub) ListRequests(context.Context, int64, int64, string, int64, string, string, string) ([]repository.StaffLeaveRequest, error) {
 	s.listRequestsCalls++
 	return nil, nil
+}
+func (s *staffLeaveRepositoryStub) ListRequestsPage(context.Context, int64, int64, string, int64, string, string, string, int, int) (repository.StaffLeaveRequestPage, error) {
+	s.listPageCalls++
+	return repository.StaffLeaveRequestPage{Items: []repository.StaffLeaveRequest{}}, nil
 }
 func (s *staffLeaveRepositoryStub) CreateRequest(_ context.Context, _, _ int64, item repository.StaffLeaveRequest) (*repository.StaffLeaveRequest, error) {
 	s.createCalls++
@@ -249,5 +254,17 @@ func TestStaffLeaveServiceForwardsHolidayCalendarScope(t *testing.T) {
 	if err != nil { t.Fatalf("ListHolidays returned error: %v", err) }
 	if repo.listHolidaysCalls != 1 || repo.listedHolidayFrom != "2026-11-01" || repo.listedHolidayTo != "2026-11-30" || !repo.listedHolidayIncludeInactive {
 		t.Fatalf("holiday query forwarding mismatch: calls=%d from=%q to=%q includeInactive=%v", repo.listHolidaysCalls, repo.listedHolidayFrom, repo.listedHolidayTo, repo.listedHolidayIncludeInactive)
+	}
+}
+
+func TestStaffLeavePaginationRejectsOffsetOverflowBeforeRepository(t *testing.T) {
+	repo := &staffLeaveRepositoryStub{}
+	service := NewStaffLeaveService(repo)
+	maxInt := int(^uint(0) >> 1)
+	if _, err := service.ListRequestsPage(context.Background(), 1, 1, "", 0, "", "", "", maxInt, 100); !errors.Is(err, ErrInvalidStaffLeave) {
+		t.Fatalf("expected oversized page to be rejected, got %v", err)
+	}
+	if repo.listPageCalls != 0 {
+		t.Fatalf("oversized page reached repository %d times", repo.listPageCalls)
 	}
 }

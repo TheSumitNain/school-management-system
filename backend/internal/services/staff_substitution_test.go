@@ -7,8 +7,9 @@ import (
 	"school-management-system/internal/repository"
 )
 
-type fakeStaffSubstitutionRepository struct { listCalls,createCalls,cancelCalls int }
+type fakeStaffSubstitutionRepository struct { listCalls,createCalls,cancelCalls,listPageCalls int }
 func(f *fakeStaffSubstitutionRepository) ListStaffSubstitutions(context.Context,int64,int64,string,string,int64)([]repository.StaffSubstitution,error){f.listCalls++;return []repository.StaffSubstitution{},nil}
+func(f *fakeStaffSubstitutionRepository) ListStaffSubstitutionsPage(context.Context,int64,int64,string,string,int64,int,int)(repository.StaffSubstitutionPage,error){f.listPageCalls++;return repository.StaffSubstitutionPage{Items:[]repository.StaffSubstitution{}},nil}
 func(f *fakeStaffSubstitutionRepository) CreateStaffSubstitution(context.Context,int64,int64,int64,int64,int64,string,*int64,string)(*repository.StaffSubstitution,error){f.createCalls++;return &repository.StaffSubstitution{ID:1},nil}
 func(f *fakeStaffSubstitutionRepository) CancelStaffSubstitution(context.Context,int64,int64,int64)error{f.cancelCalls++;return nil}
 
@@ -32,4 +33,16 @@ func TestStaffSubstitutionServiceAcceptsValidDatedCoverage(t *testing.T) {
 	if item.ID!=1||repo.createCalls!=1{t.Fatalf("unexpected repository result: item=%+v calls=%d",item,repo.createCalls)}
 	if err:=svc.Cancel(context.Background(),1,2,item.ID);err!=nil{t.Fatalf("cancel substitution: %v",err)}
 	if repo.cancelCalls!=1{t.Fatalf("expected one cancellation call, got %d",repo.cancelCalls)}
+}
+
+func TestStaffSubstitutionPaginationRejectsOffsetOverflowBeforeRepository(t *testing.T) {
+	repo := &fakeStaffSubstitutionRepository{}
+	svc := NewStaffSubstitutionService(repo)
+	maxInt := int(^uint(0) >> 1)
+	if _, err := svc.ListPage(context.Background(), 1, 1, "2026-11-01", "2026-11-30", 0, maxInt, 100); err == nil {
+		t.Fatal("expected oversized page to be rejected")
+	}
+	if repo.listPageCalls != 0 {
+		t.Fatalf("oversized page reached repository %d times", repo.listPageCalls)
+	}
 }
