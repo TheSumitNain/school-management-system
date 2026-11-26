@@ -494,15 +494,15 @@ export function StaffManagementPage({ permissions }: Props) {
       requiredText("certificate_name", "Certificate name", 180);
       requiredText("issuing_organization", "Issuing organization", 200);
       if (Array.from(value("credential_id")).length > 120) errors.credential_id = "Credential ID must be 120 characters or fewer.";
-      if (issueDate && !/^\d{4}-\d{2}-\d{2}$/.test(issueDate)) errors.issue_date = "Enter a valid issue date.";
-      if (expiryDate && !/^\d{4}-\d{2}-\d{2}$/.test(expiryDate)) errors.expiry_date = "Enter a valid expiry date.";
+      if (issueDate && !isValidISODate(issueDate)) errors.issue_date = "Enter a real calendar issue date.";
+      if (expiryDate && !isValidISODate(expiryDate)) errors.expiry_date = "Enter a real calendar expiry date.";
       if (issueDate && expiryDate && expiryDate < issueDate) errors.expiry_date = "Expiry date cannot be before the issue date.";
     } else {
       requiredText("employer_name", "Employer name", 200);
       requiredText("record_designation", "Designation", 120);
-      if (!startDate || !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) errors.start_date = "Enter a valid start date.";
+      if (!isValidISODate(startDate)) errors.start_date = "Enter a real calendar start date.";
       if (isCurrent && endDate) errors.end_date = "A current role cannot have an end date.";
-      else if (endDate && (!/^\d{4}-\d{2}-\d{2}$/.test(endDate) || endDate < startDate)) errors.end_date = "End date must be on or after the start date.";
+      else if (endDate && (!isValidISODate(endDate) || endDate < startDate)) errors.end_date = "End date must be a real calendar date on or after the start date.";
       if (Array.from(value("description")).length > 2000) errors.description = "Description must be 2,000 characters or fewer.";
     }
     setRecordFieldErrors(errors);
