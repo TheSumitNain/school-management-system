@@ -12,7 +12,7 @@ type StaffLeaveRequestPage struct {
 
 func (r *StaffLeaveRepository) ListRequestsPage(ctx context.Context, actor, school int64, status string, staffID int64, onDate, fromDate, toDate string, page, pageSize int) (StaffLeaveRequestPage, error) {
 	result := StaffLeaveRequestPage{Items: []StaffLeaveRequest{}}
-	if r == nil || r.db == nil || actor <= 0 || school <= 0 || page < 1 || pageSize < 1 || pageSize > 100 {
+	if r == nil || r.db == nil || actor <= 0 || school <= 0 || page < 1 || pageSize < 1 || pageSize > 100 || page-1 > int(^uint(0)>>1)/pageSize {
 		return result, ErrInvalidStaffLeave
 	}
 	if err := authorizeGuardian(ctx, r.db, actor, school, "staff.leave.read"); err != nil {
